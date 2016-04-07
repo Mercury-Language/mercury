@@ -1406,20 +1406,20 @@
 % Conversions between strings and lists of characters.
 %
 
-string.to_char_list(S) = Cs :-
-    string.to_char_list(S, Cs).
+to_char_list(S) = Cs :-
+    to_char_list(S, Cs).
 
-:- pragma promise_equivalent_clauses(string.to_char_list/2).
+:- pragma promise_equivalent_clauses(to_char_list/2).
 
-string.to_char_list(Str::in, CharList::out) :-
-    string.to_char_list_forward(Str, CharList).
-string.to_char_list(Str::uo, CharList::in) :-
-    string.from_char_list(CharList, Str).
+to_char_list(Str::in, CharList::out) :-
+    to_char_list_forward(Str, CharList).
+to_char_list(Str::uo, CharList::in) :-
+    from_char_list(CharList, Str).
 
-:- pred string.to_char_list_forward(string::in, list(char)::out) is det.
+:- pred to_char_list_forward(string::in, list(char)::out) is det.
 
 :- pragma foreign_proc("C",
-    string.to_char_list_forward(Str::in, CharList::out),
+    to_char_list_forward(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -1437,7 +1437,7 @@ string.to_char_list(Str::uo, CharList::in) :-
     }
 }").
 :- pragma foreign_proc("C#",
-    string.to_char_list_forward(Str::in, CharList::out),
+    to_char_list_forward(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -1465,7 +1465,7 @@ string.to_char_list(Str::uo, CharList::in) :-
     CharList = lst;
 ").
 :- pragma foreign_proc("Java",
-    string.to_char_list_forward(Str::in, CharList::out),
+    to_char_list_forward(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -1478,34 +1478,34 @@ string.to_char_list(Str::uo, CharList::in) :-
     CharList = lst;
 ").
 :- pragma foreign_proc("Erlang",
-    string.to_char_list_forward(Str::in, CharList::out),
+    to_char_list_forward(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     CharList = unicode:characters_to_list(Str)
 ").
 
-string.to_char_list_forward(Str, CharList) :-
-    string.foldr(list.cons, Str, [], CharList).
+to_char_list_forward(Str, CharList) :-
+    foldr(list.cons, Str, [], CharList).
 
 %---------------------%
 
-string.from_char_list(Cs) = S :-
-    string.from_char_list(Cs, S).
+from_char_list(Cs) = S :-
+    from_char_list(Cs, S).
 
-:- pragma promise_equivalent_clauses(string.from_char_list/2).
+:- pragma promise_equivalent_clauses(from_char_list/2).
 
-string.from_char_list(Chars::out, Str::in) :-
-    string.to_char_list(Str, Chars).
-string.from_char_list(Chars::in, Str::uo) :-
-    ( if string.semidet_from_char_list(Chars, Str0) then
+from_char_list(Chars::out, Str::in) :-
+    to_char_list(Str, Chars).
+from_char_list(Chars::in, Str::uo) :-
+    ( if semidet_from_char_list(Chars, Str0) then
         Str = Str0
     else
-        error("string.from_char_list: null character in list")
+        unexpected($pred, "null character in list")
     ).
 
 :- pragma foreign_proc("C",
-    string.semidet_from_char_list(CharList::in, Str::uo),
+    semidet_from_char_list(CharList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
@@ -1563,7 +1563,7 @@ string.from_char_list(Chars::in, Str::uo) :-
     Str[size] = '\\0';
 }").
 :- pragma foreign_proc("C#",
-    string.semidet_from_char_list(CharList::in, Str::uo),
+    semidet_from_char_list(CharList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -1584,7 +1584,7 @@ string.from_char_list(Chars::in, Str::uo) :-
     Str = sb.ToString();
 ").
 :- pragma foreign_proc("Java",
-    string.semidet_from_char_list(CharList::in, Str::uo),
+    semidet_from_char_list(CharList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -1605,7 +1605,7 @@ string.from_char_list(Chars::in, Str::uo) :-
     Str = sb.toString();
 ").
 :- pragma foreign_proc("Erlang",
-    string.semidet_from_char_list(CharList::in, Str::uo),
+    semidet_from_char_list(CharList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -1613,15 +1613,15 @@ string.from_char_list(Chars::in, Str::uo) :-
     SUCCESS_INDICATOR = true
 ").
 
-string.semidet_from_char_list(CharList, Str) :-
+semidet_from_char_list(CharList, Str) :-
     (
         CharList = [],
         Str = ""
     ;
         CharList = [C | Cs],
         not char.to_int(C, 0),
-        string.semidet_from_char_list(Cs, Str0),
-        string.first_char(Str, C, Str0)
+        semidet_from_char_list(Cs, Str0),
+        first_char(Str, C, Str0)
     ).
 
 %---------------------%
@@ -1632,18 +1632,18 @@ string.semidet_from_char_list(CharList, Str) :-
 % parsing by about 7%.
 %
 
-string.from_rev_char_list(Cs) = S :-
-    string.from_rev_char_list(Cs, S).
+from_rev_char_list(Cs) = S :-
+    from_rev_char_list(Cs, S).
 
-string.from_rev_char_list(Chars, Str) :-
-    ( if string.semidet_from_rev_char_list(Chars, Str0) then
+from_rev_char_list(Chars, Str) :-
+    ( if semidet_from_rev_char_list(Chars, Str0) then
         Str = Str0
     else
-        error("string.from_rev_char_list: null character in list")
+        unexpected($pred, "null character in list")
     ).
 
 :- pragma foreign_proc("C",
-    string.semidet_from_rev_char_list(Chars::in, Str::uo),
+    semidet_from_rev_char_list(Chars::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
@@ -1700,7 +1700,7 @@ string.from_rev_char_list(Chars, Str) :-
     }
 }").
 :- pragma foreign_proc("C#",
-    string.semidet_from_rev_char_list(Chars::in, Str::uo),
+    semidet_from_rev_char_list(Chars::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "
@@ -1737,33 +1737,33 @@ string.from_rev_char_list(Chars, Str) :-
     Str = new string(arr);
 ").
 
-string.semidet_from_rev_char_list(Chars::in, Str::uo) :-
-    string.semidet_from_char_list(list.reverse(Chars), Str).
+semidet_from_rev_char_list(Chars::in, Str::uo) :-
+    semidet_from_char_list(list.reverse(Chars), Str).
 
 %---------------------%
 
-string.to_code_unit_list(String, List) :-
-    string.to_code_unit_list_loop(String, 0, string.length(String), List).
+to_code_unit_list(String, List) :-
+    to_code_unit_list_loop(String, 0, length(String), List).
 
-:- pred string.to_code_unit_list_loop(string::in, int::in, int::in,
+:- pred to_code_unit_list_loop(string::in, int::in, int::in,
     list(int)::out) is det.
 
-string.to_code_unit_list_loop(String, Index, End, List) :-
+to_code_unit_list_loop(String, Index, End, List) :-
     ( if Index >= End then
         List = []
     else
-        string.unsafe_index_code_unit(String, Index, Code),
-        string.to_code_unit_list_loop(String, Index + 1, End, Tail),
+        unsafe_index_code_unit(String, Index, Code),
+        to_code_unit_list_loop(String, Index + 1, End, Tail),
         List = [Code | Tail]
     ).
 
 %---------------------%
 
-string.to_utf8_code_unit_list(String, CodeList) :-
+to_utf8_code_unit_list(String, CodeList) :-
     ( if internal_encoding_is_utf8 then
-        string.to_code_unit_list(String, CodeList)
+        to_code_unit_list(String, CodeList)
     else
-        string.foldr(encode_utf8, String, [], CodeList)
+        foldr(encode_utf8, String, [], CodeList)
     ).
 
 :- pred encode_utf8(char::in, list(int)::in, list(int)::out) is det.
@@ -1777,11 +1777,11 @@ encode_utf8(Char, CodeList0, CodeList) :-
 
 %---------------------%
 
-string.to_utf16_code_unit_list(String, CodeList) :-
+to_utf16_code_unit_list(String, CodeList) :-
     ( if internal_encoding_is_utf8 then
-        string.foldr(encode_utf16, String, [], CodeList)
+        foldr(encode_utf16, String, [], CodeList)
     else
-        string.to_code_unit_list(String, CodeList)
+        to_code_unit_list(String, CodeList)
     ).
 
 :- pred encode_utf16(char::in, list(int)::in, list(int)::out) is det.
@@ -1796,7 +1796,7 @@ encode_utf16(Char, CodeList0, CodeList) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    string.from_code_unit_list(CodeList::in, Str::uo),
+    from_code_unit_list(CodeList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "
@@ -1836,7 +1836,7 @@ encode_utf16(Char, CodeList0, CodeList) :-
     SUCCESS_INDICATOR = SUCCESS_INDICATOR && MR_utf8_verify(Str);
 ").
 :- pragma foreign_proc("Java",
-    string.from_code_unit_list(CodeList::in, Str::uo),
+    from_code_unit_list(CodeList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -1872,7 +1872,7 @@ encode_utf16(Char, CodeList0, CodeList) :-
     }
 ").
 :- pragma foreign_proc("C#",
-    string.from_code_unit_list(CodeList::in, Str::uo),
+    from_code_unit_list(CodeList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -1909,7 +1909,7 @@ encode_utf16(Char, CodeList0, CodeList) :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    string.from_code_unit_list(CodeList::in, Str::uo),
+    from_code_unit_list(CodeList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -1920,12 +1920,12 @@ encode_utf16(Char, CodeList0, CodeList) :-
 
 %---------------------%
 
-string.from_utf8_code_unit_list(CodeList, String) :-
+from_utf8_code_unit_list(CodeList, String) :-
     ( if internal_encoding_is_utf8 then
-        string.from_code_unit_list(CodeList, String)
+        from_code_unit_list(CodeList, String)
     else
         decode_utf8(CodeList, [], RevChars),
-        string.from_rev_char_list(RevChars, String)
+        from_rev_char_list(RevChars, String)
     ).
 
 :- pred decode_utf8(list(int)::in, list(char)::in, list(char)::out) is semidet.
@@ -1976,12 +1976,12 @@ utf8_is_trail_byte(C) :-
 
 %---------------------%
 
-string.from_utf16_code_unit_list(CodeList, String) :-
+from_utf16_code_unit_list(CodeList, String) :-
     ( if internal_encoding_is_utf8 then
         decode_utf16(CodeList, [], RevChars),
-        string.from_rev_char_list(RevChars, String)
+        from_rev_char_list(RevChars, String)
     else
-        string.from_code_unit_list(CodeList, String)
+        from_code_unit_list(CodeList, String)
     ).
 
 :- pred decode_utf16(list(int)::in, list(char)::in, list(char)::out)
@@ -2010,11 +2010,11 @@ decode_utf16([A | FollowA], RevChars0, RevChars) :-
 
 %---------------------%
 
-string.duplicate_char(C, N) = S :-
-    string.duplicate_char(C, N, S).
+duplicate_char(C, N) = S :-
+    duplicate_char(C, N, S).
 
-string.duplicate_char(Char, Count, String) :-
-    String = string.from_char_list(list.duplicate(Count, Char)).
+duplicate_char(Char, Count, String) :-
+    String = from_char_list(list.duplicate(Count, Char)).
 
 %---------------------------------------------------------------------------%
 %
@@ -2025,43 +2025,43 @@ string.duplicate_char(Char, Count, String) :-
 % so that the compiler can do loop invariant hoisting on calls to them
 % that occur in loops.
 
-:- pragma inline(string.index/3).
-:- pragma inline(string.det_index/3).
-:- pragma inline(string.index_next/4).
-:- pragma inline(string.prev_index/4).
+:- pragma inline(index/3).
+:- pragma inline(det_index/3).
+:- pragma inline(index_next/4).
+:- pragma inline(prev_index/4).
 
-string.index(Str, Index, Char) :-
-    Len = string.length(Str),
-    ( if string.index_check(Index, Len) then
-        string.unsafe_index(Str, Index, Char)
+index(Str, Index, Char) :-
+    Len = length(Str),
+    ( if index_check(Index, Len) then
+        unsafe_index(Str, Index, Char)
     else
         fail
     ).
 
-string.det_index(S, N) = C :-
-    string.det_index(S, N, C).
+det_index(S, N) = C :-
+    det_index(S, N, C).
 
-string.det_index(String, Int, Char) :-
-    ( if string.index(String, Int, Char0) then
+det_index(String, Int, Char) :-
+    ( if index(String, Int, Char0) then
         Char = Char0
     else
-        error("string.det_index: index out of range")
+        unexpected($pred, "index out of range")
     ).
 
-string.unsafe_index(S, N) = C :-
-    string.unsafe_index(S, N, C).
+unsafe_index(S, N) = C :-
+    unsafe_index(S, N, C).
 
-string.unsafe_index(Str, Index, Char) :-
-    ( if string.unsafe_index_2(Str, Index, CharPrime) then
+unsafe_index(Str, Index, Char) :-
+    ( if unsafe_index_2(Str, Index, CharPrime) then
         Char = CharPrime
     else
-        error("string.unsafe_index: illegal sequence")
+        unexpected($pred, "illegal sequence")
     ).
 
-:- pred string.unsafe_index_2(string::in, int::in, char::uo) is semidet.
+:- pred unsafe_index_2(string::in, int::in, char::uo) is semidet.
 
 :- pragma foreign_proc("C",
-    string.unsafe_index_2(Str::in, Index::in, Ch::uo),
+    unsafe_index_2(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2073,7 +2073,7 @@ string.unsafe_index(Str, Index, Char) :-
     SUCCESS_INDICATOR = (Ch > 0);
 ").
 :- pragma foreign_proc("C#",
-    string.unsafe_index_2(Str::in, Index::in, Ch::uo),
+    unsafe_index_2(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     char c1 = Str[Index];
@@ -2093,7 +2093,7 @@ string.unsafe_index(Str, Index, Char) :-
     SUCCESS_INDICATOR = (Ch >= 0);
 ").
 :- pragma foreign_proc("Java",
-    string.unsafe_index_2(Str::in, Index::in, Ch::uo),
+    unsafe_index_2(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ch = Str.codePointAt(Index);
@@ -2102,7 +2102,7 @@ string.unsafe_index(Str, Index, Char) :-
         !java.lang.Character.isLowSurrogate((char) Ch);
 ").
 :- pragma foreign_proc("Erlang",
-    string.unsafe_index_2(Str::in, Index::in, Ch::uo),
+    unsafe_index_2(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     <<_:Index/binary, Ch/utf8, _/binary>> = Str,
@@ -2116,16 +2116,16 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 
 %---------------------%
 
-string.index_next(Str, Index, NextIndex, Char) :-
-    Len = string.length(Str),
-    ( if string.index_check(Index, Len) then
-        string.unsafe_index_next(Str, Index, NextIndex, Char)
+index_next(Str, Index, NextIndex, Char) :-
+    Len = length(Str),
+    ( if index_check(Index, Len) then
+        unsafe_index_next(Str, Index, NextIndex, Char)
     else
         fail
     ).
 
 :- pragma foreign_proc("C",
-    string.unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
+    unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2140,7 +2140,7 @@ string.index_next(Str, Index, NextIndex, Char) :-
     }
 ").
 :- pragma foreign_proc("C#",
-    string.unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
+    unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2159,7 +2159,7 @@ string.index_next(Str, Index, NextIndex, Char) :-
     }
 ").
 :- pragma foreign_proc("Java",
-    string.unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
+    unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2181,7 +2181,7 @@ string.index_next(Str, Index, NextIndex, Char) :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    string.unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
+    unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2205,16 +2205,16 @@ string.index_next(Str, Index, NextIndex, Char) :-
     end
 ").
 
-string.prev_index(Str, Index, CharIndex, Char) :-
-    Len = string.length(Str),
-    ( if string.index_check(Index - 1, Len) then
-        string.unsafe_prev_index(Str, Index, CharIndex, Char)
+prev_index(Str, Index, CharIndex, Char) :-
+    Len = length(Str),
+    ( if index_check(Index - 1, Len) then
+        unsafe_prev_index(Str, Index, CharIndex, Char)
     else
         fail
     ).
 
 :- pragma foreign_proc("C",
-    string.unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
+    unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2232,7 +2232,7 @@ string.prev_index(Str, Index, CharIndex, Char) :-
     }
 ").
 :- pragma foreign_proc("C#",
-    string.unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
+    unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2265,7 +2265,7 @@ string.prev_index(Str, Index, CharIndex, Char) :-
     }
 ").
 :- pragma foreign_proc("Java",
-    string.unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
+    unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2280,7 +2280,7 @@ string.prev_index(Str, Index, CharIndex, Char) :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    string.unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
+    unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "
@@ -2312,10 +2312,10 @@ do_unsafe_prev_index(Str, Index) ->
 
     % XXX We should consider making this routine a compiler built-in.
     %
-:- pred string.index_check(int::in, int::in) is semidet.
+:- pred index_check(int::in, int::in) is semidet.
 
 :- pragma foreign_proc("C",
-    string.index_check(Index::in, Length::in),
+    index_check(Index::in, Length::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2329,39 +2329,39 @@ do_unsafe_prev_index(Str, Index) ->
     SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
 ").
 :- pragma foreign_proc("C#",
-    string.index_check(Index::in, Length::in),
+    index_check(Index::in, Length::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = ((uint) Index < (uint) Length);
 ").
 
-string.index_check(Index, Length) :-
+index_check(Index, Length) :-
     Index >= 0,
     Index < Length.
 
 %---------------------%
 
 :- pragma foreign_proc("C",
-    string.unsafe_index_code_unit(Str::in, Index::in, Code::out),
+    unsafe_index_code_unit(Str::in, Index::in, Code::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     const unsigned char *s = (const unsigned char *) Str;
     Code = s[Index];
 ").
 :- pragma foreign_proc("C#",
-    string.unsafe_index_code_unit(Str::in, Index::in, Code::out),
+    unsafe_index_code_unit(Str::in, Index::in, Code::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Code = Str[Index];
 ").
 :- pragma foreign_proc("Java",
-    string.unsafe_index_code_unit(Str::in, Index::in, Code::out),
+    unsafe_index_code_unit(Str::in, Index::in, Code::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Code = Str.charAt(Index);
 ").
 :- pragma foreign_proc("Erlang",
-    string.unsafe_index_code_unit(Str::in, Index::in, Code::out),
+    unsafe_index_code_unit(Str::in, Index::in, Code::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     <<_:Index/binary, Code/integer, _/binary>> = Str
@@ -2372,21 +2372,21 @@ string.index_check(Index, Length) :-
 % Writing characters to strings.
 %
 
-string.set_char(Char, Index, !Str) :-
+set_char(Char, Index, !Str) :-
     ( if char.to_int(Char, 0) then
-        error("string.set_char: null character")
+        unexpected($pred, "null character")
     else
-        string.set_char_non_null(Char, Index, !Str)
+        set_char_non_null(Char, Index, !Str)
     ).
 
-:- pred string.set_char_non_null(char, int, string, string).
-:- mode string.set_char_non_null(in, in, in, out) is semidet.
+:- pred set_char_non_null(char, int, string, string).
+:- mode set_char_non_null(in, in, in, out) is semidet.
 % NOTE This mode is disabled because the compiler puts constant strings
 % into static data even when they might be updated.
-% :- mode string.set_char_non_null(in, in, di, uo) is semidet.
+% :- mode set_char_non_null(in, in, di, uo) is semidet.
 
 :- pragma foreign_proc("C",
-    string.set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -2418,7 +2418,7 @@ string.set_char(Char, Index, !Str) :-
     }
 ").
 :- pragma foreign_proc("C#",
-    string.set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Index < 0 || Index >= Str0.Length) {
@@ -2444,7 +2444,7 @@ string.set_char(Char, Index, !Str) :-
     }
 ").
 :- pragma foreign_proc("Java",
-    string.set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Index < 0 || Index >= Str0.length()) {
@@ -2468,7 +2468,7 @@ string.set_char(Char, Index, !Str) :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    string.set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str0 of
@@ -2481,36 +2481,36 @@ string.set_char(Char, Index, !Str) :-
     end
 ").
 
-string.det_set_char(C, N, S0) = S :-
-    string.det_set_char(C, N, S0, S).
+det_set_char(C, N, S0) = S :-
+    det_set_char(C, N, S0, S).
 
-string.det_set_char(Char, Int, String0, String) :-
-    ( if string.set_char(Char, Int, String0, String1) then
+det_set_char(Char, Int, String0, String) :-
+    ( if set_char(Char, Int, String0, String1) then
         String = String1
     else
-        error("string.det_set_char: index out of range")
+        unexpected($pred, "index out of range")
     ).
 
 %---------------------%
 
-string.unsafe_set_char(C, N, S0) = S :-
-    string.unsafe_set_char(C, N, S0, S).
+unsafe_set_char(C, N, S0) = S :-
+    unsafe_set_char(C, N, S0, S).
 
-string.unsafe_set_char(Char, Index, !Str) :-
+unsafe_set_char(Char, Index, !Str) :-
     ( if char.to_int(Char, 0) then
-        error("string.unsafe_set_char: null character")
+        unexpected($pred, "null character")
     else
-        string.unsafe_set_char_non_null(Char, Index, !Str)
+        unsafe_set_char_non_null(Char, Index, !Str)
     ).
 
-:- pred string.unsafe_set_char_non_null(char, int, string, string).
-:- mode string.unsafe_set_char_non_null(in, in, in, out) is det.
+:- pred unsafe_set_char_non_null(char, int, string, string).
+:- mode unsafe_set_char_non_null(in, in, in, out) is det.
 % NOTE This mode is disabled because the compiler puts constant strings
 % into static data even when they might be updated.
-% :- mode string.unsafe_set_char_non_null(in, in, di, uo) is det.
+% :- mode unsafe_set_char_non_null(in, in, di, uo) is det.
 
 :- pragma foreign_proc("C",
-    string.unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -2535,7 +2535,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
     }
 ").
 :- pragma foreign_proc("C#",
-    string.unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (System.Char.IsHighSurrogate(Str0, Index)) {
@@ -2553,7 +2553,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
     }
 ").
 :- pragma foreign_proc("Java",
-    string.unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int oldc = Str0.codePointAt(Index);
@@ -2563,7 +2563,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
         + Str0.subSequence(Index + oldwidth, Str0.length());
 ").
 :- pragma foreign_proc("Erlang",
-    string.unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     <<Left:Index/binary, _/utf8, Right/binary>> = Str0,
@@ -2575,79 +2575,79 @@ string.unsafe_set_char(Char, Index, !Str) :-
 % Determining the lengths of strings.
 %
 
-string.length(S) = L :-
-    string.length(S, L).
+length(S) = L :-
+    length(S, L).
 
-:- pragma promise_equivalent_clauses(string.length/2).
+:- pragma promise_equivalent_clauses(length/2).
 
 :- pragma foreign_proc("C",
-    string.length(Str::in, Length::uo),
+    length(Str::in, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
     Length = strlen(Str);
 ").
 :- pragma foreign_proc("C#",
-    string.length(Str::in, Length::uo),
+    length(Str::in, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Length = Str.Length;
 ").
 :- pragma foreign_proc("Java",
-    string.length(Str::in, Length::uo),
+    length(Str::in, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Length = Str.length();
 ").
 :- pragma foreign_proc("Erlang",
-    string.length(Str::in, Length::uo),
+    length(Str::in, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Length = size(Str)
 ").
 
 :- pragma foreign_proc("C",
-    string.length(Str::ui, Length::uo),
+    length(Str::ui, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
     Length = strlen(Str);
 ").
 :- pragma foreign_proc("C#",
-    string.length(Str::ui, Length::uo),
+    length(Str::ui, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Length = Str.Length;
 ").
 :- pragma foreign_proc("Java",
-    string.length(Str::ui, Length::uo),
+    length(Str::ui, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Length = Str.length();
 ").
 :- pragma foreign_proc("Erlang",
-    string.length(Str::ui, Length::uo),
+    length(Str::ui, Length::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Length = size(Str)
 ").
 
-string.length(Str, Len) :-
-    string.to_code_unit_list(Str, CodeList),
+length(Str, Len) :-
+    to_code_unit_list(Str, CodeList),
     list.length(CodeList, Len).
 
-string.count_code_units(Str) = string.length(Str).
+count_code_units(Str) = length(Str).
 
-string.count_code_units(Str, Length) :-
-    string.length(Str, Length).
+count_code_units(Str, Length) :-
+    length(Str, Length).
 
 %---------------------%
 
-string.count_codepoints(String) = Count :-
-    string.count_codepoints(String, Count).
+count_codepoints(String) = Count :-
+    count_codepoints(String, Count).
 
 :- pragma foreign_proc("C",
-    string.count_codepoints(String::in, Count::out),
+    count_codepoints(String::in, Count::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     unsigned char   b;
@@ -2665,7 +2665,7 @@ string.count_codepoints(String) = Count :-
     }
 ").
 :- pragma foreign_proc("C#",
-    string.count_codepoints(String::in, Count::out),
+    count_codepoints(String::in, Count::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     Count = 0;
@@ -2676,19 +2676,19 @@ string.count_codepoints(String) = Count :-
     }
 ").
 :- pragma foreign_proc("Java",
-    string.count_codepoints(String::in, Count::out),
+    count_codepoints(String::in, Count::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     Count = String.codePointCount(0, String.length());
 ").
 
-string.count_codepoints(String, Count) :-
+count_codepoints(String, Count) :-
     count_codepoints_loop(String, 0, 0, Count).
 
 :- pred count_codepoints_loop(string::in, int::in, int::in, int::out) is det.
 
 count_codepoints_loop(String, I, Count0, Count) :-
-    ( if string.unsafe_index_next(String, I, J, _) then
+    ( if unsafe_index_next(String, I, J, _) then
         count_codepoints_loop(String, J, Count0 + 1, Count)
     else
         Count = Count0
@@ -2697,20 +2697,20 @@ count_codepoints_loop(String, I, Count0, Count) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    string.count_utf8_code_units(Str::in) = (Length::out),
+    count_utf8_code_units(Str::in) = (Length::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Length = strlen(Str);
 ").
 :- pragma foreign_proc("Erlang",
-    string.count_utf8_code_units(Str::in) = (Length::out),
+    count_utf8_code_units(Str::in) = (Length::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Length = size(Str)
 ").
 
-string.count_utf8_code_units(String) = Length :-
-    string.foldl(count_utf8_code_units_2, String, 0, Length).
+count_utf8_code_units(String) = Length :-
+    foldl(count_utf8_code_units_2, String, 0, Length).
 
 :- pred count_utf8_code_units_2(char::in, int::in, int::out) is det.
 
@@ -2727,7 +2727,7 @@ count_utf8_code_units_2(Char, !Length) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    string.codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
+    codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     size_t          len;
@@ -2746,7 +2746,7 @@ count_utf8_code_units_2(Char, !Length) :-
     }
 ").
 :- pragma foreign_proc("C#",
-    string.codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
+    codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     SUCCESS_INDICATOR = false;
@@ -2760,7 +2760,7 @@ count_utf8_code_units_2(Char, !Length) :-
     }
 ").
 :- pragma foreign_proc("Java",
-    string.codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
+    codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
@@ -2772,15 +2772,15 @@ count_utf8_code_units_2(Char, !Length) :-
     }
 ").
 
-string.codepoint_offset(String, N, Index) :-
+codepoint_offset(String, N, Index) :-
     % Note: we do not define what happens with unpaired surrogates.
     %
-    string.codepoint_offset(String, 0, N, Index).
+    codepoint_offset(String, 0, N, Index).
 
-string.codepoint_offset(String, StartOffset, N, Index) :-
+codepoint_offset(String, StartOffset, N, Index) :-
     StartOffset >= 0,
-    Length = string.length(String),
-    string.codepoint_offset_loop(String, StartOffset, Length, N, Index).
+    Length = length(String),
+    codepoint_offset_loop(String, StartOffset, Length, N, Index).
 
 :- pred codepoint_offset_loop(string::in, int::in, int::in, int::in, int::out)
     is semidet.
@@ -2790,8 +2790,8 @@ codepoint_offset_loop(String, Offset, Length, N, Index) :-
     ( if N = 0 then
         Index = Offset
     else
-        string.unsafe_index_next(String, Offset, NextOffset, _),
-        string.codepoint_offset_loop(String, NextOffset, Length, N - 1, Index)
+        unsafe_index_next(String, Offset, NextOffset, _),
+        codepoint_offset_loop(String, NextOffset, Length, N - 1, Index)
     ).
 
 %---------------------------------------------------------------------------%
@@ -2799,64 +2799,64 @@ codepoint_offset_loop(String, Offset, Length, N, Index) :-
 % Computing hashes of strings.
 %
 %
-% NOTE: string.hash, hash2 and hash3 are also defined as MR_hash_string,
+% NOTE: hash, hash2 and hash3 are also defined as MR_hash_string,
 % MR_hash_string2 and MR_hash_string3 in runtime/mercury_string.h.
 % The corresponding definitions must be kept identical.
 %
 
-string.hash(String, HashVal) :-
-    HashVal = string.hash(String).
+hash(String, HashVal) :-
+    HashVal = hash(String).
 
-string.hash(String) = HashVal :-
-    string.length(String, Length),
-    string.hash_loop(String, 0, Length, 0, HashVal1),
+hash(String) = HashVal :-
+    length(String, Length),
+    hash_loop(String, 0, Length, 0, HashVal1),
     HashVal = HashVal1 `xor` Length.
 
-:- pred string.hash_loop(string::in, int::in, int::in, int::in, int::out)
+:- pred hash_loop(string::in, int::in, int::in, int::in, int::out)
     is det.
 
-string.hash_loop(String, Index, Length, !HashVal) :-
+hash_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
-        string.unsafe_index_code_unit(String, Index, C),
+        unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal `xor` (!.HashVal `unchecked_left_shift` 5),
         !:HashVal = !.HashVal `xor` C,
-        string.hash_loop(String, Index + 1, Length, !HashVal)
+        hash_loop(String, Index + 1, Length, !HashVal)
     else
         true
     ).
 
-string.hash2(String) = HashVal :-
-    string.length(String, Length),
-    string.hash2_loop(String, 0, Length, 0, HashVal1),
+hash2(String) = HashVal :-
+    length(String, Length),
+    hash2_loop(String, 0, Length, 0, HashVal1),
     HashVal = HashVal1 `xor` Length.
 
-:- pred string.hash2_loop(string::in, int::in, int::in, int::in, int::out)
+:- pred hash2_loop(string::in, int::in, int::in, int::in, int::out)
     is det.
 
-string.hash2_loop(String, Index, Length, !HashVal) :-
+hash2_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
-        string.unsafe_index_code_unit(String, Index, C),
+        unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 37,
         !:HashVal= !.HashVal + C,
-        string.hash2_loop(String, Index + 1, Length, !HashVal)
+        hash2_loop(String, Index + 1, Length, !HashVal)
     else
         true
     ).
 
-string.hash3(String) = HashVal :-
-    string.length(String, Length),
-    string.hash3_loop(String, 0, Length, 0, HashVal1),
+hash3(String) = HashVal :-
+    length(String, Length),
+    hash3_loop(String, 0, Length, 0, HashVal1),
     HashVal = HashVal1 `xor` Length.
 
-:- pred string.hash3_loop(string::in, int::in, int::in, int::in, int::out)
+:- pred hash3_loop(string::in, int::in, int::in, int::in, int::out)
     is det.
 
-string.hash3_loop(String, Index, Length, !HashVal) :-
+hash3_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
-        string.unsafe_index_code_unit(String, Index, C),
+        unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 49,
         !:HashVal= !.HashVal + C,
-        string.hash3_loop(String, Index + 1, Length, !HashVal)
+        hash3_loop(String, Index + 1, Length, !HashVal)
     else
         true
     ).
@@ -2865,57 +2865,57 @@ string.hash3_loop(String, Index, Length, !HashVal) :-
 
 keep_30_bits(N) = N /\ ((1 `unchecked_left_shift` 30) - 1).
 
-string.hash4(String) = HashVal :-
-    string.length(String, Length),
-    string.hash4_loop(String, 0, Length, 0, HashVal1),
+hash4(String) = HashVal :-
+    length(String, Length),
+    hash4_loop(String, 0, Length, 0, HashVal1),
     HashVal = HashVal1 `xor` Length.
 
-:- pred string.hash4_loop(string::in, int::in, int::in, int::in, int::out)
+:- pred hash4_loop(string::in, int::in, int::in, int::in, int::out)
     is det.
 
-string.hash4_loop(String, Index, Length, !HashVal) :-
+hash4_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
-        string.unsafe_index_code_unit(String, Index, C),
+        unsafe_index_code_unit(String, Index, C),
         !:HashVal = keep_30_bits(!.HashVal `xor`
             (!.HashVal `unchecked_left_shift` 5)),
         !:HashVal = !.HashVal `xor` C,
-        string.hash_loop(String, Index + 1, Length, !HashVal)
+        hash_loop(String, Index + 1, Length, !HashVal)
     else
         true
     ).
 
-string.hash5(String) = HashVal :-
-    string.length(String, Length),
-    string.hash5_loop(String, 0, Length, 0, HashVal1),
+hash5(String) = HashVal :-
+    length(String, Length),
+    hash5_loop(String, 0, Length, 0, HashVal1),
     HashVal = HashVal1 `xor` Length.
 
-:- pred string.hash5_loop(string::in, int::in, int::in, int::in, int::out)
+:- pred hash5_loop(string::in, int::in, int::in, int::in, int::out)
     is det.
 
-string.hash5_loop(String, Index, Length, !HashVal) :-
+hash5_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
-        string.unsafe_index_code_unit(String, Index, C),
+        unsafe_index_code_unit(String, Index, C),
         !:HashVal = keep_30_bits(!.HashVal * 37),
         !:HashVal= keep_30_bits(!.HashVal + C),
-        string.hash5_loop(String, Index + 1, Length, !HashVal)
+        hash5_loop(String, Index + 1, Length, !HashVal)
     else
         true
     ).
 
-string.hash6(String) = HashVal :-
-    string.length(String, Length),
-    string.hash6_loop(String, 0, Length, 0, HashVal1),
+hash6(String) = HashVal :-
+    length(String, Length),
+    hash6_loop(String, 0, Length, 0, HashVal1),
     HashVal = HashVal1 `xor` Length.
 
-:- pred string.hash6_loop(string::in, int::in, int::in, int::in, int::out)
+:- pred hash6_loop(string::in, int::in, int::in, int::in, int::out)
     is det.
 
-string.hash6_loop(String, Index, Length, !HashVal) :-
+hash6_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
-        string.unsafe_index_code_unit(String, Index, C),
+        unsafe_index_code_unit(String, Index, C),
         !:HashVal = keep_30_bits(!.HashVal * 49),
         !:HashVal= keep_30_bits(!.HashVal + C),
-        string.hash6_loop(String, Index + 1, Length, !HashVal)
+        hash6_loop(String, Index + 1, Length, !HashVal)
     else
         true
     ).
@@ -3078,7 +3078,7 @@ all_match(P, String) :-
     int::in) is semidet.
 
 all_match_loop(P, String, Cur) :-
-    ( if string.unsafe_index_next(String, Cur, Next, Char) then
+    ( if unsafe_index_next(String, Cur, Next, Char) then
         P(Char),
         all_match_loop(P, String, Next)
     else
@@ -3091,7 +3091,7 @@ all_match_loop(P, String, Cur) :-
     % but the '\0' is an implementation detail which really
     % shouldn't be considered to be part of the string itself.
 :- pragma foreign_proc("C",
-    string.contains_char(Str::in, Ch::in),
+    contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -3107,7 +3107,7 @@ all_match_loop(P, String, Cur) :-
     }
 ").
 :- pragma foreign_proc("C#",
-    string.contains_char(Str::in, Ch::in),
+    contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Ch <= 0xffff) {
@@ -3118,24 +3118,24 @@ all_match_loop(P, String, Cur) :-
     }
 ").
 :- pragma foreign_proc("Java",
-    string.contains_char(Str::in, Ch::in),
+    contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // indexOf(int) handles supplementary characters correctly.
     SUCCESS_INDICATOR = (Str.indexOf((int) Ch) != -1);
 ").
 
-string.contains_char(String, Char) :-
-    string.contains_char(String, Char, 0).
+contains_char(String, Char) :-
+    contains_char(String, Char, 0).
 
-:- pred string.contains_char(string::in, char::in, int::in) is semidet.
+:- pred contains_char(string::in, char::in, int::in) is semidet.
 
-string.contains_char(Str, Char, I) :-
-    ( if string.unsafe_index_next(Str, I, J, IndexChar) then
+contains_char(Str, Char, I) :-
+    ( if unsafe_index_next(Str, I, J, IndexChar) then
         ( if IndexChar = Char then
             true
         else
-            string.contains_char(Str, Char, J)
+            contains_char(Str, Char, J)
         )
     else
         fail
@@ -3151,7 +3151,7 @@ prefix_length(P, S) = Index :-
 
 prefix_length_loop(P, S, I, Index) :-
     ( if
-        string.unsafe_index_next(S, I, J, Char),
+        unsafe_index_next(S, I, J, Char),
         P(Char)
     then
         prefix_length_loop(P, S, J, Index)
@@ -3160,7 +3160,7 @@ prefix_length_loop(P, S, I, Index) :-
     ).
 
 suffix_length(P, S) = End - Index :-
-    End = string.length(S),
+    End = length(S),
     suffix_length_loop(P, S, End, Index).
 
 :- pred suffix_length_loop(pred(char)::in(pred(in) is semidet),
@@ -3168,7 +3168,7 @@ suffix_length(P, S) = End - Index :-
 
 suffix_length_loop(P, S, I, Index) :-
     ( if
-        string.unsafe_prev_index(S, I, J, Char),
+        unsafe_prev_index(S, I, J, Char),
         P(Char)
     then
         suffix_length_loop(P, S, J, Index)
@@ -3178,7 +3178,7 @@ suffix_length_loop(P, S, I, Index) :-
 
 %---------------------%
 
-string.sub_string_search(WholeString, Pattern, Index) :-
+sub_string_search(WholeString, Pattern, Index) :-
     sub_string_search_start(WholeString, Pattern, 0, Index).
 
 :- pragma foreign_proc("C",
@@ -3277,26 +3277,26 @@ sub_string_search_start_loop(String, SubString, I, Len, SubLen, Index) :-
 % Appending strings.
 %
 
-string.append(S1, S2) = S3 :-
-    string.append(S1, S2, S3).
+append(S1, S2) = S3 :-
+    append(S1, S2, S3).
 
-S1 ++ S2 = string.append(S1, S2).
+S1 ++ S2 = append(S1, S2).
 
-:- pragma promise_equivalent_clauses(string.append/3).
+:- pragma promise_equivalent_clauses(append/3).
 
-string.append(S1::in, S2::in, S3::in) :-
-    string.append_iii(S1, S2, S3).
-string.append(S1::in, S2::uo, S3::in) :-
-    string.append_ioi(S1, S2, S3).
-string.append(S1::in, S2::in, S3::uo) :-
-    string.append_iio(S1, S2, S3).
-string.append(S1::out, S2::out, S3::in) :-
-    string.append_ooi(S1, S2, S3).
+append(S1::in, S2::in, S3::in) :-
+    append_iii(S1, S2, S3).
+append(S1::in, S2::uo, S3::in) :-
+    append_ioi(S1, S2, S3).
+append(S1::in, S2::in, S3::uo) :-
+    append_iio(S1, S2, S3).
+append(S1::out, S2::out, S3::in) :-
+    append_ooi(S1, S2, S3).
 
-:- pred string.append_iii(string::in, string::in, string::in) is semidet.
+:- pred append_iii(string::in, string::in, string::in) is semidet.
 
 :- pragma foreign_proc("C",
-    string.append_iii(S1::in, S2::in, S3::in),
+    append_iii(S1::in, S2::in, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -3307,19 +3307,19 @@ string.append(S1::out, S2::out, S3::in) :-
     );
 }").
 :- pragma foreign_proc("C#",
-    string.append_iii(S1::in, S2::in, S3::in),
+    append_iii(S1::in, S2::in, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     SUCCESS_INDICATOR = S3.Equals(System.String.Concat(S1, S2));
 }").
 :- pragma foreign_proc("Java",
-    string.append_iii(S1::in, S2::in, S3::in),
+    append_iii(S1::in, S2::in, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = S3.equals(S1.concat(S2));
 ").
 :- pragma foreign_proc("Erlang",
-    string.append_iii(S1::in, S2::in, S3::in),
+    append_iii(S1::in, S2::in, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     S1_length = size(S1),
@@ -3333,13 +3333,13 @@ string.append(S1::out, S2::out, S3::in) :-
     end
 ").
 
-string.append_iii(X, Y, Z) :-
-    string.mercury_append(X, Y, Z).
+append_iii(X, Y, Z) :-
+    mercury_append(X, Y, Z).
 
-:- pred string.append_ioi(string::in, string::uo, string::in) is semidet.
+:- pred append_ioi(string::in, string::uo, string::in) is semidet.
 
 :- pragma foreign_proc("C",
-    string.append_ioi(S1::in, S2::uo, S3::in),
+    append_ioi(S1::in, S2::uo, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -3360,7 +3360,7 @@ string.append_iii(X, Y, Z) :-
     }
 }").
 :- pragma foreign_proc("C#",
-    string.append_ioi(S1::in, S2::uo, S3::in),
+    append_ioi(S1::in, S2::uo, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     if (S3.StartsWith(S1)) {
@@ -3373,7 +3373,7 @@ string.append_iii(X, Y, Z) :-
     }
 }").
 :- pragma foreign_proc("Java",
-    string.append_ioi(S1::in, S2::uo, S3::in),
+    append_ioi(S1::in, S2::uo, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (S3.startsWith(S1)) {
@@ -3385,13 +3385,13 @@ string.append_iii(X, Y, Z) :-
     }
 ").
 
-string.append_ioi(X, Y, Z) :-
-    string.mercury_append(X, Y, Z).
+append_ioi(X, Y, Z) :-
+    mercury_append(X, Y, Z).
 
-:- pred string.append_iio(string::in, string::in, string::uo) is det.
+:- pred append_iio(string::in, string::in, string::uo) is det.
 
 :- pragma foreign_proc("C",
-    string.append_iio(S1::in, S2::in, S3::uo),
+    append_iio(S1::in, S2::in, S3::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -3403,53 +3403,53 @@ string.append_ioi(X, Y, Z) :-
     strcpy(S3 + len_1, S2);
 }").
 :- pragma foreign_proc("C#",
-    string.append_iio(S1::in, S2::in, S3::uo),
+    append_iio(S1::in, S2::in, S3::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     S3 = System.String.Concat(S1, S2);
 }").
 :- pragma foreign_proc("Java",
-    string.append_iio(S1::in, S2::in, S3::uo),
+    append_iio(S1::in, S2::in, S3::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     S3 = S1.concat(S2);
 ").
 :- pragma foreign_proc("Erlang",
-    string.append_iio(S1::in, S2::in, S3::uo),
+    append_iio(S1::in, S2::in, S3::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     S3 = list_to_binary([S1, S2])
 ").
 
-string.append_iio(X, Y, Z) :-
-    string.mercury_append(X, Y, Z).
+append_iio(X, Y, Z) :-
+    mercury_append(X, Y, Z).
 
-:- pred string.append_ooi(string::out, string::out, string::in) is multi.
+:- pred append_ooi(string::out, string::out, string::in) is multi.
 
-string.append_ooi(S1, S2, S3) :-
-    S3Len = string.length(S3),
-    string.append_ooi_2(0, S3Len, S1, S2, S3).
+append_ooi(S1, S2, S3) :-
+    S3Len = length(S3),
+    append_ooi_2(0, S3Len, S1, S2, S3).
 
-:- pred string.append_ooi_2(int::in, int::in, string::out, string::out,
+:- pred append_ooi_2(int::in, int::in, string::out, string::out,
     string::in) is multi.
 
-string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
+append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
     ( if NextS1Len = S3Len then
-        string.append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
+        append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
     else
         (
-            string.append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
+            append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
         ;
-            string.unsafe_index_next(S3, NextS1Len, AdvS1Len, _),
-            string.append_ooi_2(AdvS1Len, S3Len, S1, S2, S3)
+            unsafe_index_next(S3, NextS1Len, AdvS1Len, _),
+            append_ooi_2(AdvS1Len, S3Len, S1, S2, S3)
         )
     ).
 
-:- pred string.append_ooi_3(int::in, int::in, string::out,
+:- pred append_ooi_3(int::in, int::in, string::out,
     string::out, string::in) is det.
 
 :- pragma foreign_proc("C",
-    string.append_ooi_3(S1Len::in, S3Len::in, S1::out, S2::out, S3::in),
+    append_ooi_3(S1Len::in, S3Len::in, S1::out, S2::out, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
@@ -3460,49 +3460,49 @@ string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
     strcpy(S2, S3 + S1Len);
 }").
 :- pragma foreign_proc("C#",
-    string.append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
+    append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     S1 = S3.Substring(0, S1Len);
     S2 = S3.Substring(S1Len);
 ").
 :- pragma foreign_proc("Java",
-    string.append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
+    append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     S1 = S3.substring(0, S1Len);
     S2 = S3.substring(S1Len);
 ").
 :- pragma foreign_proc("Erlang",
-    string.append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
+    append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     << S1:S1Len/binary, S2/binary >> = S3
 ").
 
-string.append_ooi_3(S1Len, _S3Len, S1, S2, S3) :-
-    string.split(S3, S1Len, S1, S2).
+append_ooi_3(S1Len, _S3Len, S1, S2, S3) :-
+    split(S3, S1Len, S1, S2).
 
-:- pred string.mercury_append(string, string, string).
-:- mode string.mercury_append(in, in, in) is semidet.  % implied
-:- mode string.mercury_append(in, uo, in) is semidet.
-:- mode string.mercury_append(in, in, uo) is det.
-:- mode string.mercury_append(uo, uo, in) is multi.
+:- pred mercury_append(string, string, string).
+:- mode mercury_append(in, in, in) is semidet.  % implied
+:- mode mercury_append(in, uo, in) is semidet.
+:- mode mercury_append(in, in, uo) is det.
+:- mode mercury_append(uo, uo, in) is multi.
 
-string.mercury_append(X, Y, Z) :-
-    string.to_char_list(X, XList),
-    string.to_char_list(Y, YList),
-    string.to_char_list(Z, ZList),
+mercury_append(X, Y, Z) :-
+    to_char_list(X, XList),
+    to_char_list(Y, YList),
+    to_char_list(Z, ZList),
     list.append(XList, YList, ZList).
 
 %---------------------%
 %
-% We implement string.append_list in foreign code as the Mercury version
+% We implement append_list in foreign code as the Mercury version
 % creates significant amounts of unnecessary garbage.
 %
 
 :- pragma foreign_proc("C",
-    string.append_list(Strs::in) = (Str::uo),
+    append_list(Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
@@ -3531,7 +3531,7 @@ string.mercury_append(X, Y, Z) :-
     Str[len] = '\\0';
 }").
 :- pragma foreign_proc("C#",
-    string.append_list(Strs::in) = (Str::uo),
+    append_list(Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -3543,7 +3543,7 @@ string.mercury_append(X, Y, Z) :-
     Str = sb.ToString();
 ").
 :- pragma foreign_proc("Java",
-    string.append_list(Strs::in) = (Str::uo),
+    append_list(Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -3557,14 +3557,14 @@ string.mercury_append(X, Y, Z) :-
     Str = sb.toString();
 ").
 :- pragma foreign_proc("Erlang",
-    string.append_list(Strs::in) = (Str::uo),
+    append_list(Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Str = list_to_binary(Strs)
 ").
 
-string.append_list(Strs::in) = (Str::uo) :-
+append_list(Strs::in) = (Str::uo) :-
     (
         Strs = [X | Xs],
         Str = X ++ append_list(Xs)
@@ -3573,16 +3573,16 @@ string.append_list(Strs::in) = (Str::uo) :-
         Str = ""
     ).
 
-string.append_list(Lists, string.append_list(Lists)).
+append_list(Lists, append_list(Lists)).
 
 %---------------------%
 %
-% We implement string.join_list in foreign code as the Mercury version
+% We implement join_list in foreign code as the Mercury version
 % creates significant amounts of unnecessary garbage.
 %
 
 :- pragma foreign_proc("C",
-    string.join_list(Sep::in, Strs::in) = (Str::uo),
+    join_list(Sep::in, Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
@@ -3629,7 +3629,7 @@ string.append_list(Lists, string.append_list(Lists)).
     Str[len] = '\\0';
 }").
 :- pragma foreign_proc("C#",
-    string.join_list(Sep::in, Strs::in) = (Str::uo),
+    join_list(Sep::in, Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -3648,7 +3648,7 @@ string.append_list(Lists, string.append_list(Lists)).
     Str = sb.ToString();
 ").
 :- pragma foreign_proc("Java",
-    string.join_list(Sep::in, Strs::in) = (Str::uo),
+    join_list(Sep::in, Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -3667,8 +3667,8 @@ string.append_list(Lists, string.append_list(Lists)).
     Str = sb.toString();
 ").
 
-string.join_list(_, []) = "".
-string.join_list(Sep, [H | T]) = H ++ string.join_list_loop(Sep, T).
+join_list(_, []) = "".
+join_list(Sep, [H | T]) = H ++ join_list_loop(Sep, T).
 
 :- func join_list_loop(string::in, list(string)::in) = (string::uo) is det.
 
@@ -3681,7 +3681,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 %
 
 :- pragma foreign_proc("C",
-    string.first_char(Str::in, First::in, Rest::in),
+    first_char(Str::in, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -3694,7 +3694,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     );
 ").
 :- pragma foreign_proc("C#",
-    string.first_char(Str::in, First::in, Rest::in),
+    first_char(Str::in, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int len = Str.Length;
@@ -3715,7 +3715,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 ").
 :- pragma foreign_proc("Java",
-    string.first_char(Str::in, First::in, Rest::in),
+    first_char(Str::in, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int toffset = java.lang.Character.charCount(First);
@@ -3726,7 +3726,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     );
 ").
 :- pragma foreign_proc("Erlang",
-    string.first_char(Str::in, First::in, Rest::in),
+    first_char(Str::in, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
@@ -3738,7 +3738,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 ").
 
 :- pragma foreign_proc("C",
-    string.first_char(Str::in, First::uo, Rest::in),
+    first_char(Str::in, First::uo, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -3747,7 +3747,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     SUCCESS_INDICATOR = (First > 0 && strcmp(Str + pos, Rest) == 0);
 ").
 :- pragma foreign_proc("C#",
-    string.first_char(Str::in, First::uo, Rest::in),
+    first_char(Str::in, First::uo, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
@@ -3772,7 +3772,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 ").
 :- pragma foreign_proc("Java",
-    string.first_char(Str::in, First::uo, Rest::in),
+    first_char(Str::in, First::uo, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int toffset;
@@ -3788,7 +3788,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 ").
 :- pragma foreign_proc("Erlang",
-    string.first_char(Str::in, First::uo, Rest::in),
+    first_char(Str::in, First::uo, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
@@ -3801,7 +3801,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 ").
 
 :- pragma foreign_proc("C",
-    string.first_char(Str::in, First::in, Rest::uo),
+    first_char(Str::in, First::in, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -3820,7 +3820,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 }").
 :- pragma foreign_proc("C#",
-    string.first_char(Str::in, First::in, Rest::uo),
+    first_char(Str::in, First::in, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     int len = Str.Length;
@@ -3841,7 +3841,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 }").
 :- pragma foreign_proc("Java",
-    string.first_char(Str::in, First::in, Rest::uo),
+    first_char(Str::in, First::in, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     int len = Str.length();
@@ -3856,7 +3856,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 }").
 :- pragma foreign_proc("Erlang",
-    string.first_char(Str::in, First::in, Rest::uo),
+    first_char(Str::in, First::in, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
@@ -3869,7 +3869,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 ").
 
 :- pragma foreign_proc("C",
-    string.first_char(Str::in, First::uo, Rest::uo),
+    first_char(Str::in, First::uo, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -3888,7 +3888,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 }").
 :- pragma foreign_proc("C#",
-    string.first_char(Str::in, First::uo, Rest::uo),
+    first_char(Str::in, First::uo, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     try {
@@ -3913,7 +3913,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 }").
 :- pragma foreign_proc("Java",
-    string.first_char(Str::in, First::uo, Rest::uo),
+    first_char(Str::in, First::uo, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     if (Str.length() == 0) {
@@ -3927,7 +3927,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 }").
 :- pragma foreign_proc("Erlang",
-    string.first_char(Str::in, First::uo, Rest::uo),
+    first_char(Str::in, First::uo, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
@@ -3941,7 +3941,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 ").
 
 :- pragma foreign_proc("C",
-    string.first_char(Str::uo, First::in, Rest::in),
+    first_char(Str::uo, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -3952,7 +3952,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     strcpy(Str + firstw, Rest);
 }").
 :- pragma foreign_proc("C#",
-    string.first_char(Str::uo, First::in, Rest::in),
+    first_char(Str::uo, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     string FirstStr;
@@ -3964,14 +3964,14 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     Str = FirstStr + Rest;
 }").
 :- pragma foreign_proc("Java",
-    string.first_char(Str::uo, First::in, Rest::in),
+    first_char(Str::uo, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     String FirstStr = new String(Character.toChars(First));
     Str = FirstStr.concat(Rest);
 }").
 :- pragma foreign_proc("Erlang",
-    string.first_char(Str::uo, First::in, Rest::in),
+    first_char(Str::uo, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Str = unicode:characters_to_binary([First, Rest])
@@ -3984,7 +3984,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 %
 
 :- pragma foreign_proc("C",
-    string.split(Str::in, Count::in, Left::out, Right::out),
+    split(Str::in, Count::in, Left::out, Right::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "{
@@ -4011,7 +4011,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 }").
 :- pragma foreign_proc("C#",
-    string.split(Str::in, Count::in, Left::out, Right::out),
+    split(Str::in, Count::in, Left::out, Right::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     int len;
@@ -4029,7 +4029,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 }").
 :- pragma foreign_proc("Java",
-    string.split(Str::in, Count::in, Left::out, Right::out),
+    split(Str::in, Count::in, Left::out, Right::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Count <= 0) {
@@ -4045,7 +4045,7 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     }
 ").
 :- pragma foreign_proc("Erlang",
-    string.split(Str::in, Count::in, Left::out, Right::out),
+    split(Str::in, Count::in, Left::out, Right::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if
@@ -4060,13 +4060,13 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     end
 ").
 
-string.split(Str, Count, Left, Right) :-
+split(Str, Count, Left, Right) :-
     ( if Count =< 0 then
         Left = "",
         Right = Str
     else
-        string.to_code_unit_list(Str, List),
-        Len = string.length(Str),
+        to_code_unit_list(Str, List),
+        Len = length(Str),
         ( if Count > Len then
             Num = Len
         else
@@ -4074,8 +4074,8 @@ string.split(Str, Count, Left, Right) :-
         ),
         ( if
             list.split_list(Num, List, LeftList, RightList),
-            string.from_code_unit_list(LeftList, LeftPrime),
-            string.from_code_unit_list(RightList, RightPrime)
+            from_code_unit_list(LeftList, LeftPrime),
+            from_code_unit_list(RightList, RightPrime)
         then
             Left = LeftPrime,
             Right = RightPrime
@@ -4084,9 +4084,9 @@ string.split(Str, Count, Left, Right) :-
         )
     ).
 
-string.split_by_codepoint(Str, Count, Left, Right) :-
-    ( if string.codepoint_offset(Str, Count, Offset) then
-        string.split(Str, Offset, Left, Right)
+split_by_codepoint(Str, Count, Left, Right) :-
+    ( if codepoint_offset(Str, Count, Offset) then
+        split(Str, Offset, Left, Right)
     else if Count =< 0 then
         Left = "",
         Right = Str
@@ -4097,41 +4097,41 @@ string.split_by_codepoint(Str, Count, Left, Right) :-
 
 %---------------------%
 
-string.left(S1, N) = S2 :-
-    string.left(S1, N, S2).
+left(S1, N) = S2 :-
+    left(S1, N, S2).
 
-string.left(String, Count, LeftString) :-
-    string.split(String, Count, LeftString, _RightString).
+left(String, Count, LeftString) :-
+    split(String, Count, LeftString, _RightString).
 
-string.left_by_codepoint(String, Count) = LeftString :-
-    string.left_by_codepoint(String, Count, LeftString).
+left_by_codepoint(String, Count) = LeftString :-
+    left_by_codepoint(String, Count, LeftString).
 
-string.left_by_codepoint(String, Count, LeftString) :-
-    string.split_by_codepoint(String, Count, LeftString, _RightString).
+left_by_codepoint(String, Count, LeftString) :-
+    split_by_codepoint(String, Count, LeftString, _RightString).
 
-string.right(S1, N) = S2 :-
-    string.right(S1, N, S2).
+right(S1, N) = S2 :-
+    right(S1, N, S2).
 
-string.right(String, RightCount, RightString) :-
-    string.length(String, Length),
+right(String, RightCount, RightString) :-
+    length(String, Length),
     LeftCount = Length - RightCount,
-    string.split(String, LeftCount, _LeftString, RightString).
+    split(String, LeftCount, _LeftString, RightString).
 
-string.right_by_codepoint(String, RightCount) = RightString :-
-    string.right_by_codepoint(String, RightCount, RightString).
+right_by_codepoint(String, RightCount) = RightString :-
+    right_by_codepoint(String, RightCount, RightString).
 
-string.right_by_codepoint(String, RightCount, RightString) :-
-    string.count_codepoints(String, TotalCount),
+right_by_codepoint(String, RightCount, RightString) :-
+    count_codepoints(String, TotalCount),
     LeftCount = TotalCount - RightCount,
-    string.split_by_codepoint(String, LeftCount, _LeftString, RightString).
+    split_by_codepoint(String, LeftCount, _LeftString, RightString).
 
 %---------------------%
 
-string.between(Str, Start, End) = SubString :-
-    string.between(Str, Start, End, SubString).
+between(Str, Start, End) = SubString :-
+    between(Str, Start, End, SubString).
 
 :- pragma foreign_proc("C",
-    string.between(Str::in, Start::in, End::in, SubString::uo),
+    between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
@@ -4156,7 +4156,7 @@ string.between(Str, Start, End) = SubString :-
     }
 }").
 :- pragma foreign_proc("C#",
-    string.between(Str::in, Start::in, End::in, SubString::uo),
+    between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "
@@ -4175,7 +4175,7 @@ string.between(Str, Start, End) = SubString :-
     }
 ").
 :- pragma foreign_proc("Java",
-    string.between(Str::in, Start::in, End::in, SubString::uo),
+    between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "
@@ -4194,7 +4194,7 @@ string.between(Str, Start, End) = SubString :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    string.between(Str::in, Start0::in, End0::in, SubString::uo),
+    between(Str::in, Start0::in, End0::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -4212,11 +4212,11 @@ between(Str, Start, End, SubStr) :-
     ( if Start >= End then
         SubStr = ""
     else
-        Len = string.length(Str),
+        Len = length(Str),
         max(0, Start, ClampStart),
         min(Len, End, ClampEnd),
         CharList = between_loop(ClampStart, ClampEnd, Str),
-        SubStr = string.from_char_list(CharList)
+        SubStr = from_char_list(CharList)
     ).
 
 :- func between_loop(int, int, string) = list(char).
@@ -4224,7 +4224,7 @@ between(Str, Start, End, SubStr) :-
 between_loop(I, End, Str) = Chars :-
     ( if
         I < End,
-        string.unsafe_index_next(Str, I, J, C),
+        unsafe_index_next(Str, I, J, C),
         J =< End
     then
         Cs = between_loop(J, End, Str),
@@ -4235,12 +4235,12 @@ between_loop(I, End, Str) = Chars :-
 
 %---------------------%
 
-string.substring(Str, Start, Count) = SubString :-
-    string.substring(Str, Start, Count, SubString).
+substring(Str, Start, Count) = SubString :-
+    substring(Str, Start, Count, SubString).
 
-string.substring(Str, Start, Count, SubString) :-
+substring(Str, Start, Count, SubString) :-
     convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    string.between(Str, ClampStart, ClampEnd, SubString).
+    between(Str, ClampStart, ClampEnd, SubString).
 
 :- pred convert_endpoints(int::in, int::in, int::out, int::out) is det.
 
@@ -4259,33 +4259,33 @@ convert_endpoints(Start, Count, ClampStart, ClampEnd) :-
 
 %---------------------%
 
-string.between_codepoints(Str, Start, End) = SubString :-
-    string.between_codepoints(Str, Start, End, SubString).
+between_codepoints(Str, Start, End) = SubString :-
+    between_codepoints(Str, Start, End, SubString).
 
-string.between_codepoints(Str, Start, End, SubString) :-
+between_codepoints(Str, Start, End, SubString) :-
     ( if Start < 0 then
         StartOffset = 0
-    else if string.codepoint_offset(Str, Start, StartOffset0) then
+    else if codepoint_offset(Str, Start, StartOffset0) then
         StartOffset = StartOffset0
     else
-        StartOffset = string.length(Str)
+        StartOffset = length(Str)
     ),
     ( if End =< Start then
         EndOffset = StartOffset
-    else if string.codepoint_offset(Str, End, EndOffset0) then
+    else if codepoint_offset(Str, End, EndOffset0) then
         EndOffset = EndOffset0
     else
-        EndOffset = string.length(Str)
+        EndOffset = length(Str)
     ),
-    string.between(Str, StartOffset, EndOffset, SubString).
+    between(Str, StartOffset, EndOffset, SubString).
 
 %---------------------%
 
-string.unsafe_between(Str, Start, End) = SubString :-
-    string.unsafe_between(Str, Start, End, SubString).
+unsafe_between(Str, Start, End) = SubString :-
+    unsafe_between(Str, Start, End, SubString).
 
 :- pragma foreign_proc("C",
-    string.unsafe_between(Str::in, Start::in, End::in, SubString::uo),
+    unsafe_between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -4297,38 +4297,38 @@ string.unsafe_between(Str, Start, End) = SubString :-
     SubString[Count] = '\\0';
 }").
 :- pragma foreign_proc("C#",
-    string.unsafe_between(Str::in, Start::in, End::in, SubString::uo),
+    unsafe_between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     SubString = Str.Substring(Start, End - Start);
 }").
 :- pragma foreign_proc("Java",
-    string.unsafe_between(Str::in, Start::in, End::in, SubString::uo),
+    unsafe_between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SubString = Str.substring(Start, End);
 ").
 :- pragma foreign_proc("Erlang",
-    string.unsafe_between(Str::in, Start::in, End::in, SubString::uo),
+    unsafe_between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Count = End - Start,
     << _:Start/binary, SubString:Count/binary, _/binary >> = Str
 ").
 
-string.unsafe_substring(Str, Start, Count) = SubString :-
-    string.unsafe_between(Str, Start, Start + Count) = SubString.
+unsafe_substring(Str, Start, Count) = SubString :-
+    unsafe_between(Str, Start, Start + Count) = SubString.
 
-string.unsafe_substring(Str, Start, Count, SubString) :-
-    string.unsafe_between(Str, Start, Start + Count, SubString).
+unsafe_substring(Str, Start, Count, SubString) :-
+    unsafe_between(Str, Start, Start + Count, SubString).
 
 %---------------------%
 
-string.words_separator(SepP, String) = Words :-
+words_separator(SepP, String) = Words :-
     skip_to_next_word_start(SepP, String, 0, WordStart),
     words_loop(SepP, String, WordStart, Words).
 
-string.words(String) = string.words_separator(char.is_whitespace, String).
+words(String) = words_separator(char.is_whitespace, String).
 
 :- pred words_loop(pred(char)::in(pred(in) is semidet), string::in, int::in,
     list(string)::out) is det.
@@ -4338,7 +4338,7 @@ words_loop(SepP, String, WordStartPos, Words) :-
     ( if PastWordEndPos = WordStartPos then
         Words = []
     else
-        string.unsafe_between(String, WordStartPos, PastWordEndPos, HeadWord),
+        unsafe_between(String, WordStartPos, PastWordEndPos, HeadWord),
         skip_to_next_word_start(SepP, String, PastWordEndPos,
             NextWordStartPos),
         ( if PastWordEndPos = NextWordStartPos then
@@ -4357,7 +4357,7 @@ words_loop(SepP, String, WordStartPos, Words) :-
 
 skip_to_next_word_start(SepP, String, CurPos, NextWordStartPos) :-
     ( if
-        string.unsafe_index_next(String, CurPos, NextPos, Char),
+        unsafe_index_next(String, CurPos, NextPos, Char),
         SepP(Char)
     then
         skip_to_next_word_start(SepP, String, NextPos, NextWordStartPos)
@@ -4373,7 +4373,7 @@ skip_to_next_word_start(SepP, String, CurPos, NextWordStartPos) :-
 
 skip_to_word_end(SepP, String, CurPos, PastWordEndPos) :-
     ( if
-        string.unsafe_index_next(String, CurPos, NextPos, Char)
+        unsafe_index_next(String, CurPos, NextPos, Char)
     then
         ( if SepP(Char) then
             PastWordEndPos = CurPos
@@ -4386,8 +4386,8 @@ skip_to_word_end(SepP, String, CurPos, PastWordEndPos) :-
 
 %---------------------%
 
-string.split_at_separator(DelimP, Str) = Segments :-
-    Len = string.length(Str),
+split_at_separator(DelimP, Str) = Segments :-
+    Len = length(Str),
     split_at_separator_loop(DelimP, Str, Len, Len, [], Segments).
 
 :- pred split_at_separator_loop(pred(char)::in(pred(in) is semidet),
@@ -4400,11 +4400,11 @@ split_at_separator_loop(DelimP, Str, CurPos, PastSegEnd, !Segments) :-
     % Invariant: 0 =< CurPos =< length(Str).
     % PastSegEnd is one past the last index of the current segment.
     %
-    ( if string.unsafe_prev_index(Str, CurPos, PrevPos, Char) then
+    ( if unsafe_prev_index(Str, CurPos, PrevPos, Char) then
         ( if DelimP(Char) then
             % Chop here.
             SegStart = CurPos,
-            Segment = string.unsafe_between(Str, SegStart, PastSegEnd),
+            Segment = unsafe_between(Str, SegStart, PastSegEnd),
             !:Segments = [Segment | !.Segments],
             split_at_separator_loop(DelimP, Str, PrevPos, PrevPos, !Segments)
         else
@@ -4414,14 +4414,14 @@ split_at_separator_loop(DelimP, Str, CurPos, PastSegEnd, !Segments) :-
         )
     else
         % We have reached the beginning of the string.
-        Segment = string.unsafe_between(Str, 0, PastSegEnd),
+        Segment = unsafe_between(Str, 0, PastSegEnd),
         !:Segments = [Segment | !.Segments]
     ).
 
 %---------------------%
 
-string.split_at_char(C, String) =
-    string.split_at_separator(unify(C), String).
+split_at_char(C, String) =
+    split_at_separator(unify(C), String).
 
 split_at_string(Needle, Total) =
     split_at_string_loop(0, length(Needle), Needle, Total).
@@ -4435,7 +4435,7 @@ split_at_string_loop(StartAt, NeedleLen, Needle, Total) = Out :-
             Needle, Total),
         Out = [BeforeNeedle | Tail]
     else
-        string.split(Total, StartAt, _Skip, Last),
+        split(Total, StartAt, _Skip, Last),
         Out = [Last]
     ).
 
@@ -4444,22 +4444,22 @@ split_at_string_loop(StartAt, NeedleLen, Needle, Total) = Out :-
 % Dealing with prefixes and suffixes.
 %
 
-:- pragma promise_equivalent_clauses(string.prefix/2).
+:- pragma promise_equivalent_clauses(prefix/2).
 
-string.prefix(String::in, Prefix::in) :-
+prefix(String::in, Prefix::in) :-
     Len    = length(String),
     PreLen = length(Prefix),
     PreLen =< Len,
     prefix_2_iii(String, Prefix, PreLen - 1).
-string.prefix(String::in, Prefix::out) :-
+prefix(String::in, Prefix::out) :-
     prefix_2_ioi(String, Prefix, 0).
 
 :- pred prefix_2_iii(string::in, string::in, int::in) is semidet.
 
 prefix_2_iii(String, Prefix, I) :-
     ( if 0 =< I then
-        string.unsafe_index_code_unit(String, I, C),
-        string.unsafe_index_code_unit(Prefix, I, C),
+        unsafe_index_code_unit(String, I, C),
+        unsafe_index_code_unit(Prefix, I, C),
         prefix_2_iii(String, Prefix, I - 1)
     else
         true
@@ -4471,18 +4471,18 @@ prefix_2_ioi(String, Prefix, Cur) :-
     (
         Prefix = unsafe_between(String, 0, Cur)
     ;
-        string.unsafe_index_next(String, Cur, Next, _),
+        unsafe_index_next(String, Cur, Next, _),
         prefix_2_ioi(String, Prefix, Next)
     ).
 
-:- pragma promise_equivalent_clauses(string.suffix/2).
+:- pragma promise_equivalent_clauses(suffix/2).
 
-string.suffix(String::in, Suffix::in) :-
+suffix(String::in, Suffix::in) :-
     Len    = length(String),
     PreLen = length(Suffix),
     PreLen =< Len,
     suffix_2_iiii(String, Suffix, 0, Len - PreLen, PreLen).
-string.suffix(String::in, Suffix::out) :-
+suffix(String::in, Suffix::out) :-
     Len = length(String),
     suffix_2_ioii(String, Suffix, Len, Len).
 
@@ -4491,8 +4491,8 @@ string.suffix(String::in, Suffix::out) :-
 
 suffix_2_iiii(String, Suffix, I, Offset, Len) :-
     ( if I < Len then
-        string.unsafe_index_code_unit(String, I + Offset, C),
-        string.unsafe_index_code_unit(Suffix, I, C),
+        unsafe_index_code_unit(String, I + Offset, C),
+        unsafe_index_code_unit(Suffix, I, C),
         suffix_2_iiii(String, Suffix, I + 1, Offset, Len)
     else
         true
@@ -4502,45 +4502,45 @@ suffix_2_iiii(String, Suffix, I, Offset, Len) :-
 
 suffix_2_ioii(String, Suffix, Cur, Len) :-
     (
-        string.unsafe_between(String, Cur, Len, Suffix)
+        unsafe_between(String, Cur, Len, Suffix)
     ;
-        string.unsafe_prev_index(String, Cur, Prev, _),
+        unsafe_prev_index(String, Cur, Prev, _),
         suffix_2_ioii(String, Suffix, Prev, Len)
     ).
 
 %---------------------%
 
-string.remove_prefix(Prefix, String, Suffix) :-
-    string.append(Prefix, Suffix, String).
+remove_prefix(Prefix, String, Suffix) :-
+    append(Prefix, Suffix, String).
 
 det_remove_prefix(Prefix, String, Suffix) :-
     ( if remove_prefix(Prefix, String, SuffixPrime) then
         Suffix = SuffixPrime
     else
-        error($pred, "string does not have the given prefix")
+        unexpected($pred, "string does not have the given prefix")
     ).
 
-string.remove_prefix_if_present(Prefix, String) = Out :-
-    ( if string.remove_prefix(Prefix, String, Suffix) then
+remove_prefix_if_present(Prefix, String) = Out :-
+    ( if remove_prefix(Prefix, String, Suffix) then
         Out = Suffix
     else
         Out = String
     ).
 
-string.remove_suffix(String, Suffix, StringWithoutSuffix) :-
-    string.suffix(String, Suffix),
-    string.left(String, length(String) - length(Suffix), StringWithoutSuffix).
+remove_suffix(String, Suffix, Prefix) :-
+    suffix(String, Suffix),
+    left(String, length(String) - length(Suffix), Prefix).
 
-string.det_remove_suffix(String, Suffix) = StringWithoutSuffix :-
-    ( if string.remove_suffix(String, Suffix, StringWithoutSuffixPrime) then
-        StringWithoutSuffix = StringWithoutSuffixPrime
+det_remove_suffix(String, Suffix) = Prefix :-
+    ( if remove_suffix(String, Suffix, PrefixPrime) then
+        Prefix = PrefixPrime
     else
-        error("string.det_remove_suffix: string does not have given suffix")
+        unexpected($pred, "string does not have given suffix")
     ).
 
-string.remove_suffix_if_present(Suffix, String) = Out :-
+remove_suffix_if_present(Suffix, String) = Out :-
     LeftCount = length(String) - length(Suffix),
-    string.split(String, LeftCount, LeftString, RightString),
+    split(String, LeftCount, LeftString, RightString),
     ( if RightString = Suffix then
         Out = LeftString
     else
@@ -4552,82 +4552,82 @@ string.remove_suffix_if_present(Suffix, String) = Out :-
 % Transformations of strings.
 %
 
-string.capitalize_first(S1) = S2 :-
-    string.capitalize_first(S1, S2).
+capitalize_first(S1) = S2 :-
+    capitalize_first(S1, S2).
 
-string.capitalize_first(S0, S) :-
-    ( if string.first_char(S0, C, S1) then
+capitalize_first(S0, S) :-
+    ( if first_char(S0, C, S1) then
         char.to_upper(C, UpperC),
-        string.first_char(S, UpperC, S1)
+        first_char(S, UpperC, S1)
     else
         S = S0
     ).
 
-string.uncapitalize_first(S1) = S2 :-
-    string.uncapitalize_first(S1, S2).
+uncapitalize_first(S1) = S2 :-
+    uncapitalize_first(S1, S2).
 
-string.uncapitalize_first(S0, S) :-
-    ( if string.first_char(S0, C, S1) then
+uncapitalize_first(S0, S) :-
+    ( if first_char(S0, C, S1) then
         char.to_lower(C, LowerC),
-        string.first_char(S, LowerC, S1)
+        first_char(S, LowerC, S1)
     else
         S = S0
     ).
 
-string.to_upper(S1) = S2 :-
-    string.to_upper(S1, S2).
+to_upper(S1) = S2 :-
+    to_upper(S1, S2).
 
-string.to_upper(StrIn, StrOut) :-
-    string.to_char_list(StrIn, List),
-    string.char_list_to_upper(List, ListUpp),
-    string.from_char_list(ListUpp, StrOut).
+to_upper(StrIn, StrOut) :-
+    to_char_list(StrIn, List),
+    char_list_to_upper(List, ListUpp),
+    from_char_list(ListUpp, StrOut).
 
-:- pred string.char_list_to_upper(list(char)::in, list(char)::out) is det.
+:- pred char_list_to_upper(list(char)::in, list(char)::out) is det.
 
-string.char_list_to_upper([], []).
-string.char_list_to_upper([X | Xs], [Y | Ys]) :-
+char_list_to_upper([], []).
+char_list_to_upper([X | Xs], [Y | Ys]) :-
     char.to_upper(X, Y),
-    string.char_list_to_upper(Xs, Ys).
+    char_list_to_upper(Xs, Ys).
 
-string.to_lower(S1) = S2 :-
-    string.to_lower(S1, S2).
+to_lower(S1) = S2 :-
+    to_lower(S1, S2).
 
-string.to_lower(StrIn, StrOut) :-
-    string.to_char_list(StrIn, List),
-    string.char_list_to_lower(List, ListLow),
-    string.from_char_list(ListLow, StrOut).
+to_lower(StrIn, StrOut) :-
+    to_char_list(StrIn, List),
+    char_list_to_lower(List, ListLow),
+    from_char_list(ListLow, StrOut).
 
-:- pred string.char_list_to_lower(list(char)::in, list(char)::out) is det.
+:- pred char_list_to_lower(list(char)::in, list(char)::out) is det.
 
-string.char_list_to_lower([], []).
-string.char_list_to_lower([X | Xs], [Y | Ys]) :-
+char_list_to_lower([], []).
+char_list_to_lower([X | Xs], [Y | Ys]) :-
     char.to_lower(X, Y),
-    string.char_list_to_lower(Xs, Ys).
+    char_list_to_lower(Xs, Ys).
 
 %---------------------%
 
-string.pad_left(S1, C, N) = S2 :-
-    string.pad_left(S1, C, N, S2).
+pad_left(S1, C, N) = S2 :-
+    pad_left(S1, C, N, S2).
 
-string.pad_left(String0, PadChar, Width, String) :-
-    string.count_codepoints(String0, Length),
+pad_left(String0, PadChar, Width, String) :-
+    count_codepoints(String0, Length),
     ( if Length < Width then
         Count = Width - Length,
-        string.duplicate_char(PadChar, Count, PadString),
-        string.append(PadString, String0, String)
+        duplicate_char(PadChar, Count, PadString),
+        append(PadString, String0, String)
     else
         String = String0
     ).
 
-string.pad_right(S1, C, N) = S2 :-
-    string.pad_right(S1, C, N, S2).
+pad_right(S1, C, N) = S2 :-
+    pad_right(S1, C, N, S2).
 
-string.pad_right(String0, PadChar, Width, String) :-
-    string.count_codepoints(String0, Length),
+pad_right(String0, PadChar, Width, String) :-
+    count_codepoints(String0, Length),
     ( if Length < Width then
         Count = Width - Length,
-        string.duplicate_char(PadChar, Count, PadString),
-        string.append(String0, PadString, String)
+        duplicate_char(PadChar, Count, PadString),
+        append(String0, PadString, String)
     else
         String = String0
     ).
@@ -4654,44 +4654,44 @@ lstrip_pred(P, S) = right(S, length(S) - prefix_length(P, S)).
 
 %---------------------%
 
-string.replace(Str, Pat, Subst, Result) :-
+replace(Str, Pat, Subst, Result) :-
     sub_string_search(Str, Pat, Index),
 
-    Initial = string.unsafe_between(Str, 0, Index),
+    Initial = unsafe_between(Str, 0, Index),
 
-    BeginAt = Index + string.length(Pat),
-    EndAt = string.length(Str),
-    Final = string.unsafe_between(Str, BeginAt, EndAt),
+    BeginAt = Index + length(Pat),
+    EndAt = length(Str),
+    Final = unsafe_between(Str, BeginAt, EndAt),
 
-    Result = string.append_list([Initial, Subst, Final]).
+    Result = append_list([Initial, Subst, Final]).
 
-string.replace_all(S1, S2, S3) = S4 :-
-    string.replace_all(S1, S2, S3, S4).
+replace_all(S1, S2, S3) = S4 :-
+    replace_all(S1, S2, S3, S4).
 
-string.replace_all(Str, Pat, Subst, Result) :-
+replace_all(Str, Pat, Subst, Result) :-
     ( if Pat = "" then
         F = (func(C, L) = [char_to_string(C) ++ Subst | L]),
-        Foldl = string.foldl(F, Str, []),
+        Foldl = foldl(F, Str, []),
         Result = append_list([Subst | list.reverse(Foldl)])
     else
-        PatLength = string.length(Pat),
+        PatLength = length(Pat),
         replace_all_loop(Str, Pat, Subst, PatLength, 0, [], ReversedChunks),
         Chunks = list.reverse(ReversedChunks),
-        Result = string.append_list(Chunks)
+        Result = append_list(Chunks)
     ).
 
-:- pred string.replace_all_loop(string::in, string::in, string::in,
+:- pred replace_all_loop(string::in, string::in, string::in,
     int::in, int::in, list(string)::in, list(string)::out) is det.
 
-string.replace_all_loop(Str, Pat, Subst, PatLength, BeginAt,
+replace_all_loop(Str, Pat, Subst, PatLength, BeginAt,
         RevChunks0, RevChunks) :-
     ( if sub_string_search_start(Str, Pat, BeginAt, Index) then
-        Initial = string.unsafe_between(Str, BeginAt, Index),
+        Initial = unsafe_between(Str, BeginAt, Index),
         Start = Index + PatLength,
-        string.replace_all_loop(Str, Pat, Subst, PatLength, Start,
+        replace_all_loop(Str, Pat, Subst, PatLength, Start,
             [Subst, Initial | RevChunks0], RevChunks)
     else
-        EndString = string.unsafe_between(Str, BeginAt, length(Str)),
+        EndString = unsafe_between(Str, BeginAt, length(Str)),
         RevChunks = [EndString | RevChunks0]
     ).
 
@@ -4700,8 +4700,8 @@ string.replace_all_loop(Str, Pat, Subst, PatLength, BeginAt,
 word_wrap(Str, N) = word_wrap_separator(Str, N, "").
 
 word_wrap_separator(Str, N, WordSep0) = Wrapped :-
-    Words = string.words_separator(char.is_whitespace, Str),
-    SepLen0 = string.count_codepoints(WordSep0),
+    Words = words_separator(char.is_whitespace, Str),
+    SepLen0 = count_codepoints(WordSep0),
     ( if SepLen0 < N then
         WordSep = WordSep0,
         SepLen = SepLen0
@@ -4715,7 +4715,7 @@ word_wrap_separator(Str, N, WordSep0) = Wrapped :-
     word_wrap_loop(Words, WordSep, SepLen, CurCol, MaxCol,
         RevWordsSpacesNls0, RevWordsSpacesNls),
     list.reverse(RevWordsSpacesNls, WordsSpacesNls),
-    Wrapped = string.append_list(WordsSpacesNls).
+    Wrapped = append_list(WordsSpacesNls).
 
     % word_wrap_loop(Words, WordSep, SepLen, CurCol, MaxCol,
     %   !RevWordsSpacesNls):
@@ -4740,7 +4740,7 @@ word_wrap_separator(Str, N, WordSep0) = Wrapped :-
 word_wrap_loop([], _, _, _, _, !RevWordsSpacesNls).
 word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
         !RevWordsSpacesNls) :-
-    WordLen = string.count_codepoints(Word),
+    WordLen = count_codepoints(Word),
     ( if
         % We are on the first column and the length of the word
         % is less than the line length.
@@ -4814,10 +4814,10 @@ word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
 :- func break_up_string_reverse(string, int, list(string)) = list(string).
 
 break_up_string_reverse(Str, N, Prev) = Strs :-
-    ( if string.count_codepoints(Str) =< N then
+    ( if count_codepoints(Str) =< N then
         Strs = [Str | Prev]
     else
-        string.split_by_codepoint(Str, N, Left, Right),
+        split_by_codepoint(Str, N, Left, Right),
         Strs = break_up_string_reverse(Right, N, [Left | Prev])
     ).
 
@@ -4826,151 +4826,151 @@ break_up_string_reverse(Str, N, Prev) = Strs :-
 % Folds over the characters in strings.
 %
 
-string.foldl(F, S, A) = B :-
+foldl(F, S, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    string.foldl(P, S, A, B).
+    foldl(P, S, A, B).
 
-string.foldl(Closure, String, !Acc) :-
-    string.length(String, Length),
-    string.foldl_between(Closure, String, 0, Length, !Acc).
+foldl(Closure, String, !Acc) :-
+    length(String, Length),
+    foldl_between(Closure, String, 0, Length, !Acc).
 
-string.foldl2(Closure, String, !Acc1, !Acc2) :-
-    string.length(String, Length),
-    string.foldl2_between(Closure, String, 0, Length, !Acc1, !Acc2).
+foldl2(Closure, String, !Acc1, !Acc2) :-
+    length(String, Length),
+    foldl2_between(Closure, String, 0, Length, !Acc1, !Acc2).
 
-string.foldl_between(Closure, String, Start0, End0, !Acc) :-
+foldl_between(Closure, String, Start0, End0, !Acc) :-
     Start = max(0, Start0),
     End = min(End0, length(String)),
-    string.foldl_between_2(Closure, String, Start, End, !Acc).
+    foldl_between_2(Closure, String, Start, End, !Acc).
 
-string.foldl_between(F, S, Start, End, A) = B :-
+foldl_between(F, S, Start, End, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    string.foldl_between(P, S, Start, End, A, B).
+    foldl_between(P, S, Start, End, A, B).
 
-string.foldl2_between(Closure, String, Start0, End0, !Acc1, !Acc2) :-
+foldl2_between(Closure, String, Start0, End0, !Acc1, !Acc2) :-
     Start = max(0, Start0),
     End = min(End0, length(String)),
-    string.foldl2_between_2(Closure, String, Start, End, !Acc1, !Acc2).
+    foldl2_between_2(Closure, String, Start, End, !Acc1, !Acc2).
 
-:- pred string.foldl_between_2(pred(char, A, A), string, int, int, A, A).
-:- mode string.foldl_between_2(pred(in, di, uo) is det, in, in, in,
+:- pred foldl_between_2(pred(char, A, A), string, int, int, A, A).
+:- mode foldl_between_2(pred(in, di, uo) is det, in, in, in,
     di, uo) is det.
-:- mode string.foldl_between_2(pred(in, in, out) is det, in, in, in,
+:- mode foldl_between_2(pred(in, in, out) is det, in, in, in,
     in, out) is det.
-:- mode string.foldl_between_2(pred(in, in, out) is semidet, in, in, in,
+:- mode foldl_between_2(pred(in, in, out) is semidet, in, in, in,
     in, out) is semidet.
-:- mode string.foldl_between_2(pred(in, in, out) is nondet, in, in, in,
+:- mode foldl_between_2(pred(in, in, out) is nondet, in, in, in,
     in, out) is nondet.
-:- mode string.foldl_between_2(pred(in, in, out) is multi, in, in, in,
+:- mode foldl_between_2(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-string.foldl_between_2(Closure, String, I, End, !Acc) :-
+foldl_between_2(Closure, String, I, End, !Acc) :-
     ( if
         I < End,
-        string.unsafe_index_next(String, I, J, Char),
+        unsafe_index_next(String, I, J, Char),
         J =< End
     then
         Closure(Char, !Acc),
-        string.foldl_between_2(Closure, String, J, End, !Acc)
+        foldl_between_2(Closure, String, J, End, !Acc)
     else
         true
     ).
 
-:- pred string.foldl2_between_2(pred(char, A, A, B, B), string, int, int,
+:- pred foldl2_between_2(pred(char, A, A, B, B), string, int, int,
     A, A, B, B).
-:- mode string.foldl2_between_2(pred(in, di, uo, di, uo) is det,
+:- mode foldl2_between_2(pred(in, di, uo, di, uo) is det,
     in, in, in, di, uo, di, uo) is det.
-:- mode string.foldl2_between_2(pred(in, in, out, di, uo) is det,
+:- mode foldl2_between_2(pred(in, in, out, di, uo) is det,
     in, in, in, in, out, di, uo) is det.
-:- mode string.foldl2_between_2(pred(in, in, out, in, out) is det,
+:- mode foldl2_between_2(pred(in, in, out, in, out) is det,
     in, in, in, in, out, in, out) is det.
-:- mode string.foldl2_between_2(pred(in, in, out, in, out) is semidet,
+:- mode foldl2_between_2(pred(in, in, out, in, out) is semidet,
     in, in, in, in, out, in, out) is semidet.
-:- mode string.foldl2_between_2(pred(in, in, out, in, out) is nondet,
+:- mode foldl2_between_2(pred(in, in, out, in, out) is nondet,
     in, in, in, in, out, in, out) is nondet.
-:- mode string.foldl2_between_2(pred(in, in, out, in, out) is multi,
+:- mode foldl2_between_2(pred(in, in, out, in, out) is multi,
     in, in, in, in, out, in, out) is multi.
 
-string.foldl2_between_2(Closure, String, I, End, !Acc1, !Acc2) :-
+foldl2_between_2(Closure, String, I, End, !Acc1, !Acc2) :-
     ( if
         I < End,
-        string.unsafe_index_next(String, I, J, Char),
+        unsafe_index_next(String, I, J, Char),
         J =< End
     then
         Closure(Char, !Acc1, !Acc2),
-        string.foldl2_between_2(Closure, String, J, End, !Acc1, !Acc2)
+        foldl2_between_2(Closure, String, J, End, !Acc1, !Acc2)
     else
         true
     ).
 
-string.foldl_substring(F, String, Start, Count, Acc0) = Acc :-
+foldl_substring(F, String, Start, Count, Acc0) = Acc :-
     convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    Acc = string.foldl_between(F, String, ClampStart, ClampEnd, Acc0).
+    Acc = foldl_between(F, String, ClampStart, ClampEnd, Acc0).
 
-string.foldl_substring(Closure, String, Start, Count, !Acc) :-
+foldl_substring(Closure, String, Start, Count, !Acc) :-
     convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    string.foldl_between(Closure, String, ClampStart, ClampEnd, !Acc).
+    foldl_between(Closure, String, ClampStart, ClampEnd, !Acc).
 
-string.foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2) :-
+foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2) :-
     convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    string.foldl2_between(Closure, String, ClampStart, ClampEnd,
+    foldl2_between(Closure, String, ClampStart, ClampEnd,
         !Acc1, !Acc2).
 
 %---------------------%
 
-string.foldr(F, String, Acc0) = Acc :-
+foldr(F, String, Acc0) = Acc :-
     Closure = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y)),
-    string.foldr(Closure, String, Acc0, Acc).
+    foldr(Closure, String, Acc0, Acc).
 
-string.foldr(Closure, String, !Acc) :-
-    string.foldr_between(Closure, String, 0, length(String), !Acc).
+foldr(Closure, String, !Acc) :-
+    foldr_between(Closure, String, 0, length(String), !Acc).
 
-string.foldr_between(F, String, Start, Count, Acc0) = Acc :-
+foldr_between(F, String, Start, Count, Acc0) = Acc :-
     Closure = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    string.foldr_between(Closure, String, Start, Count, Acc0, Acc).
+    foldr_between(Closure, String, Start, Count, Acc0, Acc).
 
-string.foldr_between(Closure, String, Start0, End0, !Acc) :-
+foldr_between(Closure, String, Start0, End0, !Acc) :-
     Start = max(0, Start0),
     End = min(End0, length(String)),
-    string.foldr_between_2(Closure, String, Start, End, !Acc).
+    foldr_between_2(Closure, String, Start, End, !Acc).
 
-:- pred string.foldr_between_2(pred(char, T, T), string, int, int, T, T).
-:- mode string.foldr_between_2(pred(in, in, out) is det, in, in, in,
+:- pred foldr_between_2(pred(char, T, T), string, int, int, T, T).
+:- mode foldr_between_2(pred(in, in, out) is det, in, in, in,
     in, out) is det.
-:- mode string.foldr_between_2(pred(in, di, uo) is det, in, in, in,
+:- mode foldr_between_2(pred(in, di, uo) is det, in, in, in,
     di, uo) is det.
-:- mode string.foldr_between_2(pred(in, in, out) is semidet, in, in, in,
+:- mode foldr_between_2(pred(in, in, out) is semidet, in, in, in,
     in, out) is semidet.
-:- mode string.foldr_between_2(pred(in, in, out) is nondet, in, in, in,
+:- mode foldr_between_2(pred(in, in, out) is nondet, in, in, in,
     in, out) is nondet.
-:- mode string.foldr_between_2(pred(in, in, out) is multi, in, in, in,
+:- mode foldr_between_2(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-string.foldr_between_2(Closure, String, Start, I, !Acc) :-
+foldr_between_2(Closure, String, Start, I, !Acc) :-
     ( if
         I > Start,
-        string.unsafe_prev_index(String, I, J, Char),
+        unsafe_prev_index(String, I, J, Char),
         J >= Start
     then
         Closure(Char, !Acc),
-        string.foldr_between_2(Closure, String, Start, J, !Acc)
+        foldr_between_2(Closure, String, Start, J, !Acc)
     else
         true
     ).
 
-string.foldr_substring(F, String, Start, Count, Acc0) = Acc :-
+foldr_substring(F, String, Start, Count, Acc0) = Acc :-
     convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    Acc = string.foldr_between(F, String, ClampStart, ClampEnd, Acc0).
+    Acc = foldr_between(F, String, ClampStart, ClampEnd, Acc0).
 
-string.foldr_substring(Closure, String, Start, Count, !Acc) :-
+foldr_substring(Closure, String, Start, Count, !Acc) :-
     convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    string.foldr_between(Closure, String, ClampStart, ClampEnd, !Acc).
+    foldr_between(Closure, String, ClampStart, ClampEnd, !Acc).
 
 %---------------------------------------------------------------------------%
 %
 % Formatting tables.
 %
-% Currently, string.format_table simply assumes each code point occupies
+% Currently, format_table simply assumes each code point occupies
 % a single column in a fixed-width output device. Thus the output will
 % only be aligned if limited to an (important) subset of characters,
 % namely ASCII and European characters (excluding combining characters).
@@ -4978,11 +4978,11 @@ string.foldr_substring(Closure, String, Start, Count, !Acc) :-
 % and zero-width characters (see wcswidth), which would be enough
 % to cover the needs of very many people.
 %
-% These considerations may also apply to predicates such as string.pad_left,
-% string.pad_right, string.format (with field widths), string.word_wrap, etc.
+% These considerations may also apply to predicates such as pad_left,
+% pad_right, format (with field widths), word_wrap, etc.
 %
 
-string.format_table(Columns, Separator) = Table :-
+format_table(Columns, Separator) = Table :-
     MaxWidths = list.map(find_max_length, Columns),
     % Maybe the code below should be replaced by the code of format_table_max,
     % with all maybe widths set to "no". They do the same job; the code of
@@ -4992,20 +4992,20 @@ string.format_table(Columns, Separator) = Table :-
     (
         PaddedColumns = [PaddedHead | PaddedTail],
         Rows = list.foldl(list.map_corresponding(
-            string.join_rev_columns(Separator)), PaddedTail, PaddedHead)
+            join_rev_columns(Separator)), PaddedTail, PaddedHead)
     ;
         PaddedColumns = [],
         Rows = []
     ),
-    Table = string.join_list("\n", Rows).
+    Table = join_list("\n", Rows).
 
-string.format_table_max(ColumnsLimits, Separator) = Table :-
+format_table_max(ColumnsLimits, Separator) = Table :-
     MaxWidthsSenses = list.map(find_max_length_with_limit, ColumnsLimits),
     Columns = list.map(project_column_strings, ColumnsLimits),
-    SepLen = string.count_codepoints(Separator),
+    SepLen = count_codepoints(Separator),
     generate_rows(MaxWidthsSenses, Separator, SepLen, Columns, [], RevRows),
     list.reverse(RevRows, Rows),
-    Table = string.join_list("\n", Rows).
+    Table = join_list("\n", Rows).
 
 :- func project_column_strings(pair(justified_column, maybe(int)))
     = list(string).
@@ -5056,13 +5056,13 @@ pad_row([Justify - MaxWidth | JustifyWidths], [ColumnStr0 | ColumnStrs0],
     NextColumn = CurColumn + MaxWidth + SepLen,
     pad_row(JustifyWidths, ColumnStrs0, Separator, SepLen, NextColumn,
         LineRest),
-    ( if string.count_codepoints(ColumnStr0) =< MaxWidth then
+    ( if count_codepoints(ColumnStr0) =< MaxWidth then
         (
             Justify = just_left,
-            ColumnStr = string.pad_right(ColumnStr0, ' ', MaxWidth)
+            ColumnStr = pad_right(ColumnStr0, ' ', MaxWidth)
         ;
             Justify = just_right,
-            ColumnStr = string.pad_left(ColumnStr0, ' ', MaxWidth)
+            ColumnStr = pad_left(ColumnStr0, ' ', MaxWidth)
         ),
         (
             JustifyWidths = [],
@@ -5078,7 +5078,7 @@ pad_row([Justify - MaxWidth | JustifyWidths], [ColumnStr0 | ColumnStrs0],
         ;
             JustifyWidths = [_ | _],
             Line = ColumnStr0 ++ Separator ++ "\n" ++
-                string.duplicate_char(' ', NextColumn) ++ LineRest
+                duplicate_char(' ', NextColumn) ++ LineRest
         )
     ).
 pad_row([], [_ | _], _, _, _, _) :-
@@ -5129,22 +5129,22 @@ find_max_length_with_limit(JustColumn - MaybeLimit) = Sense - MaxLength :-
 :- func pad_column(int, justified_column) = list(string).
 
 pad_column(Width, left(Strings)) =
-    list.map(string.rpad(' ', Width), Strings).
+    list.map(rpad(' ', Width), Strings).
 pad_column(Width, right(Strings)) =
-    list.map(string.lpad(' ', Width), Strings).
+    list.map(lpad(' ', Width), Strings).
 
 :- func rpad(char, int, string) = string.
 
-rpad(Chr, N, Str) = string.pad_right(Str, Chr, N).
+rpad(Chr, N, Str) = pad_right(Str, Chr, N).
 
 :- func lpad(char, int, string) = string.
 
-lpad(Chr, N, Str) = string.pad_left(Str, Chr, N).
+lpad(Chr, N, Str) = pad_left(Str, Chr, N).
 
 :- pred max_str_length(string::in, int::in, int::out) is det.
 
 max_str_length(Str, PrevMaxLen, MaxLen) :-
-    Length = string.count_codepoints(Str),
+    Length = count_codepoints(Str),
     ( if Length > PrevMaxLen then
         MaxLen = Length
     else
@@ -5156,21 +5156,21 @@ max_str_length(Str, PrevMaxLen, MaxLen) :-
 % Converting strings to docs.
 %
 
-string.string_to_doc(S) = docs([str("\""), str(S), str("\"")]).
+string_to_doc(S) = docs([str("\""), str(S), str("\"")]).
 
 %---------------------------------------------------------------------------%
 %
 % Converting strings to values of builtin types.
 %
 
-string.to_int(String, Int) :-
-    string.base_string_to_int(10, String, Int).
+to_int(String, Int) :-
+    base_string_to_int(10, String, Int).
 
-string.det_to_int(S) = string.det_base_string_to_int(10, S).
+det_to_int(S) = det_base_string_to_int(10, S).
 
-string.base_string_to_int(Base, String, Int) :-
-    string.index(String, 0, Char),
-    End = string.count_code_units(String),
+base_string_to_int(Base, String, Int) :-
+    index(String, 0, Char),
+    End = count_code_units(String),
     ( if Char = ('-') then
         End > 1,
         foldl_between(accumulate_negative_int(Base), String, 1, End, 0, Int)
@@ -5181,11 +5181,11 @@ string.base_string_to_int(Base, String, Int) :-
         foldl_between(accumulate_int(Base), String, 0, End, 0, Int)
     ).
 
-string.det_base_string_to_int(Base, S) = N :-
-    ( if string.base_string_to_int(Base, S, N0) then
+det_base_string_to_int(Base, S) = N :-
+    ( if base_string_to_int(Base, S, N0) then
         N = N0
     else
-        error("string.det_base_string_to_int: conversion failed")
+        unexpected($pred, "conversion failed")
     ).
 
 :- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
@@ -5209,11 +5209,11 @@ accumulate_negative_int(Base, Char, N0, N) :-
 
 %---------------------%
 
-:- pragma foreign_export("C", string.to_float(in, out),
+:- pragma foreign_export("C", to_float(in, out),
     "ML_string_to_float").
 
 :- pragma foreign_proc("C",
-    string.to_float(FloatString::in, FloatVal::out),
+    to_float(FloatString::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -5228,7 +5228,7 @@ accumulate_negative_int(Base, Char, N0, N) :-
         /* MR_TRUE if sscanf succeeds, MR_FALSE otherwise */
 }").
 :- pragma foreign_proc("C#",
-    string.to_float(FloatString::in, FloatVal::out),
+    to_float(FloatString::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     FloatVal = 0.0;     // FloatVal must be initialized to suppress
@@ -5257,7 +5257,7 @@ accumulate_negative_int(Base, Char, N0, N) :-
     }
 }").
 :- pragma foreign_proc("Java",
-    string.to_float(FloatString::in, FloatVal::out),
+    to_float(FloatString::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = 0.0;     // FloatVal must be initialized to suppress
@@ -5304,7 +5304,7 @@ accumulate_negative_int(Base, Char, N0, N) :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    string.to_float(FloatString::in, FloatVal::out),
+    to_float(FloatString::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -5321,11 +5321,11 @@ accumulate_negative_int(Base, Char, N0, N) :-
     end
 ").
 
-string.det_to_float(FloatString) = Float :-
-    ( if string.to_float(FloatString, FloatPrime) then
+det_to_float(FloatString) = Float :-
+    ( if to_float(FloatString, FloatPrime) then
         Float = FloatPrime
     else
-        error("string.det_to_float/1: conversion failed.")
+        unexpected($pred, "conversion failed.")
     ).
 
 %---------------------------------------------------------------------------%
@@ -5333,56 +5333,56 @@ string.det_to_float(FloatString) = Float :-
 % Converting values of builtin types to strings.
 %
 
-string.char_to_string(Char, String) :-
-    string.to_char_list(String, [Char]).
+char_to_string(Char, String) :-
+    to_char_list(String, [Char]).
 
-string.char_to_string(C) = S1 :-
-    string.char_to_string(C, S1).
+char_to_string(C) = S1 :-
+    char_to_string(C, S1).
 
-string.from_char(Char) = string.char_to_string(Char).
+from_char(Char) = char_to_string(Char).
 
 %---------------------%
 
-string.int_to_string(N, Str) :-
-    string.int_to_base_string(N, 10, Str).
+int_to_string(N, Str) :-
+    int_to_base_string(N, 10, Str).
 
-string.int_to_string(N) = S1 :-
-    string.int_to_string(N, S1).
+int_to_string(N) = S1 :-
+    int_to_string(N, S1).
 
-string.from_int(N) = string.int_to_string(N).
+from_int(N) = int_to_string(N).
 
-string.int_to_base_string(N1, N2) = S2 :-
-    string.int_to_base_string(N1, N2, S2).
+int_to_base_string(N1, N2) = S2 :-
+    int_to_base_string(N1, N2, S2).
 
-string.int_to_base_string(N, Base, Str) :-
+int_to_base_string(N, Base, Str) :-
     ( if 2 =< Base, Base =< 36 then
         true
     else
-        error("string.int_to_base_string: invalid base")
+        unexpected($pred, "invalid base")
     ),
-    string.int_to_base_string_1(N, Base, Str).
+    int_to_base_string_1(N, Base, Str).
 
-:- pred string.int_to_base_string_1(int::in, int::in, string::uo) is det.
+:- pred int_to_base_string_1(int::in, int::in, string::uo) is det.
 
-string.int_to_base_string_1(N, Base, Str) :-
+int_to_base_string_1(N, Base, Str) :-
     % Note that in order to handle MININT correctly, we need to do the
     % conversion of the absolute number into digits using negative numbers;
     % we can't use positive numbers, since -MININT overflows.
     ( if N < 0 then
-        string.int_to_base_string_2(N, Base, ['-'], RevChars)
+        int_to_base_string_2(N, Base, ['-'], RevChars)
     else
         NegN = 0 - N,
-        string.int_to_base_string_2(NegN, Base, [], RevChars)
+        int_to_base_string_2(NegN, Base, [], RevChars)
     ),
-    string.from_rev_char_list(RevChars, Str).
+    from_rev_char_list(RevChars, Str).
 
-:- pred string.int_to_base_string_2(int::in, int::in,
+:- pred int_to_base_string_2(int::in, int::in,
     list(char)::in, list(char)::out) is det.
 
-string.int_to_base_string_2(NegN, Base, !RevChars) :-
-    % string.int_to_base_string_2/3 is almost identical to
-    % string.int_to_base_string_group_2/6 below so any changes here might
-    % also need to be applied to string.int_to_base_string_group_2/3.
+int_to_base_string_2(NegN, Base, !RevChars) :-
+    % int_to_base_string_2/3 is almost identical to
+    % int_to_base_string_group_2/6 below so any changes here might
+    % also need to be applied to int_to_base_string_group_2/3.
     ( if NegN > -Base then
         N = -NegN,
         DigitChar = char.det_base_int_to_digit(Base, N),
@@ -5391,34 +5391,34 @@ string.int_to_base_string_2(NegN, Base, !RevChars) :-
         NegN1 = NegN // Base,
         N10 = (NegN1 * Base) - NegN,
         DigitChar = char.det_base_int_to_digit(Base, N10),
-        string.int_to_base_string_2(NegN1, Base, !RevChars),
+        int_to_base_string_2(NegN1, Base, !RevChars),
         !:RevChars = [DigitChar | !.RevChars]
     ).
 
-string.int_to_string_thousands(N) =
-    string.int_to_base_string_group(N, 10, 3, ",").
+int_to_string_thousands(N) =
+    int_to_base_string_group(N, 10, 3, ",").
 
-string.int_to_base_string_group(N, Base, GroupLength, Sep) = Str :-
+int_to_base_string_group(N, Base, GroupLength, Sep) = Str :-
     ( if 2 =< Base, Base =< 36 then
         true
     else
-        error("string.int_to_base_string_group: invalid base")
+        unexpected($pred, "invalid base")
     ),
-    string.int_to_base_string_group_1(N, Base, GroupLength, Sep, Str).
+    int_to_base_string_group_1(N, Base, GroupLength, Sep, Str).
 
-:- pred string.int_to_base_string_group_1(int::in, int::in, int::in,
+:- pred int_to_base_string_group_1(int::in, int::in, int::in,
     string::in, string::uo) is det.
 
-string.int_to_base_string_group_1(N, Base, GroupLength, Sep, Str) :-
+int_to_base_string_group_1(N, Base, GroupLength, Sep, Str) :-
     % Note that in order to handle MININT correctly, we need to do
     % the conversion of the absolute number into digits using negative numbers
     % (we can't use positive numbers, since -MININT overflows)
     ( if N < 0 then
-        string.int_to_base_string_group_2(N, Base, 0, GroupLength, Sep, Str1),
-        string.append("-", Str1, Str)
+        int_to_base_string_group_2(N, Base, 0, GroupLength, Sep, Str1),
+        append("-", Str1, Str)
     else
         N1 = 0 - N,
-        string.int_to_base_string_group_2(N1, Base, 0, GroupLength, Sep, Str)
+        int_to_base_string_group_2(N1, Base, 0, GroupLength, Sep, Str)
     ).
 
     % int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str):
@@ -5426,52 +5426,52 @@ string.int_to_base_string_group_1(N, Base, GroupLength, Sep, Str) :-
     % GroupLength is how many digits there should be between separators.
     % Curr is how many digits have been processed since the last separator
     % was inserted.
-    % string.int_to_base_string_group_2/6 is almost identical to
-    % string.int_to_base_string_2/3 above so any changes here might also
-    % need to be applied to string.int_to_base_string_2/3.
+    % int_to_base_string_group_2/6 is almost identical to
+    % int_to_base_string_2/3 above so any changes here might also
+    % need to be applied to int_to_base_string_2/3.
     %
-:- pred string.int_to_base_string_group_2(int::in, int::in, int::in, int::in,
+:- pred int_to_base_string_group_2(int::in, int::in, int::in, int::in,
     string::in, string::uo) is det.
 
-string.int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
+int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
     ( if
         Curr = GroupLength,
         GroupLength > 0
     then
-        string.int_to_base_string_group_2(NegN, Base, 0, GroupLength,
+        int_to_base_string_group_2(NegN, Base, 0, GroupLength,
             Sep, Str1),
-        string.append(Str1, Sep, Str)
+        append(Str1, Sep, Str)
     else
         ( if NegN > -Base then
             N = -NegN,
             DigitChar = char.det_base_int_to_digit(Base, N),
-            string.char_to_string(DigitChar, Str)
+            char_to_string(DigitChar, Str)
         else
             NegN1 = NegN // Base,
             N10 = (NegN1 * Base) - NegN,
             DigitChar = char.det_base_int_to_digit(Base, N10),
-            string.char_to_string(DigitChar, DigitString),
-            string.int_to_base_string_group_2(NegN1, Base, Curr + 1,
+            char_to_string(DigitChar, DigitString),
+            int_to_base_string_group_2(NegN1, Base, Curr + 1,
                 GroupLength, Sep, Str1),
-            string.append(Str1, DigitString, Str)
+            append(Str1, DigitString, Str)
         )
     ).
 
 %---------------------%
 
 :- pragma foreign_proc("C",
-    string.float_to_string(Flt::in, Str::uo),
+    float_to_string(Flt::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
     /*
     ** For efficiency reasons we duplicate the C implementation
-    ** of string.lowlevel_float_to_string.
+    ** of lowlevel_float_to_string.
     */
     MR_float_to_string(Flt, Str, MR_ALLOC_ID);
 }").
 :- pragma foreign_proc("C#",
-    string.float_to_string(Flt::in, Str::uo),
+    float_to_string(Flt::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -5500,7 +5500,7 @@ string.int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
 ").
 
 :- pragma foreign_proc("Java",
-    string.float_to_string(Flt::in, Str::uo),
+    float_to_string(Flt::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -5517,26 +5517,26 @@ string.int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
     }
 ").
 
-string.float_to_string(Float, unsafe_promise_unique(String)) :-
+float_to_string(Float, unsafe_promise_unique(String)) :-
     % XXX This implementation has problems when the mantissa
     % cannot fit in an int.
     %
     % XXX The unsafe_promise_unique is needed because in
-    % string.float_to_string_loop the call to string.to_float doesn't
+    % float_to_string_loop the call to to_float doesn't
     % have a (ui, out) mode hence the output string cannot be unique.
-    String = string.float_to_string_loop(min_precision, Float).
+    String = float_to_string_loop(min_precision, Float).
 
-:- func string.float_to_string_loop(int, float) = (string) is det.
+:- func float_to_string_loop(int, float) = (string) is det.
 
-string.float_to_string_loop(Prec, Float) = String :-
-    string.format("%#." ++ int_to_string(Prec) ++ "g", [f(Float)], Tmp),
+float_to_string_loop(Prec, Float) = String :-
+    format("%#." ++ int_to_string(Prec) ++ "g", [f(Float)], Tmp),
     ( if Prec = max_precision then
         String = Tmp
     else
-        ( if string.to_float(Tmp, Float) then
+        ( if to_float(Tmp, Float) then
             String = Tmp
         else
-            String = string.float_to_string_loop(Prec + 1, Float)
+            String = float_to_string_loop(Prec + 1, Float)
         )
     ).
 
@@ -5554,18 +5554,18 @@ min_precision = 15.
 
 max_precision = min_precision + 2.
 
-string.float_to_string(Float) = S2 :-
-    string.float_to_string(Float, S2).
+float_to_string(Float) = S2 :-
+    float_to_string(Float, S2).
 
-string.from_float(Float) = string.float_to_string(Float).
+from_float(Float) = float_to_string(Float).
 
 %---------------------%
 
-string.c_pointer_to_string(P) = S :-
-    string.c_pointer_to_string(P, S).
+c_pointer_to_string(P) = S :-
+    c_pointer_to_string(P, S).
 
 :- pragma foreign_proc("C#",
-    string.c_pointer_to_string(C_Pointer::in, Str::uo),
+    c_pointer_to_string(C_Pointer::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     /* Within the spirit of the function, at least. */
@@ -5576,7 +5576,7 @@ string.c_pointer_to_string(P) = S :-
     }
 ").
 :- pragma foreign_proc("Java",
-    string.c_pointer_to_string(C_Pointer::in, Str::uo),
+    c_pointer_to_string(C_Pointer::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     /* Within the spirit of the function, at least. */
@@ -5587,36 +5587,36 @@ string.c_pointer_to_string(P) = S :-
     }
 ").
 
-string.c_pointer_to_string(C_Pointer, Str) :-
+c_pointer_to_string(C_Pointer, Str) :-
     private_builtin.unsafe_type_cast(C_Pointer, Int),
-    Str = "c_pointer(0x" ++ string.int_to_base_string(Int, 16) ++ ")".
+    Str = "c_pointer(0x" ++ int_to_base_string(Int, 16) ++ ")".
 
-string.from_c_pointer(P) = S :-
-    string.c_pointer_to_string(P, S).
+from_c_pointer(P) = S :-
+    c_pointer_to_string(P, S).
 
 %---------------------------------------------------------------------------%
 %
 % Converting values of arbitrary types to strings.
 %
 
-string.string(X) =
-    string.to_string.string_impl(X).
+string(X) =
+    to_string.string_impl(X).
 
-string.string_ops(OpsTable, X) =
-    string.to_string.string_ops_impl(OpsTable, X).
+string_ops(OpsTable, X) =
+    to_string.string_ops_impl(OpsTable, X).
 
-string.string_ops_noncanon(NonCanon, OpsTable, X, String) :-
-    string.to_string.string_ops_noncanon_impl(NonCanon, OpsTable, X, String).
+string_ops_noncanon(NonCanon, OpsTable, X, String) :-
+    to_string.string_ops_noncanon_impl(NonCanon, OpsTable, X, String).
 
 %---------------------------------------------------------------------------%
 %
 % Converting values to strings based on a format string.
 %
 
-string.format(FormatString, PolyList, String) :-
-    string.format.format_impl(FormatString, PolyList, String).
+format(FormatString, PolyList, String) :-
+    format.format_impl(FormatString, PolyList, String).
 
-string.format(S1, PT) = S2 :-
-    string.format(S1, PT, S2).
+format(S1, PT) = S2 :-
+    format(S1, PT, S2).
 
 %---------------------------------------------------------------------------%
