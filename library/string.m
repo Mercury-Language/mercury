@@ -733,6 +733,13 @@
     %
 :- pred remove_prefix(string::in, string::in, string::out) is semidet.
 
+    % det_remove_prefix(Prefix, String, Suffix):
+    %
+    % This is a synonym for append(Prefix, Suffix, String) but with the
+    % arguments in a more convenient order for use with higher-order code.
+    %
+:- pred det_remove_prefix(string::in, string::in, string::out) is det.
+
     % remove_prefix_if_present(Prefix, String) = Suffix returns `String' minus
     % `Prefix' if `String' begins with `Prefix', and `String' if it doesn't.
     %
@@ -4505,6 +4512,13 @@ suffix_2_ioii(String, Suffix, Cur, Len) :-
 
 string.remove_prefix(Prefix, String, Suffix) :-
     string.append(Prefix, Suffix, String).
+
+det_remove_prefix(Prefix, String, Suffix) :-
+    ( if remove_prefix(Prefix, String, SuffixPrime) then
+        Suffix = SuffixPrime
+    else
+        error($pred, "string does not have the given prefix")
+    ).
 
 string.remove_prefix_if_present(Prefix, String) = Out :-
     ( if string.remove_prefix(Prefix, String, Suffix) then
