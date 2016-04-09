@@ -684,27 +684,25 @@ multiply_by_pow(Scale0, Base, Exp) = Result :-
         Result = multiply_by_pow(Scale1, Base * Base, Exp div 2)
     ).
 
-log2(X) = N :-
-    log2(X, N).
+log2(X) = CeilLogX :-
+    log2(X, CeilLogX).
 
-log2(X, N) :-
+log2(X, CeilLogX) :-
     ( if int_domain_checks, X =< 0 then
         throw(math.domain_error("int.log2: taking logarithm of zero"))
     else
-        log2_2(X, 0, N)
+        log2_loop(X, 0, CeilLogX)
     ).
 
-:- pred log2_2(int, int, int).
-:- mode log2_2(in, in, out) is det.
+:- pred log2_loop(int::in, int::in, int::out) is det.
 
-log2_2(X, N0, N) :-
-    ( if X = 1 then
-        N = N0
+log2_loop(CurX, CurLogXSoFar, CeilLogX) :-
+    ( if CurX = 1 then
+        CeilLogX = CurLogXSoFar
     else
-        X1 = X + 1,
-        X2 = X1 // 2,
-        N1 = N0 + 1,
-        log2_2(X2, N1, N)
+        NextX = (CurX + 1) // 2,
+        NextLogXSoFar = CurLogXSoFar + 1,
+        log2_loop(NextX, NextLogXSoFar, CeilLogX)
     ).
 
 %---------------------------------------------------------------------------%
