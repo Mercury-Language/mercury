@@ -85,22 +85,22 @@
 
 %-----------------------------------------------------------------------------%
 
-module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, MaybeBodyGoal,
+module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
         Status, Context, MaybeSeqNum, GoalType,
         !ModuleInfo, !QualInfo, !Specs) :-
-    ( if illegal_state_var_func_result(PredOrFunc, Args0, SVar) then
+    ( if illegal_state_var_func_result(PredOrFunc, ArgTerms0, SVar) then
         IllegalSVarResult = yes(SVar)
     else
         IllegalSVarResult = no
     ),
     ArityAdjustment = ( if IllegalSVarResult = yes(_) then -1 else 0 ),
-    expand_bang_state_pairs_in_terms(Args0, Args),
+    expand_bang_state_pairs_in_terms(ArgTerms0, ArgTerms),
 
     % Lookup the pred declaration in the predicate table.
     % (If it's not there, call maybe_undefined_pred_error and insert
     % an implicit declaration for the predicate.)
     module_info_get_name(!.ModuleInfo, ModuleName),
-    list.length(Args, Arity0),
+    list.length(ArgTerms, Arity0),
     Arity = Arity0 + ArityAdjustment,
     some [!PredInfo] (
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
@@ -132,7 +132,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, MaybeBodyGoal,
         else
             % A promise will not have a corresponding pred declaration.
             ( if GoalType = goal_type_promise(_) then
-                HeadVars = term.term_list_to_var_list(Args),
+                HeadVars = term.term_list_to_var_list(ArgTerms),
                 preds_add_implicit_for_assertion(!ModuleInfo, ModuleName,
                     PredName, Arity, PredOrFunc, HeadVars, Status, Context,
                     NewPredId)
@@ -147,8 +147,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, MaybeBodyGoal,
         (
             MaybePredId = yes(PredId),
             module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
-                Args, Arity, ArityAdjustment, MaybeBodyGoal, Status, Context,
-                MaybeSeqNum, GoalType, IllegalSVarResult,
+                ArgTerms, Arity, ArityAdjustment, MaybeBodyGoal,
+                Status, Context, MaybeSeqNum, GoalType, IllegalSVarResult,
                 !ModuleInfo, !QualInfo, !Specs)
         ;
             MaybePredId = no
@@ -162,9 +162,10 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, MaybeBodyGoal,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args, Arity,
-        ArityAdjustment, MaybeBodyGoal, PredStatus, Context, MaybeSeqNum,
-        GoalType, IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs) :-
+module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
+        MaybeAnnotatedArgTerms, Arity, ArityAdjustment, MaybeBodyGoal,
+        PredStatus, Context, MaybeSeqNum, GoalType, IllegalSVarResult,
+        !ModuleInfo, !QualInfo, !Specs) :-
     some [!PredInfo, !PredicateTable, !PredSpecs] (
         % Lookup the pred_info for this pred, add the clause to the
         % clauses_info in the pred_info, if there are no modes add an
@@ -186,7 +187,7 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args, Arity,
                         [i(NumClauses + 1)], !IO),
                     write_pred_or_func(PredOrFunc, !IO),
                     io.write_string(" `", !IO),
-                    list.length(Args, PredArity0),
+                    list.length(MaybeAnnotatedArgTerms, PredArity0),
                     PredArity = PredArity0 + ArityAdjustment,
                     adjust_func_arity(PredOrFunc, OrigArity, PredArity),
                     prog_out.write_sym_name_and_arity(PredName/OrigArity, !IO),
@@ -290,8 +291,8 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args, Arity,
                 MaybeBodyGoal = ok1(BodyGoal),
                 pred_info_get_clauses_info(!.PredInfo, Clauses0),
                 pred_info_get_typevarset(!.PredInfo, TVarSet0),
-                select_applicable_modes(Args, ClauseVarSet, PredStatus,
-                    Context, PredId, !.PredInfo, ArgTerms,
+                select_applicable_modes(MaybeAnnotatedArgTerms, ClauseVarSet,
+                    PredStatus, Context, PredId, !.PredInfo, ArgTerms,
                     ProcIdsForThisClause, AllProcIds,
                     !ModuleInfo, !QualInfo, !Specs),
                 clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
@@ -353,12 +354,14 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args, Arity,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-select_applicable_modes(Args0, VarSet, PredStatus, Context, PredId, PredInfo,
-        Args, ApplProcIds, AllProcIds, !ModuleInfo, !QualInfo, !Specs) :-
+select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
+        PredId, PredInfo, ArgTerms, ApplProcIds, AllProcIds,
+        !ModuleInfo, !QualInfo, !Specs) :-
     AllProcIds = pred_info_all_procids(PredInfo),
-    get_mode_annotations(Args0, Args, empty, ModeAnnotations),
+    get_mode_annotations(MaybeAnnotatedArgTerms, ArgTerms,
+        ma_empty, ModeAnnotations),
     (
-        ModeAnnotations = modes(ModeList0),
+        ModeAnnotations = ma_modes(ModeList0),
 
         % The user specified some mode annotations on this clause.
         % First module-qualify the mode annotations. The annotations on
@@ -397,8 +400,8 @@ select_applicable_modes(Args0, VarSet, PredStatus, Context, PredId, PredInfo,
             ApplProcIds = selected_modes(AllProcIds)
         )
     ;
-        ( ModeAnnotations = empty
-        ; ModeAnnotations = none
+        ( ModeAnnotations = ma_empty
+        ; ModeAnnotations = ma_none
         ),
         ( if pred_info_pragma_goal_type(PredInfo) then
             % We are only allowed to mix foreign procs and
@@ -409,7 +412,7 @@ select_applicable_modes(Args0, VarSet, PredStatus, Context, PredId, PredInfo,
             ApplProcIds = all_modes
         )
     ;
-        ModeAnnotations = mixed,
+        ModeAnnotations = ma_mixed,
         PredIdStr = pred_id_to_string(!.ModuleInfo, PredId),
         Pieces = [words("In clause for"), fixed(PredIdStr), suffix(":"), nl,
             words("syntax error: some but not all arguments"),
@@ -483,16 +486,18 @@ mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
     % clause should only be used for particular modes of a predicate.
     % This type specifies the mode annotations on a clause.
 :- type mode_annotations
-    --->    empty   % No arguments.
+    --->    ma_empty
+            % No arguments.
 
-    ;       none    % One or more arguments,
-                    % each without any mode annotations.
+    ;       ma_none
+            % One or more arguments, each without any mode annotations.
 
-    ;       modes(list(mer_mode))
-                    % One or more arguments, each with a mode annotation.
+    ;       ma_modes(list(mer_mode))
+            % One or more arguments, each with a mode annotation.
 
-    ;       mixed.  % Two or more arguments, including some with mode
-                    % annotations and some without.  (This is not allowed.)
+    ;       ma_mixed.
+            % Two or more arguments, including some with mode annotations
+            % and some without. (This is not allowed.)
 
     % Extract the mode annotations (if any) from a list of arguments.
     %
@@ -500,40 +505,42 @@ mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
     mode_annotations::in, mode_annotations::out) is det.
 
 get_mode_annotations([], [], !Annotations).
-get_mode_annotations([Arg0 | Args0], [Arg | Args], !Annotations) :-
-    get_mode_annotation(Arg0, Arg, MaybeAnnotation),
+get_mode_annotations([MAArgTerm | MAArgTerms], [ArgTerm | ArgTerms],
+        !Annotations) :-
+    get_mode_annotation(MAArgTerm, ArgTerm, MaybeAnnotation),
     add_annotation(MaybeAnnotation, !Annotations),
-    get_mode_annotations(Args0, Args, !Annotations).
+    get_mode_annotations(MAArgTerms, ArgTerms, !Annotations).
 
 :- pred add_annotation(maybe(mer_mode)::in,
     mode_annotations::in, mode_annotations::out) is det.
 
-add_annotation(no,        empty, none).
-add_annotation(yes(Mode), empty, modes([Mode])).
-add_annotation(no,        modes(_ `with_type` list(mer_mode)), mixed).
-add_annotation(yes(Mode), modes(Modes), modes(Modes ++ [Mode])).
-add_annotation(no,        none, none).
-add_annotation(yes(_),    none, mixed).
-add_annotation(_,         mixed, mixed).
+add_annotation(no,        ma_empty, ma_none).
+add_annotation(yes(Mode), ma_empty, ma_modes([Mode])).
+add_annotation(no,        ma_modes(_ : list(mer_mode)), ma_mixed).
+add_annotation(yes(Mode), ma_modes(Modes), ma_modes(Modes ++ [Mode])).
+add_annotation(no,        ma_none, ma_none).
+add_annotation(yes(_),    ma_none, ma_mixed).
+add_annotation(_,         ma_mixed, ma_mixed).
 
     % Extract the mode annotations (if any) from a single argument.
     %
 :- pred get_mode_annotation(prog_term::in, prog_term::out,
     maybe(mer_mode)::out) is det.
 
-get_mode_annotation(Arg0, Arg, MaybeAnnotation) :-
+get_mode_annotation(MaybeAnnotatedArgTerm, ArgTerm, MaybeAnnotation) :-
     ( if
-        Arg0 = term.functor(term.atom("::"), [Arg1, ModeTerm], _),
+        MaybeAnnotatedArgTerm = term.functor(term.atom("::"),
+            [ArgTermPrime, ModeTerm], _),
         convert_mode(allow_constrained_inst_var, term.coerce(ModeTerm), Mode)
     then
-        Arg = Arg1,
+        ArgTerm = ArgTermPrime,
         MaybeAnnotation = yes(Mode)
     else
-        Arg = Arg0,
+        ArgTerm = MaybeAnnotatedArgTerm,
         MaybeAnnotation = no
     ).
 
-clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, Args,
+clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
         BodyGoal, Context, MaybeSeqNum, PredStatus, PredOrFunc, Arity,
         GoalType, Goal, VarSet, TVarSet, QuantWarnings,
         !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
@@ -562,7 +569,7 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, Args,
     update_qual_info(TVarNameMap, TVarSet0, ExplicitVarTypes0,
         MaybeOptImported, !QualInfo),
     varset.merge_renaming(VarSet0, CVarSet, VarSet1, Renaming),
-    add_clause_transform(Renaming, HeadVars, Args, BodyGoal, Context,
+    add_clause_transform(Renaming, HeadVars, ArgTerms, BodyGoal, Context,
         PredOrFunc, Arity, GoalType, Goal0, VarSet1, VarSet,
         QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs),
@@ -631,7 +638,8 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, Args,
             RttiVarMaps, HasForeignClauses, HadSyntaxError0)
     ).
 
-    % Args0 has already had !S arguments replaced by !.S, !:S argument pairs.
+    % ArgTerms0 has already had !S arguments replaced by
+    % !.S, !:S argument pairs.
     %
 :- pred add_clause_transform(prog_var_renaming::in,
     proc_arg_vector(prog_var)::in, list(prog_term)::in, goal::in,
@@ -641,22 +649,23 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, Args,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_clause_transform(Renaming, HeadVars, Args0, ParseTreeBodyGoal, Context,
+add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
         PredOrFunc, Arity, GoalType, Goal, !VarSet,
         QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!SInfo, !SVarState, !SVarStore] (
         HeadVarList = proc_arg_vector_to_list(HeadVars),
-        rename_vars_in_term_list(need_not_rename, Renaming, Args0, Args1),
-        svar_prepare_for_clause_head(Args1, Args, !VarSet, FinalSVarMap,
-            !:SVarState, !:SVarStore, !Specs),
+        rename_vars_in_term_list(need_not_rename, Renaming,
+            ArgTerms0, ArgTerms1),
+        svar_prepare_for_clause_head(ArgTerms1, ArgTerms, !VarSet,
+            FinalSVarMap, !:SVarState, !:SVarStore, !Specs),
         InitialSVarState = !.SVarState,
         ( if GoalType = goal_type_promise(_) then
             HeadGoal = true_goal
         else
             ArgContext = ac_head(PredOrFunc, Arity),
             HeadGoal0 = true_goal,
-            insert_arg_unifications(HeadVarList, Args, Context, ArgContext,
+            insert_arg_unifications(HeadVarList, ArgTerms, Context, ArgContext,
                 HeadGoal0, HeadGoal1, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
             % The only pass that pays attention to the from_head feature,
@@ -680,14 +689,14 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseTreeBodyGoal, Context,
 
         trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (
             io.write_string("\nCLAUSE HEAD\n", !IO),
-            io.write_string("args before:\n", !IO),
-            io.write_list(Args0, "\n", io.write, !IO),
+            io.write_string("arg terms before:\n", !IO),
+            io.write_list(ArgTerms0, "\n", io.write, !IO),
             io.nl(!IO),
-            io.write_string("args renamed:\n", !IO),
-            io.write_list(Args1, "\n", io.write, !IO),
+            io.write_string("arg terms renamed:\n", !IO),
+            io.write_list(ArgTerms1, "\n", io.write, !IO),
             io.nl(!IO),
-            io.write_string("args after:\n", !IO),
-            io.write_list(Args, "\n", io.write, !IO),
+            io.write_string("arg terms after:\n", !IO),
+            io.write_list(ArgTerms, "\n", io.write, !IO),
             io.nl(!IO),
             io.write_string("head vars:\n", !IO),
             io.write(HeadVarList, !IO),
