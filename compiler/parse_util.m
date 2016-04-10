@@ -66,10 +66,6 @@
     maybe_pred_or_func(term(T))::out) is det.
 
 %---------------------------------------------------------------------------%
-
-:- pred parse_purity_annotation(term(T)::in, purity::out, term(T)::out) is det.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred list_term_to_term_list(term::in, list(term)::out) is semidet.
@@ -124,7 +120,6 @@
 :- implementation.
 
 :- import_module parse_tree.parse_sym_name.
-:- import_module parse_tree.prog_out.
 
 :- import_module bool.
 
@@ -193,20 +188,6 @@ parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
     ;
         Result = error2(Specs),
         PredAndArgsResult = error2(Specs)
-    ).
-
-%---------------------------------------------------------------------------%
-
-parse_purity_annotation(Term0, Purity, Term) :-
-    ( if
-        Term0 = term.functor(term.atom(PurityName), [Term1], _),
-        purity_name(Purity0, PurityName)
-    then
-        Purity = Purity0,
-        Term = Term1
-    else
-        Purity = purity_pure,
-        Term = Term0
     ).
 
 %---------------------------------------------------------------------------%

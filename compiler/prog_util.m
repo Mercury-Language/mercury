@@ -177,12 +177,6 @@
     %
 :- pred get_state_args_det(list(T)::in, list(T)::out, T::out, T::out) is det.
 
-    % Parse a term of the form `Head :- Body', treating a term not in that form
-    % as `Head :- true'.
-    %
-:- pred parse_rule_term(term.context::in, term(T)::in, term(T)::out,
-    term(T)::out) is det.
-
 %-----------------------------------------------------------------------------%
 
     % Add new type variables for those introduced by a type qualification.
@@ -794,17 +788,6 @@ get_state_args_det(Args0, Args, State0, State) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-parse_rule_term(Context, RuleTerm, HeadTerm, GoalTerm) :-
-    ( if
-        RuleTerm = term.functor(term.atom(":-"), [HeadTerm0, GoalTerm0], _)
-    then
-        HeadTerm = HeadTerm0,
-        GoalTerm = GoalTerm0
-    else
-        HeadTerm = RuleTerm,
-        GoalTerm = term.functor(term.atom("true"), [], Context)
-    ).
 
 get_new_tvars([], _,  !TVarSet, !TVarNameMap, !TVarRenaming).
 get_new_tvars([TVar | TVars], VarSet, !TVarSet, !TVarNameMap, !TVarRenaming) :-

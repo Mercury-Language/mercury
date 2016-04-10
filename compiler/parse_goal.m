@@ -43,57 +43,6 @@
     maybe3(list(prog_var), list(prog_var), goal)::out,
     prog_varset::in, prog_varset::out) is det.
 
-    % parse_pred_expression/3 converts the first argument of a :-/2
-    % higher-order pred expression into a list of variables, a list
-    % of their corresponding modes, and a determinism.
-    %
-    % Exported to superhomogeneous.m for parsing lambda expressions.
-    %
-:- pred parse_pred_expression(term::in, ho_groundness::out,
-    lambda_eval_method::out, list(prog_term)::out, list(mer_mode)::out,
-    determinism::out) is semidet.
-
-    % parse_dcg_pred_expression/3 converts the first argument of a -->/2
-    % higher-order DCG pred expression into a list of arguments, a list
-    % of their corresponding modes and the two DCG argument modes, and a
-    % determinism.
-    % This is a variant of the higher-order pred syntax:
-    %   `(pred(Var1::Mode1, ..., VarN::ModeN, DCG0Mode, DCGMode)
-    %       is Det --> Goal)'.
-    %
-    % For `any' insts replace `pred' with `any_pred'.
-    %
-    % Exported to superhomogeneous.m for parsing lambda expressions.
-    %
-:- pred parse_dcg_pred_expression(term::in, ho_groundness::out,
-    lambda_eval_method::out, list(prog_term)::out, list(mer_mode)::out,
-    determinism::out) is semidet.
-
-    % parse_func_expression/3 converts the first argument of a :-/2
-    % higher-order func expression into a list of arguments, a list
-    % of their corresponding modes, and a determinism. The syntax
-    % of a higher-order func expression is
-    %   `(func(Var1::Mode1, ..., VarN::ModeN) = (VarN1::ModeN1) is Det
-    %       :- Goal)'
-    % or
-    %   `(func(Var1, ..., VarN) = (VarN1) is Det :- Goal)'
-    %       where the modes are assumed to be `in' for the
-    %       function arguments and `out' for the result
-    % or
-    %   `(func(Var1, ..., VarN) = (VarN1) :- Goal)'
-    %       where the modes are assumed as above, and the
-    %       determinism is assumed to be det
-    % or
-    %   `(func(Var1, ..., VarN) = (VarN1)). '
-    %
-    % For `any' insts replace `func' with `any_func'.
-    %
-    % Exported to superhomogeneous.m for parsing lambda expressions.
-    %
-:- pred parse_func_expression(term::in, ho_groundness::out,
-    lambda_eval_method::out, list(prog_term)::out, list(mer_mode)::out,
-    determinism::out) is semidet.
-
     % apply_purity_marker_to_maybe_goal(GoalTerm, Purity,
     %   MaybeGoal0, MaybeGoal):
     %
@@ -124,11 +73,9 @@
 :- implementation.
 
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_vars.
-:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
@@ -2457,134 +2404,6 @@ parse_atomic_subgoals_as_list(Term, MaybeGoals, !VarSet) :-
             MaybeGoals = error1(Specs)
         )
     ).
-
-%---------------------------------------------------------------------------%
-
-:- pred parse_lambda_arg(term::in, prog_term::out, mer_mode::out) is semidet.
-
-parse_lambda_arg(Term, ArgTerm, Mode) :-
-    Term = term.functor(term.atom("::"), [ArgTerm0, ModeTerm], _),
-    term.coerce(ArgTerm0, ArgTerm),
-    convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
-    constrain_inst_vars_in_mode(Mode0, Mode).
-
-%---------------------------------------------------------------------------%
-%
-% Code for parsing pred/func expressions.
-%
-
-parse_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes, Det) :-
-    PredTerm = term.functor(term.atom("is"), [PredArgsTerm, DetTerm], _),
-    DetTerm = term.functor(term.atom(DetString), [], _),
-    standard_det(DetString, Det),
-    PredArgsTerm = term.functor(term.atom(Name), PredArgsList, _),
-    (
-        Name = "pred",
-        Groundness = ho_ground
-    ;
-        Name = "any_pred",
-        Groundness = ho_any
-    ),
-    parse_pred_expr_args(PredArgsList, Args, Modes),
-    inst_var_constraints_are_self_consistent_in_modes(Modes).
-
-parse_dcg_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes,
-        Det) :-
-    PredTerm = term.functor(term.atom("is"), [PredArgsTerm, DetTerm], _),
-    DetTerm = term.functor(term.atom(DetString), [], _),
-    standard_det(DetString, Det),
-    PredArgsTerm = term.functor(term.atom(Name), PredArgsList, _),
-    (
-        Name = "pred",
-        Groundness = ho_ground
-    ;
-        Name = "any_pred",
-        Groundness = ho_any
-    ),
-    parse_dcg_pred_expr_args(PredArgsList, Args, Modes),
-    inst_var_constraints_are_self_consistent_in_modes(Modes).
-
-parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
-    % Parse a func expression with specified modes and determinism.
-    FuncTerm = term.functor(term.atom("is"), [EqTerm, DetTerm], _),
-    EqTerm = term.functor(term.atom("="), [FuncArgsTerm, RetTerm], _),
-    DetTerm = term.functor(term.atom(DetString), [], _),
-    standard_det(DetString, Det),
-    FuncArgsTerm = term.functor(term.atom(Name), FuncArgsList, _),
-    (
-        Name = "func",
-        Groundness = ho_ground
-    ;
-        Name = "any_func",
-        Groundness = ho_any
-    ),
-
-    ( if parse_pred_expr_args(FuncArgsList, Args0, Modes0) then
-        parse_lambda_arg(RetTerm, RetArg, RetMode),
-        Args = Args0 ++ [RetArg],
-        Modes = Modes0 ++ [RetMode],
-        inst_var_constraints_are_self_consistent_in_modes(Modes)
-    else
-        % The argument modes default to `in',
-        % the return mode defaults to `out'.
-        in_mode(InMode),
-        out_mode(OutMode),
-        list.length(FuncArgsList, NumArgs),
-        list.duplicate(NumArgs, InMode, InModes),
-        Modes = InModes ++ [OutMode],
-        Args1 = FuncArgsList ++ [RetTerm],
-        list.map(term.coerce, Args1, Args)
-    ).
-
-parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
-    % Parse a func expression with unspecified modes and determinism.
-    FuncTerm = term.functor(term.atom("="), [FuncArgsTerm, RetTerm], _),
-    FuncArgsTerm = term.functor(term.atom(Name), Args0, _),
-    (
-        Name = "func",
-        Groundness = ho_ground
-    ;
-        Name = "any_func",
-        Groundness = ho_any
-    ),
-
-    % The argument modes default to `in', the return mode defaults to `out',
-    % and the determinism defaults to `det'.
-    in_mode(InMode),
-    out_mode(OutMode),
-    list.length(Args0, NumArgs),
-    list.duplicate(NumArgs, InMode, InModes),
-    Det = detism_det,
-    Modes = InModes ++ [OutMode],
-    inst_var_constraints_are_self_consistent_in_modes(Modes),
-    Args1 = Args0 ++ [RetTerm],
-    list.map(term.coerce, Args1, Args).
-
-:- pred parse_pred_expr_args(list(term)::in, list(prog_term)::out,
-    list(mer_mode)::out) is semidet.
-
-parse_pred_expr_args([], [], []).
-parse_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
-    parse_lambda_arg(Term, Arg, Mode),
-    parse_pred_expr_args(Terms, Args, Modes).
-
-    % parse_dcg_pred_expr_args is like parse_pred_expr_args except
-    % that the last two elements of the list are the modes of the
-    % two DCG arguments.
-    %
-:- pred parse_dcg_pred_expr_args(list(term)::in, list(prog_term)::out,
-    list(mer_mode)::out) is semidet.
-
-parse_dcg_pred_expr_args([DCGModeTermA, DCGModeTermB], [],
-        [DCGModeA, DCGModeB]) :-
-    convert_mode(allow_constrained_inst_var, DCGModeTermA, DCGModeA0),
-    convert_mode(allow_constrained_inst_var, DCGModeTermB, DCGModeB0),
-    constrain_inst_vars_in_mode(DCGModeA0, DCGModeA),
-    constrain_inst_vars_in_mode(DCGModeB0, DCGModeB).
-parse_dcg_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
-    Terms = [_, _ | _],
-    parse_lambda_arg(Term, Arg, Mode),
-    parse_dcg_pred_expr_args(Terms, Args, Modes).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_goal.
