@@ -372,10 +372,40 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
-        ( if Reason0 = from_ground_term(_, from_ground_term_construct) then
+        ( if
+            Reason0 = from_ground_term(_, from_ground_term_construct)
+        then
             % There are no deconstructions at all inside these scopes.
             GoalExpr = GoalExpr0,
             Redo = no
+        else if
+            Reason0 = require_switch_arms_detism(_, _),
+            SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo0),
+            SubGoalExpr0 = switch(SwitchVar, CanFail, Cases0)
+        then
+            % If we find some common subexpressions in Cases0 and pull them
+            % out of the switch, then the updated subgoal of the scope
+            % will be a *conjunction* of the pulled-out subexpressions
+            % and the modified switch. Simply checking that each arm of the
+            % modified switch has the required determinism is not enough,
+            % because it is possible for the determinism of an arm to differ
+            % between the original and the modified switch. For example,
+            % an original arm could consist of a semidet unification and
+            % some det code; pulling the semidet unification out of the arm
+            % would transform a switch arm from one for which we want to
+            % generate an error and do, to one for which we want to generate
+            % an error but don't.
+            %
+            % We could in theory fix this by modifying the code that checks
+            % require_switch_arms_detism scopes to take into account
+            % the possibility that we modified the switch, but it is simpler
+            % not to modify such the arms of such switches at all.
+            % Since require_switch_arms_detism scopes are rare, the impact
+            % should be negligible in terms of both code size and speed.
+            detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0, Redo),
+            SubGoalExpr = switch(SwitchVar, CanFail, Cases),
+            SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo0),
+            GoalExpr = scope(Reason0, SubGoal)
         else
             detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
             ( if
@@ -515,9 +545,10 @@ detect_cse_in_independent_goals([Goal0 | Goals0], [Goal | Goals], !CseInfo,
     list(case)::in, hlds_goal_info::in, instmap::in,
     cse_info::in, cse_info::out, bool::out, hlds_goal_expr::out) is det.
 
-detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo, InstMap0,
-        !CseInfo, Redo, switch(SwitchVar, CanFail, Cases)) :-
-    detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0, Redo).
+detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo,
+        InstMap0, !CseInfo, Redo, GoalExpr) :-
+    detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0, Redo),
+    GoalExpr = switch(SwitchVar, CanFail, Cases).
 detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
         InstMap0, !CseInfo, Redo, GoalExpr) :-
     ( if

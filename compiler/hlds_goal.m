@@ -2487,10 +2487,10 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
         rename_vars_in_goals(Must, Subn, Goals0, Goals),
         Expr = disj(Goals)
     ;
-        Expr0 = switch(Var0, Det, Cases0),
+        Expr0 = switch(Var0, CanFail, Cases0),
         rename_var(Must, Subn, Var0, Var),
         rename_vars_in_cases(Must, Subn, Cases0, Cases),
-        Expr = switch(Var, Det, Cases)
+        Expr = switch(Var, CanFail, Cases)
     ;
         Expr0 = if_then_else(Vars0, Cond0, Then0, Else0),
         rename_var_list(Must, Subn, Vars0, Vars),
@@ -2723,10 +2723,10 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
         incremental_rename_vars_in_goals(Subn, SubnUpdates, Goals0, Goals),
         Expr = disj(Goals)
     ;
-        Expr0 = switch(Var0, Det, Cases0),
+        Expr0 = switch(Var0, CanFail, Cases0),
         rename_var(need_not_rename, Subn, Var0, Var),
         incremental_rename_vars_in_cases(Subn, SubnUpdates, Cases0, Cases),
-        Expr = switch(Var, Det, Cases)
+        Expr = switch(Var, CanFail, Cases)
     ;
         Expr0 = if_then_else(Vars0, Cond0, Then0, Else0),
         rename_var_list(need_not_rename, Subn, Vars0, Vars),

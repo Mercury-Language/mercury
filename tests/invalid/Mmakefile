@@ -225,6 +225,7 @@ SINGLEMODULE= \
 	repeated_instance_vars_unsat \
 	require_det_in_lambda \
 	require_scopes \
+	require_switch_arms_detism \
 	require_tailrec_1 \
 	require_tailrec_2 \
 	require_tailrec_invalid \
