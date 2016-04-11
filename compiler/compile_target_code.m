@@ -761,6 +761,11 @@ gather_grade_defines(Globals, GradeDefines) :-
     globals.lookup_bool_option(Globals, low_level_debug, LL_Debug),
     (
         LL_Debug = yes,
+        % This is grade option tells the C compiler to turn on the generation
+        % of debugging symbols and to disable the optimizations that
+        % would make the executable harder to debug in a C debugger
+        % such as gdb. However, here we gather only *macro* definitions,
+        % not general compiler flags.
         LL_DebugOpt = "-DMR_LL_DEBUG "
     ;
         LL_Debug = no,

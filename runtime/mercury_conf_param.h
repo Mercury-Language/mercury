@@ -310,9 +310,8 @@
 ** Currently used only by own stack minimal model tabling.
 **
 ** MR_LOWLEVEL_DEBUG
-** Enables various low-level debugging stuff,
-** that was in the distant past used to debug
-** the low-level code generation.
+** Enables various low-level debugging stuff that was in the distant past
+** used to debug the low-level code generation.
 ** Causes the generated code to become VERY big and VERY inefficient.
 ** Slows down compilation a LOT.
 **
@@ -321,13 +320,11 @@
 **
 ** MR_DEEP_PROFILING_DEBUG
 ** Enables the debugging of the code that writes out deep profiling data
-** files by also printing out the same information in a human readable
-** form.
+** files by also printing out the same information in a human readable form.
 **
 ** MR_DEEP_PROFILING_DETAIL_DEBUG
 ** Enables the debugging of the code that writes out the atomic components
-** (integers, strings, pointers, etc) of the deep profiling data
-** structures.
+** (integers, strings, pointers, etc) of the deep profiling data structures.
 **
 ** MR_DEEP_PROFILING_LOG
 ** Enables the code that writes out a log of the actions of the deep
@@ -362,8 +359,7 @@
 ** during accurate garbage collection.
 **
 ** MR_DEBUG_AGC_PRINT_VARS
-** Display the values of live variables during accurate garbage
-** collection.
+** Display the values of live variables during accurate garbage collection.
 **
 ** MR_DEBUG_AGC_SMALL_HEAP
 ** Use a small heap (52k) to trigger garbage collection more often.
@@ -588,19 +584,6 @@
 ** profiling paper). For implementors only.
 */
 
-#ifdef MR_HIGHLEVEL_CODE
-  /*
-  ** Neither deep profiling nor term size profiling are supported on the
-  ** high level C backend (yet).
-  */
-  #ifdef MR_DEEP_PROFILING
-     #error "MR_HIGHLEVEL_CODE and MR_DEEP_PROFILING both defined"
-  #endif
-  #ifdef MR_RECORD_TERM_SIZES
-     #error "MR_HIGHLEVEL_CODE and MR_RECORD_TERM_SIZES both defined"
-  #endif
-#endif
-
 /*
 ** Experimental options:
 **
@@ -666,22 +649,6 @@
 #endif
 
 /*
-** Neither form of the minimal model tabling works if the system recovers
-** memory allocated after a choice point when backtracking to that choice
-** point. This rules out the use of the native Mercury collector, as well as
-** the absence of a collector. (This may change for the own stack model,
-** with more work.)
-*/
-
-#if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) && !defined(MR_CONSERVATIVE_GC)
-  #error "MR_USE_MINIMAL_MODEL_OWN_STACKS requires MR_CONSERVATIVE_GC"
-#endif
-
-#if defined(MR_USE_MINIMAL_MODEL_OWN_STACKS) && !defined(MR_CONSERVATIVE_GC)
-  #error "MR_USE_MINIMAL_MODEL_OWN_STACKS requires MR_CONSERVATIVE_GC"
-#endif
-
-/*
 ** If the execution engine uses multiple contexts, we want separate event
 ** counters, call counters and depth counters in each context. Currently,
 ** we use multiple contexts only in parallel grades, for which the debugger
@@ -705,17 +672,11 @@
 /*
 ** MR_PREGENERATED_DIST overrides configured values to take values compatible
 ** with pre-generated C files in the source distribution.
-** It implies boxed floats so is incompatible with single-precision floats,
-** which imply unboxed floats.
 */
 #ifdef MR_PREGENERATED_DIST
   #undef  MR_LOW_TAG_BITS
-  #define MR_LOW_TAG_BITS 2
-  #ifdef MR_USE_SINGLE_PREC_FLOAT
-    #error "MR_PREGENERATED_DIST and MR_USE_SINGLE_PREC_FLOAT both defined"
-  #else
-    #define MR_BOXED_FLOAT 1
-  #endif
+  #define MR_LOW_TAG_BITS  2
+  #define MR_BOXED_FLOAT   1
 #endif
 
 /*
@@ -872,7 +833,7 @@
 /*
 ** MR_RECLAIM_HP_ON_FAILURE should be set if C code in the current translation
 ** unit should reclaim heap on failure of a subgoal. Note that this only
-**affects heap reclamation in C code, not in Mercury code; heap reclamation
+** affects heap reclamation in C code, not in Mercury code; heap reclamation
 ** in Mercury code is determined by mmc options (e.g.
 ** `--reclaim-hp-on-semidet-failure') which affect the generated C code.
 **
@@ -928,14 +889,6 @@
 #endif
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
   #define MR_LL_PARALLEL_CONJ
-#endif
-
-/*
-** Check that MR_THREADSCOPE is used correctly.
-*/
-#if defined(MR_THREADSCOPE) && !defined(MR_THREAD_SAFE)
-  #error "The threadscope grade component may only be used with " \
-    "parallel grades"
 #endif
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT

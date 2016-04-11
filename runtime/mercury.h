@@ -21,7 +21,7 @@
 
 /*---------------------------------------------------------------------------*/
 /*
-** Header files to include
+** Header files to include.
 */
 
 #include "mercury_conf.h"
@@ -77,7 +77,7 @@
 
 /*---------------------------------------------------------------------------*/
 /*
-** Type definitions
+** Type definitions.
 */
 
 /*
@@ -99,10 +99,9 @@
 /*
 ** The chain of stack frames, used for accurate GC.
 **
-** Any changes to this struct may require changes to
-** compiler/ml_elim_nested.m, which generates structs
-** that whose initial members have to match the layout here,
-** and which assumes that the `prev' is at offset zero.
+** Any changes to this struct may require changes to compiler/ml_elim_nested.m,
+** which generates structs that whose initial members have to match the layout
+** here, and which assumes that the `prev' is at offset zero.
 */
 struct MR_StackChain {
     struct MR_StackChain *prev;
@@ -111,24 +110,27 @@ struct MR_StackChain {
 
 /*---------------------------------------------------------------------------*/
 /*
-** Declarations of constants and variables
+** Declarations of constants and variables.
 */
 
 #ifdef MR_NATIVE_GC
   /*
   ** This points to the start of the MR_StackChain frame list.
+  **
   ** XXX Using a global variable for this is not thread-safe.
-  **     We should probably use a GNU C global register variable.
+  ** We could use a GNU C global register variable to hold it instead,
+  ** but we don't have enough of those on x86s to allow us to spare one
+  ** for this purpose.
   */
   #ifdef MR_THREAD_SAFE
-    #error "Sorry, not supported: --high-level-code --gc accurate --thread-safe"
+    #error "Sorry, not supported: --gc accurate --thread-safe"
   #endif
   extern void *mercury__private_builtin__stack_chain;
 #endif
 
 /*
-** Declare the TypeCtorInfos of the library types that are not already
-** declared in mercury_builtin_types.h
+** Declare the TypeCtorInfos of the library types that are not already declared
+** in mercury_builtin_types.h
 */
 
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
@@ -137,24 +139,24 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
     mercury__univ__univ__type_ctor_info_univ_0);
 
 /*
-** When generating code which passes an io__state or a store__store
-** to a polymorphic procedure, or which does a higher-order call
-** that passes one of these, then we need to generate a reference to
-** a dummy variable.  We use this variable for that purpose.
+** When generating code which passes an io.state or a store.store to a
+** polymorphic procedure, or which does a higher-order call that passes
+** one of these, then we need to generate a reference to a dummy variable.
+** We use this variable for that purpose.
 */
 extern  MR_Word mercury__private_builtin__dummy_var;
 
 /*---------------------------------------------------------------------------*/
 /*
-** Macro / inline function definitions
+** Macros and inline function definitions.
 */
 
 /*
 ** These macros expand to the either the standard setjmp()/longjmp()
 ** or to the GNU __builtin_setjmp() and __builtin_longjmp().
 ** The GNU versions are the same as the standard versions,
-** except that they are more efficient, and that they have two
-** restrictions:
+** except that they are more efficient, and that they have two restrictions:
+**
 **  1.  The second argument to __builtin_longjmp() must always be `1'.
 **  2.  The call to __builtin_longjmp() must not be in the same
 **      function as the call to __builtin_setjmp().
@@ -181,9 +183,8 @@ extern  MR_Word mercury__private_builtin__dummy_var;
       #error "MR_INLINE_ALLOC requires GNU C"
     #endif
     /*
-    ** This must be a macro, not an inline function, because
-    ** GNU C's `__builtin_constant_p' does not work inside
-    ** inline functions
+    ** This must be a macro, not an inline function, because GNU C's
+    ** `__builtin_constant_p' does not work inside inline functions.
     */
     #define MR_GC_MALLOC_INLINE(bytes) \
         ( __extension__ __builtin_constant_p(bytes) &&                      \
@@ -209,9 +210,9 @@ extern  MR_Word mercury__private_builtin__dummy_var;
     ** GC_MALLOC_WORDS_ATOMIC, we can define MR_new_object_atomic here
     ** to call either MR_GC_MALLOC_ATOMIC or MR_GC_MALLOC_INLINE,
     ** depending on whether we value atomicity or inline expansion more. 
-    ** XXX the above is out-of-date: Bohem GC does now provide
+    ** XXX The above is out-of-date: Boehm GC does now provide
     ** GC_MALLOC_ATOMIC_WORDS.
-    ** XXX we don't provide MR_GC_MALLOC_ATOMIC.
+    ** XXX We don't provide MR_GC_MALLOC_ATOMIC.
     */
     #define MR_new_object_atomic(type, size, alloc_id, name) \
         ((type *) GC_MALLOC_ATOMIC(size))
