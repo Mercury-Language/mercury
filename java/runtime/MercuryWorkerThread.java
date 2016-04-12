@@ -35,45 +35,47 @@ public class MercuryWorkerThread extends MercuryThread
     {
         Task task;
 
-        do {
-            task = null;
-            try {
-                if (status != ThreadStatus.IDLE) {
-                    setStatus(ThreadStatus.IDLE);
-                }
-                task = pool.workerGetTask();
-            }
-            catch (InterruptedException e) {
-                /*
-                ** A worker thread has no semantics for this, so we continue
-                ** looping.
-                */
-                continue;
-            }
-            if (task != null) {
+        try {
+            do {
+                task = null;
                 try {
-                    setStatus(ThreadStatus.WORKING);
-                    task.run();
-                    pool.taskDone(task);
-                } catch (jmercury.runtime.Exception e) {
-                    // The task threw a Mercury exception.
-                    pool.taskFailed(task, e);
-                    JavaInternal.reportUncaughtException(e);
-                    // Make the thread exit after throwing an exception.
-                    break;
-                } catch (Throwable e) {
-                    // Some other error occured. bail out.
-                    System.err.println("Uncaught exception: " + e.toString());
-                    System.err.println(e.getMessage());
-                    e.printStackTrace();
-                    System.exit(1);
-                } finally {
-                    setStatus(ThreadStatus.OTHER);
+                    if (status != ThreadStatus.IDLE) {
+                        setStatus(ThreadStatus.IDLE);
+                    }
+                    task = pool.workerGetTask();
                 }
-            }
-        } while (task != null);
-
-        pool.threadShutdown(this, status);
+                catch (InterruptedException e) {
+                    /*
+                    ** A worker thread has no semantics for this, so we continue
+                    ** looping.
+                    */
+                    continue;
+                }
+                if (task != null) {
+                    try {
+                        setStatus(ThreadStatus.WORKING);
+                        task.run();
+                        pool.taskDone(task);
+                    } catch (jmercury.runtime.Exception e) {
+                        // The task threw a Mercury exception.
+                        pool.taskFailed(task, e);
+                        JavaInternal.reportUncaughtException(e);
+                        // Make the thread exit after throwing an exception.
+                        break;
+                    } catch (Throwable e) {
+                        // Some other error occured. bail out.
+                        System.err.println("Uncaught exception: " + e.toString());
+                        System.err.println(e.getMessage());
+                        e.printStackTrace();
+                        System.exit(1);
+                    } finally {
+                        setStatus(ThreadStatus.OTHER);
+                    }
+                }
+            } while (task != null);
+        } finally {
+            pool.threadShutdown(this, status);
+        }
     }
 
     protected void setStatus(ThreadStatus new_status) {
