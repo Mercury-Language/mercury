@@ -1309,11 +1309,77 @@
 
     % make_temp(Name, !IO) creates an empty file whose name is different
     % to the name of any existing file. Name is bound to the name of the file.
-    % It is the responsibility of the program to delete the file when it is
-    % no longer needed.
+    % It is the responsibility of the caller to delete the file when it
+    % is no longer required.
     %
-    % The file will reside in an implementation-dependent directory.
-    % For current Mercury implementations, it is determined as follows:
+    % The file is placed in the directory returned by get_temp_directory/3.
+    %
+    % On the Erlang backend, this does not attempt to create the file with
+    % restrictive permissions (600 on Unix-like systems) and therefore should
+    % not be used when security is required.
+    %
+:- pred make_temp(string::out, io::di, io::uo) is det.
+
+    % make_temp(Dir, Prefix, Name, !IO) creates an empty file whose
+    % name is different to the name of any existing file. The file will reside
+    % in the directory specified by Dir and will have a prefix using up to
+    % the first 5 characters of Prefix. Name is bound to the name of the
+    % file.  It is the responsibility of the caller to delete the file when it
+    % is no longer required.
+    %
+    % The C# backend has the following limitations:
+    %   - Dir is ignored.
+    %   - Prefix is ignored.
+    %
+    % On the Erlang backend, this does not attempt to create the file with
+    % restrictive permissions (600 on Unix-like systems) and therefore should
+    % not be used when security is required.
+    %
+:- pred make_temp(string::in, string::in, string::out, io::di, io::uo)
+    is det.
+
+    % make_temp_directory(DirName, !IO) creates an empty directory whose name
+    % is different from the name of any existing directory.
+    %
+    % On the C# backend this is insecure as the file permissions are not set
+    % and this call does not test for an existing directory.
+    %
+    % This is unimplemented on the Erlang backend.
+    %
+:- pred make_temp_directory(string::out, io::di, io::uo) is det.
+
+    % make_temp_directory(Dir, Prefix, DirName, !IO) creates an empty directory
+    % whose name is different from the name of any existing directory.  The new
+    % directory will reside in the existing directory specified by `Dir' and
+    % will have a prefix using up to the first 5 characters of `Prefix'.
+    % DirName is bound to the name of the new directory. It is the
+    % responsibility of the program to delete the directory when it is no
+    % longer needed.
+    %
+    % The C# backend has the following limitations:
+    %   - It does not attempt to create the file with restrictive permissions
+    %     (600 on Unix-like systems) and therefore should not be used when
+    %     security is required.
+    %   - Prefix is ignored.
+    %
+    % This is unimplemented on the Erlang backend.
+    %
+:- pred make_temp_directory(string::in, string::in, string::out,
+    io::di, io::uo) is det.
+
+    % Test if the make_temp_directory predicates are available.  This is false
+    % for the Erlang backends and either C backend without support for
+    % mkdtemp(3).
+    %
+:- pred have_make_temp_directory is semidet.
+
+    % get_temp_directory(DirName, !IO)
+    %
+    % DirName is the name of a directory where applications should put
+    % temporary files.
+    %
+    % This is implementation-dependent.  For current Mercury implementations,
+    % it is determined as follows:
     % 1. For the non-Java back-ends:
     %    - On Microsoft Windows systems, the file will reside in
     %      the current directory if the TMP environment variable
@@ -1327,17 +1393,7 @@
     %    value of this property is typically "/tmp" or "/var/tmp";
     %    on Microsoft Windows systems it is typically "c:\\temp".
     %
-:- pred make_temp(string::out, io::di, io::uo) is det.
-
-    % make_temp(Dir, Prefix, Name, !IO) creates an empty file whose
-    % name is different to the name of any existing file. The file will reside
-    % in the directory specified by `Dir' and will have a prefix using up to
-    % the first 5 characters of `Prefix'. Name is bound to the name of the
-    % file. It is the responsibility of the program to delete the file
-    % when it is no longer needed.
-    %
-:- pred make_temp(string::in, string::in, string::out, io::di, io::uo)
-    is det.
+:- pred get_temp_directory(string::out, io::di, io::uo) is det.
 
     % remove_file(FileName, Result, !IO) attempts to remove the file
     % `FileName', binding Result to ok/0 if it succeeds, or error/1 if it
@@ -1805,6 +1861,10 @@
         MercuryLock ML_io_user_globals_lock;
         MercuryLock ML_io_next_stream_id_lock;
     #endif
+").
+
+:- pragma foreign_decl("C#", "
+using System.IO;
 ").
 
 :- pragma foreign_code("C#", "
@@ -3770,7 +3830,7 @@ check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
             // isn't read-only doesn't mean we have permission to write to it.
             // The only way to test whether a directory is writable is to
             // write a file to it. The ideal way to do that would be
-            // io.make_temp, but currently the .NET backend version of that
+            // io.make_temp, but currently the C# backend version of that
             // ignores the directory passed to it.
             System.IO.FileAttributes attrs =
                 System.IO.File.GetAttributes(FileName);
@@ -10310,36 +10370,38 @@ io.setenv(Var, Value) :-
 
 %---------------------------------------------------------------------------%
 
-    % We need to do an explicit check of TMPDIR because not all
-    % systems check TMPDIR for us (eg Linux #$%*@&).
-io.make_temp(Name, !IO) :-
-    Var = ( if dir.use_windows_paths then "TMP" else "TMPDIR" ),
-    io.get_environment_var(Var, Result, !IO),
-    (
-        Result = yes(Dir)
-    ;
-        Result = no,
-        ( if dir.use_windows_paths then
-            Dir = dir.this_directory
-        else
-            Dir = "/tmp"
-        )
-    ),
-    io.make_temp(Dir, "mtmp", Name, !IO).
+make_temp(Name, !IO) :-
+    get_temp_directory(Dir, !IO),
+    make_temp(Dir, "mtmp", Name, !IO).
 
-io.make_temp(Dir, Prefix, Name, !IO) :-
-    io.do_make_temp(Dir, Prefix, char_to_string(dir.directory_separator),
-        Name, Err, Message, !IO),
-    ( if Err = 0 then
-        true
-    else
+make_temp(Dir, Prefix, Name, !IO) :-
+    do_make_temp(Dir, Prefix, char_to_string(dir.directory_separator),
+        Name, Okay, Message, !IO),
+    (
+        Okay = yes
+    ;
+        Okay = no,
         throw_io_error(Message)
     ).
 
-%---------------------------------------------------------------------------%
+make_temp_directory(DirName, !IO) :-
+    get_temp_directory(Dir, !IO),
+    make_temp_directory(Dir, "mtmp", DirName, !IO).
 
-:- pred io.do_make_temp(string::in, string::in, string::in,
-    string::out, int::out, string::out, io::di, io::uo) is det.
+make_temp_directory(Dir, Prefix, DirName, !IO) :-
+    do_make_temp_directory(Dir, Prefix,
+        char_to_string(dir.directory_separator), DirName, Okay, Message, !IO),
+    (
+        Okay = yes
+    ;
+        Okay = no,
+        throw_io_error(Message)
+    ).
+
+%-----------------------------------------------------------------------%
+
+:- pred do_make_temp(string::in, string::in, string::in,
+    string::out, bool::out, string::out, io::di, io::uo) is det.
 
 % XXX The code for io.make_temp assumes POSIX. It uses the functions open(),
 % close(), and getpid() and the macros EEXIST, O_WRONLY, O_CREAT, and O_EXCL.
@@ -10364,8 +10426,8 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.do_make_temp(Dir::in, Prefix::in, Sep::in, FileName::out,
-        Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
+    do_make_temp(Dir::in, Prefix::in, Sep::in, FileName::out,
+        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
@@ -10379,7 +10441,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         ML_maybe_make_err_msg(MR_TRUE, errno,
             ""error opening temporary file: "", MR_ALLOC_ID,
             ErrorMessage);
-        Error = -1;
+        Okay = MR_NO;
     } else {
         do {
             err = close(fd);
@@ -10387,7 +10449,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         ML_maybe_make_err_msg(err, errno,
             ""error closing temporary file: "", MR_ALLOC_ID,
             ErrorMessage);
-        Error = err;
+        Okay = err == 0 ? MR_YES : MR_NO;
     }
 #else
     /*
@@ -10436,7 +10498,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         ML_maybe_make_err_msg(MR_TRUE, errno,
             ""error opening temporary file: "", MR_ALLOC_ID,
             ErrorMessage);
-        Error = -1;
+        Okay = MR_NO;
     }  else {
         do {
             err = close(fd);
@@ -10444,84 +10506,71 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         ML_maybe_make_err_msg(err, errno,
             ""error closing temporary file: "", MR_ALLOC_ID,
             ErrorMessage);
-        Error = err;
+        Okay = err == 0 ? MR_YES : MR_NO;
     }
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-    io.do_make_temp(_Dir::in, _Prefix::in, _Sep::in, FileName::out,
-        Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
+    do_make_temp(_Dir::in, _Prefix::in, _Sep::in, FileName::out,
+        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
     try {
         FileName = System.IO.Path.GetTempFileName();
-        Error = 0;
+        Okay = mr_bool.YES;
         ErrorMessage = """";
     }
     catch (System.Exception e)
     {
         FileName = """";
-        Error = -1;
+        Okay = mr_bool.NO;
         ErrorMessage = e.Message;
     }
 }").
+
+:- pragma foreign_decl("Java", local,
+"
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
+").
+
 
 % For the Java implementation, io.make_temp/3 is overwritten directly,
 % since Java is capable of locating the default temp directory itself.
 
 :- pragma foreign_proc("Java",
-    io.do_make_temp(_Dir::in, _Prefix::in, _Sep::in, _FileName::out,
-        _Error::out, _ErrorMessage::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    // this function should never be called.
-
-    throw new RuntimeException(""io.do_make_temp not implemented"");
-").
-
-:- pragma foreign_proc("Java",
-    io.make_temp(FileName::out, _IO0::di, _IO::uo),
+    do_make_temp(Dir::in, Prefix::in, _Sep::in, FileName::out,
+        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
     try {
-        java.io.File tmpdir = new java.io.File(
-            java.lang.System.getProperty(""java.io.tmpdir""));
-        FileName = java.io.File.createTempFile(""mtmp"", null, tmpdir).
-            getName();
-    } catch (java.lang.Exception e) {
-        io.ML_throw_io_error(e.getMessage());
-        FileName = null;
-    }
-").
+        Path dir_path, new_file;
 
-:- pragma foreign_proc("Java",
-    io.make_temp(Dir::in, Prefix::in, FileName::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    try {
-        if (Prefix.length() < 3) {
-            // File.createTempFile() requires a Prefix which is
-            // at least 3 characters long.
-            Prefix = Prefix + ""tmp"";
-        } else if (Prefix.length() > 5) {
+        if (Prefix.length() > 5) {
             // The documentation for io.make_temp says that we should only use
             // the first five characters of Prefix.
             Prefix = Prefix.substring(0, 5);
         }
-        FileName = java.io.File.createTempFile(Prefix, null,
-            new java.io.File(Dir)).getName();
+        dir_path = Paths.get(Dir);
+        new_file = Files.createTempFile(dir_path, Prefix, null);
+        FileName = new_file.toAbsolutePath().toString();
+        Okay = bool.YES;
+        ErrorMessage = """";
     } catch (java.lang.Exception e) {
-        io.ML_throw_io_error(e.getMessage());
-        FileName = null;
+        FileName = """";
+        Okay = bool.NO;
+        ErrorMessage = e.toString();
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.do_make_temp(Dir::in, Prefix::in, Sep::in, FileName::out,
-        Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
+    do_make_temp(Dir::in, Prefix::in, Sep::in, FileName::out,
+        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
@@ -10553,11 +10602,11 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     of
         {ok, FileName0} ->
             FileName = list_to_binary(FileName0),
-            Error = 0,
+            Okay = {yes},
             ErrorMessage = <<>>;
         {error, Reason} ->
             FileName = <<>>,
-            Error = -1,
+            Okay = {no},
             ErrorMessage = list_to_binary(Reason)
     end
 ").
@@ -10590,6 +10639,185 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
                 end
         end.
 ").
+
+%-----------------------------------------------------------------------%
+
+:- pred do_make_temp_directory(string::in, string::in, string::in,
+    string::out, bool::out, string::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_make_temp_directory(Dir::in, Prefix::in, Sep::in, DirName::out,
+        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io,
+        does_not_affect_liveness],
+"
+#ifdef MR_HAVE_MKDTEMP
+    int err;
+
+    DirName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
+        Dir, Sep, Prefix);
+    DirName = mkdtemp(DirName);
+    if (DirName == NULL) {
+        ML_maybe_make_err_msg(MR_TRUE, errno,
+            ""error creating temporary directory: "", MR_ALLOC_ID,
+            ErrorMessage);
+        Okay = MR_NO;
+    } else {
+        ErrorMessage = MR_make_string_const("""");
+        Okay = MR_YES;
+    }
+#else
+    #warning ""Your system does not have mkdtemp""
+    Okay = MR_NO;
+    ErrorMessage =
+        MR_make_string_const(""Your system does not have mkdtemp"");
+    DirName = MR_make_string_const("""");
+#endif /* HAVE_MKDTEMP */
+").
+
+:- pragma foreign_proc("C#",
+    do_make_temp_directory(Dir::in, _Prefix::in, _Sep::in, DirName::out,
+        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+    try {
+        DirName = Path.Combine(Dir, Path.GetRandomFileName());
+        /*
+         * This is not secure:
+         *   1. We cannot set permissions
+         *   2. We cannot atomically test for and create a directory
+         */
+        Directory.CreateDirectory(DirName);
+        Okay = mr_bool.YES;
+        ErrorMessage = """";
+    }
+    catch (System.Exception e)
+    {
+        DirName = """";
+        Okay = mr_bool.NO;
+        ErrorMessage = e.Message;
+    }
+}").
+
+:- pragma foreign_proc("Java",
+    do_make_temp_directory(Dir::in, Prefix::in, _Sep::in, DirName::out,
+        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
+"
+    try {
+        Path dir_path, new_file;
+
+        if (Prefix.length() > 5) {
+            // The documentation for io.make_temp says that we should only use
+            // the first five characters of Prefix.
+            Prefix = Prefix.substring(0, 5);
+        }
+        dir_path = Paths.get(Dir);
+        new_file = Files.createTempDirectory(dir_path, Prefix);
+        DirName = new_file.toAbsolutePath().toString();
+        Okay = bool.YES;
+        ErrorMessage = """";
+    } catch (java.lang.Exception e) {
+        DirName = """";
+        Okay = bool.NO;
+        ErrorMessage = e.toString();
+    }
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    have_make_temp_directory,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+#ifdef MR_HAVE_MKDTEMP
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+
+:- pragma foreign_proc("Java",
+    have_make_temp_directory,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = true;
+").
+
+:- pragma foreign_proc("C#",
+    have_make_temp_directory,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = true;
+").
+
+:- pragma foreign_proc("Erlang",
+    have_make_temp_directory,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = false
+").
+
+%---------------------------------------------------------------------------%
+
+get_temp_directory(Dir, !IO) :-
+    % If using the Java or C# backend then use their API to get the location of
+    % temporary files.
+    system_temp_dir(Dir0, OK, !IO),
+    ( if OK = 1 then
+        Dir = Dir0
+    else
+        % Either this is not a Java or C# grade or the Java or C# backend
+        % couldn't determine the temporary directory.
+        %
+        % We need to do an explicit check of TMPDIR because not all
+        % systems check TMPDIR for us (eg Linux #$%*@&).
+        Var = ( if dir.use_windows_paths then "TMP" else "TMPDIR" ),
+        get_environment_var(Var, Result, !IO),
+        (
+            Result = yes(Dir)
+        ;
+            Result = no,
+            ( if dir.use_windows_paths then
+                Dir = dir.this_directory
+            else
+                Dir = "/tmp"
+            )
+        )
+    ).
+
+:- pred system_temp_dir(string::out, int::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("Java",
+    system_temp_dir(Dir::out, OK::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
+"
+    try {
+        Dir = java.lang.System.getProperty(""java.io.tmpdir"");
+        OK = (Dir != null) ? 1 : 0;
+    } catch (Exception e) {
+        Dir = null;
+        OK = 0;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    system_temp_dir(Dir::out, OK::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
+"
+    try {
+        Dir = System.IO.Path.GetTempPath();
+        OK = (Dir != null) ? 1 : 0;
+    } catch (System.Exception _) {
+        Dir = null;
+        OK = 0;
+    }
+").
+
+system_temp_dir("", 0, !IO).
 
 %---------------------------------------------------------------------------%
 

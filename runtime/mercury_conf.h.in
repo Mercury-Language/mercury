@@ -296,6 +296,7 @@
 **                              we have the pthread_mutexattr_setpshared()
 **                              function.
 **  MR_HAVE_MKSTEMP             we have the mkstemp() function.
+**  MR_HAVE_MKDTEMP             we have the mkdtemp() function.
 **  MR_HAVE_SETRLIMIT           we have the setrlimit() function.
 **  MR_HAVE_ISNAN               we have the isnan() function.
 **  MR_HAVE_ISNANF              we have the isnanf() function.
@@ -345,6 +346,7 @@
 #undef  MR_HAVE_DUP2
 #undef  MR_HAVE_FILENO
 #undef  MR_HAVE_MKSTEMP
+#undef  MR_HAVE_MKDTEMP
 #undef  MR_HAVE_ISATTY
 #undef  MR_HAVE_GRANTPT
 #undef  MR_HAVE_UNLOCKPT

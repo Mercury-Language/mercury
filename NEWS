@@ -126,6 +126,9 @@ Changes to the Mercury standard library:
 * io.print and string_writer.print now print arbitrary precision integers
   in their decimal form instead of printing their underlying representation.
 
+* We have added temp_directory/3, make_temp_directory/3 and
+  make_temp_directory/5 predicates to the io module.
+
 * We have added a module for discrete interval encoding trees, which are a
   highly efficient set implementation for fat sets.  This module is a
   contribution from Yes Logic Pty. Ltd.
