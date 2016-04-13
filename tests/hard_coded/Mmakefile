@@ -463,7 +463,7 @@ else
 	CTGC_PROGS =
 endif
 
-# Programs that deal with large amounts of datas need tail recursion. Don't
+# Programs that deal with large amounts of data need tail recursion. Don't
 # execute them in grades that do not allow tail recursion, since their failures
 # would be spurious.
 
@@ -477,13 +477,14 @@ else
 	BIG_DATA_PROGS =
 endif
 
-# Tests of the Java foreign language interface only
-# work in Java grades
+# Tests of the Java foreign language interface only work in Java grades.
+#
 ifeq "$(filter java%,$(GRADE))" ""
 	JAVA_PROGS =
 else
 	JAVA_PROGS = \
-		java_test
+		java_test \
+		test_java_foreign_primitive
 endif
 
 # Fact tables currently work only in the C grades.

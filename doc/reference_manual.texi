@@ -8495,7 +8495,7 @@ A Java @samp{pragma foreign_type} declaration has the form:
 :- pragma foreign_type("Java", @var{MercuryTypeName}, "@var{JavaType}").
 @end example
 
-The @var{JavaType} can be any accessible non-primitive Java type.
+The @var{JavaType} can be any accessible Java type.
 
 The effect of this declaration is that Mercury values of type
 @var{MercuryTypeName} will be passed to and from Java foreign_procs

@@ -1079,6 +1079,34 @@ ML_new_array(int Size, Object Item, boolean fill)
         }
         return as;
     }
+    if (Item instanceof Byte) {
+        byte[] as = new byte[Size];
+        if (fill) {
+            java.util.Arrays.fill(as, (Byte) Item);
+        }
+        return as;
+    }
+    if (Item instanceof Short) {
+        short[] as = new short[Size];
+        if (fill) {
+            java.util.Arrays.fill(as, (Short) Item);
+        }
+        return as;
+    }
+    if (Item instanceof Long) {
+        long[] as =  new long[Size];
+        if (fill) {
+            java.util.Arrays.fill(as, (Long) Item);
+        }
+        return as;
+    }
+    if (Item instanceof Float) {
+        float[] as = new float[Size];
+        if (fill) {
+            java.util.Arrays.fill(as, (Float) Item);
+        }
+        return as;
+    }
     Object[] as = new Object[Size];
     if (fill) {
         java.util.Arrays.fill(as, Item);
@@ -1109,6 +1137,26 @@ ML_unsafe_new_array(int Size, Object Item, int IndexToSet)
         as[IndexToSet] = (Boolean) Item;
         return as;
     }
+    if (Item instanceof Byte) {
+        byte[] as = new byte[Size];
+        as[IndexToSet] = (Byte) Item;
+        return as;
+    }
+    if (Item instanceof Short) {
+        short[] as = new short[Size];
+        as[IndexToSet] = (Short) Item;
+        return as;
+    }
+    if (Item instanceof Long) {
+        long[] as = new long[Size];
+        as[IndexToSet] = (Long) Item;
+        return as;
+    }
+    if (Item instanceof Float) {
+        float[] as = new float[Size];
+        as[IndexToSet] = (Float) Item;
+        return as;
+    }
     Object[] as = new Object[Size];
     as[IndexToSet] = Item;
     return as;
@@ -1127,6 +1175,14 @@ ML_array_size(Object Array)
         return ((char[]) Array).length;
     } else if (Array instanceof boolean[]) {
         return ((boolean[]) Array).length;
+    } else if (Array instanceof byte[]) {
+        return ((byte[]) Array).length;
+    } else if (Array instanceof short[]) {
+        return ((short[]) Array).length;
+    } else if (Array instanceof long[]) {
+        return ((long[]) Array).length;
+    } else if (Array instanceof float[]) {
+        return ((float[]) Array).length;
     } else {
         return ((Object[]) Array).length;
     }
@@ -1181,6 +1237,46 @@ ML_array_resize(Object Array0, int Size, Object Item)
         System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
         for (int i = arr0.length; i < Size; i++) {
             Array[i] = (Boolean) Item;
+        }
+        return Array;
+    }
+    if (Array0 instanceof byte[]) {
+        byte[] arr0 = (byte[]) Array0;
+        byte[] Array = new byte[Size];
+
+        System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
+        for (int i = arr0.length; i < Size; i++) {
+            Array[i] = (Byte) Item;
+        }
+        return Array;
+    }
+    if (Array0 instanceof short[]) {
+        short[] arr0 = (short[]) Array0;
+        short[] Array = new short[Size];
+
+        System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
+        for (int i = arr0.length; i < Size; i++) {
+            Array[i] = (Short) Item;
+        }
+        return Array;
+    }
+    if (Array0 instanceof long[]) {
+        long[] arr0 = (long[]) Array0;
+        long[] Array = new long[Size];
+
+        System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
+        for (int i = arr0.length; i < Size; i++) {
+            Array[i] = (Long) Item;
+        }
+        return Array;
+    }
+    if (Array0 instanceof float[]) {
+        float[] arr0 = (float[]) Array0;
+        float[] Array = new float[Size];
+
+        System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
+        for (int i = arr0.length; i < Size; i++) {
+            Array[i] = (Float) Item;
         }
         return Array;
     } else {
@@ -1601,6 +1697,14 @@ semidet_lookup(Array, Index, Item) :-
         Item = ((char[]) Array)[Index];
     } else if (Array instanceof boolean[]) {
         Item = ((boolean[]) Array)[Index];
+    } else if (Array instanceof byte[]) {
+        Item = ((byte[]) Array)[Index];
+    } else if (Array instanceof short[]) {
+        Item = ((short[]) Array)[Index];
+    } else if (Array instanceof long[]) {
+        Item = ((long[]) Array)[Index];
+    } else if (Array instanceof float[]) {
+        Item = ((float[]) Array)[Index];
     } else {
         Item = ((Object[]) Array)[Index];
     }
@@ -1667,6 +1771,14 @@ set(Index, Item, !Array) :-
         ((char[]) Array0)[Index] = (Character) Item;
     } else if (Array0 instanceof boolean[]) {
         ((boolean[]) Array0)[Index] = (Boolean) Item;
+    } else if (Array0 instanceof byte[]) {
+        ((byte[]) Array0)[Index] = (Byte) Item;
+    } else if (Array0 instanceof short[]) {
+        ((short[]) Array0)[Index] = (Short) Item;
+    } else if (Array0 instanceof long[]) {
+        ((long[]) Array0)[Index] = (Long) Item;
+    } else if (Array0 instanceof float[]) {
+        ((float[]) Array0)[Index] = (Float) Item;
     } else {
         ((Object[]) Array0)[Index] = Item;
     }

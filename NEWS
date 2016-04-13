@@ -104,6 +104,9 @@ Changes to the Mercury language:
   any of its procedures, or for any of the procedures they call,
   directly or indirectly.
 
+* The Java backend now supports defining foreign types as primitive Java
+  types.
+
 Changes to the Mercury standard library:
 
 * We have added variants of the process_options predicates to the getopt

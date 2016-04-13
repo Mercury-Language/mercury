@@ -2770,10 +2770,19 @@ get_java_type_initializer(Type) = Initializer :-
         Type = mlds_native_bool_type,
         Initializer = "false"
     ;
+        Type = mlds_foreign_type(ForeignLangType),
+        ( if
+            java_primitive_foreign_language_type(ForeignLangType, _, _,
+                _, Initializer0)
+        then
+            Initializer = Initializer0
+        else
+            Initializer = "null"
+        )
+    ;
         ( Type = mlds_mercury_array_type(_)
         ; Type = mlds_cont_type(_)
         ; Type = mlds_commit_type
-        ; Type = mlds_foreign_type(_)
         ; Type = mlds_class_type(_, _, _)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
@@ -4891,9 +4900,8 @@ java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
 java_builtin_type(Type, "boolean", "java.lang.Boolean", "booleanValue") :-
     Type = mlds_native_bool_type.
 
-    % io.state and store.store(S) are dummy variables
-    % for which we pass an arbitrary integer. For this
-    % reason they should have the Java type `int'.
+    % io.state and store.store(S) are dummy variables for which we pass an
+    % arbitrary integer. For this reason they should have the Java type `int'.
     %
 java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     % The test for defined/3 is logically redundant since all dummy
@@ -4901,6 +4909,76 @@ java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     % this disjunction is a switch.
     Type = mercury_type(defined_type(_, _, _), TypeCtorCat, _),
     TypeCtorCat = ctor_cat_builtin_dummy.
+
+    % Handle foreign types that map on to Java's primitive numeric types
+    % specially since we want to avoid boxing them where possible for
+    % performance reasons.
+    %
+java_builtin_type(Type, PrimitiveType, BoxedType, UnboxMethod) :-
+    Type = mlds_foreign_type(ForeignLangType),
+    java_primitive_foreign_language_type(ForeignLangType, PrimitiveType,
+        BoxedType, UnboxMethod, _DefaultValue).
+
+:- pred java_primitive_foreign_language_type(foreign_language_type::in, string::out,
+    string::out, string::out, string::out) is semidet.
+
+java_primitive_foreign_language_type(ForeignLangType, PrimitiveType,
+        BoxedType, UnboxMethod, DefaultValue) :-
+    require_complete_switch [ForeignLangType]
+    (
+        ForeignLangType = java(java_type(JavaForeignType))
+    ;
+        ForeignLangType = c(_),
+        unexpected($file, $pred, "foreign_type for C")
+    ;
+        ForeignLangType = csharp(_),
+        unexpected($file, $pred, "foreign_type for C#")
+    ;
+        ForeignLangType = erlang(_),
+        unexpected($file, $pred, "foreign_type for Erlang")
+    ),
+    PrimitiveType = string.strip(JavaForeignType),
+    (
+        PrimitiveType = "byte",
+        BoxedType = "java.lang.Byte",
+        UnboxMethod = "byteValue",
+        DefaultValue = "0"
+    ;
+        PrimitiveType = "short",
+        BoxedType = "java.lang.Short",
+        UnboxMethod = "shortValue",
+        DefaultValue = "0"
+    ;
+        PrimitiveType = "int",
+        BoxedType = "java.lang.Integer",
+        UnboxMethod = "intValue",
+        DefaultValue = "0"
+    ;
+        PrimitiveType = "long",
+        BoxedType = "java.lang.Long",
+        UnboxMethod = "longValue",
+        DefaultValue = "0"
+    ;
+        PrimitiveType = "float",
+        BoxedType = "java.lang.Float",
+        UnboxMethod = "floatValue",
+        DefaultValue = "0"
+    ;
+        PrimitiveType = "double",
+        BoxedType = "java.lang.Double",
+        UnboxMethod = "doubleValue",
+        DefaultValue = "0"
+    ;
+        PrimitiveType = "boolean",
+        BoxedType = "java.lang.Boolean",
+        UnboxMethod = "booleanValue",
+        DefaultValue = "false"
+    ;
+        PrimitiveType = "char",
+        BoxedType = "java.lang.Character",
+        UnboxMethod = "charValue",
+        DefaultValue = "'\\u0000'"
+    ).
 
 :- pred output_std_unop(java_out_info::in, builtin_ops.unary_op::in,
     mlds_rval::in, io::di, io::uo) is det.
