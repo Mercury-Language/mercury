@@ -26,8 +26,6 @@
         case "$1" in
             c|C)
                 target=c ;;
-            il|IL)
-                target=il ;;
             csharp|'C#')
                 target=csharp ;;
             java|Java)
@@ -40,9 +38,6 @@
                 ;;
         esac
         ;;
-
-    --il|--IL|--il-only|--IL-only)
-        target=il ;;
 
     --csharp|'--C#'|--csharp-only|'--C#-only')
         target=csharp ;;
@@ -274,24 +269,6 @@
         for grade_piece in $grade_pieces
         do
             case "$grade_piece" in
-                il)
-                    target=il
-                    asm_labels=false
-                    non_local_gotos=false
-                    global_regs=false
-                    highlevel_code=true
-                    gcc_nested_functions=false
-                    highlevel_data=true
-                    ;;
-                ilc)
-                    target=il
-                    asm_labels=false
-                    non_local_gotos=false
-                    global_regs=false
-                    highlevel_code=true
-                    gcc_nested_functions=false
-                    highlevel_data=false
-                    ;;
                 csharp)
                     target=csharp
                     asm_labels=false

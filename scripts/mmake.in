@@ -30,10 +30,6 @@ Options:
 	--target c:
 		Compile via C, rather than going directly to assembler.
 		This is the default."
-	# XXX `--target il' is not documented because it is not yet
-	#     supported.
-	#--target il:
-	#	Compile via IL, rather than going via C or assembler.
 Help="$Help
 	--mercury-standard-library-directory <directory>
 	--mercury-stdlib-dir <directory>:
@@ -118,11 +114,6 @@ while [ $# -gt 0 ]; do
 		--target)
 			case "$2" in
 				c)	;;
-				il)	# XXX we should do something
-					# sensible for `--target il'
-					echo "$0: warning: \`--target il'" \
-						"option not supported." 1>&2
-					;;
 				*)	echo "$0: invalid argument to" \
 						"\`--target' option" 1>&2
 					exit 1 ;;
