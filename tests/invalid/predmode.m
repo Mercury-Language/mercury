@@ -7,3 +7,11 @@
 :- interface.
 
 :- pred p(int::in, int).
+
+:- pred q(int::out) is det.
+
+:- implementation.
+
+q(1).
+
+:- pred r(1::2, "bad"::"worse") is det.

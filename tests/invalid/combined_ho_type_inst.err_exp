@@ -1,23 +1,23 @@
-combined_ho_type_inst.m:015: Error: ill-formed type (pred((int :: in), (int ::
-combined_ho_type_inst.m:015:   out)) is det).
-combined_ho_type_inst.m:016: Error: ill-formed type (((func (int :: in)) = (int
-combined_ho_type_inst.m:016:   :: out)) is semidet).
+combined_ho_type_inst.m:015: Error: ill-formed type
+combined_ho_type_inst.m:015:   `(pred((int :: in), (int :: out)) is det)'.
+combined_ho_type_inst.m:016: Error: ill-formed type
+combined_ho_type_inst.m:016:   `(((func (int :: in)) = (int :: out)) is semidet)'.
 combined_ho_type_inst.m:019: In type definition: error: ill-formed type
-combined_ho_type_inst.m:019:   (pred((int :: in), (int :: out)) is det).
-combined_ho_type_inst.m:021: In type definition: error: ill-formed type (((func
-combined_ho_type_inst.m:021:   (int :: in)) = (int :: out)) is semidet).
-combined_ho_type_inst.m:024: In type definition: error: ill-formed type (pred
-combined_ho_type_inst.m:024:   (pred((int :: in), (int :: out)) is det)).
-combined_ho_type_inst.m:026: In type definition: error: ill-formed type ((pred
-combined_ho_type_inst.m:026:   ((pred((int :: in), (int :: out)) is det) ::
-combined_ho_type_inst.m:026:   in)) is semidet).
-combined_ho_type_inst.m:028: In type definition: error: ill-formed type ((func
-combined_ho_type_inst.m:028:   (((func (int :: in)) = (int :: out)) is
-combined_ho_type_inst.m:028:   semidet)) = int).
-combined_ho_type_inst.m:032: In type definition: error: ill-formed type (is)/2.
-combined_ho_type_inst.m:035: Error: syntax error in `:- pred' declaration at
-combined_ho_type_inst.m:035:   bad_sig_p(((pred((int :: in), (int :: out)) is
-combined_ho_type_inst.m:035:   semiet) :: in)).
-combined_ho_type_inst.m:036: Error: syntax error in arguments of `:- func'
-combined_ho_type_inst.m:036:   declaration at bad_sig_f((((func (int :: in)) =
-combined_ho_type_inst.m:036:   (int :: out)) is semidet)).
+combined_ho_type_inst.m:019:   `(pred((int :: in), (int :: out)) is det)'.
+combined_ho_type_inst.m:021: In type definition: error: ill-formed type
+combined_ho_type_inst.m:021:   `(((func (int :: in)) = (int :: out)) is semidet)'.
+combined_ho_type_inst.m:024: In type definition: error: ill-formed type
+combined_ho_type_inst.m:024:   `(pred (pred((int :: in), (int :: out)) is det))'.
+combined_ho_type_inst.m:026: In type definition: error: ill-formed type
+combined_ho_type_inst.m:026:   `((pred ((pred((int :: in), (int :: out)) is det) :: in)) is semidet)'.
+combined_ho_type_inst.m:028: In type definition: error: ill-formed type
+combined_ho_type_inst.m:028:   `((func (((func (int :: in)) = (int :: out)) is semidet)) = int)'.
+combined_ho_type_inst.m:032: In type definition: error: ill-formed type
+combined_ho_type_inst.m:032:   `(is)/2'.
+combined_ho_type_inst.m:035: In `:- pred' declaration: in the first argument:
+combined_ho_type_inst.m:035:   error: ill-formed type
+combined_ho_type_inst.m:035:   `(pred((int :: in), (int :: out)) is semiet)'.
+combined_ho_type_inst.m:036: In `:- func' declaration:
+combined_ho_type_inst.m:036:   in the first argument:
+combined_ho_type_inst.m:036:   error: ill-formed type
+combined_ho_type_inst.m:036:   `(((func (int :: in)) = (int :: out)) is semidet)'.

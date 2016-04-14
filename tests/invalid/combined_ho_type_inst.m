@@ -28,9 +28,9 @@
     --->    bad_arg_f(func((func(int::in) = (int::out) is semidet)) = int).
 :- type bad_arg_f2
     --->    bad_arg_f2(
-        func((func(int::in) = (int::out) is semidet)::in)
-            = (int::out) is semidet
-    ).
+                func((func(int::in) = (int::out) is semidet)::in)
+                    = (int::out) is semidet
+            ).
 
 :- pred bad_sig_p((pred(int::in, int::out) is semiet)::in) is semidet.
 :- func bad_sig_f(func(int::in) = (int::out) is semidet) = int.

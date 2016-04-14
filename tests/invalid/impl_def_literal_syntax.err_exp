@@ -1,13 +1,13 @@
 impl_def_literal_syntax.m:011: Error: no clauses for predicate `g'/2.
 impl_def_literal_syntax.m:012: Error: no clauses for predicate `h'/2.
-impl_def_literal_syntax.m:014: Error: syntax error in `:- pred' declaration at
-impl_def_literal_syntax.m:014:   w($file).
+impl_def_literal_syntax.m:014: In `:- pred' declaration: in the first argument:
+impl_def_literal_syntax.m:014:   error: ill-formed type `$file'.
 impl_def_literal_syntax.m:015: In `:- pred' declaration: error: atom expected
 impl_def_literal_syntax.m:015:   at $pred.
 impl_def_literal_syntax.m:016: Syntax error at token 'u': operator or `.'
 impl_def_literal_syntax.m:016:   expected.
-impl_def_literal_syntax.m:017: Error: syntax error in `:- pred' declaration at
-impl_def_literal_syntax.m:017:   v((string :: in($file))).
+impl_def_literal_syntax.m:017: In `:- pred' declaration: in the first argument:
+impl_def_literal_syntax.m:017:   error: invalid mode `in($file)'.
 impl_def_literal_syntax.m:022: Error: symbol name expected at $file.
 impl_def_literal_syntax.m:024: In clause head: error: atom expected at $line.
 impl_def_literal_syntax.m:026: Error: syntax error in inst body at

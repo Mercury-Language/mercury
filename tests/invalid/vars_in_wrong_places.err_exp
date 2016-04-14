@@ -17,8 +17,8 @@ vars_in_wrong_places.m:007: In equation head: error: atom expected at Oops2.
 vars_in_wrong_places.m:008: In equation head: error: atom expected at Oops3.
 vars_in_wrong_places.m:009: In `:- pred' declaration: error: atom expected at
 vars_in_wrong_places.m:009:   Oops4.
-vars_in_wrong_places.m:010: In `:- func' declaration error: atom expected at
-vars_in_wrong_places.m:010:   Oops5.
+vars_in_wrong_places.m:010: In `:- func' declaration:
+vars_in_wrong_places.m:010:   error: atom expected at Oops5.
 vars_in_wrong_places.m:011: In `:- mode' declaration error: atom expected at
 vars_in_wrong_places.m:011:   Oops6.
 vars_in_wrong_places.m:012: In function `:- mode' declaration error: atom

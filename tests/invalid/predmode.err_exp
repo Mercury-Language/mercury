@@ -1,9 +1,10 @@
-predmode.m:005: Warning: interface for module `predmode' does not export
-predmode.m:005:   anything.
-predmode.m:005:   To be useful, a module should export something. A file should
-predmode.m:005:   contain at least one declaration other than
-predmode.m:005:   `:- import_module' in its interface section(s). This would
-predmode.m:005:   normally be a `:- pred', `:- func', `:- type', `:- inst' or
-predmode.m:005:   `:- mode' declaration.
 predmode.m:009: Error: some but not all arguments have modes.
 predmode.m:009:   The argument without a mode is the second.
+predmode.m:017: In `:- pred' declaration: in the first argument:
+predmode.m:017:   error: ill-formed type `1'.
+predmode.m:017: In `:- pred' declaration: in the first argument:
+predmode.m:017:   error: invalid mode `2'.
+predmode.m:017: In `:- pred' declaration: in the second argument:
+predmode.m:017:   error: ill-formed type `"bad"'.
+predmode.m:017: In `:- pred' declaration: in the second argument:
+predmode.m:017:   error: invalid mode `"worse"'.

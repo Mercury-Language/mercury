@@ -32,14 +32,15 @@
 :- pred maybe_parse_type(allow_ho_inst_info::in, term::in, mer_type::out)
     is semidet.
 
-:- pred parse_type(allow_ho_inst_info::in, term::in, varset::in,
-    cord(format_component)::in, maybe1(mer_type)::out) is det.
+:- pred parse_type(allow_ho_inst_info::in, varset::in,
+    cord(format_component)::in, term::in, maybe1(mer_type)::out) is det.
 
 :- pred maybe_parse_types(allow_ho_inst_info::in, list(term)::in,
     list(mer_type)::out) is semidet.
 
-:- pred parse_types(allow_ho_inst_info::in, list(term)::in, varset::in,
-    cord(format_component)::in, maybe1(list(mer_type))::out) is det.
+:- pred parse_types(allow_ho_inst_info::in, varset::in,
+    cord(format_component)::in, list(term)::in,
+    maybe1(list(mer_type))::out) is det.
 
 :- pred is_known_type_name(string::in) is semidet.
 
@@ -62,9 +63,9 @@ maybe_parse_type(AllowHOInstInfo, Term, Type) :-
     % only if they aren't used.
     VarSet = varset.init,
     ContextPieces = cord.init,
-    parse_type(AllowHOInstInfo, Term, VarSet, ContextPieces, ok1(Type)).
+    parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, ok1(Type)).
 
-parse_type(AllowHOInstInfo, Term, VarSet, ContextPieces, Result) :-
+parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
     % XXX kind inference: We currently give all types kind `star'.
     % This will be different when we have a kind system.
     (
@@ -105,8 +106,8 @@ parse_type(AllowHOInstInfo, Term, VarSet, ContextPieces, Result) :-
                     NameResult),
                 (
                     NameResult = ok2(SymName, SymNameArgTerms),
-                    parse_types(no_allow_ho_inst_info, SymNameArgTerms, VarSet,
-                        ContextPieces, SymNameArgsResult),
+                    parse_types(no_allow_ho_inst_info, VarSet, ContextPieces,
+                        SymNameArgTerms, SymNameArgsResult),
                     (
                         SymNameArgsResult = ok1(ArgTypes),
                         Result = ok1(defined_type(SymName, ArgTypes,
@@ -131,8 +132,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
         CompoundTypeKind, Result) :-
     (
         CompoundTypeKind = kctk_tuple(Args),
-        parse_types(no_allow_ho_inst_info, Args, VarSet, ContextPieces,
-            ArgsResult),
+        parse_types(no_allow_ho_inst_info, VarSet, ContextPieces,
+            Args, ArgsResult),
         (
             ArgsResult = ok1(ArgTypes),
             Result = ok1(tuple_type(ArgTypes, kind_star))
@@ -146,7 +147,7 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
         % and report an error message.
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: ill-formed type"), words(TermStr), suffix("."), nl],
+            words("Error: ill-formed type"), quote(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
         Result = error1([Spec])
@@ -388,7 +389,7 @@ is_known_type_name_args(Name, Args, KnownType) :-
 ill_formed_type_result(ContextPieces, VarSet, Term) = Result :-
     TermStr = describe_error_term(VarSet, Term),
     Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-        words("Error: ill-formed type"), words(TermStr), suffix("."), nl],
+        words("Error: ill-formed type"), quote(TermStr), suffix("."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(get_term_context(Term), [always(Pieces)])]),
     Result = error1([Spec]).
@@ -400,10 +401,10 @@ maybe_parse_types(AllowHOInstInfo, Term, Types) :-
     % only if they aren't used.
     VarSet = varset.init,
     ContextPieces = cord.init,
-    parse_types(AllowHOInstInfo, Term, VarSet, ContextPieces, ok1(Types)).
+    parse_types(AllowHOInstInfo, VarSet, ContextPieces, Term, ok1(Types)).
 
-parse_types(AllowHOInstInfo, Terms, VarSet, ContextPieces, Result) :-
-    parse_types_acc(AllowHOInstInfo, Terms, VarSet, ContextPieces,
+parse_types(AllowHOInstInfo, VarSet, ContextPieces, Terms, Result) :-
+    parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, Terms,
         [], RevTypes, [], Specs),
     (
         Specs = [],
@@ -413,15 +414,16 @@ parse_types(AllowHOInstInfo, Terms, VarSet, ContextPieces, Result) :-
         Result = error1(Specs)
     ).
 
-:- pred parse_types_acc(allow_ho_inst_info::in, list(term)::in, varset::in,
-    cord(format_component)::in, list(mer_type)::in, list(mer_type)::out,
+:- pred parse_types_acc(allow_ho_inst_info::in, varset::in,
+    cord(format_component)::in, list(term)::in,
+    list(mer_type)::in, list(mer_type)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_types_acc(_, [], _, _, !RevTypes, !Specs).
-parse_types_acc(AllowHOInstInfo, [Term | Terms], VarSet, ContextPieces,
+parse_types_acc(_, _, _, [], !RevTypes, !Specs).
+parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, [Term | Terms],
         !RevTypes, !Specs) :-
     % XXX We should pass a ContextPieces updated as the "nth type in ...".
-    parse_type(AllowHOInstInfo, Term, VarSet, ContextPieces, TermResult),
+    parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, TermResult),
     (
         TermResult = ok1(Type),
         !:RevTypes = [Type | !.RevTypes]
@@ -429,7 +431,7 @@ parse_types_acc(AllowHOInstInfo, [Term | Terms], VarSet, ContextPieces,
         TermResult = error1(TermSpecs),
         !:Specs = TermSpecs ++ !.Specs
     ),
-    parse_types_acc(AllowHOInstInfo, Terms, VarSet, ContextPieces,
+    parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, Terms,
         !RevTypes, !Specs).
 
 %---------------------------------------------------------------------------%
