@@ -1316,7 +1316,7 @@ mercury_check_for_functions \
         grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
         access sleep opendir readdir closedir mkdir symlink readlink \
         gettimeofday setenv putenv _putenv posix_spawn sched_setaffinity \
-        sched_getaffinity sched_getcpu sched_yield mkstemp mkdtemp
+        sched_getaffinity sched_getcpu sched_yield mkstemp mkdtemp \
         setrlimit fma
 
 mercury_check_for_stdio_functions \
