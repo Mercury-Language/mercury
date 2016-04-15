@@ -10238,7 +10238,7 @@ command_line_argument(_, "") :-
 % io.getenv and io.setenv.
 
 :- pragma foreign_decl("C", "
-#include <stdlib.h> /* for getenv() and putenv() */
+#include <stdlib.h> /* for getenv() and setenv() */
 ").
 
 :- pragma foreign_proc("C",
@@ -10290,24 +10290,16 @@ command_line_argument(_, "") :-
     end
 ").
 
-io.setenv(Var, Value) :-
-    impure io.putenv(Var ++ "=" ++ Value).
-
-    % io.putenv(VarString): If VarString is a string of the form "name=value",
-    % sets the environment variable name to the specified value. Fails if
-    % the operation does not work. This should only be called from io.setenv.
-    %
-:- impure pred io.putenv(string::in) is semidet.
-
 :- pragma foreign_proc("C",
-    io.putenv(VarAndValue::in),
+    io.setenv(Var::in, Value::in),
     [will_not_call_mercury, not_thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_WIN32
-    SUCCESS_INDICATOR = (_wputenv(ML_utf8_to_wide(VarAndValue)) == 0);
+    SUCCESS_INDICATOR =
+        (_wputenv_s(ML_utf8_to_wide(Var), ML_utf8_to_wide(Value)) == 0);
 #else
-    SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
+    SUCCESS_INDICATOR = (setenv(Var, Value, 1) == 0);
 #endif
 ").
 
@@ -10323,17 +10315,6 @@ io.setenv(Var, Value) :-
     }
 ").
 
-:- pragma foreign_proc("C#",
-    io.putenv(_VarAndValue::in),
-    [will_not_call_mercury, tabled_for_io],
-"
-    // This procedure should never be called, as io.setenv/2 has been
-    // implemented directly for C#.
-    // This implementation is included only to suppress warnings.
-
-    throw new System.Exception(""io.putenv/1 not implemented for C#"");
-").
-
 :- pragma foreign_proc("Java",
     io.setenv(Var::in, Value::in),
     [will_not_call_mercury, tabled_for_io, may_not_duplicate],
@@ -10345,18 +10326,6 @@ io.setenv(Var, Value) :-
     SUCCESS_INDICATOR = false;
 ").
 
-:- pragma foreign_proc("Java",
-    io.putenv(VarAndValue::in),
-    [will_not_call_mercury, tabled_for_io, may_not_duplicate],
-"
-    // This procedure should never be called, as io.setenv/2 has been
-    // implemented directly for Java.
-    // This implementation is included only to suppress warnings.
-
-    io.ML_throw_io_error(
-        ""io.putenv/1 not implemented for Java: "" + VarAndValue);
-").
-
 :- pragma foreign_proc("Erlang",
     io.setenv(Var::in, Value::in),
     [will_not_call_mercury, tabled_for_io],
@@ -10365,17 +10334,6 @@ io.setenv(Var, Value) :-
     ValueStr = binary_to_list(Value),
     os:putenv(VarStr, ValueStr),
     SUCCESS_INDICATOR = true
-").
-
-:- pragma foreign_proc("Erlang",
-    io.putenv(VarAndValue::in),
-    [will_not_call_mercury, tabled_for_io],
-"
-    % This procedure should never be called, as io.setenv/2 has been
-    % implemented directly for Erlang.
-    % This implementation is included only to suppress warnings.
-
-    throw({""io.putenv/1 not implemented for Erlang: "" ++ VarAndValue})
 ").
 
 %---------------------------------------------------------------------------%

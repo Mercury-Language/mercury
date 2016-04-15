@@ -707,6 +707,14 @@ else
   endif
 endif
 
+# Setting environment variables is not supported in Java grades.
+ifeq "$(filter java%,$(GRADE))" ""
+	SETENV_PROGS = \
+		setenv
+else
+	SETENV_PROGS =
+endif
+
 # We currently test only a limited selection in grade java on this directory.
 PROGS = \
 	$(ORDINARY_PROGS) \
@@ -727,7 +735,8 @@ PROGS = \
 	$(TRACE_GOAL_ENV_PROGS) \
 	$(CTGC_PROGS) \
 	$(BIG_DATA_PROGS) \
-	$(CONC_PROGS)
+	$(CONC_PROGS) \
+	$(SETENV_PROGS)
 
 #-----------------------------------------------------------------------------#
 
