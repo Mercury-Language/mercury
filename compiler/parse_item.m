@@ -87,7 +87,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module string.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -910,10 +909,10 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
             parse_type_and_mode_list(InstConstraints, VarSet, ContextPieces,
                 ArgTerms, 1, TypesAndModes, [], TMSpecs),
             check_type_and_mode_list_is_consistent(TypesAndModes,
-                get_term_context(PredTypeTerm), MaybeInconsistentArgsSpec),
+                get_term_context(PredTypeTerm), MaybeInconsistentArgsSpecs),
             ( if
                 TMSpecs = [],
-                MaybeInconsistentArgsSpec = ok1(_)
+                MaybeInconsistentArgsSpecs = []
             then
                 ( if
                     WithInst = yes(_),
@@ -966,7 +965,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                     MaybeIOM = error1([Spec])
                 )
             else
-                Specs = TMSpecs ++ get_any_errors1(MaybeInconsistentArgsSpec),
+                Specs = TMSpecs ++ MaybeInconsistentArgsSpecs,
                 MaybeIOM = error1(Specs)
             )
         )
@@ -1047,13 +1046,7 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         VarSet, MaybeDetism, ExistQVars, Constraints, Context, SeqNum,
         PurityAttrs, MaybeIOM) :-
     check_type_and_mode_list_is_consistent(Args, get_term_context(FuncTerm),
-        MaybeInconsistentArgsSpec),
-    (
-        MaybeInconsistentArgsSpec = ok1(_),
-        InconsistentArgsSpecs = []
-    ;
-        MaybeInconsistentArgsSpec = error1(InconsistentArgsSpecs)
-    ),
+        InconsistentArgsSpecs),
     ( if
         Args = [type_and_mode(_, _) | _],
         ReturnArg = type_only(_)
@@ -1190,26 +1183,26 @@ parse_type_and_mode(InstConstraints, VarSet, ContextPieces, Term,
     % modes.)
     %
 :- pred check_type_and_mode_list_is_consistent(list(type_and_mode)::in,
-    term.context::in, maybe1(unit)::out) is det.
+    term.context::in, list(error_spec)::out) is det.
 
-check_type_and_mode_list_is_consistent(TypesAndModes, Context, MaybeSpec) :-
+check_type_and_mode_list_is_consistent(TypesAndModes, Context, Specs) :-
     classify_type_and_mode_list(1, TypesAndModes,
         WithModeArgNums, WithoutModeArgNums),
     (
         WithModeArgNums = [],
         WithoutModeArgNums = [],
         % No arguments; no possibility of inconsistency.
-        MaybeSpec = ok1(unit)
+        Specs = []
     ;
         WithModeArgNums = [],
         WithoutModeArgNums = [_ | _],
         % No arguments have modes; no inconsistency.
-        MaybeSpec = ok1(unit)
+        Specs = []
     ;
         WithModeArgNums = [_ | _],
         WithoutModeArgNums = [],
         % All arguments have modes; no inconsistency.
-        MaybeSpec = ok1(unit)
+        Specs = []
     ;
         WithModeArgNums = [_ | _],
         WithoutModeArgNums = [FirstWithout | RestWithout],
@@ -1230,7 +1223,7 @@ check_type_and_mode_list_is_consistent(TypesAndModes, Context, MaybeSpec) :-
             | IdPieces],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
-        MaybeSpec = error1([Spec])
+        Specs = [Spec]
     ).
 
 :- pred classify_type_and_mode_list(int::in, list(type_and_mode)::in,
