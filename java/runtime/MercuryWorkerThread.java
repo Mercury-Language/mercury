@@ -29,7 +29,7 @@ public class MercuryWorkerThread extends MercuryThread
 
     /**
      * Run.
-     * The worker thread executes tasks that it retrives from the pool.
+     * The worker thread executes tasks that it retrieves from the pool.
      */
     public void run()
     {
