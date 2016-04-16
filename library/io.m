@@ -1897,6 +1897,8 @@
 
 :- pragma foreign_decl("C#", "
 using System.IO;
+using System.Security.AccessControl;
+using System.Security.Principal;
 ").
 
 :- pragma foreign_code("C#", "
@@ -10766,15 +10768,38 @@ import java.util.Random;
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
     try {
+        DateTime utcNow = DateTime.UtcNow;
         DirName = Path.Combine(Dir, Path.GetRandomFileName());
-        /*
-         * This is not secure:
-         *   1. We cannot set permissions
-         *   2. We cannot atomically test for and create a directory
-         */
-        Directory.CreateDirectory(DirName);
-        Okay = mr_bool.YES;
-        ErrorMessage = """";
+
+        // obtain the owner of the temporary directory, on any recent system
+        // this should be the current user, should work on any platform
+        // supporting .NET 2.0 or later
+        IdentityReference currentUser =
+            new DirectoryInfo(Dir).GetAccessControl(AccessControlSections.Owner)
+                                  .GetOwner(typeof(SecurityIdentifier));
+
+        DirectorySecurity security = new DirectorySecurity();
+        // Make the directory only accessible by the current user
+        security.AddAccessRule(new FileSystemAccessRule(currentUser,
+            FileSystemRights.ListDirectory |
+            FileSystemRights.Read |
+            FileSystemRights.Modify,
+            InheritanceFlags.None,
+            PropagationFlags.None,
+            AccessControlType.Allow));
+
+        DirectoryInfo TempDirInfo = Directory.CreateDirectory(DirName, security);
+        // Check if this was really created by us
+        if (TempDirInfo.CreationTimeUtc >= utcNow)
+        {
+            Okay = mr_bool.YES;
+            ErrorMessage = """";
+        }
+        else
+        {
+            Okay = mr_bool.NO;
+            ErrorMessage = string.Format(""{0} already exists"", DirName);
+        }
     }
     catch (System.Exception e)
     {
