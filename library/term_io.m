@@ -34,7 +34,7 @@
     ;       error(string, int)
     ;       term(varset(T), term(T)).
 
-:- type read_term   == read_term(generic).
+:- type read_term == read_term(generic).
 
     % read_term(Result, !IO):
     %
@@ -64,8 +64,7 @@
 
     % As above, except it appends a period and new-line.
     %
-:- pred write_term_nl(varset(T)::in, term(T)::in, io::di, io::uo)
-    is det.
+:- pred write_term_nl(varset(T)::in, term(T)::in, io::di, io::uo) is det.
 
     % As above, except it appends a period and new-line.
     %
@@ -82,8 +81,7 @@
 
     % Writes a variable to stdout.
     %
-:- pred write_variable(var(T)::in, varset(T)::in, io::di, io::uo)
-    is det.
+:- pred write_variable(var(T)::in, varset(T)::in, io::di, io::uo) is det.
 
     % As above, except uses the given operator table instead of the
     % standard Mercury operators.
@@ -96,8 +94,7 @@
     %
 :- pred quote_string(string::in, io::di, io::uo) is det.
 
-:- pred quote_string(Stream::in, string::in,
-    State::di, State::uo) is det
+:- pred quote_string(Stream::in, string::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
@@ -110,8 +107,7 @@
     %
 :- pred quote_atom(string::in, io::di, io::uo) is det.
 
-:- pred quote_atom(Stream::in, string::in,
-    State::di, State::uo) is det
+:- pred quote_atom(Stream::in, string::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
@@ -124,8 +120,7 @@
     %
 :- pred quote_char(char::in, io::di, io::uo) is det.
 
-:- pred quote_char(Stream::in, char::in,
-    State::di, State::uo) is det
+:- pred quote_char(Stream::in, char::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
@@ -138,8 +133,7 @@
     %
 :- pred write_escaped_char(char::in, io::di, io::uo) is det.
 
-:- pred write_escaped_char(Stream::in, char::in,
-    State::di, State::uo) is det
+:- pred write_escaped_char(Stream::in, char::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
@@ -232,17 +226,17 @@
 :- func quoted_atom_agt(string, adjacent_to_graphic_token) = string.
 
 :- pragma type_spec(term_io.quote_string/4,
-            (Stream = io.output_stream, State = io.state)).
+    (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(term_io.quote_atom/4,
-            (Stream = io.output_stream, State = io.state)).
+    (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(term_io.write_escaped_string/4,
-            (Stream = io.output_stream, State = io.state)).
+    (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(term_io.write_escaped_char/4,
-            (Stream = io.output_stream, State = io.state)).
+    (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(term_io.quote_char/4,
-            (Stream = io.output_stream, State = io.state)).
+    (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(term_io.quote_atom_agt/5,
-            (Stream = io.output_stream, State = io.state)).
+    (Stream = io.output_stream, State = io.state)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -260,28 +254,28 @@
 
 %---------------------------------------------------------------------------%
 
-term_io.read_term(Result, !IO) :-
+read_term(Result, !IO) :-
     io.get_op_table(Ops, !IO),
     term_io.read_term_with_op_table(Ops, Result, !IO).
 
-term_io.read_term_with_op_table(Ops, Result, !IO) :-
+read_term_with_op_table(Ops, Result, !IO) :-
     parser.read_term_with_op_table(Ops, Result, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % write a variable to standard output.
+    % Write a variable to standard output.
     %
-    % There are two ways we could choose to write unnamed variables
-    % (ie `_'):
-    %   Convert the variable to an integer representation and write
+    % There are two ways we could choose to write unnamed variables.
+    %
+    % 1 Convert the variable to an integer representation and write
     %   `_N' where N is that integer representation. This has the
     %   advantage that such variables get printed in a canonical
     %   way, so rearranging terms containing such variables will
     %   not effect the way they are numbered (this includes breaking
     %   up a term and printing the pieces separately).
-    % or
-    %   Number the unnamed variables from 0 and write `_N' where
+    %
+    % 2 Number the unnamed variables from 0 and write `_N' where
     %   N is the number in the sequence of such variables. This has
     %   the advantage that such variables can be visually scanned
     %   rather more easily (for example in error messages).
@@ -290,25 +284,25 @@ term_io.read_term_with_op_table(Ops, Result, !IO) :-
     % between the two. At the moment we provide only the first, though
     % the infrastructure for the second is present in the code.
 
-term_io.write_variable(Variable, VarSet, !IO) :-
+write_variable(Variable, VarSet, !IO) :-
     io.get_op_table(Ops, !IO),
     term_io.write_variable_with_op_table(Ops, Variable, VarSet, !IO).
 
-term_io.write_variable_with_op_table(Ops, Variable, VarSet, !IO) :-
+write_variable_with_op_table(Ops, Variable, VarSet, !IO) :-
     term_io.write_variable_2(Ops, Variable, VarSet, _, 0, _, !IO).
 
 :- pred term_io.write_variable_2(Ops::in, var(T)::in,
     varset(T)::in, varset(T)::out, int::in, int::out,
     io::di, io::uo) is det <= op_table(Ops).
 
-term_io.write_variable_2(Ops, Id, !VarSet, !N, !IO) :-
+write_variable_2(Ops, Id, !VarSet, !N, !IO) :-
     ( if varset.search_var(!.VarSet, Id, Val) then
         term_io.write_term_2(Ops, Val, !VarSet, !N, !IO)
     else if varset.search_name(!.VarSet, Id, Name) then
         io.write_string(Name, !IO)
     else
-        % XXX Problems with name clashes.
-
+        % XXX The names we generate here *could* clash with the name
+        % of an explicit-named variable.
         term.var_to_int(Id, VarNum),
         string.int_to_string(VarNum, Num),
         string.append("_", Num, VarName),
@@ -319,18 +313,18 @@ term_io.write_variable_2(Ops, Id, !VarSet, !N, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-term_io.write_term(VarSet, Term, !IO) :-
+write_term(VarSet, Term, !IO) :-
     io.get_op_table(Ops, !IO),
     term_io.write_term_with_op_table(Ops, VarSet, Term, !IO).
 
-term_io.write_term_with_op_table(Ops, VarSet, Term, !IO) :-
+write_term_with_op_table(Ops, VarSet, Term, !IO) :-
     term_io.write_term_2(Ops, Term, VarSet, _, 0, _, !IO).
 
 :- pred term_io.write_term_2(Ops::in, term(T)::in,
     varset(T)::in, varset(T)::out, int::in, int::out, io::di, io::uo) is det
     <= op_table(Ops).
 
-term_io.write_term_2(Ops, Term, !VarSet, !N, !IO) :-
+write_term_2(Ops, Term, !VarSet, !N, !IO) :-
     term_io.write_term_3(Ops, Term, ops.max_priority(Ops) + 1,
         !VarSet, !N, !IO).
 
@@ -338,17 +332,16 @@ term_io.write_term_2(Ops, Term, !VarSet, !N, !IO) :-
     varset(T)::in, varset(T)::out, int::in, int::out, io::di, io::uo) is det
     <= op_table(Ops).
 
-term_io.write_arg_term(Ops, Term, !VarSet, !N, !IO) :-
-    term_io.write_term_3(Ops, Term, ops.arg_priority(Ops),
-        !VarSet, !N, !IO).
+write_arg_term(Ops, Term, !VarSet, !N, !IO) :-
+    term_io.write_term_3(Ops, Term, ops.arg_priority(Ops), !VarSet, !N, !IO).
 
 :- pred term_io.write_term_3(Ops::in, term(T)::in, ops.priority::in,
-    varset(T)::in, varset(T)::out, int::in, int::out,
-    io::di, io::uo) is det <= op_table(Ops).
+    varset(T)::in, varset(T)::out, int::in, int::out, io::di, io::uo) is det
+    <= op_table(Ops).
 
-term_io.write_term_3(Ops, term.variable(Id, _), _, !VarSet, !N, !IO) :-
+write_term_3(Ops, term.variable(Id, _), _, !VarSet, !N, !IO) :-
     term_io.write_variable_2(Ops, Id, !VarSet, !N, !IO).
-term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
+write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         !VarSet, !N, !IO) :-
     ( if
         Functor = term.atom("[|]"),
@@ -426,10 +419,11 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         ( if OpName = "," then
             io.write_string(", ", !IO)
         else if OpName = "." then
-            % If the operator is '.'/2 then we must not put spaces around it
-            % (or at the very least, we should not put spaces afterwards, which
-            % would make it appear as the end-of-term token). However, we do
-            % have to quote it if the right hand side can begin with a digit.
+            % If the operator is '.'/2, then we must not put spaces around it
+            % (or at the very least, we should not put spaces afterwards)
+            % because that would make it appear as the end-of-term token.
+            % However, we do have to quote it if the right hand side
+            % can begin with a digit.
             ( if starts_with_digit(Arg2) then
                 Dot = "'.'"
             else
@@ -489,7 +483,7 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
     varset(T)::in, varset(T)::out, int::in, int::out, io::di, io::uo) is det
     <= op_table(Ops).
 
-term_io.write_list_tail(Ops, Term, !VarSet, !N, !IO) :-
+write_list_tail(Ops, Term, !VarSet, !N, !IO) :-
     ( if
         Term = term.variable(Id, _),
         varset.search_var(!.VarSet, Id, Val)
@@ -530,58 +524,59 @@ starts_with_digit(functor(atom(Op), Args, _)) :-
 
 %---------------------------------------------------------------------------%
 
+    % Write the remaining arguments.
+    %
 :- pred term_io.write_term_args(Ops::in, list(term(T))::in,
     varset(T)::in, varset(T)::out, int::in, int::out, io::di, io::uo) is det
     <= op_table(Ops).
 
-    % write the remaining arguments
-term_io.write_term_args(_, [], !VarSet, !N, !IO).
-term_io.write_term_args(Ops, [X | Xs], !VarSet, !N, !IO) :-
+write_term_args(_, [], !VarSet, !N, !IO).
+write_term_args(Ops, [X | Xs], !VarSet, !N, !IO) :-
     io.write_string(", ", !IO),
     term_io.write_arg_term(Ops, X, !VarSet, !N, !IO),
     term_io.write_term_args(Ops, Xs, !VarSet, !N, !IO).
 
 %---------------------------------------------------------------------------%
 
-term_io.write_constant(Const, !IO) :-
+write_constant(Const, !IO) :-
     term_io.write_constant(Const, not_adjacent_to_graphic_token, !IO).
 
 :- pred term_io.write_constant(const::in, adjacent_to_graphic_token::in,
     io::di, io::uo) is det.
 
-term_io.write_constant(term.integer(I), _, !IO) :-
+write_constant(term.integer(I), _, !IO) :-
     io.write_int(I, !IO).
-term_io.write_constant(term.big_integer(Base, I), _, !IO) :-
+write_constant(term.big_integer(Base, I), _, !IO) :-
     Prefix = integer_base_prefix(Base),
     IntString = integer.to_base_string(I, integer_base_int(Base)),
     io.write_string(Prefix, !IO),
     io.write_string(IntString, !IO).
-term_io.write_constant(term.float(F), _, !IO) :-
+write_constant(term.float(F), _, !IO) :-
     io.write_float(F, !IO).
-term_io.write_constant(term.atom(A), NextToGraphicToken, !IO) :-
+write_constant(term.atom(A), NextToGraphicToken, !IO) :-
     term_io.quote_atom_agt(A, NextToGraphicToken, !IO).
-term_io.write_constant(term.string(S), _, !IO) :-
+write_constant(term.string(S), _, !IO) :-
     term_io.quote_string(S, !IO).
-term_io.write_constant(term.implementation_defined(N), _, !IO) :-
+write_constant(term.implementation_defined(N), _, !IO) :-
     io.write_char('$', !IO),
     io.write_string(N, !IO).
 
-term_io.format_constant(Const) =
+format_constant(Const) =
     term_io.format_constant_agt(Const, not_adjacent_to_graphic_token).
 
 :- func term_io.format_constant_agt(const, adjacent_to_graphic_token) = string.
 
-term_io.format_constant_agt(term.integer(I), _) =
+format_constant_agt(term.integer(I), _) =
     string.int_to_string(I).
-term_io.format_constant_agt(term.big_integer(Base, I), _) =
+format_constant_agt(term.big_integer(Base, I), _) =
     integer_base_prefix(Base) ++ to_base_string(I, integer_base_int(Base)).
-term_io.format_constant_agt(term.float(F), _) =
+format_constant_agt(term.float(F), _) =
     string.float_to_string(F).
-term_io.format_constant_agt(term.atom(A), NextToGraphicToken) =
+format_constant_agt(term.atom(A), NextToGraphicToken) =
     term_io.quoted_atom_agt(A, NextToGraphicToken).
-term_io.format_constant_agt(term.string(S), _) =
+format_constant_agt(term.string(S), _) =
     term_io.quoted_string(S).
-term_io.format_constant_agt(term.implementation_defined(N), _) =
+format_constant_agt(term.implementation_defined(N), _) =
     "$" ++ N.
 
 integer_base_int(base_2) = 2.
@@ -596,29 +591,29 @@ integer_base_prefix(base_16) = "0x".
 
 %---------------------------------------------------------------------------%
 
-term_io.quote_char(C, !IO) :-
+quote_char(C, !IO) :-
     io.write_string(term_io.quoted_char(C), !IO).
 
-term_io.quote_char(Stream, C, !State) :-
+quote_char(Stream, C, !State) :-
     stream.put(Stream, term_io.quoted_char(C), !State).
 
-term_io.quoted_char(C) =
+quoted_char(C) =
     string.format("'%s'", [s(term_io.escaped_char(C))]).
 
-term_io.quote_atom(S, !IO) :-
+quote_atom(S, !IO) :-
     term_io.quote_atom_agt(S, not_adjacent_to_graphic_token, !IO).
 
-term_io.quote_atom(Stream, S, !State) :-
+quote_atom(Stream, S, !State) :-
     term_io.quote_atom_agt(Stream, S, not_adjacent_to_graphic_token, !State).
 
-term_io.quoted_atom(S) =
+quoted_atom(S) =
     term_io.quoted_atom_agt(S, not_adjacent_to_graphic_token).
 
-term_io.quote_atom_agt(S, NextToGraphicToken, !IO) :-
+quote_atom_agt(S, NextToGraphicToken, !IO) :-
     io.output_stream(Stream, !IO),
     term_io.quote_atom_agt(Stream, S, NextToGraphicToken, !IO).
 
-term_io.quote_atom_agt(Stream, S, NextToGraphicToken, !State) :-
+quote_atom_agt(Stream, S, NextToGraphicToken, !State) :-
     ShouldQuote = should_atom_be_quoted(S, NextToGraphicToken),
     (
         ShouldQuote = no,
@@ -630,7 +625,7 @@ term_io.quote_atom_agt(Stream, S, NextToGraphicToken, !State) :-
         stream.put(Stream, '''', !State)
     ).
 
-term_io.quoted_atom_agt(S, NextToGraphicToken) = String :-
+quoted_atom_agt(S, NextToGraphicToken) = String :-
     ShouldQuote = should_atom_be_quoted(S, NextToGraphicToken),
     (
         ShouldQuote = no,
@@ -689,32 +684,32 @@ should_atom_be_quoted(S, NextToGraphicToken) = ShouldQuote :-
 % Note: the code here is similar to code in compiler/mercury_to_mercury.m;
 % any changes here may require similar changes there.
 
-term_io.quote_string(S, !IO) :-
+quote_string(S, !IO) :-
     io.output_stream(Stream, !IO),
     term_io.quote_string(Stream, S, !IO).
 
-term_io.quote_string(Stream, S, !State) :-
+quote_string(Stream, S, !State) :-
     stream.put(Stream, '"', !State),
     term_io.write_escaped_string(Stream, S, !State),
     stream.put(Stream, '"', !State).
 
-term_io.quoted_string(S) =
+quoted_string(S) =
     string.append_list(["""", term_io.escaped_string(S), """"]).
 
-term_io.write_escaped_string(String, !IO) :-
+write_escaped_string(String, !IO) :-
     io.output_stream(Stream, !IO),
     term_io.write_escaped_string(Stream, String, !IO).
 
-term_io.write_escaped_string(Stream, String, !State) :-
+write_escaped_string(Stream, String, !State) :-
     string.foldl(term_io.write_escaped_char(Stream), String, !State).
 
-term_io.escaped_string(String) =
+escaped_string(String) =
     string.append_list(
         reverse(string.foldl(term_io.add_escaped_char, String, []))).
 
 :- func term_io.add_escaped_char(char, list(string)) = list(string).
 
-term_io.add_escaped_char(Char, Strings0) = Strings :-
+add_escaped_char(Char, Strings0) = Strings :-
     ( if mercury_escape_special_char(Char, QuoteChar) then
         Strings = [from_char_list(['\\', QuoteChar]) | Strings0]
     else if is_mercury_source_char(Char) then
@@ -728,11 +723,11 @@ term_io.add_escaped_char(Char, Strings0) = Strings :-
 % compiler/mercury_to_mercury.m; any changes here may require
 % similar changes there.
 
-term_io.write_escaped_char(Char, !IO) :-
+write_escaped_char(Char, !IO) :-
     io.output_stream(Stream, !IO),
     term_io.write_escaped_char(Stream, Char, !IO).
 
-term_io.write_escaped_char(Stream, Char, !State) :-
+write_escaped_char(Stream, Char, !State) :-
     ( if mercury_escape_special_char(Char, QuoteChar) then
         stream.put(Stream, ('\\'), !State),
         stream.put(Stream, QuoteChar, !State)
@@ -742,7 +737,7 @@ term_io.write_escaped_char(Stream, Char, !State) :-
         stream.put(Stream, mercury_escape_char(Char), !State)
     ).
 
-term_io.escaped_char(Char) = String :-
+escaped_char(Char) = String :-
     string_is_escaped_char(Char, String).
 
 :- pragma promise_equivalent_clauses(string_is_escaped_char/2).
@@ -878,11 +873,11 @@ mercury_escape_special_char('\b', 'b').
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-term_io.write_term_nl(VarSet, Term, !IO) :-
+write_term_nl(VarSet, Term, !IO) :-
     io.get_op_table(Ops, !IO),
     term_io.write_term_nl_with_op_table(Ops, VarSet, Term, !IO).
 
-term_io.write_term_nl_with_op_table(Ops, VarSet, Term, !IO) :-
+write_term_nl_with_op_table(Ops, VarSet, Term, !IO) :-
     term_io.write_term_with_op_table(Ops, VarSet, Term, !IO),
     io.write_string(".\n", !IO).
 
