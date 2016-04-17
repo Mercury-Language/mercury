@@ -908,11 +908,11 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
             MaybePredNameAndArgs = ok2(Functor, ArgTerms),
             parse_type_and_mode_list(InstConstraints, VarSet, ContextPieces,
                 ArgTerms, 1, TypesAndModes, [], TMSpecs),
-            check_type_and_mode_list_is_consistent(TypesAndModes,
-                get_term_context(PredTypeTerm), MaybeInconsistentArgsSpecs),
+            check_type_and_mode_list_is_consistent(TypesAndModes, no,
+                get_term_context(PredTypeTerm), MaybeTypeModeListKind),
             ( if
                 TMSpecs = [],
-                MaybeInconsistentArgsSpecs = []
+                MaybeTypeModeListKind = ok1(_)
             then
                 ( if
                     WithInst = yes(_),
@@ -965,7 +965,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                     MaybeIOM = error1([Spec])
                 )
             else
-                Specs = TMSpecs ++ MaybeInconsistentArgsSpecs,
+                Specs = TMSpecs ++ get_any_errors1(MaybeTypeModeListKind),
                 MaybeIOM = error1(Specs)
             )
         )
@@ -1045,47 +1045,17 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Context, SeqNum,
 parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         VarSet, MaybeDetism, ExistQVars, Constraints, Context, SeqNum,
         PurityAttrs, MaybeIOM) :-
-    check_type_and_mode_list_is_consistent(Args, get_term_context(FuncTerm),
-        InconsistentArgsSpecs),
-    ( if
-        Args = [type_and_mode(_, _) | _],
-        ReturnArg = type_only(_)
-    then
-        ArgsOnlyPieces = [words("Error: function arguments have modes,"),
-            words("but function result does not."), nl],
-        ArgsOnlySpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(FuncTerm),
-                [always(ArgsOnlyPieces)])]),
-        ArgsOnlySpecs = [ArgsOnlySpec]
-    else
-        ArgsOnlySpecs = []
-    ),
-    ( if
-        Args = [type_only(_) | _],
-        ReturnArg = type_and_mode(_, _)
-    then
-        ReturnOnlyPieces = [words("Error: function result has mode,"),
-            words("but function arguments do not."), nl],
-        ReturnOnlySpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(FuncTerm),
-                [always(ReturnOnlyPieces)])]),
-        ReturnOnlySpecs = [ReturnOnlySpec]
-    else
-        ReturnOnlySpecs = []
-    ),
-    ConsistencySpecs =
-        InconsistentArgsSpecs ++ ArgsOnlySpecs ++ ReturnOnlySpecs,
+    check_type_and_mode_list_is_consistent(Args, yes(ReturnArg),
+        get_term_context(FuncTerm), MaybeTypeModeListKind),
     get_purity_from_attrs(Context, PurityAttrs, MaybePurity),
     ( if
-        ConsistencySpecs = [],
+        MaybeTypeModeListKind = ok1(_),
         MaybePurity = ok1(Purity)
     then
-        ConsistencySpecs = [],
         varset.coerce(VarSet, TVarSet),
         varset.coerce(VarSet, IVarSet),
         AllArgs = Args ++ [ReturnArg],
-        ( if
-            inst_var_constraints_types_modes_self_consistent(AllArgs) then
+        ( if inst_var_constraints_types_modes_self_consistent(AllArgs) then
             Origin = item_origin_user,
             ItemPredDecl = item_pred_decl_info(FuncName, pf_function, AllArgs,
                 no, no, MaybeDetism, Origin, TVarSet, IVarSet, ExistQVars,
@@ -1102,7 +1072,8 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
             MaybeIOM = error1([Spec])
         )
     else
-        Specs = ConsistencySpecs ++ get_any_errors1(MaybePurity),
+        Specs = get_any_errors1(MaybeTypeModeListKind)
+            ++ get_any_errors1(MaybePurity),
         MaybeIOM = error1(Specs)
     ).
 
@@ -1175,6 +1146,16 @@ parse_type_and_mode(InstConstraints, VarSet, ContextPieces, Term,
         )
     ).
 
+:- type type_mode_list_kind
+    --->    tml_no_arguments
+            % There are zero arguments.
+
+    ;       tml_all_types_have_modes
+            % There are some arguments, and they all have modes.
+
+    ;       tml_no_types_have_modes.
+            % There are some arguments, and none have modes.
+
     % Verify that among the arguments of a :- pred or :- func declaration,
     % either all arguments specify a mode or none of them do. If some do
     % and some don't, return an error message that identifies the argument
@@ -1183,26 +1164,44 @@ parse_type_and_mode(InstConstraints, VarSet, ContextPieces, Term,
     % modes.)
     %
 :- pred check_type_and_mode_list_is_consistent(list(type_and_mode)::in,
-    term.context::in, list(error_spec)::out) is det.
+    maybe(type_and_mode)::in, term.context::in,
+    maybe1(type_mode_list_kind)::out) is det.
 
-check_type_and_mode_list_is_consistent(TypesAndModes, Context, Specs) :-
+check_type_and_mode_list_is_consistent(TypesAndModes, MaybeRetTypeAndMode,
+        Context, MaybeKind) :-
     classify_type_and_mode_list(1, TypesAndModes,
-        WithModeArgNums, WithoutModeArgNums),
+        WithModeArgNums0, WithoutModeArgNums0),
+    (
+        MaybeRetTypeAndMode = no,
+        WithModeArgNums = WithModeArgNums0,
+        WithoutModeArgNums = WithoutModeArgNums0
+    ;
+        MaybeRetTypeAndMode = yes(RetTypeAndMode),
+        (
+            RetTypeAndMode = type_only(_),
+            WithModeArgNums = WithModeArgNums0,
+            WithoutModeArgNums = WithoutModeArgNums0 ++ [-1]
+        ;
+            RetTypeAndMode = type_and_mode(_, _),
+            WithModeArgNums = WithModeArgNums0 ++ [-1],
+            WithoutModeArgNums = WithoutModeArgNums0
+        )
+    ),
     (
         WithModeArgNums = [],
         WithoutModeArgNums = [],
         % No arguments; no possibility of inconsistency.
-        Specs = []
+        MaybeKind = ok1(tml_no_arguments)
     ;
         WithModeArgNums = [],
         WithoutModeArgNums = [_ | _],
         % No arguments have modes; no inconsistency.
-        Specs = []
+        MaybeKind = ok1(tml_no_types_have_modes)
     ;
         WithModeArgNums = [_ | _],
         WithoutModeArgNums = [],
         % All arguments have modes; no inconsistency.
-        Specs = []
+        MaybeKind = ok1(tml_all_types_have_modes)
     ;
         WithModeArgNums = [_ | _],
         WithoutModeArgNums = [FirstWithout | RestWithout],
@@ -1210,10 +1209,16 @@ check_type_and_mode_list_is_consistent(TypesAndModes, Context, Specs) :-
         (
             RestWithout = [],
             IdPieces = [words("The argument without a mode is the"),
-                nth_fixed(FirstWithout), suffix("."), nl]
+                wrap_nth(dont_add_the_prefix, FirstWithout), suffix("."), nl]
         ;
             RestWithout = [_ | _],
-            list.map(wrap_nth, WithoutModeArgNums, WithoutArgNumPieces),
+            % If the return value is one of the arguments without a mode,
+            % then the "the" prefix before "return value" will come *after*
+            % at least one argument number, to give a message such as
+            % "The arguments without modes are the second and the return
+            % value.".
+            WithoutArgNumPieces =
+                list.map(wrap_nth(add_the_prefix), WithoutModeArgNums),
             WithoutArgNumsPieces =
                 component_list_to_pieces(WithoutArgNumPieces),
             IdPieces = [words("The arguments without modes are the") |
@@ -1223,7 +1228,7 @@ check_type_and_mode_list_is_consistent(TypesAndModes, Context, Specs) :-
             | IdPieces],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
-        Specs = [Spec]
+        MaybeKind = error1([Spec])
     ).
 
 :- pred classify_type_and_mode_list(int::in, list(type_and_mode)::in,
@@ -1244,9 +1249,24 @@ classify_type_and_mode_list(ArgNum, [Head | Tail],
         WithoutModeArgNums = WithoutModeArgNums0
     ).
 
-:- pred wrap_nth(int::in, format_component::out) is det.
+:- type maybe_add_the_prefix
+    --->    dont_add_the_prefix
+    ;       add_the_prefix.
 
-wrap_nth(N, nth_fixed(N)).
+:- func wrap_nth(maybe_add_the_prefix, int) = format_component.
+
+wrap_nth(MaybeAddPredix, ArgNum) = Component :-
+    ( if ArgNum < 0 then
+        (
+            MaybeAddPredix = dont_add_the_prefix,
+            Component = words("return value")
+        ;
+            MaybeAddPredix = add_the_prefix,
+            Component = words("the return value")
+        )
+    else
+        Component = nth_fixed(ArgNum)
+    ).
 
 %---------------------------------------------------------------------------%
 %

@@ -1,11 +1,10 @@
-func_errors.m:011: Error: function arguments have modes, but function result
-func_errors.m:011:   does not.
 func_errors.m:011: Error: some but not all arguments have modes.
-func_errors.m:011:   The argument without a mode is the second.
-func_errors.m:012: Error: function arguments have modes, but function result
-func_errors.m:012:   does not.
-func_errors.m:013: Error: function result has mode, but function arguments do
-func_errors.m:013:   not.
+func_errors.m:011:   The arguments without modes are the second and the return
+func_errors.m:011:   value.
+func_errors.m:012: Error: some but not all arguments have modes.
+func_errors.m:012:   The argument without a mode is the return value.
+func_errors.m:013: Error: some but not all arguments have modes.
+func_errors.m:013:   The arguments without modes are the first and second.
 func_errors.m:017: Error: predicate `p'/2 declares a determinism without
 func_errors.m:017:   declaring the modes of its arguments.
 func_errors.m:019: Error: some but not all arguments have modes.
