@@ -17,9 +17,11 @@
 
 :- func s(T::in(I =< ground)) = (T::out(I =< unique)) is det.
 
-% Test that mode errors are detected correctly.
+:- pred t(I::in(I =< ground), T::out(I =< unique),
+    U::in(J =< ground), U::out(J =< any)) is det.
 
-:- pred t(int::in(I), int::out(I)) is det.
+% Test that mode errors are detected correctly.
+:- pred u(int::in(I), int::out(I)) is det.
 
 :- implementation.
 
@@ -27,5 +29,5 @@ p(X, X).
 q(X, X).
 r(X) = X.
 s(X) = X.
-
-t(_, 42).
+t(X, X, Y, Y).
+u(_, 42).

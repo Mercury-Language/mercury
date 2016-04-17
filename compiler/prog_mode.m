@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2008-2012 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_mode.m.
 % Main author: fjh.
@@ -13,16 +13,19 @@
 % Utility predicates dealing with modes and insts that do not require access
 % to the HLDS. (The predicates that do are in mode_util.m.)
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_mode.
 :- interface.
 
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module maybe.
+:- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Construct a mode corresponding to the standard `in', `out', `uo'
     % or `unused' mode.
@@ -53,7 +56,7 @@
 :- pred make_std_mode(string::in, list(mer_inst)::in, mer_mode::out) is det.
 :- func make_std_mode(string, list(mer_inst)) = mer_mode.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % mode_substitute_arg_list(Mode0, Params, Args, Mode) is true iff Mode is
     % the mode that results from substituting all occurrences of Params
@@ -72,7 +75,7 @@
 
 :- pred insts_to_mode(mer_inst::in, mer_inst::in, mer_mode::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % inst_substitute_arg_list(Params, Args, Inst0, Inst) is true iff Inst
     % is the inst that results from substituting all occurrences of Params
@@ -107,7 +110,7 @@
     %
 :- pred inst_contains_unconstrained_var(mer_inst::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given an expanded inst and a cons_id and its arity, return the
     % insts of the arguments of the top level functor, failing if the
@@ -142,7 +145,7 @@
 
 :- pred strip_builtin_qualifiers_from_inst(mer_inst::in, mer_inst::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Replace all occurrences of inst_var(InstVar) with
     % constrained_inst_var(InstVar, ground(shared, none)).
@@ -157,19 +160,22 @@
 :- pred constrain_inst_vars_in_mode_sub(inst_var_sub::in,
     mer_mode::in, mer_mode::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % Check that for each constrained_inst_var all occurrences have the
-    % same constraint.
+    % For each constrained inst_var, check whether all its occurrences
+    % have the same constraint. Return a sorted list of the inst_vars
+    % for which the answer is "no".
     %
-:- pred inst_var_constraints_are_self_consistent_in_modes(list(mer_mode)::in)
-    is semidet.
+:- pred inconsistent_constrained_inst_vars_in_modes(
+    list(mer_mode)::in, list(inst_var)::out) is det.
+:- pred inconsistent_constrained_inst_vars_in_type_and_modes(
+    list(type_and_mode)::in, list(inst_var)::out) is det.
 
-:- pred inst_var_constraints_types_modes_self_consistent(
-    list(type_and_mode)::in) is semidet.
+:- pred report_inconsistent_constrained_inst_vars(string::in, term.context::in,
+    inst_varset::in, list(inst_var)::in, maybe(error_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -184,7 +190,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 in_mode(in_mode).
 out_mode(out_mode).
@@ -217,7 +223,7 @@ make_std_mode(Name, Args) = Mode :-
     QualifiedName = qualified(MercuryBuiltin, Name),
     Mode = user_defined_mode(QualifiedName, Args).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 inst_lists_to_mode_list([], [_ | _], _) :-
     unexpected($module, $pred, "length mismatch").
@@ -280,7 +286,7 @@ insts_to_mode(Initial, Final, Mode) :-
         Mode = (Initial -> Final)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mode_substitute_arg_list(Mode0, Params, Args, Mode) :-
     (
@@ -484,7 +490,7 @@ mode_list_apply_substitution_2(Subst, [Mode0 | Modes0], [Mode | Modes]) :-
     mode_apply_substitution(Subst, Mode0, Mode),
     mode_list_apply_substitution_2(Subst, Modes0, Modes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 rename_apart_inst_vars(VarSet, NewVarSet, MergedVarSet, Modes0, Modes) :-
     varset.merge_renaming(VarSet, NewVarSet, MergedVarSet, Renaming),
@@ -629,7 +635,7 @@ rename_apart_inst_vars_in_inst_name(Renaming, InstName0, InstName) :-
         InstName = InstName0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 inst_contains_unconstrained_var(Inst) :-
     require_complete_switch [Inst]
@@ -728,7 +734,7 @@ inst_name_contains_unconstrained_var(InstName) :-
         inst_name_contains_unconstrained_var(SubInstName)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
     BoundInst = bound_functor(ConsId0, _ArgInsts),
@@ -744,7 +750,7 @@ bound_insts_to_cons_ids(TypeCtor, [BoundInst | BoundInsts],
     bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId),
     bound_insts_to_cons_ids(TypeCtor, BoundInsts, ConsIds).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
     % XXX This is very similar to get_single_arg_inst in mode_util.
@@ -797,7 +803,7 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
     % In case we later decide to change the representation of mode_ids.
 mode_id_to_int(mode_id(_, X), X).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The active part of this code is strip_builtin_qualifier_from_sym_name;
 % the rest is basically just recursive traversals to get there.
@@ -933,7 +939,7 @@ strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo) :-
         HOInstInfo = higher_order(Pred)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 constrain_inst_vars_in_mode(Mode0, Mode) :-
     constrain_inst_vars_in_mode_sub(map.init, Mode0, Mode).
@@ -1062,55 +1068,102 @@ constrain_inst_vars_in_inst_name(InstConstraints, Name0, Name) :-
         Name = Name0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-inst_var_constraints_are_self_consistent_in_modes(Modes) :-
-    inst_var_constraints_are_consistent_in_modes(Modes, map.init, _).
+inconsistent_constrained_inst_vars_in_modes(Modes, InconsistentVars) :-
+    list.foldl2(gather_inconsistent_constrained_inst_vars_in_mode,
+        Modes, set.init, InconsistentVarsSet, map.init, _),
+    set.to_sorted_list(InconsistentVarsSet, InconsistentVars).
 
-:- pred inst_var_constraints_are_consistent_in_modes(list(mer_mode)::in,
-    inst_var_sub::in, inst_var_sub::out) is semidet.
+inconsistent_constrained_inst_vars_in_type_and_modes(TypeAndModes,
+        InconsistentVars) :-
+    list.foldl2(gather_inconsistent_constrained_inst_vars_in_type_and_mode,
+        TypeAndModes, set.init, InconsistentVarsSet, map.init, _),
+    set.to_sorted_list(InconsistentVarsSet, InconsistentVars).
 
-inst_var_constraints_are_consistent_in_modes(Modes, !Sub) :-
-    list.foldl(inst_var_constraints_are_consistent_in_mode, Modes, !Sub).
+report_inconsistent_constrained_inst_vars(WhereDesc, Context, InstVarSet,
+        InconsistentVars, MaybeSpec) :-
+    (
+        InconsistentVars = [],
+        MaybeSpec = no
+    ;
+        InconsistentVars = [HeadInstVar | TailInstVars],
+        (
+            TailInstVars = [],
+            varset.lookup_name(InstVarSet, HeadInstVar, HeadInstVarName),
+            VarsPieces = [words("inst variable"), fixed(HeadInstVarName)]
+        ;
+            TailInstVars = [_ | _],
+            list.map(varset.lookup_name(InstVarSet), InconsistentVars,
+                InstVarNames),
+            VarsPieces = [words("inst variables") |
+                list_to_pieces(InstVarNames)]
+        ),
+        Pieces = [words("Error: inconsistent constraints on") | VarsPieces]
+            ++ [words(WhereDesc), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeSpec = yes(Spec)
+    ).
 
-inst_var_constraints_types_modes_self_consistent(TypeAndModes) :-
-    list.foldl(inst_var_constraints_type_mode_consistent, TypeAndModes,
-        map.init, _).
+%---------------------%
 
-:- pred inst_var_constraints_type_mode_consistent(type_and_mode::in,
-    inst_var_sub::in, inst_var_sub::out) is semidet.
+:- pred gather_inconsistent_constrained_inst_vars_in_type_and_mode(
+    type_and_mode::in, set(inst_var)::in, set(inst_var)::out,
+    inst_var_sub::in, inst_var_sub::out) is det.
 
-inst_var_constraints_type_mode_consistent(TypeAndMode, !Sub) :-
+gather_inconsistent_constrained_inst_vars_in_type_and_mode(TypeAndMode,
+        !InconsistentVars, !Sub) :-
     (
         TypeAndMode = type_only(_)
     ;
         TypeAndMode = type_and_mode(_, Mode),
-        inst_var_constraints_are_consistent_in_mode(Mode, !Sub)
+        gather_inconsistent_constrained_inst_vars_in_mode(Mode,
+            !InconsistentVars, !Sub)
     ).
 
-:- pred inst_var_constraints_are_consistent_in_mode(mer_mode::in,
-    inst_var_sub::in, inst_var_sub::out) is semidet.
+:- pred gather_inconsistent_constrained_inst_vars_in_modes(list(mer_mode)::in,
+    set(inst_var)::in, set(inst_var)::out,
+    inst_var_sub::in, inst_var_sub::out) is det.
 
-inst_var_constraints_are_consistent_in_mode(Mode, !Sub) :-
+gather_inconsistent_constrained_inst_vars_in_modes(Modes,
+        !InconsistentVars, !Sub) :-
+    list.foldl2(gather_inconsistent_constrained_inst_vars_in_mode, Modes,
+        !InconsistentVars, !Sub).
+
+:- pred gather_inconsistent_constrained_inst_vars_in_mode(mer_mode::in,
+    set(inst_var)::in, set(inst_var)::out,
+    inst_var_sub::in, inst_var_sub::out) is det.
+
+gather_inconsistent_constrained_inst_vars_in_mode(Mode,
+        !InconsistentVars, !Sub) :-
     (
         Mode = (InitialInst -> FinalInst),
-        inst_var_constraints_are_consistent_in_inst(InitialInst, !Sub),
-        inst_var_constraints_are_consistent_in_inst(FinalInst, !Sub)
+        gather_inconsistent_constrained_inst_vars_in_inst(InitialInst,
+            !InconsistentVars, !Sub),
+        gather_inconsistent_constrained_inst_vars_in_inst(FinalInst,
+            !InconsistentVars, !Sub)
     ;
         Mode = user_defined_mode(_, ArgInsts),
-        inst_var_constraints_are_consistent_in_insts(ArgInsts, !Sub)
+        gather_inconsistent_constrained_inst_vars_in_insts(ArgInsts,
+            !InconsistentVars, !Sub)
     ).
 
-:- pred inst_var_constraints_are_consistent_in_insts(list(mer_inst)::in,
-    inst_var_sub::in, inst_var_sub::out) is semidet.
+:- pred gather_inconsistent_constrained_inst_vars_in_insts(list(mer_inst)::in,
+    set(inst_var)::in, set(inst_var)::out,
+    inst_var_sub::in, inst_var_sub::out) is det.
 
-inst_var_constraints_are_consistent_in_insts(Insts, !Sub) :-
-    list.foldl(inst_var_constraints_are_consistent_in_inst, Insts, !Sub).
+gather_inconsistent_constrained_inst_vars_in_insts(Insts,
+        !InconsistentVars, !Sub) :-
+    list.foldl2(gather_inconsistent_constrained_inst_vars_in_inst, Insts,
+        !InconsistentVars, !Sub).
 
-:- pred inst_var_constraints_are_consistent_in_inst(mer_inst::in,
-    inst_var_sub::in, inst_var_sub::out) is semidet.
+:- pred gather_inconsistent_constrained_inst_vars_in_inst(mer_inst::in,
+    set(inst_var)::in, set(inst_var)::out,
+    inst_var_sub::in, inst_var_sub::out) is det.
 
-inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
+gather_inconsistent_constrained_inst_vars_in_inst(Inst,
+        !InconsistentVars, !Sub) :-
     (
         ( Inst = free
         ; Inst = free(_)
@@ -1129,15 +1182,15 @@ inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
             then
                 true
             else
-                list.foldl(
-                    inst_var_constraints_are_consistent_in_bound_inst_args,
-                    BoundInsts, !Sub)
+                list.foldl2(
+                    gather_inconsistent_constrained_inst_vars_in_bound_args,
+                    BoundInsts, !InconsistentVars, !Sub)
             )
         ;
             InstResults = inst_test_no_results,
-            list.foldl(
-                inst_var_constraints_are_consistent_in_bound_inst_args,
-                BoundInsts, !Sub)
+            list.foldl2(
+                gather_inconsistent_constrained_inst_vars_in_bound_args,
+                BoundInsts, !InconsistentVars, !Sub)
         )
     ;
         ( Inst = ground(_, HOInstInfo)
@@ -1147,7 +1200,8 @@ inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
             HOInstInfo = none_or_default_func
         ;
             HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
-            inst_var_constraints_are_consistent_in_modes(Modes, !Sub)
+            gather_inconsistent_constrained_inst_vars_in_modes(Modes,
+                !InconsistentVars, !Sub)
         )
     ;
         Inst = inst_var(_),
@@ -1155,39 +1209,52 @@ inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
     ;
         Inst = defined_inst(InstName),
         ( if InstName = user_inst(_, ArgInsts) then
-            inst_var_constraints_are_consistent_in_insts(ArgInsts, !Sub)
+            gather_inconsistent_constrained_inst_vars_in_insts(ArgInsts,
+                !InconsistentVars, !Sub)
         else
             true
         )
     ;
         Inst = abstract_inst(_, ArgInsts),
-        inst_var_constraints_are_consistent_in_insts(ArgInsts, !Sub)
+        gather_inconsistent_constrained_inst_vars_in_insts(ArgInsts,
+            !InconsistentVars, !Sub)
     ;
         Inst = constrained_inst_vars(InstVars, SubInst),
-        set.fold(inst_var_constraints_are_consistent_in_inst_var(SubInst),
-            InstVars, !Sub),
-        inst_var_constraints_are_consistent_in_inst(SubInst, !Sub)
+        set.fold2(
+            gather_inconsistent_constrained_inst_vars_in_inst_var(SubInst),
+            InstVars, !InconsistentVars, !Sub),
+        gather_inconsistent_constrained_inst_vars_in_inst(SubInst,
+            !InconsistentVars, !Sub)
     ).
 
-:- pred inst_var_constraints_are_consistent_in_bound_inst_args(bound_inst::in,
-    inst_var_sub::in, inst_var_sub::out) is semidet.
+:- pred gather_inconsistent_constrained_inst_vars_in_bound_args(
+    bound_inst::in, set(inst_var)::in, set(inst_var)::out,
+    inst_var_sub::in, inst_var_sub::out) is det.
 
-inst_var_constraints_are_consistent_in_bound_inst_args(BoundInst, !Sub) :-
+gather_inconsistent_constrained_inst_vars_in_bound_args(BoundInst,
+        !InconsistentVars, !Sub) :-
     BoundInst = bound_functor(_, ArgInsts),
-    inst_var_constraints_are_consistent_in_insts(ArgInsts, !Sub).
+    gather_inconsistent_constrained_inst_vars_in_insts(ArgInsts,
+        !InconsistentVars, !Sub).
 
-:- pred inst_var_constraints_are_consistent_in_inst_var(mer_inst::in,
-    inst_var::in, inst_var_sub::in, inst_var_sub::out) is semidet.
+:- pred gather_inconsistent_constrained_inst_vars_in_inst_var(mer_inst::in,
+    inst_var::in, set(inst_var)::in, set(inst_var)::out,
+    inst_var_sub::in, inst_var_sub::out) is det.
 
-inst_var_constraints_are_consistent_in_inst_var(SubInst, InstVar, !Sub) :-
+gather_inconsistent_constrained_inst_vars_in_inst_var(SubInst, InstVar,
+        !InconsistentVars, !Sub) :-
     ( if map.search(!.Sub, InstVar, InstVarInst) then
         % Check that the inst_var constraint is consistent with
         % the previous constraint on this inst_var.
-        InstVarInst = SubInst
+        ( if InstVarInst = SubInst then
+            true
+        else
+            set.insert(InstVar, !InconsistentVars)
+        )
     else
         map.det_insert(InstVar, SubInst, !Sub)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_mode.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

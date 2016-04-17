@@ -937,32 +937,28 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                         [simple_msg(get_term_context(PredTypeTerm),
                             [always(Pieces)])]),
                     MaybeIOM = error1([Spec])
-                else if
-                    inst_var_constraints_types_modes_self_consistent(
-                        TypesAndModes)
-                then
-                    varset.coerce(VarSet, TVarSet),
-                    varset.coerce(VarSet, IVarSet),
-                    Origin = item_origin_user,
-                    ItemPredDecl = item_pred_decl_info(Functor, PredOrFunc,
-                        TypesAndModes, WithType, WithInst, MaybeDet, Origin,
-                        TVarSet, IVarSet, ExistQVars,
-                        Purity, Constraints, Context, SeqNum),
-                    Item = item_pred_decl(ItemPredDecl),
-                    MaybeIOM = ok1(iom_item(Item))
                 else
-                    PredTypeTermStr =
-                        describe_error_term(VarSet, PredTypeTerm),
-                    Pieces = [words("Error: inconsistent constraints on"),
-                        words("inst variables in")] ++
-                        pred_or_func_decl_pieces(PredOrFunc) ++
-                        [suffix(":"), nl,
-                        words(PredTypeTermStr), suffix("."), nl],
-                    Spec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(PredTypeTerm),
-                            [always(Pieces)])]),
-                    MaybeIOM = error1([Spec])
+                    varset.coerce(VarSet, TypeVarSet),
+                    varset.coerce(VarSet, InstVarSet),
+                    inconsistent_constrained_inst_vars_in_type_and_modes(
+                        TypesAndModes, InconsistentVars),
+                    report_inconsistent_constrained_inst_vars(
+                        in_pred_or_func_decl_desc(PredOrFunc),
+                        get_term_context(PredTypeTerm),
+                        InstVarSet, InconsistentVars, MaybeInconsistentSpec),
+                    (
+                        MaybeInconsistentSpec = no,
+                        Origin = item_origin_user,
+                        ItemPredDecl = item_pred_decl_info(Functor, PredOrFunc,
+                            TypesAndModes, WithType, WithInst, MaybeDet, Origin,
+                            TypeVarSet, InstVarSet, ExistQVars,
+                            Purity, Constraints, Context, SeqNum),
+                        Item = item_pred_decl(ItemPredDecl),
+                        MaybeIOM = ok1(iom_item(Item))
+                    ;
+                        MaybeInconsistentSpec = yes(Spec),
+                        MaybeIOM = error1([Spec])
+                    )
                 )
             else
                 Specs = TMSpecs ++ get_any_errors1(MaybeTypeModeListKind),
@@ -1055,20 +1051,21 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         varset.coerce(VarSet, TVarSet),
         varset.coerce(VarSet, IVarSet),
         AllArgs = Args ++ [ReturnArg],
-        ( if inst_var_constraints_types_modes_self_consistent(AllArgs) then
+        inconsistent_constrained_inst_vars_in_type_and_modes(AllArgs,
+            InconsistentVars),
+        report_inconsistent_constrained_inst_vars("in function declaration",
+            get_term_context(Term),
+            IVarSet, InconsistentVars, MaybeInconsistentSpec),
+        (
+            MaybeInconsistentSpec = no,
             Origin = item_origin_user,
             ItemPredDecl = item_pred_decl_info(FuncName, pf_function, AllArgs,
                 no, no, MaybeDetism, Origin, TVarSet, IVarSet, ExistQVars,
                 Purity, Constraints, Context, SeqNum),
             Item = item_pred_decl(ItemPredDecl),
             MaybeIOM = ok1(iom_item(Item))
-        else
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error: inconsistent constraints"),
-                words("on inst variables in function declaration:"), nl,
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        ;
+            MaybeInconsistentSpec = yes(Spec),
             MaybeIOM = error1([Spec])
         )
     else
@@ -1384,9 +1381,14 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
             list.map(constrain_inst_vars_in_mode_sub(InstConstraints),
                 ArgModes0, ArgModes),
             varset.coerce(VarSet, InstVarSet),
-            ( if
-                inst_var_constraints_are_self_consistent_in_modes(ArgModes)
-            then
+            inconsistent_constrained_inst_vars_in_modes(ArgModes,
+                InconsistentVars),
+            report_inconsistent_constrained_inst_vars(
+                "in predicate mode declaration",
+                get_term_context(PredModeTerm),
+                InstVarSet, InconsistentVars, MaybeInconsistentSpec),
+            (
+                MaybeInconsistentSpec = no,
                 (
                     WithInst = no,
                     MaybePredOrFunc = yes(pf_predicate)
@@ -1401,15 +1403,8 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
                     Context, SeqNum),
                 Item = item_mode_decl(ItemModeDecl),
                 MaybeIOM = ok1(iom_item(Item))
-            else
-                PredModeTermStr = describe_error_term(VarSet, PredModeTerm),
-                Pieces = [words("Error: inconsistent constraints"),
-                    words("on inst variables"),
-                    words("in predicate mode declaration:"), nl,
-                    words(PredModeTermStr), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(PredModeTerm),
-                        [always(Pieces)])]),
+            ;
+                MaybeInconsistentSpec = yes(Spec),
                 MaybeIOM = error1([Spec])
             )
         ;
@@ -1451,24 +1446,20 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
                     RetMode0, RetMode),
                 varset.coerce(VarSet, InstVarSet),
                 ArgReturnModes = ArgModes ++ [RetMode],
-                ( if
-                    inst_var_constraints_are_self_consistent_in_modes(
-                        ArgReturnModes)
-                then
+                inconsistent_constrained_inst_vars_in_modes(ArgReturnModes,
+                    InconsistentVars),
+                report_inconsistent_constrained_inst_vars(
+                    "in function mode declaration", get_term_context(FullTerm),
+                    InstVarSet, InconsistentVars, MaybeInconsistentSpec),
+                (
+                    MaybeInconsistentSpec = no,
                     ItemModeDecl = item_mode_decl_info(Functor,
                         yes(pf_function), ArgReturnModes, no, MaybeDetism,
                         InstVarSet, Context, SeqNum),
                     Item = item_mode_decl(ItemModeDecl),
                     MaybeIOM = ok1(iom_item(Item))
-                else
-                    FullTermStr = describe_error_term(VarSet, FullTerm),
-                    Pieces = [words("Error: inconsistent constraints"),
-                        words("on inst variables"),
-                        words("in function mode declaration:"), nl,
-                        words(FullTermStr), suffix("."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(FullTerm),
-                            [always(Pieces)])]),
+                ;
+                    MaybeInconsistentSpec = yes(Spec),
                     MaybeIOM = error1([Spec])
                 )
             else
@@ -1911,6 +1902,11 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
     ).
 
 %---------------------------------------------------------------------------%
+
+:- func in_pred_or_func_decl_desc(pred_or_func) = string.
+
+in_pred_or_func_decl_desc(pf_function) = "in function declaration".
+in_pred_or_func_decl_desc(pf_predicate) = "in predicate declaration".
 
 :- func pred_or_func_decl_pieces(pred_or_func) = list(format_component).
 

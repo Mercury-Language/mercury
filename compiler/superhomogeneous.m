@@ -1092,7 +1092,7 @@ parse_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes, Det) :-
         Groundness = ho_any
     ),
     parse_pred_expr_args(PredArgsList, Args, Modes),
-    inst_var_constraints_are_self_consistent_in_modes(Modes).
+    inconsistent_constrained_inst_vars_in_modes(Modes, []).
 
     % parse_dcg_pred_expression converts the first argument of a -->/2
     % higher-order DCG pred expression into a list of arguments, a list
@@ -1124,7 +1124,7 @@ parse_dcg_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes,
         Groundness = ho_any
     ),
     parse_dcg_pred_expr_args(PredArgsList, Args, Modes),
-    inst_var_constraints_are_self_consistent_in_modes(Modes).
+    inconsistent_constrained_inst_vars_in_modes(Modes, []).
 
     % parse_func_expression converts the first argument of a :-/2
     % higher-order func expression (which may be implicit, see the fourth
@@ -1172,7 +1172,7 @@ parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
         parse_lambda_arg(RetTerm, RetArg, RetMode),
         Args = Args0 ++ [RetArg],
         Modes = Modes0 ++ [RetMode],
-        inst_var_constraints_are_self_consistent_in_modes(Modes)
+        inconsistent_constrained_inst_vars_in_modes(Modes, [])
     else
         % The argument modes default to `in',
         % the return mode defaults to `out'.
@@ -1204,7 +1204,7 @@ parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
     list.duplicate(NumArgs, InMode, InModes),
     Det = detism_det,
     Modes = InModes ++ [OutMode],
-    inst_var_constraints_are_self_consistent_in_modes(Modes),
+    inconsistent_constrained_inst_vars_in_modes(Modes, []),
     Args1 = Args0 ++ [RetTerm],
     list.map(term.coerce, Args1, Args).
 
