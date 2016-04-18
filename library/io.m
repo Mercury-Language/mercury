@@ -1316,9 +1316,9 @@
     %
     % Throws an io.error exception if the temporary file could not be created.
     %
-    % On the Erlang backend, this does not attempt to create the file with
-    % restrictive permissions (600 on Unix-like systems) and therefore should
-    % not be used when security is required.
+    % On the Erlang and Java backends, this does not attempt to create the file
+    % with restrictive permissions (600 on Unix-like systems) and therefore
+    % should not be used when security is required.
     %
 :- pred make_temp(string::out, io::di, io::uo) is det.
 
@@ -1335,9 +1335,9 @@
     %   - Dir is ignored.
     %   - Prefix is ignored.
     %
-    % On the Erlang backend, this does not attempt to create the file with
-    % restrictive permissions (600 on Unix-like systems) and therefore should
-    % not be used when security is required.
+    % On the Erlang and Java backends, this does not attempt to create the file
+    % with restrictive permissions (600 on Unix-like systems) and therefore
+    % should not be used when security is required.
     %
 :- pred make_temp(string::in, string::in, string::out, io::di, io::uo)
     is det.
@@ -1350,6 +1350,8 @@
     %
     % On the C# backend this is insecure as the file permissions are not set
     % and this call does not test for an existing directory.
+    %
+    % On the Java backend this is insecure as the file permissions are not set.
     %
     % This is unimplemented on the Erlang backend.
     %
@@ -1371,6 +1373,8 @@
     %     (600 on Unix-like systems) and therefore should not be used when
     %     security is required.
     %   - Prefix is ignored.
+    %
+    % On the Java backend this is insecure as the file permissions are not set.
     %
     % This is unimplemented on the Erlang backend.
     %
@@ -10368,6 +10372,42 @@ make_temp_directory(Dir, Prefix, DirName, !IO) :-
 
 %-----------------------------------------------------------------------%
 
+:- pragma foreign_decl("Java", local,
+"
+import java.io.File;
+import java.io.IOException;
+import java.util.Random;
+").
+
+:- pragma foreign_code("Java",
+"
+    public static Random ML_rand = new Random();
+
+    public static String makeTempName(String prefix)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(prefix);
+
+        // Make an 8-digit mixed case alpha-numeric code.
+        for (int i = 0; i < 8; i++) {
+            char c;
+            int c_num = ML_rand.nextInt(10+26+26);
+            if (c_num < 10) {
+                c_num = c_num + '0';
+            } else if (c_num < 10+26) {
+                c_num = c_num + 'A' - 10;
+            } else{
+                c_num = c_num + 'a' - 10 - 26;
+            }
+            c = (char)c_num;
+            sb.append(c);
+        }
+
+        return sb.toString();
+    }
+").
+
 :- pred do_make_temp(string::in, string::in, string::in,
     string::out, bool::out, string::out, io::di, io::uo) is det.
 
@@ -10497,16 +10537,6 @@ make_temp_directory(Dir, Prefix, DirName, !IO) :-
     }
 }").
 
-:- pragma foreign_decl("Java", local,
-"
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.PosixFilePermissions;
-").
-
-
 % For the Java implementation, io.make_temp/3 is overwritten directly,
 % since Java is capable of locating the default temp directory itself.
 
@@ -10517,19 +10547,25 @@ import java.nio.file.attribute.PosixFilePermissions;
         may_not_duplicate],
 "
     try {
-        Path dir_path, new_file;
+        File    new_file;
 
         if (Prefix.length() > 5) {
             // The documentation for io.make_temp says that we should only use
             // the first five characters of Prefix.
             Prefix = Prefix.substring(0, 5);
         }
-        dir_path = Paths.get(Dir);
-        new_file = Files.createTempFile(dir_path, Prefix, null);
-        FileName = new_file.toAbsolutePath().toString();
-        Okay = bool.YES;
-        ErrorMessage = """";
-    } catch (java.lang.Exception e) {
+
+        new_file = new File(new File(Dir), makeTempName(Prefix));
+        if (new_file.createNewFile()) {
+            FileName = new_file.getAbsolutePath();
+            Okay = bool.YES;
+            ErrorMessage = """";
+        } else {
+            FileName = """";
+            Okay = bool.NO;
+            ErrorMessage = ""Could not create file"";
+        }
+    } catch (IOException e) {
         FileName = """";
         Okay = bool.NO;
         ErrorMessage = e.toString();
@@ -10673,23 +10709,23 @@ import java.nio.file.attribute.PosixFilePermissions;
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    try {
-        Path dir_path, new_file;
+    File    new_dir;
 
-        if (Prefix.length() > 5) {
-            // The documentation for io.make_temp says that we should only use
-            // the first five characters of Prefix.
-            Prefix = Prefix.substring(0, 5);
-        }
-        dir_path = Paths.get(Dir);
-        new_file = Files.createTempDirectory(dir_path, Prefix);
-        DirName = new_file.toAbsolutePath().toString();
+    if (Prefix.length() > 5) {
+        // The documentation for io.make_temp says that we should only use
+        // the first five characters of Prefix.
+        Prefix = Prefix.substring(0, 5);
+    }
+
+    new_dir = new File(new File(Dir), makeTempName(Prefix));
+    if (new_dir.mkdir()) {
+        DirName = new_dir.getAbsolutePath();
         Okay = bool.YES;
         ErrorMessage = """";
-    } catch (java.lang.Exception e) {
+    } else {
         DirName = """";
         Okay = bool.NO;
-        ErrorMessage = e.toString();
+        ErrorMessage = ""Coudln't create directory"";
     }
 ").
 
