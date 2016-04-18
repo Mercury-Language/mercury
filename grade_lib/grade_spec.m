@@ -304,15 +304,15 @@ init_solver_var_specs(SpecsVersion) = Specs :-
             svalue_stack_len_extend],
         GcPrefOrder =
             [svalue_gc_none, svalue_gc_bdw, svalue_gc_target_native,
-            svalue_gc_accurate, svalue_gc_bdw_debug, svalue_gc_history]
+            svalue_gc_bdw_debug, svalue_gc_accurate, svalue_gc_history]
     ;
         SpecsVersion = specs_version_1,
         StackLenPrefOrder =
             [svalue_stack_len_segments, svalue_stack_len_std,
             svalue_stack_len_extend],
         GcPrefOrder =
-            [svalue_gc_bdw, svalue_gc_target_native, svalue_gc_accurate,
-            svalue_gc_bdw_debug, svalue_gc_none, svalue_gc_history]
+            [svalue_gc_bdw, svalue_gc_target_native, svalue_gc_bdw_debug,
+            svalue_gc_none, svalue_gc_accurate, svalue_gc_history]
     ),
 
     Specs = [
@@ -783,11 +783,6 @@ init_requirement_specs = [
         "Accurate gc requires targeting C.",
         (svar_gc `being` svalue_gc_accurate) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
-    ),
-    requirement_spec(
-        "Accurate gc requires the MLDS backend.",
-        (svar_gc `being` svalue_gc_accurate) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
     requirement_spec(
         "History gc requires targeting C.",

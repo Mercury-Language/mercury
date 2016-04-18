@@ -113,14 +113,10 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         LowTagsFloatsStrs =
             low_tags_floats_to_strs(WhichGradeString, LowTagsFloats),
         (
-            MinModel = llds_minmodel_no(LLDSGc, CTrail, LLDSThreadSafe,
+            MinModel = llds_minmodel_no(CGc, CTrail, LLDSThreadSafe,
                 LLDSPerfProf),
             MinimalModelStrs = [],
-            ( LLDSGc = llds_gc_none,             Gc = grade_var_gc_none
-            ; LLDSGc = llds_gc_bdw,              Gc = grade_var_gc_bdw
-            ; LLDSGc = llds_gc_bdw_debug,        Gc = grade_var_gc_bdw_debug
-            ; LLDSGc = llds_gc_history,          Gc = grade_var_gc_history
-            ),
+            Gc = c_gc_to_gc(CGc),
             GcStrs = gc_to_strs(Gc),
             TrailStrs = c_trail_to_strs(CTrail),
             (
@@ -156,8 +152,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             )
         ;
             MinModel = llds_minmodel_yes(MinModelKind, LLDSMMGc),
-            ( LLDSMMGc = llds_mm_gc_none,       Gc = grade_var_gc_none
-            ; LLDSMMGc = llds_mm_gc_bdw,        Gc = grade_var_gc_bdw
+            ( LLDSMMGc = llds_mm_gc_bdw,        Gc = grade_var_gc_bdw
             ; LLDSMMGc = llds_mm_gc_bdw_debug,  Gc = grade_var_gc_bdw_debug
             ),
             GcStrs = gc_to_strs(Gc),
@@ -244,7 +239,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         SSDebugStrs = ssdebug_to_strs(WhichGradeString, SSDebug),
         (
             MLDSTarget = mlds_target_c(DataRep, NestedFuncs, ThreadSafe,
-                MLDSCGc, CTrail, MLDSPerfProf, MercFile, LowTagsFloats),
+                CGc, CTrail, MLDSPerfProf, MercFile, LowTagsFloats),
             BinaryCompatStrs =
                 binary_compat_version_to_strs(WhichGradeString),
             (
@@ -271,12 +266,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             LowTagsFloatsStrs =
                 low_tags_floats_to_strs(WhichGradeString, LowTagsFloats),
             ThreadSafeStrs = thread_safe_to_strs(tsb_mlds, ThreadSafe),
-            ( MLDSCGc = mlds_c_gc_none,         Gc = grade_var_gc_none
-            ; MLDSCGc = mlds_c_gc_bdw,          Gc = grade_var_gc_bdw
-            ; MLDSCGc = mlds_c_gc_bdw_debug,    Gc = grade_var_gc_bdw_debug
-            ; MLDSCGc = mlds_c_gc_accurate,     Gc = grade_var_gc_accurate
-            ; MLDSCGc = mlds_c_gc_history,      Gc = grade_var_gc_history
-            ),
+            Gc = c_gc_to_gc(CGc),
             GcStrs = gc_to_strs(Gc),
             TrailStrs = c_trail_to_strs(CTrail),
             (
@@ -309,6 +299,16 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
     ;
         WhichGradeString = grade_string_link_check,
         GradeStr = string.join_list("_", GradeComponents)
+    ).
+
+:- func c_gc_to_gc(c_gc) = grade_var_gc.
+
+c_gc_to_gc(CGc) = Gc :-
+    ( CGc = c_gc_none,         Gc = grade_var_gc_none
+    ; CGc = c_gc_bdw,          Gc = grade_var_gc_bdw
+    ; CGc = c_gc_bdw_debug,    Gc = grade_var_gc_bdw_debug
+    ; CGc = c_gc_accurate,     Gc = grade_var_gc_accurate
+    ; CGc = c_gc_history,      Gc = grade_var_gc_history
     ).
 
 :- func gc_to_strs(grade_var_gc) = list(string).

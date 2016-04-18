@@ -56,7 +56,7 @@
 
 :- type llds_minmodel
     --->    llds_minmodel_no(
-                llds_gc,
+                c_gc,
                 c_trail,
                 llds_thread_safe,
                 llds_perf_prof
@@ -99,15 +99,15 @@
     ;       llds_gcc_conf_asm_jump    % yes     yes     no
     ;       llds_gcc_conf_asm_fast.   % yes     yes     yes
 
-:- type llds_gc
-    --->    llds_gc_none
-    ;       llds_gc_bdw
-    ;       llds_gc_bdw_debug
-    ;       llds_gc_history.
+:- type c_gc
+    --->    c_gc_none
+    ;       c_gc_bdw
+    ;       c_gc_bdw_debug
+    ;       c_gc_accurate
+    ;       c_gc_history.
 
 :- type llds_minmodel_gc
-    --->    llds_mm_gc_none
-    ;       llds_mm_gc_bdw
+    --->    llds_mm_gc_bdw
     ;       llds_mm_gc_bdw_debug.
 
 :- type llds_thread_safe
@@ -145,7 +145,7 @@
                 mlds_c_dararep,
                 grade_var_nested_funcs,
                 grade_var_thread_safe,
-                mlds_c_gc,
+                c_gc,
                 c_trail,
                 mlds_c_perf_prof,
                 grade_var_merc_file,
@@ -157,13 +157,6 @@
 :- type mlds_c_dararep
     --->    mlds_c_datarep_heap_cells
     ;       mlds_c_datarep_classes.
-
-:- type mlds_c_gc
-    --->    mlds_c_gc_none
-    ;       mlds_c_gc_bdw
-    ;       mlds_c_gc_bdw_debug
-    ;       mlds_c_gc_accurate
-    ;       mlds_c_gc_history.
 
 :- type mlds_c_perf_prof
     --->    mlds_c_perf_prof_none
@@ -264,25 +257,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
         ),
         (
             MinimalModel = grade_var_minmodel_no,
-            (
-                Gc = grade_var_gc_none,
-                LLDSGc = llds_gc_none
-            ;
-                Gc = grade_var_gc_target_native,
-                unexpected($pred, "Target = c, Gc = target_native")
-            ;
-                Gc = grade_var_gc_bdw,
-                LLDSGc = llds_gc_bdw
-            ;
-                Gc = grade_var_gc_bdw_debug,
-                LLDSGc = llds_gc_bdw_debug
-            ;
-                Gc = grade_var_gc_accurate,
-                unexpected($pred, "Backend = llds, Gc = accurate")
-            ;
-                Gc = grade_var_gc_history,
-                LLDSGc = llds_gc_history
-            ),
+            encode_c_gc(Gc, CGc),
             (
                 Trail = grade_var_trail_no,
                 CTrail = c_trail_no
@@ -322,7 +297,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                     "MprofMemory != grade_var_mprof_memory_no"),
                 LLDSPerfProf = llds_perf_prof_deep
             ),
-            MinModel = llds_minmodel_no(LLDSGc, CTrail, LLDSThreadSafe,
+            MinModel = llds_minmodel_no(CGc, CTrail, LLDSThreadSafe,
                 LLDSPerfProf)
         ;
             (
@@ -340,7 +315,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             ),
             (
                 Gc = grade_var_gc_none,
-                MinModelGc = llds_mm_gc_none
+                unexpected($pred, "minimal model, Gc = none")
             ;
                 Gc = grade_var_gc_target_native,
                 unexpected($pred, "Target = c, Gc = target_native")
@@ -352,7 +327,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 MinModelGc = llds_mm_gc_bdw_debug
             ;
                 Gc = grade_var_gc_accurate,
-                unexpected($pred, "Backend = llds, Gc = accurate")
+                unexpected($pred, "minimal model, Gc = accurate")
             ;
                 Gc = grade_var_gc_history,
                 unexpected($pred, "minimal model, Gc = history")
@@ -432,26 +407,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 DataRep = grade_var_datarep_erlang,
                 unexpected($pred, "Target = c, DataRep = erlang")
             ),
-            (
-                Gc = grade_var_gc_none,
-                MLDSGc = mlds_c_gc_none
-            ;
-                Gc = grade_var_gc_target_native,
-                unexpected($pred, "Target = c, Gc = target_native")
-            ;
-                Gc = grade_var_gc_bdw,
-                MLDSGc = mlds_c_gc_bdw
-            ;
-                Gc = grade_var_gc_bdw_debug,
-                MLDSGc = mlds_c_gc_bdw_debug
-            ;
-                Gc = grade_var_gc_accurate,
-                MLDSGc = mlds_c_gc_accurate
-            ;
-                Gc = grade_var_gc_history,
-                % XXX Is this supported?
-                MLDSGc = mlds_c_gc_history
-            ),
+            encode_c_gc(Gc, CGc),
             (
                 Trail = grade_var_trail_no,
                 CTrail = c_trail_no
@@ -473,7 +429,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             LowTagsFloats =
                 encode_low_tags_floats(Pregen, LowTagBitsUse, MercFloat),
             TargetC = mlds_target_c(MLDSCDataRep, NestedFuncs,
-                ThreadSafe, MLDSGc, CTrail, MLDSPerfProf,
+                ThreadSafe, CGc, CTrail, MLDSPerfProf,
                 MercFile, LowTagsFloats),
             GradeStructure = grade_mlds(TargetC, SSDebug)
         ;
@@ -606,6 +562,29 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
         ),
         % XXX probably incomplete
         GradeStructure = grade_elds(SSDebug)
+    ).
+
+:- pred encode_c_gc(grade_var_gc::in, c_gc::out) is det.
+
+encode_c_gc(Gc, CGc) :-
+    (
+        Gc = grade_var_gc_none,
+        CGc = c_gc_none
+    ;
+        Gc = grade_var_gc_target_native,
+        unexpected($pred, "Target = c, Gc = target_native")
+    ;
+        Gc = grade_var_gc_bdw,
+        CGc = c_gc_bdw
+    ;
+        Gc = grade_var_gc_bdw_debug,
+        CGc = c_gc_bdw_debug
+    ;
+        Gc = grade_var_gc_accurate,
+        CGc = c_gc_accurate
+    ;
+        Gc = grade_var_gc_history,
+        CGc = c_gc_history
     ).
 
 :- func encode_low_tags_floats(grade_var_pregen, grade_var_low_tag_bits_use,

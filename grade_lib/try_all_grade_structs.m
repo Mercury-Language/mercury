@@ -98,17 +98,12 @@ generate_llds_tests(GradeStructure) :-
         ; MinModelKind = lmk_own_stack
         ; MinModelKind = lmk_own_stack_debug
         ),
-        ( LLDSMMGc = llds_mm_gc_none
-        ; LLDSMMGc = llds_mm_gc_bdw
+        ( LLDSMMGc = llds_mm_gc_bdw
         ; LLDSMMGc = llds_mm_gc_bdw_debug
         ),
         MinModel = llds_minmodel_yes(MinModelKind, LLDSMMGc)
     ;
-        ( LLDSGc = llds_gc_none
-        ; LLDSGc = llds_gc_bdw
-        ; LLDSGc = llds_gc_bdw_debug
-        ; LLDSGc = llds_gc_history
-        ),
+        generate_c_gc(CGc),
         ( CTrail = c_trail_no
         ; CTrail = c_trail_yes(grade_var_trail_segments_no)
         ; CTrail = c_trail_yes(grade_var_trail_segments_yes)
@@ -130,7 +125,7 @@ generate_llds_tests(GradeStructure) :-
             ),
             LLDSPerfProf = llds_perf_prof_mprof(MProfTime, MProfMemory)
         ),
-        MinModel = llds_minmodel_no(LLDSGc, CTrail, ThreadSafe, LLDSPerfProf)
+        MinModel = llds_minmodel_no(CGc, CTrail, ThreadSafe, LLDSPerfProf)
     ),
     ( TermSizeProf = grade_var_term_size_prof_no
     ; TermSizeProf = grade_var_term_size_prof_cells
@@ -181,12 +176,7 @@ generate_mlds_c_target(MLDSCTarget) :-
     ; NestedFuncs = grade_var_nested_funcs_yes
     ),
     generate_grade_var_thread_safe(ThreadSafe),
-    ( MLDSCGc = mlds_c_gc_none
-    ; MLDSCGc = mlds_c_gc_bdw
-    ; MLDSCGc = mlds_c_gc_bdw_debug
-    ; MLDSCGc = mlds_c_gc_accurate
-    ; MLDSCGc = mlds_c_gc_history
-    ),
+    generate_c_gc(CGc),
     ( CTrail = c_trail_no
     ; CTrail = c_trail_yes(grade_var_trail_segments_no)
     ; CTrail = c_trail_yes(grade_var_trail_segments_yes)
@@ -205,7 +195,7 @@ generate_mlds_c_target(MLDSCTarget) :-
     MercFile = grade_var_merc_file_no,
     generate_low_tags_floats(LowTagsFloats),
     MLDSCTarget = mlds_target_c(MLDSCDataRep, NestedFuncs, ThreadSafe,
-        MLDSCGc, CTrail, MLDSCPerfProf, MercFile, LowTagsFloats).
+        CGc, CTrail, MLDSCPerfProf, MercFile, LowTagsFloats).
 
 %---------------------%
 
@@ -216,6 +206,14 @@ generate_elds_tests(GradeStructure) :-
     GradeStructure = grade_elds(SSDebug).
 
 %---------------------%
+
+:- pred generate_c_gc(c_gc::out) is multi.
+
+generate_c_gc(c_gc_none).
+generate_c_gc(c_gc_bdw).
+generate_c_gc(c_gc_bdw_debug).
+generate_c_gc(c_gc_accurate).
+generate_c_gc(c_gc_history).
 
 :- pred generate_grade_var_thread_safe(grade_var_thread_safe::out) is multi.
 
