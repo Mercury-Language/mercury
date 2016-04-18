@@ -129,6 +129,11 @@ Changes to the Mercury standard library:
 * We have added temp_directory/3, make_temp_directory/3 and
   make_temp_directory/5 predicates to the io module.
 
+* We have added a variant of io.set_environment_var that returns an io.res
+  value rather than throwing an exception. We have added the predicate
+  io.have_set_environment_var/0 that tests for the ability to set
+  environment variables on the current platform.
+
 * We have added a module for discrete interval encoding trees, which are a
   highly efficient set implementation for fat sets.  This module is a
   contribution from Yes Logic Pty. Ltd.

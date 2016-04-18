@@ -1295,12 +1295,24 @@
     io::di, io::uo) is det.
 
     % First argument is the name of the environment variable, second argument
-    % is the value to be assigned to that variable.
-    % Throws a software_error/1 exception if the system runs out of environment
-    % space or if the environment cannot be modified.
+    % is the value to be assigned to that variable. Res is 'ok' on success or
+    % 'error(ErrorCode)' if the system runs out of environment space or if
+    % the environment cannot be modified.
+    %
     % Note that the environment cannot be modified on Java.
     %
+:- pred set_environment_var(string::in, string::in, io.res::out,
+    io::di, io::uo) is det.
+
+    % Same as set_environment_var/5, but throws an exception if an error
+    % occurs.
+    %
 :- pred set_environment_var(string::in, string::in, io::di, io::uo) is det.
+
+    % Test if the set_environment_var/{4,5} predicates are available.  This
+    % is false for Java backends.
+    %
+:- pred have_set_environment_var is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -5695,15 +5707,30 @@ io.get_environment_var(Var, OptValue, !IO) :-
     ),
     OptValue = OptValue0.
 
-:- pragma promise_pure(io.set_environment_var/4).
+:- pragma promise_pure(io.set_environment_var/5).
 
-io.set_environment_var(Var, Value, !IO) :-
-    ( if impure io.setenv(Var, Value) then
-        true
+io.set_environment_var(Var, Value, Res, !IO) :-
+    ( if io.have_set_environment_var then
+        ( if impure io.setenv(Var, Value) then
+            Res = ok
+        else
+            string.format("Could not set environment variable `%s'",
+                [s(Var)], Message),
+            Res = error(io_error(Message))
+        )
     else
-        string.format("Could not set environment variable `%s'",
-            [s(Var)], Message),
-        error(Message)
+        Message = "Cannot set environment variables on this platform",
+        Res = error(io_error(Message))
+    ).
+
+io.set_environment_var(Var, Value, IO0, IO) :-
+    io.set_environment_var(Var, Value, Res, IO0, IO1),
+    (
+        Res = ok,
+        IO = IO1
+    ;
+        Res = error(ErrorCode),
+        error(io.error_message(ErrorCode))
     ).
 
 %---------------------------------------------------------------------------%
@@ -10338,6 +10365,36 @@ command_line_argument(_, "") :-
     ValueStr = binary_to_list(Value),
     os:putenv(VarStr, ValueStr),
     SUCCESS_INDICATOR = true
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    have_set_environment_var,
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    SUCCESS_INDICATOR = MR_TRUE;
+").
+
+:- pragma foreign_proc("Java",
+    have_set_environment_var,
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    SUCCESS_INDICATOR = false;
+").
+
+:- pragma foreign_proc("C#",
+    have_set_environment_var,
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    SUCCESS_INDICATOR = true;
+").
+
+:- pragma foreign_proc("Erlang",
+    have_set_environment_var,
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    SUCCESS_INDICATOR = true;
 ").
 
 %---------------------------------------------------------------------------%
