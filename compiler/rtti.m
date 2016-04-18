@@ -318,7 +318,7 @@
     % Describes the representation of a functor in a general
     % discriminated union type.
     %
-    % Will probably need modification for the Java and IL back ends.
+    % Will probably need modification for the Java and C# back-ends.
     %
 :- type du_rep
     --->    du_ll_rep(

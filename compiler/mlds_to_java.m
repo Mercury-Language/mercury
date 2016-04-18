@@ -37,9 +37,7 @@
 %   as the name of its enclosing package. That should work now, but
 %   javac doesn't like the filenames we give for submodules.)
 %
-% - Support for Java in Mmake.
-%
-% - Generate names of classes etc. correctly (mostly same as IL backend)
+% - Generate names of classes etc. correctly.
 %
 % - General code cleanup
 %

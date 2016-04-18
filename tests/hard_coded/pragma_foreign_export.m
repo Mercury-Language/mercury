@@ -2,7 +2,6 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% XXX Need to add IL and Java implementations.
 :- module pragma_foreign_export.
 :- interface.
 
