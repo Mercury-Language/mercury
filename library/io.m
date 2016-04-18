@@ -1368,9 +1368,6 @@
     % make_temp_directory(Result, !IO) creates an empty directory whose name
     % is different from the name of any existing directory.
     %
-    % On the C# backend this is insecure as the file permissions are not set
-    % and this call does not test for an existing directory.
-    %
     % On the Java backend this is insecure as the file permissions are not set.
     %
     % This is unimplemented on the Erlang backend.
@@ -1386,9 +1383,6 @@
     % directory when it is no longer needed.
     %
     % The C# backend has the following limitations:
-    %   - It does not attempt to create the file with restrictive permissions
-    %     (600 on Unix-like systems) and therefore should not be used when
-    %     security is required.
     %   - Prefix is ignored.
     %   - Suffix is ignored.
     %
@@ -1896,6 +1890,7 @@
 ").
 
 :- pragma foreign_decl("C#", "
+using System;
 using System.IO;
 using System.Security.AccessControl;
 using System.Security.Principal;
