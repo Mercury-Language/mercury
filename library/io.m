@@ -1314,6 +1314,8 @@
     %
     % The file is placed in the directory returned by get_temp_directory/3.
     %
+    % Throws an io.error exception if the temporary file could not be created.
+    %
     % On the Erlang backend, this does not attempt to create the file with
     % restrictive permissions (600 on Unix-like systems) and therefore should
     % not be used when security is required.
@@ -1326,6 +1328,8 @@
     % the first 5 characters of Prefix. Name is bound to the name of the
     % file.  It is the responsibility of the caller to delete the file when it
     % is no longer required.
+    %
+    % Throws an io.error exception if the temporary file could not be created.
     %
     % The C# backend has the following limitations:
     %   - Dir is ignored.
@@ -1341,6 +1345,9 @@
     % make_temp_directory(DirName, !IO) creates an empty directory whose name
     % is different from the name of any existing directory.
     %
+    % Throws an io.error exception if the temporary directory could not be
+    % created.
+    %
     % On the C# backend this is insecure as the file permissions are not set
     % and this call does not test for an existing directory.
     %
@@ -1355,6 +1362,9 @@
     % DirName is bound to the name of the new directory. It is the
     % responsibility of the program to delete the directory when it is no
     % longer needed.
+    %
+    % Throws an io.error exception if the temporary directory could not be
+    % created.
     %
     % The C# backend has the following limitations:
     %   - It does not attempt to create the file with restrictive permissions
