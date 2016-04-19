@@ -171,7 +171,9 @@
 %
 %    :- type pos == int.
 %
-%    :- type ssdb_tracel_level ---> shallow ; deep.
+%    :- type ssdb_tracel_level
+%       --->    shallow
+%       ;       deep.
 %
 % Output head variables may appear twice in a variable description list --
 % initially unbound, then overridden by a bound_head_var functor. Then the
@@ -189,11 +191,17 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.globals.
 
 :- import_module io.
 
-:- pred ssdebug_transform_module(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- inst shallow_or_deep % for ssdb_trace_level
+    --->    shallow
+    ;       deep.
+
+:- pred ssdebug_transform_module(ssdb_trace_level::in(shallow_or_deep),
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -214,8 +222,6 @@
 :- import_module hlds.quantification.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -239,15 +245,12 @@
 
 %-----------------------------------------------------------------------------%
 
-ssdebug_transform_module(!ModuleInfo, !IO) :-
-    module_info_ssdb_trace_level(!.ModuleInfo, SSTraceLevel),
+ssdebug_transform_module(SSTraceLevel, !ModuleInfo, !IO) :-
     (
-        SSTraceLevel = none
-    ;
         SSTraceLevel = shallow,
-        % In the shallow trace level the parent of the library
-        % procedure also be of trace level shallow, thus we
-        % don't need to proxy the library methods.
+        % With the shallow trace level, the parent of a library procedure
+        % will also be have trace level shallow, thus we don't need to proxy
+        % the library methods.
         process_all_nonimported_procs(
             update_module(ssdebug_process_proc_if_needed(SSTraceLevel)),
             !ModuleInfo)
@@ -258,13 +261,6 @@ ssdebug_transform_module(!ModuleInfo, !IO) :-
             update_module(ssdebug_process_proc_if_needed(SSTraceLevel)),
             !ModuleInfo)
     ).
-
-:- pred module_info_ssdb_trace_level(module_info::in, ssdb_trace_level::out)
-    is det.
-
-module_info_ssdb_trace_level(ModuleInfo, SSTraceLevel) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_ssdb_trace_level(Globals, SSTraceLevel).
 
 %-----------------------------------------------------------------------------%
 %
@@ -536,20 +532,22 @@ ssdebug_process_proc_if_needed(SSTraceLevel, PredProcId,
         % below the shallow call event aren't seen.
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
         ( if pred_info_is_exported(PredInfo) then
-            ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo)
+            ssdebug_process_proc(SSTraceLevel, PredProcId,
+                !ProcInfo, !ModuleInfo)
         else
             true
         )
     ;
         SSTraceLevel = deep,
-        % Transfrom all procedures
-        ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo)
+        % Transfrom all procedures.
+        ssdebug_process_proc(SSTraceLevel, PredProcId, !ProcInfo, !ModuleInfo)
     ).
 
-:- pred ssdebug_process_proc(pred_proc_id::in, proc_info::in, proc_info::out,
+:- pred ssdebug_process_proc(ssdb_trace_level::in(shallow_or_deep),
+    pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
-ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc(SSTraceLevel, PredProcId, !ProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     ( if all_args_fully_input_or_output(!.ModuleInfo, ArgModes) then
@@ -564,25 +562,28 @@ ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
             ( Determinism = detism_det
             ; Determinism = detism_cc_multi
             ),
-            ssdebug_process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo)
+            ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
+                !ProcInfo, !ModuleInfo)
         ;
             ( Determinism = detism_semi
             ; Determinism = detism_cc_non
             ),
-            ssdebug_process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo)
+            ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
+                !ProcInfo, !ModuleInfo)
         ;
             ( Determinism = detism_multi
             ; Determinism = detism_non
             ),
-            ssdebug_process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo)
+            ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
+                !ProcInfo, !ModuleInfo)
         ;
             Determinism = detism_erroneous,
-            ssdebug_process_proc_erroneous(PredId, ProcId, !ProcInfo,
-                !ModuleInfo)
+            ssdebug_process_proc_erroneous(SSTraceLevel, PredId, ProcId,
+                !ProcInfo, !ModuleInfo)
         ;
             Determinism = detism_failure,
-            ssdebug_process_proc_failure(PredId, ProcId, !ProcInfo,
-                !ModuleInfo)
+            ssdebug_process_proc_failure(SSTraceLevel, PredId, ProcId,
+                !ProcInfo, !ModuleInfo)
         )
     else
         % In the case of a mode which is not fully input or output,
@@ -592,10 +593,12 @@ ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for a deterministic goal.
     %
-:- pred ssdebug_process_proc_det(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred ssdebug_process_proc_det(ssdb_trace_level::in(shallow_or_deep),
+    pred_id::in, proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-ssdebug_process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
+        !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -616,7 +619,7 @@ ssdebug_process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             !VarTypes, map.init, BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(!.ModuleInfo,
+        make_level_construction(SSTraceLevel,
             ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
 
         % Generate the call to handle_event_call(ProcId, VarList).
@@ -684,10 +687,12 @@ ssdebug_process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for a semidet goal.
     %
-:- pred ssdebug_process_proc_semi(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred ssdebug_process_proc_semi(ssdb_trace_level::in(shallow_or_deep),
+    pred_id::in, proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-ssdebug_process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
+        !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -708,7 +713,7 @@ ssdebug_process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             !VarTypes, map.init, BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(!.ModuleInfo,
+        make_level_construction(SSTraceLevel,
             ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
 
         % Generate the call to handle_event_call.
@@ -812,10 +817,12 @@ ssdebug_process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for a nondeterministic procedure.
     %
-:- pred ssdebug_process_proc_nondet(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred ssdebug_process_proc_nondet(ssdb_trace_level::in(shallow_or_deep),
+    pred_id::in, proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-ssdebug_process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
+        !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -836,7 +843,7 @@ ssdebug_process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             !VarTypes, map.init, BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(!.ModuleInfo,
+        make_level_construction(SSTraceLevel,
             ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
 
         % Generate the call to handle_event_call.
@@ -910,10 +917,12 @@ ssdebug_process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for a failure procedure.
     %
-:- pred ssdebug_process_proc_failure(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred ssdebug_process_proc_failure(ssdb_trace_level::in(shallow_or_deep),
+    pred_id::in, proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-ssdebug_process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_failure(SSTraceLevel, PredId, ProcId,
+        !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -935,7 +944,7 @@ ssdebug_process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             !VarTypes, map.init, _BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(!.ModuleInfo,
+        make_level_construction(SSTraceLevel,
             ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
 
         % Generate the call to handle_event_call.
@@ -977,10 +986,12 @@ ssdebug_process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for an erroneous procedure.
     %
-:- pred ssdebug_process_proc_erroneous(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred ssdebug_process_proc_erroneous(ssdb_trace_level::in(shallow_or_deep),
+    pred_id::in, proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-ssdebug_process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_erroneous(SSTraceLevel, PredId, ProcId,
+        !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -1002,7 +1013,7 @@ ssdebug_process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             !VarTypes, map.init, _BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(!.ModuleInfo,
+        make_level_construction(SSTraceLevel,
             ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
 
         % Generate the call to handle_event_call(ProcId, VarList).
@@ -1257,16 +1268,12 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
     % Construct the goal which sets the ssdb_tracing_level for
     % the current goal. ie Level = shallow
     %
-:- pred make_level_construction(module_info::in,
+:- pred make_level_construction(ssdb_trace_level::in(shallow_or_deep),
     hlds_goal::out, prog_var::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-make_level_construction(ModuleInfo, Goal, LevelVar, !VarSet, !VarTypes) :-
-    module_info_ssdb_trace_level(ModuleInfo, SSTraceLevel),
+make_level_construction(SSTraceLevel, Goal, LevelVar, !VarSet, !VarTypes) :-
     (
-        SSTraceLevel = none,
-        unexpected($module, $pred, "unexpected ss trace level")
-    ;
         SSTraceLevel = shallow,
         ConsId = shallow_cons_id
     ;

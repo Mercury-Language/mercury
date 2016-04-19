@@ -808,12 +808,20 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         ForceDisableSSDB),
     (
         ForceDisableSSDB = no,
-        maybe_write_string(Verbose,
-            "% Maybe apply source to source debugging transformation ...\n",
-            !IO),
-        ssdebug_transform_module(!HLDS, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
+        globals.get_ssdb_trace_level(Globals, SSTraceLevel),
+        (
+            SSTraceLevel = none
+        ;
+            ( SSTraceLevel = shallow
+            ; SSTraceLevel = deep
+            ),
+            maybe_write_string(Verbose,
+                "% Apply source to source debugging transformation ...\n",
+                !IO),
+            ssdebug_transform_module(SSTraceLevel, !HLDS, !IO),
+            maybe_write_string(Verbose, "% done.\n", !IO),
+            maybe_report_stats(Stats, !IO)
+        )
     ;
         ForceDisableSSDB = yes
     ).
