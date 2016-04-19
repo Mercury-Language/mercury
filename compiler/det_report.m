@@ -1062,18 +1062,18 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
                 CanFail = cannot_fail
             ;
                 CanFail = can_fail,
-                find_missing_cons_ids(!.DetInfo, InstMap0, SwitchVar, Cases,
-                    VarStr, MaybeMissingPieces),
+                find_missing_cons_ids(!.DetInfo, InstMap0, RequiredVar, Cases,
+                    RequiredVarStr, MaybeMissingPieces),
                 (
                     MaybeMissingPieces = yes(MissingPieces),
                     SwitchPieces = [words("Error: the switch on"),
-                        quote(VarStr),
+                        quote(RequiredVarStr),
                         words("is required to be complete,"),
                         words("but it does not cover") | MissingPieces] ++ [nl]
                 ;
                     MaybeMissingPieces = no,
                     SwitchPieces = [words("Error: the switch on"),
-                        quote(VarStr),
+                        quote(RequiredVarStr),
                         words("is required to be complete,"),
                         words("but it is not."), nl]
                 ),
@@ -1085,8 +1085,19 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
                 det_info_add_error_spec(SwitchSpec, !DetInfo)
             )
         else
-            generate_warning_for_switch_var_if_missing(RequiredVar, SubGoal,
-                ScopeGoalInfo, !DetInfo)
+            det_get_proc_info(!.DetInfo, ProcInfo),
+            proc_info_get_varset(ProcInfo, VarSet),
+            RequiredVarStr = mercury_var_to_name_only(VarSet, RequiredVar),
+            SwitchPieces = [words("Error: the goal inside the"),
+                words("require_complete_switch [" ++ RequiredVarStr ++
+                    "] scope"),
+                words("is not a switch on"), quote(RequiredVarStr),
+                suffix("."), nl],
+            Context = goal_info_get_context(ScopeGoalInfo),
+            SwitchMsg = simple_msg(Context, [always(SwitchPieces)]),
+            SwitchSpec = error_spec(severity_error, phase_detism_check,
+                [SwitchMsg]),
+            det_info_add_error_spec(SwitchSpec, !DetInfo)
         )
     ;
         Reason = require_switch_arms_detism(RequiredVar, RequiredDetism),

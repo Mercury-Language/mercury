@@ -944,21 +944,15 @@ each of which requires @var{Goal} to have the named determinism.
 
 @item @code{require_complete_switch [@var{Var}] @var{Goal}}
 A switch completeness check, typically used to enhance the robustness of code.
-If @var{Goal} is a complete switch on @var{Var},
-i.e. a switch that has an arm
-for all the function symbols in the type of @var{Var},
+If @var{Goal} is a switch on @var{Var}
+and the switch is @emph{complete},
+i.e. the switch has an arm for every function symbol that @var{Var}
+could be bound to at this point in the code,
 then @code{require_complete_switch [@var{Var}] @var{Goal}}
 is equivalent to @var{Goal}.
-If @var{Goal} is a switch on @var{Var} but it is not a complete switch,
-i.e. it has no arm
-for at least one of the function symbols in the type of @var{Var},
+If @var{Goal} is a switch on @var{Var} but is @emph{not} complete,
+or @var{Goal} is not a switch on @var{Var} at all,
 then the compiler is required to generate an error message.
-If @var{Goal} is not a switch on @var{Var},
-then @code{require_complete_switch [@var{Var}] @var{Goal}}
-is equivalent to @var{Goal}.
-This is intended to allow these scopes to be used
-even if @var{Var} is input to the scope
-only in some but not all modes of the containing predicate.
 
 @item @code{require_switch_arms_det [@var{Var}] @var{Goal}}
 @itemx @code{require_switch_arms_semidet [@var{Var}] @var{Goal}}

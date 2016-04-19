@@ -7,6 +7,10 @@
 % the sub-goal in question is not a switch and the variable in question
 % does not occur in the non-local set of the sub-goal.
 % (See also tests/warnings/bug257b.m.)
+%
+% This test is now disabled, since we now generate an error when a
+% require_complete_switch scope is wrapped around a goal that is not
+% a switch on the named variable.
 
 :- module bug257b.
 :- interface.

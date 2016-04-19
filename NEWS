@@ -90,6 +90,10 @@ Changes to the Mercury language:
   determinisms at least as tight as det, and to generate error messages
   for any violations of this requirement.
 
+* We have changed the meaning of require_complete_switch scopes slightly:
+  the compiler now generates an error if the goal inside the scope
+  is not a switch on the named variable.
+
 * We have added an extension to include external files
   in pragma foreign_decl and pragma foreign_code declarations.
 

@@ -20,7 +20,6 @@ COMPILE_PROGS = \
 
 ERRORCHECK_PROGS = \
 	ambiguous_overloading \
-	bug257 \
 	bug311 \
 	det_infer_warning \
 	double_underscore \
