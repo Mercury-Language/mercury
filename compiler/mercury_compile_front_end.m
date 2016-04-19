@@ -686,6 +686,7 @@ modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
         !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_string(Verbose, "% Mode-checking clauses...\n", !IO),
     globals.lookup_bool_option(Globals, benchmark_modes, BenchmarkModes),
     (
         BenchmarkModes = yes,

@@ -178,17 +178,8 @@
 %-----------------------------------------------------------------------------%
 
 modecheck_module(ModuleInfo0, {ModuleInfo, SafeToContinue, Specs}) :-
-    module_info_get_globals(ModuleInfo0, Globals),
-    trace [io(!IO)] (
-        globals.lookup_bool_option(Globals, verbose, Verbose),
-        maybe_write_string(Verbose, "% Mode-checking clauses...\n", !IO)
-    ),
     check_pred_modes(check_modes, may_change_called_proc,
-        ModuleInfo0, ModuleInfo, SafeToContinue, Specs),
-    trace [io(!IO)] (
-        globals.lookup_bool_option(Globals, statistics, Statistics),
-        maybe_report_stats(Statistics, !IO)
-    ).
+        ModuleInfo0, ModuleInfo, SafeToContinue, Specs).
 
 %-----------------------------------------------------------------------------%
 
