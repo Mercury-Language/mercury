@@ -969,15 +969,10 @@ If @var{Goal} is a switch on @var{Var},
 and all arms of the switch would be allowable in a det context,
 @code{require_switch_arms_det [@var{Var}] @var{Goal}}
 is equivalent to @var{Goal}.
-If @var{Goal} is a switch on @var{Var},
-but some arms of the switch would @emph{not} be allowable in a det context,
-then the compiler is required to generate an error message.
 If @var{Goal} is not a switch on @var{Var},
-then @code{require_switch_arms_det [@var{Var}] @var{Goal}}
-is equivalent to @var{Goal}.
-This is intended to allow these scopes to be used
-even if @var{Var} is input to the scope
-only in some but not all modes of the containing predicate.
+or if it is a switch on @var{Var}
+but some of its arms would @emph{not} be allowable in a det context,
+then the compiler is required to generate an error message.
 
 The @code{require_switch_arms_det} keyword
 may be replaced with

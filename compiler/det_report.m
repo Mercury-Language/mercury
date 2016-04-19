@@ -1085,19 +1085,8 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
                 det_info_add_error_spec(SwitchSpec, !DetInfo)
             )
         else
-            det_get_proc_info(!.DetInfo, ProcInfo),
-            proc_info_get_varset(ProcInfo, VarSet),
-            RequiredVarStr = mercury_var_to_name_only(VarSet, RequiredVar),
-            SwitchPieces = [words("Error: the goal inside the"),
-                words("require_complete_switch [" ++ RequiredVarStr ++
-                    "] scope"),
-                words("is not a switch on"), quote(RequiredVarStr),
-                suffix("."), nl],
-            Context = goal_info_get_context(ScopeGoalInfo),
-            SwitchMsg = simple_msg(Context, [always(SwitchPieces)]),
-            SwitchSpec = error_spec(severity_error, phase_detism_check,
-                [SwitchMsg]),
-            det_info_add_error_spec(SwitchSpec, !DetInfo)
+            generate_error_not_switch_on_required_var(RequiredVar,
+                "require_complete_switch", ScopeGoalInfo, !DetInfo)
         )
     ;
         Reason = require_switch_arms_detism(RequiredVar, RequiredDetism),
@@ -1111,8 +1100,33 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
             reqscope_check_goal_detism_for_cases(RequiredDetism,
                 SwitchVar, SwitchVarType, Cases, InstMap0, !DetInfo)
         else
-            generate_warning_for_switch_var_if_missing(RequiredVar, SubGoal,
-                ScopeGoalInfo, !DetInfo)
+            (
+                RequiredDetism = detism_det,
+                ScopeWord = "require_switch_arms_det"
+            ;
+                RequiredDetism = detism_semi,
+                ScopeWord = "require_switch_arms_semidet"
+            ;
+                RequiredDetism = detism_multi,
+                ScopeWord = "require_switch_arms_multi"
+            ;
+                RequiredDetism = detism_non,
+                ScopeWord = "require_switch_arms_nondet"
+            ;
+                RequiredDetism = detism_cc_multi,
+                ScopeWord = "require_switch_arms_cc_multi"
+            ;
+                RequiredDetism = detism_cc_non,
+                ScopeWord = "require_switch_arms_cc_nondet"
+            ;
+                RequiredDetism = detism_erroneous,
+                ScopeWord = "require_switch_arms_erroneous"
+            ;
+                RequiredDetism = detism_failure,
+                ScopeWord = "require_switch_arms_failure"
+            ),
+            generate_error_not_switch_on_required_var(RequiredVar,
+                ScopeWord, ScopeGoalInfo, !DetInfo)
         )
     ;
         Reason = loop_control(_, _, _),
@@ -1244,35 +1258,21 @@ reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
     reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
         Cases, InstMap0, !DetInfo).
 
-    % Emit a warning if the variable in the head of a require_complete_switch
-    % or require_switch_arms_detism scope does not occur somewhere in the goal
-    % inside the scope. Note that since the goal inside the scope does not
-    % need to be a switch, the variable will not necessarily appear in the
-    % non-locals set. We only emit the warning when the variable does
-    % not occur at all.
-    %
-:- pred generate_warning_for_switch_var_if_missing(prog_var::in, hlds_goal::in,
+:- pred generate_error_not_switch_on_required_var(prog_var::in, string::in,
     hlds_goal_info::in, det_info::in, det_info::out) is det.
 
-generate_warning_for_switch_var_if_missing(RequiredVar, Goal, ScopeGoalInfo,
-        !DetInfo) :-
-    goal_vars(Goal, GoalVars),
-    ( if set_of_var.member(GoalVars, RequiredVar) then
-        true
-    else
-        det_get_proc_info(!.DetInfo, ProcInfo),
-        proc_info_get_varset(ProcInfo, VarSet),
-        VarStr = mercury_var_to_name_only(VarSet, RequiredVar),
-        MissingRequiredPieces = [words("Warning: variable "), quote(VarStr),
-            words("is the subject of a require_complete_switch scope,"),
-            words("but it does not occur in the subgoal."), nl],
-        Context = goal_info_get_context(ScopeGoalInfo),
-        MissingRequiredMsg = simple_msg(Context,
-            [always(MissingRequiredPieces)]),
-        MissingRequiredSpec = error_spec(severity_warning,
-            phase_detism_check, [MissingRequiredMsg]),
-        det_info_add_error_spec(MissingRequiredSpec, !DetInfo)
-    ).
+generate_error_not_switch_on_required_var(RequiredVar, ScopeWord,
+        ScopeGoalInfo, !DetInfo) :-
+    det_get_proc_info(!.DetInfo, ProcInfo),
+    proc_info_get_varset(ProcInfo, VarSet),
+    RequiredVarStr = mercury_var_to_name_only(VarSet, RequiredVar),
+    Pieces = [words("Error: the goal inside the"),
+        words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"), words("scope"),
+        words("is not a switch on"), quote(RequiredVarStr), suffix("."), nl],
+    Context = goal_info_get_context(ScopeGoalInfo),
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_detism_check, [Msg]),
+    det_info_add_error_spec(Spec, !DetInfo).
 
 %-----------------------------------------------------------------------------%
 

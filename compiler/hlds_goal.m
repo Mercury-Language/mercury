@@ -495,9 +495,10 @@
             % of simplification.
 
     ;       require_switch_arms_detism(prog_var, determinism)
-            % If the wrapped subgoal is a switch on the given variable,
-            % require every arm of that switch to have the specified
-            % determinism. If it does not, report an error.
+            % Require the wrapped subgoal to be a switch on the given variable,
+            % and require every arm of that switch to have a determinism
+            % that promises at least as much as the specified determinism.
+            % If either condition is satisfied, report an error.
             % This scope reason should not exist after the first invocation
             % of simplification.
 

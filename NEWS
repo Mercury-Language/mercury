@@ -85,9 +85,9 @@ Changes to the Mercury language:
       require_switch_arms_erroneous
       require_switch_arms_failure
 
-  If `Goal' is switch on `Var', then e.g. `require_switch_arms_det [Var] Goal'
-  tells the compiler to require all the arms of that switch to have
-  determinisms at least as tight as det, and to generate error messages
+  `require_switch_arms_<determinism> [Var] Goal' tells the compiler to require
+  `Goal' to be a switch on `Var' in which all the switch arms have determinisms
+  at least as tight as <determininism>, and to generate error messages
   for any violations of this requirement.
 
 * We have changed the meaning of require_complete_switch scopes slightly:
