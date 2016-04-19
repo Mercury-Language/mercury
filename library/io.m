@@ -10394,7 +10394,7 @@ command_line_argument(_, "") :-
     have_set_environment_var,
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    SUCCESS_INDICATOR = true;
+    SUCCESS_INDICATOR = true
 ").
 
 %---------------------------------------------------------------------------%
