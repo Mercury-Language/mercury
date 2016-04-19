@@ -498,7 +498,7 @@
             % Require the wrapped subgoal to be a switch on the given variable,
             % and require every arm of that switch to have a determinism
             % that promises at least as much as the specified determinism.
-            % If either condition is satisfied, report an error.
+            % If either condition is not satisfied, report an error.
             % This scope reason should not exist after the first invocation
             % of simplification.
 
