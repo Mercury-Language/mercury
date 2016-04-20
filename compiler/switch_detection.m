@@ -215,7 +215,7 @@ detect_switches_in_proc(Info, !ProcInfo) :-
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
-    detect_switches_in_goal(InstMap0, Goal0, Goal, LocalInfo0, LocalInfo),
+    detect_switches_in_goal(InstMap0, no, Goal0, Goal, LocalInfo0, LocalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     LocalInfo = local_switch_detect_info(_ModuleInfo, _AllowMulti, _VarTypes,
         Requant, BodyDeletedCallCallees),
@@ -244,12 +244,15 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     % Given a goal, and the instmap on entry to that goal,
     % replace disjunctions with switches whereever possible.
     %
-:- pred detect_switches_in_goal(instmap::in, hlds_goal::in, hlds_goal::out,
+:- pred detect_switches_in_goal(instmap::in, maybe(prog_var)::in,
+    hlds_goal::in, hlds_goal::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_goal(InstMap0, !Goal, !LocalInfo) :-
-    detect_switches_in_goal_update_instmap(InstMap0, _InstMap, !Goal,
-        !LocalInfo).
+detect_switches_in_goal(InstMap0, MaybeRequiredVar, Goal0, Goal, !LocalInfo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+    detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar,
+        GoalInfo, GoalExpr0, GoalExpr, !LocalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % This version is the same as the above except that it returns the
     % resulting instmap on exit from the goal, which is computed by applying
@@ -261,19 +264,19 @@ detect_switches_in_goal(InstMap0, !Goal, !LocalInfo) :-
 
 detect_switches_in_goal_update_instmap(!InstMap, Goal0, Goal, !LocalInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    detect_switches_in_goal_expr(!.InstMap, GoalInfo, GoalExpr0, GoalExpr,
+    detect_switches_in_goal_expr(!.InstMap, no, GoalInfo, GoalExpr0, GoalExpr,
         !LocalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     update_instmap(Goal0, !InstMap).
 
     % Here we process each of the different sorts of goals.
     %
-:- pred detect_switches_in_goal_expr(instmap::in, hlds_goal_info::in,
-    hlds_goal_expr::in, hlds_goal_expr::out,
+:- pred detect_switches_in_goal_expr(instmap::in, maybe(prog_var)::in,
+    hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
-        !LocalInfo) :-
+detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
+        GoalExpr0, GoalExpr, !LocalInfo) :-
     (
         GoalExpr0 = disj(Disjuncts0),
         (
@@ -282,9 +285,22 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
         ;
             Disjuncts0 = [_ | _],
             NonLocals = goal_info_get_nonlocals(GoalInfo),
-            set_of_var.to_sorted_list(NonLocals, NonLocalsList),
-            detect_switches_in_disj(GoalInfo, NonLocalsList,
-                Disjuncts0, NonLocalsList, InstMap0, [], GoalExpr, !LocalInfo)
+            (
+                MaybeRequiredVar = no,
+                set_of_var.to_sorted_list(NonLocals, VarsToTry)
+            ;
+                MaybeRequiredVar = yes(RequiredVar),
+                ( if
+                    set_of_var.remove(RequiredVar, NonLocals, NonRequiredVars)
+                then
+                    set_of_var.to_sorted_list(NonRequiredVars, VarsToTryTail),
+                    VarsToTry = [RequiredVar | VarsToTryTail]
+                else
+                    set_of_var.to_sorted_list(NonLocals, VarsToTry)
+                )
+            ),
+            detect_switches_in_disj(GoalInfo, VarsToTry, Disjuncts0, VarsToTry,
+                InstMap0, [], GoalExpr, !LocalInfo)
         )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
@@ -292,14 +308,14 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = negation(SubGoal0),
-        detect_switches_in_goal(InstMap0, SubGoal0, SubGoal, !LocalInfo),
+        detect_switches_in_goal(InstMap0, no, SubGoal0, SubGoal, !LocalInfo),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        detect_switches_in_goal_update_instmap(InstMap0, InstMap1, Cond0, Cond,
-            !LocalInfo),
-        detect_switches_in_goal(InstMap1, Then0, Then, !LocalInfo),
-        detect_switches_in_goal(InstMap0, Else0, Else, !LocalInfo),
+        detect_switches_in_goal_update_instmap(InstMap0, InstMap1,
+            Cond0, Cond, !LocalInfo),
+        detect_switches_in_goal(InstMap1, no, Then0, Then, !LocalInfo),
+        detect_switches_in_goal(InstMap0, no, Else0, Else, !LocalInfo),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
@@ -307,15 +323,36 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( if Reason = from_ground_term(_, from_ground_term_construct) then
+        (
+            Reason = from_ground_term(_, from_ground_term_construct),
             % There are neither disjunctions nor deconstruction unifications
             % inside these scopes.
-            SubGoal = SubGoal0
-        else
+            %
             % XXX We could treat from_ground_term_deconstruct specially
             % as well, since the only variable whose deconstruction could be of
             % interest here is the one named in Reason.
-            detect_switches_in_goal(InstMap0, SubGoal0, SubGoal, !LocalInfo)
+            SubGoal = SubGoal0
+        ;
+            ( Reason = from_ground_term(_, from_ground_term_initial)
+            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ; Reason = from_ground_term(_, from_ground_term_other)
+            ; Reason = exist_quant(_)
+            ; Reason = promise_solutions(_, _)
+            ; Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = trace_goal(_, _, _, _, _)
+            ; Reason = loop_control(_, _, _)
+            ),
+            detect_switches_in_goal(InstMap0, no, SubGoal0, SubGoal,
+                !LocalInfo)
+        ;
+            ( Reason = require_complete_switch(RequiredVar)
+            ; Reason = require_switch_arms_detism(RequiredVar, _)
+            ),
+            detect_switches_in_goal(InstMap0, yes(RequiredVar),
+                SubGoal0, SubGoal, !LocalInfo)
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
@@ -327,7 +364,7 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
             ModuleInfo = !.LocalInfo ^ lsdi_module_info,
             instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
                 InstMap0, InstMap1),
-            detect_switches_in_goal(InstMap1, LambdaGoal0, LambdaGoal,
+            detect_switches_in_goal(InstMap1, no, LambdaGoal0, LambdaGoal,
                 !LocalInfo),
             RHS = RHS0 ^ rhs_lambda_goal := LambdaGoal,
             GoalExpr = GoalExpr0 ^ unify_rhs := RHS
@@ -348,14 +385,16 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners),
-            detect_switches_in_goal(InstMap0, MainGoal0, MainGoal, !LocalInfo),
+            detect_switches_in_goal(InstMap0, no, MainGoal0, MainGoal,
+                !LocalInfo),
             detect_switches_in_orelse(InstMap0, OrElseGoals0, OrElseGoals,
                 !LocalInfo),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            detect_switches_in_goal(InstMap0, SubGoal0, SubGoal, !LocalInfo),
+            detect_switches_in_goal(InstMap0, no, SubGoal0, SubGoal,
+                !LocalInfo),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(_, _),
@@ -372,7 +411,7 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
 detect_sub_switches_in_disj(_, [], [], !LocalInfo).
 detect_sub_switches_in_disj(InstMap, [Goal0 | Goals0], [Goal | Goals],
         !LocalInfo) :-
-    detect_switches_in_goal(InstMap, Goal0, Goal, !LocalInfo),
+    detect_switches_in_goal(InstMap, no, Goal0, Goal, !LocalInfo),
     detect_sub_switches_in_disj(InstMap, Goals0, Goals, !LocalInfo).
 
 :- pred detect_switches_in_cases(prog_var::in, instmap::in,
@@ -389,7 +428,7 @@ detect_switches_in_cases(Var, InstMap0, [Case0 | Cases0], [Case | Cases],
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     !LocalInfo ^ lsdi_module_info := ModuleInfo,
-    detect_switches_in_goal(InstMap1, Goal0, Goal, !LocalInfo),
+    detect_switches_in_goal(InstMap1, no, Goal0, Goal, !LocalInfo),
     Case = case(MainConsId, OtherConsIds, Goal),
     detect_switches_in_cases(Var, InstMap0, Cases0, Cases, !LocalInfo).
 
@@ -411,7 +450,7 @@ detect_switches_in_conj(InstMap0,
 detect_switches_in_orelse(_, [], [], !LocalInfo).
 detect_switches_in_orelse(InstMap, [Goal0 | Goals0], [Goal | Goals],
         !LocalInfo) :-
-    detect_switches_in_goal(InstMap, Goal0, Goal, !LocalInfo),
+    detect_switches_in_goal(InstMap, no, Goal0, Goal, !LocalInfo),
     detect_switches_in_orelse(InstMap, Goals0, Goals, !LocalInfo).
 
 %-----------------------------------------------------------------------------%
@@ -605,8 +644,8 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
 :- type again
     --->    again(prog_var, list(hlds_goal), list(case)).
 
-    % This is the interesting bit - we've found a non-empty disjunction,
-    % and we've got a list of the non-local variables of that disjunction.
+    % This is the interesting bit - we have found a non-empty disjunction,
+    % and we have got a list of the non-local variables of that disjunction.
     % Now for each non-local variable, we check whether there is a partition
     % of the disjuncts such that each group of disjunctions can only succeed
     % if the variable is bound to a different functor.

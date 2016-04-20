@@ -83,7 +83,6 @@ OTHER_PROGS = \
 	bug402 \
 	bug51 \
 	bug85 \
-	inst_perf_bug_2 \
 	builtin_false \
 	call_failure \
 	common_struct_bug \
@@ -143,6 +142,7 @@ OTHER_PROGS = \
 	inhibit_warn_test \
 	inlining_bug \
 	inst_perf_bug_1 \
+	inst_perf_bug_2 \
 	instmap_generic_failure \
 	int64 \
 	lambda_inference\
@@ -202,6 +202,7 @@ OTHER_PROGS = \
 	require_bug \
 	require_tailrec_1 \
 	require_tailrec_2 \
+	required_var \
 	same_length_2 \
 	semidet_disj \
 	shape_type \
