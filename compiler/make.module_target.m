@@ -362,51 +362,69 @@ build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
         % We need a temporary file to pass the arguments to the mmc process
         % which will do the compilation. It is created here (not in invoke_mmc)
         % so it can be cleaned up by build_with_check_for_interrupt.
-        io.make_temp(ArgFileName, !IO),
-        MaybeArgFileName = yes(ArgFileName)
+        io.make_temp_file(ArgFileNameResult, !IO),
+        (
+            ArgFileNameResult = ok(ArgFileName),
+            MaybeArgFileName = yes(ArgFileName),
+            ArgFileNameSuccess = ok
+        ;
+            ArgFileNameResult = error(Error),
+            MaybeArgFileName = no,
+            ArgFileNameSuccess = error(Error)
+        )
     else
-        MaybeArgFileName = no
+        MaybeArgFileName = no,
+        ArgFileNameSuccess = ok
     ),
-    Cleanup =
-        ( pred(!.MakeInfo::in, !:MakeInfo::out, !.IO::di, !:IO::uo) is det :-
-            % XXX Remove `.int.tmp' files.
-            list.foldl2(make_remove_target_file(Globals, very_verbose),
-                TouchedTargetFiles, !MakeInfo, !IO),
-            list.foldl2(make_remove_file(Globals, very_verbose), TouchedFiles,
-                !MakeInfo, !IO),
-            (
-                MaybeArgFileName = yes(ArgFileName2),
-                io.remove_file(ArgFileName2, _, !IO)
-            ;
-                MaybeArgFileName = no
-            )
-        ),
 
-    get_real_milliseconds(Time0, !IO),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    build_with_check_for_interrupt(VeryVerbose,
-        build_with_module_options_and_output_redirect(Globals, ModuleName,
-            ExtraOptions ++ TaskOptions,
-            build_target_2(ModuleName, Task, MaybeArgFileName, Imports)),
-        Cleanup, Succeeded, !Info, !IO),
-    record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
-        TouchedFiles, !Info, !IO),
-    get_real_milliseconds(Time, !IO),
-
-    globals.lookup_bool_option(Globals, show_make_times, ShowMakeTimes),
     (
-        ShowMakeTimes = yes,
-        DiffSecs = float(Time - Time0) / 1000.0,
-        % Avoid cluttering the screen with short running times.
-        ( if DiffSecs >= 0.4 then
-            io.write_string("Making ", !IO),
-            make_write_target_file(Globals, TargetFile, !IO),
-            io.format(" took %.2fs\n", [f(DiffSecs)], !IO)
-        else
-            true
+        ArgFileNameSuccess = ok : io.res,
+        Cleanup = (pred(!.MakeInfo::in, !:MakeInfo::out, !.IO::di, !:IO::uo)
+                    is det :-
+                % XXX Remove `.int.tmp' files.
+                list.foldl2(make_remove_target_file(Globals, very_verbose),
+                    TouchedTargetFiles, !MakeInfo, !IO),
+                list.foldl2(make_remove_file(Globals, very_verbose),
+                    TouchedFiles, !MakeInfo, !IO),
+                (
+                    MaybeArgFileName = yes(ArgFileName2),
+                    io.remove_file(ArgFileName2, _, !IO)
+                ;
+                    MaybeArgFileName = no
+                )
+            ),
+
+        get_real_milliseconds(Time0, !IO),
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+        build_with_check_for_interrupt(VeryVerbose,
+            build_with_module_options_and_output_redirect(Globals, ModuleName,
+                ExtraOptions ++ TaskOptions,
+                build_target_2(ModuleName, Task, MaybeArgFileName, Imports)),
+            Cleanup, Succeeded, !Info, !IO),
+        record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
+            TouchedFiles, !Info, !IO),
+        get_real_milliseconds(Time, !IO),
+
+        globals.lookup_bool_option(Globals, show_make_times, ShowMakeTimes),
+        (
+            ShowMakeTimes = yes,
+            DiffSecs = float(Time - Time0) / 1000.0,
+            % Avoid cluttering the screen with short running times.
+            ( if DiffSecs >= 0.4 then
+                io.write_string("Making ", !IO),
+                make_write_target_file(Globals, TargetFile, !IO),
+                io.format(" took %.2fs\n", [f(DiffSecs)], !IO)
+            else
+                true
+            )
+        ;
+            ShowMakeTimes = no
         )
     ;
-        ShowMakeTimes = no
+        ArgFileNameSuccess = error(ArgFileError),
+        io.format(stderr_stream, "Could not create temporary file: %s\n",
+            [s(error_message(ArgFileError))], !IO),
+        Succeeded = no
     ).
 
 :- pred build_target_2(module_name::in, compilation_task_type::in,

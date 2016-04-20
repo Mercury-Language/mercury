@@ -575,46 +575,56 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
     % the output from the command would go to the current C output
     % and error streams.
 
-    io.make_temp(TmpFile, !IO),
-    ( if use_dotnet then
-        % XXX can't use Bourne shell syntax to redirect on .NET
-        % XXX the output will go to the wrong place!
-        CommandRedirected = Command
-    else if use_win32 then
-        % On windows we can't in general redirect standard error in the
-        % shell.
-        CommandRedirected = Command ++ " > " ++ TmpFile
-    else
-        CommandRedirected =
-            string.append_list([Command, " > ", TmpFile, " 2>&1"])
-    ),
-    io.call_system_return_signal(CommandRedirected, Result, !IO),
+    io.make_temp_file(TmpFileResult, !IO),
     (
-        Result = ok(exited(Status)),
-        maybe_write_string(PrintCommand, "% done.\n", !IO),
-        ( if Status = 0 then
-            CommandSucceeded = yes
+        TmpFileResult = ok(TmpFile),
+        ( if use_dotnet then
+            % XXX can't use Bourne shell syntax to redirect on .NET
+            % XXX the output will go to the wrong place!
+            CommandRedirected = Command
+        else if use_win32 then
+            % On windows we can't in general redirect standard error in the
+            % shell.
+            CommandRedirected = Command ++ " > " ++ TmpFile
         else
-            % The command should have produced output describing the error.
+            CommandRedirected =
+                string.append_list([Command, " > ", TmpFile, " 2>&1"])
+        ),
+        io.call_system_return_signal(CommandRedirected, Result, !IO),
+        (
+            Result = ok(exited(Status)),
+            maybe_write_string(PrintCommand, "% done.\n", !IO),
+            ( if Status = 0 then
+                CommandSucceeded = yes
+            else
+                % The command should have produced output describing the error.
+                CommandSucceeded = no
+            )
+        ;
+            Result = ok(signalled(Signal)),
+            report_error_to_stream(ErrorStream,
+                "system command received signal "
+                ++ int_to_string(Signal) ++ ".", !IO),
+            % Also report the error to standard output, because if we raise the
+            % signal this error may not ever been seen, the process stops and
+            % the user is confused.
+            report_error("system command received signal "
+                ++ int_to_string(Signal) ++ ".", !IO),
+
+            % Make sure the current process gets the signal. Some systems (e.g.
+            % Linux) ignore SIGINT during a call to system().
+            raise_signal(Signal, !IO),
+            CommandSucceeded = no
+        ;
+            Result = error(Error),
+            report_error_to_stream(ErrorStream, io.error_message(Error), !IO),
             CommandSucceeded = no
         )
     ;
-        Result = ok(signalled(Signal)),
-        report_error_to_stream(ErrorStream, "system command received signal "
-            ++ int_to_string(Signal) ++ ".", !IO),
-        % Also report the error to standard output, because if we raise the
-        % signal this error may not ever been seen, the process stops and
-        % the user is confused.
-        report_error("system command received signal "
-            ++ int_to_string(Signal) ++ ".", !IO),
-
-        % Make sure the current process gets the signal. Some systems (e.g.
-        % Linux) ignore SIGINT during a call to system().
-        raise_signal(Signal, !IO),
-        CommandSucceeded = no
-    ;
-        Result = error(Error),
-        report_error_to_stream(ErrorStream, io.error_message(Error), !IO),
+        TmpFileResult = error(Error),
+        report_error_to_stream(ErrorStream,
+            "Could not create temporary file: " ++ error_message(Error), !IO),
+        TmpFile = "",
         CommandSucceeded = no
     ),
 
@@ -623,54 +633,64 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         not use_dotnet,
         MaybeProcessOutput = yes(ProcessOutput)
     then
-        io.make_temp(ProcessedTmpFile, !IO),
+        io.make_temp_file(ProcessedTmpFileResult, !IO),
+        (
+            ProcessedTmpFileResult = ok(ProcessedTmpFile),
 
-        % XXX we should get rid of use_win32
-        ( if use_win32 then
-            get_system_env_type(Globals, SystemEnvType),
-            ( if SystemEnvType = env_type_powershell then
-                ProcessOutputRedirected = string.append_list(
-                    ["Get-Content ", TmpFile, " | ", ProcessOutput,
-                        " > ", ProcessedTmpFile, " 2>&1"])
+            % XXX we should get rid of use_win32
+            ( if use_win32 then
+                get_system_env_type(Globals, SystemEnvType),
+                ( if SystemEnvType = env_type_powershell then
+                    ProcessOutputRedirected = string.append_list(
+                        ["Get-Content ", TmpFile, " | ", ProcessOutput,
+                            " > ", ProcessedTmpFile, " 2>&1"])
+                else
+                    % On windows we can't in general redirect standard
+                    % error in the shell.
+                    ProcessOutputRedirected = string.append_list(
+                        [ProcessOutput, " < ", TmpFile, " > ",
+                            ProcessedTmpFile])
+                )
             else
-                % On windows we can't in general redirect standard
-                % error in the shell.
                 ProcessOutputRedirected = string.append_list(
                     [ProcessOutput, " < ", TmpFile, " > ",
-                        ProcessedTmpFile])
-            )
-        else
-            ProcessOutputRedirected = string.append_list(
-                [ProcessOutput, " < ", TmpFile, " > ",
-                    ProcessedTmpFile, " 2>&1"])
-        ),
-        io.call_system_return_signal(ProcessOutputRedirected,
-            ProcessOutputResult, !IO),
-        io.remove_file(TmpFile, _, !IO),
-        (
-            ProcessOutputResult = ok(exited(ProcessOutputStatus)),
-            maybe_write_string(PrintCommand, "% done.\n", !IO),
-            ( if ProcessOutputStatus = 0 then
-                ProcessOutputSucceeded = yes
-            else
-                % The command should have produced output
-                % describing the error.
+                        ProcessedTmpFile, " 2>&1"])
+            ),
+            io.call_system_return_signal(ProcessOutputRedirected,
+                ProcessOutputResult, !IO),
+            io.remove_file(TmpFile, _, !IO),
+            (
+                ProcessOutputResult = ok(exited(ProcessOutputStatus)),
+                maybe_write_string(PrintCommand, "% done.\n", !IO),
+                ( if ProcessOutputStatus = 0 then
+                    ProcessOutputSucceeded = yes
+                else
+                    % The command should have produced output
+                    % describing the error.
+                    ProcessOutputSucceeded = no
+                )
+            ;
+                ProcessOutputResult = ok(signalled(ProcessOutputSignal)),
+                % Make sure the current process gets the signal. Some
+                % systems (e.g. Linux) ignore SIGINT during a call to
+                % system().
+                raise_signal(ProcessOutputSignal, !IO),
+                report_error_to_stream(ErrorStream,
+                    "system command received signal "
+                    ++ int_to_string(ProcessOutputSignal) ++ ".", !IO),
+                ProcessOutputSucceeded = no
+            ;
+                ProcessOutputResult = error(ProcessOutputError),
+                report_error_to_stream(ErrorStream,
+                    io.error_message(ProcessOutputError), !IO),
                 ProcessOutputSucceeded = no
             )
         ;
-            ProcessOutputResult = ok(signalled(ProcessOutputSignal)),
-            % Make sure the current process gets the signal. Some systems
-            % (e.g. Linux) ignore SIGINT during a call to system().
-            raise_signal(ProcessOutputSignal, !IO),
+            ProcessedTmpFileResult = error(ProcessTmpError),
             report_error_to_stream(ErrorStream,
-                "system command received signal "
-                ++ int_to_string(ProcessOutputSignal) ++ ".", !IO),
-            ProcessOutputSucceeded = no
-        ;
-            ProcessOutputResult = error(ProcessOutputError),
-            report_error_to_stream(ErrorStream,
-                io.error_message(ProcessOutputError), !IO),
-            ProcessOutputSucceeded = no
+                io.error_message(ProcessTmpError), !IO),
+            ProcessOutputSucceeded = no,
+            ProcessedTmpFile = ""
         )
     else
         ProcessOutputSucceeded = yes,

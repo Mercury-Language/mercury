@@ -1254,27 +1254,37 @@ invoke_mkinit(Globals, InitFileStream, Verbosity,
     % mkinit expects unquoted file names.
     join_string_list(FileNames, "", "\n", "", TargetFileNames),
 
-    io.make_temp(TmpFile, !IO),
-    io.open_output(TmpFile, OpenResult, !IO),
+    io.make_temp_file(TmpFileResult, !IO),
     (
-        OpenResult = ok(TmpStream),
-        io.write_string(TmpStream, TargetFileNames, !IO),
-        io.close_output(TmpStream, !IO),
-
-        MkInitCmd = string.append_list([MkInit, " ", Args, " -f ", TmpFile]),
-        invoke_system_command(Globals, InitFileStream, Verbosity,
-            MkInitCmd, MkInitOK0, !IO),
-
-        io.remove_file(TmpFile, RemoveResult, !IO),
+        TmpFileResult = ok(TmpFile),
+        io.open_output(TmpFile, OpenResult, !IO),
         (
-            RemoveResult = ok,
-            MkInitOK = MkInitOK0
+            OpenResult = ok(TmpStream),
+            io.write_string(TmpStream, TargetFileNames, !IO),
+            io.close_output(TmpStream, !IO),
+
+            MkInitCmd = string.append_list([MkInit, " ", Args, " -f ", TmpFile]),
+            invoke_system_command(Globals, InitFileStream, Verbosity,
+                MkInitCmd, MkInitOK0, !IO),
+
+            io.remove_file(TmpFile, RemoveResult, !IO),
+            (
+                RemoveResult = ok,
+                MkInitOK = MkInitOK0
+            ;
+                RemoveResult = error(_),
+                MkInitOK = no
+            )
         ;
-            RemoveResult = error(_),
+            OpenResult = error(Error),
+            io.format(io.stderr_stream, "%s: %s\n",
+                [s(TmpFile), s(error_message(Error))], !IO),
             MkInitOK = no
         )
     ;
-        OpenResult = error(_),
+        TmpFileResult = error(Error),
+        io.format(io.stderr_stream, "Could not create temporary file: %s\n",
+            [s(error_message(Error))], !IO),
         MkInitOK = no
     ).
 
@@ -1977,18 +1987,30 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
             % and thus overflow the command line, so in this case
             % we first create an archive of all of the object files.
             RestrictedCommandLine = yes,
-            io.make_temp(TmpFile, !IO),
             globals.lookup_string_option(Globals, library_extension, LibExt),
-            TmpArchive = TmpFile ++ LibExt,
-            % Only include actual object files in the temporary archive,
-            % not other files such as other archives.
-            filter_object_files(Globals, ObjectsList,
-                ProperObjectFiles, NonObjectFiles),
-            create_archive(Globals, ErrorStream, TmpArchive, yes,
-                ProperObjectFiles, ArchiveSucceeded, !IO),
-            MaybeDeleteTmpArchive = yes(TmpArchive),
-            join_quoted_string_list([TmpArchive | NonObjectFiles],
-                "", "", " ", Objects)
+            io.get_temp_directory(TempDir, !IO),
+            io.make_temp_file(TempDir, "", "." ++ LibExt, TmpArchiveResult,
+                !IO),
+            (
+                TmpArchiveResult = ok(TmpArchive),
+                % Only include actual object files in the temporary archive,
+                % not other files such as other archives.
+                filter_object_files(Globals, ObjectsList,
+                    ProperObjectFiles, NonObjectFiles),
+                create_archive(Globals, ErrorStream, TmpArchive, yes,
+                    ProperObjectFiles, ArchiveSucceeded, !IO),
+                MaybeDeleteTmpArchive = yes(TmpArchive),
+                join_quoted_string_list([TmpArchive | NonObjectFiles],
+                    "", "", " ", Objects)
+            ;
+                TmpArchiveResult = error(Error),
+                io.format(stderr_stream,
+                    "Could not create temporary file: %s\n",
+                    [s(error_message(Error))], !IO),
+                ArchiveSucceeded = no,
+                MaybeDeleteTmpArchive = no,
+                join_quoted_string_list(ObjectsList, "", "", " ", Objects)
+            )
         ;
             RestrictedCommandLine = no,
             ArchiveSucceeded = yes,
@@ -3043,30 +3065,37 @@ create_java_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     % extremely long. We create the temporary file in the current directory to
     % avoid problems under Cygwin, where absolute paths will be interpreted
     % incorrectly when passed to a non-Cygwin jar program.
-    io.make_temp(".", "mtmp", TempFileName, !IO),
-    io.open_output(TempFileName, OpenResult, !IO),
+    io.make_temp_file(".", "mtmp", "", TempFileNameResult, !IO),
     (
-        OpenResult = ok(Stream),
-        list.foldl(write_jar_class_argument(Stream, ClassSubDir),
-            ListClassFiles, !IO),
-        io.close_output(Stream, !IO),
-
-        Cmd = string.append_list(
-            [Jar, " cf ", JarFileName, " @", TempFileName]),
-        invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Cmd,
-            Succeeded0, !IO),
-        io.remove_file(TempFileName, _, !IO),
+        TempFileNameResult = ok(TempFileName),
+        io.open_output(TempFileName, OpenResult, !IO),
         (
-            Succeeded0 = yes
+            OpenResult = ok(Stream),
+            list.foldl(write_jar_class_argument(Stream, ClassSubDir),
+                ListClassFiles, !IO),
+            io.close_output(Stream, !IO),
+
+            Cmd = string.append_list(
+                [Jar, " cf ", JarFileName, " @", TempFileName]),
+            invoke_system_command(Globals, ErrorStream,
+                cmd_verbose_commands, Cmd, Succeeded0, !IO),
+            io.remove_file(TempFileName, _, !IO),
+            (
+                Succeeded0 = yes
+            ;
+                Succeeded0 = no,
+                io.remove_file(JarFileName, _, !IO)
+            )
         ;
-            Succeeded0 = no,
-            io.remove_file(JarFileName, _, !IO)
+            OpenResult = error(Error),
+            io.format(ErrorStream, "Error creating `%s': %s\n",
+                [s(TempFileName), s(error_message(Error))], !IO),
+            Succeeded0 = no
         )
     ;
-        OpenResult = error(Error),
-        io.error_message(Error, ErrorMsg),
-        io.format(ErrorStream, "Error creating `%s': %s\n",
-            [s(TempFileName), s(ErrorMsg)], !IO),
+        TempFileNameResult = error(Error),
+        io.format(ErrorStream, "Could not create temporary file: %s\n",
+            [s(error_message(Error))], !IO),
         Succeeded0 = no
     ),
     ( if
@@ -3463,48 +3492,58 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         RestrictedCommandLine = yes,
 
         % Avoid generating very long command lines by using @files.
-        io.make_temp(TmpFile, !IO),
-        io.open_output(TmpFile, OpenResult, !IO),
+        io.make_temp_file(TmpFileResult, !IO),
         (
-            OpenResult = ok(TmpStream),
-
-            % We need to escape any \ before writing them to the file,
-            % otherwise we lose them.
-            TmpFileArgs = string.replace_all(Args, "\\", "\\\\"),
-
-            io.write_string(TmpStream, TmpFileArgs, !IO),
-            io.close_output(TmpStream, !IO),
-
-            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            AtFileName = at_file_name(Globals, TmpFile),
+            TmpFileResult = ok(TmpFile),
+            io.open_output(TmpFile, OpenResult, !IO),
             (
-                VeryVerbose = yes,
-                io.format("%% Args placed in %s: `%s'\n",
-                    [s(AtFileName), s(TmpFileArgs)], !IO),
-                io.flush_output(!IO)
-            ;
-                VeryVerbose = no
-            ),
+                OpenResult = ok(TmpStream),
 
-            ( if NonAtArgs = "" then
-                FullCmd = Cmd ++ " " ++ AtFileName
-            else
-                string.append_list([Cmd, " ", NonAtArgs, " ", AtFileName],
-                    FullCmd)
-            ),
-            invoke_system_command_maybe_filter_output(Globals, ErrorStream,
-                Verbosity, FullCmd, MaybeProcessOutput, Succeeded0, !IO),
+                % We need to escape any \ before writing them to the file,
+                % otherwise we lose them.
+                TmpFileArgs = string.replace_all(Args, "\\", "\\\\"),
 
-            io.remove_file(TmpFile, RemoveResult, !IO),
-            (
-                RemoveResult = ok,
-                Succeeded = Succeeded0
+                io.write_string(TmpStream, TmpFileArgs, !IO),
+                io.close_output(TmpStream, !IO),
+
+                globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+                AtFileName = at_file_name(Globals, TmpFile),
+                (
+                    VeryVerbose = yes,
+                    io.format("%% Args placed in %s: `%s'\n",
+                        [s(AtFileName), s(TmpFileArgs)], !IO),
+                    io.flush_output(!IO)
+                ;
+                    VeryVerbose = no
+                ),
+
+                ( if NonAtArgs = "" then
+                    FullCmd = Cmd ++ " " ++ AtFileName
+                else
+                    string.append_list([Cmd, " ", NonAtArgs, " ", AtFileName],
+                        FullCmd)
+                ),
+                invoke_system_command_maybe_filter_output(Globals, ErrorStream,
+                    Verbosity, FullCmd, MaybeProcessOutput, Succeeded0, !IO),
+
+                io.remove_file(TmpFile, RemoveResult, !IO),
+                (
+                    RemoveResult = ok,
+                    Succeeded = Succeeded0
+                ;
+                    RemoveResult = error(_),
+                    Succeeded = no
+                )
             ;
-                RemoveResult = error(_),
+                OpenResult = error(Error),
+                io.format(stderr_stream, "%s: %s\n",
+                    [s(TmpFile), s(error_message(Error))], !IO),
                 Succeeded = no
             )
         ;
-            OpenResult = error(_),
+            TmpFileResult = error(Error),
+            io.format(stderr_stream, "Could not create temporary file: %s\n",
+                [s(error_message(Error))], !IO),
             Succeeded = no
         )
     ;

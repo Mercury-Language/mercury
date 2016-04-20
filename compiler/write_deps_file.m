@@ -159,606 +159,627 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
     % parallel makes, we first create the file with a temporary name,
     % and then rename it to the desired name when we've finished.
 
-    io.make_temp(dir.dirname(DependencyFileName), "tmp_d",
-        TmpDependencyFileName, !IO),
-    maybe_write_string(Verbose, "% Writing auto-dependency file `", !IO),
-    maybe_write_string(Verbose, DependencyFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_output(TmpDependencyFileName, Result, !IO),
+    io.make_temp_file(dir.dirname(DependencyFileName), "tmp_d",
+        "", TmpDependencyFileNameRes, !IO),
     (
-        Result = error(IOError),
-        maybe_write_string(Verbose, " failed.\n", !IO),
-        maybe_flush_output(Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.append_list(["error opening temporary file `",
-            TmpDependencyFileName, "' for output: ",
-            IOErrorMessage], Message),
+        TmpDependencyFileNameRes = error(Error),
+        Message = "Could not create temporary file: " ++ error_message(Error),
         report_error(Message, !IO)
     ;
-        Result = ok(DepStream),
-        set.union(IntDeps, ImpDeps, LongDeps0),
-        ShortDeps0 = IndirectDeps,
-        set.delete(ModuleName, LongDeps0, LongDeps),
-        set.difference(ShortDeps0, LongDeps, ShortDeps1),
-        set.delete(ModuleName, ShortDeps1, ShortDeps),
-        list.sort_and_remove_dups(FactDeps0, FactDeps),
-
+        TmpDependencyFileNameRes = ok(TmpDependencyFileName),
+        maybe_write_string(Verbose, "% Writing auto-dependency file `", !IO),
+        maybe_write_string(Verbose, DependencyFileName, !IO),
+        maybe_write_string(Verbose, "'...", !IO),
+        maybe_flush_output(Verbose, !IO),
+        io.open_output(TmpDependencyFileName, Result, !IO),
         (
-            MaybeTransOptDeps = yes(TransOptDeps0),
-            set.intersect(set.list_to_set(TransOptDeps0), LongDeps,
-                TransOptDateDeps),
-
-            % Note that maybe_read_dependency_file searches for
-            % this exact pattern.
-            io.write_strings(DepStream, [TransOptDateFileName, " :"], !IO),
-            write_dependencies_set(Globals, DepStream, ".trans_opt",
-                TransOptDateDeps, !IO)
+            Result = error(IOError),
+            maybe_write_string(Verbose, " failed.\n", !IO),
+            maybe_flush_output(Verbose, !IO),
+            io.error_message(IOError, IOErrorMessage),
+            string.append_list(["error opening temporary file `",
+                TmpDependencyFileName, "' for output: ",
+                IOErrorMessage], Message),
+            report_error(Message, !IO)
         ;
-            MaybeTransOptDeps = no
-        ),
+            Result = ok(DepStream),
+            set.union(IntDeps, ImpDeps, LongDeps0),
+            ShortDeps0 = IndirectDeps,
+            set.delete(ModuleName, LongDeps0, LongDeps),
+            set.difference(ShortDeps0, LongDeps, ShortDeps1),
+            set.delete(ModuleName, ShortDeps1, ShortDeps),
+            list.sort_and_remove_dups(FactDeps0, FactDeps),
 
-        (
-            FactDeps = [_ | _],
-            io.write_strings(DepStream,
-                ["\n\n", MakeVarName, ".fact_tables ="], !IO),
-            write_file_dependencies_list(DepStream, "", FactDeps, !IO),
-            io.nl(DepStream, !IO),
-            globals.lookup_bool_option(Globals, assume_gmake, AssumeGmake),
             (
-                AssumeGmake = yes,
-                io.write_strings(DepStream, [
-                    "\n\n", MakeVarName,
-                    ".fact_tables.os = $(", MakeVarName,
-                    ".fact_tables:%=$(os_subdir)%.$O)\n\n",
-                    MakeVarName,
-                    ".fact_tables.cs = $(", MakeVarName,
-                    ".fact_tables:%=$(cs_subdir)%.c)\n\n"
-                ], !IO)
+                MaybeTransOptDeps = yes(TransOptDeps0),
+                set.intersect(set.list_to_set(TransOptDeps0), LongDeps,
+                    TransOptDateDeps),
+
+                % Note that maybe_read_dependency_file searches for
+                % this exact pattern.
+                io.write_strings(DepStream, [TransOptDateFileName, " :"], !IO),
+                write_dependencies_set(Globals, DepStream, ".trans_opt",
+                    TransOptDateDeps, !IO)
             ;
-                AssumeGmake = no,
-                io.write_strings(DepStream,
-                    [MakeVarName, ".fact_tables.cs ="], !IO),
-                write_fact_table_dependencies_list(Globals, DepStream,
-                    ".c", ModuleName, FactDeps, !IO),
-                io.write_strings(DepStream, ["\n\n", MakeVarName,
-                    ".fact_tables.os ="], !IO),
-                write_fact_table_dependencies_list(Globals, DepStream,
-                    ".$O", ModuleName, FactDeps, !IO),
-                io.nl(DepStream, !IO)
-            )
-        ;
-            FactDeps = []
-        ),
-
-        ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
-            ErrFileName = SourceFileBase ++ ".err"
-        else
-            unexpected($module, $pred, "source file doesn't end in `.m'")
-        ),
-        module_name_to_file_name(Globals, ModuleName, ".optdate",
-            do_not_create_dirs, OptDateFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".c_date",
-            do_not_create_dirs, CDateFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".$O",
-            do_not_create_dirs, ObjFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".java_date",
-            do_not_create_dirs, JavaDateFileName, !IO),
-        % XXX Why is the extension hardcoded to .pic_o here?  That looks wrong.
-        % It should probably be .$(EXT_FOR_PIC_OBJECT) - juliensf.
-        module_name_to_file_name(Globals, ModuleName, ".pic_o",
-            do_not_create_dirs, PicObjFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".int0",
-            do_not_create_dirs, Int0FileName, !IO),
-        io.write_strings(DepStream, ["\n\n",
-            OptDateFileName, " ",
-            TransOptDateFileName, " ",
-            ErrFileName, " ",
-            CDateFileName, " ",
-            JavaDateFileName
-        ], !IO),
-        io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-        % If the module contains nested sub-modules then the `.int0' file
-        % must first be built.
-        ( if set.is_empty(InclDeps) then
-            true
-        else
-            io.write_strings(DepStream, [" ", Int0FileName], !IO)
-        ),
-        write_dependencies_set(Globals, DepStream, ".int0", ParentDeps, !IO),
-        write_dependencies_set(Globals, DepStream, ".int", LongDeps, !IO),
-        write_dependencies_set(Globals, DepStream, ".int2", ShortDeps, !IO),
-
-        NestedExts = [
-            ".optdate",
-            ".trans_opt_date",
-            ".c_date",
-            ".dir/*.$O",
-            ".java_date"],
-
-        % If a module contains nested-submodules then we need to build
-        % the nested children before attempting to build the parent module.
-        ( if set.is_empty(NestedDeps) then
-            true
-        else
-            Write = (pred(Ext::in, !.LIO::di, !:LIO::uo) is det :-
-                module_name_to_file_name(Globals, ModuleName, Ext,
-                    do_not_create_dirs, ExtName, !LIO),
-                io.write_strings(DepStream, ["\n\n", ExtName, " : "], !LIO),
-                write_dependencies_set(Globals, DepStream, Ext, NestedDeps,
-                    !LIO)
+                MaybeTransOptDeps = no
             ),
-            list.foldl(Write, NestedExts, !IO)
-        ),
 
-        ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
-        % This is conservative: a target file for foreign language A does not
-        % does not truly depend on a file included for foreign language B.
-        write_foreign_include_file_dependencies_list(DepStream,
-            SourceFileName, ForeignIncludeFiles, !IO),
+            (
+                FactDeps = [_ | _],
+                io.write_strings(DepStream,
+                    ["\n\n", MakeVarName, ".fact_tables ="], !IO),
+                write_file_dependencies_list(DepStream, "", FactDeps, !IO),
+                io.nl(DepStream, !IO),
+                globals.lookup_bool_option(Globals, assume_gmake, AssumeGmake),
+                (
+                    AssumeGmake = yes,
+                    io.write_strings(DepStream, [
+                        "\n\n", MakeVarName,
+                        ".fact_tables.os = $(", MakeVarName,
+                        ".fact_tables:%=$(os_subdir)%.$O)\n\n",
+                        MakeVarName,
+                        ".fact_tables.cs = $(", MakeVarName,
+                        ".fact_tables:%=$(cs_subdir)%.c)\n\n"
+                    ], !IO)
+                ;
+                    AssumeGmake = no,
+                    io.write_strings(DepStream,
+                        [MakeVarName, ".fact_tables.cs ="], !IO),
+                    write_fact_table_dependencies_list(Globals, DepStream,
+                        ".c", ModuleName, FactDeps, !IO),
+                    io.write_strings(DepStream, ["\n\n", MakeVarName,
+                        ".fact_tables.os ="], !IO),
+                    write_fact_table_dependencies_list(Globals, DepStream,
+                        ".$O", ModuleName, FactDeps, !IO),
+                    io.nl(DepStream, !IO)
+                )
+            ;
+                FactDeps = []
+            ),
 
-        (
-            FactDeps = [_ | _],
-            io.write_strings(DepStream, [
-                " \\\n\t$(", MakeVarName, ".fact_tables)\n\n",
-                "$(", MakeVarName, ".fact_tables.os) : $(",
-                MakeVarName, ".fact_tables) ",
-                SourceFileName, "\n\n",
-                "$(", MakeVarName, ".fact_tables.cs) : ",
-                ObjFileName, "\n"
-            ], !IO)
-        ;
-            FactDeps = []
-        ),
-
-        globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-        globals.lookup_bool_option(Globals, intermodule_optimization,
-            Intermod),
-        globals.lookup_accumulating_option(Globals, intermod_directories,
-            IntermodDirs),
-
-        % If intermodule_optimization is enabled then all the .mh files
-        % must exist because it is possible that the .c file imports them
-        % directly or indirectly.
-        (
-            Intermod = yes,
-            io.write_strings(DepStream, ["\n\n", ObjFileName, " : "], !IO),
-            write_dependencies_list(Globals, DepStream, ".mh",
-                set.to_sorted_list(AllDeps), !IO)
-        ;
-            Intermod = no
-        ),
-        ( if
-            ( Intermod = yes
-            ; UseOptFiles = yes
-            )
-        then
-            io.write_strings(DepStream, [
-                "\n\n",
+            ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
+                ErrFileName = SourceFileBase ++ ".err"
+            else
+                unexpected($module, $pred, "source file doesn't end in `.m'")
+            ),
+            module_name_to_file_name(Globals, ModuleName, ".optdate",
+                do_not_create_dirs, OptDateFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".c_date",
+                do_not_create_dirs, CDateFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".$O",
+                do_not_create_dirs, ObjFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".java_date",
+                do_not_create_dirs, JavaDateFileName, !IO),
+            % XXX Why is the extension hardcoded to .pic_o here?  That looks
+            % wrong.  It should probably be .$(EXT_FOR_PIC_OBJECT) -
+            % juliensf.
+            module_name_to_file_name(Globals, ModuleName, ".pic_o",
+                do_not_create_dirs, PicObjFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".int0",
+                do_not_create_dirs, Int0FileName, !IO),
+            io.write_strings(DepStream, ["\n\n",
+                OptDateFileName, " ",
                 TransOptDateFileName, " ",
                 ErrFileName, " ",
                 CDateFileName, " ",
-                JavaDateFileName, " : "
+                JavaDateFileName
             ], !IO),
+            io.write_strings(DepStream, [" : ", SourceFileName], !IO),
+            % If the module contains nested sub-modules then the `.int0' file
+            % must first be built.
+            ( if set.is_empty(InclDeps) then
+                true
+            else
+                io.write_strings(DepStream, [" ", Int0FileName], !IO)
+            ),
+            write_dependencies_set(Globals, DepStream, ".int0", ParentDeps, !IO),
+            write_dependencies_set(Globals, DepStream, ".int", LongDeps, !IO),
+            write_dependencies_set(Globals, DepStream, ".int2", ShortDeps, !IO),
 
-            % The target (e.g. C) file only depends on the .opt files
-            % from the current directory, so that inter-module optimization
-            % works when the .opt files for the library are unavailable.
-            % This is only necessary because make doesn't allow conditional
-            % dependencies. The dependency on the current module's .opt file
-            % is to make sure the module gets type-checked without having
-            % the definitions of abstract types from other modules.
-            %
-            % XXX The code here doesn't correctly handle dependencies
-            % on `.int' and `.int2' files needed by the `.opt' files.
-            globals.lookup_bool_option(Globals, transitive_optimization,
-                TransOpt),
-            globals.lookup_bool_option(Globals, use_trans_opt_files,
-                UseTransOpt),
+            NestedExts = [
+                ".optdate",
+                ".trans_opt_date",
+                ".c_date",
+                ".dir/*.$O",
+                ".java_date"],
 
+            % If a module contains nested-submodules then we need to build
+            % the nested children before attempting to build the parent module.
+            ( if set.is_empty(NestedDeps) then
+                true
+            else
+                Write = (pred(Ext::in, !.LIO::di, !:LIO::uo) is det :-
+                    module_name_to_file_name(Globals, ModuleName, Ext,
+                        do_not_create_dirs, ExtName, !LIO),
+                    io.write_strings(DepStream, ["\n\n", ExtName, " : "], !LIO),
+                    write_dependencies_set(Globals, DepStream, Ext, NestedDeps,
+                        !LIO)
+                ),
+                list.foldl(Write, NestedExts, !IO)
+            ),
+
+            ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
+            % This is conservative: a target file for foreign language A
+            % does not does not truly depend on a file included for foreign
+            % language B.
+            write_foreign_include_file_dependencies_list(DepStream,
+                SourceFileName, ForeignIncludeFiles, !IO),
+
+            (
+                FactDeps = [_ | _],
+                io.write_strings(DepStream, [
+                    " \\\n\t$(", MakeVarName, ".fact_tables)\n\n",
+                    "$(", MakeVarName, ".fact_tables.os) : $(",
+                    MakeVarName, ".fact_tables) ",
+                    SourceFileName, "\n\n",
+                    "$(", MakeVarName, ".fact_tables.cs) : ",
+                    ObjFileName, "\n"
+                ], !IO)
+            ;
+                FactDeps = []
+            ),
+
+            globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+            globals.lookup_bool_option(Globals, intermodule_optimization,
+                Intermod),
+            globals.lookup_accumulating_option(Globals, intermod_directories,
+                IntermodDirs),
+
+            % If intermodule_optimization is enabled then all the .mh files
+            % must exist because it is possible that the .c file imports them
+            % directly or indirectly.
+            (
+                Intermod = yes,
+                io.write_strings(DepStream, ["\n\n", ObjFileName, " : "], !IO),
+                write_dependencies_list(Globals, DepStream, ".mh",
+                    set.to_sorted_list(AllDeps), !IO)
+            ;
+                Intermod = no
+            ),
             ( if
-                ( TransOpt = yes
-                ; UseTransOpt = yes
+                ( Intermod = yes
+                ; UseOptFiles = yes
                 )
             then
-                bool.not(UseTransOpt, BuildOptFiles),
-                get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs,
-                    [ModuleName | set.to_sorted_list(LongDeps)],
-                    OptDeps, TransOptDeps, !IO),
-                OptInt0Deps = set.union_list(
-                    list.map(get_ancestors_set, OptDeps)),
-                write_dependencies_list(Globals, DepStream, ".opt",
-                    OptDeps, !IO),
-                write_dependencies_set(Globals, DepStream, ".int0",
-                    OptInt0Deps, !IO),
-
                 io.write_strings(DepStream, [
                     "\n\n",
+                    TransOptDateFileName, " ",
                     ErrFileName, " ",
                     CDateFileName, " ",
                     JavaDateFileName, " : "
                 ], !IO),
-                write_dependencies_list(Globals, DepStream, ".trans_opt",
-                    TransOptDeps, !IO)
+
+                % The target (e.g. C) file only depends on the .opt files
+                % from the current directory, so that inter-module optimization
+                % works when the .opt files for the library are unavailable.
+                % This is only necessary because make doesn't allow conditional
+                % dependencies. The dependency on the current module's .opt file
+                % is to make sure the module gets type-checked without having
+                % the definitions of abstract types from other modules.
+                %
+                % XXX The code here doesn't correctly handle dependencies
+                % on `.int' and `.int2' files needed by the `.opt' files.
+                globals.lookup_bool_option(Globals, transitive_optimization,
+                    TransOpt),
+                globals.lookup_bool_option(Globals, use_trans_opt_files,
+                    UseTransOpt),
+
+                ( if
+                    ( TransOpt = yes
+                    ; UseTransOpt = yes
+                    )
+                then
+                    bool.not(UseTransOpt, BuildOptFiles),
+                    get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs,
+                        [ModuleName | set.to_sorted_list(LongDeps)],
+                        OptDeps, TransOptDeps, !IO),
+                    OptInt0Deps = set.union_list(
+                        list.map(get_ancestors_set, OptDeps)),
+                    write_dependencies_list(Globals, DepStream, ".opt",
+                        OptDeps, !IO),
+                    write_dependencies_set(Globals, DepStream, ".int0",
+                        OptInt0Deps, !IO),
+
+                    io.write_strings(DepStream, [
+                        "\n\n",
+                        ErrFileName, " ",
+                        CDateFileName, " ",
+                        JavaDateFileName, " : "
+                    ], !IO),
+                    write_dependencies_list(Globals, DepStream, ".trans_opt",
+                        TransOptDeps, !IO)
+                else
+                    bool.not(UseOptFiles, BuildOptFiles),
+                    get_opt_deps(Globals, BuildOptFiles, IntermodDirs, ".opt",
+                        [ModuleName | set.to_sorted_list(LongDeps)],
+                        OptDeps, !IO),
+                    OptInt0Deps = set.union_list(
+                        list.map(get_ancestors_set, OptDeps)),
+                    write_dependencies_list(Globals, DepStream, ".opt",
+                        OptDeps, !IO),
+                    write_dependencies_set(Globals, DepStream, ".int0",
+                        OptInt0Deps, !IO)
+                )
             else
-                bool.not(UseOptFiles, BuildOptFiles),
-                get_opt_deps(Globals, BuildOptFiles, IntermodDirs, ".opt",
-                    [ModuleName | set.to_sorted_list(LongDeps)], OptDeps, !IO),
-                OptInt0Deps = set.union_list(
-                    list.map(get_ancestors_set, OptDeps)),
-                write_dependencies_list(Globals, DepStream, ".opt",
-                    OptDeps, !IO),
-                write_dependencies_set(Globals, DepStream, ".int0",
-                    OptInt0Deps, !IO)
-            )
-        else
-            true
-        ),
+                true
+            ),
 
-        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-        globals.get_target(Globals, CompilationTarget),
-        ( if
-            HighLevelCode = yes,
-            CompilationTarget = target_c
-        then
-            % For --high-level-code with --target c, we need to make sure that
-            % we generate the header files for imported modules before
-            % compiling the C files, since the generated C files
-            % #include those header files.
+            globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+            globals.get_target(Globals, CompilationTarget),
+            ( if
+                HighLevelCode = yes,
+                CompilationTarget = target_c
+            then
+                % For --high-level-code with --target c, we need to make
+                % sure that we generate the header files for imported
+                % modules before compiling the C files, since the generated
+                % C files #include those header files.
 
+                io.write_strings(DepStream, [
+                    "\n\n",
+                    PicObjFileName, " ",
+                    ObjFileName, " :"
+                ], !IO),
+                write_dependencies_set(Globals, DepStream, ".mih", AllDeps, !IO)
+            else
+                true
+            ),
+
+            % We need to tell make how to make the header files. The header
+            % files are actually built by the same command that creates the
+            % .c or .s file, so we just make them depend on the .c or .s
+            % files.  This is needed for the --high-level-code rule above,
+            % and for the rules introduced for `:- pragma
+            % foreign_import_module' declarations. In some grades the header
+            % file won't actually be built (e.g. LLDS grades for modules not
+            % containing `:- pragma export' declarations), but this rule
+            % won't do any harm.
+
+            module_name_to_file_name(Globals, ModuleName, ".c",
+                do_not_create_dirs, CFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".mh",
+                do_not_create_dirs, HeaderFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".mih",
+                do_not_create_dirs, HeaderFileName2, !IO),
             io.write_strings(DepStream, [
                 "\n\n",
-                PicObjFileName, " ",
-                ObjFileName, " :"
+                HeaderFileName, " ",  HeaderFileName2, " : ", CFileName, "\n"
             ], !IO),
-            write_dependencies_set(Globals, DepStream, ".mih", AllDeps, !IO)
-        else
-            true
-        ),
 
-        % We need to tell make how to make the header files. The header files
-        % are actually built by the same command that creates the .c or .s
-        % file, so we just make them depend on the .c or .s files.
-        % This is needed for the --high-level-code rule above, and for
-        % the rules introduced for `:- pragma foreign_import_module'
-        % declarations. In some grades the header file won't actually be built
-        % (e.g. LLDS grades for modules not containing `:- pragma export'
-        % declarations), but this rule won't do any harm.
+            % The `.module_dep' file is made as a side effect of
+            % creating the `.c', `.s', or `.java'.
 
-        module_name_to_file_name(Globals, ModuleName, ".c",
-            do_not_create_dirs, CFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".mh",
-            do_not_create_dirs, HeaderFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".mih",
-            do_not_create_dirs, HeaderFileName2, !IO),
-        io.write_strings(DepStream, [
-            "\n\n",
-            HeaderFileName, " ",  HeaderFileName2, " : ", CFileName, "\n"
-        ], !IO),
+            module_name_to_file_name(Globals, ModuleName, ".java",
+                do_not_create_dirs, JavaFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName,
+                make_module_dep_file_extension, do_not_create_dirs,
+                ModuleDepFileName, !IO),
+            io.write_strings(DepStream, [
+                "\n\n",
+                "ifeq ($(findstring java,$(GRADE)),java)\n",
+                ModuleDepFileName, " : ", JavaFileName, "\n",
+                "else\n",
+                ModuleDepFileName, " : ", CFileName, "\n",
+                "endif\n"
+            ], !IO),
 
-        % The `.module_dep' file is made as a side effect of
-        % creating the `.c', `.s', or `.java'.
+            % The .date and .date0 files depend on the .int0 files for the
+            % parent modules, and the .int3 files for the directly and
+            % indirectly imported modules.
+            %
+            % For nested sub-modules, the `.date' files for the parent
+            % modules also depend on the same things as the `.date' files
+            % for this module, since all the `.date' files will get produced
+            % by a single mmc command. Similarly for `.date0' files, except
+            % these don't depend on the `.int0' files, because when doing
+            % the `--make-private-interface' for nested modules, mmc will
+            % process the modules in outermost to innermost order so as to
+            % produce each `.int0' file before it is needed.
 
-        module_name_to_file_name(Globals, ModuleName, ".java",
-            do_not_create_dirs, JavaFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName,
-            make_module_dep_file_extension, do_not_create_dirs,
-            ModuleDepFileName, !IO),
-        io.write_strings(DepStream, [
-            "\n\n",
-            "ifeq ($(findstring java,$(GRADE)),java)\n",
-            ModuleDepFileName, " : ", JavaFileName, "\n",
-            "else\n",
-            ModuleDepFileName, " : ", CFileName, "\n",
-            "endif\n"
-        ], !IO),
+            module_name_to_file_name(Globals, ModuleName, ".date",
+                do_not_create_dirs, DateFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".date0",
+                do_not_create_dirs, Date0FileName, !IO),
+            io.write_strings(DepStream, [
+                "\n\n", DateFileName, " ", Date0FileName
+            ], !IO),
+            write_dependencies_set(Globals, DepStream, ".date", ParentDeps,
+                !IO),
+            io.write_strings(DepStream, [" : ", SourceFileName], !IO),
+            write_dependencies_set(Globals, DepStream, ".int0", ParentDeps,
+                !IO),
+            write_dependencies_set(Globals, DepStream, ".int3", LongDeps, !IO),
+            write_dependencies_set(Globals, DepStream, ".int3", ShortDeps,
+                !IO),
 
-        % The .date and .date0 files depend on the .int0 files for the parent
-        % modules, and the .int3 files for the directly and indirectly imported
-        % modules.
-        %
-        % For nested sub-modules, the `.date' files for the parent modules
-        % also depend on the same things as the `.date' files for this module,
-        % since all the `.date' files will get produced by a single mmc
-        % command. Similarly for `.date0' files, except these don't depend
-        % on the `.int0' files, because when doing the
-        % `--make-private-interface' for nested modules, mmc will process
-        % the modules in outermost to innermost order so as to produce each
-        % `.int0' file before it is needed.
+            io.write_strings(DepStream, ["\n\n", Date0FileName], !IO),
+            write_dependencies_set(Globals, DepStream, ".date0", ParentDeps,
+                !IO),
+            io.write_strings(DepStream, [" : ", SourceFileName], !IO),
+            write_dependencies_set(Globals, DepStream, ".int3", LongDeps, !IO),
+            write_dependencies_set(Globals, DepStream, ".int3", ShortDeps, !IO),
+            io.write_string(DepStream, "\n\n", !IO),
 
-        module_name_to_file_name(Globals, ModuleName, ".date",
-            do_not_create_dirs, DateFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".date0",
-            do_not_create_dirs, Date0FileName, !IO),
-        io.write_strings(DepStream, [
-            "\n\n", DateFileName, " ", Date0FileName
-        ], !IO),
-        write_dependencies_set(Globals, DepStream, ".date", ParentDeps, !IO),
-        io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-        write_dependencies_set(Globals, DepStream, ".int0", ParentDeps, !IO),
-        write_dependencies_set(Globals, DepStream, ".int3", LongDeps, !IO),
-        write_dependencies_set(Globals, DepStream, ".int3", ShortDeps, !IO),
+            % If we can pass the module name rather than the file name, then
+            % do so.  `--smart-recompilation' doesn't work if the file name
+            % is passed and the module name doesn't match the file name.
 
-        io.write_strings(DepStream, ["\n\n", Date0FileName], !IO),
-        write_dependencies_set(Globals, DepStream, ".date0", ParentDeps, !IO),
-        io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-        write_dependencies_set(Globals, DepStream, ".int3", LongDeps, !IO),
-        write_dependencies_set(Globals, DepStream, ".int3", ShortDeps, !IO),
-        io.write_string(DepStream, "\n\n", !IO),
-
-        % If we can pass the module name rather than the file name, then do so.
-        % `--smart-recompilation' doesn't work if the file name is passed
-        % and the module name doesn't match the file name.
-
-        have_source_file_map(HaveMap, !IO),
-        (
-            HaveMap = yes,
-            module_name_to_file_name_stem(SourceFileModuleName, ModuleArg)
-        ;
-            HaveMap = no,
-            ModuleArg = SourceFileName
-        ),
-
-        globals.get_target(Globals, Target),
-        module_name_to_file_name(Globals, ModuleName, ".class",
-            do_not_create_dirs, ClassFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".beam",
-            do_not_create_dirs, BeamFileName, !IO),
-
-        (
-            ContainsForeignCode = contains_foreign_code(_LangSet),
-            ForeignImportModules = ForeignImportModules0
-        ;
-            ContainsForeignCode = contains_foreign_code_unknown,
-            get_foreign_code_indicators_from_item_blocks(Globals,
-                SrcItemBlocks,
-                _SrcLangSet, SrcForeignImportModules, _, _),
-            % XXX ITEM_LIST DirectIntItemBlocksCord should not be needed
-            % XXX ITEM_LIST IndirectIntItemBlocksCord should not be needed
-            IntItemBlocksCord =
-                DirectIntItemBlocksCord ++ IndirectIntItemBlocksCord,
-            get_foreign_code_indicators_from_item_blocks(Globals,
-                cord.list(IntItemBlocksCord),
-                _IntLangSet, IntForeignImportModules, _, _),
-            get_foreign_code_indicators_from_item_blocks(Globals,
-                cord.list(OptItemBlocksCord),
-                _OptLangSet, OptForeignImportModules, _, _),
-            get_foreign_code_indicators_from_item_blocks(Globals,
-                cord.list(IntForOptItemBlocksCord),
-                _IntForOptLangSet, IntForOptForeignImportModules, _, _),
-            % If we are generating the `.dep' file, ForeignImportModuless0
-            % will contain a conservative approximation to the set of
-            % foreign imports needed which will include imports
-            % required by imported modules.
-            % XXX ITEM_LIST What is the correctness argument that supports
-            % the above assertion?
-            ( if
-                ForeignImportModules0 = foreign_import_modules(
-                    C0, CSharp0, Java0, Erlang0),
-                set.is_empty(C0),
-                set.is_empty(CSharp0),
-                set.is_empty(Java0),
-                set.is_empty(Erlang0)
-            then
-                SrcForeignImportModules = foreign_import_modules(
-                    SrcC, SrcCSharp, SrcJava, SrcErlang),
-                IntForeignImportModules = foreign_import_modules(
-                    IntC, IntCSharp, IntJava, IntErlang),
-                OptForeignImportModules = foreign_import_modules(
-                    OptC, OptCSharp, OptJava, OptErlang),
-                IntForOptForeignImportModules = foreign_import_modules(
-                    IntForOptC, IntForOptCSharp, IntForOptJava,
-                    IntForOptErlang),
-                C = set.union_list([
-                    SrcC, IntC, OptC, IntForOptC]),
-                CSharp = set.union_list([
-                    SrcCSharp, IntCSharp, OptCSharp, IntForOptCSharp]),
-                Java= set.union_list([
-                    SrcJava, IntJava, OptJava, IntForOptJava]),
-                Erlang = set.union_list([
-                    SrcErlang, IntErlang, OptErlang, IntForOptErlang]),
-                ForeignImportModules = foreign_import_modules(
-                    C, CSharp, Java, Erlang)
-            else
-                ForeignImportModules = ForeignImportModules0
-            )
-        ;
-            ContainsForeignCode = contains_no_foreign_code,
-            ForeignImportModules = ForeignImportModules0
-        ),
-
-        ForeignImports =
-            get_all_foreign_import_module_infos(ForeignImportModules),
-
-        % Handle dependencies introduced by
-        % `:- pragma foreign_import_module' declarations.
-
-        set.filter_map(
-            ( pred(ForeignImportMod::in, ImportModuleName::out) is semidet :-
-                ImportModuleName = foreign_import_module_name_from_module(
-                    ForeignImportMod, SourceFileModuleName),
-
-                % XXX We can't include mercury.dll as mmake can't find it,
-                % but we know that it exists.
-                ImportModuleName \= unqualified("mercury")
-            ), ForeignImports, ForeignImportedModuleNames),
-        ( if set.is_empty(ForeignImportedModuleNames) then
-            true
-        else
+            have_source_file_map(HaveMap, !IO),
             (
-                Target = target_csharp,
-                % XXX don't know enough about C# yet
-                ForeignImportTargets = [],
-                ForeignImportExt = ".cs"
+                HaveMap = yes,
+                module_name_to_file_name_stem(SourceFileModuleName, ModuleArg)
             ;
-                Target = target_java,
-                ForeignImportTargets = [ClassFileName],
-                ForeignImportExt = ".java"
-            ;
-                Target = target_erlang,
-                ForeignImportTargets = [BeamFileName],
-                ForeignImportExt = ".hrl"
-            ;
-                Target = target_c,
-                % NOTE: for C the possible targets might be a .o file _or_ a
-                % .pic_o file. We need to include dependencies for the latter
-                % otherwise invoking mmake with a <module>.pic_o target will
-                % break.
-                ForeignImportTargets = [ObjFileName, PicObjFileName],
-                ForeignImportExt = ".mh"
+                HaveMap = no,
+                ModuleArg = SourceFileName
             ),
-            WriteForeignImportTarget =
-                ( pred(ForeignImportTarget::in, !.IO::di, !:IO::uo) is det :-
-                    io.write_string(DepStream, "\n\n", !IO),
-                    io.write_string(DepStream, ForeignImportTarget, !IO),
-                    io.write_string(DepStream, " : ", !IO),
-                    write_dependencies_list(Globals, DepStream,
-                        ForeignImportExt,
-                        set.to_sorted_list(ForeignImportedModuleNames), !IO),
-                    io.write_string(DepStream, "\n\n", !IO)
+
+            globals.get_target(Globals, Target),
+            module_name_to_file_name(Globals, ModuleName, ".class",
+                do_not_create_dirs, ClassFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".beam",
+                do_not_create_dirs, BeamFileName, !IO),
+
+            (
+                ContainsForeignCode = contains_foreign_code(_LangSet),
+                ForeignImportModules = ForeignImportModules0
+            ;
+                ContainsForeignCode = contains_foreign_code_unknown,
+                get_foreign_code_indicators_from_item_blocks(Globals,
+                    SrcItemBlocks,
+                    _SrcLangSet, SrcForeignImportModules, _, _),
+                % XXX ITEM_LIST DirectIntItemBlocksCord should not be needed
+                % XXX ITEM_LIST IndirectIntItemBlocksCord should not be needed
+                IntItemBlocksCord =
+                    DirectIntItemBlocksCord ++ IndirectIntItemBlocksCord,
+                get_foreign_code_indicators_from_item_blocks(Globals,
+                    cord.list(IntItemBlocksCord),
+                    _IntLangSet, IntForeignImportModules, _, _),
+                get_foreign_code_indicators_from_item_blocks(Globals,
+                    cord.list(OptItemBlocksCord),
+                    _OptLangSet, OptForeignImportModules, _, _),
+                get_foreign_code_indicators_from_item_blocks(Globals,
+                    cord.list(IntForOptItemBlocksCord),
+                    _IntForOptLangSet, IntForOptForeignImportModules, _, _),
+                % If we are generating the `.dep' file,
+                % ForeignImportModuless0 will contain a conservative
+                % approximation to the set of foreign imports needed which
+                % will include imports required by imported modules.  XXX
+                % ITEM_LIST What is the correctness argument that supports
+                % the above assertion?
+                ( if
+                    ForeignImportModules0 = foreign_import_modules(
+                        C0, CSharp0, Java0, Erlang0),
+                    set.is_empty(C0),
+                    set.is_empty(CSharp0),
+                    set.is_empty(Java0),
+                    set.is_empty(Erlang0)
+                then
+                    SrcForeignImportModules = foreign_import_modules(
+                        SrcC, SrcCSharp, SrcJava, SrcErlang),
+                    IntForeignImportModules = foreign_import_modules(
+                        IntC, IntCSharp, IntJava, IntErlang),
+                    OptForeignImportModules = foreign_import_modules(
+                        OptC, OptCSharp, OptJava, OptErlang),
+                    IntForOptForeignImportModules = foreign_import_modules(
+                        IntForOptC, IntForOptCSharp, IntForOptJava,
+                        IntForOptErlang),
+                    C = set.union_list([
+                        SrcC, IntC, OptC, IntForOptC]),
+                    CSharp = set.union_list([
+                        SrcCSharp, IntCSharp, OptCSharp, IntForOptCSharp]),
+                    Java= set.union_list([
+                        SrcJava, IntJava, OptJava, IntForOptJava]),
+                    Erlang = set.union_list([
+                        SrcErlang, IntErlang, OptErlang, IntForOptErlang]),
+                    ForeignImportModules = foreign_import_modules(
+                        C, CSharp, Java, Erlang)
+                else
+                    ForeignImportModules = ForeignImportModules0
+                )
+            ;
+                ContainsForeignCode = contains_no_foreign_code,
+                ForeignImportModules = ForeignImportModules0
+            ),
+
+            ForeignImports =
+                get_all_foreign_import_module_infos(ForeignImportModules),
+
+            % Handle dependencies introduced by
+            % `:- pragma foreign_import_module' declarations.
+
+            set.filter_map(
+                ( pred(ForeignImportMod::in, ImportModuleName::out)
+                        is semidet :-
+                    ImportModuleName = foreign_import_module_name_from_module(
+                        ForeignImportMod, SourceFileModuleName),
+
+                    % XXX We can't include mercury.dll as mmake can't find
+                    % it, but we know that it exists.
+                    ImportModuleName \= unqualified("mercury")
+                ), ForeignImports, ForeignImportedModuleNames),
+            ( if set.is_empty(ForeignImportedModuleNames) then
+                true
+            else
+                (
+                    Target = target_csharp,
+                    % XXX don't know enough about C# yet
+                    ForeignImportTargets = [],
+                    ForeignImportExt = ".cs"
+                ;
+                    Target = target_java,
+                    ForeignImportTargets = [ClassFileName],
+                    ForeignImportExt = ".java"
+                ;
+                    Target = target_erlang,
+                    ForeignImportTargets = [BeamFileName],
+                    ForeignImportExt = ".hrl"
+                ;
+                    Target = target_c,
+                    % NOTE: for C the possible targets might be a .o file
+                    % _or_ a .pic_o file. We need to include dependencies
+                    % for the latter otherwise invoking mmake with a
+                    % <module>.pic_o target will break.
+                    ForeignImportTargets = [ObjFileName, PicObjFileName],
+                    ForeignImportExt = ".mh"
                 ),
-            list.foldl(WriteForeignImportTarget, ForeignImportTargets, !IO)
-        ),
+                WriteForeignImportTarget =
+                    ( pred(ForeignImportTarget::in, !.IO::di, !:IO::uo)
+                            is det :-
+                        io.write_string(DepStream, "\n\n", !IO),
+                        io.write_string(DepStream, ForeignImportTarget, !IO),
+                        io.write_string(DepStream, " : ", !IO),
+                        write_dependencies_list(Globals, DepStream,
+                            ForeignImportExt,
+                            set.to_sorted_list(ForeignImportedModuleNames),
+                            !IO),
+                        io.write_string(DepStream, "\n\n", !IO)
+                    ),
+                list.foldl(WriteForeignImportTarget, ForeignImportTargets,
+                    !IO)
+            ),
 
-        module_name_to_file_name(Globals, ModuleName, ".int",
-            do_not_create_dirs, IntFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".int2",
-            do_not_create_dirs, Int2FileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".int3",
-            do_not_create_dirs, Int3FileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".opt",
-            do_not_create_dirs, OptFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".trans_opt",
-            do_not_create_dirs, TransOptFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".date3",
-            do_not_create_dirs, Date3FileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".int",
+                do_not_create_dirs, IntFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".int2",
+                do_not_create_dirs, Int2FileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".int3",
+                do_not_create_dirs, Int3FileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".opt",
+                do_not_create_dirs, OptFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".trans_opt",
+                do_not_create_dirs, TransOptFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".date3",
+                do_not_create_dirs, Date3FileName, !IO),
 
-        % We add some extra dependencies to the generated `.d' files, so that
-        % local `.int', `.opt', etc. files shadow the installed versions
-        % properly (e.g. for when you're trying to build a new version
-        % of an installed library). This saves the user from having to add
-        % these explicitly if they have multiple libraries installed
-        % in the same installation hierarchy which aren't independent (e.g.
-        % one uses another). These extra dependencies are necessary due to
-        % the way the combination of search paths and pattern rules
-        % works in Make.
-        %
-        % Be very careful about changing the following rules. The `@:' is a
-        % silent do-nothing command. It is used to force GNU Make to recheck
-        % the timestamp on the target file. (It is a pity that GNU Make
-        % doesn't have a way of handling these sorts of rules in a
-        % nicer manner.)
-
-        io.write_strings(DepStream, [
-            "\n",
-            Int0FileName, " : ", Date0FileName, "\n",
-            "\t@:\n",
-            IntFileName, " : ", DateFileName, "\n",
-            "\t@:\n",
-            Int2FileName, " : ", DateFileName, "\n",
-            "\t@:\n",
-            Int3FileName, " : ", Date3FileName, "\n",
-            "\t@:\n",
-            OptFileName, " : ", OptDateFileName, "\n",
-            "\t@:\n",
-            TransOptFileName, " : ", TransOptDateFileName, "\n",
-            "\t@:\n"
-        ], !IO),
-
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-        (
-            UseSubdirs = yes,
-            io.nl(DepStream, !IO),
-            list.foldl(
-                write_subdirs_shorthand_rule(Globals, DepStream, ModuleName),
-                [".c", ".$O", ".pic_o", ".java", ".class", ".dll"], !IO)
-        ;
-            UseSubdirs = no
-        ),
-
-        ( if SourceFileName = default_source_file(ModuleName) then
-            true
-        else
-            % The pattern rules in Mmake.rules won't work, since the source
-            % file name doesn't match the expected source file name for this
-            % module name. This can occur due to just the use of different
-            % source file names, or it can be due to the use of nested modules.
-            % So we need to output hard-coded rules in this case.
+            % We add some extra dependencies to the generated `.d' files, so
+            % that local `.int', `.opt', etc. files shadow the installed
+            % versions properly (e.g. for when you're trying to build a new
+            % version of an installed library). This saves the user from
+            % having to add these explicitly if they have multiple libraries
+            % installed in the same installation hierarchy which aren't
+            % independent (e.g.  one uses another). These extra dependencies
+            % are necessary due to the way the combination of search paths
+            % and pattern rules works in Make.
             %
-            % The rules output below won't work in the case of nested modules
-            % with parallel makes, because it will end up invoking the same
-            % command twice (since it produces two output files) at the same
-            % time.
-            %
-            % Any changes here will require corresponding changes to
-            % scripts/Mmake.rules. See that file for documentation
-            % on these rules.
+            % Be very careful about changing the following rules. The `@:'
+            % is a silent do-nothing command. It is used to force GNU Make
+            % to recheck the timestamp on the target file. (It is a pity
+            % that GNU Make doesn't have a way of handling these sorts of
+            % rules in a nicer manner.)
 
             io.write_strings(DepStream, [
                 "\n",
-                Date0FileName, " : ", SourceFileName, "\n",
-                "\t$(MCPI) $(ALL_GRADEFLAGS) ",
-                    "$(ALL_MCPIFLAGS) ", ModuleArg, "\n",
-                DateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCI) $(ALL_GRADEFLAGS) $(ALL_MCIFLAGS) ",
-                    ModuleArg, "\n",
-                Date3FileName, " : ", SourceFileName, "\n",
-                "\t$(MCSI) $(ALL_GRADEFLAGS) $(ALL_MCSIFLAGS) ",
-                    ModuleArg, "\n",
-                OptDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) ",
-                    ModuleArg, "\n",
-                TransOptDateFileName, " : ", SourceFileName,
-                    "\n",
-                "\t$(MCTOI) $(ALL_GRADEFLAGS) ",
-                    "$(ALL_MCTOIFLAGS) ", ModuleArg, "\n",
-                CDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    ModuleArg, " $(ERR_REDIRECT)\n",
-                JavaDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    "--java-only ", ModuleArg,
-                    " $(ERR_REDIRECT)\n"
-            ], !IO)
-        ),
+                Int0FileName, " : ", Date0FileName, "\n",
+                "\t@:\n",
+                IntFileName, " : ", DateFileName, "\n",
+                "\t@:\n",
+                Int2FileName, " : ", DateFileName, "\n",
+                "\t@:\n",
+                Int3FileName, " : ", Date3FileName, "\n",
+                "\t@:\n",
+                OptFileName, " : ", OptDateFileName, "\n",
+                "\t@:\n",
+                TransOptFileName, " : ", TransOptDateFileName, "\n",
+                "\t@:\n"
+            ], !IO),
 
-        io.close_output(DepStream, !IO),
-        io.rename_file(TmpDependencyFileName, DependencyFileName, Result3,
-            !IO),
-        (
-            Result3 = error(_),
-            % On some systems, we need to remove the existing file
-            % first, if any. So try again that way.
-            io.remove_file(DependencyFileName, Result4, !IO),
+            globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
             (
-                Result4 = error(Error4),
-                maybe_write_string(Verbose, " failed.\n", !IO),
-                maybe_flush_output(Verbose, !IO),
-                io.error_message(Error4, ErrorMsg),
-                string.append_list(["can't remove file `", DependencyFileName,
-                    "': ", ErrorMsg], Message),
-                report_error(Message, !IO)
+                UseSubdirs = yes,
+                io.nl(DepStream, !IO),
+                list.foldl(
+                    write_subdirs_shorthand_rule(Globals, DepStream,
+                        ModuleName),
+                    [".c", ".$O", ".pic_o", ".java", ".class", ".dll"], !IO)
             ;
-                Result4 = ok,
-                io.rename_file(TmpDependencyFileName, DependencyFileName,
-                    Result5, !IO),
+                UseSubdirs = no
+            ),
+
+            ( if SourceFileName = default_source_file(ModuleName) then
+                true
+            else
+                % The pattern rules in Mmake.rules won't work, since the
+                % source file name doesn't match the expected source file
+                % name for this module name. This can occur due to just the
+                % use of different source file names, or it can be due to
+                % the use of nested modules.  So we need to output
+                % hard-coded rules in this case.
+                %
+                % The rules output below won't work in the case of nested
+                % modules with parallel makes, because it will end up
+                % invoking the same command twice (since it produces two
+                % output files) at the same time.
+                %
+                % Any changes here will require corresponding changes to
+                % scripts/Mmake.rules. See that file for documentation on
+                % these rules.
+
+                io.write_strings(DepStream, [
+                    "\n",
+                    Date0FileName, " : ", SourceFileName, "\n",
+                    "\t$(MCPI) $(ALL_GRADEFLAGS) ",
+                        "$(ALL_MCPIFLAGS) ", ModuleArg, "\n",
+                    DateFileName, " : ", SourceFileName, "\n",
+                    "\t$(MCI) $(ALL_GRADEFLAGS) $(ALL_MCIFLAGS) ",
+                        ModuleArg, "\n",
+                    Date3FileName, " : ", SourceFileName, "\n",
+                    "\t$(MCSI) $(ALL_GRADEFLAGS) $(ALL_MCSIFLAGS) ",
+                        ModuleArg, "\n",
+                    OptDateFileName, " : ", SourceFileName, "\n",
+                    "\t$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) ",
+                        ModuleArg, "\n",
+                    TransOptDateFileName, " : ", SourceFileName,
+                        "\n",
+                    "\t$(MCTOI) $(ALL_GRADEFLAGS) ",
+                        "$(ALL_MCTOIFLAGS) ", ModuleArg, "\n",
+                    CDateFileName, " : ", SourceFileName, "\n",
+                    "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
+                        ModuleArg, " $(ERR_REDIRECT)\n",
+                    JavaDateFileName, " : ", SourceFileName, "\n",
+                    "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
+                        "--java-only ", ModuleArg,
+                        " $(ERR_REDIRECT)\n"
+                ], !IO)
+            ),
+
+            io.close_output(DepStream, !IO),
+            io.rename_file(TmpDependencyFileName, DependencyFileName,
+                Result3, !IO),
+            (
+                Result3 = error(_),
+                % On some systems, we need to remove the existing file
+                % first, if any. So try again that way.
+                io.remove_file(DependencyFileName, Result4, !IO),
                 (
-                    Result5 = error(Error5),
+                    Result4 = error(Error4),
                     maybe_write_string(Verbose, " failed.\n", !IO),
                     maybe_flush_output(Verbose, !IO),
-                    io.error_message(Error5, ErrorMsg),
-                    string.append_list(["can't rename file `",
-                        TmpDependencyFileName, "' as `", DependencyFileName,
-                        "': ", ErrorMsg], Message),
+                    io.error_message(Error4, ErrorMsg),
+                    string.append_list(["can't remove file `",
+                        DependencyFileName, "': ", ErrorMsg], Message),
                     report_error(Message, !IO)
                 ;
-                    Result5 = ok,
-                    maybe_write_string(Verbose, " done.\n", !IO)
+                    Result4 = ok,
+                    io.rename_file(TmpDependencyFileName, DependencyFileName,
+                        Result5, !IO),
+                    (
+                        Result5 = error(Error5),
+                        maybe_write_string(Verbose, " failed.\n", !IO),
+                        maybe_flush_output(Verbose, !IO),
+                        io.error_message(Error5, ErrorMsg),
+                        string.append_list(["can't rename file `",
+                            TmpDependencyFileName, "' as `",
+                            DependencyFileName, "': ", ErrorMsg], Message),
+                        report_error(Message, !IO)
+                    ;
+                        Result5 = ok,
+                        maybe_write_string(Verbose, " done.\n", !IO)
+                    )
                 )
+            ;
+                Result3 = ok,
+                maybe_write_string(Verbose, " done.\n", !IO)
             )
-        ;
-            Result3 = ok,
-            maybe_write_string(Verbose, " done.\n", !IO)
         )
     ).
 

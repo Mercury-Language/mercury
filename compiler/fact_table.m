@@ -309,15 +309,27 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
             infer_determinism_pass_2(ProcFiles, Globals, ExistsAllInMode,
                 ProcTable0, ProcTable, !IO),
             pred_info_set_proc_table(ProcTable, !PredInfo),
-            io.make_temp(DataFileName, !IO),
-            write_fact_table_arrays(ProcFiles, DataFileName, StructName,
-                ProcTable, ModuleInfo, NumFacts, FactArgInfos, WriteHashTables,
-                WriteDataAfterSorting, OutputStream, C_HeaderCode1,
-                PrimaryProcID, !IO),
-            write_fact_table_numfacts(PredName, NumFacts, OutputStream,
-                C_HeaderCode3, !IO),
-            string.append_list([C_HeaderCode0, C_HeaderCode1,
-                C_HeaderCode2, C_HeaderCode3], C_HeaderCode)
+            io.make_temp_file(DataFileNameResult, !IO),
+            (
+                DataFileNameResult = ok(DataFileName),
+                write_fact_table_arrays(ProcFiles, DataFileName, StructName,
+                    ProcTable, ModuleInfo, NumFacts, FactArgInfos,
+                    WriteHashTables, WriteDataAfterSorting, OutputStream,
+                    C_HeaderCode1, PrimaryProcID, !IO),
+                write_fact_table_numfacts(PredName, NumFacts, OutputStream,
+                    C_HeaderCode3, !IO),
+                string.append_list([C_HeaderCode0, C_HeaderCode1,
+                    C_HeaderCode2, C_HeaderCode3], C_HeaderCode)
+            ;
+                DataFileNameResult = error(Error),
+                ErrorReport = no - [
+                    words("Could not create temporary file:"),
+                    quote(error_message(Error))],
+                print_error_reports(Globals, [ErrorReport], !IO),
+                C_HeaderCode = C_HeaderCode0,
+                PrimaryProcID = invalid_proc_id,
+                DataFileName = ""
+            )
         ;
             OpenCompileErrors = [_ | _],
             print_error_reports(Globals, OpenCompileErrors, !IO),
@@ -967,18 +979,27 @@ fact_table_mode_type([Mode | Modes], ModuleInfo, ModeType) :-
 
 open_sort_files([], [], !Errors, !IO).
 open_sort_files([ProcID | ProcIDs], ProcStreams, !Errors, !IO) :-
-    io.make_temp(SortFileName, !IO),
-    io.open_output(SortFileName, Result, !IO),
+    io.make_temp_file(SortFileNameResult, !IO),
     (
-        Result = ok(Stream),
-        open_sort_files(ProcIDs, ProcStreams0, !Errors, !IO),
-        ProcStreams = [proc_stream(ProcID, Stream) | ProcStreams0]
+        SortFileNameResult = ok(SortFileName),
+        io.open_output(SortFileName, Result, !IO),
+        (
+            Result = ok(Stream),
+            open_sort_files(ProcIDs, ProcStreams0, !Errors, !IO),
+            ProcStreams = [proc_stream(ProcID, Stream) | ProcStreams0]
+        ;
+            Result = error(ErrorCode),
+            ProcStreams = [],
+            io.error_message(ErrorCode, Message),
+            string.format("Error opening file `%s' for output: %s.",
+                [s(SortFileName), s(Message)], Msg),
+            add_error_report([words(Msg)], !Errors)
+        )
     ;
-        Result = error(ErrorCode),
+        SortFileNameResult = error(Error),
         ProcStreams = [],
-        io.error_message(ErrorCode, Message),
-        string.format("Error opening file `%s' for output: %s.",
-            [s(SortFileName), s(Message)], Msg),
+        string.format("Could not create temporary file: %s.",
+            [s(error_message(Error))], Msg),
         add_error_report([words(Msg)], !Errors)
     ).
 

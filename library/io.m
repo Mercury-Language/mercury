@@ -1319,46 +1319,54 @@
 % File handling predicates.
 %
 
-    % make_temp(Name, !IO) creates an empty file whose name is different
-    % to the name of any existing file. Name is bound to the name of the file.
-    % It is the responsibility of the caller to delete the file when it
-    % is no longer required.
+    % make_temp_file(Result, !IO) creates an empty file whose name is different
+    % to the name of any existing file.  If successful Result returns the name
+    % of the file.  It is the responsibility of the caller to delete the file
+    % when it is no longer required.
     %
     % The file is placed in the directory returned by get_temp_directory/3.
-    %
-    % Throws an io.error exception if the temporary file could not be created.
     %
     % On the Erlang and Java backends, this does not attempt to create the file
     % with restrictive permissions (600 on Unix-like systems) and therefore
     % should not be used when security is required.
     %
+:- pred make_temp_file(io.res(string)::out, io::di, io::uo) is det.
+
+    % Like make_temp_file/3 except it throws an io.error exception if the
+    % temporary file could not be created.
+    %
+:- pragma obsolete(make_temp/3).
 :- pred make_temp(string::out, io::di, io::uo) is det.
 
-    % make_temp(Dir, Prefix, Name, !IO) creates an empty file whose
+    % make_temp(Dir, Prefix, Suffix, Result, !IO) creates an empty file whose
     % name is different to the name of any existing file. The file will reside
     % in the directory specified by Dir and will have a prefix using up to
-    % the first 5 characters of Prefix. Name is bound to the name of the
-    % file.  It is the responsibility of the caller to delete the file when it
-    % is no longer required.
-    %
-    % Throws an io.error exception if the temporary file could not be created.
+    % the first 5 characters of Prefix. If successful, Result returns the name
+    % of the file.  It is the responsibility of the caller to delete the file
+    % when it is no longer required.
     %
     % The C# backend has the following limitations:
     %   - Dir is ignored.
     %   - Prefix is ignored.
+    %   - Suffix is ignored.
+    %
+    % On the Erlang backend Suffix is ignored.
     %
     % On the Erlang and Java backends, this does not attempt to create the file
     % with restrictive permissions (600 on Unix-like systems) and therefore
     % should not be used when security is required.
     %
-:- pred make_temp(string::in, string::in, string::out, io::di, io::uo)
-    is det.
+:- pred make_temp_file(string::in, string::in, string::in, io.res(string)::out,
+    io::di, io::uo) is det.
 
-    % make_temp_directory(DirName, !IO) creates an empty directory whose name
-    % is different from the name of any existing directory.
+    % Same as make_temp_file except it does not take a suffix argument and
+    % throws an io.error exception if the temporary file could not be created.
     %
-    % Throws an io.error exception if the temporary directory could not be
-    % created.
+:- pragma obsolete(make_temp/5).
+:- pred make_temp(string::in, string::in, string::out, io::di, io::uo) is det.
+
+    % make_temp_directory(Result, !IO) creates an empty directory whose name
+    % is different from the name of any existing directory.
     %
     % On the C# backend this is insecure as the file permissions are not set
     % and this call does not test for an existing directory.
@@ -1367,31 +1375,29 @@
     %
     % This is unimplemented on the Erlang backend.
     %
-:- pred make_temp_directory(string::out, io::di, io::uo) is det.
+:- pred make_temp_directory(io.res(string)::out, io::di, io::uo) is det.
 
-    % make_temp_directory(Dir, Prefix, DirName, !IO) creates an empty directory
-    % whose name is different from the name of any existing directory.  The new
-    % directory will reside in the existing directory specified by `Dir' and
-    % will have a prefix using up to the first 5 characters of `Prefix'.
-    % DirName is bound to the name of the new directory. It is the
-    % responsibility of the program to delete the directory when it is no
-    % longer needed.
-    %
-    % Throws an io.error exception if the temporary directory could not be
-    % created.
+    % make_temp_directory(Dir, Prefix, Suffix, Result, !IO) creates an empty
+    % directory whose name is different from the name of any existing
+    % directory.  The new directory will reside in the existing directory
+    % specified by Dir and will have a prefix using up to the first 5
+    % characters of Prefix and a Suffix.  Result returns the name of the
+    % new directory. It is the responsibility of the program to delete the
+    % directory when it is no longer needed.
     %
     % The C# backend has the following limitations:
     %   - It does not attempt to create the file with restrictive permissions
     %     (600 on Unix-like systems) and therefore should not be used when
     %     security is required.
     %   - Prefix is ignored.
+    %   - Suffix is ignored.
     %
     % On the Java backend this is insecure as the file permissions are not set.
     %
     % This is unimplemented on the Erlang backend.
     %
-:- pred make_temp_directory(string::in, string::in, string::out,
-    io::di, io::uo) is det.
+:- pred make_temp_directory(string::in, string::in, string::in,
+    io.res(string)::out, io::di, io::uo) is det.
 
     % Test if the make_temp_directory predicates are available.  This is false
     % for the Erlang backends and either C backend without support for
@@ -10399,32 +10405,52 @@ command_line_argument(_, "") :-
 
 %---------------------------------------------------------------------------%
 
-make_temp(Name, !IO) :-
+make_temp_file(Result, !IO) :-
     get_temp_directory(Dir, !IO),
-    make_temp(Dir, "mtmp", Name, !IO).
+    make_temp_file(Dir, "mtmp", "", Result, !IO).
 
-make_temp(Dir, Prefix, Name, !IO) :-
-    do_make_temp(Dir, Prefix, char_to_string(dir.directory_separator),
-        Name, Okay, Message, !IO),
+make_temp(Name, !IO) :-
+    make_temp_file(Result, !IO),
     (
-        Okay = yes
+        Result = ok(Name)
     ;
-        Okay = no,
-        throw_io_error(Message)
+        Result = error(Error),
+        throw(Error)
     ).
 
-make_temp_directory(DirName, !IO) :-
-    get_temp_directory(Dir, !IO),
-    make_temp_directory(Dir, "mtmp", DirName, !IO).
-
-make_temp_directory(Dir, Prefix, DirName, !IO) :-
-    do_make_temp_directory(Dir, Prefix,
-        char_to_string(dir.directory_separator), DirName, Okay, Message, !IO),
+make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
+    do_make_temp(Dir, Prefix, Suffix, char_to_string(dir.directory_separator),
+        Name, Okay, Message, !IO),
     (
-        Okay = yes
+        Okay = yes,
+        Result = ok(Name)
     ;
         Okay = no,
-        throw_io_error(Message)
+        Result = error(make_io_error(Message))
+    ).
+
+make_temp(Dir, Prefix, Name, !IO) :-
+    make_temp_file(Dir, Prefix, "", Result, !IO),
+    (
+        Result = ok(Name)
+    ;
+        Result = error(Error),
+        throw(Error)
+    ).
+
+make_temp_directory(Result, !IO) :-
+    get_temp_directory(Dir, !IO),
+    make_temp_directory(Dir, "mtmp", "", Result, !IO).
+
+make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
+    do_make_temp_directory(Dir, Prefix, Suffix,
+        char_to_string(dir.directory_separator), DirName, Okay, Message, !IO),
+    (
+        Okay = yes,
+        Result = ok(DirName)
+    ;
+        Okay = no,
+        Result = error(make_io_error(Message))
     ).
 
 %-----------------------------------------------------------------------%
@@ -10440,12 +10466,11 @@ import java.util.Random;
 "
     public static Random ML_rand = new Random();
 
-    public static String makeTempName(String prefix)
+    public static String makeTempName(String prefix, String suffix)
     {
         StringBuilder sb = new StringBuilder();
 
         sb.append(prefix);
-
         // Make an 8-digit mixed case alpha-numeric code.
         for (int i = 0; i < 8; i++) {
             char c;
@@ -10460,13 +10485,14 @@ import java.util.Random;
             c = (char)c_num;
             sb.append(c);
         }
+        sb.append(suffix);
 
         return sb.toString();
     }
 ").
 
 :- pred do_make_temp(string::in, string::in, string::in,
-    string::out, bool::out, string::out, io::di, io::uo) is det.
+    string::in, string::out, bool::out, string::out, io::di, io::uo) is det.
 
 % XXX The code for io.make_temp assumes POSIX. It uses the functions open(),
 % close(), and getpid() and the macros EEXIST, O_WRONLY, O_CREAT, and O_EXCL.
@@ -10491,7 +10517,7 @@ import java.util.Random;
 ").
 
 :- pragma foreign_proc("C",
-    do_make_temp(Dir::in, Prefix::in, Sep::in, FileName::out,
+    do_make_temp(Dir::in, Prefix::in, Suffix::in, Sep::in, FileName::out,
         Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
@@ -10499,8 +10525,8 @@ import java.util.Random;
 #ifdef MR_HAVE_MKSTEMP
     int err, fd;
 
-    FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
-        Dir, Sep, Prefix);
+    FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX%s"",
+        Dir, Sep, Prefix, Suffix);
     fd = mkstemp(FileName);
     if (fd == -1) {
         ML_maybe_make_err_msg(MR_TRUE, errno,
@@ -10519,18 +10545,18 @@ import java.util.Random;
 #else
     /*
     ** Constructs a temporary name by concatenating Dir, `/', the first 5 chars
-    ** of Prefix, three hex digits, '.', and 3 more hex digits. The six digit
-    ** hex number is generated by starting with the pid of this process.
-    ** Uses `open(..., O_CREATE | O_EXCL, ...)' to create the file, checking
-    ** that there was no existing file with that name.
+    ** of Prefix, six hex digits, and Suffix. The six digit hex number is
+    ** generated by starting with the pid of this process.  Uses
+    ** `open(..., O_CREATE | O_EXCL, ...)' to create the file, checking that
+    ** there was no existing file with that name.
     */
     int     len, err, fd, num_tries;
     char    countstr[256];
     MR_Word filename_word;
     int     flags;
 
-    len = strlen(Dir) + 1 + 5 + 3 + 1 + 3 + 1;
-    /* Dir + / + Prefix + counter_high + . + counter_low + \\0 */
+    len = strlen(Dir) + 1 + 5 + 6 + strlen(Suffix) + 1;
+    /* Dir + / + Prefix + counter + Suffix + \\0 */
     MR_offset_incr_hp_atomic_msg(filename_word, 0,
         (len + sizeof(MR_Word)) / sizeof(MR_Word),
         MR_ALLOC_ID, ""string.string/0"");
@@ -10544,9 +10570,8 @@ import java.util.Random;
         strcpy(FileName, Dir);
         strcat(FileName, Sep);
         strncat(FileName, Prefix, 5);
-        strncat(FileName, countstr, 3);
-        strcat(FileName, ""."");
-        strncat(FileName, countstr + 3, 3);
+        strncat(FileName, countstr, 6);
+        strcat(FileName, Suffix);
         flags = O_WRONLY | O_CREAT | O_EXCL;
         do {
             #ifdef MR_WIN32
@@ -10577,7 +10602,7 @@ import java.util.Random;
 ").
 
 :- pragma foreign_proc("C#",
-    do_make_temp(_Dir::in, _Prefix::in, _Sep::in, FileName::out,
+    do_make_temp(_Dir::in, _Prefix::in, _Suffix::in, _Sep::in, FileName::out,
         Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
@@ -10594,11 +10619,8 @@ import java.util.Random;
     }
 }").
 
-% For the Java implementation, io.make_temp/3 is overwritten directly,
-% since Java is capable of locating the default temp directory itself.
-
 :- pragma foreign_proc("Java",
-    do_make_temp(Dir::in, Prefix::in, _Sep::in, FileName::out,
+    do_make_temp(Dir::in, Prefix::in, Suffix::in, _Sep::in, FileName::out,
         Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -10612,7 +10634,7 @@ import java.util.Random;
             Prefix = Prefix.substring(0, 5);
         }
 
-        new_file = new File(new File(Dir), makeTempName(Prefix));
+        new_file = new File(new File(Dir), makeTempName(Prefix, Suffix));
         if (new_file.createNewFile()) {
             FileName = new_file.getAbsolutePath();
             Okay = bool.YES;
@@ -10630,13 +10652,14 @@ import java.util.Random;
 ").
 
 :- pragma foreign_proc("Erlang",
-    do_make_temp(Dir::in, Prefix::in, Sep::in, FileName::out,
+    do_make_temp(Dir::in, Prefix::in, Suffix::in, Sep::in, FileName::out,
         Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
     DirStr = binary_to_list(Dir),
     PrefixStr = binary_to_list(Prefix),
+    SuffixStr = binary_to_list(Suffix),
     SepStr = binary_to_list(Sep),
 
     % Constructs a temporary name by concatenating Dir, Sep, Prefix
@@ -10658,7 +10681,7 @@ import java.util.Random;
     Seed = {A1 + Pid, A2, A3},
 
     case
-        mercury__io:'ML_do_make_temp_2'(DirStr, PrefixStr, SepStr,
+        mercury__io:'ML_do_make_temp_2'(DirStr, PrefixStr, SuffixStr, SepStr,
             MaxTries, Seed)
     of
         {ok, FileName0} ->
@@ -10673,19 +10696,19 @@ import java.util.Random;
 ").
 
 :- pragma foreign_decl("Erlang", local, "
-    -export(['ML_do_make_temp_2'/5]).
+    -export(['ML_do_make_temp_2'/6]).
 ").
 :- pragma foreign_code("Erlang", "
-    'ML_do_make_temp_2'(_, _, _, 0, _) ->
+    'ML_do_make_temp_2'(_, _, _, _, 0, _) ->
         {error, ""error opening temporary file""};
-    'ML_do_make_temp_2'(Dir, Prefix, Sep, Tries, Seed0) ->
+    'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep, Tries, Seed0) ->
         {R1, Seed1} = random:uniform_s(16#1000, Seed0),
         {R2, Seed}  = random:uniform_s(16#1000, Seed1),
-        FileName = lists:flatten(io_lib:format(""~s~s~s~3.16.0B.~3.16.0B"",
-            [Dir, Sep, Prefix, R1, R2])),
+        FileName = lists:flatten(io_lib:format(""~s~s~s~3.16.0B.~3.16.0B~s"",
+            [Dir, Sep, Prefix, R1, R2, Suffix])),
         case filelib:is_file(FileName) of
             true ->
-                'ML_do_make_temp_2'(Dir, Prefix, Sep, Tries - 1, Seed);
+                'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep, Tries - 1, Seed);
             false ->
                 case file:open(FileName, [write, {encoding, utf8}]) of
                     {ok, IoDevice} ->
@@ -10696,27 +10719,28 @@ import java.util.Random;
                                 {error, file:format_error(Reason)}
                         end;
                     {error, _} ->
-                        'ML_do_make_temp_2'(Dir, Prefix, Sep, Tries - 1, Seed)
+                        'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep,
+                            Tries - 1, Seed)
                 end
         end.
 ").
 
 %-----------------------------------------------------------------------%
 
-:- pred do_make_temp_directory(string::in, string::in, string::in,
+:- pred do_make_temp_directory(string::in, string::in, string::in, string::in,
     string::out, bool::out, string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_make_temp_directory(Dir::in, Prefix::in, Sep::in, DirName::out,
-        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+    do_make_temp_directory(Dir::in, Prefix::in, Suffix::in, Sep::in,
+        DirName::out, Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
 #ifdef MR_HAVE_MKDTEMP
     int err;
 
-    DirName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
-        Dir, Sep, Prefix);
+    DirName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX%s"",
+        Dir, Sep, Prefix, Suffix);
     DirName = mkdtemp(DirName);
     if (DirName == NULL) {
         ML_maybe_make_err_msg(MR_TRUE, errno,
@@ -10737,8 +10761,8 @@ import java.util.Random;
 ").
 
 :- pragma foreign_proc("C#",
-    do_make_temp_directory(Dir::in, _Prefix::in, _Sep::in, DirName::out,
-        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+    do_make_temp_directory(Dir::in, _Prefix::in, _Suffix::in, _Sep::in,
+        DirName::out, Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
     try {
@@ -10761,8 +10785,8 @@ import java.util.Random;
 }").
 
 :- pragma foreign_proc("Java",
-    do_make_temp_directory(Dir::in, Prefix::in, _Sep::in, DirName::out,
-        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+    do_make_temp_directory(Dir::in, Prefix::in, Suffix::in, _Sep::in,
+        DirName::out, Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
@@ -10774,7 +10798,7 @@ import java.util.Random;
         Prefix = Prefix.substring(0, 5);
     }
 
-    new_dir = new File(new File(Dir), makeTempName(Prefix));
+    new_dir = new File(new File(Dir), makeTempName(Prefix, Suffix));
     if (new_dir.mkdir()) {
         DirName = new_dir.getAbsolutePath();
         Okay = bool.YES;
