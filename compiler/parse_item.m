@@ -906,7 +906,8 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
             MaybeIOM = error1(Specs)
         ;
             MaybePredNameAndArgs = ok2(Functor, ArgTerms),
-            parse_type_and_mode_list(InstConstraints, VarSet, ContextPieces,
+            parse_type_and_modes(constrain_some_inst_vars(InstConstraints),
+                dont_require_tm_mode, wnhii_pred_arg, VarSet, ContextPieces,
                 ArgTerms, 1, TypesAndModes, [], TMSpecs),
             check_type_and_mode_list_is_consistent(TypesAndModes, no,
                 get_term_context(PredTypeTerm), MaybeTypeModeListKind),
@@ -1001,13 +1002,15 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Context, SeqNum,
                 MaybeIOM = error1(Specs)
             ;
                 MaybeFuncNameAndArgs = ok2(FuncName, ArgTerms),
-                parse_type_and_mode_list(InstConstraints, VarSet,
-                    ContextPieces, ArgTerms, 1, ArgTypesAndModes,
-                    [], ArgTMSpecs),
+                parse_type_and_modes(constrain_some_inst_vars(InstConstraints),
+                    dont_require_tm_mode, wnhii_func_arg,
+                    VarSet, ContextPieces, ArgTerms, 1,
+                    ArgTypesAndModes, [], ArgTMSpecs),
                 RetContextPieces = ContextPieces ++
                     cord.from_list([words("in the return value"), nl]),
-                parse_type_and_mode(InstConstraints, VarSet, RetContextPieces,
-                    ReturnTerm, MaybeRetTypeAndMode),
+                parse_type_and_mode(constrain_some_inst_vars(InstConstraints),
+                    dont_require_tm_mode, wnhii_func_return_arg,
+                    VarSet, RetContextPieces, ReturnTerm, MaybeRetTypeAndMode),
                 ( if
                     ArgTMSpecs = [],
                     MaybeRetTypeAndMode = ok1(RetTypeAndMode)
@@ -1072,75 +1075,6 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         Specs = get_any_errors1(MaybeTypeModeListKind)
             ++ get_any_errors1(MaybePurity),
         MaybeIOM = error1(Specs)
-    ).
-
-:- pred parse_type_and_mode_list(inst_var_sub::in, varset::in,
-    cord(format_component)::in, list(term)::in, int::in,
-    list(type_and_mode)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-parse_type_and_mode_list(_, _, _, [], _, [], !Specs).
-parse_type_and_mode_list(InstConstraints, VarSet, ContextPieces,
-        [Term | Terms], ArgNum, TypesAndModes, !Specs) :-
-    parse_type_and_mode_list(InstConstraints, VarSet, ContextPieces,
-        Terms, ArgNum + 1, TypesAndModesTail, !Specs),
-    ArgContextPieces = ContextPieces ++
-        cord.from_list([words("in the"), nth_fixed(ArgNum),
-        words("argument:"), nl]),
-    parse_type_and_mode(InstConstraints, VarSet, ArgContextPieces,
-        Term, MaybeTypeAndMode),
-    (
-        MaybeTypeAndMode = ok1(TypeAndMode),
-        TypesAndModes = [TypeAndMode | TypesAndModesTail]
-    ;
-        MaybeTypeAndMode = error1(TMSpecs),
-        TypesAndModes = TypesAndModesTail,
-        !:Specs = TMSpecs ++ !.Specs
-    ).
-
-:- pred parse_type_and_mode(inst_var_sub::in, varset::in,
-    cord(format_component)::in, term::in, maybe1(type_and_mode)::out) is det.
-
-parse_type_and_mode(InstConstraints, VarSet, ContextPieces, Term,
-        MaybeTypeAndMode) :-
-    ( if
-        Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context)
-    then
-        parse_type(no_allow_ho_inst_info, VarSet, ContextPieces,
-            TypeTerm, MaybeType),
-        ( if
-            convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
-            constrain_inst_vars_in_mode_sub(InstConstraints, Mode0, Mode1)
-        then
-            MaybeMode = ok1(Mode1)
-        else
-            ModePieces = [words("error: invalid mode"),
-                quote(describe_error_term(VarSet, ModeTerm)),
-                suffix("."), nl],
-            Pieces = cord.list(ContextPieces ++ cord.from_list(ModePieces)),
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ModeTerm), [always(Pieces)])]),
-            MaybeMode = error1([Spec])
-        ),
-        ( if
-            MaybeType = ok1(Type),
-            MaybeMode = ok1(Mode)
-        then
-            MaybeTypeAndMode = ok1(type_and_mode(Type, Mode))
-        else
-            Specs = get_any_errors1(MaybeType) ++ get_any_errors1(MaybeMode),
-            MaybeTypeAndMode = error1(Specs)
-        )
-    else
-        parse_type(no_allow_ho_inst_info, VarSet, ContextPieces, Term,
-            MaybeType),
-        (
-            MaybeType = ok1(Type),
-            MaybeTypeAndMode = ok1(type_only(Type))
-        ;
-            MaybeType = error1(Specs),
-            MaybeTypeAndMode = error1(Specs)
-        )
     ).
 
 :- type type_mode_list_kind
@@ -1773,7 +1707,7 @@ parse_determinism_suffix(VarSet, Term, BeforeDetismTerm, MaybeMaybeDetism) :-
         else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid determinism category"),
-                words(TermStr), suffix("."), nl],
+                quote(TermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(DetismTerm), [always(Pieces)])]),
             MaybeMaybeDetism = error1([Spec])
@@ -1799,8 +1733,8 @@ parse_with_type_suffix(VarSet, Term, BeforeWithTypeTerm, MaybeWithType) :-
         BeforeWithTypeTerm = BeforeWithTypeTermPrime,
         ContextPieces = cord.from_list([words("In"), quote("with_type"),
             words("annotation:")]),
-        parse_type(no_allow_ho_inst_info, VarSet, ContextPieces, TypeTerm,
-            MaybeType),
+        parse_type(no_allow_ho_inst_info(wnhii_type_qual),
+            VarSet, ContextPieces, TypeTerm, MaybeType),
         (
             MaybeType = ok1(Type),
             MaybeWithType = ok1(yes(Type))

@@ -27,7 +27,28 @@
 
 :- type allow_ho_inst_info
     --->    allow_ho_inst_info
-    ;       no_allow_ho_inst_info.
+    ;       no_allow_ho_inst_info(why_no_ho_inst_info).
+
+    % The contexts in which you are not allowed to specify
+    % higher order inst information. Some of these contexts *should*
+    % allow you to specify such information, but the support needed
+    % has not yet been implemented (NYI).
+:- type why_no_ho_inst_info
+    --->    wnhii_type_ctor_arg         % NYI
+    ;       wnhii_tuple_arg
+    ;       wnhii_pred_arg
+    ;       wnhii_func_arg
+    ;       wnhii_func_return_arg
+    ;       wnhii_type_qual             % NYI
+    ;       wnhii_eqv_type_defn_body
+    ;       wnhii_solver_type_defn
+    ;       wnhii_class_constraint
+    ;       wnhii_mutable_decl          % NYI
+    ;       wnhii_user_struct_sharing
+    ;       wnhii_ctgc_type_selector
+    ;       wnhii_pragma_struct_sharing
+    ;       wnhii_pragma_struct_reuse
+    ;       wnhii_pragma_type_spec.
 
 :- pred maybe_parse_type(allow_ho_inst_info::in, term::in, mer_type::out)
     is semidet.
@@ -42,6 +63,29 @@
     cord(format_component)::in, list(term)::in,
     maybe1(list(mer_type))::out) is det.
 
+%---------------------%
+
+:- type maybe_constrain_inst_vars
+    --->    dont_constrain_inst_vars
+    ;       constrain_some_inst_vars(inst_var_sub).
+
+:- type maybe_require_tm_mode
+    --->    dont_require_tm_mode
+    ;       require_tm_mode.
+
+:- pred parse_type_and_modes(maybe_constrain_inst_vars::in,
+    maybe_require_tm_mode::in, why_no_ho_inst_info::in,
+    varset::in, cord(format_component)::in,
+    list(term)::in, int::in, list(type_and_mode)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred parse_type_and_mode(maybe_constrain_inst_vars::in,
+    maybe_require_tm_mode::in, why_no_ho_inst_info::in,
+    varset::in, cord(format_component)::in,
+    term::in, maybe1(type_and_mode)::out) is det.
+
+%---------------------%
+
 :- pred is_known_type_name(string::in) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -49,12 +93,18 @@
 
 :- implementation.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
+:- import_module int.
+:- import_module maybe.
+:- import_module require.
 
 %---------------------------------------------------------------------------%
 
@@ -73,7 +123,7 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
         term.coerce_var(Var0, Var),
         Result = ok1(type_variable(Var, kind_star))
     ;
-        Term = term.functor(Functor, ArgTerms, _),
+        Term = term.functor(Functor, ArgTerms, FunctorContext),
         (
             ( Functor = term.integer(_)
             ; Functor = term.big_integer(_, _)
@@ -81,7 +131,12 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
             ; Functor = term.string(_)
             ; Functor = term.implementation_defined(_)
             ),
-            Result = ill_formed_type_result(ContextPieces, VarSet, Term)
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error:"), quote(TermStr), words("is not a type."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(FunctorContext, [always(Pieces)])]),
+            Result = error1([Spec])
         ;
             Functor = term.atom(Name),
             % XXX We *could* generate a specific error message for each kind
@@ -95,9 +150,15 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
                     parse_compound_type(AllowHOInstInfo, Term, VarSet,
                         ContextPieces, CompoundTypeKind, Result)
                 ;
-                    KnownTypeKind = known_type_bad_arity,
-                    Result = ill_formed_type_result(ContextPieces, VarSet,
-                        Term)
+                    KnownTypeKind = known_type_bad_arity(ExpectedArity),
+                    Pieces = cord.list(ContextPieces) ++
+                        [lower_case_next_if_not_first, words("Error:"),
+                        quote(Name), words("should not be used"),
+                        words("with any arity other than"),
+                        int_fixed(ExpectedArity), suffix("."), nl],
+                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                        [simple_msg(FunctorContext, [always(Pieces)])]),
+                    Result = error1([Spec])
                 )
             else
                 % We don't support kind annotations yet, and we don't report
@@ -106,7 +167,9 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
                     NameResult),
                 (
                     NameResult = ok2(SymName, SymNameArgTerms),
-                    parse_types(no_allow_ho_inst_info, VarSet, ContextPieces,
+                    parse_types(
+                        no_allow_ho_inst_info(wnhii_type_ctor_arg),
+                        VarSet, ContextPieces,
                         SymNameArgTerms, SymNameArgsResult),
                     (
                         SymNameArgsResult = ok1(ArgTypes),
@@ -132,8 +195,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
         CompoundTypeKind, Result) :-
     (
         CompoundTypeKind = kctk_tuple(Args),
-        parse_types(no_allow_ho_inst_info, VarSet, ContextPieces,
-            Args, ArgsResult),
+        parse_types(no_allow_ho_inst_info(wnhii_tuple_arg),
+            VarSet, ContextPieces, Args, ArgsResult),
         (
             ArgsResult = ok1(ArgTypes),
             Result = ok1(tuple_type(ArgTypes, kind_star))
@@ -153,113 +216,352 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
         Result = error1([Spec])
     ;
         CompoundTypeKind = kctk_pure_pred(Args),
-        ( if
-            maybe_parse_types(no_allow_ho_inst_info, Args, ArgTypes)
-        then
+        % XXX We should update ContextPieces.
+        parse_types(no_allow_ho_inst_info(wnhii_pred_arg),
+            VarSet, ContextPieces, Args, MaybeArgTypes),
+        (
+            MaybeArgTypes = ok1(ArgTypes),
             construct_higher_order_pred_type(purity_pure, lambda_normal,
                 ArgTypes, PredType),
             Result = ok1(PredType)
-        else
-            Result = ill_formed_type_result(ContextPieces, VarSet, Term)
+        ;
+            MaybeArgTypes = error1(Specs),
+            Result = error1(Specs)
         )
     ;
-        CompoundTypeKind = kctk_pure_func(Arg1, Arg2),
-        ( if
-            Arg1 = term.functor(term.atom("func"), FuncArgs, _),
-            maybe_parse_types(no_allow_ho_inst_info, FuncArgs, ArgTypes),
-            maybe_parse_type(no_allow_ho_inst_info, Arg2, RetType)
-        then
-            construct_higher_order_func_type(purity_pure, lambda_normal,
-                ArgTypes, RetType, FuncType),
-            Result = ok1(FuncType)
+        CompoundTypeKind = kctk_pure_func(BeforeEqTerm, AfterEqTerm),
+        ( if BeforeEqTerm = term.functor(term.atom("func"), FuncArgs, _) then
+            % XXX We should update ContextPieces.
+            parse_types(no_allow_ho_inst_info(wnhii_func_arg),
+                VarSet, ContextPieces, FuncArgs, MaybeArgTypes),
+            parse_type(no_allow_ho_inst_info(wnhii_func_return_arg),
+                VarSet, ContextPieces, AfterEqTerm, MaybeRetType),
+            ( if
+                MaybeArgTypes = ok1(ArgTypes),
+                MaybeRetType = ok1(RetType)
+            then
+                construct_higher_order_func_type(purity_pure, lambda_normal,
+                    ArgTypes, RetType, FuncType),
+                Result = ok1(FuncType)
+            else
+                Specs = get_any_errors1(MaybeArgTypes)
+                    ++ get_any_errors1(MaybeRetType),
+                Result = error1(Specs)
+            )
         else
-            Result = ill_formed_type_result(ContextPieces, VarSet, Term)
+            % XXX Should be more specific.
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: in a function type declaration,"),
+                words("the operator"), quote("="), words("should be preceded"),
+                words("by"), quote("func(<arguments>)"), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(BeforeEqTerm),
+                    [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ;
-        CompoundTypeKind = kctk_is(Arg1, Arg2),
-        ( if
-            AllowHOInstInfo = allow_ho_inst_info,
-            maybe_parse_ho_type_and_inst(Arg1, Arg2, purity_pure, Type)
-        then
-            Result = ok1(Type)
-        else
-            Result = ill_formed_type_result(ContextPieces, VarSet, Term)
+        CompoundTypeKind = kctk_is(BeforeIsTerm, AfterIsTerm),
+        parse_ho_type_and_inst(VarSet, ContextPieces,
+            BeforeIsTerm, AfterIsTerm, purity_pure, MaybeType),
+        (
+            MaybeType = error1(Specs),
+            Result = error1(Specs)
+        ;
+            MaybeType = ok1(Type),
+            (
+                AllowHOInstInfo = allow_ho_inst_info,
+                Result = ok1(Type)
+            ;
+                AllowHOInstInfo = no_allow_ho_inst_info(Why),
+                Result = no_ho_inst_allowed_result(ContextPieces, Why,
+                    VarSet, Term)
+            )
         )
     ;
-        CompoundTypeKind = kctk_purity(Purity, SubTerm),
+        CompoundTypeKind = kctk_purity(PurityName, Purity, SubTerm),
         ( if
             SubTerm = term.functor(term.atom(Name), Args, _),
-            (
-                Name = "=",
-                Args = [Arg1, Arg2],
-                Arg1 = term.functor(term.atom("func"), FuncArgs, _),
-                maybe_parse_types(no_allow_ho_inst_info, FuncArgs, ArgTypes),
-                maybe_parse_type(no_allow_ho_inst_info, Arg2, RetType),
-                construct_higher_order_func_type(Purity, lambda_normal,
-                    ArgTypes, RetType, Type)
-            ;
-                Name = "pred",
-                maybe_parse_types(no_allow_ho_inst_info, Args, ArgTypes),
-                construct_higher_order_pred_type(Purity, lambda_normal,
-                    ArgTypes, Type)
-            ;
-                Name = "is",
-                AllowHOInstInfo = allow_ho_inst_info,
-                Args = [Arg1, Arg2],
-                maybe_parse_ho_type_and_inst(Arg1, Arg2, Purity, Type)
-            )
+            Name = "=",
+            Args = [BeforeEqTerm, AfterEqTerm],
+            BeforeEqTerm = term.functor(term.atom("func"), FuncArgs, _)
         then
-            Result = ok1(Type)
+            % XXX We should update ContextPieces.
+            parse_types(no_allow_ho_inst_info(wnhii_func_arg),
+                VarSet, ContextPieces, FuncArgs, MaybeArgTypes),
+            parse_type(no_allow_ho_inst_info(wnhii_func_return_arg),
+                VarSet, ContextPieces, AfterEqTerm, MaybeRetType),
+            ( if
+                MaybeArgTypes = ok1(ArgTypes),
+                MaybeRetType = ok1(RetType)
+            then
+                construct_higher_order_func_type(Purity, lambda_normal,
+                    ArgTypes, RetType, Type),
+                Result = ok1(Type)
+            else
+                Specs = get_any_errors1(MaybeArgTypes)
+                    ++ get_any_errors1(MaybeRetType),
+                Result = error1(Specs)
+            )
+        else if
+            SubTerm = term.functor(term.atom(Name), Args, _),
+            Name = "pred"
+        then
+            % XXX We should update ContextPieces.
+            parse_types(no_allow_ho_inst_info(wnhii_pred_arg),
+                VarSet, ContextPieces, Args, MaybeArgTypes),
+            (
+                MaybeArgTypes = ok1(ArgTypes),
+                construct_higher_order_pred_type(Purity, lambda_normal,
+                    ArgTypes, Type),
+                Result = ok1(Type)
+            ;
+                MaybeArgTypes = error1(Specs),
+                Result = error1(Specs)
+            )
+        else if
+            SubTerm = term.functor(term.atom(Name), Args, _),
+            Name = "is",
+            Args = [BeforeIsTerm, AfterIsTerm]
+        then
+            parse_ho_type_and_inst(VarSet, ContextPieces,
+                BeforeIsTerm, AfterIsTerm, Purity, MaybeType),
+            (
+                MaybeType = error1(Specs),
+                Result = error1(Specs)
+            ;
+                MaybeType = ok1(Type),
+                (
+                    AllowHOInstInfo = allow_ho_inst_info,
+                    Result = ok1(Type)
+                ;
+                    AllowHOInstInfo = no_allow_ho_inst_info(Why),
+                    Result = no_ho_inst_allowed_result(ContextPieces, Why,
+                        VarSet, Term)
+                )
+            )
         else
-            Result = ill_formed_type_result(ContextPieces, VarSet, Term)
+            AlwaysPieces =
+                [quote("pred(<arg_types>)"), nl,
+                quote("func(<arg_types>) = <ret_type>")],
+            AllowPieces =
+                [quote("pred(<arg_types_modes>) is <detism>"), nl,
+                quote("func(<arg_types_modes>) = <ret_type_mode> is <detism>")],
+            (
+                AllowHOInstInfo = allow_ho_inst_info,
+                FormPieces = AlwaysPieces ++ [nl | AllowPieces]
+            ;
+                AllowHOInstInfo = no_allow_ho_inst_info(_Why),
+                FormPieces = AlwaysPieces
+            ),
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: the purity marker"), quote(PurityName),
+                words("should be followed by a higher order type,"),
+                words("which should be of one of the following forms:")] ++
+                FormPieces ++ [suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(SubTerm), [always(Pieces)])]),
+            Result = error1([Spec])
         )
     ).
 
-:- pred maybe_parse_ho_type_and_inst(term::in, term::in, purity::in,
-    mer_type::out) is semidet.
+:- pred parse_ho_type_and_inst(varset::in, cord(format_component)::in,
+    term::in, term::in, purity::in, maybe1(mer_type)::out) is det.
 
-maybe_parse_ho_type_and_inst(Arg1, Arg2, Purity, Type) :-
-    Arg2 = term.functor(term.atom(DetString), [], _),
-    standard_det(DetString, Detism),
-    (
-        Arg1 = term.functor(term.atom("="), [FuncTerm, RetTerm], _),
-        FuncTerm = term.functor(term.atom("func"), ArgTerms, _),
-        maybe_parse_types_and_modes(ArgTerms, ArgTypes, ArgModes),
-        maybe_parse_type_and_mode(RetTerm, RetType, RetMode),
-        construct_higher_order_func_type(Purity, lambda_normal, ArgTypes,
-            RetType, ArgModes, RetMode, Detism, Type)
-    ;
-        Arg1 = term.functor(term.atom("pred"), ArgTerms, _),
-        maybe_parse_types_and_modes(ArgTerms, ArgTypes, ArgModes),
-        construct_higher_order_pred_type(Purity, lambda_normal, ArgTypes,
-            ArgModes, Detism, Type)
+parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
+        Purity, MaybeType) :-
+    ( if
+        AfterIsTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism)
+    then
+        MaybeDetism = ok1(Detism)
+    else
+        AfterIsTermStr = describe_error_term(VarSet, AfterIsTerm),
+        DetismPieces = [words("Error: invalid determinism category"),
+            quote(AfterIsTermStr), suffix("."), nl],
+        DetismSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(AfterIsTerm),
+                [always(DetismPieces)])]),
+        MaybeDetism = error1([DetismSpec])
+    ),
+    ( if
+        BeforeIsTerm = term.functor(term.atom("="), [FuncTerm, RetTerm], _),
+        FuncTerm = term.functor(term.atom("func"), ArgTerms, _)
+    then
+        parse_type_and_modes(dont_constrain_inst_vars, require_tm_mode,
+            wnhii_func_arg, VarSet, ContextPieces, ArgTerms, 1,
+            ArgTypeAndModes, [], ArgTMSpecs),
+        RetContextPieces = ContextPieces ++
+            cord.from_list([words("in the return value:"), nl]),
+        parse_type_and_mode(dont_constrain_inst_vars, require_tm_mode,
+            wnhii_func_return_arg, VarSet, RetContextPieces,
+            RetTerm, MaybeRetTypeAndMode),
+        parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
+            ArgTypeAndModes, ArgTMSpecs, yes(MaybeRetTypeAndMode),
+            MaybeDetism, MaybeType)
+    else if
+        BeforeIsTerm = term.functor(term.atom("pred"), ArgTerms, _)
+    then
+        parse_type_and_modes(dont_constrain_inst_vars, require_tm_mode,
+            wnhii_pred_arg, VarSet, ContextPieces, ArgTerms, 1,
+            ArgTypeAndModes, [], ArgTMSpecs),
+        parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
+            ArgTypeAndModes, ArgTMSpecs, no, MaybeDetism, MaybeType)
+    else
+        BeforeIsTermStr = describe_error_term(VarSet, BeforeIsTerm),
+        HOPieces = [words("Error: a higher order type"),
+            words("must have one of the forms"), nl,
+            quote("pred(<arguments>) is det"), nl,
+            quote("func(<arguments>) = <return_argument> is det"),
+            suffix(","), nl,
+            words("but"), quote(BeforeIsTermStr), words("is neither."), nl],
+        HOSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(AfterIsTerm), [always(HOPieces)])]),
+        MaybeType = error1([HOSpec])
     ).
 
-:- pred maybe_parse_types_and_modes(list(term)::in, list(mer_type)::out,
-    list(mer_mode)::out) is semidet.
+:- pred parse_ho_type_and_inst_2(varset::in, cord(format_component)::in,
+    purity::in, list(type_and_mode)::in, list(error_spec)::in,
+    maybe(maybe1(type_and_mode))::in, maybe1(determinism)::in,
+    maybe1(mer_type)::out) is det.
 
-maybe_parse_types_and_modes(ArgTerms, ArgTypes, ArgModes) :-
-    list.reverse(ArgTerms, RevArgTerms),
-    maybe_parse_types_and_modes_acc(RevArgTerms, [], ArgTypes, [], ArgModes).
+parse_ho_type_and_inst_2(_VarSet, _ContextPieces, Purity, ArgTypeAndModes,
+        ArgSpecs, MaybeMaybeRetTypeAndMode, MaybeDetism, MaybeType) :-
+    % XXX _VarSet
+    list.map2(project_tm_type_and_mode, ArgTypeAndModes, ArgTypes0, ArgModes0),
+    ( if
+        ArgSpecs = [],
+        (
+            MaybeMaybeRetTypeAndMode = no,
+            PredOrFunc = pf_predicate,
+            ArgTypes = ArgTypes0,
+            ArgModes = ArgModes0,
+            PredInstInfo = pred_inst_info(PredOrFunc, ArgModes,
+                arg_reg_types_unset, Detism)
+        ;
+            MaybeMaybeRetTypeAndMode = yes(MaybeRetTypeAndMode),
+            MaybeRetTypeAndMode = ok1(RetTypeAndMode),
+            PredOrFunc = pf_function,
+            project_tm_type_and_mode(RetTypeAndMode, RetType, RetMode),
+            ArgTypes = ArgTypes0 ++ [RetType],
+            ArgModes = ArgModes0 ++ [RetMode],
+            PredInstInfo = pred_inst_info(PredOrFunc, ArgModes,
+                arg_reg_types_unset, Detism)
+        ),
+        MaybeDetism = ok1(Detism)
+    then
+        EvalMethod = lambda_normal,
+        Type = higher_order_type(PredOrFunc, ArgTypes,
+            higher_order(PredInstInfo), Purity, EvalMethod),
+        MaybeType = ok1(Type)
+    else
+        (
+            MaybeMaybeRetTypeAndMode = no,
+            RetSpecs = []
+        ;
+            MaybeMaybeRetTypeAndMode = yes(ok1(_)),
+            RetSpecs = []
+        ;
+            MaybeMaybeRetTypeAndMode = yes(error1(RetSpecs))
+        ),
+        Specs = ArgSpecs ++ RetSpecs ++
+            get_any_errors1(MaybeDetism),
+        MaybeType = error1(Specs)
+    ).
 
-:- pred maybe_parse_types_and_modes_acc(list(term)::in,
-    list(mer_type)::in, list(mer_type)::out,
-    list(mer_mode)::in, list(mer_mode)::out) is semidet.
+:- pred project_tm_type_and_mode(type_and_mode::in,
+    mer_type::out, mer_mode::out) is det.
 
-maybe_parse_types_and_modes_acc([], !ArgTypes, !ArgModes).
-maybe_parse_types_and_modes_acc([ArgTerm | ArgTerms], ArgTypes0, ArgTypes,
-        ArgModes0, ArgModes) :-
-    maybe_parse_type_and_mode(ArgTerm, ArgType, ArgMode),
-    maybe_parse_types_and_modes_acc(ArgTerms, [ArgType | ArgTypes0], ArgTypes,
-        [ArgMode | ArgModes0], ArgModes).
+project_tm_type_and_mode(type_and_mode(Type, Mode), Type, Mode).
+project_tm_type_and_mode(type_only(_), _, _) :-
+    % Since our ancestor should have passed require_tm_mode to
+    % parse_type_and_mode, this should not happen.
+    unexpected($pred, "type_only").
 
-:- pred maybe_parse_type_and_mode(term::in, mer_type::out, mer_mode::out)
-    is semidet.
+%---------------------------------------------------------------------------%
 
-maybe_parse_type_and_mode(Term, Type, Mode) :-
-    Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _),
-    maybe_parse_type(no_allow_ho_inst_info, TypeTerm, Type),
-    convert_mode(no_allow_constrained_inst_var, ModeTerm, Mode).
+parse_type_and_modes(_, _, _, _, _, [], _, [], !Specs).
+parse_type_and_modes(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
+        ContextPieces, [Term | Terms], ArgNum, TypesAndModes, !Specs) :-
+    parse_type_and_modes(MaybeInstConstraints, MaybeRequireMode, Why,
+        VarSet, ContextPieces, Terms, ArgNum + 1, TypesAndModesTail, !Specs),
+    ArgContextPieces = ContextPieces ++
+        cord.from_list([words("in the"), nth_fixed(ArgNum),
+        words("argument:"), nl]),
+    parse_type_and_mode(MaybeInstConstraints, MaybeRequireMode, Why,
+        VarSet, ArgContextPieces, Term, MaybeTypeAndMode),
+    (
+        MaybeTypeAndMode = ok1(TypeAndMode),
+        TypesAndModes = [TypeAndMode | TypesAndModesTail]
+    ;
+        MaybeTypeAndMode = error1(TMSpecs),
+        TypesAndModes = TypesAndModesTail,
+        !:Specs = TMSpecs ++ !.Specs
+    ).
+
+parse_type_and_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
+        ContextPieces, Term, MaybeTypeAndMode) :-
+    ( if
+        Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context)
+    then
+        parse_type(no_allow_ho_inst_info(Why), VarSet, ContextPieces,
+            TypeTerm, MaybeType),
+        ( if
+            (
+                MaybeInstConstraints =
+                    constrain_some_inst_vars(InstConstraints),
+                convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
+                constrain_inst_vars_in_mode_sub(InstConstraints, Mode0, Mode1)
+            ;
+                MaybeInstConstraints = dont_constrain_inst_vars,
+                convert_mode(no_allow_constrained_inst_var, ModeTerm, Mode1)
+            )
+        then
+            MaybeMode = ok1(Mode1)
+        else
+            % XXX Have convert_mode give us a more specific error message.
+            ModePieces = [lower_case_next_if_not_first,
+                words("Error: invalid mode"),
+                quote(describe_error_term(VarSet, ModeTerm)),
+                suffix("."), nl],
+            Pieces = cord.list(ContextPieces ++ cord.from_list(ModePieces)),
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(ModeTerm), [always(Pieces)])]),
+            MaybeMode = error1([Spec])
+        ),
+        ( if
+            MaybeType = ok1(Type),
+            MaybeMode = ok1(Mode)
+        then
+            MaybeTypeAndMode = ok1(type_and_mode(Type, Mode))
+        else
+            Specs = get_any_errors1(MaybeType) ++ get_any_errors1(MaybeMode),
+            MaybeTypeAndMode = error1(Specs)
+        )
+    else
+        (
+            MaybeRequireMode = require_tm_mode,
+            MissingPieces = [lower_case_next_if_not_first,
+                words("Error: missing"), quote("::mode"),
+                words("suffix."), nl],
+            Pieces = cord.list(ContextPieces ++ cord.from_list(MissingPieces)),
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            MaybeTypeAndMode = error1([Spec])
+        ;
+            MaybeRequireMode = dont_require_tm_mode,
+            parse_type(no_allow_ho_inst_info(Why), VarSet, ContextPieces, Term,
+                MaybeType),
+            (
+                MaybeType = ok1(Type),
+                MaybeTypeAndMode = ok1(type_only(Type))
+            ;
+                MaybeType = error1(Specs),
+                MaybeTypeAndMode = error1(Specs)
+            )
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 
 is_known_type_name(Name) :-
     (
@@ -278,13 +580,13 @@ is_known_type_name(Name) :-
     ;       kctk_pure_func(T, T)
     ;       kctk_pure_pred(list(T))
     ;       kctk_is(T, T)
-    ;       kctk_purity(purity, T)
+    ;       kctk_purity(string, purity, T)
     ;       kctk_apply(list(T)).
 
 :- type known_type_kind(T)
     --->    known_type_simple(mer_type)
     ;       known_type_compound(known_compound_type_kind(T))
-    ;       known_type_bad_arity.
+    ;       known_type_bad_arity(int).  % The expected arity.
 
     % is_known_type_name_args(TypeName, TypeArgs, KnownTypeKind):
     %
@@ -326,7 +628,7 @@ is_known_type_name_args(Name, Args, KnownType) :-
             KnownType = known_type_simple(builtin_type(BuiltinType))
         ;
             Args = [_ | _],
-            KnownType = known_type_bad_arity
+            KnownType = known_type_bad_arity(0)
         )
     ;
         Name = "{}",
@@ -338,7 +640,7 @@ is_known_type_name_args(Name, Args, KnownType) :-
             ; Args = [_]
             ; Args = [_, _, _ | _]
             ),
-            KnownType = known_type_bad_arity
+            KnownType = known_type_bad_arity(2)
         ;
             Args = [Arg1, Arg2],
             KnownType = known_type_compound(kctk_pure_func(Arg1, Arg2))
@@ -353,7 +655,7 @@ is_known_type_name_args(Name, Args, KnownType) :-
             ; Args = [_]
             ; Args = [_, _, _ | _]
             ),
-            KnownType = known_type_bad_arity
+            KnownType = known_type_bad_arity(2)
         ;
             Args = [Arg1, Arg2],
             KnownType = known_type_compound(kctk_is(Arg1, Arg2))
@@ -373,35 +675,83 @@ is_known_type_name_args(Name, Args, KnownType) :-
             ( Args = []
             ; Args = [_, _ | _]
             ),
-            KnownType = known_type_bad_arity
+            KnownType = known_type_bad_arity(1)
         ;
             Args = [Arg1],
-            KnownType = known_type_compound(kctk_purity(Purity, Arg1))
+            KnownType = known_type_compound(kctk_purity(Name, Purity, Arg1))
         )
     ;
         Name = "",
         KnownType = known_type_compound(kctk_apply(Args))
     ).
 
-:- func ill_formed_type_result(cord(format_component), varset, term)
-    = maybe1(mer_type).
+:- func no_ho_inst_allowed_result(cord(format_component), why_no_ho_inst_info,
+    varset, term) = maybe1(mer_type).
 
-ill_formed_type_result(ContextPieces, VarSet, Term) = Result :-
+no_ho_inst_allowed_result(ContextPieces, Why, VarSet, Term) = Result :-
     TermStr = describe_error_term(VarSet, Term),
+    (
+        Why = wnhii_type_ctor_arg,
+        Place = "a type constructor's argument"
+    ;
+        Why = wnhii_tuple_arg,
+        Place = "a tuple type constructor's argument"
+    ;
+        Why = wnhii_pred_arg,
+        Place = "a predicate's argument"
+    ;
+        Why = wnhii_func_arg,
+        Place = "a function's argument"
+    ;
+        Why = wnhii_func_return_arg,
+        Place = "a function's return value"
+    ;
+        Why = wnhii_type_qual,
+        Place = "a type used for type qualification"
+    ;
+        Why = wnhii_eqv_type_defn_body,
+        Place = "the definition of an equivalence type"
+    ;
+        Why = wnhii_solver_type_defn,
+        Place = "the definition of a solver type"
+    ;
+        Why = wnhii_class_constraint,
+        Place = "a class constraint"
+    ;
+        Why = wnhii_mutable_decl,
+        Place = "a mutable declaration"
+    ;
+        Why = wnhii_ctgc_type_selector,
+        Place = "type selector" % Used only in error messages we won't print.
+    ;
+        Why = wnhii_user_struct_sharing,
+        Place = "structure sharing annotation"
+    ;
+        Why = wnhii_pragma_struct_sharing,
+        Place = "a structure_sharing pragma"
+    ;
+        Why = wnhii_pragma_struct_reuse,
+        Place = "a structure_reuse pragma"
+    ;
+        Why = wnhii_pragma_type_spec,
+        Place = "a type_spec pragma"
+    ),
     Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-        words("Error: ill-formed type"), quote(TermStr), suffix("."), nl],
+        words("Error: the type"), quote(TermStr), words("contains"),
+        words("higher order inst information,"),
+        words("but this is not allowed in"), words(Place), suffix("."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(get_term_context(Term), [always(Pieces)])]),
     Result = error1([Spec]).
 
 %---------------------------------------------------------------------------%
 
-maybe_parse_types(AllowHOInstInfo, Term, Types) :-
+maybe_parse_types(AllowHOInstInfo, Terms, Types) :-
     % The values of VarSet and ContextPieces do not matter since we succeed
     % only if they aren't used.
     VarSet = varset.init,
     ContextPieces = cord.init,
-    parse_types(AllowHOInstInfo, VarSet, ContextPieces, Term, ok1(Types)).
+    parse_types(AllowHOInstInfo, VarSet, ContextPieces, Terms, ok1(Types)).
 
 parse_types(AllowHOInstInfo, VarSet, ContextPieces, Terms, Result) :-
     parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, Terms,

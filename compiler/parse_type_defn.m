@@ -634,8 +634,8 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameAndParams),
     % XXX Should pass more correct ContextPieces.
     ContextPieces = cord.init,
-    parse_type(no_allow_ho_inst_info, VarSet, ContextPieces, BodyTerm,
-        MaybeType),
+    parse_type(no_allow_ho_inst_info(wnhii_eqv_type_defn_body),
+        VarSet, ContextPieces, BodyTerm, MaybeType),
     ( if
         SolverSpecs = [],
         MaybeNameAndParams = ok2(Name, ParamTVars),
@@ -1077,7 +1077,8 @@ parse_where_inst_is(_ModuleName, Term) = MaybeInst :-
 parse_where_type_is(_ModuleName, VarSet, Term) = MaybeType :-
     % XXX We should pass meaningful ContextPieces.
     ContextPieces = cord.init,
-    parse_type(no_allow_ho_inst_info, VarSet, ContextPieces, Term, MaybeType).
+    parse_type(no_allow_ho_inst_info(wnhii_solver_type_defn),
+        VarSet, ContextPieces, Term, MaybeType).
 
 :- func parse_where_mutable_is(module_name, term) =
     maybe1(list(item_mutable_info)).

@@ -578,9 +578,9 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
         try_parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
     then
         ArgsResultContextPieces =
-            cord.singleton(words("In class or inst constraint:")),
-        parse_types(no_allow_ho_inst_info, VarSet, ArgsResultContextPieces,
-            Args0, ArgsResult),
+            cord.singleton(words("In class constraint:")),
+        parse_types(no_allow_ho_inst_info(wnhii_class_constraint),
+            VarSet, ArgsResultContextPieces, Args0, ArgsResult),
         (
             ArgsResult = ok1(Args),
             Constraint = constraint(ClassName, Args),
@@ -743,8 +743,8 @@ parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
     (
         MaybeClassName = ok2(ClassName, TypeTerms),
         TypesContextPieces = NameContextPieces,
-        parse_types(no_allow_ho_inst_info, VarSet, TypesContextPieces,
-            TypeTerms, MaybeTypes),
+        parse_types(no_allow_ho_inst_info(wnhii_class_constraint),
+            VarSet, TypesContextPieces, TypeTerms, MaybeTypes),
         (
             MaybeTypes = ok1(Types),
             ItemInstanceInfo = item_instance_info(ClassName, Types, Types, [],

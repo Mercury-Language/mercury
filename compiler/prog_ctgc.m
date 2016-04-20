@@ -230,7 +230,8 @@ parse_unit_selector(Term) = UnitSelector :-
             Args = [TypeSelectorTerm]
         then
             ( if
-                maybe_parse_type(no_allow_ho_inst_info,
+                maybe_parse_type(
+                    no_allow_ho_inst_info(wnhii_ctgc_type_selector),
                     term.coerce(TypeSelectorTerm), TypeSelector)
             then
                 UnitSelector = typesel(TypeSelector)
@@ -280,7 +281,7 @@ parse_datastruct_list(Term) = Datastructs :-
             Cons = "[|]",
             Args = [FirstDataTerm, RestDataTerm]
         then
-            Datastructs = [parse_datastruct(FirstDataTerm)|
+            Datastructs = [parse_datastruct(FirstDataTerm) |
                 parse_datastruct_list(RestDataTerm)]
         else if
             Cons = "[]"
@@ -374,7 +375,7 @@ parse_structure_reuse_conditions(Term) = ReuseConditions :-
             Cons = "[|]",
             Args = [FirstTupleTerm, RestTuplesTerm]
         then
-            ReuseConditions = [parse_structure_reuse_condition(FirstTupleTerm)|
+            ReuseConditions = [parse_structure_reuse_condition(FirstTupleTerm) |
                 parse_structure_reuse_conditions(RestTuplesTerm)]
         else if
             Cons = "[]"
@@ -432,7 +433,8 @@ parse_user_annotated_sharing(!.Varset, Term, UserSharing) :-
             [TypesTerm, UserSharingTerm], _),
         (
             TypesTerm = term.functor(term.atom("yes"), ListTypeTerms, _),
-            maybe_parse_types(no_allow_ho_inst_info, ListTypeTerms, Types),
+            maybe_parse_types(no_allow_ho_inst_info(wnhii_user_struct_sharing),
+                ListTypeTerms, Types),
             term.vars_list(ListTypeTerms, TypeVars),
             varset.select(set.list_to_set(TypeVars), !Varset),
             MaybeUserTypes = yes(user_type_info(Types,
@@ -454,7 +456,7 @@ parse_user_annotated_sharing_term(SharingDomainUserTerm, SharingDomain) :-
         SharingPairTerms = [],
         SharingDomain = structure_sharing_bottom
     ;
-        SharingPairTerms = [_|_],
+        SharingPairTerms = [_ | _],
         list.map(parse_user_annotated_sharing_pair_term, SharingPairTerms,
             SharingPairs),
         SharingDomain = structure_sharing_real(SharingPairs)
@@ -491,7 +493,8 @@ parse_user_annotated_datastruct_term(Term, Datastruct) :-
     VarTerm = term.variable(GenericVar, _),
     term.coerce_var(GenericVar, ProgVar),
     get_list_term_arguments(TypesTerm, TypeTermsList),
-    maybe_parse_types(no_allow_ho_inst_info, TypeTermsList, Types),
+    maybe_parse_types(no_allow_ho_inst_info(wnhii_user_struct_sharing),
+        TypeTermsList, Types),
     list.map(mer_type_to_typesel, Types, Selector),
     Datastruct = selected_cel(ProgVar, Selector).
 

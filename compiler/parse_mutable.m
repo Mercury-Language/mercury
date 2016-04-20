@@ -267,8 +267,8 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
         MaybeType = error1([Spec])
     else
         ContextPieces = cord.init,
-        parse_type(no_allow_ho_inst_info, VarSet, ContextPieces,
-            TypeTerm, MaybeType)
+        parse_type(no_allow_ho_inst_info(wnhii_mutable_decl),
+            VarSet, ContextPieces, TypeTerm, MaybeType)
     ).
 
 :- pred parse_mutable_inst(varset::in, term::in, maybe1(mer_inst)::out) is det.

@@ -1,7 +1,7 @@
 impl_def_literal_syntax.m:011: Error: no clauses for predicate `g'/2.
 impl_def_literal_syntax.m:012: Error: no clauses for predicate `h'/2.
 impl_def_literal_syntax.m:014: In `:- pred' declaration: in the first argument:
-impl_def_literal_syntax.m:014:   error: ill-formed type `$file'.
+impl_def_literal_syntax.m:014:   error: `$file' is not a type.
 impl_def_literal_syntax.m:015: In `:- pred' declaration: error: atom expected
 impl_def_literal_syntax.m:015:   at $pred.
 impl_def_literal_syntax.m:016: Syntax error at token 'u': operator or `.'

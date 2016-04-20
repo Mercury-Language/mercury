@@ -1540,7 +1540,8 @@ parse_pragma_structure_sharing(ModuleName, VarSet, ErrorTerm, PragmaTerms,
 
         % Parse the types:
         HeadVarTypesTerm = term.functor(term.atom("types"), ListTypeTerms, _),
-        maybe_parse_types(no_allow_ho_inst_info, ListTypeTerms, Types),
+        maybe_parse_types(no_allow_ho_inst_info(wnhii_pragma_struct_sharing),
+            ListTypeTerms, Types),
 
         % Parse the actual structure sharing information.
 
@@ -1596,7 +1597,8 @@ parse_pragma_structure_reuse(ModuleName, VarSet, ErrorTerm, PragmaTerms,
 
         % Parse the types:
         HeadVarTypesTerm = term.functor(term.atom("types"), ListTypeTerms, _),
-        maybe_parse_types(no_allow_ho_inst_info, ListTypeTerms, Types),
+        maybe_parse_types(no_allow_ho_inst_info(wnhii_pragma_struct_reuse),
+            ListTypeTerms, Types),
 
         % Parse the actual structure reuse information.
         MaybeStructureReuseTerm = term.functor(term.atom(ReuseFunctor),
@@ -3447,7 +3449,9 @@ convert_type_spec_pair(Term, TypeSpec) :-
     Term = term.functor(term.atom("="), [TypeVarTerm, SpecTypeTerm0], _),
     TypeVarTerm = term.variable(TypeVar0, _),
     term.coerce_var(TypeVar0, TypeVar),
-    maybe_parse_type(no_allow_ho_inst_info, SpecTypeTerm0, SpecType),
+    % XXX We should call parse_type instead.
+    maybe_parse_type(no_allow_ho_inst_info(wnhii_pragma_type_spec),
+        SpecTypeTerm0, SpecType),
     TypeSpec = TypeVar - SpecType.
 
 %---------------------------------------------------------------------------%

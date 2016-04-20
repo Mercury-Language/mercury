@@ -1,10 +1,10 @@
 predmode.m:009: Error: some but not all arguments have modes.
 predmode.m:009:   The argument without a mode is the second.
 predmode.m:017: In `:- pred' declaration: in the first argument:
-predmode.m:017:   error: ill-formed type `1'.
+predmode.m:017:   error: `1' is not a type.
 predmode.m:017: In `:- pred' declaration: in the first argument:
 predmode.m:017:   error: invalid mode `2'.
 predmode.m:017: In `:- pred' declaration: in the second argument:
-predmode.m:017:   error: ill-formed type `"bad"'.
+predmode.m:017:   error: `"bad"' is not a type.
 predmode.m:017: In `:- pred' declaration: in the second argument:
 predmode.m:017:   error: invalid mode `"worse"'.

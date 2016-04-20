@@ -1,11 +1,13 @@
-combined_ho_type_inst_2.m:015: In type definition: error: ill-formed type
-combined_ho_type_inst_2.m:015:   `((pred int) is semidet)'.
-combined_ho_type_inst_2.m:018: In type definition: error: ill-formed type
-combined_ho_type_inst_2.m:018:   `(pred((int :: in), int) is det)'.
-combined_ho_type_inst_2.m:021: In type definition: error: ill-formed type
-combined_ho_type_inst_2.m:021:   `(((func int) = (int :: out)) is det)'.
-combined_ho_type_inst_2.m:024: In type definition: error: ill-formed type
-combined_ho_type_inst_2.m:024:   `(((func int) = int) is det)'.
+combined_ho_type_inst_2.m:015: In type definition: in the first argument:
+combined_ho_type_inst_2.m:015:   error: missing `::mode' suffix.
+combined_ho_type_inst_2.m:018: In type definition: in the second argument:
+combined_ho_type_inst_2.m:018:   error: missing `::mode' suffix.
+combined_ho_type_inst_2.m:021: In type definition: in the first argument:
+combined_ho_type_inst_2.m:021:   error: missing `::mode' suffix.
+combined_ho_type_inst_2.m:024: In type definition: in the first argument:
+combined_ho_type_inst_2.m:024:   error: missing `::mode' suffix.
+combined_ho_type_inst_2.m:024: In type definition: in the return value:
+combined_ho_type_inst_2.m:024:   error: missing `::mode' suffix.
 combined_ho_type_inst_2.m:027: In the first argument of function symbol
 combined_ho_type_inst_2.m:027:   `missing_detism_p' of the type
 combined_ho_type_inst_2.m:027:   `combined_ho_type_inst_2.missing_detism_p'/0:
