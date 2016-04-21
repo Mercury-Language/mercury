@@ -609,11 +609,11 @@ parse_options_line(Line0, OptionsFileLine) :-
         ),
         list.append(string.to_char_list("include"), Line3, Line2)
     then
-        list.takewhile(char.is_whitespace, Line3, _, Line4),
+        list.drop_while(char.is_whitespace, Line3, Line4),
         OptionsFileLine = include_options_files(ErrorIfNotExist, Line4)
     else
         parse_variable(VarName, Line0, Line1),
-        list.takewhile(char.is_whitespace, Line1, _, Line2),
+        list.drop_while(char.is_whitespace, Line1, Line2),
         ( if Line2 = [('=') | Line3] then
             Add = no,
             Line4 = Line3
@@ -627,7 +627,7 @@ parse_options_line(Line0, OptionsFileLine) :-
             throw(options_file_error(
                 "expected `=', `:=' or `+=' after `" ++ VarName ++ "'"))
         ),
-        list.takewhile(char.is_whitespace, Line4, _, VarValue),
+        list.drop_while(char.is_whitespace, Line4, VarValue),
         OptionsFileLine = define_variable(VarName, Add, VarValue)
     ).
 
@@ -638,7 +638,7 @@ parse_variable(VarName, Chars0, Chars) :-
     parse_variable_2(yes, [], VarList, Chars0, Chars),
     string.from_rev_char_list(VarList, VarName),
     ( if VarName = "" then
-        list.takewhile(isnt(char.is_whitespace), Chars, FirstWord, _),
+        list.take_while(isnt(char.is_whitespace), Chars, FirstWord),
         throw(options_file_error("expected variable at `" ++
             string.from_char_list(FirstWord) ++ "'"))
     else
@@ -758,7 +758,7 @@ split_into_words(Chars) = list.reverse(split_into_words_2(Chars, [])).
 :- func split_into_words_2(list(char), list(string)) = list(string).
 
 split_into_words_2(Chars0, RevWords0) = RevWords :-
-    list.takewhile(char.is_whitespace, Chars0, _, Chars1),
+    list.drop_while(char.is_whitespace, Chars0, Chars1),
     (
         Chars1 = [],
         RevWords = RevWords0

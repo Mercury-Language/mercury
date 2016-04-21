@@ -1377,7 +1377,7 @@ dump_match(Prefix, Match, !IO) :-
 dump_match_details(Match, !IO) :-
     Conds = list.map((func(DeconSpec) = DeconSpec ^ decon_conds),
         Match ^ decon_specs),
-    ( if list.takewhile(reuse_as_all_unconditional_reuses, Conds, _, []) then
+    ( if all_true(reuse_as_all_unconditional_reuses, Conds) then
         CondsString = "A"
     else
         CondsString = "C"

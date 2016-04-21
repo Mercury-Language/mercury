@@ -267,6 +267,42 @@
     %
 :- pred det_drop(int::in, list(T)::in, list(T)::out) is det.
 
+    % take_while(Pred, List, Start, End)
+    %
+    % List = Start ++ End.  Start is the longest prefix of List where Pred
+    % succeeds for every element in Start.  End is the remainder of the list.
+    %
+:- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::out, list(T)::out) is det.
+
+    % takewhile/4 is the old name for take_while/4.
+    %
+:- pragma obsolete(takewhile/4).
+:- pred takewhile(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::out, list(T)::out) is det.
+
+    % take_while(Pred, List, Start) :-
+    %     take_while(Pred, List, Start, _End)
+    %
+    % Start is the longest prefix of List where Pred succeeds for every element
+    % in Start.
+    %
+:- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::out) is det.
+:- func take_while(pred(T), list(T)) = list(T).
+:- mode take_while(pred(in) is semidet, in) = out is det.
+
+    % drop_while(Pred, List, End) :-
+    %     take_while(Pred, List, _Start, End).
+    %
+    % End is the remainder of List after removing all the consecutive
+    % elements from the start of List for which Pred succeeds.
+    %
+:- pred drop_while(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::out) is det.
+:- func drop_while(pred(T), list(T)) = list(T).
+:- mode drop_while(pred(in) is semidet, in) = out is det.
+
     % insert(Elem, List0, List):
     %
     % `List' is the result of inserting `Elem' somewhere in `List0'.
@@ -1632,16 +1668,6 @@
 :- pred find_index_of_match(pred(T), list(T), int, int).
 :- mode find_index_of_match(pred(in) is semidet, in, in, out) is semidet.
 
-    % takewhile(Predicate, List, UptoList, AfterList) takes a
-    % closure with one input argument, and calls it on successive members
-    % of List as long as the calls succeed. The elements for which
-    % the call succeeds are placed in UptoList and the first element for
-    % which the call fails, and all the remaining elements of List are
-    % placed in AfterList.
-    %
-:- pred takewhile(pred(T)::in(pred(in) is semidet), list(T)::in,
-    list(T)::out, list(T)::out) is det.
-
 %---------------------------------------------------------------------------%
 
     % sort(Compare, Unsorted, Sorted) is true iff Sorted is a
@@ -2360,6 +2386,44 @@ list.det_drop(N, Xs, FinalXs) :-
         FinalXs = Xs
     ).
 
+%-----------------------------------------------------------------------%
+
+take_while(_, [], [], []).
+take_while(P, [X | Xs], Ins, Outs) :-
+    ( if P(X) then
+        Ins = [X | Ins0],
+        take_while(P, Xs, Ins0, Outs)
+    else
+        Ins = [],
+        Outs = [X | Xs]
+    ).
+
+takewhile(P, Xs, Ins, Outs) :-
+    take_while(P, Xs, Ins, Outs).
+
+take_while(_, [], []).
+take_while(P, [X | Xs], Start) :-
+    ( if P(X) then
+        take_while(P, Xs, Start0),
+        Start = [X | Start0]
+    else
+        Start = []
+    ).
+
+take_while(P, Xs) = Start :-
+    take_while(P, Xs, Start).
+
+drop_while(_, [], []).
+drop_while(P, [X | Xs], End) :-
+    ( if P(X) then
+        drop_while(P, Xs, End)
+    else
+        End = [X | Xs]
+    ).
+
+drop_while(P, Xs) = End :-
+    drop_while(P, Xs, End).
+
 %---------------------------------------------------------------------------%
 
 list.duplicate(N, X) = Xs :-
@@ -3065,16 +3129,6 @@ list.find_index_of_match(Match, [X | Xs], Index0, Index) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-list.takewhile(_, [], [], []).
-list.takewhile(P, [X | Xs], Ins, Outs) :-
-    ( if P(X) then
-        Ins = [X | Ins0],
-        list.takewhile(P, Xs, Ins0, Outs)
-    else
-        Ins = [],
-        Outs = [X | Xs]
-    ).
 
 list.sort_and_remove_dups(P, L0, L) :-
     list.sort(P, L0, L1),

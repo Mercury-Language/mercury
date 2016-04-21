@@ -495,8 +495,8 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
     (
         Unification = construct(Var, ConsId, Args0, _, _, _, _),
         ( if var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var) then
-            list.takewhile(is_introduced_typeinfo_arg(ProcInfo), Args0,
-                _TypeInfoArgs, Args),
+            list.drop_while(is_introduced_typeinfo_arg(ProcInfo), Args0,
+                Args),
             number_args(Args, NumberedArgs),
             some [!SharingSet] (
                 !:SharingSet = sharing_set_init,
@@ -512,8 +512,8 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
         )
     ;
         Unification = deconstruct(Var, ConsId, Args0, _, _, _),
-        list.takewhile(is_introduced_typeinfo_arg(ProcInfo), Args0,
-            _TypeInfoArgs, Args),
+        list.drop_while(is_introduced_typeinfo_arg(ProcInfo), Args0,
+            Args),
         number_args(Args, NumberedArgs),
         optimize_for_deconstruct(GoalInfo, NumberedArgs, ReducedNumberedArgs),
         some [!SharingSet] (

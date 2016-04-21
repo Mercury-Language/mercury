@@ -302,9 +302,9 @@ delete(E0, V) = E :-
 
 restrict_threshold(Th, E) = equiv_vars(normalise_leader_map(LM)) :-
 	LL0 = map.to_assoc_list(E ^ leader_map),
-	list.takewhile((pred((V - _)::in) is semidet :-
+	list.take_while((pred((V - _)::in) is semidet :-
 		\+ compare(>, V, Th)
-		), LL0, LL, _),
+		), LL0, LL),
 	LM = map.from_assoc_list(LL).
 
 % XXX not terribly efficient.

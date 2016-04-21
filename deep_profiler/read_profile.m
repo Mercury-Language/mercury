@@ -823,7 +823,7 @@ add_plus_one_for_function(pf_predicate) = "".
 fix_type_spec_suffix(Chars0, Chars, SpecInfoStr) :-
     ( if Chars0 = ['_', '_', '[' | SpecInfo0 ] then
         Chars = [],
-        list.takewhile(non_right_bracket, SpecInfo0, SpecInfo, _),
+        list.take_while(non_right_bracket, SpecInfo0, SpecInfo),
         string.from_char_list(SpecInfo, SpecInfoStr)
     else if Chars0 = [Char | TailChars0] then
         fix_type_spec_suffix(TailChars0, TailChars, SpecInfoStr),

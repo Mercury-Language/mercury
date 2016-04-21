@@ -148,8 +148,8 @@ build_comments(S, comments(!.C), comments(!:C), !IO) :-
 :- func line_type(list(character)) = line_type.
 
 line_type(Line) = LineType :-
-    list.takewhile(char.is_whitespace, Line, _WhiteSpace, Rest),
-    list.takewhile(is_not_comment_char, Rest, Decl, Comment),
+    list.drop_while(char.is_whitespace, Line, Rest),
+    list.take_while(is_not_comment_char, Rest, Decl, Comment),
     (
         Rest = [],
         LineType = blank

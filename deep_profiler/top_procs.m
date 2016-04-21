@@ -105,7 +105,7 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
                 ThresholdPred = (pred(PSI::in) is semidet :-
                     RawThresholdPred(Deep, Threshold, PSI)
                 ),
-                list.takewhile(ThresholdPred, DescendingPSIs, TopPSIs, _),
+                list.take_while(ThresholdPred, DescendingPSIs, TopPSIs),
                 MaybeTopPSIs = ok(TopPSIs)
             )
         ;
@@ -120,7 +120,7 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
                 ThresholdPred = (pred(PSI::in) is semidet :-
                     RawThresholdPred(Deep, Threshold, PSI)
                 ),
-                list.takewhile(ThresholdPred, DescendingPSIs, TopPSIs, _),
+                list.take_while(ThresholdPred, DescendingPSIs, TopPSIs),
                 MaybeTopPSIs = ok(TopPSIs)
             )
         )

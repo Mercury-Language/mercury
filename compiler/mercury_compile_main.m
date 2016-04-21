@@ -1863,11 +1863,11 @@ read_dependency_file_get_modules(TransOptDeps, !IO) :-
         Result = ok(CharList0),
         % Remove any whitespace from the beginning of the line,
         % then take all characters until another whitespace occurs.
-        list.takewhile(char.is_whitespace, CharList0, _, CharList1),
+        list.drop_while(char.is_whitespace, CharList0, CharList1),
         NotIsWhitespace = (pred(Char::in) is semidet :-
             not char.is_whitespace(Char)
         ),
-        list.takewhile(NotIsWhitespace, CharList1, CharList, _),
+        list.take_while(NotIsWhitespace, CharList1, CharList),
         string.from_char_list(CharList, FileName0),
         string.remove_suffix(FileName0, ".trans_opt", FileName)
     then

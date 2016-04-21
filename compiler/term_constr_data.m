@@ -526,7 +526,7 @@ flatten_conjuncts(Goals0 @ [_, _ | _], Goals) :-
 flatten_conjuncts_2([], !RevGoals).
 flatten_conjuncts_2([Goal0 | Goals0], !RevGoals) :-
     ( if Goal0 = term_primitive(_, _, _) then
-        list.takewhile(is_primitive, Goals0, Primitives, NextNonPrimitive),
+        list.take_while(is_primitive, Goals0, Primitives, NextNonPrimitive),
         (
             Primitives = [],
             NewPrimitive = Goal0

@@ -974,7 +974,7 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
         FindModule = (pred(OtherModule::in) is semidet :-
             ModuleName \= OtherModule
         ),
-        list.takewhile(FindModule, TransOptOrder, _, TransOptDeps0),
+        list.drop_while(FindModule, TransOptOrder, TransOptDeps0),
         ( if TransOptDeps0 = [_ | TransOptDeps1] then
             % The module was found in the list.
             TransOptDeps = TransOptDeps1

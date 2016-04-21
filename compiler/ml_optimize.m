@@ -878,8 +878,8 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
         % check that the initializers (if any) of the variables that follow
         % this one don't refer to this variable.
         Qualifier = OptInfo ^ oi_module_name,
-        list.takewhile(isnt(var_defn(VarName)), !.Defns,
-            _PrecedingDefns, [_VarDefn | FollowingDefns]),
+        list.drop_while(isnt(var_defn(VarName)), !.Defns,
+            [_VarDefn | FollowingDefns]),
         Filter = (pred(OtherDefn::in) is semidet :-
             OtherDefn = mlds_defn(entity_data(OtherVarName),
                 _, _, mlds_data(_Type, OtherInitializer, _GC)),

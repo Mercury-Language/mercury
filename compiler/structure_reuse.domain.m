@@ -472,8 +472,8 @@ reuse_as_subsumed_by(ModuleInfo, ProcInfo, FirstReuseAs, SecondReuseAs) :-
     ;
         FirstReuseAs = conditional(ReuseConditionsFirst),
         SecondReuseAs = conditional(ReuseConditionsSecond),
-        list.takewhile(reuse_conditions_subsume_reuse_condition(ModuleInfo,
-            ProcInfo, ReuseConditionsSecond), ReuseConditionsFirst, _,
+        list.drop_while(reuse_conditions_subsume_reuse_condition(ModuleInfo,
+            ProcInfo, ReuseConditionsSecond), ReuseConditionsFirst,
             NotSubsumed),
         NotSubsumed = []
     ).

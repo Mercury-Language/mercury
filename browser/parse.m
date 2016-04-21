@@ -315,7 +315,7 @@ lexer_arg([Head | Tail], Toks) :-
 :- pred lexer_num(int::in, list(char)::in, list(token)::out) is det.
 
 lexer_num(N, Cs, Toks) :-
-    list.takewhile(char.is_digit, Cs, Digits, Rest),
+    list.take_while(char.is_digit, Cs, Digits, Rest),
     digits_to_int_acc(N, Digits, Num),
     Toks = [token_num(Num) | Toks2],
     lexer_word_chars(Rest, Toks2).
@@ -331,7 +331,7 @@ digits_to_int_acc(Acc, [C | Cs], Num) :-
 :- pred lexer_name(char::in, list(char)::in, list(token)::out) is det.
 
 lexer_name(C, Cs, Toks) :-
-    list.takewhile(char.is_alnum_or_underscore, Cs, Letters, Rest),
+    list.take_while(char.is_alnum_or_underscore, Cs, Letters, Rest),
     string.from_char_list([C | Letters], Name),
     lexer_word_chars(Rest, Toks2),
     Toks = [token_name(Name) | Toks2].

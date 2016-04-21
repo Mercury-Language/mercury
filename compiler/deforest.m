@@ -503,7 +503,7 @@ propagate_conj_constraints([Goal0 | Goals0], NonLocals, RevGoals0, Goals,
             _),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         not pred_info_is_imported(PredInfo),
-        list.takewhile((pred(CnstrGoal::in) is semidet :-
+        list.take_while((pred(CnstrGoal::in) is semidet :-
             CnstrGoal = hlds_goal(_, CnstrGoalInfo),
             goal_info_has_feature(CnstrGoalInfo, feature_constraint)
         ), Goals0, Constraints, Goals1),

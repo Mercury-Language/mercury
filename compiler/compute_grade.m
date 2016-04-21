@@ -809,7 +809,7 @@ split_grade_string(GradeStr, Components) :-
 split_grade_string_2([], []).
 split_grade_string_2(Chars, Components) :-
     Chars = [_ | _],
-    list.takewhile(char_is_not('.'), Chars, ThisChars, RestChars0),
+    list.take_while(char_is_not('.'), Chars, ThisChars, RestChars0),
     string.from_char_list(ThisChars, ThisComponent),
     Components = [ThisComponent | RestComponents],
     (
