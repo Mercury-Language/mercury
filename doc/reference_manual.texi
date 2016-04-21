@@ -9297,18 +9297,20 @@ A solver type definition takes the following form:
 @end group
 @end example
 
-The @code{representation} attribute is mandatory,
-@var{ground_inst} and @var{any_inst} default to @code{ground},
-@var{mutable_decls} is either a single mutable declaration
-(@pxref{Module-local mutable variables})
-or a comma separated list of mutable declarations in brackets,
-the @code{equality} and @code{comparison} attributes are optional (although a
-solver type without equality would not be very useful), and attributes must
-appear in the order shown.
+The @code{representation} attribute is mandatory.
+The @var{ground_inst} and @var{any_inst} attributes are optional
+and default to @code{ground}.
+The @code{constraint_store} attribute is mandatory:
+@var{mutable_decls} must be either a single mutable declaration
+(@pxref{Module-local mutable variables}),
+or a comma separated list of mutable declarations in brackets.
+The @code{equality} and @code{comparison} attributes are optional,
+although a solver type without equality would not be very useful.
+The attributes that are not omitted must appear in the order shown above.
 
 The @var{representation_type} is the type used to implement the
-@var{solver_type}.  A two-tier scheme of this kind is necessary for a
-number of reasons, including
+@var{solver_type}.
+A two-tier scheme of this kind is necessary for a number of reasons, including
 @itemize @bullet
 @item
 a semantic gap is necessary to accommodate the fact that non-ground
