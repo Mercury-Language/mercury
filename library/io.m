@@ -1892,6 +1892,7 @@
 :- pragma foreign_decl("C#", "
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
 ").
@@ -1927,6 +1928,13 @@ using System.Security.Principal;
     // a byte order mark.
     static readonly System.Text.Encoding text_encoding =
         new System.Text.UTF8Encoding(false);
+
+#if __MonoCS__
+    // int chmod(const char *path, mode_t mode);
+    [DllImport(""libc"", SetLastError=true, EntryPoint=""mkdir"",
+        CallingConvention=CallingConvention.Cdecl)]
+    static extern int ML_sys_mkdir (string path, uint mode);
+#endif
 ").
 
 :- pragma foreign_code("Java",
@@ -10762,43 +10770,65 @@ import java.util.Random;
         DirName::out, Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-    try {
-        DateTime utcNow = DateTime.UtcNow;
+    try
+    {
         DirName = Path.Combine(Dir, Path.GetRandomFileName());
 
-        // obtain the owner of the temporary directory, on any recent system
-        // this should be the current user, should work on any platform
-        // supporting .NET 2.0 or later
-        IdentityReference currentUser =
-            new DirectoryInfo(Dir).GetAccessControl(AccessControlSections.Owner)
-                                  .GetOwner(typeof(SecurityIdentifier));
-
-        DirectorySecurity security = new DirectorySecurity();
-        // Make the directory only accessible by the current user
-        security.AddAccessRule(new FileSystemAccessRule(currentUser,
-            FileSystemRights.ListDirectory |
-            FileSystemRights.Read |
-            FileSystemRights.Modify,
-            InheritanceFlags.None,
-            PropagationFlags.None,
-            AccessControlType.Allow));
-
-        DirectoryInfo TempDirInfo = Directory.CreateDirectory(DirName, security);
-        // Check if this was really created by us
-        if (TempDirInfo.CreationTimeUtc >= utcNow)
+        switch (Environment.OSVersion.Platform)
         {
-            Okay = mr_bool.YES;
-            ErrorMessage = """";
-        }
-        else
-        {
-            Okay = mr_bool.NO;
-            ErrorMessage = string.Format(""{0} already exists"", DirName);
+            case PlatformID.Win32NT:
+                // obtain the owner of the temporary directory
+                IdentityReference tempInfo =
+                    new DirectoryInfo(Dir)
+                        .GetAccessControl(AccessControlSections.Owner)
+                        .GetOwner(typeof(SecurityIdentifier));
+
+                DirectorySecurity security = new DirectorySecurity();
+                security.AddAccessRule(
+                    new FileSystemAccessRule(tempInfo,
+                        FileSystemRights.ListDirectory
+                            | FileSystemRights.Read
+                            | FileSystemRights.Modify,
+                        InheritanceFlags.None,
+                        PropagationFlags.None,
+                        AccessControlType.Allow
+                    )
+                );
+                Directory.CreateDirectory(DirName, security);
+                ErrorMessage = string.Empty;
+                Okay = mr_bool.YES;
+                break;
+
+#if __MonoCS__
+            case PlatformID.Unix:
+            case (PlatformID)6: // MacOSX:
+                int errorNo = ML_sys_mkdir(DirName, 0x7 << 6);
+                if (errorNo == 0)
+                {
+                    ErrorMessage = string.Empty;
+                    Okay = mr_bool.YES;
+                }
+                else
+                {
+                    ErrorMessage = string.Format(
+                        ""Creating directory {0} failed with: {1:X}"",
+                            DirName, errorNo);
+                    Okay = mr_bool.NO;
+                }
+                break;
+#endif
+
+            default:
+                Okay = mr_bool.NO;
+                ErrorMessage =
+                    ""Changing folder permissions is not supported for: "" +
+                    Environment.OSVersion;
+                break;
         }
     }
     catch (System.Exception e)
     {
-        DirName = """";
+        DirName = string.Empty;
         Okay = mr_bool.NO;
         ErrorMessage = e.Message;
     }
