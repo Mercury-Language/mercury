@@ -315,12 +315,36 @@ lco_scc(SCC, !VariantMap, !ModuleInfo) :-
         Permitted = lco_is_permitted_on_scc,
         CurSCCUpdates = [_ | _]
     then
+        trace [compile_time(flag("lco_log_updates")), io(!IO)] (
+            io.open_append("/tmp/LCO_LOG", OpenResult, !IO),
+            (
+                OpenResult = ok(Stream),
+                io.write_string(Stream, "updating scc:\n", !IO),
+                list.foldl(lco_log_update(Stream, !.ModuleInfo),
+                    CurSCCUpdates, !IO),
+                io.close_output(Stream, !IO)
+            ;
+                OpenResult = error(_)
+            )
+        ),
         list.foldl(lco_process_proc_update, CurSCCUpdates, !ModuleInfo),
         list.foldl(lco_process_proc_variant(CurSCCVariantMap), CurSCCVariants,
             !ModuleInfo)
     else
         !:ModuleInfo = ModuleInfo0
     ).
+
+:- pred lco_log_update(io.output_stream::in, module_info::in,
+    pair(pred_proc_id, proc_info)::in, io::di, io::uo) is det.
+
+lco_log_update(Stream, ModuleInfo, PredProcId - _NewProcInfo, !IO) :-
+    PredProcId = proc(PredId, ProcId),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_module_name(PredInfo, ModuleName),
+    pred_info_get_name(PredInfo, PredName),
+    SymNameStr = sym_name_to_string(qualified(ModuleName, PredName)),
+    ProcIdInt = proc_id_to_int(ProcId),
+    io.format(Stream, "    %s/%d\n", [s(SymNameStr), i(ProcIdInt)], !IO).
 
 %-----------------------------------------------------------------------------%
 
