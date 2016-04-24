@@ -93,24 +93,10 @@ generate_llds_tests(GradeStructure) :-
     ; StackLen = grade_var_stack_len_extend
     ),
     (
-        ( MinModelKind = lmk_stack_copy
-        ; MinModelKind = lmk_stack_copy_debug
-        ; MinModelKind = lmk_own_stack
-        ; MinModelKind = lmk_own_stack_debug
-        ),
-        ( LLDSMMGc = llds_mm_gc_bdw
-        ; LLDSMMGc = llds_mm_gc_bdw_debug
-        ),
-        MinModel = llds_minmodel_yes(MinModelKind, LLDSMMGc)
-    ;
         generate_c_gc(CGc),
         ( CTrail = c_trail_no
         ; CTrail = c_trail_yes(grade_var_trail_segments_no)
         ; CTrail = c_trail_yes(grade_var_trail_segments_yes)
-        ),
-        ( ThreadSafe = llds_thread_safe_no
-        ; ThreadSafe = llds_thread_safe_yes(grade_var_tscope_prof_no)
-        ; ThreadSafe = llds_thread_safe_yes(grade_var_tscope_prof_yes)
         ),
         (
             LLDSPerfProf = llds_perf_prof_none
@@ -125,46 +111,76 @@ generate_llds_tests(GradeStructure) :-
             ),
             LLDSPerfProf = llds_perf_prof_mprof(MProfTime, MProfMemory)
         ),
-        MinModel = llds_minmodel_no(CGc, CTrail, ThreadSafe, LLDSPerfProf)
-    ),
-    ( TermSizeProf = grade_var_term_size_prof_no
-    ; TermSizeProf = grade_var_term_size_prof_cells
-    ; TermSizeProf = grade_var_term_size_prof_words
-    ),
-    ( Debug = grade_var_debug_none
-    ; Debug = grade_var_debug_debug
-    ; Debug = grade_var_debug_decldebug
-    ),
-    ( LLDebug = grade_var_lldebug_no
-    ; LLDebug = grade_var_lldebug_yes
-    ),
-    (
-        Rbmm = llds_rbmm_no
+        ( TermSizeProf = grade_var_term_size_prof_no
+        ; TermSizeProf = grade_var_term_size_prof_cells
+        ; TermSizeProf = grade_var_term_size_prof_words
+        ),
+        ( Debug = grade_var_debug_none
+        ; Debug = grade_var_debug_debug
+        ; Debug = grade_var_debug_decldebug
+        ),
+        (
+            RBMM = llds_rbmm_no
+        ;
+            ( RBMMDebug = grade_var_rbmm_debug_no
+            ; RBMMDebug = grade_var_rbmm_debug_yes
+            ),
+            ( RBMMProf = grade_var_rbmm_prof_no
+            ; RBMMProf = grade_var_rbmm_prof_yes
+            ),
+            RBMM = llds_rbmm_yes(RBMMDebug, RBMMProf)
+        ),
+        LLDSTSMinModel = llds_thread_safe_no_minmodel_no(CGc, CTrail,
+            LLDSPerfProf, TermSizeProf, Debug, RBMM)
     ;
-        ( RbmmDebug = grade_var_rbmm_debug_no
-        ; RbmmDebug = grade_var_rbmm_debug_yes
+        ( MinModelKind = lmk_stack_copy
+        ; MinModelKind = lmk_stack_copy_debug
+        ; MinModelKind = lmk_own_stack
+        ; MinModelKind = lmk_own_stack_debug
         ),
-        ( RbmmProf = grade_var_rbmm_prof_no
-        ; RbmmProf = grade_var_rbmm_prof_yes
+        ( LLDSMMGc = llds_mm_gc_bdw
+        ; LLDSMMGc = llds_mm_gc_bdw_debug
         ),
-        Rbmm = llds_rbmm_yes(RbmmDebug, RbmmProf)
+        ( Debug = grade_var_debug_none
+        ; Debug = grade_var_debug_debug
+        ; Debug = grade_var_debug_decldebug
+        ),
+        LLDSTSMinModel = llds_thread_safe_no_minmodel_yes(MinModelKind,
+            LLDSMMGc, Debug)
+    ;
+        generate_thread_safe_c_gc(ThreadSafeCGc),
+        ( CTrail = c_trail_no
+        ; CTrail = c_trail_yes(grade_var_trail_segments_no)
+        ; CTrail = c_trail_yes(grade_var_trail_segments_yes)
+        ),
+        ( TScopeProf = grade_var_tscope_prof_no
+        ; TScopeProf = grade_var_tscope_prof_yes
+        ),
+        LLDSTSMinModel = llds_thread_safe_yes_minmodel_no(ThreadSafeCGc,
+            CTrail, TScopeProf)
     ),
     MercFile = grade_var_merc_file_no,
     generate_low_tags_floats(LowTagsFloats),
-    GradeStructure = grade_llds(GccConf, StackLen, MinModel,
-        TermSizeProf, Debug, LLDebug, Rbmm, MercFile, LowTagsFloats).
+    generate_grade_var_target_debug(TargetDebug),
+    GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
+        MercFile, LowTagsFloats, TargetDebug).
 
 %---------------------%
 
 :- pred generate_mlds_tests(grade_structure::out) is multi.
 
 generate_mlds_tests(GradeStructure) :-
-    ( generate_mlds_c_target(MLDSTarget)
-    ; MLDSTarget = mlds_target_csharp
-    ; MLDSTarget = mlds_target_java
+    (
+        generate_mlds_c_target(MLDSTarget)
+    ;
+        generate_grade_var_ssdebug(SSDebug),
+        MLDSTarget = mlds_target_csharp(SSDebug)
+    ;
+        generate_grade_var_ssdebug(SSDebug),
+        MLDSTarget = mlds_target_java(SSDebug)
     ),
-    generate_grade_var_ssdebug(SSDebug),
-    GradeStructure = grade_mlds(MLDSTarget, SSDebug).
+    generate_grade_var_target_debug(TargetDebug),
+    GradeStructure = grade_mlds(MLDSTarget, TargetDebug).
 
 :- pred generate_mlds_c_target(mlds_target::out) is multi.
 
@@ -175,27 +191,33 @@ generate_mlds_c_target(MLDSCTarget) :-
     ( NestedFuncs = grade_var_nested_funcs_no
     ; NestedFuncs = grade_var_nested_funcs_yes
     ),
-    generate_grade_var_thread_safe(ThreadSafe),
-    generate_c_gc(CGc),
+    (
+        generate_c_gc(CGc),
+        (
+            MLDSCPerfProf = mlds_c_perf_prof_none
+        ;
+            ( MProfTime = grade_var_mprof_time_no
+            ; MProfTime = grade_var_mprof_time_yes
+            ),
+            ( MProfMemory = grade_var_mprof_memory_no
+            ; MProfMemory = grade_var_mprof_memory_yes
+            ),
+            MLDSCPerfProf = mlds_c_perf_prof_mprof(MProfTime, MProfMemory)
+        ),
+        generate_grade_var_ssdebug(SSDebug),
+        MLDSCThreadSafe = mlds_c_thread_safe_no(CGc, MLDSCPerfProf, SSDebug)
+    ;
+        generate_thread_safe_c_gc(ThreadSafeCGc),
+        MLDSCThreadSafe = mlds_c_thread_safe_yes(ThreadSafeCGc)
+    ),
     ( CTrail = c_trail_no
     ; CTrail = c_trail_yes(grade_var_trail_segments_no)
     ; CTrail = c_trail_yes(grade_var_trail_segments_yes)
     ),
-    (
-        MLDSCPerfProf = mlds_c_perf_prof_none
-    ;
-        ( MProfTime = grade_var_mprof_time_no
-        ; MProfTime = grade_var_mprof_time_yes
-        ),
-        ( MProfMemory = grade_var_mprof_memory_no
-        ; MProfMemory = grade_var_mprof_memory_yes
-        ),
-        MLDSCPerfProf = mlds_c_perf_prof_mprof(MProfTime, MProfMemory)
-    ),
     MercFile = grade_var_merc_file_no,
     generate_low_tags_floats(LowTagsFloats),
-    MLDSCTarget = mlds_target_c(MLDSCDataRep, NestedFuncs, ThreadSafe,
-        CGc, CTrail, MLDSCPerfProf, MercFile, LowTagsFloats).
+    MLDSCTarget = mlds_target_c(MLDSCDataRep, NestedFuncs, MLDSCThreadSafe,
+        CTrail, MercFile, LowTagsFloats).
 
 %---------------------%
 
@@ -203,7 +225,8 @@ generate_mlds_c_target(MLDSCTarget) :-
 
 generate_elds_tests(GradeStructure) :-
     generate_grade_var_ssdebug(SSDebug),
-    GradeStructure = grade_elds(SSDebug).
+    generate_grade_var_target_debug(TargetDebug),
+    GradeStructure = grade_elds(SSDebug, TargetDebug).
 
 %---------------------%
 
@@ -215,15 +238,21 @@ generate_c_gc(c_gc_bdw_debug).
 generate_c_gc(c_gc_accurate).
 generate_c_gc(c_gc_history).
 
-:- pred generate_grade_var_thread_safe(grade_var_thread_safe::out) is multi.
+:- pred generate_thread_safe_c_gc(thread_safe_c_gc::out) is multi.
 
-generate_grade_var_thread_safe(grade_var_thread_safe_no).
-generate_grade_var_thread_safe(grade_var_thread_safe_yes).
+generate_thread_safe_c_gc(thread_safe_c_gc_none).
+generate_thread_safe_c_gc(thread_safe_c_gc_bdw).
+generate_thread_safe_c_gc(thread_safe_c_gc_bdw_debug).
 
 :- pred generate_grade_var_ssdebug(grade_var_ssdebug::out) is multi.
 
 generate_grade_var_ssdebug(grade_var_ssdebug_no).
 generate_grade_var_ssdebug(grade_var_ssdebug_yes).
+
+:- pred generate_grade_var_target_debug(grade_var_target_debug::out) is multi.
+
+generate_grade_var_target_debug(grade_var_target_debug_no).
+generate_grade_var_target_debug(grade_var_target_debug_yes).
 
 :- pred generate_low_tags_floats(low_tags_floats::out) is multi.
 

@@ -66,7 +66,7 @@ solver_var_name("tscope_prof",                  svar_tscope_prof).
 solver_var_name("term_size_prof",               svar_term_size_prof).
 solver_var_name("debug",                        svar_debug).
 solver_var_name("ssdebug",                      svar_ssdebug).
-solver_var_name("lldebug",                      svar_lldebug).
+solver_var_name("target_debug",                 svar_target_debug).
 solver_var_name("rbmm",                         svar_rbmm).
 solver_var_name("rbmm_debug",                   svar_rbmm_debug).
 solver_var_name("rbmm_prof",                    svar_rbmm_prof).
@@ -142,8 +142,10 @@ solver_var_value_name("mm_own_stack",
 solver_var_value_name("mm_own_stack_debug",
                                     svalue_minmodel_own_stack_debug).
 
-solver_var_value_name("not_thread_safe",        svalue_thread_safe_no).
-solver_var_value_name("thread_safe",            svalue_thread_safe_yes).
+solver_var_value_name("not_thread_safe",        svalue_thread_safe_c_no).
+solver_var_value_name("thread_safe",            svalue_thread_safe_c_yes).
+solver_var_value_name("native_thread_safe",
+                                    svalue_thread_safe_target_native).
 
 solver_var_value_name("no_gc",                  svalue_gc_none).
 solver_var_value_name("bdw",                    svalue_gc_bdw).
@@ -178,8 +180,8 @@ solver_var_value_name("decldebug",              svalue_debug_decldebug).
 solver_var_value_name("no_ssdebug",             svalue_ssdebug_no).
 solver_var_value_name("ssdebug",                svalue_ssdebug_yes).
 
-solver_var_value_name("no_lldebug",             svalue_lldebug_no).
-solver_var_value_name("lldebug",                svalue_lldebug_yes).
+solver_var_value_name("no_target_debug",        svalue_target_debug_no).
+solver_var_value_name("target_debug",           svalue_target_debug_yes).
 
 solver_var_value_name("no_rbmm",                svalue_rbmm_no).
 solver_var_value_name("rbmm",                   svalue_rbmm_yes).

@@ -67,7 +67,7 @@
     ;       svar_term_size_prof
     ;       svar_debug
     ;       svar_ssdebug
-    ;       svar_lldebug
+    ;       svar_target_debug
     ;       svar_rbmm
     ;       svar_rbmm_debug
     ;       svar_rbmm_prof
@@ -153,8 +153,9 @@
     ;       svalue_minmodel_own_stack
     ;       svalue_minmodel_own_stack_debug
 
-    ;       svalue_thread_safe_no
-    ;       svalue_thread_safe_yes
+    ;       svalue_thread_safe_c_no
+    ;       svalue_thread_safe_c_yes
+    ;       svalue_thread_safe_target_native
 
     ;       svalue_gc_none
     ;       svalue_gc_bdw
@@ -189,8 +190,8 @@
     ;       svalue_ssdebug_no
     ;       svalue_ssdebug_yes
 
-    ;       svalue_lldebug_no
-    ;       svalue_lldebug_yes
+    ;       svalue_target_debug_no
+    ;       svalue_target_debug_yes
 
     ;       svalue_rbmm_no
     ;       svalue_rbmm_yes
@@ -376,7 +377,8 @@ init_solver_var_specs(SpecsVersion) = Specs :-
             svalue_minmodel_own_stack, svalue_minmodel_own_stack_debug]),
 
         solver_var_spec(svar_thread_safe,
-            [svalue_thread_safe_no, svalue_thread_safe_yes]),
+            [svalue_thread_safe_c_no, svalue_thread_safe_c_yes,
+            svalue_thread_safe_target_native]),
 
         solver_var_spec(svar_gc,
             GcPrefOrder),
@@ -399,8 +401,8 @@ init_solver_var_specs(SpecsVersion) = Specs :-
             [svalue_debug_none, svalue_debug_debug, svalue_debug_decldebug]),
         solver_var_spec(svar_ssdebug,
             [svalue_ssdebug_no, svalue_ssdebug_yes]),
-        solver_var_spec(svar_lldebug,
-            [svalue_lldebug_no, svalue_lldebug_yes]),
+        solver_var_spec(svar_target_debug,
+            [svalue_target_debug_no, svalue_target_debug_yes]),
 
         solver_var_spec(svar_rbmm,
             [svalue_rbmm_no, svalue_rbmm_yes]),
@@ -526,22 +528,28 @@ init_requirement_specs = [
     ),
 
     requirement_spec(
-        "Generated C# is always thread safe.",
-        (svar_target `being` svalue_target_csharp) `implies_that`
-        (svar_thread_safe `is_one_of` [svalue_thread_safe_yes])
+        "C does not have its own native threading model.",
+        (svar_target `being` svalue_target_c) `implies_that`
+        (svar_thread_safe `is_one_of`
+            [svalue_thread_safe_c_no, svalue_thread_safe_c_yes])
     ),
     requirement_spec(
-        "Generated Java is always thread safe.",
-        (svar_target `being` svalue_target_java) `implies_that`
-        (svar_thread_safe `is_one_of` [svalue_thread_safe_yes])
+        "Generating C# implies using the C# threading model.",
+        (svar_target `being` svalue_target_csharp) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_target_native])
     ),
-    % Generated Erlang is also always thread safe, but library/thread.m
+    requirement_spec(
+        "Generating Java implies using the Java threading model.",
+        (svar_target `being` svalue_target_java) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_target_native])
+    ),
+    % XXX Generated Erlang is also always thread safe, but library/thread.m
     % does not (yet) have Erlang implementations of its foreign_procs,
     % so the program cannot create new threads.
     requirement_spec(
-        "Targeting Erlang does not (yet) allow new threads to be created.",
+        "Generating Erlang implies using the Erlang threading model.",
         (svar_target `being` svalue_target_erlang) `implies_that`
-        (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_target_native])
     ),
 
 % These are covered by a single requirement from spf back to target.
@@ -750,15 +758,15 @@ init_requirement_specs = [
         "Minimal model tabling does not respect thread safety.",
         (svar_minmodel `being` svalue_minmodel_stack_copy)
             `implies_that`
-        (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
     ),
     requirement_spec(
         "Minimal model tabling does not respect thread safety.",
         (svar_minmodel `being` svalue_minmodel_stack_copy_debug)
             `implies_that`
-        (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
     ),
-    % XXX Do svalue_minmodel_own_stack{,_debug} imply svalue_thread_safe_no?
+    % XXX Do svalue_minmodel_own_stack{,_debug} imply svalue_thread_safe_c_no?
     % For now, since the implementation of own stack minimal model
     % is not yet complete, we need not include its requirements in the list,
     % and not including them should make constraint solving a tiny bit faster.
@@ -785,9 +793,19 @@ init_requirement_specs = [
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
+        "Accurate gc conflicts with threading.",
+        (svar_gc `being` svalue_gc_accurate) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
+    ),
+    requirement_spec(
         "History gc requires targeting C.",
         (svar_gc `being` svalue_gc_history) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
+    ),
+    requirement_spec(
+        "History gc conflicts with threading.",
+        (svar_gc `being` svalue_gc_history) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
     ),
 
 % Requirements of values of svar_deep_prof.
@@ -800,6 +818,11 @@ init_requirement_specs = [
         "Deep profiling interferes with minimal model tabling.",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_minmodel `is_one_of` [svalue_minmodel_no])
+    ),
+    requirement_spec(
+        "Deep profiling does not work for multithreaded programs.",
+        (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
     ),
     requirement_spec(
         "Deep profiling is incompatible with mprof call profiling.",
@@ -827,6 +850,11 @@ init_requirement_specs = [
         "Mprof call profiling interferes with minimal model tabling.",
         (svar_mprof_call `being` svalue_mprof_call_yes) `implies_that`
         (svar_minmodel `is_one_of` [svalue_minmodel_no])
+    ),
+    requirement_spec(
+        "Mprof call profiling does not work for multithreaded programs.",
+        (svar_mprof_call `being` svalue_mprof_call_yes) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
     ),
 
 % Requirements of values of svar_mprof_time.
@@ -864,7 +892,7 @@ init_requirement_specs = [
     requirement_spec(
         "Threadscope style profiling requires thread safe code.",
         (svar_tscope_prof `being` svalue_tscope_prof_yes) `implies_that`
-        (svar_thread_safe `is_one_of` [svalue_thread_safe_yes])
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_yes])
     ),
 
 % Requirements of values of svar_term_size_prof.
@@ -878,6 +906,16 @@ init_requirement_specs = [
         (svar_term_size_prof `being` svalue_term_size_prof_words) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
+    requirement_spec(
+        "Term size profiling is incompatible with thread safety.",
+        (svar_term_size_prof `being` svalue_term_size_prof_cells) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
+    ),
+    requirement_spec(
+        "Term size profiling is incompatible with thread safety.",
+        (svar_term_size_prof `being` svalue_term_size_prof_words) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
+    ),
 
 % Requirements of values of svar_debug.
     requirement_spec(
@@ -890,20 +928,32 @@ init_requirement_specs = [
         (svar_debug `being` svalue_debug_decldebug) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
+    requirement_spec(
+        "Debugging does not work for multithreaded programs.",
+        (svar_debug `being` svalue_debug_debug) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
+    ),
+    requirement_spec(
+        "Declarative debugging does not work for multithreaded programs.",
+        (svar_debug `being` svalue_debug_decldebug) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
+    ),
 
-% Requirements of values of svar_lldebug.
+% Requirements of values of svar_ssdebug.
     requirement_spec(
         "Source-to-source debugging does not make sense for the LLDS backend.",
         (svar_ssdebug `being` svalue_ssdebug_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds, svalue_backend_elds])
     ),
-
-% Requirements of values of svar_lldebug.
     requirement_spec(
-        "Low level debugging applies only to the LLDS backend.",
-        (svar_lldebug `being` svalue_lldebug_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_llds])
+        "Source-to-source debugging does not work for multithreaded programs.",
+        (svar_ssdebug `being` svalue_ssdebug_yes) `implies_that`
+        (svar_thread_safe `is_one_of`
+            [svalue_thread_safe_c_no, svalue_thread_safe_target_native])
     ),
+
+% Requirements of values of svar_target_debug.
+    % None. It should be applicable in all cases.
 
 % Requirements of values of svar_rbmm.
     requirement_spec(

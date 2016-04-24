@@ -69,7 +69,7 @@
                 grade_var_term_size_prof,
                 grade_var_debug,
                 grade_var_ssdebug,
-                grade_var_lldebug,
+                grade_var_target_debug,
                 grade_var_rbmm,
                 grade_var_rbmm_debug,
                 grade_var_rbmm_prof,
@@ -136,8 +136,9 @@
     ;       grade_var_minmodel_own_stack_debug.
 
 :- type grade_var_thread_safe
-    --->    grade_var_thread_safe_no
-    ;       grade_var_thread_safe_yes.
+    --->    grade_var_thread_safe_c_no
+    ;       grade_var_thread_safe_c_yes
+    ;       grade_var_thread_safe_target_native.
 
 :- type grade_var_gc
     --->    grade_var_gc_none
@@ -181,9 +182,9 @@
     --->    grade_var_ssdebug_no
     ;       grade_var_ssdebug_yes.
 
-:- type grade_var_lldebug
-    --->    grade_var_lldebug_no
-    ;       grade_var_lldebug_yes.
+:- type grade_var_target_debug
+    --->    grade_var_target_debug_no
+    ;       grade_var_target_debug_yes.
 
 :- type grade_var_rbmm
     --->    grade_var_rbmm_no
@@ -252,7 +253,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     map.det_remove(svar_term_size_prof, TermSizeProf, !SuccMap),
     map.det_remove(svar_debug, Debug, !SuccMap),
     map.det_remove(svar_ssdebug, SSDebug, !SuccMap),
-    map.det_remove(svar_lldebug, LLDebug, !SuccMap),
+    map.det_remove(svar_target_debug, TargetDebug, !SuccMap),
     map.det_remove(svar_rbmm, RBMM, !SuccMap),
     map.det_remove(svar_rbmm_debug, RBMMDebug, !SuccMap),
     map.det_remove(svar_rbmm_prof, RBMMProf, !SuccMap),
@@ -376,10 +377,12 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         unexpected($pred, "unexpected value of MinimalModel")
     ),
 
-    ( if ThreadSafe = svalue_thread_safe_no then
-        GradeVarThreadSafe = grade_var_thread_safe_no
-    else if ThreadSafe = svalue_thread_safe_yes then
-        GradeVarThreadSafe = grade_var_thread_safe_yes
+    ( if ThreadSafe = svalue_thread_safe_c_no then
+        GradeVarThreadSafe = grade_var_thread_safe_c_no
+    else if ThreadSafe = svalue_thread_safe_c_yes then
+        GradeVarThreadSafe = grade_var_thread_safe_c_yes
+    else if ThreadSafe = svalue_thread_safe_target_native then
+        GradeVarThreadSafe = grade_var_thread_safe_target_native
     else
         unexpected($pred, "unexpected value of ThreadSafe")
     ),
@@ -468,12 +471,12 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         unexpected($pred, "unexpected value of SSDebug")
     ),
 
-    ( if LLDebug = svalue_lldebug_no then
-        GradeVarLLDebug = grade_var_lldebug_no
-    else if LLDebug = svalue_lldebug_yes then
-        GradeVarLLDebug = grade_var_lldebug_yes
+    ( if TargetDebug = svalue_target_debug_no then
+        GradeVarTargetDebug = grade_var_target_debug_no
+    else if TargetDebug = svalue_target_debug_yes then
+        GradeVarTargetDebug = grade_var_target_debug_yes
     else
-        unexpected($pred, "unexpected value of LLDebug")
+        unexpected($pred, "unexpected value of TargetDebug")
     ),
 
     ( if RBMM = svalue_rbmm_no then
@@ -536,7 +539,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         GradeVarDeepProf,
         GradeVarMprofCall, GradeVarMprofTime, GradeVarMprofMemory,
         GradeVarTScopeProf, GradeVarTermSizeProf,
-        GradeVarDebug, GradeVarSSDebug, GradeVarLLDebug,
+        GradeVarDebug, GradeVarSSDebug, GradeVarTargetDebug,
         GradeVarRBMM, GradeVarRBMMDebug, GradeVarRBMMProf,
         GradeVarMercFile, GradeVarPregen, GradeVarMercFloat
     ).
