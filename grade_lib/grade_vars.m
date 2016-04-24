@@ -51,9 +51,7 @@
                 grade_var_datarep,
                 grade_var_target,
                 grade_var_nested_funcs,
-                grade_var_gcc_regs,
-                grade_var_gcc_gotos,
-                grade_var_gcc_labels,
+                grade_var_gcc_conf,
                 grade_var_low_tag_bits_use,
                 grade_var_stack_len,
                 grade_var_trail,
@@ -98,17 +96,13 @@
     --->    grade_var_nested_funcs_no
     ;       grade_var_nested_funcs_yes.
 
-:- type grade_var_gcc_regs
-    --->    grade_var_gcc_regs_use_no
-    ;       grade_var_gcc_regs_use_yes.
-
-:- type grade_var_gcc_gotos
-    --->    grade_var_gcc_gotos_use_no
-    ;       grade_var_gcc_gotos_use_yes.
-
-:- type grade_var_gcc_labels
-    --->    grade_var_gcc_labels_use_no
-    ;       grade_var_gcc_labels_use_yes.
+:- type grade_var_gcc_conf
+    --->    grade_var_gcc_conf_none
+    ;       grade_var_gcc_conf_reg
+    ;       grade_var_gcc_conf_jump
+    ;       grade_var_gcc_conf_fast
+    ;       grade_var_gcc_conf_asm_jump
+    ;       grade_var_gcc_conf_asm_fast.
 
 :- type grade_var_low_tag_bits_use
     --->    grade_var_low_tag_bits_use_0
@@ -235,9 +229,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     map.det_remove(svar_datarep, DataRep, !SuccMap),
     map.det_remove(svar_target, Target, !SuccMap),
     map.det_remove(svar_nested_funcs, NestedFuncs, !SuccMap),
-    map.det_remove(svar_gcc_regs_use, GccRegsUse, !SuccMap),
-    map.det_remove(svar_gcc_gotos_use, GccGotosUse, !SuccMap),
-    map.det_remove(svar_gcc_labels_use, GccLabelsUse, !SuccMap),
+    map.det_remove(svar_gcc_conf, GccConf, !SuccMap),
     map.det_remove(svar_low_tag_bits_use, LowTagBitsUse, !SuccMap),
     map.det_remove(svar_stack_len, StackLen, !SuccMap),
     map.det_remove(svar_trail, Trail, !SuccMap),
@@ -303,28 +295,20 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         unexpected($pred, "unexpected value of NestedFuncs")
     ),
 
-    ( if GccRegsUse = svalue_gcc_regs_use_no then
-        GradeVarGccRegsUse = grade_var_gcc_regs_use_no
-    else if GccRegsUse = svalue_gcc_regs_use_yes then
-        GradeVarGccRegsUse = grade_var_gcc_regs_use_yes
+    ( if GccConf = svalue_gcc_conf_none then
+        GradeVarGccConf = grade_var_gcc_conf_none
+    else if GccConf = svalue_gcc_conf_reg then
+        GradeVarGccConf = grade_var_gcc_conf_reg
+    else if GccConf = svalue_gcc_conf_jump then
+        GradeVarGccConf = grade_var_gcc_conf_jump
+    else if GccConf = svalue_gcc_conf_fast then
+        GradeVarGccConf = grade_var_gcc_conf_fast
+    else if GccConf = svalue_gcc_conf_asm_jump then
+        GradeVarGccConf = grade_var_gcc_conf_asm_jump
+    else if GccConf = svalue_gcc_conf_asm_fast then
+        GradeVarGccConf = grade_var_gcc_conf_asm_fast
     else
-        unexpected($pred, "unexpected value of GccRegsUse")
-    ),
-
-    ( if GccGotosUse = svalue_gcc_gotos_use_no then
-        GradeVarGccGotosUse = grade_var_gcc_gotos_use_no
-    else if GccGotosUse = svalue_gcc_gotos_use_yes then
-        GradeVarGccGotosUse = grade_var_gcc_gotos_use_yes
-    else
-        unexpected($pred, "unexpected value of GccGotosUse")
-    ),
-
-    ( if GccLabelsUse = svalue_gcc_labels_use_no then
-        GradeVarGccLabelsUse = grade_var_gcc_labels_use_no
-    else if GccLabelsUse = svalue_gcc_labels_use_yes then
-        GradeVarGccLabelsUse = grade_var_gcc_labels_use_yes
-    else
-        unexpected($pred, "unexpected value of GccLabelsUse")
+        unexpected($pred, "unexpected value of GccConf")
     ),
 
     ( if LowTagBitsUse = svalue_low_tag_bits_use_0 then
@@ -532,8 +516,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     GradeVars = grade_vars(
         GradeVarBackend, GradeVarDataRep,
         GradeVarTarget, GradeVarNestedFuncs,
-        GradeVarGccRegsUse, GradeVarGccGotosUse, GradeVarGccLabelsUse,
-        GradeVarLowTagBitsUse, GradeVarStackLen,
+        GradeVarGccConf, GradeVarLowTagBitsUse, GradeVarStackLen,
         GradeVarTrail, GradeVarTrailSegments,
         GradeVarMinimalModel, GradeVarThreadSafe, GradeVarGc,
         GradeVarDeepProf,

@@ -101,15 +101,14 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
     (
         GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
             MercFile, LowTagsFloats, TargetDebug),
-        % ZZZ Debug, TargetDebug, LLDSRBMM,
 
         BinaryCompatStrs = binary_compat_version_to_strs(WhichGradeString),
-        ( GccConf = llds_gcc_conf_none,     BaseStr = "none"
-        ; GccConf = llds_gcc_conf_reg,      BaseStr = "reg"
-        ; GccConf = llds_gcc_conf_jump,     BaseStr = "jump"
-        ; GccConf = llds_gcc_conf_fast,     BaseStr = "fast"
-        ; GccConf = llds_gcc_conf_asm_jump, BaseStr = "asm_jump"
-        ; GccConf = llds_gcc_conf_asm_fast, BaseStr = "asm_fast"
+        ( GccConf = grade_var_gcc_conf_none,        BaseStr = "none"
+        ; GccConf = grade_var_gcc_conf_reg,         BaseStr = "reg"
+        ; GccConf = grade_var_gcc_conf_jump,        BaseStr = "jump"
+        ; GccConf = grade_var_gcc_conf_fast,        BaseStr = "fast"
+        ; GccConf = grade_var_gcc_conf_asm_jump,    BaseStr = "asm_jump"
+        ; GccConf = grade_var_gcc_conf_asm_fast,    BaseStr = "asm_fast"
         ),
         (
             LLDSTSMinModel = llds_thread_safe_no_minmodel_no(CGc, CTrail,
@@ -572,9 +571,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no,
+            svar_gcc_conf - svalue_gcc_conf_none,
             svar_datarep - svalue_datarep_heap_cells,
             svar_nested_funcs - svalue_nested_funcs_no]
     ;
@@ -582,9 +579,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_yes,
+            svar_gcc_conf - svalue_gcc_conf_reg,
             svar_datarep - svalue_datarep_heap_cells,
             svar_nested_funcs - svalue_nested_funcs_no]
     ;
@@ -592,9 +587,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no,
+            svar_gcc_conf - svalue_gcc_conf_jump,
             svar_datarep - svalue_datarep_heap_cells,
             svar_nested_funcs - svalue_nested_funcs_no]
     ;
@@ -602,9 +595,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
-            svar_gcc_regs_use - svalue_gcc_regs_use_yes,
+            svar_gcc_conf - svalue_gcc_conf_fast,
             svar_datarep - svalue_datarep_heap_cells,
             svar_nested_funcs - svalue_nested_funcs_no]
     ;
@@ -612,9 +603,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_labels_use - svalue_gcc_labels_use_yes,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no,
+            svar_gcc_conf - svalue_gcc_conf_asm_jump,
             svar_datarep - svalue_datarep_heap_cells,
             svar_nested_funcs - svalue_nested_funcs_no]
     ;
@@ -622,9 +611,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_labels_use - svalue_gcc_labels_use_yes,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
-            svar_gcc_regs_use - svalue_gcc_regs_use_yes,
+            svar_gcc_conf - svalue_gcc_conf_asm_fast,
             svar_datarep - svalue_datarep_heap_cells,
             svar_nested_funcs - svalue_nested_funcs_no]
     ;
@@ -634,9 +621,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_backend - svalue_backend_mlds,
             svar_datarep - svalue_datarep_classes,
             svar_nested_funcs - svalue_nested_funcs_no,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "hlc",
         Setting = svar_target - svalue_target_c,
@@ -644,9 +629,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_backend - svalue_backend_mlds,
             svar_datarep - svalue_datarep_heap_cells,
             svar_nested_funcs - svalue_nested_funcs_no,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "hl_nest",
         Setting = svar_target - svalue_target_c,
@@ -654,9 +637,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_backend - svalue_backend_mlds,
             svar_datarep - svalue_datarep_classes,
             svar_nested_funcs - svalue_nested_funcs_yes,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "hlc_nest",
         Setting = svar_target - svalue_target_c,
@@ -664,9 +645,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_backend - svalue_backend_mlds,
             svar_datarep - svalue_datarep_heap_cells,
             svar_nested_funcs - svalue_nested_funcs_yes,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "csharp",
         Setting = svar_target - svalue_target_csharp,
@@ -674,9 +653,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_backend - svalue_backend_mlds,
             svar_datarep - svalue_datarep_classes,
             svar_nested_funcs - svalue_nested_funcs_no,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "java",
         Setting = svar_target - svalue_target_java,
@@ -684,9 +661,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_backend - svalue_backend_mlds,
             svar_datarep - svalue_datarep_classes,
             svar_nested_funcs - svalue_nested_funcs_no,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "erlang",
         Setting = svar_target - svalue_target_erlang,
@@ -694,9 +669,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_backend - svalue_backend_elds,
             svar_datarep - svalue_datarep_erlang,
             svar_nested_funcs - svalue_nested_funcs_no,
-            svar_gcc_labels_use - svalue_gcc_labels_use_no,
-            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "par",
         Setting = svar_thread_safe - svalue_thread_safe_c_yes,

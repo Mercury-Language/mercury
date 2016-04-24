@@ -44,9 +44,7 @@
     ;       svar_datarep
     ;       svar_target
     ;       svar_nested_funcs
-    ;       svar_gcc_regs_use
-    ;       svar_gcc_gotos_use
-    ;       svar_gcc_labels_use
+    ;       svar_gcc_conf
     ;       svar_low_tag_bits_use
     ;       svar_stack_len
     ;       svar_trail
@@ -116,14 +114,12 @@
     ;       svalue_nested_funcs_no
     ;       svalue_nested_funcs_yes
 
-    ;       svalue_gcc_regs_use_no
-    ;       svalue_gcc_regs_use_yes
-
-    ;       svalue_gcc_gotos_use_no
-    ;       svalue_gcc_gotos_use_yes
-
-    ;       svalue_gcc_labels_use_no
-    ;       svalue_gcc_labels_use_yes
+    ;       svalue_gcc_conf_none       % used for non-LLDS backends
+    ;       svalue_gcc_conf_reg
+    ;       svalue_gcc_conf_jump
+    ;       svalue_gcc_conf_fast
+    ;       svalue_gcc_conf_asm_jump
+    ;       svalue_gcc_conf_asm_fast
 
     ;       svalue_low_tag_bits_use_0
             % If we are using 0 low primary tag bits, then the data
@@ -351,12 +347,15 @@ init_solver_var_specs(SpecsVersion) = Specs :-
         solver_var_spec(svar_nested_funcs,
             [svalue_nested_funcs_no, svalue_nested_funcs_yes]),
 
-        solver_var_spec(svar_gcc_regs_use,
-            [svalue_gcc_regs_use_yes, svalue_gcc_regs_use_no]),
-        solver_var_spec(svar_gcc_gotos_use,
-            [svalue_gcc_gotos_use_yes, svalue_gcc_gotos_use_no]),
-        solver_var_spec(svar_gcc_labels_use,
-            [svalue_gcc_labels_use_yes, svalue_gcc_labels_use_no]),
+        solver_var_spec(svar_gcc_conf,
+            % XXX The order of preference here is partially speed,
+            % partially how well the grade is tested.
+            [svalue_gcc_conf_asm_fast,
+            svalue_gcc_conf_reg,
+            svalue_gcc_conf_none,
+            svalue_gcc_conf_fast,
+            svalue_gcc_conf_jump,
+            svalue_gcc_conf_asm_jump]),
 
         solver_var_spec(svar_pregen,
             [svalue_pregen_no, svalue_pregen_yes]),
@@ -463,6 +462,17 @@ init_requirement_specs = [
         "Using the ELDS backend requires targeting Erlang.",
         (svar_backend `being` svalue_backend_elds) `implies_that`
         (svar_target `is_one_of` [svalue_target_erlang])
+    ),
+
+    requirement_spec(
+        "The use of gcc extensions makes sense only for the LLDS backend.",
+        (svar_backend `being` svalue_backend_mlds) `implies_that`
+        (svar_gcc_conf `is_one_of` [svalue_gcc_conf_none])
+    ),
+    requirement_spec(
+        "The use of gcc extensions makes sense only for the LLDS backend.",
+        (svar_backend `being` svalue_backend_elds) `implies_that`
+        (svar_gcc_conf `is_one_of` [svalue_gcc_conf_none])
     ),
 
 % Requirements of values of svar_datarep.
@@ -581,60 +591,34 @@ init_requirement_specs = [
         (svar_target `is_one_of` [svalue_target_c])
     ),
 
-% Requirements of values of svar_gcc_regs_use.
+% Requirements of values of svar_gcc_conf.
+    % These requirements are expressed in reverse.
     requirement_spec(
         "Using gcc register extensions requires them to be available.",
-        (svar_gcc_regs_use `being` svalue_gcc_regs_use_yes) `implies_that`
-        (svar_ac_gcc_regs_avail `is_one_of` [svalue_ac_gcc_regs_avail_yes])
+        (svar_ac_gcc_regs_avail `being` svalue_ac_gcc_regs_avail_no)
+            `implies_that`
+        (svar_gcc_conf `is_one_of`
+            [svalue_gcc_conf_none,
+            svalue_gcc_conf_jump,
+            svalue_gcc_conf_asm_jump])
     ),
-    requirement_spec(
-        "Using gcc register extensions requires targeting C.",
-        (svar_gcc_regs_use `being` svalue_gcc_regs_use_yes) `implies_that`
-        (svar_target `is_one_of` [svalue_target_c])
-    ),
-    requirement_spec(
-        "Using gcc register extensions requires the LLDS backend.",
-        (svar_gcc_regs_use `being` svalue_gcc_regs_use_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_llds])
-    ),
-
-% Requirements of values of svar_gcc_gotos_use.
     requirement_spec(
         "Using gcc nonlocal gotos requires them to be available.",
-        (svar_gcc_gotos_use `being` svalue_gcc_gotos_use_yes) `implies_that`
-        (svar_ac_gcc_gotos_avail `is_one_of` [svalue_ac_gcc_gotos_avail_yes])
+        (svar_ac_gcc_gotos_avail `being` svalue_ac_gcc_gotos_avail_no)
+            `implies_that`
+        (svar_gcc_conf `is_one_of`
+            [svalue_gcc_conf_none,
+            svalue_gcc_conf_reg])
     ),
-    requirement_spec(
-        "Using gcc nonlocal gotos requires targeting C.",
-        (svar_gcc_gotos_use `being` svalue_gcc_gotos_use_yes) `implies_that`
-        (svar_target `is_one_of` [svalue_target_c])
-    ),
-    requirement_spec(
-        "Using gcc nonlocal gotos requires the LLDS backend.",
-        (svar_gcc_gotos_use `being` svalue_gcc_gotos_use_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_llds])
-    ),
-
-% Requirements of values of svar_gcc_labels_use.
     requirement_spec(
         "Using gcc asm labels requires them to be available.",
-        (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
-        (svar_ac_gcc_labels_avail `is_one_of` [svalue_ac_gcc_labels_avail_yes])
-    ),
-    requirement_spec(
-        "Using gcc asm labels requires using gcc nonlocal gotos.",
-        (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
-        (svar_gcc_gotos_use `is_one_of` [svalue_gcc_gotos_use_yes])
-    ),
-    requirement_spec(
-        "Using gcc asm labels requires targeting C.",
-        (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
-        (svar_target `is_one_of` [svalue_target_c])
-    ),
-    requirement_spec(
-        "Using gcc asm labels requires the LLDS backend.",
-        (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_llds])
+        (svar_ac_gcc_labels_avail `being` svalue_ac_gcc_labels_avail_no)
+            `implies_that`
+        (svar_gcc_conf `is_one_of`
+            [svalue_gcc_conf_none,
+            svalue_gcc_conf_reg,
+            svalue_gcc_conf_jump,
+            svalue_gcc_conf_fast])
     ),
 
 % Requirements of values of svar_pregen.

@@ -48,9 +48,7 @@ solver_var_name("backend",                      svar_backend).
 solver_var_name("datarep",                      svar_datarep).
 solver_var_name("target",                       svar_target).
 solver_var_name("nested_funcs",                 svar_nested_funcs).
-solver_var_name("gcc_regs_use",                 svar_gcc_regs_use).
-solver_var_name("gcc_gotos_use",                svar_gcc_gotos_use).
-solver_var_name("gcc_labels_use",               svar_gcc_labels_use).
+solver_var_name("gcc_conf",                     svar_gcc_conf).
 solver_var_name("low_tag_bits_use",             svar_low_tag_bits_use).
 solver_var_name("stack_len",                    svar_stack_len).
 solver_var_name("trail",                        svar_trail).
@@ -109,14 +107,12 @@ solver_var_value_name("erlang",                 svalue_target_erlang).
 solver_var_value_name("no_nest",                svalue_nested_funcs_no).
 solver_var_value_name("nest",                   svalue_nested_funcs_yes).
 
-solver_var_value_name("dont_use_gcc_regs",      svalue_gcc_regs_use_no).
-solver_var_value_name("use_gcc_regs",           svalue_gcc_regs_use_yes).
-
-solver_var_value_name("dont_use_gcc_gotos",     svalue_gcc_gotos_use_no).
-solver_var_value_name("use_gcc_gotos",          svalue_gcc_gotos_use_yes).
-
-solver_var_value_name("dont_use_gcc_labels",    svalue_gcc_labels_use_no).
-solver_var_value_name("use_gcc_labels",         svalue_gcc_labels_use_yes).
+solver_var_value_name("none",                   svalue_gcc_conf_none).
+solver_var_value_name("reg",                    svalue_gcc_conf_reg).
+solver_var_value_name("jump",                   svalue_gcc_conf_jump).
+solver_var_value_name("fast",                   svalue_gcc_conf_fast).
+solver_var_value_name("asm_jump",               svalue_gcc_conf_asm_jump).
+solver_var_value_name("asm_fast",               svalue_gcc_conf_asm_fast).
 
 solver_var_value_name("low_tag_bits_use_0",     svalue_low_tag_bits_use_0).
 solver_var_value_name("low_tag_bits_use_2",     svalue_low_tag_bits_use_2).

@@ -81,12 +81,12 @@ generate_all_tests(GradeStructure) :-
 :- pred generate_llds_tests(grade_structure::out) is multi.
 
 generate_llds_tests(GradeStructure) :-
-    ( GccConf = llds_gcc_conf_none
-    ; GccConf = llds_gcc_conf_reg
-    ; GccConf = llds_gcc_conf_jump
-    ; GccConf = llds_gcc_conf_fast
-    ; GccConf = llds_gcc_conf_asm_jump
-    ; GccConf = llds_gcc_conf_asm_fast
+    ( GccConf = grade_var_gcc_conf_none
+    ; GccConf = grade_var_gcc_conf_reg
+    ; GccConf = grade_var_gcc_conf_jump
+    ; GccConf = grade_var_gcc_conf_fast
+    ; GccConf = grade_var_gcc_conf_asm_jump
+    ; GccConf = grade_var_gcc_conf_asm_fast
     ),
     ( StackLen = grade_var_stack_len_std
     ; StackLen = grade_var_stack_len_segments
