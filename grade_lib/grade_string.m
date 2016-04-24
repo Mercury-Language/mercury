@@ -99,8 +99,22 @@ link_grade_str_llc_par_version = "1".
 
 grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
     (
+        GradeStructure = grade_pregen(PregenKind),
+        ( PregenKind = pregen_mlds_hlc,             BaseStr = "hlc"
+        ; PregenKind = pregen_llds_none,            BaseStr = "none"
+        ; PregenKind = pregen_llds_reg,             BaseStr = "reg"
+        ; PregenKind = pregen_llds_asm_fast,        BaseStr = "asm_fast"
+        ),
+        (
+            WhichGradeString = grade_string_user,
+            GradeComponents = [BaseStr, "pregen"]
+        ;
+            WhichGradeString = grade_string_link_check,
+            GradeComponents = [BaseStr, "tags2", "pregen"]
+        )
+    ;
         GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
-            MercFile, LowTagsFloats, TargetDebug),
+            MercFile, LowTagBits, MercFloat, TargetDebug),
 
         BinaryCompatStrs = binary_compat_version_to_strs(WhichGradeString),
         ( GccConf = grade_var_gcc_conf_none,        BaseStr = "none"
@@ -219,12 +233,13 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         ; StackLen = grade_var_stack_len_extend,     StackLenStrs = ["exts"]
         ),
         TargetDebugStrs = target_debug_to_strs(TargetDebug),
-        LowTagsFloatsStrs =
-            low_tags_floats_to_strs(WhichGradeString, LowTagsFloats),
+        LowTagBitStrs = low_tag_bits_use_to_strs(WhichGradeString, LowTagBits),
+        MercFloatStrs = merc_float_to_strs(WhichGradeString, MercFloat),
         MercFileStrs = merc_file_to_strs(WhichGradeString, MercFile),
+        % XXX The order does NOT match the one in runtime/mercury_grade.h.
         % XXX The order here should be revisited.
         GradeComponents = BinaryCompatStrs ++ [BaseStr]
-            ++ LowTagsFloatsStrs ++ ThreadSafeStrs ++ GcStrs
+            ++ LowTagBitStrs ++ MercFloatStrs ++ ThreadSafeStrs ++ GcStrs
             ++ LLDSPerfProfStrs ++ TermSizeProfStrs
             ++ TrailStrs ++ MinimalModelStrs ++ MercFileStrs
             ++ DebugStrs ++ TargetDebugStrs
@@ -234,7 +249,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         TargetDebugStrs = target_debug_to_strs(TargetDebug),
         (
             MLDSTarget = mlds_target_c(DataRep, NestedFuncs, MLDSCThreadSafe,
-                CTrail, MercFile, LowTagsFloats),
+                CTrail, MercFile, LowTagBits, MercFloat),
             BinaryCompatStrs =
                 binary_compat_version_to_strs(WhichGradeString),
             (
@@ -259,8 +274,9 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             ),
             BaseStr = DataRepStr ++ NestedFuncsStr,
             TrailStrs = c_trail_to_strs(CTrail),
-            LowTagsFloatsStrs =
-                low_tags_floats_to_strs(WhichGradeString, LowTagsFloats),
+            LowTagBitStrs =
+                low_tag_bits_use_to_strs(WhichGradeString, LowTagBits),
+            MercFloatStrs = merc_float_to_strs(WhichGradeString, MercFloat),
             (
                 MLDSCThreadSafe = mlds_c_thread_safe_no(CGc, MLDSPerfProf,
                     SSDebug),
@@ -287,9 +303,11 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
                 SSDebugStrs = []
             ),
             MercFileStrs = merc_file_to_strs(WhichGradeString, MercFile),
+            % XXX The order does NOT match the one in runtime/mercury_grade.h.
             % XXX The order here should be revisited.
-            GradeComponents = BinaryCompatStrs ++[BaseStr]
-                ++ LowTagsFloatsStrs ++ ThreadSafeStrs ++ SSDebugStrs
+            GradeComponents = BinaryCompatStrs ++ [BaseStr]
+                ++ LowTagBitStrs ++ MercFloatStrs
+                ++ ThreadSafeStrs ++ SSDebugStrs
                 ++ TargetDebugStrs ++ GcStrs ++ TrailStrs
                 ++ MLDSPerfProfStrs ++ MercFileStrs
         ;
@@ -409,54 +427,46 @@ merc_file_to_strs(grade_string_user, _) = [].
 merc_file_to_strs(grade_string_link_check, grade_var_merc_file_no) = [].
 merc_file_to_strs(grade_string_link_check, grade_var_merc_file_yes) = ["file"].
 
-:- func low_tags_floats_to_strs(which_grade_string, low_tags_floats)
+:- func low_tag_bits_use_to_strs(which_grade_string,
+    grade_var_low_tag_bits_use) = list(string).
+
+low_tag_bits_use_to_strs(WhichGradeString, LowTagBits) = Strs :-
+    (
+        WhichGradeString = grade_string_user,
+        Strs = []
+    ;
+        WhichGradeString = grade_string_link_check,
+        (
+            LowTagBits = grade_var_low_tag_bits_use_0,
+            Strs = ["notags"]
+        ;
+            LowTagBits = grade_var_low_tag_bits_use_2,
+            Strs = ["tags2"]
+        ;
+            LowTagBits = grade_var_low_tag_bits_use_3,
+            Strs = ["tags3"]
+        )
+    ).
+
+:- func merc_float_to_strs(which_grade_string, grade_var_merc_float)
     = list(string).
 
-low_tags_floats_to_strs(WhichGradeString, LowTagsFloats) = Components :-
+merc_float_to_strs(WhichGradeString, MercFloat) = Strs :-
     (
-        LowTagsFloats = low_tags_floats_pregen_no(LowTagBits, MercFloat),
-        (
-            WhichGradeString = grade_string_user,
-            TagsComponents = []
-        ;
-            WhichGradeString = grade_string_link_check,
-            (
-                LowTagBits = grade_var_low_tag_bits_use_0,
-                TagsComponents = ["notags"]
-            ;
-                LowTagBits = grade_var_low_tag_bits_use_2,
-                TagsComponents = ["tags2"]
-            ;
-                LowTagBits = grade_var_low_tag_bits_use_3,
-                TagsComponents = ["tags3"]
-            )
-        ),
-        (
-            MercFloat = grade_var_merc_float_is_boxed_c_double,
-            FloatComponents = []
-        ;
-            MercFloat = grade_var_merc_float_is_unboxed_c_double,
-            (
-                WhichGradeString = grade_string_user,
-                FloatComponents = []
-            ;
-                WhichGradeString = grade_string_link_check,
-                FloatComponents = ["ubf"]
-            )
-        ;
-            MercFloat = grade_var_merc_float_is_unboxed_c_float,
-            FloatComponents = ["spf"]
-        ),
-        Components = TagsComponents ++ FloatComponents
+        MercFloat = grade_var_merc_float_is_boxed_c_double,
+        Strs = []
     ;
-        LowTagsFloats = low_tags_floats_pregen_yes,
+        MercFloat = grade_var_merc_float_is_unboxed_c_double,
         (
             WhichGradeString = grade_string_user,
-            Components = ["pregen"]
+            Strs = []
         ;
             WhichGradeString = grade_string_link_check,
-            Components = ["tags2", "pregen"]
+            Strs = ["ubf"]
         )
+    ;
+        MercFloat = grade_var_merc_float_is_unboxed_c_float,
+        Strs = ["spf"]
     ).
 
 %---------------------------------------------------------------------------%

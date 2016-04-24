@@ -71,10 +71,23 @@ main(!IO) :-
 :- pred generate_all_tests(grade_structure::out) is multi.
 
 generate_all_tests(GradeStructure) :-
-    ( generate_llds_tests(GradeStructure)
+    ( generate_pregen_tests(GradeStructure)
+    ; generate_llds_tests(GradeStructure)
     ; generate_mlds_tests(GradeStructure)
     ; generate_elds_tests(GradeStructure)
     ).
+
+%---------------------%
+
+:- pred generate_pregen_tests(grade_structure::out) is multi.
+
+generate_pregen_tests(GradeStructure) :-
+    ( PregenKind = pregen_mlds_hlc
+    ; PregenKind = pregen_llds_none
+    ; PregenKind = pregen_llds_reg
+    ; PregenKind = pregen_llds_asm_fast
+    ),
+    GradeStructure = grade_pregen(PregenKind).
 
 %---------------------%
 
@@ -160,10 +173,11 @@ generate_llds_tests(GradeStructure) :-
             CTrail, TScopeProf)
     ),
     MercFile = grade_var_merc_file_no,
-    generate_low_tags_floats(LowTagsFloats),
+    generate_grade_var_low_tag_bits_use(LowTagBitsUse),
+    generate_grade_var_merc_float(MercFloat),
     generate_grade_var_target_debug(TargetDebug),
     GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
-        MercFile, LowTagsFloats, TargetDebug).
+        MercFile, LowTagBitsUse, MercFloat, TargetDebug).
 
 %---------------------%
 
@@ -215,9 +229,10 @@ generate_mlds_c_target(MLDSCTarget) :-
     ; CTrail = c_trail_yes(grade_var_trail_segments_yes)
     ),
     MercFile = grade_var_merc_file_no,
-    generate_low_tags_floats(LowTagsFloats),
+    generate_grade_var_low_tag_bits_use(LowTagBitsUse),
+    generate_grade_var_merc_float(MercFloat),
     MLDSCTarget = mlds_target_c(MLDSCDataRep, NestedFuncs, MLDSCThreadSafe,
-        CTrail, MercFile, LowTagsFloats).
+        CTrail, MercFile, LowTagBitsUse, MercFloat).
 
 %---------------------%
 
@@ -254,26 +269,22 @@ generate_grade_var_ssdebug(grade_var_ssdebug_yes).
 generate_grade_var_target_debug(grade_var_target_debug_no).
 generate_grade_var_target_debug(grade_var_target_debug_yes).
 
-:- pred generate_low_tags_floats(low_tags_floats::out) is multi.
+:- pred generate_grade_var_low_tag_bits_use(grade_var_low_tag_bits_use::out)
+    is multi.
 
-generate_low_tags_floats(LowTagsFloats) :-
-    (
-        % ( LowTagBitsUse = grade_var_low_tag_bits_use_0
-        % ; LowTagBitsUse = grade_var_low_tag_bits_use_2
-        % ; LowTagBitsUse = grade_var_low_tag_bits_use_3
-        % ),
-        % ( MercFloat = grade_var_merc_float_is_unboxed_c_double
-        % ; MercFloat = grade_var_merc_float_is_boxed_c_double
-        % ; MercFloat = grade_var_merc_float_is_unboxed_c_float
-        % ),
-        LowTagBitsUse = grade_var_low_tag_bits_use_3,
-        ( MercFloat = grade_var_merc_float_is_unboxed_c_double
-        ; MercFloat = grade_var_merc_float_is_unboxed_c_float
-        ),
-        LowTagsFloats = low_tags_floats_pregen_no(LowTagBitsUse, MercFloat)
-    ;
-        LowTagsFloats = low_tags_floats_pregen_yes
-    ).
+generate_grade_var_low_tag_bits_use(LowTagBitsUse) :-
+    % ( LowTagBitsUse = grade_var_low_tag_bits_use_0
+    % ; LowTagBitsUse = grade_var_low_tag_bits_use_2
+    % ; LowTagBitsUse = grade_var_low_tag_bits_use_3
+    % ),
+    LowTagBitsUse = grade_var_low_tag_bits_use_3.
+
+:- pred generate_grade_var_merc_float(grade_var_merc_float::out) is multi.
+
+generate_grade_var_merc_float(grade_var_merc_float_is_unboxed_c_double).
+generate_grade_var_merc_float(grade_var_merc_float_is_unboxed_c_float).
+% As long as we generate only grade_var_low_tag_bits_use_3,
+% returning grade_var_merc_float_is_boxed_c_double would NOT make sense.
 
 %---------------------------------------------------------------------------%
 

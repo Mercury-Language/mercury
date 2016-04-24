@@ -628,12 +628,81 @@ init_requirement_specs = [
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
+        "Pregenerated code always uses none, reg, asm_fast or hlc.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_gcc_conf `is_one_of`
+            [svalue_gcc_conf_none, svalue_gcc_conf_reg,
+            svalue_gcc_conf_asm_fast])
+    ),
+    requirement_spec(
         "Pregenerated code uses 2 low tag bits.",
         (svar_pregen `being` svalue_pregen_yes) `implies_that`
         (svar_low_tag_bits_use `is_one_of` [svalue_low_tag_bits_use_2])
     ),
+    % XXX We should require stack segments on llds.
+    % With version 1 of the requirements, we prefer stack segments when
+    % possible, and with the llds backend, they are possible,
+    % but this is not as good as a requirement, since it can be overridden.
+    % Unfortunately, we don't (yet) support implications with *two*
+    % conditions, such as "pregen=yes and backend=llds implies stack segments".
+    % XXX Should we relax the following restriction?
     requirement_spec(
-        "Pregenerated code uses boxed double-precision floats.",
+        "Pregenerated code never uses a trail.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_trail `is_one_of` [svalue_trail_no])
+    ),
+    requirement_spec(
+        "Pregenerated code never uses minimal model.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_minmodel `is_one_of` [svalue_minmodel_no])
+    ),
+    requirement_spec(
+        "Pregenerated code never supports thread safety.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_c_no])
+    ),
+    requirement_spec(
+        "Pregenerated code always uses the Boehm garbage collector.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_gc `is_one_of` [svalue_gc_bdw])
+    ),
+    requirement_spec(
+        "Pregenerated code never supports deep profiling.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_deep_prof `is_one_of` [svalue_deep_prof_no])
+    ),
+    requirement_spec(
+        "Pregenerated code never supports mprof-style profiling.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_mprof_call `is_one_of` [svalue_mprof_call_no])
+    ),
+    requirement_spec(
+        "Pregenerated code never supports term size profiling.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_term_size_prof `is_one_of` [svalue_term_size_prof_no])
+    ),
+    requirement_spec(
+        "Pregenerated code never supports debugging.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_debug `is_one_of` [svalue_debug_none])
+    ),
+    requirement_spec(
+        "Pregenerated code never supports source-to-source debugging.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_ssdebug `is_one_of` [svalue_ssdebug_no])
+    ),
+    requirement_spec(
+        "Pregenerated code never supports target language debugging.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_target_debug `is_one_of` [svalue_target_debug_no])
+    ),
+    requirement_spec(
+        "Pregenerated code never supports region based memory management.",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_rbmm `is_one_of` [svalue_rbmm_no])
+    ),
+    requirement_spec(
+        "Pregenerated code always uses boxed double-precision floats.",
         (svar_pregen `being` svalue_pregen_yes) `implies_that`
         (svar_merc_float `is_one_of` [svalue_merc_float_is_boxed_c_double])
     ),
