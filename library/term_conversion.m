@@ -256,7 +256,8 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
         ModuleName = "version_array",
         TypeCtorName = "version_array",
         TypeArgs = [ElemType],
-        % We handle version arrays in pretty much the same way as normal arrays.
+        % We handle version arrays in pretty much the same way
+        % as normal arrays.
         Term = functor(atom("version_array"), [ArgList], TermContext),
         has_type(Elem, ElemType),
         ListType = type_of([Elem]),
