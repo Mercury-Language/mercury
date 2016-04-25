@@ -93,6 +93,22 @@ $(DEPENDS): SLICE_FLAGS $(MDBCOMP_MODULES)
 all:	$(MDBCOMP_MODULES) $(MERCURY_MAIN_MODULES) $(TAGS_FILE_EXISTS)
 
 #-----------------------------------------------------------------------------#
+#
+# The programs in this directory rely on the mdbcomp package, since
+# it contains the types that define the representation of Mercury programs
+# for tools such as debuggers and profilers, and predicates that operate on
+# those representations.
+#
+# If we linked ../mdbcomp/libmer_mdbcomp.so into the executables in this
+# directory, then those executables would have to be compiled in the same grade
+# as the modules of the mdbcomp directory, which in turn is the same grade
+# as the modules of the library and compiler directories. This would work,
+# but it would mean that rebuilding the tools in this directory in another
+# grade (e.g. to enable debugging) would take several minutes. To avoid such
+# delays, we copy across the source files of the mdbcomp library. The copied
+# .m files, and the .m files that natively reside in this directory, can be
+# recompiled in a different grade much more quickly than that.
+#
 
 $(MDBCOMP_MODULES): %: $(MDBCOMP_DIR)/%
 	-@/bin/rm -f $*
@@ -160,10 +176,11 @@ tags:	.slice_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
-	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) \
-		$(mcov.ms) $(mtc_union.ms) $(LIBRARY_DIR)/*.m; \
-	touch .slice_tags; \
+	@if test ! -f tags; then \
+		echo making tags; \
+		$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) \
+			$(mcov.ms) $(mtc_union.ms) $(LIBRARY_DIR)/*.m; \
+		touch .slice_tags; \
 	fi
 
 #-----------------------------------------------------------------------------#

@@ -36,7 +36,7 @@ include Mercury.options
 
 MAIN_TARGET = all
 
-ALL_DEEP_MODULES = \
+ALL_DEEP_MAIN_MODULES = \
 	mdprof_cgi \
 	mdprof_test \
 	mdprof_dump \
@@ -47,9 +47,9 @@ ALL_DEEP_MODULES = \
 # Always compile the deep profiler, even if it is not enabled.
 #
 MAIN_TARGET=all
-MERCURY_MAIN_MODULES=$(ALL_DEEP_MODULES)
-DEPEND=$(patsubst %,%.depend,$(ALL_DEEP_MODULES))
-PDBS=$(patsubst %,%.pdb,$(ALL_DEEP_MODULES))
+MERCURY_MAIN_MODULES=$(ALL_DEEP_MAIN_MODULES)
+DEPEND=$(patsubst %,%.depend,$(ALL_DEEP_MAIN_MODULES))
+PDBS=$(patsubst %,%.pdb,$(ALL_DEEP_MAIN_MODULES))
 
 ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
 	INSTALL=install_cgi_progs
@@ -97,7 +97,7 @@ endif
 #-----------------------------------------------------------------------------#
 
 # The deep profiler contains quite a lot of C code for which there are
-# currently not C#, Java or Erlang implementations.  We need to pass
+# currently not C#, Java or Erlang implementations. We need to pass
 # `--allow-stubs' in order to compile it.
 #
 ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
@@ -122,9 +122,25 @@ Mercury.modules: DEEP_FLAGS
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: all
-all:	$(MDBCOMP_MODULES) $(ALL_DEEP_MODULES) $(TAGS_FILE_EXISTS)
+all:	$(MDBCOMP_MODULES) $(ALL_DEEP_MAIN_MODULES) $(TAGS_FILE_EXISTS)
 
 #-----------------------------------------------------------------------------#
+#
+# The programs in this directory rely on the mdbcomp package, since
+# it contains the types that define the representation of Mercury programs
+# for tools such as debuggers and profilers, and predicates that operate on
+# those representations.
+#
+# If we linked ../mdbcomp/libmer_mdbcomp.so into the executables in this
+# directory, then those executables would have to be compiled in the same grade
+# as the modules of the mdbcomp directory, which in turn is the same grade
+# as the modules of the library and compiler directories. This would work,
+# but it would mean that rebuilding the tools in this directory in another
+# grade (e.g. to enable debugging) would take several minutes. To avoid such
+# delays, we copy across the source files of the mdbcomp library. The copied
+# .m files, and the .m files that natively reside in this directory, can be
+# recompiled in a different grade much more quickly than that.
+#
 
 $(MDBCOMP_MODULES): %: $(MDBCOMP_DIR)/%
 	-@/bin/rm -f $*
@@ -163,10 +179,10 @@ $(cs_subdir)mdprof_procrep_init.c:		$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 #-----------------------------------------------------------------------------#
 
 .PHONY: check
-check:	DEPEND=$(patsubst %,%.check,$(ALL_DEEP_MODULES))
+check:	DEPEND=$(patsubst %,%.check,$(ALL_DEEP_MAIN_MODULES))
 
 .PHONY: ints
-ints:	DEPEND=$(patsubst %,%.ints,$(ALL_DEEP_MODULES))
+ints:	DEPEND=$(patsubst %,%.ints,$(ALL_DEEP_MAIN_MODULES))
 
 #-----------------------------------------------------------------------------#
 
@@ -194,9 +210,10 @@ DEEP_MS = \
 
 .PHONY: tags_file_exists
 tags_file_exists:
-	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m; \
-	touch .deep_tags; \
+	@if test ! -f tags; then \
+		echo making tags; \
+		$(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m; \
+		touch .deep_tags; \
 	fi
 
 #-----------------------------------------------------------------------------#
