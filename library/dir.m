@@ -439,7 +439,7 @@ dir.split_name_3(FileNameChars, DirName, BaseName) :-
         RevFileNameChars = RevFileNameChars0
     ),
     ( if
-        list.takewhile(isnt(dir.is_directory_separator_semidet),
+        list.take_while(isnt(dir.is_directory_separator_semidet),
             RevFileNameChars, RevBaseName, RevDirName0),
         RevBaseName = [_ | _],
         RevDirName0 = [_ | _]
@@ -662,7 +662,7 @@ strip_leading_win32_current_drive_root_directory([Char1 | !.FileName],
 
 strip_leading_win32_unc_root_directory([Sep, Sep | !.FileName], !:FileName) :-
     dir.is_directory_separator(Sep),
-    list.takewhile(isnt(dir.is_directory_separator_semidet), !.FileName,
+    list.take_while(isnt(dir.is_directory_separator_semidet), !.FileName,
         Server, !:FileName),
     Server = [_ | _],
     (
@@ -673,7 +673,7 @@ strip_leading_win32_unc_root_directory([Sep, Sep | !.FileName], !:FileName) :-
             !.FileName = []
         ;
             !.FileName = [_ | _],
-            list.takewhile(isnt(dir.is_directory_separator_semidet),
+            list.take_while(isnt(dir.is_directory_separator_semidet),
                 !.FileName, Share, !:FileName),
             Share = [_ | _],
             ( !.FileName = [Sep | !:FileName]
