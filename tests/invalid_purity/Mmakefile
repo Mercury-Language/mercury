@@ -18,13 +18,11 @@ PROGS = \
 	impure_pred_t1 \
 	impure_pred_t1_fixed \
 	impure_pred_t2 \
+	pragma_c_and_mercury \
 	purity \
 	purity_nonsense \
 	purity_nonsense2-nodepend \
 	purity_type_error
-
-# XXX The pragma_c_and_mercury test is not enabled,
-# since currently we fail it in grades `il' and `java'.
 
 TESTS = $(PROGS)
 include $(TESTS_DIR)/Mmake.common
