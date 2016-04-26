@@ -3450,16 +3450,16 @@ esac
 # with the C files that we ship in the source distribution.  The C files in the
 # source distribution are generated in hlc.gc.pregen or asm_fast.gc.pregen.
 # In the former case, we _must_ use the grade hlc.gc.pregen, in the latter case
-# we can use any of the base LLDS grades (it's the same C code), except that a
-# couple of them (fast and jump) don't support code addresses in static
-# initalizers.
+# we can, in principle, use any of the base LLDS grades (it's the same C code).
+# We don't use fast and jump as they don't support code addresses in static
+# initializers and we don't use asm_jump as it isn't regularly tested.
 
 if test "$BOOTSTRAP_HLC" = "yes"
 then
     BOOTSTRAP_GRADE=hlc.gc.pregen
 else
     case $BEST_LLDS_BASE_GRADE in
-        jump|fast)
+        asm_jump|jump|fast)
             if test $mercury_cv_gcc_model_reg = yes; then
                 BOOTSTRAP_GRADE=reg.gc.pregen
             else
