@@ -8,8 +8,14 @@
 
 :- implementation.
 
-:- import_module std_util, exception, eval_util, eval, gml, peephole.
+:- import_module eval.
+:- import_module eval_util.
 :- import_module globals.
+:- import_module gml.
+:- import_module peephole.
+
+:- import_module exception.
+:- import_module pair.
 
 main -->
 	try_io(
