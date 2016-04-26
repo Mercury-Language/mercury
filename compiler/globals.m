@@ -187,7 +187,7 @@
             % (NOTE: COMSPEC must be pointing to powershell.exe not cmd.exe.)
 
     % The tracing levels to use for a module when doing the source to source
-    % debugging tranformation.
+    % debugging transformation.
 :- type ssdb_trace_level
     --->    none
             % No tracing of this module.
