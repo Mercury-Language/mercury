@@ -46,7 +46,7 @@
     % where Module is a SymName. For backwards compatibility, we allow `__'
     % as an alternative to `.'.
 
-    % parse_sym_name_and_args(Term, VarSet, ContextPieces, Result):
+    % parse_sym_name_and_args(VarSet, ContextPieces, Term, Result):
     %
     % Parse Term into a sym_name that is its top function symbol and a
     % list of its argument terms, and if successful return them in Result.
@@ -60,12 +60,11 @@
     % For places where a symbol is _defined_, use the related predicate
     % parse_implicitly_qualified_sym_name_and_args.
     %
-:- pred parse_sym_name_and_args(term(T)::in, varset::in,
-    cord(format_component)::in, maybe_functor(T)::out) is det.
+:- pred parse_sym_name_and_args(varset::in, cord(format_component)::in,
+    term(T)::in, maybe_functor(T)::out) is det.
 :- pred try_parse_sym_name_and_args(term(T)::in,
     sym_name::out, list(term(T))::out) is semidet.
-:- pred try_parse_sym_name_and_no_args(term(T)::in, sym_name::out)
-    is semidet.
+:- pred try_parse_sym_name_and_no_args(term(T)::in, sym_name::out) is semidet.
 
     % When given the first two argumeents Functor and FunctorArgs,
     % try_parse_sym_name_and_args_from_f_args will do does exactly the same as
@@ -140,7 +139,7 @@
 
 :- import_module int.
 
-parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs) :-
+parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
     ( if
         Term = term.functor(Functor, FunctorArgs, TermContext),
         Functor = term.atom("."),
@@ -231,7 +230,7 @@ try_parse_sym_name_and_no_args(Term, SymName) :-
 
 parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
         VarSet, ContextPieces, MaybeSymNameAndArgs) :-
-    parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs0),
+    parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs0),
     (
         MaybeSymNameAndArgs0 = ok2(SymName, Args),
         ( if

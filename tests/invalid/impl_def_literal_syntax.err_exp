@@ -7,13 +7,16 @@ impl_def_literal_syntax.m:015:   at $pred.
 impl_def_literal_syntax.m:016: Syntax error at token 'u': operator or `.'
 impl_def_literal_syntax.m:016:   expected.
 impl_def_literal_syntax.m:017: In `:- pred' declaration: in the first argument:
-impl_def_literal_syntax.m:017:   error: invalid mode `in($file)'.
+impl_def_literal_syntax.m:017:   error: `$file' is not a valid inst.
 impl_def_literal_syntax.m:022: Error: symbol name expected at $file.
 impl_def_literal_syntax.m:024: In clause head: error: atom expected at $line.
-impl_def_literal_syntax.m:026: Error: syntax error in inst body at
-impl_def_literal_syntax.m:026:   bound($file).
-impl_def_literal_syntax.m:029: Error: syntax error in inst body at
-impl_def_literal_syntax.m:029:   bound(a($file)).
+impl_def_literal_syntax.m:027: In the definition of the inst
+impl_def_literal_syntax.m:027:   `impl_def_literal_syntax.myinst': error: an
+impl_def_literal_syntax.m:027:   implementation defined literal such as `$file'
+impl_def_literal_syntax.m:027:   may not be a used as a bound inst.
+impl_def_literal_syntax.m:030: In the definition of the inst
+impl_def_literal_syntax.m:030:   `impl_def_literal_syntax.myinst2': error:
+impl_def_literal_syntax.m:030:   `$file' is not a valid inst.
 impl_def_literal_syntax.m:032: Error: inst parameters must be variables.
 impl_def_literal_syntax.m:034: In inst definition: error: atom expected at
 impl_def_literal_syntax.m:034:   $file.

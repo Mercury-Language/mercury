@@ -141,20 +141,11 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         check_user_inst_name(SymName, HeadTermContext, NameSpecs),
         check_inst_mode_defn_args("inst definition", VarSet, HeadTermContext,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
-
-        ( if convert_inst(no_allow_constrained_inst_var, BodyTerm, Inst0) then
-            MaybeInst = ok1(Inst0)
-        else
-            % XXX Should make the error message here more precise.
-            BodyTermStr = describe_error_term(VarSet, BodyTerm),
-            BodyPieces = [words("Error: syntax error in inst body at"),
-                words(BodyTermStr), suffix("."), nl],
-            BodySpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(BodyTerm),
-                    [always(BodyPieces)])]),
-            MaybeInst = error1([BodySpec])
-        ),
-
+        NamedContextPieces = cord.from_list(
+            [words("In the definition of the inst"),
+            sym_name(SymName), suffix(":")]),
+        parse_inst(no_allow_constrained_inst_var(wnciv_eqv_inst_defn_rhs),
+            VarSet, NamedContextPieces, BodyTerm, MaybeInst),
         ( if
             NameSpecs = [],
             ForTypeSpecs = [],
@@ -168,9 +159,10 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             Item = item_inst_defn(ItemInstDefn),
             MaybeIOM = ok1(iom_item(Item))
         else
-            Specs = NameSpecs ++
-                get_any_errors1(MaybeInstArgVars) ++
-                get_any_errors1(MaybeInst),
+            Specs = NameSpecs
+                ++ ForTypeSpecs
+                ++ get_any_errors1(MaybeInstArgVars)
+                ++ get_any_errors1(MaybeInst),
             MaybeIOM = error1(Specs)
         )
     ).
@@ -235,19 +227,11 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         check_user_mode_name(SymName, HeadTermContext, NameSpecs),
         check_inst_mode_defn_args("mode definition", VarSet, HeadTermContext,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
-
-        ( if convert_mode(no_allow_constrained_inst_var, BodyTerm, Mode0) then
-            MaybeMode = ok1(Mode0)
-        else
-            % XXX We should make the error message here more precise.
-            BodyPieces = [words("Error: syntax error"),
-                words("in mode definition body."), nl],
-            BodySpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(BodyTerm),
-                    [always(BodyPieces)])]),
-            MaybeMode = error1([BodySpec])
-        ),
-
+        NamedContextPieces = cord.from_list(
+            [words("In the definition of the mode"),
+            sym_name(SymName), suffix(":")]),
+        parse_mode(no_allow_constrained_inst_var(wnciv_mode_defn_rhs), VarSet,
+            NamedContextPieces, BodyTerm, MaybeMode),
         ( if
             NameSpecs = [],
             MaybeInstArgVars = ok1(InstArgVars),

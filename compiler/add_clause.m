@@ -76,6 +76,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module io.
 :- import_module map.
@@ -358,72 +359,85 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
         PredId, PredInfo, ArgTerms, ApplProcIds, AllProcIds,
         !ModuleInfo, !QualInfo, !Specs) :-
     AllProcIds = pred_info_all_procids(PredInfo),
-    get_mode_annotations(MaybeAnnotatedArgTerms, ArgTerms,
-        ma_empty, ModeAnnotations),
+    PredIdStr = pred_id_to_string(!.ModuleInfo, PredId),
+    ContextPieces = cord.from_list([words("In the head of a clause for"),
+        fixed(PredIdStr), suffix(":"), nl]),
+    get_mode_annotations(VarSet, ContextPieces, MaybeAnnotatedArgTerms, 1,
+        ArgTerms, ma_empty, ModeAnnotations, [], ModeAnnotationSpecs),
     (
-        ModeAnnotations = ma_modes(ModeList0),
+        ModeAnnotationSpecs = [_ | _],
+        !:Specs = ModeAnnotationSpecs ++ !.Specs,
+        % Apply the clause to all modes.
+        % XXX Would it be better to apply it to none?
+        ApplProcIds = selected_modes(AllProcIds)
+    ;
+        ModeAnnotationSpecs = [],
+        (
+            ModeAnnotations = ma_modes(ModeList0),
 
-        % The user specified some mode annotations on this clause.
-        % First module-qualify the mode annotations. The annotations on
-        % clauses from `.opt' files will already be fully module qualified.
+            % The user specified some mode annotations on this clause.
+            % First module-qualify the mode annotations. The annotations on
+            % clauses from `.opt' files will already be fully module qualified.
 
-        ( if PredStatus = pred_status(status_opt_imported) then
-            ModeList = ModeList0
-        else
-            Exported = pred_status_is_exported_to_non_submodules(PredStatus),
-            (
-                Exported = yes,
-                InInt = mq_used_in_interface
-            ;
-                Exported = no,
-                InInt = mq_not_used_in_interface
+            ( if PredStatus = pred_status(status_opt_imported) then
+                ModeList = ModeList0
+            else
+                Exported =
+                    pred_status_is_exported_to_non_submodules(PredStatus),
+                (
+                    Exported = yes,
+                    InInt = mq_used_in_interface
+                ;
+                    Exported = no,
+                    InInt = mq_not_used_in_interface
+                ),
+                qual_info_get_mq_info(!.QualInfo, MQInfo0),
+                qualify_clause_mode_list(InInt, Context,
+                    ModeList0, ModeList, MQInfo0, MQInfo, !Specs),
+                qual_info_set_mq_info(MQInfo, !QualInfo)
             ),
-            qual_info_get_mq_info(!.QualInfo, MQInfo0),
-            qualify_clause_mode_list(InInt, Context,
-                ModeList0, ModeList, MQInfo0, MQInfo, !Specs),
-            qual_info_set_mq_info(MQInfo, !QualInfo)
-        ),
 
-        % Now find the procedure which matches these mode annotations.
-        pred_info_get_proc_table(PredInfo, Procs),
-        map.to_assoc_list(Procs, ExistingProcs),
-        ( if
-            get_procedure_matching_declmodes_with_renaming(ExistingProcs,
-                ModeList, !.ModuleInfo, ProcId)
-        then
-            ApplProcIds = selected_modes([ProcId])
-        else
-            undeclared_mode_error(ModeList, VarSet, PredId, PredInfo,
-                !.ModuleInfo, Context, !Specs),
+            % Now find the procedure which matches these mode annotations.
+            pred_info_get_proc_table(PredInfo, Procs),
+            map.to_assoc_list(Procs, ExistingProcs),
+            ( if
+                get_procedure_matching_declmodes_with_renaming(ExistingProcs,
+                    ModeList, !.ModuleInfo, ProcId)
+            then
+                ApplProcIds = selected_modes([ProcId])
+            else
+                undeclared_mode_error(ModeList, VarSet, PredId, PredInfo,
+                    !.ModuleInfo, Context, !Specs),
+                % Apply the clause to all modes.
+                % XXX Would it be better to apply it to none?
+                ApplProcIds = selected_modes(AllProcIds)
+            )
+        ;
+            ( ModeAnnotations = ma_empty
+            ; ModeAnnotations = ma_none
+            ),
+            ( if pred_info_pragma_goal_type(PredInfo) then
+                % We are only allowed to mix foreign procs and
+                % mode specific clauses, so make this clause
+                % mode specific but apply to all modes.
+                ApplProcIds = selected_modes(AllProcIds)
+            else
+                ApplProcIds = all_modes
+            )
+        ;
+            ModeAnnotations = ma_mixed,
+            Pieces = [words("In the head of a clause for"),
+                fixed(PredIdStr), suffix(":"), nl,
+                words("syntax error: some but not all arguments"),
+                words("have mode annotations."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs],
+
             % Apply the clause to all modes.
             % XXX Would it be better to apply it to none?
             ApplProcIds = selected_modes(AllProcIds)
         )
-    ;
-        ( ModeAnnotations = ma_empty
-        ; ModeAnnotations = ma_none
-        ),
-        ( if pred_info_pragma_goal_type(PredInfo) then
-            % We are only allowed to mix foreign procs and
-            % mode specific clauses, so make this clause
-            % mode specific but apply to all modes.
-            ApplProcIds = selected_modes(AllProcIds)
-        else
-            ApplProcIds = all_modes
-        )
-    ;
-        ModeAnnotations = ma_mixed,
-        PredIdStr = pred_id_to_string(!.ModuleInfo, PredId),
-        Pieces = [words("In clause for"), fixed(PredIdStr), suffix(":"), nl,
-            words("syntax error: some but not all arguments"),
-            words("have mode annotations."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs],
-
-        % Apply the clause to all modes.
-        % XXX Would it be better to apply it to none?
-        ApplProcIds = selected_modes(AllProcIds)
     ).
 
 :- pred undeclared_mode_error(list(mer_mode)::in, prog_varset::in,
@@ -501,15 +515,29 @@ mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
 
     % Extract the mode annotations (if any) from a list of arguments.
     %
-:- pred get_mode_annotations(list(prog_term)::in, list(prog_term)::out,
-    mode_annotations::in, mode_annotations::out) is det.
+:- pred get_mode_annotations(prog_varset::in, cord(format_component)::in,
+    list(prog_term)::in, int::in, list(prog_term)::out,
+    mode_annotations::in, mode_annotations::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-get_mode_annotations([], [], !Annotations).
-get_mode_annotations([MAArgTerm | MAArgTerms], [ArgTerm | ArgTerms],
-        !Annotations) :-
-    get_mode_annotation(MAArgTerm, ArgTerm, MaybeAnnotation),
-    add_annotation(MaybeAnnotation, !Annotations),
-    get_mode_annotations(MAArgTerms, ArgTerms, !Annotations).
+get_mode_annotations(_, _, [], _, [], !Annotations, !Specs).
+get_mode_annotations(VarSet, ContextPieces,
+        [MAArgTerm | MAArgTerms], ArgNum, [ArgTerm | ArgTerms],
+        !Annotations, !Specs) :-
+    ArgContextPieces = ContextPieces ++
+        cord.from_list([words("in the"), nth_fixed(ArgNum),
+        words("argument:"), nl]),
+    get_mode_annotation(VarSet, ArgContextPieces, MAArgTerm, ArgTerm,
+        MaybeMaybeMode),
+    (
+        MaybeMaybeMode = ok1(MaybeMode),
+        add_annotation(MaybeMode, !Annotations)
+    ;
+        MaybeMaybeMode = error1(MaybeModeSpecs),
+        !:Specs = !.Specs ++ MaybeModeSpecs
+    ),
+    get_mode_annotations(VarSet, ContextPieces,
+        MAArgTerms, ArgNum + 1, ArgTerms, !Annotations, !Specs).
 
 :- pred add_annotation(maybe(mer_mode)::in,
     mode_annotations::in, mode_annotations::out) is det.
@@ -524,20 +552,31 @@ add_annotation(_,         ma_mixed, ma_mixed).
 
     % Extract the mode annotations (if any) from a single argument.
     %
-:- pred get_mode_annotation(prog_term::in, prog_term::out,
-    maybe(mer_mode)::out) is det.
+:- pred get_mode_annotation(prog_varset::in, cord(format_component)::in,
+    prog_term::in, prog_term::out, maybe1(maybe(mer_mode))::out) is det.
 
-get_mode_annotation(MaybeAnnotatedArgTerm, ArgTerm, MaybeAnnotation) :-
+get_mode_annotation(VarSet, ContextPieces, MaybeAnnotatedArgTerm, ArgTerm,
+        MaybeMaybeAnnotation) :-
     ( if
         MaybeAnnotatedArgTerm = term.functor(term.atom("::"),
-            [ArgTermPrime, ModeTerm], _),
-        convert_mode(allow_constrained_inst_var, term.coerce(ModeTerm), Mode)
+            [ArgTermPrime, ModeTerm], _)
     then
         ArgTerm = ArgTermPrime,
-        MaybeAnnotation = yes(Mode)
+
+        varset.coerce(VarSet, GenVarSet),
+        term.coerce(ModeTerm, GenModeTerm),
+        parse_mode(allow_constrained_inst_var, GenVarSet, ContextPieces,
+            GenModeTerm, MaybeMode),
+        (
+            MaybeMode = ok1(Mode),
+            MaybeMaybeAnnotation = ok1(yes(Mode))
+        ;
+            MaybeMode = error1(Specs),
+            MaybeMaybeAnnotation = error1(Specs)
+        )
     else
         ArgTerm = MaybeAnnotatedArgTerm,
-        MaybeAnnotation = no
+        MaybeMaybeAnnotation = ok1(no)
     ).
 
 clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,

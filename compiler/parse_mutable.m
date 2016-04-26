@@ -274,6 +274,9 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
 :- pred parse_mutable_inst(varset::in, term::in, maybe1(mer_inst)::out) is det.
 
 parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
+    % XXX We should check whether the *inst* contains variables, not whether
+    % the *term* does, but (a) inst_contains_inst_var is in inst_match.m,
+    % not in inst_util.m, and (b) it is not exported.
     ( if term.contains_var(InstTerm, _) then
         InstTermStr = describe_error_term(VarSet, InstTerm),
         Pieces = [words("Error: the inst in a"), decl("mutable"),
@@ -282,14 +285,11 @@ parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
         MaybeInst = error1([Spec])
-    else if convert_inst(no_allow_constrained_inst_var, InstTerm, Inst) then
-        MaybeInst = ok1(Inst)
     else
-        Pieces = [words("Error: invalid inst in"), decl("mutable"),
-            words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
-        MaybeInst = error1([Spec])
+        ContextPieces = cord.from_list([words("In a"), decl("mutable"),
+            words("declaration:")]),
+        parse_inst(no_allow_constrained_inst_var(wnciv_mutable_inst),
+            VarSet, ContextPieces, InstTerm, MaybeInst)
     ).
 
 :- type collected_mutable_attribute

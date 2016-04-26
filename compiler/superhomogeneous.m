@@ -1226,8 +1226,14 @@ parse_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
 
 parse_dcg_pred_expr_args([DCGModeTermA, DCGModeTermB], [],
         [DCGModeA, DCGModeB]) :-
-    convert_mode(allow_constrained_inst_var, DCGModeTermA, DCGModeA0),
-    convert_mode(allow_constrained_inst_var, DCGModeTermB, DCGModeB0),
+    % XXX This is a dummy; fix this.
+    varset.init(VarSet),
+    parse_mode(allow_constrained_inst_var, VarSet, cord.init,
+        DCGModeTermA, MaybeDCGModeA0),
+    parse_mode(allow_constrained_inst_var, VarSet, cord.init,
+        DCGModeTermB, MaybeDCGModeB0),
+    MaybeDCGModeA0 = ok1(DCGModeA0),
+    MaybeDCGModeB0 = ok1(DCGModeB0),
     constrain_inst_vars_in_mode(DCGModeA0, DCGModeA),
     constrain_inst_vars_in_mode(DCGModeB0, DCGModeB).
 parse_dcg_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
@@ -1239,8 +1245,12 @@ parse_dcg_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
 
 parse_lambda_arg(Term, ArgTerm, Mode) :-
     Term = term.functor(term.atom("::"), [ArgTerm0, ModeTerm], _),
+    % XXX This is a dummy; fix this.
+    varset.init(VarSet),
     term.coerce(ArgTerm0, ArgTerm),
-    convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
+    parse_mode(allow_constrained_inst_var, VarSet, cord.init,
+        ModeTerm, MaybeMode0),
+    MaybeMode0 = ok1(Mode0),
     constrain_inst_vars_in_mode(Mode0, Mode).
 
 %-----------------------------------------------------------------------------%

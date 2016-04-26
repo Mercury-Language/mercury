@@ -14,5 +14,5 @@ with_type.m:025:   error: the `with_type` and `with_inst` annotations are
 with_type.m:025:   incompatible; they specify 3 modes but only 2 types.
 with_type.m:028: Error: `with_inst' and determinism both specified.
 with_type.m:031: Error: `with_inst' specified without `with_type'.
-with_type.m:034: Error: invalid inst in `with_inst'.
+with_type.m:034: Error: `foo' is not a valid determinism.
 with_type.m:036: Error: `with_inst' specified without argument modes.

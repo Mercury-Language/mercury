@@ -163,7 +163,7 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
             else
                 % We don't support kind annotations yet, and we don't report
                 % an error either. Perhaps we should?
-                parse_sym_name_and_args(Term, VarSet, ContextPieces,
+                parse_sym_name_and_args(VarSet, ContextPieces, Term,
                     NameResult),
                 (
                     NameResult = ok2(SymName, SymNameArgTerms),
@@ -369,20 +369,7 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
 
 parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
         Purity, MaybeType) :-
-    ( if
-        AfterIsTerm = term.functor(term.atom(DetString), [], _),
-        standard_det(DetString, Detism)
-    then
-        MaybeDetism = ok1(Detism)
-    else
-        AfterIsTermStr = describe_error_term(VarSet, AfterIsTerm),
-        DetismPieces = [words("Error: invalid determinism category"),
-            quote(AfterIsTermStr), suffix("."), nl],
-        DetismSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(AfterIsTerm),
-                [always(DetismPieces)])]),
-        MaybeDetism = error1([DetismSpec])
-    ),
+    parse_determinism(VarSet, AfterIsTerm, MaybeDetism),
     ( if
         BeforeIsTerm = term.functor(term.atom("="), [FuncTerm, RetTerm], _),
         FuncTerm = term.functor(term.atom("func"), ArgTerms, _)
@@ -505,28 +492,22 @@ parse_type_and_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
     then
         parse_type(no_allow_ho_inst_info(Why), VarSet, ContextPieces,
             TypeTerm, MaybeType),
-        ( if
+        (
+            MaybeInstConstraints = constrain_some_inst_vars(InstConstraints),
+            parse_mode(allow_constrained_inst_var, VarSet, ContextPieces,
+                ModeTerm, MaybeMode0),
             (
-                MaybeInstConstraints =
-                    constrain_some_inst_vars(InstConstraints),
-                convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
-                constrain_inst_vars_in_mode_sub(InstConstraints, Mode0, Mode1)
+                MaybeMode0 = ok1(Mode0),
+                constrain_inst_vars_in_mode_sub(InstConstraints, Mode0, Mode1),
+                MaybeMode = ok1(Mode1)
             ;
-                MaybeInstConstraints = dont_constrain_inst_vars,
-                convert_mode(no_allow_constrained_inst_var, ModeTerm, Mode1)
+                MaybeMode0 = error1(ModeSpecs),
+                MaybeMode = error1(ModeSpecs)
             )
-        then
-            MaybeMode = ok1(Mode1)
-        else
-            % XXX Have convert_mode give us a more specific error message.
-            ModePieces = [lower_case_next_if_not_first,
-                words("Error: invalid mode"),
-                quote(describe_error_term(VarSet, ModeTerm)),
-                suffix("."), nl],
-            Pieces = cord.list(ContextPieces ++ cord.from_list(ModePieces)),
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ModeTerm), [always(Pieces)])]),
-            MaybeMode = error1([Spec])
+        ;
+            MaybeInstConstraints = dont_constrain_inst_vars,
+            parse_mode(no_allow_constrained_inst_var(wnciv_type_and_mode),
+                VarSet, ContextPieces, ModeTerm, MaybeMode)
         ),
         ( if
             MaybeType = ok1(Type),

@@ -608,7 +608,7 @@ parse_sym_name_string_pair(VarSet, ContextPieces, PairTerm, MaybePair) :-
     Functor = term.atom("-"),
     Args = [SymNameTerm, StringTerm],
     StringTerm = functor(term.string(String), _, _),
-    parse_sym_name_and_args(SymNameTerm, VarSet, ContextPieces,
+    parse_sym_name_and_args(VarSet, ContextPieces, SymNameTerm,
         MaybeSymNameResult),
     (
         MaybeSymNameResult = ok2(SymName, []),
@@ -795,11 +795,11 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
     ( if PragmaTerms = [LangTerm, PredAndModesTerm, FunctionTerm] then
         ( if FunctionTerm = term.functor(term.string(Function), [], _) then
             ContextPieces = cord.from_list([words("In"),
-                pragma_decl("foreign_export"), words("declaration")]),
-            parse_pred_or_func_and_arg_modes(no, PredAndModesTerm,
-                ErrorTerm, VarSet, ContextPieces, MaybePredAndModes),
+                pragma_decl("foreign_export"), words("declaration:")]),
+            parse_pred_or_func_and_arg_modes(no, VarSet, ContextPieces,
+                PredAndModesTerm, MaybePredAndModes),
             (
-                MaybePredAndModes = ok2(PredName - PredOrFunc, Modes),
+                MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
                 ( if parse_foreign_language(LangTerm, ForeignLanguage) then
                     PredNameModesPF = pred_name_modes_pf(PredName, Modes,
                         PredOrFunc),
@@ -820,7 +820,7 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                     MaybeIOM = error1([Spec])
                 )
             ;
-                MaybePredAndModes = error2(Specs),
+                MaybePredAndModes = error3(Specs),
                 MaybeIOM = error1(Specs)
             )
         else
@@ -1420,9 +1420,9 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         PragmaTerms = [PredAndModesTerm0, ArgSizeTerm, TerminationTerm],
         ContextPieces = cord.from_list([words("In"),
             pragma_decl("termination_info"), words("declaration:")]),
-        parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
-            ErrorTerm, VarSet, ContextPieces, MaybeNameAndModes),
-        MaybeNameAndModes = ok2(PredName - PredOrFunc, ModeList),
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
+            ContextPieces, PredAndModesTerm0, MaybeNameAndModes),
+        MaybeNameAndModes = ok3(PredName, PredOrFunc, ModeList),
         ArgSizeTerm = term.functor(term.atom(ArgSizeFunctor),
             ArgSizeArgTerms, _),
         (
@@ -1481,9 +1481,9 @@ parse_pragma_termination2_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             FailureArgSizeTerm, TerminationTerm],
         ContextPieces = cord.from_list([words("In"),
             pragma_decl("termination2_info"), words("declaration:")]),
-        parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
-            ErrorTerm, VarSet, ContextPieces, NameAndModesResult),
-        NameAndModesResult = ok2(PredName - PredOrFunc, ModeList),
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
+            ContextPieces, PredAndModesTerm0, NameAndModesResult),
+        NameAndModesResult = ok3(PredName, PredOrFunc, ModeList),
         parse_arg_size_constraints(SuccessArgSizeTerm, SuccessArgSizeResult),
         SuccessArgSizeResult = ok1(SuccessArgSizeInfo),
         parse_arg_size_constraints(FailureArgSizeTerm, FailureArgSizeResult),
@@ -1529,9 +1529,9 @@ parse_pragma_structure_sharing(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             HeadVarTypesTerm, SharingInformationTerm],
         ModesContextPieces = cord.from_list([words("In"),
             pragma_decl("structure_sharing"), words("declaration:")]),
-        parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
-            ErrorTerm, VarSet, ModesContextPieces, MaybeNameAndModes),
-        MaybeNameAndModes = ok2(PredName - PredOrFunc, ModeList),
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
+            ModesContextPieces, PredAndModesTerm0, MaybeNameAndModes),
+        MaybeNameAndModes = ok3(PredName, PredOrFunc, ModeList),
 
         % Parse the head variables:
         HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
@@ -1586,9 +1586,9 @@ parse_pragma_structure_reuse(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             HeadVarTypesTerm, MaybeStructureReuseTerm],
         ReuseContextPieces = cord.from_list([words("In"),
             pragma_decl("structure_reuse"), words("declaration:")]),
-        parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
-            ErrorTerm, VarSet, ReuseContextPieces, MaybeNameAndModes),
-        MaybeNameAndModes = ok2(PredName - PredOrFunc, ModeList),
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
+            ReuseContextPieces, PredAndModesTerm0, MaybeNameAndModes),
+        MaybeNameAndModes = ok3(PredName, PredOrFunc, ModeList),
 
         % Parse the head variables:
         HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
@@ -2125,7 +2125,8 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet,
             PredOrFunc0 = pf_predicate,
             ArgTerms = NonFuncArgTerms
         ),
-        parse_pragma_foreign_proc_varlist(VarSet, ArgTerms, MaybePragmaVars),
+        parse_pragma_foreign_proc_varlist(VarSet, PredAndVarsContextPieces,
+            ArgTerms, 1, MaybePragmaVars),
         (
             MaybePragmaVars = ok1(PragmaVars0),
             MaybeNamePFPragmaVars = ok3(PredName0, PredOrFunc0, PragmaVars0)
@@ -2663,56 +2664,57 @@ parse_ordinary_despite_detism(
     % Parse the variable list in the pragma foreign_proc declaration.
     % The final argument is 'no' for no error, or 'yes(ErrorMessage)'.
     %
-:- pred parse_pragma_foreign_proc_varlist(varset::in, list(term)::in,
+:- pred parse_pragma_foreign_proc_varlist(varset::in,
+    cord(format_component)::in,list(term)::in, int::in,
     maybe1(list(pragma_var))::out) is det.
 
-parse_pragma_foreign_proc_varlist(_, [], ok1([])).
-parse_pragma_foreign_proc_varlist(VarSet, [HeadTerm | TailTerm],
-        MaybePragmaVars):-
+parse_pragma_foreign_proc_varlist(_, _, [], _, ok1([])).
+parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
+        [HeadTerm | TailTerm], ArgNum, MaybePragmaVars):-
+    parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
+        TailTerm, ArgNum + 1, MaybeTailPragmaVars),
     ( if
         HeadTerm = term.functor(term.atom("::"), [VarTerm, ModeTerm], _),
         VarTerm = term.variable(Var, VarContext)
     then
-        ( if varset.search_name(VarSet, Var, VarName) then
-            ( if convert_mode(allow_constrained_inst_var, ModeTerm, Mode0) then
-                constrain_inst_vars_in_mode(Mode0, Mode),
-                term.coerce_var(Var, ProgVar),
-                HeadPragmaVar = pragma_var(ProgVar, VarName, Mode,
-                    native_if_possible),
-                parse_pragma_foreign_proc_varlist(VarSet, TailTerm,
-                    MaybeTailPragmaVars),
-                (
-                    MaybeTailPragmaVars = ok1(TailPragmaVars),
-                    MaybePragmaVars = ok1([HeadPragmaVar | TailPragmaVars])
-                ;
-                    MaybeTailPragmaVars = error1(_),
-                    MaybePragmaVars = MaybeTailPragmaVars
-                )
-            else
-                Pieces = [
-                    words("Error: unknown mode in pragma foreign_proc."), nl
-                ],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(ModeTerm),
-                        [always(Pieces)])]),
-                MaybePragmaVars = error1([Spec])
-            )
+        ( if varset.search_name(VarSet, Var, VarName0) then
+            MaybeVarName = ok1(VarName0)
         else
             % If the variable wasn't in the varset it must be an
             % underscore variable.
-            Pieces = [words("Sorry, not implemented: "),
+            UnnamedPieces = [words("Sorry, not implemented: "),
                 words("anonymous"), quote("_"),
                 words("variable in pragma foreign_proc."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(VarContext, [always(Pieces)])]),
-            MaybePragmaVars = error1([Spec])
+            UnnamedSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(VarContext, [always(UnnamedPieces)])]),
+            MaybeVarName = error1([UnnamedSpec])
+        ),
+        ArgContextPieces = ContextPieces ++ cord.from_list(
+            [words("in the"), nth_fixed(ArgNum), words("argument:")]),
+        parse_mode(allow_constrained_inst_var, VarSet, ArgContextPieces,
+            ModeTerm, MaybeMode0),
+        ( if
+            MaybeMode0 = ok1(Mode0),
+            MaybeVarName = ok1(VarName),
+            MaybeTailPragmaVars = ok1(TailPragmaVars)
+        then
+            constrain_inst_vars_in_mode(Mode0, Mode),
+            term.coerce_var(Var, ProgVar),
+            HeadPragmaVar = pragma_var(ProgVar, VarName, Mode,
+                native_if_possible),
+            MaybePragmaVars = ok1([HeadPragmaVar | TailPragmaVars])
+        else
+            Specs = get_any_errors1(MaybeTailPragmaVars)
+                ++ get_any_errors1(MaybeVarName)
+                ++ get_any_errors1(MaybeTailPragmaVars),
+            MaybePragmaVars = error1(Specs)
         )
     else
-        Pieces = [words("Error: arguments are not in the form"),
-            quote("Var :: mode"), suffix("."), nl],
+        Pieces = [words("Error: the"), nth_fixed(ArgNum), words("argument is"),
+            words("not in the form"), quote("Var :: mode"), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
-        MaybePragmaVars = error1([Spec])
+        MaybePragmaVars = error1([Spec | get_any_errors1(MaybeTailPragmaVars)])
     ).
 
 :- pred parse_oisu_pragma(module_name::in, varset::in, term::in,
@@ -3183,10 +3185,10 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
             MaybeArityOrModes = error1([Spec])
         )
     else
-        parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
-            PredAndModesTerm0, VarSet, ContextPieces, MaybePredAndModes),
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
+            ContextPieces, PredAndModesTerm0, MaybePredAndModes),
         (
-            MaybePredAndModes = ok2(PredName - PredOrFunc, Modes),
+            MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
             list.length(Modes, Arity0),
             (
                 PredOrFunc = pf_function,
@@ -3199,61 +3201,61 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
                 yes(PredOrFunc), yes(Modes)),
             MaybeArityOrModes = ok1(ArityOrModes)
         ;
-            MaybePredAndModes = error2(Specs),
+            MaybePredAndModes = error3(Specs),
             MaybeArityOrModes = error1(Specs)
         )
     ).
 
-% XXX why not maybe3?
 :- type maybe_pred_or_func_modes ==
-    maybe2(pair(sym_name, pred_or_func), list(mer_mode)).
+    maybe3(sym_name, pred_or_func, list(mer_mode)).
 
-:- pred parse_pred_or_func_and_arg_modes(maybe(module_name)::in, term::in,
-    term::in, varset::in, cord(format_component)::in,
+:- pred parse_pred_or_func_and_arg_modes(maybe(module_name)::in,
+    varset::in, cord(format_component)::in, term::in,
     maybe_pred_or_func_modes::out) is det.
 
-parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
-        ErrorTerm, VarSet, ContextPieces, MaybeNameAndModes) :-
+parse_pred_or_func_and_arg_modes(MaybeModuleName, VarSet, ContextPieces,
+        PredAndModesTerm, MaybeNameAndModes) :-
     parse_pred_or_func_and_args_general(MaybeModuleName, PredAndModesTerm,
         VarSet, ContextPieces, MaybePredAndArgs),
     (
         MaybePredAndArgs = ok2(PredName, ArgModeTerms - MaybeRetModeTerm),
-        ( if
-            convert_mode_list(allow_constrained_inst_var, ArgModeTerms,
-                ArgModes0)
-        then
+        (
+            MaybeRetModeTerm = no,
+            parse_modes(allow_constrained_inst_var, VarSet, ContextPieces,
+                ArgModeTerms, MaybeArgModes),
             (
-                MaybeRetModeTerm = yes(RetModeTerm),
-                ( if
-                    convert_mode(allow_constrained_inst_var, RetModeTerm,
-                        RetMode)
-                then
-                    ArgModes1 = ArgModes0 ++ [RetMode],
-                    list.map(constrain_inst_vars_in_mode, ArgModes1, ArgModes),
-                    MaybeNameAndModes = ok2(PredName - pf_function, ArgModes)
-                else
-                    Pieces = cord.list(ContextPieces) ++
-                        [lower_case_next_if_not_first,
-                        words("Error in return mode."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(ErrorTerm),
-                            [always(Pieces)])]),
-                    MaybeNameAndModes = error2([Spec])
-                )
+                MaybeArgModes = ok1(ArgModes),
+                % For predicates, we don't call constrain_inst_vars_in_mode
+                % on ArgModes. XXX Why precisely?
+                MaybeNameAndModes = ok3(PredName, pf_predicate, ArgModes)
             ;
-                MaybeRetModeTerm = no,
-                MaybeNameAndModes = ok2(PredName - pf_predicate, ArgModes0)
+                MaybeArgModes = error1(Specs),
+                MaybeNameAndModes = error3(Specs)
             )
-        else
-            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error in an argument mode."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-            MaybeNameAndModes = error2([Spec])
+        ;
+            MaybeRetModeTerm = yes(RetModeTerm),
+            parse_modes(allow_constrained_inst_var, VarSet, ContextPieces,
+                ArgModeTerms, MaybeArgModes0),
+            RetContextPieces = ContextPieces ++
+                cord.singleton(words("in the return value:")),
+            parse_mode(allow_constrained_inst_var, VarSet, RetContextPieces,
+                RetModeTerm, MaybeRetMode),
+            ( if
+                MaybeArgModes0 = ok1(ArgModes0),
+                MaybeRetMode = ok1(RetMode)
+            then
+                ArgModes1 = ArgModes0 ++ [RetMode],
+                list.map(constrain_inst_vars_in_mode, ArgModes1, ArgModes),
+                MaybeNameAndModes = ok3(PredName, pf_function, ArgModes)
+            else
+                Specs = get_any_errors1(MaybeArgModes0)
+                    ++ get_any_errors1(MaybeRetMode),
+                MaybeNameAndModes = error3(Specs)
+            )
         )
     ;
         MaybePredAndArgs = error2(Specs),
-        MaybeNameAndModes = error2(Specs)
+        MaybeNameAndModes = error3(Specs)
     ).
 
 :- pred convert_bool(term::in, bool::out) is semidet.

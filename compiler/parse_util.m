@@ -179,8 +179,8 @@ parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
             GenericVarSet, ContextPieces, Result)
     ;
         MaybeModuleName = no,
-        parse_sym_name_and_args(FunctorTerm, GenericVarSet, ContextPieces,
-            Result)
+        parse_sym_name_and_args(GenericVarSet, ContextPieces,
+            FunctorTerm, Result)
     ),
     (
         Result = ok2(SymName, Args),

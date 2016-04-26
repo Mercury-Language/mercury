@@ -567,9 +567,36 @@ parse_arbitrary_constraint_list(VarSet, HeadTerm, TailTerms, Result) :-
 
 parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
     ( if
-        parse_inst_constraint(ConstraintTerm, InstVar, Inst)
+        ConstraintTerm = term.functor(term.atom("=<"), [LHSTerm, RHSTerm], _)
     then
-        Result = ok1(inst_constraint(InstVar, Inst))
+        (
+            LHSTerm = term.variable(InstVar0, _),
+            term.coerce_var(InstVar0, InstVar1),
+            MaybeInstVar = ok1(InstVar1)
+        ;
+            LHSTerm = term.functor(_, _, LHSContext),
+            LHSTermStr = describe_error_term(VarSet, LHSTerm),
+            LHSPieces = [words("Error: a non-variable inst such as"),
+                quote(LHSTermStr), words("may not be the subject"),
+                words("of an inst constraint."), nl],
+            LHSSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(LHSContext, [always(LHSPieces)])]),
+            MaybeInstVar = error1([LHSSpec])
+        ),
+        ContextPieces = cord.from_list([words("In the constraining inst"),
+            words("of an inst constraint:")]),
+        parse_inst(no_allow_constrained_inst_var(wnciv_constraint_rhs),
+            VarSet, ContextPieces, RHSTerm, MaybeInst),
+        ( if
+            MaybeInstVar = ok1(InstVar),
+            MaybeInst = ok1(Inst)
+        then
+            Result = ok1(inst_constraint(InstVar, Inst))
+        else
+            Specs = get_any_errors1(MaybeInstVar)
+                ++ get_any_errors1(MaybeInst),
+            Result = error1(Specs)
+        )
     else if
         parse_fundep(ConstraintTerm, Result0)
     then
@@ -600,15 +627,6 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
             [simple_msg(get_term_context(ConstraintTerm), [always(Pieces)])]),
         Result = error1([Spec])
     ).
-
-:- pred parse_inst_constraint(term::in, inst_var::out, mer_inst::out)
-    is semidet.
-
-parse_inst_constraint(Term, InstVar, Inst) :-
-    Term = term.functor(term.atom("=<"), [Arg1, Arg2], _),
-    Arg1 = term.variable(InstVar0, _),
-    term.coerce_var(InstVar0, InstVar),
-    convert_inst(no_allow_constrained_inst_var, Arg2, Inst).
 
 :- pred parse_fundep(term::in, maybe1(arbitrary_constraint)::out) is semidet.
 
@@ -738,8 +756,8 @@ parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
     % could well be for a typeclass defined in another module.
     NameContextPieces = cord.singleton(words("In instance declaration:")),
     varset.coerce(TVarSet, VarSet),
-    parse_sym_name_and_args(NameTerm, VarSet, NameContextPieces,
-        MaybeClassName),
+    parse_sym_name_and_args(VarSet, NameContextPieces,
+        NameTerm, MaybeClassName),
     (
         MaybeClassName = ok2(ClassName, TypeTerms),
         TypesContextPieces = NameContextPieces,

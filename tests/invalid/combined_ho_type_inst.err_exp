@@ -34,7 +34,7 @@ combined_ho_type_inst.m:031:   error: the type
 combined_ho_type_inst.m:031:   `(((func (int :: in)) = (int :: out)) is semidet)'
 combined_ho_type_inst.m:031:   contains higher order inst information, but this
 combined_ho_type_inst.m:031:   is not allowed in a function's argument.
-combined_ho_type_inst.m:035: Error: invalid determinism category `semiet'.
+combined_ho_type_inst.m:035: Error: `semiet' is not a valid determinism.
 combined_ho_type_inst.m:036: In `:- func' declaration:
 combined_ho_type_inst.m:036:   in the first argument:
 combined_ho_type_inst.m:036:   error: the type

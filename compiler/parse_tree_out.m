@@ -111,6 +111,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_kind.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_tree_out_clause.
@@ -969,7 +970,7 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
     % name. This prevents the compiler giving an error about redefining
     % builtin insts when an interface file is read back in.
     maybe_unqualify_sym_name(Info, SymName0, UnQualSymName),
-    ( if builtin_inst_name(UnQualSymName, InstParams) then
+    ( if is_builtin_inst_name(InstVarSet, UnQualSymName, InstParams) then
         SymName = SymName0
     else
         SymName = UnQualSymName
@@ -1010,12 +1011,17 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
 
     % Succeed if the sym_name describes a builtin inst.
     %
-:- pred builtin_inst_name(sym_name::in, list(inst_var)::in) is semidet.
+:- pred is_builtin_inst_name(inst_varset::in, sym_name::in, list(inst_var)::in)
+    is semidet.
 
-builtin_inst_name(unqualified(Name), Args0) :-
+is_builtin_inst_name(InstVarSet, unqualified(Name), Args0) :-
     Args1 = list.map(func(V) = variable(coerce_var(V), context_init), Args0),
     Term = term.functor(term.atom(Name), Args1, term.context_init),
-    convert_inst(no_allow_constrained_inst_var, Term, Inst),
+    varset.coerce(InstVarSet, VarSet),
+    ContextPieces = cord.init,  % Dummy; not used.
+    parse_inst(no_allow_constrained_inst_var(wnciv_inst_defn_lhs), VarSet,
+        ContextPieces, Term, MaybeInst),
+    MaybeInst = ok1(Inst),
     Inst \= defined_inst(user_inst(_, _)).
 
 %---------------------------------------------------------------------------%

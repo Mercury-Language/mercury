@@ -11,10 +11,12 @@ multimode_syntax.m:017:   no' instead.
 multimode_syntax.m:017: In clause for predicate `::'/2:
 multimode_syntax.m:017:   in argument 2 of clause head:
 multimode_syntax.m:017:   error: undefined symbol `out'/0.
-multimode_syntax.m:022: In clause for function `multimode_syntax.func1'/1:
+multimode_syntax.m:022: In the head of a clause for
+multimode_syntax.m:022:   function `multimode_syntax.func1'/1:
 multimode_syntax.m:022:   syntax error: some but not all arguments have mode
 multimode_syntax.m:022:   annotations.
-multimode_syntax.m:023: In clause for function `multimode_syntax.func1'/1:
+multimode_syntax.m:023: In the head of a clause for
+multimode_syntax.m:023:   function `multimode_syntax.func1'/1:
 multimode_syntax.m:023:   syntax error: some but not all arguments have mode
 multimode_syntax.m:023:   annotations.
 multimode_syntax.m:029: In clause for function `func2'/2:
@@ -41,9 +43,11 @@ multimode_syntax.m:041: In clause for predicate `pred2b'/2:
 multimode_syntax.m:041:   error: mode annotation specifies undeclared mode
 multimode_syntax.m:041:   `pred2b(in, out)'.
 multimode_syntax.m:041:   (There are no declared modes for this predicate.)
-multimode_syntax.m:049: In clause for predicate `multimode_syntax.test2'/2:
+multimode_syntax.m:049: In the head of a clause for
+multimode_syntax.m:049:   predicate `multimode_syntax.test2'/2:
 multimode_syntax.m:049:   syntax error: some but not all arguments have mode
 multimode_syntax.m:049:   annotations.
-multimode_syntax.m:051: In clause for predicate `multimode_syntax.test2'/2:
+multimode_syntax.m:051: In the head of a clause for
+multimode_syntax.m:051:   predicate `multimode_syntax.test2'/2:
 multimode_syntax.m:051:   syntax error: some but not all arguments have mode
 multimode_syntax.m:051:   annotations.

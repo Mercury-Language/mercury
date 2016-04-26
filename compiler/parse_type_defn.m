@@ -869,6 +869,10 @@ parse_type_decl_where_part_if_present(IsSolverType, ModuleName, VarSet,
 
 parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
         MaybeWhereDetails) :-
+    GroundContextPieces = cord.singleton(
+        words("the ground inst of a solver type")),
+    AnyContextPieces = cord.singleton(
+        words("the any inst of a solver type")),
     some [!MaybeTerm] (
         !:MaybeTerm = yes(Term0),
         parse_where_attribute(parse_where_type_is_abstract_noncanonical,
@@ -877,10 +881,10 @@ parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
                 parse_where_type_is(ModuleName, VarSet)),
             MaybeRepresentationIs, !MaybeTerm),
         parse_where_attribute(parse_where_is("ground",
-                parse_where_inst_is(ModuleName)),
+                parse_where_inst_is(ModuleName, VarSet, GroundContextPieces)),
             MaybeGroundIs, !MaybeTerm),
         parse_where_attribute(parse_where_is("any",
-                parse_where_inst_is(ModuleName)),
+                parse_where_inst_is(ModuleName, VarSet, AnyContextPieces)),
             MaybeAnyIs, !MaybeTerm),
         parse_where_attribute(parse_where_is("constraint_store",
                 parse_where_mutable_is(ModuleName)),
@@ -1057,19 +1061,28 @@ parse_where_pred_is(ModuleName, VarSet, Term) = MaybeSymName :-
     parse_implicitly_qualified_symbol_name(ModuleName, VarSet, Term,
         MaybeSymName).
 
-:- func parse_where_inst_is(module_name, term) = maybe1(mer_inst).
+:- func parse_where_inst_is(module_name, varset, cord(format_component), term)
+    = maybe1(mer_inst).
 
-parse_where_inst_is(_ModuleName, Term) = MaybeInst :-
-    ( if
-        convert_inst(no_allow_constrained_inst_var, Term, Inst),
-        not inst_contains_unconstrained_var(Inst)
-    then
-        MaybeInst = ok1(Inst)
-    else
-        Pieces = [words("Error: expected a ground, unconstrained inst."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        MaybeInst = error1([Spec])
+parse_where_inst_is(_ModuleName, VarSet, ContextPieces, Term) = MaybeInst :-
+    parse_inst(no_allow_constrained_inst_var(wnciv_solver_type_inst),
+        VarSet, ContextPieces, Term, MaybeInst0),
+    (
+        MaybeInst0 = error1(Specs),
+        MaybeInst = error1(Specs)
+    ;
+        MaybeInst0 = ok1(Inst),
+        ( if inst_contains_unconstrained_var(Inst) then
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error:"), quote(TermStr),
+                words("is not a ground, unconstrained inst."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            MaybeInst = error1([Spec])
+        else
+            MaybeInst = ok1(Inst)
+        )
     ).
 
 :- func parse_where_type_is(module_name, varset, term) = maybe1(mer_type).
