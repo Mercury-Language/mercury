@@ -1,4 +1,4 @@
 Variable "PATH" is set (passed)
 Variable "SHOULD_NOT_BE_SET" is set not set (passed)
 Cannot modify environment on this platform:
-software_error("Could not set environment variable `SHOULD_NOT_BE_SET\'")
+software_error("Cannot set environment variables on this platform")
