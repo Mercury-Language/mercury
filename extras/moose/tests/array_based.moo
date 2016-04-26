@@ -1,4 +1,4 @@
-% This is a regression test.  It tests that Moo supports parsers that do not
+% This is a regression test.  It tests that moose supports parsers that do not
 % use lists.
 
 :- module array_based.
@@ -57,11 +57,11 @@ scan(Cs0, Toks0, Toks) :-
 		 then
 				scan(Cs, array_cons(num(Num), Toks0), Toks)
 		 else if 	
-				C = ('+') 
+				C = ('+')
 		 then	
 				scan(Cs, array_cons('+', Toks0), Toks)
 		 else if	
-				C = ('(') 
+				C = ('(')
 		 then		
 				scan(Cs, array_cons('(', Toks0), Toks)
 		 else if	
@@ -74,8 +74,8 @@ scan(Cs0, Toks0, Toks) :-
 	).
 
 :- func array_cons(T, array(T)) = array(T).
-:- external(array_cons/2).
+:- pragma external_func(array_cons/2).
 :- func array_reverse(array(T)) = array(T).
-:- external(array_reverse/1).
+:- pragma external_func(array_reverse/1).
 :- func array_tail(array(T)) = array(T).
-:- external(array_tail/1).
+:- pragma external_func(array_tail/1).
