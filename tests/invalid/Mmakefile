@@ -348,7 +348,6 @@ NON_PROFDEEP_MODULES = \
 #		normal static linking; the error goes undetected
 #		when doing dynamic linking)
 #	parent.undeclared_child (just not yet implemented)
-#	bad_detism (error check not yet implemented)
 
 # XXX we do not currently pass the following tests:
 #	nonexistent_import (it is unclear whether the new output is OK or not)
