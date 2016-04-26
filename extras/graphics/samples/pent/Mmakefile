@@ -3,7 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 # To use shared libraries under Linux you need this.
-#MGNUCFLAGS    = --pic-reg
 #EXTRA_MLFLAGS = -shared
 
 TCLTK_VERSION = 8.0

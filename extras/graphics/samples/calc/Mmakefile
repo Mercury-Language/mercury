@@ -6,7 +6,7 @@
 MERCURY_TCLTK_DIR	= ../../mercury_tcltk
 
 # To use shared libraries under Linux you need to add these:
-MGNUCFLAGS    = --pic-reg -I$(MERCURY_TCLTK_DIR) -I/usr/include/tcl8.4
+MGNUCFLAGS    = -I$(MERCURY_TCLTK_DIR) -I/usr/include/tcl8.4
 EXTRA_MLFLAGS = -shared
 
 # This will need to be modified according to the versions of

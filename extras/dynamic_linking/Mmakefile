@@ -9,7 +9,6 @@
 INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 # Use shared libraries, since they're needed for dynamic linking
-MGNUCFLAGS = --pic-reg
 MLFLAGS = --shared
 
 # Link in the `-ldl' library (this may not be needed on some systems)

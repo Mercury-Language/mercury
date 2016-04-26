@@ -608,8 +608,6 @@ compile_file(Options, Succeeded, !IO) :-
     %   --grade
     %       make sure the grade of libmdb_query.so matches the
     %       grade of the executable it will be linked against
-    %   --pic-reg
-    %       needed for shared libraries / dynamic linking
     %   --infer-all
     %       for inferring the type etc. of query/N
     %   -O0 --no-c-optimize
@@ -632,7 +630,7 @@ compile_file(Options, Succeeded, !IO) :-
         "--output-compile-error-lines 10000 ",
         "--allow-undefined ", Options,
         " --grade ", grade_option,
-        " --pic-reg --compile-to-shared-lib ",
+        " --compile-to-shared-lib ",
         query_module_name],
         Command),
     invoke_system_command(Command, Succeeded, !IO).

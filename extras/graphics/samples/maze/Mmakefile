@@ -9,7 +9,7 @@ MAIN_TARGET = maze
 MERCURY_OPENGL_DIR = ../../mercury_opengl
 MERCURY_GLUT_DIR = ../../mercury_glut
 
-MGNUCFLAGS = --pic-reg -I$(MERCURY_OPENGL_DIR) -I$(MERCURY_GLUT_DIR)
+MGNUCFLAGS = -I$(MERCURY_OPENGL_DIR) -I$(MERCURY_GLUT_DIR)
 EXTRA_MLFLAGS = -shared
 
 EXTRA_MLLIBS = -lGLU -lglut -lGL -L/usr/X11R6/lib -lX11 -lXext -lXi \
