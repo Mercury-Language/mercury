@@ -8,29 +8,27 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
 
 :- func foo(int) = int.
-/*
-XXX `pragma export' not yet supported for Java
-:- pragma export(foo(in) = out, "foo").
-*/
+
+:- pragma foreign_export("Java", foo(in) = out, "foo").
 foo(X) = X + 1.
 
-main -->
-    java_write_string("Hello, world\n"),
-    ( { java_semidet_succeed } ->
-        []
-    ;
-        java_write_string("java_semidet_succeed failed\n")
+main(!IO) :-
+    java_write_string("Hello, world\n", !IO),
+    ( if java_semidet_succeed then
+        true
+    else
+        java_write_string("java_semidet_succeed failed\n", !IO)
     ),
-    ( { java_semidet_fail } ->
-        java_write_string("java_semidet_fail succeeded\n")
-    ;
-        []
+    ( if java_semidet_fail then
+        java_write_string("java_semidet_fail succeeded\n", !IO)
+    else
+        true
     ).
 
 :- pragma foreign_decl("Java", "
@@ -41,17 +39,14 @@ main -->
 :- pragma foreign_code("Java", "
     // some Java in-class declarations
     static void bar() {
-/*
-XXX `pragma export' not yet supported for Java
-        // test `pragma export' functions
+        // test `:- pragma foreign_export' functions.
         if (foo(42) != 43) {
             throw new java.lang.Error(""bar: foo failed"");
         }
-*/
     }
 ").
 
-:- pred java_write_string(string::in, io__state::di, io__state::uo) is det.
+:- pred java_write_string(string::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("Java",
     java_write_string(Message::in, _IO0::di, _IO::uo),
