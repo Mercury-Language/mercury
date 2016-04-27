@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: dep_par_conj.m.
 % Author: wangp.
@@ -97,30 +97,26 @@
 % - The predicates and functions in this module whose names start with the
 %   prefixes "sync_dep_par_conjs", "insert_wait_in" and "insert_signal_in"
 %   implement the synchronization transformation
+%
 % - Those whose names start with "find_specialization_requests" or include
 %   "specialization" implement part (a) of the specialization transformation.
+%
 % - Those whose names start with "add_requested_specialized" implement part (b)
 %   of the specialization transformation.
 %
 % TODO:
-% - reconsider when this pass is run; in particular par_builtin primitives
-%   ought to be inlined
+% - Reconsider when this pass is run; in particular par_builtin primitives
+%   ought to be inlined.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.dep_par_conj.
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.instmap.
-:- import_module parse_tree.
-:- import_module parse_tree.set_of_var.
 
-:- import_module list.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Transform all the parallel conjunctions in the procedures of this module
     % according to the scheme shown above.
@@ -128,18 +124,8 @@
 :- pred impl_dep_par_conjs_in_module(module_info::in, module_info::out)
     is det.
 
-    % Given the conjunct goals in a parallel conjunction and the instmap before
-    % it, return the set of variables that need synchronization, i.e. the
-    % variables that are produced in one conjunct and consumed in one or more
-    % other conjuncts.
-    %
-    % This function is exported for use by the implicit_parallelism pass.
-    %
-:- func find_shared_variables(module_info, instmap, list(hlds_goal))
-    = set_of_progvar.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -148,10 +134,12 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
@@ -163,18 +151,21 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module io.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -184,7 +175,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 impl_dep_par_conjs_in_module(!ModuleInfo) :-
     InitialModuleInfo = !.ModuleInfo,
@@ -217,8 +208,8 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
     module_info_set_ts_rev_string_table(TSStringTable ^ st_size,
         TSStringTable ^ st_rev_table, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The synchronization transformation.
 %
@@ -301,7 +292,7 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
             AllowSomePathsOnly),
 
         % We rely on dependency information in order to determine which calls
-        % are recursive.  The information is stored within !ModuleInfo so
+        % are recursive. The information is stored within !ModuleInfo so
         % doesn't need to be kept here, this call simply forces an update.
         module_info_rebuild_dependency_info(!ModuleInfo, _),
 
@@ -374,11 +365,11 @@ sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
             ( if instmap_delta_is_unreachable(Goal0InstmapDelta) then
                 % If the instmap becomes unreachable then calculating the
                 % produces and consumers for the dependant parallel conjunction
-                % transformation becomes impossible.  Since this probably
+                % transformation becomes impossible. Since this probably
                 % throws an exception anyway there's no point parallelising it.
-                % This should not be a compiler error.  For instance in the
+                % This should not be a compiler error. For instance in the
                 % bug_130 test case a call to a deterministic predicate whose
-                % body is erroneous is inlined.  Generating an error in this
+                % body is erroneous is inlined. Generating an error in this
                 % case would confuse the programmer.
                 conj_list_to_goal(Goals, GoalInfo0, Goal)
             else
@@ -468,7 +459,7 @@ sync_dep_par_conjs_in_cases([Case0 | Cases0], [Case | Cases], InstMap0,
     Case = case(MainConsId, OtherConsIds, Goal),
     sync_dep_par_conjs_in_cases(Cases0, Cases, InstMap0, !SyncInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We found a parallel conjunction. Check for any dependencies between
     % the conjuncts and, if we find some, insert sychronisation primitives.
@@ -575,7 +566,7 @@ sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
         NewGoal = hlds_goal(scope(Reason, NewGoal0), GoalInfo)
     ).
 
-    % Add waits and signals into the body of a procedure.  This is slightly
+    % Add waits and signals into the body of a procedure. This is slightly
     % different from adding them to a parallel conjunct. We have to maintain
     % the extra invariant that the procedure guarantees that all futures have
     % been waited on, For futures that would have been inputs to the procedure
@@ -584,7 +575,7 @@ sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
     % XXX: In some cases the pushed variable appears in the head of the
     % procedure but not in the body, that is to say it is an unused argument.
     % In these cases the specialization creates slower code than the original
-    % procedure simply to maintain the above invariant.  Can an unused argument
+    % procedure simply to maintain the above invariant. Can an unused argument
     % analysis prevent this situation?
     %
 :- pred sync_dep_par_proc_body(module_info::in, bool::in,
@@ -688,10 +679,10 @@ insert_wait_in_goal_for_proc(ModuleInfo, AllowSomePathsOnly, FutureMap,
         ConsumedVar, !Goal, !VarSet, !VarTypes) :-
     insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap,
         ConsumedVar, WaitedOnAllSuccessPaths, !Goal, !VarSet, !VarTypes),
-    % If we did not wait on all success paths then we must insert a
-    % wait here.  This preserves the invariant that a procedure called
-    % with a future that it should wait on will wait on it in all
-    % cases.  This way any future_get calls after such a call are safe.
+    % If we did not wait on all success paths then we must insert a wait here.
+    % This preserves the invariant that a procedure called with a future
+    % that it should wait on will wait on it in all cases. This way,
+    % any future_get calls after such a call are safe.
     (
         WaitedOnAllSuccessPaths = waited_on_all_success_paths
     ;
@@ -700,7 +691,7 @@ insert_wait_in_goal_for_proc(ModuleInfo, AllowSomePathsOnly, FutureMap,
             !VarSet, !VarTypes)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type waited_on_all_success_paths
     --->    waited_on_all_success_paths
@@ -1106,7 +1097,7 @@ insert_wait_in_cases(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
         ConsumedVar, !WaitedOnAllSuccessPaths, Cases0, Cases,
         !VarSet, !VarTypes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Look for the first instance of the produced variable down every
     % branch. The first goal referring to the variable must produce it,
@@ -1237,7 +1228,7 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
         NumSolutions = at_most_zero,
         % We don't bother pushing signals into code that has no solutions.
         % Note that we can't call unexpected here since we could be trying to
-        % push a signal into a procedure during specialisation.  We must fail
+        % push a signal into a procedure during specialisation. We must fail
         % gracefully.
         Goal = Goal0
     ).
@@ -1337,8 +1328,8 @@ insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
     insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
         Cases0, Cases, !VarSet, !VarTypes).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The independent parallel conjunction re-ordering transformation.
 %
@@ -1446,7 +1437,7 @@ push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
     list(pred_proc_id)::out) is det.
 
 search_scc(SCCs, PredProcId, SCC) :-
-    % There should not be more than one solution here.  Operationally the
+    % There should not be more than one solution here. Operationally the
     % search stops after finding the first solution.
     promise_equivalent_solutions [SCC]
     ( if
@@ -1458,8 +1449,8 @@ search_scc(SCCs, PredProcId, SCC) :-
         unexpected($module, $pred, "Couldn't find SCC for pred/proc id.")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The specialization transformation.
 %
@@ -1561,7 +1552,7 @@ search_scc(SCCs, PredProcId, SCC) :-
     %
 :- type future_map == map(prog_var, prog_var).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred find_specialization_requests_in_proc(done_par_procs::in,
     module_info::in, pred_proc_id::in, module_info::in, module_info::out,
@@ -1746,7 +1737,7 @@ replace_head_vars(ModuleInfo, FutureMap,
             Mode = (Ground -> Ground)
         else
             sorry($module, $pred,
-                "dependent parallel conjunction transformation " ++
+                "the dependent parallel conjunction transformation " ++
                 "only understands input and output modes")
         )
     else
@@ -1766,7 +1757,7 @@ any_output_arguments(ModuleInfo, [Mode | Modes]) :-
     ; any_output_arguments(ModuleInfo, Modes)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Replace contiguous sequences of waits, a call to P, then signals by a
     % call to a parallelised procedure P'. Queue P' to be created later,
@@ -1888,13 +1879,13 @@ specialize_sequences_in_cases([Case0 | Cases0], [Case | Cases], !SpecInfo) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     specialize_sequences_in_cases(Cases0, Cases, !SpecInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst call_goal_expr
-    ==  bound(plain_call(ground, ground, ground, ground, ground, ground)).
+    == bound(plain_call(ground, ground, ground, ground, ground, ground)).
 
 :- inst call_goal
-    ==  bound(hlds_goal(call_goal_expr, ground)).
+    == bound(hlds_goal(call_goal_expr, ground)).
 
 :- pred maybe_specialize_call_and_goals(list(hlds_goal)::in,
     hlds_goal::in(call_goal), list(hlds_goal)::in,
@@ -1933,7 +1924,7 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
                 PredProcId = CallerPredProcId
             ;
                 % Or this call is to the original version of a specialised
-                % procedure.  This occurs for recursive calls in specialised
+                % procedure. This occurs for recursive calls in specialised
                 % procedures.
                 map.search(!.SpecInfo ^ spec_rev_proc_map, CallerPredProcId,
                     PredProcId)
@@ -1977,7 +1968,7 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
                 MaybeGoal = yes(Goal),
 
                 % After the replaced call may be further references to a
-                % signalled or waited variable.  If so, add `get' goals after
+                % signalled or waited variable. If so, add `get' goals after
                 % the transformed goal to make sure the variable is bound.
                 PushedPairs = PushedSignalPairs ++ PushedWaitPairs,
                 list.filter(should_add_get_goal(NonLocals, FwdGoals1),
@@ -2169,7 +2160,7 @@ get_or_create_spec_par_proc(FutureArgs, CallPattern, OrigPPId, MaybeSpecProc,
         SpecNewParProc = new_par_proc(SpecPPId, SpecSymName),
         MaybeSpecProc = spec_proc(SpecPPId, SpecSymName)
     else if
-        % This check prevents invalid code from being generated.  See also
+        % This check prevents invalid code from being generated. See also
         % a similar check in maybe_specialize_call_and_goals/6
         %
         % Don't push signals or waits into any procedure that has
@@ -2266,10 +2257,10 @@ should_add_get_goal(NonLocals, FwdGoals, future_var_pair(_, Var)) :-
         set_of_var.contains(NonLocals, Var)
     ;
         % If any of the other goals in the conjunction mention the variable
-        % then we should also add a get_future variable call.  We don't need to
+        % then we should also add a get_future variable call. We don't need to
         % check RevGoals, the only reason the variable might be mentioned there
-        % would be because it was previously partially instantiated.  But since
-        % we're adding a get_future call that does not make sense.  I'm
+        % would be because it was previously partially instantiated. But since
+        % we're adding a get_future call that does not make sense. I'm
         % assuming that only free -> ground instantiation state changes are
         % allowed for these variables.
         member(Goal, FwdGoals),
@@ -2277,7 +2268,7 @@ should_add_get_goal(NonLocals, FwdGoals, future_var_pair(_, Var)) :-
         set_of_var.contains(GoalNonLocals, Var)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_new_spec_parallel_pred(list(arg_pos)::in, pred_proc_id::in,
     pred_proc_id::out, string::out, module_info::in, module_info::out) is det.
@@ -2370,7 +2361,7 @@ futurise_argtypes(ArgNo, [FutureArg | FutureArgs], [ArgType | ArgTypes],
 futurise_argtypes(_, [_ | _], [], _) :-
     unexpected($module, $pred, "more future arguments than argument types").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type push_op
     --->    push_wait
@@ -2457,7 +2448,7 @@ should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing, SpecInfo) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type cost_before_wait
     --->    not_seen_wait_negligible_cost_so_far
@@ -2729,18 +2720,18 @@ should_we_push_wait_in_cases(Var, [Case | Cases], SeenWait, CostBeforeWait) :-
         CostBeforeWait = seen_wait_non_negligible_cost_before
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type cost_after_signal
     --->    not_seen_signal
     ;       code_has_no_solutions
-                % The goal has no solutions and therefore does not produce the
-                % result.
+            % The goal has no solutions and therefore does not produce
+            % the result.
 
     ;       seen_signal_negligible_cost_after
     ;       seen_signal_non_negligible_cost_after.
 
-    % The should we signal code only makes sense when it's input is one of
+    % The should we signal code only makes sense when its input is one of
     % these values for !.Signal.
     %
 :- inst cost_after_signal_in
@@ -2748,8 +2739,7 @@ should_we_push_wait_in_cases(Var, [Case | Cases], SeenWait, CostBeforeWait) :-
     ;       seen_signal_negligible_cost_after.
 
 :- pred seen_produced_var(cost_after_signal::in(cost_after_signal_in),
-    cost_after_signal::out)
-    is det.
+    cost_after_signal::out) is det.
 
 seen_produced_var(!Signal) :-
     (
@@ -2835,7 +2825,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
             GoalExpr = disj(Disjuncts),
             % What we do in this case doesn't usually matter. Semidet
             % disjunctions cannot bind any nonlocal variables (and thus cannot
-            % bind Var).  Nondet disjunctions can bind variables, but we want
+            % bind Var). Nondet disjunctions can bind variables, but we want
             % to parallelize only model_det code. The only case where what we
             % do here matters is when a nondet disjunction is inside a scope
             % that commits to the first success.
@@ -2929,7 +2919,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
     ;
         NumSolutions = at_most_zero,
         % The goal can never complete, which means that it can never produce
-        % the future and has an 'unreachable' instmap.  Note that we haven't
+        % the future and has an 'unreachable' instmap. Note that we haven't
         % checked that this goal or a goal after it definitely produce the
         % variable.
         !:Signal = code_has_no_solutions
@@ -3069,8 +3059,7 @@ should_we_push_signal_in_cases(Var, [FirstCase | LaterCases], OrigSignal,
         ),
         % We want to push the signal only if it is worth pushing
         % into one of the rest of the cases.
-        should_we_push_signal_in_cases(Var, LaterCases, OrigSignal,
-            Signal0),
+        should_we_push_signal_in_cases(Var, LaterCases, OrigSignal, Signal0),
         (
             SignalFirst = seen_signal_negligible_cost_after,
             (
@@ -3126,8 +3115,8 @@ seen_more_signal_2(seen_signal_non_negligible_cost_after,
 seen_more_signal_2(seen_signal_non_negligible_cost_after,
     seen_signal_non_negligible_cost_after) = yes.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Utilities for working with par_builtin.
 %
@@ -3377,7 +3366,7 @@ par_builtin_foreign_proc_attributes(Purity, MaybeExtraAttr) = Attrs :-
         Attrs = !.Attrs
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred conjoin_goal_and_goal_list_update_goal_infos(hlds_goal_info::in,
     hlds_goal::in, list(hlds_goal)::in, hlds_goal::out) is det.
@@ -3415,11 +3404,19 @@ conjoin_goals_update_goal_infos(!.GoalInfo, GoalA, GoalB, Goal) :-
     conjoin_goal_and_goal_list_update_goal_infos(!.GoalInfo, GoalA, GoalListB,
         Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % If a variable is nonlocal to a conjunct, and appears in the
-    % instmap_delta of a _different_ conjunct, then we say that variable is
-    % shared.
+    % Given the conjunct goals in a parallel conjunction and the instmap before
+    % it, return the set of variables that need synchronization, i.e. the
+    % variables that are produced in one conjunct and consumed in one or more
+    % other conjuncts.
+    %
+:- func find_shared_variables(module_info, instmap, list(hlds_goal))
+    = set_of_progvar.
+
+find_shared_variables(ModuleInfo, InstMap, Goals) = SharedVars :-
+    % If a variable is nonlocal to a conjunct, and appears in the instmap_delta
+    % of a _different_ conjunct, then we say that variable is shared.
     %
     % (1) A variable must be nonlocal to a conjunct if it is shared.
     % (2) If the variable does not appear in the instmap_delta
@@ -3427,10 +3424,9 @@ conjoin_goals_update_goal_infos(!.GoalInfo, GoalA, GoalB, Goal) :-
     %     then it could not have been further instantiated within
     %     by the conjunction as a whole.
     %
-    % XXX This code is probably too complicated.  I think Thomas already had a
+    % XXX This code is probably too complicated. I think Thomas already had a
     % more elegant way to find the shared variables somewhere, using multisets.
     %
-find_shared_variables(ModuleInfo, InstMap, Goals) = SharedVars :-
     list.map2(get_nonlocals_and_instmaps, Goals, Nonlocals, InstMapDeltas),
     find_shared_variables_2(ModuleInfo, 0, Nonlocals, InstMap, InstMapDeltas,
         set_of_var.init, SharedVars).
@@ -3474,7 +3470,7 @@ changed_var(ModuleInfo, InstMapDeltas, UnboundVar) :-
     instmap_delta_search_var(InstMapDelta, UnboundVar, Inst),
     inst_is_bound(ModuleInfo, Inst).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred fixup_and_reinsert_proc(pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
@@ -3503,7 +3499,7 @@ var_in_nonlocals(Var, Goal) :-
 var_not_in_nonlocals(Var, Goal) :-
     not var_in_nonlocals(Var, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Threadscope support used in this module.
 %
@@ -3544,6 +3540,6 @@ make_ts_string_table_2([Str | Strs], Size, !Map) :-
     Size = Size0 + 1,
     map.det_insert(Str, Size0, !Map).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.dep_par_conj.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
