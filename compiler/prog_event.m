@@ -60,6 +60,7 @@
 
 :- implementation.
 
+:- import_module libs.file_util.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
@@ -92,76 +93,63 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
     % those tools are not yet mature enough. When they are, we should switch
     % to using them.
 
-    io.make_temp_file(TermFileNameResult, !IO),
+    open_temp_input(TermFileResult, read_specs_file(SpecsFileName), !IO),
     (
-        TermFileNameResult = ok(TermFileName),
-        read_specs_file(SpecsFileName, TermFileName, Problem, !IO),
-        ( if Problem = "" then
-            io.open_input(TermFileName, TermOpenRes, !IO),
-            (
-                TermOpenRes = ok(TermStream),
-                io.read(TermStream, TermReadRes, !IO),
-                (
-                    TermReadRes = ok(EventSetTerm),
-                    EventSetTerm = event_set_spec(EventSetName,
-                        EventSpecsTerm),
-                    convert_list_to_spec_map(SpecsFileName, EventSpecsTerm,
-                        map.init, EventSpecMap, [], ErrorSpecs)
-                ;
-                    TermReadRes = eof,
-                    EventSetName = "",
-                    EventSpecMap = map.init,
-                    Pieces = [words("eof in term specification file"), nl],
-                    ErrorSpec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [error_msg(no, do_not_treat_as_first, 0,
-                            [always(Pieces)])]),
-                    ErrorSpecs = [ErrorSpec]
-                ;
-                    TermReadRes = error(TermReadMsg, LineNumber),
-                    EventSetName = "",
-                    EventSpecMap = map.init,
-                    Pieces = [words(TermReadMsg), nl],
-                    ErrorSpec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(context(TermFileName, LineNumber),
-                            [always(Pieces)])]),
-                    ErrorSpecs = [ErrorSpec]
-                ),
-                io.close_input(TermStream, !IO)
-            ;
-                TermOpenRes = error(TermOpenError),
-                EventSetName = "",
-                EventSpecMap = map.init,
-                Pieces = [words("Could not open"), quote(TermFileName),
-                    words(":"), words_quote(error_message(TermOpenError)), nl],
-                ErrorSpec = error_spec(severity_error,
-                    phase_term_to_parse_tree,
-                    [error_msg(no, do_not_treat_as_first, 0,
-                        [always(Pieces)])]),
-                ErrorSpecs = [ErrorSpec]
-            )
-        else
+        TermFileResult = ok({TermFileName, TermStream}),
+        io.read(TermStream, TermReadRes, !IO),
+        (
+            TermReadRes = ok(EventSetTerm),
+            EventSetTerm = event_set_spec(EventSetName,
+                EventSpecsTerm),
+            convert_list_to_spec_map(SpecsFileName, EventSpecsTerm,
+                map.init, EventSpecMap, [], ErrorSpecs)
+        ;
+            TermReadRes = eof,
             EventSetName = "",
             EventSpecMap = map.init,
-            Pieces = [words(Problem), nl],
-            ErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [error_msg(no, do_not_treat_as_first, 0, [always(Pieces)])]),
+            Pieces = [words("eof in term specification file"), nl],
+            ErrorSpec = error_spec(severity_error,
+                phase_term_to_parse_tree,
+                [error_msg(no, do_not_treat_as_first, 0,
+                    [always(Pieces)])]),
+            ErrorSpecs = [ErrorSpec]
+        ;
+            TermReadRes = error(TermReadMsg, LineNumber),
+            EventSetName = "",
+            EventSpecMap = map.init,
+            Pieces = [words(TermReadMsg), nl],
+            ErrorSpec = error_spec(severity_error,
+                phase_term_to_parse_tree,
+                [simple_msg(context(TermFileName, LineNumber),
+                    [always(Pieces)])]),
             ErrorSpecs = [ErrorSpec]
         ),
+        io.close_input(TermStream, !IO),
         io.remove_file(TermFileName, _RemoveRes, !IO)
     ;
-        TermFileNameResult = error(TermFileNameError),
+        TermFileResult = error(ErrorMessage),
         EventSetName = "",
         EventSpecMap = map.init,
-        Pieces = [words("Could not create temporary file:"),
-            words_quote(error_message(TermFileNameError)), nl],
-        ErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [error_msg(no, do_not_treat_as_first, 0, [always(Pieces)])]),
+        Pieces = [words(ErrorMessage), nl],
+        ErrorSpec = error_spec(severity_error,
+            phase_term_to_parse_tree,
+            [error_msg(no, do_not_treat_as_first, 0,
+                [always(Pieces)])]),
         ErrorSpecs = [ErrorSpec]
     ).
 
-:- pred read_specs_file(string::in, string::in, string::out,
+:- pred read_specs_file(string::in, string::in, maybe_error::out,
+    io::di, io::uo) is det.
+
+read_specs_file(SpecsFile, TermFile, Result, !IO) :-
+    read_specs_file_2(SpecsFile, TermFile, Problem, !IO),
+    ( if Problem = "" then
+        Result = ok
+    else
+        Result = error(Problem)
+    ).
+
+:- pred read_specs_file_2(string::in, string::in, string::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_decl("C",
@@ -179,7 +167,7 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
 ").
 
 :- pragma foreign_proc("C",
-    read_specs_file(SpecsFileName::in, TermFileName::in, Problem::out,
+    read_specs_file_2(SpecsFileName::in, TermFileName::in, Problem::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -192,7 +180,7 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
     MR_restore_transient_hp();
 ").
 
-read_specs_file(_, _, _, _, _) :-
+read_specs_file_2(_, _, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
 :- pragma foreign_code("C", "

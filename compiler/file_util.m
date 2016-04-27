@@ -132,6 +132,30 @@
 :- func make_install_dir_command(globals, string, string) = string.
 
 %-----------------------------------------------------------------------------%
+
+    % open_temp_output(Dir, Prefix, Suffix, Result, !IO)
+    %
+    % Create a temporary file and open it for writing.  If successful Result
+    % returns the file's name and output stream.  On error any temporary
+    % file will be removed.
+    %
+:- pred open_temp_output(string::in, string::in, string::in,
+    maybe_error({string, text_output_stream})::out, io::di, io::uo) is det.
+
+:- pred open_temp_output(maybe_error({string, text_output_stream})::out,
+    io::di, io::uo) is det.
+
+    % open_temp_input(Result, WritePred, !IO)
+    %
+    % Create a temporary file and call WritePred which will write data to
+    % it.  If successful Result returns the file's name and a freshly opened
+    % input stream.  On error any temporary file will be removed.
+    %
+:- pred open_temp_input(maybe_error({string, text_input_stream})::out,
+    pred(string, maybe_error, io, io)::in(pred(in, out, di, uo) is det),
+    io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -436,6 +460,67 @@ make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
     ),
     Command = string.join_list("   ", list.map(quote_arg,
         [InstallCmd, InstallCmdDirOpt, SourceDirName, InstallDir])).
+
+%-----------------------------------------------------------------------------%
+
+open_temp_output(Dir, Prefix, Suffix, Result, !IO) :-
+    make_temp_file(Dir, Prefix, Suffix, TempFileResult, !IO),
+    open_temp_output_2(TempFileResult, Result, !IO).
+
+open_temp_output(Result, !IO) :-
+    make_temp_file(TempFileResult, !IO),
+    open_temp_output_2(TempFileResult, Result, !IO).
+
+:- pred open_temp_output_2(io.res(string)::in,
+    maybe_error({string, text_output_stream})::out, io::di, io::uo) is det.
+
+open_temp_output_2(TempFileResult, Result, !IO) :-
+    (
+        TempFileResult = ok(TempFileName),
+        open_output(TempFileName, OpenResult, !IO),
+        (
+            OpenResult = ok(Stream),
+            Result = ok({TempFileName, Stream})
+        ;
+            OpenResult = error(Error),
+            remove_file(TempFileName, _, !IO),
+            Result = error(format(
+                "could not open temporary file `%s': %s",
+                [s(TempFileName), s(error_message(Error))]))
+        )
+    ;
+        TempFileResult = error(Error),
+        Result = error(format("could not create temporary file: %s",
+            [s(error_message(Error))]))
+    ).
+
+open_temp_input(Result, Pred, !IO) :-
+    make_temp_file(TempFileResult, !IO),
+    (
+        TempFileResult = ok(TempFileName),
+        Pred(TempFileName, PredResult, !IO),
+        (
+            PredResult = ok,
+            open_input(TempFileName, OpenResult, !IO),
+            (
+                OpenResult = ok(Stream),
+                Result = ok({TempFileName, Stream})
+            ;
+                OpenResult = error(Error),
+                Result = error(format("could not open `%s': %s",
+                    [s(TempFileName), s(error_message(Error))])),
+                remove_file(TempFileName, _, !IO)
+            )
+        ;
+            PredResult = error(ErrorMessage),
+            remove_file(TempFileName, _, !IO),
+            Result = error(ErrorMessage)
+        )
+    ;
+        TempFileResult = error(Error),
+        Result = error(format("could not create temporary file: %s",
+            [s(error_message(Error))]))
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.file_util.

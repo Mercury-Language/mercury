@@ -979,28 +979,15 @@ fact_table_mode_type([Mode | Modes], ModuleInfo, ModeType) :-
 
 open_sort_files([], [], !Errors, !IO).
 open_sort_files([ProcID | ProcIDs], ProcStreams, !Errors, !IO) :-
-    io.make_temp_file(SortFileNameResult, !IO),
+    open_temp_output(SortFileNameResult, !IO),
     (
-        SortFileNameResult = ok(SortFileName),
-        io.open_output(SortFileName, Result, !IO),
-        (
-            Result = ok(Stream),
-            open_sort_files(ProcIDs, ProcStreams0, !Errors, !IO),
-            ProcStreams = [proc_stream(ProcID, Stream) | ProcStreams0]
-        ;
-            Result = error(ErrorCode),
-            ProcStreams = [],
-            io.error_message(ErrorCode, Message),
-            string.format("Error opening file `%s' for output: %s.",
-                [s(SortFileName), s(Message)], Msg),
-            add_error_report([words(Msg)], !Errors)
-        )
+        SortFileNameResult = ok({_SortFileName, Stream}),
+        open_sort_files(ProcIDs, ProcStreams0, !Errors, !IO),
+        ProcStreams = [proc_stream(ProcID, Stream) | ProcStreams0]
     ;
-        SortFileNameResult = error(Error),
+        SortFileNameResult = error(ErrorMessage),
         ProcStreams = [],
-        string.format("Could not create temporary file: %s.",
-            [s(error_message(Error))], Msg),
-        add_error_report([words(Msg)], !Errors)
+        add_error_report([words(ErrorMessage)], !Errors)
     ).
 
     % close_sort_files(ProcStreams, ProcFiles, !IO):
