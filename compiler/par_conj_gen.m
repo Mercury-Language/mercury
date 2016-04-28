@@ -160,7 +160,7 @@
 
 %---------------------------------------------------------------------------%
 
-generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
+generate_par_conj(Conjuncts, GoalInfo, CodeModel, Code, !CI, !CLD) :-
     % Some sanity checks.
     (
         CodeModel = model_det
@@ -205,11 +205,11 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
 
     Nonlocals = goal_info_get_code_gen_nonlocals(GoalInfo),
     set_of_var.to_sorted_list(Nonlocals, Variables),
-    get_instmap(!.CLD, Initial),
-    Delta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(Initial, Delta, Final),
+    get_instmap(!.CLD, InitialInstMap),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+    instmap.apply_instmap_delta(InitialInstMap, InstMapDelta, Final),
     get_module_info(!.CI, ModuleInfo),
-    find_outputs(Variables, Initial, Final, ModuleInfo, [], Outputs),
+    find_outputs(Variables, InitialInstMap, Final, ModuleInfo, [], Outputs),
 
     % Reserve a contiguous block on the stack to hold the synchronisation term.
     Contents = list.duplicate(STSize, slot_sync_term),
@@ -228,10 +228,11 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
         unexpected($module, $pred, "cannot find stack slot")
     ),
 
-    NumGoals = list.length(Goals),
+    NumConjuncts = list.length(Conjuncts),
     create_static_conj_id(GoalInfo, StaticConjId, !CI),
     MakeSyncTermCode = singleton(
-        llds_instr(init_sync_term(SyncTermBaseSlot, NumGoals, StaticConjId),
+        llds_instr(
+            init_sync_term(SyncTermBaseSlot, NumConjuncts, StaticConjId),
             "initialize sync term")
     ),
 
@@ -244,8 +245,8 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
         clear_all_registers(no, !InConjunctionCLD),
         remember_position(!.InConjunctionCLD, ConjunctStartPos)
     ),
-    generate_det_par_conjuncts(ConjunctStartPos, Goals, ParentSyncTermBaseSlot,
-        EndLabel, Initial, no, GoalCode, !CI),
+    generate_det_par_conjuncts(ConjunctStartPos, InitialInstMap,
+        EndLabel, ParentSyncTermBaseSlot, Conjuncts, no, GoalCode, !CI),
 
     EndLabelCode = from_list([
         llds_instr(label(EndLabel), "end of parallel conjunction"),
@@ -276,7 +277,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
     % For now we only release the sync slots of parallel conjunctions at the
     % top level.
     %
-    % XXX release sync slots of nested parallel conjunctions
+    % XXX Release the sync slots of nested parallel conjunctions.
 
     reset_to_position(BeforeConjunctionPos, !.CI, !:CLD),
     ( if Depth = 0 then
@@ -287,26 +288,27 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
     ),
     (
         MaybeReleaseParentSpSlot = yes(ParentSpSlot1),
-        release_temp_slot(ParentSpSlot1, non_persistent_temp_slot,
-            !CI, !CLD)
+        release_temp_slot(ParentSpSlot1, non_persistent_temp_slot, !CI, !CLD)
     ;
         MaybeReleaseParentSpSlot = no
     ),
     clear_all_registers(no, !CLD),
     place_all_outputs(Outputs, !.CI, !CLD).
 
-:- pred generate_det_par_conjuncts(position_info::in, list(hlds_goal)::in,
-    lval::in, label::in, instmap::in, branch_end::in, llds_code::out,
+:- pred generate_det_par_conjuncts(position_info::in, instmap::in, label::in,
+    lval::in, list(hlds_goal)::in, branch_end::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-generate_det_par_conjuncts(_ConjunctStartPos, [],
-        _ParentSyncTermBaseSlot, _EndLabel, _Initial, _, empty, !CI).
-generate_det_par_conjuncts(ConjunctStartPos, [Goal | Goals],
-        ParentSyncTermBaseSlot, EndLabel, Initial, MaybeEnd0, Code, !CI) :-
+generate_det_par_conjuncts(_ConjunctStartPos, _InitialInstMap, _EndLabel,
+        _ParentSyncTermBaseSlot, [], _, empty, !CI).
+generate_det_par_conjuncts(ConjunctStartPos, InitialInstMap, EndLabel,
+        ParentSyncTermBaseSlot, [Conjunct | Conjuncts], MaybeEnd0, Code,
+        !CI) :-
     some [!CLD] (
         reset_to_position(ConjunctStartPos, !.CI, !:CLD),
-        code_gen.generate_goal(model_det, Goal, ThisGoalCode0, !CI, !CLD),
-        replace_stack_vars_by_parent_sv(ThisGoalCode0, ThisGoalCode),
+        code_gen.generate_goal(model_det, Conjunct, ThisConjunctCode0,
+            !CI, !CLD),
+        replace_stack_vars_by_parent_sv(ThisConjunctCode0, ThisConjunctCode),
 
         get_stack_slots(!.CI, AllSlots),
         get_known_variables(!.CLD, Variables),
@@ -319,7 +321,7 @@ generate_det_par_conjuncts(ConjunctStartPos, [Goal | Goals],
     ),
 
     (
-        Goals = [_ | _],
+        Conjuncts = [_ | _],
         get_next_label(NextConjunct, !CI),
         ForkCode = singleton(
             llds_instr(fork_new_child(ParentSyncTermBaseSlot, NextConjunct),
@@ -332,31 +334,32 @@ generate_det_par_conjuncts(ConjunctStartPos, [Goal | Goals],
                 "start of the next conjunct")
         ])
     ;
-        Goals = [],
+        Conjuncts = [],
         ForkCode = empty,
         JoinCode = singleton(
             llds_instr(join_and_continue(ParentSyncTermBaseSlot, EndLabel),
                 "finish")
         )
     ),
-    GoalCode = ForkCode ++ ThisGoalCode ++ SaveCode ++ JoinCode,
-    generate_det_par_conjuncts(ConjunctStartPos, Goals,
-        ParentSyncTermBaseSlot, EndLabel, Initial, MaybeEnd, GoalsCode, !CI),
-    Code = GoalCode ++ GoalsCode.
+    ConjunctCode = ForkCode ++ ThisConjunctCode ++ SaveCode ++ JoinCode,
+    generate_det_par_conjuncts(ConjunctStartPos, InitialInstMap, EndLabel,
+        ParentSyncTermBaseSlot, Conjuncts, MaybeEnd, ConjunctsCode, !CI),
+    Code = ConjunctCode ++ ConjunctsCode.
 
 :- func ts_finish_par_conj_instr(int, lval) = instr.
 
-ts_finish_par_conj_instr(SyncTermBaseSlot, SyncTermBaseSlotLval) =
-        foreign_proc_code([], Components, proc_will_not_call_mercury, no, no,
-            no, no, no, yes, proc_may_duplicate) :-
+ts_finish_par_conj_instr(SyncTermBaseSlot, SyncTermBaseSlotLval) = Instr :-
+    CodeTemplate =
+"#ifdef MR_THREADSCOPE
+MR_threadscope_post_end_par_conj(&MR_sv(%d));
+#endif
+",
     Components = [foreign_proc_raw_code(cannot_branch_away,
         proc_does_not_affect_liveness,
         live_lvals_info(set([SyncTermBaseSlotLval])),
-        format(Code, [i(SyncTermBaseSlot)]))],
-    Code = "#ifdef MR_THREADSCOPE
-MR_threadscope_post_end_par_conj(&MR_sv(%d));
-#endif
-".
+        string.format(CodeTemplate, [i(SyncTermBaseSlot)]))],
+    Instr = foreign_proc_code([], Components, proc_will_not_call_mercury,
+        no, no, no, no, no, yes, proc_may_duplicate).
 
 %-----------------------------------------------------------------------------%
 
