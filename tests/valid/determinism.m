@@ -43,5 +43,5 @@ p3 :-
     r(Y),
     X = Y.
 
-:- external(q/1).
-:- external(r/1).
+:- pragma external_pred(q/1).
+:- pragma external_pred(r/1).

@@ -19,9 +19,9 @@
 
 :- implementation.
 
-:- external(p1/1).
-:- external(p2/1).
-:- external(q/1).
+:- pragma external_pred(p1/1).
+:- pragma external_pred(p2/1).
+:- pragma external_pred(q/1).
 
 :- pred p is det.
 

@@ -18,7 +18,7 @@
 
 :- implementation.
 
-:- external(foo/2).
+:- pragma external_pred(foo/2).
 
 % For comparison.
 :- pragma no_inline(bar/2).
