@@ -33,12 +33,7 @@ ACCUMULATOR_PROGS = \
 	split			\
 	swap
 
-# We currently don't do any testing in grade java on this directory.
-ifneq "$(findstring java,$(GRADE))" ""
-	PROGS =
-else
-	PROGS = $(ACCUMULATOR_PROGS)
-endif
+PROGS = $(ACCUMULATOR_PROGS)
 
 TESTS = $(PROGS)
 include $(TESTS_DIR)/Mmake.common

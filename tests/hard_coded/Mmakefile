@@ -715,7 +715,6 @@ else
 	SETENV_PROGS =
 endif
 
-# We currently test only a limited selection in grade java on this directory.
 PROGS = \
 	$(ORDINARY_PROGS) \
 	$(PROF_PROGS) \
