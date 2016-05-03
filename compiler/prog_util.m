@@ -745,22 +745,19 @@ strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
 %-----------------------------------------------------------------------------%
 
 make_n_fresh_vars(BaseName, N, Vars, VarSet0, VarSet) :-
-    make_n_fresh_vars_2(BaseName, 0, N, Vars, VarSet0, VarSet).
+    make_n_fresh_vars_loop(BaseName, 1, N, Vars, VarSet0, VarSet).
 
-:- pred make_n_fresh_vars_2(string::in, int::in, int::in, list(var(T))::out,
+:- pred make_n_fresh_vars_loop(string::in, int::in, int::in, list(var(T))::out,
     varset(T)::in, varset(T)::out) is det.
 
-make_n_fresh_vars_2(BaseName, N, Max, Vars, !VarSet) :-
-    ( if N = Max then
+make_n_fresh_vars_loop(BaseName, Cur, Max, Vars, !VarSet) :-
+    ( if Cur > Max then
         Vars = []
     else
-        N1 = N + 1,
-        varset.new_var(Var, !VarSet),
-        string.int_to_string(N1, Num),
-        string.append(BaseName, Num, VarName),
-        varset.name_var(Var, VarName, !VarSet),
-        Vars = [Var | Vars1],
-        make_n_fresh_vars_2(BaseName, N1, Max, Vars1, !VarSet)
+        VarName = BaseName ++ string.int_to_string(Cur),
+        varset.new_named_var(VarName, HeadVar, !VarSet),
+        make_n_fresh_vars_loop(BaseName, Cur + 1, Max, TailVars, !VarSet),
+        Vars = [HeadVar | TailVars]
     ).
 
 pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
