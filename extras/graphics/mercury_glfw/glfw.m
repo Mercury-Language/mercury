@@ -41,12 +41,12 @@
 :- pred glfw.get_version(int::out, int::out, int::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Window Handling.
 %
 
 :- type window_mode
-    --->    window     
+    --->    window
     ;       fullscreen.
 
 :- pred glfw.open_window(int::in, int::in, int::in, int::in, int::in, int::in,
@@ -128,7 +128,7 @@
     ;       aux_buffers
     ;       opengl_version_major
     ;       opengl_version_minor
-    ;       opengl_profile.       
+    ;       opengl_profile.
 
 :- pred glfw.get_int_window_param(int_window_param::in, int::out,
     io::di, io::uo) is det.
@@ -492,7 +492,7 @@ MGLFW_window_close_callback_func(void)
 
     MGLFW_do_window_close_callback(MGLFW_window_close_callback,
         &result);
-    
+
     return (result == MR_YES) ? GL_TRUE : GL_FALSE;
 }
 
@@ -515,7 +515,7 @@ MGLFW_key_callback_func(int key, int action)
     MGLFW_do_key_callback(MGLFW_key_callback, key, action);
 }
 
-void GLFWCALL 
+void GLFWCALL
 MGLFW_char_callback_func(int character, int action)
 {
     MGLFW_do_char_callback(MGLFW_char_callback, character, action);
@@ -543,15 +543,15 @@ MGLFW_mouse_wheel_callback_func(int pos)
 
 %-----------------------------------------------------------------------------%
 
-glfw.init(!IO) :-
-    glfw.init_2(InitSucceeded, !IO),
+init(!IO) :-
+    init_2(InitSucceeded, !IO),
     (
         InitSucceeded = yes
     ;
         InitSucceeded = no,
         error("glfw.init/2: initialisation failed")
     ).
-     
+
 :- pred init_2(bool::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -562,7 +562,7 @@ glfw.init(!IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.terminate(_IO0::di, _IO::uo),
+    terminate(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
    glfwTerminate();
@@ -570,30 +570,30 @@ glfw.init(!IO) :-
 
 
 :- pragma foreign_proc("C",
-    glfw.get_version(Major::out, Minor::out, Rev::out, _IO0::di, _IO::uo),
+    get_version(Major::out, Minor::out, Rev::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     int     major;
     int     minor;
     int     rev;
     glfwGetVersion(&major, &minor, &rev);
-    
+
     Major = major;
     Minor = minor;
     Rev = rev;
-"). 
+").
 
 %-----------------------------------------------------------------------------%
 %
 % Window Handling.
-% 
+%
 
 :- pragma foreign_enum("C", window_mode/0, [
     window     - "GLFW_WINDOW",
     fullscreen - "GLFW_FULLSCREEN"
-]). 
+]).
 
-glfw.open_window(Width, Height, RedBits, GreenBits, BlueBits, AlphaBits,
+open_window(Width, Height, RedBits, GreenBits, BlueBits, AlphaBits,
         DepthBits, StencilBits, WindowMode, !IO) :-
     open_window_2(Width, Height, RedBits, GreenBits, BlueBits, AlphaBits,
         DepthBits, StencilBits, WindowMode, Succeeded, !IO),
@@ -656,8 +656,8 @@ glfw.open_window(Width, Height, RedBits, GreenBits, BlueBits, AlphaBits,
     hint_target_opengl_debug_context  - "GLFW_OPENGL_DEBUG_CONTEXT",
     hint_target_opengl_profile        - "GLFW_OPENGL_PROFILE"
 ]).
-    
-glfw.open_window_hint(Hint, !IO) :-
+
+open_window_hint(Hint, !IO) :-
     (
         Hint = refresh_rate(Int),
         Target = hint_target_refresh_rate
@@ -704,7 +704,7 @@ glfw.open_window_hint(Hint, !IO) :-
     ;
         Hint = opengl_profile(Int),
         Target = hint_target_opengl_profile
-    ), 
+    ),
     open_window_hint_2(Target, Int, !IO).
 
 :- func bool_to_gl_bool(bool) = int.
@@ -725,14 +725,14 @@ glfw.open_window_hint(Hint, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.close_window(_IO0::di, _IO::uo),
+    close_window(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwCloseWindow();
 ").
 
 :- pragma foreign_proc("C",
-    glfw.set_window_close_callback(Pred::in(window_close_callback),
+    set_window_close_callback(Pred::in(window_close_callback),
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -741,7 +741,7 @@ glfw.open_window_hint(Hint, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.unset_window_close_callback(_IO0::di, _IO::uo),
+    unset_window_close_callback(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetWindowCloseCallback(NULL);
@@ -759,28 +759,28 @@ do_window_close_callback(Pred, Result, !IO) :-
     Pred(Result, !IO).
 
 :- pragma foreign_proc("C",
-    glfw.set_window_title(Title::in, _IO0::di, _IO::uo),
+    set_window_title(Title::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetWindowTitle(Title);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.set_window_size(Width::in, Height::in, _IO0::di, _IO::uo),
+    set_window_size(Width::in, Height::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetWindowSize((int)Width, (int)Height);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.set_window_pos(X::in, Y::in, _IO0::di, _IO::uo),
+    set_window_pos(X::in, Y::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetWindowPos((int)X, (int)Y);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.get_window_size(Width::out, Height::out, _IO0::di, _IO::uo),
+    get_window_size(Width::out, Height::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     int width;
@@ -792,7 +792,7 @@ do_window_close_callback(Pred, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.set_window_size_callback(Pred::in(window_size_callback),
+    set_window_size_callback(Pred::in(window_size_callback),
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -801,7 +801,7 @@ do_window_close_callback(Pred, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.unset_window_size_callback(_IO0::di, _IO::uo),
+    unset_window_size_callback(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetWindowSizeCallback(NULL);
@@ -820,14 +820,14 @@ do_window_size_callback(Pred, Width, Height, !IO) :-
     Pred(Width, Height, !IO).
 
 :- pragma foreign_proc("C",
-    glfw.iconify_window(_IO0::di, _IO::uo),
+    iconify_window(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwIconifyWindow();
 ").
 
 :- pragma foreign_proc("C",
-    glfw.restore_window(_IO0::di, _IO::uo),
+    restore_window(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwRestoreWindow();
@@ -845,7 +845,7 @@ do_window_size_callback(Pred, Width, Height, !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    glfw.get_bool_window_param(Param::in, Result::out, _IO0::di, _IO::uo),
+    get_bool_window_param(Param::in, Result::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Result = (glfwGetWindowParam((int)Param)) ? MR_YES  : MR_NO;
@@ -870,28 +870,28 @@ do_window_size_callback(Pred, Width, Height, !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    glfw.get_int_window_param(Param::in, Result::out, _IO0::di, _IO::uo),
+    get_int_window_param(Param::in, Result::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Result = glfwGetWindowParam((int)Param);
 ").
-     
+
 :- pragma foreign_proc("C",
-    glfw.swap_buffers(_IO0::di, _IO::uo),
+    swap_buffers(_IO0::di, _IO::uo),
     [promise_pure, may_call_mercury, tabled_for_io],
 "
     glfwSwapBuffers();
 ").
 
 :- pragma foreign_proc("C",
-    glfw.swap_interval(Interval::in, _IO0::di, _IO::uo),
+    swap_interval(Interval::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSwapInterval((int)Interval);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.set_window_refresh_callback(Pred::in(window_refresh_callback),
+    set_window_refresh_callback(Pred::in(window_refresh_callback),
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -900,7 +900,7 @@ do_window_size_callback(Pred, Width, Height, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.unset_window_refresh_callback(_IO0::di, _IO::uo),
+    unset_window_refresh_callback(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetWindowCloseCallback(NULL);
@@ -922,7 +922,7 @@ do_window_refresh_callback(Pred, !IO) :-
     "MGLFW_make_video_mode").
 make_video_mode(W, H, R, G, B) = video_mode(W, H, R, G, B).
 
-glfw.get_video_modes(VideoModes, !IO) :-
+get_video_modes(VideoModes, !IO) :-
     get_video_modes_2(RevVideoModes, !IO),
     VideoModes = list.reverse(RevVideoModes).
 
@@ -932,14 +932,14 @@ glfw.get_video_modes(VideoModes, !IO) :-
     [promise_pure, may_call_mercury, tabled_for_io],
 "
     GLFWvidmode *list;
-    MR_Word     mer_vid_mode; 
+    MR_Word     mer_vid_mode;
     int         num_video_modes;
     int         i;
 
     list = GC_malloc(1024 * sizeof(GLFWvidmode));
 
     num_video_modes = glfwGetVideoModes(list, 1024);
-    
+
     VideoModes = MR_list_empty();
 
     for (i = 0; i < num_video_modes; i++) {
@@ -956,7 +956,7 @@ glfw.get_video_modes(VideoModes, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.get_desktop_mode(VideoMode::out, _IO0::di, _IO::uo),
+    get_desktop_mode(VideoMode::out, _IO0::di, _IO::uo),
     [promise_pure, may_call_mercury, tabled_for_io],
 "
     GLFWvidmode     vm;
@@ -976,14 +976,14 @@ glfw.get_video_modes(VideoModes, !IO) :-
 %
 
 :- pragma foreign_proc("C",
-    glfw.poll_events(_IO0::di, _IO::uo),
+    poll_events(_IO0::di, _IO::uo),
     [promise_pure, may_call_mercury, tabled_for_io],
 "
     glfwPollEvents();
 ").
 
 :- pragma foreign_proc("C",
-    glfw.wait_events(_IO0::di, _IO::uo),
+    wait_events(_IO0::di, _IO::uo),
     [promise_pure, may_call_mercury, tabled_for_io],
 "
     glfwWaitEvents();
@@ -1115,15 +1115,14 @@ glfw.get_video_modes(VideoModes, !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    glfw.get_key(Key::in, State::out, _IO0::di, _IO::uo),
+    get_key(Key::in, State::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     State = glfwGetKey((int)Key);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.set_key_callback(Pred::in(key_callback),
-        _IO0::di, _IO::uo),
+    set_key_callback(Pred::in(key_callback), _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     MGLFW_key_callback = Pred;
@@ -1131,7 +1130,7 @@ glfw.get_video_modes(VideoModes, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.unset_key_callback(_IO0::di, _IO::uo),
+    unset_key_callback(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetKeyCallback(NULL);
@@ -1148,7 +1147,7 @@ do_key_callback(Pred, Key, KeyState, !IO) :-
     Pred(Key, KeyState, !IO).
 
 :- pragma foreign_proc("C",
-    glfw.set_char_callback(Pred::in(char_callback),
+    set_char_callback(Pred::in(char_callback),
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -1157,7 +1156,7 @@ do_key_callback(Pred, Key, KeyState, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.unset_char_callback(_IO0::di, _IO::uo),
+    unset_char_callback(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetCharCallback(NULL);
@@ -1185,14 +1184,14 @@ do_char_callback(Pred, Key, KeyState, !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    glfw.get_mouse_button(Button::in, State::out, _IO0::di, _IO::uo),
+    get_mouse_button(Button::in, State::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     State = glfwGetMouseButton((int)Button);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.get_mouse_pos(X::out, Y::out, _IO0::di, _IO::uo),
+    get_mouse_pos(X::out, Y::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     int x;
@@ -1204,28 +1203,28 @@ do_char_callback(Pred, Key, KeyState, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.set_mouse_pos(X::in, Y::in, _IO0::di, _IO::uo),
+    set_mouse_pos(X::in, Y::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetMousePos((int)X, (int)Y);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.get_mouse_wheel(WheelPos::out, _IO0::di, _IO::uo),
+    get_mouse_wheel(WheelPos::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     WheelPos = glfwGetMouseWheel();
 ").
 
 :- pragma foreign_proc("C",
-    glfw.set_mouse_wheel(WheelPos::in, _IO0::di, _IO::uo),
+    set_mouse_wheel(WheelPos::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetMouseWheel((int)WheelPos);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.set_mouse_button_callback(Pred::in(mouse_button_callback),
+    set_mouse_button_callback(Pred::in(mouse_button_callback),
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -1234,7 +1233,7 @@ do_char_callback(Pred, Key, KeyState, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.unset_mouse_button_callback(_IO0::di, _IO::uo),
+    unset_mouse_button_callback(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetMouseButtonCallback(NULL);
@@ -1252,7 +1251,7 @@ do_mouse_button_callback(Pred, Button, Action, !IO) :-
     Pred(Button, Action, !IO).
 
 :- pragma foreign_proc("C",
-    glfw.set_mouse_pos_callback(Pred::in(mouse_pos_callback),
+    set_mouse_pos_callback(Pred::in(mouse_pos_callback),
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -1261,7 +1260,7 @@ do_mouse_button_callback(Pred, Button, Action, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.unset_mouse_pos_callback(_IO0::di, _IO::uo),
+    unset_mouse_pos_callback(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetMousePosCallback(NULL);
@@ -1278,7 +1277,7 @@ do_mouse_pos_callback(Pred, X, Y, !IO) :-
     Pred(X, Y, !IO).
 
 :- pragma foreign_proc("C",
-    glfw.set_mouse_wheel_callback(Pred::in(mouse_wheel_callback),
+    set_mouse_wheel_callback(Pred::in(mouse_wheel_callback),
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -1287,7 +1286,7 @@ do_mouse_pos_callback(Pred, X, Y, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.unset_mouse_wheel_callback(_IO0::di, _IO::uo),
+    unset_mouse_wheel_callback(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetMouseWheelCallback(NULL);
@@ -1332,7 +1331,7 @@ do_mouse_wheel_callback(Pred, Pos, !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    glfw.get_bool_joystick_param(Id::in, Param::in, Result::out,
+    get_bool_joystick_param(Id::in, Param::in, Result::out,
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -1344,7 +1343,7 @@ do_mouse_wheel_callback(Pred, Pos, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.get_int_joystick_param(Id::in, Param::in, Result::out,
+    get_int_joystick_param(Id::in, Param::in, Result::out,
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -1352,10 +1351,10 @@ do_mouse_wheel_callback(Pred, Pos, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.get_joystick_pos(Id::in, NumAxes::in, AxesPos::out, _IO0::di, _IO::uo),
+    get_joystick_pos(Id::in, NumAxes::in, AxesPos::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    int     axes_read; 
+    int     axes_read;
     float   *pos_array;
     int     i;
 
@@ -1371,7 +1370,7 @@ do_mouse_wheel_callback(Pred, Pos, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    glfw.get_joystick_buttons(Id::in, NumButtons::in, ButtonState::out,
+    get_joystick_buttons(Id::in, NumButtons::in, ButtonState::out,
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -1389,7 +1388,7 @@ do_mouse_wheel_callback(Pred, Pos, !IO) :-
         }
         GC_free(buttons_array);
     }
-"). 
+").
 
 %-----------------------------------------------------------------------------%
 %
@@ -1397,21 +1396,21 @@ do_mouse_wheel_callback(Pred, Pos, !IO) :-
 %
 
 :- pragma foreign_proc("C",
-    glfw.get_time(Time::out, _IO0::di, _IO::uo),
+    get_time(Time::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Time = (MR_Float) glfwGetTime();
-").    
+").
 
 :- pragma foreign_proc("C",
-    glfw.set_time(Time::in, _IO0::di, _IO::uo),
+    set_time(Time::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSetTime((double)Time);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.sleep(Time::in, _IO0::di, _IO::uo),
+    sleep(Time::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwSleep((double)Time);
@@ -1429,14 +1428,14 @@ do_mouse_wheel_callback(Pred, Pos, !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    glfw.enable(Feature::in, _IO0::di, _IO::uo),
+    enable(Feature::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwEnable(Feature);
 ").
 
 :- pragma foreign_proc("C",
-    glfw.disable(Feature::in, _IO0::di, _IO::uo),
+    disable(Feature::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     glfwDisable(Feature);
