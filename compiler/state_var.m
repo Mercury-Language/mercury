@@ -584,11 +584,13 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                 map.det_insert(StateVar, Status, StatusMap0, StatusMap)
             ),
             !:State = svar_state(StatusMap),
-            ( if map.search(!.FinalMap, StateVar, _) then
+            map.search_insert(StateVar, Var, MaybeOldVar, !FinalMap),
+            (
+                MaybeOldVar = yes(_),
                 report_repeated_head_state_var(Context, !.VarSet, StateVar,
                     !Specs)
-            else
-                map.det_insert(StateVar, Var, !FinalMap)
+            ;
+                MaybeOldVar = no
             )
         else
             svar_prepare_head_terms(SubTerms0, SubTerms,
@@ -1162,13 +1164,12 @@ make_copy_goal(FromVar, ToVar, CopyGoal) :-
 
     create_pure_atomic_complicated_unification(ToVar, rhs_var(FromVar),
         term.context_init, umc_implicit("state variable"), [], CopyGoal0),
-    goal_add_feature(feature_dont_warn_singleton,
-        CopyGoal0, CopyGoal).
+    goal_add_feature(feature_dont_warn_singleton, CopyGoal0, CopyGoal).
 
 %-----------------------------------------------------------------------------%
 %
-% Handle if-then-else goals. The basic idea is the same as for
-% disjunctions, but we also have to handle three complications.
+% Handle if-then-else goals. The basic idea is the same as for disjunctions,
+% but we also have to handle three complications.
 %
 % First, the first disjunct consists of two parts: the condition and the then
 % part, with data flowing between them.
