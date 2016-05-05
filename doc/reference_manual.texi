@@ -1945,7 +1945,7 @@ A tuple type is equivalent to a discriminated union type
 (@pxref{Discriminated unions}) with declaration
 @example
 :- type @{Arg1, Arg2, @dots{}, ArgN@}
-        ---> @{ @{Arg1, Arg2, @dots{}, ArgN@} @}.
+        --->    @{ @{Arg1, Arg2, @dots{}, ArgN@} @}.
 @end example
 
 @item The universal type: @code{univ}.
@@ -2404,10 +2404,10 @@ this problem.
 
 @example
 :- type unsettable
-        ---> some [T] unsettable(
-                unsettable1 :: T,
-                unsettable2 :: T
-        ).
+        --->    some [T] unsettable(
+                    unsettable1 :: T,
+                    unsettable2 :: T
+                ).
 @end example
 
 @node User-supplied field access function declarations
@@ -2459,17 +2459,16 @@ The examples make use of the following type declarations:
 
 @example
 :- type type1
-        ---> type1(
-                field1 :: type2,
-                field2 :: string
-        ).
+        --->    type1(
+                    field1 :: type2,
+                    field2 :: string
+                ).
 
 :- type type2
-        ---> type2(
-                field3 :: int,
-                field4 :: int
-        ).
-
+        --->    type2(
+                    field3 :: int,
+                    field4 :: int
+                ).
 @end example
 
 The compiler generates some field access functions for @samp{field1}.
@@ -3956,7 +3955,8 @@ by representing a set as an (unsorted) list.
 
 :- implementation.
 :- import_module list.
-:- type set(T) ---> set(list(T)).
+:- type set(T)
+    --->    set(list(T)).
 @end example
 
 @noindent
@@ -3971,8 +3971,9 @@ representations.  To support such types, Mercury allows programmers to
 specify a user-defined equality predicate for user-defined types:
 
 @example
-:- type set(T) ---> set(list(T))
-        where equality is set_equals.
+:- type set(T)
+    --->    set(list(T))
+            where equality is set_equals.
 @end example
 
 @noindent
@@ -3990,8 +3991,9 @@ set_equals(S1, S2) :-
 A comparison predicate can also be supplied.
 
 @example
-:- type set(T) ---> set(list(T))
-    where equality is set_equals, comparison is set_compare.
+:- type set(T)
+    --->    set(list(T))
+            where equality is set_equals, comparison is set_compare.
 
 :- pred set_compare(builtin.comparison_result::uo,
     set(T)::in, set(T)::in) is det.
@@ -4623,7 +4625,8 @@ the extracted argument may then be used as if it had that inst.
 For example, given this type declaration:
 
 @example
-:- type job ---> job(pred(int::out, io::di, io::uo) is det).
+:- type job
+    --->    job(pred(int::out, io::di, io::uo) is det).
 @end example
 
 the following goal is correct:
@@ -4656,7 +4659,8 @@ So the following examples currently result in errors.
 :- type f == (func(int::in) = (int::out) is semidet).
 
 % Error: use inside a type constructor.
-:- type jobs ---> jobs(list(pred(int::out, io::di, io::uo) is det)).
+:- type jobs
+    --->    jobs(list(pred(int::out, io::di, io::uo) is det)).
 
 % Error: use in a pred/func declaration.
 :- pred p((pred(io::di, io::uo) is det)::in, io::di, io::uo) is det.
@@ -4820,7 +4824,6 @@ put(Queue0, Elem, Queue) :-
 get([Elem | Queue], Elem, Queue).
 
 :- end_module queue.
-
 @end example
 
 @node Sub-modules
@@ -6136,22 +6139,22 @@ For example:
 
 % A different way of doing the same kind of thing, this
 % time using the standard type list(T).
-:- type showable ---> some [T] (s(T) => showable(T)).
+:- type showable
+    --->    some [T] (s(T) => showable(T)).
 :- type list_of_showable == list(showable).
 
 % Here's an arbitrary example involving multiple
 % type variables and multiple constraints.
 :- typeclass foo(T1, T2) where [ /* @dots{} */ ].
 :- type bar(T)
-    ---> f1
-    ;    f2(T)
-    ;    some [T]
-          f4(T)
-    ;    some [T1, T2]
-          (f4(T1, T2, T) => showable(T1), showable(T2))
-    ;    some [T1, T2]
-          (f5(list(T1), T2) => fooable(T1, list(T2)))
-    .
+    --->    f1
+    ;       f2(T)
+    ;       some [T]
+            f4(T)
+    ;       some [T1, T2]
+            (f4(T1, T2, T) => showable(T1), showable(T2))
+    ;       some [T1, T2]
+            (f5(list(T1), T2) => fooable(T1, list(T2))).
 @end example
 
 Construction and deconstruction of existentially quantified data types
@@ -6237,7 +6240,8 @@ as follows:
 
 @example
 :- implementation.
-:- type univ ---> some [T] mkuniv(T).
+:- type univ
+    --->    some [T] mkuniv(T).
 univ(X) = 'new mkuniv'(X).
 univ_value(mkuniv(X)) = X.
 @end example
@@ -6281,7 +6285,8 @@ If you want to use type class constraints, then you must define your own
 existentially typed data type, analogous to @samp{univ}, and use that:
 
 @example
-:- type univ_showable ---> some [T] (mkshowable(T) => showable(T)).
+:- type univ_showable
+    --->    some [T] (mkshowable(T) => showable(T)).
 
 :- some [T] pred harder_example(string, T) => showable(T).
 
@@ -7395,9 +7400,9 @@ being an Erlang atom named after the Mercury data constructor.
 For example, values of the type:
 
 @example
-    :- type maybe_int
-        --->    yes(int)
-        ;       no.
+:- type maybe_int
+    --->    yes(int)
+    ;       no.
 @end example
 
 @noindent
