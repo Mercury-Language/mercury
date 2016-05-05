@@ -521,8 +521,8 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
         not map.is_empty(Subn)
     then
         pred_info_set_existq_tvar_binding(Subn, PredInfo1, PredInfo2),
-        polymorphism_introduce_exists_casts_pred(!.ModuleInfo, PredInfo2,
-            PredInfo)
+        polymorphism_introduce_exists_casts_pred(!.ModuleInfo,
+            PredInfo2, PredInfo)
     else
         PredInfo = PredInfo1
     ),
