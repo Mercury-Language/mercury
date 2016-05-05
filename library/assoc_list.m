@@ -49,7 +49,7 @@
 :- func values(assoc_list(K, V)) = list(V).
 :- pred values(assoc_list(K, V)::in, list(V)::out) is det.
 
-    % Return the two lists contain respectively the first and second member
+    % Return two lists containing respectively the first and the second member
     % of each pair in the assoc_list.
     %
 :- pred keys_and_values(assoc_list(K, V)::in,
