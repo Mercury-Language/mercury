@@ -1344,12 +1344,7 @@
     % of the file.  It is the responsibility of the caller to delete the file
     % when it is no longer required.
     %
-    % The C# backend has the following limitations:
-    %   - Dir is ignored.
-    %   - Prefix is ignored.
-    %   - Suffix is ignored.
-    %
-    % On the Erlang backend Suffix is ignored.
+    % On the Erlang and C# backend Suffix is ignored.
     %
     % On the Erlang and Java backends, this does not attempt to create the file
     % with restrictive permissions (600 on Unix-like systems) and therefore
@@ -1367,7 +1362,10 @@
     % make_temp_directory(Result, !IO) creates an empty directory whose name
     % is different from the name of any existing directory.
     %
-    % On the Java backend this is insecure as the file permissions are not set.
+    % On the Java backend this is insecure as the file permissions are not
+    % set.
+    %
+    % On the C# backend Suffix is ignored.
     %
     % This is unimplemented on the Erlang backend.
     %
@@ -1381,11 +1379,10 @@
     % new directory. It is the responsibility of the program to delete the
     % directory when it is no longer needed.
     %
-    % The C# backend has the following limitations:
-    %   - Prefix is ignored.
-    %   - Suffix is ignored.
+    % On the Java backend this is insecure as the file permissions are not
+    % set.
     %
-    % On the Java backend this is insecure as the file permissions are not set.
+    % On the C# backend Suffix is ignored.
     %
     % This is unimplemented on the Erlang backend.
     %
@@ -1416,7 +1413,7 @@
     %    temporary-file directory will be used, specified by the Java
     %    system property java.io.tmpdir. On UNIX systems the default
     %    value of this property is typically "/tmp" or "/var/tmp";
-    %    on Microsoft Windows systems it is typically "c:\\temp".
+    %    on Microsoft Windows systems it is typically "%TMP%".
     %
 :- pred get_temp_directory(string::out, io::di, io::uo) is det.
 
@@ -1933,6 +1930,16 @@ using System.Security.Principal;
     [DllImport(""libc"", SetLastError=true, EntryPoint=""mkdir"",
         CallingConvention=CallingConvention.Cdecl)]
     static extern int ML_sys_mkdir (string path, uint mode);
+
+    // int mkstemp(char *template);
+    [DllImport(""libc"", SetLastError=true, EntryPoint=""mkstemp"",
+        CallingConvention=CallingConvention.Cdecl)]
+    static extern int ML_sys_mkstemp(System.Text.StringBuilder template);
+
+    // int close(int fildes);
+    [DllImport(""libc"", SetLastError=true, EntryPoint=""close"",
+        CallingConvention=CallingConvention.Cdecl)]
+    static extern int ML_sys_close(int fildes);
 #endif
 ").
 
@@ -10543,6 +10550,9 @@ import java.util.Random;
 #ifdef MR_HAVE_MKSTEMP
     int err, fd;
 
+    /* XXX mkstemp assumes that XXXXXX is at the end of the template,
+     * and mkstemps is used for this purpose instead.
+     */
     FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX%s"",
         Dir, Sep, Prefix, Suffix);
     fd = mkstemp(FileName);
@@ -10573,7 +10583,7 @@ import java.util.Random;
     MR_Word filename_word;
     int     flags;
 
-    len = strlen(Dir) + 1 + 5 + 6 + strlen(Suffix) + 1;
+    len = strlen(Dir) + strlen(Sep) + 5 + 6 + strlen(Suffix) + 1;
     /* Dir + / + Prefix + counter + Suffix + \\0 */
     MR_offset_incr_hp_atomic_msg(filename_word, 0,
         (len + sizeof(MR_Word)) / sizeof(MR_Word),
@@ -10620,18 +10630,107 @@ import java.util.Random;
 ").
 
 :- pragma foreign_proc("C#",
-    do_make_temp(_Dir::in, _Prefix::in, _Suffix::in, _Sep::in, FileName::out,
+    do_make_temp(Dir::in, Prefix::in, _Suffix::in, _Sep::in, FileName::out,
         Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-    try {
-        FileName = System.IO.Path.GetTempFileName();
-        Okay = mr_bool.YES;
-        ErrorMessage = """";
+    try
+    {
+        // The documentation for io.make_temp says that we should only use
+        // the first five characters of Prefix.
+        string trimmedPrefix = (Prefix.Length > 5)
+                ? Prefix.Substring(0, 5)
+                : Prefix;
+        string commonPath =  Path.Combine(Dir, trimmedPrefix);
+
+        switch (Environment.OSVersion.Platform)
+        {
+            case PlatformID.Win32NT:
+                // obtain the owner of the temporary directory
+                IdentityReference tempInfo =
+                    new DirectoryInfo(Dir)
+                        .GetAccessControl(AccessControlSections.Owner)
+                        .GetOwner(typeof(SecurityIdentifier));
+
+                FileSecurity security = new FileSecurity();
+                security.AddAccessRule(
+                    new FileSystemAccessRule(tempInfo,
+                            FileSystemRights.Read
+                            | FileSystemRights.Modify,
+                        InheritanceFlags.None,
+                        PropagationFlags.None,
+                        AccessControlType.Allow
+                    )
+                );
+                FileName = commonPath + Path.GetRandomFileName();
+
+                using (FileStream tempStream =
+                    File.Create(FileName, 512, FileOptions.WriteThrough,
+                        security))
+                {
+                    ErrorMessage = string.Empty;
+                    Okay = mr_bool.YES;
+                }
+                break;
+
+#if __MonoCS__
+            case PlatformID.Unix:
+            case (PlatformID)6: // MacOSX:
+                System.Text.StringBuilder template =
+                    new System.Text.StringBuilder(commonPath.Length + 6)
+                        .Append(commonPath)
+                        .Append(new string('X', 6));
+
+                int fd = ML_sys_mkstemp(template);
+                FileName = template.ToString();
+
+                if (fd != -1)
+                {
+                    bool closeSuccess;
+                    int errno;
+                    do
+                    {
+                        closeSuccess = ML_sys_close(fd) == 0;
+                        errno = Marshal.GetLastWin32Error();
+                        Okay = mr_bool.YES;
+                    }
+                    while (!closeSuccess && errno == 4 /* EINTR */);
+
+                    if (closeSuccess)
+                    {
+                        ErrorMessage = string.Empty;
+                        Okay = mr_bool.YES;
+                    }
+                    else
+                    {
+                        ErrorMessage = string.Format(
+                            ""Closing temporary file {0} failed with: {1:X}"",
+                                FileName, errno);
+                        Okay = mr_bool.NO;
+                    }
+                }
+                else
+                {
+                    ErrorMessage = string.Format(
+                        ""Creating temporary file {0} failed"",
+                            FileName);
+                    Okay = mr_bool.NO;
+                }
+                break;
+#endif
+
+            default:
+                FileName = string.Empty;
+                Okay = mr_bool.NO;
+                ErrorMessage =
+                    ""Creating temporary files is not supported for: "" +
+                    Environment.OSVersion;
+                break;
+        }
     }
     catch (System.Exception e)
     {
-        FileName = """";
+        FileName = string.Empty;
         Okay = mr_bool.NO;
         ErrorMessage = e.Message;
     }
@@ -10757,6 +10856,9 @@ import java.util.Random;
 #ifdef MR_HAVE_MKDTEMP
     int err;
 
+    /* XXX mkdtemp assumes that XXXXXX is at the end of the template,
+     * and mkstemps is used for this purpose instead.
+     */
     DirName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX%s"",
         Dir, Sep, Prefix, Suffix);
     DirName = mkdtemp(DirName);
@@ -10778,13 +10880,19 @@ import java.util.Random;
 ").
 
 :- pragma foreign_proc("C#",
-    do_make_temp_directory(Dir::in, _Prefix::in, _Suffix::in, _Sep::in,
+    do_make_temp_directory(Dir::in, Prefix::in, _Suffix::in, _Sep::in,
         DirName::out, Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
     try
     {
-        DirName = Path.Combine(Dir, Path.GetRandomFileName());
+        // The documentation for io.make_temp says that we should only use
+        // the first five characters of Prefix.
+        string trimmedPrefix = (Prefix.Length > 5)
+                ? Prefix.Substring(0, 5)
+                : Prefix;
+
+        DirName = Path.Combine(Dir, trimmedPrefix + Path.GetRandomFileName());
 
         switch (Environment.OSVersion.Platform)
         {
@@ -10814,17 +10922,17 @@ import java.util.Random;
 #if __MonoCS__
             case PlatformID.Unix:
             case (PlatformID)6: // MacOSX:
-                int errorNo = ML_sys_mkdir(DirName, 0x7 << 6);
-                if (errorNo == 0)
+                if (ML_sys_mkdir(DirName, 0x7 << 6) == 0)
                 {
                     ErrorMessage = string.Empty;
                     Okay = mr_bool.YES;
                 }
                 else
                 {
+                    int errno = Marshal.GetLastWin32Error();
                     ErrorMessage = string.Format(
                         ""Creating directory {0} failed with: {1:X}"",
-                            DirName, errorNo);
+                            DirName, errno);
                     Okay = mr_bool.NO;
                 }
                 break;
@@ -10868,7 +10976,7 @@ import java.util.Random;
     } else {
         DirName = """";
         Okay = bool.NO;
-        ErrorMessage = ""Coudln't create directory"";
+        ErrorMessage = ""Could not create directory"";
     }
 ").
 
@@ -10909,8 +11017,8 @@ import java.util.Random;
 %---------------------------------------------------------------------------%
 
 get_temp_directory(Dir, !IO) :-
-    % If using the Java or C# backend then use their API to get the location of
-    % temporary files.
+    % If using the Java or C# backend then use their API to get the location
+    % of temporary files.
     system_temp_dir(Dir0, OK, !IO),
     ( if OK = 1 then
         Dir = Dir0
