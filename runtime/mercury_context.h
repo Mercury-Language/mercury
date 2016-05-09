@@ -390,6 +390,11 @@ extern MR_bool      MR_profile_parallel_execution;
 extern MR_Stats     MR_profile_parallel_executed_local_sparks;
 #endif
 
+#ifdef MR_THREAD_SAFE
+/* The number of processors available */
+extern unsigned     MR_num_processors;
+#endif
+
 /*
 ** As well as the runqueue, we maintain a linked list of contexts
 ** and associated file descriptors that are suspended blocked for

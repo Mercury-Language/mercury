@@ -93,6 +93,21 @@
     %
 :- pred yield(io::di, io::uo) is det.
 
+    % num_processors(Num, !IO)
+    %
+    % Retrieve the number of processors available to this process for
+    % parallel execution, if known.
+    %
+    % Note that the number of available processors can be different from the
+    % actual number of processors/cores:
+    %
+    %  + It includes hardware threads.
+    %  + The Mercury grade may restrict the process to one processor.
+    %  + The OS may be configured to restrict the number of processors
+    %    available (e.g. cpuset(7) on Linux).
+    %
+:- pred num_processors(maybe(int)::out, io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -707,6 +722,46 @@ public static class RunGoal implements Runnable {
         thread.ML_call_back_to_mercury_cc_multi(goal, id);
     }
 }").
+
+%---------------------------------------------------------------------------%
+
+num_processors(MaybeProcs, !IO) :-
+    num_processors(Procs, Success, !IO),
+    (
+        Success = yes,
+        MaybeProcs = yes(Procs)
+    ;
+        Success = no,
+        MaybeProcs = no
+    ).
+
+:- pred num_processors(int::out, bool::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    num_processors(Procs::out, Success::out, _IO0::di, _IO::uo),
+    [promise_pure, thread_safe, will_not_call_mercury,
+     will_not_throw_exception, tabled_for_io],
+"
+#ifdef MR_THREAD_SAFE
+    Procs = MR_num_processors;
+    Success = MR_YES;
+#else
+    Procs = 1;
+    Success = MR_YES;
+#endif
+").
+
+:- pragma foreign_proc("Java",
+    num_processors(Procs::out, Success::out, _IO0::di, _IO::uo),
+    [promise_pure, thread_safe, will_not_call_mercury,
+     will_not_throw_exception, tabled_for_io],
+"
+    Procs = Runtime.getRuntime().availableProcessors();
+    Success = bool.YES;
+").
+
+% On other backends se don't know how to determine this yet.
+num_processors(0, no, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module thread.

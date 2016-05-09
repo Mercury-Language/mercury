@@ -387,11 +387,11 @@ case $use_thread_libs.$make_shared_lib in
 		THREAD_LIBS=""
 		;;
 esac
-case "$thread_safe,$highlevel_code,$all_libs" in
-	true,false,static)
+case "$thread_safe,$all_libs" in
+	true,static)
 		THREAD_LIBS="$THREAD_LIBS $HWLOC_STATIC_LIBS"
 		;;
-	true,false,shared)
+	true,shared)
 		THREAD_LIBS="$THREAD_LIBS $HWLOC_LIBS"
 		;;
 esac

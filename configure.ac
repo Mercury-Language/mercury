@@ -5160,8 +5160,7 @@ PKG_PROG_PKG_CONFIG
 
 AC_ARG_WITH([hwloc],
     [AS_HELP_STRING([--without-hwloc],
-        [Do not use libhwloc to detect the processors available in low-level C
-         parallel grades.])],
+        [Do not use libhwloc to detect the processors available.])],
     [],
     [with_hwloc=check])
 

@@ -59,7 +59,7 @@ ENDINIT
   #include "mercury_windows.h"
 #endif
 
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_HWLOC)
+#if defined(MR_THREAD_SAFE) && defined(MR_HAVE_HWLOC)
   #include <hwloc.h>
 #endif
 
@@ -212,19 +212,18 @@ static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
   #endif /* ! MR_HIGHLEVEL_CODE */
 #endif /* MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 
+#ifdef MR_THREAD_SAFE
 /*
 ** Detect number of processors.
 */
-#ifdef MR_LL_PARALLEL_CONJ
-static unsigned         MR_num_processors;
-  #if defined(MR_HAVE_HWLOC)
+unsigned         MR_num_processors;
+#if defined(MR_HAVE_HWLOC)
     static hwloc_topology_t MR_hw_topology;
     static hwloc_cpuset_t   MR_hw_available_pus = NULL;
-  #elif defined(MR_HAVE_SCHED_SETAFFINITY)
+#elif defined(MR_HAVE_SCHED_SETAFFINITY)
     static cpu_set_t        *MR_available_cpus;
     /* The number of CPUs that MR_available_cpus can refer to */
     static unsigned         MR_cpuset_size = 0;
-  #endif
 #endif
 
 /*
@@ -235,6 +234,7 @@ MR_bool                 MR_thread_pinning = MR_FALSE;
 static MercuryLock      MR_thread_pinning_lock;
 static unsigned         MR_num_threads_left_to_pin;
 MR_Unsigned             MR_primordial_thread_cpu;
+#endif
 #endif
 
 #if defined(MR_LL_PARALLEL_CONJ) && \
@@ -283,7 +283,7 @@ MR_SparkDeque           **MR_spark_deques = NULL;
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef MR_LL_PARALLEL_CONJ
+#ifdef MR_THREAD_SAFE
 /*
 ** Reset or initialize the cpuset that tracks which CPUs are available for
 ** binding.
@@ -294,6 +294,7 @@ MR_reset_available_cpus(void);
 static void
 MR_detect_num_processors(void);
 
+#ifdef MR_LL_PARALLEL_CONJ
 static void
 MR_setup_num_threads(void);
 
@@ -321,6 +322,7 @@ try_wake_engine(MR_EngineId engine_id, int action,
 static MR_bool
 try_notify_engine(MR_EngineId engine_id, int action,
     union MR_engine_wake_action_data *action_data, MR_Unsigned engine_state);
+#endif
 #endif
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
@@ -382,10 +384,10 @@ MR_init_context_stuff(void)
     MR_KEY_CREATE(&MR_backjump_next_choice_id_key, (void *)0);
   #endif
 
-  #ifdef MR_LL_PARALLEL_CONJ
     MR_detect_num_processors();
     assert(MR_num_processors > 0);
 
+  #ifdef MR_LL_PARALLEL_CONJ
     MR_setup_num_threads();
     assert(MR_num_ws_engines > 0);
 
@@ -419,11 +421,11 @@ MR_init_context_stuff(void)
 #endif /* MR_THREAD_SAFE */
 }
 
+#ifdef MR_THREAD_SAFE
 /*
 ** Detect number of processors
 */
 
-#ifdef MR_LL_PARALLEL_CONJ
 static void
 MR_reset_available_cpus(void)
 {
@@ -478,7 +480,9 @@ MR_reset_available_cpus(void)
 
     if (-1 == sched_getaffinity(0, cpuset_size, MR_available_cpus)) {
         MR_perror("Couldn't get CPU affinity");
+      #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
         MR_thread_pinning = MR_FALSE;
+      #endif
         CPU_FREE(MR_available_cpus);
         MR_available_cpus = NULL;
     }
@@ -504,11 +508,6 @@ MR_detect_num_processors(void)
   #ifdef MR_HAVE_HWLOC
     MR_num_processors = hwloc_bitmap_weight(MR_hw_available_pus);
   #elif defined(MR_HAVE_SCHED_GETAFFINITY)
-    /*
-    ** This looks redundant but its not.  MR_num_processors is a guess that was
-    ** gathered by using sysconf.  But the number of CPUs in the CPU_SET is the
-    ** actual number of CPUs that this process is restricted to.
-    */
     MR_num_processors = CPU_COUNT_S(MR_cpuset_size, MR_available_cpus);
   #elif defined(MR_WIN32_GETSYSTEMINFO)
     {
@@ -516,12 +515,15 @@ MR_detect_num_processors(void)
         GetSystemInfo(&sysinfo);
         MR_num_processors = sysinfo.dwNumberOfProcessors;
     }
+  #elif defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
+    MR_num_processors = sysconf(_SC_NPROCESSORS_ONLN);
   #else
     #warning "Cannot detect MR_num_processors"
     MR_num_processors = 1;
   #endif
 }
 
+#ifdef MR_LL_PARALLEL_CONJ
 static void
 MR_setup_num_threads(void)
 {
@@ -542,6 +544,7 @@ MR_setup_num_threads(void)
   #endif
 }
 #endif /* MR_LL_PARALLEL_CONJ */
+#endif /* MR_THREAD_SAFE */
 
 /*
 ** Thread pinning
