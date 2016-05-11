@@ -42,26 +42,18 @@
     %
     % Check the head of a type definition for errors.
     %
+    % Exported to parse_pragma.m for use when parsing foreign type pragmas.
+    %
 :- pred parse_type_defn_head(module_name::in, varset::in, term::in,
     maybe2(sym_name, list(type_param))::out) is det.
-
-    % parse_type_decl_where_part_if_present(TypeSymName, Arity,
-    %   IsSolverType, Inst, ModuleName, Term0, Term, Result):
-    %
-    % Checks if Term0 is a term of the form `<body> where <attributes>'.
-    % If so, returns the `<body>' in Term and the parsed `<attributes>'
-    % in Result. If not, returns Term = Term0 and Result = no.
-    %
-:- pred parse_type_decl_where_part_if_present(is_solver_type::in,
-    module_name::in, varset::in, term::in, term::out,
-    maybe3(maybe(solver_type_details), maybe(unify_compare),
-        maybe(list(sym_name_and_arity)))::out) is det.
 
     % A cut-down version of parse_type_decl_where_part_if_present
     % that looks for and processes only the attributes that can occur
     % on foreign_type pragmas. This includes only the specification
     % of equality and/or comparison predicates, or the assertion that
     % they exist (but that they are visible only in another module).
+    %
+    % Exported to parse_pragma.m for use when parsing foreign type pragmas.
     %
 :- pred parse_where_unify_compare(module_name::in, varset::in, term::in,
     maybe1(maybe(unify_compare))::out) is det.
@@ -831,6 +823,18 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
 % type-specific unify and/or compare predicates for discriminated union types
 % and solver type details for solver types.
 %
+
+    % parse_type_decl_where_part_if_present(TypeSymName, Arity,
+    %   IsSolverType, Inst, ModuleName, Term0, Term, Result):
+    %
+    % Checks if Term0 is a term of the form `<body> where <attributes>'.
+    % If so, returns the `<body>' in Term and the parsed `<attributes>'
+    % in Result. If not, returns Term = Term0 and Result = no.
+    %
+:- pred parse_type_decl_where_part_if_present(is_solver_type::in,
+    module_name::in, varset::in, term::in, term::out,
+    maybe3(maybe(solver_type_details), maybe(unify_compare),
+        maybe(list(sym_name_and_arity)))::out) is det.
 
 parse_type_decl_where_part_if_present(IsSolverType, ModuleName, VarSet,
         Term, BeforeWhereTerm, MaybeWhereDetails) :-
