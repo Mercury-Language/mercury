@@ -4,7 +4,8 @@ require_scopes.m:037:   Call to `int.>'(in, in) can fail.
 require_scopes.m:040: Error: the required determinism of the goal in this scope
 require_scopes.m:040:   is `nondet', but its actual determinism is `semidet'.
 require_scopes.m:064: Error: the switch on `A' is required to be complete, but
-require_scopes.m:064:   it does not cover `require_scopes.f1'/0.
+require_scopes.m:064:   it does not cover
+require_scopes.m:064:     `f1'/0.
 require_scopes.m:097: Error: the arms of the switch on A are required have a
 require_scopes.m:097:   determinism that is acceptable in a `det' context, but
 require_scopes.m:097:   the actual determinism of the arm for

@@ -558,12 +558,9 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             Context = goal_info_get_context(GoalInfo),
             det_diagnose_switch_context(!.DetInfo, SwitchContexts,
                 NestingPieces),
-            DisjPieces =
-                [words("Disjunction has multiple clauses with solutions."),
-                nl],
-            Pieces = NestingPieces ++ [lower_case_next_if_not_first]
-                ++ DisjPieces,
-            Msg = simple_msg(Context, [always(Pieces)]),
+            DisjPieces = [lower_case_next_if_not_first,
+                words("Disjunction has multiple clauses with solutions."), nl],
+            Msg = simple_msg(Context, [always(NestingPieces ++ DisjPieces)]),
             Msgs = [Msg] ++ Msgs1
         else
             Msgs = Msgs1
@@ -585,7 +582,8 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
                 VarStr, MaybeMissingPieces),
             (
                 MaybeMissingPieces = yes(MissingPieces),
-                Pieces = [words("The switch on"), fixed(VarStr),
+                Pieces = [lower_case_next_if_not_first,
+                    words("The switch on"), fixed(VarStr),
                     words("does not cover") | MissingPieces] ++ [nl]
             ;
                 MaybeMissingPieces = no,
@@ -1092,7 +1090,20 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
         Reason = require_switch_arms_detism(RequiredVar, RequiredDetism),
         SubGoal = hlds_goal(SubGoalExpr, _),
         ( if
-            SubGoalExpr = switch(SwitchVar, _CanFail, Cases),
+            (
+                SubGoalExpr = switch(SwitchVar, _CanFail, Cases)
+            ;
+                % If the switch originally directly inside this scope
+                % has some arms that have more solutions than they should
+                % but the identity of those solutions does not matter,
+                % the main determinism analysis algorithm will wrap the
+                % switch with a commit scope. To diagnose the problem
+                % that required this scope, we want to look through it.
+                SubGoalExpr = scope(SubReason, SubSubGoal),
+                SubReason = commit(_MaybeForcePruning),
+                SubSubGoal = hlds_goal(SubSubGoalExpr, _),
+                SubSubGoalExpr = switch(SwitchVar, _CanFail, Cases)
+            ),
             SwitchVar = RequiredVar
         then
             det_info_get_vartypes(!.DetInfo, VarTypes),
@@ -1183,7 +1194,6 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
             CheckKind = require_detism_scope(_),
             % For require_detism scopes, the programmer requires an exact
             % match.
-            % keyword is the most appropriate scope.
             CompareResult = first_detism_same_as
         ;
             CheckKind = require_detism_switch_arm(_, _, _),
@@ -1344,7 +1354,9 @@ find_missing_cons_ids(DetInfo, InstMap0, Var, Cases, VarStr,
         )
     then
         det_diagnose_missing_consids(ConsIds, Cases, MissingConsIds),
-        cons_id_list_to_pieces(MissingConsIds, MissingPieces),
+        cons_id_list_to_pieces(MissingConsIds, MissingPieces0),
+        MissingPieces = [nl_indent_delta(1) | MissingPieces0]
+            ++ [nl_indent_delta(-1)],
         MaybeMissingPieces = yes(MissingPieces)
     else
         MaybeMissingPieces = no
@@ -1386,15 +1398,28 @@ compute_covered_cons_ids([Case | Cases], !CoveredConsIds) :-
 
 cons_id_list_to_pieces([], []).
 cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
-    ConsIdPiece = cons_id_and_maybe_arity(ConsId),
+    % If we invoked determinism analysis on this procedure, then it must be
+    % type correct. Since users will know the type of the switched-on variable, 
+    % they will know which module defined at, and hence which modules defined
+    % its function symbols. Repeating the name of that module for each cons_id
+    % is much more likely to be distracting clutter than helpful information.
+    ( if ConsId = cons(SymName, Arity, TypeCtor) then
+        SymNameToUse = unqualified(unqualify_name(SymName)),
+        ConsIdToUse = cons(SymNameToUse, Arity, TypeCtor)
+    else
+        ConsIdToUse = ConsId
+    ),
+    ConsIdPiece = cons_id_and_maybe_arity(ConsIdToUse),
     (
         ConsIds = [_, _ | _],
-        PiecesHead = [ConsIdPiece, suffix(",")]
+        PiecesHead = [ConsIdPiece, suffix(","), nl]
     ;
         ConsIds = [_],
-        PiecesHead = [ConsIdPiece, words("or")]
+        PiecesHead = [ConsIdPiece, words("or"), nl]
     ;
         ConsIds = [],
+        % Our caller will append the newline, with a negative indent
+        % to undo the positive indent before the start of the list of cons_ids.
         PiecesHead = [ConsIdPiece, suffix(".")]
     ),
     cons_id_list_to_pieces(ConsIds, PiecesTail),

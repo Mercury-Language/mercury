@@ -12,7 +12,7 @@ pred dice.merge/3-0      CALL                 dice.m:71   18 (3)    7      0.28
 pred dice.merge/3-0      EXIT                 dice.m:71   18 (3)    7      0.28
 pred dice.merge/3-0      <s1-2;>              dice.m:71    8 (3)    3      0.27
 pred dice.merge/3-0      <s1-2;s2-2;>         dice.m:73    8 (3)    3      0.27
-pred dice.merge/3-0      <s2-2;>              dice.m:71   10 (3)    4      0.29
+pred dice.merge/3-0      <s2-2;>              dice.m:72   10 (3)    4      0.29
 pred dice.merge/3-0      <s2-2;c2;s2-2;>      dice.m:74   10 (3)    4      0.29
 pred dice.merge/3-0      <s2-2;c2;s2-2;c4;?;> dice.m:76   10 (3)    4      0.29
 pred dice.merge/3-0      <s2-2;c2;s2-2;c4;t;> dice.m:78   10 (3)    3      0.23
@@ -32,7 +32,7 @@ mdb> pass_trace_counts dice.passes
 mdb> dice -sS -m dice
 Procedure                Path/Port            File:Line Pass (3) Fail Suspicion
 pred dice.merge/3-0      <s2-2;c2;s2-2;c4;e;> dice.m:81    0 (0)    1      1.00
-pred dice.merge/3-0      <s2-2;>              dice.m:71   10 (3)    4      0.29
+pred dice.merge/3-0      <s2-2;>              dice.m:72   10 (3)    4      0.29
 pred dice.merge/3-0      <s2-2;c2;s2-2;>      dice.m:74   10 (3)    4      0.29
 pred dice.merge/3-0      <s2-2;c2;s2-2;c4;?;> dice.m:76   10 (3)    4      0.29
 pred dice.merge/3-0      CALL                 dice.m:71   18 (3)    7      0.28
@@ -57,7 +57,7 @@ pred dice.merge/3-0      <s2-2;c2;s2-2;c4;t;> dice.m:78   10 (3)    3      0.23
 mdb> dice -sSF -m dice
 Procedure                Path/Port            File:Line Pass (3) Fail Suspicion
 pred dice.merge/3-0      <s2-2;c2;s2-2;c4;e;> dice.m:81    0 (0)    1      1.00
-pred dice.merge/3-0      <s2-2;>              dice.m:71   10 (3)    4      0.29
+pred dice.merge/3-0      <s2-2;>              dice.m:72   10 (3)    4      0.29
 pred dice.merge/3-0      <s2-2;c2;s2-2;>      dice.m:74   10 (3)    4      0.29
 pred dice.merge/3-0      <s2-2;c2;s2-2;c4;?;> dice.m:76   10 (3)    4      0.29
 pred dice.merge/3-0      CALL                 dice.m:71   18 (3)    7      0.28
@@ -93,7 +93,7 @@ pred dice.msort_n/4-0    EXIT                 dice.m:44   19 (3)    7      0.27
 pred dice.msort_n/4-0    <?;>                 dice.m:46   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;>                 dice.m:61   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;?;>               dice.m:51   19 (3)    7      0.27
-pred dice.merge/3-0      <s2-2;>              dice.m:71   10 (3)    4      0.29
+pred dice.merge/3-0      <s2-2;>              dice.m:72   10 (3)    4      0.29
 pred dice.merge/3-0      <s2-2;c2;s2-2;>      dice.m:74   10 (3)    4      0.29
 pred dice.merge/3-0      <s2-2;c2;s2-2;c4;?;> dice.m:76   10 (3)    4      0.29
 pred dice.msort_n/4-0    <e;t;>               dice.m:57   11 (3)    4      0.27

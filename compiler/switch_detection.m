@@ -489,7 +489,7 @@ convert_cases_table(GoalInfo, CasesTable) = SortedCases :-
     pair(cons_id, cons_id_entry)::in, list(case)::in, list(case)::out,
     set_tree234(cons_id)::in, set_tree234(cons_id)::out) is det.
 
-convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
+convert_case(GoalInfo0, ConflictConsIds, ConsId - Entry, !Cases,
         !AlreadyHandledConsIds) :-
     ( if set_tree234.contains(!.AlreadyHandledConsIds, ConsId) then
         Entry = cons_id_entry(State, _ArmCord),
@@ -504,6 +504,7 @@ convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
             expect(unify(IsMember, yes), $module, $pred,
                 "conflict status but not in ConflictConsIds"),
             Disjuncts = list.map(project_arm_goal, Arms),
+            use_context_of_first_disjunct(Disjuncts, GoalInfo0, GoalInfo),
             disj_list_to_goal(Disjuncts, GoalInfo, Goal),
             Case = case(ConsId, [], Goal),
             !:Cases = [Case | !.Cases]
@@ -513,6 +514,7 @@ convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
             expect(unify(IsMember, no), $module, $pred,
                 "singles status but in ConflictConsIds"),
             Disjuncts = list.map(project_single_arm_goal, Arms),
+            use_context_of_first_disjunct(Disjuncts, GoalInfo0, GoalInfo),
             disj_list_to_goal(Disjuncts, GoalInfo, Goal),
             Case = case(ConsId, [], Goal),
             !:Cases = [Case | !.Cases]
@@ -566,6 +568,31 @@ project_arm_goal(multi_cons_id_arm(_, _, Goal)) = Goal.
 project_single_arm_goal(single_cons_id_arm(_, Goal)) = Goal.
 project_single_arm_goal(multi_cons_id_arm(_, _, _)) = _ :-
     unexpected($module, $pred, "multi arm").
+
+:- pred use_context_of_first_disjunct(list(hlds_goal)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+use_context_of_first_disjunct(Disjuncts, GoalInfo0, GoalInfo) :-
+    gather_contexts_of_goals(Disjuncts, set_tree234.init, Contexts),
+    % In the common case that all the contexts have the same filename,
+    % this selects the smallest line number. If Contexts contains more than
+    % one filename, we have no way to choose the least surprising context
+    % to use, so may as well use LeastContext.
+    ( if set_tree234.remove_least(LeastContext, Contexts, _OtherContexts) then
+        goal_info_set_context(LeastContext, GoalInfo0, GoalInfo)
+    else
+        GoalInfo = GoalInfo0
+    ).
+
+:- pred gather_contexts_of_goals(list(hlds_goal)::in,
+    set_tree234(term.context)::in, set_tree234(term.context)::out) is det.
+
+gather_contexts_of_goals([], !Contexts).
+gather_contexts_of_goals([Goal | Goals], !Contexts) :-
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
+    set_tree234.insert(Context, !Contexts),
+    gather_contexts_of_goals(Goals, !Contexts).
 
 :- func num_cases_in_table(cases_table) = int.
 
