@@ -96,10 +96,8 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 
 link_collect(ObjectFile, Filter, Initialize, PostProcess, SendResult,
         GetCollectType, MaybeHandle, Result, !IO) :-
-    %
     % Link in the object code for the module `collect' from ObjectFile.
-    %
-    dl.open(ObjectFile, lazy, local, MaybeHandle, !IO),
+    dl.open(ObjectFile, lazy, scope_local, MaybeHandle, !IO),
     (
         MaybeHandle = dl_error(Msg),
         print("dlopen failed: ", !IO),

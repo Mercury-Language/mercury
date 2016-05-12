@@ -145,7 +145,7 @@ current_attributes_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule,
 	send_message_to_socket(current_slots),
 	read_message_from_socket(Response),
 	(
-		Response = current_slots_comp(RetrievedChrono, RetrievedCall, 
+		Response = response_current_slots_comp(RetrievedChrono, RetrievedCall, 
 				RetrievedDepth, RetrievedPort,
 				RetrievedTypeNameStr, RetrievedTypeModuleStr,
 				RetrievedDefModuleStr, RetrievedNameStr, 
@@ -160,7 +160,7 @@ current_attributes_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule,
 		% Anyway, this should never arrive here as long as we 
 		% do not send any forward_move_comp requests.
 	;
-		Response = current_slots_user(RetrievedChrono, RetrievedCall, 
+		Response = response_current_slots_user(RetrievedChrono, RetrievedCall, 
 				RetrievedDepth, RetrievedPort,
 				RetrievedPredOrFunc, RetrievedDeclModuleStr,
 				RetrievedDefModuleStr, RetrievedNameStr, 
@@ -230,7 +230,7 @@ current_attributes_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule,
 	%	write(stderr, "eot: you can't retrieve any attributes"),
 	%	fail
 	%;
-		Response = error(ErrorMessage)
+		Response = response_error(ErrorMessage)
 	->
 		write(stderr, "Error in current_attributes/13 (current_slots.op)\n"),
 		write(stderr, "   An error occured in the Mercury process: "),
@@ -600,10 +600,10 @@ stack_ll_Op(StackList) :-
 	read_message_until_end_stack([], StackList),
  	read_message_from_socket(Message), 
 	( 
-		Message = ok,
+		Message = response_ok,
 		!
 	; 
-		Message = error(ErrorMessage),
+		Message = response_error(ErrorMessage),
 		printf(trace, "\nUnable to retrieve all the ancestors; %w.\n", 
 			ErrorMessage)
 	),
@@ -615,7 +615,7 @@ stack_ll_Op(_) :-
 
 read_message_until_end_stack(ListIn, ListOut) :-
 	read_message_from_socket(Message),
-	( Message = end_stack ->
+	( Message = response_end_stack ->
 		ListOut = ListIn
 	;
 		List = [Message|ListIn],
@@ -682,7 +682,7 @@ stack_regs_Op :-
 	getval(state_of_morphine, running),
 	send_message_to_socket(stack_regs),
 	read_message_from_socket(Message),
-	Message = stack_regs(SP, CURFR, MAXFR),
+	Message = response_stack_regs(SP, CURFR, MAXFR),
 	printf(trace, "\nsp = %p, curfr = %p, maxfr = %p\n", 
 		[SP, CURFR, MAXFR]),
 	!.

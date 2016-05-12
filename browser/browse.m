@@ -1669,10 +1669,10 @@ write_term_mode_debugger(Debugger, MaybeModeFunc, Dirs, !IO) :-
 
 :- func browser_mode_to_string(browser_term_mode) = string.
 
-browser_mode_to_string(input) = "Input".
-browser_mode_to_string(output) = "Output".
-browser_mode_to_string(not_applicable) = "Not Applicable".
-browser_mode_to_string(unbound) = "Unbound".
+browser_mode_to_string(btm_input) = "Input".
+browser_mode_to_string(btm_output) = "Output".
+browser_mode_to_string(btm_not_applicable) = "Not Applicable".
+browser_mode_to_string(btm_unbound) = "Unbound".
 
 %---------------------------------------------------------------------------%
 

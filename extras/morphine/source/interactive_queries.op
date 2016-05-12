@@ -210,11 +210,11 @@ mmc_options_Op(Options) :-
 	read_message_from_socket(Response),
 	printf("response to query = %w\n", [Response]),	
 	(
-		Response == mmc_options_ok,
+		Response == response_mmc_option_ok,
 		nl
 	;
 		% Should never occur
 		write("Bad message from the Mercury proccess.\n"),
-		write("mmc_options_ok expected.\n"),
+		write("mmc_option_ok expected.\n"),
 		fail
 	).

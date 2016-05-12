@@ -29,8 +29,8 @@
     ;       now.        % RTLD_NOW
 
 :- type scope
-    --->    local
-    ;       global.  % RTLD_GLOBAL or not.
+    --->    scope_local
+    ;       scope_global.  % RTLD_GLOBAL or not.
 
 :- type handle.
 :- type dl_result(T)

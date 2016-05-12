@@ -41,7 +41,7 @@ browser_loop :-
 	),
 	(
 		Msg = browser_quit,
-		read_message_from_socket(browser_end),
+		read_message_from_socket(response_browser_end),
 		!
 	;
 		Msg = browser_end_command,

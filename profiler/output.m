@@ -24,7 +24,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred output_profile(output::in, map(string, int)::in,
+:- pred output_profile(profiler_output::in, map(string, int)::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -53,7 +53,7 @@ output_profile(Output, IndexMap, !IO) :-
     what_to_profile(WhatToProfileString, WhatToProfile),
     io.format("*** profiling %s ***\n\n", [s(WhatToProfileString)], !IO),
 
-    Output = output(InfoMap, CallList, FlatList),
+    Output = profiler_output(InfoMap, CallList, FlatList),
     globals.io_lookup_bool_option(call_graph, CallGraphOpt, !IO),
     (
         CallGraphOpt = yes,
@@ -314,7 +314,7 @@ output_formatted_cycle_child_list([Child | Childs], IndexMap, !IO) :-
     Name = output.construct_name(LabelName, CycleNum),
     Index = IndexMap ^ det_elem(LabelName),
     io.format("%40d             %s [%d]\n",
-        [i(Calls),s(Name),i(Index)], !IO),
+        [i(Calls), s(Name), i(Index)], !IO),
     output_formatted_cycle_child_list(Childs, IndexMap, !IO).
 
     % output_formatted_child_list:

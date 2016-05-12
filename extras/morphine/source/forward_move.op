@@ -441,13 +441,13 @@ fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, DefModule, Pred,
 	read_message_from_socket(Response), 
 
 	(
-		Response = forward_move_match_found
+		Response = response_forward_move_match_found
 	->
 		true
 	;
 	% [EOT] Maybe the response should rather be eot to be homogeneous with 
 	% the response done to a current_slots query when eot is reached.
-		Response = forward_move_match_not_found 
+		Response = response_forward_move_match_not_found 
 	->
 		write("last event is reached\n"),
 		setval(state_of_morphine, eot),
@@ -455,7 +455,7 @@ fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, DefModule, Pred,
 		end_connection,
 		fail
 	;
-		Response = error(ErrorMessage)
+		Response = response_error(ErrorMessage)
 	->
 		write(stderr, "Error in fget_ll/13 (forward_move.op)\n"),
 		write(stderr, "   An error occured in the Mercury process: "),
@@ -915,9 +915,9 @@ retry_Op :-
 	send_message_to_socket(retry),
 	read_message_from_socket(Message), 
 	( 
-		Message = ok 
+		Message = response_ok 
 	; 
-		Message = error(ErrorMessage),
+		Message = response_error(ErrorMessage),
 		write(ErrorMessage), 
 		nl,
 		fail

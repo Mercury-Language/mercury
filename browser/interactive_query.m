@@ -725,7 +725,7 @@ dynamically_load_and_run(Program, !IO) :-
     % Load in the object code for the module `query' from
     % the file `libmdb_query.{so,dylib}'.
     Filename = "./lib" ++ query_module_name ++ shlib_extension,
-    dl.open(Filename, lazy, local, MaybeHandle, !IO),
+    dl.open(Filename, lazy, scope_local, MaybeHandle, !IO),
     (
         MaybeHandle = dl_error(Msg),
         io.format("dlopen failed: %s\n", [s(Msg)], !IO)

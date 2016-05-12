@@ -151,9 +151,9 @@ run(ProgramPathStr, ProgramCallStr, ListArgsStr) :-
 	% state_of_morphine = running | not_running | eot (| bot) 
 	setval(state_of_morphine, running),
 
-	read_message_from_socket(hello),
+	read_message_from_socket(response_hello),
 	send_message_to_socket(hello_reply),
-	read_message_from_socket(start),
+	read_message_from_socket(response_start),
 	setval(a_program_has_been_run, yes),
 	print_event
     ->
@@ -392,9 +392,9 @@ run_remote(MachineName, ProgramPathStr, ProgramCallStr) :-
 	% state_of_morphine = running | not_running | eot (| bot) 
 	setval(state_of_morphine, running),
 
-	read_message_from_socket(hello),
+	read_message_from_socket(response_hello),
 	send_message_to_socket(hello_reply),
-	read_message_from_socket(start)
+	read_message_from_socket(response_start)
     ->
 	true
     ;
@@ -445,7 +445,7 @@ current execution without printing any further trace information.\
 %:- mode no_trace is det.
 no_trace_Op :-
 	send_message_to_socket(no_trace),
-	read_message_from_socket(forward_move_match_not_found),
+	read_message_from_socket(response_forward_move_match_not_found),
 	ec.
 
 

@@ -303,7 +303,7 @@ opium_primitive(
 current_grade_Op(Grade) :-
 	check_a_program_is_running("current_grade/1"),
 	send_message_to_socket(current_grade),
-	read_message_from_socket(grade(Grade)).
+	read_message_from_socket(response_grade(Grade)).
 
 
 %------------------------------------------------------------------------------%
@@ -480,7 +480,7 @@ dyn_link_collect_Op(File, FileSo) :-
 	),
 	send_message_to_socket(link_collect("\"./collect.so\"")),
 	read_message_from_socket(Result),
-	( Result = link_collect_succeeded ->
+	( Result = response_link_collect_succeeded ->
 		morphine_write_debug("collect.so has been linked successfully.\n")
 	;
 		% if the Mercury program has been compiled in another grade, the 
@@ -495,7 +495,7 @@ dyn_link_collect_Op(File, FileSo) :-
 		sh(Cmd3),
 		send_message_to_socket(link_collect("\"./collect.so\"")),
 		read_message_from_socket(Result2),
-		( Result2 = link_collect_succeeded ->
+		( Result2 = response_link_collect_succeeded ->
 			morphine_write_debug("collect.so has been linked "),
 			morphine_write_debug("successfully this time.\n")
 		;
@@ -527,12 +527,12 @@ run_collect_Op(Result) :-
 	( 
 		collect_arg(yes),
 		send_message_to_socket(collect_arg_on),
-		read_message_from_socket(collect_arg_on_ok),
+		read_message_from_socket(response_collect_arg_on_ok),
 		!
 	;
 		collect_arg(no),
 		send_message_to_socket(collect_arg_off),
-		read_message_from_socket(collect_arg_off_ok),
+		read_message_from_socket(response_collect_arg_off_ok),
 		!
 	;
 		print("Error in run_collect_Op.\n"),
@@ -541,10 +541,10 @@ run_collect_Op(Result) :-
 	send_message_to_socket(collect),
 	read_message_from_socket(CollectLinked),
 	( 
-		CollectLinked == collect_linked,
+		CollectLinked == response_collect_linked,
 		read_message_from_socket(Msg),
 		( 
-			Msg = collected(Result),
+			Msg = response_collected(Result),
 			read_message_from_socket(IsExecutionContinuing),
 			(
 				IsExecutionContinuing = execution_continuing,
@@ -562,7 +562,7 @@ run_collect_Op(Result) :-
 		),
 		!
 	;
-		CollectLinked == collect_not_linked,
+		CollectLinked == response_collect_not_linked,
 		print("You can't call `run_collect/1'; "),
 		print("The collect module has not been linked with "),
 		print("the current execution (cf `dyn_link_collect/2').\n"),

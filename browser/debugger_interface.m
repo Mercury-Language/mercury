@@ -203,19 +203,19 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
     % The debugger_response type is used for response sent
     % to the debugger process from the Mercury program being debugged.
 :- type debugger_response
-    --->    hello
+    --->    response_hello
             % sending hello
             % are you there?
 
-    ;       start
+    ;       response_start
             % start the synchronous communication with the debugger
 
-    ;       forward_move_match_found
-    ;       forward_move_match_not_found
-            % responses to forward_move
+    % responses to forward_move
+    ;       response_forward_move_match_found
+    ;       response_forward_move_match_not_found
 
     % responses to current
-    ;       current_slots_user(
+    ;       response_current_slots_user(
                 % responses to current_slots for user event
                 event_number,
                 call_number,
@@ -232,7 +232,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
                 line_number
             )
 
-    ;       current_slots_comp(
+    ;       response_current_slots_comp(
                 % responses to current_slots for compiler generated event
                 event_number,
                 call_number,
@@ -250,73 +250,75 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
             )
 
     % responses to current_vars
-    ;   current_vars(list(univ), list(string))
+    ;       response_current_vars(list(univ), list(string))
 
     % responses to current_nth_var
-    ;       current_nth_var(univ)
+    ;       response_current_nth_var(univ)
 
     % responses to current_live_var_names
-    ;       current_live_var_names(list(string), list(string))
+    ;       response_current_live_var_names(list(string), list(string))
 
     % response sent when the last event is reached
-    ;       last_event
+    ;       response_last_event
 
     % responses to a successful browse request session
-    ;       browser_end
+    ;       response_browser_end
 
     % responses to a successful mmc_option request
-    ;       mmc_option_ok
+    ;       response_mmc_option_ok
 
     % responses to requests that proceeded successfully
-    ;       ok
+    ;       response_ok
 
     % responses to requests that went wrong
-    ;           error(string)
+    ;           response_error(string)
 
     % responses to stack
     % The protocol between the debugger and the debuggee is described is
     % trace/mercury_trace_external.c.
-    ;       level(int)                              % stack level
-    ;       proc(string, string, string, int, int)  % compiler generated proc
-    ;       proc(string, string, int, int)          % user generated proc
-    ;       def_module(string)
-    ;       detail(int, int, int)
-    ;       (pred)
-    ;       (func)
-    ;       det(string)
-    ;       end_stack
+    ;       response_level(int)
+            % stack level
+    ;       response_proc(string, string, string, int, int)
+            % compiler generated proc
+    ;       response_proc(string, string, int, int)
+            % user generated proc
+    ;       response_def_module(string)
+    ;       response_detail(int, int, int)
+    ;       response_pred
+    ;       response_func
+    ;       response_det(string)
+    ;       response_end_stack
 
     % responses to stack_regs
-    ;       stack_regs(int, int, int)
+    ;       response_stack_regs(int, int, int)
 
     % responses to link_collect
-    ;       link_collect_succeeded
-    ;       link_collect_failed
+    ;       response_link_collect_succeeded
+    ;       response_link_collect_failed
 
     % responses to collect
-    ;       collect_linked
-    ;       collect_not_linked
+    ;       response_collect_linked
+    ;       response_collect_not_linked
 
     % responses to current_grade
-    ;       grade(string)
+    ;       response_grade(string)
 
     % responses to collect
-    %;  collected(collected_type)
-    % This is commented out because collected_type is unknown at
-    % compile time since it is defined by users in the dynamically
-    % linked collect module.
+    %;      response_collected(collected_type)
+    % This is commented out because collected_type is unknown at compile time,
+    % since it is defined by users in the dynamically linked collect module.
 
     % sent if the execution is not terminated after a collect request
-    ;       execution_continuing
+    ;       response_execution_continuing
 
     % sent if the execution is terminated after a collect request
-    ;       execution_terminated
+    ;       response_execution_terminated
 
     % responses to collect_arg_on
-    ;       collect_arg_on_ok
+    ;       response_collect_arg_on_ok
 
     % responses to collect_arg_off
-    ;       collect_arg_off_ok.
+    ;       response_collect_arg_off_ok.
 
 %-----------------------------------------------------------------------------%
 %   send to the debugger (e.g. Opium) the wanted features.
@@ -340,10 +342,10 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port,
         PredOrFunc, DeclModuleName, DefModuleName, PredName, Arity, ModeNum,
         Determinism, Path, LineNo, OutputStream, !IO) :-
-    CurrentTraceInfo = current_slots_user(EventNumber, CallNumber,
+    Response = response_current_slots_user(EventNumber, CallNumber,
         DepthNumber, Port, PredOrFunc, DeclModuleName, DefModuleName,
         PredName, Arity, ModeNum, Determinism, Path, LineNo),
-    io.write(OutputStream, CurrentTraceInfo, !IO),
+    io.write(OutputStream, Response, !IO),
     io.print(OutputStream, ".\n", !IO),
     io.flush_output(OutputStream, !IO).
 
@@ -366,10 +368,10 @@ output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port,
 output_current_slots_comp(EventNumber, CallNumber, DepthNumber, Port,
         NameType, ModuleType, DefModuleName, PredName, Arity,
         ModeNum, Determinism, Path, LineNo, OutputStream, !IO) :-
-    CurrentTraceInfo = current_slots_comp(EventNumber, CallNumber,
+    Response = response_current_slots_comp(EventNumber, CallNumber,
         DepthNumber, Port, NameType, ModuleType, DefModuleName,
         PredName, Arity, ModeNum, Determinism, Path, LineNo),
-    io.write(OutputStream, CurrentTraceInfo, !IO),
+    io.write(OutputStream, Response, !IO),
     io.print(OutputStream, ".\n", !IO),
     io.flush_output(OutputStream, !IO).
 
@@ -384,8 +386,8 @@ output_current_slots_comp(EventNumber, CallNumber, DepthNumber, Port,
     io.output_stream::in, io::di, io::uo) is det.
 
 output_current_vars(VarList, StringList, OutputStream, !IO) :-
-    CurrentTraceInfo = current_vars(VarList, StringList),
-    io.write(OutputStream, CurrentTraceInfo, !IO),
+    Response = response_current_vars(VarList, StringList),
+    io.write(OutputStream, Response, !IO),
     io.print(OutputStream, ".\n", !IO),
     io.flush_output(OutputStream, !IO).
 
@@ -399,8 +401,8 @@ output_current_vars(VarList, StringList, OutputStream, !IO) :-
     is det.
 
 output_current_nth_var(Var, OutputStream, !IO) :-
-    CurrentTraceInfo = current_nth_var(Var),
-    io.write(OutputStream, CurrentTraceInfo, !IO),
+    Response = response_current_nth_var(Var),
+    io.write(OutputStream, Response, !IO),
     io.print(OutputStream, ".\n", !IO),
     io.flush_output(OutputStream, !IO).
 
@@ -413,9 +415,9 @@ output_current_nth_var(Var, OutputStream, !IO) :-
 
 output_current_live_var_names(LiveVarNameList, LiveVarTypeList, OutputStream,
         !IO) :-
-    CurrentTraceInfo = current_live_var_names(LiveVarNameList,
+    Response = response_current_live_var_names(LiveVarNameList,
         LiveVarTypeList),
-    io.write(OutputStream, CurrentTraceInfo, !IO),
+    io.write(OutputStream, Response, !IO),
     io.print(OutputStream, ".\n", !IO),
     io.flush_output(OutputStream, !IO).
 

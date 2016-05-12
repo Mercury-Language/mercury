@@ -732,7 +732,7 @@ get_subterm_mode_from_atoms(InitAtom, FinalAtom, Dirs) = Mode :-
             FinalAtom, ArgPos, TermPath)
     ;
         Path = [],
-        Mode = not_applicable
+        Mode = btm_not_applicable
     ).
 
 :- func get_subterm_mode_from_atoms_and_term_path(trace_atom, trace_atom,
@@ -741,11 +741,11 @@ get_subterm_mode_from_atoms(InitAtom, FinalAtom, Dirs) = Mode :-
 get_subterm_mode_from_atoms_and_term_path(InitAtom, FinalAtom, ArgPos,
         TermPath) = Mode :-
     ( if trace_atom_subterm_is_ground(InitAtom, ArgPos, TermPath) then
-        Mode = input
+        Mode = btm_input
     else if trace_atom_subterm_is_ground(FinalAtom, ArgPos, TermPath) then
-        Mode = output
+        Mode = btm_output
     else
-        Mode = unbound
+        Mode = btm_unbound
     ).
 
 :- func get_subterm_mode_from_atoms_for_arg(int::in, trace_atom::in,

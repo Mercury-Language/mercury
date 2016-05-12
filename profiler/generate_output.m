@@ -25,8 +25,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_prof_output(prof::in, map(string, int)::out, output::out,
-    io::di, io::uo) is det.
+:- pred generate_prof_output(prof::in, map(string, int)::out,
+    profiler_output::out, io::di, io::uo) is det.
 
 :- func checked_float_divide(float, float) = float.
 
@@ -84,7 +84,7 @@ generate_prof_output(Prof, IndexMap, Output, !IO) :-
 
     assign_index_numbers(IndexMap, CallList0, CallList),
     FlatList = list.reverse(FlatList0),
-    Output = output(InfoMap, CallList, FlatList).
+    Output = profiler_output(InfoMap, CallList, FlatList).
 
 :- pred process_prof_node_list(list(prof_node)::in, prof::in, bool::in,
     profiling::in, profiling::out, io::di, io::uo) is det.

@@ -315,7 +315,7 @@ synthetise_list_univ_and_list_string2([], [], [], []).
 current_vars_ll(ListLiveVar, ListName) :-
 	send_message_to_socket(current_vars),
 	read_message_from_socket(Response),
-	Response = current_vars(ListLiveVar, ListName).
+	Response = response_current_vars(ListLiveVar, ListName).
 
 
 %------------------------------------------------------------------------------%
@@ -400,7 +400,7 @@ get_internal_number(N, VarNames, [_ | ListVarNames], InternalNumber) :-
 current_nth_var_ll(VarInternalNumber, Var) :-
 	send_message_to_socket(current_nth_var(VarInternalNumber)),
 	read_message_from_socket(Response),
-	Response = current_nth_var(Var).
+	Response = response_current_nth_var(Var).
 
 
 %------------------------------------------------------------------------------%
@@ -450,7 +450,7 @@ synthetise_var_names_list_and_type_list([Var | TailVar], [Type | TailType],
 current_live_var_names_and_types_ll(ListVarNames, ListType) :-
 	send_message_to_socket(current_live_var_names),
 	read_message_from_socket(Response),
-	Response = current_live_var_names(ListVarNames, ListType).
+	Response = response_current_live_var_names(ListVarNames, ListType).
 
 
 %------------------------------------------------------------------------------%

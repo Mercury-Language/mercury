@@ -85,20 +85,20 @@
     % correspond directly with the declared Mercury modes.
     %
 :- type browser_term_mode
-    --->    input
+    --->    btm_input
             % The sub-term is bound at the call. For example the Mercury
             % builtin modes `in', `di' and `ui'.
 
-    ;       output
+    ;       btm_output
             % The sub-term is unbound at the call. The call succeeded
             % and bound the sub-term. For example the Mercury builtin modes
             % `out' and `uo'.
 
-    ;       unbound
+    ;       btm_unbound
             % The sub-term is unbound at the call and at the final EXIT, FAIL
             % or EXCP event.
 
-    ;       not_applicable.
+    ;       btm_not_applicable.
             % If the user asks about the mode of an atom, this value should be
             % returned by the browser term mode function.
 

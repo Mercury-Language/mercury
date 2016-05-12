@@ -27,8 +27,8 @@
 %---------------------------------------------------------------------------%
 
     % XXX Needs to be explained more clearly.
-:- type output
-    --->    output(
+:- type profiler_output
+    --->    profiler_output(
                 % The map that contains all the info which is required
                 % to generate the output.
 
