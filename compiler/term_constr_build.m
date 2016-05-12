@@ -946,7 +946,7 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
     ).
 
 :- pred accumulate_nonzero_arg_coeffs(size_var_map::in, set(size_var)::in,
-    coefficient::in, prog_var::in, lp_terms::in, lp_terms::out) is det.
+    lp_coefficient::in, prog_var::in, lp_terms::in, lp_terms::out) is det.
 
 accumulate_nonzero_arg_coeffs(SizeVarMap, Zeros, Coeff, Var, !Terms) :-
     SizeVar = prog_var_to_size_var(SizeVarMap, Var),

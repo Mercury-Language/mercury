@@ -436,7 +436,7 @@ convert_equations_2([], !PPVars, !Varset, !Eqns).
 convert_equations_2([Path | Paths], !PPVars, !Varset, !Eqns) :-
     Path = term_path_info(ThisPPId, _, IntGamma, PPIds, _),
     FloatGamma = float(IntGamma),
-    Eqn = eqn(Coeffs, (>=), FloatGamma),
+    Eqn = eqn(Coeffs, op_ge, FloatGamma),
     pred_proc_var(ThisPPId, ThisVar, !Varset, !PPVars),
     Coeffs = [ThisVar - 1.0 | RestCoeffs],
     Convert = (pred(PPId::in, Coeff::out, !.VS::in, !:VS::out,

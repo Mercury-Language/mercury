@@ -136,31 +136,33 @@
 
     % Assignment constraints.
     %
-:- type assgt               --->    (mcvar == bool).
-:- type assgts              ==      list(assgt).
+:- type assgt
+    --->    mcvar `assign` bool.
+:- type assgts == list(assgt).
 
     % Binary implication constraints. (Not a logical implication,
     % just a unidirectional propagation path).
     %
-:- type impl                --->    assgt `implies` assgt.
-:- type impls               ==      list(impl).
+:- type impl
+    --->    assgt `implies` assgt.
+:- type impls == list(impl).
 
     % Complex constraints.
     %
 :- type complex_cstrt
     --->    eqv_disj(mcvar, mcvars)
-                % var <-> OR(vars)
+            % var <-> OR(vars)
     ;       at_most_one(mcvars)
     ;       exactly_one(mcvars)
     ;       disj_of_assgts(list(assgts)).
-                % Each element of the list is a list of assignments
-                % which should occur concurrently.
+            % Each element of the list is a list of assignments
+            % which should occur concurrently.
 
-:- type complex_cstrts      ==      list(complex_cstrt).
+:- type complex_cstrts == list(complex_cstrt).
 
     % Map from a variable to the complex constraints it participates in.
     %
-:- type complex_cstrt_map   ==      multi_map(mcvar, complex_cstrt).
+:- type complex_cstrt_map == multi_map(mcvar, complex_cstrt).
 
     % A propagation graph is an optimised representation of a set of
     % binary implication constraints. It consists of a pair of mappings
@@ -179,7 +181,7 @@
     % to reduce the number of variables we have to worry about
     % when solving the constraints.
     %
-:- type eqv_vars            ==      eqvclass(mcvar).
+:- type eqv_vars == eqvclass(mcvar).
 
     % This type is just used to collect constraints before
     % we prepare them for use by the solver.
@@ -249,7 +251,7 @@ prepare_abstract_constraint(Constraint, !PCs) :-
         prepare_abstract_constraints(Constraints, !PCs)
     ;
         Constraint = mc_disj(Constraints),
-        (
+        ( if
             % Build var - bool pairs assuming structure
             % mc_disj(mc_conj(assgts), mc_conj(assgts), ...), otherwise fail.
             list.map(
@@ -258,9 +260,9 @@ prepare_abstract_constraint(Constraint, !PCs) :-
                         (Var - Val)::out) is semidet), Fls, VarValPairs)
                 ),
                 Constraints, DisjOfAssgts)
-        ->
+        then
             disjunction_of_assignments(DisjOfAssgts, !PCs)
-        ;
+        else
             sorry($module, $pred, "Disjuction of constraints - general case.")
         )
     ).
@@ -298,30 +300,30 @@ equivalent([X | Xs], !PCs) :-
 %-----------------------------------------------------------------------------%
 
 implies(X, Y, !PCs) :-
-    !PCs ^ prep_impls := [ (X == yes) `implies` (Y == yes),
-                                 (Y == no)  `implies` (X == no)
+    !PCs ^ prep_impls := [ (X `assign` yes) `implies` (Y `assign` yes),
+                                 (Y `assign` no)  `implies` (X `assign` no)
                          | !.PCs ^ prep_impls ].
 
 %-----------------------------------------------------------------------------%
 
 not_both(X, Y, !PCs) :-
-    !PCs ^ prep_impls := [ (X == yes) `implies` (Y == no),
-                                 (Y == yes) `implies` (X == no)
+    !PCs ^ prep_impls := [ (X `assign` yes) `implies` (Y `assign` no),
+                                 (Y `assign` yes) `implies` (X `assign` no)
                          | !.PCs ^ prep_impls ].
 
 %-----------------------------------------------------------------------------%
 
 different(X, Y, !PCs) :-
-    !PCs ^ prep_impls := [ (X == yes) `implies` (Y == no),
-                                 (X == no)  `implies` (Y == yes),
-                                 (Y == yes) `implies` (X == no),
-                                 (Y == no)  `implies` (X == yes)
+    !PCs ^ prep_impls := [ (X `assign` yes) `implies` (Y `assign` no),
+                                 (X `assign` no)  `implies` (Y `assign` yes),
+                                 (Y `assign` yes) `implies` (X `assign` no),
+                                 (Y `assign` no)  `implies` (X `assign` yes)
                          | !.PCs ^ prep_impls ].
 
 %-----------------------------------------------------------------------------%
 
 assign(X, V, !PCs) :-
-    !PCs ^ prep_assgts := [(X == V) | !.PCs ^ prep_assgts].
+    !PCs ^ prep_assgts := [X `assign` V | !.PCs ^ prep_assgts].
 
 %-----------------------------------------------------------------------------%
 
@@ -373,7 +375,8 @@ exactly_one(Xs, !PCs) :-
 
 disjunction_of_assignments(DisjOfAssgts, !PCs) :-
     Assgtss =
-        list.map(list.map(func((Var - Value)) = (Var == Value)), DisjOfAssgts),
+        list.map(list.map(func((Var - Value)) = Var `assign` Value),
+            DisjOfAssgts),
     !PCs ^ prep_complex_cstrts :=
         [disj_of_assgts(Assgtss) | !.PCs ^ prep_complex_cstrts].
 
@@ -385,14 +388,15 @@ make_solver_cstrts(PCs) = SCs:-
 
     Assgts =
         list.map(
-            func(X == V) = (eqv_var(Eqvs, X) == V),
+            func(X `assign` V) = (eqv_var(Eqvs, X) `assign` V),
             PCs ^ prep_assgts
         ),
 
     Impls =
         list.map(
-            func((X == VX) `implies` (Y == VY)) =
-                ((eqv_var(Eqvs, X) == VX) `implies` (eqv_var(Eqvs, Y) == VY)),
+            func((X `assign` VX) `implies` (Y `assign` VY)) =
+                ((eqv_var(Eqvs, X) `assign` VX) `implies`
+                    (eqv_var(Eqvs, Y) `assign` VY)),
             PCs ^ prep_impls
         ),
 
@@ -402,11 +406,12 @@ make_solver_cstrts(PCs) = SCs:-
     % Construct the propagation graph.
     PropGraph =
         list.foldl(
-            func(((X == VX) `implies` (Y == VY)), prop_graph(YesPG, NoPG)) =
-                ( VX = yes ->
-                    prop_graph(set(YesPG, X, (Y == VY)), NoPG)
-                ;
-                    prop_graph(YesPG, set(NoPG, X, (Y == VY)))
+            func(((X `assign` VX) `implies` (Y `assign` VY)),
+                    prop_graph(YesPG, NoPG)) =
+                ( if VX = yes then
+                    prop_graph(set(YesPG, X, (Y `assign` VY)), NoPG)
+                else
+                    prop_graph(YesPG, set(NoPG, X, (Y `assign` VY)))
                 ),
             Impls,
             prop_graph(multi_map.init, multi_map.init)
@@ -428,14 +433,15 @@ make_solver_cstrts(PCs) = SCs:-
     % Find the set of variables we have to solve for.
     AssgtVars =
         list.foldl(
-            func((X == _V), Vars) = [X | Vars],
+            func((X `assign` _V), Vars) = [X | Vars],
             Assgts,
             []
         ),
 
     AndImplVars =
         list.foldl(
-            func((X == _VX) `implies` (Y == _VY), Vars) = [X, Y | Vars],
+            func((X `assign` _VX) `implies` (Y `assign` _VY), Vars) =
+                [X, Y | Vars],
             Impls,
             AssgtVars
         ),
@@ -474,7 +480,7 @@ complex_cstrt_vars(eqv_disj(X, Ys)) = [X | Ys].
 complex_cstrt_vars(at_most_one(Xs)) = Xs.
 complex_cstrt_vars(exactly_one(Xs)) = Xs.
 complex_cstrt_vars(disj_of_assgts(Assgtss)) =
-    list.foldl(list.foldl(func((V == _), Vs) = [V | Vs]), Assgtss, []).
+    list.foldl(list.foldl(func((V `assign` _), Vs) = [V | Vs]), Assgtss, []).
 
     % Replaces all the variables in the supplied constraint with
     % a representative variable from those constrained to be equivalent
@@ -493,7 +499,7 @@ eqv_complex_cstrt(Eqvs, exactly_one(Xs)) =
 
 eqv_complex_cstrt(Eqvs, disj_of_assgts(Assgtss)) =
     disj_of_assgts(list.map(
-        list.map(func((Var == Val)) = (eqv_var(Eqvs, Var) == Val)),
+        list.map(func((Var `assign` Val)) = (eqv_var(Eqvs, Var) `assign` Val)),
         Assgtss
     )).
 
@@ -559,25 +565,25 @@ bind_all(Vars, Val, !Bindings) :-
 solve_assgts(SCs, Assgts, Bs0, Bs) :-
     list.foldl(solve_assgt(SCs), Assgts, Bs0, Bs).
 
-    % solve_assgt(SCs, (X == V), Bs0, Bs) attempts to bind variable X
+    % solve_assgt(SCs, (X `assign` V), Bs0, Bs) attempts to bind variable X
     % to value V. It propagates the results if it succeeds.
     %
 :- pred solve_assgt(solver_cstrts::in, assgt::in,
     mc_bindings::in, mc_bindings::out) is semidet.
 
-solve_assgt(SCs, (X == V), Bs0, Bs) :-
+solve_assgt(SCs, (X `assign` V), Bs0, Bs) :-
     % XXX
-    ( Bs0 ^ elem(X) = V0 ->
-        ( V = V0 ->
+    ( if Bs0 ^ elem(X) = V0 then
+        ( if V = V0  then
             true
-        ;
+        else
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
                 io.write_string(mc_var_to_string(X) ++ " conflict", !IO)
             )
         ),
         V  = V0,
         Bs = Bs0
-    ;
+    else
         trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
             io.write_string(".", !IO)
         ),
@@ -594,9 +600,9 @@ solve_assgt(SCs, (X == V), Bs0, Bs) :-
 %-----------------------------------------------------------------------------%
 
     % solve_complex_cstrts(SCs, X, V, ComplexCstrts, Bs0, Bs) succeeds
-    % if the binding (X == V) (which should already have been added to Bs0)
-    % is consistant with the complex constraints variable X participates
-    % in SCs. It also propagates results where appropriate.
+    % if the binding (X `assign` V) (which should already have been added
+    % to Bs0) is consistant with the complex constraints variable X
+    % participates in SCs. It also propagates results where appropriate.
     %
 :- pred solve_complex_cstrts(solver_cstrts::in, mcvar::in, bool::in,
     complex_cstrts::in, mc_bindings::in, mc_bindings::out) is semidet.
@@ -605,15 +611,15 @@ solve_complex_cstrts(SCs, X, V, ComplexCstrts, Bs0, Bs) :-
     list.foldl(solve_complex_cstrt(SCs, X, V), ComplexCstrts, Bs0, Bs).
 
     % solve_complex_cstrt(SCs, X, V, ComplexCstrt, Bs0, Bs) succeeds
-    % if the binding (X == V) (which should already have been added to Bs0)
-    % is consistant with ComplexCstrt (in which X should participate in SCs).
-    % It also propagates results where appropriate.
+    % if the binding (X `assign` V) (which should already have been added
+    % to Bs0) is consistant with ComplexCstrt (in which X should participate
+    % in SCs). It also propagates results where appropriate.
     %
 :- pred solve_complex_cstrt(solver_cstrts::in, mcvar::in, bool::in,
     complex_cstrt::in, mc_bindings::in, mc_bindings::out) is semidet.
 
 solve_complex_cstrt(SCs, X, V, eqv_disj(Y, Zs), Bs0, Bs) :-
-    ( X = Y ->
+    ( if X = Y then
         (
             V  = yes,
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
@@ -626,24 +632,24 @@ solve_complex_cstrt(SCs, X, V, eqv_disj(Y, Zs), Bs0, Bs) :-
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
                 io.write_string("0<", !IO)
             ),
-            solve_assgts(SCs, list.map(func(Z) = (Z == no), Zs), Bs0, Bs)
+            solve_assgts(SCs, list.map(func(Z) = Z `assign` no, Zs), Bs0, Bs)
         )
-     ;
+     else
         % X in Zs
         (
             V = yes,
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
                 io.write_string(">1", !IO)
             ),
-            solve_assgt(SCs, (Y == yes), Bs0, Bs)
+            solve_assgt(SCs, Y `assign` yes, Bs0, Bs)
         ;
             V = no,
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
                 io.write_string(">0", !IO)
             ),
-            ( all_no(Bs0, Zs) ->
-                solve_assgt(SCs, (Y == no), Bs0, Bs)
-            ;
+            ( if all_no(Bs0, Zs) then
+                solve_assgt(SCs, Y `assign` no, Bs0, Bs)
+            else
                 Bs = Bs0
             )
         )
@@ -656,7 +662,7 @@ solve_complex_cstrt(SCs, X, V, at_most_one(Ys0), Bs0, Bs) :-
     ;
         V  = yes,
         list.delete_first(Ys0, X, Ys),
-        solve_assgts(SCs, list.map(func(Y) = (Y == no), Ys), Bs0, Bs)
+        solve_assgts(SCs, list.map(func(Y) = Y `assign` no, Ys), Bs0, Bs)
     ).
 
 solve_complex_cstrt(SCs, X, V, exactly_one(Ys0), Bs0, Bs) :-
@@ -668,24 +674,24 @@ solve_complex_cstrt(SCs, X, V, exactly_one(Ys0), Bs0, Bs) :-
             (pred(Y0::in) is semidet :- not map.search(Bs0, Y0, no)), Ys0),
         (
             Ys = [Y],
-            solve_assgts(SCs, [(Y == yes)], Bs0, Bs)
+            solve_assgts(SCs, [Y `assign` yes], Bs0, Bs)
         ;
-            Ys = [_, _| _],
+            Ys = [_, _ | _],
             Bs = Bs0
         )
     ;
         V  = yes,
         list.delete_first(Ys0, X, Ys),
-        solve_assgts(SCs, list.map(func(Y) = (Y == no), Ys), Bs0, Bs)
+        solve_assgts(SCs, list.map(func(Y) = Y `assign` no, Ys), Bs0, Bs)
     ).
 
 solve_complex_cstrt(SCs, X, V, disj_of_assgts(Assgtss), Bs0, Bs) :-
     % Filter for the assignments compatible with binding X to V.
     list.filter(
         (pred(Assgts::in) is semidet :-
-            list.member((X == bool.not(V)), Assgts)
+            list.member(X `assign` bool.not(V), Assgts)
         ),
-        Assgtss,_Conflicts, NotConflicting),
+        Assgtss, _Conflicts, NotConflicting),
 
     % If only one set of assignments is possible now, make them.
     % If none are possible, fail.
@@ -706,16 +712,16 @@ solve_complex_cstrt(SCs, X, V, disj_of_assgts(Assgtss), Bs0, Bs) :-
 :- func var_consequents(prop_graph, mcvar, bool) = assgts.
 
 var_consequents(prop_graph(YesPG, _NoPG), X, yes) =
-    ( YesPG ^ elem(X) = Assgts ->
+    ( if YesPG ^ elem(X) = Assgts then
         Assgts
-    ;
+    else
         []
     ).
 
 var_consequents(prop_graph(_YesPG, NoPG), X, no) =
-    ( NoPG  ^ elem(X) = Assgts ->
+    ( if NoPG  ^ elem(X) = Assgts then
         Assgts
-    ;
+    else
         []
     ).
 
@@ -727,9 +733,9 @@ var_consequents(prop_graph(_YesPG, NoPG), X, no) =
 :- func var_complex_cstrts(complex_cstrt_map, mcvar) = complex_cstrts.
 
 var_complex_cstrts(ComplexCstrtMap, X) =
-    ( ComplexCstrtMap ^ elem(X) = CmplxCstrts ->
+    ( if ComplexCstrtMap ^ elem(X) = CmplxCstrts then
         CmplxCstrts
-    ;
+    else
         []
     ).
 
@@ -748,15 +754,15 @@ solve_vars(SCs, Vars, Bs0, Bs) :-
     mc_bindings::in, mc_bindings::out) is nondet.
 
 solve_var(SCs, X, Bs0, Bs) :-
-    ( map.contains(Bs0, X) ->
+    ( if map.contains(Bs0, X) then
         Bs = Bs0
-    ;
+    else
         ( V = yes ; V = no ),
         trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
             write_string("\n" ++ mc_var_to_string(X) ++ " = ", !IO),
             print(V, !IO)
         ),
-        solve_assgt(SCs, (X == V), Bs0, Bs)
+        solve_assgt(SCs, X `assign` V, Bs0, Bs)
     ).
 
 %-----------------------------------------------------------------------------%

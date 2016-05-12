@@ -48,9 +48,9 @@
     --->    eqn(list(coeff), operator, float).
 
 :- type operator
-    --->    (=<)
-    ;       (=)
-    ;       (>=).
+    --->    op_le   % less than or equal
+    ;       op_eq   % equal
+    ;       op_ge.  % greater than or equal
 
 :- type equations == list(equation).
 
@@ -127,7 +127,7 @@ lp_solve(Eqns0, Dir, Obj0, VarSet0, URSVars, Result) :-
         % all the coefficients in the objective.
         (
             Dir = max,
-            negate_equation(eqn(Obj0, (=), 0.0), eqn(Obj1, _, _))
+            negate_equation(eqn(Obj0, op_eq, 0.0), eqn(Obj1, _, _))
         ;
             Dir = min,
             Obj1 = Obj0
@@ -257,33 +257,33 @@ standardize_equations(!Eqns, !Info) :-
     lp_info::in, lp_info::out) is det.
 
 standardize_equation(Eqn0, Eqn, !Info) :-
-    Eqn0 = eqn(Coeffs0, (=<), Const0),
+    Eqn0 = eqn(Coeffs0, op_le, Const0),
     ( if Const0 < 0.0 then
         negate_equation(Eqn0, Eqn1),
         standardize_equation(Eqn1, Eqn, !Info)
     else
         new_slack_var(Var, !Info),
         Coeffs = [Var - 1.0 | Coeffs0],
-        simplify_eq(eqn(Coeffs, (=<), Const0), Eqn1),
+        simplify_eq(eqn(Coeffs, op_le, Const0), Eqn1),
         get_urs_vars(!.Info, URS),
         expand_urs_vars_e(Eqn1, URS, Eqn)
     ).
 
 standardize_equation(Eqn0, Eqn, !Info) :-
-    Eqn0 = eqn(Coeffs0, (=), Const0),
+    Eqn0 = eqn(Coeffs0, op_eq, Const0),
     ( if Const0 < 0.0 then
         negate_equation(Eqn0, Eqn1),
         standardize_equation(Eqn1, Eqn, !Info)
     else
         new_art_var(Var, !Info),
         Coeffs = [Var - 1.0 | Coeffs0],
-        simplify_eq(eqn(Coeffs, (=<), Const0), Eqn1),
+        simplify_eq(eqn(Coeffs, op_le, Const0), Eqn1),
         get_urs_vars(!.Info, URS),
         expand_urs_vars_e(Eqn1, URS, Eqn)
     ).
 
 standardize_equation(Eqn0, Eqn, !Info) :-
-    Eqn0 = eqn(Coeffs0, (>=), Const0),
+    Eqn0 = eqn(Coeffs0, op_ge, Const0),
     ( if Const0 < 0.0 then
         negate_equation(Eqn0, Eqn1),
         standardize_equation(Eqn1, Eqn, !Info)
@@ -291,7 +291,7 @@ standardize_equation(Eqn0, Eqn, !Info) :-
         new_slack_var(SVar, !Info),
         new_art_var(AVar, !Info),
         Coeffs = [SVar - (-1.0), AVar - (1.0) | Coeffs0],
-        simplify_eq(eqn(Coeffs, (>=), Const0), Eqn1),
+        simplify_eq(eqn(Coeffs, op_ge, Const0), Eqn1),
         get_urs_vars(!.Info, URS),
         expand_urs_vars_e(Eqn1, URS, Eqn)
     ).
@@ -299,12 +299,9 @@ standardize_equation(Eqn0, Eqn, !Info) :-
 :- pred negate_equation(equation::in, equation::out) is det.
 
 negate_equation(eqn(Coeffs0, Op0, Const0), eqn(Coeffs, Op, Const)) :-
-    (
-        Op0 = (=<), Op = (>=)
-    ;
-        Op0 = (=), Op = (=)
-    ;
-        Op0 = (>=), Op = (=<)
+    ( Op0 = op_le, Op = op_ge
+    ; Op0 = op_eq, Op = op_eq
+    ; Op0 = op_ge, Op = op_le
     ),
     Coeffs = list.map((func(V - X) = V - (-X)), Coeffs0),
     Const = -Const0.

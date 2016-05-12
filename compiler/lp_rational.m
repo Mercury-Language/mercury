@@ -39,14 +39,14 @@
 % Linear constraints over Q^n.
 %
 
-:- type constant == rat.
-:- type coefficient == rat.
+:- type lp_constant == rat.
+:- type lp_coefficient == rat.
 
 :- type lp_var == var.
 :- type lp_vars == list(lp_var).
 :- type lp_varset == varset.
 
-:- type lp_term == pair(lp_var, coefficient).
+:- type lp_term == pair(lp_var, lp_coefficient).
 :- type lp_terms == list(lp_term).
 
     % Create a term with a coefficient of 1.
@@ -69,24 +69,24 @@
 
     % Create a constraint from the given components.
     %
-:- func lp_rational.construct_constraint(lp_terms, lp_operator, constant)
+:- func lp_rational.construct_constraint(lp_terms, lp_operator, lp_constant)
     = constraint.
 
     % Create a constraint from the given components.
     % Throws an exception if the resulting constraint is trivially false.
     %
 :- func lp_rational.construct_non_false_constraint(lp_terms, lp_operator,
-    constant) = constraint.
+    lp_constant) = constraint.
 
     % Deconstruct the given constraint.
     %
 :- pred lp_rational.deconstruct_constraint(constraint::in,
-    lp_terms::out, lp_operator::out, constant::out) is det.
+    lp_terms::out, lp_operator::out, lp_constant::out) is det.
 
     % As above but throws an exception if the constraint is false.
     %
 :- pred lp_rational.deconstruct_non_false_constraint(constraint::in,
-    lp_terms::out, lp_operator::out, constant::out) is det.
+    lp_terms::out, lp_operator::out, lp_constant::out) is det.
 
     % Succeeds iff the given constraint contains a single variable and
     % that variable is constrained to be a nonnegative value.
@@ -349,9 +349,9 @@
     % - variables with coefficient zero are *not* included in the list
     %   of terms.
 :- type constraint
-    --->    lte(lp_terms, constant)     % sumof(Terms) =< Constant
-    ;       eq(lp_terms, constant)      % sumof(Terms) =  Constant
-    ;       gte(lp_terms, constant).    % sumof(Terms) >= Constant
+    --->    lte(lp_terms, lp_constant)     % sumof(Terms) =< Constant
+    ;       eq(lp_terms, lp_constant)      % sumof(Terms) =  Constant
+    ;       gte(lp_terms, lp_constant).    % sumof(Terms) >= Constant
 
 %-----------------------------------------------------------------------------%
 %
@@ -397,7 +397,7 @@ construct_constraint(Terms0, Op, Const0) = Constraint :-
     % but does *not* attempt to perform any standardization. It is intended for
     % use in operations such as normalization.
     %
-:- func unchecked_construct_constraint(lp_terms, lp_operator, constant) =
+:- func unchecked_construct_constraint(lp_terms, lp_operator, lp_constant) =
     constraint.
 
 unchecked_construct_constraint(Terms, lp_lt_eq, Constant) =
@@ -417,14 +417,14 @@ sum_like_terms(Terms) = map.to_assoc_list(lp_terms_to_map(Terms)).
     % Also if a coefficient is (or ends up being) zero, make sure that
     % the variable doesn't end up in the resulting map.
     %
-:- func lp_terms_to_map(assoc_list(lp_var, coefficient)) =
-    map(lp_var, coefficient).
+:- func lp_terms_to_map(assoc_list(lp_var, lp_coefficient)) =
+    map(lp_var, lp_coefficient).
 
 lp_terms_to_map(Terms) = Map :-
     list.foldl(lp_terms_to_map_2, Terms, map.init, Map).
 
-:- pred lp_terms_to_map_2(pair(lp_var, coefficient)::in,
-    map(lp_var, coefficient)::in, map(lp_var, coefficient)::out) is det.
+:- pred lp_terms_to_map_2(pair(lp_var, lp_coefficient)::in,
+    map(lp_var, lp_coefficient)::in, map(lp_var, lp_coefficient)::out) is det.
 
 lp_terms_to_map_2(Var - Coeff0, !Map) :-
     ( if map.search(!.Map, Var, MapCoeff) then
@@ -477,7 +477,7 @@ lp_terms(lte(Terms, _)) = Terms.
 lp_terms(eq(Terms,  _)) = Terms.
 lp_terms(gte(Terms, _)) = Terms.
 
-:- func constant(constraint) = constant.
+:- func constant(constraint) = lp_constant.
 
 constant(lte(_, Constant)) = Constant.
 constant(eq(_,  Constant)) = Constant.
@@ -524,9 +524,9 @@ is_true(eq([],  Const)) :- Const =  rat.zero.
 
     % Put a constraint into standard form. Every constraint has its terms list
     % in increasing order of variable name and then multiplied so that
-    % the absolute value of the leading % coefficient is one.
-    % (>=) is converted to (=<) by multiplying through by negative one.
-    % (=) constraints should have an initial coefficient of (positive) 1.
+    % the absolute value of the leading coefficient is one.
+    % op_ge is converted to op_le by multiplying through by negative one.
+    % op_eq constraints should have an initial coefficient of (positive) 1.
     %
 :- func standardize_constraint(constraint) = constraint.
 
@@ -544,8 +544,8 @@ standardize_constraint(lte(Terms0, Const0)) = lte(Terms, Const) :-
     % through by the reciprocal of the absolute value of the coefficient,
     % otherwise we multiply through by the reciprocal of the value.
     %
-:- pred normalize_terms_and_const(bool::in, lp_terms::in, constant::in,
-    lp_terms::out, constant::out) is det.
+:- pred normalize_terms_and_const(bool::in, lp_terms::in, lp_constant::in,
+    lp_terms::out, lp_constant::out) is det.
 
 normalize_terms_and_const(AbsVal, !.Terms, !.Const, !:Terms, !:Const) :-
     CompareTerms = (func(VarA - _, VarB - _) = Result :-
@@ -586,7 +586,11 @@ obvious_constraint(lte(Terms, Constant)) :-
 obvious_constraint(gte(Terms, Constant)) :-
     Constant =< rat.zero,
     list.length(Terms) >= 2,
-    all [Term] list.member(Term, Terms) => snd(Term) > zero.
+    all [Term] (
+        list.member(Term, Terms)
+    =>
+        snd(Term) > zero
+    ).
 
 inconsistent(Vars, Constraints @ [Constraint | _]) :-
     (
@@ -1434,9 +1438,9 @@ between(Min, Max, I) :-
                 label :: set(int),
 
                 % A map from each variable in the vector to its coefficient.
-                terms :: map(lp_var, coefficient),
+                terms :: map(lp_var, lp_coefficient),
 
-                const :: constant
+                const :: lp_constant
             ).
 
 :- type matrix == list(vector).
@@ -1646,8 +1650,8 @@ substitute_variable(Target0, Var, !Equations, !Inequations, Flag) :-
     %
     %       t = C - z - w
     %
-:- pred fix_coeff_and_const(lp_var::in, lp_terms::in, constant::in,
-    lp_terms::out, constant::out) is det.
+:- pred fix_coeff_and_const(lp_var::in, lp_terms::in, lp_constant::in,
+    lp_terms::out, lp_constant::out) is det.
 
 fix_coeff_and_const(_, [], Const, [], -Const).
 fix_coeff_and_const(Var, [Var1 - Coeff1 | Coeffs], Const0, FixedCoeffs,
@@ -1661,7 +1665,7 @@ fix_coeff_and_const(Var, [Var1 - Coeff1 | Coeffs], Const0, FixedCoeffs,
     % matrix was inconsistent.
     %
 :- pred substitute_into_constraints(lp_var::in, lp_terms::in,
-    constant::in, constraints::in, constraints::out, bool::out) is semidet.
+    lp_constant::in, constraints::in, constraints::out, bool::out) is semidet.
 
 substitute_into_constraints(_, _, _, [], [], no).
 substitute_into_constraints(Var, Coeffs, Const, [Constr0 | Constrs0], Result,
@@ -1673,7 +1677,7 @@ substitute_into_constraints(Var, Coeffs, Const, [Constr0 | Constrs0], Result,
     Flag = bool.or(Flag0, Flag1).
 
 :- pred substitute_into_constraint(lp_var::in, lp_terms::in,
-    constant::in, constraint::in, constraint::out, bool::out) is det.
+    lp_constant::in, constraint::in, constraint::out, bool::out) is det.
 
 substitute_into_constraint(Var, SubCoeffs, SubConst, !Constraint, Flag) :-
     normalize_constraint(Var, !Constraint),
@@ -2051,8 +2055,8 @@ init_cc_map(Vars) = list.foldl(InitMap, Vars, map.init) :-
     % coefficient of the given variable in the vector one. Throws an exception
     % if `Var' has a zero coefficient.
     %
-:- pred normalize_vector(lp_var::in, map(lp_var, coefficient)::in,
-    constant::in, map(lp_var, coefficient)::out, constant::out) is det.
+:- pred normalize_vector(lp_var::in, map(lp_var, lp_coefficient)::in,
+    lp_constant::in, map(lp_var, lp_coefficient)::out, lp_constant::out) is det.
 
 normalize_vector(Var, !.Terms, !.Constant, !:Terms, !:Constant) :-
     ( if map.search(!.Terms, Var, Coefficient) then
@@ -2099,9 +2103,9 @@ normalize_constraint(Var, Constraint0, Constraint) :-
     ),
     Constraint = unchecked_construct_constraint(Terms, Op, Constant).
 
-:- pred add_vectors(map(lp_var, coefficient)::in, constant::in,
-    map(lp_var, coefficient)::in, constant::in,
-    map(lp_var, coefficient)::out, constant::out) is det.
+:- pred add_vectors(map(lp_var, lp_coefficient)::in, lp_constant::in,
+    map(lp_var, lp_coefficient)::in, lp_constant::in,
+    map(lp_var, lp_coefficient)::out, lp_constant::out) is det.
 
 add_vectors(TermsA, ConstA, TermsB, ConstB, Terms, ConstA + ConstB) :-
     IsMapKey = (pred(Var::out) is nondet :-
@@ -2397,7 +2401,7 @@ output_constraint(_, gte(_,_), _, _) :-
     unexpected($module, $pred, "gte").
 
 :- pred output_constraint_2(output_var::in, lp_terms::in,
-    constant::in, io::di, io::uo) is det.
+    lp_constant::in, io::di, io::uo) is det.
 
 output_constraint_2(OutputVar, Terms, Constant, !IO) :-
     output_terms(OutputVar, Terms, !IO),
