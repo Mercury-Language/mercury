@@ -279,8 +279,8 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
         ;
             Origin = origin_solver_type(TypeCtorSymName, TypeCtorArity,
                 SolverAuxPredKind),
-            TypeCtorStr =
-                sym_name_and_arity_to_string(TypeCtorSymName / TypeCtorArity),
+            TypeCtorStr = sym_name_and_arity_to_string(
+                sym_name_arity(TypeCtorSymName, TypeCtorArity)),
             (
                 SolverAuxPredKind = solver_type_to_ground_pred,
                 SolverAuxPredKindStr = "to ground conversion predicate"

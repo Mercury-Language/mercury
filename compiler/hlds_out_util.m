@@ -314,8 +314,8 @@ pred_info_id_to_string(PredInfo) = Str :-
     ;
         Origin = origin_solver_type(TypeCtorSymName, TypeCtorArity,
             SolverAuxPredKind),
-        TypeStr =
-            sym_name_and_arity_to_string(TypeCtorSymName / TypeCtorArity),
+        TypeStr = sym_name_and_arity_to_string(
+            sym_name_arity(TypeCtorSymName, TypeCtorArity)),
         (
             SolverAuxPredKind = solver_type_to_ground_pred,
             Str = "to ground representation predicate for " ++ TypeStr

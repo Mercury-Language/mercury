@@ -1600,7 +1600,8 @@ module_info_new_user_init_pred(SymName, Arity, CName, !MI) :-
     ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
     CName = string.format("%s__user_init_pred_%d",
         [s(ModuleName), i(UserInitPredNo)]),
-    InitPredCNames = InitPredCNames0 ++ [SymName / Arity - CName],
+    InitPredCNames = InitPredCNames0 ++
+        [sym_name_arity(SymName, Arity) - CName],
     module_info_set_user_init_pred_c_names(InitPredCNames, !MI).
 
 module_info_new_user_final_pred(SymName, Arity, CName, !MI) :-
@@ -1615,7 +1616,8 @@ module_info_new_user_final_pred(SymName, Arity, CName, !MI) :-
     ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
     CName = string.format("%s__user_final_pred_%d",
         [s(ModuleName), i(UserFinalPredNo)]),
-    FinalPredCNames = FinalPredCNames0 ++ [SymName / Arity - CName],
+    FinalPredCNames = FinalPredCNames0 ++
+        [sym_name_arity(SymName, Arity) - CName],
     module_info_set_user_final_pred_c_names(FinalPredCNames, !MI).
 
 module_info_user_init_pred_c_names(MI, CNames) :-
@@ -1641,8 +1643,8 @@ module_info_user_final_pred_procs(MI, PredProcIds) :-
 :- pred get_unique_pred_proc_id_for_symname_and_arity(module_info::in,
     sym_name_and_arity::in, pred_proc_id::out) is det.
 
-get_unique_pred_proc_id_for_symname_and_arity(MI, SymName / Arity,
-        PredProcId) :-
+get_unique_pred_proc_id_for_symname_and_arity(MI,
+        sym_name_arity(SymName, Arity), PredProcId) :-
     module_info_get_predicate_table(MI, PredTable),
     predicate_table_lookup_pred_sym_arity(PredTable,
         may_be_partially_qualified, SymName, Arity, PredIds),

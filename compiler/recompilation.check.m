@@ -1530,14 +1530,14 @@ recompile_reason_message(PrefixPieces, Reason, Spec) :-
             Reason = recompile_for_changed_or_added_instance(ModuleName,
                 item_name(ClassName, ClassArity)),
             Pieces = [words("an instance for class"),
-                sym_name_and_arity(ClassName / ClassArity),
+                sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
                 words("in module"), sym_name(ModuleName),
                 words("was added or modified.")]
         ;
             Reason = recompile_for_removed_instance(ModuleName,
                 item_name(ClassName, ClassArity)),
             Pieces = [words("an instance for class "),
-                sym_name_and_arity(ClassName / ClassArity),
+                sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
                 words("in module"), sym_name(ModuleName),
                 words("was removed.")]
         ),
@@ -1574,7 +1574,8 @@ describe_item(item_id(ItemType0, item_name(SymName, Arity))) = Pieces :-
         string_to_item_type(ItemTypeStr, ItemType0),
         ItemPieces = [words(ItemTypeStr)]
     ),
-    Pieces = ItemPieces ++ [sym_name_and_arity(SymName / Arity)].
+    Pieces = ItemPieces ++
+        [sym_name_and_arity(sym_name_arity(SymName, Arity))].
 
 :- pred body_item(item_type::in, item_type::out) is semidet.
 
@@ -1588,21 +1589,26 @@ describe_resolved_functor(SymName, _Arity, ResolvedFunctor) = Pieces :-
         PredArity),
     string_to_item_type(ItemTypeStr, pred_or_func_to_item_type(PredOrFunc)),
     UnqualName = unqualify_name(SymName),
-    SymNameAndArityPiece =
-        sym_name_and_arity(qualified(ModuleName, UnqualName) / PredArity),
+    SymNameAndArity =
+        sym_name_arity(qualified(ModuleName, UnqualName), PredArity),
+    SymNameAndArityPiece = sym_name_and_arity(SymNameAndArity),
     Pieces = [words(ItemTypeStr), SymNameAndArityPiece].
 describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
     ResolvedFunctor = resolved_functor_constructor(
         item_name(TypeName, TypeArity)),
-    Pieces = [words("constructor"), sym_name_and_arity(SymName / Arity),
-        words("of type"), sym_name_and_arity(TypeName / TypeArity)].
+    Pieces = [words("constructor"),
+        sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        words("of type"),
+        sym_name_and_arity(sym_name_arity(TypeName, TypeArity))].
 describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
     ResolvedFunctor = resolved_functor_field(item_name(TypeName, TypeArity),
         item_name(ConsName, ConsArity)),
     Pieces = [words("field access function"),
-        sym_name_and_arity(SymName / Arity),
-        words("for constructor"), sym_name_and_arity(ConsName / ConsArity),
-        words("of type"), sym_name_and_arity(TypeName / TypeArity)].
+        sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        words("for constructor"),
+        sym_name_and_arity(sym_name_arity(ConsName, ConsArity)),
+        words("of type"),
+        sym_name_and_arity(sym_name_arity(TypeName, TypeArity))].
 
 %-----------------------------------------------------------------------------%
 

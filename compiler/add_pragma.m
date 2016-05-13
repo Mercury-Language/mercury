@@ -561,7 +561,7 @@ add_pragma_require_tail_recursion(Pragma, Context, !ModuleInfo, !Specs) :-
         undefined_pred_or_func_error(Name, Arity, Context, Pieces, !Specs)
     ;
         PredIds = [PredId],
-        NameAndArity = Name / Arity,
+        NameAndArity = sym_name_arity(Name, Arity),
 
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
         pred_info_get_proc_table(PredInfo0, Procs0),
@@ -642,7 +642,8 @@ add_pragma_require_tail_recursion_proc(RequireTailrec, Context,
         !:Specs = [Spec | !.Specs]
     ;
         MaybeRequireTailrecOrig = no,
-        proc_info_set_require_tailrec_info(RequireTailrec, ProcInfo0, ProcInfo),
+        proc_info_set_require_tailrec_info(RequireTailrec,
+            ProcInfo0, ProcInfo),
         pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
     ).
 
@@ -796,7 +797,7 @@ get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
 pragma_status_error(Name, Arity, Context, PragmaName, !Specs) :-
     Pieces = [words("Error:"), pragma_decl(PragmaName),
         words("declaration for exported predicate or function"),
-        sym_name_and_arity(Name / Arity),
+        sym_name_and_arity(sym_name_arity(Name, Arity)),
         words("must also be exported."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -808,7 +809,7 @@ pragma_status_error(Name, Arity, Context, PragmaName, !Specs) :-
 pragma_conflict_error(Name, Arity, Context, PragmaName, !Specs) :-
     Pieces = [words("Error:"), pragma_decl(PragmaName),
         words("declaration conflicts with previous pragma for"),
-        sym_name_and_arity(Name / Arity), suffix("."), nl],
+        sym_name_and_arity(sym_name_arity(Name, Arity)), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
@@ -1110,7 +1111,8 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
         ;
             TailPredIds = [_ | _],     % >1 predicate found
             Pieces = [words("In"), quote("pragma fact_table"), words("for"),
-                sym_name_and_arity(Pred/Arity), suffix(":"), nl,
+                sym_name_and_arity(sym_name_arity(Pred, Arity)),
+                suffix(":"), nl,
                 words("error: ambiguous predicate/function name."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -1279,14 +1281,15 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                 ; TypeBody0 = hlds_abstract_type(_)
                 ),
                 ErrorPieces = [words("error:"),
-                    sym_name_and_arity(TypeName / TypeArity),
+                    sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
                     words("is not a discriminated union type."), nl],
                 MaybeError = yes({severity_error, ErrorPieces})
             )
         )
     else
         ErrorPieces = [words("error: undefined type"),
-            sym_name_and_arity(TypeName / TypeArity), suffix("."), nl],
+            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            suffix("."), nl],
         MaybeError = yes({severity_error, ErrorPieces})
     ),
     (
@@ -1294,7 +1297,8 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
     ;
         MaybeError = yes({Severity, MaybeErrorPieces}),
         ContextPieces = [words("In"), pragma_decl("reserve_tag"),
-            words("declaration for"), sym_name_and_arity(TypeName / TypeArity),
+            words("declaration for"),
+            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
             suffix(":"), nl],
         Msg = simple_msg(Context, [always(ContextPieces ++ MaybeErrorPieces)]),
         Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
@@ -1381,7 +1385,8 @@ add_pragma_oisu(OISUInfo, ItemMercuryStatus, Context, !ModuleInfo, !Specs) :-
                 TypeCtor = type_ctor(TypeName, TypeArity),
                 DupPieces = [words("Duplicate"), pragma_decl("oisu"),
                     words("declarations for"),
-                    sym_name_and_arity(TypeName/TypeArity), suffix("."), nl],
+                    sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+                    suffix("."), nl],
                 DupMsg = simple_msg(Context, [always(DupPieces)]),
                 DupSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
                     [DupMsg]),
@@ -1414,9 +1419,10 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
                 fixed(Kind), words("predicate specification"),
                 words("within the"), quote("pragma oisu"),
                 words("declaration for"),
-                sym_name_and_arity(TypeName/TypeArity), suffix(":"), nl,
+                sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+                suffix(":"), nl,
                 words("error: predicate"),
-                sym_name_and_arity(PredName/PredArity),
+                sym_name_and_arity(sym_name_arity(PredName, PredArity)),
                 words("is undefined."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg])
@@ -1441,9 +1447,10 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
                 fixed(Kind), words("predicate specification"),
                 words("within the"), quote("pragma oisu"),
                 words("declaration for"),
-                sym_name_and_arity(TypeName/TypeArity), suffix(":"), nl,
+                sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+                suffix(":"), nl,
                 words("error: predicate"),
-                sym_name_and_arity(PredName/PredArity),
+                sym_name_and_arity(sym_name_arity(PredName, PredArity)),
                 words("has the wrong arity."),
                 words("Actual arity is"), int_fixed(PredArity), suffix(","),
                 words("expected arity is")] ++ ExpArities ++ [suffix("."), nl],
@@ -1461,9 +1468,11 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
             fixed(Kind), words("predicate specification"),
             words("within the"), pragma_decl("oisu"),
             words("declaration for"),
-            sym_name_and_arity(TypeName/TypeArity), suffix(":"), nl,
+            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            suffix(":"), nl,
             words("error: ambiguous predicate name"),
-            sym_name_and_arity(PredName/PredArity), suffix("."), nl],
+            sym_name_and_arity(sym_name_arity(PredName, PredArity)),
+            suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs],

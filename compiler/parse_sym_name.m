@@ -402,7 +402,8 @@ parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
                     MaybeSymNameSpecifier = error1(Specs)
                 ;
                     MaybeName = ok1(Name),
-                    MaybeSymNameSpecifier = ok1(name_arity(Name, Arity))
+                    MaybeSymNameSpecifier =
+                        ok1(sym_name_specifier_name_arity(Name, Arity))
                 )
             else
                 Pieces = [words("Error: arity in symbol name specifier"),
@@ -426,7 +427,7 @@ parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
             MaybeSymNameSpecifier = error1(Specs)
         ;
             MaybeSymbolName = ok1(SymbolName),
-            MaybeSymNameSpecifier = ok1(name(SymbolName))
+            MaybeSymNameSpecifier = ok1(sym_name_specifier_name(SymbolName))
         )
     ).
 

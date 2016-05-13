@@ -437,8 +437,9 @@ replace_in_type_defn_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
     (
         ContainsCirc = yes,
         ( if TypeDefn0 = parse_tree_eqv_type(_) then
+            list.length(ArgTypeVars, NumArgTypeVars),
             Pieces = [words("Error: circular equivalence type"),
-                sym_name_and_arity(SymName / length(ArgTypeVars)),
+                sym_name_and_arity(sym_name_arity(SymName, NumArgTypeVars)),
                 suffix("."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_expand_types, [Msg]),

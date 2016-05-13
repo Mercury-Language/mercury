@@ -123,7 +123,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
         else if unqualify_name(PredName) = ",", Arity = 2 then
             MaybePredId = no,
             Pieces = [words("Attempt to define a clause for"),
-                sym_name_and_arity(unqualified(",") / 2), suffix("."),
+                sym_name_and_arity(sym_name_arity(unqualified(","), 2)),
+                suffix("."),
                 words("This is usually caused by"),
                 words("inadvertently writing a period instead of a comma"),
                 words("at the end of the preceding line."), nl],
@@ -191,7 +192,8 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
                     list.length(MaybeAnnotatedArgTerms, PredArity0),
                     PredArity = PredArity0 + ArityAdjustment,
                     adjust_func_arity(PredOrFunc, OrigArity, PredArity),
-                    prog_out.write_sym_name_and_arity(PredName/OrigArity, !IO),
+                    prog_out.write_sym_name_and_arity(
+                        sym_name_arity(PredName, OrigArity), !IO),
                     io.write_string("'...\n", !IO)
                 ;
                     VeryVerbose = no

@@ -182,7 +182,8 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
             ShouldModuleQualify = should_not_module_qualify,
             PredSymName = unqualified(PredName)
         ),
-        Pieces = Prefix ++ [sym_name_and_arity(PredSymName / OrigArity)]
+        Pieces = Prefix ++
+            [sym_name_and_arity(sym_name_arity(PredSymName, OrigArity))]
     ).
 
 describe_one_pred_name_mode(ModuleInfo, ShouldModuleQualify, PredId,

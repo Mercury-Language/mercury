@@ -1282,11 +1282,11 @@ valid_trace_grade_name(GradeName) :-
 :- interface.
 
 :- type sym_name_specifier
-    --->    name(sym_name)
-    ;       name_arity(sym_name, arity).
+    --->    sym_name_specifier_name(sym_name)
+    ;       sym_name_specifier_name_arity(sym_name, arity).
 
 :- type sym_name_and_arity
-    --->    sym_name / arity.
+    --->    sym_name_arity(sym_name, arity).
 
 :- type simple_call_id
     --->    simple_call_id(pred_or_func, sym_name, arity).

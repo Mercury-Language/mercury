@@ -593,7 +593,7 @@ is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
     ( if
         % Trust the `direct_arg' attribute of an imported type.
         type_status_is_imported(TypeStatus) = yes,
-        list.contains(AssertedDirectArgCtors, ConsName / Arity)
+        list.contains(AssertedDirectArgCtors, sym_name_arity(ConsName, Arity))
     then
         ArgCond = direct_arg_asserted
     else if
@@ -641,7 +641,8 @@ is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
 
             ( if
                 type_status_defined_in_this_module(TypeStatus) = yes,
-                list.contains(AssertedDirectArgCtors, ConsName / Arity)
+                list.contains(AssertedDirectArgCtors,
+                    sym_name_arity(ConsName, Arity))
             then
                 ArgCond = direct_arg_asserted
             else
@@ -879,9 +880,10 @@ check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
         !Specs) :-
     ( if
         Ctor = ctor(_, _, SymName, _Args, Arity, Context),
-        list.contains(AssertedDirectArgCtors, SymName / Arity)
+        list.contains(AssertedDirectArgCtors, sym_name_arity(SymName, Arity))
     then
-        Pieces = [words("Error:"), sym_name_and_arity(SymName / Arity),
+        Pieces = [words("Error:"),
+            sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("cannot be represented as a direct pointer to its"),
             words("sole argument."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
@@ -896,7 +898,7 @@ check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
 :- func constructor_to_sym_name_and_arity(constructor) = sym_name_and_arity.
 
 constructor_to_sym_name_and_arity(ctor(_, _, Name, _Args, Arity, _)) =
-    Name / Arity.
+    sym_name_arity(Name, Arity).
 
 :- pred output_direct_arg_functor_summary(module_name::in, type_ctor::in,
     list(sym_name_and_arity)::in, io::di, io::uo) is det.

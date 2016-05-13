@@ -554,7 +554,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
 check_direct_arg_ctors(_Ctors, [], _ErrorTerm, !Specs).
 check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
         !Specs) :-
-    DirectArgCtor = SymName / Arity,
+    DirectArgCtor = sym_name_arity(SymName, Arity),
     ( if find_constructor(Ctors, SymName, Arity, Ctor) then
         Ctor = ctor(ExistQVars, _Constraints, _SymName, _Args, _Arity,
             _Context),
@@ -1159,7 +1159,7 @@ parse_where_direct_arg_is(ModuleName, VarSet, Term) = MaybeDirectArgCtors :-
 
 parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
     ( if parse_name_and_arity(ModuleName, Term, Name, Arity) then
-        MaybeFunctor = ok1(Name / Arity)
+        MaybeFunctor = ok1(sym_name_arity(Name, Arity))
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected functor"),

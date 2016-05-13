@@ -1400,8 +1400,8 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Component = top_ctor_of_type(Type),
         type_to_ctor_det(Type, TypeCtor),
         TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
-        SymName = TypeCtorName / TypeCtorArity,
-        Word = sym_name_and_arity_to_word(SymName),
+        SymNameArity = sym_name_arity(TypeCtorName, TypeCtorArity),
+        Word = sym_name_and_arity_to_word(SymNameArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = nl,
@@ -1552,8 +1552,8 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         Component = top_ctor_of_type(Type),
         type_to_ctor_det(Type, TypeCtor),
         TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
-        SymName = TypeCtorName / TypeCtorArity,
-        NewWord = plain_word(sym_name_and_arity_to_word(SymName)),
+        SymNameArity = sym_name_arity(TypeCtorName, TypeCtorArity),
+        NewWord = plain_word(sym_name_and_arity_to_word(SymNameArity)),
         RevWords1 = [NewWord | RevWords0]
     ;
         Component = p_or_f(PredOrFunc),
@@ -1699,7 +1699,7 @@ sym_name_to_word(SymName) =
 
 :- func sym_name_and_arity_to_word(sym_name_and_arity) = string.
 
-sym_name_and_arity_to_word(SymName / Arity) =
+sym_name_and_arity_to_word(sym_name_arity(SymName, Arity)) =
     add_quotes(sym_name_to_string(SymName)) ++ "/" ++ int_to_string(Arity).
 
 :- pred break_into_words(string::in, list(word)::in, list(word)::out) is det.
@@ -1852,7 +1852,7 @@ get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
 
 %-----------------------------------------------------------------------------%
 
-describe_sym_name_and_arity(SymName / Arity) =
+describe_sym_name_and_arity(sym_name_arity(SymName, Arity)) =
     string.append_list(["`", sym_name_to_string(SymName), "/",
         string.int_to_string(Arity), "'"]).
 

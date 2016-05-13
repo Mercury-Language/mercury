@@ -1,4 +1,4 @@
 cyclic_typeclass_2.m:018: Error: cyclic superclass relation detected:
-cyclic_typeclass_2.m:018:   `cyclic_typeclass_2.bar'/1 <=
-cyclic_typeclass_2.m:018:   `cyclic_typeclass_2.foo'/1 <=
 cyclic_typeclass_2.m:018:   `cyclic_typeclass_2.bar'/1
+cyclic_typeclass_2.m:018:   <= `cyclic_typeclass_2.foo'/1
+cyclic_typeclass_2.m:018:   <= `cyclic_typeclass_2.bar'/1

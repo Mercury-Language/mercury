@@ -348,7 +348,7 @@
 
 :- type name_arity_index == map(name_arity, list(pred_id)).
 :- type name_arity
-    --->    string / arity.
+    --->    name_arity(string, arity).
 
     % First search on module and name, then search on arity. The two levels
     % are needed because typecheck.m needs to be able to search on module
@@ -443,7 +443,7 @@ predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
 predicate_table_remove_from_index(Module, Name, Arity, PredId,
         !N, !NA, !MNA) :-
     do_remove_from_index(Name, PredId, !N),
-    do_remove_from_index(Name / Arity, PredId, !NA),
+    do_remove_from_index(name_arity(Name, Arity), PredId, !NA),
     do_remove_from_m_n_a_index(Module, Name, Arity, PredId, !MNA).
 
 :- pred do_remove_from_index(T::in, pred_id::in,
@@ -675,7 +675,8 @@ predicate_table_lookup_name_arity(PredicateTable, Name, Arity, PredIds) :-
 predicate_table_lookup_pred_name_arity(PredicateTable, PredName, Arity,
         PredIds) :-
     PredNameArityIndex = PredicateTable ^ pred_name_arity_index,
-    ( if map.search(PredNameArityIndex, PredName / Arity, PredIdsPrime) then
+    NA = name_arity(PredName, Arity),
+    ( if map.search(PredNameArityIndex, NA, PredIdsPrime) then
         PredIds = PredIdsPrime
     else
         PredIds = []
@@ -684,7 +685,8 @@ predicate_table_lookup_pred_name_arity(PredicateTable, PredName, Arity,
 predicate_table_lookup_func_name_arity(PredicateTable, FuncName, Arity,
         PredIds) :-
     FuncNameArityIndex = PredicateTable ^ func_name_arity_index,
-    ( if map.search(FuncNameArityIndex, FuncName / Arity, PredIdsPrime) then
+    NA = name_arity(FuncName, Arity),
+    ( if map.search(FuncNameArityIndex, NA, PredIdsPrime) then
         PredIds = PredIdsPrime
     else
         PredIds = []
@@ -935,7 +937,7 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
         multi_map.set(Name, PredId, !N_Index),
 
         % Insert the unqualified name/arity into the name/arity index.
-        NA = Name / Arity,
+        NA = name_arity(Name, Arity),
         multi_map.set(NA, PredId, !NA_Index),
 
         AccessibleByUnqualifiedName = yes

@@ -49,7 +49,8 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
     module_info_get_type_table(!.ModuleInfo, TypeTable),
     ContextPieces = [words("In"), pragma_decl("foreign_export_enum"),
         words("declaration for"),
-        sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl],
+        sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+        suffix(":"), nl],
     ( if
         % Emit an error message for foreign_export_enum pragmas for the
         % builtin atomic types.
@@ -61,7 +62,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
         )
     then
         ErrorPieces = [words("error: "),
-            sym_name_and_arity(TypeName / TypeArity),
+            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
             words("is an atomic type"), suffix("."), nl],
         MaybeError = yes({severity_error, ErrorPieces})
     else
@@ -74,7 +75,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
                 ; TypeBody = hlds_foreign_type(_)
                 ),
                 ErrorPieces = [words("error: "),
-                    sym_name_and_arity(TypeName / TypeArity),
+                    sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
                     words("is not an enumeration type"), suffix("."), nl],
                 MaybeError = yes({severity_error, ErrorPieces})
             ;
@@ -126,7 +127,8 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
                     % XXX Maybe we should add a verbose component
                     % that identifies the non-zero arity constructors.
                     ErrorPieces = [words("error: "),
-                        sym_name_and_arity(TypeName / TypeArity),
+                        sym_name_and_arity(
+                            sym_name_arity(TypeName, TypeArity)),
                         words("is not an enumeration type."),
                         words("It has one or more non-zero arity"),
                         words("constructors."), nl],
@@ -241,7 +243,7 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
             ),
             BadCtorsErrorPieces = [
                 words("error: not all the constructors of the type"),
-                sym_name_and_arity(TypeName / TypeArity),
+                sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
                 words("can be converted into valid " ++ What)
             ],
             list.sort(BadCtors, SortedBadCtors),
@@ -269,7 +271,8 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
             words(choose_number(InvalidRenamings,
                 "constructor does", "constructors do")),
             words("not match any of the constructors of"),
-            sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl] ++
+            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            suffix(":"), nl] ++
             component_list_to_line_pieces(InvalidRenamingSymNamePieces,
                 [suffix("."), nl]),
         InvalidRenamingMsg = simple_msg(Context,
@@ -368,7 +371,8 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
         words("declaration for"),
-        sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl],
+        sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+        suffix(":"), nl],
     ( if
         % Emit an error message for foreign_enum pragmas for the
         % builtin atomic types.
@@ -380,7 +384,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
         )
     then
         ErrorPieces = [words("error: "),
-            sym_name_and_arity(TypeName / TypeArity),
+            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
             words("is an atomic type"), suffix(".")],
         MaybeError = yes({severity_error, ErrorPieces})
     else if
@@ -394,7 +398,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
             ; TypeBody0 = hlds_foreign_type(_)
             ),
             ErrorPieces = [words("error: "),
-                sym_name_and_arity(TypeName / TypeArity),
+                sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
                 words("is not an enumeration type"), suffix(".")],
             MaybeError = yes({severity_error, ErrorPieces})
         ;
@@ -470,7 +474,8 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                     MaybeError = no
                 else
                     ErrorPieces = [words("error: "),
-                        sym_name_and_arity(TypeName / TypeArity),
+                        sym_name_and_arity(
+                            sym_name_arity(TypeName, TypeArity)),
                         words("is not defined in this module.")],
                     MaybeError = yes({severity_error, ErrorPieces})
                 )
@@ -484,7 +489,8 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                     MaybeError = no
                 else
                     ErrorPieces = [words("error: "),
-                        sym_name_and_arity(TypeName / TypeArity),
+                        sym_name_and_arity(
+                            sym_name_arity(TypeName, TypeArity)),
                         words("has multiple foreign_enum pragmas.")],
                     MaybeError = yes({severity_error, ErrorPieces})
                 )
@@ -493,7 +499,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                 ; DuTypeKind0 = du_type_kind_notag(_, _, _)
                 ),
                 ErrorPieces = [words("error: "),
-                    sym_name_and_arity(TypeName / TypeArity),
+                    sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
                     words("is not an enumeration type"), suffix(".")],
                 MaybeError = yes({severity_error, ErrorPieces})
             )
@@ -640,7 +646,7 @@ add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
         !Specs) :-
     ErrorPieces = [words("Error: "),
         pragma_decl("foreign_enum"), words("declaration for"),
-        sym_name_and_arity(TypeName / TypeArity),
+        sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
         words("in module interface."), nl ],
     Msg = simple_msg(Context, [always(ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),

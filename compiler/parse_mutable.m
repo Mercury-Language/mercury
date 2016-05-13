@@ -73,7 +73,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         ;
             MaybeSymNameSpecifier = ok1(SymNameSpecifier),
             (
-                SymNameSpecifier = name(_),
+                SymNameSpecifier = sym_name_specifier_name(_),
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = [words("Error: the predicate specification in an"),
                     decl("initialise"), words("declaration"),
@@ -83,7 +83,8 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     [simple_msg(get_term_context(Term), [always(Pieces)])]),
                 MaybeIOM = error1([Spec])
             ;
-                SymNameSpecifier = name_arity(SymName, Arity),
+                SymNameSpecifier =
+                    sym_name_specifier_name_arity(SymName, Arity),
                 ( if ( Arity = 0 ; Arity = 2 ) then
                     ItemInitialise = item_initialise_info(SymName, Arity,
                         item_origin_user, Context, SeqNum),
@@ -122,7 +123,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         ;
             MaybeSymNameSpecifier = ok1(SymNameSpecifier),
             (
-                SymNameSpecifier = name(_),
+                SymNameSpecifier = sym_name_specifier_name(_),
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = [words("Error:"), decl("finalise"),
                     words("declaration"), words("requires arity, found"),
@@ -131,7 +132,8 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     [simple_msg(get_term_context(Term), [always(Pieces)])]),
                 MaybeIOM = error1([Spec])
             ;
-                SymNameSpecifier = name_arity(SymName, Arity),
+                SymNameSpecifier =
+                    sym_name_specifier_name_arity(SymName, Arity),
                 ( if ( Arity = 0 ; Arity = 2 ) then
                     ItemFinalise = item_finalise_info(SymName, Arity,
                         item_origin_user, Context, SeqNum),

@@ -198,7 +198,7 @@ sym_name_to_escaped_string(qualified(ModuleSpec, Name)) =
 sym_name_to_escaped_string(unqualified(Name)) =
     term_io.escaped_string(Name).
 
-write_sym_name_and_arity(Name / Arity, !IO) :-
+write_sym_name_and_arity(sym_name_arity(Name, Arity), !IO) :-
     write_sym_name(Name, !IO),
     io.write_string("/", !IO),
     io.write_int(Arity, !IO).
@@ -208,7 +208,7 @@ write_quoted_sym_name(SymName, !IO) :-
     write_sym_name(SymName, !IO),
     io.write_string("'", !IO).
 
-sym_name_and_arity_to_string(SymName/Arity) = String :-
+sym_name_and_arity_to_string(sym_name_arity(SymName, Arity)) = String :-
     SymNameString = sym_name_to_string(SymName),
     string.int_to_string(Arity, ArityString),
     string.append_list([SymNameString, "/", ArityString], String).
@@ -217,7 +217,7 @@ write_simple_call_id(simple_call_id(PredOrFunc, Name, Arity), !IO) :-
     Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
     io.write_string(Str, !IO).
 
-write_simple_call_id(PredOrFunc, Name/Arity, !IO) :-
+write_simple_call_id(PredOrFunc, sym_name_arity(Name, Arity), !IO) :-
     Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
     io.write_string(Str, !IO).
 
@@ -228,7 +228,7 @@ write_simple_call_id(PredOrFunc, SymName, Arity, !IO) :-
 simple_call_id_to_string(simple_call_id(PredOrFunc, SymName, Arity)) =
     simple_call_id_to_string(PredOrFunc, SymName, Arity).
 
-simple_call_id_to_string(PredOrFunc, SymName/Arity) =
+simple_call_id_to_string(PredOrFunc, sym_name_arity(SymName, Arity)) =
     simple_call_id_to_string(PredOrFunc, SymName, Arity).
 
 simple_call_id_to_string(PredOrFunc, SymName, Arity) = Str :-
@@ -262,9 +262,10 @@ simple_call_id_to_string(PredOrFunc, SymName, Arity) = Str :-
     ),
     Str = error_pieces_to_string(Pieces).
 
-simple_call_id_to_sym_name_and_arity(SimpleCallId, SymName / OrigArity) :-
+simple_call_id_to_sym_name_and_arity(SimpleCallId, SNA) :-
     SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
-    adjust_func_arity(PredOrFunc, OrigArity, Arity).
+    adjust_func_arity(PredOrFunc, OrigArity, Arity),
+    SNA = sym_name_arity(SymName, OrigArity).
 
 write_module_name(ModuleName, !IO) :-
     write_sym_name(ModuleName, !IO).
@@ -275,13 +276,13 @@ module_name_to_escaped_string(ModuleName) =
 %-----------------------------------------------------------------------------%
 
 write_type_ctor(type_ctor(Name, Arity), !IO) :-
-    prog_out.write_sym_name_and_arity(Name / Arity, !IO).
+    prog_out.write_sym_name_and_arity(sym_name_arity(Name, Arity), !IO).
 
 type_ctor_to_string(type_ctor(Name, Arity)) =
-    prog_out.sym_name_and_arity_to_string(Name / Arity).
+    prog_out.sym_name_and_arity_to_string(sym_name_arity(Name, Arity)).
 
 write_class_id(class_id(Name, Arity), !IO) :-
-    prog_out.write_sym_name_and_arity(Name / Arity, !IO).
+    prog_out.write_sym_name_and_arity(sym_name_arity(Name, Arity), !IO).
 
 %-----------------------------------------------------------------------------%
 

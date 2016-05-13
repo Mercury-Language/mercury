@@ -242,7 +242,8 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         VeryVerbose = yes,
         trace [io(!IO)] (
             io.write_string("% Processing `:- pragma foreign_proc' for ", !IO),
-            write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
+            write_simple_call_id(PredOrFunc, sym_name_arity(PredName, Arity),
+                !IO),
             io.write_string("...\n", !IO)
         )
     ;
@@ -544,7 +545,8 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
                 purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
                 purity_name(Purity, PurityStr),
                 Pieces = [words("Error: foreign clause for"),
-                    p_or_f(PredOrFunc), sym_name_and_arity(PredName / Arity),
+                    p_or_f(PredOrFunc),
+                    sym_name_and_arity(sym_name_arity(PredName, Arity)),
                     words("has purity"), words(ForeignAttributePurityStr),
                     words("but that"), p_or_f(PredOrFunc),
                     words("has been declared"), words(PurityStr),
@@ -728,7 +730,8 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                     ( if OldLang = NewLang then
                         PiecesA = [words("Error: multiple clauses for"),
                             p_or_f(PredOrFunc),
-                            sym_name_and_arity(PredName / Arity),
+                            sym_name_and_arity(
+                                sym_name_arity(PredName, Arity)),
                             words("in language"),
                             words(foreign_language_string(OldLang)),
                             suffix("."), nl],

@@ -540,7 +540,7 @@ split_class_method_types_and_modes(Method0) = Methods :-
     gathered_items::in, gathered_items::out) is det.
 
 distribute_pragma_items({ItemId, Item, Section}, !GatheredItems) :-
-    ItemId = MaybePredOrFunc - SymName / Arity,
+    ItemId = MaybePredOrFunc - sym_name_arity(SymName, Arity),
 
     % For predicates defined using `with_type` annotations we don't know
     % the actual arity, so always we need to add entries for pragmas, even if
@@ -639,22 +639,22 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         ; PragmaType = pragma_mode_check_clauses(PredNameArity)
         ),
         PredNameArity = pred_name_arity(Name, Arity),
-        MaybePredOrFuncId = yes(no - Name / Arity)
+        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
     ;
         PragmaType = pragma_fact_table(FTInfo),
         FTInfo = pragma_info_fact_table(PredNameArity, _),
         PredNameArity = pred_name_arity(Name, Arity),
-        MaybePredOrFuncId = yes(no - Name / Arity)
+        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
     ;
         PragmaType = pragma_type_spec(TypeSpecInfo),
         TypeSpecInfo = pragma_info_type_spec(Name, _, Arity, MaybePredOrFunc,
             _, _, _, _),
-        MaybePredOrFuncId = yes(MaybePredOrFunc - Name / Arity)
+        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
         PragmaType = pragma_tabled(TabledInfo),
         TabledInfo = pragma_info_tabled(_, PredNameArityMPF, _, _),
         PredNameArityMPF = pred_name_arity_mpf(Name, Arity, MaybePredOrFunc),
-        MaybePredOrFuncId = yes(MaybePredOrFunc - Name / Arity)
+        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
         (
             PragmaType = pragma_unused_args(UnusedArgsInfo),
@@ -670,16 +670,16 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
             MMTablingOnfo = pragma_info_mm_tabling_info(PredNameArityPFMn, _)
         ),
         PredNameArityPFMn = pred_name_arity_pf_mn(Name, Arity, PredOrFunc, _),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ;
         PragmaType = pragma_foreign_proc(FPInfo),
         FPInfo = pragma_info_foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
         adjust_func_arity(PredOrFunc, Arity, list.length(Args)),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ;
         PragmaType = pragma_external_proc(ExternalInfo),
         ExternalInfo = pragma_info_external_proc(Name, Arity, PredOrFunc, _),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ;
         (
             PragmaType = pragma_foreign_proc_export(FPEInfo),
@@ -701,7 +701,7 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         ),
         PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ).
 
 %-----------------------------------------------------------------------------%

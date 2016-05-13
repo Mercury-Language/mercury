@@ -132,6 +132,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -500,7 +501,8 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
     then
         ClassId = class_id(ClassName, ClassArity),
         Pieces = [words("Error: no definition for typeclass"),
-            sym_name_and_arity(ClassName / ClassArity), suffix("."), nl],
+            sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            suffix("."), nl],
         Msg = simple_msg(TermContext, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_type_check, [Msg]),
         !:Specs = [Spec | !.Specs],
@@ -564,7 +566,8 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         ClassInterface = class_interface_abstract,
         ClassId = class_id(ClassName, ClassArity),
         Pieces = [words("Error: instance declaration for abstract typeclass"),
-            sym_name_and_arity(ClassName / ClassArity), suffix("."), nl],
+            sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            suffix("."), nl],
         Msg = simple_msg(TermContext, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_type_check, [Msg]),
         !:Specs = [Spec | !.Specs]
@@ -1363,19 +1366,22 @@ report_cyclic_classes(ClassTable, ClassPath) = Spec :-
         ClassPath = [ClassId | Tail],
         Context = map.lookup(ClassTable, ClassId) ^ classdefn_context,
         ClassId = class_id(Name, Arity),
-        RevPieces0 = [sym_name_and_arity(Name/Arity),
-            words("Error: cyclic superclass relation detected:")],
-        RevPieces = foldl(add_path_element, Tail, RevPieces0),
-        Pieces = list.reverse(RevPieces),
+        StartPieces =
+            [words("Error: cyclic superclass relation detected:"), nl,
+            sym_name_and_arity(sym_name_arity(Name, Arity)), nl],
+        list.foldl(add_path_element, Tail, cord.init, LaterLinesCord),
+        Pieces = StartPieces ++ cord.list(LaterLinesCord),
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg])
     ).
 
-:- func add_path_element(class_id, list(format_component))
-    = list(format_component).
+:- pred add_path_element(class_id::in,
+    cord(format_component)::in, cord(format_component)::out) is det.
 
-add_path_element(class_id(Name, Arity), RevPieces0) =
-    [sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
+add_path_element(class_id(SymName, Arity), !LaterLines) :-
+    Line =
+        [words("<="), sym_name_and_arity(sym_name_arity(SymName, Arity)), nl],
+    !:LaterLines = !.LaterLines ++ cord.from_list(Line).
 
 %---------------------------------------------------------------------------%
 
@@ -1570,7 +1576,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
 
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
     Pieces = [words("In instance for typeclass"),
-        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
+        sym_name_and_arity(sym_name_arity(SymName, Arity)), suffix(":"), nl,
         words("functional dependency not satisfied:"),
         words(choose_number(Vars, "type variable", "type variables"))]
         ++ list_to_quoted_pieces(VarsStrs) ++
@@ -1599,7 +1605,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     Ranges = mercury_vars_to_name_only(TVarSet, RangeParams),
 
     PiecesA = [words("Inconsistent instance declaration for typeclass"),
-        sym_name_and_arity(SymName / Arity),
+        sym_name_and_arity(sym_name_arity(SymName, Arity)),
         words("with functional dependency"),
         quote("(" ++ Domains ++ " -> " ++ Ranges ++ ")"),
         suffix("."), nl],
@@ -1788,7 +1794,7 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn) = Spec :-
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
 
     Pieces = [words("In declaration for type"),
-        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
+        sym_name_and_arity(sym_name_arity(SymName, Arity)), suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]
         ++ list_to_quoted_pieces(VarsStrs) ++
@@ -2052,7 +2058,8 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
         words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
         suffix(":"), words("multiple implementations of type class"),
         p_or_f(PredOrFunc), words("method"),
-        sym_name_and_arity(MethodName / Arity), suffix("."), nl],
+        sym_name_and_arity(sym_name_arity(MethodName, Arity)),
+        suffix("."), nl],
     HeadingMsg = simple_msg(InstanceContext, [always(HeaderPieces)]),
     (
         MatchingInstanceMethods = [FirstInstance | LaterInstances]
@@ -2096,7 +2103,7 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
         words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
         suffix(":"),
         words("no implementation for type class"), p_or_f(PredOrFunc),
-        words("method"), sym_name_and_arity(MethodName / Arity),
+        words("method"), sym_name_and_arity(sym_name_arity(MethodName, Arity)),
         suffix("."), nl],
     Msg = simple_msg(InstanceContext, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]),
@@ -2117,15 +2124,17 @@ report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
             HeadArity, _Context),
         adjust_func_arity(HeadPredOrFunc, HeadArity, HeadPredArity),
         Pieces = [words("In instance declaration for"),
-            sym_name_and_arity(ClassName / ClassArity), suffix(":"), nl,
+            sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            suffix(":"), nl,
             words("the type class has no"),
             p_or_f(HeadPredOrFunc), words("method named"),
-            sym_name_and_arity(HeadMethodName / HeadPredArity),
+            sym_name_and_arity(sym_name_arity(HeadMethodName, HeadPredArity)),
             suffix("."), nl]
     ;
         TailMethods = [_ | _],
         Pieces1 = [words("In instance declaration for"),
-            sym_name_and_arity(ClassName / ClassArity), suffix(":"),
+            sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            suffix(":"),
             words("the type class has none of these methods:"), nl],
         format_method_names(HeadMethod, TailMethods, Pieces2),
         Pieces = Pieces1 ++ Pieces2
@@ -2143,14 +2152,14 @@ format_method_names(HeadMethod, TailMethods, Pieces) :-
     adjust_func_arity(PredOrFunc, Arity, PredArity),
     (
         TailMethods = [],
-        Pieces =
-            [p_or_f(PredOrFunc), sym_name_and_arity(Name / PredArity),
+        Pieces = [p_or_f(PredOrFunc),
+            sym_name_and_arity(sym_name_arity(Name, PredArity)),
             suffix("."), nl]
     ;
         TailMethods = [HeadTailMethod | TailTailMethods],
         format_method_names(HeadTailMethod, TailTailMethods, TailPieces),
-        Pieces =
-            [p_or_f(PredOrFunc), sym_name_and_arity(Name / PredArity),
+        Pieces = [p_or_f(PredOrFunc),
+            sym_name_and_arity(sym_name_arity(Name, PredArity)),
             suffix(","), words("or"), nl | TailPieces]
     ).
 

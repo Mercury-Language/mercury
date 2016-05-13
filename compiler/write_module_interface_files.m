@@ -1990,23 +1990,26 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         Item = item_type_defn(ItemTypeDefnInfo),
         ItemTypeDefnInfo = item_type_defn_info(SymName, Params, _, _, _, _),
         list.length(Params, Arity),
-        add_to_sym_name_items_map(SymName / Arity, Item, !TypeDefnMap)
+        SymNameAndArity = sym_name_arity(SymName, Arity),
+        add_to_sym_name_items_map(SymNameAndArity, Item, !TypeDefnMap)
     ;
         Item = item_inst_defn(ItemInstDefnInfo),
         ItemInstDefnInfo = item_inst_defn_info(SymName, Params, _, _, _, _, _),
         list.length(Params, Arity),
-        add_to_sym_name_items_map(SymName / Arity, Item, !InstDefnMap)
+        SymNameAndArity = sym_name_arity(SymName, Arity),
+        add_to_sym_name_items_map(SymNameAndArity, Item, !InstDefnMap)
     ;
         Item = item_mode_defn(ItemModeDefnInfo),
         ItemModeDefnInfo = item_mode_defn_info(SymName, Params, _, _, _, _),
         list.length(Params, Arity),
-        add_to_sym_name_items_map(SymName / Arity, Item, !ModeDefnMap)
+        SymNameAndArity = sym_name_arity(SymName, Arity),
+        add_to_sym_name_items_map(SymNameAndArity, Item, !ModeDefnMap)
     ;
         Item = item_pred_decl(ItemPredDeclInfo),
         ItemPredDeclInfo = item_pred_decl_info(SymName, _PorF, Args,
             _, _, _, _, _, _, _, _, _, _, _),
         list.length(Args, Arity),
-        SymNameAndArity = SymName / Arity,
+        SymNameAndArity = sym_name_arity(SymName, Arity),
         ( if map.search(!.PredRelatedMap, SymNameAndArity, OldPredRelated) then
             OldPredRelated =
                 pred_related_items(OldPredDeclItems, ModeDeclItems),
@@ -2024,7 +2027,7 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         ItemModeDeclInfo = item_mode_decl_info(SymName, _PorF, Args,
             _, _, _, _, _),
         list.length(Args, Arity),
-        SymNameAndArity = SymName / Arity,
+        SymNameAndArity = sym_name_arity(SymName, Arity),
         ( if map.search(!.PredRelatedMap, SymNameAndArity, OldPredRelated) then
             OldPredRelated =
                 pred_related_items(PredDeclItems, OldModeDeclItems),

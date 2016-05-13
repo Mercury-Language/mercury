@@ -760,7 +760,7 @@ add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
                     % There is no point printing out the qualified name
                     % since that information is already in the context.
                     ClauseId = simple_call_id_to_string(PredOrFunc,
-                        unqualified(PredName) / Arity),
+                        sym_name_arity(unqualified(PredName), Arity)),
                     error_is_exported(Context,
                         [words("clause for " ++ ClauseId)], !Specs)
                 ;
@@ -946,7 +946,8 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         may_be_partially_qualified, SymName, Arity, PredIds),
     (
         PredIds = [],
-        Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
+        Pieces = [words("Error:"),
+            sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("used in"), decl("initialise"), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
@@ -1020,7 +1021,7 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                     !ModuleInfo, !Specs)
             else
                 Pieces = [words("Error:"),
-                    sym_name_and_arity(SymName/Arity),
+                    sym_name_and_arity(sym_name_arity(SymName, Arity)),
                     words("used in initialise declaration"),
                     words("has invalid signature."), nl],
                 % TODO: provide verbose error information here.
@@ -1031,7 +1032,8 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
             )
         ;
             TailPredIds = [_ | _],
-            Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
+            Pieces = [words("Error:"),
+                sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 words("used in initialise declaration"),
                 words("matches multiple pred declarations."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
@@ -1064,7 +1066,8 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         may_be_partially_qualified, SymName, Arity, PredIds),
     (
         PredIds = [],
-        Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
+        Pieces = [words("Error:"),
+            sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("used in"), decl("finalise"), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
@@ -1136,7 +1139,8 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                 add_pragma_foreign_proc_export(PEOrigin, FPEInfo, Context,
                     !ModuleInfo, !Specs)
             else
-                Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
+                Pieces = [words("Error:"),
+                    sym_name_and_arity(sym_name_arity(SymName, Arity)),
                     words("used in"), decl("finalise"),
                     words("declaration has invalid signature."), nl],
                 Msg = simple_msg(Context, [always(Pieces)]),
@@ -1146,7 +1150,8 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
             )
         ;
             TailPredIds = [_ | _],
-            Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
+            Pieces = [words("Error:"),
+                sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 words("used in"), decl("finalise"), words("declaration"),
                 words("has multiple"), decl("pred"), words("declarations."),
                 nl],

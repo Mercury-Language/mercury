@@ -1,3 +1,4 @@
 cyclic_typeclass.m:032: Error: cyclic superclass relation detected:
-cyclic_typeclass.m:032:   `cyclic_typeclass.bar'/1 <= `cyclic_typeclass.foo'/1
+cyclic_typeclass.m:032:   `cyclic_typeclass.bar'/1
+cyclic_typeclass.m:032:   <= `cyclic_typeclass.foo'/1
 cyclic_typeclass.m:032:   <= `cyclic_typeclass.bar'/1

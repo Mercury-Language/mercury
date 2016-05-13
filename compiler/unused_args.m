@@ -1852,9 +1852,9 @@ report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
+    SNA = sym_name_arity(qualified(ModuleName, PredName), Arity),
     Pieces1 = [words("In"), fixed(pred_or_func_to_full_str(PredOrFunc)),
-        sym_name_and_arity(qualified(ModuleName, PredName) / Arity),
-        suffix(":"), nl, words("warning:")],
+        sym_name_and_arity(SNA), suffix(":"), nl, words("warning:")],
     ( if NumArgs = 1 then
         Pieces2 = [words("argument") | format_arg_list(UnusedArgs)] ++
             [words("is unused."), nl]

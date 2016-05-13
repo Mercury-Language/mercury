@@ -695,9 +695,10 @@ maybe_issue_no_such_type_error(InstId, InstDefn, TypeCtor, !Specs) :-
         InstId = inst_id(InstName, InstArity),
         TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
         Pieces = [words("Error: inst"),
-            sym_name_and_arity(InstName / InstArity),
+            sym_name_and_arity(sym_name_arity(InstName, InstArity)),
             words("is specified to be for"),
-            sym_name_and_arity(TypeCtorName /TypeCtorArity), suffix(","),
+            sym_name_and_arity(sym_name_arity(TypeCtorName, TypeCtorArity)),
+            suffix(","),
             words("but that type constructor is not visible here."), nl],
         Spec = error_spec(severity_error, phase_inst_check,
             [simple_msg(Context, [always(Pieces)])]),
@@ -741,10 +742,12 @@ maybe_issue_type_match_error(InstId, InstDefn, ForTypeKind, MismatchConsIdStrs,
             not type_is_user_visible(ms_interface, ForTypeDefn)
         then
             VisPieces = [words("Error: inst"),
-                sym_name_and_arity(ShortInstSymName / InstArity),
+                sym_name_and_arity(
+                    sym_name_arity(ShortInstSymName, InstArity)),
                 words("is exported, but the type it is for,"),
-                sym_name_and_arity(TypeCtorName /TypeCtorArity), suffix(","),
-                words("is not visible outside this module."), nl],
+                sym_name_and_arity(
+                    sym_name_arity(TypeCtorName, TypeCtorArity)),
+                suffix(","), words("is not visible outside this module."), nl],
             VisSpec = error_spec(severity_error, phase_inst_check,
                 [simple_msg(Context, [always(VisPieces)])]),
             !:Specs = [VisSpec | !.Specs]
@@ -763,11 +766,11 @@ maybe_issue_type_match_error(InstId, InstDefn, ForTypeKind, MismatchConsIdStrs,
             "is not a function symbol", "are not function symbols"),
         MismatchConsIdPieces = list_to_quoted_pieces(MismatchConsIdStrs),
         MismatchPieces = [words("Error: inst"),
-            sym_name_and_arity(ShortInstSymName / InstArity),
+            sym_name_and_arity(sym_name_arity(ShortInstSymName, InstArity)),
             words("is declared to be for type"),
-            sym_name_and_arity(TypeCtorName / TypeCtorArity), suffix(","),
-            words("but its top level"), words(FuncSymbolPhrase)] ++
-            MismatchConsIdPieces ++
+            sym_name_and_arity(sym_name_arity(TypeCtorName, TypeCtorArity)),
+            suffix(","), words("but its top level"),
+            words(FuncSymbolPhrase)] ++ MismatchConsIdPieces ++
             [words(IsAreNotPhrase), words("of that type."), nl],
         MismatchSpec = error_spec(severity_error, phase_inst_check,
             [simple_msg(Context, [always(MismatchPieces)])]),
@@ -807,8 +810,8 @@ maybe_issue_no_matching_types_warning(InstId, InstDefn, BoundInsts,
             Context = InstDefn ^ inst_context,
             InstId = inst_id(InstName, InstArity),
             NoMatchPieces = [words("Warning: inst"),
-                sym_name_and_arity(InstName / InstArity),
-                words("does not match any of the types in scope.")],
+                sym_name_and_arity(sym_name_arity(InstName, InstArity)),
+                words("does not match any of the types in scope."), nl],
 
             AllPossibleTypesSet = set.union_list(PossibleTypeSets),
             set.to_sorted_list(AllPossibleTypesSet, AllPossibleTypes),
@@ -857,7 +860,8 @@ maybe_issue_no_matching_types_warning(InstId, InstDefn, BoundInsts,
                     OnePossibleTypeStr =
                         type_defn_or_builtin_to_string(OnePossibleType),
                     Pieces = [words("Warning: inst"),
-                        sym_name_and_arity(InstName / InstArity),
+                        sym_name_and_arity(
+                            sym_name_arity(InstName, InstArity)),
                         words("is exported, but the one type it matches"),
                         prefix("("), words(OnePossibleTypeStr), suffix(")"),
                         words("is not visible from outside this module.")]
@@ -868,7 +872,8 @@ maybe_issue_no_matching_types_warning(InstId, InstDefn, BoundInsts,
                     PossibleTypesStr =
                         string.join_list(", ", PossibleTypeStrs),
                     Pieces = [words("Warning: inst"),
-                        sym_name_and_arity(InstName / InstArity),
+                        sym_name_and_arity(
+                            sym_name_arity(InstName, InstArity)),
                         words("is exported, but none of the types it matches"),
                         prefix("("), words(PossibleTypesStr), suffix(")"),
                         words("are visible from outside this module.")]

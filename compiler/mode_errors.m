@@ -1067,7 +1067,8 @@ mode_error_unify_var_multimode_pred_to_spec(ModeInfo, X, PredId) = Spec :-
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarSet, X)),
         words("and higher-order term based on multi-moded"),
-        p_or_f(PredOrFunc), sym_name_and_arity(QualifiedName / FuncArity),
+        p_or_f(PredOrFunc),
+        sym_name_and_arity(sym_name_arity(QualifiedName, FuncArity)),
         suffix("."), nl],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
@@ -1092,7 +1093,8 @@ mode_error_unify_var_multimode_pred_undetermined_to_spec(ModeInfo, X, PredId)
         quote(mercury_var_to_name_only(VarSet, X)),
         words("and higher-order term."),
         words("Could not determine the mode of"),
-        p_or_f(PredOrFunc), sym_name_and_arity(QualifiedName / FuncArity),
+        p_or_f(PredOrFunc),
+        sym_name_and_arity(sym_name_arity(QualifiedName, FuncArity)),
         words("by the insts of the higher-order arguments only."), nl],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
