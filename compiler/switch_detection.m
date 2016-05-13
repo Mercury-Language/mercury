@@ -573,26 +573,40 @@ project_single_arm_goal(multi_cons_id_arm(_, _, _)) = _ :-
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
 use_context_of_first_disjunct(Disjuncts, GoalInfo0, GoalInfo) :-
-    gather_contexts_of_goals(Disjuncts, set_tree234.init, Contexts),
-    % In the common case that all the contexts have the same filename,
-    % this selects the smallest line number. If Contexts contains more than
-    % one filename, we have no way to choose the least surprising context
-    % to use, so may as well use LeastContext.
-    ( if set_tree234.remove_least(LeastContext, Contexts, _OtherContexts) then
-        goal_info_set_context(LeastContext, GoalInfo0, GoalInfo)
-    else
+    (
+        Disjuncts = [FirstDisjunct | LaterDisjuncts],
+        FirstDisjunct = hlds_goal(_FirstGoalExpr, FirstGoalInfo),
+        FirstContext = goal_info_get_context(FirstGoalInfo),
+        gather_smallest_context(LaterDisjuncts, FirstContext, SmallestContext),
+        goal_info_set_context(SmallestContext, GoalInfo0, GoalInfo)
+    ;
+        Disjuncts = [],
         GoalInfo = GoalInfo0
     ).
 
-:- pred gather_contexts_of_goals(list(hlds_goal)::in,
-    set_tree234(term.context)::in, set_tree234(term.context)::out) is det.
+    % Compute the smallest context among the given goals and the initial
+    % accumulator.
+    %
+    % In the common case that all the goals' contexts have the same filename,
+    % this selects the smallest line number.
+    %
+    % If the goals' contexts refer to more than one filename, we have no way
+    % to choose the least surprising context to use, so may as well use
+    % the overall smallest one.
+    %
+:- pred gather_smallest_context(list(hlds_goal)::in,
+    term.context::in, term.context::out) is det.
 
-gather_contexts_of_goals([], !Contexts).
-gather_contexts_of_goals([Goal | Goals], !Contexts) :-
+gather_smallest_context([], !SmallestContext).
+gather_smallest_context([Goal | Goals], !SmallestContext) :-
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
-    set_tree234.insert(Context, !Contexts),
-    gather_contexts_of_goals(Goals, !Contexts).
+    ( if compare((<), Context, !.SmallestContext) then
+        !:SmallestContext = Context
+    else
+        true
+    ),
+    gather_smallest_context(Goals, !SmallestContext).
 
 :- func num_cases_in_table(cases_table) = int.
 
