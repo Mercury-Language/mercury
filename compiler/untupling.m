@@ -10,12 +10,17 @@
 % Author: wangp.
 %
 % This module takes the HLDS and transforms the locally-defined procedures as
-% follows: if the formal parameter of a procedure has a type consisting of a
-% single function symbol then that parameter is expanded into multiple
-% parameters (one for each field of the functor). Tuple types are also
-% expanded. The argument lists are expanded as deeply (flatly) as possible.
+% follows. If a formal parameter of a procedure has a type that has only
+% a single function symbol (i.e. it is a kind of tuple), then it replaces
+% the parameter holding the tuple with one parameter for each field of the
+% tuple. If some of those fields also have types that have only one function
+% symbol, it expand them as well. It recurses until it has expanded the
+% argument list as deeply as possible, yielding a parameter list that has
+% *no* arguments of such tuple-like types. We call such parameter lists "flat",
+% because they have no expandable structure (at least no structure that is
+% expandable by this module).
 %
-% e.g. for the following predicate and types,
+% For example, for the following predicate and types,
 %
 %   :- type t ---> t(u).
 %   :- type u ---> u(v, w).
@@ -25,18 +30,23 @@
 %   :- pred f(t::in) is det.
 %   f(T) :- blah.
 %
-% a transformed version of f/1 would be added:
+% we would generate this transformed version of f/1:
 %
 %   :- pred f_untupled(v::in, int::in, string::in) is det.
 %   f_untupled(V, W1, W2) :- blah.
 %
-% After all the procedures have been processed in that way, a second pass is
-% made to update all the calls in the module which refer to the old procedures
-% to call the transformed procedures. This is done by adding deconstruction
-% and construction unifications as needed, which can later be simplified by a
-% simplification pass (not called from this module).
+% The first pass creates transformed versions for all the procedures
+% whose argument lists weren't already flat already.
+% The second pass then replaces all the calls in the module which refer
+% to the old procedures with calls to their transformed versions.
+% It does this by adding deconstruction and construction unifications
+% as needed, which can later be simplified by a simplification pass.
+% (This module does not itself invoke simplification, because we expect that
+% the HLDS it generates will be subject to further optimization passes;
+% simplification *will* be called by the target backend before it starts
+% code generation.)
 %
-% e.g. a call to the predicate above,
+% For example, we transform this code, which calls the predicate above,
 %
 %   :- pred g(T::in) is det.
 %   g(_) :-
@@ -48,7 +58,7 @@
 %       F = t(E),
 %       f(F).
 %
-% is changed to this:
+% to this:
 %
 %   g(_) :-
 %       A = 1,
@@ -62,7 +72,7 @@
 %       I = w(J, K),
 %       f_untupled(H, J, K).
 %
-% which, after simplication, should become:
+% which, after simplification, should become:
 %
 %   g(_) :-
 %       A = 1,
@@ -73,13 +83,13 @@
 % Limitations:
 %
 % - When a formal parameter is expanded, both the parameter's type and mode
-% have to be expanded. Currently only arguments with in and out modes can
-% be expanded, as I don't know how to do it for the general case.
-% It should be enough for the majority of code.
+%   have to be expanded. Currently only arguments with in and out modes can
+%   be expanded, as I don't know how to do it for the general case.
+%   It should be enough for the majority of code.
 %
 % - Some predicates may or may not be expandable but won't be right now,
-% because I don't understand the features they use (see expand_args_in_pred
-% below).
+%   because I don't understand the features they use (see expand_args_in_pred
+%   below).
 %
 % Julien says: "it should be possible for this transformation to work across
 % module boundaries by exporting the goal templates [search for CallAux
@@ -663,6 +673,10 @@ expand_call_args(Args0, ArgModes0, Args, EnterUnifs, ExitUnifs,
     vartypes::in, vartypes::out, list(mer_type)::in, type_table::in) is det.
 
 expand_call_args_2([], [], [], [], [], !VarSet, !VarTypes, _, _).
+expand_call_args_2([], [_|_], _, _, _, !_, !_, _, _) :-
+    unexpected($module, $pred, "length mismatch").
+expand_call_args_2([_|_], [], _, _, _, !_, !_, _, _) :-
+    unexpected($module, $pred, "length mismatch").
 expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
         EnterUnifs, ExitUnifs, !VarSet, !VarTypes,
         ContainerTypes0, TypeTable) :-
@@ -698,11 +712,6 @@ expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
         expand_call_args(Args0, ArgModes, Args1, EnterUnifs,
             ExitUnifs, !VarSet, !VarTypes, TypeTable)
     ).
-
-expand_call_args_2([], [_|_], _, _, _, !_, !_, _, _) :-
-    unexpected($module, $pred, "length mismatch").
-expand_call_args_2([_|_], [], _, _, _, !_, !_, _, _) :-
-    unexpected($module, $pred, "length mismatch").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
