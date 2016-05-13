@@ -258,11 +258,11 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
             ).
 
 :- type new_remain
-    --->    specified(
+    --->    nr_specified(
                 new_instructions        :: list(instruction),
                 remaining_instructions  :: list(instruction)
             )
-    ;       usual_case.
+    ;       nr_usual_case.
             % The list of new instructions contains just Instr0, and
             % the list of remaining instructions, on which to recurse,
             % Instrs0.
@@ -326,12 +326,12 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         % Short-circuit all the destination labels.
         short_circuit_maybe_labels(InstrMap, MaybeTargets0, MaybeTargets),
         ( if MaybeTargets = MaybeTargets0 then
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         else
             Shorted = Comment0 ++ " (some shortcircuits)",
             NewInstrs =
                 [llds_instr(computed_goto(Index, MaybeTargets), Shorted)],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         )
     ;
         Uinstr0 = if_val(_, _),
@@ -343,11 +343,11 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         InstrMap = JumpOptInfo ^ joi_instr_map,
         short_circuit_labels_rval(InstrMap, Rval0, Rval),
         ( if Rval = Rval0 then
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         else
             Shorted = Comment0 ++ " (some shortcircuits)",
             NewInstrs = [llds_instr(assign(Lval, Rval), Shorted)],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         )
     ;
         Uinstr0 = keep_assign(Lval, Rval0),
@@ -355,11 +355,11 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         InstrMap = JumpOptInfo ^ joi_instr_map,
         short_circuit_labels_rval(InstrMap, Rval0, Rval),
         ( if Rval = Rval0 then
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         else
             Shorted = Comment0 ++ " (some shortcircuits)",
             NewInstrs = [llds_instr(keep_assign(Lval, Rval), Shorted)],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         )
     ;
         Uinstr0 = mkframe(FrameInfo, Redoip),
@@ -367,16 +367,16 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
             InstrMap = JumpOptInfo ^ joi_instr_map,
             short_circuit_label(InstrMap, Label0, Label),
             ( if Label = Label0 then
-                NewRemain = usual_case
+                NewRemain = nr_usual_case
             else
                 Shorted = Comment0 ++ " (some shortcircuits)",
                 NewInstrs =
                     [llds_instr(mkframe(FrameInfo, yes(code_label(Label))),
                         Shorted)],
-                NewRemain = specified(NewInstrs, Instrs0)
+                NewRemain = nr_specified(NewInstrs, Instrs0)
             )
         else
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         )
     ;
         Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
@@ -392,42 +392,42 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         InstrMap = JumpOptInfo ^ joi_instr_map,
         short_circuit_label(InstrMap, Child0, Child),
         ( if Child = Child0 then
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         else
             Uinstr = fork_new_child(SyncTerm, Child),
             Comment = Comment0 ++ " (redirect)",
             Instr = llds_instr(Uinstr, Comment),
-            NewRemain = specified([Instr], Instrs0)
+            NewRemain = nr_specified([Instr], Instrs0)
         )
     ;
         Uinstr0 = join_and_continue(SyncTerm, Label0),
         InstrMap = JumpOptInfo ^ joi_instr_map,
         short_circuit_label(InstrMap, Label0, Label),
         ( if Label = Label0 then
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         else
             Uinstr = join_and_continue(SyncTerm, Label),
             Comment = Comment0 ++ " (redirect)",
             Instr = llds_instr(Uinstr, Comment),
-            NewRemain = specified([Instr], Instrs0)
+            NewRemain = nr_specified([Instr], Instrs0)
         )
     ;
         Uinstr0 = lc_wait_free_slot(_, _, _),
         % The label in the third argument should not be referred to
         % from any code in the procedure's LLDS instruction sequence,
         % so there is no way for it to be short circuited.
-        NewRemain = usual_case
+        NewRemain = nr_usual_case
     ;
         Uinstr0 = lc_spawn_off(LCRval, LCSRval, Child0),
         InstrMap = JumpOptInfo ^ joi_instr_map,
         short_circuit_label(InstrMap, Child0, Child),
         ( if Child = Child0 then
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         else
             Uinstr = lc_spawn_off(LCRval, LCSRval, Child),
             Comment = Comment0 ++ " (redirect)",
             Instr = llds_instr(Uinstr, Comment),
-            NewRemain = specified([Instr], Instrs0)
+            NewRemain = nr_specified([Instr], Instrs0)
         )
     ;
         ( Uinstr0 = arbitrary_c_code(_, _, _)
@@ -457,15 +457,15 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         ; Uinstr0 = lc_create_loop_control(_, _)
         ; Uinstr0 = lc_join_and_terminate(_, _)
         ),
-        NewRemain = usual_case
+        NewRemain = nr_usual_case
     ),
     (
-        NewRemain = usual_case,
+        NewRemain = nr_usual_case,
         ReplacementInstrsEmpty = no,
         RecurseInstrs = Instrs0,
         !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
-        NewRemain = specified(ReplacementInstrs, RecurseInstrs),
+        NewRemain = nr_specified(ReplacementInstrs, RecurseInstrs),
         % ReplacementInstrs are in the right order, but they will be reversed
         % by our caller. We therefore reverse them here, which allows that
         % final reverse to put them in the right order.
@@ -509,7 +509,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
         then
             % We cannot optimize the call. Test for this once, here, instead
             % of at the end of each of the following conditions.
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         else if
             % Look for det style tailcalls. We look for this even if
             % the call is semidet, because one of the optimizations below
@@ -525,7 +525,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             NewInstrs = Between1 ++
                 [llds_instr(livevals(Livevals), ""),
                 llds_instr(goto(Proc), redirect_comment(Comment0))],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else if
             % Look for semidet style tailcalls.
             CallModel = call_model_semidet(allow_lco),
@@ -536,7 +536,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             NewInstrs = Between ++
                 [llds_instr(livevals(Livevals), ""),
                 llds_instr(goto(Proc), redirect_comment(Comment0))],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else if
             % Look for nondet style tailcalls which do not need
             % a runtime check.
@@ -556,7 +556,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
                 llds_instr(livevals(Livevals), ""),
                 llds_instr(goto(Proc), redirect_comment(Comment0))
             ],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else if
             % Look for nondet style tailcalls which do need
             % a runtime check.
@@ -586,7 +586,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
                 llds_instr(livevals(Livevals), ""),
                 llds_instr(Uinstr0, Comment0)
             ],
-            NewRemain = specified(NewInstrs, Instrs0),
+            NewRemain = nr_specified(NewInstrs, Instrs0),
             !:CheckedNondetTailCallInfo =
                 check_nondet_tailcalls(ProcLabel, LabelNumCounter1)
         else if
@@ -602,12 +602,12 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
                     LiveInfos, Context, GoalPath, CallModel),
                     redirect_comment(Comment0))]
             ),
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         )
     else
-        NewRemain = usual_case
+        NewRemain = nr_usual_case
     ).
 
 :- pred jump_opt_goto(instr::in(instr_goto), string::in,
@@ -624,7 +624,7 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             opt_util.is_this_label_next(TargetLabel, Instrs0, _)
         then
             NewInstrs = [],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else if
             PrevInstr = if_val(_, code_label(IfTargetLabel)),
             opt_util.is_this_label_next(IfTargetLabel, Instrs0, _)
@@ -636,7 +636,7 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             % We cannot eliminate the instruction here because
             % that would require altering the if_val instruction.
             NewInstrs = [llds_instr(Uinstr0, Comment0)],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else if
             % Replace a jump to a det epilog with the epilog.
             ProcMap = JumpOptInfo ^ joi_proc_map,
@@ -645,7 +645,7 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             adjust_livevals(PrevInstr, Between0, Between),
             NewInstrs = Between ++
                 [llds_instr(goto(code_succip), "shortcircuit")],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else if
             % Replace a jump to a semidet epilog with the epilog.
             SdprocMap = JumpOptInfo ^ joi_sdproc_map,
@@ -654,14 +654,14 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             adjust_livevals(PrevInstr, Between0, Between),
             NewInstrs = Between ++
                 [llds_instr(goto(code_succip), "shortcircuit")],
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else if
             % Replace a jump to a nondet epilog with the epilog.
             SuccMap = JumpOptInfo ^ joi_succ_map,
             map.search(SuccMap, TargetLabel, BetweenIncl0)
         then
             adjust_livevals(PrevInstr, BetweenIncl0, NewInstrs),
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else if
             % Replace a jump to a non-epilog block with the block itself.
             % These jumps are treated separately from jumps to epilog blocks,
@@ -694,7 +694,7 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             jump_opt_instr_list(AdjustedBlock, comment(""),
                 CrippledJumpOptInfo, !CheckedNondetTailCallInfo,
                 [], RevNewInstrs),
-            NewRemain = specified(list.reverse(RevNewInstrs), Instrs0)
+            NewRemain = nr_specified(list.reverse(RevNewInstrs), Instrs0)
         else if
             % Short-circuit the goto.
             InstrMap = JumpOptInfo ^ joi_instr_map,
@@ -723,12 +723,12 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             else
                 NewInstrs = NewInstrs0
             ),
-            NewRemain = specified(NewInstrs, Instrs0)
+            NewRemain = nr_specified(NewInstrs, Instrs0)
         else
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         )
     else
-        NewRemain = usual_case
+        NewRemain = nr_usual_case
     ).
 
 :- pred jump_opt_if_val(instr::in(instr_if_val), string::in,
@@ -788,7 +788,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             % loop because each application of the transformation strictly
             % reduces the size of the code.
             RemainInstrs = [NewInstr | AfterGoto],
-            NewRemain = specified(NewInstrs, RemainInstrs)
+            NewRemain = nr_specified(NewInstrs, RemainInstrs)
         else if
             % Attempt to transform code such as
             %
@@ -826,7 +826,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             NewGotoInstr =
                 llds_instr(goto(code_label(TargetLabel)), NewGotoComment),
             RemainInstrs = [NewGotoInstr | AfterGoto],
-            NewRemain = specified(NewInstrs, RemainInstrs)
+            NewRemain = nr_specified(NewInstrs, RemainInstrs)
         else if
             map.search(InstrMap, TargetLabel, TargetInstr)
         then
@@ -872,7 +872,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
                 ),
                 Proceed = llds_instr(goto(code_succip), "shortcircuit"),
                 NewInstrs = [NewAssign | Between] ++ [Proceed],
-                NewRemain = specified(NewInstrs, Instrs0)
+                NewRemain = nr_specified(NewInstrs, Instrs0)
             else if
                 % Try to short-circuit the destination.
                 TargetLabel \= DestLabel
@@ -881,15 +881,15 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
                 NewInstrs = [
                     llds_instr(if_val(Cond, code_label(DestLabel)), Shorted)
                 ],
-                NewRemain = specified(NewInstrs, Instrs0)
+                NewRemain = nr_specified(NewInstrs, Instrs0)
             else
-                NewRemain = usual_case
+                NewRemain = nr_usual_case
             )
         else
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         )
     else
-        NewRemain = usual_case
+        NewRemain = nr_usual_case
     ).
 
 :- pred jump_opt_foreign_proc_code(instr::in(instr_foreign_proc_code),
@@ -949,7 +949,7 @@ jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, _PrevInstr,
 %       ),
         (
             !.Redirect = no,
-            NewRemain = usual_case
+            NewRemain = nr_usual_case
         ;
             !.Redirect = yes,
             Comment = Comment0 ++ " (some redirects)",
@@ -957,7 +957,7 @@ jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, _PrevInstr,
                 MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
                 MaybeNoFix, MaybeDefLabel, StackSlotRef, MaybeDup),
             Instr = llds_instr(Uinstr, Comment),
-            NewRemain = specified([Instr], Instrs0)
+            NewRemain = nr_specified([Instr], Instrs0)
         )
     ).
 

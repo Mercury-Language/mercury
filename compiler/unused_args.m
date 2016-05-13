@@ -170,7 +170,7 @@
     --->    unused_args_call.
 
 :- type unused_args_answer
-    --->    unused_args(
+    --->    unused_args_answer(
                 % The list of unused arguments is in sorted order.
                 args    :: list(int)
             ).
@@ -185,8 +185,8 @@ get_unused_args(UnusedArgs) = UnusedArgs ^ args.
     analysis_name(_, _) = analysis_name,
     analysis_version_number(_, _) = 3,
     preferred_fixpoint_type(_, _) = least_fixpoint,
-    bottom(unused_args_func_info(Arity), _) = unused_args(1 .. Arity),
-    top(_, _) = unused_args([]),
+    bottom(unused_args_func_info(Arity), _) = unused_args_answer(1 .. Arity),
+    top(_, _) = unused_args_answer([]),
     (get_func_info(ModuleInfo, ModuleName, FuncId, _, _, FuncInfo) :-
         func_id_to_ppid(ModuleInfo, ModuleName, FuncId, proc(PredId, _)),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -219,18 +219,18 @@ analysis_name = "unused_args".
 :- instance answer_pattern(unused_args_func_info, unused_args_answer) where [].
 :- instance partial_order(unused_args_func_info, unused_args_answer) where [
     (more_precise_than(_, Answer1, Answer2) :-
-        Answer1 = unused_args(Args1),
-        Answer2 = unused_args(Args2),
+        Answer1 = unused_args_answer(Args1),
+        Answer2 = unused_args_answer(Args2),
         set.subset(sorted_list_to_set(Args2), sorted_list_to_set(Args1))
     ),
     equivalent(_, Args, Args)
 ].
 
 :- instance to_term(unused_args_answer) where [
-    ( to_term(unused_args(Args)) = Term :-
+    ( to_term(unused_args_answer(Args)) = Term :-
         type_to_term(Args, Term)
     ),
-    ( from_term(Term, unused_args(Args)) :-
+    ( from_term(Term, unused_args_answer(Args)) :-
         term_to_type(Term, Args)
     )
 ].
@@ -426,7 +426,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
                 FuncInfo, unused_args_call, MaybeBestResult),
             (
                 MaybeBestResult = yes(analysis_result(_, BestAnswer, _)),
-                BestAnswer = unused_args(UnusedArgs),
+                BestAnswer = unused_args_answer(UnusedArgs),
                 (
                     UnusedArgs = [_ | _],
                     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -1015,11 +1015,11 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
 
         PredArity = pred_info_orig_arity(OrigPredInfo),
         FuncInfo = unused_args_func_info(PredArity),
-        Answer = unused_args(UnusedArgs),
+        Answer = unused_args_answer(UnusedArgs),
 
         FilterUnused = (pred(VersionAnswer::in) is semidet :-
             VersionAnswer \= Answer,
-            VersionAnswer \= unused_args([]),
+            VersionAnswer \= unused_args_answer([]),
             more_precise_than(FuncInfo, Answer, VersionAnswer)
         ),
         IntermodOldArgLists = list.map(get_unused_args,
@@ -1946,9 +1946,9 @@ maybe_record_intermod_unused_args_2(ModuleInfo, UnusedArgInfo,
     then
         PPId = proc(PredId, ProcId),
         ( if map.search(UnusedArgInfo, PPId, UnusedArgs) then
-            Answer = unused_args(UnusedArgs)
+            Answer = unused_args_answer(UnusedArgs)
         else
-            Answer = unused_args([])
+            Answer = unused_args_answer([])
         ),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, unused_args_call, Answer, optimal,

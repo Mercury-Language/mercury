@@ -21,7 +21,7 @@
 % analysis for Mercury. In P. Van Hentenryck, editor, Static Analysis:
 % Proceedings of the 4th International Symposium, Lecture Notes in Computer
 % Science. Springer, 1997. A more detailed version is available for
-% download from the papers page of mercurylang.org
+% download from the papers page of mercurylang.org.
 %
 % The termination analysis may use a number of different norms to calculate
 % the size of a term. These are set by using the --termination-norm string

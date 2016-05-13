@@ -445,7 +445,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
             "eval_table_io and Attributes"),
         % Since we don't actually create a call table for I/O tabled
         % procedures, the value of MaybeSpecMethod doesn't really matter.
-        MaybeSpecMethod = all_same(arg_value),
+        MaybeSpecMethod = msm_all_same(arg_value),
         Statistics = table_dont_gather_statistics,
         MaybeSizeLimit = no
     ;
@@ -458,13 +458,13 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         MaybeSizeLimit = Attributes ^ table_attr_size_limit,
         (
             CallStrictness = all_strict,
-            MaybeSpecMethod = all_same(arg_value)
+            MaybeSpecMethod = msm_all_same(arg_value)
         ;
             CallStrictness = all_fast_loose,
-            MaybeSpecMethod = all_same(arg_addr)
+            MaybeSpecMethod = msm_all_same(arg_addr)
         ;
             CallStrictness = specified(ArgMethods, HiddenArgMethod),
-            MaybeSpecMethod = specified(ArgMethods, HiddenArgMethod)
+            MaybeSpecMethod = msm_specified(ArgMethods, HiddenArgMethod)
         ),
         (
             EvalMethod = eval_loop_check
@@ -474,7 +474,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
             EvalMethod = eval_minimal(_),
             expect(unify(MaybeSizeLimit, no), $pred,
                 "eval_minimal with size limit"),
-            expect(unify(MaybeSpecMethod, all_same(arg_value)), $pred,
+            expect(unify(MaybeSpecMethod, msm_all_same(arg_value)), $pred,
                 "eval_minimal without all_strict")
         )
     ),
@@ -3332,8 +3332,8 @@ generator_type = Type :-
     construct_type(type_ctor(qualified(TB, "ml_generator"), 0), [], Type).
 
 :- type maybe_specified_method
-    --->    all_same(arg_tabling_method)
-    ;       specified(
+    --->    msm_all_same(arg_tabling_method)
+    ;       msm_specified(
                 list(maybe(arg_tabling_method)),
                 hidden_arg_tabling_method
             ).
@@ -3353,9 +3353,10 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
         get_input_output_vars(Vars, Modes, ModuleInfo, !MaybeSpecMethod,
             InVarModes0, OutVarModes),
         (
-            !.MaybeSpecMethod = all_same(ArgMethod)
+            !.MaybeSpecMethod = msm_all_same(ArgMethod)
         ;
-            !.MaybeSpecMethod = specified(MaybeArgMethods0, HiddenArgMethod),
+            !.MaybeSpecMethod =
+                msm_specified(MaybeArgMethods0, HiddenArgMethod),
             ( if
                 list.split_last(MaybeArgMethods0, MaybeArgMethods,
                     LastMaybeArgMethod)
@@ -3366,7 +3367,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                     LastMaybeArgMethod = no,
                     unexpected($module, $pred, "bad method for input var")
                 ),
-                !:MaybeSpecMethod = specified(MaybeArgMethods,
+                !:MaybeSpecMethod = msm_specified(MaybeArgMethods,
                     HiddenArgMethod)
             else
                 % We have run out of specified arg_methods, which means the
@@ -3379,7 +3380,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                     HiddenArgMethod = hidden_arg_addr,
                     ArgMethod = arg_addr
                 ),
-                !:MaybeSpecMethod = all_same(ArgMethod)
+                !:MaybeSpecMethod = msm_all_same(ArgMethod)
             )
         ),
         InVarModes = [var_mode_method(Var, Mode, ArgMethod) | InVarModes0]
@@ -3387,19 +3388,20 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
         get_input_output_vars(Vars, Modes, ModuleInfo, !MaybeSpecMethod,
             InVarModes, OutVarModes0),
         (
-            !.MaybeSpecMethod = all_same(_ArgMethod)
+            !.MaybeSpecMethod = msm_all_same(_ArgMethod)
             % The tabling methods that use answer tables always use arg_value
             % to look up computed output arguments in them. The argument of
             % all_same refers only to the treatment of input arguments.
         ;
-            !.MaybeSpecMethod = specified(MaybeArgMethods0, HiddenArgMethod),
+            !.MaybeSpecMethod =
+                msm_specified(MaybeArgMethods0, HiddenArgMethod),
             ( if
                 list.split_last(MaybeArgMethods0, MaybeArgMethods,
                     LastMaybeArgMethod)
             then
                 expect(unify(LastMaybeArgMethod, no), $pred,
                     "bad method for output var"),
-                !:MaybeSpecMethod = specified(MaybeArgMethods,
+                !:MaybeSpecMethod = msm_specified(MaybeArgMethods,
                     HiddenArgMethod)
             else
                 % We have run out of specified arg_methods, which means the
@@ -3412,7 +3414,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                     HiddenArgMethod = hidden_arg_addr,
                     ArgMethod = arg_addr
                 ),
-                !:MaybeSpecMethod = all_same(ArgMethod)
+                !:MaybeSpecMethod = msm_all_same(ArgMethod)
             )
         ),
         OutVarModes = [var_mode_method(Var, Mode, arg_value) | OutVarModes0]
