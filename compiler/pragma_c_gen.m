@@ -964,11 +964,11 @@ make_foreign_proc_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
     (
         MaybeName = yes(Name),
         (
-            BoxPolicy = native_if_possible,
+            BoxPolicy = bp_native_if_possible,
             OrigTypeString = mercury_exported_type_to_string(Module, lang_c,
                 OrigType)
         ;
-            BoxPolicy = always_boxed,
+            BoxPolicy = bp_always_boxed,
             OrigTypeString = "MR_Word"
         ),
         Decl = foreign_proc_arg_decl(OrigType, OrigTypeString, Name),
@@ -1075,14 +1075,14 @@ foreign_proc_acquire_regs(FloatRegType, [Arg | Args], [Reg | Regs], !CLD) :-
 
 foreign_proc_arg_reg_type(FloatRegType, VarType, BoxPolicy, RegType) :-
     (
-        BoxPolicy = native_if_possible,
+        BoxPolicy = bp_native_if_possible,
         ( if VarType = float_type then
             RegType = FloatRegType
         else
             RegType = reg_r
         )
     ;
-        BoxPolicy = always_boxed,
+        BoxPolicy = bp_always_boxed,
         RegType = reg_r
     ).
 

@@ -860,13 +860,13 @@ output_foreign_decl(MaybeSetLineNumbers, MaybeThisFileName, SourceFileName,
 output_foreign_literal_or_include(MaybeSetLineNumbers, MaybeThisFileName,
         SourceFileName, LiteralOrInclude, Context, !IO) :-
     (
-        LiteralOrInclude = literal(Code),
+        LiteralOrInclude = floi_literal(Code),
         term.context_file(Context, File),
         term.context_line(Context, Line),
         c_util.maybe_set_line_num(MaybeSetLineNumbers, File, Line, !IO),
         io.write_string(Code, !IO)
     ;
-        LiteralOrInclude = include_file(IncludeFileName),
+        LiteralOrInclude = floi_include_file(IncludeFileName),
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         c_util.maybe_set_line_num(MaybeSetLineNumbers, IncludePath, 1, !IO),
         write_include_file_contents(IncludePath, !IO)

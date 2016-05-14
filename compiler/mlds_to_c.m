@@ -1022,12 +1022,12 @@ mlds_output_c_defn(Opts, _Indent, ForeignBodyCode, !IO) :-
 
 mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude, Context, !IO) :-
     (
-        LiteralOrInclude = literal(Code),
+        LiteralOrInclude = floi_literal(Code),
         c_output_context(Opts ^ m2co_foreign_line_numbers,
             mlds_make_context(Context), !IO),
         io.write_string(Code, !IO)
     ;
-        LiteralOrInclude = include_file(IncludeFileName),
+        LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Opts ^ m2co_source_filename,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         c_output_file_line(Opts ^ m2co_foreign_line_numbers,

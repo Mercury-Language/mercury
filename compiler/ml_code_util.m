@@ -1489,10 +1489,10 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
         ArgRval) :-
     % Convert VarRval, of type SourceType, to ArgRval, of type DestType.
     (
-        BoxPolicy = always_boxed,
+        BoxPolicy = bp_always_boxed,
         ArgRval = VarRval
     ;
-        BoxPolicy = native_if_possible,
+        BoxPolicy = bp_native_if_possible,
         ( if
             % If converting from polymorphic type to concrete type, then unbox.
             SourceType = type_variable(_, _),

@@ -1565,9 +1565,9 @@ write_foreign_args(VarSet, TVarSet, VarNamePrint, [Arg | Args], !IO) :-
         MaybeNameMode = no
     ),
     (
-        BoxPolicy = native_if_possible
+        BoxPolicy = bp_native_if_possible
     ;
-        BoxPolicy = always_boxed,
+        BoxPolicy = bp_always_boxed,
         io.write_string("$alwaysboxed", !IO)
     ),
     io.write_string("@", !IO),

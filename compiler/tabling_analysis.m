@@ -501,9 +501,9 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
 get_mm_tabling_status_from_attributes(Attributes) =
     ( if
         (
-            get_may_call_mm_tabled(Attributes) = will_not_call_mm_tabled
+            get_may_call_mm_tabled(Attributes) = proc_will_not_call_mm_tabled
         ;
-            get_may_call_mm_tabled(Attributes) = default_calls_mm_tabled,
+            get_may_call_mm_tabled(Attributes) = proc_default_calls_mm_tabled,
             get_may_call_mercury(Attributes) = proc_will_not_call_mercury
         )
     then

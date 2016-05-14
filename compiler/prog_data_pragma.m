@@ -83,9 +83,9 @@
     ;       table_dont_allow_reset.
 
 :- type call_table_strictness
-    --->    all_strict
-    ;       all_fast_loose
-    ;       specified(
+    --->    cts_all_strict
+    ;       cts_all_fast_loose
+    ;       cts_specified(
                 list(maybe(arg_tabling_method)),
                 % This list contains one element for each user-visible
                 % argument of the predicate. Elements that correspond
@@ -104,8 +104,8 @@
     ;       arg_promise_implied.
 
 :- type hidden_arg_tabling_method
-    --->    hidden_arg_value
-    ;       hidden_arg_addr.
+    --->    table_hidden_arg_value
+    ;       table_hidden_arg_addr.
 
 :- type table_io_entry_kind
     --->    entry_stores_outputs
@@ -150,7 +150,7 @@
 :- implementation.
 
 default_memo_table_attributes =
-    table_attributes(all_strict, no, table_dont_gather_statistics,
+    table_attributes(cts_all_strict, no, table_dont_gather_statistics,
         table_dont_allow_reset).
 
 eval_method_to_table_type(EvalMethod) = TableTypeStr :-

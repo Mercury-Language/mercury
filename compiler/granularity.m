@@ -134,7 +134,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                     set_terminates(proc_terminates, !Attributes),
                     set_may_throw_exception(proc_will_not_throw_exception,
                         !Attributes),
-                    set_may_call_mm_tabled(will_not_call_mm_tabled,
+                    set_may_call_mm_tabled(proc_will_not_call_mm_tabled,
                         !Attributes),
                     set_may_modify_trail(proc_will_not_modify_trail,
                         !Attributes),

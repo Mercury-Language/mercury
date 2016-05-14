@@ -260,14 +260,14 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
     else
         BoxPolicy = get_box_policy(Attributes),
         (
-            BoxPolicy = native_if_possible,
+            BoxPolicy = bp_native_if_possible,
             Args = Args0,
             ExtraArgs = ExtraArgs0,
             GoalExpr1 = GoalExpr0
         ;
-            BoxPolicy = always_boxed,
-            Args = list.map(make_arg_always_boxed, Args0),
-            ExtraArgs = list.map(make_arg_always_boxed, ExtraArgs0),
+            BoxPolicy = bp_always_boxed,
+            list.map(make_arg_always_boxed, Args0, Args),
+            list.map(make_arg_always_boxed, ExtraArgs0, ExtraArgs),
             GoalExpr1 = call_foreign_proc(Attributes, PredId, ProcId,
                 Args, ExtraArgs, MaybeTraceRuntimeCond, Impl)
         ),
@@ -293,9 +293,10 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
         )
     ).
 
-:- func make_arg_always_boxed(foreign_arg) = foreign_arg.
+:- pred make_arg_always_boxed(foreign_arg::in, foreign_arg::out) is det.
 
-make_arg_always_boxed(Arg) = Arg ^ arg_box_policy := always_boxed.
+make_arg_always_boxed(!Arg) :-
+    !Arg ^ arg_box_policy := bp_always_boxed.
 
 %----------------------------------------------------------------------------%
 %

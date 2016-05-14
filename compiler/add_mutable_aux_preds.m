@@ -748,9 +748,9 @@ define_global_var_c(TargetMutableName, Type, IsConstant, IsThreadLocal,
         % The only difference between the high- and low-level C backends
         % is that in the latter, mutables are *always* boxed, whereas
         % in the former they may not be.
-        HighLevelTypeName = global_foreign_type_name(native_if_possible,
+        HighLevelTypeName = global_foreign_type_name(bp_native_if_possible,
             lang_c, !.ModuleInfo, Type),
-        LowLevelTypeName = global_foreign_type_name(always_boxed,
+        LowLevelTypeName = global_foreign_type_name(bp_always_boxed,
             lang_c, !.ModuleInfo, Type),
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
@@ -800,12 +800,13 @@ define_global_var_c(TargetMutableName, Type, IsConstant, IsThreadLocal,
         "    extern ", LowLevelTypeName, " ", TargetMutableName, ";\n",
         "#endif\n" | LockDeclStrs]),
     ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_exported,
-        literal(DeclBody), Context),
+        floi_literal(DeclBody), Context),
     module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo),
 
     DefnBody = string.append_list([
         TypeName, " ", TargetMutableName, ";\n" | LockDefnStrs]),
-    ForeignBodyCode = foreign_body_code(lang_c, literal(DefnBody), Context),
+    ForeignBodyCode = foreign_body_code(lang_c,
+        floi_literal(DefnBody), Context),
     module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo).
 
     % Define the global variable used to hold the mutable on the C# backend.
@@ -829,7 +830,7 @@ define_global_var_csharp(TargetMutableName, Type, IsThreadLocal, Context,
     ),
     DefnBody = "static " ++ TypeStr ++ " " ++ TargetMutableName ++ ";\n",
     DefnForeignBodyCode =
-        foreign_body_code(lang_csharp, literal(DefnBody), Context),
+        foreign_body_code(lang_csharp, floi_literal(DefnBody), Context),
     module_add_foreign_body_code(DefnForeignBodyCode, !ModuleInfo).
 
     % Define the global variable used to hold the mutable on the Java backend.
@@ -865,7 +866,7 @@ define_global_var_java(TargetMutableName, Type, IsThreadLocal, Context,
         ])
     ),
     DefnForeignBodyCode =
-        foreign_body_code(lang_java, literal(DefnBody), Context),
+        foreign_body_code(lang_java, floi_literal(DefnBody), Context),
     module_add_foreign_body_code(DefnForeignBodyCode, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
@@ -1611,8 +1612,8 @@ get_matching_foreign_names([ForeignName | ForeignNames], TargetForeignLanguage,
 :- func global_foreign_type_name(box_policy, foreign_language, module_info,
     mer_type) = string.
 
-global_foreign_type_name(always_boxed, _, _, _) = "MR_Word".
-global_foreign_type_name(native_if_possible, Lang, ModuleInfo, Type) =
+global_foreign_type_name(bp_always_boxed, _, _, _) = "MR_Word".
+global_foreign_type_name(bp_native_if_possible, Lang, ModuleInfo, Type) =
     mercury_exported_type_to_string(ModuleInfo, Lang, Type).
 
 %---------------------------------------------------------------------------%
@@ -1669,10 +1670,10 @@ get_mutable_target_params(ModuleInfo, MutAttrs, MaybeTargetParams) :-
             globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
             (
                 HighLevelCode = no,
-                BoxPolicy = always_boxed
+                BoxPolicy = bp_always_boxed
             ;
                 HighLevelCode = yes,
-                BoxPolicy = native_if_possible
+                BoxPolicy = bp_native_if_possible
             )
         ;
             CompilationTarget = target_csharp,
@@ -1688,7 +1689,7 @@ get_mutable_target_params(ModuleInfo, MutAttrs, MaybeTargetParams) :-
             ),
             LockUnlock0 = dont_need_lock_unlock_preds,
             UnsafeAccess0 = need_unsafe_get_set_preds,
-            BoxPolicy = native_if_possible
+            BoxPolicy = bp_native_if_possible
         ;
             CompilationTarget = target_java,
             ImplLang = mutable_lang_java,
@@ -1696,7 +1697,7 @@ get_mutable_target_params(ModuleInfo, MutAttrs, MaybeTargetParams) :-
             PreInit0 = dont_need_pre_init_pred,
             LockUnlock0 = dont_need_lock_unlock_preds,
             UnsafeAccess0 = need_unsafe_get_set_preds,
-            BoxPolicy = native_if_possible
+            BoxPolicy = bp_native_if_possible
         ;
             CompilationTarget = target_erlang,
             ImplLang = mutable_lang_erlang,
@@ -1704,7 +1705,7 @@ get_mutable_target_params(ModuleInfo, MutAttrs, MaybeTargetParams) :-
             PreInit0 = dont_need_pre_init_pred,
             LockUnlock0 = dont_need_lock_unlock_preds,
             UnsafeAccess0 = dont_need_unsafe_get_set_preds,
-            BoxPolicy = native_if_possible
+            BoxPolicy = bp_native_if_possible
         ),
         IsConstant = mutable_var_constant(MutAttrs),
         (

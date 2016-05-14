@@ -1985,7 +1985,7 @@ polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars,
     pair(maybe(pair(string, mer_mode)), box_policy)::out) is det.
 
 foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
-        Constraint, MaybeArgName - native_if_possible) :-
+        Constraint, MaybeArgName - bp_native_if_possible) :-
     Constraint = constraint(SymName, Types),
     Name = sym_name_to_string_sep(SymName, "__"),
     type_vars_list(Types, TypeVars),
@@ -2008,7 +2008,7 @@ foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
     pair(maybe(pair(string, mer_mode)), box_policy)::out) is det.
 
 foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
-        MaybeArgName - native_if_possible) :-
+        MaybeArgName - bp_native_if_possible) :-
     ( if varset.search_name(TypeVarSet, TVar, TypeVarName) then
         C_VarName = "TypeInfo_for_" ++ TypeVarName,
         % If the variable name corresponding to the type_info isn't mentioned

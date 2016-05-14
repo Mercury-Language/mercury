@@ -251,8 +251,8 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
     % The `func(in) = out(<i_ground>) is det' mode.
     %
     ToGroundRepnSymName = solver_to_ground_repn_symname(TypeSymName, Arity),
-    XTGPragmaVar = pragma_var(X, "X", in_mode, native_if_possible),
-    YTGPragmaVar = pragma_var(Y, "Y", OutGroundMode, native_if_possible),
+    XTGPragmaVar = pragma_var(X, "X", in_mode, bp_native_if_possible),
+    YTGPragmaVar = pragma_var(Y, "Y", OutGroundMode, bp_native_if_possible),
     ToGroundRepnArgs = [XTGPragmaVar, YTGPragmaVar],
     ToGroundRepnFPInfo = pragma_info_foreign_proc(
         Attrs,
@@ -269,8 +269,8 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
     % The `func(in(any)) = out(<i_any>) is det' mode.
     %
     ToAnyRepnSymName = solver_to_any_repn_symname(TypeSymName, Arity),
-    XTAPragmaVar = pragma_var(X, "X", in_any_mode, native_if_possible),
-    YTAPragmaVar = pragma_var(Y, "Y", OutAnyMode, native_if_possible),
+    XTAPragmaVar = pragma_var(X, "X", in_any_mode, bp_native_if_possible),
+    YTAPragmaVar = pragma_var(Y, "Y", OutAnyMode, bp_native_if_possible),
     ToAnyRepnArgs = [XTAPragmaVar, YTAPragmaVar],
     ToAnyRepnFPInfo = pragma_info_foreign_proc(
         Attrs,
@@ -287,8 +287,8 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
     % The `func(in(<i_ground>)) = out is det' mode.
     %
     FromGroundRepnSymName = repn_to_ground_solver_symname(TypeSymName, Arity),
-    XFGPragmaVar = pragma_var(X, "X", InGroundMode, native_if_possible),
-    YFGPragmaVar = pragma_var(Y, "Y", out_mode, native_if_possible),
+    XFGPragmaVar = pragma_var(X, "X", InGroundMode, bp_native_if_possible),
+    YFGPragmaVar = pragma_var(Y, "Y", out_mode, bp_native_if_possible),
     FromGroundRepnArgs = [XFGPragmaVar, YFGPragmaVar],
     FromGroundRepnFPInfo = pragma_info_foreign_proc(
         Attrs,
@@ -305,8 +305,8 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
     % The `func(in(<i_any>)) = out(any) is det' mode.
     %
     FromAnyRepnSymName = repn_to_any_solver_symname(TypeSymName, Arity),
-    XFAPragmaVar = pragma_var(X, "X", InAnyMode, native_if_possible),
-    YFAPragmaVar = pragma_var(Y, "Y", out_any_mode, native_if_possible),
+    XFAPragmaVar = pragma_var(X, "X", InAnyMode, bp_native_if_possible),
+    YFAPragmaVar = pragma_var(Y, "Y", out_any_mode, bp_native_if_possible),
     FromAnyRepnArgs = [XFAPragmaVar, YFAPragmaVar],
     FromAnyRepnFPInfo = pragma_info_foreign_proc(
         Attrs,

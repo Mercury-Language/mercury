@@ -301,7 +301,7 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
         ;
             IsDummy = is_not_dummy_type,
             ml_gen_box_or_unbox_rval(ModuleInfo, SrcType, DestType,
-                native_if_possible, ml_lval(SrcLval), CastRval),
+                bp_native_if_possible, ml_lval(SrcLval), CastRval),
             Assign = ml_gen_assign(DestLval, CastRval, Context),
             Statements = [Assign]
         ),
@@ -667,13 +667,13 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
                     VarRval = ml_lval(VarLval)
                 ),
                 ml_gen_box_or_unbox_rval(ModuleInfo, CallerType, CalleeType,
-                    native_if_possible, VarRval, ArgRval),
+                    bp_native_if_possible, VarRval, ArgRval),
                 !:InputRvals = [ArgRval | !.InputRvals]
             ;
                 ArgMode = top_out,
                 % It's an output argument.
                 ml_gen_box_or_unbox_lval(CallerType, CalleeType,
-                    native_if_possible, VarLval, VarName, Context,
+                    bp_native_if_possible, VarLval, VarName, Context,
                     ForClosureWrapper, ArgNum, ArgLval, ThisArgConvDecls,
                     _ThisArgConvInput, ThisArgConvOutput, !Info),
                 !:ConvDecls = ThisArgConvDecls ++ !.ConvDecls,

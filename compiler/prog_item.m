@@ -2002,9 +2002,9 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
 
 do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info) :-
     (
-        LiteralOrInclude = literal(_)
+        LiteralOrInclude = floi_literal(_)
     ;
-        LiteralOrInclude = include_file(FileName),
+        LiteralOrInclude = floi_include_file(FileName),
         IncludeFile = foreign_include_file_info(Lang, FileName),
         IncludeFilesCord0 = !.Info ^ all_foreign_include_files,
         IncludeFilesCord = cord.snoc(IncludeFilesCord0, IncludeFile),

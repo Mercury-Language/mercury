@@ -43,14 +43,10 @@
     ;       foreign_decl_is_exported.
 
 :- type foreign_literal_or_include
-    --->    literal(string)
-    ;       include_file(
+    --->    floi_literal(string)
+    ;       floi_include_file(
                 string      % The file name written in the source code.
             ).
-
-:- type ref_or_val
-    --->    reference
-    ;       value.
 
 %---------------------------------------------------------------------------%
 %
@@ -285,7 +281,7 @@ default_export_enum_attributes =
 :- func get_may_modify_trail(pragma_foreign_proc_attributes) =
     proc_may_modify_trail.
 :- func get_may_call_mm_tabled(pragma_foreign_proc_attributes) =
-    may_call_mm_tabled.
+    proc_may_call_mm_tabled.
 :- func get_box_policy(pragma_foreign_proc_attributes) = box_policy.
 :- func get_affects_liveness(pragma_foreign_proc_attributes) =
     proc_affects_liveness.
@@ -328,7 +324,7 @@ default_export_enum_attributes =
 :- pred set_may_modify_trail(proc_may_modify_trail::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-:- pred set_may_call_mm_tabled(may_call_mm_tabled::in,
+:- pred set_may_call_mm_tabled(proc_may_call_mm_tabled::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 :- pred set_box_policy(box_policy::in,
@@ -379,19 +375,19 @@ default_export_enum_attributes =
     --->    proc_may_modify_trail
     ;       proc_will_not_modify_trail.
 
-:- type may_call_mm_tabled
-    --->    may_call_mm_tabled
+:- type proc_may_call_mm_tabled
+    --->    proc_may_call_mm_tabled
             % The foreign code may make callbacks to minimal model tabled
             % procedures.
 
-    ;       will_not_call_mm_tabled
+    ;       proc_will_not_call_mm_tabled
             % The foreign code may make callbacks to Mercury, but they will
             % not be to minimal model tabled code.
 
-    ;       default_calls_mm_tabled.
+    ;       proc_default_calls_mm_tabled.
             % If either of the above are not specified:
-            %   - for `will_not_call_mercury' set `will_not_call_mm_tabled'
-            %   - for `may_call_mercury' set `may_call_mm_tabled'
+            % - for `will_not_call_mercury' set `proc_will_not_call_mm_tabled'
+            % - for `may_call_mercury' set `proc_may_call_mm_tabled'
 
 :- type pragma_var
     --->    pragma_var(prog_var, string, mer_mode, box_policy).
@@ -402,8 +398,8 @@ default_export_enum_attributes =
     % box_policy only makes sense in high-level C grades using low-level data.
     %
 :- type box_policy
-    --->    native_if_possible
-    ;       always_boxed.
+    --->    bp_native_if_possible
+    ;       bp_always_boxed.
 
     % Extract the modes from the list of pragma_vars.
     %
@@ -498,7 +494,7 @@ default_export_enum_attributes =
                 attr_may_throw_exception        :: proc_may_throw_exception,
                 attr_ordinary_despite_detism    :: bool,
                 attr_may_modify_trail           :: proc_may_modify_trail,
-                attr_may_call_mm_tabled         :: may_call_mm_tabled,
+                attr_may_call_mm_tabled         :: proc_may_call_mm_tabled,
                 attr_box_policy                 :: box_policy,
                 attr_affects_liveness           :: proc_affects_liveness,
                 attr_allocates_memory           :: proc_allocates_memory,
@@ -512,8 +508,8 @@ default_attributes(Language) =
     attributes(Language, proc_may_call_mercury, proc_not_thread_safe,
         proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
         no_user_annotated_sharing, default_exception_behaviour,
-        no, proc_may_modify_trail, default_calls_mm_tabled,
-        native_if_possible, proc_default_affects_liveness,
+        no, proc_may_modify_trail, proc_default_calls_mm_tabled,
+        bp_native_if_possible, proc_default_affects_liveness,
         proc_default_allocates_memory, proc_default_registers_roots,
         no, []).
 

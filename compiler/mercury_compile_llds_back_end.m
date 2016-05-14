@@ -806,9 +806,9 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
     Start = "#ifndef " ++ Define ++ "\n#define " ++ Define ++ "\n",
     End = "\n#endif",
     StartGuard = foreign_decl_code(lang_c, foreign_decl_is_exported,
-        literal(Start), term.context_init),
+        floi_literal(Start), term.context_init),
     EndGuard = foreign_decl_code(lang_c, foreign_decl_is_exported,
-        literal(End), term.context_init).
+        floi_literal(End), term.context_init).
 
 :- pred make_foreign_import_header_code(globals::in,
     foreign_import_module_info::in, foreign_decl_code::out,
@@ -822,7 +822,7 @@ make_foreign_import_header_code(Globals, ForeignImportModule, Include, !IO) :-
             HeaderFileName, !IO),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
-            literal(IncludeString), term.context_init)
+            floi_literal(IncludeString), term.context_init)
     ;
         Lang = lang_csharp,
         sorry($module, $pred, ":- import_module not yet implemented: " ++

@@ -360,17 +360,17 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 AllowReset = Attributes ^ table_attr_allow_reset
             ;
                 MaybeAttributes = no,
-                Strictness = all_strict,
+                Strictness = cts_all_strict,
                 Statistics = table_dont_gather_statistics,
                 AllowReset = table_dont_allow_reset
             ),
             (
-                Strictness = specified(MaybeArgMethods, _HiddenArgMethod),
+                Strictness = cts_specified(MaybeArgMethods, _HiddenArgMethod),
                 check_pred_args_against_tabling_methods(DeclaredArgModes,
                     MaybeArgMethods, !.ModuleInfo, 1, MaybeError)
             ;
-                ( Strictness = all_strict
-                ; Strictness = all_fast_loose
+                ( Strictness = cts_all_strict
+                ; Strictness = cts_all_fast_loose
                 ),
                 check_pred_args_against_tabling(DeclaredArgModes, !.ModuleInfo,
                     1, MaybeError)
@@ -477,9 +477,9 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         current_grade_supports_tabling(Globals, IsTablingSupported),
         (
             IsTablingSupported = yes,
-            Arg1 = pragma_var(Stats, "Stats", out_mode, always_boxed),
-            Arg2 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
-            Arg3 = pragma_var(IO, "_IO", uo_mode, always_boxed),
+            Arg1 = pragma_var(Stats, "Stats", out_mode, bp_always_boxed),
+            Arg2 = pragma_var(IO0, "_IO0", di_mode, bp_always_boxed),
+            Arg3 = pragma_var(IO, "_IO", uo_mode, bp_always_boxed),
 
             % Currently, the only grades that support tabling target C.
             !:Attrs = default_attributes(lang_c),
@@ -556,8 +556,8 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         current_grade_supports_tabling(Globals, IsTablingSupported),
         (
             IsTablingSupported = yes,
-            Arg1 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
-            Arg2 = pragma_var(IO, "_IO", uo_mode, always_boxed),
+            Arg1 = pragma_var(IO0, "_IO0", di_mode, bp_always_boxed),
+            Arg2 = pragma_var(IO, "_IO", uo_mode, bp_always_boxed),
 
             % Currently, the only grades that support tabling target C.
             !:Attrs = default_attributes(lang_c),

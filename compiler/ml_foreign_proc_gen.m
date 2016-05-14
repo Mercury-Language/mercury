@@ -343,10 +343,10 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_var(!.Info, Var, VarLval),
     (
-        BoxPolicy = native_if_possible,
+        BoxPolicy = bp_native_if_possible,
         ml_gen_type(!.Info, OrigType, MldsType)
     ;
-        BoxPolicy = always_boxed,
+        BoxPolicy = bp_always_boxed,
         MldsType = mlds_generic_type
     ),
     ( if
@@ -646,10 +646,10 @@ ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
         not var_is_singleton(ArgName)
     then
         (
-            BoxPolicy = always_boxed,
+            BoxPolicy = bp_always_boxed,
             TypeString = "MR_Word"
         ;
-            BoxPolicy = native_if_possible,
+            BoxPolicy = bp_native_if_possible,
             TypeString = mercury_exported_type_to_string(ModuleInfo, Lang,
                 Type)
         ),

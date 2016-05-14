@@ -457,13 +457,13 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         Statistics = Attributes ^ table_attr_statistics,
         MaybeSizeLimit = Attributes ^ table_attr_size_limit,
         (
-            CallStrictness = all_strict,
+            CallStrictness = cts_all_strict,
             MaybeSpecMethod = msm_all_same(arg_value)
         ;
-            CallStrictness = all_fast_loose,
+            CallStrictness = cts_all_fast_loose,
             MaybeSpecMethod = msm_all_same(arg_addr)
         ;
-            CallStrictness = specified(ArgMethods, HiddenArgMethod),
+            CallStrictness = cts_specified(ArgMethods, HiddenArgMethod),
             MaybeSpecMethod = msm_specified(ArgMethods, HiddenArgMethod)
         ),
         (
@@ -731,7 +731,7 @@ create_new_loop_goal(OrigGoal, Statistics, PredId, ProcId,
 
     TableTipArg = foreign_arg(TableTipVar,
         yes(cur_table_node_name - in_mode), trie_node_type,
-        native_if_possible),
+        bp_native_if_possible),
 
     MarkInactivePredName = "table_loop_mark_as_inactive",
     MarkInactiveMacroName = "MR_tbl_loop_mark_as_inactive",
@@ -1050,7 +1050,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         MarkAsFailedMacroName = "MR_tbl_memo_mark_as_failed",
         TableTipArg = foreign_arg(TableTipVar,
             yes(cur_table_node_name - in_mode), trie_node_type,
-            native_if_possible),
+            bp_native_if_possible),
         DebugArgStr = get_debug_arg_string(!.TableInfo),
         MarkAsFailedCode = MarkAsFailedMacroName ++
             "(" ++ DebugArgStr ++ ", " ++ cur_table_node_name ++ ");",
@@ -1127,7 +1127,7 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     RecordVarName = memo_non_record_name,
     RecordArg = foreign_arg(RecordVar,
         yes(RecordVarName - in_mode), memo_non_record_type,
-        native_if_possible),
+        bp_native_if_possible),
 
     MarkIncompletePredName = "table_memo_mark_as_incomplete",
     MarkIncompleteMacroName = "MR_tbl_memo_mark_as_incomplete",
@@ -1730,9 +1730,9 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
 
     GeneratorPredArg = foreign_arg(GeneratorPredVar,
         yes(generator_pred_name - in_mode), GeneratorPredType,
-        native_if_possible),
+        bp_native_if_possible),
     ConsumerArg = foreign_arg(ConsumerVar,
-        yes(ConsumerVarName - out_mode), consumer_type, native_if_possible),
+        yes(ConsumerVarName - out_mode), consumer_type, bp_native_if_possible),
 
     LookupDeclCodeStr =
         "\tMR_TrieNode " ++ cur_table_node_name ++ ";\n" ++
@@ -1789,7 +1789,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         RestoreArgs, RestoreCodeStr),
     AnswerBlockArg = foreign_arg(AnswerBlockVar,
         yes(answer_block_name - in_mode), answer_block_type,
-        native_if_possible),
+        bp_native_if_possible),
     RestoreAllPredName = "table_mmos_restore_answers",
     table_generate_foreign_proc(RestoreAllPredName, detism_det,
         tabling_c_attributes_no_dupl, [AnswerBlockArg],
@@ -1832,7 +1832,7 @@ generate_save_input_vars_code([InputArg - Mode | InputArgModes], ModuleInfo,
     mode_get_insts(ModuleInfo, Mode, InitInst, _FinalInst),
     PickupMode = (free -> InitInst),
     PickupArg = foreign_arg(InputVar, yes(InputVarName - PickupMode), Type,
-        native_if_possible),
+        bp_native_if_possible),
     SaveVarCode = "\t\tMR_table_mmos_save_input_arg(" ++
         int_to_string(Pos) ++ ", " ++ InputVarName ++ ");\n",
     PickupVarCode = "\t\tMR_table_mmos_pickup_input_arg(" ++
@@ -1867,7 +1867,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     PickupGeneratorCode = "\t\t" ++ generator_name ++
         " = MR_mmos_new_generator;\n",
     PickupGeneratorArg = foreign_arg(GeneratorVar,
-        yes(generator_name - out_mode), generator_type, native_if_possible),
+        yes(generator_name - out_mode), generator_type, bp_native_if_possible),
     table_generate_foreign_proc("table_mmos_pickup_inputs", detism_det,
         tabling_c_attributes_no_dupl, [PickupGeneratorArg], PickupForeignArgs,
         PickupGeneratorCode ++ PickupVarCode, purity_impure,
@@ -1894,7 +1894,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     CompletionCode = "\t\t" ++ "MR_tbl_mmos_completion(" ++
         DebugArgStr ++ ", " ++ generator_name ++ ");\n",
     CompletionArg = foreign_arg(GeneratorVar,
-        yes(generator_name - in_mode), generator_type, native_if_possible),
+        yes(generator_name - in_mode), generator_type, bp_native_if_possible),
     table_generate_foreign_proc("table_mmos_completion", detism_failure,
         tabling_c_attributes_no_dupl, [CompletionArg], [],
         CompletionCode, purity_impure, instmap_delta_bind_no_var,
@@ -2137,7 +2137,7 @@ generate_simple_call_table_lookup_goal(StatusType, PredName,
 
     StatusVarName = status_name,
     StatusArg = foreign_arg(StatusVar,
-        yes(StatusVarName - out_mode), StatusType, native_if_possible),
+        yes(StatusVarName - out_mode), StatusType, bp_native_if_possible),
     DebugArgStr = get_debug_arg_string(!.TableInfo),
     BackArgStr = get_back_arg_string(!.TableInfo),
     MainPredCodeStr = "\t" ++ SetupMacroName ++ "(" ++
@@ -2194,10 +2194,10 @@ generate_memo_non_call_table_lookup_goal(NumberedVars, PredId, ProcId,
     StatusVarName = status_name,
     RecordArg = foreign_arg(RecordVar,
         yes(RecordVarName - out_mode), memo_non_record_type,
-        native_if_possible),
+        bp_native_if_possible),
     StatusArg = foreign_arg(StatusVar,
         yes(StatusVarName - out_mode), memo_non_status_type,
-        native_if_possible),
+        bp_native_if_possible),
     Args = [InfoArg, RecordArg, StatusArg],
     LookupDeclCodeStr =
         "\tMR_TrieNode " ++ cur_table_node_name ++ ";\n" ++
@@ -2251,9 +2251,9 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
     SubgoalVarName = subgoal_name,
     StatusVarName = status_name,
     SubgoalArg = foreign_arg(SubgoalVar,
-        yes(SubgoalVarName - out_mode), subgoal_type, native_if_possible),
+        yes(SubgoalVarName - out_mode), subgoal_type, bp_native_if_possible),
     StatusArg = foreign_arg(StatusVar,
-        yes(StatusVarName - out_mode), mm_status_type, native_if_possible),
+        yes(StatusVarName - out_mode), mm_status_type, bp_native_if_possible),
     Args = [InfoArg, SubgoalArg, StatusArg],
     LookupDeclStr =
         "\tMR_TrieNode " ++ cur_table_node_name ++ ";\n" ++
@@ -2319,7 +2319,7 @@ generate_call_table_lookup_goals(NumberedVars, PredId, ProcId,
         !VarSet, !VarTypes, CallTableTipVar),
     CallTableTipArg = foreign_arg(CallTableTipVar,
         yes(CallTableTipVarName - out_mode), trie_node_type,
-        native_if_possible),
+        bp_native_if_possible),
     CallTableTipVarCodeStr =
         "\t" ++ CallTableTipVarName ++ " = " ++ cur_table_node_name ++ ";\n".
 
@@ -2382,7 +2382,7 @@ generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
         !VarSet, !VarTypes, ProcTableInfoVar),
     Arg = foreign_arg(ProcTableInfoVar,
         yes(InfoVarName - in_mode), proc_table_info_type,
-        native_if_possible),
+        bp_native_if_possible),
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
     InfoConsId = tabling_info_const(ShroudedPredProcId),
     make_const_construction(ProcTableInfoVar, InfoConsId,
@@ -2455,7 +2455,7 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
     ModuleInfo = !.TableInfo ^ table_module_info,
     ArgName = arg_name(VarSeqNum),
     ForeignArg = foreign_arg(ArgVar, yes(ArgName - in_mode), Type,
-        native_if_possible),
+        bp_native_if_possible),
     (
         ( CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_builtin(cat_builtin_int)
@@ -2684,7 +2684,7 @@ gen_general_lookup_call(IsAddr, MaybeAddrString, Type, ForeignArg, ArgName,
     lookup_var_type(!.VarTypes, TypeInfoVar, TypeInfoType),
     ForeignTypeInfoArg = foreign_arg(TypeInfoVar,
         yes(TypeInfoArgName - in_mode), TypeInfoType,
-        native_if_possible),
+        bp_native_if_possible),
     ExtraArgs = [ForeignTypeInfoArg, ForeignArg],
     StepStatsArgStr = maybe_step_stats_arg_addr(MaybeStatsRef, VarSeqNum),
     LookupCodeStr = "\t" ++ LookupMacroName ++ "(" ++
@@ -2707,7 +2707,7 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
     ModuleInfo = !.TableInfo ^ table_module_info,
     TipVarName = cur_table_node_name,
     TableArg = foreign_arg(TableTipVar, yes(TipVarName - in_mode),
-        trie_node_type, native_if_possible),
+        trie_node_type, bp_native_if_possible),
     ( if BlockSize > 0 then
         CreatePredName = "table_memo_fill_answer_block_shortcut",
         CreateMacroName = "MR_tbl_memo_create_answer_block",
@@ -2748,7 +2748,8 @@ generate_memo_non_save_goals(NumberedSaveVars, PredId, ProcId,
     ModuleInfo = !.TableInfo ^ table_module_info,
     RecordName = memo_non_record_name,
     RecordArg = foreign_arg(RecordVar,
-        yes(RecordName - in_mode), memo_non_record_type, native_if_possible),
+        yes(RecordName - in_mode), memo_non_record_type,
+        bp_native_if_possible),
 
     generate_answer_table_lookup_goals(NumberedSaveVars, PredId, ProcId,
         Statistics, Context, !VarSet, !VarTypes, !TableInfo, OutputSteps,
@@ -2820,7 +2821,7 @@ generate_mm_save_goals(NumberedSaveVars, SubgoalVar, PredId, ProcId, BlockSize,
 
     SubgoalName = subgoal_name,
     Args = [foreign_arg(SubgoalVar, yes(SubgoalName - in_mode),
-        subgoal_type, native_if_possible)],
+        subgoal_type, bp_native_if_possible)],
     SuccName = "succeeded",
     LookupDeclCodeStr =
         "\tMR_TrieNode " ++ cur_table_node_name ++ ";\n" ++
@@ -2882,7 +2883,7 @@ generate_own_stack_save_return_goal(NumberedOutputVars, GeneratorVar,
         !TableInfo, OutputSteps, Goals) :-
     GeneratorName = generator_name,
     GeneratorArg = foreign_arg(GeneratorVar, yes(GeneratorName - in_mode),
-        generator_type, native_if_possible),
+        generator_type, bp_native_if_possible),
     DebugArgStr = get_debug_arg_string(!.TableInfo),
 
     generate_answer_table_lookup_goals(NumberedOutputVars, PredId, ProcId,
@@ -2959,7 +2960,7 @@ gen_save_call_for_type(CtorCat, Type, Var, Offset, DebugArgStr, Context,
         !VarSet, !VarTypes, !TableInfo, Args, PrefixGoals, CodeStr) :-
     Name = arg_name(Offset),
     ForeignArg = foreign_arg(Var, yes(Name - in_mode), Type,
-        native_if_possible),
+        bp_native_if_possible),
     ( if type_is_io_state(Type) then
         SaveMacroName = "MR_tbl_save_io_state_answer",
         Args = [ForeignArg],
@@ -2971,13 +2972,13 @@ gen_save_call_for_type(CtorCat, Type, Var, Offset, DebugArgStr, Context,
         % If we used ForeignArg instead of GenericForeignArg, then
         % Var would be unboxed when assigned to Name, which we don't want.
         GenericForeignArg = foreign_arg(Var, yes(Name - in_mode),
-            dummy_type_var, native_if_possible),
+            dummy_type_var, bp_native_if_possible),
         table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes,
             !TableInfo, TypeInfoVar, PrefixGoals),
         TypeInfoName = "save_arg_typeinfo" ++ int_to_string(Offset),
         lookup_var_type(!.VarTypes, TypeInfoVar, TypeInfoType),
         TypeInfoForeignArg = foreign_arg(TypeInfoVar,
-            yes(TypeInfoName - in_mode), TypeInfoType, native_if_possible),
+            yes(TypeInfoName - in_mode), TypeInfoType, bp_native_if_possible),
         SaveMacroName = "MR_tbl_save_any_answer",
         Args = [GenericForeignArg, TypeInfoForeignArg],
         CodeStr = "\t" ++ SaveMacroName ++ "(" ++ DebugArgStr ++ ", " ++
@@ -3014,7 +3015,7 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
             RestoreInstMapDeltaSrc, RestoreArgs, RestoreCodeStr),
         BaseVarName = base_name,
         Arg = foreign_arg(TipVar, yes(BaseVarName - in_mode),
-            trie_node_type, native_if_possible),
+            trie_node_type, bp_native_if_possible),
         Args = [Arg],
         GetPredName = "table_memo_get_answer_block_shortcut",
         GetMacroName = "MR_tbl_memo_get_answer_block",
@@ -3063,7 +3064,7 @@ generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
         RestoreArgs, RestoreCodeStr),
     OutputVars = list.map(project_var, NumberedOutputVars),
     Arg = foreign_arg(AnswerBlockVar, yes(answer_block_name - in_mode),
-        answer_block_type, native_if_possible),
+        answer_block_type, bp_native_if_possible),
     Args = [Arg],
     PredName = "table_memo_non_return_all_shortcut",
     table_generate_foreign_proc(PredName, detism_det,
@@ -3137,7 +3138,7 @@ generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
     OutputVars = list.map(project_var, NumberedOutputVars),
 
     Arg = foreign_arg(AnswerBlockVar, yes(answer_block_name - in_mode),
-        answer_block_type, native_if_possible),
+        answer_block_type, bp_native_if_possible),
     Args = [Arg],
     ReturnAllPredName = "table_mm_return_all_shortcut",
     table_generate_foreign_proc(ReturnAllPredName, detism_det,
@@ -3197,7 +3198,7 @@ gen_restore_call_for_type(DebugArgStr, CtorCat, Type, OrigInstmapDelta, Var,
         unexpected($module, $pred, "no inst")
     ),
     Arg = foreign_arg(Var, yes(Name - (free -> Inst)), ArgType,
-        native_if_possible),
+        bp_native_if_possible),
     CodeStr = "\t" ++ RestoreMacroName ++ "(" ++ DebugArgStr ++ ", " ++
         answer_block_name ++ ", " ++ int_to_string(Offset) ++ ", " ++
         Name ++ ");\n".
@@ -3374,10 +3375,10 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                 % variable we are looking at right now is one that was added
                 % by the polymorphism transformation.
                 (
-                    HiddenArgMethod = hidden_arg_value,
+                    HiddenArgMethod = table_hidden_arg_value,
                     ArgMethod = arg_value
                 ;
-                    HiddenArgMethod = hidden_arg_addr,
+                    HiddenArgMethod = table_hidden_arg_addr,
                     ArgMethod = arg_addr
                 ),
                 !:MaybeSpecMethod = msm_all_same(ArgMethod)
@@ -3408,10 +3409,10 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                 % variable we are looking at right now is one that was added
                 % by the polymorphism transformation.
                 (
-                    HiddenArgMethod = hidden_arg_value,
+                    HiddenArgMethod = table_hidden_arg_value,
                     ArgMethod = arg_value
                 ;
-                    HiddenArgMethod = hidden_arg_addr,
+                    HiddenArgMethod = table_hidden_arg_addr,
                     ArgMethod = arg_addr
                 ),
                 !:MaybeSpecMethod = msm_all_same(ArgMethod)

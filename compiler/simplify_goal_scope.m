@@ -362,7 +362,7 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
                     !EvalAttributes),
                 set_may_modify_trail(proc_will_not_modify_trail,
                     !EvalAttributes),
-                set_may_call_mm_tabled(will_not_call_mm_tabled,
+                set_may_call_mm_tabled(proc_will_not_call_mm_tabled,
                     !EvalAttributes),
                 EvalAttributes = !.EvalAttributes
             ),

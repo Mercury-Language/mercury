@@ -949,11 +949,11 @@ output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
         true
     ),
     (
-        LiteralOrInclude = literal(Code),
+        LiteralOrInclude = floi_literal(Code),
         output_set_line_num(ForeignLineNumbers, Context, !IO),
         io.write_string(Code, !IO)
     ;
-        LiteralOrInclude = include_file(IncludeFileName),
+        LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Info ^ lout_source_file_name,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         output_set_line_num(ForeignLineNumbers, context(IncludePath, 1), !IO),

@@ -1099,7 +1099,7 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
 
             % Create foreign_decls to declare extern variables.
             ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_local,
-                literal(C_HeaderCode), Context),
+                floi_literal(C_HeaderCode), Context),
             module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo),
 
             module_add_fact_table_file(FileName, !ModuleInfo),
@@ -1184,7 +1184,7 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable, SymName,
     ( if C_ExtraCode = "" then
         true
     else
-        ForeignBodyCode = foreign_body_code(lang_c, literal(C_ExtraCode),
+        ForeignBodyCode = foreign_body_code(lang_c, floi_literal(C_ExtraCode),
             Context),
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ),
@@ -1209,7 +1209,7 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
         Modes0 = [Mode | ModesTail]
     then
         varset.lookup_name(VarSet, Var, Name),
-        PragmaVar = pragma_var(Var, Name, Mode, native_if_possible),
+        PragmaVar = pragma_var(Var, Name, Mode, bp_native_if_possible),
         fact_table_pragma_vars(VarsTail, ModesTail, VarSet, PragmaVarsTail),
         PragmaVars0 = [PragmaVar | PragmaVarsTail]
     else

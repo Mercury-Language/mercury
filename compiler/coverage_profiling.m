@@ -1166,7 +1166,7 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         PredName = "increment_dynamic_coverage_point_count",
         ArgVars = [CPIndexVar],
         make_foreign_args(ArgVars,
-            [(yes("CPIndex" - (Ground -> Ground)) - native_if_possible)],
+            [(yes("CPIndex" - (Ground -> Ground)) - bp_native_if_possible)],
             [int_type], ForeignArgVars),
         PredArity = 1
     ;
@@ -1174,8 +1174,8 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         PredName = "increment_static_coverage_point_count",
         ArgVars = [ProcLayoutVar, CPIndexVar],
         make_foreign_args(ArgVars,
-            [(yes("ProcLayout" - (Ground -> Ground)) - native_if_possible),
-             (yes("CPIndex" - (Ground -> Ground)) - native_if_possible)],
+            [(yes("ProcLayout" - (Ground -> Ground)) - bp_native_if_possible),
+             (yes("CPIndex" - (Ground -> Ground)) - bp_native_if_possible)],
             [c_pointer_type, int_type], ForeignArgVars),
         PredArity = 2
     ),

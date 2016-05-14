@@ -441,10 +441,10 @@ output_java_body_code(Info, Indent, ForeignBodyCode, !IO) :-
 output_java_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
         Context, !IO) :-
     (
-        LiteralOrInclude = literal(Code),
+        LiteralOrInclude = floi_literal(Code),
         write_string_with_context_block(Info, Indent, Code, Context, !IO)
     ;
-        LiteralOrInclude = include_file(IncludeFile),
+        LiteralOrInclude = floi_include_file(IncludeFile),
         SourceFileName = Info ^ joi_source_filename,
         make_include_file_path(SourceFileName, IncludeFile, IncludePath),
         output_context(Info ^ joi_foreign_line_numbers, marker_begin_block,

@@ -1055,21 +1055,21 @@ write_table_struct_info(ModuleInfo, PredProcId - TableStructInfo, !IO) :-
 
     Attributes = table_attributes(Strictness, SizeLimit, Stats, AllowReset),
     (
-        Strictness = all_strict,
+        Strictness = cts_all_strict,
         io.write_string("% all strict\n", !IO)
     ;
-        Strictness = all_fast_loose,
+        Strictness = cts_all_fast_loose,
         io.write_string("% all fast_loose\n", !IO)
     ;
-        Strictness = specified(ArgMethods, HiddenArgMethod),
+        Strictness = cts_specified(ArgMethods, HiddenArgMethod),
         io.write_string("% specified [", !IO),
         write_arg_tabling_methods("", ArgMethods, !IO),
         io.write_string("]", !IO),
         (
-            HiddenArgMethod = hidden_arg_value,
+            HiddenArgMethod = table_hidden_arg_value,
             io.write_string(", hidden args by value\n", !IO)
         ;
-            HiddenArgMethod = hidden_arg_addr,
+            HiddenArgMethod = table_hidden_arg_addr,
             io.write_string(", hidden args by addr\n", !IO)
         )
     ),

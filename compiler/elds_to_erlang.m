@@ -436,11 +436,11 @@ output_foreign_body_code(SourceFileName, ForeignBody, !IO) :-
 output_foreign_literal_or_include(SourceFileName, LiteralOrInclude, Context,
         !IO) :-
     (
-        LiteralOrInclude = literal(Code),
+        LiteralOrInclude = floi_literal(Code),
         output_file_directive(Context, !IO),
         io.write_string(Code, !IO)
     ;
-        LiteralOrInclude = include_file(IncludeFileName),
+        LiteralOrInclude = floi_include_file(IncludeFileName),
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         output_file_directive(context(IncludePath, 1), !IO),
         write_include_file_contents(IncludePath, !IO)

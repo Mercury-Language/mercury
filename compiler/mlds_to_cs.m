@@ -269,12 +269,12 @@ output_csharp_body_code(Info, Indent, ForeignBodyCode, !IO) :-
 output_csharp_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
         Context, !IO) :-
     (
-        LiteralOrInclude = literal(Code),
+        LiteralOrInclude = floi_literal(Code),
         indent_line_prog_context(Info ^ oi_foreign_line_numbers, Context,
             Indent, !IO),
         io.write_string(Code, !IO)
     ;
-        LiteralOrInclude = include_file(IncludeFileName),
+        LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Info ^ oi_source_filename,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         cs_output_context(Info ^ oi_foreign_line_numbers,

@@ -344,7 +344,7 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
                     Tag = no_tag,
                     ArgRval = ml_lval(ArgLval),
                     ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, Type,
-                        native_if_possible, ArgRval, Rval),
+                        bp_native_if_possible, ArgRval, Rval),
                     Statement = ml_gen_assign(VarLval, Rval, Context),
                     Statements = [Statement]
                 ;
@@ -1254,7 +1254,7 @@ ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, ArgType, FieldType, ArgRval,
         % XXX This might generate an rval which is not legal in a static
         % initializer!
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
-            native_if_possible, ArgRval, FieldRval)
+            bp_native_if_possible, ArgRval, FieldRval)
     ).
 
 :- pred ml_gen_box_const_rval_list_lld(module_info::in, prog_context::in,
@@ -1400,7 +1400,7 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
             check_dummy_type(ModuleInfo, ConsArgType) = is_not_dummy_type
         then
             ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, BoxedArgType,
-                native_if_possible, ml_lval(Lval), Rval)
+                bp_native_if_possible, ml_lval(Lval), Rval)
         else
             Rval = ml_const(mlconst_null(MLDS_Type))
         ),
@@ -1902,7 +1902,7 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
             ; FieldWidth = partial_word_shifted(_, _)
             ),
             ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
-                native_if_possible, ml_lval(FieldLval), FieldRval),
+                bp_native_if_possible, ml_lval(FieldLval), FieldRval),
             (
                 FieldWidth = full_word,
                 Statement = ml_gen_assign(ArgLval, FieldRval, Context)
@@ -1922,7 +1922,7 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
                     ml_lval(FieldLvalA), ml_lval(FieldLvalB))
             else
                 ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
-                    native_if_possible, ml_lval(FieldLval), FieldRval)
+                    bp_native_if_possible, ml_lval(FieldLval), FieldRval)
             ),
             Statement = ml_gen_assign(ArgLval, FieldRval, Context)
         ),
@@ -1933,7 +1933,7 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
         RightMode = top_in
     then
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
-            native_if_possible, ml_lval(ArgLval), ArgRval),
+            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
         (
             FieldWidth = full_word,
             Statement = ml_gen_assign(FieldLval, ArgRval, Context),
@@ -1961,9 +1961,9 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
                 ml_type_as_field(ModuleInfo, HighLevelData, int_type,
                     full_word, IntFieldType),
                 ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
-                    native_if_possible, FloatWordA, ArgRvalA),
+                    bp_native_if_possible, FloatWordA, ArgRvalA),
                 ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
-                    native_if_possible, FloatWordB, ArgRvalB),
+                    bp_native_if_possible, FloatWordB, ArgRvalB),
                 StatementA = ml_gen_assign(FieldLvalA, ArgRvalA, Context),
                 StatementB = ml_gen_assign(FieldLvalB, ArgRvalB, Context),
                 !:Statements = [StatementA, StatementB | !.Statements]
@@ -2034,7 +2034,7 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
         RightMode = top_in
     then
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
-            native_if_possible, ml_lval(ArgLval), ArgRval),
+            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
         CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
         Statement = ml_gen_assign(VarLval, CastRval, Context),
@@ -2047,7 +2047,8 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
     then
         MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
-            native_if_possible, ml_const(mlconst_null(MLDS_ArgType)), ArgRval),
+            bp_native_if_possible, ml_const(mlconst_null(MLDS_ArgType)),
+            ArgRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
         CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
         Statement = ml_gen_assign(VarLval, CastRval, Context),
@@ -2087,7 +2088,7 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
         RightMode = top_out
     then
         ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
-            native_if_possible, ml_lval(VarLval), VarRval),
+            bp_native_if_possible, ml_lval(VarLval), VarRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ArgType),
         CastRval = ml_unop(cast(MLDS_Type),
             ml_binop(body, VarRval, ml_const(mlconst_int(Ptag)))),
@@ -2099,7 +2100,7 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
         RightMode = top_in
     then
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
-            native_if_possible, ml_lval(ArgLval), ArgRval),
+            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
         CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
         Statement = ml_gen_assign(VarLval, CastRval, Context),

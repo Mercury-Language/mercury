@@ -1861,11 +1861,11 @@ parse_foreign_literal_or_include(Term, LiteralOrInclude) :-
     (
         Functor = term.string(Code),
         Args = [],
-        LiteralOrInclude = literal(Code)
+        LiteralOrInclude = floi_literal(Code)
     ;
         Functor = term.atom("include_file"),
         Args = [term.functor(term.string(FileName), [], _)],
-        LiteralOrInclude = include_file(FileName)
+        LiteralOrInclude = floi_include_file(FileName)
     ).
 
 parse_foreign_language(term.functor(term.string(String), _, _), Lang) :-
@@ -2012,7 +2012,7 @@ parse_pragma_foreign_code_pragma(ErrorTerm,
             Code = CodePrime,
             CodeSpecs = []
         else
-            Code = literal(""), % Dummy, ignored when CodeSpecs \= []
+            Code = floi_literal(""), % Dummy, ignored when CodeSpecs \= []
             CodePieces = InvalidDeclPrefix ++
                 [words("expected string for foreign code."), nl],
             CodeSpec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -2250,7 +2250,7 @@ parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
     ;       coll_will_not_throw_exception
     ;       coll_ordinary_despite_detism
     ;       coll_may_modify_trail(proc_may_modify_trail)
-    ;       coll_may_call_mm_tabled(may_call_mm_tabled)
+    ;       coll_may_call_mm_tabled(proc_may_call_mm_tabled)
     ;       coll_box_policy(box_policy)
     ;       coll_affects_liveness(proc_affects_liveness)
     ;       coll_allocates_memory(proc_allocates_memory)
@@ -2293,8 +2293,9 @@ parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
         coll_may_modify_trail(proc_may_modify_trail) -
             coll_may_modify_trail(proc_will_not_modify_trail),
         coll_may_call_mercury(proc_will_not_call_mercury) -
-            coll_may_call_mm_tabled(may_call_mm_tabled),
-        coll_box_policy(native_if_possible) - coll_box_policy(always_boxed),
+            coll_may_call_mm_tabled(proc_may_call_mm_tabled),
+        coll_box_policy(bp_native_if_possible) -
+            coll_box_policy(bp_always_boxed),
         coll_affects_liveness(proc_affects_liveness) -
             coll_affects_liveness(proc_does_not_affect_liveness),
         coll_allocates_memory(proc_does_not_allocate_memory) -
@@ -2531,19 +2532,20 @@ parse_may_modify_trail(term.functor(term.atom("may_modify_trail"), [], _),
 parse_may_modify_trail(term.functor(term.atom("will_not_modify_trail"), [], _),
     proc_will_not_modify_trail).
 
-:- pred parse_may_call_mm_tabled(term::in, may_call_mm_tabled::out) is semidet.
+:- pred parse_may_call_mm_tabled(term::in, proc_may_call_mm_tabled::out)
+    is semidet.
 
-parse_may_call_mm_tabled(Term, may_call_mm_tabled) :-
+parse_may_call_mm_tabled(Term, proc_may_call_mm_tabled) :-
     Term = term.functor(term.atom("may_call_mm_tabled"), [], _).
-parse_may_call_mm_tabled(Term, will_not_call_mm_tabled) :-
+parse_may_call_mm_tabled(Term, proc_will_not_call_mm_tabled) :-
     Term = term.functor(term.atom("will_not_call_mm_tabled"), [], _).
 
 :- pred parse_box_policy(term::in, box_policy::out) is semidet.
 
-parse_box_policy(term.functor(term.atom("native_if_possible"), [], _),
-    native_if_possible).
-parse_box_policy(term.functor(term.atom("always_boxed"), [], _),
-    always_boxed).
+parse_box_policy(Term, bp_native_if_possible) :-
+    Term = term.functor(term.atom("native_if_possible"), [], _).
+parse_box_policy(Term, bp_always_boxed) :-
+    Term = term.functor(term.atom("always_boxed"), [], _).
 
 :- pred parse_affects_liveness(term::in, proc_affects_liveness::out)
     is semidet.
@@ -2701,7 +2703,7 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
             constrain_inst_vars_in_mode(Mode0, Mode),
             term.coerce_var(Var, ProgVar),
             HeadPragmaVar = pragma_var(ProgVar, VarName, Mode,
-                native_if_possible),
+                bp_native_if_possible),
             MaybePragmaVars = ok1([HeadPragmaVar | TailPragmaVars])
         else
             Specs = get_any_errors1(MaybeTailPragmaVars)
@@ -2960,7 +2962,7 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
         !.Attributes, MaybeAttributes) :-
     (
         SingleAttr = attr_strictness(Strictness),
-        ( if !.Attributes ^ table_attr_strictness = all_strict then
+        ( if !.Attributes ^ table_attr_strictness = cts_all_strict then
             !Attributes ^ table_attr_strictness := Strictness,
             update_tabling_attributes(TermSingleAttrs, !.Attributes,
                 MaybeAttributes)
@@ -3026,7 +3028,7 @@ parse_tabling_attribute(VarSet, EvalMethod, Term, MaybeContextAttribute) :-
         Functor = "fast_loose",
         Args = [],
         ( if eval_method_allows_fast_loose(EvalMethod) = yes then
-            Attribute = attr_strictness(all_fast_loose),
+            Attribute = attr_strictness(cts_all_fast_loose),
             MaybeContextAttribute = ok1(Context - Attribute)
         else
             Pieces = [words("Error: evaluation method"),
@@ -3052,7 +3054,8 @@ parse_tabling_attribute(VarSet, EvalMethod, Term, MaybeContextAttribute) :-
                 (
                     MoreArgs = [],
                     Attribute = attr_strictness(
-                        specified(MaybeArgMethods, hidden_arg_value)),
+                        cts_specified(MaybeArgMethods,
+                            table_hidden_arg_value)),
                     MaybeContextAttribute = ok1(Context - Attribute)
                 ;
                     MoreArgs = [Arg2],
@@ -3061,14 +3064,16 @@ parse_tabling_attribute(VarSet, EvalMethod, Term, MaybeContextAttribute) :-
                             term.atom("hidden_arg_value"), [], _)
                     then
                         Attribute = attr_strictness(
-                            specified(MaybeArgMethods, hidden_arg_value)),
+                            cts_specified(MaybeArgMethods,
+                                table_hidden_arg_value)),
                         MaybeContextAttribute = ok1(Context - Attribute)
                     else if
                         Arg2 = term.functor(
                             term.atom("hidden_arg_addr"), [], _)
                     then
                         Attribute = attr_strictness(
-                            specified(MaybeArgMethods, hidden_arg_addr)),
+                            cts_specified(MaybeArgMethods,
+                                table_hidden_arg_addr)),
                         MaybeContextAttribute = ok1(Context - Attribute)
                     else
                         Arg2Str = describe_error_term(VarSet, Arg2),

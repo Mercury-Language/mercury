@@ -358,10 +358,10 @@ mercury_output_pragma_foreign_code(FCInfo, !IO) :-
 
 mercury_format_foreign_literal_or_include(LiteralOrInclude, !U) :-
     (
-        LiteralOrInclude = literal(Code),
+        LiteralOrInclude = floi_literal(Code),
         mercury_format_foreign_code_string(Code, !U)
     ;
-        LiteralOrInclude = include_file(FileName),
+        LiteralOrInclude = floi_include_file(FileName),
         add_string("include_file(", !U),
         add_quoted_string(FileName, !U),
         add_string(")", !U)
@@ -634,20 +634,20 @@ foreign_proc_attributes_to_strings(Attrs, VarSet) = StringList :-
         MayModifyTrailStrList = ["will_not_modify_trail"]
     ),
     (
-        MayCallMM_Tabled = may_call_mm_tabled,
+        MayCallMM_Tabled = proc_may_call_mm_tabled,
         MayCallMM_TabledStrList = ["may_call_mm_tabled"]
     ;
-        MayCallMM_Tabled = will_not_call_mm_tabled,
+        MayCallMM_Tabled = proc_will_not_call_mm_tabled,
         MayCallMM_TabledStrList =["will_not_call_mm_tabled"]
     ;
-        MayCallMM_Tabled = default_calls_mm_tabled,
+        MayCallMM_Tabled = proc_default_calls_mm_tabled,
         MayCallMM_TabledStrList = []
     ),
     (
-        BoxPolicy = native_if_possible,
+        BoxPolicy = bp_native_if_possible,
         BoxPolicyStrList = []
     ;
-        BoxPolicy = always_boxed,
+        BoxPolicy = bp_always_boxed,
         BoxPolicyStrList = ["always_boxed"]
     ),
     (
@@ -1217,19 +1217,19 @@ mercury_output_pragma_tabled(TabledInfo, !IO) :-
         some [!Strs] (
             !:Strs = [],
             (
-                Strictness = all_strict
+                Strictness = cts_all_strict
             ;
-                Strictness = all_fast_loose,
+                Strictness = cts_all_fast_loose,
                 !:Strs = ["fast_loose" | !.Strs]
             ;
-                Strictness = specified(Args, HiddenArgMethod),
+                Strictness = cts_specified(Args, HiddenArgMethod),
                 ArgStrs = list.map(maybe_arg_tabling_method_to_string, Args),
                 ArgsStr = string.join_list(", ", ArgStrs),
                 (
-                    HiddenArgMethod = hidden_arg_value,
+                    HiddenArgMethod = table_hidden_arg_value,
                     HiddenArgStr = "hidden_arg_value"
                 ;
-                    HiddenArgMethod = hidden_arg_addr,
+                    HiddenArgMethod = table_hidden_arg_addr,
                     HiddenArgStr = "hidden_arg_addr"
                 ),
                 SpecifiedStr = "specified([" ++ ArgsStr ++ "], " ++

@@ -859,9 +859,9 @@ gather_foreign_include_files_in_items_acc([Item | Items], !IncludeFiles) :-
         )
     then
         (
-            LiteralOrInclude = literal(_)
+            LiteralOrInclude = floi_literal(_)
         ;
-            LiteralOrInclude = include_file(FileName),
+            LiteralOrInclude = floi_include_file(FileName),
             IncludeFile = foreign_include_file_info(Lang, FileName),
             !:IncludeFiles = cord.snoc(!.IncludeFiles, IncludeFile)
         )

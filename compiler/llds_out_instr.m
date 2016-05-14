@@ -1938,12 +1938,12 @@ output_foreign_proc_input(Info, Input, !IO) :-
         MaybeForeignTypeInfo, BoxPolicy),
     io.write_string("\t", !IO),
     (
-        BoxPolicy = always_boxed,
+        BoxPolicy = bp_always_boxed,
         io.write_string(VarName, !IO),
         io.write_string(" = ", !IO),
         output_rval_as_type(Info, Rval, lt_word, !IO)
     ;
-        BoxPolicy = native_if_possible,
+        BoxPolicy = bp_native_if_possible,
         (
             MaybeForeignTypeInfo = yes(ForeignTypeInfo),
             ForeignTypeInfo = foreign_proc_type(ForeignType, Assertions),
@@ -2034,12 +2034,12 @@ output_foreign_proc_output(Info, Output, !IO) :-
         MaybeForeignType, BoxPolicy),
     io.write_string("\t", !IO),
     (
-        BoxPolicy = always_boxed,
+        BoxPolicy = bp_always_boxed,
         output_lval_as_word(Info, Lval, !IO),
         io.write_string(" = ", !IO),
         io.write_string(VarName, !IO)
     ;
-        BoxPolicy = native_if_possible,
+        BoxPolicy = bp_native_if_possible,
         (
             MaybeForeignType = yes(ForeignTypeInfo),
             ForeignTypeInfo = foreign_proc_type(ForeignType, Assertions),

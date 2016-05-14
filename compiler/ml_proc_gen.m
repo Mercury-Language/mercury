@@ -678,7 +678,7 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
             % to convert its type from HeadType to BodyType.
             ml_gen_info_get_varset(!.Info, VarSet),
             VarName = ml_gen_var_name(VarSet, Var),
-            ml_gen_box_or_unbox_lval(HeadType, BodyType, native_if_possible,
+            ml_gen_box_or_unbox_lval(HeadType, BodyType, bp_native_if_possible,
                 HeadVarLval, VarName, Context, no, 0, BodyLval, ConvDecls,
                 ConvInputStatements, ConvOutputStatements, !Info),
 
