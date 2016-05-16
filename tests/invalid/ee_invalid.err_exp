@@ -1,5 +1,5 @@
 ee_invalid.m:039: In `:- pragma foreign_export_enum' declaration for `int'/0:
-ee_invalid.m:039:   error: `int'/0 is an atomic type.
+ee_invalid.m:039:   error: `int'/0 is a builtin type.
 ee_invalid.m:043: In pragma foreign_export_enum:
 ee_invalid.m:043:   error: undefined type `undefined_type'/0.
 ee_invalid.m:047: In `:- pragma foreign_export_enum' declaration for

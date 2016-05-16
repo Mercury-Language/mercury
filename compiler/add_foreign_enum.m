@@ -63,7 +63,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
     then
         ErrorPieces = [words("error: "),
             sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            words("is an atomic type"), suffix("."), nl],
+            words("is a builtin type"), suffix("."), nl],
         MaybeError = yes({severity_error, ErrorPieces})
     else
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
@@ -385,7 +385,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
     then
         ErrorPieces = [words("error: "),
             sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            words("is an atomic type"), suffix(".")],
+            words("is a builtin type"), suffix(".")],
         MaybeError = yes({severity_error, ErrorPieces})
     else if
         search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0)
