@@ -952,8 +952,7 @@ read_parse_tree_src_components(Globals, CurModuleName, ContainingModules,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
         add_section_component(SectionKind, SectionContext,
             InclsCord, AvailsCord, ItemsCord, !ModuleComponents),
-        % We have read in one component; recurse to read in other
-        % components.
+        % We have read in one component; recurse to read in other components.
         read_parse_tree_src_components(Globals, CurModuleName,
             ContainingModules, yes(SectionKind - SectionContext),
             have_not_given_missing_section_start_warning,

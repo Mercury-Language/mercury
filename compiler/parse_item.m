@@ -1768,7 +1768,7 @@ parse_with_inst_suffix(VarSet, ContextPieces, Term,
 
     % Perform one of the following field-access syntax rewrites if possible:
     %
-    %   A ^ f(B, ...)       --->    f(B, ..., A)
+    %   A ^ f(B, ...)           --->    f(B, ..., A)
     %   (A ^ f(B, ...) := X)    --->    'f :='(B, ..., A, X)
     %
 :- func desugar_field_access(term) = term.
