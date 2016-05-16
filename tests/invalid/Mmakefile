@@ -49,6 +49,7 @@ SINGLEMODULE= \
 	bad_consider_used \
 	bad_detism \
 	bad_end_module \
+	bad_foreign_enum \
 	bad_finalise_decl \
 	bad_initialise_decl \
 	bad_inst_for_type \

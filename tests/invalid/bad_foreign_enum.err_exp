@@ -1,0 +1,4 @@
+bad_foreign_enum.m:024: Error: wrong number of arguments in
+bad_foreign_enum.m:024:   `:- pragma foreign_enum' declaration.
+bad_foreign_enum.m:028: Error: invalid foreign language in
+bad_foreign_enum.m:028:   `:- pragma foreign_enum' declaration.

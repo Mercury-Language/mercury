@@ -767,7 +767,7 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             )
         else
             Pieces = [words("Error: invalid foreign language in"),
-                pragma_decl("foreign_export_enum"), words("declaration."),
+                pragma_decl("foreign_enum"), words("declaration."),
                 nl],
             % XXX We should use the context of LangTerm.
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -776,7 +776,7 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         )
     else
         Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl("foreign_export_enum"), words("declaration."), nl],
+            pragma_decl("foreign_enum"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
