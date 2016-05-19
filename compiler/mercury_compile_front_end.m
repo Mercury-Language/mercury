@@ -1069,6 +1069,7 @@ maybe_proc_statistics(Verbose, Stats, Msg, !HLDS, !Specs, !IO) :-
             maybe_write_string(Verbose,
                 "% Generating proc statistics...\n", !IO),
             write_proc_stats_for_module(StatsFileStream, Msg, !.HLDS, !IO),
+            io.close_output(StatsFileStream, !IO),
             maybe_write_string(Verbose, "% done.\n", !IO),
             maybe_report_stats(Stats, !IO)
         ;
