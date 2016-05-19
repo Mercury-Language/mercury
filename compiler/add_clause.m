@@ -89,8 +89,10 @@
 module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
         Status, Context, MaybeSeqNum, GoalType,
         !ModuleInfo, !QualInfo, !Specs) :-
-    ( if illegal_state_var_func_result(PredOrFunc, ArgTerms0, SVar) then
-        IllegalSVarResult = yes(SVar)
+    ( if
+        illegal_state_var_func_result(PredOrFunc, ArgTerms0, SVar, SVarCtxt)
+    then
+        IllegalSVarResult = yes({SVar, SVarCtxt})
     else
         IllegalSVarResult = no
     ),
@@ -160,7 +162,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
 :- pred module_add_clause_2(prog_varset::in, pred_or_func::in, sym_name::in,
     pred_id::in, list(prog_term)::in, int::in, int::in, maybe1(goal)::in,
     pred_status::in, prog_context::in, maybe(int)::in, goal_type::in,
-    maybe(prog_var)::in, module_info::in, module_info::out,
+    maybe({prog_var, prog_context})::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -215,9 +217,9 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
 
         !:PredSpecs = [],
         (
-            IllegalSVarResult = yes(StateVar),
-            report_illegal_func_svar_result(Context, ClauseVarSet, StateVar,
-                !PredSpecs)
+            IllegalSVarResult = yes({StateVar, StateVarContext}),
+            report_illegal_func_svar_result(StateVarContext, ClauseVarSet,
+                StateVar, !PredSpecs)
         ;
             IllegalSVarResult = no
         ),
@@ -331,7 +333,30 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
                 else
                     true
                 ),
-                ( if PredStatus = pred_status(status_opt_imported) then
+                ( if
+                    (
+                        % Any singleton warnings should be generated
+                        % for the original code, not for the copy
+                        % in a .opt or .trans_opt file.
+                        PredStatus = pred_status(status_opt_imported)
+                    ;
+                        % Part of the parser's recovery from syntax errors
+                        % (e.g. when they occur in lambda expressions' clause
+                        % heads) may have included not translating parts
+                        % of the original term into the parsed clause body,
+                        % so any singleton warnings we generate for such
+                        % "truncated" clauses could be misleading.
+                        %
+                        % We could try to record the set of variables
+                        % in the parts of the original goal term that we don't
+                        % include in the clause, but (a) this is not trivial
+                        % to do, and (b) the payoff is questionable, because
+                        % some of those variables could have been the result
+                        % of typos affecting a word that the programmer meant
+                        % to be something else.
+                        Clauses ^ cli_had_syntax_errors = yes
+                    )
+                then
                     true
                 else
                     % Warn about singleton variables.
@@ -585,9 +610,10 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
         BodyGoal, Context, MaybeSeqNum, PredStatus, PredOrFunc, Arity,
         GoalType, Goal, VarSet, TVarSet, QuantWarnings,
         !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
-    !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes0,
-        TVarNameMap0, InferredVarTypes, HeadVars, ClausesRep0, ItemNumbers0,
-        RttiVarMaps, HasForeignClauses, HadSyntaxError0),
+    !.ClausesInfo = clauses_info(VarSet0, TVarNameMap0,
+        ExplicitVarTypes0, InferredVarTypes, HeadVars,
+        ClausesRep0, ItemNumbers0, RttiVarMaps,
+        HasForeignClauses, HadSyntaxError0),
     IsEmpty = clause_list_is_empty(ClausesRep0),
     (
         IsEmpty = yes,
@@ -674,9 +700,10 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
         qual_info_get_var_types(!.QualInfo, ExplicitVarTypes),
         add_clause_item_number(MaybeSeqNum, Context, item_is_clause,
             ItemNumbers0, ItemNumbers),
-        !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-            InferredVarTypes, HeadVars, ClausesRep, ItemNumbers,
-            RttiVarMaps, HasForeignClauses, HadSyntaxError0)
+        !:ClausesInfo = clauses_info(VarSet, TVarNameMap,
+            ExplicitVarTypes, InferredVarTypes, HeadVars,
+            ClausesRep, ItemNumbers, RttiVarMaps,
+            HasForeignClauses, HadSyntaxError0)
     ).
 
     % ArgTerms0 has already had !S arguments replaced by

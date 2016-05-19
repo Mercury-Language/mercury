@@ -92,9 +92,6 @@
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred maybe_parse_field_list(prog_term::in, prog_varset::in,
-    field_list::out) is semidet.
-
 :- pred parse_field_list(prog_term::in, prog_varset::in,
     list(format_component)::in, maybe1(field_list)::out) is det.
 
@@ -281,15 +278,6 @@ construct_field_access_function_call(AccessType, Context,
         rhs_functor(Functor, is_not_exist_constr, Args),
         Context, MainContext, SubContext, Purity, Goal, !QualInfo).
 
-maybe_parse_field_list(Term, VarSet, FieldNames) :-
-    % The value of ContextPieces does not matter, since we succeed
-    % only if it is not used.
-    %
-    % We could construct a dummy VarSet as well, if needed.
-    ContextPieces = [],
-    parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames),
-    MaybeFieldNames = ok1(FieldNames).
-
 parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
     ( if
         Term = term.functor(term.atom("^"),
@@ -326,7 +314,7 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
 make_field_list_error(VarSet, Context, Term, ContextPieces) = Spec :-
     TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
     Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-        words("Error: expected field name at term"),
+        words("Error: expected field name, found"),
         quote(TermStr), suffix("."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(Context, [always(Pieces)])]).

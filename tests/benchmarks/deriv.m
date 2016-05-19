@@ -25,7 +25,7 @@
         ;   expr * expr
         ;   expr / expr
         ;   - expr
-        ;   ^(expr, int)
+        ;   power(expr, int)
         ;   log(expr)
         ;   exp(expr)
         .
@@ -84,8 +84,8 @@ print_expr(exp(E)) -->
     io__write_string("exp("),
     print_expr(E),
     io__write_string(")").
-print_expr(^(E, N)) -->
-    io__write_string("^("),
+print_expr(power(E, N)) -->
+    io__write_string("power("),
     print_expr(E),
     io__write_string(", "),
     io__write_int(N),
@@ -132,7 +132,7 @@ log10(E) :-
     d(log(log(log(log(log(log(log(log(log(log(x)))))))))), x, E).
 
 ops8(E) :-
-    d((x + num(1)) * ((^(x, 2) + num(2)) * (^(x, 3) + num(3))), x, E).
+    d((x + num(1)) * ((power(x, 2) + num(2)) * (power(x, 3) + num(3))), x, E).
 
 divide10(E) :-
     d(x / x / x / x / x / x / x / x / x / x / x, x, E).
@@ -146,10 +146,10 @@ d(U - V, X, DU - DV) :-
 d(U * V, X, DU * V + U * DV) :-
     d(U, X, DU),
     d(V, X, DV).
-d(U / V, X, (DU * V - U * DV) / ^(V, 2)) :-
+d(U / V, X, (DU * V - U * DV) / power(V, 2)) :-
     d(U, X, DU),
     d(V, X, DV).
-d(^(U, N), X, DU * num(N) * ^(U, N1)) :-
+d(power(U, N), X, DU * num(N) * power(U, N1)) :-
     N1 is N - 1,
     d(U, X, DU).
 d(-U, X, -DU) :-

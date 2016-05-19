@@ -1,18 +1,29 @@
-invalid_int.m:017: Error: integer literal is too big
-invalid_int.m:017:   `0b100000000000000000000000000000000'.
-invalid_int.m:018: Error: integer literal is too big
+invalid_int.m:017: Error: the integer literal
+invalid_int.m:017:   `0b100000000000000000000000000000000'
+invalid_int.m:017:   is too big to be represented on this machine.
+invalid_int.m:018: Error: the integer literal
 invalid_int.m:018:   `0b1111111111111111111111111111111111111111111111111111111111111111'.
-invalid_int.m:019: Error: integer literal is too big
-invalid_int.m:019:   `0b10000000000000000000000000000000000000000000000000000000000000000'.
-invalid_int.m:022: Error: integer literal is too big `0o40000000000'.
-invalid_int.m:023: Error: integer literal is too big
-invalid_int.m:023:   `0o1777777777777777777777'.
-invalid_int.m:024: Error: integer literal is too big
-invalid_int.m:024:   `0o2000000000000000000000'.
-invalid_int.m:027: Error: integer literal is too big `0x100000000'.
-invalid_int.m:028: Error: integer literal is too big `0x110000000'.
-invalid_int.m:029: Error: integer literal is too big `0xFFFFFFFFFFFFFFFF'.
-invalid_int.m:030: Error: integer literal is too big `0x10000000000000000'.
-invalid_int.m:033: Error: integer literal is too big `2147483648'.
-invalid_int.m:034: Error: integer literal is too big `9223372036854775807'.
-invalid_int.m:035: Error: integer literal is too big `9223372036854775808'.
+invalid_int.m:018:   is too big to be represented on this machine.
+invalid_int.m:019: Error: the integer literal 
+invalid_int.m:019:   `0b10000000000000000000000000000000000000000000000000000000000000000'
+invalid_int.m:019:   is too big to be represented on this machine.
+invalid_int.m:022: Error: the integer literal `0o40000000000' is too big to be
+invalid_int.m:022:   represented on this machine.
+invalid_int.m:023: Error: the integer literal `0o1777777777777777777777' is too
+invalid_int.m:023:   big to be represented on this machine.
+invalid_int.m:024: Error: the integer literal `0o2000000000000000000000' is too
+invalid_int.m:024:   big to be represented on this machine.
+invalid_int.m:027: Error: the integer literal `0x100000000' is too big to be
+invalid_int.m:027:   represented on this machine.
+invalid_int.m:028: Error: the integer literal `0x110000000' is too big to be
+invalid_int.m:029:   represented on this machine.
+invalid_int.m:029: Error: the integer literal `0xFFFFFFFFFFFFFFFF' is too big
+invalid_int.m:029:   to be represented on this machine.
+invalid_int.m:030: Error: the integer literal `0x10000000000000000' is too big
+invalid_int.m:030:   to be represented on this machine.
+invalid_int.m:033: Error: the integer literal `2147483648' is too big to be
+invalid_int.m:033:   represented on this machine.
+invalid_int.m:034: Error: the integer literal `9223372036854775807' is too big
+invalid_int.m:034:   to be represented on this machine.
+invalid_int.m:035: Error: the integer literal `9223372036854775808' is too big
+invalid_int.m:035:   to be represented on this machine.

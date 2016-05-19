@@ -6,11 +6,11 @@ ok... test passed:
 { type }
 { type }
 ok... test passed:
-{ ':-' }
-{ ':-' }
+{ '?-' }
+{ '?-' }
 ok... test passed:
-':-'
-':-'
+'?-'
+'?-'
 ok... test passed:
 { blah }
 { blah }

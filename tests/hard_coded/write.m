@@ -67,7 +67,7 @@
     ;       {{expr}}
     ;       (type)
     ;       blah
-    ;       (:-).
+    ;       (?-).
 
 main(!IO) :-
     test_ops(!IO),
@@ -79,8 +79,8 @@ main(!IO) :-
 test_ops(!IO) :-
     io.write(var("X") + int(3) * var("X^2") ; (type), !IO), newline(!IO),
     io.write(write.{type}, !IO), newline(!IO),
-    io.write(write.{:-}, !IO), newline(!IO),
-    io.write((:-), !IO), newline(!IO),
+    io.write(write.{?-}, !IO), newline(!IO),
+    io.write((?-), !IO), newline(!IO),
     io.write(write.{blah}, !IO), newline(!IO),
     io.write((blah ; (type), (type) * blah ; (type)), !IO), newline(!IO),
     io.write(((blah ; blah), blah) * blah ; blah, !IO), newline(!IO),

@@ -696,7 +696,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         rtti_varmaps_init(RttiVarMaps),
         HasForeignClauses = no,
         HadSyntaxErrors = no,
-        ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+        ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
             HeadVarVec, ClausesRep, init_clause_item_numbers_comp_gen,
             RttiVarMaps, HasForeignClauses, HadSyntaxErrors)
     ;
@@ -726,9 +726,13 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
     % instead of aborting.
     expect(unify(PredOrFunc, ClausePredOrFunc), $module, $pred,
         "PredOrFunc mismatch"),
-    ( if illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) then
+    ( if
+        illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar,
+            StateVarContext)
+    then
         TVarSet = TVarSet0,
-        report_illegal_func_svar_result(Context, CVarSet, StateVar, !Specs),
+        report_illegal_func_svar_result(StateVarContext, CVarSet, StateVar,
+            !Specs),
         !:Specs = get_any_errors1(MaybeBodyGoal) ++ !.Specs
     else
         (
@@ -751,8 +755,8 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             PredStatus = pred_status(OldImportStatus),
             clauses_info_add_clause(all_modes, AllProcIds, CVarSet, TVarSet0,
                 HeadTerms, BodyGoal, Context, no, PredStatus, PredOrFunc,
-                Arity, GoalType, Goal, VarSet, TVarSet, Warnings, !ClausesInfo,
-                !ModuleInfo, !QualInfo, !Specs),
+                Arity, GoalType, Goal, VarSet, TVarSet, Warnings,
+                !ClausesInfo, !ModuleInfo, !QualInfo, !Specs),
 
             SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
 

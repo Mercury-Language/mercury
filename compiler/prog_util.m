@@ -674,6 +674,9 @@ cons_id_maybe_arity(deep_profiling_proc_layout(_)) = no.
 cons_id_maybe_arity(table_io_entry_desc(_)) = no.
 
 make_functor_cons_id(Functor, Arity, ConsId) :-
+    % The logic of this predicate is duplicated, with minor differences,
+    % by parse_ordinary_cons_id in superhomogeneous.m.
+    % Any change here may need a corresponding change there.
     require_complete_switch [Functor]
     (
         Functor = term.atom(Name),

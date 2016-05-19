@@ -143,10 +143,11 @@
     --->    mq_not_used_in_interface
     ;       mq_used_in_interface.
 
-    % This is called from make_hlds to qualify the mode of a lambda expression.
+    % This is called from make_hlds to qualify the mode of an argument
+    % of a lambda expression.
     %
-:- pred qualify_lambda_mode_list(mq_in_interface::in, prog_context::in,
-    list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out,
+:- pred qualify_lambda_mode(mq_in_interface::in, prog_context::in,
+    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % This is called from make_hlds.m to qualify the modes in a
@@ -360,9 +361,9 @@ module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-qualify_lambda_mode_list(InInt, Context, Modes0, Modes, !Info, !Specs) :-
+qualify_lambda_mode(InInt, Context, Mode0, Mode, !Info, !Specs) :-
     ErrorContext = mqec_lambda_expr(Context),
-    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs).
+    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs).
 
 qualify_clause_mode_list(InInt, Context, Modes0, Modes, !Info, !Specs) :-
     ErrorContext = mqec_clause_mode_annotation(Context),

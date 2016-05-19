@@ -107,10 +107,6 @@
 :- pred mode_is_unused(module_info::in, mer_mode::in) is semidet.
 :- pred from_to_insts_is_unused(module_info::in, from_to_insts::in) is semidet.
 
-    % Succeed iff the given mode is undefined.
-    %
-:- pred mode_is_undefined(module_info::in, mer_mode::in) is semidet.
-
 %---------------------%
 
     % Return the modes of the operands on the given side of the unifications.
@@ -388,9 +384,6 @@ from_to_insts_is_unused(ModuleInfo, FromToInsts) :-
     FromToInsts = from_to_insts(InitialInst, FinalInst),
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_free(ModuleInfo, FinalInst).
-
-mode_is_undefined(ModuleInfo, Mode) :-
-    not mode_get_insts_semidet(ModuleInfo, Mode, _, _).
 
 %---------------------------------------------------------------------------%
 

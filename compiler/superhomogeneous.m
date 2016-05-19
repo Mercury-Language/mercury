@@ -13,6 +13,12 @@
 % This module performs the conversion of clause bodies
 % to superhomogeneous form.
 %
+% XXX The code in this module should follow a consistent naming convention
+% to distinguish
+%
+% - variables that refer to goals in the term we are parsing from
+% - variables that refer to goals in the HLDS we are building.
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.superhomogeneous.
@@ -54,6 +60,10 @@
     % passed an `arg_context', which indicates where the terms came from.
     %
     % We never insert unifications of the form X = X.
+    %
+    % XXX We should have versions of these predicates that take the variables
+    % and the terms to unify them as a single assoc_list, instead of taking
+    % them as two separate lists whose lengths must be equal, but may not be.
     %
 :- pred insert_arg_unifications(list(prog_var)::in, list(prog_term)::in,
     prog_context::in, arg_context::in, hlds_goal::in, hlds_goal::out,
@@ -116,6 +126,7 @@
 :- import_module parse_tree.parse_dcg_goal.
 :- import_module parse_tree.parse_goal.
 :- import_module parse_tree.parse_inst_mode_name.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.prog_mode.
@@ -606,10 +617,9 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
+unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         Context, MainContext, SubContext, Purity, Order, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    convert_big_integer_functor(YFunctor0, YFunctor, YFunctorContext, !Specs),
     substitute_state_var_mappings(YArgTerms0, YArgTerms, !VarSet,
         !SVarState, !Specs),
     ( if
@@ -620,76 +630,26 @@ unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
             !ModuleInfo, !QualInfo, !Specs)
     then
         Expansion = ExpansionPrime
-    else if
-        % Handle higher-order pred and func expressions.
-        RHS0 = term.functor(YFunctor, YArgTerms, YFunctorContext),
-        term.coerce(RHS0, RHS),
-        ( if
-            RHS = term.functor(term.atom(":-"),
-                [HeadTerm1Prime, GoalTermPrime], _)
-        then
-            HeadTerm1 = HeadTerm1Prime,
-            GoalTerm = GoalTermPrime
-        else
-            HeadTerm1 = RHS,
-            GoalTerm = term.functor(term.atom("true"), [], Context)
-        ),
-        parse_purity_annotation(HeadTerm1, LambdaPurity, HeadTerm),
-        ( if
-            parse_pred_expression(HeadTerm, Groundness0, EvalMethod0, Vars0,
-                Modes0, Det0)
-        then
-            PredOrFunc = pf_predicate,
-            EvalMethod = EvalMethod0,
-            Groundness = Groundness0,
-            Vars1 = Vars0,
-            Modes1 = Modes0,
-            Det1 = Det0
-        else
-            parse_func_expression(HeadTerm, Groundness, EvalMethod, Vars1,
-                Modes1, Det1),
-            PredOrFunc = pf_function
-        )
-    then
-        qualify_lambda_mode_list_if_not_opt_imported(Modes1, Modes, Context,
-            !QualInfo, !Specs),
-        Det = Det1,
-        ContextPieces = cord.init,
-        parse_goal(GoalTerm, ContextPieces, MaybeParsedGoal, !VarSet),
-        (
-            MaybeParsedGoal = ok1(ParsedGoal),
-            build_lambda_expression(XVar, Purity, LambdaPurity, Groundness,
-                PredOrFunc, EvalMethod, Vars1, Modes, Det, ParsedGoal,
-                Context, MainContext, SubContext, Goal,
-                !.SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
-            Expansion = expansion(not_fgti, cord.singleton(Goal))
-        ;
-            MaybeParsedGoal = error1(ParsedGoalSpecs),
-            !:Specs = ParsedGoalSpecs ++ !.Specs,
-            Expansion = expansion(not_fgti,
-                cord.singleton(true_goal_with_context(Context)))
-        )
     else
         % Handle the usual case.
         ( if
             % The condition of this if-then-else is based on the logic of
             % try_parse_sym_name_and_args, but specialized to this location,
             % so that we can do state var expansion only if we need to.
-            YFunctor = term.atom(FName),
+            YFunctor = term.atom(YAtom),
             ( if
-                FName = ".",
-                YArgTerms = [ModuleTerm, NameArgsTerm]
+                YAtom = ".",
+                YArgTerms = [ModuleNameTerm, NameArgsTerm]
             then
                 NameArgsTerm = term.functor(term.atom(Name), NameArgTerms, _),
-                try_parse_symbol_name(ModuleTerm, Module),
-                FunctorName = qualified(Module, Name),
+                try_parse_symbol_name(ModuleNameTerm, ModuleName),
+                FunctorName = qualified(ModuleName, Name),
                 % We have done state variable name expansion at the top
                 % level of Args, but not at the level of NameArgTerms.
                 substitute_state_var_mappings(NameArgTerms,
                     MaybeQualifiedYArgTermsPrime, !VarSet, !SVarState, !Specs)
             else
-                FunctorName = string_to_sym_name_sep(FName, "__"),
+                FunctorName = string_to_sym_name_sep(YAtom, "__"),
                 MaybeQualifiedYArgTermsPrime = YArgTerms
             )
         then
@@ -697,10 +657,12 @@ unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
             list.length(MaybeQualifiedYArgTerms, Arity),
             ConsId = cons(FunctorName, Arity, cons_id_dummy_type_ctor)
         else
-            % float, int or string constant
-            %   - any errors will be caught by typechecking
-            list.length(YArgTerms, Arity),
-            det_make_functor_cons_id(YFunctor, Arity, ConsId),
+            % If YFunctor is a numeric or string constant, it *should*
+            % have no arguments. If it nevertheless does, we still record
+            % its arguments, and let the error be caught later during
+            % typechecking.
+            parse_ordinary_cons_id(YFunctor, YArgTerms, YFunctorContext,
+                ConsId, !Specs),
             MaybeQualifiedYArgTerms = YArgTerms
         ),
         % At this point, we have done state variable name expansion
@@ -721,7 +683,7 @@ unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
                 % If we can, we want to add the unifications for the arguments
                 % AFTER the unification of the top level function symbol,
                 % because otherwise we get efficiency problems during
-                % type-checking :-(
+                % type-checking.
                 do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
                     YFunctorContext, ArgContext, deconstruct_top_down, 1,
                     [], YVars, ArgExpansions, !SVarState, !SVarStore, !VarSet,
@@ -758,26 +720,48 @@ unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
         )
     ).
 
-:- pred convert_big_integer_functor(term.const::in, term.const::out,
-    term.context::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred parse_ordinary_cons_id(term.const::in, list(prog_term)::in,
+    term.context::in, cons_id::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-convert_big_integer_functor(Functor0, Functor, Context, !Specs) :-
-    ( if Functor0 = big_integer(Base, Integer) then
+parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !Specs) :-
+    % The logic of this predicate duplicates the logic of make_functor_cons_id
+    % in prog_util, with the difference that we generate an error message
+    % for big_integers that are too big.
+    % Any change here may need a corresponding change there.
+    (
+        Functor = term.atom(Name),
+        list.length(ArgTerms, Arity),
+        ConsId = cons(unqualified(Name), Arity, cons_id_dummy_type_ctor)
+    ;
+        Functor = term.integer(Int),
+        ConsId = int_const(Int)
+    ;
+        Functor = term.big_integer(Base, Integer),
         ( if source_integer_to_int(Base, Integer, Int) then
-            Functor = term.integer(Int)
+            ConsId = int_const(Int)
         else
             BasePrefix = integer_base_prefix(Base),
             IntString =
                 integer.to_base_string(Integer, integer_base_int(Base)),
-            Pieces = [words("Error: integer literal is too big"),
-                quote(BasePrefix ++ IntString), suffix(".")],
+            Pieces = [words("Error: the integer literal"),
+                quote(BasePrefix ++ IntString),
+                words("is too big to be represented on this machine."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs],
-            Functor = term.integer(0) % dummy
+            % This is a dummy.
+            ConsId = int_const(0)
         )
-    else
-        Functor = Functor0
+    ;
+        Functor = term.string(String),
+        ConsId = string_const(String)
+    ;
+        Functor = term.float(Float),
+        ConsId = float_const(Float)
+    ;
+        Functor = term.implementation_defined(Name),
+        ConsId = impl_defined_const(Name)
     ).
 
     % See whether Atom indicates a term with special syntax.
@@ -791,76 +775,118 @@ convert_big_integer_functor(Functor0, Functor, Context, !Specs) :-
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is semidet.
 
-maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgs,
+maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
         YFunctorContext, Context, MainContext, SubContext, Purity, Order,
         Expansion, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs)  :-
     % Switch on YAtom.
-    % XXX instead of failing if YAtom has the wrong number of arguments or
-    % if the arguments have the wrong shape, we should generate an error
-    % message.
+    % We cannot require each of the switch arms to be det. One reason is that
+    % some of the keywords we are looking for contain just one character,
+    % and *could* be a reference to a character constant (since the lexer
+    % doesn't distinguish between seeing e.g. ':' with and without the quotes).
+    % However, each arm should wrap a require_det scope around all the goals
+    % that we execute when we have decided that the term we are parsing *is*
+    % in fact supposed to be the construct we are looking for.
     (
         % Handle explicit type qualification.
         ( YAtom = "with_type"
         ; YAtom = ":"
         ),
-        YArgs = [RVal, DeclType0],
-
-        require_det (
-            % DeclType0 is a prog_term, but it is really a type,
-            % so we coerce it to a generic term before parsing it.
-            term.coerce(DeclType0, DeclType1),
-            ContextPieces =
-                cord.singleton(words("In explicit type qualification:")),
-            varset.coerce(!.VarSet, GenericVarSet),
-            parse_type(no_allow_ho_inst_info(wnhii_type_qual),
-                GenericVarSet, ContextPieces, DeclType1, DeclTypeResult),
-            (
-                DeclTypeResult = ok1(DeclType),
-                varset.coerce(!.VarSet, DeclVarSet),
-                process_type_qualification(XVar, DeclType, DeclVarSet,
-                    Context, !ModuleInfo, !QualInfo, !Specs)
-            ;
-                DeclTypeResult = error1(DeclTypeSpecs),
-                % The varset is a prog_varset even though it contains
-                % the names of type variables in ErrorTerm, which is
-                % a generic term.
-                !:Specs = DeclTypeSpecs ++ !.Specs
-            ),
-            do_unravel_var_unification(XVar, RVal,
-                Context, MainContext, SubContext, Purity, Order, Expansion,
-                !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs)
+        ( if YArgTerms = [RValTerm, DeclTypeTerm0] then
+            require_det (
+                % DeclType0 is a prog_term, but it is really a type,
+                % so we coerce it to a generic term before parsing it.
+                term.coerce(DeclTypeTerm0, DeclTypeTerm1),
+                ContextPieces =
+                    cord.singleton(words("In explicit type qualification:")),
+                varset.coerce(!.VarSet, GenericVarSet),
+                parse_type(no_allow_ho_inst_info(wnhii_type_qual),
+                    GenericVarSet, ContextPieces, DeclTypeTerm1,
+                    DeclTypeResult),
+                (
+                    DeclTypeResult = ok1(DeclType),
+                    varset.coerce(!.VarSet, DeclVarSet),
+                    process_type_qualification(XVar, DeclType, DeclVarSet,
+                        YFunctorContext, !ModuleInfo, !QualInfo, !Specs)
+                ;
+                    DeclTypeResult = error1(DeclTypeSpecs),
+                    % The varset is a prog_varset even though it contains
+                    % the names of type variables in ErrorTerm, which is
+                    % a generic term.
+                    !:Specs = DeclTypeSpecs ++ !.Specs
+                ),
+                do_unravel_var_unification(XVar, RValTerm,
+                    Context, MainContext, SubContext, Purity, Order, Expansion,
+                    !SVarState, !SVarStore, !VarSet,
+                    !ModuleInfo, !QualInfo, !Specs)
+            )
+        else if YAtom = ":", YArgTerms = [] then
+            % This may be the character ':'.
+            fail
+        else
+            % The code below is disabled, as per the discussion on m-rev
+            % that started on 2016 may 5.
+            fail
+%           Pieces = [words("Error: the type qualification operator"),
+%               quote(YAtom), words("can be used only in expressions"),
+%               words("of the form"), quote("<term> " ++ YAtom ++ " <type>"),
+%               suffix("."), nl],
+%           Msg = simple_msg(YFunctorContext, [always(Pieces)]),
+%           Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+%           !:Specs = [Spec | !.Specs],
+%           qual_info_set_found_syntax_error(yes, !QualInfo),
+%           Expansion = expansion(not_fgti, cord.empty)
         )
     ;
         % Handle unification expressions.
         YAtom = "@",
-        YArgs = [LVal, RVal],
-
-        require_det (
-            do_unravel_var_unification(XVar, LVal, Context,
-                MainContext, SubContext, Purity, Order, ExpansionL,
-                !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
-            do_unravel_var_unification(XVar, RVal, Context,
-                MainContext, SubContext, Purity, Order, ExpansionR,
-                !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
-            ExpansionL = expansion(_, GoalCordL),
-            ExpansionR = expansion(_, GoalCordR),
-            Expansion = expansion(not_fgti, GoalCordL ++ GoalCordR)
+        (
+            YArgTerms = [],
+            % This may be the character '@'.
+            fail
+        ;
+            YArgTerms = [LVal, RVal],
+            require_det (
+                do_unravel_var_unification(XVar, LVal, Context,
+                    MainContext, SubContext, Purity, Order, ExpansionL,
+                    !SVarState, !SVarStore, !VarSet,
+                    !ModuleInfo, !QualInfo, !Specs),
+                do_unravel_var_unification(XVar, RVal, Context,
+                    MainContext, SubContext, Purity, Order, ExpansionR,
+                    !SVarState, !SVarStore, !VarSet,
+                    !ModuleInfo, !QualInfo, !Specs),
+                ExpansionL = expansion(_, GoalCordL),
+                ExpansionR = expansion(_, GoalCordR),
+                Expansion = expansion(not_fgti, GoalCordL ++ GoalCordR)
+            )
+        ;
+            ( YArgTerms = [_]
+            ; YArgTerms = [_, _, _ | _]
+            ),
+            % The code below is disabled, as per the discussion on m-rev
+            % that started on 2016 may 5.
+            fail
+%           Pieces = [words("Error: the unification expression operator"),
+%               quote(YAtom), words("can be used only in expressions"),
+%               words("of the form"), quote("<term> " ++ YAtom ++ " <term>"),
+%               suffix("."), nl],
+%           Msg = simple_msg(YFunctorContext, [always(Pieces)]),
+%           Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+%           !:Specs = [Spec | !.Specs],
+%           qual_info_set_found_syntax_error(yes, !QualInfo),
+%           Expansion = expansion(not_fgti, cord.empty)
         )
     ;
         % Handle if-then-else expressions.
         (
             YAtom = "else",
-            YArgs = [CondThenTerm0, ElseTerm0],
+            YArgTerms = [CondThenTerm0, ElseTerm0],
             CondThenTerm0 = term.functor(term.atom("if"),
                 [term.functor(term.atom("then"), [CondTerm0, ThenTerm0], _)],
                     _)
         ;
             YAtom = ";",
-            YArgs = [CondThenTerm0, ElseTerm0],
+            YArgTerms = [CondThenTerm0, ElseTerm0],
             CondThenTerm0 = term.functor(term.atom("->"),
                 [CondTerm0, ThenTerm0], _)
         ),
@@ -930,106 +956,741 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgs,
     ;
         % Handle field extraction expressions.
         YAtom = "^",
-        YArgs = [InputTerm0, FieldNameTerm],
-        maybe_parse_field_list(FieldNameTerm, !.VarSet, FieldNames),
+        (
+            YArgTerms = [],
+            % This may be the character '^'.
+            fail
+        ;
+            YArgTerms = [InputTerm0, FieldNameTerm],
+            FieldNameContextPieces = [words("On the right hand side"),
+                words("of the"), quote("^"), words("operator"),
+                words("in a field selection expression:")],
+            parse_field_list(FieldNameTerm, !.VarSet,
+                FieldNameContextPieces, MaybeFieldNames),
+            (
+                MaybeFieldNames = ok1(FieldNames),
+                require_det (
+                    substitute_state_var_mapping(InputTerm0, InputTerm,
+                        !VarSet, !SVarState, !Specs),
+                    make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [],
+                        !VarSet),
+                    expand_get_field_function_call(Context, MainContext,
+                        SubContext, FieldNames, XVar, InputTermVar, Purity,
+                        Functor, _, GetGoal, !SVarState, !SVarStore, !VarSet,
+                        !ModuleInfo, !QualInfo, !Specs),
 
-        require_det (
-            substitute_state_var_mapping(InputTerm0, InputTerm, !VarSet,
-                !SVarState, !Specs),
-            make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [], !VarSet),
-            expand_get_field_function_call(Context, MainContext, SubContext,
-                FieldNames, XVar, InputTermVar, Purity, Functor, _, GetGoal,
-                !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
-
-            ArgContext = ac_functor(Functor, MainContext, SubContext),
-            do_arg_unification(InputTermVar, InputTerm,
-                YFunctorContext, ArgContext, Order, 1, InputArgExpansion,
-                !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
-            goal_info_init(Context, GoalInfo),
-            insert_expansion_before_goal_top_not_fgti(GoalInfo,
-                InputArgExpansion, GetGoal, Goal),
-            Expansion = expansion(not_fgti, cord.singleton(Goal))
+                    ArgContext = ac_functor(Functor, MainContext, SubContext),
+                    do_arg_unification(InputTermVar, InputTerm,
+                        YFunctorContext, ArgContext, Order,
+                        1, InputArgExpansion, !SVarState, !SVarStore, !VarSet,
+                        !ModuleInfo, !QualInfo, !Specs),
+                    goal_info_init(Context, GoalInfo),
+                    insert_expansion_before_goal_top_not_fgti(GoalInfo,
+                        InputArgExpansion, GetGoal, Goal),
+                    Expansion = expansion(not_fgti, cord.singleton(Goal))
+                )
+            ;
+                MaybeFieldNames = error1(_FieldNamesSpecs),
+                % The code below is disabled, as per the discussion
+                % on m-rev that started on 2016 may 5.
+                fail
+%                   !:Specs = FieldNamesSpecs ++ !.Specs,
+%                   qual_info_set_found_syntax_error(yes, !QualInfo),
+%                   Expansion = expansion(not_fgti, cord.empty)
+            )
+        ;
+            ( YArgTerms = [_]
+            ; YArgTerms = [_, _, _ | _]
+            ),
+            % The code below is disabled, as per the discussion on m-rev
+            % that started on 2016 may 5.
+            fail
+%           Pieces = [words("Error: the field access operator"), quote(YAtom),
+%               words("can be used only in expressions of the form"),
+%               quote("<term> ^ <fieldname>"), suffix("."), nl],
+%           Msg = simple_msg(YFunctorContext, [always(Pieces)]),
+%           Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+%           !:Specs = [Spec | !.Specs],
+%           qual_info_set_found_syntax_error(yes, !QualInfo),
+%           Expansion = expansion(not_fgti, cord.empty)
         )
     ;
         % Handle field update expressions.
         YAtom = ":=",
-        YArgs = [FieldDescrTerm, FieldValueTerm0],
-        FieldDescrTerm = term.functor(term.atom("^"),
-            [InputTerm0, FieldNameTerm], _),
-        maybe_parse_field_list(FieldNameTerm, !.VarSet, FieldNames),
+        ( if
+            YArgTerms = [FieldDescrTerm, FieldValueTerm0],
+            FieldDescrTerm = term.functor(term.atom("^"),
+                [InputTerm0, FieldNameTerm], _)
+        then
+            FieldNameContextPieces = [words("On the right hand side"),
+                words("of the"), quote("^"), words("operator"),
+                words("in a field update expression:")],
+            parse_field_list(FieldNameTerm, !.VarSet,
+                FieldNameContextPieces, MaybeFieldNames),
+            (
+                MaybeFieldNames = ok1(FieldNames),
+                require_det (
+                    substitute_state_var_mapping(InputTerm0, InputTerm,
+                        !VarSet, !SVarState, !Specs),
+                    make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [],
+                        !VarSet),
+                    substitute_state_var_mapping(FieldValueTerm0,
+                        FieldValueTerm, !VarSet, !SVarState, !Specs),
+                    make_fresh_arg_var_no_svar(FieldValueTerm, FieldValueVar,
+                        [InputTermVar], !VarSet),
 
-        require_det (
-            substitute_state_var_mapping(InputTerm0, InputTerm,
-                !VarSet, !SVarState, !Specs),
-            make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [], !VarSet),
-            substitute_state_var_mapping(FieldValueTerm0, FieldValueTerm,
-                !VarSet, !SVarState, !Specs),
-            make_fresh_arg_var_no_svar(FieldValueTerm, FieldValueVar,
-                [InputTermVar], !VarSet),
+                    expand_set_field_function_call(Context, MainContext,
+                        SubContext, FieldNames, FieldValueVar,
+                        InputTermVar, XVar,
+                        Functor, InnerFunctor - FieldSubContext, SetGoal,
+                        !SVarState, !SVarStore, !VarSet,
+                        !ModuleInfo, !QualInfo, !Specs),
 
-            expand_set_field_function_call(Context, MainContext, SubContext,
-                FieldNames, FieldValueVar, InputTermVar, XVar,
-                Functor, InnerFunctor - FieldSubContext, SetGoal,
-                !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
+                    TermArgContext = ac_functor(Functor,
+                        MainContext, SubContext),
+                    TermArgNumber = 1,
+                    FieldArgContext = ac_functor(InnerFunctor, MainContext,
+                        FieldSubContext),
+                    FieldArgNumber = 2,
+                    ArgContexts = [TermArgNumber - TermArgContext,
+                        FieldArgNumber - FieldArgContext],
+                    do_arg_unifications_with_contexts(
+                        [InputTermVar, FieldValueVar],
+                        [InputTerm, FieldValueTerm],
+                        ArgContexts, Context, Order, InputFieldArgExpansions,
+                        !SVarState, !SVarStore, !VarSet,
+                        !ModuleInfo, !QualInfo, !Specs),
 
-            TermArgContext = ac_functor(Functor, MainContext, SubContext),
-            TermArgNumber = 1,
-            FieldArgContext = ac_functor(InnerFunctor, MainContext,
-                FieldSubContext),
-            FieldArgNumber = 2,
-            ArgContexts = [TermArgNumber - TermArgContext,
-                FieldArgNumber - FieldArgContext],
-            do_arg_unifications_with_contexts([InputTermVar, FieldValueVar],
-                [InputTerm, FieldValueTerm], ArgContexts, Context, Order,
-                InputFieldArgExpansions, !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
-
-            goal_info_init(Context, GoalInfo),
-            insert_expansions_before_goal_top_not_fgti(GoalInfo,
-                InputFieldArgExpansions, SetGoal, Goal),
-            Expansion = expansion(not_fgti, cord.singleton(Goal))
+                    goal_info_init(Context, GoalInfo),
+                    insert_expansions_before_goal_top_not_fgti(GoalInfo,
+                        InputFieldArgExpansions, SetGoal, Goal),
+                    Expansion = expansion(not_fgti, cord.singleton(Goal))
+                )
+            ;
+                MaybeFieldNames = error1(_FieldNamesSpecs),
+                % The code below is disabled, as per the discussion
+                % on m-rev that started on 2016 may 5.
+                fail
+%               !:Specs = FieldNamesSpecs ++ !.Specs,
+%               qual_info_set_found_syntax_error(yes, !QualInfo),
+%               Expansion = expansion(not_fgti, cord.empty)
+            )
+        else
+            % The code below is disabled, as per the discussion on m-rev
+            % that started on 2016 may 5.
+            fail
+%           Pieces = [words("Error: the field update operator"), quote(YAtom),
+%               words("can be used only in expressions of the form"),
+%               quote("<term> ^ <fieldname> := <newfieldvalueterm>"),
+%               suffix("."), nl],
+%           Msg = simple_msg(YFunctorContext, [always(Pieces)]),
+%           Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+%           !:Specs = [Spec | !.Specs],
+%           qual_info_set_found_syntax_error(yes, !QualInfo),
+%           Expansion = expansion(not_fgti, cord.empty)
         )
     ;
-        % Handle higher-order dcg pred expressions. They have the same
-        % semantics as higher-order pred expressions, but have two extra
-        % arguments, and the goal is expanded as a DCG goal.
-        YAtom = "-->",
-        YArgs = [PredTerm0, GoalTerm0],
-        term.coerce(PredTerm0, PredTerm1),
-        parse_purity_annotation(PredTerm1, DCGLambdaPurity, PredTerm),
-        parse_dcg_pred_expression(PredTerm, Groundness, EvalMethod, Vars0,
-            Modes0, Det),
-
-        require_det (
-            qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes,
-                Context, !QualInfo, !Specs),
-            term.coerce(GoalTerm0, GoalTerm),
-            ContextPieces = cord.init,
-            parse_dcg_pred_goal(GoalTerm, ContextPieces, MaybeParsedGoal,
-                DCG0, DCGn, !VarSet),
-            (
-                MaybeParsedGoal = ok1(ParsedGoal),
-                Vars1 = Vars0 ++
-                    [term.variable(DCG0, Context),
-                    term.variable(DCGn, Context)],
-                build_lambda_expression(XVar, Purity, DCGLambdaPurity,
-                    Groundness, pf_predicate, EvalMethod, Vars1, Modes, Det,
-                    ParsedGoal, Context, MainContext, SubContext,
-                    Goal0, !.SVarState, !SVarStore, !VarSet,
-                    !ModuleInfo, !QualInfo, !Specs),
-                goal_set_purity(Purity, Goal0, Goal),
-                Expansion = expansion(not_fgti, cord.singleton(Goal))
-            ;
-                MaybeParsedGoal = error1(ParsedGoalSpecs),
-                !:Specs = ParsedGoalSpecs ++ !.Specs,
-                Expansion = expansion(not_fgti,
-                    cord.singleton(true_goal_with_context(Context)))
+        (
+            YAtom = ":-",
+            LambdaBodyKind = lambda_body_ordinary
+        ;
+            YAtom = "-->",
+            LambdaBodyKind = lambda_body_dcg
+        ),
+        % A lambda expression with a body goal. It may or may not have purity
+        % marker.
+        ( if YArgTerms = [PurityPFArgsDetTerm, BodyGoalTerm] then
+            require_det(
+                parse_lambda_expr(XVar, Purity,
+                    Context, MainContext, SubContext,
+                    PurityPFArgsDetTerm, yes({LambdaBodyKind, BodyGoalTerm}),
+                    Expansion, !.SVarState, !SVarStore, !VarSet,
+                    !ModuleInfo, !QualInfo, !Specs)
             )
+        else
+            Pieces = [words("Error: the clause neck operator"), quote(YAtom),
+                words("can be used only in expressions of the form"),
+                quote("<lambda expression head> :- <lambda expression body>"),
+                suffix("."), nl],
+            Msg = simple_msg(YFunctorContext, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs],
+            qual_info_set_found_syntax_error(yes, !QualInfo),
+            Expansion = expansion(not_fgti, cord.empty)
+        )
+%   ;
+%       ( YAtom = "impure"
+%       ; YAtom = "semipure"
+%       ),
+%       % This could be a lambda expression without a body goal
+%       % but with a purity marker. However, since it could also be
+%       % a marker in front of an ordinary, non-lambda unification,
+%       % we cannot insist on parsing it as a language expression.
+    ;
+        YAtom = "is",
+        % A lambda expression without a body goal or a purity marker,
+        % but with a declared determinism.
+        require_det (
+            YTerm = term.functor(term.atom(YAtom), YArgTerms, YFunctorContext),
+            parse_lambda_expr(XVar, Purity, Context, MainContext, SubContext,
+                YTerm, no, Expansion, !.SVarState, !SVarStore,
+                !VarSet, !ModuleInfo, !QualInfo, !Specs)
+        )
+    ;
+        YAtom = "=",
+        % A lambda expression without a body goal or a purity marker,
+        % and without a declared determinism. This can happen only if
+        % the lambda expression is a function, in which case its top
+        % level function symbol in the term will be "=", and the top functor
+        % of the left operand of the "=" will be "func" or "any_func".
+        % (If it isn't, then we are looking at a plain old unification
+        % that does NOT involve a lambda expression.)
+        ( if
+            YArgTerms = [FuncArgsTerm, _ReturnArgModeTerm],
+            FuncArgsTerm = term.functor(term.atom(FuncTermFunctor), _, _),
+            ( FuncTermFunctor = "func"
+            ; FuncTermFunctor = "any_func"
+            )
+        then
+            require_det (
+                YTerm = term.functor(term.atom(YAtom), YArgTerms,
+                    YFunctorContext),
+                parse_lambda_expr(XVar, Purity,
+                    Context, MainContext, SubContext, YTerm, no, Expansion,
+                    !.SVarState, !SVarStore, !VarSet,
+                    !ModuleInfo, !QualInfo, !Specs)
+            )
+        else
+            fail
         )
     ).
+
+%---------------------------------------------------------------------------%
+%
+% Code for parsing pred/func expressions.
+%
+
+:- type lambda_body_kind
+    --->    lambda_body_ordinary
+    ;       lambda_body_dcg.
+
+:- pred parse_lambda_expr(prog_var::in, purity::in,
+    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_term::in, maybe({lambda_body_kind, prog_term})::in, expansion::out,
+    svar_state::in, svar_store::in, svar_store::out,
+    prog_varset::in, prog_varset::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_lambda_expr(XVar, Purity, Context, MainContext, SubContext,
+        PurityPFArgsDetTerm, MaybeLambdaBody, Expansion,
+        !.SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+    (
+        MaybeLambdaBody = no,
+        TrueGoal = true_expr(Context),
+        MaybeBodyGoal = ok1(TrueGoal),
+        MaybeDCGVars = no_dcg_vars
+    ;
+        MaybeLambdaBody = yes({LambdaBodyKind, BodyGoalTerm}),
+        ContextPieces = cord.singleton(
+            words("In the body of lambda expression:")),
+        term.coerce(BodyGoalTerm, GenericBodyGoalTerm),
+        (
+            LambdaBodyKind = lambda_body_ordinary,
+            parse_goal(GenericBodyGoalTerm, ContextPieces,
+                MaybeBodyGoal, !VarSet),
+            MaybeDCGVars = no_dcg_vars
+        ;
+            LambdaBodyKind = lambda_body_dcg,
+            parse_dcg_pred_goal(GenericBodyGoalTerm, ContextPieces,
+                MaybeBodyGoal, DCGVar0, DCGVarN, !VarSet),
+            MaybeDCGVars = dcg_vars(DCGVar0, DCGVarN)
+        )
+    ),
+    parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
+        MaybeLambdaHead, !VarSet, !QualInfo),
+    (
+        MaybeLambdaHead = error1(LambdaHeadSpecs),
+        !:Specs = LambdaHeadSpecs ++ !.Specs,
+        qual_info_set_found_syntax_error(yes, !QualInfo),
+        Expansion = expansion(not_fgti, cord.empty)
+    ;
+        MaybeLambdaHead = ok1(LambdaHead),
+        build_lambda_expression(XVar, Purity,
+            Context, MainContext, SubContext,
+            LambdaHead, MaybeBodyGoal, Expansion,
+            !.SVarState, !SVarStore, !VarSet,
+            !ModuleInfo, !QualInfo, !Specs)
+    ).
+
+:- type maybe_dcg_vars
+    --->    no_dcg_vars
+    ;       dcg_vars(prog_var, prog_var).
+
+:- pred parse_lambda_purity_pf_args_det_term(prog_term::in, maybe_dcg_vars::in,
+    maybe1(lambda_head)::out, prog_varset::in, prog_varset::out,
+    qual_info::in, qual_info::out) is det.
+
+parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
+        MaybeLambdaHead, !VarSet, !QualInfo) :-
+    term.coerce(PurityPFArgsDetTerm, GenericPurityPFArgsDetTerm),
+    parse_purity_annotation(GenericPurityPFArgsDetTerm, LambdaPurity,
+        PFArgsDetTerm),
+
+%   A summary of the term structures that the two conditions of the nested
+%   if-then-else below look for:
+%
+%   (
+%       % Condition 1p:
+%       PFArgsDetTerm = is(BeforeIsTerm, DetismTerm),
+%       ( BeforeIsTerm = pred(...) ; BeforeIsTerm = any_pred(...) )
+%   ;
+%       % Condition 1f:
+%       PFArgsDetTerm = is(BeforeIsTerm, DetismTerm),
+%       BeforeIsTerm = "="(FuncArgsTerm, FuncRetTerm),
+%       ( FuncArgsTerm = func(...) ; FuncArgsTerm = any_func(...) )
+%   ;
+%       % Condition 2f:
+%       PFArgsDetTerm = "="(FuncArgsTerm, FuncRetTerm),
+%       ( FuncArgsTerm = func(...) ; FuncArgsTerm = any_func(...) )
+%   )
+
+    ( if
+        PFArgsDetTerm = term.functor(term.atom("is"),
+            [BeforeIsTerm, DetismTerm], _),
+        BeforeIsTerm = term.functor(term.atom(BeforeIsFunctor),
+            BeforeIsArgTerms, Context),
+        (
+            % Condition 1p.
+            (
+                BeforeIsFunctor = "pred",
+                Groundness = ho_ground
+            ;
+                BeforeIsFunctor = "any_pred",
+                Groundness = ho_any
+            ),
+            ArgModeTerms0 = BeforeIsArgTerms,
+            MaybeFuncRetArgModeTerm = no
+        ;
+            % Condition 1f.
+            BeforeIsFunctor = "=",
+            BeforeIsArgTerms = [FuncArgsTerm, FuncRetArgModeTerm0],
+            FuncArgsTerm = term.functor(term.atom(FuncTermFunctor),
+                ArgModeTerms0, _),
+            (
+                FuncTermFunctor = "func",
+                Groundness = ho_ground
+            ;
+                FuncTermFunctor = "any_func",
+                Groundness = ho_any
+            ),
+            MaybeFuncRetArgModeTerm = yes(FuncRetArgModeTerm0)
+        )
+    then
+        parse_lambda_detism(!.VarSet, DetismTerm, MaybeDetism),
+        (
+            MaybeFuncRetArgModeTerm = no,
+            PredOrFunc = pf_predicate,
+            (
+                MaybeDCGVars = no_dcg_vars,
+                ArgModeTerms = ArgModeTerms0,
+                parse_lambda_args_pred(Context, ArgModeTerms,
+                    LambdaArgs, !VarSet, BadModeSpecs, SVarSpecs),
+                LambdaHead = lambda_head(LambdaPurity, Groundness,
+                    PredOrFunc, lambda_normal, LambdaArgs,
+                    BadModeSpecs, SVarSpecs, MaybeDetism),
+                MaybeLambdaHead = ok1(LambdaHead)
+            ;
+                MaybeDCGVars = dcg_vars(DCGVar0, DCGVarN),
+                (
+                    ( ArgModeTerms0 = []
+                    ; ArgModeTerms0 = [_]
+                    ),
+                    Pieces = [words("Error: the head of a lambda expression"),
+                        words("that is defined by a DCG clause"),
+                        words("must have at least arguments."), nl],
+                    Msg = simple_msg(Context, [always(Pieces)]),
+                    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                        [Msg]),
+                    MaybeLambdaHead =
+                        error1([Spec | get_any_errors1(MaybeDetism)])
+                ;
+                    ArgModeTerms0 =
+                        [ArgModeTerm1, ArgModeTerm2 | ArgModeTerms3plus],
+                    split_last_two(
+                        ArgModeTerm1, ArgModeTerm2, ArgModeTerms3plus,
+                        NonDCGArgModeTerms, DCGModeTerm0, DCGModeTermN),
+                    DCGContext0 = get_term_context(DCGModeTerm0),
+                    DCGContextN = get_term_context(DCGModeTermN),
+                    DCGVarTerm0 = term.variable(DCGVar0, DCGContext0),
+                    DCGVarTermN = term.variable(DCGVarN, DCGContextN),
+                    term.coerce(DCGVarTerm0, GenericDCGVarTerm0),
+                    term.coerce(DCGVarTermN, GenericDCGVarTermN),
+                    DCGArgModeTerm0 = term.functor(term.atom("::"),
+                        [GenericDCGVarTerm0, DCGModeTerm0], DCGContext0),
+                    DCGArgModeTermN = term.functor(term.atom("::"),
+                        [GenericDCGVarTermN, DCGModeTermN], DCGContextN),
+                    ArgModeTerms = NonDCGArgModeTerms ++
+                        [DCGArgModeTerm0, DCGArgModeTermN],
+                    parse_lambda_args_pred(Context, ArgModeTerms,
+                        LambdaArgs, !VarSet, BadModeSpecs, SVarSpecs),
+                    LambdaHead = lambda_head(LambdaPurity, Groundness,
+                        PredOrFunc, lambda_normal, LambdaArgs,
+                        BadModeSpecs, SVarSpecs, MaybeDetism),
+                    MaybeLambdaHead = ok1(LambdaHead)
+                )
+            )
+        ;
+            MaybeFuncRetArgModeTerm = yes(FuncRetArgModeTerm),
+            PredOrFunc = pf_function,
+            (
+                MaybeDCGVars = no_dcg_vars,
+                parse_lambda_args_func(Context,
+                    ArgModeTerms0, FuncRetArgModeTerm,
+                    LambdaArgs, !VarSet, BadModeSpecs, SVarSpecs),
+                LambdaHead = lambda_head(LambdaPurity, Groundness, PredOrFunc,
+                    lambda_normal, LambdaArgs, BadModeSpecs, SVarSpecs,
+                    MaybeDetism),
+                MaybeLambdaHead = ok1(LambdaHead)
+            ;
+                MaybeDCGVars = dcg_vars(_, _),
+                Pieces = [words("Error: DCG notation is not allowed"),
+                    words("in clauses for functions."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                MaybeLambdaHead =
+                    error1([Spec | get_any_errors1(MaybeDetism)])
+            )
+        )
+    else if
+        % Condition 2f.
+        %
+        % We are looking for the same term structure as condition 1b,
+        % minus the outer "is detism" wrapper. This is why the structure
+        % of this code, and the variable names, resemble condition 1b.
+        PFArgsDetTerm = term.functor(term.atom(BeforeIsFunctor),
+            BeforeIsArgTerms, Context),
+        BeforeIsFunctor = "=",
+        BeforeIsArgTerms = [FuncArgsTerm, FuncRetArgModeTerm],
+        FuncArgsTerm = term.functor(term.atom(FuncTermFunctor),
+            ArgModeTerms, _),
+        (
+            FuncTermFunctor = "func",
+            Groundness = ho_ground
+        ;
+            FuncTermFunctor = "any_func",
+            Groundness = ho_any
+        )
+    then
+        PredOrFunc = pf_function,
+        % XXX Should we require that ArgModeTerms and FuncRetArgModeTerm
+        % *must* have no explicit mode annotations?
+        (
+            MaybeDCGVars = no_dcg_vars,
+            parse_lambda_args_func(Context, ArgModeTerms, FuncRetArgModeTerm,
+                LambdaArgs, !VarSet, BadModeSpecs, SVarSpecs),
+            MaybeDetism = ok1(detism_det),
+            LambdaHead = lambda_head(LambdaPurity, Groundness, PredOrFunc,
+                lambda_normal, LambdaArgs, BadModeSpecs, SVarSpecs,
+                MaybeDetism),
+            MaybeLambdaHead = ok1(LambdaHead)
+        ;
+            MaybeDCGVars = dcg_vars(_, _),
+            Pieces = [words("Error: DCG notation is not allowed"),
+                words("in clauses for functions."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [Msg]),
+            MaybeLambdaHead = error1([Spec])
+        )
+    else
+        Pieces = [words("Error: the clause head part of a lambda expression"),
+            words("should have one of the following forms:"),
+            quote("pred(<args>) is <determinism>"), nl,
+            quote("any_pred(<args>) is <determinism>"), nl,
+            quote("func(<args>) = <retarg> is <determinism>"), nl,
+            quote("any_func(<args>) = <retarg> is <determinism>"), nl,
+            quote("func(<args>) = <retarg>"), nl,
+            quote("any_func(<args>) = <retarg>"), suffix(","), nl,
+            words("or one of those forms preceded by either"),
+            quote("semipure"), words("or"), quote("impure"), suffix("."), nl],
+        Msg = simple_msg(get_term_context(PFArgsDetTerm), [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        qual_info_set_found_syntax_error(yes, !QualInfo),
+        MaybeLambdaHead = error1([Spec])
+    ).
+
+:- pred split_last_two(T::in, T::in, list(T)::in, list(T)::out, T::out, T::out)
+    is det.
+
+split_last_two(Element1, Element2, Elements3plus, Main, LastButOne, Last) :-
+    (
+        Elements3plus = [],
+        Main = [],
+        LastButOne = Element1,
+        Last = Element2
+    ;
+        Elements3plus = [Element3 | Elements4plus],
+        split_last_two(Element2, Element3, Elements4plus, MainTail,
+            LastButOne, Last),
+        Main = [Element1 | MainTail]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred parse_lambda_args_func(term.context::in, list(term)::in, term::in,
+    list(lambda_arg)::out, prog_varset::in, prog_varset::out,
+    list(error_spec)::out, list(error_spec)::out) is det.
+
+parse_lambda_args_func(Context, ArgModeTerms, FuncRetArgModeTerm,
+        LambdaArgs, !VarSet, !:BadModeSpecs, !:SVarSpecs) :-
+    !:BadModeSpecs = [],
+    !:SVarSpecs = [],
+    parse_lambda_args(lambda_arg_ordinary,
+        ArgModeTerms, OrdinaryLambdaArgs, 1, ResultArgNum,
+        !VarSet, !BadModeSpecs, !SVarSpecs),
+    parse_lambda_arg(lambda_arg_func_result,
+        FuncRetArgModeTerm, FuncRetLambdaArg, ResultArgNum, _,
+        !VarSet, !BadModeSpecs, !SVarSpecs),
+    LambdaArgs = OrdinaryLambdaArgs ++ [FuncRetLambdaArg],
+    classify_lambda_arg_modes_present_absent(LambdaArgs,
+        PresentArgs, AbsentArgs),
+    (
+        AbsentArgs = []
+        % All arguments have explicit mode annotations.
+    ;
+        AbsentArgs = [_ | _],
+        (
+            PresentArgs = []
+            % No arguments have explicit mode annotations.
+            % The argument modes that together constitute the default
+            % function mode have already been filled in.
+        ;
+            PresentArgs = [_ | _],
+            add_some_not_all_args_have_modes_error(Context, AbsentArgs,
+                !BadModeSpecs)
+        )
+    ).
+
+:- pred parse_lambda_args_pred(term.context::in, list(term)::in,
+    list(lambda_arg)::out, prog_varset::in, prog_varset::out,
+    list(error_spec)::out, list(error_spec)::out) is det.
+
+parse_lambda_args_pred(Context, ArgModeTerms,
+        LambdaArgs, !VarSet, !:BadModeSpecs, !:SVarSpecs) :-
+    !:BadModeSpecs = [],
+    !:SVarSpecs = [],
+    parse_lambda_args(lambda_arg_ordinary, ArgModeTerms, LambdaArgs, 1, _,
+        !VarSet, !BadModeSpecs, !SVarSpecs),
+    classify_lambda_arg_modes_present_absent(LambdaArgs,
+        PresentArgs, AbsentArgs),
+    (
+        AbsentArgs = []
+        % All arguments have explicit mode annotations.
+    ;
+        AbsentArgs = [_ | _],
+        (
+            PresentArgs = [],
+            add_pred_no_args_have_modes_error(Context, !BadModeSpecs)
+        ;
+            PresentArgs = [_ | _],
+            add_some_not_all_args_have_modes_error(Context, AbsentArgs,
+                !BadModeSpecs)
+        )
+    ).
+
+:- pred classify_lambda_arg_modes_present_absent(list(lambda_arg)::in,
+    list(lambda_arg)::out, list(lambda_arg)::out) is det.
+
+classify_lambda_arg_modes_present_absent([], [], []).
+classify_lambda_arg_modes_present_absent([LambdaArg | LambdaArgs],
+        PresentArgs, AbsentArgs) :-
+    classify_lambda_arg_modes_present_absent(LambdaArgs,
+        PresentArgsTail, AbsentArgsTail),
+    LambdaArg = lambda_arg(_, _, _, _, PresentOrAbsent, _, _),
+    (
+        PresentOrAbsent = lam_present,
+        PresentArgs = [LambdaArg | PresentArgsTail],
+        AbsentArgs = AbsentArgsTail
+    ;
+        PresentOrAbsent = lam_absent,
+        PresentArgs = PresentArgsTail,
+        AbsentArgs = [LambdaArg | AbsentArgsTail]
+    ).
+
+:- pred add_some_not_all_args_have_modes_error(prog_context::in,
+    list(lambda_arg)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_some_not_all_args_have_modes_error(Context, _AbsentArgs, !Specs) :-
+    % We could use _AbsentArgs to make the error message more detailed.
+    Pieces = [words("Error: in head of lambda expression:"),
+        words("some but not all arguments have modes."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred add_pred_no_args_have_modes_error(prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pred_no_args_have_modes_error(Context, !Specs) :-
+    % We could use _AbsentArgs to make the error message more detailed.
+    Pieces = [words("Error: in head of predicate lambda expression:"),
+        words("none of the arguments have modes."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+%---------------------------------------------------------------------------%
+
+:- type lambda_arg_kind
+    --->    lambda_arg_ordinary
+    ;       lambda_arg_func_result.
+
+:- type lambda_arg_mode_presence
+    --->    lam_absent
+    ;       lam_present.
+
+:- type lambda_arg
+    --->    lambda_arg(
+                la_arg_num              :: int,
+                la_kind                 :: lambda_arg_kind,
+                la_arg_term             :: prog_term,
+                la_arg_var              :: prog_var,
+
+                % If the lambda argument does not have a "::mode" annotation,
+                % the la_arg_mode_presence field will contain lam_absent,
+                % and the la_arg_mode field will contain the default mode
+                % for the argument position ("in" for ordinary arguments,
+                % "out" for function results).
+                %
+                % If the lambda argument does have a "::mode" annotation,
+                % the la_arg_mode_presence field will contain lam_present.
+                % If the mode annotation can be successfully parsed,
+                % the la_arg_mode field will contain that mode.
+                % If the mode annotation cannot be parsed, then
+                % the la_arg_mode field will contain the default mode
+                % for the argument position, as above, but the messages
+                % descrbing the error will be added to !BadModeSpecs.
+                la_arg_mode_presence    :: lambda_arg_mode_presence,
+                la_arg_mode             :: mer_mode,
+
+                % The context of the mode annotation, or if it is absent,
+                % the context of the argument.
+                la_arg_mode_context     :: prog_context
+            ).
+
+:- func project_lambda_arg_term(lambda_arg) = prog_term.
+
+project_lambda_arg_term(LambdaArg) = ArgTerm :-
+    LambdaArg = lambda_arg(_, _, ArgTerm, _, _, _, _).
+
+:- func project_lambda_var(lambda_arg) = prog_var.
+
+project_lambda_var(LambdaArg) = LambdaVar :-
+    LambdaArg = lambda_arg(_, _, _, LambdaVar, _, _, _).
+
+:- func project_lambda_arg_mode(lambda_arg) = mer_mode.
+
+project_lambda_arg_mode(LambdaArg) = Mode :-
+    LambdaArg = lambda_arg(_, _, _, _, _, Mode, _).
+
+%---------------------------------------------------------------------------%
+
+    % Parse a list of lambda argument terms, each which should be of the form
+    % argterm::modeterm.
+    %
+:- pred parse_lambda_args(lambda_arg_kind::in,
+    list(term)::in, list(lambda_arg)::out,
+    int::in, int::out, prog_varset::in, prog_varset::out,
+    list(error_spec)::in, list(error_spec)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_lambda_args(_Kind, [], [], !ArgNum, !VarSet, !BadModeSpecs, !SVarSpecs).
+parse_lambda_args(Kind, [HeadArgModeTerm | TailArgModeTerms],
+        [HeadLambdaArg | TailLambdaArgs],
+        !ArgNum, !VarSet, !BadModeSpecs, !SVarSpecs) :-
+    parse_lambda_arg(Kind, HeadArgModeTerm, HeadLambdaArg,
+        !ArgNum, !VarSet, !BadModeSpecs, !SVarSpecs),
+    parse_lambda_args(Kind, TailArgModeTerms, TailLambdaArgs,
+        !ArgNum, !VarSet, !BadModeSpecs, !SVarSpecs).
+
+:- pred parse_lambda_arg(lambda_arg_kind::in, term::in, lambda_arg::out,
+    int::in, int::out, prog_varset::in, prog_varset::out,
+    list(error_spec)::in, list(error_spec)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_lambda_arg(Kind, ArgModeTerm, LambdaArg, !ArgNum, !VarSet,
+        !BadModeSpecs, !SVarSpecs) :-
+    ( if
+        ArgModeTerm = term.functor(term.atom("::"),
+            [ArgTermPrime, ModeTerm], _)
+    then
+        ArgTerm = ArgTermPrime,
+        PresentOrAbsent = lam_present,
+        ModeContext = get_term_context(ModeTerm),
+        ContextPieces = cord.from_list([words("In the"), nth_fixed(!.ArgNum),
+            words("argument of the lambda expression:")]),
+        varset.coerce(!.VarSet, GenericVarSet),
+        parse_mode(allow_constrained_inst_var, GenericVarSet, ContextPieces,
+            ModeTerm, MaybeMode0),
+        (
+            MaybeMode0 = ok1(Mode0),
+            constrain_inst_vars_in_mode(Mode0, Mode)
+        ;
+            MaybeMode0 = error1(ModeSpecs),
+            !:BadModeSpecs = ModeSpecs ++ !.BadModeSpecs,
+            Mode = default_mode_for_lambda_arg(Kind)
+        )
+    else
+        ArgTerm = ArgModeTerm,
+        PresentOrAbsent = lam_absent,
+        Mode = default_mode_for_lambda_arg(Kind),
+        ModeContext = get_term_context(ArgModeTerm)
+    ),
+
+    term.coerce(ArgTerm, ProgArgTerm),
+    % We currently do not allow !X to appear as a lambda head argument, though
+    % we might later extend the syntax still further to accommodate this
+    % using syntax such as !IO::(di, uo).
+    ( if is_term_a_bang_state_pair(ProgArgTerm, StateVar, StateVarContext) then
+        (
+            Kind = lambda_arg_ordinary,
+            report_illegal_bang_svar_lambda_arg(StateVarContext, !.VarSet,
+                StateVar, !SVarSpecs)
+        ;
+            Kind = lambda_arg_func_result,
+            report_illegal_func_svar_result(StateVarContext, !.VarSet,
+                StateVar, !SVarSpecs)
+        )
+    else
+        true
+    ),
+    % We always allocate a new variable for each lambda argument,
+    % even if the argument term is already a variable (which is what
+    % make_fresh_arg_vars_subst_svars does). This is because for functions,
+    % we need to ensure that the variable corresponding to the function
+    % result term is a new variable, to avoid the function result term
+    % becoming lambda-quantified.
+    LambdaVarName = "LambdaHeadVar__" ++ string.int_to_string(!.ArgNum),
+    varset.new_named_var(LambdaVarName, LambdaVar, !VarSet),
+    LambdaArg = lambda_arg(!.ArgNum, Kind, ProgArgTerm, LambdaVar,
+        PresentOrAbsent, Mode, ModeContext),
+    !:ArgNum = !.ArgNum + 1.
+
+:- func default_mode_for_lambda_arg(lambda_arg_kind) = mer_mode.
+
+default_mode_for_lambda_arg(Kind) = Mode :-
+    (
+        Kind = lambda_arg_ordinary,
+        in_mode(Mode)
+    ;
+        Kind = lambda_arg_func_result,
+        out_mode(Mode)
+    ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred parse_purity_annotation(term(T)::in, purity::out, term(T)::out) is det.
 
@@ -1045,232 +1706,55 @@ parse_purity_annotation(Term0, Purity, Term) :-
         Term = Term0
     ).
 
-:- pred qualify_lambda_mode_list_if_not_opt_imported(
-    list(mer_mode)::in, list(mer_mode)::out, prog_context::in,
-    qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred parse_lambda_detism(prog_varset::in, term::in,
+    maybe1(determinism)::out) is det.
 
-qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes, Context,
-        !QualInfo, !Specs) :-
-    qual_info_get_maybe_opt_imported(!.QualInfo, MaybeOptImported),
-    (
-        MaybeOptImported = is_not_opt_imported,
-        qual_info_get_mq_info(!.QualInfo, MQInfo0),
-        % Lambda expressions cannot appear in the interface of a module.
-        qualify_lambda_mode_list(mq_not_used_in_interface, Context,
-            Modes0, Modes, MQInfo0, MQInfo, !Specs),
-        qual_info_set_mq_info(MQInfo, !QualInfo)
-    ;
-        MaybeOptImported = is_opt_imported,
-        % The modes in `.opt' files are already fully module qualified.
-        Modes = Modes0
-    ).
-
-%---------------------------------------------------------------------------%
-%
-% Code for parsing pred/func expressions.
-%
-
-    % parse_pred_expression converts the first argument of a :-/2
-    % higher-order pred expression into a list of variables, a list
-    % of their corresponding modes, and a determinism.
-    %
-:- pred parse_pred_expression(term::in, ho_groundness::out,
-    lambda_eval_method::out, list(prog_term)::out, list(mer_mode)::out,
-    determinism::out) is semidet.
-
-parse_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes, Det) :-
-    PredTerm = term.functor(term.atom("is"), [PredArgsTerm, DetTerm], _),
-    DetTerm = term.functor(term.atom(DetString), [], _),
-    standard_det(DetString, Det),
-    PredArgsTerm = term.functor(term.atom(Name), PredArgsList, _),
-    (
-        Name = "pred",
-        Groundness = ho_ground
-    ;
-        Name = "any_pred",
-        Groundness = ho_any
-    ),
-    parse_pred_expr_args(PredArgsList, Args, Modes),
-    inconsistent_constrained_inst_vars_in_modes(Modes, []).
-
-    % parse_dcg_pred_expression converts the first argument of a -->/2
-    % higher-order DCG pred expression into a list of arguments, a list
-    % of their corresponding modes and the two DCG argument modes, and a
-    % determinism.
-    %
-    % This is a variant of the higher-order pred syntax:
-    %
-    %   `(pred(Var1::Mode1, ..., VarN::ModeN, DCG0Mode, DCGMode) is Det -->
-    %       Goal)'.
-    %
-    % For `any' insts, replace `pred' with `any_pred'.
-    %
-:- pred parse_dcg_pred_expression(term::in, ho_groundness::out,
-    lambda_eval_method::out, list(prog_term)::out, list(mer_mode)::out,
-    determinism::out) is semidet.
-
-parse_dcg_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes,
-        Det) :-
-    PredTerm = term.functor(term.atom("is"), [PredArgsTerm, DetTerm], _),
-    DetTerm = term.functor(term.atom(DetString), [], _),
-    standard_det(DetString, Det),
-    PredArgsTerm = term.functor(term.atom(Name), PredArgsList, _),
-    (
-        Name = "pred",
-        Groundness = ho_ground
-    ;
-        Name = "any_pred",
-        Groundness = ho_any
-    ),
-    parse_dcg_pred_expr_args(PredArgsList, Args, Modes),
-    inconsistent_constrained_inst_vars_in_modes(Modes, []).
-
-    % parse_func_expression converts the first argument of a :-/2
-    % higher-order func expression (which may be implicit, see the fourth
-    % goal form below) into a list of arguments, a list of their corresponding
-    % modes, and a determinism.
-    %
-    % The syntax of a higher-order func expression is
-    %
-    %   `(func(Var1::Mode1, ..., VarN::ModeN) = (VarN1::ModeN1) is Det
-    %       :- Goal)'
-    % or
-    %   `(func(Var1, ..., VarN) = (VarN1) is Det :- Goal)'
-    %       where the modes are assumed to be `in' for the function arguments
-    %       and `out' for the result.
-    % or
-    %   `(func(Var1, ..., VarN) = (VarN1) :- Goal)'
-    %       where the modes are assumed as above,
-    %       and the determinism is assumed to be det.
-    % or
-    %   `(func(Var1, ..., VarN) = (VarN1))'
-    %       where the body goal is assumed to be `true'.
-    %
-    % For `any' insts, replace `func' with `any_func'.
-    %
-:- pred parse_func_expression(term::in, ho_groundness::out,
-    lambda_eval_method::out, list(prog_term)::out, list(mer_mode)::out,
-    determinism::out) is semidet.
-
-parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
-    % Parse a func expression with specified modes and determinism.
-    FuncTerm = term.functor(term.atom("is"), [EqTerm, DetTerm], _),
-    EqTerm = term.functor(term.atom("="), [FuncArgsTerm, RetTerm], _),
-    DetTerm = term.functor(term.atom(DetString), [], _),
-    standard_det(DetString, Det),
-    FuncArgsTerm = term.functor(term.atom(Name), FuncArgsList, _),
-    (
-        Name = "func",
-        Groundness = ho_ground
-    ;
-        Name = "any_func",
-        Groundness = ho_any
-    ),
-
-    ( if parse_pred_expr_args(FuncArgsList, Args0, Modes0) then
-        parse_lambda_arg(RetTerm, RetArg, RetMode),
-        Args = Args0 ++ [RetArg],
-        Modes = Modes0 ++ [RetMode],
-        inconsistent_constrained_inst_vars_in_modes(Modes, [])
+parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
+    ( if
+        DetismTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism)
+    then
+        MaybeDetism = ok1(Detism)
     else
-        % The argument modes default to `in',
-        % the return mode defaults to `out'.
-        in_mode(InMode),
-        out_mode(OutMode),
-        list.length(FuncArgsList, NumArgs),
-        list.duplicate(NumArgs, InMode, InModes),
-        Modes = InModes ++ [OutMode],
-        Args1 = FuncArgsList ++ [RetTerm],
-        list.map(term.coerce, Args1, Args)
+        varset.coerce(VarSet, GenericVarSet),
+        TermStr = describe_error_term(GenericVarSet, DetismTerm),
+        Pieces = [words("Error:"), words(TermStr),
+            words("is not a valid determinism."), nl],
+        Msg = simple_msg(get_term_context(DetismTerm), [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_term_to_parse_tree, [Msg]),
+        MaybeDetism = error1([Spec])
     ).
-parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
-    % Parse a func expression with unspecified modes and determinism.
-    FuncTerm = term.functor(term.atom("="), [FuncArgsTerm, RetTerm], _),
-    FuncArgsTerm = term.functor(term.atom(Name), Args0, _),
-    (
-        Name = "func",
-        Groundness = ho_ground
-    ;
-        Name = "any_func",
-        Groundness = ho_any
-    ),
-
-    % The argument modes default to `in', the return mode defaults to `out',
-    % and the determinism defaults to `det'.
-    in_mode(InMode),
-    out_mode(OutMode),
-    list.length(Args0, NumArgs),
-    list.duplicate(NumArgs, InMode, InModes),
-    Det = detism_det,
-    Modes = InModes ++ [OutMode],
-    inconsistent_constrained_inst_vars_in_modes(Modes, []),
-    Args1 = Args0 ++ [RetTerm],
-    list.map(term.coerce, Args1, Args).
-
-%---------------------------------------------------------------------------%
-
-:- pred parse_pred_expr_args(list(term)::in, list(prog_term)::out,
-    list(mer_mode)::out) is semidet.
-
-parse_pred_expr_args([], [], []).
-parse_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
-    parse_lambda_arg(Term, Arg, Mode),
-    parse_pred_expr_args(Terms, Args, Modes).
-
-    % parse_dcg_pred_expr_args is like parse_pred_expr_args except that
-    % the last two elements of the list are the modes of the two DCG arguments.
-    %
-:- pred parse_dcg_pred_expr_args(list(term)::in, list(prog_term)::out,
-    list(mer_mode)::out) is semidet.
-
-parse_dcg_pred_expr_args([DCGModeTermA, DCGModeTermB], [],
-        [DCGModeA, DCGModeB]) :-
-    % XXX This is a dummy; fix this.
-    varset.init(VarSet),
-    parse_mode(allow_constrained_inst_var, VarSet, cord.init,
-        DCGModeTermA, MaybeDCGModeA0),
-    parse_mode(allow_constrained_inst_var, VarSet, cord.init,
-        DCGModeTermB, MaybeDCGModeB0),
-    MaybeDCGModeA0 = ok1(DCGModeA0),
-    MaybeDCGModeB0 = ok1(DCGModeB0),
-    constrain_inst_vars_in_mode(DCGModeA0, DCGModeA),
-    constrain_inst_vars_in_mode(DCGModeB0, DCGModeB).
-parse_dcg_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
-    Terms = [_, _ | _],
-    parse_lambda_arg(Term, Arg, Mode),
-    parse_dcg_pred_expr_args(Terms, Args, Modes).
-
-:- pred parse_lambda_arg(term::in, prog_term::out, mer_mode::out) is semidet.
-
-parse_lambda_arg(Term, ArgTerm, Mode) :-
-    Term = term.functor(term.atom("::"), [ArgTerm0, ModeTerm], _),
-    % XXX This is a dummy; fix this.
-    varset.init(VarSet),
-    term.coerce(ArgTerm0, ArgTerm),
-    parse_mode(allow_constrained_inst_var, VarSet, cord.init,
-        ModeTerm, MaybeMode0),
-    MaybeMode0 = ok1(Mode0),
-    constrain_inst_vars_in_mode(Mode0, Mode).
 
 %-----------------------------------------------------------------------------%
 %
 % Code for building lambda expressions.
 %
 
-:- pred build_lambda_expression(prog_var::in, purity::in, purity::in,
-    ho_groundness::in, pred_or_func::in, lambda_eval_method::in,
-    list(prog_term)::in, list(mer_mode)::in, determinism::in, goal::in,
+:- type lambda_head
+    --->    lambda_head(
+                purity,
+                ho_groundness,
+                pred_or_func,
+                lambda_eval_method,
+                list(lambda_arg),
+                list(error_spec),       % Errors about unparseable and/or
+                                        % missing arg modes.
+                list(error_spec),       % Errors about !X arguments.
+                maybe1(determinism)     % The determinism of the lambda expr.
+            ).
+
+:- pred build_lambda_expression(prog_var::in, purity::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
-    hlds_goal::out, svar_state::in, svar_store::in, svar_store::out,
+    lambda_head::in, maybe1(goal)::in, expansion::out,
+    svar_state::in, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
-        PredOrFunc, EvalMethod, Args0, Modes, Det, ParsedGoal,
-        Context, MainContext, SubContext, Goal, OutsideSVarState,
-        !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+build_lambda_expression(LHSVar, UnificationPurity,
+        Context, MainContext, SubContext, LambdaHead, MaybeBodyGoal,
+        Expansion, OutsideSVarState, !SVarStore,
+        !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     % In the parse tree, the lambda arguments can be any terms, but in the HLDS
     % they must be distinct variables. So we introduce fresh variables
     % for the lambda arguments, and add appropriate unifications.
@@ -1310,46 +1794,75 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
     % but variables in the function return value term (and not in the
     % arguments) should *not* be locally quantified.
 
-    ( if illegal_state_var_func_result(PredOrFunc, Args0, StateVar) then
-        report_illegal_func_svar_result(Context, !.VarSet, StateVar, !Specs),
+    LambdaHead = lambda_head(LambdaPurity, Groundness, PredOrFunc,
+        EvalMethod, LambdaArgs0, BadModeSpecs, SVarSpecs, MaybeDetism),
+    qualify_lambda_arg_modes_if_not_opt_imported(LambdaArgs0, LambdaArgs1,
+        Modes, !QualInfo, !Specs),
+    inconsistent_constrained_inst_vars_in_modes(Modes, InconsistentVars),
+    (
+        InconsistentVars = []
+    ;
+        InconsistentVars = [_ | _],
+        varset.coerce(!.VarSet, InstVarSet),
+        InconsistentVarStrs = list.map(
+            mercury_var_to_string(InstVarSet, print_name_only),
+            InconsistentVars),
+        InconsistentVarPieces =
+            [words("Error: the constraints on the inst"),
+            words(choose_number(InconsistentVars, "variable", "variables")) |
+            list_to_quoted_pieces(InconsistentVarStrs)] ++
+            [words("are inconsistent."), nl],
+        InconsistentVarMsg =
+            simple_msg(Context, [always(InconsistentVarPieces)]),
+        InconsistentVarSpec = error_spec(severity_error,
+            phase_term_to_parse_tree, [InconsistentVarMsg]),
+        !:Specs = [InconsistentVarSpec | !.Specs]
+    ),
+    (
+        MaybeDetism = ok1(Detism)
+    ;
+        MaybeDetism = error1(DetismSpecs),
+        !:Specs = DetismSpecs ++ !.Specs,
+        % Due to the error, this dummy value won't be used.
+        Detism = detism_det
+    ),
+    (
+        MaybeBodyGoal = ok1(BodyGoal)
+    ;
+        MaybeBodyGoal = error1(BodyGoalSpecs),
+        !:Specs = BodyGoalSpecs ++ !.Specs,
+        qual_info_set_found_syntax_error(yes, !QualInfo),
+        % Due to the error, this dummy value won't be used.
+        BodyGoal = true_expr(Context)
+    ),
+
+    ArgSpecs = BadModeSpecs ++ SVarSpecs,
+    (
+        ArgSpecs = [_ | _],
+        !:Specs = ArgSpecs ++ !.Specs,
+        qual_info_set_found_syntax_error(yes, !QualInfo),
         Goal = true_goal_with_context(Context)
-    else if lambda_args_contain_bang_state_var(Args0, StateVar) then
-        report_illegal_bang_svar_lambda_arg(Context, !.VarSet, StateVar,
-            !Specs),
-        Goal = true_goal_with_context(Context)
-    else
+    ;
+        ArgSpecs = [],
         some [!SVarState] (
-            svar_prepare_for_lambda_head(Context, Args0, Args, FinalSVarMap,
-                OutsideSVarState, !:SVarState, !VarSet, !Specs),
+            ArgTerms1 = list.map(project_lambda_arg_term, LambdaArgs1),
+            svar_prepare_for_lambda_head(Context, ArgTerms1, ArgTerms,
+                FinalSVarMap, OutsideSVarState, !:SVarState, !VarSet, !Specs),
             InitialSVarState = !.SVarState,
-
-            % Create fresh variables, transform the goal to HLDS, and
-            % add unifications with the fresh variables. We use varset.new_vars
-            % rather than make_fresh_arg_vars_subst_svars, since for functions
-            % we need to ensure that the variable corresponding to the function
-            % result term is a new variable, to avoid the function result term
-            % becoming lambda-quantified.
-
-            list.length(Args, NumArgs),
-            make_n_fresh_vars("LambdaHeadVar__", NumArgs, LambdaVars, !VarSet),
 
             % Partition the arguments (and their corresponding lambda vars)
             % into two sets: those that are not output, i.e. input and unused,
             % and those that are output.
-            ( if
-                partition_args_and_lambda_vars(!.ModuleInfo, Args, LambdaVars,
-                    Modes, NonOutputArgs0, OutputArgs0, NonOutputLambdaVars0,
-                    OutputLambdaVars0)
-            then
-                NonOutputArgs       = NonOutputArgs0,
-                OutputArgs          = OutputArgs0,
-                NonOutputLambdaVars = NonOutputLambdaVars0,
-                OutputLambdaVars    = OutputLambdaVars0
-            else
-                unexpected($module, $pred, "mismatched lists")
-            ),
+            %
+            % The call to svar_prepare_for_lambda_head obsoletes the arg term
+            % fields of LambdaArgs1, so we must pass the new arg terms
+            % separately. We don't need to put them back into the lambda args,
+            % since the lambda args won't be needed later.
+            partition_args_and_lambda_vars(!.ModuleInfo, LambdaArgs1, ArgTerms,
+                NonOutputArgs, OutputArgs,
+                NonOutputLambdaVars, OutputLambdaVars),
 
-            map.init(Substitution),
+            list.length(ArgTerms, NumArgs),
             ArgContext = ac_head(PredOrFunc, NumArgs),
 
             % Create the unifications that need to come before the body of the
@@ -1361,7 +1874,8 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
                 !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
 
-            transform_parse_tree_goal_to_hlds(loc_whole_goal, ParsedGoal,
+            map.init(Substitution),
+            transform_parse_tree_goal_to_hlds(loc_whole_goal, BodyGoal,
                 Substitution, Body, !SVarState, !SVarStore,
                 !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
@@ -1374,13 +1888,15 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
                 !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
 
+            LambdaVars = list.map(project_lambda_var, LambdaArgs1),
+
             trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (
                 io.write_string("\nLAMBDA EXPRESSION\n", !IO),
-                io.write_string("args before:\n", !IO),
-                io.write_list(Args0, "\n", io.write, !IO),
+                io.write_string("arg terms before:\n", !IO),
+                io.write_list(ArgTerms1, "\n", io.write, !IO),
                 io.nl(!IO),
-                io.write_string("args after:\n", !IO),
-                io.write_list(Args, "\n", io.write, !IO),
+                io.write_string("arg terms after:\n", !IO),
+                io.write_list(ArgTerms, "\n", io.write, !IO),
                 io.nl(!IO),
                 io.write_string("lambda arg vars:\n", !IO),
                 io.write(LambdaVars, !IO),
@@ -1412,12 +1928,13 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             % quantify.
             (
                 PredOrFunc = pf_predicate,
-                QuantifiedArgs = Args
+                QuantifiedArgTerms = ArgTerms
             ;
                 PredOrFunc = pf_function,
-                pred_args_to_func_args(Args, QuantifiedArgs, _ReturnValTerm)
+                pred_args_to_func_args(ArgTerms, QuantifiedArgTerms,
+                    _ReturnValTerm)
             ),
-            term.vars_list(QuantifiedArgs, QuantifiedVars0),
+            term.vars_list(QuantifiedArgTerms, QuantifiedVars0),
             list.sort_and_remove_dups(QuantifiedVars0, QuantifiedVars),
 
             goal_info_init(Context, GoalInfo),
@@ -1435,50 +1952,105 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             ),
 
             LambdaRHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-                EvalMethod, LambdaNonLocals, LambdaVars, Modes, Det,
+                EvalMethod, LambdaNonLocals, LambdaVars, Modes, Detism,
                 HLDS_Goal),
-            make_atomic_unification(X, LambdaRHS, Context, MainContext,
+            make_atomic_unification(LHSVar, LambdaRHS, Context, MainContext,
                 SubContext, UnificationPurity, Goal, !QualInfo)
         )
-    ).
+    ),
+    Expansion = expansion(not_fgti, cord.singleton(Goal)).
 
     % Partition the lists of arguments and variables into lists
     % of non-output and output arguments and variables.
     %
- :- pred partition_args_and_lambda_vars(module_info::in,
-    list(prog_term)::in, list(prog_var)::in, list(mer_mode)::in,
+:- pred partition_args_and_lambda_vars(module_info::in,
+    list(lambda_arg)::in, list(prog_term)::in,
     list(prog_term)::out, list(prog_term)::out,
-    list(prog_var)::out, list(prog_var)::out) is semidet.
+    list(prog_var)::out, list(prog_var)::out) is det.
 
-partition_args_and_lambda_vars(_, [], [], [], [], [], [], []).
-partition_args_and_lambda_vars(ModuleInfo, [Arg | Args],
-        [LambdaVar | LambdaVars], [Mode | Modes], InputArgs, OutputArgs,
-        InputLambdaVars, OutputLambdaVars) :-
-    partition_args_and_lambda_vars(ModuleInfo, Args, LambdaVars, Modes,
-        InputArgs0, OutputArgs0, InputLambdaVars0, OutputLambdaVars0),
+partition_args_and_lambda_vars(_, [], [], [], [], [], []).
+partition_args_and_lambda_vars(_, [], [_ | _], _, _, _, _) :-
+    unexpected($pred, "mismatched lists").
+partition_args_and_lambda_vars(_, [_ | _], [], _, _, _, _) :-
+    unexpected($pred, "mismatched lists").
+partition_args_and_lambda_vars(ModuleInfo,
+        [LambdaArg | LambdaArgs], [ArgTerm | ArgTerms],
+        InputArgTerms, OutputArgTerms, InputLambdaVars, OutputLambdaVars) :-
+    partition_args_and_lambda_vars(ModuleInfo, LambdaArgs, ArgTerms,
+        InputArgTermsTail, OutputArgTermsTail,
+        InputLambdaVarsTail, OutputLambdaVarsTail),
 
-    % Calling mode_is_output/2 directly will cause the compiler to abort
-    % if the mode is undefined, so we first check for this. If the mode
-    % is undefined, it doesn't really matter which partitions we place
-    % the arguments/lambda vars into because mode analysis will fail
-    % anyway.
+    LambdaArg = lambda_arg(_ArgNum, _Kind, _SupersededArgTerm, LambdaVar,
+        _PresentOrAbsent, Mode, _ModeContext),
 
-    ( if mode_is_undefined(ModuleInfo, Mode) then
-        InputArgs        = [Arg | InputArgs0],
-        OutputArgs       = OutputArgs0,
-        InputLambdaVars  = [LambdaVar | InputLambdaVars0],
-        OutputLambdaVars = OutputLambdaVars0
-    else if mode_is_output(ModuleInfo, Mode) then
-        InputArgs        = InputArgs0,
-        OutputArgs       = [Arg | OutputArgs0],
-        InputLambdaVars  = InputLambdaVars0,
-        OutputLambdaVars = [LambdaVar | OutputLambdaVars0]
+    % If the mode is undefined, calling mode_is_output/2 directly would cause
+    % the compiler to abort, so we don't want to do that.
+    %
+    % It doesn't really matter whether we consider an argument with an
+    % undefined mode input or output, because mode analysis will fail anyway.
+    % The code here is slightly simpler if we consider it input.
+    ( if
+        mode_is_defined(ModuleInfo, Mode),
+        mode_is_output(ModuleInfo, Mode)
+    then
+        % defined and output
+        InputArgTerms    = InputArgTermsTail,
+        OutputArgTerms   = [ArgTerm | OutputArgTermsTail],
+        InputLambdaVars  = InputLambdaVarsTail,
+        OutputLambdaVars = [LambdaVar | OutputLambdaVarsTail]
     else
-        InputArgs        = [Arg | InputArgs0],
-        OutputArgs       = OutputArgs0,
-        InputLambdaVars  = [LambdaVar | InputLambdaVars0],
-        OutputLambdaVars = OutputLambdaVars0
+        % undefined or (defined and not output)
+        InputArgTerms    = [ArgTerm | InputArgTermsTail],
+        OutputArgTerms   = OutputArgTermsTail,
+        InputLambdaVars  = [LambdaVar | InputLambdaVarsTail],
+        OutputLambdaVars = OutputLambdaVarsTail
     ).
+
+    % Succeeds iff the given mode is defined.
+    %
+:- pred mode_is_defined(module_info::in, mer_mode::in) is semidet.
+
+mode_is_defined(ModuleInfo, Mode) :-
+    mode_get_insts_semidet(ModuleInfo, Mode, _, _).
+
+:- pred qualify_lambda_arg_modes_if_not_opt_imported(
+    list(lambda_arg)::in, list(lambda_arg)::out, list(mer_mode)::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_lambda_arg_modes_if_not_opt_imported(LambdaArgs0, LambdaArgs,
+        Modes, !QualInfo, !Specs) :-
+    qual_info_get_maybe_opt_imported(!.QualInfo, MaybeOptImported),
+    (
+        MaybeOptImported = is_not_opt_imported,
+        % Lambda expressions cannot appear in the interface of a module.
+        InInt = mq_not_used_in_interface,
+        qual_info_get_mq_info(!.QualInfo, MQInfo0),
+        qualify_lambda_arg_modes(InInt, LambdaArgs0, LambdaArgs, Modes,
+            MQInfo0, MQInfo, !Specs),
+        qual_info_set_mq_info(MQInfo, !QualInfo)
+    ;
+        MaybeOptImported = is_opt_imported,
+        % The modes in `.opt' files are already fully module qualified.
+        LambdaArgs = LambdaArgs0,
+        Modes = list.map(project_lambda_arg_mode, LambdaArgs)
+    ).
+
+:- pred qualify_lambda_arg_modes(mq_in_interface::in,
+    list(lambda_arg)::in, list(lambda_arg)::out, list(mer_mode)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_lambda_arg_modes(_InInt, [], [], [], !MQInfo, !Specs).
+qualify_lambda_arg_modes(InInt, [LambdaArg0 | LambdaArgs0],
+        [LambdaArg | LambdaArgs], [Mode | Modes], !MQInfo, !Specs) :-
+    LambdaArg0 = lambda_arg(ArgNum, Kind, ProgArgTerm, LambdaVar,
+        PresentOrAbsent, Mode0, ModeContext),
+    qualify_lambda_mode(InInt, ModeContext, Mode0, Mode, !MQInfo, !Specs),
+    LambdaArg = lambda_arg(ArgNum, Kind, ProgArgTerm, LambdaVar,
+        PresentOrAbsent, Mode, ModeContext),
+    qualify_lambda_arg_modes(InInt, LambdaArgs0,
+        LambdaArgs, Modes, !MQInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 

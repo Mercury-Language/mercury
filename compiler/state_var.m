@@ -255,18 +255,24 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Does the given argument list have an illegal result term?
+    % Does the given argument list have a function result term
+    % that tries to use state var notation to refer to *two* terms?
+    %
+    % If yes, return the state variable involved, and the context of the
+    % reference.
     %
 :- pred illegal_state_var_func_result(pred_or_func::in, list(prog_term)::in,
-    svar::out) is semidet.
+    svar::out, prog_context::out) is semidet.
 
-    % Does the given lambda argument list have an illegal element?
-    % We currently do not allow !X to appear as a lambda head argument, though
-    % we might later extend the syntax still further to accommodate this
-    % using syntax such as !IO::(di, uo).
+    % Does the given term have the form a !X, i.e. does it represent
+    % *two* arguments? This is not acceptable in some contexts, such as
+    % function results and lambda expression arguments.
     %
-:- pred lambda_args_contain_bang_state_var(list(prog_term)::in, prog_var::out)
-    is semidet.
+    % If yes, return the state variable involved, and the context of the
+    % reference.
+    %
+:- pred is_term_a_bang_state_pair(prog_term::in,
+    svar::out, prog_context::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -1900,15 +1906,12 @@ add_conjunct_delayed_renames(DelayedRenamingToAdd, Goal0, Goal,
 % Test for various kinds of errors.
 %
 
-illegal_state_var_func_result(pf_function, Args, StateVar) :-
-    list.last(Args, functor(atom("!"), [variable(StateVar, _)], _Ctxt)).
+illegal_state_var_func_result(pf_function, ArgTerms, StateVar, Context) :-
+    list.last(ArgTerms, LastArgTerm),
+    is_term_a_bang_state_pair(LastArgTerm, StateVar, Context).
 
-lambda_args_contain_bang_state_var([Arg | Args], StateVar) :-
-    ( if Arg = functor(atom("!"), [variable(StateVar0, _)], _) then
-        StateVar = StateVar0
-    else
-        lambda_args_contain_bang_state_var(Args, StateVar)
-    ).
+is_term_a_bang_state_pair(ArgTerm, StateVar, Context) :-
+    ArgTerm = functor(atom("!"), [variable(StateVar, Context)], _).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1936,10 +1939,12 @@ ro_construct_name(roc_lambda) = "lambda expression".
 
 report_illegal_func_svar_result(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
+    % While having !.Var appear as a function argument is quite ordinary,
+    % having it appear as a function *result* is not. We therefore do not
+    % suggest it as a likely correction.
     Pieces = [words("Error:"), fixed("!" ++ Name),
         words("cannot be a function result."), nl,
-        words("You probably meant"), fixed("!." ++ Name),
-        words("or"), fixed("!:" ++ Name), suffix("."), nl],
+        words("You probably meant"), fixed("!:" ++ Name), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].

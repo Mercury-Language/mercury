@@ -236,10 +236,12 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
     (
         TypeCheckConstraints = yes,
         typecheck_constraints(!HLDS, TypeCheckSpecs),
+        % XXX We should teach typecheck_constraints to report syntax errors.
+        FoundSyntaxError = no,
         ExceededTypeCheckIterationLimit = no
     ;
         TypeCheckConstraints = no,
-        typecheck_module(!HLDS, TypeCheckSpecs,
+        typecheck_module(!HLDS, TypeCheckSpecs, FoundSyntaxError,
             ExceededTypeCheckIterationLimit)
     ),
     !:Specs = TypeCheckSpecs ++ !.Specs,
@@ -273,7 +275,7 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
         io.set_exit_status(1, !IO)
     else if ExceededTypeCheckIterationLimit = yes then
         % FoundTypeError will always be true here, so if Verbose = yes,
-        % we've already printed a message about the program containing
+        % we have already printed a message about the program containing
         % type errors.
         !:FoundError = yes,
         io.set_exit_status(1, !IO)
@@ -301,6 +303,7 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
 
         ( if
             ( FoundTypeError = yes
+            ; FoundSyntaxError = yes
             ; SomeMissingTypeDefns = yes
             ; NumPostTypeCheckErrors > 0
             )
@@ -348,7 +351,8 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
                 else
                     true
                 ),
-                % If our job was to write out the `.opt' file, then we're done.
+                % If our job was to write out the `.opt' file, then
+                % we are done.
                 (
                     MakeOptInt = yes
                 ;

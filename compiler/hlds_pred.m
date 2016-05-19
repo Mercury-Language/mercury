@@ -1165,7 +1165,7 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     HasForeignClauses = no,
     HadSyntaxErrors = no,
-    ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
         HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
         HasForeignClauses, HadSyntaxErrors),
 

@@ -566,7 +566,7 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = yes,
     HadSyntaxErrors = no,
-    ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, ArgVec,
+    ClauseInfo = clauses_info(VarSet, TVarNameMap, Types, Types, ArgVec,
         ClausesRep, init_clause_item_numbers_comp_gen,
         RttiVarMaps, HasForeignClauses, HadSyntaxErrors).
 

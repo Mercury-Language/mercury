@@ -1,57 +1,32 @@
-lambda_syntax_error.m:016: In clause for function `baz1'/1:
-lambda_syntax_error.m:016:   in function result term of clause head:
-lambda_syntax_error.m:016:   syntax error in lambda expression (`:-').
-lambda_syntax_error.m:016: In clause for function `baz1'/1:
-lambda_syntax_error.m:016:   in function result term of clause head:
-lambda_syntax_error.m:016:   in argument 1 of functor `:-/2':
-lambda_syntax_error.m:016:   error: undefined symbol `pred'/1.
-lambda_syntax_error.m:017: In clause for function `baz2'/1:
-lambda_syntax_error.m:017:   in function result term of clause head:
-lambda_syntax_error.m:017:   syntax error in lambda expression (`:-').
-lambda_syntax_error.m:017: In clause for function `baz2'/1:
-lambda_syntax_error.m:017:   in function result term of clause head:
-lambda_syntax_error.m:017:   in argument 1 of functor `:-/2':
-lambda_syntax_error.m:017:   error: undefined symbol `pred'/1.
-lambda_syntax_error.m:017: In clause for function `baz2'/1:
-lambda_syntax_error.m:017:   in function result term of clause head:
-lambda_syntax_error.m:017:   in argument 1 of functor `:-/2':
-lambda_syntax_error.m:017:   in argument 1 of functor `pred/1':
-lambda_syntax_error.m:017:   error: undefined symbol `::'/2.
-lambda_syntax_error.m:017: In clause for function `baz2'/1:
-lambda_syntax_error.m:017:   in function result term of clause head:
-lambda_syntax_error.m:017:   in argument 1 of functor `:-/2':
-lambda_syntax_error.m:017:   in argument 1 of functor `pred/1':
-lambda_syntax_error.m:017:   in argument 2 of functor `::/2':
-lambda_syntax_error.m:017:   error: undefined symbol `in'/0.
-lambda_syntax_error.m:018: In clause for function `baz3'/1:
-lambda_syntax_error.m:018:   in function result term of clause head:
-lambda_syntax_error.m:018:   syntax error in lambda expression (`:-').
-lambda_syntax_error.m:018: In clause for function `baz3'/1:
-lambda_syntax_error.m:018:   in function result term of clause head:
-lambda_syntax_error.m:018:   in argument 1 of functor `:-/2':
-lambda_syntax_error.m:018:   in argument 1 of functor `is/2':
-lambda_syntax_error.m:018:   error: undefined symbol `pred'/1.
-lambda_syntax_error.m:018: In clause for function `baz3'/1:
-lambda_syntax_error.m:018:   in function result term of clause head:
-lambda_syntax_error.m:018:   in argument 1 of functor `:-/2':
-lambda_syntax_error.m:018:   in argument 2 of functor `is/2':
-lambda_syntax_error.m:018:   error: undefined symbol `semidet'/0.
-lambda_syntax_error.m:019: In clause for function `baz4'/1:
-lambda_syntax_error.m:019:   in function result term of clause head:
-lambda_syntax_error.m:019:   syntax error in lambda expression (`:-').
-lambda_syntax_error.m:019: In clause for function `baz4'/1:
-lambda_syntax_error.m:019:   in function result term of clause head:
-lambda_syntax_error.m:019:   in argument 1 of functor `:-/2':
-lambda_syntax_error.m:019:   error: the language construct `='/2 should be used
-lambda_syntax_error.m:019:   as a goal, not as an expression.
-lambda_syntax_error.m:019: In clause for function `baz4'/1:
-lambda_syntax_error.m:019:   in function result term of clause head:
-lambda_syntax_error.m:019:   in argument 1 of functor `:-/2':
-lambda_syntax_error.m:019:   in argument 1 of functor `=/2':
-lambda_syntax_error.m:019:   error: undefined symbol `pred'/1.
-lambda_syntax_error.m:019: In clause for function `baz4'/1:
-lambda_syntax_error.m:019:   in function result term of clause head:
-lambda_syntax_error.m:019:   in argument 2 of functor `:-/2':
-lambda_syntax_error.m:019:   error: the language construct `='/2 should be used
-lambda_syntax_error.m:019:   as a goal, not as an expression.
-For more information, recompile with `-E'.
+lambda_syntax_error.m:016: Error: the clause head part of a lambda expression
+lambda_syntax_error.m:016:   should have one of the following forms:
+lambda_syntax_error.m:016:   `pred(<args>) is <determinism>'
+lambda_syntax_error.m:016:   `any_pred(<args>) is <determinism>'
+lambda_syntax_error.m:016:   `func(<args>) = <retarg> is <determinism>'
+lambda_syntax_error.m:016:   `any_func(<args>) = <retarg> is <determinism>'
+lambda_syntax_error.m:016:   `func(<args>) = <retarg>'
+lambda_syntax_error.m:016:   `any_func(<args>) = <retarg>',
+lambda_syntax_error.m:016:   or one of those forms preceded by either
+lambda_syntax_error.m:016:   `semipure' or `impure'.
+lambda_syntax_error.m:017: Error: the clause head part of a lambda expression
+lambda_syntax_error.m:017:   should have one of the following forms:
+lambda_syntax_error.m:017:   `pred(<args>) is <determinism>'
+lambda_syntax_error.m:017:   `any_pred(<args>) is <determinism>'
+lambda_syntax_error.m:017:   `func(<args>) = <retarg> is <determinism>'
+lambda_syntax_error.m:017:   `any_func(<args>) = <retarg> is <determinism>'
+lambda_syntax_error.m:017:   `func(<args>) = <retarg>'
+lambda_syntax_error.m:017:   `any_func(<args>) = <retarg>',
+lambda_syntax_error.m:017:   or one of those forms preceded by either
+lambda_syntax_error.m:017:   `semipure' or `impure'.
+lambda_syntax_error.m:018: Error: in head of predicate lambda expression: none
+lambda_syntax_error.m:018:   of the arguments have modes.
+lambda_syntax_error.m:019: Error: the clause head part of a lambda expression
+lambda_syntax_error.m:019:   should have one of the following forms:
+lambda_syntax_error.m:019:   `pred(<args>) is <determinism>'
+lambda_syntax_error.m:019:   `any_pred(<args>) is <determinism>'
+lambda_syntax_error.m:019:   `func(<args>) = <retarg> is <determinism>'
+lambda_syntax_error.m:019:   `any_func(<args>) = <retarg> is <determinism>'
+lambda_syntax_error.m:019:   `func(<args>) = <retarg>'
+lambda_syntax_error.m:019:   `any_func(<args>) = <retarg>',
+lambda_syntax_error.m:019:   or one of those forms preceded by either
+lambda_syntax_error.m:019:   `semipure' or `impure'.

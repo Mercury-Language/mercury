@@ -17,15 +17,15 @@
     ;       arg
     ;       res
     ;       forall
-    ;       (for)
-    ;       (all)
+    ;       var_for
+    ;       var_all
     ;       such
     ;       that
     ;       suchthat
-    ;       (is)
+    ;       var_is
     ;       subscripted(variable, variable)
-    ;       (where)
-    ;       (when)
+    ;       var_where
+    ;       var_when
     ;       '('
     ;       ')'
     ;       '['
@@ -47,8 +47,8 @@
 :- type qualifier
     --->    such_that(expression, expression)
     ;       for_all(term)
-    ;       when(term)
-    ;       where(term)
+    ;       qual_when(term)
+    ;       qual_where(term)
     ;       merge_qualifiers(qualifier, qualifier)
     ;       none.
 
@@ -87,14 +87,14 @@ qualification( merge_qualifiers( Qualifier, Qualifiers ) ) -->
 qualification( Qualifier ) -->
     qualifier( Qualifier ).
 
-:- pred qualifier(qualifier::in, list(variable)::in,
-    list(variable)::out) is nondet.
+:- pred qualifier(qualifier::in, list(variable)::in, list(variable)::out)
+    is nondet.
 
 qualifier( such_that( Left, Right ) ) -->
     such_that, value( Left ), equals, value( Right ).
 qualifier( for_all( Term ) ) --> for_all, subrange( Term ).
-qualifier( 'when'( Term ) )    --> (when), value( Term ).
-qualifier( 'where'( Term ) )   --> (where), is_a( Term ).
+qualifier(qual_when( Term ) ) --> (when), value( Term ).
+qualifier(qual_where( Term ) ) --> (where), is_a( Term ).
 
 :- pred leftparen(list(variable)::in, list(variable)::out) is semidet.
 leftparen --> ['('].
@@ -124,13 +124,13 @@ comma --> [', '].
 equals --> ['='].
 
 :- pred where(list(variable)::in, list(variable)::out) is semidet.
-where --> [where].
+where --> [var_where].
 
 :- pred when(list(variable)::in, list(variable)::out) is semidet.
-when --> [when].
+when --> [var_when].
 
 :- pred is_a(list(variable)::in, list(variable)::out) is semidet.
-is_a --> [is].
+is_a --> [var_is].
 
 :- pred such_that(list(variable)::in, list(variable)::out) is semidet.
 such_that --> [suchthat].
@@ -138,7 +138,7 @@ such_that --> [such], [that].
 
 :- pred for_all(list(variable)::in, list(variable)::out) is semidet.
 for_all --> [forall].
-for_all --> [for], [all].
+for_all --> [var_for], [var_all].
 
 :- pred start_subscript(list(variable)::in, list(variable)::out) is semidet.
 start_subscript --> ['{'].

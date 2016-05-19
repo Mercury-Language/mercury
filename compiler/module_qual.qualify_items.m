@@ -60,6 +60,10 @@
     list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+:- pred qualify_mode(mq_in_interface::in, mq_error_context::in,
+    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -745,10 +749,6 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
 qualify_mode_defn(InInt, ErrorContext, eqv_mode(Mode0), eqv_mode(Mode),
         !Info, !Specs) :-
     qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs).
-
-:- pred qualify_mode(mq_in_interface::in, mq_error_context::in,
-    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
     (

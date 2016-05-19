@@ -4,7 +4,7 @@ record_syntax_errors.m:027:   without corresponding `:- func' declaration.
 record_syntax_errors.m:027: Inferred :- func field8(record_syntax_errors.cons2)
 record_syntax_errors.m:027:   = int.
 record_syntax_errors.m:033: In DCG field update goal:
-record_syntax_errors.m:033:   error: expected field name at term `Field'.
+record_syntax_errors.m:033:   error: expected field name, found `Field'.
 record_syntax_errors.m:036: Error: expected `Field =^ field1 ^ ... ^ fieldN' or
 record_syntax_errors.m:036:   `^ field1 ^ ... ^ fieldN := Field' in DCG field
 record_syntax_errors.m:036:   access goal.

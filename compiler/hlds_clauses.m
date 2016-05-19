@@ -47,15 +47,17 @@
                 % The varset describing the clauses.
                 cli_varset                  :: prog_varset,
 
-                % Variable types from explicit qualifications.
-                cli_explicit_vartypes       :: vartypes,
-
                 % Map from variable name to type variable for the type
                 % variables occurring in the argument types. This is used
                 % to process explicit qualifications.
                 cli_tvar_name_map           :: tvar_name_map,
 
-                % Variable types inferred by typecheck.m.
+                % This partial map holds the types specified by any explicit
+                % type qualifiers in the clauses.
+                cli_explicit_vartypes       :: vartypes,
+
+                % This map contains the types of all the variables, as inferred
+                % by typecheck.m.
                 cli_vartypes                :: vartypes,
 
                 % The head variables.
@@ -84,6 +86,43 @@
 
 :- pred clauses_info_init_for_assertion(prog_vars::in, clauses_info::out)
     is det.
+
+:- pred clauses_info_get_varset(clauses_info::in, prog_varset::out) is det.
+:- pred clauses_info_get_tvar_name_map(clauses_info::in, tvar_name_map::out)
+    is det.
+:- pred clauses_info_get_explicit_vartypes(clauses_info::in, vartypes::out)
+    is det.
+:- pred clauses_info_get_vartypes(clauses_info::in, vartypes::out) is det.
+:- pred clauses_info_get_headvars(clauses_info::in,
+    proc_arg_vector(prog_var)::out) is det.
+:- pred clauses_info_get_clauses_rep(clauses_info::in, clauses_rep::out,
+    clause_item_numbers::out) is det.
+:- pred clauses_info_get_rtti_varmaps(clauses_info::in, rtti_varmaps::out)
+    is det.
+:- pred clauses_info_get_have_foreign_clauses(clauses_info::in, bool::out)
+    is det.
+:- pred clauses_info_get_had_syntax_errors(clauses_info::in, bool::out) is det.
+
+:- pred clauses_info_set_varset(prog_varset::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_tvar_name_map(tvar_name_map::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_explicit_vartypes(vartypes::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_vartypes(vartypes::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_headvars(proc_arg_vector(prog_var)::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_clauses_rep(clauses_rep::in, clause_item_numbers::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_rtti_varmaps(rtti_varmaps::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_have_foreign_clauses(bool::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_had_syntax_errors(bool::in,
+    clauses_info::in, clauses_info::out) is det.
+
+%-----------------------------------------------------------------------------%
 
 :- type clauses_rep.
 
@@ -154,63 +193,17 @@
     %
 :- pred set_clause_list(list(clause)::in, clauses_rep::out) is det.
 
-:- pred clauses_info_get_varset(clauses_info::in, prog_varset::out) is det.
-
-    % This partial map holds the types specified by any explicit
-    % type qualifiers in the clauses.
-    %
-:- pred clauses_info_get_explicit_vartypes(clauses_info::in, vartypes::out)
-    is det.
-
-    % This map contains the types of all the variables, as inferred
-    % by typecheck.m.
-    %
-:- pred clauses_info_get_vartypes(clauses_info::in, vartypes::out) is det.
-
-:- pred clauses_info_get_rtti_varmaps(clauses_info::in, rtti_varmaps::out)
-    is det.
-
-:- pred clauses_info_get_headvars(clauses_info::in,
-    proc_arg_vector(prog_var)::out) is det.
-
     % Return the headvars as a list rather than as a proc_arg_vector.
-    % New code should avoid using this and should instead be written to
+    % New code should avoid using this, and should instead be written to
     % work with the arg_vector structure directly.
     %
 :- pred clauses_info_get_headvar_list(clauses_info::in, list(prog_var)::out)
     is det.
 
-:- pred clauses_info_get_clauses_rep(clauses_info::in, clauses_rep::out,
-    clause_item_numbers::out) is det.
-
     % Return the list of clauses in program order, and if necessary update
     % the cache of this info in the clauses_info.
     %
 :- pred clauses_info_clauses(list(clause)::out, clause_item_numbers::out,
-    clauses_info::in, clauses_info::out) is det.
-
-:- pred clauses_info_set_headvars(proc_arg_vector(prog_var)::in,
-    clauses_info::in, clauses_info::out) is det.
-
-:- pred clauses_info_set_clauses_rep(clauses_rep::in, clause_item_numbers::in,
-    clauses_info::in, clauses_info::out) is det.
-
-:- pred clauses_info_set_varset(prog_varset::in,
-    clauses_info::in, clauses_info::out) is det.
-
-    % This partial map holds the types specified by any explicit
-    % type qualifiers in the clauses.
-    %
-:- pred clauses_info_set_explicit_vartypes(vartypes::in,
-    clauses_info::in, clauses_info::out) is det.
-
-    % This map contains the types of all the variables, as inferred
-    % by typecheck.m.
-    %
-:- pred clauses_info_set_vartypes(vartypes::in,
-    clauses_info::in, clauses_info::out) is det.
-
-:- pred clauses_info_set_rtti_varmaps(rtti_varmaps::in,
     clauses_info::in, clauses_info::out) is det.
 
 :- type clause
@@ -431,7 +424,7 @@ clauses_info_init(PredOrFunc, Arity, ItemNumbers, ClausesInfo) :-
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     HadSyntaxError = no,
-    ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
         HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
         HasForeignClauses, HadSyntaxError).
 
@@ -447,21 +440,24 @@ clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     HadSyntaxError = no,
-    ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
         HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
         HasForeignClauses, HadSyntaxError).
 
 clauses_info_get_varset(CI, CI ^ cli_varset).
+clauses_info_get_tvar_name_map(CI, CI ^ cli_tvar_name_map).
 clauses_info_get_explicit_vartypes(CI, CI ^ cli_explicit_vartypes).
 clauses_info_get_vartypes(CI, CI ^ cli_vartypes).
 clauses_info_get_headvars(CI, CI ^ cli_headvars).
-clauses_info_get_headvar_list(CI, List) :-
-    List = proc_arg_vector_to_list(CI ^ cli_headvars).
 clauses_info_get_clauses_rep(CI, CI ^ cli_rep, CI ^ cli_item_numbers).
 clauses_info_get_rtti_varmaps(CI, CI ^ cli_rtti_varmaps).
+clauses_info_get_have_foreign_clauses(CI, CI ^ cli_have_foreign_clauses).
+clauses_info_get_had_syntax_errors(CI, CI ^ cli_had_syntax_errors).
 
 clauses_info_set_varset(X, !CI) :-
     !CI ^ cli_varset := X.
+clauses_info_set_tvar_name_map(X, !CI) :-
+    !CI ^ cli_tvar_name_map := X.
 clauses_info_set_explicit_vartypes(X, !CI) :-
     !CI ^ cli_explicit_vartypes := X.
 clauses_info_set_vartypes(X, !CI) :-
@@ -473,6 +469,16 @@ clauses_info_set_clauses_rep(X, Y, !CI) :-
     !CI ^ cli_item_numbers := Y.
 clauses_info_set_rtti_varmaps(X, !CI) :-
     !CI ^ cli_rtti_varmaps := X.
+clauses_info_set_have_foreign_clauses(X, !CI) :-
+    !CI ^ cli_have_foreign_clauses := X.
+clauses_info_set_had_syntax_errors(X, !CI) :-
+    !CI ^ cli_had_syntax_errors := X.
+
+%-----------------------------------------------------------------------------%
+
+clauses_info_get_headvar_list(CI, HeadVarList) :-
+    clauses_info_get_headvars(CI, HeadVars),
+    HeadVarList = proc_arg_vector_to_list(HeadVars).
 
 :- type clauses_rep
     --->    clauses_rep(

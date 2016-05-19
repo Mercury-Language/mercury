@@ -78,16 +78,19 @@
 :- import_module bool.
 :- import_module list.
 
-    % typecheck_module(!ModuleInfo, Specs, ExceededIterationLimit):
+    % typecheck_module(!ModuleInfo, Specs, FoundSyntaxError,
+    %   ExceededIterationLimit):
     %
     % Type checks ModuleInfo and annotates it with variable type information.
     % Specs is set to the list of errors and warnings found, plus messages
     % about the predicates and functions whose types have been inferred.
-    % ExceededIterationLimit is set to `yes' if the type inference iteration
-    % limit was reached and `no' otherwise.
+    % We set FoundSyntaxError to yes if some of the clauses in the typechecked
+    % predicates contained syntax errors.
+    % We set ExceededIterationLimit to `yes' iff the type inference iteration
+    % limit was reached.
     %
 :- pred typecheck_module(module_info::in, module_info::out,
-    list(error_spec)::out, bool::out) is det.
+    list(error_spec)::out, bool::out, bool::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -150,7 +153,8 @@
 
 %---------------------------------------------------------------------------%
 
-typecheck_module(!ModuleInfo, Specs, ExceededIterationLimit) :-
+typecheck_module(!ModuleInfo, Specs, FoundSyntaxError,
+        ExceededIterationLimit) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, type_inference_iteration_limit,
         MaxIterations),
@@ -180,7 +184,7 @@ typecheck_module(!ModuleInfo, Specs, ExceededIterationLimit) :-
 
     typecheck_to_fixpoint(1, MaxIterations, !ModuleInfo,
         OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
-        CheckSpecs, ExceededIterationLimit),
+        CheckSpecs, FoundSyntaxError, ExceededIterationLimit),
 
     construct_type_inference_messages(!.ModuleInfo, FinalValidPredIdSet,
         OrigValidPredIds, [], InferSpecs),
@@ -220,16 +224,16 @@ prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
 :- pred typecheck_to_fixpoint(int::in, int::in,
     module_info::in, module_info::out,
     list(pred_id)::in, set_tree234(pred_id)::in, set_tree234(pred_id)::out,
-    list(error_spec)::out, bool::out) is det.
+    list(error_spec)::out, bool::out, bool::out) is det.
 
 typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
         OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
-        Specs, ExceededIterationLimit) :-
+        Specs, FoundSyntaxError, ExceededIterationLimit) :-
     module_info_get_preds(!.ModuleInfo, PredMap0),
     map.to_assoc_list(PredMap0, PredIdsInfos0),
     typecheck_module_one_iteration(!.ModuleInfo, OrigValidPredIdSet,
         PredIdsInfos0, PredIdsInfos, [], NewlyInvalidPredIds,
-        [], CurSpecs, no, Changed),
+        [], CurSpecs, no, CurFoundSyntaxError, no, Changed),
     map.from_sorted_assoc_list(PredIdsInfos, PredMap),
     module_info_set_preds(PredMap, !ModuleInfo),
 
@@ -244,6 +248,7 @@ typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
     then
         FinalValidPredIdSet = NewValidPredIdSet,
         Specs = CurSpecs,
+        FoundSyntaxError = CurFoundSyntaxError,
         ExceededIterationLimit = no
     else
         globals.lookup_bool_option(Globals, debug_types, DebugTypes),
@@ -260,10 +265,11 @@ typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
         ( if Iteration < MaxIterations then
             typecheck_to_fixpoint(Iteration + 1, MaxIterations, !ModuleInfo,
                 OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
-                Specs, ExceededIterationLimit)
+                Specs, FoundSyntaxError, ExceededIterationLimit)
         else
             FinalValidPredIdSet = NewValidPredIdSet,
             Specs = [typecheck_report_max_iterations_exceeded(MaxIterations)],
+            FoundSyntaxError = CurFoundSyntaxError,
             ExceededIterationLimit = yes
         )
     ).
@@ -350,13 +356,14 @@ typecheck_report_max_iterations_exceeded(MaxIterations) = Spec :-
     set_tree234(pred_id)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
     list(pred_id)::in, list(pred_id)::out,
-    list(error_spec)::in, list(error_spec)::out, bool::in, bool::out) is det.
+    list(error_spec)::in, list(error_spec)::out,
+    bool::in, bool::out, bool::in, bool::out) is det.
 
 typecheck_module_one_iteration(_, _, [], [],
-        !NewlyInvalidPredIds, !Specs, !Changed).
+        !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !Changed).
 typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
         [HeadPredIdInfo0 | TailPredIdsInfos0], PredIdInfos,
-        !NewlyInvalidPredIds, !Specs, !Changed) :-
+        !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !Changed) :-
     HeadPredIdInfo0 = PredId - PredInfo0,
     ( if
         (
@@ -368,12 +375,12 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
         HeadPredIdInfo = HeadPredIdInfo0,
         typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
             TailPredIdsInfos0, TailPredIdsInfos, !NewlyInvalidPredIds,
-            !Specs, !Changed),
+            !Specs, !FoundSyntaxError, !Changed),
         PredIdInfos = [HeadPredIdInfo | TailPredIdsInfos] % lcmc
     else
         % Potential parallelization site.
         typecheck_pred_if_needed(ModuleInfo, PredId, PredInfo0, PredInfo,
-            PredSpecs, ContainsErrors, PredChanged),
+            PredSpecs, PredSyntaxError, ContainsErrors, PredChanged),
 
         (
             ContainsErrors = no
@@ -397,19 +404,20 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
         ),
         HeadPredIdInfo = PredId - PredInfo,
         !:Specs = PredSpecs ++ !.Specs,
+        bool.or(PredSyntaxError, !FoundSyntaxError),
         bool.or(PredChanged, !Changed),
         typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
             TailPredIdsInfos0, TailPredIdsInfos, !NewlyInvalidPredIds,
-            !Specs, !Changed),
+            !Specs, !FoundSyntaxError, !Changed),
         PredIdInfos = [HeadPredIdInfo | TailPredIdsInfos] % lcmc
     ).
 
 :- pred typecheck_pred_if_needed(module_info::in, pred_id::in,
     pred_info::in, pred_info::out, list(error_spec)::out,
-    bool::out, bool::out) is det.
+    bool::out, bool::out, bool::out) is det.
 
 typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, Specs,
-        ContainsErrors, Changed) :-
+        FoundSyntaxError, ContainsErrors, Changed) :-
     ( if
         % Compiler-generated predicates are created already type-correct,
         % so there is no need to typecheck them. The same is true for builtins,
@@ -438,19 +446,20 @@ typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, Specs,
             IsEmpty = no
         ),
         Specs = [],
+        FoundSyntaxError = no,
         ContainsErrors = no,
         Changed = no
     else
         typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
-            ContainsErrors, Changed)
+            FoundSyntaxError, ContainsErrors, Changed)
     ).
 
 :- pred typecheck_pred(module_info::in, pred_id::in,
     pred_info::in, pred_info::out, list(error_spec)::out,
-    bool::out, bool::out) is det.
+    bool::out, bool::out, bool::out) is det.
 
 typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
-        ContainsErrors, Changed) :-
+        FoundSyntaxError, ContainsErrors, Changed) :-
     % Handle the --allow-stubs and --warn-stubs options.
     % If --allow-stubs is set, and there are no clauses, then
     % - issue a warning (if --warn-stubs is set), and then
@@ -506,8 +515,9 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
 
     some [!ClausesInfo] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
-        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep1, _ItemNumbers),
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
+        clauses_info_get_had_syntax_errors(!.ClausesInfo, FoundSyntaxError),
+        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep1, _ItemNumbers),
         clause_list_is_empty(ClausesRep1) = ClausesRep1IsEmpty,
         (
             ClausesRep1IsEmpty = yes,
@@ -533,12 +543,11 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
                 Specs = []
             else
                 ContainsErrors = yes,
-                HadSyntaxErrors = !.ClausesInfo ^ cli_had_syntax_errors,
                 (
-                    HadSyntaxErrors = no,
+                    FoundSyntaxError = no,
                     Specs = [report_no_clauses(ModuleInfo, PredId, !.PredInfo)]
                 ;
-                    HadSyntaxErrors = yes,
+                    FoundSyntaxError = yes,
                     % There were clauses, they just had errors. Printing
                     % a message saying there were no clauses would be
                     % misleading, and the messages for the syntax errors
@@ -550,9 +559,17 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
             Changed = no
         ;
             ClausesRep1IsEmpty = no,
-            do_typecheck_pred(ModuleInfo, PredId, !PredInfo,
-                StartingSpecs, Specs, Changed),
-            ContainsErrors = contains_errors(Globals, Specs)
+            (
+                FoundSyntaxError = no,
+                do_typecheck_pred(ModuleInfo, PredId, !PredInfo,
+                    StartingSpecs, Specs, Changed),
+                ContainsErrors = contains_errors(Globals, Specs)
+            ;
+                FoundSyntaxError = yes,
+                Specs = [],
+                ContainsErrors = yes,
+                Changed = no
+            )
         )
     ).
 

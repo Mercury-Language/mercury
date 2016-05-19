@@ -28,7 +28,7 @@
     ;       f(t)
     ;       - t             % fx
     ;       ~ t             % fy
-    ;       ( :- t )        % fx, high priority
+    ;       ( ?- t )        % fx, high priority
     ;       t ++ t          % xfy
     ;       t -- t          % yfx
     ;       t == t          % xfx
@@ -46,7 +46,7 @@ t(N, X) :-
         (   X = f(Y)
         ;   X = - Y
         ;   X = (~ Y)
-        ;   X = ( :- Y )
+        ;   X = ( ?- Y )
         ;   (
                 t(N - 1, Z),
                 (   X = Y ++ Z

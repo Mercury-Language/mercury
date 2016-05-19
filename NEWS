@@ -3,6 +3,23 @@ NEWS since Mercury 14.01.x
 
 Changes that may break compatibility:
 
+* When the Mercury compiler looks at code using Mercury keywords (such as
+  "func" and "pred") and Mercury operators (such as clause neck operator ":-")
+  but which cannot be parsed as the Mercury constructs that those Mercury
+  keywords and operators are part of, it now generates a specific error
+  message for each discrepancy. In the past, when it found such code,
+  the compiler considered such code to construct terms and/or to call
+  functions and predicates. Usually, the terms did not belong to any
+  declared type and the called functions and predicates did not exist,
+  leading to confusing error messages from the compiler.
+
+  The compiler's new approach generates considerably better diagnostics,
+  but it does mean that code that uses Mercury's keywords and/or operators
+  in ways that are inconsistent with Mercury's own uses of those keywords
+  and operators won't compile anymore. Such code will need to be changed,
+  typically by changing the names of some function symbols, functions
+  or predicates.
+
 * We have enabled stricter checking of non-ground final insts to reject more
   mode-incorrect code.  Due to compiler limitations, some code that should be
   accepted will now be rejected.  They will require modifications to appease
