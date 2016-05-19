@@ -877,30 +877,32 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
 ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId) = FuncParams :-
     HeadVars = RttiProcId ^ rpl_proc_headvars,
     ArgTypes = RttiProcId ^ rpl_proc_arg_types,
-    ArgModes = RttiProcId ^ rpl_proc_arg_modes,
+    TopFunctorModes = RttiProcId ^ rpl_proc_top_modes,
     PredOrFunc = RttiProcId ^ rpl_pred_or_func,
     Detism = RttiProcId ^ rpl_proc_interface_detism,
     determinism_to_code_model(Detism, CodeModel),
     HeadVarNames = list.map(
-        (func(Var - Name) = Result :-
+        ( func(Var - Name) = Result :-
             term.var_to_int(Var, N),
             Result = mlds_var_name(Name, yes(N))
         ), HeadVars),
-    ml_gen_params_base(ModuleInfo, HeadVarNames, ArgTypes, ArgModes,
+    ml_gen_params_base(ModuleInfo, HeadVarNames, ArgTypes, TopFunctorModes,
         PredOrFunc, CodeModel, FuncParams, no, _).
 
 ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         CodeModel) = FuncParams :-
-    modes_to_arg_modes(ModuleInfo, HeadModes, HeadTypes, ArgModes),
-    ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, ArgModes,
+    modes_to_top_functor_modes(ModuleInfo, HeadModes, HeadTypes,
+        TopFunctorModes),
+    ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, TopFunctorModes,
         PredOrFunc, CodeModel, FuncParams, no, _).
 
 ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         CodeModel, FuncParams, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    modes_to_arg_modes(ModuleInfo, HeadModes, HeadTypes, ArgModes),
+    modes_to_top_functor_modes(ModuleInfo, HeadModes, HeadTypes,
+        TopFunctorModes),
     ml_gen_params_base(ModuleInfo, HeadVarNames,
-        HeadTypes, ArgModes, PredOrFunc, CodeModel, FuncParams,
+        HeadTypes, TopFunctorModes, PredOrFunc, CodeModel, FuncParams,
         yes(!.Info), MaybeInfo),
     (
         MaybeInfo = yes(Info),
@@ -911,7 +913,7 @@ ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
     ).
 
 :- pred ml_gen_params_base(module_info::in, list(mlds_var_name)::in,
-    list(mer_type)::in, list(arg_mode)::in, pred_or_func::in,
+    list(mer_type)::in, list(top_functor_mode)::in, pred_or_func::in,
     code_model::in, mlds_func_params::out,
     maybe(ml_gen_info)::in, maybe(ml_gen_info)::out) is det.
 
@@ -996,7 +998,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
     % and return types.
     %
 :- pred ml_gen_arg_decls(module_info::in, list(mlds_var_name)::in,
-    list(mer_type)::in, list(arg_mode)::in, bool::in,
+    list(mer_type)::in, list(top_functor_mode)::in, bool::in,
     mlds_arguments::out, mlds_return_types::out,
     maybe(ml_gen_info)::in, maybe(ml_gen_info)::out) is det.
 
@@ -1047,17 +1049,17 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
     % generate an MLDS argument declaration for it.
     %
 :- pred ml_gen_arg_decl(module_info::in, mlds_var_name::in, mer_type::in,
-    arg_mode::in, mlds_argument::out,
+    top_functor_mode::in, mlds_argument::out,
     maybe(ml_gen_info)::in, maybe(ml_gen_info)::out) is det.
 
-ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg, !MaybeInfo) :-
+ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
     (
-        ArgMode = top_in,
+        TopFunctorMode = top_in,
         MLDS_ArgType = MLDS_Type
     ;
-        ( ArgMode = top_out
-        ; ArgMode = top_unused
+        ( TopFunctorMode = top_out
+        ; TopFunctorMode = top_unused
         ),
         MLDS_ArgType = mlds_ptr_type(MLDS_Type)
     ),
@@ -1083,12 +1085,13 @@ ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
     proc_info_get_argmodes(ProcInfo, Modes),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     proc_info_get_headvars(ProcInfo, ArgVars),
-    modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
-    pred_args_to_func_args(ArgModes, _InputArgModes, RetArgMode),
+    modes_to_top_functor_modes(ModuleInfo, Modes, ArgTypes, TopFunctorModes),
+    pred_args_to_func_args(TopFunctorModes,
+        _InputTopFunctorModes, RetTopFunctorMode),
     pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
     pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
 
-    RetArgMode = top_out,
+    RetTopFunctorMode = top_out,
     check_dummy_type(ModuleInfo, RetArgType) = is_not_dummy_type.
 
 %-----------------------------------------------------------------------------%
@@ -1163,7 +1166,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
         MLDS_Module) :-
     RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
         PredName, PredArity, _ArgTypes, PredId, ProcId,
-        _HeadVarsWithNames, _ArgModes, Detism,
+        _HeadVarsWithNames, _TopFunctorModes, Detism,
         PredIsImported, _PredIsPseudoImported,
         Origin, _ProcIsExported, _ProcIsImported),
     ( if Origin = origin_special_pred(SpecialPred, TypeCtor) then

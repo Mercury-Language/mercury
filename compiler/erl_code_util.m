@@ -114,7 +114,7 @@
     % As above but takes arg_modes instead of mer_modes.
     %
 :- pred erl_gen_arg_list_arg_modes(module_info::in, opt_dummy_args::in,
-    list(T)::in, list(mer_type)::in, list(arg_mode)::in,
+    list(T)::in, list(mer_type)::in, list(top_functor_mode)::in,
     list(T)::out, list(T)::out) is det.
 
     % erl_fix_success_expr(InstMap, Goal, MaybeExpr0, MaybeExpr, !Info)
@@ -331,45 +331,45 @@ erl_gen_info_get_env_vars(Info, Info ^ egi_env_var_names).
     %
 erl_gen_arg_list(ModuleInfo, OptDummyArgs, VarNames, ArgTypes, Modes,
         Inputs, Outputs) :-
-    modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
+    modes_to_top_functor_modes(ModuleInfo, Modes, ArgTypes, TopFunctorModes),
     erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
-        VarNames, ArgTypes, ArgModes, Inputs, Outputs).
+        VarNames, ArgTypes, TopFunctorModes, Inputs, Outputs).
 
 erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
-        VarNames, ArgTypes, ArgModes, Inputs, Outputs) :-
+        VarNames, ArgTypes, TopFunctorModes, Inputs, Outputs) :-
     ( if
         VarNames = [],
         ArgTypes = [],
-        ArgModes = []
+        TopFunctorModes = []
     then
         Inputs = [],
         Outputs = []
     else if
         VarNames = [VarName | VarNames1],
         ArgTypes = [ArgType | ArgTypes1],
-        ArgModes = [ArgMode | ArgModes1]
+        TopFunctorModes = [TopFunctorMode | TopFunctorModes1]
     then
         erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
-            VarNames1, ArgTypes1, ArgModes1, Inputs1, Outputs1),
+            VarNames1, ArgTypes1, TopFunctorModes1, Inputs1, Outputs1),
         ( if
             OptDummyArgs = opt_dummy_args,
             % Exclude arguments of type io.state etc.
             % Also exclude those with arg_mode `top_unused'.
             ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
-            ; ArgMode = top_unused
+            ; TopFunctorMode = top_unused
             )
         then
             Inputs = Inputs1,
             Outputs = Outputs1
         else
             (
-                ArgMode = top_in,
+                TopFunctorMode = top_in,
                 % It's an input argument.
                 Inputs = [VarName | Inputs1],
                 Outputs = Outputs1
             ;
-                ( ArgMode = top_out
-                ; ArgMode = top_unused
+                ( TopFunctorMode = top_out
+                ; TopFunctorMode = top_unused
                 ),
                 % It's an output argument.
                 Inputs = Inputs1,

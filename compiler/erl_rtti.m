@@ -293,7 +293,7 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcLabel, WrapperFun,
     PredId = RttiProcLabel ^ rpl_pred_id,
     ProcId = RttiProcLabel ^ rpl_proc_id,
     ArgTypes = RttiProcLabel ^ rpl_proc_arg_types,
-    ArgModes = RttiProcLabel ^ rpl_proc_arg_modes,
+    TopFunctorModes = RttiProcLabel ^ rpl_proc_top_modes,
     Detism = RttiProcLabel ^ rpl_proc_interface_detism,
 
     % We can't store the address of the typeclass method directly in the
@@ -329,12 +329,12 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcLabel, WrapperFun,
     % method implementation.
     ExtraVarsWs = ExtraVars ++ Ws,
     erl_gen_arg_list_arg_modes(ModuleInfo, opt_dummy_args,
-        ExtraVarsWs, ArgTypes, ArgModes, CallInputArgs, CallOutputArgs),
+        ExtraVarsWs, ArgTypes, TopFunctorModes, CallInputArgs, CallOutputArgs),
 
     % Figure out the input variables and output variables for this wrapper
     % function.
     erl_gen_arg_list_arg_modes(ModuleInfo, no_opt_dummy_args,
-        ExtraVarsWs, ArgTypes, ArgModes,
+        ExtraVarsWs, ArgTypes, TopFunctorModes,
         WrapperInputVarsPlusExtras, WrapperOutputVars),
     WrapperInputVars =
         list.delete_elems(WrapperInputVarsPlusExtras, ExtraVars),
@@ -674,7 +674,7 @@ erl_gen_special_pred_wrapper(ModuleInfo, RttiProcLabel, WrapperFun, !VarSet) :-
     PredId = RttiProcLabel ^ rpl_pred_id,
     ProcId = RttiProcLabel ^ rpl_proc_id,
     ArgTypes = RttiProcLabel ^ rpl_proc_arg_types,
-    ArgModes = RttiProcLabel ^ rpl_proc_arg_modes,
+    TopFunctorModes = RttiProcLabel ^ rpl_proc_top_modes,
     Detism = RttiProcLabel ^ rpl_proc_interface_detism,
 
     % Create the variable list.
@@ -683,12 +683,12 @@ erl_gen_special_pred_wrapper(ModuleInfo, RttiProcLabel, WrapperFun, !VarSet) :-
     % Figure out the input and output variables for the call to the actual
     % special pred implementation.
     erl_gen_arg_list_arg_modes(ModuleInfo, opt_dummy_args,
-        Ws, ArgTypes, ArgModes, CallInputArgs, CallOutputArgs),
+        Ws, ArgTypes, TopFunctorModes, CallInputArgs, CallOutputArgs),
 
     % Figure out the input variables and output variables for this wrapper
     % function.
     erl_gen_arg_list_arg_modes(ModuleInfo, no_opt_dummy_args,
-        Ws, ArgTypes, ArgModes,
+        Ws, ArgTypes, TopFunctorModes,
         WrapperInputVars, WrapperOutputVars),
 
     determinism_to_code_model(Detism, CodeModel),

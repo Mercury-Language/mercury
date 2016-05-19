@@ -1577,7 +1577,7 @@ mode_list_contains_inst_var([Mode | Modes], InstVar) :-
 
 mode_contains_inst_var(Mode, InstVar) :-
     (
-        Mode = (Initial -> Final),
+        Mode = from_to_mode(Initial, Final),
         ( Inst = Initial ; Inst = Final )
     ;
         Mode = user_defined_mode(_Name, Insts),

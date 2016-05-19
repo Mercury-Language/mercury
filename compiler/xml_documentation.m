@@ -595,7 +595,7 @@ pred_mode_documentation(_C, _ProcId, ProcInfo, !Xml) :-
 
 mer_mode_to_xml(InstVarSet, Mode) = Xml :-
     (
-        Mode = (A -> B),
+        Mode = from_to_mode(A, B),
         XmlFrom = xml_list("from", mer_inst_to_xml(InstVarSet), [A]),
         XmlTo = xml_list("to", mer_inst_to_xml(InstVarSet), [B]),
         Xml = elem("inst_to_inst", [], [XmlFrom, XmlTo])

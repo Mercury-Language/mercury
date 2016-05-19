@@ -425,16 +425,18 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         unexpected($module, $pred, "shorthand")
     ).
 
-:- pred shared_left_to_right_deconstruct(module_info::in, list(uni_mode)::in)
-    is semidet.
+:- pred shared_left_to_right_deconstruct(module_info::in,
+    list(unify_mode)::in) is semidet.
 
 shared_left_to_right_deconstruct(_, []).
 shared_left_to_right_deconstruct(ModuleInfo, [ArgMode | ArgsModes]) :-
-    ArgMode = ((InitCell - InitArg) -> (FinalCell - FinalArg)),
-    mode_is_fully_input(ModuleInfo, InitCell -> FinalCell),
-    mode_is_output(ModuleInfo, InitArg -> FinalArg),
-    inst_is_not_partly_unique(ModuleInfo, FinalCell),
-    inst_is_not_partly_unique(ModuleInfo, FinalArg),
+    ArgMode = unify_modes_lhs_rhs(CellFromToInsts, ArgFromToInsts),
+    from_to_insts_is_fully_input(ModuleInfo, CellFromToInsts),
+    from_to_insts_is_output(ModuleInfo, ArgFromToInsts),
+    CellFromToInsts = from_to_insts(_, FinalCellInst),
+    ArgFromToInsts = from_to_insts(_, FinalArgInst),
+    inst_is_not_partly_unique(ModuleInfo, FinalCellInst),
+    inst_is_not_partly_unique(ModuleInfo, FinalArgInst),
     shared_left_to_right_deconstruct(ModuleInfo, ArgsModes).
 
 %-----------------------------------------------------------------------------%

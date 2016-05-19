@@ -451,8 +451,9 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
             MLDS_Context = mlds_make_context(Context),
             MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
                 OutputVarLocals],
-            modes_to_arg_modes(!.ModuleInfo, Modes, ArgTypes, ArgModes),
-            ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes,
+            modes_to_top_functor_modes(!.ModuleInfo, Modes, ArgTypes,
+                TopFunctorModes),
+            ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
                 CopiedOutputVars, Goal, Defns0, Statements, !Info),
             ml_gen_proc_params(PredId, ProcId, MLDS_Params, !Info),
             ml_gen_info_get_closure_wrapper_defns(!.Info, ExtraDefns),
@@ -575,12 +576,12 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
     % Generate the code for a procedure body.
     %
 :- pred ml_gen_proc_body(code_model::in, list(prog_var)::in,
-    list(mer_type)::in, list(arg_mode)::in, list(prog_var)::in,
+    list(mer_type)::in, list(top_functor_mode)::in, list(prog_var)::in,
     hlds_goal::in, list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
-        Goal, Decls, Statements, !Info) :-
+ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
+        CopiedOutputVars, Goal, Decls, Statements, !Info) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
 
@@ -595,8 +596,9 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
     % we append below, we want the original vars, not their cast versions.
 
     ml_gen_var_list(!.Info, CopiedOutputVars, CopiedOutputVarOriginalLvals),
-    ml_gen_convert_headvars(HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
-        Context, ConvDecls, ConvInputStatements, ConvOutputStatements, !Info),
+    ml_gen_convert_headvars(HeadVars, ArgTypes, TopFunctorModes,
+        CopiedOutputVars, Context, ConvDecls,
+        ConvInputStatements, ConvOutputStatements, !Info),
     ( if
         ConvDecls = [],
         ConvInputStatements = [],
@@ -633,16 +635,16 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
     % This procedure handles that.
     %
 :- pred ml_gen_convert_headvars(list(prog_var)::in, list(mer_type)::in,
-    list(arg_mode)::in, list(prog_var)::in, prog_context::in,
+    list(top_functor_mode)::in, list(prog_var)::in, prog_context::in,
     list(mlds_defn)::out, list(statement)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
-        Decls, InputStatements, OutputStatements, !Info) :-
+ml_gen_convert_headvars(Vars, HeadTypes, TopFunctorModes, CopiedOutputVars,
+        Context, Decls, InputStatements, OutputStatements, !Info) :-
     ( if
         Vars = [],
         HeadTypes = [],
-        ArgModes = []
+        TopFunctorModes = []
     then
         Decls = [],
         InputStatements = [],
@@ -650,15 +652,15 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
     else if
         Vars = [Var | VarsTail],
         HeadTypes = [HeadType | HeadTypesTail],
-        ArgModes = [ArgMode | ArgModesTail]
+        TopFunctorModes = [TopFunctorMode | TopFunctorModesTail]
     then
         ml_variable_type(!.Info, Var, BodyType),
         ( if
             % Arguments with mode `top_unused' do not need to be converted.
-            ArgMode = top_unused
+            TopFunctorMode = top_unused
         then
-            ml_gen_convert_headvars(VarsTail, HeadTypesTail, ArgModesTail,
-                CopiedOutputVars, Context, Decls,
+            ml_gen_convert_headvars(VarsTail, HeadTypesTail,
+                TopFunctorModesTail, CopiedOutputVars, Context, Decls,
                 InputStatements, OutputStatements, !Info)
         else if
             % Check whether HeadType is the same as BodyType
@@ -667,8 +669,8 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
             type_unify(HeadType, BodyType, [], Subst0, Subst),
             map.is_empty(Subst)
         then
-            ml_gen_convert_headvars(VarsTail, HeadTypesTail, ArgModesTail,
-                CopiedOutputVars, Context, Decls,
+            ml_gen_convert_headvars(VarsTail, HeadTypesTail,
+                TopFunctorModesTail, CopiedOutputVars, Context, Decls,
                 InputStatements, OutputStatements, !Info)
         else
             % Generate the lval for the head variable.
@@ -687,8 +689,8 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
             % HeadVarLval (which has type HeadType).
             ml_gen_info_set_var_lval(Var, BodyLval, !Info),
 
-            ml_gen_convert_headvars(VarsTail, HeadTypesTail, ArgModesTail,
-                CopiedOutputVars, Context, DeclsTail,
+            ml_gen_convert_headvars(VarsTail, HeadTypesTail,
+                TopFunctorModesTail, CopiedOutputVars, Context, DeclsTail,
                 InputStatementsTail, OutputStatementsTail, !Info),
 
             % Add the code to convert this input or output.

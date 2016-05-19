@@ -502,10 +502,13 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
     lookup_var_type(!.VarTypes, OrigVar, Type),
     add_var_type(NewVar, Type, !VarTypes),
     instmap_delta_lookup_var(InstMapDelta, OrigVar, NewInst),
-    Mode = ((NewInst -> NewInst) - (free -> NewInst)),
-    UnifyInfo = assign(OrigVar, NewVar),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(NewInst, NewInst),
+        from_to_insts(free, NewInst)),
+    Unification = assign(OrigVar, NewVar),
     UnifyContext = unify_context(umc_explicit, []),
-    GoalExpr = unify(OrigVar, rhs_var(NewVar), Mode, UnifyInfo, UnifyContext),
+    GoalExpr = unify(OrigVar, rhs_var(NewVar), UnifyMode, Unification,
+        UnifyContext),
     set_of_var.list_to_set([OrigVar, NewVar], NonLocals),
     UnifyInstMapDelta = instmap_delta_from_assoc_list([OrigVar - NewInst]),
     goal_info_init(NonLocals, UnifyInstMapDelta, detism_det, purity_pure,
@@ -1641,17 +1644,21 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     else
         unexpected($module, $pred, "get_arg_insts failed")
     ),
-    InstToUniMode =
-        ( pred(ArgInst::in, ArgUniMode::out) is det :-
-            ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
+    InstToArgUnifyMode =
+        ( pred(ArgInst::in, ArgUnfyiMode::out) is det :-
+            ArgUnfyiMode = unify_modes_lhs_rhs(
+                from_to_insts(ArgInst, ArgInst),
+                from_to_insts(free, ArgInst))
         ),
-    list.map(InstToUniMode, ArgInsts, UniModes),
-    UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
+    list.map(InstToArgUnifyMode, ArgInsts, UniModes),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(Inst0, Inst0),
+        from_to_insts(Inst0, Inst0)),
     UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail,
         cannot_cgc),
     RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
-    ExtraGoalExpr = unify(Var, RHS, UniMode, Unification, UnifyContext),
+    ExtraGoalExpr = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
     NonLocals = set_of_var.make_singleton(Var),
     instmap_delta_init_reachable(ExtraInstMapDelta0),
     instmap_delta_bind_var_to_functor(Var, VarType, ConsId, InstMap,

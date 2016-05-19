@@ -89,7 +89,7 @@
     % list into a bag of input variables, and a bag of output variables.
     %
 :- pred split_unification_vars(module_info::in,
-    list(prog_var)::in, list(uni_mode)::in,
+    list(prog_var)::in, list(unify_mode)::in,
     bag(prog_var)::out, bag(prog_var)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -201,7 +201,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module parse_tree.prog_type.
 
-:- import_module pair.
 :- import_module require.
 
 %---------------------------------------------------------------------------%
@@ -257,10 +256,10 @@ split_unification_vars(_, [], [_ | _], _, _) :-
     unexpected($module, $pred, "unmatched variables").
 split_unification_vars(_, [_ | _], [], _, _) :-
     unexpected($module, $pred, "unmatched variables").
-split_unification_vars(ModuleInfo, [Arg | Args], [UniMode | UniModes],
+split_unification_vars(ModuleInfo, [Arg | Args], [ArgMode | ArgModes],
         InVars, OutVars):-
-    split_unification_vars(ModuleInfo, Args, UniModes, InVars0, OutVars0),
-    UniMode = ((_VarInit - ArgInit) -> (_VarFinal - ArgFinal)),
+    split_unification_vars(ModuleInfo, Args, ArgModes, InVars0, OutVars0),
+    ArgMode = unify_modes_lhs_rhs(_, from_to_insts(ArgInit, ArgFinal)),
     ( if
         inst_is_bound(ModuleInfo, ArgInit)
     then

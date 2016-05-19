@@ -67,11 +67,11 @@
 
 simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, !Common, !Info) :-
-    GoalExpr0 = unify(LT0, RT0, M, U0, C),
+    GoalExpr0 = unify(LHSVar0, RHS0, UnifyMode, Unification0, UnifyContext),
     (
-        RT0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal0),
-        determinism_to_code_model(LambdaDeclaredDet, LambdaCodeModel),
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocals, Vars, Modes, LambdaDeclaredDetism, LambdaGoal0),
+        determinism_to_code_model(LambdaDeclaredDetism, LambdaCodeModel),
         (
             ( LambdaCodeModel = model_det
             ; LambdaCodeModel = model_semi
@@ -100,37 +100,37 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         simplify_goal(LambdaGoal0, LambdaGoal, LambdaNestedContext,
             LambdaInstMap0, LambdaCommon0, _, !Info),
 
-        RT = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal),
-        GoalExpr = unify(LT0, RT, M, U0, C),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocals, Vars, Modes, LambdaDeclaredDetism, LambdaGoal),
+        GoalExpr = unify(LHSVar0, RHS, UnifyMode, Unification0, UnifyContext),
         GoalInfo = GoalInfo0
     ;
-        ( RT0 = rhs_functor(_, _, _)
-        ; RT0 = rhs_var(_)
+        ( RHS0 = rhs_functor(_, _, _)
+        ; RHS0 = rhs_var(_)
         ),
         ( if
             % A unification of the form X = X can be safely optimised away.
-            RT0 = rhs_var(LT0)
+            RHS0 = rhs_var(LHSVar0)
         then
             Context = goal_info_get_context(GoalInfo0),
             hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
         else if
-            U0 = complicated_unify(UniMode, CanFail, TypeInfoVars)
+            Unification0 = complicated_unify(ComplMode, CanFail, TypeInfoVars)
         then
             (
-                RT0 = rhs_var(V),
-                process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
-                    GoalInfo0, GoalExpr1,
+                RHS0 = rhs_var(V),
+                process_compl_unify(LHSVar0, V, ComplMode, CanFail,
+                    TypeInfoVars, UnifyContext, GoalInfo0, GoalExpr1,
                     NestedContext0, InstMap0, !Common, !Info),
                 GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
             ;
-                RT0 = rhs_functor(_, _, _),
+                RHS0 = rhs_functor(_, _, _),
                 unexpected($module, $pred, "invalid RHS for complicated unify")
             )
         else if
             simplify_do_common_struct(!.Info)
         then
-            common_optimise_unification(U0, M,
+            common_optimise_unification(Unification0, UnifyMode,
                 GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info)
         else if
             ( simplify_do_opt_duplicate_calls(!.Info)
@@ -141,7 +141,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % used for optimizing or warning about duplicate calls.
             % But we don't want to perform the optimization, so we disregard
             % the optimized goal and instead use the original one.
-            common_optimise_unification(U0, M,
+            common_optimise_unification(Unification0, UnifyMode,
                 GoalExpr0, _GoalExpr1, GoalInfo0, _GoalInfo1, !Common, !Info),
             GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0
@@ -151,13 +151,13 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         )
     ).
 
-:- pred process_compl_unify(prog_var::in, prog_var::in, uni_mode::in,
+:- pred process_compl_unify(prog_var::in, prog_var::in, unify_mode::in,
     can_fail::in, list(prog_var)::in, unify_context::in, hlds_goal_info::in,
     hlds_goal::out, simplify_nested_context::in, instmap::in,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
+process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
         UnifyContext, GoalInfo0, Goal, NestedContext0, InstMap0,
         !Common, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
@@ -189,8 +189,9 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
         ExtraGoals = []
     else
         type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
-        determinism_components(Det, CanFail, at_most_one),
-        unify_proc.lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, ProcId),
+        determinism_components(Detism, CanFail, at_most_one),
+        unify_proc.lookup_mode_num(ModuleInfo, TypeCtor, UnifyMode, Detism,
+            ProcId),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
         globals.lookup_bool_option(Globals, can_compare_compound_values,

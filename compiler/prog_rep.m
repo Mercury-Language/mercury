@@ -507,15 +507,15 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
             FileName, LineNo, BoundVars),
         BoundVarsRep = map(var_to_var_rep(Info), BoundVars),
         (
-            GoalExpr = unify(_, _, _, Uni, _),
+            GoalExpr = unify(_, _, _, Unification, _),
             (
-                Uni = assign(Target, Source),
+                Unification = assign(Target, Source),
                 AtomicGoalRep = unify_assign_rep(
                     var_to_var_rep(Info, Target),
                     var_to_var_rep(Info, Source))
             ;
-                ( Uni = construct(Var, ConsId, Args, ArgModes, _, _, _)
-                ; Uni = deconstruct(Var, ConsId, Args, ArgModes, _, _)
+                ( Unification = construct(Var, ConsId, Args, ArgModes, _, _, _)
+                ; Unification = deconstruct(Var, ConsId, Args, ArgModes, _, _)
                 ),
                 VarRep = var_to_var_rep(Info, Var),
                 ConsIdRep = cons_id_rep(ConsId),
@@ -523,7 +523,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 filter_input_args(Info, ArgModes, Args, MaybeArgs),
                 MaybeArgsRep = map(map_maybe(var_to_var_rep(Info)), MaybeArgs),
                 (
-                    Uni = construct(_, _, _, _, _, _, _),
+                    Unification = construct(_, _, _, _, _, _, _),
                     ( if
                         list.all_true(lhs_final_is_ground(Info), ArgModes)
                     then
@@ -534,7 +534,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                             ConsIdRep, MaybeArgsRep)
                     )
                 ;
-                    Uni = deconstruct(_, _, _, _, _, _),
+                    Unification = deconstruct(_, _, _, _, _, _),
                     ( if list.member(Var, BoundVars) then
                         AtomicGoalRep = partial_deconstruct_rep(VarRep,
                             ConsIdRep, MaybeArgsRep)
@@ -544,12 +544,12 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                     )
                 )
             ;
-                Uni = simple_test(Var1, Var2),
+                Unification = simple_test(Var1, Var2),
                 AtomicGoalRep = unify_simple_test_rep(
                     var_to_var_rep(Info, Var1),
                     var_to_var_rep(Info, Var2))
             ;
-                Uni = complicated_unify(_, _, _),
+                Unification = complicated_unify(_, _, _),
                 unexpected($module, $pred, "complicated_unify")
             )
         ;
@@ -804,20 +804,26 @@ encode_case_rep(Info, Case, Bytes, !StringTable) :-
     Bytes = MainConsIdBytes ++ encode_length_func(OtherConsIds) ++
         list.condense(OtherConsIdsByteLists) ++ GoalBytes.
 
-:- pred lhs_final_is_ground(prog_rep_info::in, uni_mode::in) is semidet.
+:- pred lhs_final_is_ground(prog_rep_info::in, unify_mode::in) is semidet.
 
-lhs_final_is_ground(Info, (_ - _) -> (LHSFinalInst - _)) :-
+lhs_final_is_ground(Info, UnifyMode) :-
+    UnifyMode = unify_modes_lhs_rhs(from_to_insts(_, LHSFinalInst), _),
     inst_is_ground(Info ^ pri_module_info, LHSFinalInst).
 
-:- pred rhs_is_input(prog_rep_info::in, uni_mode::in) is semidet.
+:- pred rhs_is_input(prog_rep_info::in, unify_mode::in) is semidet.
 
-rhs_is_input(Info, (_ - RHSInitialInst) -> (_ - RHSFinalInst)) :-
-    mode_is_input(Info ^ pri_module_info, RHSInitialInst -> RHSFinalInst).
+rhs_is_input(Info, UnifyMode) :-
+    UnifyMode = unify_modes_lhs_rhs(_, RHSFromToInsts),
+    from_to_insts_is_input(Info ^ pri_module_info, RHSFromToInsts).
 
-:- pred filter_input_args(prog_rep_info::in, list(uni_mode)::in,
+:- pred filter_input_args(prog_rep_info::in, list(unify_mode)::in,
     list(prog_var)::in, list(maybe(prog_var))::out) is det.
 
 filter_input_args(_, [], [], []).
+filter_input_args(_, [], [_ | _], _) :-
+    unexpected($module, $pred, "mismatched lists").
+filter_input_args(_, [_ | _], [], _) :-
+    unexpected($module, $pred, "mismatched lists").
 filter_input_args(Info, [Mode | Modes], [Var | Vars],
         [MaybeVar | MaybeVars]) :-
     ( if rhs_is_input(Info, Mode) then
@@ -826,10 +832,6 @@ filter_input_args(Info, [Mode | Modes], [Var | Vars],
         MaybeVar = no
     ),
     filter_input_args(Info, Modes, Vars, MaybeVars).
-filter_input_args(_, [], [_ | _], _) :-
-    unexpected($module, $pred, "mismatched lists").
-filter_input_args(_, [_ | _], [], _) :-
-    unexpected($module, $pred, "mismatched lists").
 
 %-----------------------------------------------------------------------------%
 

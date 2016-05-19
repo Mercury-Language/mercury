@@ -1830,7 +1830,7 @@ generate_save_input_vars_code([InputArg - Mode | InputArgModes], ModuleInfo,
         unexpected($module, $pred, "no InputVarName")
     ),
     mode_get_insts(ModuleInfo, Mode, InitInst, _FinalInst),
-    PickupMode = (free -> InitInst),
+    PickupMode = from_to_mode(free, InitInst),
     PickupArg = foreign_arg(InputVar, yes(InputVarName - PickupMode), Type,
         bp_native_if_possible),
     SaveVarCode = "\t\tMR_table_mmos_save_input_arg(" ++
@@ -3197,7 +3197,7 @@ gen_restore_call_for_type(DebugArgStr, CtorCat, Type, OrigInstmapDelta, Var,
     else
         unexpected($module, $pred, "no inst")
     ),
-    Arg = foreign_arg(Var, yes(Name - (free -> Inst)), ArgType,
+    Arg = foreign_arg(Var, yes(Name - from_to_mode(free, Inst)), ArgType,
         bp_native_if_possible),
     CodeStr = "\t" ++ RestoreMacroName ++ "(" ++ DebugArgStr ++ ", " ++
         answer_block_name ++ ", " ++ int_to_string(Offset) ++ ", " ++

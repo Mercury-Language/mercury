@@ -685,9 +685,9 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
                 add_aliases(Source, [Target], !VarDep)
             )
         ;
-            Unify = deconstruct(CellVar, _, Args, Modes, CanFail, _),
+            Unify = deconstruct(CellVar, _, ArgVars, ArgModes, CanFail, _),
             expect(unify(CellVar, LHS), $module, $pred, "LHS != CellVar"),
-            partition_deconstruct_args(Info, Args, Modes,
+            partition_deconstruct_args(Info, ArgVars, ArgModes,
                 InputVars, OutputVars),
             % The deconstructed variable is used if any of the variables that
             % the deconstruction binds are used.
@@ -703,12 +703,12 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
                 CanFail = cannot_fail
             )
         ;
-            Unify = construct(CellVar, _, Args, _, _, _, _),
+            Unify = construct(CellVar, _, ArgVars, _, _, _, _),
             expect(unify(CellVar, LHS), $module, $pred, "LHS != CellVar"),
             ( if local_var_is_used(!.VarDep, CellVar) then
-                set_list_vars_used(Args, !VarDep)
+                set_list_vars_used(ArgVars, !VarDep)
             else
-                add_construction_aliases(CellVar, Args, !VarDep)
+                add_construction_aliases(CellVar, ArgVars, !VarDep)
             )
         ;
             Unify = complicated_unify(_, _, _),
@@ -780,50 +780,48 @@ add_rev_arg_dep(Var, PredProcId, Arg, !VarDep) :-
     % and outputs.
     %
 :- pred partition_deconstruct_args(unused_args_info::in, list(prog_var)::in,
-    list(uni_mode)::in, list(prog_var)::out, list(prog_var)::out) is det.
+    list(unify_mode)::in, list(prog_var)::out, list(prog_var)::out) is det.
 
-partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
+partition_deconstruct_args(Info, Vars, ArgModes, InputVars, OutputVars) :-
     (
-        ArgVars = [],
+        Vars = [],
         ArgModes = [],
         InputVars = [],
         OutputVars = []
     ;
-        ArgVars = [],
+        Vars = [],
         ArgModes = [_ | _],
         unexpected($module, $pred, "mismatched lists")
     ;
-        ArgVars = [_ | _],
+        Vars = [_ | _],
         ArgModes = [],
         unexpected($module, $pred, "mismatched lists")
     ;
-        ArgVars = [Var | Vars],
-        ArgModes = [Mode | Modes],
-        partition_deconstruct_args(Info, Vars, Modes, InputVars1, OutputVars1),
-        Mode = ((InitialInst1 - InitialInst2) -> (FinalInst1 - FinalInst2)),
+        Vars = [HeadVar | TailVars],
+        ArgModes = [HeadArgMode | TailArgModes],
+        partition_deconstruct_args(Info, TailVars, TailArgModes,
+            InputVarsTail, OutputVarsTail),
 
-        lookup_var_type(Info ^ unarg_vartypes, Var, Type),
+        HeadArgMode = unify_modes_lhs_rhs(
+            from_to_insts(InitX, FinalX),
+            from_to_insts(InitY, FinalY)),
+        lookup_var_type(Info ^ unarg_vartypes, HeadVar, HeadType),
+        ModuleInfo = Info ^ unarg_module_info,
 
         % If the inst of the argument of the LHS is changed,
         % the argument is input.
-        ( if
-            inst_matches_binding(InitialInst1, FinalInst1,
-                Type, Info ^ unarg_module_info)
-        then
-            InputVars = InputVars1
+        ( if inst_matches_binding(InitX, FinalX, HeadType, ModuleInfo) then
+            InputVars = InputVarsTail
         else
-            InputVars = [Var | InputVars1]
+            InputVars = [HeadVar | InputVarsTail]
         ),
 
         % If the inst of the argument of the RHS is changed,
         % the argument is output.
-        ( if
-            inst_matches_binding(InitialInst2, FinalInst2, Type,
-                Info ^ unarg_module_info)
-        then
-            OutputVars = OutputVars1
+        ( if inst_matches_binding(InitY, FinalY, HeadType, ModuleInfo) then
+            OutputVars = OutputVarsTail
         else
-            OutputVars = [Var | OutputVars1]
+            OutputVars = [HeadVar | OutputVarsTail]
         )
     ).
 
@@ -1652,44 +1650,48 @@ need_unify(ModuleInfo, UnusedVars, Unify, Changed) :-
         unexpected($module, $pred, "complicated unify")
     ).
 
-    % Check if any of the arguments of a deconstruction are unused, if
-    % so Changed will be yes and quantification will be rerun. Fails if
+    % Check if any of the arguments of a deconstruction are unused,
+    % if so Changed will be yes and quantification will be rerun. Fails if
     % none of the arguments are used. Arguments which further instantiate
     % the deconstructed variable are ignored in this.
     %
 :- pred check_deconstruct_args(module_info::in, list(prog_var)::in,
-    list(prog_var)::in, list(uni_mode)::in, bool::in, bool::out) is semidet.
+    list(prog_var)::in, list(unify_mode)::in, bool::in, bool::out) is semidet.
 
-check_deconstruct_args(ModuleInfo, UnusedVars, Args, Modes, !.SomeUsed,
+check_deconstruct_args(ModuleInfo, UnusedVars, Vars, ArgModes, !.SomeUsed,
         Changed) :-
     (
-        Args = [],
-        Modes = [],
+        Vars = [],
+        ArgModes = [],
         !.SomeUsed = yes,
         Changed = no
     ;
-        Args = [],
-        Modes = [_ | _],
+        Vars = [],
+        ArgModes = [_ | _],
         unexpected($module, $pred, "mismatched lists")
     ;
-        Args = [_ | _],
-        Modes = [],
+        Vars = [_ | _],
+        ArgModes = [],
         unexpected($module, $pred, "mismatched lists")
     ;
-        Args = [ArgVar | ArgVars],
-        Modes = [ArgMode | ArgModes],
+        Vars = [HeadVar | TailVars],
+        ArgModes = [HeadArgMode | TailArgModes],
         ( if
-            ArgMode = ((Inst1 - Inst2) -> _),
-            mode_is_output(ModuleInfo, (Inst1 -> Inst2)),
-            list.member(ArgVar, UnusedVars)
+            % XXX This test is seems wrong to me. Why does it look at a mode
+            % that is made up of *two initial* insts?
+            HeadArgMode = unify_modes_lhs_rhs(
+                from_to_insts(InitX, _),
+                from_to_insts(InitY, _)),
+            mode_is_output(ModuleInfo, from_to_mode(InitX, InitY)),
+            list.member(HeadVar, UnusedVars)
         then
-            check_deconstruct_args(ModuleInfo, UnusedVars, ArgVars, ArgModes,
-                !.SomeUsed, _),
+            check_deconstruct_args(ModuleInfo, UnusedVars,
+                TailVars, TailArgModes, !.SomeUsed, _),
             Changed = yes
         else
             !:SomeUsed = yes,
-            check_deconstruct_args(ModuleInfo, UnusedVars, ArgVars, ArgModes,
-                !.SomeUsed, Changed)
+            check_deconstruct_args(ModuleInfo, UnusedVars,
+                TailVars, TailArgModes, !.SomeUsed, Changed)
         )
     ).
 

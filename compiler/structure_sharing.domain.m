@@ -1002,8 +1002,8 @@ bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes, Types) :-
             not inst_is_clobbered(ModuleInfo, RightInst),
 
             % Mode is output.
-            mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-            ArgMode = top_out,
+            mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
+            TopFunctorMode = top_out,
 
             % Type is one which we care about for structure sharing/reuse.
             type_needs_sharing_analysis(ModuleInfo, Type)

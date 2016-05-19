@@ -3034,7 +3034,9 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
         Unification = construct(TypeClassInfoVar, ConstConsId, [], [],
             construct_statically, cell_is_shared, no_construct_sub_info),
         Ground = ground(shared, none_or_default_func),
-        UnifyMode = (free -> Ground) - (Ground -> Ground),
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(free, Ground),
+            from_to_insts(Ground, Ground)),
         % XXX The UnifyContext is wrong.
         UnifyContext = unify_context(umc_explicit, []),
         TypeClassInfoRHS = rhs_functor(ConstConsId, is_not_exist_constr, []),
@@ -3068,14 +3070,18 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
         TypeClassInfoRHS =
             rhs_functor(ConsId, is_not_exist_constr, AllArgVars),
         Ground = ground(shared, none_or_default_func),
-        UniMode = ((free - Ground) -> (Ground - Ground)),
+        ArgMode = unify_modes_lhs_rhs(
+            from_to_insts(free, Ground),
+            from_to_insts(Ground, Ground)),
         list.length(AllArgVars, NumArgs),
-        list.duplicate(NumArgs, UniMode, UniModes),
-        Unification = construct(TypeClassInfoVar, ConsId, AllArgVars, UniModes,
+        list.duplicate(NumArgs, ArgMode, ArgModes),
+        Unification = construct(TypeClassInfoVar, ConsId, AllArgVars, ArgModes,
             construct_dynamically, cell_is_unique, no_construct_sub_info),
-        UnifyMode = (free -> Ground) - (Ground -> Ground),
-        UnifyContext = unify_context(umc_explicit, []),
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(free, Ground),
+            from_to_insts(Ground, Ground)),
         % XXX The UnifyContext is wrong.
+        UnifyContext = unify_context(umc_explicit, []),
         GoalExpr = unify(TypeClassInfoVar, TypeClassInfoRHS, UnifyMode,
             Unification, UnifyContext),
 
@@ -3478,9 +3484,11 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
                 [], [], construct_statically, cell_is_shared,
                 no_construct_sub_info),
             Ground = ground(shared, none_or_default_func),
-            UnifyMode = (free -> Ground) - (Ground -> Ground),
-            UnifyContext = unify_context(umc_explicit, []),
+            UnifyMode = unify_modes_lhs_rhs(
+                from_to_insts(free, Ground),
+                from_to_insts(Ground, Ground)),
             % XXX The UnifyContext is wrong.
+            UnifyContext = unify_context(umc_explicit, []),
             TypeInfoRHS = rhs_functor(type_info_const(ConstNum),
                 is_not_exist_constr, []),
             Unify = unify(Var, TypeInfoRHS, UnifyMode, Unification,
@@ -3631,14 +3639,18 @@ do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
 
     % Create the construction unification to initialize the variable.
     Ground = ground(shared, none_or_default_func),
-    UniMode = (free - Ground -> Ground - Ground),
+    ArgMode = unify_modes_lhs_rhs(
+        from_to_insts(free, Ground),
+        from_to_insts(Ground, Ground)),
     list.length(ArgVars, NumArgVars),
-    list.duplicate(NumArgVars, UniMode, UniModes),
-    Unification = construct(TypeInfoVar, ConsId, ArgVars, UniModes,
+    list.duplicate(NumArgVars, ArgMode, ArgModes),
+    Unification = construct(TypeInfoVar, ConsId, ArgVars, ArgModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
-    UnifyMode = (free -> Ground) - (Ground -> Ground),
-    UnifyContext = unify_context(umc_explicit, []),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free, Ground),
+        from_to_insts(Ground, Ground)),
     % XXX The UnifyContext is wrong.
+    UnifyContext = unify_context(umc_explicit, []),
     Unify = unify(TypeInfoVar, TypeInfoRHS, UnifyMode, Unification,
         UnifyContext),
 
@@ -3682,9 +3694,11 @@ init_const_type_ctor_info_var_from_cons_id(Type, ConsId,
     Unification = construct(TypeCtorInfoVar, ConsId, [], [],
         construct_dynamically, cell_is_shared, no_construct_sub_info),
     Ground = ground(shared, none_or_default_func),
-    UnifyMode = (free -> Ground) - (Ground -> Ground),
-    UnifyContext = unify_context(umc_explicit, []),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free, Ground),
+        from_to_insts(Ground, Ground)),
     % XXX The UnifyContext is wrong.
+    UnifyContext = unify_context(umc_explicit, []),
     Unify = unify(TypeCtorInfoVar, TypeInfoRHS, UnifyMode,
         Unification, UnifyContext),
 
@@ -4167,11 +4181,12 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
 
         % Make the goal info for the call.
         set_of_var.list_to_set(HeadVars0, NonLocals),
-        instmap_delta_from_mode_list(HeadVars0, Modes0, !.ModuleInfo,
+        instmap_delta_from_mode_list(!.ModuleInfo, HeadVars0, Modes0,
             InstmapDelta),
         pred_info_get_purity(PredInfo0, Purity),
         pred_info_get_context(PredInfo0, Context),
-        goal_info_init(NonLocals, InstmapDelta, Detism, Purity, Context, GoalInfo),
+        goal_info_init(NonLocals, InstmapDelta, Detism, Purity, Context,
+            GoalInfo),
         BodyGoal = hlds_goal(BodyGoalExpr, GoalInfo),
 
         proc_info_set_goal(BodyGoal, ProcInfo0, ProcInfo),
@@ -4260,9 +4275,11 @@ materialize_base_typeclass_info_var(Constraint, ConsId, Var, Goals, !Info) :-
         Unification = construct(Var, ConsId, [], [],
             construct_dynamically, cell_is_shared, no_construct_sub_info),
         Ground = ground(shared, none_or_default_func),
-        UnifyMode = (free -> Ground) - (Ground -> Ground),
-        UnifyContext = unify_context(umc_explicit, []),
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(free, Ground),
+            from_to_insts(Ground, Ground)),
         % XXX The UnifyContext is wrong.
+        UnifyContext = unify_context(umc_explicit, []),
         Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
 
         % Create the unification goal.
@@ -4299,9 +4316,11 @@ materialize_typeclass_info_var(Constraint, InstanceIdConstNum, Var, Goals,
         Unification = construct(Var, ConsId, [], [],
             construct_statically, cell_is_shared, no_construct_sub_info),
         Ground = ground(shared, none_or_default_func),
-        UnifyMode = (free -> Ground) - (Ground -> Ground),
-        UnifyContext = unify_context(umc_explicit, []),
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(free, Ground),
+            from_to_insts(Ground, Ground)),
         % XXX The UnifyContext is wrong.
+        UnifyContext = unify_context(umc_explicit, []),
         GoalExpr = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
 
         % Create a goal_info for the unification.

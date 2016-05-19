@@ -824,14 +824,15 @@ output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 %---------------------------------------------------------------------------%
 
 :- pred give_vars_consecutive_arg_infos(list(prog_var)::in,
-    reg_type::in, int::in, arg_mode::in, assoc_list(prog_var, arg_info)::out)
-    is det.
+    reg_type::in, int::in, top_functor_mode::in,
+    assoc_list(prog_var, arg_info)::out) is det.
 
-give_vars_consecutive_arg_infos([], _RegType, _N, _M, []).
-give_vars_consecutive_arg_infos([Var | Vars], RegType, N, ArgMode,
+give_vars_consecutive_arg_infos([], _RegType, _N, _TopFunctorMode, []).
+give_vars_consecutive_arg_infos([Var | Vars], RegType, N, TopFunctorMode,
         [Var - ArgInfo | ArgInfos]) :-
-    ArgInfo = arg_info(reg(RegType, N), ArgMode),
-    give_vars_consecutive_arg_infos(Vars, RegType, N + 1, ArgMode, ArgInfos).
+    ArgInfo = arg_info(reg(RegType, N), TopFunctorMode),
+    give_vars_consecutive_arg_infos(Vars, RegType, N + 1, TopFunctorMode,
+        ArgInfos).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.call_gen.

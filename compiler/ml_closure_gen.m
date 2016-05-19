@@ -38,7 +38,7 @@
     % closure in Var.
     %
 :- pred ml_gen_closure(pred_id::in, proc_id::in, prog_var::in, prog_vars::in,
-    list(uni_mode)::in, how_to_construct::in, prog_context::in,
+    list(unify_mode)::in, how_to_construct::in, prog_context::in,
     list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
@@ -1015,16 +1015,16 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
         ml_gen_type(!.Info, Type, MLDS_Type),
         ml_gen_var_lval(!.Info, Name, MLDS_Type, VarLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        mode_to_top_functor_mode(ModuleInfo, Mode, Type, ArgTopFunctorMode),
         (
-            ( ArgMode = top_in
-            ; ArgMode = top_unused
+            ( ArgTopFunctorMode = top_in
+            ; ArgTopFunctorMode = top_unused
             ),
             Lval = VarLval,
             CopyOutLvals = CopyOutLvalsTail,
             Defns = DefnsTail
         ;
-            ArgMode = top_out,
+            ArgTopFunctorMode = top_out,
             % Handle output variables.
             ml_gen_info_get_globals(!.Info, Globals),
             CopyOut = get_copy_out_option(Globals, CodeModel),
@@ -1037,7 +1037,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
                     % are mapped to MLDS return values.
                     PredOrFunc = pf_function,
                     CodeModel = model_det,
-                    ArgMode = top_out,
+                    ArgTopFunctorMode = top_out,
                     TypesTail = [],
                     IsDummy = is_not_dummy_type
                 )

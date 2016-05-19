@@ -829,7 +829,7 @@
                 % The list of modes of the arguments sub-unifications.
                 % For a unification with a lambda expression, this is the list
                 % of modes of the non-local variables of the lambda expression.
-                construct_arg_modes     :: list(uni_mode),
+                construct_arg_modes     :: list(unify_mode),
 
                 % Specify whether to allocate statically, to allocate
                 % dynamically (and if so, on the heap or in a region),
@@ -862,7 +862,7 @@
                 deconstruct_args        :: list(prog_var),
 
                 % The lists of modes of the argument sub-unifications.
-                deconstruct_arg_modes   :: list(uni_mode),
+                deconstruct_arg_modes   :: list(unify_mode),
 
                 % Whether or not the unification could possibly fail.
                 deconstruct_can_fail    :: can_fail,
@@ -895,7 +895,7 @@
                 % predicate for that type & mode.
 
                 % The mode of the unification.
-                compl_unify_mode        :: uni_mode,
+                compl_unify_mode        :: unify_mode,
 
                 % Whether or not it could possibly fail.
                 compl_unify_can_fail    :: can_fail,
@@ -1052,13 +1052,8 @@
     --->    cell_is_unique
     ;       cell_is_shared.
 
-:- type unify_mode == pair(mer_mode, mer_mode).
-
-:- type uni_mode
-    --->    pair(mer_inst) -> pair(mer_inst).
-            % Each uni_mode maps a pair of insts to a pair of new insts
-            % Each pair represents the insts of the LHS and the RHS
-            % respectively.
+:- type unify_mode
+    --->    unify_modes_lhs_rhs(from_to_insts, from_to_insts).
 
 %-----------------------------------------------------------------------------%
 %

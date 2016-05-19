@@ -638,7 +638,7 @@ find_outputs([], _Initial, _Final, _ModuleInfo, !Outputs).
 find_outputs([Var | Vars],  Initial, Final, ModuleInfo, !Outputs) :-
     instmap_lookup_var(Initial, Var, InitialInst),
     instmap_lookup_var(Final, Var, FinalInst),
-    ( if mode_is_output(ModuleInfo, (InitialInst -> FinalInst)) then
+    ( if mode_is_output(ModuleInfo, from_to_mode(InitialInst, FinalInst)) then
         !:Outputs = [Var | !.Outputs]
     else
         !:Outputs = !.Outputs

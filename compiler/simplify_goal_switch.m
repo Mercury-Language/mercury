@@ -54,7 +54,6 @@
 
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module varset.
@@ -286,18 +285,22 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
     else
         unexpected($module, $pred, "get_arg_insts failed")
     ),
-    InstToUniMode =
-        ( pred(ArgInst::in, ArgUniMode::out) is det :-
-            ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
+    InstToArgUnifyMode =
+        ( pred(ArgInst::in, ArgUnifyMode::out) is det :-
+            ArgUnifyMode = unify_modes_lhs_rhs(
+                from_to_insts(ArgInst, ArgInst),
+                from_to_insts(free, ArgInst))
         ),
-    list.map(InstToUniMode, ArgInsts, UniModes),
-    UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
+    list.map(InstToArgUnifyMode, ArgInsts, ArgUnifyModes),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(Inst0, Inst0),
+        from_to_insts(Inst0, Inst0)),
     UnifyContext = unify_context(umc_explicit, []),
-    Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail,
+    Unification = deconstruct(Var, ConsId, ArgVars, ArgUnifyModes, can_fail,
         cannot_cgc),
     ExtraGoalExpr = unify(Var,
         rhs_functor(ConsId, is_not_exist_constr, ArgVars),
-        UniMode, Unification, UnifyContext),
+        UnifyMode, Unification, UnifyContext),
     NonLocals = set_of_var.make_singleton(Var),
 
     % The test can't bind any variables, so the InstMapDelta should be empty.

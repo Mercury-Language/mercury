@@ -711,7 +711,7 @@ pred_inst_info_to_inline_pieces(Info, Expansions0,
 
 mode_to_pieces(Info, Expansions0, Mode) = Pieces :-
     (
-        Mode = (InitInst0 -> FinalInst0),
+        Mode = from_to_mode(InitInst0, FinalInst0),
         % XXX We should strip these wrappers everywhere in both insts,
         % not just at the top.
         ( if InitInst0 = defined_inst(typed_inst(_, SubInitInstName)) then
@@ -795,7 +795,7 @@ mode_to_pieces(Info, Expansions0, Mode) = Pieces :-
 
 mode_to_inline_pieces(Info, Expansions0, Mode) = Pieces :-
     (
-        Mode = (InitInst0 -> FinalInst0),
+        Mode = from_to_mode(InitInst0, FinalInst0),
         % XXX We should strip these wrappers everywhere in both insts,
         % not just at the top.
         ( if InitInst0 = defined_inst(typed_inst(_, SubInitInstName)) then

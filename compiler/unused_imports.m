@@ -774,7 +774,7 @@ mer_type_used_modules(Visibility, Type, !UsedModules) :-
 
 mer_mode_used_modules(Visibility, Mode, !UsedModules) :-
     (
-        Mode = (Inst0 -> Inst),
+        Mode = from_to_mode(Inst0, Inst),
         mer_inst_used_modules(Visibility, Inst0, !UsedModules),
         mer_inst_used_modules(Visibility, Inst, !UsedModules)
     ;

@@ -258,7 +258,7 @@ split_types_and_modes(TypesAndModes, Types, MaybeModes) :-
 
     % T = type, M = mode, TM = combined type and mode
 split_types_and_modes_2([], Result, [], [], Result).
-split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
+split_types_and_modes_2([TM | TMs], Result0, [T | Ts], [M | Ms], Result) :-
     split_type_and_mode(TM, Result0, T, M, Result1),
     split_types_and_modes_2(TMs, Result1, Ts, Ms, Result).
 
@@ -269,11 +269,11 @@ split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
 :- pred split_type_and_mode(type_and_mode::in, bool::in,
     mer_type::out, mer_mode::out, bool::out) is det.
 
-split_type_and_mode(type_only(T), _, T, (free -> free), no).
-split_type_and_mode(type_and_mode(T,M), R, T, M, R).
+split_type_and_mode(type_only(T), _, T, from_to_mode(free, free), no).
+split_type_and_mode(type_and_mode(T, M), R, T, M, R).
 
 split_type_and_mode(type_only(T), T, no).
-split_type_and_mode(type_and_mode(T,M), T, yes(M)).
+split_type_and_mode(type_and_mode(T, M), T, yes(M)).
 
 %-----------------------------------------------------------------------------%
 

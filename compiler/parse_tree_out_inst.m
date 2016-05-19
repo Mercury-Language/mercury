@@ -559,7 +559,7 @@ mercury_mode_to_string(Lang, InstVarSet, Mode) = String :-
 
 mercury_format_mode(Lang, InstVarSet, Mode, !U) :-
     (
-        Mode = (InstA -> InstB),
+        Mode = from_to_mode(InstA, InstB),
         % Output higher-order pred and func modes in a nice format.
         ( if
             InstA = ground(_Uniq, higher_order(

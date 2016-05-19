@@ -1189,8 +1189,10 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
     (
         MaybeWithInst1 = yes(Inst1),
         MaybeWithInst2 = yes(Inst2),
-        WithInstTerm1 = mode_to_term(output_mercury, free -> Inst1),
-        WithInstTerm2 = mode_to_term(output_mercury, free -> Inst2),
+        WithInstTerm1 = mode_to_term(output_mercury,
+            from_to_mode(free, Inst1)),
+        WithInstTerm2 = mode_to_term(output_mercury,
+            from_to_mode(free, Inst2)),
         AllModeTerms1 = [WithInstTerm1 | ModeTerms1],
         AllModeTerms2 = [WithInstTerm2 | ModeTerms2]
     ;

@@ -885,9 +885,11 @@ write_goal_unify(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         ( if
             % Don't output bogus info if we haven't been through
             % mode analysis yet.
-            Unification = complicated_unify(Mode, CanFail, TypeInfoVars),
+            Unification = complicated_unify(ComplMode, CanFail, TypeInfoVars),
             CanFail = can_fail,
-            Mode = (free - free -> free - free),
+            ComplMode = unify_modes_lhs_rhs(
+                from_to_insts(free, free),
+                from_to_insts(free, free)),
             TypeInfoVars = []
         then
             true
@@ -1200,7 +1202,7 @@ write_unification(Info, ModuleInfo, ProgVarSet, InstVarSet, VarNamePrint,
             io.write_string("cannot_fail, ", !IO)
         ),
         io.write_string("mode: ", !IO),
-        mercury_output_uni_mode(Mode, InstVarSet, !IO),
+        mercury_output_unify_mode(Mode, InstVarSet, !IO),
         io.write_string("\n", !IO),
         write_indent(Indent, !IO),
         io.write_string("% type-info vars: ", !IO),
@@ -1210,7 +1212,7 @@ write_unification(Info, ModuleInfo, ProgVarSet, InstVarSet, VarNamePrint,
 
 :- pred write_functor_and_submodes(hlds_out_info::in, module_info::in,
     prog_varset::in, inst_varset::in, var_name_print::in, int::in,
-    cons_id::in, list(prog_var)::in, list(uni_mode)::in,
+    cons_id::in, list(prog_var)::in, list(unify_mode)::in,
     io::di, io::uo) is det.
 
 write_functor_and_submodes(Info, _ModuleInfo, ProgVarSet, InstVarSet,
@@ -1229,13 +1231,12 @@ write_functor_and_submodes(Info, _ModuleInfo, ProgVarSet, InstVarSet,
             ( if string.contains_char(DumpOptions, 'y') then
                 write_indent(Indent, !IO),
                 io.write_string("% arg-modes\n", !IO),
-                % ZZZ
-                mercury_output_structured_uni_mode_list(ArgModes, Indent,
+                mercury_output_structured_unify_mode_list(ArgModes, Indent,
                     output_debug, do_incl_addr, InstVarSet, !IO)
             else
                 write_indent(Indent, !IO),
                 io.write_string("% arg-modes ", !IO),
-                mercury_output_uni_mode_list(ArgModes, InstVarSet, !IO),
+                mercury_output_unify_mode_list(ArgModes, InstVarSet, !IO),
                 io.write_string("\n", !IO)
             )
         else

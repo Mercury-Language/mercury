@@ -1162,16 +1162,16 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         % quadratic. However, due to structure sharing, the actual memory
         % requirements of these bound insts are only linear in the size of the
         % term.
-        modecheck_ground_term_construct_arg_loop(RHSVars, ArgInsts, UniModes,
+        modecheck_ground_term_construct_arg_loop(RHSVars, ArgInsts, ArgModes,
             !LocalVarMap),
         BoundInst = bound_functor(ConsId, ArgInsts),
         TermInst = bound(shared, inst_test_results_fgtc, [BoundInst]),
-        LHSMode = (free -> TermInst),
-        RHSMode = (TermInst -> TermInst),
-        UnifyMode = LHSMode - RHSMode,
+        LHSFromToInsts = from_to_insts(free, TermInst),
+        RHSFromToInsts = from_to_insts(TermInst, TermInst),
+        UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, RHSFromToInsts),
         ConstructHow = construct_statically,
         Uniqueness = cell_is_shared,
-        Unification = construct(LHSVar, ConsId, RHSVars, UniModes,
+        Unification = construct(LHSVar, ConsId, RHSVars, ArgModes,
             ConstructHow, Uniqueness, no_construct_sub_info),
         GoalExpr = unify(LHSVar, RHS, UnifyMode, Unification, UnifyContext),
         InstMapDelta = instmap_delta_from_assoc_list([LHSVar - TermInst]),
@@ -1190,12 +1190,12 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         !LocalVarMap).
 
 :- pred modecheck_ground_term_construct_arg_loop(list(prog_var)::in,
-    list(mer_inst)::out, list(uni_mode)::out,
+    list(mer_inst)::out, list(unify_mode)::out,
     construct_var_info_map::in, construct_var_info_map::out) is det.
 
 modecheck_ground_term_construct_arg_loop([], [], [], !LocalVarMap).
 modecheck_ground_term_construct_arg_loop([Var | Vars], [VarInst | VarInsts],
-        [UniMode | UniModes], !LocalVarMap) :-
+        [ArgMode | ArgModes], !LocalVarMap) :-
     % Each variable introduced by the superhomogeneous transformation
     % for a ground term appears in the from_ground_term scope exactly twice.
     % Once when it is produced (which is handled in the goal loop predicate),
@@ -1205,12 +1205,10 @@ modecheck_ground_term_construct_arg_loop([Var | Vars], [VarInst | VarInsts],
     % from LocalVarMap. This greatly reduces the size of LocalVarMap.
     map.det_remove(Var, VarInfo, !LocalVarMap),
     VarInfo = construct_var_info(VarInst),
-    LHSOldInst = free,
-    RHSOldInst = VarInst,
-    LHSNewInst = VarInst,
-    RHSNewInst = VarInst,
-    UniMode = ((LHSOldInst - RHSOldInst) -> (LHSNewInst - RHSNewInst)),
-    modecheck_ground_term_construct_arg_loop(Vars, VarInsts, UniModes,
+    LHSFromToInsts = from_to_insts(free, VarInst),
+    RHSFromToInsts = from_to_insts(VarInst, VarInst),
+    ArgMode = unify_modes_lhs_rhs(LHSFromToInsts, RHSFromToInsts),
+    modecheck_ground_term_construct_arg_loop(Vars, VarInsts, ArgModes,
         !LocalVarMap).
 
 %-----------------------------------------------------------------------------%
@@ -1327,9 +1325,9 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             map.lookup(ConsTagValues, ConsId, ConsTag),
             ConsTag = shared_local_tag(_, LocalTag)
         then
-            BoundInst = bound_functor(int_const(LocalTag), []),
-            NewMode2 =
-                (free -> bound(Unique, inst_test_results_fgtc, [BoundInst])),
+            BoundFunctor = bound_functor(int_const(LocalTag), []),
+            BoundInst = bound(Unique, inst_test_results_fgtc, [BoundFunctor]),
+            NewMode2 = from_to_mode(free, BoundInst),
             Modes = [Mode1, NewMode2]
         else
             Modes = Modes0

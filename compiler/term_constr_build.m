@@ -883,7 +883,7 @@ build_abstract_unification(Unification, AbstractGoal, !Info) :-
     % |U| - |V| = |f|. (|X| is the size_var corresponding to X).
     %
 :- pred build_abstract_decon_or_con_unify(prog_var::in, cons_id::in,
-    prog_vars::in, list(uni_mode)::in, constraints::out,
+    prog_vars::in, list(unify_mode)::in, constraints::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
 
 build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
@@ -958,7 +958,7 @@ accumulate_nonzero_arg_coeffs(SizeVarMap, Zeros, Coeff, Var, !Terms) :-
 
 :- pred strip_typeinfos_from_args_and_modes(vartypes::in,
     list(prog_var)::in, list(prog_var)::out,
-    list(uni_mode)::in, list(uni_mode)::out) is det.
+    list(unify_mode)::in, list(unify_mode)::out) is det.
 
 strip_typeinfos_from_args_and_modes(VarTypes, !Args, !Modes) :-
     ( if strip_typeinfos_from_args_and_modes_2(VarTypes, !Args, !Modes) then
@@ -969,7 +969,7 @@ strip_typeinfos_from_args_and_modes(VarTypes, !Args, !Modes) :-
 
 :- pred strip_typeinfos_from_args_and_modes_2(vartypes::in,
     list(prog_var)::in, list(prog_var)::out,
-    list(uni_mode)::in, list(uni_mode)::out) is semidet.
+    list(unify_mode)::in, list(unify_mode)::out) is semidet.
 
 strip_typeinfos_from_args_and_modes_2(_, [], [], [], []).
 strip_typeinfos_from_args_and_modes_2(VarTypes, [Arg | !.Args], !:Args,

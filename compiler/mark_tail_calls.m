@@ -275,14 +275,14 @@ find_maybe_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
 find_maybe_output_args_2(_, [], [], [], []).
 find_maybe_output_args_2(ModuleInfo, [Type | Types], [Mode | Modes],
         [Var | Vars], [OutputVar | OutputVars]) :-
-    mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+    mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
     (
-        ( ArgMode = top_in
-        ; ArgMode = top_unused
+        ( TopFunctorMode = top_in
+        ; TopFunctorMode = top_unused
         ),
         OutputVar = no
     ;
-        ArgMode = top_out,
+        TopFunctorMode = top_out,
         IsDummy = check_dummy_type(ModuleInfo, Type),
         (
             IsDummy = is_not_dummy_type,

@@ -52,7 +52,7 @@
                 rpl_proc_id                 ::  proc_id,
                 rpl_proc_headvars           ::  assoc_list(prog_var,
                                                 prog_var_name),
-                rpl_proc_arg_modes          ::  list(arg_mode),
+                rpl_proc_top_modes          ::  list(top_functor_mode),
                 rpl_proc_interface_detism   ::  determinism,
 
                 % The following booleans hold values computed from the
@@ -362,7 +362,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
     proc_info_get_argmodes(ProcInfo, ProcModes),
     proc_info_interface_determinism(ProcInfo, ProcDetism),
-    modes_to_arg_modes(ModuleInfo, ProcModes, ArgTypes, ProcArgModes),
+    modes_to_top_functor_modes(ModuleInfo, ProcModes, ArgTypes, ProcTopModes),
     PredIsImported =
         (if pred_info_is_imported(PredInfo) then yes else no),
     PredIsPseudoImp =
@@ -389,7 +389,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     ),
     ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
         PredName, Arity, ArgTypes, PredId, ProcId,
-        ProcHeadVarsWithNames, ProcArgModes, ProcDetism,
+        ProcHeadVarsWithNames, ProcTopModes, ProcDetism,
         PredIsImported, PredIsPseudoImp, Origin,
         ProcIsExported, ProcIsImported).
 

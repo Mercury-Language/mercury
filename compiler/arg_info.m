@@ -198,15 +198,15 @@ generate_proc_arg_info(Markers, ArgTypes, ModuleInfo, !ProcInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
-    (
+    ( if
         UseFloatRegs = yes,
         % XXX we don't yet use float registers for class method calls
         not check_marker(Markers, marker_class_instance_method)
-    ->
+    then
         proc_info_get_reg_r_headvars(!.ProcInfo, RegR_HeadVars),
         list.map_corresponding(reg_type_for_headvar(RegR_HeadVars),
             HeadVars, ArgTypes, ArgRegTypes)
-    ;
+    else
         list.duplicate(list.length(HeadVars), reg_r, ArgRegTypes)
     ),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
@@ -219,18 +219,19 @@ generate_proc_arg_info(Markers, ArgTypes, ModuleInfo, !ProcInfo) :-
     reg_type::out) is det.
 
 reg_type_for_headvar(RegR_HeadVars, HeadVar, Type, RegType) :-
-    ( set_of_var.contains(RegR_HeadVars, HeadVar) ->
+    ( if set_of_var.contains(RegR_HeadVars, HeadVar) then
         RegType = reg_r
-    ;
-        ( Type = float_type ->
+    else
+        ( if Type = float_type then
             RegType = reg_f
-        ;
+        else
             RegType = reg_r
         )
     ).
 
 %---------------------------------------------------------------------------%
 
+make_standard_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
     % This is the useful part of the code ;-).
     %
     % This code is one of the places where we make assumptions about the
@@ -251,7 +252,6 @@ reg_type_for_headvar(RegR_HeadVars, HeadVar, Type, RegType) :-
     % module implement this decision consistently. (No code outside this module
     % should know about the outcome of this decision.)
     %
-make_standard_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_float_registers, FloatRegs),
     (
@@ -269,9 +269,9 @@ make_standard_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
     is det.
 
 standard_reg_type_for_type(FloatRegType, Type, RegType) :-
-    ( Type = float_type ->
+    ( if Type = float_type then
         RegType = FloatRegType
-    ;
+    else
         RegType = reg_r
     ).
 
@@ -308,17 +308,17 @@ make_arg_infos([Mode | Modes], [Type | Types], [RegType | RegTypes],
         !.InRegR, !.InRegF, !.OutRegR, !.OutRegF, ModuleInfo,
         [ArgInfo | ArgInfos]) :-
     require_det (
-        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
         (
-            ArgMode = top_in,
+            TopFunctorMode = top_in,
             get_arg_loc(RegType, ArgLoc, !InRegR, !InRegF)
         ;
-            ( ArgMode = top_out
-            ; ArgMode = top_unused
+            ( TopFunctorMode = top_out
+            ; TopFunctorMode = top_unused
             ),
             get_arg_loc(RegType, ArgLoc, !OutRegR, !OutRegF)
         ),
-        ArgInfo = arg_info(ArgLoc, ArgMode)
+        ArgInfo = arg_info(ArgLoc, TopFunctorMode)
     ),
     make_arg_infos(Modes, Types, RegTypes, !.InRegR, !.InRegF,
         !.OutRegR, !.OutRegF, ModuleInfo, ArgInfos).
@@ -375,12 +375,12 @@ arg_reg_to_reg_type(ho_arg_reg_f) = reg_f.
 %-----------------------------------------------------------------------------%
 
 compute_in_and_out_vars(ModuleInfo, Vars, Modes, Types, !:InVars, !:OutVars) :-
-    (
+    ( if
         compute_in_and_out_vars_2(ModuleInfo, Vars, Modes, Types,
             [], !:InVars, [], !:OutVars)
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -395,13 +395,13 @@ compute_in_and_out_vars_2(ModuleInfo, [Var | Vars], [Mode | Modes],
     compute_in_and_out_vars_2(ModuleInfo, Vars, Modes, Types,
         !InVars, !OutVars),
     require_det (
-        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
         (
-            ArgMode = top_in,
+            TopFunctorMode = top_in,
             !:InVars = [Var | !.InVars]
         ;
-            ( ArgMode = top_out
-            ; ArgMode = top_unused
+            ( TopFunctorMode = top_out
+            ; TopFunctorMode = top_unused
             ),
             !:OutVars = [Var | !.OutVars]
         )
@@ -411,12 +411,12 @@ compute_in_and_out_vars_2(ModuleInfo, [Var | Vars], [Mode | Modes],
 
 compute_in_and_out_vars_sep_regs(ModuleInfo, Vars, Modes, Types, ArgRegTypes,
         !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF) :-
-    (
+    ( if
         compute_in_and_out_vars_sep_regs_2(ModuleInfo, Vars, Modes, Types,
             ArgRegTypes, !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF)
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -433,9 +433,9 @@ compute_in_and_out_vars_sep_regs_2(ModuleInfo,
     compute_in_and_out_vars_sep_regs_2(ModuleInfo, Vars, Modes, Types,
         RegTypes, !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF),
     require_det (
-        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
         (
-            ArgMode = top_in,
+            TopFunctorMode = top_in,
             (
                 RegType = reg_r,
                 !:InVarsR = [Var | !.InVarsR]
@@ -444,8 +444,8 @@ compute_in_and_out_vars_sep_regs_2(ModuleInfo,
                 !:InVarsF = [Var | !.InVarsF]
             )
         ;
-            ( ArgMode = top_out
-            ; ArgMode = top_unused
+            ( TopFunctorMode = top_out
+            ; TopFunctorMode = top_unused
             ),
             (
                 RegType = reg_r,
@@ -506,13 +506,13 @@ partition_generic_call_args(ModuleInfo, Vars, Types, Modes,
 
 do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         !:Inputs, !:Outputs, !:Unuseds) :-
-    (
+    ( if
         partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
             set.init, !:Inputs, set.init, !:Outputs,
             set.init, !:Unuseds)
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "list length mismatch")
     ).
 
@@ -527,15 +527,15 @@ partition_proc_args_2([], [], [], _ModuleInfo,
 partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
         ModuleInfo, !Inputs, !Outputs, !Unuseds) :-
     require_det (
-        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
         (
-            ArgMode = top_in,
+            TopFunctorMode = top_in,
             set.insert(Var, !Inputs)
         ;
-            ArgMode = top_out,
+            TopFunctorMode = top_out,
             set.insert(Var, !Outputs)
         ;
-            ArgMode = top_unused,
+            TopFunctorMode = top_unused,
             set.insert(Var, !Unuseds)
         )
     ),

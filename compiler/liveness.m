@@ -1817,7 +1817,7 @@ initial_liveness(ModuleInfo, PredInfo, ProcInfo, !:Liveness) :-
 initial_liveness_2(_ModuleInfo, [], [], [], !Liveness).
 initial_liveness_2(ModuleInfo, [Var | Vars], [Type | Types], [Mode | Modes],
         !Liveness) :-
-    ( if mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) then
+    ( if mode_to_top_functor_mode(ModuleInfo, Mode, Type, top_in) then
         set_of_var.insert(Var, !Liveness)
     else
         true
@@ -1888,7 +1888,8 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
     ( if
         instmap_delta_search_var(InstMapDelta, Var, Inst),
         ModuleInfo = LiveInfo ^ li_module_info,
-        mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
+        mode_to_top_functor_mode(ModuleInfo, from_to_mode(free, Inst), Type,
+            top_out)
     then
         set_of_var.insert(Var, !ValueVars)
     else

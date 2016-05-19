@@ -227,7 +227,6 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module term_io.
 :- import_module varset.

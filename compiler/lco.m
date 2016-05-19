@@ -809,14 +809,14 @@ acceptable_construct_unification(Goal, !UnifyInputVars, !Info) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     GoalExpr = unify(_, _, _, Unification, _),
     Unification = construct(ConstructedVar, ConsId, ConstructArgs,
-        ArgUniModes, _, _, SubInfo),
+        ArgModes, _, _, SubInfo),
     (
         SubInfo = no_construct_sub_info
     ;
         SubInfo = construct_sub_info(no, _)
     ),
     ModuleInfo = !.Info ^ lco_module_info,
-    all_true(acceptable_construct_mode(ModuleInfo), ArgUniModes),
+    all_true(acceptable_construct_mode(ModuleInfo), ArgModes),
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     % The code generator can't handle some kinds of tags. For example, it does
     % not make sense to take the address of the field of a function symbol of a
@@ -986,14 +986,15 @@ update_call_args(_ModuleInfo, _VarTypes, [_ | _], [], _, _) :-
 update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
         [Arg | Args], !.UpdatedCallOutArgs, !:UpdatedArgs) :-
     lookup_var_type(VarTypes, Arg, CalleeType),
-    mode_to_arg_mode(ModuleInfo, CalleeMode, CalleeType, ArgMode),
+    mode_to_top_functor_mode(ModuleInfo, CalleeMode, CalleeType,
+        TopFunctorMode),
     (
-        ArgMode = top_in,
+        TopFunctorMode = top_in,
         update_call_args(ModuleInfo, VarTypes, CalleeModes, Args,
             !.UpdatedCallOutArgs, !:UpdatedArgs),
         !:UpdatedArgs = [Arg | !.UpdatedArgs]
     ;
-        ArgMode = top_out,
+        TopFunctorMode = top_out,
         (
             !.UpdatedCallOutArgs = [UpdatedArg | !:UpdatedCallOutArgs]
         ;
@@ -1004,7 +1005,7 @@ update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
             !.UpdatedCallOutArgs, !:UpdatedArgs),
         !:UpdatedArgs = [UpdatedArg | !.UpdatedArgs]
     ;
-        ArgMode = top_unused,
+        TopFunctorMode = top_unused,
         unexpected($module, $pred, "top_unused")
     ).
 
@@ -1024,15 +1025,16 @@ classify_proc_call_args(ModuleInfo, VarTypes, [Arg | Args],
     classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeModes,
         !:InArgs, !:OutArgs, !:UnusedArgs),
     lookup_var_type(VarTypes, Arg, CalleeType),
-    mode_to_arg_mode(ModuleInfo, CalleeMode, CalleeType, ArgMode),
+    mode_to_top_functor_mode(ModuleInfo, CalleeMode, CalleeType,
+        TopFunctorMode),
     (
-        ArgMode = top_in,
+        TopFunctorMode = top_in,
         !:InArgs = [Arg | !.InArgs]
     ;
-        ArgMode = top_out,
+        TopFunctorMode = top_out,
         !:OutArgs = [Arg | !.OutArgs]
     ;
-        ArgMode = top_unused,
+        TopFunctorMode = top_unused,
         !:UnusedArgs = [Arg | !.UnusedArgs]
     ).
 
@@ -1247,7 +1249,7 @@ update_construct(ConstInfo, Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( if
         GoalExpr0 = unify(LHS, RHS0, Mode, Unification0, UnifyContext),
-        Unification0 = construct(Var, ConsId, ArgVars, UniModes,
+        Unification0 = construct(Var, ConsId, ArgVars, ArgModes,
             How, IsUnique, SubInfo0),
         (
             SubInfo0 = no_construct_sub_info,
@@ -1275,7 +1277,7 @@ update_construct(ConstInfo, Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
         ;
             AddrFields = [_ | _],
             SubInfo = construct_sub_info(yes(AddrFields), TermSizeSlot),
-            Unification = construct(Var, ConsId, UpdatedArgVars, UniModes,
+            Unification = construct(Var, ConsId, UpdatedArgVars, ArgModes,
                 How, IsUnique, SubInfo),
             % We must update RHS because quantification gets the set of
             % variables in the unification from there, not from Unification.
@@ -1349,10 +1351,12 @@ bound_inst_with_free_arg(ConsId, FreeArg) = Inst :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred acceptable_construct_mode(module_info::in, uni_mode::in) is semidet.
+:- pred acceptable_construct_mode(module_info::in, unify_mode::in) is semidet.
 
-acceptable_construct_mode(ModuleInfo, UniMode) :-
-    UniMode = ((InitInstX - InitInstY) -> (FinalInstX - FinalInstY)),
+acceptable_construct_mode(ModuleInfo, UnifyMode) :-
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(InitInstX, FinalInstX),
+        from_to_insts(InitInstY, FinalInstY)),
     inst_is_free(ModuleInfo, InitInstX),
     inst_is_ground(ModuleInfo, InitInstY),
     inst_is_ground(ModuleInfo, FinalInstX),
@@ -1420,15 +1424,15 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
         [HeadVar | HeadVars], [Mode | Modes], !.AddrOutArgs,
         NextOutArgNum, ModuleInfo, VarToAddr, !VarSet, !VarTypes) :-
     lookup_var_type(!.VarTypes, HeadVar0, HeadVarType),
-    mode_to_arg_mode(ModuleInfo, Mode0, HeadVarType, ArgMode),
+    mode_to_top_functor_mode(ModuleInfo, Mode0, HeadVarType, TopFunctorMode),
     (
-        ArgMode = top_in,
+        TopFunctorMode = top_in,
         HeadVar = HeadVar0,
         Mode = Mode0,
         make_addr_vars(HeadVars0, Modes0, HeadVars, Modes, !.AddrOutArgs,
             NextOutArgNum, ModuleInfo, VarToAddr, !VarSet, !VarTypes)
     ;
-        ArgMode = top_out,
+        TopFunctorMode = top_out,
         ( if
             !.AddrOutArgs = [AddrOutArg | !:AddrOutArgs],
             AddrOutArg = variant_arg(NextOutArgNum, MaybeFieldId)
@@ -1452,7 +1456,7 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
                 add_var_type(AddrVar, AddrVarType, !VarTypes),
                 BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
                 InitialInst = bound(shared, inst_test_no_results, [BoundInst]),
-                Mode = (InitialInst -> ground_inst)
+                Mode = from_to_mode(InitialInst, ground_inst)
             ),
             make_addr_vars(HeadVars0, Modes0, HeadVars, Modes,
                 !.AddrOutArgs, NextOutArgNum + 1, ModuleInfo,
@@ -1467,7 +1471,7 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
                 VarToAddr, !VarSet, !VarTypes)
         )
     ;
-        ArgMode = top_unused,
+        TopFunctorMode = top_unused,
         unexpected($module, $pred, "top_unused")
     ).
 
@@ -1769,13 +1773,15 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
 
         instmap_lookup_var(InstMap, AddrVar, AddrVarInst0),
         inst_expand(ModuleInfo, AddrVarInst0, AddrVarInst),
-        UniMode = (AddrVarInst -> ground_inst) - (ground_inst -> ground_inst),
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(AddrVarInst, ground_inst),
+            from_to_insts(ground_inst, ground_inst)),
 
         Unification = deconstruct(AddrVar, ConsId, ArgVars, ArgModes,
             cannot_fail, cannot_cgc),
         UnifyContext = unify_context(umc_implicit("lcmc"), []),
 
-        GoalExpr = unify(AddrVar, RHS, UniMode, Unification, UnifyContext),
+        GoalExpr = unify(AddrVar, RHS, UnifyMode, Unification, UnifyContext),
 
         goal_info_init(GoalInfo0),
         goal_info_set_determinism(detism_det, GoalInfo0, GoalInfo1),
@@ -1786,7 +1792,7 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
     ).
 
 :- pred make_unification_args(prog_var::in, int::in, int::in,
-    list(mer_type)::in, list(prog_var)::out, list(uni_mode)::out,
+    list(mer_type)::in, list(prog_var)::out, list(unify_mode)::out,
     proc_info::in, proc_info::out) is det.
 
 make_unification_args(GroundVar, TargetArgNum, CurArgNum, ArgTypes,
@@ -1800,23 +1806,27 @@ make_unification_args(GroundVar, TargetArgNum, CurArgNum, ArgTypes,
         make_unification_args(GroundVar, TargetArgNum, CurArgNum + 1,
             ArgTypesTail, ArgVarsTail, ArgModesTail, !ProcInfo),
         make_unification_arg(GroundVar, TargetArgNum, CurArgNum,
-            ArgType, Var, UniMode, !ProcInfo),
+            ArgType, Var, ArgMode, !ProcInfo),
         ArgVars = [Var | ArgVarsTail],
-        ArgModes = [UniMode | ArgModesTail]
+        ArgModes = [ArgMode | ArgModesTail]
     ).
 
 :- pred make_unification_arg(prog_var::in, int::in, int::in, mer_type::in,
-    prog_var::out, uni_mode::out, proc_info::in, proc_info::out) is det.
+    prog_var::out, unify_mode::out, proc_info::in, proc_info::out) is det.
 
 make_unification_arg(GroundVar, TargetArgNum, CurArgNum, ArgType,
-        Var, UniMode, !ProcInfo) :-
+        Var, UnifyMode, !ProcInfo) :-
     ( if CurArgNum = TargetArgNum then
         Var = GroundVar,
-        UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst))
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(free_inst, ground_inst),
+            from_to_insts(ground_inst, ground_inst))
     else
         % Bind other arguments to fresh variables.
         proc_info_create_var_from_type(ArgType, no, Var, !ProcInfo),
-        UniMode = ((ground_inst - free_inst) -> (ground_inst - ground_inst))
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(ground_inst, ground_inst),
+            from_to_insts(free_inst, ground_inst))
     ).
 
 %-----------------------------------------------------------------------------%

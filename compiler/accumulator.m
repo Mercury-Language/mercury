@@ -1736,11 +1736,9 @@ create_new_base_goals(Ids, C, AccVarSubst, HeadToCallSubst)
 :- pred acc_unification(pair(prog_var)::in, hlds_goal::out) is det.
 
 acc_unification(Out - Acc, Goal) :-
-    out_mode(LHSMode),
-    in_mode(RHSMode),
-    UniMode = LHSMode - RHSMode,
+    UnifyMode = unify_modes_lhs_rhs(from_to_insts_out, from_to_insts_in),
     Context = unify_context(umc_explicit, []),
-    Expr = unify(Out, rhs_var(Acc), UniMode, assign(Out,Acc), Context),
+    Expr = unify(Out, rhs_var(Acc), UnifyMode, assign(Out,Acc), Context),
     set_of_var.list_to_set([Out, Acc], NonLocalVars),
     InstMapDelta = instmap_delta_bind_var(Out),
     goal_info_init(NonLocalVars, InstMapDelta, detism_det, purity_pure, Info),

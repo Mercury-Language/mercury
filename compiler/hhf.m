@@ -56,7 +56,6 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module pair.
 :- import_module require.
 :- import_module solutions.
 :- import_module term.

@@ -848,7 +848,7 @@ make_extra_c_arg_list_seq([ExtraArg | ExtraArgs], ModuleInfo, LastReg,
     ExtraArg = foreign_arg(Var, MaybeNameMode, OrigType, BoxPolicy),
     (
         MaybeNameMode = yes(Name - Mode),
-        mode_to_arg_mode(ModuleInfo, Mode, OrigType, ArgMode)
+        mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, TopFunctorMode)
     ;
         MaybeNameMode = no,
         unexpected($module, $pred, "no name")
@@ -856,7 +856,7 @@ make_extra_c_arg_list_seq([ExtraArg | ExtraArgs], ModuleInfo, LastReg,
     % Extra args are always input, and passed in regular registers.
     RegType = reg_r,
     NextReg = LastReg + 1,
-    ArgInfo = arg_info(reg(RegType, NextReg), ArgMode),
+    ArgInfo = arg_info(reg(RegType, NextReg), TopFunctorMode),
     CArg = c_arg(Var, yes(Name), OrigType, BoxPolicy, ArgInfo),
     make_extra_c_arg_list_seq(ExtraArgs, ModuleInfo, NextReg, CArgs).
 

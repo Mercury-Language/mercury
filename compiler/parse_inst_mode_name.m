@@ -156,7 +156,7 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
                     MaybeInstA = ok1(InstA),
                     MaybeInstB = ok1(InstB)
                 then
-                    MaybeMode = ok1((InstA -> InstB))
+                    MaybeMode = ok1(from_to_mode(InstA, InstB))
                 else
                     Specs = get_any_errors1(MaybeInstA)
                         ++ get_any_errors1(MaybeInstB),
@@ -243,7 +243,7 @@ parse_higher_order_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
                 IsAny = yes,
                 Inst = any(shared, higher_order(PredInstInfo))
             ),
-            Mode = (Inst -> Inst),
+            Mode = from_to_mode(Inst, Inst),
             MaybeMode = ok1(Mode)
         else
             Specs = get_any_errors1(MaybeArgModes)
@@ -299,7 +299,7 @@ parse_higher_order_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
                 IsAny = yes,
                 Inst = any(shared, higher_order(FuncInstInfo))
             ),
-            Mode = (Inst -> Inst),
+            Mode = from_to_mode(Inst, Inst),
             MaybeMode = ok1(Mode)
         else
             Specs = get_any_errors1(MaybeArgModes0)

@@ -150,7 +150,6 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.set_of_var.
 
-:- import_module pair.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -191,35 +190,40 @@ create_pure_atomic_complicated_unification(LHS, RHS, Context,
 
 create_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, Purity, Goal) :-
-    UMode = ((free - free) -> (free - free)),
-    Mode = ((free -> free) - (free -> free)),
-    Unification = complicated_unify(UMode, can_fail, []),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free, free),
+        from_to_insts(free, free)),
+    Unification = complicated_unify(UnifyMode, can_fail, []),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(Context, GoalInfo0),
     goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
-    GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),
+    GoalExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
 make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Ground = ground(shared, none_or_default_func),
-    Mode = ((free -> Ground) - (Ground -> Ground)),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free, Ground),
+        from_to_insts(Ground, Ground)),
     Unification = assign(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_var(X),
         detism_det, purity_pure, GoalInfo),
-    GoalExpr = unify(X, rhs_var(Y), Mode, Unification, UnifyContext),
+    GoalExpr = unify(X, rhs_var(Y), UnifyMode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Ground = ground(shared, none_or_default_func),
-    Mode = ((Ground -> Ground) - (Ground -> Ground)),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(Ground, Ground),
+        from_to_insts(Ground, Ground)),
     Unification = simple_test(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_no_var,
         detism_semi, purity_pure, GoalInfo),
-    GoalExpr = unify(X, rhs_var(Y), Mode, Unification, UnifyContext),
+    GoalExpr = unify(X, rhs_var(Y), UnifyMode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
@@ -294,11 +298,13 @@ make_char_const_construction(Var, Char, Goal) :-
 make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
     RHS = rhs_functor(ConsId, is_not_exist_constr, []),
     Inst = bound(unique, inst_test_results_fgtc, [bound_functor(ConsId, [])]),
-    Mode = (free -> Inst) - (Inst -> Inst),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free, Inst),
+        from_to_insts(Inst, Inst)),
     Unification = construct(Var, ConsId, [], [],
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     Context = unify_context(umc_explicit, []),
-    GoalExpr = unify(Var, RHS, Mode, Unification, Context),
+    GoalExpr = unify(Var, RHS, UnifyMode, Unification, Context),
     NonLocals = set_of_var.make_singleton(Var),
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert_var(Var, Inst, InstMapDelta0, InstMapDelta),
@@ -307,10 +313,11 @@ make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
 construct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
     RHS = rhs_functor(ConsId, is_not_exist_constr, Args),
-    UnifyMode = (free_inst -> ground_inst) - (ground_inst -> ground_inst),
-    UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst)),
-    list.duplicate(Arity, UniMode, UniModes),
-    Unification = construct(Var, ConsId, Args, UniModes,
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free_inst, ground_inst),
+        from_to_insts(ground_inst, ground_inst)),
+    list.duplicate(Arity, UnifyMode, ArgModes),
+    Unification = construct(Var, ConsId, Args, ArgModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     UnifyContext = unify_context(umc_explicit, []),
     Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
@@ -322,11 +329,12 @@ construct_functor(Var, ConsId, Args, Goal) :-
 deconstruct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
     RHS = rhs_functor(ConsId, is_not_exist_constr, Args),
-    UnifyMode = (ground_inst -> free_inst) - (ground_inst -> ground_inst),
-    UniMode = ((ground_inst - free_inst) -> (ground_inst - ground_inst)),
-    list.duplicate(Arity, UniMode, UniModes),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(ground_inst, ground_inst),
+        from_to_insts(free_inst, ground_inst)),
+    list.duplicate(Arity, UnifyMode, ArgModes),
     UnifyContext = unify_context(umc_explicit, []),
-    Unification = deconstruct(Var, ConsId, Args, UniModes, cannot_fail,
+    Unification = deconstruct(Var, ConsId, Args, ArgModes, cannot_fail,
         cannot_cgc),
     Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
     set_of_var.list_to_set([Var | Args], NonLocals),

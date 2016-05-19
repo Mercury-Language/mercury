@@ -688,7 +688,7 @@ foreign_arg_type_mode(foreign_arg(_, MaybeNameMode, Type, _), Type, Mode) :-
     ;
         MaybeNameMode = no,
         % This argument is unused.
-        Mode = (free -> free)
+        Mode = from_to_mode(free, free)
     ).
 
 :- func foreign_arg_name(foreign_arg) = string.

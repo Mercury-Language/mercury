@@ -120,7 +120,7 @@ is_output_var(ModuleInfo, CurrentInstMap, InstMapAfter, Var) :-
     % instantiatedness during the switch.
     instmap_lookup_var(CurrentInstMap, Var, Initial),
     instmap_lookup_var(InstMapAfter, Var, Final),
-    mode_is_output(ModuleInfo, (Initial -> Final)).
+    mode_is_output(ModuleInfo, from_to_mode(Initial, Final)).
 
 generate_constants_for_arm(BranchStart, Goal, Vars, StoreMap, !MaybeEnd,
         CaseRvals, Liveness, !CI) :-

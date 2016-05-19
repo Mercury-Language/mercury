@@ -53,7 +53,7 @@
     %
 :- pred functor_norm(module_info::in, functor_info::in, type_ctor::in,
     cons_id::in, int::out, list(prog_var)::in, list(prog_var)::out,
-    list(uni_mode)::in, list(uni_mode)::out) is det.
+    list(unify_mode)::in, list(unify_mode)::out) is det.
 
     % This function computes a lower bound on the weight of a functor.  If the
     % lower bound is zero then the weight of that functor is also zero.  If
@@ -319,7 +319,7 @@ functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
     % matched.
     %
 :- pred functor_norm_filter_args(list(bool)::in, list(prog_var)::in,
-    list(prog_var)::out, list(uni_mode)::in, list(uni_mode)::out)
+    list(prog_var)::out, list(unify_mode)::in, list(unify_mode)::out)
     is semidet.
 
 functor_norm_filter_args([], [], [], [], []).

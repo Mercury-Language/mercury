@@ -92,7 +92,6 @@
 
 :- import_module int.
 :- import_module list.
-:- import_module pair.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
@@ -185,10 +184,10 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
 %-----------------------------------------------------------------------------%
 
 :- pred erl_gen_construct(prog_var::in, cons_id::in, prog_vars::in,
-    list(mer_type)::in, list(uni_mode)::in, prog_context::in, elds_expr::out,
+    list(mer_type)::in, list(unify_mode)::in, prog_context::in, elds_expr::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
-erl_gen_construct(Var, ConsId, Args, ArgTypes, UniModes, _Context, Statement,
+erl_gen_construct(Var, ConsId, Args, ArgTypes, ArgModes, _Context, Statement,
         !Info) :-
     cons_id_to_expr(ConsId, Args, elds_false, RHS, !Info),
     Construct = elds_eq(expr_from_var(Var), RHS),
@@ -198,7 +197,7 @@ erl_gen_construct(Var, ConsId, Args, ArgTypes, UniModes, _Context, Statement,
     % data structure.
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     AssignFreeVars = list.filter_map_corresponding3(
-        assign_free_var(ModuleInfo), Args, ArgTypes, UniModes),
+        assign_free_var(ModuleInfo), Args, ArgTypes, ArgModes),
     (
         AssignFreeVars = [],
         Statement = Construct
@@ -207,13 +206,14 @@ erl_gen_construct(Var, ConsId, Args, ArgTypes, UniModes, _Context, Statement,
         Statement = join_exprs(elds_block(AssignFreeVars), Construct)
     ).
 
-:- func assign_free_var(module_info, prog_var, mer_type, uni_mode) = elds_expr
+:- func assign_free_var(module_info, prog_var, mer_type, unify_mode) = elds_expr
     is semidet.
 
-assign_free_var(ModuleInfo, Var, ArgType, UniMode) = var_eq_false(Var) :-
-    UniMode = ((_LI - RI) -> (_LF - RF)),
+assign_free_var(ModuleInfo, Var, ArgType, ArgMode) = var_eq_false(Var) :-
+    ArgMode = unify_modes_lhs_rhs(_, RHSFromToInsts),
     not (
-        mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, top_in),
+        from_to_insts_to_top_functor_mode(ModuleInfo, RHSFromToInsts, ArgType,
+            top_in),
         check_dummy_type(ModuleInfo, ArgType) = is_not_dummy_type
         % XXX ml_unify_gen also checks if ConsArgType is dummy type,
         % do we need to do the same?
@@ -222,7 +222,7 @@ assign_free_var(ModuleInfo, Var, ArgType, UniMode) = var_eq_false(Var) :-
 %-----------------------------------------------------------------------------%
 
 :- pred erl_gen_det_deconstruct(prog_var::in, cons_id::in, prog_vars::in,
-    list(uni_mode)::in, prog_context::in, elds_expr::out,
+    list(unify_mode)::in, prog_context::in, elds_expr::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_det_deconstruct(Var, ConsId, Args, _Modes, _Context, Statement,
@@ -231,7 +231,7 @@ erl_gen_det_deconstruct(Var, ConsId, Args, _Modes, _Context, Statement,
     Statement = elds_eq(LHS, expr_from_var(Var)).
 
 :- pred erl_gen_semidet_deconstruct(prog_var::in, cons_id::in, prog_vars::in,
-    list(uni_mode)::in, prog_context::in, elds_expr::in, elds_expr::out,
+    list(unify_mode)::in, prog_context::in, elds_expr::in, elds_expr::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,

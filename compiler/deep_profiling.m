@@ -230,13 +230,13 @@ find_list_of_output_args_2([], [], [], _, []).
 find_list_of_output_args_2([Var | Vars], [Mode | Modes], [Type | Types],
         ModuleInfo, Outputs) :-
     find_list_of_output_args_2(Vars, Modes, Types, ModuleInfo, LaterOutputs),
-    mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+    mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
     (
-        ArgMode = top_in,
+        TopFunctorMode = top_in,
         Outputs = LaterOutputs
     ;
-        ( ArgMode = top_out
-        ; ArgMode = top_unused
+        ( TopFunctorMode = top_out
+        ; TopFunctorMode = top_unused
         ),
         Outputs = [Var | LaterOutputs]
     ).
@@ -1812,17 +1812,18 @@ generate_deep_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
 
 generate_deep_const_unify(ConsId, Var, Goal) :-
     Ground = ground(shared, none_or_default_func),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free, Ground),
+        from_to_insts(Ground, Ground)),
+    Unification = construct(Var, ConsId, [], [], construct_statically,
+        cell_is_shared, no_construct_sub_info),
+    GoalExpr = unify(Var, rhs_functor(ConsId, is_not_exist_constr, []),
+        UnifyMode, Unification, unify_context(umc_explicit, [])),
     NonLocals = set_of_var.make_singleton(Var),
     InstMapDelta = instmap_delta_bind_var(Var),
-    Determinism = detism_det,
-    goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         GoalInfo1),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst, GoalInfo1, GoalInfo),
-    GoalExpr = unify(Var, rhs_functor(ConsId, is_not_exist_constr, []),
-        (free -> Ground) - (Ground -> Ground),
-        construct(Var, ConsId, [], [], construct_statically,
-            cell_is_shared, no_construct_sub_info),
-        unify_context(umc_explicit, [])),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred generate_deep_cell_unify(int::in, cons_id::in, list(prog_var)::in,
@@ -1830,18 +1831,19 @@ generate_deep_const_unify(ConsId, Var, Goal) :-
 
 generate_deep_cell_unify(Length, ConsId, Args, Var, Goal) :-
     Ground = ground(shared, none_or_default_func),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free, Ground),
+        from_to_insts(Ground, Ground)),
+    list.duplicate(Length, UnifyMode, ArgModes),
+    Unification = construct(Var, ConsId, Args, ArgModes,
+        construct_statically, cell_is_shared, no_construct_sub_info),
+    GoalExpr = unify(Var, rhs_functor(ConsId, is_not_exist_constr, Args),
+        UnifyMode, Unification, unify_context(umc_explicit, [])),
     NonLocals = set_of_var.list_to_set([Var | Args]),
     InstMapDelta = instmap_delta_bind_var(Var),
     Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
         GoalInfo),
-    ArgMode = ((free - Ground) -> (Ground - Ground)),
-    list.duplicate(Length, ArgMode, ArgModes),
-    GoalExpr = unify(Var, rhs_functor(ConsId, is_not_exist_constr, Args),
-        (free -> Ground) - (Ground -> Ground),
-        construct(Var, ConsId, Args, ArgModes,
-            construct_statically, cell_is_shared, no_construct_sub_info),
-        unify_context(umc_explicit, [])),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 generate_var(Name, Type, Var, !VarInfo) :-

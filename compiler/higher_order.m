@@ -1347,14 +1347,16 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
             proc_info_get_argmodes(NewCalleeProcInfo, NewCalleeArgModes),
             ( if
                 list.take(list.length(NewArgs), NewCalleeArgModes,
-                    CurriedArgModes0)
+                    CurriedArgModesPrime)
             then
-                CurriedArgModes = CurriedArgModes0
+                CurriedArgModes = CurriedArgModesPrime
             else
                 unexpected($module, $pred, "cannot get CurriedArgModes")
             ),
-            modes_to_uni_modes(ModuleInfo, CurriedArgModes,
-                CurriedArgModes, UniModes),
+            ArgModes = list.map(
+                ( func(M) = unify_modes_lhs_rhs(I, I) :-
+                    I = mode_to_from_to_insts(ModuleInfo, M)
+                ), CurriedArgModes),
 
             % The dummy arguments can't be used anywhere.
             ProcInfo2 = !.Info ^ hoi_proc_info,
@@ -1366,7 +1368,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
             NewPredProcId = proc(NewPredId, NewProcId),
             NewShroudedPredProcId = shroud_pred_proc_id(NewPredProcId),
             NewConsId = closure_cons(NewShroudedPredProcId, EvalMethod),
-            Unify = construct(LVar, NewConsId, NewArgs, UniModes,
+            Unify = construct(LVar, NewConsId, NewArgs, ArgModes,
                 HowToConstruct, CellIsUnique, no_construct_sub_info),
             GoalExpr2 = unify(LVar,
                 rhs_functor(NewConsId, is_not_exist_constr, NewArgs),
@@ -2081,9 +2083,11 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
             OtherArgs = tci_arg_vars(OtherVars),
             list.det_index1(OtherVars, Index, SelectedArg),
             maybe_add_alias(OutputVar, SelectedArg, !Info),
-            Uni = assign(OutputVar, SelectedArg),
-            Goal = unify(OutputVar, rhs_var(SelectedArg), out_mode - in_mode,
-                Uni, unify_context(umc_explicit, [])),
+            UnifyMode =
+                unify_modes_lhs_rhs(out_from_to_insts, in_from_to_insts),
+            Unification = assign(OutputVar, SelectedArg),
+            Goal = unify(OutputVar, rhs_var(SelectedArg), UnifyMode,
+                Unification, unify_context(umc_explicit, [])),
 
             ProcInfo0 = !.Info ^ hoi_proc_info,
             proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
@@ -2137,12 +2141,13 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
 
             SelectedConsIdRHS =
                 rhs_functor(SelectedConsId, is_not_exist_constr, []),
-            UnifyMode = (free -> SelectedConstInst) -
-                (SelectedConstInst -> SelectedConstInst),
-            Uni = construct(OutputVar, SelectedConsId, [], [],
+            UnifyMode = unify_modes_lhs_rhs(
+                from_to_insts(free, SelectedConstInst),
+                from_to_insts(SelectedConstInst, SelectedConstInst)),
+            Unification = construct(OutputVar, SelectedConsId, [], [],
                 construct_dynamically, cell_is_shared, no_construct_sub_info),
             Goal = unify(OutputVar, SelectedConsIdRHS, UnifyMode,
-                Uni, unify_context(umc_explicit, []))
+                Unification, unify_context(umc_explicit, []))
             % XXX do we need to update the rtti varmaps?
         ),
         !Info ^ hoi_changed := ho_changed
@@ -2360,8 +2365,8 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
     ProcInfo0 = !.Info ^ hoi_proc_info,
     (
         MaybeResult = no,
-        in_mode(In),
-        GoalExpr = unify(Arg1, rhs_var(Arg2), (In - In),
+        In = in_from_to_insts,
+        GoalExpr = unify(Arg1, rhs_var(Arg2), unify_modes_lhs_rhs(In, In),
             simple_test(Arg1, Arg2), unify_context(umc_explicit, []))
     ;
         MaybeResult = yes(ComparisonResult),
@@ -2413,11 +2418,11 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
     set_of_var.list_to_set([UnwrappedArg1, UnwrappedArg2], NonLocals0),
     (
         MaybeResult = no,
-        in_mode(In),
         NonLocals = NonLocals0,
         instmap_delta_init_reachable(InstMapDelta),
         Detism = detism_semi,
-        SpecialGoal = unify(UnwrappedArg1, rhs_var(UnwrappedArg2), (In - In),
+        SpecialGoal = unify(UnwrappedArg1, rhs_var(UnwrappedArg2),
+            unify_modes_lhs_rhs(in_from_to_insts, in_from_to_insts),
             simple_test(UnwrappedArg1, UnwrappedArg2),
             unify_context(umc_explicit, [])),
         goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
@@ -2556,7 +2561,8 @@ unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg,
     type_to_ctor_det(OuterType, OuterTypeCtor),
     ConsId = cons(Constructor, 1, OuterTypeCtor),
     Ground = ground(shared, none_or_default_func),
-    UniModes = [(Ground - free) -> (Ground - Ground)],
+    ArgModes = [unify_modes_lhs_rhs(
+        from_to_insts(Ground, Ground), from_to_insts(free, Ground))],
     set_of_var.list_to_set([Arg, UnwrappedArg], NonLocals),
     % This will be recomputed later.
     InstMapDelta = instmap_delta_bind_var(UnwrappedArg),
@@ -2564,8 +2570,8 @@ unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg,
         GoalInfo),
     GoalExpr = unify(Arg,
         rhs_functor(ConsId, is_not_exist_constr, [UnwrappedArg]),
-        in_mode - out_mode,
-        deconstruct(Arg, ConsId, [UnwrappedArg], UniModes,
+        unify_modes_lhs_rhs(in_from_to_insts, out_from_to_insts),
+        deconstruct(Arg, ConsId, [UnwrappedArg], ArgModes,
             cannot_fail, cannot_cgc),
         unify_context(umc_explicit, [])),
     Goal = hlds_goal(GoalExpr, GoalInfo).
@@ -3303,17 +3309,21 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         IsConst = yes,
         % Build the constant inside the specialized version, so that
         % other constants which include it will be recognized as constant.
-        modes_to_uni_modes(ModuleInfo, CurriedArgModes1,
-            CurriedArgModes1, UniModes),
+        ArgModes = list.map(
+            ( func(M) = unify_modes_lhs_rhs(I, I) :-
+                I = mode_to_from_to_insts(ModuleInfo, M)
+            ), CurriedArgModes1),
         set_of_var.list_to_set(CurriedHeadVars1, ConstNonLocals),
         ConstInst = ground(shared, GroundInstInfo),
         ConstInstMapDelta = instmap_delta_from_assoc_list([LVar - ConstInst]),
         goal_info_init(ConstNonLocals, ConstInstMapDelta, detism_det,
             purity_pure, ConstGoalInfo),
         RHS = rhs_functor(ConsId, is_not_exist_constr, CurriedHeadVars1),
-        UniMode = (free -> ConstInst) - (ConstInst -> ConstInst),
-        ConstGoalExpr = unify(LVar, RHS, UniMode,
-            construct(LVar, ConsId, CurriedHeadVars1, UniModes,
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(free, ConstInst),
+            from_to_insts(ConstInst, ConstInst)),
+        ConstGoalExpr = unify(LVar, RHS, UnifyMode,
+            construct(LVar, ConsId, CurriedHeadVars1, ArgModes,
                 construct_dynamically, cell_is_unique, no_construct_sub_info),
             unify_context(umc_explicit, [])),
         ConstGoal = hlds_goal(ConstGoalExpr, ConstGoalInfo),

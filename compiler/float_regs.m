@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2012 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: float_regs.m
 % Author: wangp.
@@ -40,7 +40,7 @@
 % indicates that the first and second arguments must be passed via regular
 % registers. The third argument must be passed via a float register.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % EXAMPLE 1
 % ---------
@@ -121,7 +121,7 @@
 % Then `q' could be extracted from Foo, and called with arguments placed in
 % the regular registers.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.float_regs.
 :- interface.
@@ -133,13 +133,13 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred insert_reg_wrappers(module_info::in, module_info::out,
     list(error_spec)::out) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -178,7 +178,7 @@
 :- import_module set.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 insert_reg_wrappers(!ModuleInfo, Specs) :-
     % In the first phase, update the pred_inst_infos in argument modes to
@@ -195,7 +195,7 @@ insert_reg_wrappers(!ModuleInfo, Specs) :-
     list.foldl2(insert_reg_wrappers_pred, PredIds, !ModuleInfo, [], Specs),
     module_info_clobber_dependency_info(!ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % First phase
 %
@@ -312,28 +312,58 @@ make_generic_type(PolymorphicContext, Type0, Type) :-
         Type = Type0
     ).
 
+%---------------------------------------------------------------------------%
+
+:- pred add_arg_regs_in_from_to_insts(module_info::in, mer_type::in,
+    from_to_insts::in, from_to_insts::out) is det.
+
+add_arg_regs_in_from_to_insts(ModuleInfo, VarType,
+        ArgFromToInsts0, ArgFromToInsts) :-
+    add_arg_regs_in_from_to_insts_seen(ModuleInfo, set.init, VarType,
+        ArgFromToInsts0, ArgFromToInsts).
+
+:- pred add_arg_regs_in_from_to_insts_seen(module_info::in, set(inst_name)::in,
+    mer_type::in, from_to_insts::in, from_to_insts::out) is det.
+
+add_arg_regs_in_from_to_insts_seen(ModuleInfo, Seen, VarType,
+        ArgFromToInsts0, ArgFromToInsts) :-
+    ArgFromToInsts0 = from_to_insts(InitialInst0, FinalInst0),
+    add_arg_regs_in_inst(ModuleInfo, Seen, VarType, InitialInst0, InitialInst),
+    add_arg_regs_in_inst(ModuleInfo, Seen, VarType, FinalInst0, FinalInst),
+    ( if
+        InitialInst = InitialInst0,
+        FinalInst = FinalInst0
+    then
+        ArgFromToInsts = ArgFromToInsts0
+    else
+        ArgFromToInsts = from_to_insts(InitialInst, FinalInst)
+    ).
+
+%---------------------%
+
 :- pred add_arg_regs_in_mode(module_info::in, mer_type::in,
     mer_mode::in, mer_mode::out) is det.
 
 add_arg_regs_in_mode(ModuleInfo, VarType, ArgMode0, ArgMode) :-
-    add_arg_regs_in_mode_2(ModuleInfo, set.init, VarType, ArgMode0, ArgMode).
+    add_arg_regs_in_mode_seen(ModuleInfo, set.init, VarType, ArgMode0, ArgMode).
 
-:- pred add_arg_regs_in_mode_2(module_info::in, set(inst_name)::in,
+:- pred add_arg_regs_in_mode_seen(module_info::in, set(inst_name)::in,
     mer_type::in, mer_mode::in, mer_mode::out) is det.
 
-add_arg_regs_in_mode_2(ModuleInfo, Seen, VarType, ArgMode0, ArgMode) :-
+add_arg_regs_in_mode_seen(ModuleInfo, Seen, VarType, ArgMode0, ArgMode) :-
     mode_get_insts(ModuleInfo, ArgMode0, InitialInst0, FinalInst0),
     add_arg_regs_in_inst(ModuleInfo, Seen, VarType, InitialInst0, InitialInst),
     add_arg_regs_in_inst(ModuleInfo, Seen, VarType, FinalInst0, FinalInst),
-    % Avoid expanding insts if unchanged.
     ( if
         InitialInst = InitialInst0,
         FinalInst = FinalInst0
     then
         ArgMode = ArgMode0
     else
-        ArgMode = (InitialInst -> FinalInst)
+        ArgMode = from_to_mode(InitialInst, FinalInst)
     ).
+
+%---------------------%
 
 :- pred add_arg_regs_in_inst(module_info::in, set(inst_name)::in, mer_type::in,
     mer_inst::in, mer_inst::out) is det.
@@ -402,12 +432,12 @@ add_arg_regs_in_inst(ModuleInfo, Seen0, Type, Inst0, Inst) :-
 
 add_arg_regs_in_pred_inst_info(ModuleInfo, Seen, ArgTypes, PredInstInfo0,
         PredInstInfo) :-
-    PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, _, Det),
-    list.map_corresponding(add_arg_regs_in_mode_2(ModuleInfo, Seen),
+    PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, _ArgRegInfo, Detism),
+    list.map_corresponding(add_arg_regs_in_mode_seen(ModuleInfo, Seen),
         ArgTypes, Modes0, Modes),
     list.map(ho_arg_reg_for_type, ArgTypes, ArgRegs),
-    PredInstInfo = pred_inst_info(PredOrFunc, Modes, arg_reg_types(ArgRegs),
-        Det).
+    ArgRegInfo = arg_reg_types(ArgRegs),
+    PredInstInfo = pred_inst_info(PredOrFunc, Modes, ArgRegInfo, Detism).
 
 :- pred add_arg_regs_in_bound_inst(module_info::in, set(inst_name)::in,
     mer_type::in, bound_inst::in, bound_inst::out) is det.
@@ -446,9 +476,9 @@ ho_arg_reg_for_type(Type, RegType) :-
         RegType = ho_arg_reg_r
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
-% Second phase
+% Second phase.
 %
 
 :- pred insert_reg_wrappers_pred(pred_id::in,
@@ -558,7 +588,7 @@ insert_reg_wrappers_proc_body(HeadVars, ArgModes, Goal0, Goal, InstMap0,
     fix_branching_goal(VarsExpectInsts, Goal1, InstMap1, Goal, !Info,
         !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred insert_reg_wrappers_goal(hlds_goal::in, hlds_goal::out,
     instmap::in, instmap::out, lambda_info::in, lambda_info::out,
@@ -736,7 +766,7 @@ update_instmap_if_unreachable(Goal, InstMap0, InstMap) :-
         InstMap = InstMap0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred insert_reg_wrappers_unify_goal(hlds_goal_expr::in(goal_expr_unify),
     hlds_goal_info::in, hlds_goal::out, instmap::in, instmap::out,
@@ -747,7 +777,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
         !Specs) :-
     GoalExpr0 = unify(LHS, RHS0, Mode, Unification0, Context),
     (
-        Unification0 = construct(CellVar, ConsId, Args0, UniModes0,
+        Unification0 = construct(CellVar, ConsId, Args0, ArgUnifyModes0,
             HowToConstruct, IsUnique, SubInfo),
         (
             RHS0 = rhs_functor(_, IsExistConstruct, _)
@@ -768,8 +798,8 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
             Args0 = [_ | _],
             GoalContext = goal_info_get_context(GoalInfo0),
             insert_reg_wrappers_construct(CellVar, ConsId, Args0, Args,
-                UniModes0, UniModes, MaybeWrappedGoals, !.InstMap, GoalContext,
-                !Info, !Specs),
+                ArgUnifyModes0, ArgUnifyModes, MaybeWrappedGoals, !.InstMap,
+                GoalContext, !Info, !Specs),
             (
                 MaybeWrappedGoals = yes(WrapGoals),
                 list.foldl(update_instmap, WrapGoals, !InstMap),
@@ -777,7 +807,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
                 update_construct_goal_instmap_delta(ModuleInfo, CellVar,
                     ConsId, Args, GoalInfo0, GoalInfo1, !InstMap),
                 RHS = rhs_functor(ConsId, IsExistConstruct, Args),
-                Unification = construct(CellVar, ConsId, Args, UniModes,
+                Unification = construct(CellVar, ConsId, Args, ArgUnifyModes,
                     HowToConstruct, IsUnique, SubInfo),
                 GoalExpr1 = unify(LHS, RHS, Mode, Unification, Context),
                 Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
@@ -791,7 +821,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
             )
         )
     ;
-        Unification0 = deconstruct(CellVar, ConsId, Args, UniModes0,
+        Unification0 = deconstruct(CellVar, ConsId, Args, ArgUnifyModes0,
             CanFail, CanCGC),
         % Update the uni_modes of the deconstruction using the current inst of
         % the deconstructed var. Recompute the instmap delta from the new
@@ -802,11 +832,11 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
         inst_expand(ModuleInfo, CellVarInst0, CellVarInst),
         ( if
             get_arg_insts(CellVarInst, ConsId, Arity, ArgInsts),
-            list.map_corresponding(uni_mode_set_rhs_final_inst(ModuleInfo),
-                ArgInsts, UniModes0, UniModes),
-            UniModes \= UniModes0
+            list.map_corresponding(unify_mode_set_rhs_final_inst(ModuleInfo),
+                ArgInsts, ArgUnifyModes0, ArgUnifyModes),
+            ArgUnifyModes \= ArgUnifyModes0
         then
-            Unification = deconstruct(CellVar, ConsId, Args, UniModes,
+            Unification = deconstruct(CellVar, ConsId, Args, ArgUnifyModes,
                 CanFail, CanCGC),
             GoalExpr1 = unify(LHS, RHS0, Mode, Unification, Context),
             Goal1 = hlds_goal(GoalExpr1, GoalInfo0),
@@ -834,12 +864,12 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
 
 :- pred insert_reg_wrappers_construct(prog_var::in, cons_id::in,
     list(prog_var)::in, list(prog_var)::out,
-    list(uni_mode)::in, list(uni_mode)::out, maybe(list(hlds_goal))::out,
+    list(unify_mode)::in, list(unify_mode)::out, maybe(list(hlds_goal))::out,
     instmap::in, prog_context::in, lambda_info::in, lambda_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
-        UniModes0, UniModes, MaybeWrappedGoals, InstMap0, Context,
+        ArgModes0, ArgModes, MaybeWrappedGoals, InstMap0, Context,
         !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
     lambda_info_get_vartypes(!.Info, VarTypes),
@@ -857,19 +887,20 @@ insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
             ConsId, PhonyArgTypes),
         PhonyArgTypes = [_ | _]
     then
-        uni_modes_to_modes(UniModes0, LhsModes0, RhsModes0),
-        list.map_corresponding(add_arg_regs_in_mode(ModuleInfo),
-            PhonyArgTypes, LhsModes0, LhsModes),
-        list.map_corresponding(add_arg_regs_in_mode(ModuleInfo),
-            PhonyArgTypes, RhsModes0, RhsModes),
-        modes_to_uni_modes(ModuleInfo, LhsModes, RhsModes, UniModes),
-        mode_list_get_initial_insts(ModuleInfo, RhsModes, ArgInitialInsts),
+        list.map2(unify_mode_to_lhs_rhs_from_to_insts, ArgModes0,
+            LHSFromToInsts0, RHSFromToInsts0),
+        list.map_corresponding(add_arg_regs_in_from_to_insts(ModuleInfo),
+            PhonyArgTypes, LHSFromToInsts0, LHSFromToInsts),
+        list.map_corresponding(add_arg_regs_in_from_to_insts(ModuleInfo),
+            PhonyArgTypes, RHSFromToInsts0, RHSFromToInsts),
+        from_to_insts_to_unify_modes(LHSFromToInsts, RHSFromToInsts, ArgModes),
+        ArgInitialInsts = list.map(from_to_insts_to_init_inst, RHSFromToInsts),
         match_args(InstMap0, Context, PhonyArgTypes, ArgInitialInsts,
             OrigVars, Vars, [], WrapGoals, !Info, !Specs),
         MaybeWrappedGoals = yes(WrapGoals)
     else
         Vars = OrigVars,
-        UniModes = UniModes0,
+        ArgModes = ArgModes0,
         MaybeWrappedGoals = no
     ).
 
@@ -889,16 +920,6 @@ replace_type_params_by_dummy_vars(Type0, Type, !TVarSet) :-
         varset.new_var(TVar, !TVarSet),
         Type = type_variable(TVar, kind_star)
     ).
-
-:- pred uni_modes_to_modes(list(uni_mode)::in, list(mer_mode)::out,
-    list(mer_mode)::out) is det.
-
-uni_modes_to_modes([], [], []).
-uni_modes_to_modes([UniMode | UniModes], [L | Ls], [R | Rs]) :-
-    UniMode = ((LI - RI) -> (LF - RF)),
-    L = (LI -> LF),
-    R = (RI -> RF),
-    uni_modes_to_modes(UniModes, Ls, Rs).
 
 :- pred update_construct_goal_instmap_delta(module_info::in, prog_var::in,
     cons_id::in, list(prog_var)::in, hlds_goal_info::in, hlds_goal_info::out,
@@ -1003,22 +1024,26 @@ rebuild_cell_bound_inst_arg(InstMap, Var, ArgInst0, ArgInst) :-
         ArgInst = VarInst
     ).
 
-:- pred uni_mode_set_rhs_final_inst(module_info::in, mer_inst::in,
-    uni_mode::in, uni_mode::out) is det.
+:- pred unify_mode_set_rhs_final_inst(module_info::in, mer_inst::in,
+    unify_mode::in, unify_mode::out) is det.
 
-uni_mode_set_rhs_final_inst(ModuleInfo, ArgInst, UniMode0, UniMode) :-
-    UniMode0 = ((LI - RI) -> (LF - RF)),
+unify_mode_set_rhs_final_inst(ModuleInfo, ArgInst, UnifyMode0, UnifyMode) :-
+    UnifyMode0 = unify_modes_lhs_rhs(
+        from_to_insts(LI, LF),
+        from_to_insts(RI, RF)),
     % Only when deconstructing to produce the right variable.
     ( if
         inst_is_free(ModuleInfo, RI),
         inst_is_bound(ModuleInfo, RF)
     then
-        UniMode = ((LI - RI) -> (LF - ArgInst))
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(LI, LF),
+            from_to_insts(RI, ArgInst))
     else
-        UniMode = UniMode0
+        UnifyMode = UnifyMode0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred insert_reg_wrappers_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     instmap::in, instmap::out, lambda_info::in, lambda_info::out,
@@ -1032,7 +1057,7 @@ insert_reg_wrappers_conj([Goal0 | Goals0], Goals, !InstMap, !Info, !Specs) :-
     insert_reg_wrappers_conj(Goals0, Goals1, !InstMap, !Info, !Specs),
     list.append(Goal1List, Goals1, Goals).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred insert_reg_wrappers_disj(list(hlds_goal)::in, list(hlds_goal)::out,
     set_of_progvar::in, instmap::in, instmap::out,
@@ -1061,7 +1086,7 @@ insert_reg_wrappers_disj(Goals0, Goals, NonLocals, InstMap0, InstMap, !Info,
 insert_reg_wrappers_disjunct(InstMap0, Goal0, Goal, InstMap, !Info, !Specs) :-
     insert_reg_wrappers_goal(Goal0, Goal, InstMap0, InstMap, !Info, !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred insert_reg_wrappers_switch(prog_var::in,
     list(case)::in, list(case)::out, set_of_progvar::in,
@@ -1098,7 +1123,7 @@ insert_reg_wrappers_case(Var, Type, InstMap0, Case0, Case, InstMap, !Info,
     insert_reg_wrappers_goal(Goal0, Goal, InstMap1, InstMap, !Info, !Specs),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred insert_reg_wrappers_ite(set_of_progvar::in,
     hlds_goal_expr::in(goal_expr_ite), hlds_goal_expr::out(goal_expr_ite),
@@ -1130,7 +1155,7 @@ insert_reg_wrappers_ite(NonLocals, GoalExpr0, GoalExpr, InstMap0, InstMap,
     apply_instmap_delta(InstMap0, CommonDelta, InstMap),
     GoalExpr = if_then_else(Vars, Cond, Then, Else).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred insert_reg_wrappers_plain_call(pred_id::in, proc_id::in,
     list(prog_var)::in, list(prog_var)::out, list(hlds_goal)::out, bool::out,
@@ -1260,7 +1285,7 @@ insert_reg_wrappers_foreign_call(PredId, ProcId, ForeignArgs0, ForeignArgs,
 set_foreign_arg_var(Var, !ForeignArg) :-
     !ForeignArg ^ arg_var := Var.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred match_args_for_call(instmap::in, prog_context::in, list(mer_type)::in,
     list(mer_mode)::in, list(prog_var)::in, list(prog_var)::out,
@@ -1444,7 +1469,7 @@ report_missing_higher_order_inst(PredInfo, VarSet, Var, Context) = Spec :-
         verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_code_gen, [Msg]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % At the end of a branching goal, non-local variables bound to higher-order
     % terms must agree on the calling convention across all branches.
@@ -1556,7 +1581,7 @@ match_var_inst(Var, ExpectInst, InstMap0, Context, !Renaming, !WrapGoals,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_reg_wrapper(prog_var::in, pred_inst_info::in,
     list(ho_arg_reg)::in, list(ho_arg_reg)::in, prog_context::in,
@@ -1585,7 +1610,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     CallGoalExpr = generic_call(GenericCall, CallVars, ArgModes,
         arg_reg_types(InnerArgRegs), Determinism),
     CallNonLocals = set_of_var.list_to_set([CallVar | CallVars]),
-    instmap_delta_from_mode_list(CallVars, ArgModes, ModuleInfo0,
+    instmap_delta_from_mode_list(ModuleInfo0, CallVars, ArgModes,
         CallInstMapDelta),
     goal_info_init(CallNonLocals, CallInstMapDelta, Determinism, Purity,
         Context, CallGoalInfo),
@@ -1607,8 +1632,10 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     DummyShroudedPPId = shroud_pred_proc_id(DummyPPId),
     ConsId = closure_cons(DummyShroudedPPId, EvalMethod),
     InInst = ground(shared, higher_order(OrigVarPredInstInfo)),
-    UniModes0 = [(InInst - InInst) -> (InInst - InInst)],
-    Unification0 = construct(Var, ConsId, LambdaNonLocals, UniModes0,
+    ArgUnifyModes0 = [unify_modes_lhs_rhs(
+        from_to_insts(InInst, InInst),
+        from_to_insts(InInst, InInst))],
+    Unification0 = construct(Var, ConsId, LambdaNonLocals, ArgUnifyModes0,
         construct_dynamically, cell_is_shared, no_construct_sub_info),
     LambdaNonLocals = [CallVar],
     lambda.expand_lambda(Purity, ho_ground, PredOrFunc, EvalMethod,
@@ -1616,7 +1643,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
         LambdaNonLocals, CallGoal, Unification0, Functor, Unification, !Info),
 
     % Create the unification goal for Var.
-    UnifyMode = (out_mode - in_mode),
+    UnifyMode = unify_modes_lhs_rhs(out_from_to_insts, in_from_to_insts),
     MainContext = umc_implicit("reg_wrapper"),
     UnifyContext = unify_context(MainContext, []),
     UnifyGoalExpr = unify(Var, Functor, UnifyMode, Unification, UnifyContext),
@@ -1657,7 +1684,7 @@ make_reg_r_headvars(VarTypes, Var, RegType, !RegR_HeadVars) :-
         RegType = ho_arg_reg_f
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred split_list_from_end(int::in, list(T)::in, list(T)::out, list(T)::out)
     is det.
@@ -1674,6 +1701,6 @@ split_list_from_end(EndLen, List, Start, End) :-
         unexpected($module, $pred, "list too short")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.float_regs.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

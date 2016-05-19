@@ -175,9 +175,9 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     ZeroLabelCode = cord.singleton(byte_label(ZeroLabel)),
     BodyCode0 = PickupCode ++ ZeroLabelCode ++ GoalCode ++ PlaceCode,
     BodyInstrs = cord.list(BodyCode0),
-    ( list.member(byte_not_supported, BodyInstrs) ->
+    ( if list.member(byte_not_supported, BodyInstrs) then
         BodyCode = cord.singleton(byte_not_supported)
-    ;
+    else
         BodyCode = BodyCode0
     ),
     proc_id_to_int(ProcId, ProcInt),
@@ -242,8 +242,8 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             gen_builtin(PredId, ProcId, ArgVars, !.ByteInfo, Code)
         )
     ;
-        GoalExpr = unify(Var, RHS, _Mode, Unification, _),
-        gen_unify(Unification, Var, RHS, !.ByteInfo, Code)
+        GoalExpr = unify(_Var, _RHS, _Mode, Unification, _),
+        gen_unify(Unification, !.ByteInfo, Code)
     ;
         GoalExpr = negation(Goal),
         gen_goal(Goal, !ByteInfo, SomeCode),
@@ -261,9 +261,9 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         InnerDetism = goal_info_get_determinism(InnerGoalInfo),
         determinism_to_code_model(OuterDetism, OuterCodeModel),
         determinism_to_code_model(InnerDetism, InnerCodeModel),
-        ( InnerCodeModel = OuterCodeModel ->
+        ( if InnerCodeModel = OuterCodeModel then
             Code = InnerCode
-        ;
+        else
             get_next_temp(Temp, !ByteInfo),
             EnterCode = cord.singleton(byte_enter_commit(Temp)),
             EndofCode = cord.singleton(byte_endof_commit(Temp)),
@@ -385,9 +385,13 @@ gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
     map_var(ByteInfo, PredVar, BytePredVar),
     Call = cord.singleton(byte_higher_order_call(BytePredVar,
         NInVars, NOutVars, Detism)),
-    ( CodeModel = model_semi ->
+    (
+        CodeModel = model_semi,
         Check = cord.singleton(byte_semidet_success_check)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_non
+        ),
         Check = empty
     ),
     Code = PlaceArgs ++ Call ++ Check ++ PickupArgs.
@@ -417,9 +421,13 @@ gen_call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
     Call = cord.singleton(
         byte_call(ModuleName, PredName, Arity, IsFunc, ProcInt)),
     determinism_to_code_model(Detism, CodeModel),
-    ( CodeModel = model_semi ->
+    (
+        CodeModel = model_semi,
         Check = cord.singleton(byte_semidet_success_check)
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_non
+        ),
         Check = empty
     ),
     Code = PlaceArgs ++ Call ++ Check ++ PickupArgs.
@@ -507,147 +515,151 @@ map_arg(ByteInfo, Expr, ByteArg) :-
 
     % Generate bytecode for a unification.
     %
-:- pred gen_unify(unification::in, prog_var::in, unify_rhs::in,
-    byte_info::in, cord(byte_code)::out) is det.
+:- pred gen_unify(unification::in, byte_info::in, cord(byte_code)::out) is det.
 
-gen_unify(construct(Var, ConsId, Args, UniModes, _, _, _), _, _,
-        ByteInfo, Code) :-
-    map_var(ByteInfo, Var, ByteVar),
-    map_vars(ByteInfo, Args, ByteArgs),
-    map_cons_id(ByteInfo, ConsId, ByteConsId),
-    ( ByteConsId = byte_pred_const(_, _, _, _, _) ->
-        Code = cord.singleton(byte_construct(ByteVar, ByteConsId, ByteArgs))
+gen_unify(Unification, ByteInfo, Code) :-
+    (
+        Unification = construct(Var, ConsId, Args, UniModes, _, _, _),
+        map_var(ByteInfo, Var, ByteVar),
+        map_vars(ByteInfo, Args, ByteArgs),
+        map_cons_id(ByteInfo, ConsId, ByteConsId),
+        ( if ByteConsId = byte_pred_const(_, _, _, _, _) then
+            Code = cord.singleton(
+                byte_construct(ByteVar, ByteConsId, ByteArgs))
+        else
+            % Don't call map_arg_dirs until after
+            % the pred_const test fails, since the arg-modes on
+            % unifications that create closures aren't like other arg-modes.
+            map_arg_dirs(UniModes, Args, ByteInfo, Dirs),
+            ( if all_dirs_same(Dirs, to_var) then
+                Code = cord.singleton(
+                    byte_construct(ByteVar, ByteConsId, ByteArgs))
+            else
+                assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
+                Code = cord.singleton(
+                    byte_complex_construct(ByteVar, ByteConsId, Pairs))
+            )
+        )
     ;
-        % Don't call map_uni_modes until after
-        % the pred_const test fails, since the arg-modes on
-        % unifications that create closures aren't like other arg-modes.
-        map_uni_modes(UniModes, Args, ByteInfo, Dirs),
-        ( all_dirs_same(Dirs, to_var) ->
-            Code =
-                cord.singleton(byte_construct(ByteVar, ByteConsId, ByteArgs))
-        ;
+        Unification = deconstruct(Var, ConsId, Args, UniModes, _, _),
+        map_var(ByteInfo, Var, ByteVar),
+        map_vars(ByteInfo, Args, ByteArgs),
+        map_cons_id(ByteInfo, ConsId, ByteConsId),
+        map_arg_dirs(UniModes, Args, ByteInfo, Dirs),
+        ( if all_dirs_same(Dirs, to_arg) then
+            Code = cord.singleton(
+                byte_deconstruct(ByteVar, ByteConsId, ByteArgs))
+        else
             assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
-            Code = cord.singleton(byte_complex_construct(ByteVar, ByteConsId,
-                Pairs))
+            Code = cord.singleton(
+                byte_complex_deconstruct(ByteVar, ByteConsId, Pairs))
         )
-    ).
-gen_unify(deconstruct(Var, ConsId, Args, UniModes, _, _), _, _,
-        ByteInfo, Code) :-
-    map_var(ByteInfo, Var, ByteVar),
-    map_vars(ByteInfo, Args, ByteArgs),
-    map_cons_id(ByteInfo, ConsId, ByteConsId),
-    map_uni_modes(UniModes, Args, ByteInfo, Dirs),
-    ( all_dirs_same(Dirs, to_arg) ->
-        Code = cord.singleton(byte_deconstruct(ByteVar, ByteConsId, ByteArgs))
     ;
-        assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
-        Code = cord.singleton(
-            byte_complex_deconstruct(ByteVar, ByteConsId, Pairs))
-    ).
-gen_unify(assign(Target, Source), _, _, ByteInfo, Code) :-
-    map_var(ByteInfo, Target, ByteTarget),
-    map_var(ByteInfo, Source, ByteSource),
-    Code = cord.singleton(byte_assign(ByteTarget, ByteSource)).
-gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
-    map_var(ByteInfo, Var1, ByteVar1),
-    map_var(ByteInfo, Var2, ByteVar2),
-    get_var_type(ByteInfo, Var1, Var1Type),
-    get_var_type(ByteInfo, Var2, Var2Type),
-    (
-        type_to_ctor(Var1Type, TypeCtor1),
-        type_to_ctor(Var2Type, TypeCtor2)
-    ->
-        ( TypeCtor2 = TypeCtor1 ->
+        Unification = assign(Target, Source),
+        map_var(ByteInfo, Target, ByteTarget),
+        map_var(ByteInfo, Source, ByteSource),
+        Code = cord.singleton(byte_assign(ByteTarget, ByteSource))
+    ;
+        Unification = simple_test(Var1, Var2),
+        map_var(ByteInfo, Var1, ByteVar1),
+        map_var(ByteInfo, Var2, ByteVar2),
+        get_var_type(ByteInfo, Var1, Var1Type),
+        get_var_type(ByteInfo, Var2, Var2Type),
+        type_to_ctor_det(Var1Type, TypeCtor1),
+        type_to_ctor_det(Var2Type, TypeCtor2),
+        ( if TypeCtor2 = TypeCtor1 then
             TypeCtor = TypeCtor1
-        ;
-            unexpected($module, $pred, "simple_test between different types")
-        )
-    ;
-        unexpected($module, $pred, "failed lookup of type id")
-    ),
-    ByteInfo = byte_info(_, _, ModuleInfo, _, _),
-    TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
-    (
-        TypeCategory = ctor_cat_builtin(cat_builtin_int),
-        TestId = int_test
-    ;
-        TypeCategory = ctor_cat_builtin(cat_builtin_char),
-        TestId = char_test
-    ;
-        TypeCategory = ctor_cat_builtin(cat_builtin_string),
-        TestId = string_test
-    ;
-        TypeCategory = ctor_cat_builtin(cat_builtin_float),
-        TestId = float_test
-    ;
-        TypeCategory = ctor_cat_builtin_dummy,
-        TestId = dummy_test
-    ;
-        TypeCategory = ctor_cat_enum(cat_enum_mercury),
-        TestId = enum_test
-    ;
-        TypeCategory = ctor_cat_enum(cat_enum_foreign),
-        sorry($module, $pred, "foreign enums with bytecode backend")
-    ;
-        TypeCategory = ctor_cat_higher_order,
-        unexpected($module, $pred, "higher_order_type")
-    ;
-        TypeCategory = ctor_cat_tuple,
-        unexpected($module, $pred, "tuple_type")
-    ;
-        TypeCategory = ctor_cat_user(_),
-        unexpected($module, $pred, "user_ctor_type")
-    ;
-        TypeCategory = ctor_cat_variable,
-        unexpected($module, $pred, "variable_type")
-    ;
-        TypeCategory = ctor_cat_void,
-        unexpected($module, $pred, "void_type")
-    ;
-        TypeCategory = ctor_cat_system(_),
-        unexpected($module, $pred, "system type")
-    ),
-    Code = cord.singleton(byte_test(ByteVar1, ByteVar2, TestId)).
-gen_unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-
-    unexpected($module, $pred, "complicated unify").
+        else
+            unexpected($module, $pred,
+                "simple_test between different types")
+        ),
 
-:- pred map_uni_modes(list(uni_mode)::in, list(prog_var)::in,
+        ByteInfo = byte_info(_, _, ModuleInfo, _, _),
+        TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
+        (
+            TypeCategory = ctor_cat_builtin(cat_builtin_int),
+            TestId = int_test
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_char),
+            TestId = char_test
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_string),
+            TestId = string_test
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_float),
+            TestId = float_test
+        ;
+            TypeCategory = ctor_cat_builtin_dummy,
+            TestId = dummy_test
+        ;
+            TypeCategory = ctor_cat_enum(cat_enum_mercury),
+            TestId = enum_test
+        ;
+            TypeCategory = ctor_cat_enum(cat_enum_foreign),
+            sorry($module, $pred, "foreign enums with bytecode backend")
+        ;
+            TypeCategory = ctor_cat_higher_order,
+            unexpected($module, $pred, "higher_order_type")
+        ;
+            TypeCategory = ctor_cat_tuple,
+            unexpected($module, $pred, "tuple_type")
+        ;
+            TypeCategory = ctor_cat_user(_),
+            unexpected($module, $pred, "user_ctor_type")
+        ;
+            TypeCategory = ctor_cat_variable,
+            unexpected($module, $pred, "variable_type")
+        ;
+            TypeCategory = ctor_cat_void,
+            unexpected($module, $pred, "void_type")
+        ;
+            TypeCategory = ctor_cat_system(_),
+            unexpected($module, $pred, "system type")
+        ),
+        Code = cord.singleton(byte_test(ByteVar1, ByteVar2, TestId))
+    ;
+        Unification = complicated_unify(_,_,_),
+        unexpected($module, $pred, "complicated unify")
+    ).
+
+:- pred map_arg_dirs(list(unify_mode)::in, list(prog_var)::in,
     byte_info::in, list(byte_dir)::out) is det.
 
-map_uni_modes([], [], _, []).
-map_uni_modes([UniMode | UniModes], [Arg | Args], ByteInfo, [Dir | Dirs]) :-
-    UniMode = ((VarInitial - ArgInitial) -> (VarFinal - ArgFinal)),
+map_arg_dirs([], [], _, []).
+map_arg_dirs([], [_|_], _, _) :-
+    unexpected($module, $pred, "length mismatch").
+map_arg_dirs([_|_], [], _, _) :-
+    unexpected($module, $pred, "length mismatch").
+map_arg_dirs([UnifyMode | UnifyModes], [Arg | Args], ByteInfo, [Dir | Dirs]) :-
     get_module_info(ByteInfo, ModuleInfo),
     get_var_type(ByteInfo, Arg, Type),
-    mode_to_arg_mode(ModuleInfo, (VarInitial -> VarFinal), Type, VarMode),
-    mode_to_arg_mode(ModuleInfo, (ArgInitial -> ArgFinal), Type, ArgMode),
-    (
-        VarMode = top_in,
-        ArgMode = top_out
-    ->
+    UnifyMode = unify_modes_lhs_rhs(VarFromToInsts, ArgFromToInsts),
+    from_to_insts_to_top_functor_mode(ModuleInfo, VarFromToInsts, Type,
+        VarTopFunctorMode),
+    from_to_insts_to_top_functor_mode(ModuleInfo, ArgFromToInsts, Type,
+        ArgTopFunctorMode),
+    ( if
+        VarTopFunctorMode = top_in,
+        ArgTopFunctorMode = top_out
+    then
         Dir = to_arg
-    ;
-        VarMode = top_out,
-        ArgMode = top_in
-    ->
+    else if
+        VarTopFunctorMode = top_out,
+        ArgTopFunctorMode = top_in
+    then
         Dir = to_var
-    ;
-        VarMode = top_unused,
-        ArgMode = top_unused
-    ->
+    else if
+        VarTopFunctorMode = top_unused,
+        ArgTopFunctorMode = top_unused
+    then
         Dir = to_none
-    ;
+    else
         unexpected($module, $pred,
             "invalid mode for (de)construct unification")
     ),
-    map_uni_modes(UniModes, Args, ByteInfo, Dirs).
-map_uni_modes([], [_|_], _, _) :-
-    unexpected($module, $pred, "length mismatch").
-map_uni_modes([_|_], [], _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    map_arg_dirs(UnifyModes, Args, ByteInfo, Dirs).
 
-:- pred all_dirs_same(list(byte_dir)::in, byte_dir::in)
-    is semidet.
+:- pred all_dirs_same(list(byte_dir)::in, byte_dir::in) is semidet.
 
 all_dirs_same([], _).
 all_dirs_same([Dir | Dirs], Dir) :-
@@ -655,7 +667,7 @@ all_dirs_same([Dir | Dirs], Dir) :-
 
 %---------------------------------------------------------------------------%
 
-    % Generate bytecode for a conjunction
+    % Generate bytecode for a conjunction.
     %
 :- pred gen_conj(list(hlds_goal)::in, byte_info::in, byte_info::out,
     cord(byte_code)::out) is det.

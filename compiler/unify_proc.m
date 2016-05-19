@@ -73,7 +73,7 @@
     proc_requests::in, proc_requests::out) is det.
 
 :- type unify_proc_id
-    --->    unify_proc_id(type_ctor, uni_mode).
+    --->    unify_proc_id(type_ctor, unify_mode).
 
     % Initialize the proc_requests table.
     %
@@ -115,7 +115,7 @@
     % Given the type and mode of a unification, look up the mode number
     % for the unification proc.
     %
-:- pred lookup_mode_num(module_info::in, type_ctor::in, uni_mode::in,
+:- pred lookup_mode_num(module_info::in, type_ctor::in, unify_mode::in,
     determinism::in, proc_id::out) is det.
 
     % Generate the clauses for one of the compiler-generated special predicates
@@ -224,29 +224,31 @@ lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num) :-
     % we assume that `ground' and `any' have the same representation.)
     % For unreachable unifications, we also use mode zero.
     %
-:- pred search_mode_num(module_info::in, type_ctor::in, uni_mode::in,
+:- pred search_mode_num(module_info::in, type_ctor::in, unify_mode::in,
     determinism::in, proc_id::out) is semidet.
 
-search_mode_num(ModuleInfo, TypeCtor, UniMode, Determinism, ProcId) :-
-    UniMode = (XInitial - YInitial -> _Final),
+search_mode_num(ModuleInfo, TypeCtor, UnifyMode, Determinism, ProcId) :-
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(InitInstX, _FinalInstX),
+        from_to_insts(InitInstY, _FinalInstY)),
     ( if
         Determinism = detism_semi,
-        inst_is_ground_or_any(ModuleInfo, XInitial),
-        inst_is_ground_or_any(ModuleInfo, YInitial)
+        inst_is_ground_or_any(ModuleInfo, InitInstX),
+        inst_is_ground_or_any(ModuleInfo, InitInstY)
     then
         hlds_pred.in_in_unification_proc_id(ProcId)
     else if
-        XInitial = not_reached
+        InitInstX = not_reached
     then
         hlds_pred.in_in_unification_proc_id(ProcId)
     else if
-        YInitial = not_reached
+        InitInstY = not_reached
     then
         hlds_pred.in_in_unification_proc_id(ProcId)
     else
         module_info_get_proc_requests(ModuleInfo, Requests),
         get_unify_req_map(Requests, UnifyReqMap),
-        map.search(UnifyReqMap, unify_proc_id(TypeCtor, UniMode), ProcId)
+        map.search(UnifyReqMap, unify_proc_id(TypeCtor, UnifyMode), ProcId)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -301,8 +303,12 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
         ),
 
         % Convert from `uni_mode' to `list(mer_mode)'.
-        UnifyMode = ((X_Initial - Y_Initial) -> (X_Final - Y_Final)),
-        ArgModes0 = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
+        UnifyMode = unify_modes_lhs_rhs(LHSInsts, RHSInsts),
+        LHSInsts = from_to_insts(LHSInit, LHSFinal),
+        RHSInsts = from_to_insts(RHSInit, RHSFinal),
+        LHSMode = from_to_mode(LHSInit, LHSFinal),
+        RHSMode = from_to_mode(RHSInit, RHSFinal),
+        ArgModes0 = [LHSMode, RHSMode],
 
         % For polymorphic types, add extra modes for the type_infos.
         in_mode(InMode),

@@ -182,7 +182,7 @@ mode_to_term(Lang, Mode) =
 
 mode_to_term_with_context(Lang, Context, Mode) = Term :-
     (
-        Mode = (InstA -> InstB),
+        Mode = from_to_mode(InstA, InstB),
         ( if
             % Check for higher-order pred or func modes, and output them
             % in a nice format.

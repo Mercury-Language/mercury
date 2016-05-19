@@ -454,9 +454,10 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         LambdaNonLocals, ExtraTypeInfos),
 
     (
-        Unification0 = construct(Var, _, OrigNonLocals1, UniModes0, _, _, _),
+        Unification0 = construct(Var, _, OrigNonLocals1, ArgUnifyModes0,
+            _, _, _),
         % We used to use OrigVars = OrigNonLocals0 (from rhs_lambda_goal) but
-        % the order of the variables does not necessarily match UniModes0.
+        % the order of the variables does not necessarily match ArgUnifyModes0.
         OrigVars = OrigNonLocals1,
         trace [compiletime(flag("lambda_var_order"))] (
             list.sort(OrigNonLocals0, SortedOrigNonLocals0),
@@ -563,8 +564,8 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         ArgVars = InitialVars,
         PredId = PredId0,
         ProcId = ProcId0,
-        mode_util.modes_to_uni_modes(ModuleInfo0,
-            CurriedArgModes, CurriedArgModes, UniModes),
+        modes_to_unify_modes(ModuleInfo0,
+            CurriedArgModes, CurriedArgModes, ArgUnifyModes),
         % We must mark the procedure as having had its address taken.
         proc_info_set_address_taken(address_is_taken,
             Call_ProcInfo, Call_NewProcInfo),
@@ -593,13 +594,14 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         % Existentially typed lambda expressions are not yet supported
         % (see the documentation at top of this file).
         ExistQVars = [],
-        uni_modes_to_modes(UniModes0, OrigArgModes),
+        unify_modes_to_modes(ArgUnifyModes0, OrigArgModes),
 
         % We have to jump through hoops to work out the mode of the lambda
         % predicate. For introduced type_info arguments, we use the mode "in".
-        % For the original non-local vars, we use the modes from `UniModes1'.
-        % For the lambda var arguments at the end, we use the mode in the
-        % lambda expression.
+        % For the original non-local vars, we use the modes from
+        % `ArgUnifyModes0'. For the lambda var arguments at the end,
+        % we use the mode in the lambda expression.
+        % XXX The above comment has probably suffered bit-rot.
 
         list.length(ArgVars, NumArgVars),
         in_mode(In),
@@ -610,8 +612,8 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         map.overlay(ArgModesMap, OrigArgModesMap, ArgModesMap1),
         map.apply_to_list(ArgVars, ArgModesMap1, ArgModes1),
 
-        % Recompute the uni_modes.
-        modes_to_uni_modes(ModuleInfo1, ArgModes1, ArgModes1, UniModes),
+        % Recompute the unify_modes.
+        modes_to_unify_modes(ModuleInfo1, ArgModes1, ArgModes1, ArgUnifyModes),
 
         list.append(ArgModes1, Modes, AllArgModes),
         lookup_var_types(VarTypes, AllArgVars, ArgTypes),
@@ -676,7 +678,8 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
     ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
     Functor = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
 
-    Unification = construct(Var, ConsId, ArgVars, UniModes,
+/* ###    expected type was `list.list(hlds.hlds_goal.unify_mode)'. */
+    Unification = construct(Var, ConsId, ArgVars, ArgUnifyModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     HaveExpandedLambdas = yes,
     LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet,
@@ -697,16 +700,16 @@ constraint_contains_vars(LambdaVars, ClassConstraint) :-
     set.subset(ConstraintVarsSet, LambdaVarsSet).
 
     % This predicate works out the modes of the original non-local variables
-    % of a lambda expression based on the list of uni_mode in the unify_info
+    % of a lambda expression based on the list of unify_mode in the unify_info
     % for the lambda unification.
     %
-:- pred uni_modes_to_modes(list(uni_mode)::in, list(mer_mode)::out) is det.
+:- pred unify_modes_to_modes(list(unify_mode)::in, list(mer_mode)::out) is det.
 
-uni_modes_to_modes([], []).
-uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-
-    UniMode = ((_Initial0 - Initial1) -> (_Final0 - _Final1)),
-    Mode = (Initial1 -> Initial1),
-    uni_modes_to_modes(UniModes, Modes).
+unify_modes_to_modes([], []).
+unify_modes_to_modes([UnifyMode | UnifyModes], [Mode | Modes]) :-
+    UnifyMode = unify_modes_lhs_rhs(_, from_to_insts(RHSInit, _RHSFinal)),
+    Mode = from_to_mode(RHSInit, RHSInit),
+    unify_modes_to_modes(UnifyModes, Modes).
 
     % Make sure the arguments and modes are not misordered. An obvious
     % indicator is if a non-higher order argument is paired a higher order

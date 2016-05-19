@@ -1319,7 +1319,7 @@ find_items_used_by_modes(Modes, !Info) :-
 :- pred find_items_used_by_mode(mer_mode::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_mode((Inst1 -> Inst2), !Info) :-
+find_items_used_by_mode(from_to_mode(Inst1, Inst2), !Info) :-
     find_items_used_by_inst(Inst1, !Info),
     find_items_used_by_inst(Inst2, !Info).
 find_items_used_by_mode(user_defined_mode(ModeName, ArgInsts), !Info) :-

@@ -515,7 +515,7 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
     % order unification.
     %
 :- pred unify_change(module_info::in, prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, term_traversal_params::in,
+    list(prog_var)::in, list(unify_mode)::in, term_traversal_params::in,
     int::out, bag(prog_var)::out, bag(prog_var)::out) is semidet.
 
 unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
@@ -540,7 +540,7 @@ unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
 
 :- pred filter_typeinfos_from_args_and_modes(vartypes::in,
     list(prog_var)::in, list(prog_var)::out,
-    list(uni_mode)::in, list(uni_mode)::out) is det.
+    list(unify_mode)::in, list(unify_mode)::out) is det.
 
 filter_typeinfos_from_args_and_modes(_, [], [], [], []).
 filter_typeinfos_from_args_and_modes(_, [], _, [_ | _], _) :-

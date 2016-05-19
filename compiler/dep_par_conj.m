@@ -1734,7 +1734,7 @@ replace_head_vars(ModuleInfo, FutureMap,
             Mode = Mode0
         else if mode_is_output(ModuleInfo, Mode0) then
             Ground = ground(shared, none_or_default_func),
-            Mode = (Ground -> Ground)
+            Mode = from_to_mode(Ground, Ground)
         else
             sorry($module, $pred,
                 "the dependent parallel conjunction transformation " ++
@@ -3193,13 +3193,16 @@ make_future_name_var_and_goal(Name, FutureNameVar, Goal, !VarSet, !VarTypes,
     IntType = builtin_type(builtin_type_int),
     add_var_type(FutureNameVar, IntType, !VarTypes),
     allocate_ts_string(Name, NameId, !TSStringTable),
+    RHS = rhs_functor(int_const(NameId), is_not_exist_constr, []),
     Ground = ground(unique, none_or_default_func),
-    GoalExpr = unify(FutureNameVar,
-        rhs_functor(int_const(NameId), is_not_exist_constr, []),
-        (free(IntType) -> Ground) - (Ground -> Ground),
-        construct(FutureNameVar, int_const(NameId), [], [],
-            construct_statically, cell_is_unique, no_construct_sub_info),
-        unify_context(umc_implicit("dep_par_conj transformation"), [])),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free(IntType), Ground),
+        from_to_insts(Ground, Ground)),
+    Unification = construct(FutureNameVar, int_const(NameId), [], [],
+        construct_statically, cell_is_unique, no_construct_sub_info),
+    UnifyContext =
+        unify_context(umc_implicit("dep_par_conj transformation"), []),
+    GoalExpr = unify(FutureNameVar, RHS, UnifyMode, Unification, UnifyContext),
     InstmapDelta = instmap_delta_from_assoc_list([FutureNameVar - Ground]),
     goal_info_init(set_of_var.make_singleton(FutureNameVar), InstmapDelta,
         detism_det, purity_pure, GoalInfo),

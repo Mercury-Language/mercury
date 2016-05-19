@@ -752,14 +752,13 @@ qualify_mode_defn(InInt, ErrorContext, eqv_mode(Mode0), eqv_mode(Mode),
 
 qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
     (
-        Mode0 = (InstA0 -> InstB0),
+        Mode0 = from_to_mode(InstA0, InstB0),
         qualify_inst(InInt, ErrorContext, InstA0, InstA, !Info, !Specs),
         qualify_inst(InInt, ErrorContext, InstB0, InstB, !Info, !Specs),
-        Mode = (InstA -> InstB)
+        Mode = from_to_mode(InstA, InstB)
     ;
         Mode0 = user_defined_mode(SymName0, Insts0),
-        qualify_inst_list(InInt, ErrorContext, Insts0, Insts,
-            !Info, !Specs),
+        qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs),
         list.length(Insts, Arity),
         mq_info_get_modes(!.Info, Modes),
         find_unique_match(InInt, ErrorContext, Modes, mode_id,

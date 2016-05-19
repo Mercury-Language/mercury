@@ -647,7 +647,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         HeadVars = [LCVar | HeadVars0],
         ArgTypes = [loop_control_var_type | ArgTypes0],
         Ground = ground(shared, none_or_default_func),
-        In = (Ground -> Ground),
+        In = from_to_mode(Ground, Ground),
         ArgModes = [In | ArgModes0],
 
         proc_info_get_inst_varset(OldProcInfo, InstVarSet),

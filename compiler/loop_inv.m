@@ -509,7 +509,11 @@ inv_args(ModuleInfo, HeadVars, HeadVarModes, RecCalls) = InvArgs :-
     = maybe(prog_var).
 
 arg_to_maybe_inv_arg(ModuleInfo, Arg, Mode) =
-    ( if input_arg(ModuleInfo, Arg, Mode, InvArg) then yes(InvArg) else no ).
+    ( if is_input_arg(ModuleInfo, Arg, Mode, InvArg) then
+        yes(InvArg)
+    else
+        no
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1174,31 +1178,33 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
-        list.filter_map_corresponding(input_arg(ModuleInfo),
+        list.filter_map_corresponding(is_input_arg(ModuleInfo),
             Args, argmodes(ModuleInfo, PredId, ProcId), Inputs)
     ;
         GoalExpr = generic_call(GenericCall, Args, ArgModes, _, _),
         generic_call_vars(GenericCall, GenericCallVars),
-        list.filter_map_corresponding(input_arg(ModuleInfo),
+        list.filter_map_corresponding(is_input_arg(ModuleInfo),
             Args, ArgModes, Inputs0),
         Inputs = GenericCallVars ++ Inputs0
     ;
         GoalExpr = call_foreign_proc(_, PredId, ProcId, ForeignArgs, _, _, _),
-        list.filter_map_corresponding(input_arg(ModuleInfo),
+        list.filter_map_corresponding(is_input_arg(ModuleInfo),
             list.map(foreign_arg_var, ForeignArgs),
             argmodes(ModuleInfo, PredId, ProcId), Inputs)
     ;
         GoalExpr = unify(LHS, UnifyRHS, _, Kind, _),
         (
             % The LHS is always an output var in constructions.
-            Kind = construct(_, _, RHSArgs, ArgUniModes, _, _, _),
-            list.filter_map_corresponding(input_arg(ModuleInfo),
-                RHSArgs, rhs_modes(ArgUniModes), Inputs)
+            Kind = construct(_, _, RHSArgs, ArgModes, _, _, _),
+            list.filter_map_corresponding(is_input_arg(ModuleInfo),
+                RHSArgs, list.map(unify_modes_to_rhs_mode, ArgModes),
+                Inputs)
         ;
             % The LHS is always in input var in deconstructions.
-            Kind = deconstruct(_, _, RHSArgs, ArgUniModes, _, _),
-            list.filter_map_corresponding(input_arg(ModuleInfo),
-                RHSArgs, rhs_modes(ArgUniModes), RHSInputs),
+            Kind = deconstruct(_, _, RHSArgs, ArgModes, _, _),
+            list.filter_map_corresponding(is_input_arg(ModuleInfo),
+                RHSArgs, list.map(unify_modes_to_rhs_mode, ArgModes),
+                RHSInputs),
             Inputs = [LHS | RHSInputs]
         ;
             % The RHS is the only input in an assignment.
@@ -1244,15 +1250,15 @@ goal_outputs(ModuleInfo, Goal) = Outputs :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
-        list.filter_map_corresponding(output_arg(ModuleInfo),
+        list.filter_map_corresponding(is_output_arg(ModuleInfo),
             Args, argmodes(ModuleInfo, PredId, ProcId), Outputs)
     ;
         GoalExpr = generic_call(_, Args, ArgModes, _, _),
-        list.filter_map_corresponding(output_arg(ModuleInfo),
+        list.filter_map_corresponding(is_output_arg(ModuleInfo),
             Args, ArgModes, Outputs)
     ;
         GoalExpr = call_foreign_proc(_, PredId, ProcId, ForeignArgs, _, _, _),
-        list.filter_map_corresponding(output_arg(ModuleInfo),
+        list.filter_map_corresponding(is_output_arg(ModuleInfo),
             list.map(foreign_arg_var, ForeignArgs),
             argmodes(ModuleInfo, PredId, ProcId), Outputs)
     ;
@@ -1263,9 +1269,10 @@ goal_outputs(ModuleInfo, Goal) = Outputs :-
             Outputs = [LHS]
         ;
             % The LHS is always in input in deconstructions.
-            Kind = deconstruct(_, _, RHSArgs, ArgUniModes, _, _),
-            list.filter_map_corresponding(output_arg(ModuleInfo),
-                RHSArgs, rhs_modes(ArgUniModes), Outputs)
+            Kind = deconstruct(_, _, RHSArgs, ArgModes, _, _),
+            list.filter_map_corresponding(is_output_arg(ModuleInfo),
+                RHSArgs, list.map(unify_modes_to_rhs_mode, ArgModes),
+                Outputs)
         ;
             % The LHS is the only output in an assignment.
             Kind = assign(_, _),
@@ -1291,35 +1298,23 @@ goal_outputs(ModuleInfo, Goal) = Outputs :-
         unexpected($module, $pred, "compound goal")
     ).
 
-    % An input arg is one whose pre-call inst is not free.
+    % An input arg is one whose initial inst is not free.
     %
-:- pred input_arg(module_info::in, prog_var::in, mer_mode::in, prog_var::out)
-    is semidet.
+:- pred is_input_arg(module_info::in, prog_var::in, mer_mode::in,
+    prog_var::out) is semidet.
 
-input_arg(ModuleInfo, X, M, X) :-
-    mode_get_insts(ModuleInfo, M, InInst, _OutInst),
-    not inst_is_free(ModuleInfo, InInst).
+is_input_arg(ModuleInfo, Var, Mode, Var) :-
+    mode_get_insts(ModuleInfo, Mode, InitInst, _FinalInst),
+    not inst_is_free(ModuleInfo, InitInst).
 
-    % An output arg is one whose pre-call inst is free and ground after.
+    % An output arg is one whose initial inst is free and whose final inst
+    % is ground.
     %
-:- pred output_arg(module_info::in, prog_var::in, mer_mode::in, prog_var::out)
-    is semidet.
+:- pred is_output_arg(module_info::in, prog_var::in, mer_mode::in,
+    prog_var::out) is semidet.
 
-output_arg(ModuleInfo, X, M, X) :-
-    mode_is_fully_output(ModuleInfo, M).
-
-%-----------------------------------------------------------------------------%
-
-:- func rhs_modes(list(uni_mode)) = list(mer_mode).
-
-rhs_modes(UniModes) =
-    list.map(func((_ - Pre) -> (_ - Post)) = (Pre -> Post), UniModes).
-
-:- func lhs_modes(list(uni_mode)) = list(mer_mode).
-:- pragma consider_used(lhs_modes/1).
-
-lhs_modes(UniModes) =
-    list.map(func((Pre - _) -> (Post - _)) = (Pre -> Post), UniModes).
+is_output_arg(ModuleInfo, Var, Mode, Var) :-
+    mode_is_fully_output(ModuleInfo, Mode).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.loop_inv.

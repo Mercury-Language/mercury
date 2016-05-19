@@ -641,7 +641,8 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
             ForClosureWrapper, ArgNum + 1, !:InputRvals, !:OutputLvals,
             !:OutputTypes, !:ConvDecls, !:ConvOutputStatements, !Info),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        mode_to_arg_mode(ModuleInfo, Mode, CalleeType, ArgMode),
+        mode_to_top_functor_mode(ModuleInfo, Mode, CalleeType,
+            ArgTopFunctorMode),
         CalleeIsDummy = check_dummy_type(ModuleInfo, CalleeType),
         (
             CalleeIsDummy = is_dummy_type
@@ -649,10 +650,10 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         ;
             CalleeIsDummy = is_not_dummy_type,
             (
-                ArgMode = top_unused
+                ArgTopFunctorMode = top_unused
                 % Also exclude those with arg_mode `top_unused'.
             ;
-                ArgMode = top_in,
+                ArgTopFunctorMode = top_in,
                 % It's an input argument.
                 CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
                 (
@@ -670,7 +671,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
                     bp_native_if_possible, VarRval, ArgRval),
                 !:InputRvals = [ArgRval | !.InputRvals]
             ;
-                ArgMode = top_out,
+                ArgTopFunctorMode = top_out,
                 % It's an output argument.
                 ml_gen_box_or_unbox_lval(CallerType, CalleeType,
                     bp_native_if_possible, VarLval, VarName, Context,
@@ -694,7 +695,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
                         VarNamesTail = [],
                         CodeModel = model_det,
                         PredOrFunc = pf_function,
-                        ArgMode = top_out
+                        ArgTopFunctorMode = top_out
                     )
                 then
                     !:OutputLvals = [ArgLval | !.OutputLvals],

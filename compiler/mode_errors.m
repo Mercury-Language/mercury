@@ -171,7 +171,7 @@
 :- type mode_error_unify_rhs
     --->    error_at_var(prog_var)
     ;       error_at_functor(cons_id, list(prog_var))
-    ;       error_at_lambda(list(prog_var), list(mer_mode)).
+    ;       error_at_lambda(list(prog_var), list(from_to_insts)).
 
 :- type mode_error_info
     --->    mode_error_info(
@@ -979,7 +979,8 @@ mode_error_unify_pred_to_spec(ModeInfo, X, RHS, Type, PredOrFunc) = Spec :-
         RHSStr = functor_cons_id_to_string(ModuleInfo, VarSet, print_name_only,
             ConsId, ArgVars)
     ;
-        RHS = error_at_lambda(ArgVars, ArgModes),
+        RHS = error_at_lambda(ArgVars, ArgFromToInsts),
+        ArgModes = list.map(from_to_insts_to_mode, ArgFromToInsts),
         RHSStr = "lambda(["
             ++ var_modes_to_string(VarSet, InstVarSet, print_name_only,
                 ArgVars, ArgModes)
@@ -1466,7 +1467,7 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
             mode_list_get_initial_insts(ModuleInfo, !.ArgModes, InitialInsts),
             DummyInst = defined_inst(user_inst(unqualified("..."), [])),
             list.duplicate(PredArity, DummyInst, FinalInsts),
-            !:ArgModes = list.map(func(I - F) = (I -> F),
+            !:ArgModes = list.map(func(I - F) = from_to_mode(I, F),
                 assoc_list.from_corresponding_lists(InitialInsts, FinalInsts)),
             % Likewise delete the determinism.
             !:MaybeDet = no

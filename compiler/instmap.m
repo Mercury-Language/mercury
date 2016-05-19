@@ -86,8 +86,10 @@
 :- func instmap_delta_from_assoc_list(assoc_list(prog_var, mer_inst)) =
     instmap_delta.
 
-:- pred instmap_delta_from_mode_list(list(prog_var)::in, list(mer_mode)::in,
-    module_info::in, instmap_delta::out) is det.
+:- pred instmap_delta_from_mode_list(module_info::in,
+    list(prog_var)::in, list(mer_mode)::in, instmap_delta::out) is det.
+:- pred instmap_delta_from_from_to_insts_list(module_info::in,
+    list(prog_var)::in, list(from_to_insts)::in, instmap_delta::out) is det.
 
 :- func instmap_delta_bind_no_var = instmap_delta.
 :- func instmap_delta_bind_var(prog_var) = instmap_delta.
@@ -427,28 +429,57 @@ instmap_delta_map_foldl(P, reachable(Instmapping0), reachable(Instmapping),
 
 %-----------------------------------------------------------------------------%
 
-instmap_delta_from_mode_list(Var, Modes, ModuleInfo, InstMapDelta) :-
+instmap_delta_from_mode_list(ModuleInfo, Var, Modes, InstMapDelta) :-
     instmap_delta_init_reachable(InstMapDelta0),
-    instmap_delta_from_mode_list_2(Var, Modes, ModuleInfo,
+    instmap_delta_from_mode_list_2(ModuleInfo, Var, Modes,
         InstMapDelta0, InstMapDelta).
 
-:- pred instmap_delta_from_mode_list_2(list(prog_var)::in, list(mer_mode)::in,
-    module_info::in, instmap_delta::in, instmap_delta::out) is det.
+:- pred instmap_delta_from_mode_list_2(module_info::in,
+    list(prog_var)::in, list(mer_mode)::in,
+    instmap_delta::in, instmap_delta::out) is det.
 
-instmap_delta_from_mode_list_2([], [], _, !InstMapDelta).
-instmap_delta_from_mode_list_2([], [_ | _], _, !InstMapDelta) :-
+instmap_delta_from_mode_list_2(_, [], [], !InstMapDelta).
+instmap_delta_from_mode_list_2(_, [], [_ | _], !InstMapDelta) :-
     unexpected($module, $pred, "length mismatch").
-instmap_delta_from_mode_list_2([_ | _], [], _, !InstMapDelta) :-
+instmap_delta_from_mode_list_2(_, [_ | _], [], !InstMapDelta) :-
     unexpected($module, $pred, "length mismatch").
-instmap_delta_from_mode_list_2([Var | Vars], [Mode | Modes], ModuleInfo,
+instmap_delta_from_mode_list_2(ModuleInfo, [Var | Vars], [Mode | Modes],
         !InstMapDelta) :-
-    mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-    ( if Inst1 = Inst2 then
-        instmap_delta_from_mode_list_2(Vars, Modes, ModuleInfo, !InstMapDelta)
+    mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
+    ( if InitInst = FinalInst then
+        true
     else
-        instmap_delta_set_var(Var, Inst2, !InstMapDelta),
-        instmap_delta_from_mode_list_2(Vars, Modes, ModuleInfo, !InstMapDelta)
-    ).
+        instmap_delta_set_var(Var, FinalInst, !InstMapDelta)
+    ),
+    instmap_delta_from_mode_list_2(ModuleInfo, Vars, Modes, !InstMapDelta).
+
+instmap_delta_from_from_to_insts_list(ModuleInfo, Var, FromToInsts,
+        InstMapDelta) :-
+    instmap_delta_init_reachable(InstMapDelta0),
+    instmap_delta_from_from_to_insts_list_2(ModuleInfo, Var, FromToInsts,
+        InstMapDelta0, InstMapDelta).
+
+:- pred instmap_delta_from_from_to_insts_list_2(module_info::in,
+    list(prog_var)::in, list(from_to_insts)::in,
+    instmap_delta::in, instmap_delta::out) is det.
+
+instmap_delta_from_from_to_insts_list_2(_, [], [], !InstMapDelta).
+instmap_delta_from_from_to_insts_list_2(_, [], [_ | _], !InstMapDelta) :-
+    unexpected($module, $pred, "length mismatch").
+instmap_delta_from_from_to_insts_list_2(_, [_ | _], [], !InstMapDelta) :-
+    unexpected($module, $pred, "length mismatch").
+instmap_delta_from_from_to_insts_list_2(ModuleInfo, [Var | Vars],
+        [FromToInst | FromToInsts], !InstMapDelta) :-
+    FromToInst = from_to_insts(InitInst, FinalInst),
+    ( if InitInst = FinalInst then
+        true
+    else
+        instmap_delta_set_var(Var, FinalInst, !InstMapDelta)
+    ),
+    instmap_delta_from_from_to_insts_list_2(ModuleInfo, Vars, FromToInsts,
+        !InstMapDelta).
+
+%-----------------------------------------------------------------------------%
 
 instmap_delta_bind_no_var = InstMapDelta :-
     InstMapDelta = instmap_delta_from_assoc_list([]).

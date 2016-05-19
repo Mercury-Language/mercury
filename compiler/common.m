@@ -319,8 +319,8 @@ common_optimise_unification(Unification0, Mode, !GoalExpr, !GoalInfo,
                 !GoalExpr, !GoalInfo, !Common, !Info)
         )
     ;
-        Unification0 = deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, _),
-        common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail,
+        Unification0 = deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail, _),
+        common_optimise_deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail,
             Mode, !GoalExpr, !GoalInfo, !Common, !Info)
     ;
         ( Unification0 = assign(Var1, Var2)
@@ -338,16 +338,16 @@ common_optimise_unification(Unification0, Mode, !GoalExpr, !GoalInfo,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
+common_optimise_construct(Var, ConsId, ArgVars, UnifyMode, GoalExpr0, GoalExpr,
         GoalInfo0, GoalInfo, !Common, !Info) :-
-    Mode = LVarMode - _,
+    UnifyMode = unify_modes_lhs_rhs(LVarMode, _RVarMode),
     simplify_info_get_module_info(!.Info, ModuleInfo),
-    mode_get_insts(ModuleInfo, LVarMode, _, Inst),
+    LVarMode = from_to_insts(_, LVarFinalInst),
     % Don't optimise partially instantiated construction unifications,
     % because it would be tricky to work out how to mode the replacement
     % assignment unifications. In the vast majority of cases, the variable
     % is ground.
-    ( if inst_is_ground(ModuleInfo, Inst) then
+    ( if inst_is_ground(ModuleInfo, LVarFinalInst) then
         TypeCtor = lookup_var_type_ctor(!.Info, Var),
         VarEqv0 = !.Common ^ var_eqv,
         list.map_foldl(eqvclass.ensure_element_partition_id,
@@ -378,8 +378,8 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
                 GoalInfo = GoalInfo0
             ;
                 ArgVars = [_ | _],
-                UniMode = ((free - Inst) -> (Inst - Inst)),
-                generate_assign(Var, OldVar, UniMode, GoalInfo0,
+                VarFromToInsts = from_to_insts(LVarFinalInst, LVarFinalInst),
+                generate_assign(Var, OldVar, VarFromToInsts, GoalInfo0,
                     GoalExpr, GoalInfo, !Common, !Info),
                 simplify_info_set_should_requantify(!Info),
                 goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
@@ -397,13 +397,13 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
     ).
 
 :- pred common_optimise_deconstruct(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, can_fail::in, unify_mode::in,
+    list(prog_var)::in, list(unify_mode)::in, can_fail::in, unify_mode::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
+common_optimise_deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail, UnifyMode,
         GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     ( if
@@ -411,9 +411,9 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
         % because it would be tricky to work out how to mode the replacement
         % assignment unifications. In the vast majority of cases, the variable
         % is ground.
-        Mode = LVarMode - _,
-        mode_get_insts(ModuleInfo, LVarMode, Inst0, _),
-        not inst_is_ground(ModuleInfo, Inst0)
+        UnifyMode = unify_modes_lhs_rhs(LVarMode, _RVarMode),
+        LVarMode = from_to_insts(LVarInitInst, _),
+        not inst_is_ground(ModuleInfo, LVarInitInst)
     then
         GoalExpr = GoalExpr0
     else
@@ -436,8 +436,10 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
             eqvclass.ensure_corresponding_equivalences(ArgVars,
                 OldArgVars, VarEqv1, VarEqv),
             !Common ^ var_eqv := VarEqv,
+            RHSFromToInsts = list.map(unify_modes_to_rhs_from_to_insts,
+                ArgModes),
             create_output_unifications(GoalInfo0, ArgVars, OldArgVars,
-                UniModes, Goals, !Common, !Info),
+                RHSFromToInsts, Goals, !Common, !Info),
             GoalExpr = conj(plain_conj, Goals),
             goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
             simplify_info_incr_cost_delta(Cost, !Info),
@@ -613,9 +615,9 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 OutputArgs2, PrevContext)
         then
             simplify_info_get_module_info(!.Info, ModuleInfo),
-            modes_to_uni_modes(ModuleInfo, Modes, Modes, UniModes),
+            list.map(mode_get_from_to_insts(ModuleInfo), Modes, FromToInsts),
             create_output_unifications(GoalInfo, OutputArgs, OutputArgs2,
-                UniModes, AssignGoals, Common0, Common, !Info),
+                FromToInsts, AssignGoals, Common0, Common, !Info),
             ( if AssignGoals = [hlds_goal(OnlyGoalExpr, _OnlyGoalInfo)] then
                 AssignsGoalExpr = OnlyGoalExpr
             else
@@ -786,37 +788,37 @@ common_vars_are_equiv(X, Y, VarEqv) :-
     % arguments. Any unneeded assignments will be removed later.
     %
 :- pred create_output_unifications(hlds_goal_info::in, list(prog_var)::in,
-    list(prog_var)::in, list(uni_mode)::in, list(hlds_goal)::out,
+    list(prog_var)::in, list(from_to_insts)::in, list(hlds_goal)::out,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-create_output_unifications(OldGoalInfo, OutputArgs, OldOutputArgs, UniModes,
+create_output_unifications(OldGoalInfo, OutputArgs, OldOutputArgs, FromToInsts,
         AssignGoals, !Common, !Info) :-
     ( if
         OutputArgs = [HeadOutputArg | TailOutputArgs],
         OldOutputArgs = [HeadOldOutputArg | TailOldOutputArgs],
-        UniModes = [HeadUniMode | TailUniModes]
+        FromToInsts = [HeadFromToInsts | TailFromToInsts]
     then
         ( if HeadOutputArg = HeadOldOutputArg then
             % This can happen if the first cell was created
             % with a partially instantiated deconstruction.
             create_output_unifications(OldGoalInfo,
-                TailOutputArgs, TailOldOutputArgs, TailUniModes,
+                TailOutputArgs, TailOldOutputArgs, TailFromToInsts,
                 AssignGoals, !Common, !Info)
         else
-            generate_assign(HeadOutputArg, HeadOldOutputArg, HeadUniMode,
+            generate_assign(HeadOutputArg, HeadOldOutputArg, HeadFromToInsts,
                 OldGoalInfo, HeadAssignGoalExpr, HeadAssignGoalInfo,
                 !Common, !Info),
             HeadAssignGoal = hlds_goal(HeadAssignGoalExpr, HeadAssignGoalInfo),
             create_output_unifications(OldGoalInfo,
-                TailOutputArgs, TailOldOutputArgs, TailUniModes,
+                TailOutputArgs, TailOldOutputArgs, TailFromToInsts,
                 TailAssignGoals, !Common, !Info),
             AssignGoals = [HeadAssignGoal | TailAssignGoals]
         )
     else if
         OutputArgs = [],
         OldOutputArgs = [],
-        UniModes = []
+        FromToInsts = []
     then
         AssignGoals = []
     else
@@ -825,12 +827,12 @@ create_output_unifications(OldGoalInfo, OutputArgs, OldOutputArgs, UniModes,
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_assign(prog_var::in, prog_var::in, uni_mode::in,
+:- pred generate_assign(prog_var::in, prog_var::in, from_to_insts::in,
     hlds_goal_info::in, hlds_goal_expr::out, hlds_goal_info::out,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-generate_assign(ToVar, FromVar, UniMode, OldGoalInfo, GoalExpr, GoalInfo,
+generate_assign(ToVar, FromVar, ToVarMode, OldGoalInfo, GoalExpr, GoalInfo,
         !Common, !Info) :-
     apply_induced_substitutions(ToVar, FromVar, !Info),
     simplify_info_get_var_types(!.Info, VarTypes),
@@ -838,9 +840,11 @@ generate_assign(ToVar, FromVar, UniMode, OldGoalInfo, GoalExpr, GoalInfo,
     lookup_var_type(VarTypes, FromVar, FromVarType),
 
     set_of_var.list_to_set([ToVar, FromVar], NonLocals),
-    UniMode = ((_ - ToVarInst0) -> (_ - ToVarInst)),
+    ToVarMode = from_to_insts(ToVarInit, ToVarFinal),
     ( if types_match_exactly(ToVarType, FromVarType) then
-        UnifyMode = (ToVarInst0 -> ToVarInst) - (ToVarInst -> ToVarInst),
+        UnifyMode = unify_modes_lhs_rhs(
+            from_to_insts(ToVarInit, ToVarFinal),
+            from_to_insts(ToVarFinal, ToVarFinal)),
         UnifyContext = unify_context(umc_explicit, []),
         GoalExpr = unify(ToVar, rhs_var(FromVar), UnifyMode,
             assign(ToVar, FromVar), UnifyContext)
@@ -851,14 +855,16 @@ generate_assign(ToVar, FromVar, UniMode, OldGoalInfo, GoalExpr, GoalInfo,
         % which expect the HLDS to be well-typed. Unfortunately, this loses
         % information for other optimizations, since the cast hides the
         % equivalence of the input and output.
-        Modes = [(ToVarInst -> ToVarInst), (free -> ToVarInst)],
+        Modes =
+            [from_to_mode(ToVarFinal, ToVarFinal),
+            from_to_mode(free, ToVarFinal)],
         GoalExpr = generic_call(cast(unsafe_type_cast), [FromVar, ToVar],
             Modes, arg_reg_types_unset, detism_det)
     ),
 
     % `ToVar' may not appear in the original instmap_delta, so we can't just
     % use instmap_delta_restrict on the original instmap_delta here.
-    InstMapDelta = instmap_delta_from_assoc_list([ToVar - ToVarInst]),
+    InstMapDelta = instmap_delta_from_assoc_list([ToVar - ToVarFinal]),
 
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         GoalInfo0),

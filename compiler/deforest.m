@@ -1356,7 +1356,7 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
 
     % Compute a goal_info.
     proc_info_get_argmodes(CalledProcInfo, ArgModes),
-    instmap_delta_from_mode_list(Args, ArgModes, ModuleInfo, InstMapDelta),
+    instmap_delta_from_mode_list(ModuleInfo, Args, ArgModes, InstMapDelta),
     proc_info_interface_determinism(ProcInfo, Detism),
     set_of_var.list_to_set(Args, NonLocals),
     pred_info_get_purity(CalledPredInfo, Purity),

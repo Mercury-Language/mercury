@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: mode_util.m.
 % Main author: fjh.
 %
 % This module contains utility predicates for dealing with modes and insts.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.mode_util.
 :- interface.
@@ -29,64 +29,133 @@
 :- import_module list.
 :- import_module map.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% XXX Group related declarations together.
+% XXX Put the groups in a logical order.
+% XXX Reorder the predicate definitions to match the declaration order.
+%---------------------------------------------------------------------------%
 
-    % mode_get_insts returns the initial instantiatedness and the final
-    % instantiatedness for a given mode.
+:- func from_to_insts_to_mode(from_to_insts) = mer_mode.
+:- func mode_to_from_to_insts(module_info, mer_mode) = from_to_insts.
+
+:- func from_to_insts_to_init_inst(from_to_insts) = mer_inst.
+:- func from_to_insts_to_final_inst(from_to_insts) = mer_inst.
+% :- pred from_to_insts_to_both_insts(from_to_insts::in,
+%     mer_inst::out, mer_inst::out) is det.
+
+:- pred unify_mode_to_lhs_rhs_from_to_insts(unify_mode::in,
+    from_to_insts::out, from_to_insts::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % Return the initial and the final instantiatedness for the given mode.
     % Throw an exception if the mode is undefined.
     %
 :- pred mode_get_insts(module_info::in, mer_mode::in,
     mer_inst::out, mer_inst::out) is det.
 
-    % A version of mode_get_insts that fails if the mode is undefined.
+:- pred mode_get_from_to_insts(module_info::in, mer_mode::in,
+    from_to_insts::out) is det.
+
+    % Return the initial and final instantiatedness for the given mode.
+    % Fail if the mode is undefined.
     %
 :- pred mode_get_insts_semidet(module_info::in, mer_mode::in,
     mer_inst::out, mer_inst::out) is semidet.
 
+    % Succeed iff the mode is input.
+    % Throw an exception if the mode is undefined.
+    %
     % A mode is considered input if the initial inst is bound.
-    % Throws an exception if the mode is undefined.
     %
 :- pred mode_is_input(module_info::in, mer_mode::in) is semidet.
+:- pred from_to_insts_is_input(module_info::in, from_to_insts::in) is semidet.
 
+    % Succeed iff the mode is fully input.
+    % Throw an exception if the mode is undefined.
+    %
     % A mode is considered fully input if the initial inst is ground.
-    % Throws an exception if the mode is undefined.
     %
 :- pred mode_is_fully_input(module_info::in, mer_mode::in) is semidet.
+:- pred from_to_insts_is_fully_input(module_info::in, from_to_insts::in)
+    is semidet.
 
-    % A mode is considered output if the initial inst is free and the
-    % final inst is bound.
-    % Throws an exception if the mode is undefined.
+    % Succeed iff the mode is output.
+    % Throw an exception if the mode is undefined.
+    %
+    % A mode is considered output if the initial inst is free and
+    % the final inst is bound.
     %
 :- pred mode_is_output(module_info::in, mer_mode::in) is semidet.
+:- pred from_to_insts_is_output(module_info::in, from_to_insts::in) is semidet.
 
-    % A mode is considered fully output if the initial inst is free and
-    % the final inst is ground.
-    % Throws an exception if the mode is undefined.
+    % Succeed iff the mode is fully output.
+    % Throw an exception if the mode is undefined.
+    %
+    % A mode is considered fully output if the initial inst is free
+    % and the final inst is ground.
     %
 :- pred mode_is_fully_output(module_info::in, mer_mode::in) is semidet.
+:- pred from_to_insts_is_fully_output(module_info::in, from_to_insts::in)
+    is semidet.
 
-    % A mode is considered unused if both initial and final insts are free.
+    % Succeed iff the mode is unused.
     % Throws an exception if the mode is undefined.
     %
+    % A mode is considered unused if both the initial and final insts are free.
+    %
 :- pred mode_is_unused(module_info::in, mer_mode::in) is semidet.
+:- pred from_to_insts_is_unused(module_info::in, from_to_insts::in) is semidet.
 
-    % Succeeds iff the given mode is undefined.
+    % Succeed iff the given mode is undefined.
     %
 :- pred mode_is_undefined(module_info::in, mer_mode::in) is semidet.
 
-    % mode_to_arg_mode converts a mode (and corresponding type) to an arg_mode.
+%---------------------%
+
+    % Return the modes of the operands on the given side of the unifications.
+    %
+:- func unify_modes_to_lhs_mode(unify_mode) = mer_mode.
+:- func unify_modes_to_rhs_mode(unify_mode) = mer_mode.
+:- func unify_modes_to_lhs_from_to_insts(unify_mode) = from_to_insts.
+:- func unify_modes_to_rhs_from_to_insts(unify_mode) = from_to_insts.
+
+    % Given the modes of the two sides of a unification, return the unify_mode.
+    %
+:- pred modes_to_unify_mode(module_info::in,
+    mer_mode::in, mer_mode::in, unify_mode::out) is det.
+:- pred from_to_insts_to_unify_mode(from_to_insts::in, from_to_insts::in,
+    unify_mode::out) is det.
+
+    % Given two lists of modes (inst mappings) of equal length,
+    % return a unify_mode for each corresponding pair of modes.
+    %
+:- pred modes_to_unify_modes(module_info::in,
+    list(mer_mode)::in, list(mer_mode)::in, list(unify_mode)::out) is det.
+:- pred from_to_insts_to_unify_modes(
+    list(from_to_insts)::in, list(from_to_insts)::in, list(unify_mode)::out)
+    is det.
+
+%---------------------%
+
+:- pred modes_to_top_functor_modes(module_info::in, list(mer_mode)::in,
+    list(mer_type)::in, list(top_functor_mode)::out) is det.
+
+    % mode_to_top_functor_mode converts a mode (and corresponding type)
+    % to a top_functor_mode.
     % A mode is a high-level notion, the normal Mercury language mode.
-    % An `arg_mode' is a low-level notion used for code generation, which
-    % indicates the argument passing convention (top_in, top_out, or
+    % A top_functor_mode is a low-level notion used for code generation,
+    % which indicates the argument passing convention (top_in, top_out, or
     % top_unused) that corresponds to that mode. We need to know the type,
     % not just the mode, because the argument passing convention can depend
     % on the type's representation.
     %
-:- pred mode_to_arg_mode(module_info::in, mer_mode::in, mer_type::in,
-    arg_mode::out) is det.
+:- pred mode_to_top_functor_mode(module_info::in, mer_mode::in,
+    mer_type::in, top_functor_mode::out) is det.
+:- pred from_to_insts_to_top_functor_mode(module_info::in, from_to_insts::in,
+    mer_type::in, top_functor_mode::out) is det.
 
-:- pred modes_to_arg_modes(module_info::in, list(mer_mode)::in,
-    list(mer_type)::in, list(arg_mode)::out) is det.
+%---------------------%
 
     % Given a list of variables and their corresponding modes,
     % return a list containing only those variables which have an output mode.
@@ -95,6 +164,8 @@
     vartypes) = list(prog_var).
 :- func select_output_things(module_info, list(Thing), list(mer_mode),
     map(Thing, mer_type)) = list(Thing).
+
+%---------------------%
 
 :- func mode_get_initial_inst(module_info, mer_mode) = mer_inst.
 
@@ -106,13 +177,14 @@
 :- pred mode_list_get_final_insts(module_info::in,
     list(mer_mode)::in, list(mer_inst)::out) is det.
 
-:- pred modes_to_uni_modes(module_info::in, list(mer_mode)::in,
-    list(mer_mode)::in, list(uni_mode)::out) is det.
+%---------------------%
 
     % Given a user-defined or compiler-defined inst name, lookup the
     % corresponding inst in the inst table.
     %
 :- pred inst_lookup(module_info::in, inst_name::in, mer_inst::out) is det.
+
+%---------------------%
 
 :- type recompute_atomic_instmap_deltas
     --->    recompute_atomic_instmap_deltas
@@ -188,7 +260,7 @@
 :- pred fixup_instmap_switch_var(prog_var::in, instmap::in, instmap::in,
     hlds_goal::in, hlds_goal::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred normalise_insts(module_info::in, list(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::out) is det.
@@ -196,7 +268,7 @@
 :- pred normalise_inst(module_info::in, mer_type::in,
     mer_inst::in, mer_inst::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Partition a list of arguments into inputs and others.
     % Throws an exception if one of the modes is undefined.
@@ -204,8 +276,8 @@
 :- pred partition_args(module_info::in, list(mer_mode)::in, list(T)::in,
     list(T)::out, list(T)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -227,13 +299,31 @@
 :- import_module bool.
 :- import_module int.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+from_to_insts_to_mode(FromToInsts) = Mode :-
+    FromToInsts = from_to_insts(Init, Final),
+    Mode = from_to_mode(Init, Final).
+
+mode_to_from_to_insts(ModuleInfo, Mode) = FromToInsts :-
+    mode_get_insts(ModuleInfo, Mode, Init, Final),
+    FromToInsts = from_to_insts(Init, Final).
+
+from_to_insts_to_init_inst(FromToInsts) = Init :-
+    FromToInsts = from_to_insts(Init, _Final).
+
+from_to_insts_to_final_inst(FromToInsts) = Final :-
+    FromToInsts = from_to_insts(_Init, Final).
+
+unify_mode_to_lhs_rhs_from_to_insts(UnifyMode, LHSInsts, RHSInsts) :-
+    UnifyMode = unify_modes_lhs_rhs(LHSInsts, RHSInsts).
+
+%---------------------------------------------------------------------------%
 
 mode_get_initial_inst(ModuleInfo, Mode) = Inst :-
     mode_get_insts(ModuleInfo, Mode, Inst, _).
@@ -251,65 +341,104 @@ mode_list_get_final_insts(ModuleInfo, [Mode | Modes], [Inst | Insts]) :-
     mode_get_insts(ModuleInfo, Mode, _, Inst),
     mode_list_get_final_insts(ModuleInfo, Modes, Insts).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % A mode is considered an input mode if the top-level node is input.
-    %
 mode_is_input(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
     inst_is_bound(ModuleInfo, InitialInst).
 
-    % A mode is considered fully input if its initial inst is ground.
-    %
+from_to_insts_is_input(ModuleInfo, FromToInsts) :-
+    FromToInsts = from_to_insts(InitialInst, _FinalInst),
+    inst_is_bound(ModuleInfo, InitialInst).
+
 mode_is_fully_input(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
     inst_is_ground(ModuleInfo, InitialInst).
 
-    % A mode is considered an output mode if the top-level node is output.
-    %
+from_to_insts_is_fully_input(ModuleInfo, FromToInsts) :-
+    FromToInsts = from_to_insts(InitialInst, _FinalInst),
+    inst_is_ground(ModuleInfo, InitialInst).
+
 mode_is_output(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_bound(ModuleInfo, FinalInst).
 
-    % A mode is considered fully output if its initial inst is free
-    % and its final insts is ground.
-    %
+from_to_insts_is_output(ModuleInfo, FromToInsts) :-
+    FromToInsts = from_to_insts(InitialInst, FinalInst),
+    inst_is_free(ModuleInfo, InitialInst),
+    inst_is_bound(ModuleInfo, FinalInst).
+
 mode_is_fully_output(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_ground(ModuleInfo, FinalInst).
 
-    % A mode is considered a unused mode if it is equivalent to free >> free.
-    %
+from_to_insts_is_fully_output(ModuleInfo, FromToInsts) :-
+    FromToInsts = from_to_insts(InitialInst, FinalInst),
+    inst_is_free(ModuleInfo, InitialInst),
+    inst_is_ground(ModuleInfo, FinalInst).
+
 mode_is_unused(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+    inst_is_free(ModuleInfo, InitialInst),
+    inst_is_free(ModuleInfo, FinalInst).
+
+from_to_insts_is_unused(ModuleInfo, FromToInsts) :-
+    FromToInsts = from_to_insts(InitialInst, FinalInst),
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_free(ModuleInfo, FinalInst).
 
 mode_is_undefined(ModuleInfo, Mode) :-
     not mode_get_insts_semidet(ModuleInfo, Mode, _, _).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-modes_to_arg_modes(_ModuleInfo, [], [], []).
-modes_to_arg_modes(_ModuleInfo, [], [_ | _], _) :-
+unify_modes_to_lhs_mode(UnifyMode) = LHSMode :-
+    UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, _RHSFromToInsts),
+    LHSFromToInsts = from_to_insts(LHSInitInst, LHSFinalInst),
+    LHSMode = from_to_mode(LHSInitInst, LHSFinalInst).
+
+unify_modes_to_rhs_mode(UnifyMode) = RHSMode :-
+    UnifyMode = unify_modes_lhs_rhs(_LHSFromToInsts, RHSFromToInsts),
+    RHSFromToInsts = from_to_insts(RHSInitInst, RHSFinalInst),
+    RHSMode = from_to_mode(RHSInitInst, RHSFinalInst).
+
+unify_modes_to_lhs_from_to_insts(UnifyMode) = LHSFromToInsts :-
+    UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, _RHSFromToInsts).
+
+unify_modes_to_rhs_from_to_insts(UnifyMode) = RHSFromToInsts :-
+    UnifyMode = unify_modes_lhs_rhs(_LHSFromToInsts, RHSFromToInsts).
+
+%---------------------%
+
+modes_to_top_functor_modes(_ModuleInfo, [], [], []).
+modes_to_top_functor_modes(_ModuleInfo, [], [_ | _], _) :-
         unexpected($module, $pred, "length mismatch").
-modes_to_arg_modes(_ModuleInfo, [_ | _], [], _) :-
+modes_to_top_functor_modes(_ModuleInfo, [_ | _], [], _) :-
         unexpected($module, $pred, "length mismatch").
-modes_to_arg_modes(ModuleInfo, [Mode | Modes], [Type | Types],
-        [ArgMode | ArgModes]) :-
-    mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-    modes_to_arg_modes(ModuleInfo, Modes, Types, ArgModes).
+modes_to_top_functor_modes(ModuleInfo, [Mode | Modes], [Type | Types],
+        [TopFunctorMode | TopFunctorModes]) :-
+    mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
+    modes_to_top_functor_modes(ModuleInfo, Modes, Types, TopFunctorModes).
 
-mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
-    mode_to_arg_mode_loop_over_notags(ModuleInfo, Mode, Type, [], ArgMode).
+mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode) :-
+    mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+    find_top_functor_mode_loop_over_notags(ModuleInfo, Type, [],
+        InitialInst, FinalInst, TopFunctorMode).
 
-:- pred mode_to_arg_mode_loop_over_notags(module_info::in, mer_mode::in,
-    mer_type::in, list(type_ctor)::in, arg_mode::out) is det.
+from_to_insts_to_top_functor_mode(ModuleInfo, FromToInsts, Type,
+        TopFunctorMode) :-
+    FromToInsts = from_to_insts(InitialInst, FinalInst),
+    find_top_functor_mode_loop_over_notags(ModuleInfo, Type, [],
+        InitialInst, FinalInst, TopFunctorMode).
 
-mode_to_arg_mode_loop_over_notags(ModuleInfo, Mode, Type, ContainingTypes,
-        ArgMode) :-
+:- pred find_top_functor_mode_loop_over_notags(module_info::in,
+    mer_type::in, list(type_ctor)::in, mer_inst::in, mer_inst::in,
+    top_functor_mode::out) is det.
+
+find_top_functor_mode_loop_over_notags(ModuleInfo, Type, ContainingTypes,
+        InitialInst, FinalInst, TopFunctorMode) :-
     % We need to handle no_tag types (types which have exactly one constructor,
     % and whose one constructor has exactly one argument) specially here,
     % since for them an inst of bound(f(free)) is not really bound as far as
@@ -321,32 +450,24 @@ mode_to_arg_mode_loop_over_notags(ModuleInfo, Mode, Type, ContainingTypes,
         type_to_ctor(Type, TypeCtor),
         not list.member(TypeCtor, ContainingTypes)
     then
-        % The arg_mode will be determined by the mode and type of the
+        % The top_functor_mode will be determined by the mode and type of the
         % functor's argument, so we figure out the mode and type of the
         % argument, and then recurse.
 
-        mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
         ConsId = cons(FunctorName, 1, TypeCtor),
         get_single_arg_inst(ModuleInfo, InitialInst, ConsId, InitialArgInst),
         get_single_arg_inst(ModuleInfo, FinalInst, ConsId, FinalArgInst),
-        ModeOfArg = (InitialArgInst -> FinalArgInst),
-        mode_to_arg_mode_loop_over_notags(ModuleInfo, ModeOfArg, ArgType,
-            [TypeCtor | ContainingTypes], ArgMode)
+        find_top_functor_mode_loop_over_notags(ModuleInfo,
+            ArgType, [TypeCtor | ContainingTypes],
+            InitialArgInst, FinalArgInst, TopFunctorMode)
     else
-        base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode)
-    ).
-
-:- pred base_mode_to_arg_mode(module_info::in, mer_mode::in, arg_mode::out)
-    is det.
-
-base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
-    mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
-    ( if inst_is_bound(ModuleInfo, InitialInst) then
-        ArgMode = top_in
-    else if inst_is_bound(ModuleInfo, FinalInst) then
-        ArgMode = top_out
-    else
-        ArgMode = top_unused
+        ( if inst_is_bound(ModuleInfo, InitialInst) then
+            TopFunctorMode = top_in
+        else if inst_is_bound(ModuleInfo, FinalInst) then
+            TopFunctorMode = top_out
+        else
+            TopFunctorMode = top_unused
+        )
     ).
 
 select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
@@ -358,7 +479,7 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
         HeadVars = [Var | Vars],
         HeadModes = [Mode | Modes],
         lookup_var_type(VarTypes, Var, VarType),
-        mode_to_arg_mode(ModuleInfo, Mode, VarType, Top),
+        mode_to_top_functor_mode(ModuleInfo, Mode, VarType, Top),
         (
             Top = top_out,
             OutputVars1 = select_output_vars(ModuleInfo, Vars, Modes,
@@ -390,7 +511,7 @@ select_output_things(ModuleInfo, HeadThings, HeadModes, ThingTypes) =
         HeadThings = [Thing | Things],
         HeadModes = [Mode | Modes],
         map.lookup(ThingTypes, Thing, ThingType),
-        mode_to_arg_mode(ModuleInfo, Mode, ThingType, Top),
+        mode_to_top_functor_mode(ModuleInfo, Mode, ThingType, Top),
         (
             Top = top_out,
             OutputThings1 = select_output_things(ModuleInfo, Things, Modes,
@@ -413,7 +534,7 @@ select_output_things(ModuleInfo, HeadThings, HeadModes, ThingTypes) =
         unexpected($module, $pred, "length mismatch")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInsts):
     % Given an inst `Inst', figure out what the inst of the argument would be,
@@ -479,23 +600,41 @@ get_single_arg_inst_in_bound_insts([BoundInst | BoundInsts], ConsId,
         get_single_arg_inst_in_bound_insts(BoundInsts, ConsId, ArgInst)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % Given two lists of modes (inst mappings) of equal length, convert
-    % them into a single list of inst pair mappings.
-    %
-modes_to_uni_modes(_ModuleInfo, [], [], []).
-modes_to_uni_modes(_ModuleInfo, [], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
-modes_to_uni_modes(_ModuleInfo, [_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
-modes_to_uni_modes(ModuleInfo, [X | Xs], [Y | Ys], [A | As]) :-
-    mode_get_insts(ModuleInfo, X, InitialX, FinalX),
-    mode_get_insts(ModuleInfo, Y, InitialY, FinalY),
-    A = ((InitialX - InitialY) -> (FinalX - FinalY)),
-    modes_to_uni_modes(ModuleInfo, Xs, Ys, As).
+modes_to_unify_mode(ModuleInfo, ModeX, ModeY, UnifyMode) :-
+    mode_get_insts(ModuleInfo, ModeX, InitialX, FinalX),
+    mode_get_insts(ModuleInfo, ModeY, InitialY, FinalY),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(InitialX, FinalX),
+        from_to_insts(InitialY, FinalY)).
 
-%-----------------------------------------------------------------------------%
+from_to_insts_to_unify_mode(FromToInstsX, FromToInstsY, UnifyMode) :-
+    UnifyMode = unify_modes_lhs_rhs(FromToInstsX, FromToInstsY).
+
+modes_to_unify_modes(_ModuleInfo, [], [], []).
+modes_to_unify_modes(_ModuleInfo, [], [_ | _], _) :-
+    unexpected($module, $pred, "length mismatch").
+modes_to_unify_modes(_ModuleInfo, [_ | _], [], _) :-
+    unexpected($module, $pred, "length mismatch").
+modes_to_unify_modes(ModuleInfo,
+        [ModeX | ModeXs], [ModeY | ModeYs],
+        [UnifyMode | UnifyModes]) :-
+    modes_to_unify_mode(ModuleInfo, ModeX, ModeY, UnifyMode),
+    modes_to_unify_modes(ModuleInfo, ModeXs, ModeYs, UnifyModes).
+
+from_to_insts_to_unify_modes([], [], []).
+from_to_insts_to_unify_modes([], [_ | _], _) :-
+    unexpected($module, $pred, "length mismatch").
+from_to_insts_to_unify_modes([_ | _], [], _) :-
+    unexpected($module, $pred, "length mismatch").
+from_to_insts_to_unify_modes(
+        [FromToInstsX | FromToInstsXs], [FromToInstsY | FromToInstsYs],
+        [UnifyMode | UnifyModes]) :-
+    from_to_insts_to_unify_mode(FromToInstsX, FromToInstsY, UnifyMode),
+    from_to_insts_to_unify_modes(FromToInstsXs, FromToInstsYs, UnifyModes).
+
+%---------------------------------------------------------------------------%
 
 inst_lookup(ModuleInfo, InstName, Inst) :-
     (
@@ -593,12 +732,8 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         propagate_type_into_inst(ModuleInfo, Subst, Type, Inst0, Inst)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % Given corresponding lists of types and modes, produce a new
-    % list of modes which includes the information provided by the
-    % corresponding types.
-    %
 propagate_types_into_mode_list(_, [], [], []).
 propagate_types_into_mode_list(ModuleInfo, [Type | Types],
         [Mode0 | Modes0], [Mode | Modes]) :-
@@ -632,7 +767,7 @@ propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode) :-
         InitialInst0, InitialInst),
     propagate_type_into_inst_lazily(ModuleInfo, Subst, Type,
         FinalInst0, FinalInst),
-    Mode = (InitialInst -> FinalInst).
+    Mode = from_to_mode(InitialInst, FinalInst).
 
     % Given a type, an inst and a substitution for the type variables in
     % the type, produce a new inst that includes the information
@@ -680,7 +815,7 @@ propagate_type_into_inst(ModuleInfo, Subst, Type0, Inst0, Inst) :-
 propagate_type_into_inst_lazily(ModuleInfo, Subst, Type, Inst0, Inst) :-
     propagate_ctor_info_lazily(ModuleInfo, Subst, Type, Inst0, Inst).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred propagate_ctor_info(module_info::in, mer_type::in,
     list(constructor)::in, mer_inst::in, mer_inst::out) is det.
@@ -904,7 +1039,6 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         Inst = defined_inst(InstName)
     ).
 
-    %
     % If the user does not explicitly specify a higher-order inst
     % for a higher-order function type, it defaults to
     % `func(in, in, ..., in) = out is det',
@@ -917,8 +1051,8 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
 
 default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
     Ground = ground(shared, none_or_default_func),
-    In = (Ground -> Ground),
-    Out = (free -> Ground),
+    In = from_to_mode(Ground, Ground),
+    Out = from_to_mode(free, Ground),
     list.length(PredArgTypes, NumPredArgs),
     NumFuncArgs = NumPredArgs - 1,
     list.duplicate(NumFuncArgs, In, FuncArgModes),
@@ -1145,7 +1279,7 @@ apply_type_subst(Type0, Subst, Type) :-
         apply_subst_to_type(Subst, Type0, Type)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred inst_lookup_subst_args(hlds_inst_body::in, list(inst_var)::in,
     sym_name::in, list(mer_inst)::in, mer_inst::out) is det.
@@ -1159,12 +1293,9 @@ inst_lookup_subst_args(InstBody, Params, Name, Args, Inst) :-
         Inst = abstract_inst(Name, Args)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % mode_get_insts returns the initial instantiatedness and
-    % the final instantiatedness for a given mode.
-    %
-mode_get_insts_semidet(_ModuleInfo, (InitialInst -> FinalInst),
+mode_get_insts_semidet(_ModuleInfo, from_to_mode(InitialInst, FinalInst),
         InitialInst, FinalInst).
 mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
         Initial, Final) :-
@@ -1188,16 +1319,22 @@ mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
     mode_substitute_arg_list(Mode0, Params, Args, Mode),
     mode_get_insts_semidet(ModuleInfo, Mode, Initial, Final).
 
-mode_get_insts(ModuleInfo, Mode, InstA, InstB) :-
-    ( if mode_get_insts_semidet(ModuleInfo, Mode, InstAPrime, InstBPrime) then
-        InstA = InstAPrime,
-        InstB = InstBPrime
+mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst) :-
+    ( if
+        mode_get_insts_semidet(ModuleInfo, Mode, InitInstPrime, FinalInstPrime)
+    then
+        InitInst = InitInstPrime,
+        FinalInst = FinalInstPrime
     else
         unexpected($module, $pred, "mode_get_insts_semidet failed")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+mode_get_from_to_insts(ModuleInfo, Mode, FromToInsts) :-
+    mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
+    FromToInsts = from_to_insts(InitInst, FinalInst).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Use the instmap deltas for all the atomic sub-goals to recompute
     % the instmap deltas for all the non-atomic sub-goals of a goal.
@@ -1375,7 +1512,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
             instmap_delta_init_unreachable(InstMapDelta)
         else
             ModuleInfo = !.RI ^ ri_module_info,
-            instmap_delta_from_mode_list(Vars, Modes, ModuleInfo, InstMapDelta)
+            instmap_delta_from_mode_list(ModuleInfo, Vars, Modes, InstMapDelta)
         ),
         GoalExpr = GoalExpr0
     ;
@@ -1460,7 +1597,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         GoalExpr = shorthand(ShortHand)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_conj(recompute_atomic_instmap_deltas::in,
     list(hlds_goal)::in, list(hlds_goal)::out, vartypes::in, instmap::in,
@@ -1478,7 +1615,7 @@ recompute_instmap_delta_conj(RecomputeAtomic, [Goal0 | Goals0], [Goal | Goals],
     instmap_delta_apply_instmap_delta(InstMapDelta0, InstMapDelta1,
         large_overlay, InstMapDelta).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_disj(recompute_atomic_instmap_deltas::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1514,7 +1651,7 @@ recompute_instmap_delta_disj_2(RecomputeAtomic,
     recompute_instmap_delta_disj_2(RecomputeAtomic, Goals0, Goals,
         VarTypes, InstMap, NonLocals, InstMapDeltas, !RI).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_cases(recompute_atomic_instmap_deltas::in,
     prog_var::in, list(case)::in, list(case)::out,
@@ -1557,7 +1694,7 @@ recompute_instmap_delta_cases_2(RecomputeAtomic, Var,
     recompute_instmap_delta_cases_2(RecomputeAtomic, Var, Cases0, Cases,
         VarTypes, InstMap0, NonLocals, InstMapDeltas, !RI).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_call(pred_id::in, proc_id::in,
     list(prog_var)::in, vartypes::in, instmap::in, instmap_delta::out,
@@ -1597,10 +1734,11 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
             !RI ^ ri_module_info := ModuleInfo
         else
             list.length(Args, NumArgs),
-            list.duplicate(NumArgs, (not_reached -> not_reached), ArgModes),
+            list.duplicate(NumArgs, from_to_mode(not_reached, not_reached),
+                ArgModes),
             ModuleInfo = ModuleInfo0
         ),
-        instmap_delta_from_mode_list(Args, ArgModes, ModuleInfo, InstMapDelta)
+        instmap_delta_from_mode_list(ModuleInfo, Args, ArgModes, InstMapDelta)
     ).
 
 :- pred compute_inst_var_sub(list(prog_var)::in, vartypes::in, instmap::in,
@@ -1655,7 +1793,7 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
         abstractly_unify_inst(is_dead, ArgInst0, FinalInst,
             fake_unify, UnifyInst, _, !ModuleInfo)
     then
-        Mode = (ArgInst0 -> UnifyInst)
+        Mode = from_to_mode(ArgInst0, UnifyInst)
     else
         unexpected($module, $pred, "unify_inst failed")
     ),
@@ -1666,7 +1804,7 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
     unify_mode::out, hlds_goal_info::in, instmap::in, instmap_delta::out,
     recompute_info::in, recompute_info::out) is det.
 
-recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
+recompute_instmap_delta_unify(Unification, UniMode0, UniMode, GoalInfo,
         InstMap, InstMapDelta, !RI) :-
     % Deconstructions are the only types of unifications that can require
     % updating of the instmap_delta after simplify.m has been run.
@@ -1675,14 +1813,15 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
     % instmap_delta.
     ModuleInfo0 = !.RI ^ ri_module_info,
     (
-        Uni = deconstruct(Var, _ConsId, Vars, UniModes, _, _CanCGC),
+        Unification = deconstruct(LHSVar, _ConsId, RHSVars, ArgModes,
+            _, _CanCGC),
 
         % Get the final inst of the deconstructed var, which will be the same
         % as in the old instmap.
 
         OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-        instmap_lookup_var(InstMap, Var, InitialInst),
-        ( if instmap_delta_search_var(OldInstMapDelta, Var, DeltaInst) then
+        instmap_lookup_var(InstMap, LHSVar, LHSInitialInst),
+        ( if instmap_delta_search_var(OldInstMapDelta, LHSVar, DeltaInst) then
             % Inlining can result in situations where the initial inst
             % (from procedure 1) can decide that a variable must be bound
             % to one set of function symbols, while the instmap delta from
@@ -1694,11 +1833,11 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
             % are free.
             % XXX There should be a better way to communicate that information.
             ( if
-                abstractly_unify_inst(is_dead, InitialInst, DeltaInst,
-                    fake_unify, FinalInstPrime, _Detism,
+                abstractly_unify_inst(is_dead, LHSInitialInst, DeltaInst,
+                    fake_unify, LHSFinalInstPrime, _Detism,
                     ModuleInfo0, ModuleInfo1)
             then
-                FinalInst = FinalInstPrime,
+                LHSFinalInst = LHSFinalInstPrime,
                 ModuleInfo = ModuleInfo1,
                 !RI ^ ri_module_info := ModuleInfo
             else
@@ -1706,28 +1845,27 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
             )
         else
             % It wasn't in the instmap_delta, so the inst didn't change.
-            FinalInst = InitialInst,
+            LHSFinalInst = LHSInitialInst,
             ModuleInfo = ModuleInfo0
         ),
-        UniModeToRhsMode =
-            (pred(UMode::in, Mode::out) is det :-
-                UMode = ((_ - Inst0) -> (_ - Inst)),
-                Mode = (Inst0 -> Inst)
+        ArgModeToRHSFromToInsts =
+            ( pred(AMode::in, RHSInsts::out) is det :-
+                AMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts)
             ),
-        list.map(UniModeToRhsMode, UniModes, Modes),
-        instmap_delta_from_mode_list([Var | Vars],
-            [(InitialInst -> FinalInst) |  Modes],
-            ModuleInfo, InstMapDelta),
+        list.map(ArgModeToRHSFromToInsts, ArgModes, RHSFromToInsts),
+        instmap_delta_from_from_to_insts_list(ModuleInfo, [LHSVar | RHSVars],
+            [from_to_insts(LHSInitialInst, LHSFinalInst) |  RHSFromToInsts],
+            InstMapDelta),
         UniMode = UniMode0
     ;
-        Uni = construct(Var, ConsId, Args, _, _, _, _),
+        Unification = construct(Var, ConsId, Args, _, _, _, _),
         ( if
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             set_of_var.member(NonLocals, Var),
             OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             not instmap_delta_search_var(OldInstMapDelta, Var, _),
             MaybeInst = cons_id_to_shared_inst(ModuleInfo0, ConsId,
-                length(Args)),
+                list.length(Args)),
             MaybeInst = yes(Inst)
         then
             UniMode = UniMode0,
@@ -1738,9 +1876,9 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
             UniMode = UniMode0
         )
     ;
-        ( Uni = assign(_, _)
-        ; Uni = simple_test(_, _)
-        ; Uni = complicated_unify(_, _, _)
+        ( Unification = assign(_, _)
+        ; Unification = simple_test(_, _)
+        ; Unification = complicated_unify(_, _, _)
         ),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         UniMode = UniMode0
@@ -1797,7 +1935,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         MaybeInst = yes(ground(shared, none_or_default_func))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_arg_lives(_, [], []).
 get_arg_lives(ModuleInfo, [Mode | Modes], [IsLive | IsLives]) :-
@@ -1811,7 +1949,7 @@ get_arg_lives(ModuleInfo, [Mode | Modes], [IsLive | IsLives]) :-
     ),
     get_arg_lives(ModuleInfo, Modes, IsLives).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
@@ -1826,8 +1964,8 @@ fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 normalise_insts(_, [], [], []).
 normalise_insts(_, [], [_ | _], _) :-
@@ -1879,7 +2017,7 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
         NormalisedInst = Inst
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 partition_args(_, [], [_ | _], _, _) :-
     unexpected($module, $pred, "length mismatch").
@@ -1895,6 +2033,6 @@ partition_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
         !:OutputArgs = [Arg | !.OutputArgs]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.mode_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

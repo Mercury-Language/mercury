@@ -784,11 +784,11 @@ replace_in_modes(TypeEqvMap, List0 @ [Mode0 | Modes0], List, Changed,
 
 replace_in_mode(TypeEqvMap, Mode0, Mode, Changed, !TVarSet, !Cache) :-
     (
-        Mode0 = (InstA0 -> InstB0),
-        replace_in_inst(TypeEqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
-        replace_in_inst(TypeEqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
+        Mode0 = from_to_mode(Init0, Final0),
+        replace_in_inst(TypeEqvMap, Init0,  Init,  ChangedA, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, Final0, Final, ChangedB, !TVarSet, !Cache),
         Changed = ChangedA `or` ChangedB,
-        ( Changed = yes, Mode = (InstA -> InstB)
+        ( Changed = yes, Mode = from_to_mode(Init, Final)
         ; Changed = no, Mode = Mode0
         )
     ;
@@ -797,6 +797,61 @@ replace_in_mode(TypeEqvMap, Mode0, Mode, Changed, !TVarSet, !Cache) :-
         ( Changed = yes, Mode = user_defined_mode(Name, Insts)
         ; Changed = no, Mode = Mode0
         )
+    ).
+
+:- pred replace_in_unify_modes(type_eqv_map::in,
+    list(unify_mode)::in, list(unify_mode)::out, bool::out,
+    replace_info::in, replace_info::out) is det.
+
+replace_in_unify_modes(_EqvMap, [], [], no, !Info).
+replace_in_unify_modes(TypeEqvMap, List0 @ [UnifyMode0 | UnifyModes0], List,
+        Changed, !Info) :-
+    replace_in_unify_mode(TypeEqvMap, UnifyMode0, UnifyMode,
+        Changed0, !Info),
+    replace_in_unify_modes(TypeEqvMap, UnifyModes0, UnifyModes,
+        Changed1, !Info),
+    Changed = Changed0 `or` Changed1,
+    ( Changed = yes, List = [UnifyMode | UnifyModes]
+    ; Changed = no, List = List0
+    ).
+
+:- pred replace_in_unify_mode(type_eqv_map::in,
+    unify_mode::in, unify_mode::out, bool::out,
+    replace_info::in, replace_info::out) is det.
+
+replace_in_unify_mode(TypeEqvMap, UnifyMode0, UnifyMode, Changed, !Info) :-
+    UnifyMode0 = unify_modes_lhs_rhs(LHSFromToInsts0, RHSFromToInsts0),
+    some [!TVarSet, !Cache] (
+        !:TVarSet = !.Info ^ ethri_tvarset,
+        !:Cache = !.Info ^ ethri_inst_cache,
+        replace_in_from_to_insts(TypeEqvMap, LHSFromToInsts0, LHSFromToInsts,
+            ChangedA, !TVarSet, !Cache),
+        replace_in_from_to_insts(TypeEqvMap, RHSFromToInsts0, RHSFromToInsts,
+            ChangedB, !TVarSet, !Cache),
+        Changed = ChangedA `or` ChangedB,
+        (
+            Changed = yes,
+            !Info ^ ethri_tvarset := !.TVarSet,
+            !Info ^ ethri_inst_cache := !.Cache,
+            UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, RHSFromToInsts)
+        ;
+            Changed = no,
+            UnifyMode = UnifyMode0
+        )
+    ).
+
+:- pred replace_in_from_to_insts(type_eqv_map::in,
+    from_to_insts::in, from_to_insts::out, bool::out,
+    tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
+
+replace_in_from_to_insts(TypeEqvMap, FromToInsts0, FromToInsts, Changed,
+        !TVarSet, !Cache) :-
+    FromToInsts0 = from_to_insts(Init0, Final0),
+    replace_in_inst(TypeEqvMap, Init0,  Init,  ChangedA, !TVarSet, !Cache),
+    replace_in_inst(TypeEqvMap, Final0, Final, ChangedB, !TVarSet, !Cache),
+    Changed = ChangedA `or` ChangedB,
+    ( Changed = yes, FromToInsts = from_to_insts(Init, Final)
+    ; Changed = no, FromToInsts = FromToInsts0
     ).
 
 :- pred replace_in_inst(type_eqv_map::in, mer_inst::in, mer_inst::out,
@@ -1493,12 +1548,12 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             GoalExpr = conj(plain_conj, []),
             !Info ^ ethri_recompute := yes
         else
-            GoalExpr0 ^ unify_mode = LMode0 - RMode0,
+            GoalExpr0 ^ unify_mode = unify_modes_lhs_rhs(LMode0, RMode0),
             TVarSet0 = !.Info ^ ethri_tvarset,
             Cache0 = !.Info ^ ethri_inst_cache,
-            replace_in_mode(TypeEqvMap, LMode0, LMode, Changed1,
+            replace_in_from_to_insts(TypeEqvMap, LMode0, LMode, Changed1,
                 TVarSet0, TVarSet1, Cache0, Cache1),
-            replace_in_mode(TypeEqvMap, RMode0, RMode, Changed2,
+            replace_in_from_to_insts(TypeEqvMap, RMode0, RMode, Changed2,
                 TVarSet1, TVarSet, Cache1, Cache),
             !Info ^ ethri_tvarset := TVarSet,
             !Info ^ ethri_inst_cache := Cache,
@@ -1507,7 +1562,8 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             Changed = Changed1 `or` Changed2 `or` Changed3,
             (
                 Changed = yes,
-                GoalExpr1 = GoalExpr0 ^ unify_mode := LMode - RMode,
+                GoalExpr1 = GoalExpr0 ^ unify_mode :=
+                    unify_modes_lhs_rhs(LMode, RMode),
                 GoalExpr = GoalExpr1 ^ unify_kind := Unification
             ;
                 Changed = no,
@@ -1583,62 +1639,28 @@ replace_in_unification(TypeEqvMap, Uni0, Uni, Changed, !Info) :-
         Uni = Uni0,
         Changed = no
     ;
-        Uni0 = complicated_unify(UniMode0, B, C),
-        replace_in_uni_mode(TypeEqvMap, UniMode0, UniMode, Changed, !Info),
-        ( Changed = yes, Uni = complicated_unify(UniMode, B, C)
+        Uni0 = complicated_unify(UnifyMode0, B, C),
+        replace_in_unify_mode(TypeEqvMap, UnifyMode0, UnifyMode,
+            Changed, !Info),
+        ( Changed = yes, Uni = complicated_unify(UnifyMode, B, C)
         ; Changed = no, Uni = Uni0
         )
     ;
         Uni0 = construct(_, _, _, _, _, _, _),
-        UniModes0 = Uni0 ^ construct_arg_modes,
-        replace_in_uni_modes(TypeEqvMap, UniModes0, UniModes, Changed, !Info),
-        ( Changed = yes, Uni = Uni0 ^ construct_arg_modes := UniModes
+        ArgModes0 = Uni0 ^ construct_arg_modes,
+        replace_in_unify_modes(TypeEqvMap, ArgModes0, ArgModes,
+            Changed, !Info),
+        ( Changed = yes, Uni = Uni0 ^ construct_arg_modes := ArgModes
         ; Changed = no, Uni = Uni0
         )
     ;
         Uni0 = deconstruct(_, _, _, _, _, _),
-        UniModes0 = Uni0 ^ deconstruct_arg_modes,
-        replace_in_uni_modes(TypeEqvMap, UniModes0, UniModes, Changed, !Info),
-        ( Changed = yes, Uni = Uni0 ^ deconstruct_arg_modes := UniModes
+        UnifyModes0 = Uni0 ^ deconstruct_arg_modes,
+        replace_in_unify_modes(TypeEqvMap, UnifyModes0, UnifyModes,
+            Changed, !Info),
+        ( Changed = yes, Uni = Uni0 ^ deconstruct_arg_modes := UnifyModes
         ; Changed = no, Uni = Uni0
         )
-    ).
-
-:- pred replace_in_uni_mode(type_eqv_map::in, uni_mode::in, uni_mode::out,
-    bool::out, replace_info::in, replace_info::out) is det.
-
-replace_in_uni_mode(TypeEqvMap, UniMode0, UniMode, Changed, !Info) :-
-    UniMode0 = ((InstA0 - InstB0) -> (InstC0 - InstD0)),
-    some [!TVarSet, !Cache] (
-        !:TVarSet = !.Info ^ ethri_tvarset,
-        !:Cache = !.Info ^ ethri_inst_cache,
-        replace_in_inst(TypeEqvMap, InstA0, InstA, Changed1, !TVarSet, !Cache),
-        replace_in_inst(TypeEqvMap, InstB0, InstB, Changed2, !TVarSet, !Cache),
-        replace_in_inst(TypeEqvMap, InstC0, InstC, Changed3, !TVarSet, !Cache),
-        replace_in_inst(TypeEqvMap, InstD0, InstD, Changed4, !TVarSet, !Cache),
-        Changed = Changed1 `or` Changed2 `or` Changed3 `or` Changed4,
-        (
-            Changed = yes,
-            !Info ^ ethri_tvarset := !.TVarSet,
-            !Info ^ ethri_inst_cache := !.Cache,
-            UniMode = ((InstA - InstB) -> (InstC - InstD))
-        ;
-            Changed = no,
-            UniMode = UniMode0
-        )
-    ).
-
-:- pred replace_in_uni_modes(type_eqv_map::in,
-    list(uni_mode)::in, list(uni_mode)::out, bool::out,
-    replace_info::in, replace_info::out) is det.
-
-replace_in_uni_modes(_EqvMap, [], [], no, !Acc).
-replace_in_uni_modes(TypeEqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
-    replace_in_uni_modes(TypeEqvMap, T0, T, Changed0, !Acc),
-    replace_in_uni_mode(TypeEqvMap, H0, H, Changed1, !Acc),
-    Changed = Changed0 `or` Changed1,
-    ( Changed = yes, List = [H | T]
-    ; Changed = no, List = List0
     ).
 
 %-----------------------------------------------------------------------------%

@@ -49,9 +49,24 @@
 :- func in_any_mode = mer_mode.
 :- func out_any_mode = mer_mode.
 
-:- func ground_inst = mer_inst.
+:- func in_from_to_insts = from_to_insts.
+:- func out_from_to_insts = from_to_insts.
+:- func di_from_to_insts = from_to_insts.
+:- func mdi_from_to_insts = from_to_insts.
+:- func uo_from_to_insts = from_to_insts.
+:- func muo_from_to_insts = from_to_insts.
+:- func unused_from_to_insts = from_to_insts.
+
 :- func free_inst = mer_inst.
+:- func ground_inst = mer_inst.
+:- func unique_inst = mer_inst.
+:- func mostly_unique_inst = mer_inst.
+:- func clobbered_inst = mer_inst.
+:- func mostly_clobbered_inst = mer_inst.
 :- func any_inst = mer_inst.
+
+:- func from_to_insts_in = from_to_insts.
+:- func from_to_insts_out = from_to_insts.
 
 :- pred make_std_mode(string::in, list(mer_inst)::in, mer_mode::out) is det.
 :- func make_std_mode(string, list(mer_inst)) = mer_mode.
@@ -73,6 +88,11 @@
 :- pred inst_lists_to_mode_list(list(mer_inst)::in, list(mer_inst)::in,
     list(mer_mode)::out) is det.
 
+    % insts_to_mode(InitialInst, FinalInst, Modes):
+    %
+    % Given an initial and a final inst, return the mode which maps
+    % the initial inst to the final inst.
+    %
 :- pred insts_to_mode(mer_inst::in, mer_inst::in, mer_mode::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -187,7 +207,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
-:- import_module term.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -212,9 +231,29 @@ unused_mode = make_std_mode("unused", []).
 in_any_mode = make_std_mode("in", [any_inst]).
 out_any_mode = make_std_mode("out", [any_inst]).
 
-ground_inst = ground(shared, none_or_default_func).
+in_from_to_insts = from_to_insts(ground_inst, ground_inst).
+out_from_to_insts = from_to_insts(free, ground_inst).
+di_from_to_insts = from_to_insts(unique_inst, clobbered_inst).
+mdi_from_to_insts = from_to_insts(mostly_unique_inst, mostly_clobbered_inst).
+uo_from_to_insts = from_to_insts(free, unique_inst).
+muo_from_to_insts = from_to_insts(free, mostly_unique_inst).
+unused_from_to_insts = from_to_insts(free, free).
+
 free_inst = free.
+ground_inst = ground(shared, none_or_default_func).
+unique_inst = ground(unique, none_or_default_func).
+mostly_unique_inst = ground(mostly_unique, none_or_default_func).
+clobbered_inst = ground(clobbered, none_or_default_func).
+mostly_clobbered_inst = ground(mostly_clobbered, none_or_default_func).
 any_inst = any(shared, none_or_default_func).
+
+from_to_insts_in = Insts :-
+    Ground = ground(shared, none_or_default_func),
+    Insts = from_to_insts(Ground, Ground).
+
+from_to_insts_out = Insts :-
+    Ground = ground(shared, none_or_default_func),
+    Insts = from_to_insts(free, Ground).
 
 make_std_mode(Name, Args, make_std_mode(Name, Args)).
 
@@ -283,7 +322,7 @@ insts_to_mode(Initial, Final, Mode) :-
     else if Initial = Final then
         make_std_mode("in", [Initial], Mode)
     else
-        Mode = (Initial -> Final)
+        Mode = from_to_mode(Initial, Final)
     ).
 
 %---------------------------------------------------------------------------%
@@ -316,10 +355,10 @@ inst_substitute_arg_list(Params, Args, Inst0, Inst) :-
 
 mode_apply_substitution(Subst, Mode0, Mode) :-
     (
-        Mode0 = (I0 -> F0),
+        Mode0 = from_to_mode(I0, F0),
         inst_apply_substitution(Subst, I0, I),
         inst_apply_substitution(Subst, F0, F),
-        Mode = (I -> F)
+        Mode = from_to_mode(I, F)
     ;
         Mode0 = user_defined_mode(Name, Args0),
         inst_list_apply_substitution_2(Subst, Args0, Args),
@@ -501,10 +540,10 @@ rename_apart_inst_vars(VarSet, NewVarSet, MergedVarSet, Modes0, Modes) :-
 
 rename_apart_inst_vars_in_mode(Renaming, Mode0, Mode) :-
     (
-        Mode0 = (I0 -> F0),
+        Mode0 = from_to_mode(I0, F0),
         rename_apart_inst_vars_in_inst(Renaming, I0, I),
         rename_apart_inst_vars_in_inst(Renaming, F0, F),
-        Mode = (I -> F)
+        Mode = from_to_mode(I, F)
     ;
         Mode0 = user_defined_mode(Name, Insts0),
         list.map(rename_apart_inst_vars_in_inst(Renaming), Insts0, Insts),
@@ -656,9 +695,9 @@ inst_contains_unconstrained_var(Inst) :-
             _MaybeArgRegs, _Detism),
         list.member(Mode, Modes),
         (
-            Mode = (SubInst -> _)
+            Mode = from_to_mode(SubInst, _)
         ;
-            Mode = (_ -> SubInst)
+            Mode = from_to_mode(_, SubInst)
         ;
             Mode = user_defined_mode(_SymName, SubInsts),
             list.member(SubInst, SubInsts)
@@ -816,10 +855,10 @@ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
 
 strip_builtin_qualifiers_from_mode(Mode0, Mode) :-
     (
-        Mode0 = (Initial0 -> Final0),
+        Mode0 = from_to_mode(Initial0, Final0),
         strip_builtin_qualifiers_from_inst(Initial0, Initial),
         strip_builtin_qualifiers_from_inst(Final0, Final),
-        Mode = (Initial -> Final)
+        Mode = from_to_mode(Initial, Final)
     ;
         Mode0 = user_defined_mode(SymName0, Insts0),
         strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
@@ -946,10 +985,10 @@ constrain_inst_vars_in_mode(Mode0, Mode) :-
 
 constrain_inst_vars_in_mode_sub(InstConstraints, Mode0, Mode) :-
     (
-        Mode0 = (I0 -> F0),
+        Mode0 = from_to_mode(I0, F0),
         constrain_inst_vars_in_inst(InstConstraints, I0, I),
         constrain_inst_vars_in_inst(InstConstraints, F0, F),
-        Mode = (I -> F)
+        Mode = from_to_mode(I, F)
     ;
         Mode0 = user_defined_mode(Name, Args0),
         list.map(constrain_inst_vars_in_inst(InstConstraints), Args0, Args),
@@ -1138,7 +1177,7 @@ gather_inconsistent_constrained_inst_vars_in_modes(Modes,
 gather_inconsistent_constrained_inst_vars_in_mode(Mode,
         !InconsistentVars, !Sub) :-
     (
-        Mode = (InitialInst -> FinalInst),
+        Mode = from_to_mode(InitialInst, FinalInst),
         gather_inconsistent_constrained_inst_vars_in_inst(InitialInst,
             !InconsistentVars, !Sub),
         gather_inconsistent_constrained_inst_vars_in_inst(FinalInst,

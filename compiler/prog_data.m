@@ -1007,8 +1007,11 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     --->    eqv_mode(mer_mode).
 
 :- type mer_mode
-    --->    (mer_inst -> mer_inst)
+    --->    from_to_mode(mer_inst, mer_inst)
     ;       user_defined_mode(sym_name, list(mer_inst)).
+
+:- type from_to_insts
+    --->    from_to_insts(mer_inst, mer_inst).
 
 %---------------------------------------------------------------------------%
 %

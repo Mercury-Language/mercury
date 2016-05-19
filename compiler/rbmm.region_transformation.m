@@ -94,7 +94,6 @@
 
 :- import_module int.
 :- import_module list.
-:- import_module pair.
 :- import_module require.
 :- import_module term.
 :- import_module varset.
@@ -988,7 +987,7 @@ ite_renaming_annotation_to_assignment(Annotation, !NameToVar,
 
 make_assignment_goal(LeftRegVar, RightRegVar, Context, AssignmentGoal) :-
     AssignmentExpr = unify(LeftRegVar, rhs_var(RightRegVar),
-        out_mode - in_mode,
+        unify_modes_lhs_rhs(out_from_to_insts, in_from_to_insts),
         assign(LeftRegVar, RightRegVar),
         unify_context(
             umc_implicit(Context),

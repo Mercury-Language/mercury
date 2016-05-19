@@ -125,7 +125,6 @@
 :- implementation.
 
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
@@ -322,7 +321,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
     ;
         GoalExpr0 = unify(LHS, RHS0, Mode, Unify, Context),
         (
-            Unify = construct(_Var, ConsId, _Args, UniModes, _, _, _),
+            Unify = construct(_Var, ConsId, _Args, ArgModes, _, _, _),
             ( if
                 % Is this construction of the form
                 %   V = f(A1, A2, A3, ...)
@@ -332,9 +331,11 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 ; ConsId = tuple_cons(_)
                 ),
                 ModuleInfo = !.DelayInfo ^ dpi_module_info,
-                some [RhsAfter] (
-                    list.member(_ -> _ - RhsAfter, UniModes),
-                    inst_is_free(ModuleInfo, RhsAfter)
+                some [ArgMode, RHSFinal] (
+                    list.member(ArgMode, ArgModes),
+                    ArgMode = unify_modes_lhs_rhs(_, RHSFromToInsts),
+                    RHSFromToInsts = from_to_insts(_, RHSFinalInst),
+                    inst_is_free(ModuleInfo, RHSFinalInst)
                 )
             then
                 delay_partial_inst_in_partial_construct(GoalInfo0, Unify, Goal,
@@ -363,12 +364,12 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 )
             )
         ;
-            Unify = deconstruct(_Var, _ConsId, _Args, _UniModes,
+            Unify = deconstruct(_Var, _ConsId, _Args, _ArgModes,
                 _CanFail, _CanCGC),
             delay_partial_inst_in_deconstruct(Goal0, Mode, Unify, Goal,
                 !ConstructMap, !DelayInfo)
         ;
-            Unify = complicated_unify(_UniMode, _CanFail, _TypeInfos),
+            Unify = complicated_unify(_Mode, _CanFail, _TypeInfos),
             delay_partial_inst_in_complicated_unify(Goal0, LHS, RHS0,
                 Unify, Goal, !ConstructMap, !DelayInfo)
         ;
@@ -488,7 +489,7 @@ delay_partial_inst_in_cases(InstMap0, [Case0 | Cases0], [Case | Cases],
 
 delay_partial_inst_in_partial_construct(GoalInfo0, Unify, Goal,
         !ConstructMap, !DelayInfo) :-
-    Unify = construct(Var, ConsId, Args, UniModes, _, _, _),
+    Unify = construct(Var, ConsId, Args, ArgModes, _, _, _),
     % Add an entry for Var to the construct map if it doesn't exist
     % already, otherwise look up the canonical variables.
     ( if
@@ -507,7 +508,7 @@ delay_partial_inst_in_partial_construct(GoalInfo0, Unify, Goal,
     ProgContext = goal_info_get_context(GoalInfo0),
     SubUnifyGoals = list.filter_map_corresponding3(
         maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
-        CanonVars, Args, UniModes),
+        CanonVars, Args, ArgModes),
     conj_list_to_goal(SubUnifyGoals, GoalInfo0, Goal),
 
     % Mark the procedure as changed.
@@ -550,9 +551,9 @@ add_to_construct_map(Var, ConsId, CanonVars, !ConstructMap) :-
     construct_map::in, construct_map::out,
     delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
 
-delay_partial_inst_in_deconstruct(Goal0, UniMode, Unify, Goal,
+delay_partial_inst_in_deconstruct(Goal0, UnifyMode, Unify, Goal,
         !ConstructMap, !DelayInfo) :-
-    Unify = deconstruct(Var, ConsId, Args, UniModes, _CanFail, _CanCGC),
+    Unify = deconstruct(Var, ConsId, Args, ArgModes, _CanFail, _CanCGC),
     ( if
         map.search(!.ConstructMap, Var, CanonVarsMap0),
         map.search(CanonVarsMap0, ConsId, CanonArgs)
@@ -563,12 +564,12 @@ delay_partial_inst_in_deconstruct(Goal0, UniMode, Unify, Goal,
         ProgContext = goal_info_get_context(GoalInfo0),
         SubUnifyGoals = list.filter_map_corresponding3(
             maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
-            CanonArgs, Args, UniModes),
+            CanonArgs, Args, ArgModes),
 
         % Construct Var if it should be ground now.
-        UniMode = LHS_Mode - _RHS_Mode,
-        FinalInst = mode_get_final_inst(ModuleInfo, LHS_Mode),
-        ( if inst_is_ground(ModuleInfo, FinalInst) then
+        UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, _RHSFromToInsts),
+        LHSFromToInsts = from_to_insts(_, LHSFinalInst),
+        ( if inst_is_ground(ModuleInfo, LHSFinalInst) then
             construct_functor(Var, ConsId, CanonArgs, ConstructGoal),
 
             % Delete the variable on the LHS from the construct map
@@ -593,13 +594,14 @@ delay_partial_inst_in_deconstruct(Goal0, UniMode, Unify, Goal,
 %
 
 :- func maybe_unify_var_with_ground_var(module_info::in, prog_context::in,
-    prog_var::in, prog_var::in, uni_mode::in) = (hlds_goal::out) is semidet.
+    prog_var::in, prog_var::in, unify_mode::in) = (hlds_goal::out) is semidet.
 
-maybe_unify_var_with_ground_var(ModuleInfo, Context, LhsVar, RhsVar, ArgMode)
+maybe_unify_var_with_ground_var(ModuleInfo, Context, LHSVar, RHSVar, UnifyMode)
         = Goal :-
-    ArgMode = (_ - _ -> Inst - _),
-    inst_is_ground(ModuleInfo, Inst),
-    create_pure_atomic_complicated_unification(LhsVar, rhs_var(RhsVar),
+    UnifyMode = unify_modes_lhs_rhs(_, RHSFromToInsts),
+    RHSFromToInsts = from_to_insts(RHSInitInst, _),
+    inst_is_ground(ModuleInfo, RHSInitInst),
+    create_pure_atomic_complicated_unification(LHSVar, rhs_var(RHSVar),
         Context, umc_implicit("delay_partial_inst"), [], Goal).
 
 %-----------------------------------------------------------------------------%
@@ -615,7 +617,7 @@ maybe_unify_var_with_ground_var(ModuleInfo, Context, LhsVar, RhsVar, ArgMode)
 
 delay_partial_inst_in_complicated_unify(Goal0, LHS, RHS0, Unify, Goal,
         !ConstructMap, !DelayInfo) :-
-    Unify = complicated_unify(_UniMode, CanFail, _TypeInfos),
+    Unify = complicated_unify(_Mode, CanFail, _TypeInfos),
     % Deal with tests generated for calls to implied modes.
     %
     %       LHS := f(_),

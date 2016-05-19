@@ -106,7 +106,7 @@
 :- pred ml_gen_new_object(maybe(cons_id)::in, maybe(ctor_name)::in,
     mlds_tag::in, bool::in, prog_var::in,
     list(mlds_rval)::in, list(mlds_type)::in,
-    list(prog_var)::in, list(uni_mode)::in, list(int)::in,
+    list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -284,7 +284,7 @@ ml_gen_unification(Unification, CodeModel, Context, Statements, !Info) :-
     % ml_gen_construct generates code for a construction unification.
     %
 :- pred ml_gen_construct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(uni_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
+    list(unify_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
     list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
@@ -296,7 +296,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         HowToConstruct, Context, Statements, !Info).
 
 :- pred ml_gen_construct_tag(cons_tag::in, mer_type::in, prog_var::in,
-    cons_id::in, list(prog_var)::in, list(uni_mode)::in, list(int)::in,
+    cons_id::in, list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -585,7 +585,7 @@ ml_cons_id_to_tag(Info, ConsId, Tag) :-
     %
 :- pred ml_gen_compound(cons_id::in, int::in, maybe(int)::in,
     tag_uses_base_class::in, prog_var::in, list(prog_var)::in,
-    list(uni_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
+    list(unify_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
     list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
@@ -676,7 +676,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
 :- pred ml_gen_new_object_dynamically(maybe(cons_id)::in, maybe(ctor_name)::in,
     maybe(mlds_tag)::in, bool::in, prog_var::in, mlds_lval::in, mer_type::in,
     mlds_type::in, list(mlds_rval)::in, list(mlds_type)::in,
-    list(prog_var)::in, list(mer_type)::in, list(uni_mode)::in,
+    list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
     list(int)::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -860,7 +860,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     mlds_tag::in, maybe(mlds_tag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_rval)::in, list(mlds_type)::in,
-    list(prog_var)::in, list(mer_type)::in, list(uni_mode)::in,
+    list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
     list(int)::in, cell_to_reuse::in, prog_context::in,
     list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -1331,7 +1331,7 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
     %
 :- pred ml_gen_cons_args(list(prog_var)::in, list(mlds_lval)::in,
     list(mer_type)::in, list(mer_type)::in, list(arg_width)::in,
-    list(uni_mode)::in, int::in, list(int)::in, module_info::in, bool::in,
+    list(unify_mode)::in, int::in, list(int)::in, module_info::in, bool::in,
     list(mlds_rval)::out, list(mlds_type)::out, list(take_addr_info)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
@@ -1350,7 +1350,7 @@ ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
 
 :- pred ml_gen_cons_args_2(list(prog_var)::in, list(mlds_lval)::in,
     list(mer_type)::in, list(mer_type)::in, list(arg_width)::in,
-    list(uni_mode)::in, int::in, int::in, list(int)::in,
+    list(unify_mode)::in, int::in, int::in, list(int)::in,
     module_info::in, bool::in, list(mlds_rval)::out, list(mlds_type)::out,
     list(take_addr_info)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
@@ -1360,7 +1360,7 @@ ml_gen_cons_args_2([], [], [], [], _, [],
         _ModuleInfo, _HighLevelData, [], [], [], !MayUseAtomic).
 ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         [ConsArgType | ConsArgTypes], ConsArgWidths,
-        [UniMode | UniModes], NumExtraArgs, CurArgNum, !.TakeAddr,
+        [ArgMode | ArgModes], NumExtraArgs, CurArgNum, !.TakeAddr,
         ModuleInfo, HighLevelData, [Rval | Rvals],
         [MLDS_Type | MLDS_Types], TakeAddrInfos, !MayUseAtomic) :-
     % It is important to use ArgType instead of ConsArgType here. ConsArgType
@@ -1380,13 +1380,12 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
 
     % Compute the value of the field.
-    UniMode = ((_LI - RI) -> (_LF - RF)),
     ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
         expect(unify(ConsArgWidth, full_word), $module, $pred,
             "taking address of non word-sized argument"),
         Rval = ml_const(mlconst_null(MLDS_Type)),
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
-            UniModes, NumExtraArgs, CurArgNum + 1, !.TakeAddr,
+            ArgModes, NumExtraArgs, CurArgNum + 1, !.TakeAddr,
             ModuleInfo, HighLevelData, Rvals, MLDS_Types, TakeAddrInfosTail,
             !MayUseAtomic),
         Offset = ml_calc_field_offset(NumExtraArgs, ConsArgWidths, CurArgNum),
@@ -1394,8 +1393,10 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         TakeAddrInfo = take_addr_info(Var, Offset, OrigMLDS_Type, MLDS_Type),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
     else
+        ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
         ( if
-            mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, top_in),
+            from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, ArgType,
+                top_in),
             check_dummy_type(ModuleInfo, ArgType) = is_not_dummy_type,
             check_dummy_type(ModuleInfo, ConsArgType) = is_not_dummy_type
         then
@@ -1405,7 +1406,7 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
             Rval = ml_const(mlconst_null(MLDS_Type))
         ),
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
-            UniModes, NumExtraArgs, CurArgNum + 1, !.TakeAddr,
+            ArgModes, NumExtraArgs, CurArgNum + 1, !.TakeAddr,
             ModuleInfo, HighLevelData, Rvals, MLDS_Types, TakeAddrInfos,
             !MayUseAtomic)
     ).
@@ -1463,7 +1464,7 @@ ml_gen_extra_arg_assign([ExtraRval | ExtraRvals], [ExtraType | ExtraTypes],
     %       ...
     %
 :- pred ml_gen_det_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(uni_mode)::in, prog_context::in, list(statement)::out,
+    list(unify_mode)::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Statements, !Info) :-
@@ -1473,7 +1474,7 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Statements, !Info) :-
         Statements, !Info).
 
 :- pred ml_gen_det_deconstruct_tag(cons_tag::in, mer_type::in, prog_var::in,
-    cons_id::in, list(prog_var)::in, list(uni_mode)::in, prog_context::in,
+    cons_id::in, list(prog_var)::in, list(unify_mode)::in, prog_context::in,
     list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
@@ -1645,7 +1646,7 @@ ml_field_names_and_types(Info, Type, ConsId, ArgTypes, Fields) :-
         Fields = ExtraFields ++ Fields0
     ).
 
-:- pred ml_gen_unify_args(cons_id::in, list(prog_var)::in, list(uni_mode)::in,
+:- pred ml_gen_unify_args(cons_id::in, list(prog_var)::in, list(unify_mode)::in,
     list(mer_type)::in, list(constructor_arg)::in, mer_type::in,
     mlds_lval::in, field_offset::in, int::in, cons_tag::in,
     prog_context::in, list(statement)::out, ml_gen_info::in, ml_gen_info::out)
@@ -1664,7 +1665,7 @@ ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
     ).
 
 :- pred ml_gen_unify_args_2(cons_id::in, list(prog_var)::in,
-    list(uni_mode)::in, list(mer_type)::in, list(constructor_arg)::in,
+    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg)::in,
     mer_type::in, mlds_lval::in, field_offset::in, int::in,
     cons_tag::in, prog_context::in, list(statement)::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is semidet.
@@ -1744,7 +1745,7 @@ ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
     ).
 
 :- pred ml_gen_unify_args_for_reuse(cons_id::in, list(prog_var)::in,
-    list(uni_mode)::in, list(mer_type)::in, list(constructor_arg)::in,
+    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg)::in,
     list(int)::in, mer_type::in, mlds_lval::in, field_offset::in,
     int::in, cons_tag::in, prog_context::in,
     list(statement)::out, list(take_addr_info)::out,
@@ -1797,7 +1798,7 @@ ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
         unexpected($module, $pred, "length mismatch")
     ).
 
-:- pred ml_gen_unify_arg(cons_id::in, prog_var::in, uni_mode::in,
+:- pred ml_gen_unify_arg(cons_id::in, prog_var::in, unify_mode::in,
     mer_type::in, constructor_arg::in, mer_type::in, mlds_lval::in,
     field_offset::in, int::in, cons_tag::in, prog_context::in,
     list(statement)::in, list(statement)::out,
@@ -1854,12 +1855,12 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
     ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType,
         FieldLval, BoxedFieldType, FieldWidth, Context, !Statements).
 
-:- pred ml_gen_sub_unify(module_info::in, bool::in, uni_mode::in,
+:- pred ml_gen_sub_unify(module_info::in, bool::in, unify_mode::in,
     mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_width::in,
     prog_context::in, list(statement)::in, list(statement)::out) is det.
 
-ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
-        FieldType, FieldWidth, Context, !Statements) :-
+ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
+        FieldLval, FieldType, FieldWidth, Context, !Statements) :-
     % Figure out the direction of data-flow from the mode,
     % and generate code accordingly.
     %
@@ -1872,9 +1873,11 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
     % into nothing. We hope that the compilers for the other MLDS target
     % languages can do the same.
 
-    Mode = ((LI - RI) -> (LF - RF)),
-    mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode),
-    mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
+    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
+    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
+        LeftTopFunctorMode),
+    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
+        RightTopFunctorMode),
     ( if
         % Skip dummy argument types, since they will not have been declared.
         ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
@@ -1884,8 +1887,8 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
         true
     else if
         % Both input: it is a test unification.
-        LeftMode = top_in,
-        RightMode = top_in
+        LeftTopFunctorMode = top_in,
+        RightTopFunctorMode = top_in
     then
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
@@ -1893,8 +1896,8 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
         unexpected($module, $pred, "test in arg of [de]construction")
     else if
         % Input - output: it is an assignment to the RHS.
-        LeftMode = top_in,
-        RightMode = top_out
+        LeftTopFunctorMode = top_in,
+        RightTopFunctorMode = top_out
     then
         (
             ( FieldWidth = full_word
@@ -1929,8 +1932,8 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
         !:Statements = [Statement | !.Statements]
     else if
         % Output - input: it is an assignment to the LHS.
-        LeftMode = top_out,
-        RightMode = top_in
+        LeftTopFunctorMode = top_out,
+        RightTopFunctorMode = top_in
     then
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
             bp_native_if_possible, ml_lval(ArgLval), ArgRval),
@@ -1974,8 +1977,8 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
         )
     else if
         % Unused - unused: the unification has no effect.
-        LeftMode = top_unused,
-        RightMode = top_unused
+        LeftTopFunctorMode = top_unused,
+        RightTopFunctorMode = top_unused
     then
         true
     else
@@ -1997,15 +2000,17 @@ ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) :-
         sorry($module, $pred, "unexpected field offset")
     ).
 
-:- pred ml_gen_direct_arg_construct(module_info::in, uni_mode::in, int::in,
+:- pred ml_gen_direct_arg_construct(module_info::in, unify_mode::in, int::in,
     mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, prog_context::in,
     list(statement)::out) is det.
 
-ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
+ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
         ArgLval, ArgType, VarLval, VarType, Context, Statements) :-
-    Mode = ((LI - RI) -> (LF - RF)),
-    mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode),
-    mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
+    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
+    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
+        LeftTopFunctorMode),
+    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
+        RightTopFunctorMode),
     ( if
         % Skip dummy argument types, since they will not have been declared.
         ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
@@ -2015,8 +2020,8 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
         unexpected($module, $pred, "dummy unify")
     else if
         % Both input: it is a test unification.
-        LeftMode = top_in,
-        RightMode = top_in
+        LeftTopFunctorMode = top_in,
+        RightTopFunctorMode = top_in
     then
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
@@ -2024,14 +2029,14 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
         unexpected($module, $pred, "test in arg of [de]construction")
     else if
         % Input - output: it is an assignment to the RHS.
-        LeftMode = top_in,
-        RightMode = top_out
+        LeftTopFunctorMode = top_in,
+        RightTopFunctorMode = top_out
     then
         unexpected($module, $pred, "left-to-right data flow in construction")
     else if
         % Output - input: it is an assignment to the LHS.
-        LeftMode = top_out,
-        RightMode = top_in
+        LeftTopFunctorMode = top_out,
+        RightTopFunctorMode = top_in
     then
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
             bp_native_if_possible, ml_lval(ArgLval), ArgRval),
@@ -2042,8 +2047,8 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
     else if
         % Unused - unused: it is a partial assignment to the LHS
         % where the tag is known but the argument isn't.
-        LeftMode = top_unused,
-        RightMode = top_unused
+        LeftTopFunctorMode = top_unused,
+        RightTopFunctorMode = top_unused
     then
         MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
@@ -2057,15 +2062,17 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
         unexpected($module, $pred, "some strange unify")
     ).
 
-:- pred ml_gen_direct_arg_deconstruct(module_info::in, uni_mode::in, int::in,
+:- pred ml_gen_direct_arg_deconstruct(module_info::in, unify_mode::in, int::in,
     mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, prog_context::in,
     list(statement)::out) is det.
 
-ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
+ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
         ArgLval, ArgType, VarLval, VarType, Context, Statements) :-
-    Mode = ((LI - RI) -> (LF - RF)),
-    mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode),
-    mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
+    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
+    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
+        LeftTopFunctorMode),
+    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
+        RightTopFunctorMode),
     ( if
         % Skip dummy argument types, since they will not have been declared.
         ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
@@ -2075,8 +2082,8 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
         unexpected($module, $pred, "dummy unify")
     else if
         % Both input: it is a test unification.
-        LeftMode = top_in,
-        RightMode = top_in
+        LeftTopFunctorMode = top_in,
+        RightTopFunctorMode = top_in
     then
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
@@ -2084,8 +2091,8 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
         unexpected($module, $pred, "test in arg of [de]construction")
     else if
         % Input - output: it is an assignment to the RHS.
-        LeftMode = top_in,
-        RightMode = top_out
+        LeftTopFunctorMode = top_in,
+        RightTopFunctorMode = top_out
     then
         ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
             bp_native_if_possible, ml_lval(VarLval), VarRval),
@@ -2096,8 +2103,8 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
         Statements = [Statement]
     else if
         % Output - input: it is an assignment to the LHS.
-        LeftMode = top_out,
-        RightMode = top_in
+        LeftTopFunctorMode = top_out,
+        RightTopFunctorMode = top_in
     then
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
             bp_native_if_possible, ml_lval(ArgLval), ArgRval),
@@ -2107,8 +2114,8 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
         Statements = [Statement]
     else if
         % Unused - unused: the unification has no effect.
-        LeftMode = top_unused,
-        RightMode = top_unused
+        LeftTopFunctorMode = top_unused,
+        RightTopFunctorMode = top_unused
     then
         Statements = []
     else
@@ -2132,7 +2139,7 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
     %       }
     %
 :- pred ml_gen_semi_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(uni_mode)::in, prog_context::in, list(statement)::out,
+    list(unify_mode)::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context, Statements,

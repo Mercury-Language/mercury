@@ -780,11 +780,11 @@ make_assignment(OutputArg, InputArg, Goal) :-
     OutVar = OutputArg ^ arg_var,
     InVar = InputArg ^ arg_var,
     Inst = InputArg ^ arg_inst,
-    OutputArgMode = (free -> Inst),
-    InputArgMode = (Inst -> Inst),
-    UniMode = OutputArgMode - InputArgMode,
+    OutputArgMode = from_to_insts(free, Inst),
+    InputArgMode = from_to_insts(Inst, Inst),
+    UnifyMode = unify_modes_lhs_rhs(OutputArgMode, InputArgMode),
     Context = unify_context(umc_explicit, []),
-    Goal = unify(OutVar, rhs_var(InVar), UniMode, assign(OutVar, InVar),
+    Goal = unify(OutVar, rhs_var(InVar), UnifyMode, assign(OutVar, InVar),
         Context).
 
     % recompute_instmap_delta is run by simplify.m if anything changes,
