@@ -98,16 +98,16 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
             MaybeIOM = error1([Spec])
         )
     else
-        Spec = report_unrecogized_pragma(Context),
+        Spec = report_unrecognized_pragma(Context),
         MaybeIOM = error1([Spec])
     ).
 
-:- func report_unrecogized_pragma(prog_context) = error_spec.
+:- func report_unrecognized_pragma(prog_context) = error_spec.
 
-report_unrecogized_pragma(Context) = Spec :-
+report_unrecognized_pragma(Context) = Spec :-
     Pieces = [words("Error: a"), decl("pragma"), words("declaration"),
         words("should have the form"),
-        quote(":- pragma pragma_name(pragma_rguments)."), nl],
+        quote(":- pragma pragma_name(pragma_arguments)."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(Context, [always(Pieces)])]).
 
@@ -333,7 +333,7 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                 BeforeWherePragmaTerms, BeforeWhereContext, SeqNum,
                 MaybeMaybeUC, MaybeIOM)
         else
-            Spec = report_unrecogized_pragma(Context),
+            Spec = report_unrecognized_pragma(Context),
             MaybeIOM = error1([Spec])
         )
     ).
@@ -526,7 +526,8 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
         )
     then
         ( if parse_foreign_language(LangTerm, ForeignLang) then
-            parse_export_enum_type_ctor(MercuryTypeTerm, MaybeTypeCtor),
+            parse_type_ctor_name_arity("foreign_export_enum", MercuryTypeTerm,
+                MaybeTypeCtor),
             (
                 MaybeTypeCtor = ok1(TypeCtor),
                 maybe_parse_export_enum_attributes(VarSet, MaybeAttributesTerm,
@@ -571,19 +572,6 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
-    ).
-
-:- pred parse_export_enum_type_ctor(term::in, maybe1(type_ctor)::out) is det.
-
-parse_export_enum_type_ctor(TypeTerm, MaybeTypeCtor) :-
-    ( if parse_name_and_arity_unqualified(TypeTerm, Name, Arity) then
-        MaybeTypeCtor = ok1(type_ctor(Name, Arity))
-    else
-        Pieces = [words("Error: expected name/arity for type in"),
-            pragma_decl("foreign_export_enum"), words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
-        MaybeTypeCtor = error1([Spec])
     ).
 
 :- pred maybe_parse_export_enum_overrides(varset::in, maybe(term)::in,
@@ -693,7 +681,7 @@ parse_export_enum_attributes(VarSet, AttributesTerm, AttributesResult) :-
     export_enum_attributes::in, export_enum_attributes::out) is det.
 
 process_export_enum_attribute(ee_attr_prefix(MaybePrefix), !Attributes) :-
-    % We haved alredy checked that the prefix attribute is not specified
+    % We have already checked that the prefix attribute is not specified
     % multiple times in parse_export_enum_attributes so it is safe to
     % ignore it in the input here.
     !.Attributes = export_enum_attributes(_, MakeUpperCase),
@@ -737,42 +725,73 @@ parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
 parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if PragmaTerms = [LangTerm, MercuryTypeTerm, ValuesTerm] then
+
         ( if parse_foreign_language(LangTerm, ForeignLang) then
-            parse_export_enum_type_ctor(MercuryTypeTerm, MaybeTypeCtor),
-            (
-                MaybeTypeCtor = ok1(TypeCtor),
-                UnrecognizedPieces =
-                    [words("Error: expected a valid mapping element."), nl],
-                PairContextPieces =
-                    cord.singleton(words("In foreign_enum constructor name:")),
-                convert_maybe_list("mapping elements", yes(VarSet), ValuesTerm,
-                    parse_sym_name_string_pair(VarSet, PairContextPieces),
-                    UnrecognizedPieces, MaybeValues),
-                (
-                    MaybeValues = ok1(Values),
-                    FEInfo = pragma_info_foreign_enum(ForeignLang, TypeCtor,
-                        Values),
-                    Pragma = pragma_foreign_enum(FEInfo),
-                    ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                        Context, SeqNum),
-                    Item = item_pragma(ItemPragma),
-                    MaybeIOM = ok1(iom_item(Item))
-                ;
-                    MaybeValues = error1(Specs),
-                    MaybeIOM = error1(Specs)
-                )
-            ;
-                MaybeTypeCtor = error1(Specs),
-                MaybeIOM = error1(Specs)
-            )
+            MaybeForeignLang = ok1(ForeignLang)
         else
-            Pieces = [words("Error: invalid foreign language in"),
+            LangPieces = [words("Error: invalid foreign language"),
+                quote(describe_error_term(VarSet, LangTerm)), words("in"),
                 pragma_decl("foreign_enum"), words("declaration."),
                 nl],
-            % XXX We should use the context of LangTerm.
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-            MaybeIOM = error1([Spec])
+            LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(LangTerm), [always(LangPieces)])]),
+            MaybeForeignLang = error1([LangSpec])
+        ),
+
+        parse_type_ctor_name_arity("foreign_enum", MercuryTypeTerm,
+            MaybeTypeCtor),
+
+        UnrecognizedPieces =
+            [words("Error: expected a valid mapping element")],
+        PairContextPieces = cord.from_list([
+            words("In"), pragma_decl("foreign_enum"),
+            words("mapping constructor name:")
+        ]),
+        % XXX the following doesn't check that foreign values are sensible
+        % (e.g. it should reject the empty string).
+        convert_maybe_list("mapping elements", yes(VarSet), ValuesTerm,
+            parse_sym_name_string_pair(VarSet, PairContextPieces),
+            UnrecognizedPieces, MaybeValues0),
+        (
+            MaybeValues0 = ok1(Values0),
+            (
+                Values0 = [],
+                NoValuesPieces = [
+                    words("Error: expected a non-empty list"),
+                    words("mapping constructors to foreign values in"),
+                    pragma_decl("foreign_enum"), words("declaration."), nl
+                ],
+                NoValuesSpec = error_spec(severity_error,
+                    phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(ValuesTerm),
+                        [always(NoValuesPieces)])]),
+                MaybeValues = error1([NoValuesSpec])
+            ;
+                Values0 = [_ | _],
+                MaybeValues = MaybeValues0
+            )
+        ;
+            MaybeValues0 = error1(_),
+            MaybeValues = MaybeValues0
+        ),
+
+        ( if
+            MaybeForeignLang = ok1(ForeignLangPrime),
+            MaybeTypeCtor = ok1(TypeCtor),
+            MaybeValues = ok1(Values)
+        then
+            FEInfo = pragma_info_foreign_enum(ForeignLangPrime, TypeCtor,
+                Values),
+            Pragma = pragma_foreign_enum(FEInfo),
+            ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
+                SeqNum),
+            Item = item_pragma(ItemPragma),
+            MaybeIOM = ok1(iom_item(Item))
+        else
+            Specs = get_any_errors1(MaybeForeignLang) ++
+                get_any_errors1(MaybeTypeCtor) ++
+                get_any_errors1(MaybeValues),
+            MaybeIOM = error1(Specs)
         )
     else
         Pieces = [words("Error: wrong number of arguments in"),
@@ -780,6 +799,25 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Common code for parsing foreign_export_enum and foreign_enum pragms.
+%
+
+:- pred parse_type_ctor_name_arity(string::in, term::in,
+    maybe1(type_ctor)::out) is det.
+
+parse_type_ctor_name_arity(PragmaName, TypeTerm, MaybeTypeCtor) :-
+    ( if parse_name_and_arity_unqualified(TypeTerm, Name, Arity) then
+        MaybeTypeCtor = ok1(type_ctor(Name, Arity))
+    else
+        Pieces = [words("Error: expected name/arity for type in"),
+            pragma_decl(PragmaName), words("declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
+        MaybeTypeCtor = error1([Spec])
     ).
 
 %---------------------------------------------------------------------------%
@@ -3293,7 +3331,7 @@ convert_int_list(VarSet, ListTerm, Result) :-
     %
     % Convert Term into a list of elements where Pred converts each element
     % of the list into the correct type. Result will hold the list if the
-    % conversion succeded for each element of M, otherwise it will hold
+    % conversion succeeded for each element of M, otherwise it will hold
     % the error. What should be a plural noun or noun phrase describing
     % the expected list. If MaybeVarSet is yes, it should specify the varset
     % for use in describing any unrecognized list elements.

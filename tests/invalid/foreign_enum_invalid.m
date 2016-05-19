@@ -10,11 +10,6 @@
     ;       bar
     ;       baz.
 
-:- type incomplete2
-    --->    foo2
-    ;       bar2
-    ;       baz2.
-
 :- type not_a_bijection
     --->    a
     ;       b
@@ -33,8 +28,6 @@
     foo - "3",
     bar - "4"
 ]).
-
-:- pragma foreign_enum("C", incomplete2/0, []).
 
 :- pragma foreign_enum("C", not_a_bijection/0, [
     a - "30",

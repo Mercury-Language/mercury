@@ -1,4 +1,19 @@
-bad_foreign_enum.m:024: Error: wrong number of arguments in
-bad_foreign_enum.m:024:   `:- pragma foreign_enum' declaration.
-bad_foreign_enum.m:028: Error: invalid foreign language in
-bad_foreign_enum.m:028:   `:- pragma foreign_enum' declaration.
+bad_foreign_enum.m:044: Error: wrong number of arguments in
+bad_foreign_enum.m:044:   `:- pragma foreign_enum' declaration.
+bad_foreign_enum.m:048: Error: expected a non-empty list mapping constructors
+bad_foreign_enum.m:048:   to foreign values in `:- pragma foreign_enum'
+bad_foreign_enum.m:048:   declaration.
+bad_foreign_enum.m:048: Error: invalid foreign language `"InvalidLanguage"' in
+bad_foreign_enum.m:048:   `:- pragma foreign_enum' declaration.
+bad_foreign_enum.m:052: Error: expected name/arity for type in
+bad_foreign_enum.m:052:   `:- pragma foreign_enum' declaration.
+bad_foreign_enum.m:059: Error: invalid foreign language `"InvalidLanguage"' in
+bad_foreign_enum.m:059:   `:- pragma foreign_enum' declaration.
+bad_foreign_enum.m:060: Error: expected name/arity for type in
+bad_foreign_enum.m:060:   `:- pragma foreign_enum' declaration.
+bad_foreign_enum.m:061: Error: expected a non-empty list mapping constructors
+bad_foreign_enum.m:061:   to foreign values in `:- pragma foreign_enum'
+bad_foreign_enum.m:061:   declaration.
+bad_foreign_enum.m:067: Error: expected a valid mapping element, not `chicken'.
+bad_foreign_enum.m:074: In `:- pragma foreign_enum' mapping constructor name:
+bad_foreign_enum.m:074:   error: atom expected at "goose".
