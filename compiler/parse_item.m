@@ -909,8 +909,11 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
             MaybeIOM = error1(Specs)
         ;
             MaybePredNameAndArgs = ok2(Functor, ArgTerms),
+            ArgContextFunc = (func(ArgNum) = ContextPieces ++
+                    cord.from_list([words("in the"), nth_fixed(ArgNum),
+                    words("argument:"), nl])),
             parse_type_and_modes(constrain_some_inst_vars(InstConstraints),
-                dont_require_tm_mode, wnhii_pred_arg, VarSet, ContextPieces,
+                dont_require_tm_mode, wnhii_pred_arg, VarSet, ArgContextFunc,
                 ArgTerms, 1, TypesAndModes, [], TMSpecs),
             check_type_and_mode_list_is_consistent(TypesAndModes, no,
                 get_term_context(PredTypeTerm), MaybeTypeModeListKind),
@@ -1005,9 +1008,12 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Context, SeqNum,
                 MaybeIOM = error1(Specs)
             ;
                 MaybeFuncNameAndArgs = ok2(FuncName, ArgTerms),
+                ArgContextFunc = (func(ArgNum) = ContextPieces ++
+                        cord.from_list([words("in the"), nth_fixed(ArgNum),
+                        words("argument:"), nl])),
                 parse_type_and_modes(constrain_some_inst_vars(InstConstraints),
                     dont_require_tm_mode, wnhii_func_arg,
-                    VarSet, ContextPieces, ArgTerms, 1,
+                    VarSet, ArgContextFunc, ArgTerms, 1,
                     ArgTypesAndModes, [], ArgTMSpecs),
                 RetContextPieces = ContextPieces ++
                     cord.from_list([words("in the return value"), nl]),

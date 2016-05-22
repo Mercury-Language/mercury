@@ -1,16 +1,24 @@
-combined_ho_type_inst_2.m:015: In type definition: in the first argument:
+combined_ho_type_inst_2.m:015: In type definition: in the first argument of
+combined_ho_type_inst_2.m:015:   higher-order predicate type:
 combined_ho_type_inst_2.m:015:   error: missing `::mode' suffix.
-combined_ho_type_inst_2.m:018: In type definition: in the second argument:
+combined_ho_type_inst_2.m:018: In type definition: in the second argument of
+combined_ho_type_inst_2.m:018:   higher-order predicate type:
 combined_ho_type_inst_2.m:018:   error: missing `::mode' suffix.
-combined_ho_type_inst_2.m:021: In type definition: in the first argument:
+combined_ho_type_inst_2.m:021: In type definition: in the first argument of
+combined_ho_type_inst_2.m:021:   higher-order function type:
 combined_ho_type_inst_2.m:021:   error: missing `::mode' suffix.
-combined_ho_type_inst_2.m:024: In type definition: in the first argument:
+combined_ho_type_inst_2.m:024: In type definition: in the first argument of
+combined_ho_type_inst_2.m:024:   higher-order function type:
 combined_ho_type_inst_2.m:024:   error: missing `::mode' suffix.
-combined_ho_type_inst_2.m:024: In type definition: in the return value:
+combined_ho_type_inst_2.m:024: In type definition: in the return value of
+combined_ho_type_inst_2.m:024:   higher-order function type:
 combined_ho_type_inst_2.m:024:   error: missing `::mode' suffix.
-combined_ho_type_inst_2.m:027: In type definition: in the first argument:
+combined_ho_type_inst_2.m:027: In type definition: in the first argument of
+combined_ho_type_inst_2.m:027:   higher-order predicate type:
 combined_ho_type_inst_2.m:027:   error: unexpected `::mode' suffix.
-combined_ho_type_inst_2.m:030: In type definition: in the first argument:
+combined_ho_type_inst_2.m:030: In type definition: in the first argument of
+combined_ho_type_inst_2.m:030:   higher-order function type:
 combined_ho_type_inst_2.m:030:   error: unexpected `::mode' suffix.
-combined_ho_type_inst_2.m:030: In type definition: in the return value:
+combined_ho_type_inst_2.m:030: In type definition: in the return value of
+combined_ho_type_inst_2.m:030:   higher-order function type:
 combined_ho_type_inst_2.m:030:   error: unexpected `::mode' suffix.

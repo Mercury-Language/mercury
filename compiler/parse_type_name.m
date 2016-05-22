@@ -73,9 +73,11 @@
     --->    dont_require_tm_mode
     ;       require_tm_mode.
 
+:- type arg_context_func == (func(int) = cord(format_component)).
+
 :- pred parse_type_and_modes(maybe_constrain_inst_vars::in,
     maybe_require_tm_mode::in, why_no_ho_inst_info::in,
-    varset::in, cord(format_component)::in,
+    varset::in, arg_context_func::in,
     list(term)::in, int::in, list(type_and_mode)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -105,6 +107,16 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
+
+%---------------------------------------------------------------------------%
+
+:- func arg_context_pieces(cord(format_component), pred_or_func, int) =
+    cord(format_component).
+
+arg_context_pieces(ContextPieces, PorF, ArgNum) =
+    ContextPieces ++ cord.from_list([lower_case_next_if_not_first,
+        words("In the"), nth_fixed(ArgNum),
+        words("argument of higher-order"), p_or_f(PorF), words("type:"), nl]).
 
 %---------------------------------------------------------------------------%
 
@@ -216,8 +228,9 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
         Result = error1([Spec])
     ;
         CompoundTypeKind = kctk_pure_pred(Args),
+        ArgContextFunc = arg_context_pieces(ContextPieces, pf_predicate),
         parse_types_no_modes(no_allow_ho_inst_info(wnhii_pred_arg),
-            VarSet, ContextPieces, Args, 1, ArgTypes, [], Specs),
+            VarSet, ArgContextFunc, Args, 1, ArgTypes, [], Specs),
         (
             Specs = [],
             construct_higher_order_pred_type(purity_pure, lambda_normal,
@@ -230,10 +243,12 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
     ;
         CompoundTypeKind = kctk_pure_func(BeforeEqTerm, AfterEqTerm),
         ( if BeforeEqTerm = term.functor(term.atom("func"), FuncArgs, _) then
+            ArgContextFunc = arg_context_pieces(ContextPieces, pf_function),
             parse_types_no_modes(no_allow_ho_inst_info(wnhii_func_arg),
-                VarSet, ContextPieces, FuncArgs, 1, ArgTypes, [], ArgSpecs),
-            RetContextPieces = ContextPieces ++
-                cord.from_list([words("in the return value:"), nl]),
+                VarSet, ArgContextFunc, FuncArgs, 1, ArgTypes, [], ArgSpecs),
+            RetContextPieces = ContextPieces ++ cord.from_list([
+                words("in the return value of higher-order function type:"),
+                nl]),
             parse_type_no_mode(no_allow_ho_inst_info(wnhii_func_return_arg),
                 VarSet, RetContextPieces, AfterEqTerm, MaybeRetType),
             ( if
@@ -284,10 +299,12 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
             Args = [BeforeEqTerm, AfterEqTerm],
             BeforeEqTerm = term.functor(term.atom("func"), FuncArgs, _)
         then
+            ArgContextFunc = arg_context_pieces(ContextPieces, pf_function),
             parse_types_no_modes(no_allow_ho_inst_info(wnhii_func_arg),
-                VarSet, ContextPieces, FuncArgs, 1, ArgTypes, [], ArgSpecs),
-            RetContextPieces = ContextPieces ++
-                cord.from_list([words("in the return value:"), nl]),
+                VarSet, ArgContextFunc, FuncArgs, 1, ArgTypes, [], ArgSpecs),
+            RetContextPieces = ContextPieces ++ cord.from_list([
+                words("in the return value of higher-order function type:"),
+                nl]),
             parse_type_no_mode(no_allow_ho_inst_info(wnhii_func_return_arg),
                 VarSet, RetContextPieces, AfterEqTerm, MaybeRetType),
             ( if
@@ -305,8 +322,9 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
             SubTerm = term.functor(term.atom(Name), Args, _),
             Name = "pred"
         then
+            ArgContextFunc = arg_context_pieces(ContextPieces, pf_predicate),
             parse_types_no_modes(no_allow_ho_inst_info(wnhii_pred_arg),
-                VarSet, ContextPieces, Args, 1, ArgTypes, [], Specs),
+                VarSet, ArgContextFunc, Args, 1, ArgTypes, [], Specs),
             (
                 Specs = [],
                 construct_higher_order_pred_type(Purity, lambda_normal,
@@ -372,11 +390,13 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
         BeforeIsTerm = term.functor(term.atom("="), [FuncTerm, RetTerm], _),
         FuncTerm = term.functor(term.atom("func"), ArgTerms, _)
     then
+        ArgContextFunc = arg_context_pieces(ContextPieces, pf_function),
         parse_type_and_modes(dont_constrain_inst_vars, require_tm_mode,
-            wnhii_func_arg, VarSet, ContextPieces, ArgTerms, 1,
+            wnhii_func_arg, VarSet, ArgContextFunc, ArgTerms, 1,
             ArgTypeAndModes, [], ArgTMSpecs),
-        RetContextPieces = ContextPieces ++
-            cord.from_list([words("in the return value:"), nl]),
+        RetContextPieces = ContextPieces ++ cord.from_list([
+            words("in the return value of higher-order function type:"),
+            nl]),
         parse_type_and_mode(dont_constrain_inst_vars, require_tm_mode,
             wnhii_func_return_arg, VarSet, RetContextPieces,
             RetTerm, MaybeRetTypeAndMode),
@@ -386,8 +406,9 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
     else if
         BeforeIsTerm = term.functor(term.atom("pred"), ArgTerms, _)
     then
+        ArgContextFunc = arg_context_pieces(ContextPieces, pf_predicate),
         parse_type_and_modes(dont_constrain_inst_vars, require_tm_mode,
-            wnhii_pred_arg, VarSet, ContextPieces, ArgTerms, 1,
+            wnhii_pred_arg, VarSet, ArgContextFunc, ArgTerms, 1,
             ArgTypeAndModes, [], ArgTMSpecs),
         parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
             ArgTypeAndModes, ArgTMSpecs, no, MaybeDetism, MaybeType)
@@ -465,19 +486,16 @@ project_tm_type_and_mode(type_only(_), _, _) :-
 %---------------------------------------------------------------------------%
 
 :- pred parse_types_no_modes(allow_ho_inst_info::in, varset::in,
-    cord(format_component)::in, list(term)::in, int::in, list(mer_type)::out,
+    arg_context_func::in, list(term)::in, int::in, list(mer_type)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 parse_types_no_modes(_, _, _, [], _, [], !Specs).
-parse_types_no_modes(AllowHOInstInfo, Varset, ContextPieces, [Term | Terms],
+parse_types_no_modes(AllowHOInstInfo, Varset, ArgContextFunc, [Term | Terms],
         ArgNum, Types, !Specs) :-
-    parse_types_no_modes(AllowHOInstInfo, Varset, ContextPieces, Terms,
+    parse_types_no_modes(AllowHOInstInfo, Varset, ArgContextFunc, Terms,
         ArgNum + 1, TypesTail, !Specs),
-    ArgContextPieces = ContextPieces ++
-        cord.from_list([words("in the"), nth_fixed(ArgNum),
-        words("argument:"), nl]),
-    parse_type_no_mode(AllowHOInstInfo, Varset, ArgContextPieces, Term,
-        MaybeType),
+    parse_type_no_mode(AllowHOInstInfo, Varset, ArgContextFunc(ArgNum),
+        Term, MaybeType),
     (
         MaybeType = ok1(Type),
         Types = [Type | TypesTail]
@@ -507,14 +525,11 @@ parse_type_no_mode(AllowHOInstInfo, Varset, ContextPieces, Term, MaybeType) :-
 
 parse_type_and_modes(_, _, _, _, _, [], _, [], !Specs).
 parse_type_and_modes(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
-        ContextPieces, [Term | Terms], ArgNum, TypesAndModes, !Specs) :-
+        ArgContextFunc, [Term | Terms], ArgNum, TypesAndModes, !Specs) :-
     parse_type_and_modes(MaybeInstConstraints, MaybeRequireMode, Why,
-        VarSet, ContextPieces, Terms, ArgNum + 1, TypesAndModesTail, !Specs),
-    ArgContextPieces = ContextPieces ++
-        cord.from_list([words("in the"), nth_fixed(ArgNum),
-        words("argument:"), nl]),
+        VarSet, ArgContextFunc, Terms, ArgNum + 1, TypesAndModesTail, !Specs),
     parse_type_and_mode(MaybeInstConstraints, MaybeRequireMode, Why,
-        VarSet, ArgContextPieces, Term, MaybeTypeAndMode),
+        VarSet, ArgContextFunc(ArgNum), Term, MaybeTypeAndMode),
     (
         MaybeTypeAndMode = ok1(TypeAndMode),
         TypesAndModes = [TypeAndMode | TypesAndModesTail]

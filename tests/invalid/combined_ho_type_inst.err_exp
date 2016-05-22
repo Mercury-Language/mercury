@@ -16,22 +16,26 @@ combined_ho_type_inst.m:021: In type definition: error: the type
 combined_ho_type_inst.m:021:   `(((func (int :: in)) = (int :: out)) is semidet)'
 combined_ho_type_inst.m:021:   contains higher order inst information, but this
 combined_ho_type_inst.m:021:   is not allowed in a type constructor's argument.
-combined_ho_type_inst.m:024: In type definition: in the first argument:
+combined_ho_type_inst.m:024: In type definition: in the first argument of
+combined_ho_type_inst.m:024:   higher-order predicate type:
 combined_ho_type_inst.m:024:   error: the type
 combined_ho_type_inst.m:024:   `(pred((int :: in), (int :: out)) is det)'
 combined_ho_type_inst.m:024:   contains higher order inst information, but this
 combined_ho_type_inst.m:024:   is not allowed in a predicate's argument.
-combined_ho_type_inst.m:026: In type definition: in the first argument:
+combined_ho_type_inst.m:026: In type definition: in the first argument of
+combined_ho_type_inst.m:026:   higher-order predicate type:
 combined_ho_type_inst.m:026:   error: the type
 combined_ho_type_inst.m:026:   `(pred((int :: in), (int :: out)) is det)'
 combined_ho_type_inst.m:026:   contains higher order inst information, but this
 combined_ho_type_inst.m:026:   is not allowed in a predicate's argument.
-combined_ho_type_inst.m:028: In type definition: in the first argument:
+combined_ho_type_inst.m:028: In type definition: in the first argument of
+combined_ho_type_inst.m:028:   higher-order function type:
 combined_ho_type_inst.m:028:   error: the type
 combined_ho_type_inst.m:028:   `(((func (int :: in)) = (int :: out)) is semidet)'
 combined_ho_type_inst.m:028:   contains higher order inst information, but this
 combined_ho_type_inst.m:028:   is not allowed in a function's argument.
-combined_ho_type_inst.m:031: In type definition: in the first argument:
+combined_ho_type_inst.m:031: In type definition: in the first argument of
+combined_ho_type_inst.m:031:   higher-order function type:
 combined_ho_type_inst.m:031:   error: the type
 combined_ho_type_inst.m:031:   `(((func (int :: in)) = (int :: out)) is semidet)'
 combined_ho_type_inst.m:031:   contains higher order inst information, but this
