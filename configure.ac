@@ -1300,9 +1300,13 @@ esac
 # Do not try to use sleep() on MinGW or MinGW64 as it isn't available
 # *despite* what the standard autoconf tests report.
 #
+# The MinGW64 implementation of mkstemp is broken; it isn't supported on
+# MinGW32.
+#
 case "$host" in
     *mingw*)
         ac_cv_func_sleep=no
+        ac_cv_func_mkstemp=no
         ;;
 esac
 
