@@ -7040,7 +7040,7 @@ upon the specified foreign language.  For further details see the language
 specific information below.
 
 It is an error to export a Mercury procedure that has a determinism of
-multi or nondet.
+@code{multi} or @code{nondet}.
 
 @c -----------------------------------------------------------------------
 
