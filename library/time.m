@@ -264,16 +264,14 @@ time.clock(Result, !IO) :-
 "
     Ret = (MR_Integer) clock();
 ").
-/* XXX need to add System.dll to the references list.
 :- pragma foreign_proc("C#",
     time.c_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     // XXX Ticks is long in .NET!
-    Ret = (int) System.Diagnostics.Process.GetCurrentProcess
-        .UserProcessorTime.Ticks;
+    Ret = (int) System.Diagnostics.Process.GetCurrentProcess().
+        UserProcessorTime.Ticks;
 }").
-*/
 :- pragma foreign_proc("Java",
     time.c_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
