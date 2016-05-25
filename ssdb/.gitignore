@@ -7,6 +7,7 @@ SSDB_FLAGS
 *.date0
 *.date3
 *.dep
+*.dep_err
 *.dv
 *.dylib
 *.err

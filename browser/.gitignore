@@ -1,6 +1,7 @@
 *.il
 *.pdb
 *.dep
+*.dep_err
 *.a
 *.c
 *.d

@@ -22,6 +22,7 @@ mer_mdbcomp.dv
 mer_mdbcomp.mh
 mer_mdbcomp
 mer_mdbcomp.dep
+mer_mdbcomp.dep_err
 mer_mdbcomp.jar
 libmer_mdbcomp.a
 libmer_mdbcomp.lib

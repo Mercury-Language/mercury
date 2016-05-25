@@ -30,6 +30,7 @@ mercury.*.h
 sicstus_compile sicstus_saved_state
 mer_std.init
 mer_std.dep
+mer_std.dep_err
 mer_std.dv
 mer_std
 library.dep

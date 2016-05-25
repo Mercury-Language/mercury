@@ -19,6 +19,7 @@
 *.date3
 *.*_date
 *.dep
+*.dep_err
 *.dv
 mdprof_test
 mdprof_cgi

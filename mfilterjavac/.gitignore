@@ -6,6 +6,7 @@ tags
 *.c_date
 *.d
 *.dep
+*.dep_err
 *.dv
 *.mh
 *.mih
