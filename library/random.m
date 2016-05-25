@@ -55,57 +55,61 @@
 
 %---------------------------------------------------------------------------%
 
-    % The type `random.supply' represents a supply of random numbers.
+    % The type `supply' represents a supply of random numbers.
     %
-:- type random.supply.
+:- type supply.
 
-    % random.init(Seed, RS): creates a supply of random numbers RS
-    % using the specified Seed.
+    % init(Seed, RS).
     %
-:- pred random.init(int::in, random.supply::uo) is det.
+    % Creates a supply of random numbers RS using the specified Seed.
+    %
+:- pred init(int::in, supply::uo) is det.
 
-    % random.random(Num, RS0, RS): extracts a number Num in the
-    % range 0 .. RandMax from the random number supply RS0, and
-    % binds RS to the new state of the random number supply.
+    % random(Num, !RS).
     %
-:- pred random.random(int, random.supply, random.supply).
-:- mode random.random(out, mdi, muo) is det.
-:- mode random.random(out, in, out) is det.
+    % Extracts a number Num in the range 0 .. RandMax from the random number
+    % supply !RS.
+    %
+:- pred random(int, supply, supply).
+:- mode random(out, mdi, muo) is det.
+:- mode random(out, in, out) is det.
 
-    % random.random(Low, Range, Num, RS0, RS): extracts a number Num
-    % in the range Low .. (Low + Range - 1) from the random number
-    % supply RS0, and binds RS to the new state of the random number
-    % supply.  For best results, the value of Range should be no greater
-    % than about 100.
+    % random(Low, Range, Num, !RS).
     %
-:- pred random.random(int, int, int, random.supply, random.supply).
-:- mode random.random(in, in, out, mdi, muo) is det.
-:- mode random.random(in, in, out, in, out) is det.
+    % Extracts a number Num in the range Low .. (Low + Range - 1) from the
+    % random number supply !RS.  For best results, the value of Range should be
+    % no greater than about 100.
+    %
+:- pred random(int, int, int, supply, supply).
+:- mode random(in, in, out, mdi, muo) is det.
+:- mode random(in, in, out, in, out) is det.
 
-    % random.randmax(RandMax, RS0, RS): binds RandMax to the maximum
-    % random number that can be returned from the random number
-    % supply RS0, and returns RS = RS0.
+    % randmax(RandMax, !RS).
     %
-:- pred random.randmax(int, random.supply, random.supply).
-:- mode random.randmax(out, mdi, muo) is det.
-:- mode random.randmax(out, in, out) is det.
+    % Binds RandMax to the maximum random number that can be returned from the
+    % random number supply !RS, the state of the supply is unchanged.
+    %
+:- pred randmax(int, supply, supply).
+:- mode randmax(out, mdi, muo) is det.
+:- mode randmax(out, in, out) is det.
 
-    % random.randcount(RandCount, RS0, RS): binds RandCount to the
-    % number of distinct random numbers that can be returned from the
-    % random number supply RS0, and returns RS = RS0.  This will be one
-    % more than the number returned by randmax/3.
+    % randcount(RandCount, !RS).
     %
-:- pred random.randcount(int, random.supply, random.supply).
-:- mode random.randcount(out, mdi, muo) is det.
-:- mode random.randcount(out, in, out) is det.
+    % Binds RandCount to the number of distinct random numbers that can be
+    % returned from the random number supply !RS.  The state of the supply is
+    % unchanged.  This will be one more than the number returned by randmax/3.
+    %
+:- pred randcount(int, supply, supply).
+:- mode randcount(out, mdi, muo) is det.
+:- mode randcount(out, in, out) is det.
 
-    % random.permutation(List0, List, RS0, RS):
-    % binds List to a random permutation of List0,
-    % and binds RS to the new state of the random number supply.
+    % permutation(List0, List, !RS).
     %
-:- pred random.permutation(list(T), list(T), random.supply, random.supply).
-:- mode random.permutation(in, out, mdi, muo) is det.
-:- mode random.permutation(in, out, in, out) is det.
+    % Binds List to a random permutation of List0.
+    %
+:- pred permutation(list(T), list(T), supply, supply).
+:- mode permutation(in, out, mdi, muo) is det.
+:- mode permutation(in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -117,8 +121,8 @@
 
     % The following predicate was just for test purposes.
     % It should not be used by user programs.
-:- pragma obsolete(random.test/4).
-:- pred random.test(int::in, int::in, list(int)::out, int::out) is det.
+:- pragma obsolete(test/4).
+:- pred test(int::in, int::in, list(int)::out, int::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -127,17 +131,17 @@
 :- import_module array.
 :- import_module int.
 
-:- type random.supply
+:- type supply
     --->    rs(int). % I(j)
 
-:- pred random.params(int::out, int::out, int::out) is det. % a, c, m
+:- pred params(int::out, int::out, int::out) is det. % a, c, m
 
-random.params(9301, 49297, 233280).
+params(9301, 49297, 233280).
 
-random.init(I0, rs(RS)) :-
+init(I0, rs(RS)) :-
     copy(I0, RS).
 
-random.random(I, rs(RS0), rs(RS)) :-
+random(I, rs(RS0), rs(RS)) :-
     RS0 = I0,
     random.params(A, C, M),
     I = ((I0 * A) + C) mod M,
@@ -148,19 +152,19 @@ random.random(I, rs(RS0), rs(RS)) :-
     % algorithm if the threshold is exceeded.  But that would defeat
     % the purpose of having a "quick and dirty" random number generator,
     % so we don't do that.
-random.random(Low, Range, Num, !RandomSupply) :-
-    random.random(R, !RandomSupply),
-    random.randcount(M, !RandomSupply),
+random(Low, Range, Num, !RandomSupply) :-
+    random(R, !RandomSupply),
+    randcount(M, !RandomSupply),
     % With our current set of parameters and a reasonable choice of Range,
     % the following should never overflow.
     Num = Low + (Range * R) // M.
 
-random.randmax(M1, RS, RS) :-
-    random.params(_A, _C, M),
+randmax(M1, RS, RS) :-
+    params(_A, _C, M),
     M1 = M - 1.
 
-random.randcount(M, RS, RS) :-
-    random.params(_A, _C, M).
+randcount(M, RS, RS) :-
+    params(_A, _C, M).
 
 %---------------------------------------------------------------------------%
 
@@ -176,7 +180,7 @@ random.randcount(M, RS, RS) :-
     % Index is mapped to, Next, to the permutation, and then ensures that
     % Next is not generated again by swapping it with the image of I-1.
 
-random.permutation(List0, List, !RS) :-
+permutation(List0, List, !RS) :-
     Samples = array(List0),
     Len = array.size(Samples),
     perform_sampling(Len, Samples, [], List, !RS).
@@ -202,20 +206,20 @@ perform_sampling(I, !.Record, !Order, !RS) :-
 
 %---------------------------------------------------------------------------%
 
-random.test(Seed, N, Nums, Max) :-
-    random.init(Seed, RS),
-    random.randmax(Max, RS, RS1),
-    random.test_2(N, Nums, RS1, _RS2).
+test(Seed, N, Nums, Max) :-
+    init(Seed, RS),
+    randmax(Max, RS, RS1),
+    test_2(N, Nums, RS1, _RS2).
 
-:- pred random.test_2(int, list(int), random.supply, random.supply).
-:- mode random.test_2(in, out, mdi, muo) is det.
-:- mode random.test_2(in, out, in, out) is det.
+:- pred test_2(int, list(int), supply, supply).
+:- mode test_2(in, out, mdi, muo) is det.
+:- mode test_2(in, out, in, out) is det.
 
 random.test_2(N, Is, !RS) :-
     ( if N > 0 then
         N1 = N - 1,
-        random.random(I, !RS),
-        random.test_2(N1, Is0, !RS),
+        random(I, !RS),
+        test_2(N1, Is0, !RS),
         Is = [I | Is0]
     else
         Is = []
