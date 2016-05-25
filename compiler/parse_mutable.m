@@ -410,7 +410,7 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
     else if
         MutAttrTerm = term.functor(term.atom("foreign_name"), Args, _),
         Args = [LangTerm, ForeignNameTerm],
-        parse_foreign_language(LangTerm, Lang),
+        term_to_foreign_language(LangTerm, Lang),
         ForeignNameTerm = term.functor(term.string(ForeignName), [], _)
     then
         MutAttr = mutable_attr_foreign_name(foreign_name(Lang, ForeignName)),

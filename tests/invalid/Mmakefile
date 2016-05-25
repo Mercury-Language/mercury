@@ -50,6 +50,9 @@ SINGLEMODULE= \
 	bad_detism \
 	bad_end_module \
 	bad_foreign_enum \
+	bad_foreign_export \
+	bad_foreign_export_enum \
+	bad_foreign_import_module \
 	bad_finalise_decl \
 	bad_initialise_decl \
 	bad_inst_for_type \

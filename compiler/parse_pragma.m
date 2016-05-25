@@ -38,7 +38,7 @@
 
     % Parse a term that represents a foreign language.
     %
-:- pred parse_foreign_language(term::in, foreign_language::out) is semidet.
+:- pred term_to_foreign_language(term::in, foreign_language::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -153,7 +153,7 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "foreign_import_module",
-        parse_pragma_foreign_import_module(ErrorTerm,
+        parse_pragma_foreign_import_module(VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         (
@@ -387,7 +387,7 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeAssertionTerm = yes(AssertionTerm0)
         )
     then
-        ( if parse_foreign_language(LangTerm, Language) then
+        ( if term_to_foreign_language(LangTerm, Language) then
             parse_foreign_language_type(ForeignTypeTerm, VarSet, Language,
                 MaybeForeignType)
         else
@@ -525,46 +525,33 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             MaybeOverridesTerm = yes(OverridesTerm)
         )
     then
-        ( if parse_foreign_language(LangTerm, ForeignLang) then
-            parse_type_ctor_name_arity("foreign_export_enum", MercuryTypeTerm,
-                MaybeTypeCtor),
-            (
-                MaybeTypeCtor = ok1(TypeCtor),
-                maybe_parse_export_enum_attributes(VarSet, MaybeAttributesTerm,
-                    MaybeAttributes),
-                (
-                    MaybeAttributes = ok1(Attributes),
-                    maybe_parse_export_enum_overrides(VarSet,
-                        MaybeOverridesTerm, MaybeOverrides),
-                    (
-                        MaybeOverrides = ok1(Overrides),
-                        FEEInfo = pragma_info_foreign_export_enum(ForeignLang,
-                            TypeCtor, Attributes, Overrides),
-                        Pragma = pragma_foreign_export_enum(FEEInfo),
-                        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                            Context, SeqNum),
-                        Item = item_pragma(ItemPragma),
-                        MaybeIOM = ok1(iom_item(Item))
-                    ;
-                        MaybeOverrides = error1(Specs),
-                        MaybeIOM = error1(Specs)
-                    )
-                ;
-                    MaybeAttributes = error1(Specs),
-                    MaybeIOM = error1(Specs)
-                )
-            ;
-                MaybeTypeCtor = error1(Specs),
-                MaybeIOM = error1(Specs)
-            )
+        parse_foreign_language("foreign_export_enum", VarSet, LangTerm,
+            MaybeForeignLang),
+        parse_type_ctor_name_arity("foreign_export_enum", MercuryTypeTerm,
+            MaybeTypeCtor),
+        maybe_parse_export_enum_attributes(VarSet, MaybeAttributesTerm,
+            MaybeAttributes),
+        maybe_parse_export_enum_overrides(VarSet, MaybeOverridesTerm,
+            MaybeOverrides),
+        ( if
+            MaybeForeignLang = ok1(ForeignLang),
+            MaybeTypeCtor = ok1(TypeCtor),
+            MaybeAttributes = ok1(Attributes),
+            MaybeOverrides = ok1(Overrides)
+        then
+            FEEInfo = pragma_info_foreign_export_enum(ForeignLang, TypeCtor,
+                Attributes, Overrides),
+            Pragma = pragma_foreign_export_enum(FEEInfo),
+            ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
+                SeqNum),
+            Item = item_pragma(ItemPragma),
+            MaybeIOM = ok1(iom_item(Item))
         else
-            Pieces = [words("Error: invalid foreign language in"),
-                pragma_decl("foreign_export_enum"), words("declaration."),
-                nl],
-            % XXX Get_term_context(LangTerm) would be better.
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-            MaybeIOM = error1([Spec])
+            Specs = get_any_errors1(MaybeForeignLang) ++
+                get_any_errors1(MaybeTypeCtor) ++
+                get_any_errors1(MaybeAttributes) ++
+                get_any_errors1(MaybeOverrides),
+            MaybeIOM = error1(Specs)
         )
     else
         Pieces = [words("Error: wrong number of arguments in"),
@@ -726,18 +713,8 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if PragmaTerms = [LangTerm, MercuryTypeTerm, ValuesTerm] then
 
-        ( if parse_foreign_language(LangTerm, ForeignLang) then
-            MaybeForeignLang = ok1(ForeignLang)
-        else
-            LangPieces = [words("Error: invalid foreign language"),
-                quote(describe_error_term(VarSet, LangTerm)), words("in"),
-                pragma_decl("foreign_enum"), words("declaration."),
-                nl],
-            LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(LangTerm), [always(LangPieces)])]),
-            MaybeForeignLang = error1([LangSpec])
-        ),
-
+        parse_foreign_language("foreign_enum", VarSet, LangTerm,
+            MaybeForeignLang),
         parse_type_ctor_name_arity("foreign_enum", MercuryTypeTerm,
             MaybeTypeCtor),
 
@@ -776,12 +753,11 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         ),
 
         ( if
-            MaybeForeignLang = ok1(ForeignLangPrime),
+            MaybeForeignLang = ok1(ForeignLang),
             MaybeTypeCtor = ok1(TypeCtor),
             MaybeValues = ok1(Values)
         then
-            FEInfo = pragma_info_foreign_enum(ForeignLangPrime, TypeCtor,
-                Values),
+            FEInfo = pragma_info_foreign_enum(ForeignLang, TypeCtor, Values),
             Pragma = pragma_foreign_enum(FEInfo),
             ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
                 SeqNum),
@@ -805,6 +781,22 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
 %
 % Common code for parsing foreign_export_enum and foreign_enum pragms.
 %
+
+:- pred parse_foreign_language(string::in, varset::in, term::in,
+    maybe1(foreign_language)::out) is det.
+
+parse_foreign_language(PragmaName, VarSet, LangTerm, MaybeForeignLang) :-
+    ( if term_to_foreign_language(LangTerm, ForeignLang) then
+        MaybeForeignLang = ok1(ForeignLang)
+    else
+        LangPieces = [words("Error: invalid foreign language"),
+            quote(describe_error_term(VarSet, LangTerm)), words("in"),
+            pragma_decl(PragmaName), words("declaration."),
+            nl],
+       LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(LangTerm), [always(LangPieces)])]),
+            MaybeForeignLang = error1([LangSpec])
+    ).
 
 :- pred parse_type_ctor_name_arity(string::in, term::in,
     maybe1(type_ctor)::out) is det.
@@ -831,46 +823,50 @@ parse_type_ctor_name_arity(PragmaName, TypeTerm, MaybeTypeCtor) :-
 parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if PragmaTerms = [LangTerm, PredAndModesTerm, FunctionTerm] then
-        ( if FunctionTerm = term.functor(term.string(Function), [], _) then
-            ContextPieces = cord.from_list([words("In"),
-                pragma_decl("foreign_export"), words("declaration:")]),
-            parse_pred_or_func_and_arg_modes(no, VarSet, ContextPieces,
-                PredAndModesTerm, MaybePredAndModes),
-            (
-                MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
-                ( if parse_foreign_language(LangTerm, ForeignLanguage) then
-                    PredNameModesPF = pred_name_modes_pf(PredName, Modes,
-                        PredOrFunc),
-                    FPEInfo = pragma_info_foreign_proc_export(ForeignLanguage,
-                        PredNameModesPF, Function),
-                    Pragma = pragma_foreign_proc_export(FPEInfo),
-                    ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                        Context, SeqNum),
-                    Item = item_pragma(ItemPragma),
-                    MaybeIOM = ok1(iom_item(Item))
-                else
-                    Pieces = [words("Error: invalid foreign language in"),
-                        pragma_decl("foreign_export"), words("declaration."),
-                        nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(LangTerm),
-                            [always(Pieces)])]),
-                    MaybeIOM = error1([Spec])
-                )
-            ;
-                MaybePredAndModes = error3(Specs),
-                MaybeIOM = error1(Specs)
-            )
+        parse_foreign_language("foreign_export", VarSet, LangTerm,
+            MaybeForeignLang),
+        ContextPieces = cord.from_list([words("In"),
+            pragma_decl("foreign_export"), words("declaration:")]),
+        parse_pred_or_func_and_arg_modes(no, VarSet, ContextPieces,
+            PredAndModesTerm, MaybePredAndModes),
+        ( if FunctionTerm = term.functor(term.string(Function0), [], _) then
+            MaybeFunction = ok1(Function0)
+            % XXX TODO: do some additional checks here:
+            % 1. check that Function0 is not the empty string.
+            % 2. if we have a valid foreign language, check that Function0
+            %    is a valid identifier in that language.
         else
-            % XXX Why this wording?
-            Pieces = [words("Error: expected pragma"),
-                words("foreign_export(Lang, PredName(ModeList), Function)."),
-                nl],
-            % XXX Should we use the context of FunctionTerm?
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(PredAndModesTerm),
-                    [always(Pieces)])]),
-            MaybeIOM = error1([Spec])
+            FunctionPieces = [
+                words("In"), pragma_decl("foreign_export"),
+                words("declaration: error:"),
+                words("expected a string that is the foreign language name of"),
+                words("the exported procedure at"),
+                quote(describe_error_term(VarSet, FunctionTerm)),
+                suffix("."), nl
+            ],
+            FunctionSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(FunctionTerm),
+                    [always(FunctionPieces)])]),
+            MaybeFunction = error1([FunctionSpec])
+        ),
+        ( if
+            MaybeForeignLang = ok1(ForeignLang),
+            MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
+            MaybeFunction = ok1(Function)
+        then
+            PredNameModesPF = pred_name_modes_pf(PredName, Modes, PredOrFunc),
+            FPEInfo = pragma_info_foreign_proc_export(ForeignLang,
+                PredNameModesPF, Function),
+            Pragma = pragma_foreign_proc_export(FPEInfo),
+            ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
+                SeqNum),
+            Item = item_pragma(ItemPragma),
+            MaybeIOM = ok1(iom_item(Item))
+        else
+            Specs = get_any_errors1(MaybeForeignLang) ++
+                get_any_errors3(MaybePredAndModes) ++
+                get_any_errors1(MaybeFunction),
+            MaybeIOM = error1(Specs)
         )
     else
         Pieces = [words("Error: wrong number of arguments in"),
@@ -882,34 +878,49 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_pragma_foreign_import_module(term::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+:- pred parse_pragma_foreign_import_module(varset::in, term::in,
+    list(term)::in, prog_context::in, int::in, maybe1(item_or_marker)::out)
+    is det.
 
-parse_pragma_foreign_import_module(ErrorTerm, PragmaTerms, Context, SeqNum,
-        MaybeIOM) :-
+parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
+        SeqNum, MaybeIOM) :-
     ( if
-        PragmaTerms = [LangTerm, ImportTerm],
-        try_parse_sym_name_and_no_args(ImportTerm, Import)
+        PragmaTerms = [LangTerm, ImportTerm]
     then
-        ( if parse_foreign_language(LangTerm, Language) then
+        parse_foreign_language("foreign_import_language", VarSet, LangTerm,
+            MaybeForeignLang),
+        ( if try_parse_sym_name_and_no_args(ImportTerm, Import0) then
+            MaybeImportModule = ok1(Import0)
+        else
+            ImportModulePieces = [
+                words("Error: invalid module name"),
+                quote(describe_error_term(VarSet, ImportTerm)),
+                words("in"), pragma_decl("foreign_import_module"),
+                words("declaration."), nl],
+            ImportModuleSpec = error_spec(severity_error,
+                phase_term_to_parse_tree,
+                [simple_msg(get_term_context(ImportTerm),
+                [always(ImportModulePieces)])]),
+            MaybeImportModule = error1([ImportModuleSpec])
+        ),
+        ( if
+            MaybeForeignLang = ok1(Language),
+            MaybeImportModule = ok1(Import)
+        then
             FIM = foreign_import_module_info(Language, Import),
             FIMInfo = pragma_info_foreign_import_module(FIM),
             Pragma = pragma_foreign_import_module(FIMInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
+            ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
+                SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         else
-            Pieces = [words("Error: invalid foreign language in"),
-                pragma_decl("foreign_import_module"),
-                words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(LangTerm), [always(Pieces)])]),
-            MaybeIOM = error1([Spec])
+            Specs = get_any_errors1(MaybeForeignLang) ++
+                get_any_errors1(MaybeImportModule),
+            MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: wrong number of arguments"),
-            words("or invalid module name in"),
+        Pieces = [words("Error: wrong number of arguments in"),
             pragma_decl("foreign_import_module"),
             words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -1906,9 +1917,9 @@ parse_foreign_literal_or_include(Term, LiteralOrInclude) :-
         LiteralOrInclude = floi_include_file(FileName)
     ).
 
-parse_foreign_language(term.functor(term.string(String), _, _), Lang) :-
+term_to_foreign_language(term.functor(term.string(String), _, _), Lang) :-
     globals.convert_foreign_language(String, Lang).
-parse_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
+term_to_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
     globals.convert_foreign_language(String, Lang).
 
 :- pred parse_foreign_language_type(term::in, varset::in, foreign_language::in,
@@ -1985,7 +1996,7 @@ parse_pragma_foreign_decl_pragma(VarSet, ErrorTerm, PragmaTerms,
             parse_foreign_decl_is_local(IsLocalTerm, IsLocal)
         )
     then
-        ( if parse_foreign_language(LangTerm, ForeignLanguage) then
+        ( if term_to_foreign_language(LangTerm, ForeignLanguage) then
             ( if
                 parse_foreign_literal_or_include(HeaderTerm, LiteralOrInclude)
             then
@@ -2034,7 +2045,7 @@ parse_pragma_foreign_code_pragma(ErrorTerm,
     InvalidDeclPrefix = [words("Error: invalid"),
         pragma_decl("foreign_code"), words("declaration:")],
     ( if PragmaTerms = [LangTerm, CodeTerm] then
-        ( if parse_foreign_language(LangTerm, ForeignLanguagePrime) then
+        ( if term_to_foreign_language(LangTerm, ForeignLanguagePrime) then
             ForeignLanguage = ForeignLanguagePrime,
             LangSpecs = []
         else
@@ -2091,7 +2102,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, VarSet, ErrorTerm,
         pragma_decl("foreign_proc"), words("declaration:")],
     (
         PragmaTerms = [LangTerm | RestTerms],
-        ( if parse_foreign_language(LangTerm, ForeignLanguagePrime) then
+        ( if term_to_foreign_language(LangTerm, ForeignLanguagePrime) then
             ForeignLanguage = ForeignLanguagePrime,
             LangSpecs = []
         else
