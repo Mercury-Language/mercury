@@ -71,8 +71,8 @@
     % supply !RS.
     %
 :- pred random(int, supply, supply).
-:- mode random(out, mdi, muo) is det.
 :- mode random(out, in, out) is det.
+:- mode random(out, mdi, muo) is det.
 
     % random(Low, Range, Num, !RS).
     %
@@ -81,8 +81,8 @@
     % no greater than about 100.
     %
 :- pred random(int, int, int, supply, supply).
-:- mode random(in, in, out, mdi, muo) is det.
 :- mode random(in, in, out, in, out) is det.
+:- mode random(in, in, out, mdi, muo) is det.
 
     % randmax(RandMax, !RS).
     %
@@ -90,8 +90,8 @@
     % random number supply !RS, the state of the supply is unchanged.
     %
 :- pred randmax(int, supply, supply).
-:- mode randmax(out, mdi, muo) is det.
 :- mode randmax(out, in, out) is det.
+:- mode randmax(out, mdi, muo) is det.
 
     % randcount(RandCount, !RS).
     %
@@ -100,16 +100,16 @@
     % unchanged.  This will be one more than the number returned by randmax/3.
     %
 :- pred randcount(int, supply, supply).
-:- mode randcount(out, mdi, muo) is det.
 :- mode randcount(out, in, out) is det.
+:- mode randcount(out, mdi, muo) is det.
 
     % permutation(List0, List, !RS).
     %
     % Binds List to a random permutation of List0.
     %
 :- pred permutation(list(T), list(T), supply, supply).
-:- mode permutation(in, out, mdi, muo) is det.
 :- mode permutation(in, out, in, out) is det.
+:- mode permutation(in, out, mdi, muo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -187,8 +187,8 @@ permutation(List0, List, !RS) :-
 
 :- pred perform_sampling(int, array(T), list(T), list(T),
     random.supply, random.supply).
-:- mode perform_sampling(in, array_di, in, out, mdi, muo) is det.
 :- mode perform_sampling(in, array_di, in, out, in, out) is det.
+:- mode perform_sampling(in, array_di, in, out, mdi, muo) is det.
 
 perform_sampling(I, !.Record, !Order, !RS) :-
     ( if I =< 0 then
@@ -212,8 +212,8 @@ test(Seed, N, Nums, Max) :-
     test_2(N, Nums, RS1, _RS2).
 
 :- pred test_2(int, list(int), supply, supply).
-:- mode test_2(in, out, mdi, muo) is det.
 :- mode test_2(in, out, in, out) is det.
+:- mode test_2(in, out, mdi, muo) is det.
 
 random.test_2(N, Is, !RS) :-
     ( if N > 0 then
