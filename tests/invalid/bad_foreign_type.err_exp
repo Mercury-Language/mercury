@@ -1,0 +1,25 @@
+bad_foreign_type.m:011: Error: abstract declaration for type
+bad_foreign_type.m:011:   `bad_foreign_type.foo'/0 has no corresponding
+bad_foreign_type.m:011:   definition.
+bad_foreign_type.m:017: Error: wrong number of arguments in
+bad_foreign_type.m:017:   `:- pragma foreign_type' declaration.
+bad_foreign_type.m:021: Error: wrong number of arguments in
+bad_foreign_type.m:021:   `:- pragma foreign_type' declaration.
+bad_foreign_type.m:025: Error: invalid foreign language in
+bad_foreign_type.m:025:   `:- pragma foreign_type' declaration.
+bad_foreign_type.m:029: In type definition: error: atom expected at 1111.
+bad_foreign_type.m:033: Error: invalid backend specification `2222'.
+bad_foreign_type.m:037: Error: expected a list of assertions for a foreign
+bad_foreign_type.m:037:   type, got `5555'.
+bad_foreign_type.m:041: Error: expected an assertion for a foreign type got
+bad_foreign_type.m:041:   `[not_an_assertion]'.
+bad_foreign_type.m:045: Error: expected an assertion for a foreign type got
+bad_foreign_type.m:045:   `["I\'m a string"]'.
+bad_foreign_type.m:045: Error: expected an assertion for a foreign type got
+bad_foreign_type.m:045:   `[3333, "I\'m a string"]'.
+bad_foreign_type.m:050: Error: expected `is'.
+bad_foreign_type.m:055: Error: unrecognized or unexpected attribute.
+bad_foreign_type.m:060: Error: invalid foreign language in
+bad_foreign_type.m:060:   `:- pragma foreign_type' declaration.
+bad_foreign_type.m:061: In type definition: error: atom expected at 9999.
+bad_foreign_type.m:066: Error: unrecognized or unexpected attribute.
