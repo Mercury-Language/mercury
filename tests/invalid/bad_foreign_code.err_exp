@@ -1,0 +1,14 @@
+bad_foreign_code.m:017: Error: invalid `:- pragma foreign_code' declaration:
+bad_foreign_code.m:017:   wrong number of arguments.
+bad_foreign_code.m:021: Error: invalid `:- pragma foreign_code' declaration:
+bad_foreign_code.m:021:   wrong number of arguments.
+bad_foreign_code.m:025: Error: invalid `:- pragma foreign_code' declaration:
+bad_foreign_code.m:025:   invalid language parameter.
+bad_foreign_code.m:029: Error: invalid `:- pragma foreign_code' declaration:
+bad_foreign_code.m:029:   expected string for foreign code.
+bad_foreign_code.m:033: Error: invalid `:- pragma foreign_code' declaration:
+bad_foreign_code.m:033:   expected string for foreign code.
+bad_foreign_code.m:043: Error: invalid `:- pragma foreign_code' declaration:
+bad_foreign_code.m:043:   invalid language parameter.
+bad_foreign_code.m:044: Error: invalid `:- pragma foreign_code' declaration:
+bad_foreign_code.m:044:   expected string for foreign code.

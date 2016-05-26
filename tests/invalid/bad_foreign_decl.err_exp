@@ -1,0 +1,18 @@
+bad_foreign_decl.m:017: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:017:   foreign_decl("C").
+bad_foreign_decl.m:021: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:021:   foreign_decl("C", local, "", "").
+bad_foreign_decl.m:025: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:025:   invalid language parameter.
+bad_foreign_decl.m:029: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:029:   expected string or include_file for foreign
+bad_foreign_decl.m:029:   declaration code.
+bad_foreign_decl.m:033: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:033:   foreign_decl("C", lcoal, "").
+bad_foreign_decl.m:037: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:037:   foreign_decl("C", 4444, "").
+bad_foreign_decl.m:041: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:041:   expected string or include_file for foreign
+bad_foreign_decl.m:041:   declaration code.
+bad_foreign_decl.m:050: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:050:   foreign_decl("InvalidLanguage", lcoal, 7777).

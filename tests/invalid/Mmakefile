@@ -49,6 +49,8 @@ SINGLEMODULE= \
 	bad_consider_used \
 	bad_detism \
 	bad_end_module \
+	bad_foreign_code \
+	bad_foreign_decl \
 	bad_foreign_enum \
 	bad_foreign_export \
 	bad_foreign_export_enum \
