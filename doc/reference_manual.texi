@@ -7924,8 +7924,8 @@ to a type defined in a @samp{pragma foreign_decl} declaration, and
 the @samp{pragma foreign_decl} declaration may contain C preprocessor
 directives.)
 
-@strong{With @samp{--gc accurate}, foreign_types which are C pointer types
-must not point to the Mercury heap.}
+@c @strong{With @samp{--gc accurate}, foreign_types which are C pointer types
+@c must not point to the Mercury heap.}
 
 If the @var{MercuryTypeName} is the type of a parameter of a procedure
 defined using @samp{pragma foreign_proc},
@@ -10426,7 +10426,8 @@ all the possible compilation grades
 (see the ``Compilation model options'' section of the Mercury User's Guide)
 allowed by the Mercury implementation.
 In particular, minimal model tabling is incompatible with
-high level code, the use of trailing, and accurate garbage collection.
+high level code and the use of trailing.
+@c and accurate garbage collection.
 @end cartouche
 
 @node Termination analysis
