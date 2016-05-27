@@ -95,6 +95,11 @@ BITS_PER_WORD=32
 BYTES_PER_WORD=4
 UNBOXED_FLOATS=no
 
+# Clean up any leftover stage[23] directories in the workspace and 'git clean'
+# doesn't completely remove them.
+#
+/bin/rm -rf stage2 stage3
+
 # git checkout -- VERSION
 git submodule deinit -f .
 git clean -d -f -x
@@ -110,5 +115,3 @@ mercury_cv_bytes_per_word=$BYTES_PER_WORD \
 mercury_cv_unboxed_floats=$UNBOXED_FLOATS \
 sh configure --with-cc="$CC" &&
 mmake TAR="$TAR" GRADE=hlc.gc.pregen MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space' -j$PARALLEL" tar
-
-
