@@ -55,6 +55,7 @@ SINGLEMODULE= \
 	bad_foreign_export \
 	bad_foreign_export_enum \
 	bad_foreign_import_module \
+	bad_foreign_proc \
 	bad_foreign_type \
 	bad_finalise_decl \
 	bad_initialise_decl \
