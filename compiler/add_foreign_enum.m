@@ -488,6 +488,9 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                 then
                     MaybeError = no
                 else
+                    % XXX appending ContextPieces (as below) makes this
+                    % read awkwardly -- also we should report the location
+                    % of the duplicate foreign_enum pragmas.
                     ErrorPieces = [words("error: "),
                         sym_name_and_arity(
                             sym_name_arity(TypeName, TypeArity)),
