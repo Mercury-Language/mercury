@@ -510,14 +510,36 @@ make_file_name(Globals, SubDirNames, Search, MkDir, BaseName, Ext, FileName,
 
 :- pred file_is_arch_or_grade_dependent(globals::in, string::in) is semidet.
 
-file_is_arch_or_grade_dependent(_, Ext) :-
-    file_is_arch_or_grade_dependent_2(Ext).
 file_is_arch_or_grade_dependent(Globals, Ext0) :-
     % for mercury_update_interface
-    ( if string.remove_suffix(Ext0, ".tmp", Ext) then
-        file_is_arch_or_grade_dependent(Globals, Ext)
+    ( if string.remove_suffix(Ext0, ".tmp", BaseExt) then
+        Ext = BaseExt
     else
-        file_is_arch_or_grade_dependent_3(Globals, Ext0)
+        Ext = Ext0
+    ),
+    (
+        file_is_arch_or_grade_dependent_2(Ext)
+    ;
+        globals.lookup_string_option(Globals, executable_file_extension, Ext)
+    ;
+        globals.lookup_string_option(Globals, library_extension, Ext)
+    ;
+        globals.lookup_string_option(Globals, shared_library_extension, Ext)
+    ;
+        some [ObjExt] (
+            (
+                globals.lookup_string_option(Globals,
+                    object_file_extension, ObjExt)
+            ;
+                globals.lookup_string_option(Globals,
+                    pic_object_file_extension, ObjExt)
+            ),
+            (
+                Ext = ObjExt
+            ;
+                Ext = "_init" ++ ObjExt
+            )
+        )
     ).
 
 :- pred file_is_arch_or_grade_dependent_2(string::in) is semidet.
@@ -567,30 +589,6 @@ file_is_arch_or_grade_dependent_2("_init.c").
 file_is_arch_or_grade_dependent_2("_init.$O").
 file_is_arch_or_grade_dependent_2("_init.erl").
 file_is_arch_or_grade_dependent_2("_init.beam").
-
-:- pred file_is_arch_or_grade_dependent_3(globals::in, string::in) is semidet.
-
-file_is_arch_or_grade_dependent_3(Globals, Ext) :-
-    (
-        globals.lookup_string_option(Globals, executable_file_extension, Ext)
-    ;
-        globals.lookup_string_option(Globals, library_extension, Ext)
-    ;
-        globals.lookup_string_option(Globals, shared_library_extension, Ext)
-    ).
-file_is_arch_or_grade_dependent_3(Globals, Ext) :-
-    (
-        globals.lookup_string_option(Globals,
-            object_file_extension, ObjExt)
-    ;
-        globals.lookup_string_option(Globals,
-            pic_object_file_extension, ObjExt)
-    ),
-    (
-        Ext = ObjExt
-    ;
-        Ext = "_init" ++ ObjExt
-    ).
 
 %-----------------------------------------------------------------------------%
 
