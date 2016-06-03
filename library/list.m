@@ -1848,22 +1848,22 @@
 
 %---------------------------------------------------------------------------%
 
-list.is_empty([]).
+is_empty([]).
 
-list.is_not_empty([_ | _]).
+is_not_empty([_ | _]).
 
-list.cons(H, T, [H | T]).
+cons(H, T, [H | T]).
 
-list.cons(H, T) = [H | T].
+cons(H, T) = [H | T].
 
-list.append(Xs, Ys) = Zs :-
+append(Xs, Ys) = Zs :-
     list.append(Xs, Ys, Zs).
 
-list.append([], Ys, Ys).
-list.append([X | Xs], Ys, [X | Zs]) :-
+append([], Ys, Ys).
+append([X | Xs], Ys, [X | Zs]) :-
     list.append(Xs, Ys, Zs).
 
-list.remove_suffix(List, Suffix, Prefix) :-
+remove_suffix(List, Suffix, Prefix) :-
     list.length(List, ListLength),
     list.length(Suffix, SuffixLength),
     PrefixLength = ListLength - SuffixLength,
@@ -1871,66 +1871,66 @@ list.remove_suffix(List, Suffix, Prefix) :-
 
 %---------------------------------------------------------------------------%
 
-list.index0([X | Xs], N, Elem) :-
+index0([X | Xs], N, Elem) :-
     ( if N = 0 then
         Elem = X
     else
         list.index0(Xs, N - 1, Elem)
     ).
 
-list.det_index0(Xs, N) = A :-
+det_index0(Xs, N) = A :-
     list.det_index0(Xs, N, A).
 
-list.det_index0(List, N, Elem) :-
+det_index0(List, N, Elem) :-
     ( if list.index0(List, N, Elem0) then
         Elem = Elem0
     else
         unexpected($module, $pred, "index out of range")
     ).
 
-list.index1(List, N, Elem) :-
+index1(List, N, Elem) :-
     list.index0(List, N - 1, Elem).
 
-list.det_index1(Xs, N) = A :-
+det_index1(Xs, N) = A :-
     list.det_index1(Xs, N, A).
 
-list.det_index1(Xs, N, Elem) :-
+det_index1(Xs, N, Elem) :-
     list.det_index0(Xs, N - 1, Elem).
 
 %---------------------------------------------------------------------------%
 
-list.nth_member_search(Xs, SearchX, N) :-
+nth_member_search(Xs, SearchX, N) :-
     list.index1_of_first_occurrence(Xs, SearchX, N).
 
-list.nth_member_lookup(Xs, SearchX, N) :-
+nth_member_lookup(Xs, SearchX, N) :-
     N = list.det_index1_of_first_occurrence(Xs, SearchX).
 
 %---------------------------------------------------------------------------%
 
-list.index0_of_first_occurrence(Xs, SearchX, N) :-
+index0_of_first_occurrence(Xs, SearchX, N) :-
     list.index0_of_first_occurrence_2(Xs, SearchX, 0, N).
 
-:- pred list.index0_of_first_occurrence_2(list(T)::in, T::in,
+:- pred index0_of_first_occurrence_2(list(T)::in, T::in,
     int::in, int::out) is semidet.
 
-list.index0_of_first_occurrence_2([X | Xs], SearchX, Cur, N) :-
+index0_of_first_occurrence_2([X | Xs], SearchX, Cur, N) :-
     ( if X = SearchX then
         N = Cur
     else
         list.index0_of_first_occurrence_2(Xs, SearchX, Cur + 1, N)
     ).
 
-list.index1_of_first_occurrence(Xs, SearchX, N + 1) :-
+index1_of_first_occurrence(Xs, SearchX, N + 1) :-
     list.index0_of_first_occurrence(Xs, SearchX, N).
 
-list.det_index0_of_first_occurrence(Xs, SearchX) = N :-
+det_index0_of_first_occurrence(Xs, SearchX) = N :-
     ( if list.index0_of_first_occurrence(Xs, SearchX, N0) then
         N = N0
     else
         unexpected($module, $pred, "item not found")
     ).
 
-list.det_index1_of_first_occurrence(Xs, SearchX) = N :-
+det_index1_of_first_occurrence(Xs, SearchX) = N :-
     ( if list.index1_of_first_occurrence(Xs, SearchX, N0) then
         N = N0
     else
@@ -1939,43 +1939,43 @@ list.det_index1_of_first_occurrence(Xs, SearchX) = N :-
 
 %---------------------------------------------------------------------------%
 
-list.condense(Xss) = Ys :-
+condense(Xss) = Ys :-
     list.condense(Xss, Ys).
 
-list.condense(Xss, Ys) :-
+condense(Xss, Ys) :-
     list.reverse(Xss, RevXss),
     list.condense_acc(RevXss, [], Ys).
 
-:- pred list.condense_acc(list(list(T))::in, list(T)::in, list(T)::out) is det.
+:- pred condense_acc(list(list(T))::in, list(T)::in, list(T)::out) is det.
 
-list.condense_acc([], !Ys).
-list.condense_acc([L | Ls], !Ys) :-
+condense_acc([], !Ys).
+condense_acc([L | Ls], !Ys) :-
     list.append(L, !Ys),
     list.condense_acc(Ls, !Ys).
 
 %---------------------------------------------------------------------------%
 
-list.same_length([], []).
-list.same_length([_ | L1], [_ | L2]) :-
+same_length([], []).
+same_length([_ | L1], [_ | L2]) :-
     list.same_length(L1, L2).
 
-list.same_length3([], [], []).
-list.same_length3([_ | L1], [_ | L2], [_ | L3]) :-
+same_length3([], [], []).
+same_length3([_ | L1], [_ | L2], [_ | L3]) :-
     list.same_length3(L1, L2, L3).
 
 %---------------------------------------------------------------------------%
 
-list.insert(Elem, List0, List) :-
+insert(Elem, List0, List) :-
     list.delete(List, Elem, List0).
 
 %---------------------------------------------------------------------------%
 
-list.delete([X | Xs], ToDelete, Xs) :-
+delete([X | Xs], ToDelete, Xs) :-
     X = ToDelete.
-list.delete([X | Xs], ToDelete, [X | DXs]) :-
+delete([X | Xs], ToDelete, [X | DXs]) :-
     list.delete(Xs, ToDelete, DXs).
 
-list.delete_first([X | Xs], ToDelete, DXs) :-
+delete_first([X | Xs], ToDelete, DXs) :-
     ( if X = ToDelete then
         DXs = Xs
     else
@@ -1983,11 +1983,11 @@ list.delete_first([X | Xs], ToDelete, DXs) :-
         DXs = [X | DXs0]
     ).
 
-list.delete_all(Xs, A) = DXs :-
+delete_all(Xs, A) = DXs :-
     list.delete_all(Xs, A, DXs).
 
-list.delete_all([], _, []).
-list.delete_all([X | Xs], ToDelete, DXs) :-
+delete_all([], _, []).
+delete_all([X | Xs], ToDelete, DXs) :-
     ( if X = ToDelete then
         list.delete_all(Xs, ToDelete, DXs)
     else
@@ -1995,22 +1995,22 @@ list.delete_all([X | Xs], ToDelete, DXs) :-
         DXs = [X | DXs0]
     ).
 
-list.delete_elems(Xs, ToDeletes) = DXs :-
+delete_elems(Xs, ToDeletes) = DXs :-
     list.delete_elems(Xs, ToDeletes, DXs).
 
-list.delete_elems(Xs, [], Xs).
-list.delete_elems(Xs, [ToDelete | ToDeletes], DDXs) :-
+delete_elems(Xs, [], Xs).
+delete_elems(Xs, [ToDelete | ToDeletes], DDXs) :-
     list.delete_all(Xs, ToDelete, DXs),
     list.delete_elems(DXs, ToDeletes, DDXs).
 
 %---------------------------------------------------------------------------%
 
-list.replace([X | Xs0], From, To, [To | Xs0]) :-
+replace([X | Xs0], From, To, [To | Xs0]) :-
     X = From.
-list.replace([X | Xs0], From, To, [X | Xs]) :-
+replace([X | Xs0], From, To, [X | Xs]) :-
     list.replace(Xs0, From, To, Xs).
 
-list.replace_first([X | Xs], From, To, RXs) :-
+replace_first([X | Xs], From, To, RXs) :-
     ( if X = From then
         RXs = [To | Xs]
     else
@@ -2018,11 +2018,11 @@ list.replace_first([X | Xs], From, To, RXs) :-
         RXs = [X | RXs0]
     ).
 
-list.replace_all(Xs, A, B) = RXs :-
+replace_all(Xs, A, B) = RXs :-
     list.replace_all(Xs, A, B, RXs).
 
-list.replace_all([], _, _, []).
-list.replace_all([X | Xs], From, To, RXs) :-
+replace_all([], _, _, []).
+replace_all([X | Xs], From, To, RXs) :-
     ( if X = From then
         list.replace_all(Xs, From, To, RXs0),
         RXs = [To | RXs0]
@@ -2031,14 +2031,14 @@ list.replace_all([X | Xs], From, To, RXs) :-
         RXs = [X | RXs0]
     ).
 
-list.replace_nth(Xs, N, To, RXs) :-
+replace_nth(Xs, N, To, RXs) :-
     N > 0,
     list.replace_nth_loop(Xs, N, To, RXs).
 
-list.det_replace_nth(Xs, N, To) = RXs :-
+det_replace_nth(Xs, N, To) = RXs :-
     list.det_replace_nth(Xs, N, To, RXs).
 
-list.det_replace_nth(Xs, N, To, RXs) :-
+det_replace_nth(Xs, N, To, RXs) :-
     ( if N > 0 then
         ( if list.replace_nth_loop(Xs, N, To, RXsPrime) then
             RXs = RXsPrime
@@ -2053,10 +2053,10 @@ list.det_replace_nth(Xs, N, To, RXs) :-
             "is less than 1.")
     ).
 
-:- pred list.replace_nth_loop(list(T)::in, int::in, T::in, list(T)::out)
+:- pred replace_nth_loop(list(T)::in, int::in, T::in, list(T)::out)
     is semidet.
 
-list.replace_nth_loop([X | Xs], N, To, RXs) :-
+replace_nth_loop([X | Xs], N, To, RXs) :-
     ( if N > 1 then
         list.replace_nth_loop(Xs, N - 1, To, RXs0),
         RXs = [X | RXs0]
@@ -2068,26 +2068,26 @@ list.replace_nth_loop([X | Xs], N, To, RXs) :-
 
 %---------------------------------------------------------------------------%
 
-list.member(X, [X | _]).
-list.member(X, [_ | Xs]) :-
+member(X, [X | _]).
+member(X, [_ | Xs]) :-
     list.member(X, Xs).
 
-list.member(Element, List, SubList) :-
+member(Element, List, SubList) :-
     SubList = [Element | _],
     list.append(_, SubList, List).
 
-list.member_index0(X, [X | _], 0).
-list.member_index0(X, [_ | Xs], Index + 1) :-
+member_index0(X, [X | _], 0).
+member_index0(X, [_ | Xs], Index + 1) :-
     list.member_index0(X, Xs, Index).
 
-list.member_indexes0(X, List, Indexes) :-
+member_indexes0(X, List, Indexes) :-
     list.member_indexes0_loop(X, 0, List, Indexes).
 
 :- pred member_indexes0_loop(T::in, int::in, list(T)::in,
     list(int)::out) is det.
 
-list.member_indexes0_loop(_X, _I, [], []).
-list.member_indexes0_loop(X, I, [H | T], Indexes) :-
+member_indexes0_loop(_X, _I, [], []).
+member_indexes0_loop(X, I, [H | T], Indexes) :-
     list.member_indexes0_loop(X, I + 1, T, IndexesTail),
     ( if X = H then
         Indexes = [I | IndexesTail]
@@ -2095,18 +2095,18 @@ list.member_indexes0_loop(X, I, [H | T], Indexes) :-
         Indexes = IndexesTail
     ).
 
-list.contains(List, Elem) :-
+contains(List, Elem) :-
     list.member(Elem, List).
 
 %---------------------------------------------------------------------------%
 
-list.merge(Xs, Ys) = Zs :-
+merge(Xs, Ys) = Zs :-
     list.merge(Xs, Ys, Zs).
 
-list.merge([], [], []).
-list.merge([A | As], [], [A | As]).
-list.merge([], [B | Bs], [B | Bs]).
-list.merge([A | As], [B | Bs], Cs) :-
+merge([], [], []).
+merge([A | As], [], [A | As]).
+merge([], [B | Bs], [B | Bs]).
+merge([A | As], [B | Bs], Cs) :-
     ( if compare(>, A, B) then
         list.merge([A | As], Bs, Cs0),
         Cs = [B | Cs0]
@@ -2116,13 +2116,13 @@ list.merge([A | As], [B | Bs], Cs) :-
         Cs = [A | Cs0]
     ).
 
-list.merge_and_remove_dups(Xs, Ys) = Zs :-
+merge_and_remove_dups(Xs, Ys) = Zs :-
     list.merge_and_remove_dups(Xs, Ys, Zs).
 
-list.merge_and_remove_dups([], [], []).
-list.merge_and_remove_dups([A | As], [], [A | As]).
-list.merge_and_remove_dups([], [B | Bs], [B | Bs]).
-list.merge_and_remove_dups([A | As], [B | Bs], Cs) :-
+merge_and_remove_dups([], [], []).
+merge_and_remove_dups([A | As], [], [A | As]).
+merge_and_remove_dups([], [B | Bs], [B | Bs]).
+merge_and_remove_dups([A | As], [B | Bs], Cs) :-
     compare(Res, A, B),
     (
         Res = (<),
@@ -2144,23 +2144,23 @@ list.merge_and_remove_dups([A | As], [B | Bs], Cs) :-
 % list.length/1 in pure Mercury that works in both directions
 % unless you make it semidet rather than det.
 
-list.length(Xs) = N :-
+length(Xs) = N :-
     list.length(Xs, N).
 
-list.length(L, N) :-
+length(L, N) :-
     list.length_acc(L, 0, N).
 
-:- pred list.length_acc(list(T), int, int).
-:- mode list.length_acc(in, in, out) is det.
+:- pred length_acc(list(T), int, int).
+:- mode length_acc(in, in, out) is det.
 
-list.length_acc([], N, N).
-list.length_acc([_ | L1], N0, N) :-
+length_acc([], N, N).
+length_acc([_ | L1], N0, N) :-
     N1 = N0 + 1,
     list.length_acc(L1, N1, N).
 
 %---------------------------------------------------------------------------%
 
-list.reverse(Xs) = Ys :-
+reverse(Xs) = Ys :-
     list.reverse(Xs, Ys).
 
     % reverse(A, B) <=> reverse(B, A).
@@ -2173,47 +2173,47 @@ list.reverse(Xs) = Ys :-
     L = lists:reverse(L0)
 ").
 
-list.reverse(L0::in, L::out) :-
+reverse(L0::in, L::out) :-
     list.reverse_prepend(L0, [], L).
 
-list.reverse(L::out, L0::in) :-
+reverse(L::out, L0::in) :-
     list.reverse_prepend(L0, [], L).
 
-list.reverse_prepend(Xs, Ys) = Zs :-
+reverse_prepend(Xs, Ys) = Zs :-
     list.reverse_prepend(Xs, Ys, Zs).
 
-list.reverse_prepend([], L, L).
-list.reverse_prepend([X | Xs], L0, L) :-
+reverse_prepend([], L, L).
+reverse_prepend([X | Xs], L0, L) :-
     list.reverse_prepend(Xs, [X | L0], L).
 
 %---------------------------------------------------------------------------%
 
-list.sort(List) = SortedList :-
+sort(List) = SortedList :-
     list.sort(List, SortedList).
 
-list.sort(List, SortedList) :-
+sort(List, SortedList) :-
     list.merge_sort(List, SortedList).
 
-list.sort_and_remove_dups(List) = SortedList :-
+sort_and_remove_dups(List) = SortedList :-
     list.sort_and_remove_dups(List, SortedList).
 
-list.sort_and_remove_dups(List, SortedList) :-
+sort_and_remove_dups(List, SortedList) :-
     list.merge_sort_and_remove_dups_2(list.length(List), List, SortedList).
 
-:- pred list.merge_sort(list(T)::in, list(T)::out) is det.
-:- pragma type_spec(list.merge_sort(in, out), T = var(_)).
+:- pred merge_sort(list(T)::in, list(T)::out) is det.
+:- pragma type_spec(merge_sort(in, out), T = var(_)).
 
-list.merge_sort(List, SortedList) :-
+merge_sort(List, SortedList) :-
     list.merge_sort_2(list.length(List), List, SortedList).
 
 %---------------------------------------------------------------------------%
 
-:- pred list.merge_sort_and_remove_dups_2(int::in, list(T)::in, list(T)::out)
+:- pred merge_sort_and_remove_dups_2(int::in, list(T)::in, list(T)::out)
     is det.
-:- pragma type_spec(list.merge_sort_and_remove_dups_2(in, in, out),
+:- pragma type_spec(merge_sort_and_remove_dups_2(in, in, out),
     T = var(_)).
 
-list.merge_sort_and_remove_dups_2(Length, List, SortedList) :-
+merge_sort_and_remove_dups_2(Length, List, SortedList) :-
     ( if Length > 1 then
         HalfLength = Length // 2,
         ( if list.split_list(HalfLength, List, Front, Back) then
@@ -2231,10 +2231,10 @@ list.merge_sort_and_remove_dups_2(Length, List, SortedList) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred list.merge_sort_2(int::in, list(T)::in, list(T)::out) is det.
+:- pred merge_sort_2(int::in, list(T)::in, list(T)::out) is det.
 :- pragma type_spec(list.merge_sort_2(in, in, out), T = var(_)).
 
-list.merge_sort_2(Length, List, SortedList) :-
+merge_sort_2(Length, List, SortedList) :-
     ( if Length > 1 then
         HalfLength = Length // 2,
         ( if list.split_list(HalfLength, List, Front, Back) then
@@ -2250,17 +2250,16 @@ list.merge_sort_2(Length, List, SortedList) :-
 
 %---------------------------------------------------------------------------%
 
-list.remove_dups(Xs) = FilteredXs :-
+remove_dups(Xs) = FilteredXs :-
     list.remove_dups(Xs, FilteredXs).
 
-list.remove_dups(Xs, FilteredXs) :-
+remove_dups(Xs, FilteredXs) :-
     list.remove_dups_2(Xs, set_tree234.init, FilteredXs).
 
-:- pred list.remove_dups_2(list(T)::in, set_tree234(T)::in, list(T)::out)
-    is det.
+:- pred remove_dups_2(list(T)::in, set_tree234(T)::in, list(T)::out) is det.
 
-list.remove_dups_2([], _SoFar, []).
-list.remove_dups_2([X | Xs], SoFar0, FilteredXs) :-
+remove_dups_2([], _SoFar, []).
+remove_dups_2([X | Xs], SoFar0, FilteredXs) :-
     ( if set_tree234.contains(SoFar0, X) then
         list.remove_dups_2(Xs, SoFar0, FilteredXs)
     else
@@ -2271,18 +2270,18 @@ list.remove_dups_2([X | Xs], SoFar0, FilteredXs) :-
 
 %---------------------------------------------------------------------------%
 
-list.remove_adjacent_dups(Xs) = FilteredXs :-
+remove_adjacent_dups(Xs) = FilteredXs :-
     list.remove_adjacent_dups(Xs, FilteredXs).
 
-list.remove_adjacent_dups([], []).
-list.remove_adjacent_dups([X | Xs], FilteredXs) :-
+remove_adjacent_dups([], []).
+remove_adjacent_dups([X | Xs], FilteredXs) :-
     list.remove_adjacent_dups_2(X, Xs, FilteredXs).
 
-:- pred list.remove_adjacent_dups_2(T::in, list(T)::in, list(T)::out) is det.
+:- pred remove_adjacent_dups_2(T::in, list(T)::in, list(T)::out) is det.
 :- pragma type_spec(list.remove_adjacent_dups_2/3, T = var(_)).
 
-list.remove_adjacent_dups_2(X, [], [X]).
-list.remove_adjacent_dups_2(X0, [X1 | Xs], FilteredXs) :-
+remove_adjacent_dups_2(X, [], [X]).
+remove_adjacent_dups_2(X0, [X1 | Xs], FilteredXs) :-
     ( if X0 = X1 then
         list.remove_adjacent_dups_2(X0, Xs, FilteredXs)
     else
@@ -2292,23 +2291,22 @@ list.remove_adjacent_dups_2(X0, [X1 | Xs], FilteredXs) :-
 
 %---------------------------------------------------------------------------%
 
-list.zip(Xs, Ys) = Zs :-
+zip(Xs, Ys) = Zs :-
     list.zip(Xs, Ys, Zs).
 
-list.zip([], Bs, Bs).
-list.zip([A | As], Bs, [A | Cs]) :-
+zip([], Bs, Bs).
+zip([A | As], Bs, [A | Cs]) :-
     list.zip2(As, Bs, Cs).
 
-:- pred list.zip2(list(T), list(T), list(T)).
-:- mode list.zip2(in, in, out) is det.
+:- pred zip2(list(T)::in, list(T)::in, list(T)::out) is det.
 
-list.zip2(As, [], As).
-list.zip2(As, [B | Bs], [B | Cs]) :-
+zip2(As, [], As).
+zip2(As, [B | Bs], [B | Cs]) :-
     list.zip(As, Bs, Cs).
 
 %---------------------------------------------------------------------------%
 
-list.split_list(N, List, Start, End) :-
+split_list(N, List, Start, End) :-
     ( if N = 0 then
         Start = [],
         End = List
@@ -2319,7 +2317,7 @@ list.split_list(N, List, Start, End) :-
         Start = [Head | StartTail]
     ).
 
-list.det_split_list(N, List, Start, End) :-
+det_split_list(N, List, Start, End) :-
     ( if list.split_list(N, List, StartPrime, EndPrime) then
         Start = StartPrime,
         End = EndPrime
@@ -2327,7 +2325,7 @@ list.det_split_list(N, List, Start, End) :-
         unexpected($module, $pred, "index out of range")
     ).
 
-list.split_upto(N, List, Start, End) :-
+split_upto(N, List, Start, End) :-
     ( if
         N > 0,
         List = [Head | Tail]
@@ -2339,7 +2337,7 @@ list.split_upto(N, List, Start, End) :-
         End = List
     ).
 
-list.take(N, Xs, InitialXs) :-
+take(N, Xs, InitialXs) :-
     ( if N > 0 then
         Xs = [HeadX | TailXs],
         list.take(N - 1, TailXs, InitialXsTail),
@@ -2348,24 +2346,24 @@ list.take(N, Xs, InitialXs) :-
         InitialXs = []
     ).
 
-list.det_take(N, Xs, InitialXs) :-
+det_take(N, Xs, InitialXs) :-
     ( if list.take(N, Xs, InitialXsPrime) then
         InitialXs = InitialXsPrime
     else
         unexpected($file, $pred, "not enough elements")
     ).
 
-list.take_upto(N, Xs) = InitialXs :-
+take_upto(N, Xs) = InitialXs :-
     list.take_upto(N, Xs, InitialXs).
 
-list.take_upto(N, Xs, InitialXs) :-
+take_upto(N, Xs, InitialXs) :-
     ( if list.take(N, Xs, InitialXsPrime) then
         InitialXs = InitialXsPrime
     else
         InitialXs = Xs
     ).
 
-list.drop(N, Xs, FinalXs) :-
+drop(N, Xs, FinalXs) :-
     ( if N > 0 then
         Xs = [_ | Tail],
         list.drop(N - 1, Tail, FinalXs)
@@ -2373,7 +2371,7 @@ list.drop(N, Xs, FinalXs) :-
         FinalXs = Xs
     ).
 
-list.det_drop(N, Xs, FinalXs) :-
+det_drop(N, Xs, FinalXs) :-
     ( if N > 0 then
         (
             Xs = [_ | TailXs],
@@ -2426,16 +2424,15 @@ drop_while(P, Xs) = End :-
 
 %---------------------------------------------------------------------------%
 
-list.duplicate(N, X) = Xs :-
+duplicate(N, X) = Xs :-
     list.accumulate_n_copies(N, X, [], Xs).
 
-list.duplicate(N, X, Xs) :-
+duplicate(N, X, Xs) :-
     list.accumulate_n_copies(N, X, [], Xs).
 
-:- pred list.accumulate_n_copies(int::in, T::in,
-    list(T)::in, list(T)::out) is det.
+:- pred accumulate_n_copies(int::in, T::in, list(T)::in, list(T)::out) is det.
 
-list.accumulate_n_copies(N, X, !Xs) :-
+accumulate_n_copies(N, X, !Xs) :-
     ( if N > 0 then
         !:Xs = [X | !.Xs],
         list.accumulate_n_copies(N - 1, X, !Xs)
@@ -2445,16 +2442,16 @@ list.accumulate_n_copies(N, X, !Xs) :-
 
 %---------------------------------------------------------------------------%
 
-list.chunk(Xs, N) = Ys :-
+chunk(Xs, N) = Ys :-
     list.chunk(Xs, N, Ys).
 
-list.chunk(List, ChunkSize, ListOfSmallLists) :-
+chunk(List, ChunkSize, ListOfSmallLists) :-
     list.chunk_2(List, ChunkSize, [], ChunkSize, ListOfSmallLists).
 
-:- pred list.chunk_2(list(T)::in, int::in, list(T)::in, int::in,
+:- pred chunk_2(list(T)::in, int::in, list(T)::in, int::in,
     list(list(T))::out) is det.
 
-list.chunk_2([], _ChunkSize, List0, _N, Lists) :-
+chunk_2([], _ChunkSize, List0, _N, Lists) :-
     (
         List0 = [],
         Lists = []
@@ -2463,7 +2460,7 @@ list.chunk_2([], _ChunkSize, List0, _N, Lists) :-
         list.reverse(List0, List),
         Lists = [List]
     ).
-list.chunk_2([X | Xs], ChunkSize, List0, N, Lists) :-
+chunk_2([X | Xs], ChunkSize, List0, N, Lists) :-
     ( if N > 1 then
         list.chunk_2(Xs, ChunkSize, [X | List0], N - 1, Lists)
     else
@@ -2474,15 +2471,15 @@ list.chunk_2([X | Xs], ChunkSize, List0, N, Lists) :-
 
 %---------------------------------------------------------------------------%
 
-list.perm([], []).
-list.perm([X | Xs], Ys) :-
+perm([], []).
+perm([X | Xs], Ys) :-
     list.perm(Xs, Ys0),
     list.insert(X, Ys0, Ys).
 
 %---------------------------------------------------------------------------%
 
-list.sublist([], _).
-list.sublist([SH | ST], [FH | FT]) :-
+sublist([], _).
+sublist([SH | ST], [FH | FT]) :-
     ( if SH = FH then
         list.sublist(ST, FT)
     else
@@ -2491,19 +2488,19 @@ list.sublist([SH | ST], [FH | FT]) :-
 
 %---------------------------------------------------------------------------%
 
-list.all_same([]).
-list.all_same([H | T]) :-
+all_same([]).
+all_same([H | T]) :-
     list.all_same_2(H, T).
 
 :- pred list.all_same_2(T::in, list(T)::in) is semidet.
 
-list.all_same_2(_, []).
-list.all_same_2(H, [H | T]) :-
+all_same_2(_, []).
+all_same_2(H, [H | T]) :-
     list.all_same_2(H, T).
 
 %---------------------------------------------------------------------------%
 
-list.last([H | T], Last) :-
+last([H | T], Last) :-
     (
         T = [],
         Last = H
@@ -2512,17 +2509,17 @@ list.last([H | T], Last) :-
         list.last(T, Last)
     ).
 
-list.det_last(List) = Last :-
+det_last(List) = Last :-
     list.det_last(List, Last).
 
-list.det_last([], _) :-
+det_last([], _) :-
     unexpected($module, $pred, "empty list").
-list.det_last([H | T], Last) :-
+det_last([H | T], Last) :-
     list.det_last_loop(H, T, Last).
 
-:- pred list.det_last_loop(T::in, list(T)::in, T::out) is det.
+:- pred det_last_loop(T::in, list(T)::in, T::out) is det.
 
-list.det_last_loop(H, T, Last) :-
+det_last_loop(H, T, Last) :-
     (
         T = [],
         Last = H
@@ -2531,7 +2528,7 @@ list.det_last_loop(H, T, Last) :-
         list.det_last_loop(TH, TT, Last)
     ).
 
-list.split_last([H | T], AllButLast, Last) :-
+split_last([H | T], AllButLast, Last) :-
     (
         T = [],
         AllButLast = [],
@@ -2542,9 +2539,9 @@ list.split_last([H | T], AllButLast, Last) :-
         AllButLast = [H | AllButLastTail]
     ).
 
-list.det_split_last([], _, _) :-
+det_split_last([], _, _) :-
     unexpected($module, $pred, "empty list").
-list.det_split_last([H | T], AllButLast, Last) :-
+det_split_last([H | T], AllButLast, Last) :-
     (
         T = [],
         AllButLast = [],
@@ -2558,7 +2555,7 @@ list.det_split_last([H | T], AllButLast, Last) :-
 :- pred list.det_split_last_loop(T::in, list(T)::in, list(T)::out, T::out)
     is det.
 
-list.det_split_last_loop(H, T, AllButLast, Last) :-
+det_split_last_loop(H, T, AllButLast, Last) :-
     (
         T = [],
         AllButLast = [],
@@ -2571,71 +2568,71 @@ list.det_split_last_loop(H, T, AllButLast, Last) :-
 
 %---------------------------------------------------------------------------%
 
-list.map(_F, []) = [].
-list.map(F, [H | T]) = [F(H) | list.map(F, T)].
+map(_F, []) = [].
+map(F, [H | T]) = [F(H) | list.map(F, T)].
 
-list.map(_, [],  []).
-list.map(P, [H0 | T0], [H | T]) :-
+map(_, [],  []).
+map(P, [H0 | T0], [H | T]) :-
     P(H0, H),
     list.map(P, T0, T).
 
-list.map2(_, [],  [],  []).
-list.map2(P, [H0 | T0], [H1 | T1], [H2 | T2]) :-
+map2(_, [],  [],  []).
+map2(P, [H0 | T0], [H1 | T1], [H2 | T2]) :-
     P(H0, H1, H2),
     list.map2(P, T0, T1, T2).
 
-list.map3(_, [],  [],  [],  []).
-list.map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
+map3(_, [],  [],  [],  []).
+map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
     P(H0, H1, H2, H3),
     list.map3(P, T0, T1, T2, T3).
 
-list.map4(_, [], [], [], [], []).
-list.map4(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4]) :-
+map4(_, [], [], [], [], []).
+map4(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4]) :-
     P(H0, H1, H2, H3, H4),
     list.map4(P, T0, T1, T2, T3, T4).
 
-list.map5(_, [], [], [], [], [], []).
-list.map5(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5])
+map5(_, [], [], [], [], [], []).
+map5(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5])
         :-
     P(H0, H1, H2, H3, H4, H5),
     list.map5(P, T0, T1, T2, T3, T4, T5).
 
-list.map6(_, [], [], [], [], [], [], []).
-list.map6(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
+map6(_, [], [], [], [], [], [], []).
+map6(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
         [H6 | T6]) :-
     P(H0, H1, H2, H3, H4, H5, H6),
     list.map6(P, T0, T1, T2, T3, T4, T5, T6).
 
-list.map7(_, [], [], [], [], [], [], [], []).
-list.map7(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
+map7(_, [], [], [], [], [], [], [], []).
+map7(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
         [H6 | T6], [H7 | T7]) :-
     P(H0, H1, H2, H3, H4, H5, H6, H7),
     list.map7(P, T0, T1, T2, T3, T4, T5, T6, T7).
 
-list.map8(_, [], [], [], [], [], [], [], [], []).
-list.map8(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
+map8(_, [], [], [], [], [], [], [], [], []).
+map8(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
         [H6 | T6], [H7 | T7], [H8 | T8]) :-
     P(H0, H1, H2, H3, H4, H5, H6, H7, H8),
     list.map8(P, T0, T1, T2, T3, T4, T5, T6, T7, T8).
 
-list.map_corresponding(_, [], []) = [].
-list.map_corresponding(_, [], [_ | _]) =
+map_corresponding(_, [], []) = [].
+map_corresponding(_, [], [_ | _]) =
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding(_, [_ | _], []) =
+map_corresponding(_, [_ | _], []) =
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding(F, [HA | TAs], [HB | TBs]) =
+map_corresponding(F, [HA | TAs], [HB | TBs]) =
     [F(HA, HB) | list.map_corresponding(F, TAs, TBs)].
 
-list.map_corresponding(_, [], [], []).
-list.map_corresponding(_, [], [_ | _], _) :-
+map_corresponding(_, [], [], []).
+map_corresponding(_, [], [_ | _], _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding(_, [_ | _], [], _) :-
+map_corresponding(_, [_ | _], [], _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding(P, [HA | TAs], [HB | TBs], [HR | TRs]) :-
+map_corresponding(P, [HA | TAs], [HB | TBs], [HR | TRs]) :-
     P(HA, HB, HR),
     list.map_corresponding(P, TAs, TBs, TRs).
 
-list.map_corresponding3(F, As, Bs, Cs) =
+map_corresponding3(F, As, Bs, Cs) =
     ( if
         As = [HA | TAs],
         Bs = [HB | TBs],
@@ -2652,24 +2649,24 @@ list.map_corresponding3(F, As, Bs, Cs) =
         unexpected($module, $pred, "mismatched list lengths")
     ).
 
-list.filter_map_corresponding(_, [], []) = [].
-list.filter_map_corresponding(_, [], [_ | _]) =
+filter_map_corresponding(_, [], []) = [].
+filter_map_corresponding(_, [], [_ | _]) =
     unexpected($module, $pred, "mismatched list lengths").
-list.filter_map_corresponding(_, [_ | _], []) =
+filter_map_corresponding(_, [_ | _], []) =
     unexpected($module, $pred, "mismatched list lengths").
-list.filter_map_corresponding(F, [HA | TAs], [HB | TBs]) =
+filter_map_corresponding(F, [HA | TAs], [HB | TBs]) =
     ( if F(HA, HB) = HR then
         [HR | list.filter_map_corresponding(F, TAs, TBs)]
     else
         list.filter_map_corresponding(F, TAs, TBs)
     ).
 
-list.filter_map_corresponding(_, [], [], []).
-list.filter_map_corresponding(_, [], [_ | _], _) :-
+filter_map_corresponding(_, [], [], []).
+filter_map_corresponding(_, [], [_ | _], _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.filter_map_corresponding(_, [_ | _], [], _) :-
+filter_map_corresponding(_, [_ | _], [], _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.filter_map_corresponding(P, [HA | TAs], [HB | TBs], Rs) :-
+filter_map_corresponding(P, [HA | TAs], [HB | TBs], Rs) :-
     ( if P(HA, HB, HR) then
         list.filter_map_corresponding(P, TAs, TBs, TRs),
         Rs = [HR | TRs]
@@ -2677,7 +2674,7 @@ list.filter_map_corresponding(P, [HA | TAs], [HB | TBs], Rs) :-
         list.filter_map_corresponding(P, TAs, TBs, Rs)
     ).
 
-list.filter_map_corresponding3(F, As, Bs, Cs) =
+filter_map_corresponding3(F, As, Bs, Cs) =
     ( if
         As = [HA | TAs],
         Bs = [HB | TBs],
@@ -2698,7 +2695,7 @@ list.filter_map_corresponding3(F, As, Bs, Cs) =
         unexpected($module, $pred, "mismatched list lengths")
     ).
 
-list.filter_map_corresponding3(P, As, Bs, Cs, Rs) :-
+filter_map_corresponding3(P, As, Bs, Cs, Rs) :-
     ( if
         As = [HA | TAs],
         Bs = [HB | TBs],
@@ -2720,265 +2717,265 @@ list.filter_map_corresponding3(P, As, Bs, Cs, Rs) :-
         unexpected($module, $pred, "mismatched list lengths")
     ).
 
-list.map_corresponding_foldl(_, [], [], [], !Acc).
-list.map_corresponding_foldl(_, [], [_ | _], _, _, _) :-
+map_corresponding_foldl(_, [], [], [], !Acc).
+map_corresponding_foldl(_, [], [_ | _], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding_foldl(_, [_ | _], [], _, _, _) :-
+map_corresponding_foldl(_, [_ | _], [], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding_foldl(P, [A | As], [B | Bs], [C | Cs], !Acc) :-
+map_corresponding_foldl(P, [A | As], [B | Bs], [C | Cs], !Acc) :-
     P(A, B, C, !Acc),
     list.map_corresponding_foldl(P, As, Bs, Cs, !Acc).
 
-list.map_corresponding_foldl2(_, [], [], [], !Acc1, !Acc2).
-list.map_corresponding_foldl2(_, [], [_ | _], _, _, _, _, _) :-
+map_corresponding_foldl2(_, [], [], [], !Acc1, !Acc2).
+map_corresponding_foldl2(_, [], [_ | _], _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding_foldl2(_, [_ | _], [], _, _, _, _, _) :-
+map_corresponding_foldl2(_, [_ | _], [], _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding_foldl2(P, [A | As], [B | Bs], [C | Cs], !Acc1, !Acc2) :-
+map_corresponding_foldl2(P, [A | As], [B | Bs], [C | Cs], !Acc1, !Acc2) :-
     P(A, B, C, !Acc1, !Acc2),
     list.map_corresponding_foldl2(P, As, Bs, Cs, !Acc1, !Acc2).
 
-list.map_corresponding_foldl3(_, [], [], [], !Acc1, !Acc2, !Acc3).
-list.map_corresponding_foldl3(_, [], [_ | _], _, _, _, _, _, _, _) :-
+map_corresponding_foldl3(_, [], [], [], !Acc1, !Acc2, !Acc3).
+map_corresponding_foldl3(_, [], [_ | _], _, _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding_foldl3(_, [_ | _], [], _, _, _, _, _, _, _) :-
+map_corresponding_foldl3(_, [_ | _], [], _, _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding_foldl3(P, [A | As], [B | Bs], [C | Cs], !Acc1,
+map_corresponding_foldl3(P, [A | As], [B | Bs], [C | Cs], !Acc1,
         !Acc2, !Acc3) :-
     P(A, B, C, !Acc1, !Acc2, !Acc3),
     list.map_corresponding_foldl3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3).
 
-list.map_corresponding3_foldl(_, [], [], [], [], !Acc).
-list.map_corresponding3_foldl(_, [], [_ | _], [_ | _], _, _, _) :-
+map_corresponding3_foldl(_, [], [], [], [], !Acc).
+map_corresponding3_foldl(_, [], [_ | _], [_ | _], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding3_foldl(_, [_ | _], [], [_ | _], _, _, _) :-
+map_corresponding3_foldl(_, [_ | _], [], [_ | _], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding3_foldl(_, [_ | _], [_ | _], [], _, _, _) :-
+map_corresponding3_foldl(_, [_ | _], [_ | _], [], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding3_foldl(_, [], [], [_ | _], _, _, _) :-
+map_corresponding3_foldl(_, [], [], [_ | _], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding3_foldl(_, [], [_ | _], [], _, _, _) :-
+map_corresponding3_foldl(_, [], [_ | _], [], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding3_foldl(_, [_ | _], [], [], _, _, _) :-
+map_corresponding3_foldl(_, [_ | _], [], [], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding3_foldl(P, [A | As], [B | Bs], [C | Cs], [D | Ds],
+map_corresponding3_foldl(P, [A | As], [B | Bs], [C | Cs], [D | Ds],
         !Acc) :-
     P(A, B, C, D, !Acc),
     list.map_corresponding3_foldl(P, As, Bs, Cs, Ds, !Acc).
 
-list.foldl(F, Xs, A) = B :-
+foldl(F, Xs, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     list.foldl(P, Xs, A, B).
 
-list.foldl(_, [], !A).
-list.foldl(P, [H | T], !A) :-
+foldl(_, [], !A).
+foldl(P, [H | T], !A) :-
     P(H, !A),
     list.foldl(P, T, !A).
 
-list.foldl2(_, [], !A, !B).
-list.foldl2(P, [H | T], !A, !B) :-
+foldl2(_, [], !A, !B).
+foldl2(P, [H | T], !A, !B) :-
     P(H, !A, !B),
     list.foldl2(P, T, !A, !B).
 
-list.foldl3(_, [], !A, !B, !C).
-list.foldl3(P, [H | T], !A, !B, !C) :-
+foldl3(_, [], !A, !B, !C).
+foldl3(P, [H | T], !A, !B, !C) :-
     P(H, !A, !B, !C),
     list.foldl3(P, T, !A, !B, !C).
 
-list.foldl4(_, [], !A, !B, !C, !D).
-list.foldl4(P, [H | T], !A, !B, !C, !D) :-
+foldl4(_, [], !A, !B, !C, !D).
+foldl4(P, [H | T], !A, !B, !C, !D) :-
     P(H, !A, !B, !C, !D),
     list.foldl4(P, T, !A, !B, !C, !D).
 
-list.foldl5(_, [], !A, !B, !C, !D, !E).
-list.foldl5(P, [H | T], !A, !B, !C, !D, !E) :-
+foldl5(_, [], !A, !B, !C, !D, !E).
+foldl5(P, [H | T], !A, !B, !C, !D, !E) :-
     P(H, !A, !B, !C, !D, !E),
     list.foldl5(P, T, !A, !B, !C, !D, !E).
 
-list.foldl6(_, [], !A, !B, !C, !D, !E, !F).
-list.foldl6(P, [H | T], !A, !B, !C, !D, !E, !F) :-
+foldl6(_, [], !A, !B, !C, !D, !E, !F).
+foldl6(P, [H | T], !A, !B, !C, !D, !E, !F) :-
     P(H, !A, !B, !C, !D, !E, !F),
     list.foldl6(P, T, !A, !B, !C, !D, !E, !F).
 
-list.foldl_corresponding(_, [], [], !Acc).
-list.foldl_corresponding(_, [], [_ | _], _, _) :-
+foldl_corresponding(_, [], [], !Acc).
+foldl_corresponding(_, [], [_ | _], _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding(_, [_ | _], [], _, _) :-
+foldl_corresponding(_, [_ | _], [], _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding(P, [A | As], [B | Bs], !Acc) :-
+foldl_corresponding(P, [A | As], [B | Bs], !Acc) :-
     P(A, B, !Acc),
     list.foldl_corresponding(P, As, Bs, !Acc).
 
-list.foldl_corresponding(_, [], [], Acc) = Acc.
-list.foldl_corresponding(_, [], [_ | _], _) = _ :-
+foldl_corresponding(_, [], [], Acc) = Acc.
+foldl_corresponding(_, [], [_ | _], _) = _ :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding(_, [_ | _], [], _) = _ :-
+foldl_corresponding(_, [_ | _], [], _) = _ :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding(F, [A | As], [B | Bs], !.Acc) = !:Acc :-
+foldl_corresponding(F, [A | As], [B | Bs], !.Acc) = !:Acc :-
     !:Acc = F(A, B, !.Acc),
     !:Acc = list.foldl_corresponding(F, As, Bs, !.Acc).
 
-list.foldl2_corresponding(_, [], [], !Acc1, !Acc2).
-list.foldl2_corresponding(_, [], [_ | _], _, _, _, _) :-
+foldl2_corresponding(_, [], [], !Acc1, !Acc2).
+foldl2_corresponding(_, [], [_ | _], _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl2_corresponding(_, [_ | _], [], _, _, _, _) :-
+foldl2_corresponding(_, [_ | _], [], _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl2_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2) :-
+foldl2_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2) :-
     P(A, B, !Acc1, !Acc2),
     list.foldl2_corresponding(P, As, Bs, !Acc1, !Acc2).
 
-list.foldl3_corresponding(_, [], [], !Acc1, !Acc2, !Acc3).
-list.foldl3_corresponding(_, [], [_ | _], _, _, _, _, _, _) :-
+foldl3_corresponding(_, [], [], !Acc1, !Acc2, !Acc3).
+foldl3_corresponding(_, [], [_ | _], _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl3_corresponding(_, [_ | _], [], _, _, _, _, _, _) :-
+foldl3_corresponding(_, [_ | _], [], _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl3_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2, !Acc3) :-
+foldl3_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2, !Acc3) :-
     P(A, B, !Acc1, !Acc2, !Acc3),
     list.foldl3_corresponding(P, As, Bs, !Acc1, !Acc2, !Acc3).
 
-list.foldl_corresponding3(_, [], [], [], !Acc).
-list.foldl_corresponding3(_, [_ | _], [], [], _, _) :-
+foldl_corresponding3(_, [], [], [], !Acc).
+foldl_corresponding3(_, [_ | _], [], [], _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding3(_, [], [_ | _], [], _, _) :-
+foldl_corresponding3(_, [], [_ | _], [], _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding3(_, [], [], [_ | _], _, _) :-
+foldl_corresponding3(_, [], [], [_ | _], _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding3(_, [], [_ | _], [_ | _], _, _) :-
+foldl_corresponding3(_, [], [_ | _], [_ | _], _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding3(_, [_ | _], [], [_ | _], _, _) :-
+foldl_corresponding3(_, [_ | _], [], [_ | _], _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding3(_, [_ | _], [_ | _], [], _, _) :-
+foldl_corresponding3(_, [_ | _], [_ | _], [], _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs], !Acc) :-
+foldl_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs], !Acc) :-
     P(A, B, C, !Acc),
     list.foldl_corresponding3(P, As, Bs, Cs, !Acc).
 
-list.foldl2_corresponding3(_, [], [], [], !Acc1, !Acc2).
-list.foldl2_corresponding3(_, [_ | _], [], [], _, _, _, _) :-
+foldl2_corresponding3(_, [], [], [], !Acc1, !Acc2).
+foldl2_corresponding3(_, [_ | _], [], [], _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl2_corresponding3(_, [], [_ | _], [], _, _, _, _) :-
+foldl2_corresponding3(_, [], [_ | _], [], _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl2_corresponding3(_, [], [], [_ | _], _, _, _, _) :-
+foldl2_corresponding3(_, [], [], [_ | _], _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl2_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _) :-
+foldl2_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl2_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _) :-
+foldl2_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl2_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _) :-
+foldl2_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl2_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
+foldl2_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
         !Acc1, !Acc2) :-
     P(A, B, C, !Acc1, !Acc2),
     list.foldl2_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2).
 
-list.foldl3_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3).
-list.foldl3_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _) :-
+foldl3_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3).
+foldl3_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl3_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _) :-
+foldl3_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl3_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _) :-
+foldl3_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl3_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _) :-
+foldl3_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl3_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _) :-
+foldl3_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl3_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _) :-
+foldl3_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl3_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
+foldl3_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
         !Acc1, !Acc2, !Acc3) :-
     P(A, B, C, !Acc1, !Acc2, !Acc3),
     list.foldl3_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3).
 
-list.foldl4_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3, !Acc4).
-list.foldl4_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _, _, _) :-
+foldl4_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3, !Acc4).
+foldl4_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl4_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _, _, _) :-
+foldl4_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl4_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _, _, _) :-
+foldl4_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl4_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _, _, _) :-
+foldl4_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl4_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _, _, _) :-
+foldl4_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl4_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _, _, _) :-
+foldl4_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.foldl4_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
+foldl4_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
         !Acc1, !Acc2, !Acc3, !Acc4) :-
     P(A, B, C, !Acc1, !Acc2, !Acc3, !Acc4),
     list.foldl4_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3, !Acc4).
 
-list.map_foldl(_, [], [], !A).
-list.map_foldl(P, [H0 | T0], [H | T], !A) :-
+map_foldl(_, [], [], !A).
+map_foldl(P, [H0 | T0], [H | T], !A) :-
     P(H0, H, !A),
     list.map_foldl(P, T0, T, !A).
 
-list.map_foldl2(_, [], [], !A, !B).
-list.map_foldl2(P, [H0 | T0], [H | T], !A, !B) :-
+map_foldl2(_, [], [], !A, !B).
+map_foldl2(P, [H0 | T0], [H | T], !A, !B) :-
     P(H0, H, !A, !B),
     list.map_foldl2(P, T0, T, !A, !B).
 
-list.map_foldl3(_, [], [], !A, !B, !C).
-list.map_foldl3(P, [H0 | T0], [H | T], !A, !B, !C) :-
+map_foldl3(_, [], [], !A, !B, !C).
+map_foldl3(P, [H0 | T0], [H | T], !A, !B, !C) :-
     P(H0, H, !A, !B, !C),
     list.map_foldl3(P, T0, T, !A, !B, !C).
 
-list.map_foldl4(_, [], [], !A, !B, !C, !D).
-list.map_foldl4(P, [H0 | T0], [H | T], !A, !B, !C, !D) :-
+map_foldl4(_, [], [], !A, !B, !C, !D).
+map_foldl4(P, [H0 | T0], [H | T], !A, !B, !C, !D) :-
     P(H0, H, !A, !B, !C, !D),
     list.map_foldl4(P, T0, T, !A, !B, !C, !D).
 
-list.map_foldl5(_, [], [], !A, !B, !C, !D, !E).
-list.map_foldl5(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E) :-
+map_foldl5(_, [], [], !A, !B, !C, !D, !E).
+map_foldl5(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E) :-
     P(H0, H, !A, !B, !C, !D, !E),
     list.map_foldl5(P, T0, T, !A, !B, !C, !D, !E).
 
-list.map_foldl6(_, [], [], !A, !B, !C, !D, !E, !F).
-list.map_foldl6(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E, !F) :-
+map_foldl6(_, [], [], !A, !B, !C, !D, !E, !F).
+map_foldl6(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E, !F) :-
     P(H0, H, !A, !B, !C, !D, !E, !F),
     list.map_foldl6(P, T0, T, !A, !B, !C, !D, !E, !F).
 
-list.map2_foldl(_, [], [], [], !A).
-list.map2_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], !A) :-
+map2_foldl(_, [], [], [], !A).
+map2_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], !A) :-
     P(H0, H1, H2, !A),
     list.map2_foldl(P, T0, T1, T2, !A).
 
-list.map2_foldl2(_, [], [], [], !A, !B).
-list.map2_foldl2(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B) :-
+map2_foldl2(_, [], [], [], !A, !B).
+map2_foldl2(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B) :-
     P(H0, H1, H2, !A, !B),
     list.map2_foldl2(P, T0, T1, T2, !A, !B).
 
-list.map2_foldl3(_, [], [], [], !A, !B, !C).
-list.map2_foldl3(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B, !C) :-
+map2_foldl3(_, [], [], [], !A, !B, !C).
+map2_foldl3(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B, !C) :-
     P(H0, H1, H2, !A, !B, !C),
     list.map2_foldl3(P, T0, T1, T2, !A, !B, !C).
 
-list.map2_foldl4(_, [], [], [], !A, !B, !C, !D).
-list.map2_foldl4(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B, !C, !D) :-
+map2_foldl4(_, [], [], [], !A, !B, !C, !D).
+map2_foldl4(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B, !C, !D) :-
     P(H0, H1, H2, !A, !B, !C, !D),
     list.map2_foldl4(P, T0, T1, T2, !A, !B, !C, !D).
 
-list.map3_foldl(_, [], [], [], [], !A).
-list.map3_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], !A) :-
+map3_foldl(_, [], [], [], [], !A).
+map3_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], !A) :-
     P(H0, H1, H2, H3, !A),
     list.map3_foldl(P, T0, T1, T2, T3, !A).
 
-list.map3_foldl2(_, [], [], [], [], !A, !B).
-list.map3_foldl2(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], !A, !B) :-
+map3_foldl2(_, [], [], [], [], !A, !B).
+map3_foldl2(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], !A, !B) :-
     P(H0, H1, H2, H3, !A, !B),
     list.map3_foldl2(P, T0, T1, T2, T3, !A, !B).
 
-list.map4_foldl(_, [], [], [], [], [], !A).
-list.map4_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], !A) :-
+map4_foldl(_, [], [], [], [], [], !A).
+map4_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], !A) :-
     P(H0, H1, H2, H3, H4, !A),
     list.map4_foldl(P, T0, T1, T2, T3, T4, !A).
 
-list.map_foldr(_, [], [], !A).
-list.map_foldr(P, [H0 | T0], [H | T], !A) :-
+map_foldr(_, [], [], !A).
+map_foldr(P, [H0 | T0], [H | T], !A) :-
     list.map_foldr(P, T0, T, !A),
     P(H0, H, !A).
 
-list.filter_map_foldl(_, [], [], !A).
-list.filter_map_foldl(P, [X | Xs], True, !A) :-
+filter_map_foldl(_, [], [], !A).
+filter_map_foldl(P, [X | Xs], True, !A) :-
     ( if P(X, Y, !A) then
         list.filter_map_foldl(P, Xs, TrueTail, !A),
         True = [Y | TrueTail]
@@ -2986,65 +2983,65 @@ list.filter_map_foldl(P, [X | Xs], True, !A) :-
         list.filter_map_foldl(P, Xs, True, !A)
     ).
 
-list.foldr(F, Xs, A) = B :-
+foldr(F, Xs, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     list.foldr(P, Xs, A, B).
 
-list.foldr(_, [], !A).
-list.foldr(P, [H | T], !A) :-
+foldr(_, [], !A).
+foldr(P, [H | T], !A) :-
     list.foldr(P, T, !A),
     P(H, !A).
 
-list.foldr2(_, [], !A, !B).
-list.foldr2(P, [H | T], !A, !B) :-
+foldr2(_, [], !A, !B).
+foldr2(P, [H | T], !A, !B) :-
     list.foldr2(P, T, !A, !B),
     P(H, !A, !B).
 
-list.foldr3(_, [], !A, !B, !C).
-list.foldr3(P, [H | T], !A, !B, !C) :-
+foldr3(_, [], !A, !B, !C).
+foldr3(P, [H | T], !A, !B, !C) :-
     list.foldr3(P, T, !A, !B, !C),
     P(H, !A, !B, !C).
 
-list.all_true(_P, []).
-list.all_true(P, [X | Xs]) :-
+all_true(_P, []).
+all_true(P, [X | Xs]) :-
     P(X),
     list.all_true(P, Xs).
 
-list.all_true_corresponding(_P, [], []).
-list.all_true_corresponding(_P, [], [_ | _]) :-
+all_true_corresponding(_P, [], []).
+all_true_corresponding(_P, [], [_ | _]) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.all_true_corresponding(_P, [_ | _], []) :-
+all_true_corresponding(_P, [_ | _], []) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.all_true_corresponding(P, [X | Xs], [Y | Ys]) :-
+all_true_corresponding(P, [X | Xs], [Y | Ys]) :-
     P(X, Y),
     list.all_true_corresponding(P, Xs, Ys).
 
-list.all_false(_P, []).
-list.all_false(P, [X | Xs]) :-
+all_false(_P, []).
+all_false(P, [X | Xs]) :-
     not P(X),
     list.all_false(P, Xs).
 
-list.all_false_corresponding(_P, [], []).
-list.all_false_corresponding(_P, [], [_ | _]) :-
+all_false_corresponding(_P, [], []).
+all_false_corresponding(_P, [], [_ | _]) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.all_false_corresponding(_P, [_ | _], []) :-
+all_false_corresponding(_P, [_ | _], []) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.all_false_corresponding(P, [X | Xs], [Y | Ys]) :-
+all_false_corresponding(P, [X | Xs], [Y | Ys]) :-
     not P(X, Y),
     list.all_false_corresponding(P, Xs, Ys).
 
-list.find_first_match(P, [H | T], FirstMatch) :-
+find_first_match(P, [H | T], FirstMatch) :-
     ( if P(H) then
         FirstMatch = H
     else
         list.find_first_match(P, T, FirstMatch)
     ).
 
-list.filter(P, Xs) = Trues :-
+filter(P, Xs) = Trues :-
     list.filter(P, Xs, Trues).
 
-list.filter(_, [],  []).
-list.filter(P, [H | T], True) :-
+filter(_, [],  []).
+filter(P, [H | T], True) :-
     ( if P(H) then
         list.filter(P, T, TrueTail),
         True = [H | TrueTail]
@@ -3052,11 +3049,11 @@ list.filter(P, [H | T], True) :-
         list.filter(P, T, True)
     ).
 
-list.negated_filter(P, Xs) = Falses :-
+negated_filter(P, Xs) = Falses :-
     list.negated_filter(P, Xs, Falses).
 
-list.negated_filter(_, [],  []).
-list.negated_filter(P, [H | T], False) :-
+negated_filter(_, [],  []).
+negated_filter(P, [H | T], False) :-
     ( if P(H) then
         list.negated_filter(P, T, False)
     else
@@ -3064,8 +3061,8 @@ list.negated_filter(P, [H | T], False) :-
         False = [H | FalseTail]
     ).
 
-list.filter(_, [],  [], []).
-list.filter(P, [H | T], True, False) :-
+filter(_, [],  [], []).
+filter(P, [H | T], True, False) :-
     ( if P(H) then
         list.filter(P, T, TrueTail, False),
         True = [H | TrueTail]
@@ -3074,12 +3071,12 @@ list.filter(P, [H | T], True, False) :-
         False = [H | FalseTail]
     ).
 
-list.filter_map(F, Xs) = Ys :-
+filter_map(F, Xs) = Ys :-
     P = ( pred(X::in, Y::out) is semidet :- Y = F(X) ),
     list.filter_map(P, Xs, Ys).
 
-list.filter_map(_, [],  []).
-list.filter_map(P, [H0 | T0], True) :-
+filter_map(_, [],  []).
+filter_map(P, [H0 | T0], True) :-
     ( if P(H0, H) then
         list.filter_map(P, T0, TrueTail),
         True = [H | TrueTail]
@@ -3087,8 +3084,8 @@ list.filter_map(P, [H0 | T0], True) :-
         list.filter_map(P, T0, True)
     ).
 
-list.filter_map(_, [], [], []).
-list.filter_map(P, [H0 | T0], True, False) :-
+filter_map(_, [], [], []).
+filter_map(P, [H0 | T0], True, False) :-
     ( if P(H0, H) then
         list.filter_map(P, T0, TrueTail, False),
         True = [H | TrueTail]
@@ -3097,14 +3094,14 @@ list.filter_map(P, [H0 | T0], True, False) :-
         False = [H0 | FalseTail]
     ).
 
-list.find_first_map(P, [X | Xs], A) :-
+find_first_map(P, [X | Xs], A) :-
     ( if P(X, A0) then
         A = A0
     else
         list.find_first_map(P, Xs, A)
     ).
 
-list.find_first_map2(P, [X | Xs], A, B) :-
+find_first_map2(P, [X | Xs], A, B) :-
     ( if P(X, A0, B0) then
         A = A0,
         B = B0
@@ -3112,7 +3109,7 @@ list.find_first_map2(P, [X | Xs], A, B) :-
         list.find_first_map2(P, Xs, A, B)
     ).
 
-list.find_first_map3(P, [X | Xs], A, B, C) :-
+find_first_map3(P, [X | Xs], A, B, C) :-
     ( if P(X, A0, B0, C0) then
         A = A0,
         B = B0,
@@ -3121,7 +3118,7 @@ list.find_first_map3(P, [X | Xs], A, B, C) :-
         list.find_first_map3(P, Xs, A, B, C)
     ).
 
-list.find_index_of_match(Match, [X | Xs], Index0, Index) :-
+find_index_of_match(Match, [X | Xs], Index0, Index) :-
     ( if Match(X) then
         Index = Index0
     else
@@ -3130,19 +3127,19 @@ list.find_index_of_match(Match, [X | Xs], Index0, Index) :-
 
 %---------------------------------------------------------------------------%
 
-list.sort_and_remove_dups(P, L0, L) :-
+sort_and_remove_dups(P, L0, L) :-
     list.sort(P, L0, L1),
     list.remove_adjacent_dups(P, L1, L).
 
-list.remove_adjacent_dups(_, [], []).
-list.remove_adjacent_dups(P, [X | Xs], L) :-
+remove_adjacent_dups(_, [], []).
+remove_adjacent_dups(P, [X | Xs], L) :-
     list.remove_adjacent_dups_2(P, Xs, X, L).
 
-:- pred list.remove_adjacent_dups_2(comparison_pred(T)::in(comparison_pred),
+:- pred remove_adjacent_dups_2(comparison_pred(T)::in(comparison_pred),
     list(T)::in, T::in, list(T)::out) is det.
 
-list.remove_adjacent_dups_2(_, [], X, [X]).
-list.remove_adjacent_dups_2(P, [X1 | Xs], X0, L) :-
+remove_adjacent_dups_2(_, [], X, [X]).
+remove_adjacent_dups_2(P, [X1 | Xs], X0, L) :-
     ( if P(X0, X1, (=)) then
         list.remove_adjacent_dups_2(P, Xs, X0, L)
     else
@@ -3150,11 +3147,11 @@ list.remove_adjacent_dups_2(P, [X1 | Xs], X0, L) :-
         L = [X0 | L0]
     ).
 
-list.sort(F, Xs) = Ys :-
+sort(F, Xs) = Ys :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     list.sort(P, Xs, Ys).
 
-list.sort(ComparePred, List, SortedList) :-
+sort(ComparePred, List, SortedList) :-
     list.length(List, N),
     ( if N = 0 then
         SortedList = []
@@ -3179,10 +3176,10 @@ list.sort(ComparePred, List, SortedList) :-
     % deconstruct the list. list.hosort is therefore actually det but the
     % compiler can't confirm it.
     %
-:- pred list.hosort(comparison_pred(X)::in(comparison_pred), int::in,
+:- pred hosort(comparison_pred(X)::in(comparison_pred), int::in,
     list(X)::in, list(X)::out, list(X)::out) is semidet.
 
-list.hosort(ComparePred, N, List, SortedInitialN, LeftOver) :-
+hosort(ComparePred, N, List, SortedInitialN, LeftOver) :-
     ( if N = 1 then
         List = [X | LeftOver],
         SortedInitialN = [X]
@@ -3207,15 +3204,15 @@ list.hosort(ComparePred, N, List, SortedInitialN, LeftOver) :-
         list.merge(ComparePred, SortedInitialN1, SortedNextN2, SortedInitialN)
     ).
 
-list.merge(CompareFunc, Xs, Ys) = XY :-
+merge(CompareFunc, Xs, Ys) = XY :-
     ComparePred =
         ( pred(X::in, Y::in, Res::out) is det :- Res = CompareFunc(X, Y) ),
     list.merge(ComparePred, Xs, Ys, XY).
 
-list.merge(_ComparePred, [], [], []).
-list.merge(_ComparePred, [], [Y | Ys], [Y | Ys]).
-list.merge(_ComparePred, [X | Xs], [], [X | Xs]).
-list.merge(ComparePred, [X | Xs], [Y | Ys], XYs) :-
+merge(_ComparePred, [], [], []).
+merge(_ComparePred, [], [Y | Ys], [Y | Ys]).
+merge(_ComparePred, [X | Xs], [], [X | Xs]).
+merge(ComparePred, [X | Xs], [Y | Ys], XYs) :-
     ( if ComparePred(X, Y, (>)) then
         list.merge(ComparePred, [X | Xs], Ys, XYsTail),
         XYs = [Y | XYsTail]
@@ -3224,15 +3221,15 @@ list.merge(ComparePred, [X | Xs], [Y | Ys], XYs) :-
         XYs = [X | XYsTail]
     ).
 
-list.merge_and_remove_dups(CompareFunc, Xs, Ys) = XY :-
+merge_and_remove_dups(CompareFunc, Xs, Ys) = XY :-
     ComparePred =
         ( pred(X::in, Y::in, Res::out) is det :- Res = CompareFunc(X, Y) ),
     list.merge_and_remove_dups(ComparePred, Xs, Ys, XY).
 
-list.merge_and_remove_dups(_ComparePred, [], [], []).
-list.merge_and_remove_dups(_ComparePred, [], [Y | Ys], [Y | Ys]).
-list.merge_and_remove_dups(_ComparePred, [X | Xs], [], [X | Xs]).
-list.merge_and_remove_dups(ComparePred, [X | Xs], [Y | Ys], XYs) :-
+merge_and_remove_dups(_ComparePred, [], [], []).
+merge_and_remove_dups(_ComparePred, [], [Y | Ys], [Y | Ys]).
+merge_and_remove_dups(_ComparePred, [X | Xs], [], [X | Xs]).
+merge_and_remove_dups(ComparePred, [X | Xs], [Y | Ys], XYs) :-
     ComparePred(X, Y, C),
     (
         C = (<),
@@ -3254,17 +3251,17 @@ L1 ++ L2 = list.append(L1, L2).
 
 %---------------------------------------------------------------------------%
 
-list.series(I, OK, Succ) = Series :-
+series(I, OK, Succ) = Series :-
     % In order to ensure that our stack consumption is constant,
     % not linear, we build the series "backwards" and then reverse it.
     list.series_2(I, OK, Succ, [], RevSeries),
     list.reverse(RevSeries, Series).
 
-:- pred list.series_2(T, pred(T), func(T) = T, list(T), list(T)).
-:- mode list.series_2(in, pred(in) is semidet, func(in) = out is det,
-    in, out) is det.
+:- pred series_2(T, pred(T), func(T) = T, list(T), list(T)).
+:- mode series_2(in, pred(in) is semidet, func(in) = out is det, in, out)
+    is det.
 
-list.series_2(I, OK, Succ, !RevSeries) :-
+series_2(I, OK, Succ, !RevSeries) :-
     ( if OK(I) then
         !:RevSeries = [I | !.RevSeries],
         list.series_2(Succ(I), OK, Succ, !RevSeries)
@@ -3290,17 +3287,17 @@ successive_integers(Lo, Hi, !Ints) :-
 
 %---------------------------------------------------------------------------%
 
-list.head([X | _]) = X.
+head([X | _]) = X.
 
-list.det_head([]) = _ :-
+det_head([]) = _ :-
     unexpected($module, $pred, "empty list").
-list.det_head([X | _]) = X.
+det_head([X | _]) = X.
 
-list.tail([_ | Xs]) = Xs.
+tail([_ | Xs]) = Xs.
 
-list.det_tail([]) = _ :-
+det_tail([]) = _ :-
     unexpected($module, $pred, "empty list").
-list.det_tail([_ | Xs]) = Xs.
+det_tail([_ | Xs]) = Xs.
 
 %---------------------------------------------------------------------------%
 
