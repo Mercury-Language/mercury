@@ -309,6 +309,9 @@ Changes to the Mercury standard library:
 * The takewhile/4 predicate has been deprecated in the list module,
   take_while/4 can be used instead.
 
+* The take/3 and drop/3 predicates in the list module have been modified
+  so that they fail if their first argument is less than zero.
+
 * The following predicate and function in the builtin module have been
   deprecated and will be removed in a future release:
 

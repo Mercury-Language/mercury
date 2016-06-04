@@ -183,6 +183,7 @@ ORDINARY_PROGS =	\
 	lexer_bigint \
 	lexer_zero \
 	list_series_int \
+	list_split_take_drop \
 	lookup_disj \
 	lookup_switch_simple \
 	lookup_switch_simple_bitvec \

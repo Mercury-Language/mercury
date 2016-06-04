@@ -1,0 +1,76 @@
+split_list(int.min_int, []) ===> <<FALSE>>
+drop(int.min_int, []) ===> <<FALSE>>
+take(int.min_int, []) ===> <<FALSE>>
+
+split_list(int.min_int, [111]) ===> <<FALSE>>
+drop(int.min_int, [111]) ===> <<FALSE>>
+take(int.min_int, [111]) ===> <<FALSE>>
+
+split_list(int.min_int, [111, 222]) ===> <<FALSE>>
+drop(int.min_int, [111, 222]) ===> <<FALSE>>
+take(int.min_int, [111, 222]) ===> <<FALSE>>
+
+split_list(-1, []) ===> <<FALSE>>
+drop(-1, []) ===> <<FALSE>>
+take(-1, []) ===> <<FALSE>>
+
+split_list(-1, [111]) ===> <<FALSE>>
+drop(-1, [111]) ===> <<FALSE>>
+take(-1, [111]) ===> <<FALSE>>
+
+split_list(-1, [111, 222]) ===> <<FALSE>>
+drop(-1, [111, 222]) ===> <<FALSE>>
+take(-1, [111, 222]) ===> <<FALSE>>
+
+split_list(0, []) ===> ([], [])
+drop(0, []) ===> []
+take(0, []) ===> []
+
+split_list(0, [111]) ===> ([], [111])
+drop(0, [111]) ===> [111]
+take(0, [111]) ===> []
+
+split_list(0, [111, 222]) ===> ([], [111, 222])
+drop(0, [111, 222]) ===> [111, 222]
+take(0, [111, 222]) ===> []
+
+split_list(1, []) ===> <<FALSE>>
+drop(1, []) ===> <<FALSE>>
+take(1, []) ===> <<FALSE>>
+
+split_list(1, [111]) ===> ([111], [])
+drop(1, [111]) ===> []
+take(1, [111]) ===> [111]
+
+split_list(1, [111, 222]) ===> ([111], [222])
+drop(1, [111, 222]) ===> [222]
+take(1, [111, 222]) ===> [111]
+
+split_list(2, []) ===> <<FALSE>>
+drop(2, []) ===> <<FALSE>>
+take(2, []) ===> <<FALSE>>
+
+split_list(2, [111]) ===> <<FALSE>>
+drop(2, [111]) ===> <<FALSE>>
+take(2, [111]) ===> <<FALSE>>
+
+split_list(2, [111, 222]) ===> ([111, 222], [])
+drop(2, [111, 222]) ===> []
+take(2, [111, 222]) ===> [111, 222]
+
+split_list(2, [111, 222, 333]) ===> ([111, 222], [333])
+drop(2, [111, 222, 333]) ===> [333]
+take(2, [111, 222, 333]) ===> [111, 222]
+
+split_list(int.max_int, []) ===> <<FALSE>>
+drop(int.max_int, []) ===> <<FALSE>>
+take(int.max_int, []) ===> <<FALSE>>
+
+split_list(int.max_int, [111]) ===> <<FALSE>>
+drop(int.max_int, [111]) ===> <<FALSE>>
+take(int.max_int, [111]) ===> <<FALSE>>
+
+split_list(int.max_int, [111, 222]) ===> <<FALSE>>
+drop(int.max_int, [111, 222]) ===> <<FALSE>>
+take(int.max_int, [111, 222]) ===> <<FALSE>>
+

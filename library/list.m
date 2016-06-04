@@ -206,34 +206,35 @@
 :- pred same_length3(list(T1)::in, list(T2)::in, list(T3)::in)
     is semidet.
 
-    % split_list(Len, List, Start, End):
+    % split_list(N, List, Start, End):
     %
-    % splits `List' into a prefix `Start' of length `Len', and a remainder
-    % `End'. See also: take, drop and split_upto.
+    % splits `List' into a prefix `Start' of length `N', and a remainder
+    % `End'. Fails if `N' is not in `0 .. length(List)'.
+    % See also: take, drop and split_upto.
     %
 :- pred split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
     is semidet.
 
-    % det_split_list(Len, List, Start, End):
+    % det_split_list(N, List, Start, End):
     %
     % A deterministic version of split_list, which aborts instead
-    % of failing if Len > length(List).
+    % of failing if `N' is not in 0 .. length(List).
     %
 :- pred det_split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
     is det.
 
-    % split_upto(Len, List, Start, End):
+    % split_upto(N, List, Start, End):
     %
-    % splits `List' into a prefix `Start' of length `min(Len, length(List))',
+    % splits `List' into a prefix `Start' of length `min(N, length(List))',
     % and a remainder `End'. See also: split_list, take, drop.
     %
 :- pred split_upto(int::in, list(T)::in, list(T)::out, list(T)::out)
     is det.
 
-    % take(Len, List, Start):
+    % take(N, List, Start):
     %
-    % `Start' is the first `Len' elements of `List'. Fails if `List' has
-    % less than `Len' elements. See also: split_list.
+    % `Start' is the first `Len' elements of `List'.
+    % Fails if `N' is not in `0 .. length(List)'.
     %
 :- pred take(int::in, list(T)::in, list(T)::out) is semidet.
 
@@ -251,18 +252,18 @@
 :- pred take_upto(int::in, list(T)::in, list(T)::out) is det.
 :- func take_upto(int, list(T)) = list(T).
 
-    % drop(Len, List, End):
+    % drop(N, List, End):
     %
-    % `End' is the remainder of `List' after removing the first `Len' elements.
-    % Fails if `List' does not have at least `Len' elements.
+    % `End' is the remainder of `List' after removing the first `N' elements.
+    % Fails if `N' is not in `0 .. length(List)'.
     % See also: split_list.
     %
 :- pred drop(int::in, list(T)::in, list(T)::out) is semidet.
 
-    % det_drop(Len, List, End):
+    % det_drop(N, List, End):
     %
-    % `End' is the remainder of `List' after removing the first `Len' elements.
-    % Aborts if `List' does not have at least `Len' elements.
+    % `End' is the remainder of `List' after removing the first `N' elements.
+    % Aborts if `N' is not in `0 .. length(List)'.
     % See also: split_list.
     %
 :- pred det_drop(int::in, list(T)::in, list(T)::out) is det.
@@ -2307,14 +2308,14 @@ zip2(As, [B | Bs], [B | Cs]) :-
 %---------------------------------------------------------------------------%
 
 split_list(N, List, Start, End) :-
-    ( if N = 0 then
-        Start = [],
-        End = List
-    else
-        N > 0,
+    ( if N > 0 then
         List = [Head | Tail],
         list.split_list(N - 1, Tail, StartTail, End),
         Start = [Head | StartTail]
+    else
+        N = 0,
+        Start = [],
+        End = List
     ).
 
 det_split_list(N, List, Start, End) :-
@@ -2337,12 +2338,15 @@ split_upto(N, List, Start, End) :-
         End = List
     ).
 
+%---------------------------------------------------------------------------%
+
 take(N, Xs, InitialXs) :-
     ( if N > 0 then
         Xs = [HeadX | TailXs],
         list.take(N - 1, TailXs, InitialXsTail),
         InitialXs = [HeadX | InitialXsTail]
     else
+        N = 0,
         InitialXs = []
     ).
 
@@ -2350,7 +2354,7 @@ det_take(N, Xs, InitialXs) :-
     ( if list.take(N, Xs, InitialXsPrime) then
         InitialXs = InitialXsPrime
     else
-        unexpected($file, $pred, "not enough elements")
+        unexpected($file, $pred, "index out of range")
     ).
 
 take_upto(N, Xs) = InitialXs :-
@@ -2363,28 +2367,25 @@ take_upto(N, Xs, InitialXs) :-
         InitialXs = Xs
     ).
 
+%---------------------------------------------------------------------------%
+
 drop(N, Xs, FinalXs) :-
     ( if N > 0 then
         Xs = [_ | Tail],
         list.drop(N - 1, Tail, FinalXs)
     else
+        N = 0,
         FinalXs = Xs
     ).
 
 det_drop(N, Xs, FinalXs) :-
-    ( if N > 0 then
-        (
-            Xs = [_ | TailXs],
-            list.det_drop(N - 1, TailXs, FinalXs)
-        ;
-            Xs = [],
-            unexpected($module, $pred, "not enough elements")
-        )
+    ( if list.drop(N, Xs, FinalXsPrime) then
+        FinalXs = FinalXsPrime
     else
-        FinalXs = Xs
+        unexpected($file, $pred, "index out of range")
     ).
 
-%-----------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 take_while(_, [], [], []).
 take_while(P, [X | Xs], Ins, Outs) :-
@@ -2410,6 +2411,8 @@ take_while(P, [X | Xs], Start) :-
 
 take_while(P, Xs) = Start :-
     take_while(P, Xs, Start).
+
+%---------------------------------------------------------------------------%
 
 drop_while(_, [], []).
 drop_while(P, [X | Xs], End) :-
