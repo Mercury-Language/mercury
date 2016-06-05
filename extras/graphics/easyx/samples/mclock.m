@@ -50,7 +50,7 @@ main(!IO) :-
 draw_clock(Window, Blue, White, !IO) :-
     
     time.time(Time, !IO),
-    TM   = localtime(Time),
+    localtime(Time, TM, !IO),
     Hour = TM^tm_hour,
     Min  = TM^tm_min,
 

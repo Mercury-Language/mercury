@@ -1150,7 +1150,7 @@ unpack_date(date(Year, Month, Day, Hour, Minute, Second, MicroSecond),
 
 current_local_time(Now, !IO) :-
     time.time(TimeT, !IO),
-    TM = time.localtime(TimeT),
+    time.localtime(TimeT, TM, !IO),
     Now = tm_to_date(TM).
 
 current_utc_time(Now, !IO) :-
@@ -1172,7 +1172,7 @@ tm_to_date(TM) = Date :-
 
 local_time_offset(TZ, !IO) :-
     time.time(TimeT, !IO),
-    LocalTM = time.localtime(TimeT),
+    time.localtime(TimeT, LocalTM, !IO),
     GMTM = time.gmtime(TimeT),
     LocalTime = tm_to_date(LocalTM),
     GMTime = tm_to_date(GMTM),

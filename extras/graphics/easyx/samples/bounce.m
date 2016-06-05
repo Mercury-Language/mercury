@@ -240,7 +240,7 @@ main(!IO) :-
     easyx.get_colour_from_name(Window, "yellow", Yellow, !IO),
     Colours = [Black, White, Red, Green, Blue, Yellow],
     time.time(Time, !IO),
-    TM = localtime(Time),
+    localtime(Time, TM, !IO),
     random.init(60 * TM^tm_min + TM^tm_sec, Rnd0),
     add_new_ball(Colours, [], Objects, Rnd0, Rnd),
     Paddle = new_paddle(White),

@@ -73,7 +73,7 @@
 
 main(!IO) :-
 	time.time(Now, !IO),
-	time.localtime(Now) = LocalNow,
+	time.localtime(Now, LocalNow, !IO),
 	random.init(LocalNow ^ tm_min * 60 + LocalNow ^ tm_sec, RS),
 	curs.start(!IO),
 	curs.nodelay(yes, !IO),

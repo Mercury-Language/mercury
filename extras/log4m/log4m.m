@@ -661,7 +661,7 @@ set_log(Log, !IO) :-
 
 write_format(A, Id, Level, _Message, date, !IO) :-
     time(Time, !IO),
-    TM = localtime(Time),
+    localtime(Time, TM, !IO),
 	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, _YD, _WD, _DST),
     Date = string__format("%4d-%02d-%02d %02d:%02d:%02d",
             [i(Yr+1900), i(Mnt+1), i(MD), i(Hrs), i(Min), i(Sec)]),

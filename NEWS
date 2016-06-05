@@ -339,6 +339,17 @@ Changes to the Mercury standard library:
 
    - is_empty/1
 
+* The following predicates have been added to the time module:
+
+   - localtime/4
+   - mktime/4
+
+  The following functions in the time module have been deprecated:
+
+   - localtime/1
+   - mktime/1
+   - ctime/1
+
 Changes to the Mercury compiler:
 
 * We have added a new option --warn-dead-preds. While the existing option

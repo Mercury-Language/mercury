@@ -150,26 +150,38 @@
     %
 :- func difftime(time_t, time_t) = float.
 
-    % localtime(Time) = TM:
+    % localtime(Time, TM, !IO):
     %
-    % Converts the calendar time `Time' to a broken-down representation,
-    % expressed relative to the user's specified time zone.
+    % Converts the (simple) calendar time `Time' to a broken-down
+    % representation `TM', expressed relative to the current time zone.
     %
+:- pred localtime(time_t::in, tm::out, io::di, io::uo) is det.
+
+    % This function is deprecated because the current time zone is not
+    % reflected in its arguments.
+    %
+:- pragma obsolete(localtime/1).
 :- func localtime(time_t) = tm.
 
     % gmtime(Time) = TM:
     %
-    % Converts the calendar time `Time' to a broken-down representation,
-    % expressed as UTC (Universal Coordinated Time).
+    % Converts the (simple) calendar time `Time' to a broken-down
+    % representation `TM', expressed as UTC (Universal Coordinated Time).
     %
 :- func gmtime(time_t) = tm.
 
     % mktime(TM) = Time:
     %
-    % Converts the broken-down local time value to calendar time.
-    % It also normalises the value by filling in day of week and day of year
-    % based on the other components.
+    % Converts the broken-down time value `TM' to a (simple) calendar time
+    % `Time'. That is, `TM' is relative to the current time zone.
+    % The `tm_wday' and `tm_yday' fields of `TM' are ignored.
     %
+:- pred mktime(tm::in, time_t::out, io::di, io::uo) is det.
+
+    % This function is deprecated because the current time zone is not
+    % reflected in its arguments.
+    %
+:- pragma obsolete(mktime/1).
 :- func mktime(tm) = time_t.
 
 %---------------------------------------------------------------------------%
@@ -186,6 +198,13 @@
     % Converts the calendar time value `Time' to a string in a standard format
     % (i.e. same as "asctime (localtime (<time>))").
     %
+    % This function is deprecated because the current time zone is not
+    % reflected in its arguments. New code should write:
+    %
+    %   localtime(Time, TM, !IO),
+    %   String = asctime(TM)
+    %
+:- pragma obsolete(ctime/1).
 :- func ctime(time_t) = string.
 
 %---------------------------------------------------------------------------%
@@ -575,17 +594,27 @@ time.difftime(time_t(T1), time_t(T0)) = Diff :-
 
 %---------------------------------------------------------------------------%
 
-time.localtime(time_t(Time)) = TM :-
-    time.c_localtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
+:- pragma promise_pure(time.localtime/4).
+
+time.localtime(time_t(Time), TM, !IO) :-
+    semipure time.c_localtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
     TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
 
-:- pred time.c_localtime(time_t_rep::in, int::out, int::out, int::out,
+    % localtime/1 is not really pure, that's why it is deprecated.
+    %
+:- pragma promise_pure(time.localtime/1).
+
+time.localtime(time_t(Time)) = TM :-
+    semipure time.c_localtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
+    TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
+
+:- semipure pred time.c_localtime(time_t_rep::in, int::out, int::out, int::out,
     int::out, int::out, int::out, int::out, int::out, int::out) is det.
 
 :- pragma foreign_proc("C",
     time.c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_pure, not_thread_safe],
+    [will_not_call_mercury, promise_semipure, not_thread_safe],
 "
     struct tm   *p;
     time_t      t;
@@ -609,7 +638,7 @@ time.localtime(time_t(Time)) = TM :-
 :- pragma foreign_proc("C#",
     time.c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_semipure],
 "{
     System.DateTime t = Time.ToLocalTime();
 
@@ -636,7 +665,7 @@ time.localtime(time_t(Time)) = TM :-
 :- pragma foreign_proc("Java",
     time.c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_pure, may_not_duplicate],
+    [will_not_call_mercury, promise_semipure, may_not_duplicate],
 "
     java.util.GregorianCalendar gc = new java.util.GregorianCalendar();
 
@@ -813,23 +842,32 @@ int_to_maybe_dst(N) = DST :-
 
 %---------------------------------------------------------------------------%
 
-%:- func time.mktime(tm) = time_t.
+:- pragma promise_pure(time.mktime/4).
+
+time.mktime(TM, time_t(Time), !IO) :-
+    TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
+    semipure time.c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
+        maybe_dst_to_int(DST), Time).
+
+    % mktime/1 is not really pure, that's why it is deprecated.
+    %
+:- pragma promise_pure(time.mktime/1).
 
 time.mktime(TM) = time_t(Time) :-
     TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
-    time.c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
+    semipure time.c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
         maybe_dst_to_int(DST), Time).
 
     % NOTE: mktime() modifies tzname so is strictly impure.
     % We do not expose tzname through a Mercury interface, though.
     %
-:- pred time.c_mktime(int::in, int::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, int::in, time_t_rep::out) is det.
+:- semipure pred time.c_mktime(int::in, int::in, int::in, int::in, int::in,
+    int::in, int::in, int::in, int::in, time_t_rep::out) is det.
 
 :- pragma foreign_proc("C",
     time.c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         YD::in, WD::in, N::in, Time::out),
-    [will_not_call_mercury, promise_pure, not_thread_safe],
+    [will_not_call_mercury, promise_semipure, not_thread_safe],
  "{
     struct tm t;
 
@@ -848,7 +886,7 @@ time.mktime(TM) = time_t(Time) :-
 :- pragma foreign_proc("C#",
     time.c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         _YD::in, _WD::in, _N::in, Time::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_semipure],
  "{
     // We don't use YD, WD and N.
     // XXX Ignoring N the daylight savings time indicator is bad
@@ -864,7 +902,7 @@ time.mktime(TM) = time_t(Time) :-
 :- pragma foreign_proc("Java",
     time.c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         _YD::in, _WD::in, N::in, Time::out),
-    [will_not_call_mercury, promise_pure, may_not_duplicate],
+    [will_not_call_mercury, promise_semipure, may_not_duplicate],
 "
     java.util.GregorianCalendar gc = new java.util.GregorianCalendar(
         Yr + 1900, Mnt, MD, Hrs, Min, Sec);
