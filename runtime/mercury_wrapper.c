@@ -831,6 +831,18 @@ mercury_runtime_init(int argc, char **argv)
     #error "MR_HIGHTAGS is incompatible with MR_CONSERVATIVE_GC"
   #endif
 
+/*
+ * Boehm will call this callback when it runs out of memory, We print an
+ * error and abort.  Our error is printed after Boehm GC's on error, so we
+ * don't need to say much.
+ */
+#ifdef MR_BOEHM_GC
+static void *MR_oom_func(size_t bytes)
+{
+    MR_fatal_error("Could not allocate %d bytes, exiting.\n", bytes);
+}
+#endif
+
 void
 MR_init_conservative_GC(void)
 {
@@ -897,6 +909,8 @@ MR_init_conservative_GC(void)
             GC_REGISTER_DISPLACEMENT(i);
         }
     }
+
+    GC_set_oom_fn(MR_oom_func);
 
   #endif /* MR_BOEHM_GC */
 }
