@@ -163,7 +163,7 @@
 % XXX There are problems with the RTTI definitions for the Java back-end.
 % Under the current system, the definitions are output as static variables
 % with static initializers, ordered so that subdefinitions always appear before
-% the definition which uses them. This is neccessary because in Java, static
+% the definition which uses them. This is necessary because in Java, static
 % initializers are performed at runtime in textual order, and if a definition
 % relies on another static variable for its constructor but said variable has
 % not been initialized, then it is treated as `null' by the JVM with no
@@ -315,7 +315,7 @@
 % then an uncooperative target language implementation could just optimize
 % them away, since they are assignments to dead variables. Given this need
 % for the MLDS target back-end's cooperation, it makes sense to assign as
-% much of the responsibily for this task as is possible to the MLDS target
+% much of the responsibility for this task as is possible to the MLDS target
 % back-end, to keep the front-end simple and to keep the responsibility
 % for this task in one place.
 %
@@ -680,7 +680,7 @@
 :- type mlds_class_kind
     --->    mlds_class     % A generic class: can inherit other classes and
                            % interfaces (but most targets will only support
-                           % single inheritence, so usually there will be
+                           % single inheritance, so usually there will be
                            % at most one class).
 
     ;       mlds_package   % A class with only static members (can only
@@ -764,7 +764,7 @@
             % needed to unwind the stack when a `do_commit' is executed.
             %
             % For the C back-end, if we're implementing do_commit/try_commit
-            % using setjmp/longmp, then mlds_commit_type will be jmp_buf.
+            % using setjmp/longjmp, then mlds_commit_type will be jmp_buf.
             % If we're implementing them using GNU C nested functions, then
             % it will be `__label__'; in this case, the local variable
             % of this "type" is actually a label, and doing a goto to that
