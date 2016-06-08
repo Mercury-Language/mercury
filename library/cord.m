@@ -94,11 +94,13 @@
     % An O(1) operation.
     %
 :- func cons(T, cord(T)) = cord(T).
+:- pred cons(T::in, cord(T)::in, cord(T)::out) is det.
 
     % list(snoc(C, X)) = list(C) ++ [X]
     % An O(1) operation.
     %
 :- func snoc(cord(T), T) = cord(T).
+:- pred snoc(T::in, cord(T)::in, cord(T)::out) is det.
 
     % list(CA ++ CB) = list(CA) ++ list(CB)
     % An O(1) operation.
@@ -361,6 +363,9 @@ cons(X, C) = XC :-
         XC = nonempty_cord(branch_node(unit_node(X), N))
     ).
 
+cons(X, !C) :-
+    !:C = cons(X, !.C).
+
 %---------------------------------------------------------------------------%
 
 snoc(C, X) = CX :-
@@ -371,6 +376,9 @@ snoc(C, X) = CX :-
         C = nonempty_cord(N),
         CX = nonempty_cord(branch_node(N, unit_node(X)))
     ).
+
+snoc(X, !C) :-
+    !:C = snoc(!.C, X).
 
 %---------------------------------------------------------------------------%
 

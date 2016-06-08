@@ -330,10 +330,12 @@ Changes to the Mercury standard library:
   Existing code that uses these modes should replace their use with `in'
   or `out' respectively.
 
-* The following functions have been added to the cord module
+* The following predicates and functions have been added to the cord module:
 
    - to_list/1     (synonym for the existing list/1 function)
    - to_rev_list/1 (synonym for the existing rev_list/1 function)
+   - cons/3
+   - snoc/3
 
 * The following function has been added to the array2d module
 
