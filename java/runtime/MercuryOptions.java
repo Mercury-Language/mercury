@@ -17,7 +17,7 @@ public class MercuryOptions {
 
     /**
      * Create a new MercuryOptions object.
-     * This constructor is package-private (no access declration).
+     * This constructor is package-private (no access declaration).
      */
     MercuryOptions()
     {
