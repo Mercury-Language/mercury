@@ -1,0 +1,39 @@
+take_upto(int.min_int, []) ===> []
+take_upto(int.min_int, [111]) ===> [111]
+take_upto(int.min_int, [111, 222]) ===> [111, 222]
+take_upto(-1, []) ===> []
+take_upto(-1, [111]) ===> [111]
+take_upto(-1, [111, 222]) ===> [111, 222]
+take_upto(0, []) ===> []
+take_upto(0, [111]) ===> []
+take_upto(0, [111, 222]) ===> []
+take_upto(1, []) ===> []
+take_upto(1, [111]) ===> [111]
+take_upto(1, [111, 222]) ===> [111]
+take_upto(2, []) ===> []
+take_upto(2, [111]) ===> [111]
+take_upto(2, [111, 222]) ===> [111, 222]
+take_upto(2, [111, 222, 333]) ===> [111, 222]
+take_upto(int.max_int, []) ===> []
+take_upto(int.max_int, [111]) ===> [111]
+take_upto(int.max_int, [111, 222]) ===> [111, 222]
+
+split_upto(int.min_int, []) ===> ([], [])
+split_upto(int.min_int, [111]) ===> ([], [111])
+split_upto(int.min_int, [111, 222]) ===> ([], [111, 222])
+split_upto(-1, []) ===> ([], [])
+split_upto(-1, [111]) ===> ([], [111])
+split_upto(-1, [111, 222]) ===> ([], [111, 222])
+split_upto(0, []) ===> ([], [])
+split_upto(0, [111]) ===> ([], [111])
+split_upto(0, [111, 222]) ===> ([], [111, 222])
+split_upto(1, []) ===> ([], [])
+split_upto(1, [111]) ===> ([111], [])
+split_upto(1, [111, 222]) ===> ([111], [222])
+split_upto(2, []) ===> ([], [])
+split_upto(2, [111]) ===> ([111], [])
+split_upto(2, [111, 222]) ===> ([111, 222], [])
+split_upto(2, [111, 222, 333]) ===> ([111, 222], [333])
+split_upto(int.max_int, []) ===> ([], [])
+split_upto(int.max_int, [111]) ===> ([111], [])
+split_upto(int.max_int, [111, 222]) ===> ([111, 222], [])
