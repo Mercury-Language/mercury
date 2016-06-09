@@ -837,7 +837,7 @@ mercury_runtime_init(int argc, char **argv)
  * don't need to say much.
  */
 #ifdef MR_BOEHM_GC
-static void *MR_oom_func(size_t bytes)
+static void * GC_CALLBACK MR_oom_func(size_t bytes)
 {
     MR_fatal_error("Could not allocate %d bytes, exiting.\n", bytes);
 }
