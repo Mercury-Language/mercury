@@ -312,7 +312,6 @@ ORDINARY_PROGS =	\
 	switch_detect \
 	system_sort \
 	tag_switch_dup_label \
-	take_split_upto \
 	term_io_test \
 	term_to_univ_test \
 	test234_sorted_insert \
@@ -620,6 +619,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		map_merge_test \
 		mutable_excp \
 		null_char \
+		take_split_upto \
 		test_array2d \
 		test_injection \
 		try_syntax_1 \

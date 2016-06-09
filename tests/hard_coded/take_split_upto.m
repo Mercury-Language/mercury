@@ -9,7 +9,7 @@
 
 :- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- pred main(io::di, io::uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -17,6 +17,7 @@
 :- implementation.
 
 :- import_module assoc_list.
+:- import_module exception.
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
@@ -30,21 +31,37 @@ main(!IO) :-
     io.nl(!IO),
     list.foldl(run_split_upto_test, tests, !IO).
 
-:- pred run_take_upto_test(pair(int, list(int))::in, io::di, io::uo) is det.
+:- pred run_take_upto_test(pair(int, list(int))::in, io::di, io::uo)
+    is cc_multi.
 
 run_take_upto_test(N - List, !IO) :-
     NStr = describe_int(N),
     io.format("take_upto(%s, %s) ===> ", [s(NStr), s(string(List))], !IO),
-    list.take_upto(N, List, Start),
-    io.format("%s\n", [s(string(Start))], !IO).
+    (
+        try [] (
+            list.take_upto(N, List, Start)
+        )
+    then
+        io.format("%s\n", [s(string(Start))], !IO)
+    catch_any _ ->
+        io.write_string("<<exception>>\n", !IO)
+    ).
 
-:- pred run_split_upto_test(pair(int, list(int))::in, io::di, io::uo) is det.
+:- pred run_split_upto_test(pair(int, list(int))::in, io::di, io::uo)
+    is cc_multi.
 
 run_split_upto_test(N - List, !IO) :-
     NStr = describe_int(N),
     io.format("split_upto(%s, %s) ===> ", [s(NStr), s(string(List))], !IO),
-    list.split_upto(N, List, Start, End),
-    io.format("(%s, %s)\n", [s(string(Start)), s(string(End))], !IO).
+    (
+        try [] (
+            list.split_upto(N, List, Start, End)
+        )
+    then
+        io.format("(%s, %s)\n", [s(string(Start)), s(string(End))], !IO)
+    catch_any _ ->
+        io.write_string("<<exception>>\n", !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

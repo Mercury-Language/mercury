@@ -226,7 +226,8 @@
     % split_upto(N, List, Start, End):
     %
     % splits `List' into a prefix `Start' of length `min(N, length(List))',
-    % and a remainder `End'. See also: split_list, take, drop.
+    % and a remainder `End'.   Throws an exception if `N' < 0.
+    % See also: split_list, take, drop.
     %
 :- pred split_upto(int::in, list(T)::in, list(T)::out, list(T)::out)
     is det.
@@ -247,7 +248,7 @@
     % take_upto(Len, List, Start):
     %
     % `Start' is the first `Len' elements of `List'. If `List' has less than
-    % `Len' elements, return the entire list.
+    % `Len' elements, return the entire list.  Throws an exception if `N' < 0.
     %
 :- pred take_upto(int::in, list(T)::in, list(T)::out) is det.
 :- func take_upto(int, list(T)) = list(T).
@@ -2326,12 +2327,23 @@ det_split_list(N, List, Start, End) :-
         unexpected($module, $pred, "index out of range")
     ).
 
+
 split_upto(N, List, Start, End) :-
+    ( if N < 0 then
+        unexpected($file, $pred, "index is negative")
+    else
+        do_split_upto(N, List, Start, End)
+    ).
+
+:- pred do_split_upto(int::in, list(T)::in, list(T)::out, list(T)::out)
+    is det.
+
+do_split_upto(N, List, Start, End) :-
     ( if
         N > 0,
         List = [Head | Tail]
     then
-        split_upto(N - 1, Tail, StartTail, End),
+        do_split_upto(N - 1, Tail, StartTail, End),
         Start = [Head | StartTail]
     else
         Start = [],
@@ -2361,6 +2373,15 @@ take_upto(N, Xs) = InitialXs :-
     list.take_upto(N, Xs, InitialXs).
 
 take_upto(N, Xs, InitialXs) :-
+    ( if N < 0 then
+        unexpected($file, $pred, "index is negative")
+    else
+        do_take_upto(N, Xs, InitialXs)
+    ).
+
+:- pred do_take_upto(int::in, list(T)::in, list(T)::out) is det.
+
+do_take_upto(N, Xs, InitialXs) :-
     ( if list.take(N, Xs, InitialXsPrime) then
         InitialXs = InitialXsPrime
     else

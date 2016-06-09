@@ -312,6 +312,10 @@ Changes to the Mercury standard library:
 * The take/3 and drop/3 predicates in the list module have been modified
   so that they fail if their first argument is less than zero.
 
+* The split_upto/4 and take_upto/3 predicates and take_upto/2 function
+  in the list module have been modified so that they throw an exception
+  if their first argument is negative.
+
 * The following predicate and function in the builtin module have been
   deprecated and will be removed in a future release:
 
