@@ -5173,12 +5173,12 @@ base_string_to_int(Base, String, Int) :-
     End = count_code_units(String),
     ( if Char = ('-') then
         End > 1,
-        foldl_between(accumulate_negative_int(Base), String, 1, End, 0, Int)
+        foldl_between(base_negative_accumulator(Base), String, 1, End, 0, Int)
     else if Char = ('+') then
         End > 1,
-        foldl_between(accumulate_int(Base), String, 1, End, 0, Int)
+        foldl_between(base_accumulator(Base), String, 1, End, 0, Int)
     else
-        foldl_between(accumulate_int(Base), String, 0, End, 0, Int)
+        foldl_between(base_accumulator(Base), String, 0, End, 0, Int)
     ).
 
 det_base_string_to_int(Base, S) = N :-
@@ -5186,6 +5186,27 @@ det_base_string_to_int(Base, S) = N :-
         N = N0
     else
         unexpected($pred, "conversion failed")
+    ).
+
+:- func base_accumulator(int) = pred(char, int, int).
+:- mode base_accumulator(in) = out(pred(in, in, out) is semidet) is det.
+
+base_accumulator(Base) = Pred :-
+    % Avoid allocating a closure for the common bases. A more general, but
+    % finicky, way to avoid the allocation is to inline foldl_between so that
+    % the higher-order calls in base_string_to_int can be specialised.
+    % The redundant closures will also need to be deleted by unused argument
+    % elimination.
+    ( if Base = 10 then
+        Pred = accumulate_int(10)
+    else if Base = 16 then
+        Pred = accumulate_int(16)
+    else if Base = 8 then
+        Pred = accumulate_int(8)
+    else if Base = 2 then
+        Pred = accumulate_int(2)
+    else
+        Pred = accumulate_int(Base)
     ).
 
 :- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
@@ -5196,6 +5217,24 @@ accumulate_int(Base, Char, N0, N) :-
     % Fail on overflow.
     % XXX depends on undefined behaviour
     N0 =< N.
+
+:- func base_negative_accumulator(int) = pred(char, int, int).
+:- mode base_negative_accumulator(in) = out(pred(in, in, out) is semidet)
+    is det.
+
+base_negative_accumulator(Base) = Pred :-
+    % Avoid allocating a closure for the common bases.
+    ( if Base = 10 then
+        Pred = accumulate_negative_int(10)
+    else if Base = 16 then
+        Pred = accumulate_negative_int(16)
+    else if Base = 8 then
+        Pred = accumulate_negative_int(8)
+    else if Base = 2 then
+        Pred = accumulate_negative_int(2)
+    else
+        Pred = accumulate_negative_int(Base)
+    ).
 
 :- pred accumulate_negative_int(int::in, char::in,
     int::in, int::out) is semidet.
