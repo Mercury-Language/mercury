@@ -1,0 +1,31 @@
+fe_unmapped_verbose.m:050: In `:- pragma foreign_enum' declaration for type
+fe_unmapped_verbose.m:050:   `fe_unmapped_verbose.shade_of_white'/0:
+fe_unmapped_verbose.m:050:   error: the following constructors do not have a
+fe_unmapped_verbose.m:050:   foreign value:
+fe_unmapped_verbose.m:050:       `anitque_white',
+fe_unmapped_verbose.m:050:       `blond',
+fe_unmapped_verbose.m:050:       `cornsilk',
+fe_unmapped_verbose.m:050:       `cosmic_latte',
+fe_unmapped_verbose.m:050:       `cream',
+fe_unmapped_verbose.m:050:       `eggshell',
+fe_unmapped_verbose.m:050:       `floral_white',
+fe_unmapped_verbose.m:050:       `ghost_white',
+fe_unmapped_verbose.m:050:       `honeydew',
+fe_unmapped_verbose.m:050:       `isabelline',
+fe_unmapped_verbose.m:050:       `ivory',
+fe_unmapped_verbose.m:050:       `lavender_blush',
+fe_unmapped_verbose.m:050:       `lemon_chiffon',
+fe_unmapped_verbose.m:050:       `linen',
+fe_unmapped_verbose.m:050:       `magnolia',
+fe_unmapped_verbose.m:050:       `mint_cream',
+fe_unmapped_verbose.m:050:       `navajo_white',
+fe_unmapped_verbose.m:050:       `old_lace',
+fe_unmapped_verbose.m:050:       `papaya_whip',
+fe_unmapped_verbose.m:050:       `peach',
+fe_unmapped_verbose.m:050:       `pearl',
+fe_unmapped_verbose.m:050:       `seashell',
+fe_unmapped_verbose.m:050:       `snow',
+fe_unmapped_verbose.m:050:       `splashed_white',
+fe_unmapped_verbose.m:050:       `vanilla',
+fe_unmapped_verbose.m:050:       `white',
+fe_unmapped_verbose.m:050:       `white_smoke'

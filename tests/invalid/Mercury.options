@@ -23,6 +23,7 @@ MCFLAGS-ee_invalid              = --verbose-error-messages
 MCFLAGS-exported_mode           = --infer-all --no-intermodule-optimization
 MCFLAGS-exported_unify          = --no-intermodule-optimization
 MCFLAGS-exported_unify3         = --no-intermodule-optimization
+MCFLAGS-fe_unmapped_verbose     = --verbose-error-messages
 MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers \
                                     --line-numbers-for-c-headers \
                                     --compile-only

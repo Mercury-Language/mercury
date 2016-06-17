@@ -1,40 +1,41 @@
-ee_invalid.m:039: In `:- pragma foreign_export_enum' declaration for `int'/0:
+ee_invalid.m:039: In `:- pragma foreign_export_enum' declaration for type
+ee_invalid.m:039:   `int'/0:
 ee_invalid.m:039:   error: `int'/0 is a builtin type.
 ee_invalid.m:043: In pragma foreign_export_enum:
 ee_invalid.m:043:   error: undefined type `undefined_type'/0.
-ee_invalid.m:047: In `:- pragma foreign_export_enum' declaration for
+ee_invalid.m:047: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:047:   `ee_invalid.foo'/1:
 ee_invalid.m:047:   error: `ee_invalid.foo'/1 is not an enumeration type. It
 ee_invalid.m:047:   has one or more non-zero arity constructors.
-ee_invalid.m:051: In `:- pragma foreign_export_enum' declaration for
+ee_invalid.m:051: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:051:   `ee_invalid.bar'/0:
 ee_invalid.m:051:   error: `ee_invalid.bar'/0 is not an enumeration type.
-ee_invalid.m:058: In `:- pragma foreign_export_enum' declaration for
+ee_invalid.m:058: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:058:   `ee_invalid.baz'/0:
 ee_invalid.m:058:   error: `ee_invalid.baz'/0 is not an enumeration type.
-ee_invalid.m:063: In `:- pragma foreign_export_enum' declaration for
+ee_invalid.m:063: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:063:   `ee_invalid.alphabet'/0:
 ee_invalid.m:063:   the following constructor does not match any of the
 ee_invalid.m:063:   constructors of `ee_invalid.alphabet'/0:
 ee_invalid.m:063:   `deg'.
-ee_invalid.m:068: In `:- pragma foreign_export_enum' declaration for
+ee_invalid.m:068: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:068:   `ee_invalid.alphabet'/0:
 ee_invalid.m:068:   the following constructor does not match any of the
 ee_invalid.m:068:   constructors of `ee_invalid.alphabet'/0:
 ee_invalid.m:068:   `foo.def'.
-ee_invalid.m:073: In `:- pragma foreign_export_enum' declaration for
+ee_invalid.m:073: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:073:   `ee_invalid.alphabet'/0:
 ee_invalid.m:073:   error: the user-specified mapping between Mercury and
 ee_invalid.m:073:   foreign names does not form a bijection.
-ee_invalid.m:075: In `:- pragma foreign_export_enum' declaration for
+ee_invalid.m:075: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:075:   `ee_invalid.alphabet'/0:
 ee_invalid.m:075:   error: the mapping between Mercury and foreign names does
 ee_invalid.m:075:   not form a bijection.
-ee_invalid.m:077: In `:- pragma foreign_export_enum' declaration for
+ee_invalid.m:077: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:077:   `ee_invalid.alphabet'/0:
 ee_invalid.m:077:   error: the user-specified mapping between Mercury and
 ee_invalid.m:077:   foreign names does not form a bijection.
-ee_invalid.m:083: In `:- pragma foreign_export_enum' declaration for
+ee_invalid.m:083: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:083:   `ee_invalid.strange_names'/0:
 ee_invalid.m:083:   error: not all the constructors of the type
 ee_invalid.m:083:   `ee_invalid.strange_names'/0 can be converted into valid C

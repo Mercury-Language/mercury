@@ -1,4 +1,4 @@
-foreign_enum_import.m:014: In `:- pragma foreign_enum' declaration for
+foreign_enum_import.m:014: In `:- pragma foreign_enum' declaration for type
 foreign_enum_import.m:014:   `bool.bool'/0:
 foreign_enum_import.m:014:   error: `bool.bool'/0 is not defined in this
 foreign_enum_import.m:014:   module.

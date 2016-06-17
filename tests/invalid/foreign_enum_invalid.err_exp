@@ -1,18 +1,17 @@
 foreign_enum_invalid.m:021: Error: `:- pragma foreign_enum' declaration for
 foreign_enum_invalid.m:021:   `foreign_enum_invalid.in_int'/0 in module
 foreign_enum_invalid.m:021:   interface.
-foreign_enum_invalid.m:027: In `:- pragma foreign_enum' declaration for
+foreign_enum_invalid.m:027: In `:- pragma foreign_enum' declaration for type
 foreign_enum_invalid.m:027:   `foreign_enum_invalid.incomplete'/0:
-foreign_enum_invalid.m:027:   error: not all constructors have a foreign value.
-foreign_enum_invalid.m:027:   The following constructor does not have a foreign
-foreign_enum_invalid.m:027:   value
-foreign_enum_invalid.m:027:       `foreign_enum_invalid.baz'
-foreign_enum_invalid.m:032: In `:- pragma foreign_enum' declaration for
+foreign_enum_invalid.m:027:   error: the following constructor does not have a
+foreign_enum_invalid.m:027:   foreign value:
+foreign_enum_invalid.m:027:       `baz'
+foreign_enum_invalid.m:032: In `:- pragma foreign_enum' declaration for type
 foreign_enum_invalid.m:032:   `foreign_enum_invalid.not_a_bijection'/0:
 foreign_enum_invalid.m:032:   error: the mapping between Mercury enumeration
 foreign_enum_invalid.m:032:   values and foreign values does not form a
 foreign_enum_invalid.m:032:   bijection.
-foreign_enum_invalid.m:040: In `:- pragma foreign_enum' declaration for
+foreign_enum_invalid.m:040: In `:- pragma foreign_enum' declaration for type
 foreign_enum_invalid.m:040:   `foreign_enum_invalid.dup_foreign_enum'/0:
 foreign_enum_invalid.m:040:   error: `foreign_enum_invalid.dup_foreign_enum'/0
 foreign_enum_invalid.m:040:   has multiple foreign_enum pragmas.

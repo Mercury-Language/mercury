@@ -334,6 +334,8 @@ TRAILED_MODULES = \
 
 # The following require that the back-end support the C interface
 C_INTERFACE_MODULES = \
+	fe_unmapped_nonverbose \
+	fe_unmapped_verbose \
 	foreign_decl_line_number \
 	trace_goal_env
 

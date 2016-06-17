@@ -48,7 +48,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
     TypeCtor = type_ctor(TypeName, TypeArity),
     module_info_get_type_table(!.ModuleInfo, TypeTable),
     ContextPieces = [words("In"), pragma_decl("foreign_export_enum"),
-        words("declaration for"),
+        words("declaration for type"),
         sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
         suffix(":"), nl],
     ( if
@@ -370,7 +370,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
     TypeCtor = type_ctor(TypeName, TypeArity),
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
-        words("declaration for"),
+        words("declaration for type"),
         sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
         suffix(":"), nl],
     ( if
@@ -608,27 +608,53 @@ make_foreign_tag(ForeignLanguage, ForeignTagMap, ConsId, _, !ConsTagValues,
         !:UnmappedCtors = [ConsSymName | !.UnmappedCtors]
     ).
 
+%-----------------------------------------------------------------------------%
+
 :- pred add_foreign_enum_unmapped_ctors_error(prog_context::in,
     list(format_component)::in,
     list(sym_name)::in(non_empty_list),
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, UnmappedCtors0,
+add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
         !Specs) :-
-    ErrorPieces = [words("error: not all constructors have a foreign value.")],
-    list.sort(UnmappedCtors0, UnmappedCtors),
-    CtorComponents = list.map((func(S) = [sym_name(S)]), UnmappedCtors),
-    CtorList = component_list_to_line_pieces(CtorComponents, [nl]),
-    DoOrDoes = choose_number(UnmappedCtors,
-        "constructor does not have a foreign value",
-        "constructors do not have foreign values"),
-    VerboseErrorPieces = [words("The following"), words(DoOrDoes),
-        nl_indent_delta(2)] ++ CtorList,
-    Msg = simple_msg(Context,
-        [always(ContextPieces ++ ErrorPieces),
-        verbose_only(verbose_always, VerboseErrorPieces)]),
+    list.sort(Ctors0, Ctors),
+    list.split_upto(10, Ctors, CtorsStart, CtorsEnd),
+    DoOrDoes = choose_number(Ctors, "constructor does", "constructors do"),
+    PrefixPieces = ContextPieces ++ [
+        words("error: the following"), words(DoOrDoes),
+        words("not have a foreign value:"),
+        nl_indent_delta(2)
+    ],
+    StartListPieces = ctors_to_line_pieces(CtorsStart),
+    (
+        CtorsEnd = [],
+        MsgComponents = [always(PrefixPieces ++ StartListPieces)]
+    ;
+        CtorsEnd = [_ | _],
+        AllListPieces = ctors_to_line_pieces(Ctors),
+        VerbosePieces= PrefixPieces ++ AllListPieces,
+        list.length(CtorsEnd, NumEndCtors),
+        NonVerbosePieces = PrefixPieces ++ StartListPieces ++
+            [nl, fixed("..."), words("plus"), int_fixed(NumEndCtors),
+            words("more.")],
+        MsgComponents = [verbose_and_nonverbose(VerbosePieces,
+            NonVerbosePieces)]
+    ),
+    Msg = simple_msg(Context, MsgComponents),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     list.cons(Spec, !Specs).
+
+:- func ctors_to_line_pieces(list(sym_name)) = list(format_component).
+
+ctors_to_line_pieces(Ctors) = Pieces :-
+    Components = list.map(ctor_to_format_component, Ctors),
+    Pieces = component_list_to_line_pieces(Components, [nl]).
+
+:- func ctor_to_format_component(sym_name) = list(format_component).
+
+ctor_to_format_component(S) = [sym_name(unqualified(unqualify_name(S)))].
+
+%-----------------------------------------------------------------------------%
 
 :- pred add_foreign_enum_bijection_error(prog_context::in,
     format_components::in, list(error_spec)::in, list(error_spec)::out) is det.
@@ -640,6 +666,8 @@ add_foreign_enum_bijection_error(Context, ContextPieces, !Specs) :-
     Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     list.cons(Spec, !Specs).
+
+%-----------------------------------------------------------------------------%
 
 :- pred add_foreign_enum_pragma_in_interface_error(prog_context::in,
     sym_name::in, arity::in, list(error_spec)::in, list(error_spec)::out)
