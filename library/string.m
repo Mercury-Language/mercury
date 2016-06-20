@@ -456,6 +456,16 @@
     %
 :- pred contains_char(string::in, char::in) is semidet.
 
+    % compare_ignore_case_ascii(Res, X, Y):
+    %
+    % Compare two strings by code point order, ignoring the case of letters
+    % (A-Z, a-z) in the ASCII range.
+    % Equivalent to `compare(Res, to_lower(X), to_lower(Y))'
+    % but more efficient.
+    %
+:- pred compare_ignore_case_ascii(comparison_result::uo,
+    string::in, string::in) is det.
+
     % prefix_length(Pred, String):
     %
     % The length (in code units) of the maximal prefix of `String' consisting
@@ -3139,6 +3149,42 @@ contains_char(Str, Char, I) :-
         )
     else
         fail
+    ).
+
+%---------------------%
+
+compare_ignore_case_ascii(Res, X, Y) :-
+    compare_ignore_case_ascii_loop(X, Y, 0, Res).
+
+:- pred compare_ignore_case_ascii_loop(string::in, string::in, int::in,
+    comparison_result::uo) is det.
+
+compare_ignore_case_ascii_loop(X, Y, I, Res) :-
+    ( if unsafe_index_next(X, I, IX, CharX) then
+        ( if unsafe_index_next(Y, I, _IY, CharY) then
+            char.to_lower(CharX, LowerCharX),
+            char.to_lower(CharY, LowerCharY),
+            compare(CharRes, LowerCharX, LowerCharY),
+            (
+                CharRes = (=),
+                % CharX = CharY, or both are in the ASCII range.
+                % In either case, we must have IX = IY.
+                compare_ignore_case_ascii_loop(X, Y, IX, Res)
+            ;
+                ( CharRes = (<)
+                ; CharRes = (>)
+                ),
+                Res = CharRes
+            )
+        else
+            % X longer than Y.
+            Res = (>)
+        )
+    else if unsafe_index_next(Y, I, _IY, _CharY) then
+        % X shorter than Y.
+        Res = (<)
+    else
+        Res = (=)
     ).
 
 %---------------------%
