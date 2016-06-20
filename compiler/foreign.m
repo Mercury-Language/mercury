@@ -55,7 +55,7 @@
 :- pred have_foreign_type_for_backend(compilation_target::in,
     foreign_type_body::in, bool::out) is det.
 
-    % Given an arbitary mercury type, get the exported_type representation
+    % Given an arbitrary mercury type, get the exported_type representation
     % of that type on the current backend.
     %
 :- func to_exported_type(module_info, mer_type) = exported_type.
