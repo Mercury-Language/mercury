@@ -337,6 +337,7 @@ C_INTERFACE_MODULES = \
 	fe_unmapped_nonverbose \
 	fe_unmapped_verbose \
 	foreign_decl_line_number \
+	pragma_qual_error \
 	trace_goal_env
 
 # The following require that the compiler not ignore `pragma type_spec'

@@ -1,6 +1,6 @@
 oisu_check_add_pragma_errors.m:016: Duplicate `:- pragma oisu' declarations for
 oisu_check_add_pragma_errors.m:016:   `oisu_check_add_pragma_errors.foo'/0.
-oisu_check_add_pragma_errors.m:022: In pragma oisu:
+oisu_check_add_pragma_errors.m:022: In `:- pragma oisu' declaration:
 oisu_check_add_pragma_errors.m:022:   error: undefined type
 oisu_check_add_pragma_errors.m:022:   `oisu_check_add_pragma_errors.quux'/0.
 oisu_check_add_pragma_errors.m:030: `pragma oisu' declarations must always be

@@ -1,7 +1,7 @@
 ee_invalid.m:039: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:039:   `int'/0:
 ee_invalid.m:039:   error: `int'/0 is a builtin type.
-ee_invalid.m:043: In pragma foreign_export_enum:
+ee_invalid.m:043: In `:- pragma foreign_export_enum' declaration:
 ee_invalid.m:043:   error: undefined type `undefined_type'/0.
 ee_invalid.m:047: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:047:   `ee_invalid.foo'/1:

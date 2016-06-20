@@ -537,8 +537,9 @@ mq_error_context_to_pieces(ErrorContext, Context,Pieces) :-
             Pragma = pragma_require_tail_recursion(_),
             PragmaName = "require_tail_recursion"
         ;
-            Pragma = pragma_tabled(_),
-            PragmaName = "tabled"
+            Pragma = pragma_tabled(PragmaInfoTabled),
+            EvalMethod = PragmaInfoTabled ^ tabled_method,
+            PragmaName = eval_method_to_pragma_name(EvalMethod)
         ;
             Pragma = pragma_fact_table(_),
             PragmaName = "fact_table"
@@ -585,7 +586,7 @@ mq_error_context_to_pieces(ErrorContext, Context,Pieces) :-
             Pragma = pragma_require_feature_set(_),
             PragmaName = "require_feature_set"
         ),
-        Pieces = [words("pragma"), words(PragmaName)]
+        Pieces = [pragma_decl(PragmaName), words("declaration")]
     ;
         ErrorContext = mqec_type_qual(Context),
         Pieces = [words("explicit type qualification")]
