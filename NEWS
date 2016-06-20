@@ -213,6 +213,8 @@ Changes to the Mercury standard library:
 * string.base_digit_to_int/3 and string.det_base_digit_to_int/2 now check
   for overflow and underflow in all bases, not only base 10.
 
+* We have reduced the memory allocated by string.to_lower and string.to_upper.
+
 * The following classification predicates have been added to the float module:
 
    - is_finite/1

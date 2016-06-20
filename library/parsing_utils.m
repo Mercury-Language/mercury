@@ -172,7 +172,8 @@
 
     % ikeyword(IdChars, Keyword, Src, _, !PS)
     % Case-insensitive version of keyword/6.
-    % Only upper and lowercase unaccented Latin letters are treated specially.
+    % Only uppercase and lowercase letters in the ASCII range (A-Z, a-z)
+    % are compared case insensitively.
     %
 :- pred ikeyword(string::in, string::in, src::in, unit::out,
     ps::in, ps::out) is semidet.

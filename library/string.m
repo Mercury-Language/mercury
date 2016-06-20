@@ -768,19 +768,19 @@
 %
 
     % Convert the first character (if any) of a string to uppercase.
-    % Note that this only converts unaccented Latin letters.
+    % Note that this only converts letters (a-z) in the ASCII range.
     %
 :- func capitalize_first(string) = string.
 :- pred capitalize_first(string::in, string::out) is det.
 
     % Convert the first character (if any) of a string to lowercase.
-    % Note that this only converts unaccented Latin letters.
+    % Note that this only converts letters (A-Z) in the ASCII range.
     %
 :- func uncapitalize_first(string) = string.
 :- pred uncapitalize_first(string::in, string::out) is det.
 
     % Converts a string to uppercase.
-    % Note that this only converts unaccented Latin letters.
+    % Note that this only converts letters (a-z) in the ASCII range.
     %
 :- func to_upper(string::in) = (string::uo) is det.
 :- pred to_upper(string, string).
@@ -788,7 +788,7 @@
 :- mode to_upper(in, in) is semidet.        % implied
 
     % Converts a string to lowercase.
-    % Note that this only converts unaccented Latin letters.
+    % Note that this only converts letters (A-Z) in the ASCII range.
     %
 :- func to_lower(string::in) = (string::uo) is det.
 :- pred to_lower(string, string).
@@ -4574,10 +4574,56 @@ uncapitalize_first(S0, S) :-
         S = S0
     ).
 
+%---------------------%
+
 to_upper(S1) = S2 :-
     to_upper(S1, S2).
 
-to_upper(StrIn, StrOut) :-
+:- pragma promise_equivalent_clauses(to_upper/2).
+
+:- pragma foreign_proc("C",
+    to_upper(StrIn::in, StrOut::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    MR_Integer  i;
+
+    MR_make_aligned_string_copy_msg(StrOut, StrIn, MR_ALLOC_ID);
+
+    for (i = 0; StrOut[i] != '\\0'; i++) {
+        if (StrOut[i] >= 'a' && StrOut[i] <= 'z') {
+            StrOut[i] = StrOut[i] - 'a' + 'A';
+        }
+    }
+").
+:- pragma foreign_proc("C#",
+    to_upper(StrIn::in, StrOut::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    char[] cs = StrIn.ToCharArray();
+    for (int i = 0; i < cs.Length; i++) {
+        if (cs[i] >= 'a' && cs[i] <= 'z') {
+            cs[i] = (char)(cs[i] - 'a' + 'A');
+        }
+    }
+    StrOut = new System.String(cs);
+").
+:- pragma foreign_proc("Java",
+    to_upper(StrIn::in, StrOut::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    char[] cs = StrIn.toCharArray();
+    for (int i = 0; i < cs.length; i++) {
+        if (cs[i] >= 'a' && cs[i] <= 'z') {
+            cs[i] = (char)(cs[i] - 'a' + 'A');
+        }
+    }
+    StrOut = new String(cs);
+").
+
+to_upper(StrIn::in, StrOut::uo) :-
     to_char_list(StrIn, List),
     char_list_to_upper(List, ListUpp),
     from_char_list(ListUpp, StrOut).
@@ -4589,10 +4635,89 @@ char_list_to_upper([X | Xs], [Y | Ys]) :-
     char.to_upper(X, Y),
     char_list_to_upper(Xs, Ys).
 
+to_upper(X::in, Y::in) :-
+    length(X, LenX),
+    length(Y, LenY),
+    ( if LenX = LenY then
+        check_upper_loop(X, Y, 0, LenX)
+    else
+        fail
+    ).
+
+:- pred check_upper_loop(string::in, string::in, int::in, int::in) is semidet.
+
+check_upper_loop(X, Y, Index, End) :-
+    ( if Index = End then
+        true
+    else
+        unsafe_index_code_unit(X, Index, CodeX),
+        unsafe_index_code_unit(Y, Index, CodeY),
+        to_upper_code_unit(CodeX, CodeY),
+        check_upper_loop(X, Y, Index + 1, End)
+    ).
+
+:- pred to_upper_code_unit(int::in, int::out) is det.
+
+to_upper_code_unit(Code0, Code) :-
+    ( if
+        Code0 >= to_int('a'),
+        Code0 =< to_int('z')
+    then
+        Code = Code0 - to_int('a') + to_int('A')
+    else
+        Code = Code0
+    ).
+
+%---------------------%
+
 to_lower(S1) = S2 :-
     to_lower(S1, S2).
 
-to_lower(StrIn, StrOut) :-
+:- pragma promise_equivalent_clauses(to_lower/2).
+
+:- pragma foreign_proc("C",
+    to_lower(StrIn::in, StrOut::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    MR_Integer  i;
+
+    MR_make_aligned_string_copy_msg(StrOut, StrIn, MR_ALLOC_ID);
+
+    for (i = 0; StrOut[i] != '\\0'; i++) {
+        if (StrOut[i] >= 'A' && StrOut[i] <= 'Z') {
+            StrOut[i] = StrOut[i] - 'A' + 'a';
+        }
+    }
+").
+:- pragma foreign_proc("C#",
+    to_lower(StrIn::in, StrOut::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    char[] cs = StrIn.ToCharArray();
+    for (int i = 0; i < cs.Length; i++) {
+        if (cs[i] >= 'A' && cs[i] <= 'Z') {
+            cs[i] = (char)(cs[i] - 'A' + 'a');
+        }
+    }
+    StrOut = new System.String(cs);
+").
+:- pragma foreign_proc("Java",
+    to_lower(StrIn::in, StrOut::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    char[] cs = StrIn.toCharArray();
+    for (int i = 0; i < cs.length; i++) {
+        if (cs[i] >= 'A' && cs[i] <= 'Z') {
+            cs[i] = (char)(cs[i] - 'A' + 'a');
+        }
+    }
+    StrOut = new String(cs);
+").
+
+to_lower(StrIn::in, StrOut::uo) :-
     to_char_list(StrIn, List),
     char_list_to_lower(List, ListLow),
     from_char_list(ListLow, StrOut).
@@ -4603,6 +4728,39 @@ char_list_to_lower([], []).
 char_list_to_lower([X | Xs], [Y | Ys]) :-
     char.to_lower(X, Y),
     char_list_to_lower(Xs, Ys).
+
+to_lower(X::in, Y::in) :-
+    length(X, LenX),
+    length(Y, LenY),
+    ( if LenX = LenY then
+        check_lower_loop(X, Y, 0, LenX)
+    else
+        fail
+    ).
+
+:- pred check_lower_loop(string::in, string::in, int::in, int::in) is semidet.
+
+check_lower_loop(X, Y, Index, End) :-
+    ( if Index = End then
+        true
+    else
+        unsafe_index_code_unit(X, Index, CodeX),
+        unsafe_index_code_unit(Y, Index, CodeY),
+        to_lower_code_unit(CodeX, CodeY),
+        check_lower_loop(X, Y, Index + 1, End)
+    ).
+
+:- pred to_lower_code_unit(int::in, int::out) is det.
+
+to_lower_code_unit(Code0, Code) :-
+    ( if
+        Code0 >= to_int('A'),
+        Code0 =< to_int('Z')
+    then
+        Code = Code0 - to_int('A') + to_int('a')
+    else
+        Code = Code0
+    ).
 
 %---------------------%
 
