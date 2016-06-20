@@ -64,7 +64,7 @@
 :- pred module_name_to_file_name(globals::in, module_name::in, string::in,
     maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_search_file_name(Globals, Module, Extension, FileName,
+    % module_name_to_search_file_name(Globals, Module, XExtension, FileName,
     %   !IO):
     %
     % As above, but for a file which might be in an installed library,

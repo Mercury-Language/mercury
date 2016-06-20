@@ -5,7 +5,7 @@ foreign_enum_invalid.m:027: In `:- pragma foreign_enum' declaration for type
 foreign_enum_invalid.m:027:   `foreign_enum_invalid.incomplete'/0:
 foreign_enum_invalid.m:027:   error: the following constructor does not have a
 foreign_enum_invalid.m:027:   foreign value:
-foreign_enum_invalid.m:027:       `baz'
+foreign_enum_invalid.m:027:       `baz'.
 foreign_enum_invalid.m:032: In `:- pragma foreign_enum' declaration for type
 foreign_enum_invalid.m:032:   `foreign_enum_invalid.not_a_bijection'/0:
 foreign_enum_invalid.m:032:   error: the mapping between Mercury enumeration

@@ -622,33 +622,41 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
     DoOrDoes = choose_number(Ctors, "constructor does", "constructors do"),
     PrefixPieces = ContextPieces ++ [
         words("error: the following"), words(DoOrDoes),
-        words("not have a foreign value:"),
-        nl_indent_delta(2)
+        words("not have a foreign value:")
     ],
-    StartListPieces = ctors_to_line_pieces(CtorsStart),
     (
         CtorsEnd = [],
-        MsgComponents = [always(PrefixPieces ++ StartListPieces)]
+        CtorsPieces =
+            [nl_indent_delta(2)] ++
+            ctors_to_line_pieces(Ctors, [suffix(".")]) ++
+            [nl_indent_delta(-2)],
+        CtorsComponent = always(CtorsPieces)
     ;
         CtorsEnd = [_ | _],
-        AllListPieces = ctors_to_line_pieces(Ctors),
-        VerbosePieces= PrefixPieces ++ AllListPieces,
         list.length(CtorsEnd, NumEndCtors),
-        NonVerbosePieces = PrefixPieces ++ StartListPieces ++
-            [nl, fixed("..."), words("plus"), int_fixed(NumEndCtors),
-            words("more.")],
-        MsgComponents = [verbose_and_nonverbose(VerbosePieces,
-            NonVerbosePieces)]
+        NonVerboseCtorsPieces =
+            [nl_indent_delta(2)] ++
+            ctors_to_line_pieces(CtorsStart, [suffix(","), fixed("...")]) ++
+            [nl_indent_delta(-2), words("and"),
+            int_fixed(NumEndCtors), words("more."), nl],
+        VerboseCtorsPieces =
+            [nl_indent_delta(2)] ++
+            ctors_to_line_pieces(Ctors, [suffix(".")]) ++
+            [nl_indent_delta(-2)],
+        CtorsComponent =
+            verbose_and_nonverbose(VerboseCtorsPieces, NonVerboseCtorsPieces)
     ),
-    Msg = simple_msg(Context, MsgComponents),
+    Msg = simple_msg(Context,
+        [always(PrefixPieces), CtorsComponent]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     list.cons(Spec, !Specs).
 
-:- func ctors_to_line_pieces(list(sym_name)) = list(format_component).
+:- func ctors_to_line_pieces(list(sym_name), list(format_component))
+    = list(format_component).
 
-ctors_to_line_pieces(Ctors) = Pieces :-
+ctors_to_line_pieces(Ctors, Final) = Pieces :-
     Components = list.map(ctor_to_format_component, Ctors),
-    Pieces = component_list_to_line_pieces(Components, [nl]).
+    Pieces = component_list_to_line_pieces(Components, Final).
 
 :- func ctor_to_format_component(sym_name) = list(format_component).
 
