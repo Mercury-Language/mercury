@@ -1,0 +1,6 @@
+testing string.to_lower(in, out)
+testing string.to_upper(in, out)
+testing string.to_lower(in, in)
+testing string.to_upper(in, in)
+testing string.compare_ignore_case_ascii
+done.

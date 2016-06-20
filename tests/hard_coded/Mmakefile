@@ -288,6 +288,7 @@ ORDINARY_PROGS =	\
 	string_append_ioi \
 	string_append_ooi \
 	string_builder_test \
+	string_case \
 	string_class \
 	string_code_unit \
 	string_codepoint \
