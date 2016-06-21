@@ -278,7 +278,7 @@ replace_in_inst_table(TypeEqvMap, !InstTable, !Cache) :-
 %-----------------------------------------------------------------------------%
 %
 % In almost all cases, the expansion of equivalence types leaves inst names
-% and insts themselved unchanged. The code below is optimized for that,
+% and insts themselves unchanged. The code below is optimized for that,
 % in that we preserve the sortedness of the association lists as far as we can.
 %
 % We could also check whether *any* element of the original SortedElements0

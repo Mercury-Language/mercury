@@ -343,7 +343,7 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
 
 workaround_gcc_bug(X) = X.
 
-    % Peform purity checking of the actual and declared purity,
+    % Perform purity checking of the actual and declared purity,
     % and check that promises are consistent.
     %
     % ActualPurity:     The inferred purity of the pred.
