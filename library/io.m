@@ -4118,7 +4118,7 @@ compare_file_id(Result, FileId1, FileId2) :-
     compare_file_id_2(_Res::out, _FileId1::in, _FileId2::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    io.ML_throw_io_error(""File IDs are not supported by Java."");
+    io.throw_io_error(""File IDs are not supported by Java."");
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -6205,7 +6205,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             try {
                 put(c);
             } catch (java.io.IOException e) {
-                io.ML_throw_io_error(e.getMessage());
+                io.throw_io_error(e.getMessage());
             }
         }
 
@@ -6231,7 +6231,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             try {
                 write(s);
             } catch (java.io.IOException e) {
-                io.ML_throw_io_error(e.getMessage());
+                io.throw_io_error(e.getMessage());
             }
         }
 
@@ -6245,7 +6245,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             try {
                 flush();
             } catch (java.io.IOException e) {
-                io.ML_throw_io_error(e.getMessage());
+                io.throw_io_error(e.getMessage());
             }
         }
 
@@ -6393,7 +6393,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             try {
                 put(b);
             } catch (java.io.IOException e) {
-                io.ML_throw_io_error(e.getMessage());
+                io.throw_io_error(e.getMessage());
             }
         }
 
@@ -6411,7 +6411,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             try {
                 write(s);
             } catch (java.io.IOException e) {
-                io.ML_throw_io_error(e.getMessage());
+                io.throw_io_error(e.getMessage());
             }
         }
 
@@ -6425,7 +6425,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             try {
                 flush();
             } catch (java.io.IOException e) {
-                io.ML_throw_io_error(e.getMessage());
+                io.throw_io_error(e.getMessage());
             }
         }
 
@@ -7220,7 +7220,7 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
     if (stream == null) {
         return null;
     } else {
-        // we initialize the `reader' and `writer' fields to null;
+        // We initialize the `reader' and `writer' fields to null;
         // they will be filled in later if they are needed.
         return mercury_file_init(new System.IO.BufferedStream(stream),
             null, null, line_ending);
@@ -7235,6 +7235,17 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
 
 throw_io_error(Message) :-
     throw(io_error(Message)).
+
+:- pragma foreign_code("Java", "
+
+    public static void throw_io_error(String msg) {
+        if (msg == null) {
+            io.ML_throw_io_error(""null"");
+        } else {
+            io.ML_throw_io_error(msg);
+        }
+    }
+").
 
 :- pragma foreign_code("C", "
 
@@ -8524,7 +8535,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
     try {
         ((io.MR_BinaryFile) Stream).seek_binary(Flag, Off);
     } catch (java.io.IOException e) {
-        io.ML_throw_io_error(e.getMessage());
+        io.throw_io_error(e.getMessage());
     }
 ").
 
@@ -9640,7 +9651,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
             Stream = new MR_TextOutputFile(
                 new java.io.FileOutputStream(FileName, true));
         } else {
-            io.ML_throw_io_error(""io.do_open_text: "" +
+            io.throw_io_error(""io.do_open_text: "" +
                 ""Invalid open mode"" + "" \\"""" + Mode + ""\\"""");
             throw new Error(""unreachable"");
         }
@@ -9675,7 +9686,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
                     new java.io.FileOutputStream(FileName, true));
                 break;
             default:
-                io.ML_throw_io_error(""Invalid file opening mode: "" + Mode);
+                io.throw_io_error(""Invalid file opening mode: "" + Mode);
                 Stream = null;
                 break;
         }
@@ -9772,7 +9783,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
     try {
         Stream.close();
     } catch (java.io.IOException e) {
-        io.ML_throw_io_error(e.getMessage());
+        io.throw_io_error(e.getMessage());
     }
 ").
 
@@ -10271,7 +10282,10 @@ command_line_argument(_, "") :-
     } catch (java.lang.Exception e) {
         Status  = 1;
         Success = bool.NO;
-        Msg     = e.getMessage();
+        Msg = e.getMessage();
+        if (Msg == null) {
+            Msg = ""null"";
+        }
     }
 ").
 
@@ -11136,6 +11150,9 @@ remove_file(FileName, Result, !IO) :-
     } catch (java.lang.Exception e) {
         RetVal = -1;
         RetStr = e.getMessage();
+        if (RetStr == null) {
+            RetStr = ""null"";
+        }
     }
 ").
 
@@ -11284,6 +11301,9 @@ rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
     } catch (java.lang.Exception e) {
         RetVal = -1;
         RetStr = e.getMessage();
+        if (RetStr == null) {
+            RetStr = ""null"";
+        }
     }
 ").
 
