@@ -50,6 +50,7 @@ SINGLEMODULE= \
 	bad_detism \
 	bad_detism_category \
 	bad_end_module \
+	bad_finalise_decl \
 	bad_foreign_code \
 	bad_foreign_decl \
 	bad_foreign_enum \
@@ -58,7 +59,6 @@ SINGLEMODULE= \
 	bad_foreign_import_module \
 	bad_foreign_proc \
 	bad_foreign_type \
-	bad_finalise_decl \
 	bad_initialise_decl \
 	bad_inst_for_type \
 	bad_instance \
@@ -324,6 +324,7 @@ SINGLEMODULE= \
 	where_direct_arg \
 	where_direct_arg2 \
 	with_type \
+	wrong_arity_function \
 	wrong_type_arity
 
 # The following require that num_tag_bits >= 1

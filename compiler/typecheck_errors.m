@@ -1381,8 +1381,17 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
         Functor = cons(Constructor, FunctorArity, _),
         expect(unify(Arity, FunctorArity), $module, $pred, "arity mismatch"),
         ModuleInfo = ClauseContext ^ tecc_module_info,
+
         module_info_get_cons_table(ModuleInfo, ConsTable),
-        return_other_arities(ConsTable, Constructor, Arity, OtherArities),
+        return_cons_arities(ConsTable, Constructor, ConsArities),
+
+        module_info_get_predicate_table(ModuleInfo, PredTable),
+        predicate_table_lookup_sym(PredTable, may_be_partially_qualified,
+            Constructor, PredIds),
+        return_function_arities(ModuleInfo, PredIds, [], FuncArities),
+
+        list.sort_and_remove_dups(ConsArities ++ FuncArities, AllArities),
+        list.delete_all(AllArities, Arity, OtherArities),
         OtherArities = [_ | _]
     then
         FunctorPieces = wrong_arity_constructor_to_pieces(Constructor, Arity,
@@ -1532,6 +1541,23 @@ syntax_functor_components("!", 1, Components) :-
     Pieces2 = [words("You probably meant to use"), quote("!."),
         words("or"), quote("!:"), suffix("."), nl],
     Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
+
+:- pred return_function_arities(module_info::in, list(pred_id)::in,
+    list(int)::in, list(int)::out) is det.
+
+return_function_arities(_, [], !FuncArities).
+return_function_arities(ModuleInfo, [PredId | PredIds], !FuncArities) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+    (
+        PredOrFunc = pf_predicate
+    ;
+        PredOrFunc = pf_function,
+        pred_info_get_orig_arity(PredInfo, OrigArity),
+        adjust_func_arity(pf_function, FuncArity, OrigArity),
+        !:FuncArities = [FuncArity | !.FuncArities]
+    ),
+    return_function_arities(ModuleInfo, PredIds, !FuncArities).
 
 :- func wrong_arity_constructor_to_pieces(sym_name, arity, list(int))
     = list(format_component).

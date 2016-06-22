@@ -110,8 +110,8 @@
 :- pred get_all_cons_defns(cons_table::in,
     assoc_list(cons_id, hlds_cons_defn)::out) is det.
 
-:- pred return_other_arities(cons_table::in, sym_name::in, int::in,
-    list(int)::out) is det.
+:- pred return_cons_arities(cons_table::in, sym_name::in, list(int)::out)
+    is det.
 
 :- pred replace_cons_defns_in_cons_table(
     pred(hlds_cons_defn, hlds_cons_defn)::in(pred(in, out) is det),
@@ -278,47 +278,41 @@ project_inner_cons_entry(Entry, Pair) :-
     Entry = inner_cons_entry(MainConsId, _OtherConsIds, ConsDefn),
     Pair = MainConsId - ConsDefn.
 
-return_other_arities(ConsTable, SymName, Arity, OtherArities) :-
+return_cons_arities(ConsTable, SymName, Arities) :-
     Name = unqualify_name(SymName),
     ( if map.search(ConsTable, Name, InnerConsTable) then
-        return_other_arities_inner(InnerConsTable, SymName, Arity,
-            [], OtherArities0),
-        list.sort_and_remove_dups(OtherArities0, OtherArities)
+        return_cons_arities_inner(InnerConsTable, SymName, [], Arities0),
+        list.sort_and_remove_dups(Arities0, Arities)
     else
-        OtherArities = []
+        Arities = []
     ).
 
-:- pred return_other_arities_inner(list(inner_cons_entry)::in,
-    sym_name::in, int::in, list(int)::in, list(int)::out) is det.
+:- pred return_cons_arities_inner(list(inner_cons_entry)::in,
+    sym_name::in, list(int)::in, list(int)::out) is det.
 
-return_other_arities_inner([], _, _, !OtherArities).
-return_other_arities_inner([Entry | Entries], SymName, Arity, !OtherArities) :-
+return_cons_arities_inner([], _, !Arities).
+return_cons_arities_inner([Entry | Entries], SymName, !Arities) :-
     MainConsId = Entry ^ ice_fully_qual_cons_id,
     OtherConsIds = Entry ^ ice_other_cons_ids,
-    return_other_arities_inner_cons_ids([MainConsId | OtherConsIds],
-        SymName, Arity, !OtherArities),
-    return_other_arities_inner(Entries, SymName, Arity, !OtherArities).
+    return_cons_arities_inner_cons_ids([MainConsId | OtherConsIds], SymName,
+        !Arities),
+    return_cons_arities_inner(Entries, SymName, !Arities).
 
-:- pred return_other_arities_inner_cons_ids(list(cons_id)::in,
-    sym_name::in, int::in, list(int)::in, list(int)::out) is det.
+:- pred return_cons_arities_inner_cons_ids(list(cons_id)::in,
+    sym_name::in, list(int)::in, list(int)::out) is det.
 
-return_other_arities_inner_cons_ids([], _, _, !OtherArities).
-return_other_arities_inner_cons_ids([ConsId | ConsIds], SymName, Arity,
-        !OtherArities) :-
+return_cons_arities_inner_cons_ids([], _, !Arities).
+return_cons_arities_inner_cons_ids([ConsId | ConsIds], SymName, !Arities) :-
     ( if ConsId = cons(ThisSymName, ThisArity, _) then
-        ( if
-            ThisSymName = SymName,
-            ThisArity \= Arity
-        then
-            !:OtherArities = [ThisArity | !.OtherArities]
+        ( if ThisSymName = SymName then
+            !:Arities = [ThisArity | !.Arities]
         else
             true
         )
     else
         unexpected($module, $pred, "ConsId is not cons")
     ),
-    return_other_arities_inner_cons_ids(ConsIds, SymName, Arity,
-        !OtherArities).
+    return_cons_arities_inner_cons_ids(ConsIds, SymName, !Arities).
 
 replace_cons_defns_in_cons_table(Replace, !ConsTable) :-
     map.map_values_only(replace_cons_defns_in_inner_cons_table(Replace),
