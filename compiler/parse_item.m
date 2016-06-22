@@ -99,7 +99,8 @@ parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
         then
             ( if
                 parse_decl_item_or_marker(ModuleName, VarSet,
-                    Functor, ArgTerms, Context, SeqNum, MaybeIOMPrime)
+                    Functor, ArgTerms, decl_is_not_in_class,
+                    Context, SeqNum, MaybeIOMPrime)
             then
                 MaybeIOM = MaybeIOMPrime
             else
@@ -158,12 +159,21 @@ decl_functor_is_not_valid(Term, Functor) = Spec :-
 
 %---------------------------------------------------------------------------%
 
+    % This type specifies whether the declaration we are attempting to parse
+    % occurs inside a typeclass declaration or not.
+    % XXX possibly we should also include the identity of the typeclass
+    % involved in the case where parsing the class head succeeds.
+    %
+:- type decl_in_class
+    --->    decl_is_in_class
+    ;       decl_is_not_in_class.
+
 :- pred parse_decl_item_or_marker(module_name::in, varset::in,
-    string::in, list(term)::in, prog_context::in, int::in,
-    maybe1(item_or_marker)::out) is semidet.
+    string::in, list(term)::in, decl_in_class::in, prog_context::in,
+    int::in, maybe1(item_or_marker)::out) is semidet.
 
 parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
-        Context, SeqNum, MaybeIOM) :-
+        IsInClass, Context, SeqNum, MaybeIOM) :-
     require_switch_arms_det [Functor]
     (
         Functor = "module",
@@ -203,31 +213,31 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     ;
         Functor = "mode",
         parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms,
-            Context, SeqNum, allow_mode_decl_and_defn, [], MaybeIOM)
+            IsInClass, Context, SeqNum, allow_mode_decl_and_defn, [], MaybeIOM)
     ;
         ( Functor = "pred", PredOrFunc = pf_predicate
         ; Functor = "func", PredOrFunc = pf_function
         ),
         parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
-            Context, SeqNum, PredOrFunc, [], [], MaybeIOM)
+            IsInClass, Context, SeqNum, PredOrFunc, [], [], MaybeIOM)
     ;
         ( Functor = "some", QuantType = quant_type_exist
         ; Functor = "all", QuantType = quant_type_univ
         ),
         parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms,
-            Context, SeqNum, QuantType, cord.init, cord.init, MaybeIOM)
+            IsInClass, Context, SeqNum, QuantType, cord.init, cord.init, MaybeIOM)
     ;
         ( Functor = "=>", QuantType = quant_type_exist
         ; Functor = "<=", QuantType = quant_type_univ
         ),
         parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms,
-            Context, SeqNum, QuantType, cord.init, cord.init, MaybeIOM)
+            IsInClass, Context, SeqNum, QuantType, cord.init, cord.init, MaybeIOM)
     ;
         ( Functor = "impure", Purity = purity_impure
         ; Functor = "semipure", Purity = purity_semipure
         ),
         parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms,
-            Context, SeqNum, Purity, cord.init, cord.init, MaybeIOM)
+            IsInClass, Context, SeqNum, Purity, cord.init, cord.init, MaybeIOM)
     ;
         Functor = "promise",
         parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM)
@@ -270,18 +280,18 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     ).
 
 :- pred parse_attr_decl_item_or_marker(module_name::in, varset::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
     cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is semidet.
 
 parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
-        Context, SeqNum, PurityAttrs0, QuantConstrAttrs0, MaybeIOM) :-
+        IsInClass, Context, SeqNum, PurityAttrs0, QuantConstrAttrs0, MaybeIOM) :-
     % By coincidence, the kinds of items that may have purity,
     % quantification and/or constraint attributes on them, i.e.
     % the set item_pred_decl and item_mode_decl, is exactly the
     % set of items that may appear in class method specifications.
     %
-    % A variant of the commented-out code below for should help implement
+    % A variant of the commented-out code below should help implement
     % quantification for these kinds of promise declarations, but enabling it
     % would break the above coincidence, requiring extra checks in
     % parse_class_method_decl.
@@ -290,7 +300,7 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     (
         Functor = "mode",
         parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms,
-            Context, SeqNum, allow_mode_decl_only,
+            IsInClass, Context, SeqNum, allow_mode_decl_only,
             cord.list(QuantConstrAttrs0), MaybeIOM0),
         ( if cord.is_empty(PurityAttrs0) then
             MaybeIOM = MaybeIOM0
@@ -312,13 +322,13 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         ; Functor = "func", PredOrFunc = pf_function
         ),
         parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
-            Context, SeqNum, PredOrFunc,
+            IsInClass, Context, SeqNum, PredOrFunc,
             cord.list(PurityAttrs0), cord.list(QuantConstrAttrs0), MaybeIOM)
     ;
         ( Functor = "some", QuantType = quant_type_exist
         ; Functor = "all", QuantType = quant_type_univ
         ),
-        parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms,
+        parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
             Context, SeqNum, QuantType, PurityAttrs0, QuantConstrAttrs0,
             MaybeIOM)
     ;
@@ -326,14 +336,14 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         ; Functor = "<=", QuantType = quant_type_univ
         ),
         parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms,
-            Context, SeqNum, QuantType, PurityAttrs0, QuantConstrAttrs0,
+            IsInClass, Context, SeqNum, QuantType, PurityAttrs0, QuantConstrAttrs0,
             MaybeIOM)
     ;
         ( Functor = "impure", Purity = purity_impure
         ; Functor = "semipure", Purity = purity_semipure
         ),
         parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms,
-            Context, SeqNum, Purity, PurityAttrs0, QuantConstrAttrs0,
+            IsInClass, Context, SeqNum, Purity, PurityAttrs0, QuantConstrAttrs0,
             MaybeIOM)
 %   ;
 %       ( Functor = "promise_exclusive", PromiseType = promise_type_exclusive
@@ -350,8 +360,8 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
 
 parse_class_method_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
     TermContext = get_term_context(Term),
-    parse_attributed_decl(ModuleName, VarSet, Term, TermContext, -1,
-        cord.init, cord.init, MaybeIOM),
+    parse_attributed_decl(ModuleName, VarSet, Term, decl_is_in_class,
+        TermContext, -1, cord.init, cord.init, MaybeIOM),
     (
         MaybeIOM = error1(Specs),
         MaybeClassMethod = error1(Specs)
@@ -395,17 +405,17 @@ parse_class_method_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
     ;       qca_constraint(quantifier_type, term).
 
 :- pred parse_quant_attr(module_name::in, varset::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
     quantifier_type::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
-        QuantType, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
+parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
+        SeqNum, QuantType, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
     ( if ArgTerms = [VarsTerm, SubTerm] then
         QuantAttr = qca_quant_vars(QuantType, VarsTerm),
         !:QuantConstrAttrs = cord.snoc(!.QuantConstrAttrs, QuantAttr),
-        parse_attributed_decl(ModuleName, VarSet, SubTerm, Context, SeqNum,
-            !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
+        parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
+            SeqNum, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
     else
         Pieces = [words("Error: the keyword"), quote(Functor),
             words("may appear in declarations"),
@@ -417,17 +427,17 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
     ).
 
 :- pred parse_constraint_attr(module_name::in, varset::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
     quantifier_type::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
+parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context, SeqNum,
         QuantType, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
     ( if ArgTerms = [SubTerm, ConstraintsTerm] then
         ConstrAttr = qca_constraint(QuantType, ConstraintsTerm),
         !:QuantConstrAttrs = cord.snoc(!.QuantConstrAttrs, ConstrAttr),
-        parse_attributed_decl(ModuleName, VarSet, SubTerm, Context, SeqNum,
-            !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
+        parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
+            SeqNum, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
     else
         Pieces = [words("Error: the symbol"), quote(Functor),
             words("may appear in declarations only to introduce"),
@@ -438,17 +448,17 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
     ).
 
 :- pred parse_purity_attr(module_name::in, varset::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
     purity::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
+parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context, SeqNum,
         Purity, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
     ( if ArgTerms = [SubTerm] then
         PurityAttr = purity_attr(Purity),
         !:PurityAttrs = cord.snoc(!.PurityAttrs, PurityAttr),
-        parse_attributed_decl(ModuleName, VarSet, SubTerm, Context, SeqNum,
-            !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
+        parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
+            SeqNum, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
     else
         Pieces = [words("Error: the symbol"), quote(Functor),
             words("may appear only as an annotation"),
@@ -459,16 +469,16 @@ parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
     ).
 
 :- pred parse_attributed_decl(module_name::in, varset::in, term::in,
-    prog_context::in, int::in,
+    decl_in_class::in, prog_context::in, int::in,
     cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_attributed_decl(ModuleName, VarSet, Term, _Context, SeqNum,
+parse_attributed_decl(ModuleName, VarSet, Term, IsInClass, _Context, SeqNum,
         !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
     ( if Term = term.functor(term.atom(Functor), ArgTerms, FunctorContext) then
         ( if
             parse_attr_decl_item_or_marker(ModuleName, VarSet,
-                Functor, ArgTerms, FunctorContext, SeqNum,
+                Functor, ArgTerms, IsInClass, FunctorContext, SeqNum,
                 !.PurityAttrs, !.QuantConstrAttrs, MaybeIOMPrime)
         then
             MaybeIOM = MaybeIOMPrime
@@ -640,11 +650,12 @@ make_item_avail_use(Context, SeqNum, ModuleName, Avail) :-
     ;       allow_mode_decl_only.
 
 :- pred parse_mode_defn_or_decl_item(module_name::in, varset::in,
-    list(term)::in, prog_context::in, int::in, maybe_allow_mode_defn::in,
+    list(term)::in, decl_in_class::in,
+    prog_context::in, int::in, maybe_allow_mode_defn::in,
     list(quant_constr_attr)::in, maybe1(item_or_marker)::out) is det.
 
-parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
-        AllowModeDefn, QuantConstrAttrs, MaybeIOM) :-
+parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
+        SeqNum, AllowModeDefn, QuantConstrAttrs, MaybeIOM) :-
     ( if ArgTerms = [SubTerm] then
         ( if
             SubTerm = term.functor(term.atom("=="), [HeadTerm, BodyTerm], _),
@@ -658,8 +669,8 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 Context, SeqNum, MaybeIOM)
         else
             % This is the declaration of one mode of a predicate or function.
-            parse_mode_decl(ModuleName, VarSet, SubTerm, Context, SeqNum,
-                QuantConstrAttrs, MaybeIOM)
+            parse_mode_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
+                SeqNum, QuantConstrAttrs, MaybeIOM)
         )
     else
         Pieces = [words("Error: a"), decl("mode"), words("declaration"),
@@ -798,19 +809,28 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
     % parse_pred_or_func_decl parses a predicate or function declaration.
     %
 :- pred parse_pred_or_func_decl_item(module_name::in, varset::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
     pred_or_func::in, list(purity_attr)::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
-        Context, SeqNum, PredOrFunc, PurityAttrs, QuantConstrAttrs,
+        IsInClass, Context, SeqNum, PredOrFunc, PurityAttrs, QuantConstrAttrs,
         MaybeIOM) :-
     ( if ArgTerms = [Term] then
-        parse_determinism_suffix(VarSet, Term, BeforeDetismTerm,
-            MaybeMaybeDetism),
+        (
+            IsInClass = decl_is_in_class,
+            PredOrFuncDeclPieces = [words("type class"), p_or_f(PredOrFunc),
+                words("method declaration:")]
+        ;
+            IsInClass = decl_is_not_in_class,
+            PredOrFuncDeclPieces = [p_or_f(PredOrFunc), words("declaration:")]
+        ),
+        DetismContextPieces = cord.from_list([words("In")] ++ PredOrFuncDeclPieces),
+        parse_determinism_suffix(VarSet, DetismContextPieces, Term,
+            BeforeDetismTerm, MaybeMaybeDetism),
         WithInstContextPieces = cord.from_list([
-            words("In the"), quote("with_inst"), words("annotation of a"),
-            words(pred_or_func_to_string(PredOrFunc)), words("declaration:")]),
+            words("In the"), quote("with_inst"), words("annotation of a")] ++
+            PredOrFuncDeclPieces),
         parse_with_inst_suffix(VarSet, WithInstContextPieces,
             BeforeDetismTerm, BeforeWithInstTerm, MaybeWithInst),
         parse_with_type_suffix(VarSet, BeforeWithInstTerm, BeforeWithTypeTerm,
@@ -1214,14 +1234,27 @@ wrap_nth(MaybeAddPredix, ArgNum) = Component :-
 %
 
 :- pred parse_mode_decl(module_name::in, varset::in, term::in,
-    prog_context::in, int::in, list(quant_constr_attr)::in,
+    decl_in_class::in, prog_context::in, int::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_mode_decl(ModuleName, VarSet, Term, Context, SeqNum, QuantConstrAttrs,
-        MaybeIOM) :-
-    parse_determinism_suffix(VarSet, Term, BeforeDetismTerm, MaybeMaybeDetism),
-    WithInstContextPieces = cord.from_list([words("In the"),
-        quote("with_inst"), words("annotation of a mode declaration:")]),
+parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
+        QuantConstrAttrs, MaybeIOM) :-
+    (
+        IsInClass = decl_is_in_class,
+        DeclWords = words("type class method mode")
+    ;
+        IsInClass = decl_is_not_in_class,
+        DeclWords = words("mode")
+    ),
+    DetismContextPieces = cord.from_list([
+        words("In"), DeclWords, words("declaration:")
+    ]),
+    parse_determinism_suffix(VarSet, DetismContextPieces, Term,
+        BeforeDetismTerm, MaybeMaybeDetism),
+    WithInstContextPieces = cord.from_list([
+        words("In the"), quote("with_inst"), words("annotation of a"),
+        DeclWords, words("declaration:")
+    ]),
     parse_with_inst_suffix(VarSet, WithInstContextPieces, BeforeDetismTerm,
         BeforeWithInstTerm, MaybeWithInst),
     BaseTerm = BeforeWithInstTerm,
@@ -1679,18 +1712,19 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
 
 %---------------------------------------------------------------------------%
 
-    % parse_determinism_suffix(VarSet, BodyTerm, BeforeDetismTerm,
-    %   MaybeMaybeDetism):
+    % parse_determinism_suffix(VarSet, ContextPieces, BodyTerm,
+    %   BeforeDetismTerm, MaybeMaybeDetism):
     %
     % Look for a suffix of the form "is <detism>" in Term. If we find one,
     % bind MaybeMaybeDetism to ok1(yes()) wrapped around the determinism,
     % and bind BeforeDetismTerm to the other part of Term. If we don't
     % find, one, then bind MaybeMaybeDetism to ok1(no).
     %
-:- pred parse_determinism_suffix(varset::in, term::in, term::out,
-    maybe1(maybe(determinism))::out) is det.
+:- pred parse_determinism_suffix(varset::in, cord(format_component)::in,
+    term::in, term::out, maybe1(maybe(determinism))::out) is det.
 
-parse_determinism_suffix(VarSet, Term, BeforeDetismTerm, MaybeMaybeDetism) :-
+parse_determinism_suffix(VarSet, ContextPieces, Term, BeforeDetismTerm,
+        MaybeMaybeDetism) :-
     ( if
         Term = term.functor(term.atom("is"), Args, _),
         Args = [BeforeDetismTermPrime, DetismTerm]
@@ -1702,9 +1736,12 @@ parse_determinism_suffix(VarSet, Term, BeforeDetismTerm, MaybeMaybeDetism) :-
         then
             MaybeMaybeDetism = ok1(yes(Detism))
         else
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error: invalid determinism category"),
-                quote(TermStr), suffix("."), nl],
+            DetismTermStr = describe_error_term(VarSet, DetismTerm),
+            Pieces = cord.list(ContextPieces) ++ [
+                lower_case_next_if_not_first,
+                words("Error: invalid determinism category"),
+                quote(DetismTermStr), suffix("."), nl
+            ],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(DetismTerm), [always(Pieces)])]),
             MaybeMaybeDetism = error1([Spec])

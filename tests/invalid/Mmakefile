@@ -48,6 +48,7 @@ SINGLEMODULE= \
 	assert_in_interface \
 	bad_consider_used \
 	bad_detism \
+	bad_detism_category \
 	bad_end_module \
 	bad_foreign_code \
 	bad_foreign_decl \
@@ -65,6 +66,7 @@ SINGLEMODULE= \
 	bad_module_name \
 	bad_mutable \
 	bad_sv_unify_msg \
+	bad_with_inst \
 	bigtest \
 	bind_in_negated \
 	bind_var_errors \
