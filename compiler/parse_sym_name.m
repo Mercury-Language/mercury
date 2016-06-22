@@ -50,7 +50,7 @@
     %
     % Parse Term into a sym_name that is its top function symbol and a
     % list of its argument terms, and if successful return them in Result.
-    % However, in case it does not succced, parse_sym_name_and_args
+    % However, in case it does not succeed, parse_sym_name_and_args
     % also takes as input Varset (from which the variables in Term are taken),
     % and a format_component list describing the context from which it was
     % called, e.g. "In clause head:".
@@ -66,7 +66,7 @@
     sym_name::out, list(term(T))::out) is semidet.
 :- pred try_parse_sym_name_and_no_args(term(T)::in, sym_name::out) is semidet.
 
-    % When given the first two argumeents Functor and FunctorArgs,
+    % When given the first two arguments Functor and FunctorArgs,
     % try_parse_sym_name_and_args_from_f_args will do does exactly the same as
     % what try_parse_sym_name_and_args would do when given the term
     % term.functor(Functor, FunctorArgs, _), but it does so without
