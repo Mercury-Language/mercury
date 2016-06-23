@@ -26,6 +26,7 @@ GRADEFLAGS-bug109		= --grade hlc
 MCFLAGS-ambig_functor		= --type-check-constraints
 MCFLAGS-ambig_stress_test	= --type-check-constraints
 MCFLAGS-builtin_false		= --intermodule-optimization
+MCFLAGS-bug36                   = -O0 --no-optimize-dead-procs
 MCFLAGS-bug50			= --trace deep
 MCFLAGS-bug50_full		= --trace deep
 MCFLAGS-bug51			= -O3

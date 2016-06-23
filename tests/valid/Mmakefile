@@ -265,7 +265,8 @@ LLDS_PROGS = \
 	livevars_shallow2 \
 	untuple_bug
 
-TABLE_PROGS =\
+TABLE_PROGS = \
+	bug36 \
 	table_wrong_func_arity \
 	mercury_java_parser_follow_code_bug
 
