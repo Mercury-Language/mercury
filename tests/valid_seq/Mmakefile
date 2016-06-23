@@ -26,7 +26,8 @@ NO_SPECIAL_PREDS_PROGS =
 C_PROGS =
 
 C_INTERFACE_PROGS = \
-	intermod_pragma_import
+	intermod_pragma_import \
+	test_xmlreader
 
 SOLVER_PROGS =
 
@@ -82,7 +83,6 @@ OTHER_PROGS = \
 	nested_module_bug \
 	opt_det_warn \
 	parsing_bug_main \
-	test_xmlreader \
 	transitive_instance
 
 # XXX The following tests are not valid under the current Mercury
