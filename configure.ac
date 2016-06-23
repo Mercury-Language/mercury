@@ -5188,7 +5188,7 @@ if test "$with_hwloc" != "no"; then
 else
     libhwloc_LIBS=""
     libhwloc_CFLAGS=""
-    libhwloc_static_libs=""
+    hwloc_static_libs=""
 fi
 
 HWLOC_LIBS="$libhwloc_LIBS"
