@@ -778,19 +778,33 @@
 %
 
     % Convert the first character (if any) of a string to uppercase.
-    % Note that this only converts letters (a-z) in the ASCII range.
+    % Only letters (a-z) in the ASCII range are converted.
+    %
+    % This function transforms the initial code point of a string,
+    % whether or not the code point occurs as part of a combining sequence.
     %
 :- func capitalize_first(string) = string.
 :- pred capitalize_first(string::in, string::out) is det.
 
     % Convert the first character (if any) of a string to lowercase.
-    % Note that this only converts letters (A-Z) in the ASCII range.
+    % Only letters (A-Z) in the ASCII range are converted.
+    %
+    % This function transforms the initial code point of a string,
+    % whether or not the code point occurs as part of a combining sequence.
     %
 :- func uncapitalize_first(string) = string.
 :- pred uncapitalize_first(string::in, string::out) is det.
 
     % Converts a string to uppercase.
-    % Note that this only converts letters (a-z) in the ASCII range.
+    % Only letters (A-Z) in the ASCII range are converted.
+    %
+    % This function transforms each code point individually.
+    % Letters that occur within a combining sequence will be converted,
+    % whereas the precomposed character equivalent to the combining
+    % sequence would not be converted. For example:
+    %
+    %   to_upper("a\u0301") ==> "A\u0301"   % á decomposed
+    %   to_upper("\u00E1")  ==> "\u00E1"    % á precomposed
     %
 :- func to_upper(string::in) = (string::uo) is det.
 :- pred to_upper(string, string).
@@ -798,7 +812,15 @@
 :- mode to_upper(in, in) is semidet.        % implied
 
     % Converts a string to lowercase.
-    % Note that this only converts letters (A-Z) in the ASCII range.
+    % Only letters (a-z) in the ASCII range are converted.
+    %
+    % This function transforms each code point individually.
+    % Letters that occur within a combining sequence will be converted,
+    % whereas the precomposed character equivalent to the combining
+    % sequence would not be converted. For example:
+    %
+    %   to_lower("A\u0301") ==> "a\u0301"   % Á decomposed
+    %   to_lower("\u00C1")  ==> "\u00C1"    % Á precomposed
     %
 :- func to_lower(string::in) = (string::uo) is det.
 :- pred to_lower(string, string).
