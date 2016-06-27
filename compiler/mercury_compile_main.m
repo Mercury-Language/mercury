@@ -1795,9 +1795,8 @@ maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO) :-
             OpenResult = ok(Stream),
             io.set_input_stream(Stream, OldStream, !IO),
             module_name_to_file_name(Globals, ModuleName, ".trans_opt_date",
-                do_not_create_dirs, TransOptDateFileName0, !IO),
-            string.to_char_list(TransOptDateFileName0, TransOptDateFileName),
-            SearchPattern = TransOptDateFileName ++ [' ', ':'],
+                do_not_create_dirs, TransOptDateFileName, !IO),
+            SearchPattern = TransOptDateFileName ++ " :",
             read_dependency_file_find_start(SearchPattern, FindResult, !IO),
             (
                 FindResult = yes,
@@ -1829,14 +1828,14 @@ maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO) :-
     % Read lines from the dependency file (module.d) until one is found
     % which begins with SearchPattern.
     %
-:- pred read_dependency_file_find_start(list(char)::in, bool::out,
+:- pred read_dependency_file_find_start(string::in, bool::out,
     io::di, io::uo) is det.
 
 read_dependency_file_find_start(SearchPattern, Success, !IO) :-
-    io.read_line(Result, !IO),
+    io.read_line_as_string(Result, !IO),
     (
-        Result = ok(CharList),
-        ( if list.append(SearchPattern, _, CharList) then
+        Result = ok(Line),
+        ( if string.prefix(Line, SearchPattern) then
             % Have found the start.
             Success = yes
         else
