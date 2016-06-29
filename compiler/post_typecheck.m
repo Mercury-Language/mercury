@@ -215,17 +215,26 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         [nl_indent_delta(-1)],
     Msg = simple_msg(Context, [always(Pieces)]),
 
-    DueTo = choose_number(Constraints,
-        "The constraint is due to:",
-        "The constraints are due to:"),
-    ContextMsgStart = error_msg(yes(Context), do_not_treat_as_first, 0,
-        [always([words(DueTo)])]),
     ConstrainedGoals = find_constrained_goals(PredInfo, Constraints),
-    ContextMsgs = constrained_goals_to_error_msgs(ModuleInfo,
-        ConstrainedGoals),
-
-    Spec = error_spec(severity_error, phase_type_check,
-        [Msg, ContextMsgStart | ContextMsgs]),
+    (
+        % XXX this happens for bugs #184 and #214.  Should it?
+        % If we performed this check after checking for unresolved polymorphism
+        % we could at least report the problem is due to unbound type variables
+        % occurring  in Constraints.
+        ConstrainedGoals = [],
+        ContextMsgs = []
+    ;
+        ConstrainedGoals = [_ | _],
+        DueTo = choose_number(Constraints,
+            "The constraint is due to:",
+            "The constraints are due to:"),
+        ContextMsgsPrefix = error_msg(yes(Context), do_not_treat_as_first, 0,
+            [always([words(DueTo)])]),
+        ContextMsgsList = constrained_goals_to_error_msgs(ModuleInfo,
+            ConstrainedGoals),
+        ContextMsgs = [ContextMsgsPrefix | ContextMsgsList]
+    ),
+    Spec = error_spec(severity_error, phase_type_check, [Msg | ContextMsgs]),
     !:Specs = [Spec | !.Specs].
 
 :- func constraint_to_error_piece(tvarset, prog_constraint)
@@ -249,7 +258,16 @@ find_constrained_goals(PredInfo, Constraints) = Goals :-
 
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     ReverseConstraintMap = map.reverse_map(ConstraintMap),
-    map.apply_to_list(Constraints, ReverseConstraintMap, ConstraintIdSets),
+
+    % XXX Workaround for bug #184 -- we used to use the commented out line
+    % below, but for some programs Constraints has elements that are *not* in
+    % the key set of ReverseConstraintMap.  Either the assumption that every
+    % element of Constraints is a value of ConstraintMap is wrong, or the there
+    % is a bug somewhere in the type checker.
+    %
+    % map.apply_to_list(Constraints, ReverseConstraintMap, ConstraintIdSets),
+    list.foldl(gather_constraint_ids(ReverseConstraintMap), Constraints,
+        [], ConstraintIdSets),
     ConstraintIds = set.union_list(ConstraintIdSets),
 
     % This could be more efficient.
@@ -266,6 +284,15 @@ find_constrained_goals(PredInfo, Constraints) = Goals :-
             )
         ),
     solutions(FindGoals, Goals).
+
+:- pred gather_constraint_ids(map(prog_constraint, set(constraint_id))::in,
+    prog_constraint::in, list(set(constraint_id))::in, list(set(constraint_id))::out) is det.
+
+gather_constraint_ids(ReverseConstraintMap, Constraint, !ConstraintIdSets) :-
+    ( if map.search(ReverseConstraintMap, Constraint, ConstraintIdSet)
+    then !:ConstraintIdSets = [ConstraintIdSet | !.ConstraintIdSets]
+    else true
+    ).
 
 :- func constrained_goals_to_error_msgs(module_info, list(hlds_goal))
     = list(error_msg).

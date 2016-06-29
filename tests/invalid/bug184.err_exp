@@ -1,0 +1,10 @@
+bug184.m:019: In function `test'/0:
+bug184.m:019:   type error: unsatisfied typeclass constraint:
+bug184.m:019:     `bug184.myclass(T)'
+bug184.m:019: In function `test'/0:
+bug184.m:019:   warning: unresolved polymorphism.
+bug184.m:019:   The variable with an unbound type was:
+bug184.m:019:     V_2: list.list(T)
+bug184.m:019:   The unbound type variable will be implicitly bound to the
+bug184.m:019:   builtin type `void'.
+For more information, recompile with `-E'.
