@@ -217,10 +217,12 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
 
     ConstrainedGoals = find_constrained_goals(PredInfo, Constraints),
     (
-        % XXX this happens for bugs #184 and #214.  Should it?
-        % If we performed this check after checking for unresolved polymorphism
-        % we could at least report the problem is due to unbound type variables
-        % occurring  in Constraints.
+        % This can happen because the call to find_constraint_goals/2 will not
+        % necessarily return goal_ids for every unproven constraint.  See the
+        % comment in that function for details.
+        % XXX If we performed this check after checking for unresolved
+        % polymorphism we could at least report the problem is due to unbound
+        % type variables occurring in Constraints.
         ConstrainedGoals = [],
         ContextMsgs = []
     ;
@@ -258,14 +260,6 @@ find_constrained_goals(PredInfo, Constraints) = Goals :-
 
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     ReverseConstraintMap = map.reverse_map(ConstraintMap),
-
-    % XXX Workaround for bug #184 -- we used to use the commented out line
-    % below, but for some programs Constraints has elements that are *not* in
-    % the key set of ReverseConstraintMap.  Either the assumption that every
-    % element of Constraints is a value of ConstraintMap is wrong, or the there
-    % is a bug somewhere in the type checker.
-    %
-    % map.apply_to_list(Constraints, ReverseConstraintMap, ConstraintIdSets),
     list.foldl(gather_constraint_ids(ReverseConstraintMap), Constraints,
         [], ConstraintIdSets),
     ConstraintIds = set.union_list(ConstraintIdSets),
@@ -289,6 +283,10 @@ find_constrained_goals(PredInfo, Constraints) = Goals :-
     prog_constraint::in, list(set(constraint_id))::in, list(set(constraint_id))::out) is det.
 
 gather_constraint_ids(ReverseConstraintMap, Constraint, !ConstraintIdSets) :-
+    % Note that not all unproven constraints will appear in the reverse
+    % constraint map (it only stores as many as the type checker requires).
+    % We should store context information for unproven constraints separately
+    % so we can report it in error messages.
     ( if map.search(ReverseConstraintMap, Constraint, ConstraintIdSet)
     then !:ConstraintIdSets = [ConstraintIdSet | !.ConstraintIdSets]
     else true
