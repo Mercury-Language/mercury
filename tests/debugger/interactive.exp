@@ -66,7 +66,7 @@ fail.
 No (more) solutions.
 ?- det_take(10, Data, Start).
 <stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
-*** caught exception: software_error("list.m: predicate `list.det_take\'/3: Unexpected: not enough elements")
+*** caught exception: software_error("list.m: predicate `list.det_take\'/3: Unexpected: index out of range")
 No (more) solutions.
 ?- quit.
 
@@ -89,7 +89,7 @@ No solution.
 Solution = [1, 3, 5, 2, 4], true.
 ?- det_take(10, Data, Start).
 <stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
-*** caught exception: software_error("list.m: predicate `list.det_take\'/3: Unexpected: not enough elements")
+*** caught exception: software_error("list.m: predicate `list.det_take\'/3: Unexpected: index out of range")
 ?- quit.
 
 mdb> io_query interactive list
@@ -113,7 +113,7 @@ run <-- if { queen(Data, Solution) } then print(Solution), nl else { true }.
 [1, 3, 5, 2, 4]
 run <-- { det_take(10, Data, Start) }, print(Start), nl.
 <stdin>:001: Inferred :- pred query(mdb_query.inputs, io.state, io.state).
-*** caught exception: software_error("list.m: predicate `list.det_take\'/3: Unexpected: not enough elements")
+*** caught exception: software_error("list.m: predicate `list.det_take\'/3: Unexpected: index out of range")
 run <-- quit.
 
 mdb> continue -n -S
