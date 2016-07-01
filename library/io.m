@@ -10771,7 +10771,11 @@ import java.util.Random;
         Okay = MR_YES;
     }
 #else
+#ifdef _MSC_VER
+    #pragma message (warning:""Your system does not have mkdtemp"")
+#else
     #warning ""Your system does not have mkdtemp""
+#endif
     Okay = MR_NO;
     ErrorMessage =
         MR_make_string_const(""Your system does not have mkdtemp"");
