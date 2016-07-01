@@ -228,7 +228,7 @@
                 import_or_use,
 
                 % The locations of the *explicit* import_module and
-                % use_import declarations, in the *source* of the modul.
+                % use_import declarations, in the *source* of the module.
                 % The implicit ones aren't in the list, and neither
                 % are the imports and uses read in from interface
                 % and optimization files, so it is possible for the list
@@ -978,7 +978,7 @@ add_implicit_avail_module(ImportOrUse, ModuleName, !AvailModuleMap) :-
 
 module_info_optimize(!ModuleInfo) :-
     % Currently, all the calls to *_table_optimize are no-ops.
-    % We keep them, and this predicate, in case that changes in thr future.
+    % We keep them, and this predicate, in case that changes in the future.
 
     module_info_get_predicate_table(!.ModuleInfo, Preds0),
     predicate_table_optimize(Preds0, Preds),

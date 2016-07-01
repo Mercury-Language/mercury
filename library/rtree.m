@@ -267,14 +267,14 @@
 % Creation.
 %
 
-rtree.init = empty.
+init = empty.
 
 %---------------------------------------------------------------------------%
 %
 % Test for emptiness.
 %
 
-rtree.is_empty(empty).
+is_empty(empty).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -282,13 +282,13 @@ rtree.is_empty(empty).
 % Insertion.
 %
 
-rtree.insert(K, V, !.Tree) = !:Tree :-
+insert(K, V, !.Tree) = !:Tree :-
     rtree.insert(K, V, !Tree).
 
-rtree.insert(K, V, empty, one(K, V)).
-rtree.insert(K, V, one(K0, V0), T) :-
+insert(K, V, empty, one(K, V)).
+insert(K, V, one(K0, V0), T) :-
     T = rtree(two(K0, leaf(V0), K, leaf(V))).
-rtree.insert(K, V, rtree(!.T), rtree(!:T)) :-
+insert(K, V, rtree(!.T), rtree(!:T)) :-
     insert_2(!.T, K, V, !:T).
 
     % NOTE: the 4-node case means the input tree is the root node, otherwise
@@ -563,9 +563,9 @@ split_4_node(Four, K4, T4, K5, T5) :-
     --->    deleting(orphans(K, V))
     ;       finished(int, orphans(K, V)).
 
-rtree.delete(K, V, one(K0, V), empty) :-
+delete(K, V, one(K0, V), empty) :-
     contains(K, K0).
-rtree.delete(K, V, !Tree) :-
+delete(K, V, !Tree) :-
     some [!T] (
         !.Tree = rtree(!:T),
         delete_2(!.T, K, V, 1, _, !:T, Info),
@@ -869,10 +869,10 @@ insert_tree_and_split_child3(K0, T0, K1, T1, K2, T2, K, S, D0, D, T) :-
 % Search_intersects.
 %
 
-rtree.search_intersects(empty, _) = [].
-rtree.search_intersects(one(K, V), QueryKey) =
+search_intersects(empty, _) = [].
+search_intersects(one(K, V), QueryKey) =
     (if intersects(QueryKey, K) then [V] else []).
-rtree.search_intersects(rtree(RTree), QueryKey) = Values :-
+search_intersects(rtree(RTree), QueryKey) = Values :-
     search_intersects_2(RTree, QueryKey, [], Values).
 
     % Algorithm: descend into subtrees with bounding regions that intersect
@@ -910,10 +910,10 @@ search_intersects_subtree(K, T, QueryKey, !Values) :-
 % Search_contains.
 %
 
-rtree.search_contains(empty, _) = [].
-rtree.search_contains(one(K0, V0), K) =
+search_contains(empty, _) = [].
+search_contains(one(K0, V0), K) =
     (if contains(K, K0) then [V0] else []).
-rtree.search_contains(rtree(T), K) = Vs :-
+search_contains(rtree(T), K) = Vs :-
     search_contains_2(T, K, [], Vs).
 
     % Algorithm: descend into subtrees with bounding regions that contain
@@ -948,10 +948,10 @@ search_contains_subtree(K, T, QueryKey, !Values) :-
 
 %---------------------------------------------------------------------------%
 
-rtree.search_general(_KeyTest, _ValueTest, empty) = [].
-rtree.search_general(KeyTest, ValueTest, one(K, V)) =
+search_general(_KeyTest, _ValueTest, empty) = [].
+search_general(KeyTest, ValueTest, one(K, V)) =
     (if KeyTest(K), ValueTest(V) then [V] else []).
-rtree.search_general(KeyTest, ValueTest, rtree(T)) = Values :-
+search_general(KeyTest, ValueTest, rtree(T)) = Values :-
     search_general_2(T, KeyTest, ValueTest, [], Values).
 
     % Algorithm: descend into subtrees with bounding regions that satisfy
@@ -1000,10 +1000,10 @@ search_general_subtree(K, T, KeyTest, ValueTest, !Values) :-
 % Search_first.
 %
 
-rtree.search_first(P, C, one(K0, V0), L, V0, E0) :-
+search_first(P, C, one(K0, V0), L, V0, E0) :-
     maybe_limit(K0, P, L, _),
     maybe_limit(V0, C, L, E0).
-rtree.search_first(P, C, rtree(T), L, V, E) :-
+search_first(P, C, rtree(T), L, V, E) :-
     search_first_2(T, P, C, L, V, E).
 
     % maybe_limit(K, P, L, E) holds if P(K, E) holds and E is less than the
@@ -1341,14 +1341,14 @@ search_first_2_better_solution_three(VM, EM, E1, E2, T0, T1, T2, P, C, V, E) :-
 % Search_general_fold.
 %
 
-rtree.search_general_fold(_, _, empty, !Acc).
-rtree.search_general_fold(KTest, VPred, one(K, V), !Acc) :-
+search_general_fold(_, _, empty, !Acc).
+search_general_fold(KTest, VPred, one(K, V), !Acc) :-
     ( if KTest(K) then
         VPred(K, V, !Acc)
     else
         true
     ).
-rtree.search_general_fold(KTest, VPred, rtree(T), !Acc) :-
+search_general_fold(KTest, VPred, rtree(T), !Acc) :-
     search_general_fold_2(T, KTest, VPred, !Acc).
 
     % Similar to search_general, except call accumulator over values.
@@ -1401,10 +1401,10 @@ search_general_fold_subtree(K, T, KTest, VPred, !Acc) :-
 % Fold.
 %
 
-rtree.fold(_P, empty, !Acc).
-rtree.fold(P, one(K, V), !Acc) :-
+fold(_P, empty, !Acc).
+fold(P, one(K, V), !Acc) :-
     P(K, V, !Acc).
-rtree.fold(P, rtree(T), !Acc) :-
+fold(P, rtree(T), !Acc) :-
     rtree.fold_2(P, T, !Acc).
 
 :- pred fold_2(pred(K, V, A, A), rtree_2(K, V), A, A).
@@ -1450,10 +1450,10 @@ fold_subtree(P, K, T, !Acc) :-
 % Map_values.
 %
 
-rtree.map_values(_, empty, empty).
-rtree.map_values(P, one(K, V), one(K, W)) :-
+map_values(_, empty, empty).
+map_values(P, one(K, V), one(K, W)) :-
     P(K, V, W).
-rtree.map_values(P, rtree(T), rtree(U)) :-
+map_values(P, rtree(T), rtree(U)) :-
     map_values_2(P, T, U).
 
 :- pred map_values_2(pred(K, V, W), rtree_2(K, V), rtree_2(K, W)).

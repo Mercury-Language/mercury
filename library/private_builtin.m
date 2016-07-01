@@ -367,7 +367,7 @@ typed_compare(R, X, Y) :-
 
     % type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo):
     %
-    % Extracts TypeInfo from TypeClassInfo, where TypeInfo is the Indexth
+    % Extracts TypeInfo from TypeClassInfo, where TypeInfo is the Index'th
     % type_info in the typeclass_info.
     %
     % Note: Index must be equal to the number of the desired type_info

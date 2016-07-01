@@ -126,7 +126,7 @@
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Add the given key-value pair to the multi_map.
-    % (`add' is a synonum for `set'.)
+    % (`add' is a synonym for `set'.)
     %
 :- func set(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred set(K::in, V::in,
