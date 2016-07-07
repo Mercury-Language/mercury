@@ -21,6 +21,7 @@
 #include "mercury_trace_completion.h"
 #include "mercury_trace_internal.h"
 #include "mercury_trace_alias.h"
+#include "mercury_trace_tables.h"
 
 #include <stdio.h>
 #include <stdlib.h>
