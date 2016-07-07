@@ -914,6 +914,7 @@ then
     CFLAGS_FOR_ERRMSG_FILTER=""
     CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS=
     CFLAGS_FOR_NO_REORDER_FUNCTIONS=""
+    CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS=
 
 else
 
@@ -978,6 +979,17 @@ EOF
     else
         AC_MSG_RESULT(no)
         CFLAGS_FOR_NO_REORDER_FUNCTIONS=""
+    fi
+
+    AC_MSG_CHECKING(whether we can use -fno-tree-dominator-opts)
+    if $CC -fno-tree-dominator-opts -c conftest.c \
+        </dev/null >&AC_FD_CC 2>&1
+    then
+        AC_MSG_RESULT(yes)
+        CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS="-fno-tree-dominator-opts"
+    else
+        AC_MSG_RESULT(no)
+        CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS=
     fi
 
     rm -f conftest*
@@ -2571,15 +2583,9 @@ case "$ac_cv_prog_gcc" in yes)
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
             ;;
         i*86-*|x86_64*)
-            # On x86-64 with GCC 4.8 and 4.9, gcc labels do not work correctly
-            # with -ftree-dominator-opts -- we disable it for x86 in this case
-            # too.
-            #
-            case "$C_COMPILER_TYPE" in
-                gcc_4_8_*|gcc_4_9_*|gcc_5_*|gcc_6_*)
-                  CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fno-tree-dominator-opts"
-                ;;
-            esac
+            # On x86-64 and x86, GCC labels do not work correctly with
+            # -ftree-dominator-opts.
+            CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS"
             CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
             ;;
         # We need a special-case hack here, because the auto-config
