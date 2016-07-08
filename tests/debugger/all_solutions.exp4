@@ -10,12 +10,12 @@ mdb> continue
       16:     10  5 CALL pred all_solutions.hello/1-0 (multi)
 mdb> stack
    0       pred all_solutions.hello/1-0 (multi)
-   1       pred solutions.builtin_aggregate/4-0 (det)
-   2       pred solutions.builtin_solutions/2-0 (det)
+   1       pred solutions.builtin_aggregate/4-0 (cc_multi)
+   2       pred solutions.builtin_solutions/2-0 (cc_multi)
    3       pred solutions.solutions/2-0 (det)
    4       pred all_solutions.main/2-0 (det)
 mdb> retry 1
-       4:      4  4 CALL pred solutions.builtin_aggregate/4-0 (det)
+       4:      4  4 CALL pred solutions.builtin_aggregate/4-0 (cc_multi)
 mdb> retry 2
        2:      2  2 CALL pred solutions.solutions/2-0 (det)
 mdb> retry 3
