@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1999-2003, 2006, 2011 The University of Melbourne.
@@ -18,9 +18,9 @@
 #endif
 
 #include "mercury.h"
-#include "mercury_type_info.h"      /* for MR_TYPECTOR_REP* */
-#include "mercury_type_desc.h"      /* for MR_TypeCtorDesc */
-#include "mercury_misc.h"           /* for MR_fatal_error() */
+#include "mercury_type_info.h"      /* for MR_TYPECTOR_REP*            */
+#include "mercury_type_desc.h"      /* for MR_TypeCtorDesc             */
+#include "mercury_misc.h"           /* for MR_fatal_error()            */
 #include "mercury_heap.h"           /* for MR_create[1-3]() prototypes */
 #include "mercury_builtin_types.h"
 

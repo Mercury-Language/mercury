@@ -1,5 +1,5 @@
 /*
-** vim:sw=4 ts=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2000-2006 The University of Melbourne.
@@ -36,13 +36,13 @@ exist_func(const params_type params, const MR_PseudoTypeInfo pseudo_type_info,
     MAYBE_DECLARE_ALLOC_ARG)
 {
     MR_TypeCtorInfo     type_ctor_info;
-    return_type     	expanded;
-    MR_Word         	*type_info_arena;
-    MR_Word         	type_info_arena_word;
+    return_type         expanded;
+    MR_Word             *type_info_arena;
+    MR_Word             type_info_arena_word;
     MR_PseudoTypeInfo   *pseudo_type_info_arena;
-    int         	    arity;
-    int         	    start_region_size;
-    int         	    i;
+    int                 arity;
+    int                 start_region_size;
+    int                 i;
 
     /*
     ** The pseudo_type_info might be a polymorphic variable.

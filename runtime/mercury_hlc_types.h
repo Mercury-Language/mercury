@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 2002-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -12,17 +15,18 @@
 #ifndef MERCURY_HLC_TYPES_H
 #define MERCURY_HLC_TYPES_H
 
-#ifdef	MR_HIGHLEVEL_CODE
+#ifdef  MR_HIGHLEVEL_CODE
 
 #include "mercury_types.h"
-#include "mercury_std.h"	/* for MR_CALL */
+#include "mercury_std.h"    /* for MR_CALL */
 
 /*
 ** The continuation function types used for implementing
 ** nondeterministic procedures.
 */
+
 typedef void MR_CALL (*MR_NestedCont) (void); /* for --gcc-nested-functions */
-typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
+typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions  */
 
 /*
 ** The types uses to represent the Mercury builtin types,
@@ -32,7 +36,7 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
 
 /*
 ** The MR_Word type, which is used for representing user-defined
-** types when we're using the low-level data representation,
+** types when we are using the low-level data representation,
 ** is defined in runtime/mercury_types.h.
 */
 
@@ -54,7 +58,7 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
 */
 #ifdef MR_HIGHLEVEL_DATA
   typedef MR_Integer /* really `enum mercury__builtin__comparison_result_0' */
-  	MR_Comparison_Result;
+    MR_Comparison_Result;
   typedef struct mercury__builtin__void_0_s * MR_Void;
   typedef struct mercury__builtin__c_pointer_0_s * MR_C_Pointer;
   typedef struct mercury__private_builtin__heap_pointer_0_s * MR_Heap_Pointer;
@@ -67,13 +71,13 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
   typedef struct mercury__type_desc__pseudo_type_desc_0_s * MR_Pseudo_Type_Desc;
   typedef struct mercury__type_desc__type_ctor_desc_0_s * MR_Type_Ctor_Desc;
   typedef struct mercury__private_builtin__type_info_0_s *
-  	MR_Mercury_Type_Info;
+    MR_Mercury_Type_Info;
   typedef struct mercury__private_builtin__type_ctor_info_0_s *
-  	MR_Mercury_Type_Ctor_Info;
+    MR_Mercury_Type_Ctor_Info;
   typedef struct mercury__private_builtin__typeclass_info_0_s *
-  	MR_Mercury_TypeClass_Info;
+    MR_Mercury_TypeClass_Info;
   typedef struct mercury__private_builtin__base_typeclass_info_0_s *
-  	MR_Mercury_Base_TypeClass_Info;
+    MR_Mercury_Base_TypeClass_Info;
 #else
   /* for --no-high-level-data, they're all just `MR_Word' */
   typedef MR_Word MR_Comparison_Result;
@@ -94,6 +98,6 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
   typedef MR_Word MR_Mercury_Base_TypeClass_Info;
 #endif
 
-#endif	/* MR_HIGHLEVEL_CODE */
+#endif  /* MR_HIGHLEVEL_CODE */
 
-#endif	/* MERCURY_HLC_TYPES_H */
+#endif  /* MERCURY_HLC_TYPES_H */

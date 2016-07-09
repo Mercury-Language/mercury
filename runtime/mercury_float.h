@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 1995-1997, 1999-2002, 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -10,8 +13,8 @@
 #define MERCURY_FLOAT_H
 
 #include "mercury_conf.h"       /* for MR_BOXED_FLOAT, MR_CONSERVATIVE_GC */
-#include "mercury_types.h"      /* for `MR_Word' */
-#include "mercury_std.h"        /* for `MR_bool' */
+#include "mercury_types.h"      /* for `MR_Word'                          */
+#include "mercury_std.h"        /* for `MR_bool'                          */
 
 #ifdef MR_USE_SINGLE_PREC_FLOAT
   typedef float MR_Float;
@@ -113,8 +116,8 @@
     }
   #endif
 
-  #if defined(MR_DEBUG_DWORD_ALIGNMENT) && \
-	(defined(MR_GNUC) || defined(MR_CLANG))
+  #if defined(MR_DEBUG_DWORD_ALIGNMENT) &&                              \
+    (defined(MR_GNUC) || defined(MR_CLANG))
     #define MR_dword_ptr(ptr)                                               \
       ({                                                                    \
           MR_Word __addr = (MR_Word) (ptr);                                 \
@@ -138,8 +141,8 @@
       })
   #else
 
-    #define MR_float_from_dword(w0, w1)				 	    \
-	MR_float_from_dword_func((MR_Word)(w0), (MR_Word)(w1))
+    #define MR_float_from_dword(w0, w1)                                 \
+    MR_float_from_dword_func((MR_Word)(w0), (MR_Word)(w1))
 
     MR_EXTERN_INLINE MR_Float
     MR_float_from_dword_func(MR_Word w0, MR_Word w1);
@@ -173,9 +176,9 @@
     ** GNU C allows you to cast to a union type.
     ** clang also provides this extension.
     */
-    #define MR_float_to_word(f) (__extension__ \
+    #define MR_float_to_word(f) (__extension__                          \
                                 ((union MR_Float_Word)(MR_Float)(f)).w)
-    #define MR_word_to_float(w) (__extension__ \
+    #define MR_word_to_float(w) (__extension__                          \
                                 ((union MR_Float_Word)(MR_Word)(w)).f)
 
   #else /* not MR_GNUC or MR_CLANG */
@@ -194,8 +197,8 @@
 **
 ** Longest possible string for %#.*g format is `-n.nnnnnnE-mmmm', which
 ** has size  PRECISION + MAX_EXPONENT_DIGITS + 5 (for the `-', `.', `E',
-** '-', and '\\0').  PRECISION is at most 20, and MAX_EXPONENT_DIGITS is
-** at most 5, so we need at most 30 chars.  80 is way more than enough.
+** '-', and '\\0'). PRECISION is at most 20, and MAX_EXPONENT_DIGITS is
+** at most 5, so we need at most 30 chars. 80 is way more than enough.
 */
 #define MR_SPRINTF_FLOAT_BUF_SIZE   80
 

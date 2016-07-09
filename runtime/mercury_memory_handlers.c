@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998, 2000, 2002, 2005-2007, 2010-2011 The University of Melbourne.
@@ -100,7 +100,7 @@
 
 /*
 ** round_up(amount, align) returns `amount' rounded up to the nearest
-** alignment boundary.  `align' must be a power of 2.
+** alignment boundary. `align' must be a power of 2.
 */
 
 static  void    MR_print_dump_stack(void);
@@ -331,7 +331,7 @@ MR_explain_context(void *the_context)
   #else /* not MR_PC_ACCESS */
 
     /* if MR_PC_ACCESS is not set, we don't know the context */
-    /* therefore we return an empty string to be printed  */
+    /* therefore we return an empty string to be printed     */
     buf[0] = '\0';
 
   #endif /* not MR_PC_ACCESS */
@@ -363,10 +363,9 @@ MR_explain_context(void *the_context)
     switch(sig) {
         case SIGSEGV:
             /*
-            ** If we're debugging, print the segv explanation
-            ** messages before we call MR_try_munprotect.  But if
-            ** we're not debugging, only print them if
-            ** MR_try_munprotect fails.
+            ** If we're debugging, print the segv explanation messages
+            ** before we call MR_try_munprotect. But if we are not debugging,
+            ** only print them if MR_try_munprotect fails.
             */
             if (MR_memdebug) {
                 fflush(stdout);
@@ -542,7 +541,7 @@ complex_segvhandler(int sig, siginfo_t *info, void *context)
 
     /*
     ** If we're debugging, print the segv explanation messages
-    ** before we call MR_try_munprotect.  But if we're not debugging,
+    ** before we call MR_try_munprotect. But if we are not debugging,
     ** only print them if MR_try_munprotect fails.
     */
 
@@ -646,7 +645,7 @@ MR_ExceptionName MR_exception_names[] =
 };
 
 /*
-** Retrieve the name of a Win32 exception code as a string
+** Retrieve the name of a Win32 exception code as a string.
 */
 static const char *
 MR_find_exception_name(DWORD exception_code)
@@ -663,7 +662,7 @@ MR_find_exception_name(DWORD exception_code)
 }
 
 /*
-** Was a page accessed read/write?  The MSDN documentation doesn't define
+** Was a page accessed read/write? The MSDN documentation doesn't define
 ** symbolic constants for these alternatives.
 */
 #define READ    0
@@ -684,54 +683,51 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
         void *address;
         int access_mode;
 
-        /* If the exception is an access violation */
+        /* If the exception is an access violation. */
         if (MR_exception_record_is_access_violation(rec,
-                    &address, &access_mode))
+            &address, &access_mode))
         {
             MR_MemoryZone *zone;
 
-            /* Display AV address and access mode */
+            /* Display AV address and access mode. */
             fprintf(stderr, "\n***   An access violation occured"
                     " at address 0x%08lx, while attempting"
                     " to ", (unsigned long) address);
 
             if (access_mode == READ) {
-                fprintf(stderr, "\n***   read "
-                        "inaccessible data");
+                fprintf(stderr, "\n***   read inaccessible data");
             } else if (access_mode == WRITE) {
                 fprintf(stderr, "\n***   write to an "
-                        "inaccessible (or protected)"
-                        " address");
+                    "inaccessible (or protected) address");
             } else {
                 fprintf(stderr, "\n***   ? [unknown access "
-                        "mode %d (strange...)]",
-                        access_mode);
+                    "mode %d (strange...)]",
+                    access_mode);
             }
 
             #if defined(MR_CHECK_OVERFLOW_VIA_MPROTECT)
             fprintf(stderr, "\n***   Trying to see if this "
-                    "stands within a mercury zone...");
+                "stands within a mercury zone...");
             /*
-            ** Browse the mercury memory zones to see if the
+            ** Browse the Mercury memory zones to see if the
             ** AV address references one of them.
             */
             zone = MR_get_used_memory_zones_readonly();
-            while(zone != NULL) {
+            while (zone != NULL) {
                 fprintf(stderr,
-                        "\n***    Checking zone %s#%"
-                        MR_INTEGER_LENGTH_MODIFIER "d: "
-                        "0x%08lx - 0x%08lx - 0x%08lx",
-                        zone->MR_zone_name, zone->MR_zone_id,
-                        (unsigned long) zone->MR_zone_bottom,
-                        (unsigned long) zone->MR_zone_redzone,
-                        (unsigned long) zone->MR_zone_top);
+                    "\n***    Checking zone %s#%"
+                    MR_INTEGER_LENGTH_MODIFIER "d: "
+                    "0x%08lx - 0x%08lx - 0x%08lx",
+                    zone->MR_zone_name, zone->MR_zone_id,
+                    (unsigned long) zone->MR_zone_bottom,
+                    (unsigned long) zone->MR_zone_redzone,
+                    (unsigned long) zone->MR_zone_top);
 
                 if ((zone->MR_zone_redzone <= address) &&
-                        (address <= zone->MR_zone_top))
+                    (address <= zone->MR_zone_top))
                 {
                     fprintf(stderr,
-                        "\n***     Address is within"
-                        " redzone of "
+                        "\n***     Address is within redzone of "
                         "%s#%" MR_INTEGER_LENGTH_MODIFIER
                         "d (!!zone overflowed!!)\n",
                         zone->MR_zone_name, zone->MR_zone_id);
@@ -739,16 +735,14 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
                         (address <= zone->MR_zone_top))
                 {
                     fprintf(stderr, "\n***     Address is"
-                            " within zone %s#%" MR_INTEGER_LENGTH_MODIFIER
-                            "d\n",
-                            zone->MR_zone_name, zone->MR_zone_id);
+                        " within zone %s#%" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                        zone->MR_zone_name, zone->MR_zone_id);
                 }
                 /*
                 ** Don't need to call handler, because it
                 ** has much less information than we do.
                 */
-                /* return zone->MR_zone_handler(fault_addr,
-                        zone, rec); */
+                /* return zone->MR_zone_handler(fault_addr, zone, rec); */
                 zone = zone->MR_zone_next;
             }
             #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
@@ -770,23 +764,23 @@ MR_dump_exception_record(EXCEPTION_RECORD *rec)
     }
 
     fprintf(stderr, "\n***   Exception record at 0x%08lx:",
-            (unsigned long) rec);
+        (unsigned long) rec);
     fprintf(stderr, "\n***    MR_Code        : 0x%08lx (%s)",
-            (unsigned long) rec->ExceptionCode,
-            MR_find_exception_name(rec->ExceptionCode));
+        (unsigned long) rec->ExceptionCode,
+        MR_find_exception_name(rec->ExceptionCode));
     fprintf(stderr, "\n***    Flags       : 0x%08lx",
-            (unsigned long) rec->ExceptionFlags);
+        (unsigned long) rec->ExceptionFlags);
     fprintf(stderr, "\n***    Address     : 0x%08lx",
-            (unsigned long) rec->ExceptionAddress);
+        (unsigned long) rec->ExceptionAddress);
 
     for (i = 0; i < rec->NumberParameters; i++) {
         fprintf(stderr, "\n***    Parameter %d : 0x%08lx", i,
-                (unsigned long) rec->ExceptionInformation[i]);
+            (unsigned long) rec->ExceptionInformation[i]);
     }
     fprintf(stderr, "\n***    Next record : 0x%08lx",
-            (unsigned long) rec->ExceptionRecord);
+        (unsigned long) rec->ExceptionRecord);
 
-    /* Try to explain the exception more "gracefully" */
+    /* Try to explain the exception more "gracefully". */
     MR_explain_exception_record(rec);
     MR_dump_exception_record(rec->ExceptionRecord);
 }
@@ -799,7 +793,7 @@ MR_dump_exception_record(EXCEPTION_RECORD *rec)
 */
 static MR_bool
 MR_exception_record_is_access_violation(EXCEPTION_RECORD *rec,
-        void **address_ptr, int *access_mode_ptr)
+    void **address_ptr, int *access_mode_ptr)
 {
     if (rec->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
         if (rec->NumberParameters >= 2) {
@@ -836,25 +830,23 @@ MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs)
     void *address;
     int access_mode;
 
-        /* If the exception is an access violation */
+    /* Is the exception an access violation? */
     if (MR_exception_record_is_access_violation(
-            exception_ptrs->ExceptionRecord,
-            &address, &access_mode))
+        exception_ptrs->ExceptionRecord, &address, &access_mode))
     {
 
-            /* If we can unprotect the memory zone */
+        /* Can we unprotect the memory zone? */
         if (MR_try_munprotect(address, exception_ptrs)) {
             if (MR_memdebug) {
-                fprintf(stderr, "returning from "
-                        "signal handler\n\n");
+                fprintf(stderr, "returning from signal handler\n\n");
             }
-                /* Continue execution where it stopped */
+            /* Continue execution where it stopped. */
             return  EXCEPTION_CONTINUE_EXECUTION;
         }
     }
 
     /*
-    ** We can't handle the exception. Just dump all the information we got
+    ** We can't handle the exception. Just dump all the information we got.
     */
     fflush(stdout);
     fprintf(stderr, "\n*** Mercury runtime: Unhandled exception ");
@@ -868,10 +860,10 @@ MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs)
     fflush(stderr);
 
     /*
-    ** Pass exception back to upper handler. In most cases, this
-    ** means activating UnhandledExceptionFilter, which will display
-    ** a dialog box asking to user ro activate the Debugger or simply
-    ** to kill the application
+    ** Pass exception back to upper handler. In most cases, this means
+    ** activating UnhandledExceptionFilter, which will display a dialog box
+    ** asking to user ro activate the Debugger or simply to kill
+    ** the application.
     */
     return  EXCEPTION_CONTINUE_SEARCH;
 }
@@ -881,7 +873,7 @@ MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs)
 /*
 ** get_pc_from_context:
 **  Given the signal context, return the program counter at the time
-**  of the signal, if available.  If it is unavailable, return NULL.
+**  of the signal, if available. If it is unavailable, return NULL.
 */
 static MR_Code *
 get_pc_from_context(void *the_context)
@@ -911,7 +903,7 @@ get_pc_from_context(void *the_context)
 
   #else /* not MR_PC_ACCESS */
 
-    /* if MR_PC_ACCESS is not set, we don't know the context */
+    /* If MR_PC_ACCESS is not set, we don't know the context. */
     pc_at_signal = (MR_Code *) NULL;
 
   #endif /* not MR_PC_ACCESS */
@@ -928,11 +920,10 @@ get_pc_from_context(void *the_context)
 /*
 ** get_sp_from_context:
 **  Given the signal context, return the Mercury register "MR_sp" at
-**  the time of the signal, if available.  If it is unavailable,
-**  return NULL.
+**  the time of the signal, if available. If it is unavailable, return NULL.
 **
 ** XXX We only define this function in LLDS accurate gc grades for the moment,
-** because it's unlikely to compile everywhere.  It relies on
+** because it's unlikely to compile everywhere. It relies on
 ** MR_real_reg_number_sp being defined, which is the name/number of the
 ** machine register that is used for MR_sp.
 ** Need to fix this so it works when the register is in a fake reg too.
@@ -967,8 +958,7 @@ get_sp_from_context(void *the_context)
     #else /* not MR_PC_ACCESS */
 
     /*
-    ** if MR_PC_ACCESS is not set, we don't know how to get at the
-    ** registers
+    ** If MR_PC_ACCESS is not set, we don't know how to get at the registers.
     */
     sp_at_signal = (MR_Word *) NULL;
 
@@ -989,11 +979,10 @@ get_sp_from_context(void *the_context)
 /*
 ** get_sp_from_context:
 **  Given the signal context, return the Mercury register "MR_sp" at
-**  the time of the signal, if available.  If it is unavailable,
-**  return NULL.
+**  the time of the signal, if available. If it is unavailable, return NULL.
 **
 ** XXX We only define this function in accurate gc grades for the moment,
-** because it's unlikely to compile everywhere.  It relies on
+** because it's unlikely to compile everywhere. It relies on
 ** MR_real_reg_number_sp being defined, which is the name/number of the
 ** machine register that is used for MR_sp.
 ** Need to fix this so it works when the register is in a fake reg too.
@@ -1004,12 +993,12 @@ get_curfr_from_context(void *the_context)
     MR_Word *curfr_at_signal;
 
     /*
-    ** XXX this is implementation dependent, need a better way
+    ** XXX This is implementation dependent, need a better way
     ** to do register accesses at signals.
     **
     ** It's in mr8 or mr9 which is in the fake regs on some architectures,
     ** and is a machine register on others.
-    ** So don't run the garbage collector on those archs.
+    ** So don't run the garbage collector on those architectures.
     */
 
     curfr_at_signal = MR_curfr;

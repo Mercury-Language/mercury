@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2002-2005, 2007 The University of Melbourne.
@@ -21,9 +21,9 @@
 #include "mercury_type_info.h"
 #include "mercury_construct.h"
 #include "mercury_univ.h"
-#include "mercury_misc.h"	/* for MR_fatal_error() */
+#include "mercury_misc.h"   /* for MR_fatal_error() */
 
-static	int  MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
+static  int  MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
                 MR_Construct_Info *construct_info);
 
 /*

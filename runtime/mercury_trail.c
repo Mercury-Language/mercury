@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-2000, 2006-2008, 2011 The University of Melbourne.
@@ -25,9 +25,9 @@
 MR_MemoryZone   *MR_trail_zone;
 MR_TrailEntry   *MR_trail_ptr_var;
 
-    #if defined(MR_TRAIL_SEGMENTS)
-        MR_MemoryZones *MR_prev_trail_zones;
-    #endif
+  #if defined(MR_TRAIL_SEGMENTS)
+    MR_MemoryZones *MR_prev_trail_zones;
+  #endif
 
 MR_Unsigned     MR_ticket_counter_var = 1;
 MR_Unsigned     MR_ticket_high_water_var = 1;
@@ -48,14 +48,14 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
     MR_TrailEntry   *tr_base;
 
     /* Not needed, since MR_trail_ptr is never a real reg: */
-    /* MR_restore_transient_registers(); */
+    /* MR_restore_transient_registers();                   */
     tr_ptr = MR_trail_ptr;
 
     switch (reason) {
     case MR_solve:
     case MR_commit:
 
-        /* Just handle the function trail entries */
+        /* Just handle the function trail entries. */
         tr_base = MR_TRAIL_BASE;
         while (tr_ptr != old_trail_ptr) {
             tr_ptr--;
@@ -104,14 +104,14 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
         ** NB. We do _not_ reset the trail pointer here. Doing so would be
         ** unsafe, for `mdi' modes, because we may still need to restore
         ** the value if/when we backtrack to a choicepoint prior to the one
-        ** we're cutting away.
+        ** we are cutting away.
         */
         break;
 
     case MR_undo:
     case MR_exception:
     case MR_retry:
-        /* Handle both function and value trail entries */
+        /* Handle both function and value trail entries. */
         tr_base = MR_TRAIL_BASE;
         while (tr_ptr != old_trail_ptr) {
             tr_ptr--;
@@ -135,7 +135,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 
         MR_trail_ptr = tr_ptr;
         /* Not needed, since MR_trail_ptr is never a real reg: */
-        /* MR_save_transient_registers(); */
+        /* MR_save_transient_registers();                      */
         break;
 
     default:
@@ -290,5 +290,5 @@ MR_num_trail_segments(void)
 
 #endif /* MR_TRAIL_SEGMENTS */
 
-#endif /* MR_USE_TRAIL */
+#endif /* MR_USE_TRAIL                                                       */
 /*---------------------------------------------------------------------------*/

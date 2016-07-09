@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997, 2000, 2002, 2006-2007 The University of Melbourne.
@@ -11,7 +11,7 @@
 #include    <math.h>
 
 #if defined(MR_MSVC)
-    #include <float.h>  /* For _FPCLASS_* etc. */
+  #include <float.h>  /* For _FPCLASS_* etc. */
 #endif
 
 /*

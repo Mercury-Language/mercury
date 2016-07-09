@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-1998, 2000, 2003, 2005-2007, 2009-2011 The University of Melbourne.
@@ -29,30 +29,21 @@
 
   typedef sem_t             MercurySem;
 
-extern int
-MR_mutex_lock(MercuryLock *lock, const char *from);
-extern int
-MR_mutex_unlock(MercuryLock *lock, const char *from);
-extern int
-MR_cond_signal(MercuryCond *cond, const char *from);
-extern int
-MR_cond_broadcast(MercuryCond *cond, const char *from);
-extern int
-MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from);
-extern int
-MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
-    const struct timespec *abstime, const char *from);
+  extern int    MR_mutex_lock(MercuryLock *lock, const char *from);
+  extern int    MR_mutex_unlock(MercuryLock *lock, const char *from);
+  extern int    MR_cond_signal(MercuryCond *cond, const char *from);
+  extern int    MR_cond_broadcast(MercuryCond *cond, const char *from);
+  extern int    MR_cond_wait(MercuryCond *cond, MercuryLock *lock,
+                    const char *from);
+  extern int    MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
+                    const struct timespec *abstime, const char *from);
 
-extern void
-MR_sem_init(MercurySem *sem, unsigned int);
-extern int
-MR_sem_wait(MercurySem *sem, const char *from);
-extern int
-MR_sem_post(MercurySem *sem, const char *from);
+  extern void   MR_sem_init(MercurySem *sem, unsigned int);
+  extern int    MR_sem_wait(MercurySem *sem, const char *from);
+  extern int    MR_sem_post(MercurySem *sem, const char *from);
 
-   #if defined(MR_PTHREADS_WIN32)
-extern MercuryThread
-MR_null_thread(void);
+  #if defined(MR_PTHREADS_WIN32)
+    extern MercuryThread MR_null_thread(void);
   #else
     #define MR_null_thread() ((MercuryThread) 0)
   #endif
@@ -85,65 +76,65 @@ MR_null_thread(void);
     #define MR_SEM_POST(sem, from)  sem_post((sem))
     #define MR_SEM_WAIT(sem, from)  sem_wait((sem))
   #else
-    #define MR_LOCK(lck, from)                          \
-                ( MR_debug_threads ?                    \
-                    MR_mutex_lock((lck), (from))        \
-                :                                       \
-                    pthread_mutex_lock((lck))           \
+    #define MR_LOCK(lck, from)                                          \
+                ( MR_debug_threads ?                                    \
+                    MR_mutex_lock((lck), (from))                        \
+                :                                                       \
+                    pthread_mutex_lock((lck))                           \
                 )
-    #define MR_UNLOCK(lck, from)                        \
-                ( MR_debug_threads ?                    \
-                    MR_mutex_unlock((lck), (from))      \
-                :                                       \
-                    pthread_mutex_unlock((lck))         \
+    #define MR_UNLOCK(lck, from)                                        \
+                ( MR_debug_threads ?                                    \
+                    MR_mutex_unlock((lck), (from))                      \
+                :                                                       \
+                    pthread_mutex_unlock((lck))                         \
                 )
 
-    #define MR_SIGNAL(cnd, from)                        \
-                ( MR_debug_threads ?                    \
-                    MR_cond_signal((cnd), (from))       \
-                :                                       \
-                    pthread_cond_signal((cnd))          \
+    #define MR_SIGNAL(cnd, from)                                        \
+                ( MR_debug_threads ?                                    \
+                    MR_cond_signal((cnd), (from))                       \
+                :                                                       \
+                    pthread_cond_signal((cnd))                          \
                 )
-    #define MR_BROADCAST(cnd, from)                     \
-                ( MR_debug_threads ?                    \
-                    MR_cond_broadcast((cnd), (from))    \
-                :                                       \
-                    pthread_cond_broadcast((cnd))       \
+    #define MR_BROADCAST(cnd, from)                                     \
+                ( MR_debug_threads ?                                    \
+                    MR_cond_broadcast((cnd), (from))                    \
+                :                                                       \
+                    pthread_cond_broadcast((cnd))                       \
                 )
-    #define MR_WAIT(cnd, mtx, from)                     \
-                ( MR_debug_threads ?                    \
-                    MR_cond_wait((cnd), (mtx), (from))  \
-                :                                       \
-                    pthread_cond_wait((cnd), (mtx))     \
+    #define MR_WAIT(cnd, mtx, from)                                     \
+                ( MR_debug_threads ?                                    \
+                    MR_cond_wait((cnd), (mtx), (from))                  \
+                :                                                       \
+                    pthread_cond_wait((cnd), (mtx))                     \
                 )
-    #define MR_TIMED_WAIT(cond, mtx, abstime, from)                         \
-        ( MR_debug_threads ?                                                \
-            MR_cond_timed_wait((cond), (mtx), (abstime), (from))            \
-        :                                                                   \
-            pthread_cond_timedwait((cond), (mtx), (abstime))                \
+    #define MR_TIMED_WAIT(cond, mtx, abstime, from)                     \
+        ( MR_debug_threads ?                                            \
+            MR_cond_timed_wait((cond), (mtx), (abstime), (from))        \
+        :                                                               \
+            pthread_cond_timedwait((cond), (mtx), (abstime))            \
         )
 
-    #define MR_SEM_WAIT(sem, from)                      \
-        ( MR_debug_threads ?                            \
-            MR_sem_wait((sem), (from))                  \
-        :                                               \
-            sem_wait((sem))                             \
+    #define MR_SEM_WAIT(sem, from)                                      \
+        ( MR_debug_threads ?                                            \
+            MR_sem_wait((sem), (from))                                  \
+        :                                                               \
+            sem_wait((sem))                                             \
         )
 
-    #define MR_SEM_POST(sem, from)                      \
-        ( MR_debug_threads ?                            \
-            MR_sem_post((sem), (from))                  \
-        :                                               \
-            sem_post((sem))                             \
+    #define MR_SEM_POST(sem, from)                                      \
+        ( MR_debug_threads ?                                            \
+            MR_sem_post((sem), (from))                                  \
+        :                                                               \
+            sem_post((sem))                                             \
         )
 
   #endif
 
-    /*
-    ** The following two macros are used to protect pragma c_code
-    ** predicates which are not thread-safe.
-    ** See the comments below.
-    */
+  /*
+  ** The following two macros are used to protect pragma foreign_proc
+  ** predicates which are not thread-safe.
+  ** See the comments below.
+  */
   #define MR_OBTAIN_GLOBAL_LOCK(where)  MR_LOCK(&MR_global_lock, (where))
   #define MR_RELEASE_GLOBAL_LOCK(where) MR_UNLOCK(&MR_global_lock, (where))
 
@@ -183,7 +174,7 @@ MR_null_thread(void);
   ** This is exported only for leave_signal_handler.
   ** All other accesses require the MR_all_engine_bases_lock.
   */
-  extern struct MR_mercury_engine_struct **MR_all_engine_bases;
+    extern struct MR_mercury_engine_struct **MR_all_engine_bases;
   #endif
 
   /*
@@ -232,27 +223,28 @@ extern MR_Integer MR_thread_barrier_count;
 ** the runqueue returns.
 */
 
-typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
+typedef enum {
+    MR_use_now,
+    MR_use_later
+} MR_when_to_use;
 
 /*
-** In low-level C parallel grades, there are two types of Mercury
-** engines. "Shared" engines may execute code from any Mercury thread.
+** In low-level C parallel grades, there are two types of Mercury engines.
+** "Shared" engines may execute code from any Mercury thread.
 ** "Exclusive" engines execute code only for a single Mercury thread.
 ** Shared engines may steal work from other shared engines, so are also
 ** called work-stealing engines; we do not have shared engines that
 ** refrain from work-stealing.
 **
 ** In low-level C non-parallel grades, all Mercury threads execute on
-** the same unique Mercury engine. That engine is equivalent to a shared
-** engine.
+** the same unique Mercury engine. That engine is equivalent to a shared engine.
 **
 ** In high-level C parallel grades, all Mercury threads execute in their
 ** own POSIX thread. All engines are exclusive engines.
 **
-** In high-level C non-parallel grades, only a single Mercury thread
-** exists, executing in a single Mercury engine. That engine is
-** equivalent to an exclusive engine, or a shared engine with no other
-** engines present.
+** In high-level C non-parallel grades, only a single Mercury thread exists,
+** executing in a single Mercury engine. That engine is equivalent
+** to an exclusive engine, or a shared engine with no other engines present.
 */
 typedef enum {
     MR_ENGINE_TYPE_SHARED = 1,
@@ -260,9 +252,9 @@ typedef enum {
 } MR_EngineType;
 
 #ifdef MR_HIGHLEVEL_CODE
-    #define MR_PRIMORIDAL_ENGINE_TYPE   MR_ENGINE_TYPE_EXCLUSIVE
+  #define MR_PRIMORIDAL_ENGINE_TYPE   MR_ENGINE_TYPE_EXCLUSIVE
 #else
-    #define MR_PRIMORIDAL_ENGINE_TYPE   MR_ENGINE_TYPE_SHARED
+  #define MR_PRIMORIDAL_ENGINE_TYPE   MR_ENGINE_TYPE_SHARED
 #endif
 
 /*
@@ -270,18 +262,16 @@ typedef enum {
 ** POSIX thread.
 **
 ** See the comments above for the meaning of the argument.
-** If there is already a Mercury engine running in the current POSIX
-** thread then init_thread is just a no-op.
+** If there is already a Mercury engine running in the current POSIX thread
+** then init_thread is just a no-op.
 **
-** Returns MR_TRUE if a Mercury engine was created as a result of this
-** call *and* it is the caller's responsibility to finalize it (it is
-** intended that the caller can store the return value and call
-** finalize_thread_engine if it is true).
+** Returns MR_TRUE if a Mercury engine was created as a result of this call
+** *and* it is the caller's responsibility to finalize it (it is intended that
+** the caller can store the return value and call finalize_thread_engine
+** if it is true).
 */
-extern MR_bool
-MR_init_thread(MR_when_to_use);
-extern MR_bool
-MR_init_thread_inner(MR_when_to_use, MR_EngineType);
+extern MR_bool  MR_init_thread(MR_when_to_use);
+extern MR_bool  MR_init_thread_inner(MR_when_to_use, MR_EngineType);
 
 /*
 ** Finalize the thread engine running in the current POSIX thread.
@@ -289,19 +279,18 @@ MR_init_thread_inner(MR_when_to_use, MR_EngineType);
 ** important because the memory used for the det stack for each thread
 ** can be re-used by the next init_thread.
 */
-extern void
-MR_finalize_thread_engine(void);
+extern void     MR_finalize_thread_engine(void);
 
 /*
 ** The values of thread-local mutables are stored in an array per Mercury
-** thread.  This makes it easy for a newly spawned thread to inherit (copy)
+** thread. This makes it easy for a newly spawned thread to inherit (copy)
 ** all the thread-local mutables of its parent thread.
 ** Accesses to the array are protected by a mutex, in case a parallel
 ** conjunctions tries to read a thread-local value while another parallel
 ** conjunction (in the same Mercury thread) is writing to it.
 **
 ** Each thread-local mutable has an associated index into the array, which is
-** allocated to it during initialisation.  For ease of implementation there is
+** allocated to it during initialisation. For ease of implementation there is
 ** an arbitrary limit to the number of thread-local mutables that are allowed.
 */
 typedef struct MR_ThreadLocalMuts MR_ThreadLocalMuts;
@@ -314,25 +303,24 @@ struct MR_ThreadLocalMuts {
 };
 
 #define MR_MAX_THREAD_LOCAL_MUTABLES    128
-extern MR_Unsigned MR_num_thread_local_mutables;
+extern MR_Unsigned  MR_num_thread_local_mutables;
 
 /*
 ** Allocate an index into the thread-local mutable array for a mutable.
 */
-extern MR_Unsigned
-MR_new_thread_local_mutable_index(void);
+extern MR_Unsigned  MR_new_thread_local_mutable_index(void);
 
 /*
 ** Allocate a thread-local mutable array.
 */
-extern MR_ThreadLocalMuts *
-MR_create_thread_local_mutables(MR_Unsigned numslots);
+extern MR_ThreadLocalMuts   *MR_create_thread_local_mutables(
+                                MR_Unsigned numslots);
 
 /*
 ** Make a copy of a thread-local mutable array.
 */
-extern MR_ThreadLocalMuts *
-MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts);
+extern MR_ThreadLocalMuts   *MR_clone_thread_local_mutables(
+                                const MR_ThreadLocalMuts *old_muts);
 
 #define MR_THREAD_LOCAL_MUTABLES                                        \
     (MR_ENGINE(MR_eng_this_context)->MR_ctxt_thread_local_mutables)
@@ -363,9 +351,8 @@ MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts);
     } while (0)
 
 /*
-** Initialise some static structures in mercury_thread.c
+** Initialise some static structures in mercury_thread.c.
 */
-void
-MR_init_thread_stuff(void);
+extern void     MR_init_thread_stuff(void);
 
 #endif  /* MERCURY_THREAD_H */

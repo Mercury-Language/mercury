@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
@@ -219,12 +219,12 @@
 ** Enable support for parallelism.
 **
 ** MR_THREADSCOPE
-** Enable support for parallelism profiling, aka 'threadscope'.  This is a
+** Enable support for parallelism profiling, aka 'threadscope'. This is a
 ** grade component. This works only with the low level C parallel grades.
 **
 ** MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-** Enable support for profiling the parallel runtime system.  This collects
-** counts and timings of certain runtime events.  It is implied by
+** Enable support for profiling the parallel runtime system. This collects
+** counts and timings of certain runtime events. It is implied by
 ** MR_THREADSCOPE and must be enabled at runtime with the
 ** --profile-parallel-execution runtime option.
 **
@@ -903,7 +903,7 @@
 ** memory profiling and hooks in Boehm GC.
 */
 #ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
-  #error "MR_MPROF_PROFILE_MEMORY_ATTRIBUTION should not be defined " \
+  #error "MR_MPROF_PROFILE_MEMORY_ATTRIBUTION should not be defined "   \
     "on the command line"
 #endif
 #if defined(MR_BOEHM_GC) && defined(MR_MPROF_PROFILE_MEMORY)
@@ -941,8 +941,8 @@
 #ifdef MR_INSERT_LABELS
   #error "MR_INSERT_LABELS should not be defined on the command line"
 #endif
-#if defined(MR_STACK_TRACE) || defined(MR_NATIVE_GC) \
-    || defined(MR_DEBUG_GOTOS) || defined(MR_BYTECODE_CALLABLE) \
+#if defined(MR_STACK_TRACE) || defined(MR_NATIVE_GC)                    \
+    || defined(MR_DEBUG_GOTOS) || defined(MR_BYTECODE_CALLABLE)         \
     || defined(MR_DEBUG_LABEL_NAMES)
   #define MR_INSERT_LABELS
 #endif
@@ -957,7 +957,7 @@
 #ifdef MR_INSERT_ENTRY_LABEL_NAMES
   #error "MR_INSERT_ENTRY_LABEL_NAMES should not be defined on the command line"
 #endif
-#if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_DEBUG_GOTOS) \
+#if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_DEBUG_GOTOS)          \
     || defined(MR_DEBUG_AGC_SCHEDULING) || defined(MR_DEBUG_LABEL_NAMES)
   #define MR_INSERT_ENTRY_LABEL_NAMES
 #endif
@@ -972,7 +972,7 @@
 #ifdef MR_INSERT_INTERNAL_LABEL_NAMES
   #error "MR_INSERT_INTERNAL_LABEL_NAMES should not be defined on the command line"
 #endif
-#if defined(MR_DEBUG_GOTOS) || defined(MR_DEBUG_AGC_SCHEDULING) \
+#if defined(MR_DEBUG_GOTOS) || defined(MR_DEBUG_AGC_SCHEDULING)         \
     || defined(MR_DEBUG_LABEL_NAMES)
   #define MR_INSERT_INTERNAL_LABEL_NAMES
 #endif
@@ -994,7 +994,7 @@
 ** layout of stack frames.
 */
 
-#if defined(MR_NATIVE_GC) || defined(MR_DEBUG_GOTOS) \
+#if defined(MR_NATIVE_GC) || defined(MR_DEBUG_GOTOS)                    \
     || defined(MR_INSERT_ENTRY_LABEL_NAMES)
   #define MR_NEED_ENTRY_LABEL_ARRAY
 #endif
@@ -1080,7 +1080,7 @@
 ** MR_HAVE_THREAD_PINNING is defined if we can pin threads, either with
 ** sched_setaffinity or hwloc.
 */
-#if (defined(MR_HAVE_SCHED_SETAFFINITY) && \
+#if (defined(MR_HAVE_SCHED_SETAFFINITY) &&                              \
     defined(MR_HAVE_SCHED_GETAFFINITY)) || defined(MR_HAVE_HWLOC)
   #define MR_HAVE_THREAD_PINNING
 #endif

@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1995-1998,2000-2001, 2005-2006 The University of Melbourne.
@@ -42,7 +42,7 @@ typedef enum {
 ** in the Mercury runtime.
 */
 
-MR_NO_RETURN(extern void \
+MR_NO_RETURN(extern void                                                \
 MR_fatal_zone_error(MR_OverflowZone ptr_kind,
     const char *ptr_name, const void *ptr,
     const char *zone_name,

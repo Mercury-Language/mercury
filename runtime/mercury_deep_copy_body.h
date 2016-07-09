@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-2005, 2007, 2012 The University of Melbourne.
@@ -43,25 +43,24 @@ static MR_AllocSiteInfoPtr  maybe_attrib(MR_Word *data_value);
 #endif
 
 /*
-** We need to make sure that we don't clobber any part of
-** the closure which might be used by the collector for
-** tracing stack frames of closure wrapper functions.
-** So we store the forwarding pointer for closure in the MR_closure_code
-** field (which is not used by the collector), rather than
-** at offset zero (where it would clobber the closure layout,
+** We need to make sure that we don't clobber any part of the closure
+** which might be used by the collector for tracing stack frames of
+** closure wrapper functions. So we store the forwarding pointer for closure
+** in the MR_closure_code field (which is not used by the collector),
+** rather than at offset zero (where it would clobber the closure layout,
 ** which is used by the collector).
 */
-#define CLOSURE_FORWARDING_PTR_OFFSET \
+#define CLOSURE_FORWARDING_PTR_OFFSET                                   \
     (offsetof(MR_Closure, MR_closure_code) / sizeof(MR_Word))
 
 /*
 ** We must not clobber type_infos or typeclass_infos with forwarding pointers,
-** since they may be referenced by the garbage collector during
-** collection.  Unfortunately in this case there is no spare field
-** which we can use.  So we allocate an extra word before the front of
-** the object (see the code for new_object in compiler/mlds_to_c.m),
-** and use that for the forwarding pointer.  Hence the offsets here
-** are -1, meaning one word before the start of the object.
+** since they may be referenced by the garbage collector during collection.
+** Unfortunately in this case there is no spare field which we can use.
+** So we allocate an extra word before the front of the object (see the code
+** for new_object in compiler/mlds_to_c.m), and use that for the forwarding
+** pointer. Hence the offsets here are -1, meaning one word before the start
+** of the object.
 */
 #define TYPEINFO_FORWARDING_PTR_OFFSET -1
 #define TYPECLASSINFO_FORWARDING_PTR_OFFSET -1
@@ -69,24 +68,24 @@ static MR_AllocSiteInfoPtr  maybe_attrib(MR_Word *data_value);
 /*
 ** RETURN_IF_OUT_OF_RANGE(MR_Word tagged_pointer, MR_Word *pointer,
 **          int forwarding_pointer_offset, rettype):
-**      Check if `pointer' is either out of range, or has already been
-**      processed, and if so, return (from the function that called this macro)
-**      with the appropriate value.
 **
-**      If the pointer is out of range, we return the original tagged pointer
-**      value unchanged.
-**      If the pointer has already been processed, then return the forwarding
-**      pointer that was saved in the object, which will be stored at
-**      pointer[forwarding_pointer_offset].
+** Check if `pointer' is either out of range, or has already been processed,
+** and if so, return (from the function that called this macro) with the
+** appropriate value.
+**
+** If the pointer is out of range, we return the original tagged pointer
+** value unchanged. If the pointer has already been processed, then return
+** the forwarding pointer that was saved in the object, which will be stored
+** at pointer[forwarding_pointer_offset].
 */
 #define RETURN_IF_OUT_OF_RANGE(tagged_pointer, pointer, offset, rettype) \
-        do {                                                            \
-            if (!in_range(pointer)) {                                   \
-                found_out_of_range_pointer(pointer);                    \
-                return (rettype) (tagged_pointer);                      \
-            }                                                           \
-            if_forwarding_pointer((pointer),                            \
-                return (rettype) (pointer)[offset]);                    \
+        do {                                                             \
+            if (!in_range(pointer)) {                                    \
+                found_out_of_range_pointer(pointer);                     \
+                return (rettype) (tagged_pointer);                       \
+            }                                                            \
+            if_forwarding_pointer((pointer),                             \
+                return (rettype) (pointer)[offset]);                     \
         } while (0)
 
 MR_Word
@@ -129,8 +128,8 @@ try_again:
                 MR_type_ctor_layout(type_ctor_info).MR_layout_reserved_addr;
 
             /*
-            ** First check if this value is one of
-            ** the numeric reserved addresses.
+            ** First check if this value is one of the numeric
+            ** reserved addresses.
             */
             if ((MR_Unsigned) data <
                 (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
@@ -139,8 +138,8 @@ try_again:
             }
 
             /*
-            ** Next check if this value is one of the
-            ** the symbolic reserved addresses.
+            ** Next check if this value is one of the symbolic
+            ** reserved addresses.
             */
             for (j = 0; j < ra_layout->MR_ra_num_res_symbolic_addrs; j++) {
                 if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[j]) {
@@ -165,7 +164,7 @@ try_again:
 
     /*
     ** This label handles both the DU case and the second half of the
-    ** RESERVED_ADDR case.  `du_type_layout' must be set before
+    ** RESERVED_ADDR case. `du_type_layout' must be set before
     ** this code is entered.
     */
     du_type:
@@ -181,18 +180,18 @@ try_again:
             case MR_SECTAG_LOCAL:
                 return data;    /* just a copy of the actual item */
 
-            /* case MR_SECTAG_REMOTE: */
-            /* case MR_SECTAG_NONE: */
+            /* case MR_SECTAG_REMOTE:          */
+            /* case MR_SECTAG_NONE:            */
             /* case MR_SECTAG_NONE_DIRECT_ARG: */
                 /*
                 ** The code we want to execute for the MR_SECTAG_REMOTE
-                ** and MR_SECTAG_NONE cases is very similar.  However,
+                ** and MR_SECTAG_NONE cases is very similar. However,
                 ** speed is important here, and we don't want to check
                 ** the secondary tag location multiple times at run-time.
                 ** So we define the code for these two cases as a macro,
                 ** `MR_handle_sectag_remote_or_none(have_sectag)',
                 ** and invoke it twice below, with constant values for the
-                ** `have_sectag' argument.  This ensures that the C
+                ** `have_sectag' argument. This ensures that the C
                 ** preprocessor will duplicate the code and the C compiler
                 ** will then optimize away the tests at compile time.
                 **
@@ -204,7 +203,7 @@ try_again:
 
 #define MR_get_first_slot(have_sectag)                                      \
         do {                                                                \
-                /* this `if' will get evaluated at compile time */          \
+                /* This `if' will get evaluated at compile time. */         \
                 if (!have_sectag) {                                         \
                     cur_slot = 0;                                           \
                 } else {                                                    \
@@ -213,131 +212,131 @@ try_again:
                 }                                                           \
         } while(0)
 
-#define MR_handle_sectag_remote_or_none(have_sectag)                        \
-        do {                                                                \
-                data_value = (MR_Word *) MR_body(data, ptag);               \
-                RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);       \
-                {                                                           \
-                    const MR_DuFunctorDesc  *functor_desc;                  \
-                    const MR_DuArgLocn      *arg_locns;                     \
-                    const MR_DuExistInfo    *exist_info;                    \
-                    MR_AllocSiteInfoPtr     attrib;                         \
-                    int                     sectag;                         \
-                    int                     cell_size;                      \
-                    int                     cur_slot;                       \
-                    int                     arity;                          \
-                    int                     i;                              \
-                                                                            \
-                    /* this `if' will get evaluated at compile time */      \
-                    if (!have_sectag) {                                     \
-                        sectag = 0;                                         \
-                    } else {                                                \
-                        sectag = data_value[0];                             \
-                    }                                                       \
-                                                                            \
-                    functor_desc = ptag_layout->MR_sectag_alternatives      \
-                        [sectag];                                           \
-                    arity = functor_desc->MR_du_functor_orig_arity;         \
-                    arg_locns = functor_desc->MR_du_functor_arg_locns;      \
-                    exist_info = functor_desc->MR_du_functor_exist_info;    \
-                                                                            \
-                    /* this `if' will get evaluated at compile time */      \
-                    if (have_sectag) {                                      \
-                        cell_size = 1;                                      \
-                    } else {                                                \
-                        cell_size = 0;                                      \
-                    }                                                       \
-                    cell_size += MR_cell_size_for_args(arity, arg_locns);   \
-                    cell_size += MR_SIZE_SLOT_SIZE;                         \
-                                                                            \
-                    if (exist_info == NULL) {                               \
-                        attrib = maybe_attrib(data_value);                  \
-                        MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE, \
-                                cell_size, attrib, NULL);                   \
-                                                                            \
-                        MR_copy_size_slot(0, new_data, ptag, data);         \
-                        MR_get_first_slot(have_sectag);                     \
-                    } else {                                                \
-                        int                 num_ti_plain;                   \
-                        int                 num_tci;                        \
-                                                                            \
-                        num_ti_plain = exist_info->MR_exist_typeinfos_plain; \
-                        num_tci = exist_info->MR_exist_tcis;                \
-                        cell_size += num_ti_plain + num_tci;                \
-                                                                            \
-                        attrib = maybe_attrib(data_value);                  \
-                        MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE, \
-                                cell_size, attrib, NULL);                   \
-                                                                            \
-                        MR_copy_size_slot(0, new_data, ptag, data);         \
-                        MR_get_first_slot(have_sectag);                     \
-                                                                            \
-                        for (i = 0; i < num_ti_plain; i++) {                \
-                            MR_field(0, new_data, cur_slot) = (MR_Word)     \
-                                copy_type_info((MR_TypeInfo)                \
-                                    data_value[cur_slot],                   \
-                                    lower_limit, upper_limit);              \
-                            cur_slot++;                                     \
-                        }                                                   \
-                                                                            \
-                        for (i = 0; i < num_tci; i++) {                     \
-                            MR_field(0, new_data, cur_slot) = (MR_Word)     \
-                                copy_typeclass_info(data_value[cur_slot],   \
-                                    lower_limit, upper_limit);              \
-                            cur_slot++;                                     \
-                        }                                                   \
-                    }                                                       \
-                                                                            \
-                    for (i = 0; i < arity; i++) {                           \
-                        if (arg_locns != NULL) {                            \
-                            if (arg_locns[i].MR_arg_bits == -1) {           \
-                                /* Double precision float. */               \
-                                MR_field(0, new_data, cur_slot) =           \
-                                    data_value[cur_slot];                   \
-                                MR_field(0, new_data, cur_slot + 1) =       \
-                                    data_value[cur_slot + 1];               \
-                                cur_slot += 2;                              \
-                                continue;                                   \
-                            } else if (arg_locns[i].MR_arg_bits > 0) {      \
-                                /*                                          \
-                                ** Copy fields holding packed arguments     \
-                                ** when we encounter the first argument.    \
-                                */                                          \
-                                if (arg_locns[i].MR_arg_shift == 0) {       \
-                                    MR_field(0, new_data, cur_slot) =       \
-                                        data_value[cur_slot];               \
-                                    cur_slot++;                             \
-                                }                                           \
-                                continue;                                   \
-                            }                                               \
-                        }                                                   \
-                                                                            \
-                        if (MR_arg_type_may_contain_var(functor_desc, i)) { \
-                            MR_Word *parent_data = (MR_Word *) new_data;    \
-                            if (have_sectag) {                              \
-                                /* skip past the secondary tag */           \
-                                parent_data++;                              \
-                            }                                               \
-                            MR_field(0, new_data, cur_slot) =               \
-                                copy_arg(parent_data, data_value[cur_slot], \
-                                    functor_desc,                           \
-                                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR( \
-                                        type_info),                         \
-                                    functor_desc->MR_du_functor_arg_types[i], \
-                                    lower_limit, upper_limit);              \
-                        } else {                                            \
-                            MR_field(0, new_data, cur_slot) =               \
-                                copy(data_value[cur_slot],                 \
-                                    MR_pseudo_type_info_is_ground(          \
+#define MR_handle_sectag_remote_or_none(have_sectag)                           \
+        do {                                                                   \
+                data_value = (MR_Word *) MR_body(data, ptag);                  \
+                RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);          \
+                {                                                              \
+                    const MR_DuFunctorDesc  *functor_desc;                     \
+                    const MR_DuArgLocn      *arg_locns;                        \
+                    const MR_DuExistInfo    *exist_info;                       \
+                    MR_AllocSiteInfoPtr     attrib;                            \
+                    int                     sectag;                            \
+                    int                     cell_size;                         \
+                    int                     cur_slot;                          \
+                    int                     arity;                             \
+                    int                     i;                                 \
+                                                                               \
+                    /* This `if' will get evaluated at compile time. */        \
+                    if (!have_sectag) {                                        \
+                        sectag = 0;                                            \
+                    } else {                                                   \
+                        sectag = data_value[0];                                \
+                    }                                                          \
+                                                                               \
+                    functor_desc = ptag_layout->MR_sectag_alternatives         \
+                        [sectag];                                              \
+                    arity = functor_desc->MR_du_functor_orig_arity;            \
+                    arg_locns = functor_desc->MR_du_functor_arg_locns;         \
+                    exist_info = functor_desc->MR_du_functor_exist_info;       \
+                                                                               \
+                    /* This `if' will get evaluated at compile time. */        \
+                    if (have_sectag) {                                         \
+                        cell_size = 1;                                         \
+                    } else {                                                   \
+                        cell_size = 0;                                         \
+                    }                                                          \
+                    cell_size += MR_cell_size_for_args(arity, arg_locns);      \
+                    cell_size += MR_SIZE_SLOT_SIZE;                            \
+                                                                               \
+                    if (exist_info == NULL) {                                  \
+                        attrib = maybe_attrib(data_value);                     \
+                        MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,   \
+                                cell_size, attrib, NULL);                      \
+                                                                               \
+                        MR_copy_size_slot(0, new_data, ptag, data);            \
+                        MR_get_first_slot(have_sectag);                        \
+                    } else {                                                   \
+                        int                 num_ti_plain;                      \
+                        int                 num_tci;                           \
+                                                                               \
+                        num_ti_plain = exist_info->MR_exist_typeinfos_plain;   \
+                        num_tci = exist_info->MR_exist_tcis;                   \
+                        cell_size += num_ti_plain + num_tci;                   \
+                                                                               \
+                        attrib = maybe_attrib(data_value);                     \
+                        MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,   \
+                                cell_size, attrib, NULL);                      \
+                                                                               \
+                        MR_copy_size_slot(0, new_data, ptag, data);            \
+                        MR_get_first_slot(have_sectag);                        \
+                                                                               \
+                        for (i = 0; i < num_ti_plain; i++) {                   \
+                            MR_field(0, new_data, cur_slot) = (MR_Word)        \
+                                copy_type_info((MR_TypeInfo)                   \
+                                    data_value[cur_slot],                      \
+                                    lower_limit, upper_limit);                 \
+                            cur_slot++;                                        \
+                        }                                                      \
+                                                                               \
+                        for (i = 0; i < num_tci; i++) {                        \
+                            MR_field(0, new_data, cur_slot) = (MR_Word)        \
+                                copy_typeclass_info(data_value[cur_slot],      \
+                                    lower_limit, upper_limit);                 \
+                            cur_slot++;                                        \
+                        }                                                      \
+                    }                                                          \
+                                                                               \
+                    for (i = 0; i < arity; i++) {                              \
+                        if (arg_locns != NULL) {                               \
+                            if (arg_locns[i].MR_arg_bits == -1) {              \
+                                /* Double precision float. */                  \
+                                MR_field(0, new_data, cur_slot) =              \
+                                    data_value[cur_slot];                      \
+                                MR_field(0, new_data, cur_slot + 1) =          \
+                                    data_value[cur_slot + 1];                  \
+                                cur_slot += 2;                                 \
+                                continue;                                      \
+                            } else if (arg_locns[i].MR_arg_bits > 0) {         \
+                                /*                                             \
+                                ** Copy fields holding packed arguments        \
+                                ** when we encounter the first argument.       \
+                                */                                             \
+                                if (arg_locns[i].MR_arg_shift == 0) {          \
+                                    MR_field(0, new_data, cur_slot) =          \
+                                        data_value[cur_slot];                  \
+                                    cur_slot++;                                \
+                                }                                              \
+                                continue;                                      \
+                            }                                                  \
+                        }                                                      \
+                                                                               \
+                        if (MR_arg_type_may_contain_var(functor_desc, i)) {    \
+                            MR_Word *parent_data = (MR_Word *) new_data;       \
+                            if (have_sectag) {                                 \
+                                /* skip past the secondary tag */              \
+                                parent_data++;                                 \
+                            }                                                  \
+                            MR_field(0, new_data, cur_slot) =                  \
+                                copy_arg(parent_data, data_value[cur_slot],    \
+                                    functor_desc,                              \
+                                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(    \
+                                        type_info),                            \
+                                    functor_desc->MR_du_functor_arg_types[i],  \
+                                    lower_limit, upper_limit);                 \
+                        } else {                                               \
+                            MR_field(0, new_data, cur_slot) =                  \
+                                copy(data_value[cur_slot],                     \
+                                    MR_pseudo_type_info_is_ground(             \
                                     functor_desc->MR_du_functor_arg_types[i]), \
-                                    lower_limit, upper_limit);              \
-                        }                                                   \
-                        cur_slot++;                                         \
-                    }                                                       \
-                                                                            \
-                    new_data = (MR_Word) MR_mkword(ptag, new_data);         \
-                    leave_forwarding_pointer(data_value, 0, new_data);      \
-                }                                                           \
+                                    lower_limit, upper_limit);                 \
+                        }                                                      \
+                        cur_slot++;                                            \
+                    }                                                          \
+                                                                               \
+                    new_data = (MR_Word) MR_mkword(ptag, new_data);            \
+                    leave_forwarding_pointer(data_value, 0, new_data);         \
+                }                                                              \
         } while(0)
 
             case MR_SECTAG_REMOTE:
@@ -444,10 +443,9 @@ try_again:
                     MR_restore_transient_hp();
 #ifdef MR_HIGHLEVEL_CODE
                     /*
-                    ** We can't use MR_float_to_word, since it uses
-                    ** MR_hp, which in grade hlc.par.gc will be a
-                    ** reference to thread-local storage that we haven't
-                    ** allocated.
+                    ** We can't use MR_float_to_word, since it uses MR_hp,
+                    ** which in grade hlc.par.gc will be a reference to
+                    ** thread-local storage that we haven't allocated.
                     */
                     new_data = (MR_Word) MR_box_float(MR_unbox_float(data));
 #else
@@ -523,13 +521,13 @@ try_again:
                 num_f_args = MR_closure_num_hidden_f_args(old_closure);
                 num_args = num_r_args + num_f_args;
 
-                /* create new closure */
+                /* Create new closure. */
                 attrib = maybe_attrib(data_value);
                 MR_offset_incr_saved_hp(new_closure_word, 0, num_args + 3,
                     attrib, NULL);
                 new_closure = (MR_Closure *) new_closure_word;
 
-                /* copy the fixed fields */
+                /* Copy the fixed fields. */
                 new_closure->MR_closure_layout = closure_layout;
                 new_closure->MR_closure_code = old_closure->MR_closure_code;
                 new_closure->MR_closure_num_hidden_args_rf =
@@ -542,7 +540,7 @@ try_again:
                 type_info_arg_vector = MR_materialize_closure_type_params(
                     old_closure);
 
-                /* copy the arguments */
+                /* Copy the arguments. */
                 r_offset = 0;
                 f_offset = num_r_args;
 
@@ -599,7 +597,7 @@ try_again:
                 if (arity == 0) {
                     new_data = (MR_Word) NULL;
                 } else {
-                    /* allocate space for the new tuple */
+                    /* Allocate space for the new tuple. */
                     attrib = maybe_attrib(data_value);
                     MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,
                         MR_SIZE_SLOT_SIZE + arity, attrib, NULL);
@@ -609,7 +607,7 @@ try_again:
                     arg_typeinfo_vector =
                         MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
                     for (i = 0; i < arity; i++) {
-                       /* type_infos are counted from one */
+                       /* Type_infos are counted from one. */
                        new_data_ptr[i] = copy(data_value[i],
                             (const MR_TypeInfo) arg_typeinfo_vector[i + 1],
                             lower_limit, upper_limit);
@@ -693,13 +691,13 @@ try_again:
             lower_limit, upper_limit);
 
     case MR_TYPECTOR_REP_TYPECTORINFO:
-        /* type_ctor_infos are always pointers to static data */
+        /* Type_ctor_infos are always pointers to static data. */
         return data;
 
     case MR_TYPECTOR_REP_TYPECTORDESC:
         /*
-        ** type_ctor_descs are always either encoded integers,
-        ** or pointers to static data
+        ** Type_ctor_descs are always either encoded integers,
+        ** or pointers to static data.
         */
         return data;
 
@@ -708,7 +706,7 @@ try_again:
             lower_limit, upper_limit);
 
     case MR_TYPECTOR_REP_BASETYPECLASSINFO:
-        /* base_typeclass_infos are always pointers to static data */
+        /* Base_typeclass_infos are always pointers to static data. */
         return data;
 
     case MR_TYPECTOR_REP_STABLE_C_POINTER: /* fallthru */
@@ -717,7 +715,7 @@ try_again:
             MR_Word *data_value;
             int     data_tag;
 
-            /* XXX simplify: tag should be zero */
+            /* XXX simplify: tag should be zero. */
             data_tag = MR_tag(data);
             data_value = (MR_Word *) MR_body(data, data_tag);
 
@@ -736,7 +734,7 @@ try_again:
 
     case MR_TYPECTOR_REP_SUCCIP: /* fallthru */
     case MR_TYPECTOR_REP_REDOIP:
-        /* code addresses are never relocated */
+        /* Code addresses are never relocated. */
         return data;
 
     case MR_TYPECTOR_REP_HP:
@@ -752,12 +750,12 @@ try_again:
     case MR_TYPECTOR_REP_CURFR: /* fallthru */
     case MR_TYPECTOR_REP_MAXFR: /* fallthru */
     case MR_TYPECTOR_REP_REDOFR:
-        /* we do not modify the layout of the nondet stack */
+        /* We do not modify the layout of the nondet stack. */
         return data;
 
     case MR_TYPECTOR_REP_TRAIL_PTR:
     case MR_TYPECTOR_REP_TICKET:
-        /* XXX we do not yet compress the trail when doing gc */
+        /* XXX We do not yet compress the trail when doing gc. */
         return data;
 
     case MR_TYPECTOR_REP_REFERENCE:
@@ -782,7 +780,7 @@ try_again:
         return new_data;
 
     case MR_TYPECTOR_REP_STABLE_FOREIGN:
-        /* by definition, stable foreign values are never relocated */
+        /* By definition, stable foreign values are never relocated. */
         return data;
 
     case MR_TYPECTOR_REP_FOREIGN:
@@ -800,7 +798,7 @@ try_again:
                 /*
                 ** If the foreign value does not point into the area of
                 ** the heap that we are copying, then it is safe to
-                ** leave it unchanged.  
+                ** leave it unchanged.
                 **
                 ** It is important to allow these cases, when doing partial
                 ** copies (as occurs with accurate GC or solutions),
@@ -812,7 +810,7 @@ try_again:
                 ** we should not allow shallow copying of foreign types,
                 ** because in cases where the foreign type is (or represents)
                 ** a pointer of some kind, that might violate unique mode
-                ** correctness.  That's why we check lower_limit != NULL above.
+                ** correctness. That's why we check lower_limit != NULL above.
                 */
                 new_data = data;
             } else {
@@ -901,7 +899,7 @@ copy_type_info(MR_TypeInfo type_info,
         int             i;
         int             forwarding_pointer_size;
         MR_AllocSiteInfoPtr attrib;
-        
+
         /*
         ** Note that we assume type_ctor_infos will always be
         ** allocated statically, so we never copy them.
@@ -919,7 +917,7 @@ copy_type_info(MR_TypeInfo type_info,
             return (MR_TypeInfo) type_ctor_info;
         }
 
-        /* compute how many words to reserve for the forwarding pointer */
+        /* Compute how many words to reserve for the forwarding pointer. */
 #ifdef MR_NATIVE_GC
         forwarding_pointer_size = 1;
 #else
@@ -990,7 +988,7 @@ copy_pseudo_type_info(MR_PseudoTypeInfo pseudo_type_info,
         int                 i;
         int                 forwarding_pointer_size;
         MR_AllocSiteInfoPtr attrib;
-        
+
         /*
         ** Note that we assume type_ctor_infos will always be
         ** allocated statically, so we never copy them.
@@ -1009,7 +1007,7 @@ copy_pseudo_type_info(MR_PseudoTypeInfo pseudo_type_info,
             return (MR_PseudoTypeInfo) type_ctor_info;
         }
 
-        /* compute how many words to reserve for the forwarding pointer */
+        /* Compute how many words to reserve for the forwarding pointer. */
 #ifdef MR_NATIVE_GC
         forwarding_pointer_size = 1;
 #else
@@ -1088,7 +1086,7 @@ copy_typeclass_info(MR_Word typeclass_info_param,
 
         base_typeclass_info = (MR_Word *) *typeclass_info;
 
-        /* compute how many words to reserve for the forwarding pointer */
+        /* Compute how many words to reserve for the forwarding pointer. */
 #ifdef MR_NATIVE_GC
         forwarding_pointer_size = 1;
 #else
@@ -1111,20 +1109,20 @@ copy_typeclass_info(MR_Word typeclass_info_param,
 
         new_typeclass_info[0] = (MR_Word) base_typeclass_info;
 
-            /*
-            ** First, copy typeinfos for unconstrained tvars from
-            ** the instance declaration
-            */
+        /*
+        ** First, copy typeinfos for unconstrained tvars from
+        ** the instance declaration.
+        */
         for (i = 1; i < num_unconstrained + 1; i++) {
             new_typeclass_info[i] = (MR_Word) copy_type_info(
                 (MR_TypeInfo) typeclass_info[i], lower_limit, upper_limit);
         }
-            /*
-            ** Next, copy all the typeclass infos: both the ones for
-            ** constraints on the instance declaration (instance
-            ** constraints), and the ones for constraints on the
-            ** typeclass declaration (superclass constraints).
-            */
+        /*
+        ** Next, copy all the typeclass infos: both the ones for constraints
+        ** on the instance declaration (instance constraints), and the ones
+        ** for constraints on the typeclass declaration
+        ** (superclass constraints).
+        */
         for (i = num_unconstrained + 1;
             i <= num_unconstrained + num_instance_constraints + num_super;
             i++)
@@ -1133,10 +1131,10 @@ copy_typeclass_info(MR_Word typeclass_info_param,
                 typeclass_info[i], lower_limit, upper_limit);
         }
 
-            /*
-            ** Then, copy all the type infos for types in the
-            ** head of the type class declaration.
-            */
+        /*
+        ** Then, copy all the type infos for types in the
+        ** head of the type class declaration.
+        */
         for (i = num_unconstrained + num_instance_constraints + num_super + 1;
             i <= num_unconstrained + num_instance_constraints + num_super
                 + num_arg_typeinfos;

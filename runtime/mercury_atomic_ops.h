@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2007, 2009-2011 The University of Melbourne.
@@ -23,37 +23,36 @@
 ** Use this to make some storage volatile only when using a threadsafe grade.
 */
 #ifdef MR_THREAD_SAFE
-#define MR_THREADSAFE_VOLATILE volatile
+  #define MR_THREADSAFE_VOLATILE    volatile
 #else
-#define MR_THREADSAFE_VOLATILE
+  #define MR_THREADSAFE_VOLATILE
 #endif
 
 #if defined(MR_THREAD_SAFE)
 
 /*
- * Intel and AMD support a pause instruction that is roughly equivalent
- * to a no-op.  Intel recommend that it is used in spin-loops to improve
- * performance.  Without a pause instruction multiple simultaneous
- * read-requests will be in-flight for the synchronization variable from a
- * single thread.  Giving the pause instruction causes these to be executed
- * in sequence allowing the processor to handle the change in the
- * synchronization variable more easily.
- *
- * On some chips it may cause the spin-loop to use less power.
- *
- * This instruction was introduced with the Pentium 4 but is backwards
- * compatible, This works because the two byte instruction for PAUSE is
- * equivalent to the NOP instruction prefixed by REPE.  Therefore older
- * processors perform a no-op.
- *
- * This is not really an atomic instruction but we name it
- * MR_ATOMIC_PAUSE for consistency.
- *
- * References: Intel and AMD documentation for PAUSE, Intel optimisation
- * guide.
- */
-#if ( defined(MR_CLANG) || defined(MR_GNUC) ) &&    \
-    ( defined(__i386__) || defined(__x86_64__) ) && \
+** Intel and AMD support a pause instruction that is roughly equivalent
+** to a no-op. Intel recommend that it is used in spin-loops to improve
+** performance. Without a pause instruction, multiple simultaneous
+** read-requests will be in-flight for the synchronization variable from a
+** single thread. Giving the pause instruction causes these to be executed
+** in sequence, allowing the processor to handle the change in the
+** synchronization variable more easily.
+**
+** On some chips it may cause the spin-loop to use less power.
+**
+** This instruction was introduced with the Pentium 4 but is backwards
+** compatible, This works because the two byte instruction for PAUSE is
+** equivalent to the NOP instruction prefixed by REPE. Therefore older
+** processors perform a no-op.
+**
+** This is not really an atomic instruction but we name it MR_ATOMIC_PAUSE
+** for consistency.
+**
+** References: Intel and AMD documentation for PAUSE, Intel optimisation guide.
+*/
+#if ( defined(MR_CLANG) || defined(MR_GNUC) ) &&                        \
+    ( defined(__i386__) || defined(__x86_64__) ) &&                     \
     !defined(MR_DO_NOT_USE_CPU_RELAX)
 
     #define MR_ATOMIC_PAUSE                                                 \
@@ -77,7 +76,7 @@
 ** Declarations for inline atomic operations.
 **
 ** These operations work on machine word-sized values, this is distinct from
-** C's idea of 'int' and 'unsigned int'.  MR_Integer and MR_Unsigned are
+** C's idea of 'int' and 'unsigned int'. MR_Integer and MR_Unsigned are
 ** supposed to be machine word sized so these functions should only be used
 ** with values of these types.
 */
@@ -86,60 +85,57 @@
 ** If the value at addr is equal to old, assign new to addr and return true.
 ** Otherwise return false.
 */
-MR_EXTERN_INLINE MR_bool
-MR_compare_and_swap_int(volatile MR_Integer *addr, MR_Integer old,
-        MR_Integer new_val);
-MR_EXTERN_INLINE MR_bool
-MR_compare_and_swap_uint(volatile MR_Unsigned *addr, MR_Unsigned old,
-        MR_Unsigned new_val);
+MR_EXTERN_INLINE MR_bool    MR_compare_and_swap_int(
+                                volatile MR_Integer *addr,
+                                MR_Integer old, MR_Integer new_val);
+MR_EXTERN_INLINE MR_bool    MR_compare_and_swap_uint(
+                                volatile MR_Unsigned *addr,
+                                MR_Unsigned old, MR_Unsigned new_val);
 
 /*
-** Atomically add to an integer in memory and retrieve the result.  In other
+** Atomically add to an integer in memory and retrieve the result. In other
 ** words an atomic pre-increment operation.
 */
-MR_EXTERN_INLINE MR_Integer
-MR_atomic_add_and_fetch_int(volatile MR_Integer *addr, MR_Integer addend);
-MR_EXTERN_INLINE MR_Unsigned
-MR_atomic_add_and_fetch_uint(volatile MR_Unsigned *addr, MR_Unsigned addend);
+MR_EXTERN_INLINE MR_Integer MR_atomic_add_and_fetch_int(
+                                volatile MR_Integer *addr, MR_Integer addend);
+MR_EXTERN_INLINE MR_Unsigned MR_atomic_add_and_fetch_uint(
+                                volatile MR_Unsigned *addr, MR_Unsigned addend);
 
 /*
 ** Atomically add the second argument to the memory pointed to by the first
 ** argument.
 */
-MR_EXTERN_INLINE void
-MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend);
-MR_EXTERN_INLINE void
-MR_atomic_add_uint(volatile MR_Unsigned *addr, MR_Unsigned addend);
+MR_EXTERN_INLINE void       MR_atomic_add_int(volatile MR_Integer *addr,
+                                MR_Integer addend);
+MR_EXTERN_INLINE void       MR_atomic_add_uint(volatile MR_Unsigned *addr,
+                                MR_Unsigned addend);
 
 /*
 ** Atomically subtract the second argument from the memory pointed to by the
 ** first argument.
 */
-MR_EXTERN_INLINE void
-MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
+MR_EXTERN_INLINE void       MR_atomic_sub_int(volatile MR_Integer *addr,
+                                MR_Integer x);
 
 /*
 ** Increment the word pointed at by the address.
 */
-MR_EXTERN_INLINE void
-MR_atomic_inc_int(volatile MR_Integer *addr);
-MR_EXTERN_INLINE void
-MR_atomic_inc_uint(volatile MR_Unsigned *addr);
+MR_EXTERN_INLINE void       MR_atomic_inc_int(volatile MR_Integer *addr);
+MR_EXTERN_INLINE void       MR_atomic_inc_uint(volatile MR_Unsigned *addr);
 
 /*
 ** Decrement the word pointed at by the address.
 */
-MR_EXTERN_INLINE void
-MR_atomic_dec_int(volatile MR_Integer *addr);
+MR_EXTERN_INLINE void       MR_atomic_dec_int(volatile MR_Integer *addr);
 
 /*
 ** Decrement the integer pointed at by the address and return true iff it is
 ** zero after the decrement.
 */
-MR_EXTERN_INLINE MR_bool
-MR_atomic_dec_and_is_zero_int(volatile MR_Integer *addr);
-MR_EXTERN_INLINE MR_bool
-MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
+MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_int(
+                                volatile MR_Integer *addr);
+MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
+                                volatile MR_Unsigned *addr);
 
 /*
 ** For information about GCC's builtins for atomic operations see:
@@ -209,7 +205,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)) && \
+#if (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)) &&           \
     !defined(MR_AVOID_COMPILER_INTRINSICS)
 
     #define MR_ATOMIC_ADD_AND_FETCH_WORD_BODY                               \
@@ -271,7 +267,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) && \
+#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) &&   \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_ADD_WORD_BODY                                         \
@@ -332,7 +328,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) && \
+#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) &&   \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_SUB_INT_BODY                                          \
@@ -374,7 +370,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) && \
+#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) &&   \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_INC_WORD_BODY                                         \
@@ -389,7 +385,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
     #define MR_ATOMIC_INC_INT_BODY MR_ATOMIC_INC_WORD_BODY
     #define MR_ATOMIC_INC_UINT_BODY MR_ATOMIC_INC_WORD_BODY
 
-#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__i386__) && \
+#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__i386__) &&   \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /* Really 486 or better. */
@@ -411,12 +407,11 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
     ** Fall back to an atomic add 1 operation.
     **
     ** We could fall back to the built-in GCC instructions but they also fetch
-    ** the value.  I believe this is more efficient.
-    **  - pbone
+    ** the value. I believe this is more efficient. pbone
     */
     #define MR_ATOMIC_INC_INT_BODY                                          \
         MR_atomic_add_int(addr, 1)
-    #define MR_ATOMIC_INC_UINT_BODY                                          \
+    #define MR_ATOMIC_INC_UINT_BODY                                         \
         MR_atomic_add_uint(addr, 1)
 
 #endif
@@ -439,7 +434,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) && \
+#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) &&   \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_DEC_INT_BODY                                          \
@@ -451,7 +446,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
                 );                                                          \
         } while (0)
 
-#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__i386__) && \
+#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__i386__) &&   \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /* Really 486 or better. */
@@ -487,12 +482,12 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 ** Note that on x86(_64) we have to use the sub instruction rather than the
 ** dec instruction because we need it to set the CPU flags.
 */
-#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) && \
+#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) &&   \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
 /*
 ** This could be trivially implemented using the __sync_sub_and_fetch compiler
-** intrinsic.  However on some platforms this could use a compare and exchange
+** intrinsic. However on some platforms this could use a compare and exchange
 ** loop. We can avoid this because we don't need to retrieve the result of the
 ** subtraction.
 */
@@ -507,27 +502,27 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
             return (MR_bool)is_zero;                                        \
         } while (0)
 
-    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY \
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY                          \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
-    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY \
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY                         \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
 
 #elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__i386__)
 
     #define MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY                              \
-        do {                                                                \
-            char is_zero;                                                   \
-            __asm__(                                                        \
-                "lock; subl $1, %0; setz %1"                                \
-                : "=m"(*addr), "=q"(is_zero)                                \
-                : "m"(*addr)                                                \
-                );                                                          \
-            return (MR_bool)is_zero;                                        \
+        do {                                                                 \
+            char is_zero;                                                    \
+            __asm__(                                                         \
+                "lock; subl $1, %0; setz %1"                                 \
+                : "=m"(*addr), "=q"(is_zero)                                 \
+                : "m"(*addr)                                                 \
+                );                                                           \
+            return (MR_bool)is_zero;                                         \
         } while (0)
 
-    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY \
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY                          \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
-    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY \
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY                         \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
 
 #elif MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
@@ -537,9 +532,9 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
             return (__sync_sub_and_fetch(addr, 1) == 0);                    \
         } while (0)
 
-    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY \
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY                          \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
-    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY \
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY                         \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
 
 #endif
@@ -570,8 +565,8 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 /*
 ** Memory fence operations.
 */
-#if ( defined(MR_CLANG) || defined(MR_GNUC) ) &&    \
-    ( defined(__i386__) || defined(__x86_64__) ) && \
+#if ( defined(MR_CLANG) || defined(MR_GNUC) ) &&                        \
+    ( defined(__i386__) || defined(__x86_64__) ) &&                     \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /*
@@ -603,7 +598,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 #elif MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
 
     /*
-    ** Our memory fences are better than GCC's.  GCC only implements a full
+    ** Our memory fences are better than GCC's. GCC only implements a full
     ** fence.
     */
     #define MR_CPU_MFENCE                                                   \
@@ -627,8 +622,8 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 #ifdef MR_LL_PARALLEL_CONJ
 
 /*
-** Roll our own cheap user-space mutual exclusion locks.  Blocking without
-** spinning is not supported.  Storage for these locks should be volatile.
+** Roll our own cheap user-space mutual exclusion locks. Blocking without
+** spinning is not supported. Storage for these locks should be volatile.
 **
 ** I expect these to be faster than pthread mutexes when threads are pinned
 ** and critical sections are short.
@@ -654,12 +649,12 @@ typedef MR_Unsigned MR_Us_Lock;
     } while (0)
 
 /*
-** Similar support for condition variables.  Again, make sure that storage for
+** Similar support for condition variables. Again, make sure that storage for
 ** these is declared as volatile.
 **
 ** XXX: These are not atomic, A waiting thread will not see a change until
-** sometime after the signaling thread has signaled the condition.  The same
-** race can occur when clearing a condition.  Order of memory operations is not
+** sometime after the signaling thread has signaled the condition. The same
+** race can occur when clearing a condition. Order of memory operations is not
 ** guaranteed either.
 */
 typedef MR_Unsigned MR_Us_Cond;
@@ -689,7 +684,7 @@ typedef MR_Unsigned MR_Us_Cond;
 
 /*
 ** If we don't have definitions available for this compiler or architecture
-** then we will get a link error in low-level .par grades.  No other grades
+** then we will get a link error in low-level .par grades. No other grades
 ** currently require any atomic ops.
 */
 
@@ -711,8 +706,8 @@ typedef struct {
 
     /*
     ** Atomic instructions are used to update these fields, and these fields
-    ** must be 64 bit to contain the valid ranges of values.  However a 32 bit
-    ** machine cannot (usually) do atomic operations on 64 bit data.  Therefore
+    ** must be 64 bit to contain the valid ranges of values. However a 32 bit
+    ** machine cannot (usually) do atomic operations on 64 bit data. Therefore
     ** if we have fewer than 64 bits we protect these two fields with a lock.
     **
     ** The sum of squares is used to calculate variance and standard deviation.
@@ -747,33 +742,28 @@ extern MR_uint_least64_t MR_cpu_cycles_per_sec;
 ** instruction is available and not prohibited by the OS.
 ** This function is idempotent.
 */
-extern void
-MR_do_cpu_feature_detection(void);
+extern void     MR_do_cpu_feature_detection(void);
 
 /*
 ** Start and initialize a timer structure.
 */
-extern void
-MR_profiling_start_timer(MR_Timer *timer);
+extern void     MR_profiling_start_timer(MR_Timer *timer);
 
 /*
 ** Stop the timer and update stats with the results.
 */
-extern void
-MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats);
+extern void     MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats);
 
 /*
 ** The TSC works and MR_cpu_cycles_per_sec is nonzero.
 */
-extern MR_bool
-MR_tsc_is_sensible(void);
+extern MR_bool  MR_tsc_is_sensible(void);
 
 /*
-** Read the CPU's TSC.  This is currently only implemented for i386 and x86-64
-** systems.  It returns 0 when support is not available.
+** Read the CPU's TSC. This is currently only implemented for i386 and x86-64
+** systems. It returns 0 when support is not available.
 */
-extern MR_uint_least64_t
-MR_read_cpu_tsc(void);
+extern MR_uint_least64_t    MR_read_cpu_tsc(void);
 
 #endif /* MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 

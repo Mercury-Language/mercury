@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2000-2002, 2006, 2011-2012 The University of Melbourne.
@@ -49,16 +49,16 @@ MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...)
         n = vsnprintf(p, size, fmt, ap);
         va_end(ap);
 
-        /* If that worked, return the string.  */
+        /* If that worked, return the string. */
         if (n > -1 && n < size) {
             break;
         }
 
-        /* Else try again with more space.  */
-        if (n > -1) {   /* glibc 2.1 */
+        /* Else try again with more space.            */
+        if (n > -1) {   /* glibc 2.1                  */
             size = n + 1; /* precisely what is needed */
-        } else {        /* glibc 2.0 */
-            size *= 2;  /* twice the old size */
+        } else {        /* glibc 2.0                  */
+            size *= 2;  /* twice the old size         */
         }
 
         if (!dynamically_allocated) {
@@ -97,10 +97,10 @@ MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...)
 }
 
 /*
-**  Note that MR_hash_string{,2,3,4,5,6} are actually defined as macros in
-**  mercury_string.h, if we're using GNU C.
-**  We define them here whether or not we're using gcc, so that users
-**  can easily switch between gcc and cc without rebuilding the libraries.
+** Note that MR_hash_string{,2,3,4,5,6} are actually defined as macros in
+** mercury_string.h, if we are using GNU C.
+** We define them here whether or not we're using gcc, so that users
+** can easily switch between gcc and cc without rebuilding the libraries.
 */
 
 #undef MR_hash_string
@@ -214,8 +214,8 @@ MR_utf8_get_mb(const MR_String s_, MR_Integer pos, int *width)
 
     if (c <= 0xC1) {
         /* Trailing byte of multi-byte sequence or an overlong encoding for
-         * code point <= 127.
-         */
+        ** code point <= 127.
+        */
         return -2;
     }
 
@@ -266,10 +266,11 @@ MR_utf8_get_mb(const MR_String s_, MR_Integer pos, int *width)
             break;
     }
 
-    /* Check for overlong forms, which could be used to bypass security
-     * validations. We could also check code points aren't above U+10FFFF or in
-     * the surrogate ranges, but we don't.
-     */
+    /*
+    ** Check for overlong forms, which could be used to bypass security
+    ** validations. We could also check code points aren't above U+10FFFF
+    ** or in the surrogate ranges, but we don't.
+    */
 
     if (c < minc) {
         return -2;
@@ -330,9 +331,10 @@ MR_utf8_prev_get(const MR_String s, MR_Integer *pos)
 size_t
 MR_utf8_width(MR_Char c)
 {
-    /* So we don't need to check for negative values nor use unsigned ints
-     * in the interface, which are a pain.
-     */
+    /*
+    ** So we don't need to check for negative values nor use unsigned ints
+    ** in the interface, which are a pain.
+    */
     MR_UnsignedChar uc = c;
 
     if (uc <= 0x7f) {

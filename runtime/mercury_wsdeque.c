@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2007, 2010-2011 The University of Melbourne.
@@ -11,7 +11,7 @@
 ** mercury_wsdeque.c
 **
 ** This file implements the basic algorithm from David Chase, Yossi Lev:
-** "Dynamic circular work-stealing deque".  SPAA 2005: 21-28.
+** "Dynamic circular work-stealing deque". SPAA 2005: 21-28.
 **
 ** A work-stealing deque is a double ended queue in which only one thread can
 ** access one end of the queue (the bottom) while other threads can only pop

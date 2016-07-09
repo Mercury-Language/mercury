@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-2009, 2011 The University of Melbourne.
@@ -21,8 +21,8 @@
 #include "mercury_engine.h"         /* for MR_MAXFLAG */
 #include "mercury_stack_layout.h"
 #include "mercury_std.h"
-#include "mercury_tabling.h"        /* for MR_TableNode */
-#include "mercury_goto.h"           /* for MR_declare_entry */
+#include "mercury_tabling.h"        /* for MR_TableNode              */
+#include "mercury_goto.h"           /* for MR_declare_entry          */
 #include <stdio.h>      /* for FILE; should be after mercury headers */
 
 /*
@@ -56,42 +56,42 @@ typedef enum {
 
 #define MR_PORT_NUM_PORTS       ((int) MR_PORT_NONE + 1)
 
-#define MR_TRACE_PORT_ACTUAL_NAMES \
-    "CALL", \
-    "EXIT", \
-    "REDO", \
-    "FAIL", \
-    "TAIL", \
-    "EXCP", \
-    "COND", \
-    "THEN", \
-    "ELSE", \
-    "NEGE", \
-    "NEGS", \
-    "NEGF", \
-    "DSJF", \
-    "DSJL", \
-    "SWTC", \
-    "USER", \
+#define MR_TRACE_PORT_ACTUAL_NAMES                                      \
+    "CALL",                                                             \
+    "EXIT",                                                             \
+    "REDO",                                                             \
+    "FAIL",                                                             \
+    "TAIL",                                                             \
+    "EXCP",                                                             \
+    "COND",                                                             \
+    "THEN",                                                             \
+    "ELSE",                                                             \
+    "NEGE",                                                             \
+    "NEGS",                                                             \
+    "NEGF",                                                             \
+    "DSJF",                                                             \
+    "DSJL",                                                             \
+    "SWTC",                                                             \
+    "USER",                                                             \
     "NONE"
 
-#define MR_TRACE_PORT_SIMPLIFIED_NAMES \
-    "CALL", \
-    "EXIT", \
-    "REDO", \
-    "FAIL", \
-    "TAIL", \
-    "EXCP", \
-    "COND", \
-    "THEN", \
-    "ELSE", \
-    "NEGE", \
-    "NEGS", \
-    "NEGF", \
-    "DISJ", \
-    "DISJ", \
-    "SWTC", \
-    "USER", \
+#define MR_TRACE_PORT_SIMPLIFIED_NAMES                                  \
+    "CALL",                                                             \
+    "EXIT",                                                             \
+    "REDO",                                                             \
+    "FAIL",                                                             \
+    "TAIL",                                                             \
+    "EXCP",                                                             \
+    "COND",                                                             \
+    "THEN",                                                             \
+    "ELSE",                                                             \
+    "NEGE",                                                             \
+    "NEGS",                                                             \
+    "NEGF",                                                             \
+    "DISJ",                                                             \
+    "DISJ",                                                             \
+    "SWTC",                                                             \
+    "USER",                                                             \
     "NONE"
 
 extern  const char  *MR_actual_port_names[];
@@ -335,10 +335,10 @@ extern  MR_Code     *(*volatile MR_selected_trace_func_ptr)(
                         const MR_LabelLayout *);
 
 /*
-** MR_trace_call_seqno counts distinct calls. The prologue of every
-** procedure assigns the current value of this counter as the sequence number
-** of that invocation and increments the counter. This and retry are the only
-** ways that MR_trace_call_seqno is modified.
+** MR_trace_call_seqno counts distinct calls. The prologue of every procedure
+** assigns the current value of this counter as the sequence number of that
+** invocation and increments the counter. This and retry are the only ways
+** that MR_trace_call_seqno is modified.
 **
 ** MR_trace_call_depth records the current depth of the call tree. The prologue
 ** of every procedure assigns the current value of this variable plus one
@@ -526,9 +526,9 @@ extern  void    MR_trace_report_raw(int fd);
 extern  char    *MR_trace_report_msg;
 
 /*
-** This function prints an error message and aborts.  It should be
-** called in situations where tracing is required, but `--trace' was
-** not passed to c2init.
+** This function prints an error message and aborts. It should be called
+** in situations where tracing is required, but `--trace' was not passed
+** to c2init.
 */
 
 extern  void    MR_tracing_not_enabled(void);

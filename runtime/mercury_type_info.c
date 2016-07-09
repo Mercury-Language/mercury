@@ -1,5 +1,5 @@
 /*
-** vim:sw=4 ts=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1995-2006, 2012 The University of Melbourne.
@@ -18,8 +18,8 @@
   #include "mercury_imp.h"
 #endif
 #include "mercury_type_info.h"
-#include "mercury_misc.h"           /* for MR_fatal_error() */
-#include "mercury_heap.h"           /* for MR_incr_saved_hp() */
+#include "mercury_misc.h"           /* for MR_fatal_error()        */
+#include "mercury_heap.h"           /* for MR_incr_saved_hp()      */
 #include "mercury_builtin_types.h"  /* for void/0's type_ctor_info */
 
 MR_ConstString  MR_ctor_rep_name[] = {
@@ -363,8 +363,7 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
 
     /*
     ** Try to optimize a common case:
-    ** If type_info addresses are equal, they must represent the
-    ** same type.
+    ** If type_info addresses are equal, they must represent the same type.
     */
 
     if (pti1 == pti2) {
@@ -432,7 +431,7 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
         num_arg_types_1 = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pti1);
         num_arg_types_2 = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pti2);
 
-            /* Check arity */
+        /* Check arity. */
         if (num_arg_types_1 != num_arg_types_2) {
             return MR_FALSE;
         }
@@ -445,7 +444,7 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
         arg_vector_2 = MR_PSEUDO_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(pti2);
     }
 
-        /* compare the argument types */
+    /* Compare the argument types. */
     for (i = 1; i <= num_arg_types_1; i++) {
         if (! MR_unify_pseudo_type_info(arg_vector_1[i], arg_vector_2[i])) {
             return MR_FALSE;
@@ -484,8 +483,7 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 
     /*
     ** Try to optimize a common case:
-    ** If type_info addresses are equal, they must represent the
-    ** same type.
+    ** If type_info addresses are equal, they must represent the same type.
     */
 
     if (ti1 == ti2) {
@@ -531,7 +529,7 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
         num_arg_types_1 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti1);
         num_arg_types_2 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti2);
 
-            /* Check arity */
+        /* Check arity. */
         if (num_arg_types_1 < num_arg_types_2) {
             return MR_COMPARE_LESS;
         } else if (num_arg_types_1 > num_arg_types_2) {
@@ -546,7 +544,7 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
         arg_vector_2 = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(ti2);
     }
 
-        /* compare the argument types */
+    /* Compare the argument types. */
     for (i = 1; i <= num_arg_types_1; i++) {
         comp = MR_compare_type_info(arg_vector_1[i], arg_vector_2[i]);
         if (comp != MR_COMPARE_EQUAL) {
@@ -570,8 +568,7 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 
     /*
     ** Try to optimize a common case:
-    ** If type_info addresses are equal, they must represent the
-    ** same type.
+    ** If type_info addresses are equal, they must represent the same type.
     */
 
     if (ti1 == ti2) {
@@ -629,7 +626,7 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
         arg_vector_2 = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(ti2);
     }
 
-        /* compare the argument types */
+    /* Compare the argument types. */
     for (i = 1; i <= num_arg_types_1; i++) {
         if (! MR_unify_type_info(arg_vector_1[i], arg_vector_2[i])) {
             return MR_FALSE;
@@ -719,7 +716,7 @@ MR_collapse_equivalences(MR_TypeInfo maybe_equiv_type_info)
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(maybe_equiv_type_info);
 
-        /* Look past equivalences */
+    /* Look past equivalences. */
     while (MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_EQUIV_GROUND
         || MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_EQUIV)
     {
@@ -766,7 +763,7 @@ MR_collapse_equivalences_pseudo(MR_PseudoTypeInfo maybe_equiv_pseudo_type_info)
 }
 
 /*
-** MR_deallocate() frees up a list of memory cells
+** MR_deallocate() frees up a list of memory cells.
 */
 
 void
@@ -859,7 +856,7 @@ MR_pseudo_type_info_vector_to_pseudo_type_info_list(int arity,
     pseudo_type_info_list = MR_list_empty();
 
     while (--arity >= 0) {
-            /* Get the argument type_info */
+        /* Get the argument type_info. */
 
         pseudo = arg_pseudo_type_infos[arity];
         if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo) &&

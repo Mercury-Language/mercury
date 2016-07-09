@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
@@ -11,7 +11,7 @@
 /*
 ** mercury_context.h - defines Mercury multithreading stuff.
 **
-** A "context" is a Mercury thread.  (We use a different term than "thread"
+** A "context" is a Mercury thread. (We use a different term than "thread"
 ** to avoid confusing Mercury threads and POSIX threads.)
 ** Each context is represented by a value of type MR_Context,
 ** which contains a detstack, a nondetstack, a trail (if needed), the various
@@ -48,19 +48,19 @@
 #ifndef MERCURY_CONTEXT_H
 #define MERCURY_CONTEXT_H
 
-#include "mercury_regs.h"       /* for MR_hp, etc. */
+#include "mercury_regs.h"       /* for MR_hp, etc.                  */
                                 /* Must come before system headers. */
 
 #include <stdio.h>
 
-#include "mercury_types.h"      /* for MR_Word, MR_Code, etc */
-#include "mercury_trail.h"      /* for MR_TrailEntry */
-#include "mercury_memory.h"     /* for MR_MemoryZone */
-#include "mercury_thread.h"     /* for MercuryLock */
-#include "mercury_goto.h"       /* for MR_GOTO() */
-#include "mercury_conf.h"       /* for MR_CONSERVATIVE_GC */
+#include "mercury_types.h"      /* for MR_Word, MR_Code, etc   */
+#include "mercury_trail.h"      /* for MR_TrailEntry           */
+#include "mercury_memory.h"     /* for MR_MemoryZone           */
+#include "mercury_thread.h"     /* for MercuryLock             */
+#include "mercury_goto.h"       /* for MR_GOTO()               */
+#include "mercury_conf.h"       /* for MR_CONSERVATIVE_GC      */
 #include "mercury_backjump.h"   /* for MR_BackJumpHandler, etc */
-#include "mercury_atomic_ops.h" /* for MR_atomic_* */
+#include "mercury_atomic_ops.h" /* for MR_atomic_*             */
 
 #ifdef  MR_THREAD_SAFE
   #define MR_IF_THREAD_SAFE(x)  x
@@ -147,7 +147,7 @@
 **                  A stack used to record the Mercury engines on which this
 **                  context executed some C calls that called back into
 **                  Mercury. We must execute this context in the correct
-**                  engine when returning to those C calls.  See the comments
+**                  engine when returning to those C calls. See the comments
 **                  in mercury_engine.h.
 **                  (Accessed via MR_eng_this_context.)
 **
@@ -252,7 +252,7 @@ typedef struct MR_SparkArray_Struct     MR_SparkArray;
 
 /*
 ** A spark contains just enough information to begin execution of a parallel
-** conjunct.  A spark will either be executed in the same context (same
+** conjunct. A spark will either be executed in the same context (same
 ** detstack, etc.) as the code that generated the spark, or it may be stolen
 ** from its deque and executed by any idle engine in a different context.
 */
@@ -268,13 +268,13 @@ struct MR_Spark_Struct {
 };
 
 #define CACHE_LINE_SIZE 64
-#define PAD_CACHE_LINE(s) \
+#define PAD_CACHE_LINE(s)                                               \
     ((CACHE_LINE_SIZE) > (s) ? (CACHE_LINE_SIZE) - (s) : 0)
 
 struct MR_SparkDeque_Struct {
     /*
     ** The top index is modified by thiefs; the other fields are modified by
-    ** the owner.  Therefore we pad out the structure to reduce false
+    ** the owner. Therefore we pad out the structure to reduce false
     ** sharing.
     */
     volatile MR_Integer     MR_sd_top;
@@ -434,7 +434,7 @@ extern  MR_PendingContext   *MR_pending_contexts;
   /*
   ** The number of work-stealing engines waiting for work.
   ** We don't protect it with a separate lock, but updates to it are made while
-  ** holding the MR_runqueue_lock.  Reads are made without the lock.
+  ** holding the MR_runqueue_lock. Reads are made without the lock.
   ** XXX We may need to use atomic instructions or memory fences on some
   ** architectures.
   */
@@ -457,8 +457,8 @@ extern  void        MR_init_context(MR_Context *context, const char *id,
                         MR_Generator *gen);
 
 /*
-** Allocates and initializes a new context structure, and gives it the given
-** id. If gen is non-NULL, the context is for the given generator.
+** Allocates and initializes a new context structure, and gives it
+** the given id. If gen is non-NULL, the context is for the given generator.
 ** The `MR_ctxt_thread_local_mutables' member must be initialised separately.
 */
 extern  MR_Context  *MR_create_context(const char *id,
@@ -468,12 +468,12 @@ extern  MR_Context  *MR_create_context(const char *id,
 ** MR_release_context(context) returns the pointed-to context structure
 ** to the free list, and releases resources as necessary.
 **
-** VERY IMPORTANT:  Call MR_save_context() before you call
-** MR_destroy_context().  Contexts are cached and calling MR_save_context()
-** saves important book-keeping information, like the stack pointer and current
-** stack segment.  If you do not call these then an old, and since freed (or
-** re-used elsewhere) stack segment may still be referenced by the context.  If
-** that context is re-used later then it will clobber another context's stack!
+** VERY IMPORTANT: Call MR_save_context() before you call MR_destroy_context().
+** Contexts are cached and calling MR_save_context() saves important
+** book-keeping information, like the stack pointer and current stack segment.
+** If you do not call these then an old, and since freed (or re-used elsewhere)
+** stack segment may still be referenced by the context. If that context
+** is reused later, then it will clobber another context's stack!
 */
 extern  void        MR_release_context(MR_Context *context);
 
@@ -486,12 +486,12 @@ extern  void        MR_init_context_stuff(void);
 /*
 ** MR_pin_thread() pins the current thread to the next available processor ID,
 ** if thread pinning is enabled.
-** MR_pin_primordial_thread() is a special case for the primordial thread.  It
-** should only be executed once, and only by the primordial thread _before_
+** MR_pin_primordial_thread() is a special case for the primordial thread.
+** It should only be executed once, and only by the primordial thread _before_
 ** the other threads are started.
 **
 ** Both functions return the CPU number that the thread is pinned to or would
-** be pinned to if pinning was both enabled and supported.  That is a valid
+** be pinned to if pinning was both enabled and supported. That is a valid
 ** value is always returned even if the thread is not actually pinned.
 */
 #if defined(MR_LL_PARALLEL_CONJ)
@@ -544,9 +544,9 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
 ** for more work.
 */
   MR_declare_entry(MR_do_idle);
-  #define MR_idle()                                     \
-    do {                                                \
-        MR_GOTO(MR_ENTRY(MR_do_idle));                  \
+  #define MR_idle()                                                     \
+    do {                                                                \
+        MR_GOTO(MR_ENTRY(MR_do_idle));                                  \
     } while (0)
 #endif
 
@@ -580,20 +580,20 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   ** furthest back that we can backtrack is the same as it was last time we
   ** were executing.
   */
-  #define MR_set_min_heap_reclamation_point(ctxt)           \
-    do {                                                    \
+  #define MR_set_min_heap_reclamation_point(ctxt)                        \
+    do {                                                                 \
         if (MR_hp != (ctxt)->MR_ctxt_hp || (ctxt)->MR_ctxt_hp == NULL) { \
-            MR_min_hp_rec = MR_hp;                          \
-            (ctxt)->MR_ctxt_min_hp_rec = MR_hp;             \
-        } else {                                            \
-            MR_min_hp_rec = (ctxt)->MR_ctxt_min_hp_rec;     \
-        }                                                   \
+            MR_min_hp_rec = MR_hp;                                       \
+            (ctxt)->MR_ctxt_min_hp_rec = MR_hp;                          \
+        } else {                                                         \
+            MR_min_hp_rec = (ctxt)->MR_ctxt_min_hp_rec;                  \
+        }                                                                \
     } while (0)
 
-  #define MR_save_hp_in_context(ctxt)                       \
-    do {                                                    \
-        (ctxt)->MR_ctxt_hp = MR_hp;                         \
-        (ctxt)->MR_ctxt_min_hp_rec = MR_min_hp_rec;         \
+  #define MR_save_hp_in_context(ctxt)                                   \
+    do {                                                                \
+        (ctxt)->MR_ctxt_hp = MR_hp;                                     \
+        (ctxt)->MR_ctxt_min_hp_rec = MR_min_hp_rec;                     \
     } while (0)
 
 #else
@@ -825,8 +825,8 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   /*
   ** fork_new_child(MR_SyncTerm st, MR_Code *child):
   **
-  ** Create a new spark to execute the code at `child'.  The new spark is put
-  ** on the context's spark queue.  The current context resumes at `parent'.
+  ** Create a new spark to execute the code at `child'. The new spark is put
+  ** on the context's spark queue. The current context resumes at `parent'.
   ** MR_parent_sp must already be set appropriately before this instruction
   ** is executed.
   */
@@ -871,8 +871,8 @@ do {                                                                         \
   **
   ** This test calculates the length of a wsdeque each time it is called.
   ** The test will usually execute more often than the length of the
-  ** queue changes.  Therefore, it makes sense to update a protected counter
-  ** each time a spark is pushed, popped or stolen from the queue.  However I
+  ** queue changes. Therefore, it makes sense to update a protected counter
+  ** each time a spark is pushed, popped or stolen from the queue. However I
   ** believe that these atomic operations could be more expensive than
   ** necessary.
   **
@@ -900,8 +900,8 @@ MR_do_join_and_continue(MR_SyncTerm *sync_term, MR_Code *join_label);
   #include "mercury_wsdeque.h"
 
 /*
-** This structure and function can be used to wake up a sleeping engine, it's
-** exported here for use by the MR_fork_new_child macro above.
+** This structure and function can be used to wake up a sleeping engine,
+** it is exported here for use by the MR_fork_new_child macro above.
 */
 
 #define MR_ENGINE_ACTION_NONE               0x0000

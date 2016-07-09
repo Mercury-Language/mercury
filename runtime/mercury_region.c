@@ -1,5 +1,5 @@
 /*
-** vim:sw=4 ts=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2007, 2009, 2011 The University of Melbourne.
@@ -101,7 +101,7 @@ static void             MR_region_get_new_pages_and_new_words(
                             int *new_words);
 
 /*---------------------------------------------------------------------------*/
-/* Page operations. */
+/* Page operations.                                                          */
 
 static MR_RegionPage *
 MR_region_request_pages(void)
@@ -740,7 +740,7 @@ MR_use_region_disj_nonlast_semi_commit_proc(
     MR_RegionSemiDisjProtect    *semi_disj_prot;
 
     MR_region_debug_start("use_region_disj_nonlast_semi_commit");
-    /* Destroy any regions protected by the disj frame */
+    /* Destroy any regions protected by the disj frame. */
     semi_disj_prot = (MR_RegionSemiDisjProtect *) (
         ( (MR_Word *) top_disj_frame ) + MR_REGION_DISJ_FRAME_FIXED_SIZE);
     for (i = 0; i < top_disj_frame->MR_rdff_num_prot_regions;
@@ -804,7 +804,7 @@ MR_use_region_commit_failure_proc(MR_RegionCommitFixedFrame *top_commit_frame)
 }
 
 /*---------------------------------------------------------------------------*/
-/* Helper procedures for ite support. */
+/* Helper procedures for ite support.                                        */
 
 void
 MR_region_process_at_ite_else_proc(MR_RegionIteFixedFrame *top_ite_frame)
@@ -864,7 +864,7 @@ MR_region_ite_destroy_new_regions_proc(MR_RegionIteFixedFrame *top_ite_frame)
 }
 
 /*---------------------------------------------------------------------------*/
-/* Helpers for nondet disjunction support. */
+/* Helpers for nondet disjunction support.                                   */
 
 void
 MR_region_disj_restore_from_snapshots_proc(
@@ -954,7 +954,7 @@ MR_region_frame_destroy_new_regions_proc(int saved_sequence_number,
 #endif  /* not defined MR_RBMM_USE_MACROS */
 
 /*---------------------------------------------------------------------------*/
-/* Debugging messages for RBMM. */
+/* Debugging messages for RBMM.                                              */
 
 #ifdef MR_RBMM_DEBUG
 
@@ -1202,8 +1202,8 @@ MR_region_commit_frame_saved_regions_msg(
     int                 i;
 
     /*
-    ** This check is for development, when it becomes more stable, the
-    ** check can be removed.
+    ** This check is for development, when it becomes more stable,
+    ** the check can be removed.
     */
     if (commit_frame->MR_rcff_num_saved_regions > 10) {
         printf("Number of saved region: %d\n",
@@ -1211,10 +1211,10 @@ MR_region_commit_frame_saved_regions_msg(
         MR_fatal_error("Too many regions were saved.");
     }
 
-    commit_save = (MR_RegionCommitSave *) (
-        (MR_Word *) commit_frame + MR_REGION_COMMIT_FRAME_FIXED_SIZE);
+    commit_save = (MR_RegionCommitSave *)
+        ((MR_Word *) commit_frame + MR_REGION_COMMIT_FRAME_FIXED_SIZE);
     for (i = 0; i < commit_frame->MR_rcff_num_saved_regions;
-            i++, commit_save++)
+        i++, commit_save++)
     {
         printf("\tAt slot: %d, saved region: %d\n", commit_save,
             commit_save->MR_commit_save_region);
@@ -1321,8 +1321,8 @@ MR_region_restore_from_snapshot_msg(MR_RegionSnapshot *snapshot)
 
     MR_region_get_new_pages_and_new_words(snapshot, &new_pages, &new_words);
     printf("Restore region #%d: reclaim %d pages, %d words.\n",
-            snapshot->MR_snapshot_region->MR_region_sequence_number,
-            new_pages, new_words);
+        snapshot->MR_snapshot_region->MR_region_sequence_number,
+        new_pages, new_words);
 }
 
 #endif /* End of MR_RBMM_DEBUG. */
@@ -1472,7 +1472,7 @@ void
 MR_region_print_profiling_info(void)
 {
     printf("\n---------- Profiling information ----------\n");
-    /* Info about regions */
+    /* Info about regions. */
     MR_region_print_profiling_unit("Regions:", &MR_rbmmp_regions_used);
     printf("Biggest region size: %d.\n", MR_rbmmp_biggest_region_size);
     printf("Biggest region's sequence number: %d.\n", MR_rbmmp_biggest_region);
@@ -1488,7 +1488,7 @@ MR_region_print_profiling_info(void)
     printf("\tBy remove instruction: %d.\n",
         MR_rbmmp_regions_reclaimed_by_remove_instr);
 
-    /* Info about words used*/
+    /* Info about words used. */
     MR_region_print_profiling_unit("Words:", &MR_rbmmp_words_used);
     printf("Reclaimed as follows:\n");
     printf("\tInstant reclaiming of new allocations: %d.\n",
@@ -1502,7 +1502,7 @@ MR_region_print_profiling_info(void)
     printf("\tBy remove instruction: %d.\n",
         MR_rbmmp_words_reclaimed_by_remove_instr);
 
-    /* Info about pages used*/
+    /* Info about pages used. */
     MR_region_print_profiling_unit("Pages:", &MR_rbmmp_pages_used);
     printf("Pages requested: %d.\n", MR_rbmmp_pages_requested);
     printf("Pages utilized: %lf.\n",
@@ -1518,7 +1518,7 @@ MR_region_print_profiling_info(void)
     printf("\tBy remove instruction: %d.\n",
         MR_rbmmp_pages_reclaimed_by_remove_instr);
 
-    /* Info about embedded frames */
+    /* Info about embedded frames. */
     MR_region_print_profiling_unit("Disj frames used:",
         &MR_rbmmp_num_disj_frames);
     MR_region_print_profiling_unit("Words used by disj frames:",
@@ -1621,6 +1621,5 @@ MR_region_get_new_pages_and_new_words(MR_RegionSnapshot *snapshot,
             snapshot->MR_snapshot_saved_next_available_word;
     }
 }
-
 
 #endif  /* MR_USE_REGIONS */

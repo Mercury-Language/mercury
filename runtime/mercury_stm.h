@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2007-2009 The University of Melbourne.

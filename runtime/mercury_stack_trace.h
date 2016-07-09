@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998-2001,2003-2006,2008,2011-2012 The University of Melbourne.
@@ -172,7 +172,7 @@ extern  void        MR_traverse_nondet_stack_from_layout(
 **
 ** Walk the stack from the current event to the stack frame of main.
 ** The initial part of this walk visits the stack frames of procedures
-** that are mutually recursive with the current event's procedure; 
+** that are mutually recursive with the current event's procedure;
 ** the rest of the walk visits the frames of other procedures.
 ** This function find the boundary between these two parts.
 **
@@ -429,11 +429,10 @@ extern  void        MR_dump_stack_record_print(FILE *fp,
 
 /*
 ** Find the first call event on the stack whose event number or sequence number
-** is less than or equal to the given event number or sequence number.  The
-** level of the call in the stack is returned.  This can then be passed to
-** MR_trace_retry as the ancestor_level.  If no such call is found then -1 is
-** returned and problem is set to the reason why the call could not be
-** found.
+** is less than or equal to the given event number or sequence number.
+** The level of the call in the stack is returned. This can then be passed to
+** MR_trace_retry as the ancestor_level. If no such call is found then -1 is
+** returned and problem is set to the reason why the call could not be found.
 */
 
 typedef enum {

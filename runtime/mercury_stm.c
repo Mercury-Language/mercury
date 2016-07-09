@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2007-2009 The University of Melbourne.
@@ -351,7 +351,7 @@ MR_STM_merge_transactions(MR_STM_TransLog *tlog)
 #if defined(MR_HIGHLEVEL_CODE)
 /*
 ** MR_STM_block_thread is called to block the thread in high level C grades,
-** using POSIX thread facilities, as there is a POSIX thread for every 
+** using POSIX thread facilities, as there is a POSIX thread for every
 ** Mercury thread in these grades. The low level C grade equivalent of this
 ** code is defined in the stm_builtin library module.
 */

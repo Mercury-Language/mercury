@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-2000, 2004-2005, 2007-2008 The University of Melbourne.
@@ -115,7 +115,7 @@
     } while(0)
 
 /*
-** Unwind restoration info back to `old'.  `kind' indicates  whether we are
+** Unwind restoration info back to `old'. `kind' indicates  whether we are
 ** restoring or just discarding the info.
 **
 ** Note that the commented out calls to save/restore transient registers are
@@ -138,9 +138,10 @@
 /*
 ** The following stuff defines the Mercury trail.
 ** All of the stuff in the section below is implementation details.
-** Do not use it.  Instead, use the interface functions/macros
+** Do not use it. Instead, use the interface functions/macros
 ** defined in the next section.
 */
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -211,7 +212,7 @@ typedef enum {
 ** an MR_trail_entry_kind as a pointer tag and MR_FORCE_NO_TAGGED_TRAIL
 ** is undefined.
 */
-#define MR_USE_TAGGED_TRAIL (!defined(MR_FORCE_NO_TAGGED_TRAIL) && \
+#define MR_USE_TAGGED_TRAIL (!defined(MR_FORCE_NO_TAGGED_TRAIL) &&      \
     ((1<<MR_TAGBITS) > MR_LAST_TRAIL_ENTRY_KIND))
 
 typedef void MR_untrail_func_type(void *datum, MR_untrail_reason);
@@ -337,9 +338,9 @@ struct MR_TrailEntry_Struct {
 /*
 ** This section defines the global state needed to implement the trail.
 ** The trail state is actually part of the MR_Context structure
-** (see mercury_context.h).  In grades that do not support parallelism we
+** (see mercury_context.h). In grades that do not support parallelism we
 ** copy the relevant fields from the context into the following global
-** variables when we load the context.  In grades that support parallelism
+** variables when we load the context. In grades that support parallelism
 ** we do not use the global variables; instead each engine contains fields
 ** for holding the trail state and we load the fields from the context
 ** into the engine that is running it.
@@ -347,7 +348,7 @@ struct MR_TrailEntry_Struct {
 ** XXX the implementation for the high-level C backend is a bit of a mess.
 ** It's currently all tied up with that of the low-level backend.
 ** In high-level C grades each POSIX thread has a dummy engine and context
-** with associated with it.  These are used to store thread local data.
+** with associated with it. These are used to store thread local data.
 ** We store the trail state in the relevant fields of those structures.
 ** These dependencies should be removed (see the commented out code
 ** in mercury_wrapper.c).
@@ -375,7 +376,7 @@ struct MR_TrailEntry_Struct {
     ** (including semidet choice points, e.g. in an if-then-else) and it is
     ** reset whenever a choice point is backtracked over or pruned away.
     **
-    ** N.B.  Use `MR_ticket_counter', defined in mercury_regs.h,
+    ** N.B. Use `MR_ticket_counter', defined in mercury_regs.h,
     ** not `MR_ticket_counter_var'.
     */
     extern MR_Unsigned MR_ticket_counter_var;
@@ -387,7 +388,7 @@ struct MR_TrailEntry_Struct {
     ** but which is _not_ decremented or reset when a choice point is
     ** pruned away with a commit.
     **
-    ** N.B.  Use `MR_ticket_high_water', defined in mercury_regs.h,
+    ** N.B. Use `MR_ticket_high_water', defined in mercury_regs.h,
     ** not `MR_ticket_high_water_var'.
     */
     extern MR_Unsigned MR_ticket_high_water_var;
@@ -402,7 +403,7 @@ struct MR_TrailEntry_Struct {
 ** thread.
 **
 ** MR_PREV_TRAIL_ZONES expands to the address of the list of previous trail
-** zones for the current thread.  This is only defined in grades that support
+** zones for the current thread. This is only defined in grades that support
 ** trail segments.
 **
 ** MR_TRAIL_BASE expands to the address of the base of the trail for the
@@ -417,7 +418,7 @@ struct MR_TrailEntry_Struct {
         #define MR_PREV_TRAIL_ZONES (MR_CONTEXT(MR_ctxt_prev_trail_zones))
     #endif
 
-    #define MR_TRAIL_BASE \
+    #define MR_TRAIL_BASE                                               \
         ((MR_TrailEntry *) (MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min))
 #else
     #define MR_TRAIL_ZONE   MR_trail_zone
@@ -437,6 +438,7 @@ struct MR_TrailEntry_Struct {
 ** It is documented in the "Trailing" section of the
 ** Mercury language reference manual.
 */
+
 /*---------------------------------------------------------------------------*/
 
 #if defined(MR_TRAIL_SEGMENTS)
@@ -503,8 +505,8 @@ struct MR_TrailEntry_Struct {
 /*
 ** Apply all the trail entries between MR_trail_ptr and old_trail_ptr.
 */
-extern void
-MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason);
+extern void     MR_untrail_to(MR_TrailEntry *old_trail_ptr,
+                    MR_untrail_reason reason);
 
 /* Abstract type. */
 typedef MR_Unsigned MR_ChoicepointId;
@@ -555,21 +557,19 @@ typedef MR_Unsigned MR_ChoicepointId;
 /*---------------------------------------------------------------------------*/
 
 /*
-** Return the number of entries on the trail.  In multi-threaded grades
+** Return the number of entries on the trail. In multi-threaded grades
 ** this returns the number of entries on the trail for the current context.
 */
-extern MR_Unsigned
-MR_num_trail_entries(void);
+extern MR_Unsigned  MR_num_trail_entries(void);
 
 /*
-** Reset the trail.  This removes any existing entries from the trail.
+** Reset the trail. This removes any existing entries from the trail.
 ** Function trail entries are called with the MR_gc untrail reason
 ** before being removed.
 ** Existing non-null ChoicepointIds are no longer valid after calling
 ** this function.
 */
-extern void
-MR_reset_trail(void);
+extern void         MR_reset_trail(void);
 
 #if defined(MR_TRAIL_SEGMENTS)
 
@@ -578,14 +578,12 @@ MR_reset_trail(void);
 ** allocate a new segment and set MR_trail_ptr to point to beginning
 ** of that segment.
 */
-extern void
-MR_new_trail_segment(void);
+extern void         MR_new_trail_segment(void);
 
 /*
 ** Return the number of segments that make up the trail.
 */
-extern MR_Unsigned
-MR_num_trail_segments(void);
+extern MR_Unsigned  MR_num_trail_segments(void);
 
 #endif /* MR_TRAIL_SEGMENTS */
 

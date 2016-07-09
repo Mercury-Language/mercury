@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1995-2007, 2009, 2011-2012 The University of Melbourne.
@@ -57,10 +57,10 @@
 #define MERCURY_TYPE_INFO_H
 
 #include "mercury_std.h"    /* for `MR_STRINGIFY', `MR_PASTEn' and MR_CALL */
-#include "mercury_types.h"      /* for `MR_Word' */
-#include "mercury_tags.h"       /* for `MR_DEFINE_BUILTIN_ENUM_CONST' */
-#include "mercury_hlc_types.h"  /* for `MR_Mercury_Type_Info' */
-#include <stdio.h>              /* for FILE */
+#include "mercury_types.h"      /* for `MR_Word'                           */
+#include "mercury_tags.h"       /* for `MR_DEFINE_BUILTIN_ENUM_CONST'      */
+#include "mercury_hlc_types.h"  /* for `MR_Mercury_Type_Info'              */
+#include <stdio.h>              /* for FILE                                */
 
 /*---------------------------------------------------------------------------*/
 
@@ -106,7 +106,7 @@
 ** by different compiler versions.
 */
 
-#define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
+#define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)            \
     assert((typector)->MR_type_ctor_version >= MR_RTTI_VERSION__ARG_WIDTHS)
 
 /*---------------------------------------------------------------------------*/
@@ -165,17 +165,17 @@
         MR_TypeInfo         MR_ti_var_arity_arg_typeinfos[ARITY];       \
     }
 
-#define MR_FIXED_ARITY_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)               \
-    struct NAME {                                                       \
-        MR_TypeCtorInfo     MR_pti_type_ctor_info;                      \
+#define MR_FIXED_ARITY_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)                   \
+    struct NAME {                                                           \
+        MR_TypeCtorInfo     MR_pti_type_ctor_info;                          \
         MR_PseudoTypeInfo   MR_pti_fixed_arity_arg_pseudo_typeinfos[ARITY]; \
     }
 
 /* Tuple types also use the higher-order pseudo-type-info structure. */
-#define MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)                 \
-    struct NAME {                                                       \
-        MR_TypeCtorInfo     MR_pti_type_ctor_info;                      \
-        MR_Integer          MR_pti_var_arity_arity;                     \
+#define MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)                   \
+    struct NAME {                                                         \
+        MR_TypeCtorInfo     MR_pti_type_ctor_info;                        \
+        MR_Integer          MR_pti_var_arity_arity;                       \
         MR_PseudoTypeInfo   MR_pti_var_arity_arg_pseudo_typeinfos[ARITY]; \
     }
 
@@ -211,9 +211,9 @@ MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT(MR_PseudoTypeInfo_Almost_Struct,
         MR_PASTE2(MR_VA_PseudoTypeInfo_Struct, Arity), Arity)           \
         MR_PASTE2(MR_VA_PseudoTypeInfo_Struct, Arity);
 
-#define MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_ZERO            \
-    typedef struct MR_FA_TypeInfo_Struct1 MR_FA_TypeInfo_Struct0;       \
-    typedef struct MR_VA_TypeInfo_Struct1 MR_VA_TypeInfo_Struct0;       \
+#define MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_ZERO                  \
+    typedef struct MR_FA_TypeInfo_Struct1 MR_FA_TypeInfo_Struct0;             \
+    typedef struct MR_VA_TypeInfo_Struct1 MR_VA_TypeInfo_Struct0;             \
     typedef struct MR_FA_PseudoTypeInfo_Struct1 MR_FA_PseudoTypeInfo_Struct0; \
     typedef struct MR_VA_PseudoTypeInfo_Struct1 MR_VA_PseudoTypeInfo_Struct0;
 
@@ -292,15 +292,15 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 ** MR_PSEUDO_TYPEINFO_IS_VARIABLE() returns MR_TRUE.
 */
 
-#define MR_PSEUDO_TYPEINFO_IS_VARIABLE(T)                           \
-    ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),                   \
+#define MR_PSEUDO_TYPEINFO_IS_VARIABLE(T)                               \
+    ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),                       \
       (MR_Unsigned) (T) <= MR_PSEUDOTYPEINFO_MAX_VAR )
 
-#define MR_TYPE_VARIABLE_IS_EXIST_QUANT(T)                          \
-    ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),                   \
+#define MR_TYPE_VARIABLE_IS_EXIST_QUANT(T)                              \
+    ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),                       \
       (MR_Word) (T) > MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
-#define MR_TYPE_VARIABLE_IS_UNIV_QUANT(T)                           \
-    ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),                   \
+#define MR_TYPE_VARIABLE_IS_UNIV_QUANT(T)                               \
+    ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),                       \
       (MR_Word) (T) <= MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
 
 /*
@@ -309,117 +309,117 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 ** i.e. contains no type variables.
 */
 
-#define MR_pseudo_type_info_is_ground(pseudo_type_info)             \
-    ( MR_CHECK_EXPR_TYPE((pseudo_type_info), MR_PseudoTypeInfo),    \
+#define MR_pseudo_type_info_is_ground(pseudo_type_info)                 \
+    ( MR_CHECK_EXPR_TYPE((pseudo_type_info), MR_PseudoTypeInfo),        \
       (MR_TypeInfo) (pseudo_type_info) )
 
 /*
 ** Macros for retrieving things from type_infos and pseudo_type_infos.
 */
 
-#define MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)                   \
-    (((type_info)->MR_ti_type_ctor_info != NULL)                    \
-        ? (type_info)->MR_ti_type_ctor_info                         \
+#define MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)                       \
+    (((type_info)->MR_ti_type_ctor_info != NULL)                        \
+        ? (type_info)->MR_ti_type_ctor_info                             \
         : (MR_TypeCtorInfo) (type_info))
 
-#define MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info)     \
-    (((pseudo_type_info)->MR_pti_type_ctor_info != NULL)            \
-        ? (pseudo_type_info)->MR_pti_type_ctor_info                 \
+#define MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info)         \
+    (((pseudo_type_info)->MR_pti_type_ctor_info != NULL)                \
+        ? (pseudo_type_info)->MR_pti_type_ctor_info                     \
         : (MR_TypeCtorInfo) (pseudo_type_info))
 
-#define MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info)                  \
+#define MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info)                      \
     ((type_info)->MR_ti_var_arity_arity)
 
-#define MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pseudo_type_info)    \
+#define MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pseudo_type_info)        \
     ((pseudo_type_info)->MR_pti_var_arity_arity)
 
-#define MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info)           \
+#define MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info)               \
     ((MR_TypeInfoParams) &(type_info)->MR_ti_type_ctor_info)
 
 #define MR_PSEUDO_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(pseudo_type_info) \
     ((MR_PseudoTypeInfoParams) &(pseudo_type_info)->MR_pti_type_ctor_info)
 
-#define MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)             \
+#define MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)                 \
     ((MR_TypeInfoParams) &(type_info)->MR_ti_var_arity_arity)
 
-#define MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(pseudo_type_info) \
+#define MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(pseudo_type_info)   \
     ((MR_PseudoTypeInfoParams) &(pseudo_type_info)->MR_pti_var_arity_arity)
 
 /*
 ** Macros for creating type_infos and pseudo_type_infos.
 */
 
-#define MR_fixed_arity_type_info_size(arity)                        \
+#define MR_fixed_arity_type_info_size(arity)                            \
     (1 + (arity))
 
-#define MR_var_arity_type_info_size(arity)                          \
+#define MR_var_arity_type_info_size(arity)                              \
     (2 + (arity))
 
-#define MR_fixed_arity_pseudo_type_info_size(arity)                 \
+#define MR_fixed_arity_pseudo_type_info_size(arity)                     \
     (1 + (arity))
 
-#define MR_var_arity_pseudo_type_info_size(arity)                   \
+#define MR_var_arity_pseudo_type_info_size(arity)                       \
     (2 + (arity))
 
 #define MR_fill_in_fixed_arity_type_info(arena, type_ctor_info, vector) \
-    do {                                                            \
-        MR_TypeInfo new_ti;                                         \
-        new_ti = (MR_TypeInfo) (arena);                             \
-        new_ti->MR_ti_type_ctor_info = (type_ctor_info);            \
-        (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_type_ctor_info; \
+    do {                                                                \
+        MR_TypeInfo new_ti;                                             \
+        new_ti = (MR_TypeInfo) (arena);                                 \
+        new_ti->MR_ti_type_ctor_info = (type_ctor_info);                \
+        (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_type_ctor_info;   \
     } while (0)
 
 #define MR_fill_in_var_arity_type_info(arena, type_ctor_info, arity, vector)\
-    do {                                                            \
-        MR_TypeInfo new_ti;                                         \
-        new_ti = (MR_TypeInfo) (arena);                             \
-        new_ti->MR_ti_type_ctor_info = (type_ctor_info);            \
-        new_ti->MR_ti_var_arity_arity = (arity);                    \
-        (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_var_arity_arity;\
+    do {                                                                    \
+        MR_TypeInfo new_ti;                                                 \
+        new_ti = (MR_TypeInfo) (arena);                                     \
+        new_ti->MR_ti_type_ctor_info = (type_ctor_info);                    \
+        new_ti->MR_ti_var_arity_arity = (arity);                            \
+        (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_var_arity_arity;      \
     } while (0)
 
 #define MR_fill_in_fixed_arity_pseudo_type_info(arena, type_ctor_info, vector) \
-    do {                                                            \
-        MR_NCPseudoTypeInfo new_pti;                                \
-        new_pti = (MR_NCPseudoTypeInfo) (arena);                    \
-        new_pti->MR_pti_type_ctor_info = (type_ctor_info);          \
-        (vector) = (MR_PseudoTypeInfoParams) &new_pti->MR_pti_type_ctor_info; \
+    do {                                                                       \
+        MR_NCPseudoTypeInfo new_pti;                                           \
+        new_pti = (MR_NCPseudoTypeInfo) (arena);                               \
+        new_pti->MR_pti_type_ctor_info = (type_ctor_info);                     \
+        (vector) = (MR_PseudoTypeInfoParams) &new_pti->MR_pti_type_ctor_info;  \
     } while (0)
 
 #define MR_fill_in_var_arity_pseudo_type_info(arena, type_ctor_info, arity, vector)\
-    do {                                                            \
-        MR_NCPseudoTypeInfo new_pti;                                \
-        new_pti = (MR_NCPseudoTypeInfo) (arena);                    \
-        new_pti->MR_pti_type_ctor_info = (type_ctor_info);          \
-        new_pti->MR_pti_var_arity_arity = (arity);                  \
-        (vector) = (MR_PseudoTypeInfoParams) &new_pti->MR_pti_var_arity_arity;\
+    do {                                                                       \
+        MR_NCPseudoTypeInfo new_pti;                                           \
+        new_pti = (MR_NCPseudoTypeInfo) (arena);                               \
+        new_pti->MR_pti_type_ctor_info = (type_ctor_info);                     \
+        new_pti->MR_pti_var_arity_arity = (arity);                             \
+        (vector) = (MR_PseudoTypeInfoParams) &new_pti->MR_pti_var_arity_arity; \
     } while (0)
 
-#define MR_static_type_info_arity_0(name, ctor)                     \
-    struct {                                                        \
-        MR_TypeCtorInfo field1;                                     \
-    } name = {                                                      \
-        (MR_TypeCtorInfo) (ctor)                                    \
+#define MR_static_type_info_arity_0(name, ctor)                         \
+    struct {                                                            \
+        MR_TypeCtorInfo field1;                                         \
+    } name = {                                                          \
+        (MR_TypeCtorInfo) (ctor)                                        \
     };
 
-#define MR_static_type_info_arity_1(name, ctor, ti1)                \
-    struct {                                                        \
-        MR_TypeCtorInfo field1;                                     \
-        MR_TypeInfo     field2;                                     \
-    } name = {                                                      \
-        (MR_TypeCtorInfo) (ctor),                                   \
-        (MR_TypeInfo)     (ti1)                                     \
+#define MR_static_type_info_arity_1(name, ctor, ti1)                    \
+    struct {                                                            \
+        MR_TypeCtorInfo field1;                                         \
+        MR_TypeInfo     field2;                                         \
+    } name = {                                                          \
+        (MR_TypeCtorInfo) (ctor),                                       \
+        (MR_TypeInfo)     (ti1)                                         \
     };
 
-#define MR_static_type_info_arity_2(name, ctor, ti1, ti2)           \
-    struct {                                                        \
-        MR_TypeCtorInfo field1;                                     \
-        MR_TypeInfo     field2;                                     \
-        MR_TypeInfo     field3;                                     \
-    } name = {                                                      \
-        (MR_TypeCtorInfo) (ctor),                                   \
-        (MR_TypeInfo)     (ti1),                                    \
-        (MR_TypeInfo)     (ti2)                                     \
+#define MR_static_type_info_arity_2(name, ctor, ti1, ti2)               \
+    struct {                                                            \
+        MR_TypeCtorInfo field1;                                         \
+        MR_TypeInfo     field2;                                         \
+        MR_TypeInfo     field3;                                         \
+    } name = {                                                          \
+        (MR_TypeCtorInfo) (ctor),                                       \
+        (MR_TypeInfo)     (ti1),                                        \
+        (MR_TypeInfo)     (ti2)                                         \
     };
 
 /*---------------------------------------------------------------------------*/
@@ -449,7 +449,7 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 ** Extract the base_typeclass_info from a typeclass_info.
 */
 
-#define MR_typeclass_info_base(tci)                                 \
+#define MR_typeclass_info_base(tci)                                     \
     (*(MR_Word **)(tci))
 
 /*
@@ -479,21 +479,21 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 ** declaration; in other words, the arity of the type class.
 */
 
-#define MR_typeclass_info_num_extra_instance_args(tci)              \
+#define MR_typeclass_info_num_extra_instance_args(tci)                  \
     ((MR_Integer) MR_typeclass_info_base(tci)[0])
-#define MR_typeclass_info_num_instance_constraints(tci)             \
+#define MR_typeclass_info_num_instance_constraints(tci)                 \
     ((MR_Integer) MR_typeclass_info_base(tci)[1])
-#define MR_typeclass_info_num_superclasses(tci)                     \
+#define MR_typeclass_info_num_superclasses(tci)                         \
     ((MR_Integer) MR_typeclass_info_base(tci)[2])
-#define MR_typeclass_info_num_params(tci)                           \
+#define MR_typeclass_info_num_params(tci)                               \
     ((MR_Integer) MR_typeclass_info_base(tci)[3])
-#define MR_typeclass_info_num_methods(tci)                          \
+#define MR_typeclass_info_num_methods(tci)                              \
     ((MR_Integer) MR_typeclass_info_base(tci)[4])
-#define MR_typeclass_info_class_method(tci, n)                      \
+#define MR_typeclass_info_class_method(tci, n)                          \
     ((MR_Code *) MR_typeclass_info_base(tci)[(n+4)])
 
-#define MR_typeclass_info_num_instance_type_vars(tci)               \
-    ( MR_typeclass_info_num_extra_instance_args(tci)                \
+#define MR_typeclass_info_num_instance_type_vars(tci)                   \
+    ( MR_typeclass_info_num_extra_instance_args(tci)                    \
     - MR_typeclass_info_num_instance_constraints(tci))
 
 /*
@@ -517,28 +517,28 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 */
 
 #ifdef  MR_CHECK_TYPECLASS_REFS
-  #define MR_typeclass_info_extra_instance_arg(tci, n)              \
+  #define MR_typeclass_info_extra_instance_arg(tci, n)                  \
     ((0 < (n) && (n) <= MR_typeclass_info_num_extra_instance_args(tci)) \
-    ? (((MR_Word *)(tci))[(n)])                                     \
-    : MR_typeclass_ref_error((tci), (n),                            \
+    ? (((MR_Word *)(tci))[(n)])                                         \
+    : MR_typeclass_ref_error((tci), (n),                                \
         "MR_typeclass_info_extra_instance_arg"))
-  #define MR_typeclass_info_instance_tvar_type_info(tci, n)         \
-    ((0 < (n) && (n) <= MR_typeclass_info_num_instance_type_vars(tci)) \
-    ? (((MR_Word *)(tci))[(n)])                                     \
-    : MR_typeclass_ref_error((tci), (n),                            \
+  #define MR_typeclass_info_instance_tvar_type_info(tci, n)             \
+    ((0 < (n) && (n) <= MR_typeclass_info_num_instance_type_vars(tci))  \
+    ? (((MR_Word *)(tci))[(n)])                                         \
+    : MR_typeclass_ref_error((tci), (n),                                \
         "MR_typeclass_info_instance_tvar_type_info"))
-  #define MR_typeclass_info_arg_typeclass_info(tci, n)              \
-    ((MR_typeclass_info_num_instance_type_vars(tci) < (n)           \
-      && (n) <= MR_typeclass_info_num_extra_instance_args(tci))     \
-    ? (((MR_Word *)(tci))[(n)])                                     \
-    : MR_typeclass_ref_error((tci), (n),                            \
+  #define MR_typeclass_info_arg_typeclass_info(tci, n)                  \
+    ((MR_typeclass_info_num_instance_type_vars(tci) < (n)               \
+      && (n) <= MR_typeclass_info_num_extra_instance_args(tci))         \
+    ? (((MR_Word *)(tci))[(n)])                                         \
+    : MR_typeclass_ref_error((tci), (n),                                \
         "MR_typeclass_info_arg_typeclass_info"))
 #else
-  #define MR_typeclass_info_extra_instance_arg(tci, n)              \
+  #define MR_typeclass_info_extra_instance_arg(tci, n)                  \
     (((MR_Word *)(tci))[(n)])
-  #define MR_typeclass_info_instance_tvar_type_info(tci, n)         \
+  #define MR_typeclass_info_instance_tvar_type_info(tci, n)             \
     (((MR_Word *)(tci))[(n)])
-  #define MR_typeclass_info_arg_typeclass_info(tci, n)              \
+  #define MR_typeclass_info_arg_typeclass_info(tci, n)                  \
     (((MR_Word *)(tci))[(n)])
 #endif
 
@@ -557,22 +557,22 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 */
 
 #ifdef  MR_CHECK_TYPECLASS_REFS
-  #define MR_typeclass_info_superclass_info(tci, n)                 \
-    ((0 < (n) && (n) <= MR_typeclass_info_num_superclasses(tci))    \
-    ? (((MR_Word *)(tci))[                                          \
-        MR_typeclass_info_num_extra_instance_args(tci) + (n)])      \
+  #define MR_typeclass_info_superclass_info(tci, n)                     \
+    ((0 < (n) && (n) <= MR_typeclass_info_num_superclasses(tci))        \
+    ? (((MR_Word *)(tci))[                                              \
+        MR_typeclass_info_num_extra_instance_args(tci) + (n)])          \
     : MR_typeclass_ref_error((tci), (n), "MR_typeclass_info_superclass_info"))
-  #define MR_typeclass_info_param_type_info(tci, n)                 \
-    ((MR_typeclass_info_num_superclasses(tci) < (n)                 \
-      && ((n) - MR_typeclass_info_num_superclasses(tci))            \
-        <= MR_typeclass_info_num_params(tci))                       \
-    ? (((MR_Word *)(tci))[                                          \
-        MR_typeclass_info_num_extra_instance_args(tci) + (n)])      \
+  #define MR_typeclass_info_param_type_info(tci, n)                     \
+    ((MR_typeclass_info_num_superclasses(tci) < (n)                     \
+      && ((n) - MR_typeclass_info_num_superclasses(tci))                \
+        <= MR_typeclass_info_num_params(tci))                           \
+    ? (((MR_Word *)(tci))[                                              \
+        MR_typeclass_info_num_extra_instance_args(tci) + (n)])          \
     : MR_typeclass_ref_error((tci), (n), "MR_typeclass_info_param_type_info"))
 #else
-  #define MR_typeclass_info_superclass_info(tci, n)                 \
+  #define MR_typeclass_info_superclass_info(tci, n)                     \
     (((MR_Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
-  #define MR_typeclass_info_param_type_info(tci, n)                 \
+  #define MR_typeclass_info_param_type_info(tci, n)                     \
     (((MR_Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
 #endif
 
@@ -668,6 +668,7 @@ typedef enum {
 ** TypeCtorRep values requires six bits to differentiate them, and in .rt
 ** grades on 64-bit machines we need another three bits for a primary tag
 ** value.
+** XXX We don't have .rt grades anymore.
 */
 
 typedef MR_int_least16_t  MR_TypeCtorRepInt;
@@ -678,53 +679,53 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
 ** must be kept synchronized with the definition of MR_TypeCtorRep.
 */
 
-#define MR_CTOR_REP_NAMES                       \
-    "ENUM",                                     \
-    "ENUM_USEREQ",                              \
-    "DU",                                       \
-    "DU_USEREQ",                                \
-    "NOTAG",                                    \
-    "NOTAG_USEREQ",                             \
-    "EQUIV",                                    \
-    "FUNC",                                     \
-    "INT",                                      \
-    "CHAR",                                     \
-    "FLOAT",                                    \
-    "STRING",                                   \
-    "PRED",                                     \
-    "SUBGOAL",                                  \
-    "VOID",                                     \
-    "C_POINTER",                                \
-    "TYPE_INFO",                                \
-    "TYPECLASS_INFO",                           \
-    "ARRAY",                                    \
-    "SUCCIP",                                   \
-    "HP",                                       \
-    "CURFR",                                    \
-    "MAXFR",                                    \
-    "REDOFR",                                   \
-    "REDOIP",                                   \
-    "TRAIL_PTR",                                \
-    "TICKET",                                   \
-    "NOTAG_GROUND",                             \
-    "NOTAG_GROUND_USEREQ",                      \
-    "EQUIV_GROUND",                             \
-    "TUPLE",                                    \
-    "RESERVED_ADDR",                            \
-    "RESERVED_ADDR_USEREQ",                     \
-    "TYPE_CTOR_INFO",                           \
-    "BASE_TYPECLASS_INFO",                      \
-    "TYPE_DESC",                                \
-    "TYPE_CTOR_DESC",                           \
-    "FOREIGN",                                  \
-    "REFERENCE",                                \
-    "STABLE_C_POINTER",                         \
-    "STABLE_FOREIGN",                           \
-    "PSEUDO_TYPE_DESC",                         \
-    "DUMMY",                                    \
-    "BITMAP",                                   \
-    "FOREIGN_ENUM",                             \
-    "FOREIGN_ENUM_USEREQ",                      \
+#define MR_CTOR_REP_NAMES                                               \
+    "ENUM",                                                             \
+    "ENUM_USEREQ",                                                      \
+    "DU",                                                               \
+    "DU_USEREQ",                                                        \
+    "NOTAG",                                                            \
+    "NOTAG_USEREQ",                                                     \
+    "EQUIV",                                                            \
+    "FUNC",                                                             \
+    "INT",                                                              \
+    "CHAR",                                                             \
+    "FLOAT",                                                            \
+    "STRING",                                                           \
+    "PRED",                                                             \
+    "SUBGOAL",                                                          \
+    "VOID",                                                             \
+    "C_POINTER",                                                        \
+    "TYPE_INFO",                                                        \
+    "TYPECLASS_INFO",                                                   \
+    "ARRAY",                                                            \
+    "SUCCIP",                                                           \
+    "HP",                                                               \
+    "CURFR",                                                            \
+    "MAXFR",                                                            \
+    "REDOFR",                                                           \
+    "REDOIP",                                                           \
+    "TRAIL_PTR",                                                        \
+    "TICKET",                                                           \
+    "NOTAG_GROUND",                                                     \
+    "NOTAG_GROUND_USEREQ",                                              \
+    "EQUIV_GROUND",                                                     \
+    "TUPLE",                                                            \
+    "RESERVED_ADDR",                                                    \
+    "RESERVED_ADDR_USEREQ",                                             \
+    "TYPE_CTOR_INFO",                                                   \
+    "BASE_TYPECLASS_INFO",                                              \
+    "TYPE_DESC",                                                        \
+    "TYPE_CTOR_DESC",                                                   \
+    "FOREIGN",                                                          \
+    "REFERENCE",                                                        \
+    "STABLE_C_POINTER",                                                 \
+    "STABLE_FOREIGN",                                                   \
+    "PSEUDO_TYPE_DESC",                                                 \
+    "DUMMY",                                                            \
+    "BITMAP",                                                           \
+    "FOREIGN_ENUM",                                                     \
+    "FOREIGN_ENUM_USEREQ",                                              \
     "UNKNOWN"
 
 extern  MR_ConstString  MR_ctor_rep_name[];
@@ -771,7 +772,7 @@ MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_10, 10);
 typedef MR_TypeClassConstraint_5Struct          MR_TypeClassConstraintStruct;
 typedef const MR_TypeClassConstraintStruct      *MR_TypeClassConstraint;
 
-#define MR_STD_TYPECLASS_CONSTRAINT_ADDR(p) \
+#define MR_STD_TYPECLASS_CONSTRAINT_ADDR(p)                             \
         ((MR_TypeClassConstraint) &((p).MR_tc_constr_type_class_info))
 
 /*
@@ -1068,9 +1069,9 @@ typedef MR_EnumFunctorDesc  **MR_EnumTypeLayout;
 ** type_ctor_info. The array is ordered by declaration order.
 **
 ** NOTE: it is not possible to order this array by the integer value by
-**       which the functor is represented since for foreign enums these
-**       may be #defined constants and their actual value will not be known
-**       at the time the ForeignEnumLayout structures are generated.
+** which the functor is represented, since for foreign enums, these may be
+** #defined constants, and the Mercury compiler won't know their actual values
+** when it generates the type's ForeignEnumLayout structures.
 */
 
 typedef MR_ForeignEnumFunctorDesc **MR_ForeignEnumTypeLayout;
@@ -1646,7 +1647,7 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 ** Declaration for structs.
 */
 
-#define MR_DECLARE_TYPE_CTOR_INFO_STRUCT(T)                         \
+#define MR_DECLARE_TYPE_CTOR_INFO_STRUCT(T)                             \
     extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct T
 
 /*---------------------------------------------------------------------------*/
@@ -1860,22 +1861,24 @@ extern  MR_PseudoTypeInfo MR_collapse_equivalences_pseudo(
 */
 
 extern  MR_TypeInfo MR_create_type_info(
-                const MR_TypeInfoParams type_info_params,
-                const MR_PseudoTypeInfo pseudo_type_info);
+                        const MR_TypeInfoParams type_info_params,
+                        const MR_PseudoTypeInfo pseudo_type_info);
 extern  MR_TypeInfo MR_create_type_info_maybe_existq(
-                const MR_TypeInfoParams type_info_params,
-                const MR_PseudoTypeInfo pseudo_type_info,
-                const MR_Word *data_value,
-                const MR_DuFunctorDesc *functor_descriptor);
+                        const MR_TypeInfoParams type_info_params,
+                        const MR_PseudoTypeInfo pseudo_type_info,
+                        const MR_Word *data_value,
+                        const MR_DuFunctorDesc *functor_descriptor);
 
-extern  MR_PseudoTypeInfo MR_create_pseudo_type_info(
-                const MR_PseudoTypeInfoParams type_info_params,
-                const MR_PseudoTypeInfo pseudo_type_info);
-extern  MR_PseudoTypeInfo MR_create_pseudo_type_info_maybe_existq(
-                const MR_PseudoTypeInfoParams type_info_params,
-                const MR_PseudoTypeInfo pseudo_type_info,
-                const MR_Word *data_value,
-                const MR_DuFunctorDesc *functor_descriptor);
+extern  MR_PseudoTypeInfo
+                    MR_create_pseudo_type_info(
+                        const MR_PseudoTypeInfoParams type_info_params,
+                        const MR_PseudoTypeInfo pseudo_type_info);
+extern  MR_PseudoTypeInfo
+                    MR_create_pseudo_type_info_maybe_existq(
+                        const MR_PseudoTypeInfoParams type_info_params,
+                        const MR_PseudoTypeInfo pseudo_type_info,
+                        const MR_Word *data_value,
+                        const MR_DuFunctorDesc *functor_descriptor);
 
 struct MR_MemoryCellNode {
     void                        *data;

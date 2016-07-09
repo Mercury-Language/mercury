@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2003 The University of Melbourne.
@@ -111,4 +111,4 @@ struct MR_ComplexityProc_Struct {
     int                     *MR_clp_sizes;
 };
 
-#endif	/* MR_MERCURY_COMPLEXITY_H */
+#endif  /* MR_MERCURY_COMPLEXITY_H */

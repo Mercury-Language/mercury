@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2007, 2011 The University of Melbourne.
@@ -22,7 +22,7 @@
 
 /*
 ** Like memcpy, but for bitmaps.
-** The destination must already have been allocated. 
+** The destination must already have been allocated.
 */
 #define MR_copy_bitmap(dest, src)                                       \
     do {                                                                \
@@ -64,10 +64,9 @@ MR_Integer MR_bitmap_cmp(MR_ConstBitmapPtr, MR_ConstBitmapPtr);
     })
 #endif
 
-/* 
-** If we're not using gcc, the actual definition of MR_bitmap_cmp is in
-** runtime/mercury_bitmap.c;
-** it uses the macro MR_BITMAP_CMP_FUNC_BODY below.
+/*
+** If we are not using gcc, the actual definition of MR_bitmap_cmp is in
+** runtime/mercury_bitmap.c; it uses the macro MR_BITMAP_CMP_FUNC_BODY below.
 */
 
 #define MR_BITMAP_CMP_FUNC_BODY                                         \
@@ -79,15 +78,15 @@ MR_Integer MR_bitmap_cmp(MR_ConstBitmapPtr, MR_ConstBitmapPtr);
 
 /*
 ** MR_do_hash_bitmap(int & hash, MR_Word bitmap):
+**
 ** Given a Mercury bitmap `bitmap', set `hash' to the hash value
-** for that bitmap.  (`hash' must be an lvalue.)
+** for that bitmap. (`hash' must be an lvalue.)
 **
 ** This is an implementation detail used to implement MR_hash_bitmap().
-** It should not be used directly.  Use MR_hash_bitmap() instead.
+** It should not be used directly. Use MR_hash_bitmap() instead.
 **
 ** Note that hash_bitmap is also defined in library/bitmap.m.
-** The definition here and the definition in bitmap.m
-** must be kept equivalent.
+** The definition here and the definition in bitmap.m must be kept equivalent.
 */
 
 #define MR_do_hash_bitmap(hash, b)                                      \
@@ -106,7 +105,8 @@ MR_Integer MR_bitmap_cmp(MR_ConstBitmapPtr, MR_ConstBitmapPtr);
 
 /*
 ** MR_hash_bitmap(b):
-**    Given a Mercury bitmap `b', return a hash value for that array.
+**
+** Given a Mercury bitmap `b', return a hash value for that array.
 */
 
 MR_Integer    MR_hash_bitmap(MR_ConstBitmapPtr);
@@ -121,8 +121,8 @@ MR_Integer    MR_hash_bitmap(MR_ConstBitmapPtr);
     })
 #endif
 
-/* 
-** If we're not using gcc, the actual definition of MR_hash_bitmap is in
+/*
+** If we are not using gcc, the actual definition of MR_hash_bitmap is in
 ** runtime/mercury_bitmap.c;
 ** it uses the macro MR_HASH_BITMAP_FUNC_BODY below.
 */
@@ -135,7 +135,7 @@ MR_Integer    MR_hash_bitmap(MR_ConstBitmapPtr);
 /*
 ** Convert a bitmap to a string consisting of a length followed by a colon
 ** and a string of hexadecimal digits surrounded by angle brackets and
-** double quotes (e.g. "\"<24:12A>\"").  Used by `deconstruct.functor/3'.
+** double quotes (e.g. "\"<24:12A>\""). Used by `deconstruct.functor/3'.
 **
 */
 MR_String MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr,
@@ -170,11 +170,11 @@ MR_String MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr,
         memset((bitmap)->elements, 0, bytes);                           \
     } while(0)
 
-#define MR_bitmap_get_bit(bitmap, bit)                                      \
+#define MR_bitmap_get_bit(bitmap, bit)                                  \
     (!!(((bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)]) &       \
         (1 << MR_bitmap_bit_index_within_byte(bit))))
 
-#define MR_bitmap_set_bit(bitmap, bit)                                      \
+#define MR_bitmap_set_bit(bitmap, bit)                                  \
     do {                                                                \
         MR_uint_least8_t    byte;                                       \
                                                                         \
@@ -183,7 +183,7 @@ MR_String MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr,
         (bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)] = byte;   \
     } while (0)
 
-#define MR_bitmap_clear_bit(bitmap, bit)                                    \
+#define MR_bitmap_clear_bit(bitmap, bit)                                \
     do {                                                                \
         MR_uint_least8_t    byte;                                       \
                                                                         \
@@ -195,14 +195,14 @@ MR_String MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr,
 /*
 ** void MR_allocate_bitmap_msg(MR_BitmapPtr ptr, size_t bits,
 **          MR_Code *proclabel):
-** Allocate enough word aligned memory to hold `bits' bits.  Also
-** record for memory profiling purposes the location, proclabel, of the
-** allocation if profiling is enabled.
 **
-** BEWARE: this may modify `MR_hp', so it must only be called from
-** places where `MR_hp' is valid.  If calling it from inside a C function,
-** rather than inside Mercury code, you may need to call
-** MR_{save/restore}_transient_hp().
+** Allocate enough word aligned memory to hold `bits' bits. Also record,
+** for memory profiling purposes, the location, proclabel, of the allocation
+** if profiling is enabled.
+**
+** BEWARE: this may modify `MR_hp', so it must only be called from places
+** where `MR_hp' is valid. If calling it from inside a C function, rather than
+** inside Mercury code, you may need to call MR_{save/restore}_transient_hp().
 */
 
 #define MR_allocate_bitmap_msg(ptr, bits, alloc_id)                     \

@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -8,30 +11,29 @@
 ** mercury_reg_workarounds.h - MR_assign_structure(), MR_memcpy(), MR_fd_zero()
 */
 
-#ifndef	MERCURY_REG_WORKAROUNDS_H
-#define	MERCURY_REG_WORKAROUNDS_H
+#ifndef MERCURY_REG_WORKAROUNDS_H
+#define MERCURY_REG_WORKAROUNDS_H
 
 #include "mercury_conf.h"
 
 #ifdef MR_CAN_DO_PENDING_IO
-  #include <sys/types.h>		/* for fd_set */
-  #include <sys/time.h>			/* for FD_ZERO() */
+  #include <sys/types.h>        /* for fd_set    */
+  #include <sys/time.h>         /* for FD_ZERO() */
 #endif
 
-#include <stdlib.h>			/* for size_t */
+#include <stdlib.h>         /* for size_t */
 
 /*
-** This macro defines a safe way to perform assignment between
-** structures. The obvious way can cause some versions of
-** gcc to abort on x86 processors with the message
-** "fixed or forbidden register was spilled."
+** This macro defines a safe way to perform assignment between structures.
+** The obvious way can cause some versions of gcc to abort on x86 processors
+** with the message "fixed or forbidden register was spilled."
 */
 
-#if defined(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT) && \
-	defined(MR_USE_GCC_GLOBAL_REGISTERS)
+#if defined(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT) &&                      \
+    defined(MR_USE_GCC_GLOBAL_REGISTERS)
 
-  #define MR_assign_structure(dest, src) \
-			MR_memcpy(&(dest), &(src), sizeof((dest)))
+  #define MR_assign_structure(dest, src)                                \
+            MR_memcpy(&(dest), &(src), sizeof((dest)))
 
   /*
   ** We use our own version of memcpy because gcc recognises calls to the
@@ -42,14 +44,14 @@
   ** XXX We should fix this eventually by using -fno-builtin since pragma
   ** c_code may call the builtin functions.
   */
-  extern	void	MR_memcpy(void *dest, const void *src, size_t nbytes);
-  extern	void	MR_memset(void *dest, char c, size_t nbytes);
+  extern    void    MR_memcpy(void *dest, const void *src, size_t nbytes);
+  extern    void    MR_memset(void *dest, char c, size_t nbytes);
 
 #else /* !MR_CANNOT_USE_STRUCTURE_ASSIGNMENT || !MR_USE_GCC_GLOBAL_REGISTERS */
 
-  #define MR_assign_structure(dest, src)	((dest) = (src))
-  #define MR_memcpy(dest, src, nbytes)		memcpy((dest), (src), (nbytes))
-  #define MR_memset(dest, c, nbytes)		memset((dest), (c), (nbytes))
+  #define MR_assign_structure(dest, src)    ((dest) = (src))
+  #define MR_memcpy(dest, src, nbytes)      memcpy((dest), (src), (nbytes))
+  #define MR_memset(dest, c, nbytes)        memset((dest), (c), (nbytes))
 
 #endif /* !MR_CANNOT_USE_STRUCTURE_ASSIGNMENT || !MR_USE_GCC_GLOBAL_REGISTERS */
 

@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 INIT mercury_sys_init_wrapper
@@ -63,13 +63,13 @@ ENDINIT
 #include    "mercury_stack_layout.h"
 #include    "mercury_trace_base.h"
 #include    "mercury_deep_profiling.h"
-#include    "mercury_memory.h"          /* for MR_copy_string() */
+#include    "mercury_memory.h"          /* for MR_copy_string()   */
 #include    "mercury_memory_handlers.h" /* for MR_default_handler */
-#include    "mercury_thread.h"          /* for MR_debug_threads */
+#include    "mercury_thread.h"          /* for MR_debug_threads   */
 #include    "mercury_threadscope.h"
 
 #if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
-  #define snprintf	_snprintf
+  #define snprintf  _snprintf
 #endif
 
 /* global variables concerned with testing (i.e. not with the engine) */
@@ -299,9 +299,9 @@ MR_bool             MR_lld_print_csd_enabled = MR_FALSE;
 MR_bool             MR_lld_print_region_enabled = MR_FALSE;
 MR_bool             MR_lld_print_always_enabled = MR_FALSE;
 
-const char          *MR_lld_start_name = "";    /* must not be NULL */
+const char          *MR_lld_start_name = "";    /* must not be NULL        */
 unsigned            MR_lld_start_block = 100;   /* by default, print stuff */
-                        /* for a block of 100 calls */
+                        /* for a block of 100 calls                        */
 unsigned long       MR_lld_start_until = (unsigned long) -1;
 
 unsigned long       MR_lld_csd_until = (unsigned long) -1;
@@ -404,7 +404,7 @@ MR_TypeStat         MR_type_stat_c_compare;
 **   calls io__finalize_state/2 in the Mercury library.
 **
 ** In general, to avoid various complications with shared libraries and/or
-** Windows DLLs, we need to make sure that we don't have any undefined 
+** Windows DLLs, we need to make sure that we don't have any undefined
 ** external references when building the shared libraries.
 ** Hence the statically linked init file saves the addresses of those
 ** procedures in the following global variables.
@@ -501,7 +501,7 @@ int                 MR_num_complexity_procs;
 #ifdef MR_USE_GCC_NONLOCAL_GOTOS
 
 #define SAFETY_BUFFER_SIZE  1024    /* size of stack safety buffer */
-#define MAGIC_MARKER_2      142     /* a random character */
+#define MAGIC_MARKER_2      142     /* a random character          */
 
 #endif
 
@@ -724,7 +724,7 @@ mercury_runtime_init(int argc, char **argv)
         }
     }
   #endif /* ! MR_LL_PARALLEL_CONJ */
-#endif /* ! 0 */
+#endif /* ! 0                     */
 
 #ifdef MR_BOEHM_GC
     GC_enable();
@@ -833,7 +833,7 @@ mercury_runtime_init(int argc, char **argv)
 
 /*
  * Boehm will call this callback when it runs out of memory, We print an
- * error and abort.  Our error is printed after Boehm GC's on error, so we
+ * error and abort. Our error is printed after Boehm GC's on error, so we
  * don't need to say much.
  */
 #ifdef MR_BOEHM_GC
@@ -2184,8 +2184,8 @@ MR_process_options(int argc, char **argv)
                     if (sscanf(MR_optarg+1, "%u", &MR_lld_start_block) != 1) {
                         MR_usage();
                     }
-                    /* the call count will never rise above zero unless */
-                    /* we invoke the low level debugging functions at calls */
+                    /* The call count will never rise above zero unless      */
+                    /* we invoke the low level debugging functions at calls. */
                     MR_calldebug    = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "c")) {
                     MR_calldebug    = MR_TRUE;
@@ -2211,7 +2211,7 @@ MR_process_options(int argc, char **argv)
                     MR_lld_print_more_min_max = strdup(MR_optarg + 1);
                     MR_setup_call_intervals(&MR_lld_print_more_min_max,
                         &MR_lld_print_min, &MR_lld_print_max);
-                    /* the call count will never rise above zero unless */
+                    /* the call count will never rise above zero unless     */
                     /* we invoke the low level debugging functions at calls */
                     MR_calldebug    = MR_TRUE;
                 } else if (MR_optarg[0] == 'I') {

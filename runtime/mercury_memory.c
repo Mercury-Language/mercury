@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1994-2000,2002-2004, 2006, 2008, 2011 The University of Melbourne.
@@ -78,9 +78,8 @@
 /*
 ** NOTE: getpagesize() is not officially supported on MinGW (there is no
 ** declaration in the system headers), but one of the supporting libraries
-** used by GCC does define a symbol with that name.  Consequently on MinGW,
-** we need to use GetSystemInfo() even though MR_HAVE_GETPAGESIZE is
-** defined.
+** used by GCC does define a symbol with that name. Consequently on MinGW,
+** we need to use GetSystemInfo() even though MR_HAVE_GETPAGESIZE is defined.
 */
 
 #if defined(MR_HAVE_SYSCONF) && defined(_SC_PAGESIZE)
@@ -92,8 +91,8 @@
     #define getpagesize() MR_win32_getpagesize()
 
     /*
-    ** NOTE: we avoid naming the following getpagesize() since that
-    ** name is already used on MinGW.
+    ** NOTE: we avoid naming the following getpagesize() since that name
+    ** is already used on MinGW.
     */
     static size_t
     MR_win32_getpagesize(void)
@@ -136,9 +135,9 @@ MR_init_memory(void)
     already_initialized = MR_TRUE;
 
     /*
-    ** Convert all the sizes are from kilobytes to bytes and
-    ** make sure they are multiples of the page size and at least as big as the
-    ** cache size.
+    ** Convert all the sizes are from kilobytes to bytes and make sure
+    ** (a) they are multiples of the page size, and (b) at least as big
+    ** as the cache size.
     */
 
     MR_page_size = getpagesize();
@@ -163,7 +162,7 @@ MR_init_memory(void)
     MR_kilobytes_to_bytes_and_round_up(MR_global_heap_zone_size);
     MR_kilobytes_to_bytes_and_round_up(MR_debug_heap_size);
     MR_kilobytes_to_bytes_and_round_up(MR_debug_heap_zone_size);
-    /* Note that there is no need for the heap margin to be rounded up */
+    /* Note that there is no need for the heap margin to be rounded up. */
     MR_heap_margin_size  = MR_heap_margin_size * 1024;
 #endif
     MR_kilobytes_to_bytes_and_round_up(MR_detstack_size);

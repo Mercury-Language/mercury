@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 1995-1997,2000-2002, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -12,7 +15,7 @@
 #ifndef MERCURY_PROF_H
 #define MERCURY_PROF_H
 
-#include "mercury_types.h"	/* for `MR_Code *' */
+#include "mercury_types.h"  /* for `MR_Code *' */
 
 #include <stdio.h>
 
@@ -22,7 +25,7 @@
 ** so that it can credit the time to the appropriate procedure.
 */
 
-extern MR_Code *	volatile	MR_prof_current_proc;
+extern MR_Code *    volatile    MR_prof_current_proc;
 
 /*
 ** The following two macros are used to ensure that the profiler can
@@ -31,13 +34,13 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 */
 
 #ifdef MR_MPROF_PROFILE_TIME
-  #define MR_set_prof_current_proc(target)		\
-		(MR_prof_current_proc = (target))
-  #define MR_update_prof_current_proc(target)		\
-		(MR_prof_current_proc = (target))	
+  #define MR_set_prof_current_proc(target)                              \
+        (MR_prof_current_proc = (target))
+  #define MR_update_prof_current_proc(target)                           \
+        (MR_prof_current_proc = (target))   
 #else
-  #define MR_set_prof_current_proc(target)		((void)0)
-  #define MR_update_prof_current_proc(target)		((void)0)
+  #define MR_set_prof_current_proc(target)      ((void)0)
+  #define MR_update_prof_current_proc(target)       ((void)0)
 #endif
 
 /*
@@ -47,27 +50,27 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 */
 
 #ifdef MR_MPROF_PROFILE_CALLS
-  extern MR_Code *	MR_prof_ho_caller_proc;
+  extern MR_Code *  MR_prof_ho_caller_proc;
 #endif
 #ifdef MR_MPROF_PROFILE_CALLS
-  #define MR_set_prof_ho_caller_proc(target) \
-  		(MR_prof_ho_caller_proc = (target))
+  #define MR_set_prof_ho_caller_proc(target)                            \
+        (MR_prof_ho_caller_proc = (target))
 #else
-  #define MR_set_prof_ho_caller_proc(target)	((void)0)
+  #define MR_set_prof_ho_caller_proc(target)    ((void)0)
 #endif
 
 /*
 ** The MR_PROFILE() macro is used (by mercury_calls.h) to record each call.
 */
 
-#ifdef	MR_MPROF_PROFILE_CALLS
+#ifdef  MR_MPROF_PROFILE_CALLS
   #define MR_PROFILE(callee, caller) MR_prof_call_profile((callee), (caller))
 #else
   #define MR_PROFILE(callee, caller) ((void)0)
 #endif
 
 #ifdef MR_MPROF_PROFILE_CALLS
-  extern void	MR_prof_call_profile(MR_Code *, MR_Code *);
+  extern void   MR_prof_call_profile(MR_Code *, MR_Code *);
 #endif
 
 
@@ -76,8 +79,8 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 ** mercury_label.c to record the address of each entry label.
 */
 
-extern void	MR_prof_output_addr_decl(const char *name,
-			const MR_Code *address);
+extern void     MR_prof_output_addr_decl(const char *name,
+                    const MR_Code *address);
 
 
 /*
@@ -92,18 +95,18 @@ extern void	MR_prof_output_addr_decl(const char *name,
 ** explicitly.
 */
 
-extern	void	MR_prof_init(void);
-extern	void	MR_prof_finish(void);
-extern	void	MR_close_prof_decl_file(void);
+extern  void    MR_prof_init(void);
+extern  void    MR_prof_finish(void);
+extern  void    MR_close_prof_decl_file(void);
 
 #ifdef MR_MPROF_PROFILE_CALLS
-  extern void 	MR_prof_turn_on_call_profiling(void);
-  extern void	MR_prof_turn_off_call_profiling(void);
+  extern void   MR_prof_turn_on_call_profiling(void);
+  extern void   MR_prof_turn_off_call_profiling(void);
 #endif
 
 #ifdef MR_MPROF_PROFILE_TIME
-  extern void 	MR_prof_turn_on_time_profiling(void);
-  extern void	MR_prof_turn_off_time_profiling(void);
+  extern void   MR_prof_turn_on_time_profiling(void);
+  extern void   MR_prof_turn_off_time_profiling(void);
 #endif
 
-#endif	/* not MERCURY_PROF_H */
+#endif  /* not MERCURY_PROF_H */

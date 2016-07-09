@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998, 2001-2004, 2006 The University of Melbourne.
@@ -24,7 +24,7 @@
   #endif
 
 #include <sys/types.h>  /* for fd_set and FD_ZERO() */
-#include <sys/time.h>   /* for FD_ZERO() */
+#include <sys/time.h>   /* for FD_ZERO()            */
 
 #ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>   /* for FD_ZERO() */

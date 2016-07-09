@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2000,2002-2005, 2007 The University of Melbourne.
@@ -92,7 +92,7 @@ MR_register_type_ctor_info(MR_TypeCtorInfo type_ctor_info)
 
         if (type_names_match_ctor(type_ctor_info, cur_type_ctor_info)) {
             if (cur_type_ctor_info == type_ctor_info) {
-                /* type_ctor_info has been registered before */
+                /* type_ctor_info has been registered before. */
                 return;
             } else {
                 MR_fatal_error("MR_register_type_ctor_info: "
@@ -174,12 +174,12 @@ MR_register_type_class_instance(MR_Instance type_class_instance)
     {
         cur_instance = (MR_Instance) MR_dlist_data(element_ptr);
         if (cur_instance == type_class_instance) {
-            /* type_class_instance has been registered before */
+            /* type_class_instance has been registered before. */
             return;
         }
     }
 
-    /* type_class_instance has not been registered before */
+    /* type_class_instance has not been registered before. */
     type_class_decl_info->MR_tcd_info_instances =
         MR_dlist_addtail(type_class_decl_info->MR_tcd_info_instances,
             type_class_instance);

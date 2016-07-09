@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2002, 2004, 2007 The University of Melbourne.
@@ -64,7 +64,7 @@
   #define   maybe_max_arity_arg     MAX_ARITY_ARG,
   #define   max_arity_check_start                                       \
                                     if (expand_info.limit_reached) {    \
-                                        success = MR_FALSE;   \
+                                        success = MR_FALSE;             \
                                     } else {                            \
                                         success = MR_TRUE;
   #define   max_arity_check_end     }
@@ -78,8 +78,8 @@
     MR_bool             success;
 #endif
 
-    EXPAND_INFO_TYPE	expand_info;
-    MR_TypeInfo    		type_info;
+    EXPAND_INFO_TYPE    expand_info;
+    MR_TypeInfo         type_info;
     MR_ConstString      conststring_functor;
 
     type_info = (MR_TypeInfo) TYPEINFO_ARG;

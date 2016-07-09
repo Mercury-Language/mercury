@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 1995-2005, 2007, 2011-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -11,7 +14,7 @@
 
 #include "mercury_heap.h"       /* for MR_offset_incr_hp_atomic */
 
-#include <string.h>     /* for strcmp() etc. */
+#include <string.h>             /* for strcmp() etc. */
 #include <stdarg.h>
 
 /*
@@ -40,7 +43,7 @@
 
 #define MR_string_const(string, len) ((MR_String) string)
 
-#define MR_make_string_const(string) \
+#define MR_make_string_const(string)                                    \
                 MR_string_const((string), sizeof(string) - 1)
 
 /*
@@ -136,16 +139,16 @@
 */
 
 #define MR_make_aligned_string_copy_saved_hp_quote(ptr, string, alloc_id) \
-    do {                                                                \
-        MR_Word make_aligned_string_tmp;                                \
-        char    *make_aligned_string_ptr;                               \
-                                                                        \
-        MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp, 0,      \
-            (strlen(string) + 2 + sizeof(MR_Word)) / sizeof(MR_Word),   \
-            (alloc_id), "string.string/0");                             \
-        make_aligned_string_ptr = (char *) make_aligned_string_tmp;     \
-        sprintf(make_aligned_string_ptr, "%c%s%c", '"', string, '"');   \
-        (ptr) = make_aligned_string_ptr;                                \
+    do {                                                                  \
+        MR_Word make_aligned_string_tmp;                                  \
+        char    *make_aligned_string_ptr;                                 \
+                                                                          \
+        MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp, 0,        \
+            (strlen(string) + 2 + sizeof(MR_Word)) / sizeof(MR_Word),     \
+            (alloc_id), "string.string/0");                               \
+        make_aligned_string_ptr = (char *) make_aligned_string_tmp;       \
+        sprintf(make_aligned_string_ptr, "%c%s%c", '"', string, '"');     \
+        (ptr) = make_aligned_string_ptr;                                  \
     } while(0)
 
 /*
@@ -258,35 +261,36 @@
         hash ^= i;                                                      \
     }
 
-#define MR_do_hash_string5(hash, s)                                     \
-    {                                                                   \
-        int i;                                                          \
-        MR_CHECK_EXPR_TYPE(hash, int);                                  \
-        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                          \
-        hash = 0;                                                       \
-        for (i = 0; ((const unsigned char *)(s))[i] != 0; i++) {        \
-            hash = MR_keep_30_bits(hash * 37);                          \
+#define MR_do_hash_string5(hash, s)                                         \
+    {                                                                       \
+        int i;                                                              \
+        MR_CHECK_EXPR_TYPE(hash, int);                                      \
+        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                              \
+        hash = 0;                                                           \
+        for (i = 0; ((const unsigned char *)(s))[i] != 0; i++) {            \
+            hash = MR_keep_30_bits(hash * 37);                              \
             hash = MR_keep_30_bits(hash + ((const unsigned char *)(s))[i]); \
-        }                                                               \
-        hash ^= i;                                                      \
+        }                                                                   \
+        hash ^= i;                                                          \
     }
 
-#define MR_do_hash_string6(hash, s)                                     \
-    {                                                                   \
-        int i;                                                          \
-        MR_CHECK_EXPR_TYPE(hash, int);                                  \
-        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                          \
-        hash = 0;                                                       \
-        for (i = 0; ((const unsigned char *)(s))[i] != 0; i++) {        \
-            hash = MR_keep_30_bits(hash * 49);                          \
+#define MR_do_hash_string6(hash, s)                                         \
+    {                                                                       \
+        int i;                                                              \
+        MR_CHECK_EXPR_TYPE(hash, int);                                      \
+        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                              \
+        hash = 0;                                                           \
+        for (i = 0; ((const unsigned char *)(s))[i] != 0; i++) {            \
+            hash = MR_keep_30_bits(hash * 49);                              \
             hash = MR_keep_30_bits(hash + ((const unsigned char *)(s))[i]); \
-        }                                                               \
-        hash ^= i;                                                      \
+        }                                                                   \
+        hash ^= i;                                                          \
     }
 
 /*
 ** MR_hash_string{,2,3}(s):
-**      Given a Mercury string `s', return a hash value for that string.
+**
+** Given a Mercury string `s', return a hash value for that string.
 */
 
 MR_Integer      MR_hash_string(MR_ConstString);
@@ -388,14 +392,14 @@ MR_Integer      MR_hash_string6(MR_ConstString);
 ** are the rest of s and t equal?
 */
 
-#define MR_offset_streq(n, s, t) \
+#define MR_offset_streq(n, s, t)                                        \
     (strcmp((const char *)((s)+(n)), (const char *)((t)+(n))) == 0)
 
 /*
 ** Return the kth code unit in a string.
 */
 
-#define MR_nth_code_unit(s, k) \
+#define MR_nth_code_unit(s, k)                                          \
     ((unsigned) (((const unsigned char *) (s))[(k)]))
 
 /*
@@ -475,17 +479,17 @@ extern MR_int_least32_t MR_utf8_prev_get(const MR_String s, MR_Integer *pos);
 /*
 ** Return the number of bytes required to encode the code point `c' in UTF-8.
 */
-extern size_t   MR_utf8_width(MR_Char c);
+extern size_t           MR_utf8_width(MR_Char c);
 
 /*
 ** Encode the code point `c' into the buffer `s'.
 ** Return the number of bytes used.
 */
-extern size_t   MR_utf8_encode(char s[], MR_Char c);
+extern size_t           MR_utf8_encode(char s[], MR_Char c);
 
 /*
 ** Return MR_TRUE iff `s' contains a valid UTF-8 encoded string.
 */
-extern MR_bool  MR_utf8_verify(const MR_String s);
+extern MR_bool          MR_utf8_verify(const MR_String s);
 
 #endif /* not MERCURY_STRING_H */

@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -12,16 +15,16 @@
 ** by the procedures defined in library/table_builtin.m.
 */
 
-#ifndef	MERCURY_MINIMAL_MODEL_H
-#define	MERCURY_MINIMAL_MODEL_H
+#ifndef MERCURY_MINIMAL_MODEL_H
+#define MERCURY_MINIMAL_MODEL_H
 
 #include "mercury_imp.h"
 #include "mercury_tabling.h"
 #include "mercury_reg_workarounds.h"
-#include "mercury_goto.h"		/* for MR_declare_entry */
+#include "mercury_goto.h"       /* for MR_declare_entry */
 #include <stdio.h>
 
-#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
 /*
 ** The saved state of a generator or a consumer. While consumers get
@@ -53,34 +56,34 @@
 */
 
 typedef struct {
-	MR_Code			*MR_ss_succ_ip;
-	MR_Word			*MR_ss_s_p;
-	MR_Word			*MR_ss_cur_fr;
-	MR_Word			*MR_ss_max_fr;
-	MR_Word			*MR_ss_common_ancestor_fr;
-	MR_Integer		MR_ss_gen_sp;
+    MR_Code                 *MR_ss_succ_ip;
+    MR_Word                 *MR_ss_s_p;
+    MR_Word                 *MR_ss_cur_fr;
+    MR_Word                 *MR_ss_max_fr;
+    MR_Word                 *MR_ss_common_ancestor_fr;
+    MR_Integer              MR_ss_gen_sp;
 
-	MR_Word			*MR_ss_non_stack_real_start;
-	MR_Integer		MR_ss_non_stack_block_size;
-	MR_Word			*MR_ss_non_stack_saved_block;
+    MR_Word                 *MR_ss_non_stack_real_start;
+    MR_Integer              MR_ss_non_stack_block_size;
+    MR_Word                 *MR_ss_non_stack_saved_block;
 
-	MR_Word			*MR_ss_det_stack_real_start;
-	MR_Integer		MR_ss_det_stack_block_size;
-	MR_Word			*MR_ss_det_stack_saved_block;
+    MR_Word                 *MR_ss_det_stack_real_start;
+    MR_Integer              MR_ss_det_stack_block_size;
+    MR_Word                 *MR_ss_det_stack_saved_block;
 
-	MR_Integer		MR_ss_gen_stack_real_start;
-	MR_Integer		MR_ss_gen_stack_block_size;
-	MR_GenStackFrame	*MR_ss_gen_stack_saved_block;
+    MR_Integer              MR_ss_gen_stack_real_start;
+    MR_Integer              MR_ss_gen_stack_block_size;
+    MR_GenStackFrame        *MR_ss_gen_stack_saved_block;
 
-	MR_Integer		MR_ss_cut_next;
-	MR_CutStackFrame	*MR_ss_cut_stack_saved_block;
+    MR_Integer              MR_ss_cut_next;
+    MR_CutStackFrame        *MR_ss_cut_stack_saved_block;
 
-	MR_Integer		MR_ss_pneg_next;
-	MR_PNegStackFrame	*MR_ss_pneg_stack_saved_block;
+    MR_Integer              MR_ss_pneg_next;
+    MR_PNegStackFrame       *MR_ss_pneg_stack_saved_block;
 
-#ifdef	MR_MINIMAL_MODEL_DEBUG
-	/* to make it possible to generate more detailed debugging output */
-	const MR_LabelLayout	*MR_ss_top_layout;
+#ifdef  MR_MINIMAL_MODEL_DEBUG
+    /* To make it possible to generate more detailed debugging output. */
+    const MR_LabelLayout    *MR_ss_top_layout;
 #endif
 } MR_SavedState;
 
@@ -99,15 +102,15 @@ typedef struct {
 */
 
 struct MR_Consumer_Struct {
-	MR_SavedState		MR_cns_saved_state;
-	MR_Subgoal		*MR_cns_subgoal;
-	MR_Integer		MR_cns_num_returned_answers;
-	MR_AnswerList		*MR_cns_remaining_answer_list_ptr;
+    MR_SavedState       MR_cns_saved_state;
+    MR_Subgoal          *MR_cns_subgoal;
+    MR_Integer          MR_cns_num_returned_answers;
+    MR_AnswerList       *MR_cns_remaining_answer_list_ptr;
 };
 
 struct MR_ConsumerListNode_Struct {
-	MR_Consumer		*MR_cl_item;
-	MR_ConsumerList		MR_cl_next;
+    MR_Consumer         *MR_cl_item;
+    MR_ConsumerList     MR_cl_next;
 };
 
 /*
@@ -116,17 +119,17 @@ struct MR_ConsumerListNode_Struct {
 */
 
 typedef struct {
-	MR_SavedState		MR_ri_leader_state;
-	MR_SubgoalList		MR_ri_subgoal_list;
-	MR_Subgoal		*MR_ri_cur_subgoal;
-	MR_ConsumerList		MR_ri_consumer_list; /* for the cur subgoal */
-	MR_Consumer		*MR_ri_cur_consumer;
-	MR_Code			*MR_ri_saved_succip;
+    MR_SavedState       MR_ri_leader_state;
+    MR_SubgoalList      MR_ri_subgoal_list;
+    MR_Subgoal          *MR_ri_cur_subgoal;
+    MR_ConsumerList     MR_ri_consumer_list; /* for the cur subgoal */
+    MR_Consumer         *MR_ri_cur_consumer;
+    MR_Code             *MR_ri_saved_succip;
 } MR_CompletionInfo;
 
 struct MR_SubgoalListNode_Struct {
-	MR_Subgoal		*MR_sl_item;
-	MR_SubgoalList		MR_sl_next;
+    MR_Subgoal          *MR_sl_item;
+    MR_SubgoalList      MR_sl_next;
 };
 
 /*
@@ -174,102 +177,102 @@ struct MR_SubgoalListNode_Struct {
 */
 
 struct MR_Subgoal_Struct {
-	MR_TrieNode		MR_sg_back_ptr;
-	MR_SubgoalStatus	MR_sg_status;
-	MR_Subgoal		*MR_sg_leader;
-	MR_SubgoalList		MR_sg_followers;
-	MR_SubgoalList		*MR_sg_followers_tail;
-	MR_CompletionInfo	*MR_sg_completion_info;
-	MR_TableNode		MR_sg_answer_table;
-	MR_Integer		MR_sg_num_ans;
-	MR_AnswerList		MR_sg_answer_list;
-	MR_AnswerList		*MR_sg_answer_list_tail;
-	MR_ConsumerList		MR_sg_consumer_list;
-	MR_ConsumerList		*MR_sg_consumer_list_tail;
-	MR_Word			*MR_sg_generator_fr;
-	MR_Word			*MR_sg_deepest_nca_fr;
-#ifdef	MR_MINIMAL_MODEL_DEBUG
-	const MR_ProcLayout	*MR_sg_proc_layout;
+    MR_TrieNode         MR_sg_back_ptr;
+    MR_SubgoalStatus    MR_sg_status;
+    MR_Subgoal          *MR_sg_leader;
+    MR_SubgoalList      MR_sg_followers;
+    MR_SubgoalList      *MR_sg_followers_tail;
+    MR_CompletionInfo   *MR_sg_completion_info;
+    MR_TableNode        MR_sg_answer_table;
+    MR_Integer          MR_sg_num_ans;
+    MR_AnswerList       MR_sg_answer_list;
+    MR_AnswerList       *MR_sg_answer_list_tail;
+    MR_ConsumerList     MR_sg_consumer_list;
+    MR_ConsumerList     *MR_sg_consumer_list_tail;
+    MR_Word             *MR_sg_generator_fr;
+    MR_Word             *MR_sg_deepest_nca_fr;
+#ifdef  MR_MINIMAL_MODEL_DEBUG
+    const MR_ProcLayout *MR_sg_proc_layout;
 #endif
 };
 
 /*---------------------------------------------------------------------------*/
 
-extern	const MR_ProcLayout	*MR_subgoal_debug_cur_proc;
+extern  const MR_ProcLayout *MR_subgoal_debug_cur_proc;
 
-extern	void		MR_enter_consumer_debug(MR_Consumer *consumer);
-extern	MR_ConsumerDebug *MR_lookup_consumer_debug_addr(MR_Consumer *consumer);
-extern	MR_ConsumerDebug *MR_lookup_consumer_debug_num(int consumer_index);
-extern	const char	*MR_consumer_debug_name(MR_ConsumerDebug *consumer_dbg);
-extern	const char	*MR_consumer_addr_name(MR_Consumer *consumer);
-extern	const char	*MR_consumer_num_name(int consumer_index);
+extern  void        MR_enter_consumer_debug(MR_Consumer *consumer);
+extern  MR_ConsumerDebug *MR_lookup_consumer_debug_addr(MR_Consumer *consumer);
+extern  MR_ConsumerDebug *MR_lookup_consumer_debug_num(int consumer_index);
+extern  const char  *MR_consumer_debug_name(MR_ConsumerDebug *consumer_dbg);
+extern  const char  *MR_consumer_addr_name(MR_Consumer *consumer);
+extern  const char  *MR_consumer_num_name(int consumer_index);
 
-extern	void		MR_enter_subgoal_debug(MR_Subgoal *subgoal);
-extern	MR_SubgoalDebug	*MR_lookup_subgoal_debug_addr(MR_Subgoal *subgoal);
-extern	MR_SubgoalDebug	*MR_lookup_subgoal_debug_num(int subgoal_index);
-extern	const char	*MR_subgoal_debug_name(MR_SubgoalDebug *subgoal_debug);
-extern	const char	*MR_subgoal_addr_name(MR_Subgoal *subgoal);
-extern	const char	*MR_subgoal_num_name(int subgoal_index);
-extern	const char	*MR_subgoal_status(MR_SubgoalStatus status);
+extern  void        MR_enter_subgoal_debug(MR_Subgoal *subgoal);
+extern  MR_SubgoalDebug *MR_lookup_subgoal_debug_addr(MR_Subgoal *subgoal);
+extern  MR_SubgoalDebug *MR_lookup_subgoal_debug_num(int subgoal_index);
+extern  const char  *MR_subgoal_debug_name(MR_SubgoalDebug *subgoal_debug);
+extern  const char  *MR_subgoal_addr_name(MR_Subgoal *subgoal);
+extern  const char  *MR_subgoal_num_name(int subgoal_index);
+extern  const char  *MR_subgoal_status(MR_SubgoalStatus status);
 
-extern	void		MR_print_subgoal_debug(FILE *fp,
-				const MR_ProcLayout *proc,
-				MR_SubgoalDebug *subgoal_debug);
-extern	void		MR_print_subgoal(FILE *fp, const MR_ProcLayout *proc,
-				MR_Subgoal *subgoal);
-extern	void		MR_print_consumer_debug(FILE *fp,
-				const MR_ProcLayout *proc,
-				MR_ConsumerDebug *consumer_debug);
-extern	void		MR_print_consumer(FILE *fp, const MR_ProcLayout *proc,
-				MR_Consumer *consumer);
+extern  void        MR_print_subgoal_debug(FILE *fp,
+                        const MR_ProcLayout *proc,
+                        MR_SubgoalDebug *subgoal_debug);
+extern  void        MR_print_subgoal(FILE *fp, const MR_ProcLayout *proc,
+                        MR_Subgoal *subgoal);
+extern  void        MR_print_consumer_debug(FILE *fp,
+                        const MR_ProcLayout *proc,
+                        MR_ConsumerDebug *consumer_debug);
+extern  void        MR_print_consumer(FILE *fp, const MR_ProcLayout *proc,
+                        MR_Consumer *consumer);
 
-extern	MR_Subgoal	*MR_setup_subgoal(MR_TrieNode);
+extern  MR_Subgoal  *MR_setup_subgoal(MR_TrieNode);
 
-#ifdef	MR_TABLE_STATISTICS
-extern	void		MR_minimal_model_report_stats(FILE *fp);
-extern	int		MR_minmodel_stats_cnt_dupl_check;
-extern	int		MR_minmodel_stats_cnt_dupl_check_not_dupl;
+#ifdef  MR_TABLE_STATISTICS
+extern  void        MR_minimal_model_report_stats(FILE *fp);
+extern  int         MR_minmodel_stats_cnt_dupl_check;
+extern  int         MR_minmodel_stats_cnt_dupl_check_not_dupl;
 /* XXX */
 #endif
 
-#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
-#ifdef	MR_HIGHLEVEL_CODE
+#ifdef  MR_HIGHLEVEL_CODE
 
   extern void MR_CALL
-  	mercury__table_builtin__table_mm_completion_1_p_0(
-		MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
-		MR_Cont cont, void *cont_env_ptr);
+    mercury__table_builtin__table_mm_completion_1_p_0(
+        MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+        MR_Cont cont, void *cont_env_ptr);
   extern void MR_CALL
-  	mercury__table_builtin__table_mm_suspend_consumer_2_p_0(
-		MR_C_Pointer subgoal_table_node);
+    mercury__table_builtin__table_mm_suspend_consumer_2_p_0(
+        MR_C_Pointer subgoal_table_node);
   extern void MR_CALL
-  	mercury__table_builtin__table_mm_return_all_nondet_2_p_0(
-		MR_C_Pointer answer_list, MR_C_Pointer answer_block);
+    mercury__table_builtin__table_mm_return_all_nondet_2_p_0(
+        MR_C_Pointer answer_list, MR_C_Pointer answer_block);
   extern void MR_CALL
-  	mercury__table_builtin__table_mm_return_all_multi_2_p_0(
-		MR_C_Pointer answer_list, MR_C_Pointer answer_block);
+    mercury__table_builtin__table_mm_return_all_multi_2_p_0(
+        MR_C_Pointer answer_list, MR_C_Pointer answer_block);
 
-#else	/* ! MR_HIGHLEVEL_CODE */
+#else   /* ! MR_HIGHLEVEL_CODE */
 
-  #define MR_MMSC_SUSPEND_ENTRY						\
-	MR_proc_entry_user_name(table_builtin,				\
-		table_mm_suspend_consumer, 2, 0)
-  #define MR_MMSC_COMPLETION_ENTRY					\
-	MR_proc_entry_user_name(table_builtin,				\
-		table_mm_completion, 1, 0)
-  #define MR_MMSC_RET_ALL_NONDET_ENTRY					\
-	MR_proc_entry_user_name(table_builtin,				\
-		table_mm_return_all_nondet, 2, 0)
-  #define MR_MMSC_RET_ALL_MULTI_ENTRY					\
-	MR_proc_entry_user_name(table_builtin,				\
-		table_mm_return_all_multi, 2, 0)
+  #define MR_MMSC_SUSPEND_ENTRY                                         \
+    MR_proc_entry_user_name(table_builtin,                              \
+        table_mm_suspend_consumer, 2, 0)
+  #define MR_MMSC_COMPLETION_ENTRY                                      \
+    MR_proc_entry_user_name(table_builtin,                              \
+        table_mm_completion, 1, 0)
+  #define MR_MMSC_RET_ALL_NONDET_ENTRY                                  \
+    MR_proc_entry_user_name(table_builtin,                              \
+        table_mm_return_all_nondet, 2, 0)
+  #define MR_MMSC_RET_ALL_MULTI_ENTRY                                   \
+    MR_proc_entry_user_name(table_builtin,                              \
+        table_mm_return_all_multi, 2, 0)
 
   MR_declare_entry(MR_MMSC_SUSPEND_ENTRY);
   MR_declare_entry(MR_MMSC_COMPLETION_ENTRY);
   MR_declare_entry(MR_MMSC_RET_ALL_NONDET_ENTRY);
   MR_declare_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
 
-#endif	/* !MR_HIGHLEVEL_CODE */
+#endif  /* !MR_HIGHLEVEL_CODE */
 
-#endif	/* MERCURY_MINIMAL_MODEL_H */
+#endif  /* MERCURY_MINIMAL_MODEL_H */

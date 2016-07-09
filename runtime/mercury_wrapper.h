@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1994-2011 The University of Melbourne.
@@ -16,16 +16,16 @@
 #ifndef MERCURY_WRAPPER_H
 #define MERCURY_WRAPPER_H
 
-#include "mercury_regs.h"           /* needs to come first */
-#include <stddef.h>                 /* for `size_t' */
-#include "mercury_std.h"            /* for `MR_bool' */
-#include "mercury_stack_layout.h"   /* for `MR_LabelLayout' etc */
-#include "mercury_trace_base.h"     /* for `MR_trace_port' */
+#include "mercury_regs.h"           /* needs to come first                */
+#include <stddef.h>                 /* for `size_t'                       */
+#include "mercury_std.h"            /* for `MR_bool'                      */
+#include "mercury_stack_layout.h"   /* for `MR_LabelLayout' etc           */
+#include "mercury_trace_base.h"     /* for `MR_trace_port'                */
 #include "mercury_stacks.h"         /* for `MR_{Cut,Generator}StackFrame' */
-#include "mercury_type_info.h"      /* for `MR_TypeCtorInfo' */
-#include "mercury_library_types.h"  /* for `MercuryFilePtr' */
-#include "mercury_complexity.h"     /* for `MR_ComplexityProc' */
-#include <stdio.h>                  /* for `FILE' */
+#include "mercury_type_info.h"      /* for `MR_TypeCtorInfo'              */
+#include "mercury_library_types.h"  /* for `MercuryFilePtr'               */
+#include "mercury_complexity.h"     /* for `MR_ComplexityProc'            */
+#include <stdio.h>                  /* for `FILE'                         */
 
 /*
 ** mercury_runtime_init() does some stuff to initialize the garbage collector
@@ -346,9 +346,9 @@ extern int                  MR_real_time_at_last_stat;
 
 /* time profiling */
 enum MR_TimeProfileMethod {
-    MR_profile_real_time,               /* i.e. ITIMER_REAL */
+    MR_profile_real_time,               /* i.e. ITIMER_REAL    */
     MR_profile_user_time,               /* i.e. ITIMER_VIRTUAL */
-    MR_profile_user_plus_system_time    /* i.e. ITIMER_PROF */
+    MR_profile_user_plus_system_time    /* i.e. ITIMER_PROF    */
 };
 extern  enum MR_TimeProfileMethod   MR_time_profile_method;
 

@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2003, 2005 The University of Melbourne.
@@ -16,7 +16,7 @@
 #ifndef MR_MERCURY_TERM_SIZE_H
 #define MR_MERCURY_TERM_SIZE_H
 
-#include "mercury_std.h"        /* for MR_bool */
+#include "mercury_std.h"        /* for MR_bool                               */
 #include "mercury_types.h"      /* for the typedefs of the structs we define */
 
 #include "mercury_complexity.h" /* for MR_ComplexityProc, etc */

@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 INIT mercury_sys_init_engine
@@ -19,9 +19,9 @@ ENDINIT
 #include    <setjmp.h>
 
 #include    "mercury_engine.h"
-#include    "mercury_memory_zones.h"    /* for MR_create_zone() */
+#include    "mercury_memory_zones.h"    /* for MR_create_zone()     */
 #include    "mercury_memory_handlers.h" /* for MR_default_handler() */
-#include    "mercury_threadscope.h"     /* for event posting */
+#include    "mercury_threadscope.h"     /* for event posting        */
 
 #include    "mercury_dummy.h"
 
@@ -35,7 +35,7 @@ ENDINIT
     */
     #define LOCALS_SIZE     10240
 
-    #define MAGIC_MARKER    187     /* a random character */
+    #define MAGIC_MARKER    187     /* a random character       */
     #define MAGIC_MARKER_2  142     /* another random character */
 
   #endif /* MR_USE_GCC_NONLOCAL_GOTOS */
@@ -142,7 +142,7 @@ MR_init_engine(MercuryEngine *eng)
         MR_global_heap_zone_size, MR_default_handler);
     eng->MR_eng_global_hp = eng->MR_eng_global_heap_zone->MR_zone_min;
   #endif /* MR_MIGHT_RECLAIM_HP_ON_FAILURE */
-#endif /* !MR_CONSERVATIVE_GC */
+#endif /* !MR_CONSERVATIVE_GC              */
 
 #ifdef  MR_THREAD_SAFE
     /* The caller must initialise id and type. */
@@ -729,7 +729,7 @@ if (!MR_tracedebug) {
         MR_debugsreg();
         fp = (Func *) (*fp)();
     }
-} /* end call_engine_inner() */
+} /* end call_engine_inner()            */
 #endif /* not MR_USE_GCC_NONLOCAL_GOTOS */
 
 #endif /* !MR_HIGHLEVEL_CODE */

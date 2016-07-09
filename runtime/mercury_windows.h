@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2011 The University of Melbourne.
@@ -23,8 +23,8 @@
     
     /*
     ** Defining WIN32_LEAN_AND_MEAN disables a series of #includes inside
-    ** windows.h -- notably it disables the #include of winsock.h, the
-    ** inclusion of which renders the winsock2 API unusable in Mercury
+    ** windows.h -- notably it disables the #include of winsock.h,
+    ** the inclusion of which renders the winsock2 API unusable in Mercury
     ** foreign_procs.
     */
     #if !defined(WIN32_LEAN_AND_MEAN)

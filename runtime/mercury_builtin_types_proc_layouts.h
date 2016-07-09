@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 2004-2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -36,7 +39,7 @@
 
 #include "mercury_stack_layout.h"
 
-#ifdef	MR_DEEP_PROFILING
+#ifdef  MR_DEEP_PROFILING
 
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(builtin, int, 0);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(builtin, string, 0);
@@ -69,4 +72,4 @@ MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(builtin, dummy, 0);
 
 #endif /* MR_DEEP_PROFILING */
 
-#endif	/* MERCURY_BUILTIN_TYPES_PROC_LAYOUTS_H */
+#endif  /* MERCURY_BUILTIN_TYPES_PROC_LAYOUTS_H */

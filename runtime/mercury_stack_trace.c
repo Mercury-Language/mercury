@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998-2009,2012 The University of Melbourne.
@@ -23,7 +23,7 @@
 #include <stdio.h>
 
 #if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
-  #define snprintf	_snprintf
+  #define snprintf  _snprintf
 #endif
 
 static int          MR_compare_proc_layout_ptrs(
@@ -54,7 +54,7 @@ typedef void        MR_DumpOrTraverseNondetFrameFunc(void *user_data,
                         const MR_LabelLayout *layout, MR_Word *base_sp,
                         MR_Word *base_curfr, int level_number);
 
-/* These are two possible functions of type MR_DumpOrTraverseNondetFrameFunc */
+/* These are two possible functions of type MR_DumpOrTraverseNondetFrameFunc. */
 static void         MR_dump_nondet_stack_frame(void *fp,
                         MR_NondetFrameCategory category, MR_Word *top_fr,
                         const MR_LabelLayout *top_layout, MR_Word *base_sp,
@@ -68,7 +68,7 @@ static  const char  *MR_step_over_nondet_frame(
                         MR_DumpOrTraverseNondetFrameFunc *func,
                         void *func_data, int level_number, MR_Word *fr);
 static  void        MR_init_nondet_branch_infos(MR_Word *base_maxfr,
-                    	const MR_LabelLayout *top_layout, MR_Word *base_sp,
+                        const MR_LabelLayout *top_layout, MR_Word *base_sp,
                         MR_Word *base_curfr);
 static  MR_bool     MR_find_matching_branch(MR_Word *fr, int *branch_ptr);
 static  void        MR_record_temp_redoip(MR_Word *fr);
@@ -111,7 +111,7 @@ typedef struct {
     MR_Word                 *ste_trace_sp;
     MR_Word                 *ste_trace_curfr;
     MR_Unsigned             ste_reused_frames;
-    // int                     ste_last_frame_in_proc;
+    /* int                  ste_last_frame_in_proc; */
     int                     ste_proc_table_entry_slot;
 } MR_WalkedStackEntry;
 
@@ -159,7 +159,7 @@ static  MR_bool     MR_call_is_before_event_or_seq(
                         const MR_ProcLayout *proc_layout, MR_Word *base_sp,
                         MR_Word *base_curfr);
 
-/* see comments in mercury_stack_trace.h */
+/* See comments in mercury_stack_trace.h. */
 MR_Code             *MR_stack_trace_bottom_ip;
 MR_Word             *MR_nondet_stack_trace_bottom_fr;
 #ifdef MR_STACK_SEGMENTS
@@ -471,8 +471,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
         level++;
 
         /*
-        ** XXX for higher order predicates like list.map, we should
-        ** pretend that we have not seen them before.
+        ** XXX For higher order predicates like list.map, we should pretend
+        ** that we have not seen them before.
         */
 
         slot = MR_find_proc_in_proc_table(proc_table, proc_table_next,
@@ -689,7 +689,7 @@ MR_find_proc_in_proc_table(const MR_ProcTableEntry *proc_table,
     int parent;
     int side;
 
-    /* XXX we don't need proc_table_next for anything else */
+    /* XXX We don't need proc_table_next for anything else. */
     if (proc_table_next == 0) {
         MR_fatal_error("MR_find_proc_in_proc_table: table is empty");
     }
@@ -756,9 +756,9 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
     MR_Unsigned             reused_frames;
 
     const MR_ProcLayout     **procs_table;
-    int                     procs_table_size;    /* allocated */
+    int                     procs_table_size;    /* allocated      */
     int                     procs_table_next;    /* next free slot */
-    int                     num_procs_in_clique; /* filled in */
+    int                     num_procs_in_clique; /* filled in      */
 
     int                     highest_level_in_clique;
     int                     ancestor_level;
@@ -1001,7 +1001,7 @@ MR_stack_walk_step(const MR_ProcLayout *proc_layout,
         *stack_trace_sp_ptr = *stack_trace_sp_ptr -
             proc_layout->MR_sle_stack_slots;
     } else {
-        /* succip is always saved in succip_slot */
+        /* Succip is always saved in succip_slot/ */
         assert(location == -1);
         /*
         ** Note that curfr always points to an ordinary procedure frame,
@@ -1450,7 +1450,7 @@ MR_traverse_nondet_stack_frame(void *info, MR_NondetFrameCategory category,
 
 static void
 MR_init_nondet_branch_infos(MR_Word *base_maxfr,
-	const MR_LabelLayout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
+    const MR_LabelLayout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
 {
     const MR_LabelLayout        *label_layout;
     const MR_ProcLayout         *proc_layout;
@@ -1602,8 +1602,7 @@ MR_step_over_nondet_frame(MR_DumpOrTraverseNondetFrameFunc *func,
             ** is OK because all the ancestors of this procedure that are
             ** not also ancestors of the call currently being executed
             ** must also use the nondet stack. This is a consequence of the
-            ** invariant that model_non calls leave the det stack
-            ** unchanged.
+            ** invariant that model_non calls leave the det stack unchanged.
             */
 
             base_sp = NULL;
@@ -1703,7 +1702,7 @@ MR_record_temp_redoip(MR_Word *fr)
 
     for (slot = 0; slot < MR_temp_frame_info_next; slot++) {
         if (fr == MR_temp_frame_infos[slot].temp_redofr) {
-            /* this is not the top temp frame for this call */
+            /* This is not the top temp frame for this call. */
             return;
         }
     }
@@ -2429,16 +2428,16 @@ MR_find_first_call_less_eq_seq_or_event(
 */
 
 const char * MR_detism_names[] = {
-    "failure",      /* 0 */
-    "",             /* 1 */
-    "semidet",      /* 2 */
-    "nondet",       /* 3 */
-    "erroneous",    /* 4 */
-    "",             /* 5 */
-    "det",          /* 6 */
-    "multi",        /* 7 */
-    "",             /* 8 */
-    "",             /* 9 */
+    "failure",      /* 0  */
+    "",             /* 1  */
+    "semidet",      /* 2  */
+    "nondet",       /* 3  */
+    "erroneous",    /* 4  */
+    "",             /* 5  */
+    "det",          /* 6  */
+    "multi",        /* 7  */
+    "",             /* 8  */
+    "",             /* 9  */
     "cc_nondet",    /* 10 */
     "",             /* 11 */
     "",             /* 12 */

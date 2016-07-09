@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -14,7 +17,7 @@
 void MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf);
 
 #ifdef MR_NEW_MERCURYFILE_STRUCT
-  #define MR_IS_FILE_STREAM(mf)	( (mf).stream_type == MR_FILE_STREAM )
+  #define MR_IS_FILE_STREAM(mf) ( (mf).stream_type == MR_FILE_STREAM )
 
   int MR_getch(MR_StreamInfo *info);
   int MR_putch(MR_StreamInfo *info, int);

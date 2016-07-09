@@ -1,5 +1,5 @@
 /*
-vim: ft=c ts=4 sw=4 et
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2009-2011 The University of Melbourne.
@@ -313,8 +313,8 @@ struct MR_LoopControl_Struct
     MR_THREADSAFE_VOLATILE MR_bool          MR_lc_finished;
 
     /*
-    ** When a slot becomes free its index is stored here so that when a free
-    ** slot is requested the slot with this index is checked first.
+    ** When a slot becomes free, its index is stored here so that when a free
+    ** slot is requested, the slot with this index is checked first.
     */
     unsigned                                MR_lc_free_slot_hint;
 
@@ -343,14 +343,14 @@ typedef MR_Word MR_LoopControlSlot;
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
 
 #ifdef MR_DEBUG_LOOP_CONTROL
-    #define MR_IF_DEBUG_LOOP_CONTORL(stmt) \
-        do { \
-            stmt; \
+    #define MR_IF_DEBUG_LOOP_CONTORL(stmt)                              \
+        do {                                                            \
+            stmt;                                                       \
         } while (0);
 #else
-    #define MR_IF_DEBUG_LOOP_CONTORL(stmt) \
-        do { \
-            ; \
+    #define MR_IF_DEBUG_LOOP_CONTORL(stmt)                              \
+        do {                                                            \
+            ;                                                           \
         } while (0);
 #endif
 
@@ -380,7 +380,7 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
         ** This barrier ensures that MR_lc_finished has been set to MR_TRUE \
         ** before we read MR_lc_outstanding_contexts.                       \
         ** it works with another barrier in                                 \
-        ** MR_lc_join_and_terminate().  See MR_lc_join_and_terminate().     \
+        ** MR_lc_join_and_terminate(). See MR_lc_join_and_terminate().      \
         */                                                                  \
         MR_CPU_MFENCE;                                                      \
         MR_US_SPIN_LOCK(&((lc)->MR_lc_master_context_lock));                \
@@ -544,7 +544,7 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
 /*
 ** Try to spawn off this code using the free slot.
 */
-#define MR_lc_spawn_off(lc, lcs_idx, label) \
+#define MR_lc_spawn_off(lc, lcs_idx, label)                             \
     MR_lc_spawn_off_func((lc), (lcs_idx), label)
 
 extern void MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx,
@@ -553,29 +553,29 @@ extern void MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx,
 /*
 ** Join and terminate a worker.
 */
-#define MR_lc_join_and_terminate(lc, lcs_idx)                               \
-    do {                                                                    \
-        MR_IF_DEBUG_LOOP_CONTORL(                                           \
-            fprintf(stderr, "lc_join_and_terminate(%p, %d) parent_sp: %p\n",\
+#define MR_lc_join_and_terminate(lc, lcs_idx)                                \
+    do {                                                                     \
+        MR_IF_DEBUG_LOOP_CONTORL(                                            \
+            fprintf(stderr, "lc_join_and_terminate(%p, %d) parent_sp: %p\n", \
                 (lc), (lcs_idx), MR_parent_sp));                             \
-        /*                                                                  \
-        ** Termination of this context must be handled in a macro so that   \
-        ** C's stack pointer is set correctly. It might appear that we      \
-        ** don't need to save the context since it doesn't hold a           \
-        ** computation, but we do so that we save bookkeeping information.  \
-        ** A similar mistake was the cause of a hard-to-diagnose bug in     \
-        ** parallel stack segments grades.                                  \
-        ** XXX give a pointer to a description of that bug.                 \
-        ** The context must be saved before we free the loop control slot,  \
-        ** otherwise another engine may begin using it before we've saved   \
-        ** it.                                                              \
-        */                                                                  \
-        MR_save_context(MR_ENGINE(MR_eng_this_context));                    \
-        MR_ENGINE(MR_eng_this_context) = NULL;                              \
-                                                                            \
-        MR_lc_join((lc), (lcs_idx));                                        \
-                                                                            \
-        MR_idle();                                                          \
+        /*                                                                   \
+        ** Termination of this context must be handled in a macro so that    \
+        ** C's stack pointer is set correctly. It might appear that we       \
+        ** don't need to save the context since it doesn't hold a            \
+        ** computation, but we do so that we save bookkeeping information.   \
+        ** A similar mistake was the cause of a hard-to-diagnose bug in      \
+        ** parallel stack segments grades.                                   \
+        ** XXX give a pointer to a description of that bug.                  \
+        ** The context must be saved before we free the loop control slot,   \
+        ** otherwise another engine may begin using it before we have        \
+        ** saved it.                                                         \
+        */                                                                   \
+        MR_save_context(MR_ENGINE(MR_eng_this_context));                     \
+        MR_ENGINE(MR_eng_this_context) = NULL;                               \
+                                                                             \
+        MR_lc_join((lc), (lcs_idx));                                         \
+                                                                             \
+        MR_idle();                                                           \
     } while (0);
 
 /*

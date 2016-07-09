@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1999-2003, 2005-2006 The University of Melbourne.
@@ -12,22 +12,22 @@
 **
 ** The places in the system that know about the layouts of closures are
 **
-**	compiler/unify_gen.m (unify_gen__generate_construction_2)
-**	runtime/mercury_ho_call.[ch]
+**  compiler/unify_gen.m (unify_gen__generate_construction_2)
+**  runtime/mercury_ho_call.[ch]
 **
 ** Any changes here will need to be reflected in the other places as well.
 */
 
-#ifndef	MERCURY_HO_CALL_H
-#define	MERCURY_HO_CALL_H
+#ifndef MERCURY_HO_CALL_H
+#define MERCURY_HO_CALL_H
 
-#include "mercury_stack_layout.h"	/* for MR_ClosureId etc */
-#include "mercury_type_info.h"		/* for MR_PseudoTypeInfo */
-#include "mercury_types.h"		    /* for MR_Closure */
-#ifndef	MR_HIGHLEVEL_CODE
-  #include "mercury_goto.h"		    /* for MR_declare_entry */
+#include "mercury_stack_layout.h"   /* for MR_ClosureId etc  */
+#include "mercury_type_info.h"      /* for MR_PseudoTypeInfo */
+#include "mercury_types.h"          /* for MR_Closure        */
+#ifndef MR_HIGHLEVEL_CODE
+  #include "mercury_goto.h"         /* for MR_declare_entry */
   #ifdef MR_DO_CALL_STATS
-    #include  <stdio.h>               /* for FILE */
+    #include  <stdio.h>             /* for FILE */
   #endif
 #endif
 
@@ -37,12 +37,12 @@
 ** in any closure that calls that procedure. It is represented as a
 ** vector of words containing
 **
-**	a pointer to an MR_ClosureId structure
-**	a pointer to information about the locations of typeinfos
-**		for the type parameters of the procedure
-**		(NULL if there are no type parameters)
-**	one word giving the number of arguments of the procedure (M)
-**	M words giving pseudotypeinfos for the arguments
+**  a pointer to an MR_ClosureId structure
+**  a pointer to information about the locations of typeinfos
+**      for the type parameters of the procedure
+**      (NULL if there are no type parameters)
+**  one word giving the number of arguments of the procedure (M)
+**  M words giving pseudotypeinfos for the arguments
 **
 ** A closure that refers to the procedure may not (and probably will not)
 ** contain values for all the arguments of the procedure, but the closure
@@ -90,26 +90,26 @@
 */
 
 typedef struct MR_Closure_Layout_Struct {
-	MR_ClosureId		    *MR_closure_id;
-	MR_TypeParamLocns	    *MR_closure_type_params;
-	MR_Integer		        MR_closure_num_all_args;
-	MR_PseudoTypeInfo	    MR_closure_arg_pseudo_type_info[MR_VARIABLE_SIZED];
+    MR_ClosureId            *MR_closure_id;
+    MR_TypeParamLocns       *MR_closure_type_params;
+    MR_Integer              MR_closure_num_all_args;
+    MR_PseudoTypeInfo       MR_closure_arg_pseudo_type_info[MR_VARIABLE_SIZED];
 } MR_Closure_Layout;
 
 typedef struct MR_Closure_Dyn_Link_Layout_Struct {
-	MR_ClosureId		    *MR_closure_dl_id;
-	MR_TypeParamLocns	    *MR_closure_dl_type_params;
-	MR_Integer		        MR_closure_dl_num_all_args;
+    MR_ClosureId            *MR_closure_dl_id;
+    MR_TypeParamLocns       *MR_closure_dl_type_params;
+    MR_Integer              MR_closure_dl_num_all_args;
 } MR_Closure_Dyn_Link_Layout;
 
 /*
 ** A closure is a vector of words containing:
 **
-**	one word pointing to the closure layout structure of the procedure
-**	one word pointing to the code of the procedure
-**	one word giving the number of hidden arguments: (R | F<<16)
-**	R words representing the R hidden regular register arguments
-**	F words representing the F hidden float register arguments (in boxed form)
+**  one word pointing to the closure layout structure of the procedure
+**  one word pointing to the code of the procedure
+**  one word giving the number of hidden arguments: (R | F<<16)
+**  R words representing the R hidden regular register arguments
+**  F words representing the F hidden float register arguments (in boxed form)
 **
 ** The num_hidden_args_rf field holds the number of arguments to place into
 ** regular registers in the lower 16-bits, and the number of arguments to place
@@ -128,22 +128,22 @@ typedef struct MR_Closure_Dyn_Link_Layout_Struct {
 */
 
 struct MR_Closure_Struct {
-	MR_Closure_Layout	    *MR_closure_layout;
-	MR_Code			        *MR_closure_code;
-	MR_Unsigned		        MR_closure_num_hidden_args_rf;
-	MR_Word			        MR_closure_hidden_args_0[MR_VARIABLE_SIZED];
+    MR_Closure_Layout       *MR_closure_layout;
+    MR_Code                 *MR_closure_code;
+    MR_Unsigned             MR_closure_num_hidden_args_rf;
+    MR_Word                 MR_closure_hidden_args_0[MR_VARIABLE_SIZED];
 };
 
 /* in mercury_types.h: typedef struct MR_Closure_Struct MR_Closure; */
 
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_BOXED_FLOAT)
     #define MR_MAY_REORDER_CLOSURE_HIDDEN_ARGS
-    #define MR_closure_num_hidden_r_args(c) \
+    #define MR_closure_num_hidden_r_args(c)                             \
         ((c)->MR_closure_num_hidden_args_rf & 0xffff)
-    #define MR_closure_num_hidden_f_args(c) \
+    #define MR_closure_num_hidden_f_args(c)                             \
         ((c)->MR_closure_num_hidden_args_rf >> 16)
 #else
-    #define MR_closure_num_hidden_r_args(c) \
+    #define MR_closure_num_hidden_r_args(c)                             \
         ((c)->MR_closure_num_hidden_args_rf)
     #define MR_closure_num_hidden_f_args(c) 0
 #endif
@@ -162,28 +162,29 @@ struct MR_Closure_Struct {
 ** MR_make_closure allocates heap, so call MR_{save,restore}_transient_hp()
 ** around calls to it.
 */
-extern	MR_Closure	*MR_make_closure(MR_Code *address);
+extern  MR_Closure  *MR_make_closure(MR_Code *address);
 
-#ifdef	MR_HIGHLEVEL_CODE
+#ifdef  MR_HIGHLEVEL_CODE
 
 /*
 ** Function declarations
 */
 
 MR_bool MR_CALL mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info,
-	MR_Box, MR_Box);
+                    MR_Box, MR_Box);
 void MR_CALL mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info,
-	MR_Comparison_Result *, MR_Box, MR_Box);
+                    MR_Comparison_Result *, MR_Box, MR_Box);
 void MR_CALL mercury__builtin__compare_3_p_1(MR_Mercury_Type_Info,
-	MR_Comparison_Result *, MR_Box, MR_Box);
+                    MR_Comparison_Result *, MR_Box, MR_Box);
 void MR_CALL mercury__builtin__compare_3_p_2(MR_Mercury_Type_Info,
-	MR_Comparison_Result *, MR_Box, MR_Box);
+                    MR_Comparison_Result *, MR_Box, MR_Box);
 void MR_CALL mercury__builtin__compare_3_p_3(MR_Mercury_Type_Info,
-	MR_Comparison_Result *, MR_Box, MR_Box);
+                    MR_Comparison_Result *, MR_Box, MR_Box);
 void MR_CALL mercury__builtin__compare_representation_3_p_0(
-	MR_Mercury_Type_Info, MR_Comparison_Result *, MR_Box, MR_Box);
+                    MR_Mercury_Type_Info, MR_Comparison_Result *,
+                    MR_Box, MR_Box);
 
-#else	/* ! MR_HIGHLEVEL_CODE */
+#else   /* ! MR_HIGHLEVEL_CODE */
 
 MR_declare_entry(mercury__builtin__unify_2_0);
 MR_declare_entry(mercury__builtin__compare_3_0);
@@ -192,7 +193,7 @@ MR_declare_entry(mercury__builtin__compare_3_2);
 MR_declare_entry(mercury__builtin__compare_3_3);
 MR_declare_entry(mercury__builtin__compare_representation_3_0);
 
-#endif	/* MR_HIGHLEVEL_CODE */
+#endif  /* MR_HIGHLEVEL_CODE */
 
 /*
 ** Special predicates implemented in the standard library
@@ -215,4 +216,4 @@ typedef struct MR_SpecialPredHooks_Struct {
 
 extern MR_SpecialPredHooks  MR_special_pred_hooks;
 
-#endif	/* not MERCURY_HO_CALL_H */
+#endif  /* not MERCURY_HO_CALL_H */

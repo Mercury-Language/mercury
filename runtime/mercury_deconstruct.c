@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2002-2007, 2011 The University of Melbourne.
@@ -326,7 +326,7 @@ MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
     len += strlen(tci->MR_type_ctor_module_name);
     len += 1;   /* '.' */
     len += strlen(tci->MR_type_ctor_name);
-    len += 1;   /* '/' */
+    len += 1;   /* '/'                                         */
     len += 4;   /* arity; we do not support arities above 1024 */
     if (wrap) {
         len += 4;   /* <<>> */

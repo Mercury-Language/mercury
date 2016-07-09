@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2008 The University of Melbourne.
@@ -32,7 +32,7 @@
         MR_BackJumpChoiceId MR_backjump_next_choice_id = 0;
 
     #endif /* not MR_THREAD_SAFE */
-#endif /* not MR_HIGHLEVEL_CODE */
+#endif /* not MR_HIGHLEVEL_CODE  */
 
 #if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
 

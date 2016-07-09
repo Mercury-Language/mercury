@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997, 1999-2001, 2006, 2011 The University of Melbourne.
@@ -29,17 +29,18 @@
 #include "mercury_heap_profile.h"
 #include "mercury_runtime_util.h"
 
-/* all fields of these variables are initialized to 0 */
+/* All fields of these variables are initialized to 0. */
 MR_memprof_counter  MR_memprof_overall;
 MR_memprof_table    MR_memprof_procs;
 MR_memprof_table    MR_memprof_types;
 
-/* private global variables */
+/* Private global variables. */
 static MR_bool      profile_heap = MR_TRUE;
 
 /*
 ** Initialize a heap profiling counter.
 */
+
 static void
 MR_init_counter(MR_memprof_counter *counter)
 {
@@ -142,7 +143,7 @@ MR_increment_table_entry(MR_memprof_table *table,
         table->num_entries++;
     }
 
-    /* Now record the counts in this node */
+    /* Now record the counts in this node. */
     MR_increment_counter(&node->counter, size);
 }
 
@@ -395,11 +396,11 @@ MR_report_memory_attribution(const char *label)
     snapshot_label = label;
 
   #ifndef MR_HIGHLEVEL_CODE
-	/* clear out the stacks and registers before garbage collecting */
-	MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp + 1);
-	MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_nondetstack_zone),
-		MR_maxfr + 1);
-	MR_clear_regs_for_GC();
+    /* Clear out the stacks and registers before garbage collecting. */
+    MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp + 1);
+    MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_nondetstack_zone),
+        MR_maxfr + 1);
+    MR_clear_regs_for_GC();
   #endif
 
     GC_gcollect();

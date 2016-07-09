@@ -1,5 +1,5 @@
 /*
-** vim:sw=4 ts=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998-2003, 2005-2006, 2011 The University of Melbourne.
@@ -11,10 +11,10 @@
 #define MERCURY_LAYOUT_UTIL_H
 
 #include "mercury_std.h"
-#include "mercury_types.h"          /* for MR_Word, etc. */
-#include "mercury_stack_layout.h"   /* for MR_LabelLayout, etc. */
+#include "mercury_types.h"          /* for MR_Word, etc.           */
+#include "mercury_stack_layout.h"   /* for MR_LabelLayout, etc.    */
 #include "mercury_type_info.h"      /* for MR_TypeInfoParams, etc. */
-#include "mercury_ho_call.h"        /* for MR_Closure */
+#include "mercury_ho_call.h"        /* for MR_Closure              */
 
 /*
 ** These two functions copy the register state to and from the provided
@@ -41,7 +41,7 @@ extern  void    MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs,
 ** type variable in the MR_LabelLayout structure, with this typeinfo
 ** being the value of the corresponding type variable.
 ** Since type variable numbers start at one, the element of this array at
-** index zero will not have a type_info in it.  We store a dummy type_ctor_info
+** index zero will not have a type_info in it. We store a dummy type_ctor_info
 ** there, so that the array will itself look like a typeinfo.
 **
 ** The vector returned by MR_materialize_type_params is from MR_malloc;

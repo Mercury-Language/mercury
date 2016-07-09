@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998-2000,2002, 2004-2005 The University of Melbourne.
@@ -72,7 +72,7 @@
             if (base##_max == 0) {                                      \
                 base##_max = (init);                                    \
                 base##s = MR_GC_NEW_ARRAY_ATTRIB(type, base##_max,      \
-                    (alloc_id));                                         \
+                    (alloc_id));                                        \
             } else {                                                    \
                 base##_max *= 2;                                        \
                 base##s = MR_GC_RESIZE_ARRAY_ATTRIB(base##s, type,      \
@@ -144,7 +144,7 @@
 ** parameter.
 ** The `COMPARE' parameter should be an expression of type int which compares
 ** the value at the index specified by the current value of `element'
-** with the desired value, and returns <0, 0, or >0 according to whether 
+** with the desired value, and returns <0, 0, or >0 according to whether
 ** it is less than, equal to, or greater than the desired value.
 **
 ** The name of the array to be searched is not explicitly a parameter;

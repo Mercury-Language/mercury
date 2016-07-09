@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
@@ -87,7 +87,7 @@
 
   #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
     /* After we copy it, MR_next_call_site_dynamic is not meaningful; */
-    /* zeroing it makes debugging output less cluttered. */
+    /* zeroing it makes debugging output less cluttered.              */
     MR_next_call_site_dynamic = NULL;
   #endif
 

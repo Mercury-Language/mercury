@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2007, 2009-2011 The University of Melbourne.
@@ -268,10 +268,12 @@ MR_do_cpu_feature_detection(void)
     } else {
         family = basic_family;
     }
+
     /*
     ** I'm not using the model value but I'll leave the code here in case we
     ** have a reason to use it in the future.
     */
+
     /* bits 4-7 */
     model = (a & 0x000000F0) >> 4;
     if ((basic_family == 0x0F) || (basic_family == 0x06)) {
@@ -510,7 +512,7 @@ MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats)
         MR_US_UNLOCK(&(stats->MR_stat_sums_lock));
   #endif
     }
-#else /* not MR_GNUC && (__i386__ || __x86_64__) */
+#else /* not MR_GNUC && (__i386__ || __x86_64__)                   */
     /* No TSC support on this architecture or with this C compiler */
     MR_atomic_inc_int(&(stats->MR_stat_count_recorded));
 #endif /* not MR_GNUC && (__i386__ || __x86_64__) */
@@ -568,8 +570,8 @@ MR_cpuid(MR_Unsigned code, MR_Unsigned sub_code,
     ** stack and frame pointers and the other registers used by CPUID
     ** there are literally no general purpose registers left on i386.
     */
-    __asm__("pushl %%ebx; \
-             cpuid; \
+    __asm__("pushl %%ebx;    \
+             cpuid;          \
              movl %%ebx, %1; \
              popl %%ebx;"
         : "=a"(*a), "=m"(*b), "=c"(*c), "=d"(*d)

@@ -1,5 +1,5 @@
 /*
-** vim:sw=4 ts=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2005-2007, 2011 The University of Melbourne.
@@ -31,16 +31,16 @@ MR_hlds_var_name(const MR_ProcLayout *entry, int hlds_var_num,
     string_table_size = module_layout->MR_ml_string_table_size;
 
     if (hlds_var_num == 0) {
-        /* this value is not a variable */
+        /* This value is not a variable. */
         return NULL;
     }
 
     if (hlds_var_num > entry->MR_sle_max_named_var_num) {
-        /* this value is a compiler-generated variable */
+        /* This value is a compiler-generated variable. */
         return NULL;
     }
 
-    /* variable number 1 is stored at offset 0 */
+    /* Variable number 1 is stored at offset 0. */
     name_code = entry->MR_sle_used_var_names[hlds_var_num - 1];
     return MR_name_in_string_table(string_table, string_table_size,
         name_code, should_copy);
@@ -174,7 +174,7 @@ MR_find_start_of_num_suffix(const char *str)
     if (s == str + len - 1) {
         return -1;
     } else {
-        /* *(s+1) is the first character of the numerical suffix */
+        /* *(s+1) is the first character of the numerical suffix. */
         return (s + 1) - str;
     }
 }

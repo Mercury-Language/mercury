@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1995-1998, 2000-2002, 2006 The University of Melbourne.
@@ -26,7 +26,7 @@
 #include    "mercury_prof.h"
 #include    "mercury_heap_profile.h" /* for MR_prof_output_mem_tables() */
 #include    "mercury_prof_time.h"    /* for MR_turn_on_time_profiling() */
-#include    "mercury_prof_mem.h"     /* for prof_malloc() */
+#include    "mercury_prof_mem.h"     /* for prof_malloc()               */
 
 #include    "mercury_signal.h"
 #include    "mercury_std.h"
@@ -65,7 +65,7 @@ typedef struct s_prof_time_node {
 */
 
 #define hash_addr_pair(Callee, Caller)                                      \
-        (int) ((( (MR_Unsigned)(Callee) ^ (MR_Unsigned)(Caller) ) >> 2) \
+        (int) ((( (MR_Unsigned)(Callee) ^ (MR_Unsigned)(Caller) ) >> 2)     \
                 % CALL_TABLE_SIZE )
 
 #define hash_prof_addr(Addr)                                                \
@@ -101,7 +101,7 @@ MR_Code * volatile      MR_prof_current_proc;
 #endif
 
 /*
-** Local function declarations
+** Local function declarations.
 */
 
 #ifdef MR_MPROF_PROFILE_TIME
@@ -447,8 +447,7 @@ static void
 prof_handle_sigint(void)
 {
     /*
-    ** exit() will call MR_prof_finish(), which we registered
-    ** with atexit().
+    ** exit() will call MR_prof_finish(), which we registered with atexit().
     */
     exit(EXIT_FAILURE);
 }
@@ -457,7 +456,7 @@ prof_handle_sigint(void)
 void
 MR_prof_finish(void)
 {
-    /* ensure this routine only gets run once, even if called twice */
+    /* Ensure this routine only gets run once, even if called twice. */
     static MR_bool done = MR_FALSE;
     if (done) {
         return;

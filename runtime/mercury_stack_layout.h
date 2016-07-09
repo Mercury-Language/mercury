@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998-2012 The University of Melbourne.
@@ -36,9 +36,9 @@
 #include "mercury_types.h"
 #include "mercury_std.h"                /* for MR_VARIABLE_SIZED */
 #include "mercury_tags.h"
-#include "mercury_type_info.h"          /* for MR_PseudoTypeInfo */
-#include "mercury_proc_id.h"            /* for MR_ProcId */
-#include "mercury_goto.h"               /* for MR_PROC_LAYOUT etc */
+#include "mercury_type_info.h"          /* for MR_PseudoTypeInfo    */
+#include "mercury_proc_id.h"            /* for MR_ProcId            */
+#include "mercury_goto.h"               /* for MR_PROC_LAYOUT etc   */
 #include "mercury_tabling.h"            /* for MR_TableTrieStep etc */
 
 /*-------------------------------------------------------------------------*/
@@ -80,7 +80,7 @@ typedef MR_int_least16_t    MR_Determinism;
 
 #define MR_DETISM_FIRST_SOLN(d)     (((d) & 8) != 0)
 
-#define MR_DETISM_DET_STACK(d)      (!MR_DETISM_AT_MOST_MANY(d) \
+#define MR_DETISM_DET_STACK(d)      (!MR_DETISM_AT_MOST_MANY(d)         \
                                     || MR_DETISM_FIRST_SOLN(d))
 
 /*-------------------------------------------------------------------------*/
@@ -834,7 +834,7 @@ typedef struct MR_StackTraversal_Struct {
     MR_Determinism              MR_trav_detism;
 } MR_StackTraversal;
 
-#define MR_PROC_LAYOUT_IS_UCI(entry)            \
+#define MR_PROC_LAYOUT_IS_UCI(entry)                                    \
     MR_PROC_ID_IS_UCI(entry->MR_sle_proc_id)
 
 /*
@@ -1263,29 +1263,29 @@ extern  int             MR_find_start_of_num_suffix(const char *str);
 #endif
 
 #define MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(sc, detism, slots, succip_locn, \
-        pf, module, name, arity, mode, proc_static)                         \
-    MR_declare_entry(MR_proc_entry_user_name(module, name,                  \
-        arity, mode));                                                      \
-    sc const MR_ProcLayoutUser                                              \
-    MR_proc_layout_user_name(module, name, arity, mode) = {                 \
-        {                                                                   \
-            MR_MAKE_PROC_LAYOUT_ADDR(                                       \
-                MR_proc_entry_user_name(module, name,                       \
-                    arity, mode)),                                          \
-            succip_locn,                                                    \
-            slots,                                                          \
-            detism                                                          \
-        },                                                                  \
-        {                                                                   \
-            pf,                                                             \
-            MR_STRINGIFY(module),                                           \
-            MR_STRINGIFY(module),                                           \
-            MR_STRINGIFY(name),                                             \
-            arity,                                                          \
-            mode                                                            \
-        },                                                                  \
-        NULL,                                                               \
-        (MR_ProcStatic *) proc_static                                       \
+        pf, module, name, arity, mode, proc_static)                          \
+    MR_declare_entry(MR_proc_entry_user_name(module, name,                   \
+        arity, mode));                                                       \
+    sc const MR_ProcLayoutUser                                               \
+    MR_proc_layout_user_name(module, name, arity, mode) = {                  \
+        {                                                                    \
+            MR_MAKE_PROC_LAYOUT_ADDR(                                        \
+                MR_proc_entry_user_name(module, name,                        \
+                    arity, mode)),                                           \
+            succip_locn,                                                     \
+            slots,                                                           \
+            detism                                                           \
+        },                                                                   \
+        {                                                                    \
+            pf,                                                              \
+            MR_STRINGIFY(module),                                            \
+            MR_STRINGIFY(module),                                            \
+            MR_STRINGIFY(name),                                              \
+            arity,                                                           \
+            mode                                                             \
+        },                                                                   \
+        NULL,                                                                \
+        (MR_ProcStatic *) proc_static                                        \
     }
 
 #define MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(sc, detism, slots, succip_locn, \

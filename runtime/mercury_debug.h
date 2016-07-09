@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1995-2003, 2006, 2010 The University of Melbourne.
@@ -13,9 +13,9 @@
 #define MERCURY_DEBUG_H
 
 #include "mercury_types.h"          /* for MR_Word and MR_Code */
-#include "mercury_type_info.h"      /* for MR_TypeInfo */
-#include "mercury_memory_zones.h"   /* for MR_MemoryZone */
-#include <stdio.h>                  /* for FILE */
+#include "mercury_type_info.h"      /* for MR_TypeInfo         */
+#include "mercury_memory_zones.h"   /* for MR_MemoryZone       */
+#include <stdio.h>                  /* for FILE                */
 
 /*---------------------------------------------------------------------------*/
 
@@ -32,12 +32,12 @@
 
 #else
 
-#define MR_debuggoto(label) \
-    MR_IF (MR_gotodebug, \
+#define MR_debuggoto(label)                                             \
+    MR_IF (MR_gotodebug,                                                \
         (MR_save_transient_registers(), MR_goto_msg(stdout, label)))
 
-#define MR_debugsreg() \
-    MR_IF (MR_sregdebug, \
+#define MR_debugsreg()                                                  \
+    MR_IF (MR_sregdebug,                                                \
         (MR_save_transient_registers(), MR_reg_msg(stdout)))
 
 #endif
@@ -51,14 +51,14 @@
 
 #else
 
-#define MR_debug_unravel_univ(univ, typeinfo, value) \
+#define MR_debug_unravel_univ(univ, typeinfo, value)                    \
      MR_unravel_univ_msg((univ), (typeinfo), (value))
 
-#define MR_debug_new_univ_on_hp(univ, typeinfo, value) \
+#define MR_debug_new_univ_on_hp(univ, typeinfo, value)                  \
      MR_new_univ_on_hp_msg((univ), (typeinfo), (value))
 
 #define MR_debug_tag_offset_incr_hp_base(ptr, tag, offset, count, is_atomic) \
-     MR_debug_tag_offset_incr_hp_base_msg((ptr), (tag), \
+     MR_debug_tag_offset_incr_hp_base_msg((ptr), (tag),                      \
          (offset), (count), (is_atomic))
 
 #endif
@@ -90,106 +90,106 @@
 
 #else
 
-#define MR_debugcr1(hp) \
-    MR_IF (MR_heapdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugcr1(hp)                                                 \
+    MR_IF (MR_heapdebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_cr1_msg(stdout, hp)))
 
-#define MR_debugcr2(hp) \
-    MR_IF (MR_heapdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugcr2(hp)                                                 \
+    MR_IF (MR_heapdebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_cr2_msg(stdout, hp)))
 
-#define MR_debugcr3(hp) \
-    MR_IF (MR_heapdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugcr3(hp)                                                 \
+    MR_IF (MR_heapdebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_cr3_msg(stdout, hp)))
 
-#define MR_debugincrhp(val, hp) \
-    MR_IF (MR_heapdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugincrhp(val, hp)                                         \
+    MR_IF (MR_heapdebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_incr_hp_debug_msg(stdout, (val), (hp))))
 
-#define MR_debugincrsp(val, sp) \
-    MR_IF (MR_detstackdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugincrsp(val, sp)                                         \
+    MR_IF (MR_detstackdebug,                                            \
+        (MR_save_transient_registers(),                                 \
          MR_incr_sp_msg(stdout, (val), (sp))))
 
-#define MR_debugdecrsp(val, sp) \
-    MR_IF (MR_detstackdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugdecrsp(val, sp)                                         \
+    MR_IF (MR_detstackdebug,                                            \
+        (MR_save_transient_registers(),                                 \
          MR_decr_sp_msg(stdout, (val), (sp))))
 
-#define MR_debugregs(msg) \
-    MR_IF (MR_progdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugregs(msg)                                               \
+    MR_IF (MR_progdebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_printregs(stdout, msg)))
 
-#define MR_debugframe(msg)   \
-    MR_IF (MR_progdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugframe(msg)                                              \
+    MR_IF (MR_progdebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_printframe(stdout, msg)))
 
-#define MR_debugmkframe(predname) \
-    MR_IF (MR_nondetstackdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugmkframe(predname)                                       \
+    MR_IF (MR_nondetstackdebug,                                         \
+        (MR_save_transient_registers(),                                 \
          MR_mkframe_msg(stdout, predname)))
 
-#define MR_debugmktempframe() \
-    MR_IF (MR_nondetstackdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugmktempframe()                                           \
+    MR_IF (MR_nondetstackdebug,                                         \
+        (MR_save_transient_registers(),                                 \
          MR_mktempframe_msg(stdout)))
 
-#define MR_debugmkdettempframe() \
-    MR_IF (MR_nondetstackdebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugmkdettempframe()                                        \
+    MR_IF (MR_nondetstackdebug,                                         \
+        (MR_save_transient_registers(),                                 \
          MR_mkdettempframe_msg(stdout)))
 
-#define MR_debugsucceed() \
-    MR_IF (MR_calldebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugsucceed()                                               \
+    MR_IF (MR_calldebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_succeed_msg(stdout)))
 
-#define MR_debugsucceeddiscard() \
-    MR_IF (MR_calldebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugsucceeddiscard()                                        \
+    MR_IF (MR_calldebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_succeeddiscard_msg(stdout)))
 
-#define MR_debugfail() \
-    MR_IF (MR_calldebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugfail()                                                  \
+    MR_IF (MR_calldebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_fail_msg(stdout)))
 
-#define MR_debugredo() \
-    MR_IF (MR_calldebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugredo()                                                  \
+    MR_IF (MR_calldebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_redo_msg(stdout)))
 
-#define MR_debugcall(proc, succ_cont) \
-    MR_IF (MR_calldebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugcall(proc, succ_cont)                                   \
+    MR_IF (MR_calldebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_call_msg(stdout, proc, succ_cont)))
 
-#define MR_debugtailcall(proc) \
-    MR_IF (MR_calldebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugtailcall(proc)                                          \
+    MR_IF (MR_calldebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_tailcall_msg(stdout, proc)))
 
-#define MR_debugproceed() \
-    MR_IF (MR_calldebug, \
-        (MR_save_transient_registers(), \
+#define MR_debugproceed()                                               \
+    MR_IF (MR_calldebug,                                                \
+        (MR_save_transient_registers(),                                 \
          MR_proceed_msg(stdout)))
 
-#define MR_debugmsg0(msg) \
+#define MR_debugmsg0(msg)                                               \
     MR_IF (MR_progdebug, (fprintf(stdout, msg)))
 
-#define MR_debugmsg1(msg, arg1) \
+#define MR_debugmsg1(msg, arg1)                                         \
     MR_IF (MR_progdebug, (fprintf(stdout, msg, arg1)))
 
-#define MR_debugmsg2(msg, arg1, arg2) \
+#define MR_debugmsg2(msg, arg1, arg2)                                   \
     MR_IF (MR_progdebug, (fprintf(stdout, msg, arg1, arg2)))
 
-#define MR_debugmsg3(msg, arg1, arg2, arg3) \
+#define MR_debugmsg3(msg, arg1, arg2, arg3)                             \
     MR_IF (MR_progdebug, (fprintf(stdout, msg, arg1, arg2, arg3)))
 
 #endif /* MR_LOWLEVEL_DEBUG */

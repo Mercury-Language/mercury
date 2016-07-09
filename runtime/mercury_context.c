@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 INIT mercury_sys_init_scheduler_wrapper
@@ -33,10 +33,10 @@ ENDINIT
   #endif
 #endif
 #ifdef MR_CAN_DO_PENDING_IO
-  #include <sys/types.h>	/* for fd_set */
-  #include <sys/time.h>		/* for struct timeval */
+  #include <sys/types.h>    /* for fd_set         */
+  #include <sys/time.h>     /* for struct timeval */
   #ifdef MR_HAVE_UNISTD_H
-	#include <unistd.h>	/* for select() on OS X */
+    #include <unistd.h> /* for select() on OS X */
   #endif
 #endif
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
@@ -65,9 +65,9 @@ ENDINIT
 
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
-#include "mercury_engine.h"             /* for `MR_memdebug' */
+#include "mercury_engine.h"             /* for `MR_memdebug'                 */
 #include "mercury_threadscope.h"        /* for data types and posting events */
-#include "mercury_reg_workarounds.h"    /* for `MR_fd*' stuff */
+#include "mercury_reg_workarounds.h"    /* for `MR_fd*' stuff                */
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 #define MR_PROFILE_PARALLEL_EXECUTION_FILENAME "parallel_execution_profile.txt"
@@ -209,7 +209,7 @@ static MR_Integer       MR_profile_parallel_small_context_reused = 0;
 static MR_Integer       MR_profile_parallel_regular_context_reused = 0;
 static MR_Integer       MR_profile_parallel_small_context_kept = 0;
 static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
-  #endif /* ! MR_HIGHLEVEL_CODE */
+  #endif /* ! MR_HIGHLEVEL_CODE                 */
 #endif /* MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 
 #ifdef MR_THREAD_SAFE
@@ -544,7 +544,7 @@ MR_setup_num_threads(void)
   #endif
 }
 #endif /* MR_LL_PARALLEL_CONJ */
-#endif /* MR_THREAD_SAFE */
+#endif /* MR_THREAD_SAFE      */
 
 /*
 ** Thread pinning
@@ -659,7 +659,7 @@ static int MR_current_cpu(void)
 #endif
 
 #else /* ! MR_HAVE_SCHED_GETCPU */
-    /* We have no idea! */
+    /* We have no idea!         */
     return 0;
 #endif
 }
@@ -900,15 +900,15 @@ Error:
     abort();
 }
 
-#define MR_FPRINT_STATS_FORMAT_STRING_FULL \
-    ("%s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%" \
+#define MR_FPRINT_STATS_FORMAT_STRING_FULL                        \
+    ("%s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%"              \
     MR_INTEGER_LENGTH_MODIFIER "ur, %" MR_INTEGER_LENGTH_MODIFIER \
     "unr), average %.0f, standard deviation %.0f\n")
-#define MR_FPRINT_STATS_FORMAT_STRING_SINGLE \
-    ("%s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%" \
+#define MR_FPRINT_STATS_FORMAT_STRING_SINGLE                      \
+    ("%s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%"              \
     MR_INTEGER_LENGTH_MODIFIER "ur, %" MR_INTEGER_LENGTH_MODIFIER \
     "unr), sample %ul\n")
-#define MR_FPRINT_STATS_FORMAT_STRING_NONE \
+#define MR_FPRINT_STATS_FORMAT_STRING_NONE           \
     ("%s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%" \
     MR_INTEGER_LENGTH_MODIFIER "ur, %" MR_INTEGER_LENGTH_MODIFIER "unr)\n")
 
@@ -3055,7 +3055,7 @@ void MR_write_out_conditional_parallelism_log(void)
 }
 
 #endif /* MR_DEBUG_RUNTIME_GRANULARITY_CONTROL */
-#endif /* MR_LL_PARALLEL_CONJ */
+#endif /* MR_LL_PARALLEL_CONJ                  */
 
 /* forward decls to suppress gcc warnings */
 void mercury_sys_init_scheduler_wrapper_init(void);

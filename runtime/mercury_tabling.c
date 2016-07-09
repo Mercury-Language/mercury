@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-2007, 2011 The University of Melbourne.
@@ -156,7 +156,7 @@ struct MR_HashTable_Struct {
 #define MAX_LOAD_FACTOR 0.65
 
 /*
-** Prime numbers which are close to powers of 2.  Used for choosing
+** Prime numbers which are close to powers of 2. Used for choosing
 ** the next size for a hash table.
 */
 
@@ -1422,7 +1422,7 @@ MR_print_answerblock(FILE *fp, const MR_ProcLayout *proc,
         }
 
     #endif /* MR_USE_GCC_NESTED_FUNCTIONS */
-#else   /* MR_HIGHLEVEL_CODE */
+#else   /* MR_HIGHLEVEL_CODE              */
 
 MR_define_extern_entry(MR_MEMO_NON_RET_ALL_NONDET_ENTRY);
 MR_define_extern_entry(MR_MEMO_NON_RET_ALL_MULTI_ENTRY);
@@ -1589,9 +1589,9 @@ void mercury_sys_init_table_modules_init_type_tables(void)
 #ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp)
 {
-    /* no proc_statics to write out */
+    /* no proc_statics to write out          */
     /* XXX we need to fix the deep profiling */
-    /* of model_non memo tabled predicates */
+    /* of model_non memo tabled predicates   */
 }
 #endif
 

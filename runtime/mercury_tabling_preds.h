@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 et
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2004-2007 The University of Melbourne.
@@ -202,9 +202,9 @@
     } while(0)
 
 #define MR_tbl_lookup_insert_gen_poly_addr(stats, debug, back, T0, TI, V, T) \
-    do {                                                                    \
-        MR_TABLE_ANY_ADDR(stats, debug, back, "gen poly addr", T, T0,       \
-            (MR_TypeInfo) TI, (MR_Word) V);                                 \
+    do {                                                                     \
+        MR_TABLE_ANY_ADDR(stats, debug, back, "gen poly addr", T, T0,        \
+            (MR_TypeInfo) TI, (MR_Word) V);                                  \
     } while(0)
 
 #define MR_tbl_lookup_insert_typeinfo(stats, debug, back, T0, TI, T)        \
@@ -249,8 +249,8 @@
             &MR_TYPE_CTOR_INFO_NAME(io, state, 0));                         \
     } while(0)
 
-#define MR_tbl_save_any_answer(debug, AB, Offset, TI, V)                    \
-    do {                                                                    \
+#define MR_tbl_save_any_answer(debug, AB, Offset, TI, V)                       \
+    do {                                                                       \
         MR_TABLE_SAVE_ANSWER(debug, AB, Offset, (MR_Word) V, (MR_TypeInfo) TI);\
     } while(0)
 
@@ -496,36 +496,36 @@
 /***********************************************************************/
 
 #define MR_tbl_memo_non_create_answer_block(debug, Record, Size, AnswerBlock) \
-    do {                                                                    \
-        MR_AnswerListNode   *answer_node;                                   \
-        MR_Word             **Slot;                                         \
-                                                                            \
-        Record->MR_mn_num_answers++;                                        \
-                                                                            \
-        /*                                                                  \
-        ** We fill in the answer_data slot with a dummy value.              \
-        ** This slot will be filled in by the next piece of code            \
-        ** to be executed after we return, which is why we return           \
-        ** its address.                                                     \
-        */                                                                  \
-                                                                            \
-        answer_node = MR_TABLE_NEW(MR_AnswerListNode);                      \
-        answer_node->MR_aln_answer_block = NULL;                            \
-        answer_node->MR_aln_next_answer = NULL;                             \
-                                                                            \
-        if (debug && MR_tabledebug) {                                       \
-            printf("new answer slot %d at %p(%p)\n",                        \
-                Record->MR_mn_num_answers, answer_node,                     \
-                &answer_node->MR_aln_answer_block);                         \
-            printf("\tstoring into %p\n",                                   \
-                Record->MR_mn_answer_list_tail);                            \
-        }                                                                   \
-                                                                            \
-        *(Record->MR_mn_answer_list_tail) = answer_node;                    \
-        Record->MR_mn_answer_list_tail = &(answer_node->MR_aln_next_answer);\
-        Slot = &(answer_node->MR_aln_answer_block);                         \
-        MR_TABLE_CREATE_NODE_ANSWER_BLOCK(debug, Slot, Size);               \
-        AnswerBlock = *Slot;                                                \
+    do {                                                                      \
+        MR_AnswerListNode   *answer_node;                                     \
+        MR_Word             **Slot;                                           \
+                                                                              \
+        Record->MR_mn_num_answers++;                                          \
+                                                                              \
+        /*                                                                    \
+        ** We fill in the answer_data slot with a dummy value.                \
+        ** This slot will be filled in by the next piece of code              \
+        ** to be executed after we return, which is why we return             \
+        ** its address.                                                       \
+        */                                                                    \
+                                                                              \
+        answer_node = MR_TABLE_NEW(MR_AnswerListNode);                        \
+        answer_node->MR_aln_answer_block = NULL;                              \
+        answer_node->MR_aln_next_answer = NULL;                               \
+                                                                              \
+        if (debug && MR_tabledebug) {                                         \
+            printf("new answer slot %d at %p(%p)\n",                          \
+                Record->MR_mn_num_answers, answer_node,                       \
+                &answer_node->MR_aln_answer_block);                           \
+            printf("\tstoring into %p\n",                                     \
+                Record->MR_mn_answer_list_tail);                              \
+        }                                                                     \
+                                                                              \
+        *(Record->MR_mn_answer_list_tail) = answer_node;                      \
+        Record->MR_mn_answer_list_tail = &(answer_node->MR_aln_next_answer);  \
+        Slot = &(answer_node->MR_aln_answer_block);                           \
+        MR_TABLE_CREATE_NODE_ANSWER_BLOCK(debug, Slot, Size);                 \
+        AnswerBlock = *Slot;                                                  \
     } while(0)
 
 #define MR_tbl_memo_non_create_answer_block_shortcut(Record)                \
@@ -731,7 +731,7 @@
 
 #else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
-#define MR_MMSC_ERROR  \
+#define MR_MMSC_ERROR                                                   \
         "stack copy minimal model code entered when not enabled"
 
 #define MR_tbl_mm_setup(debug, back, T, Subgoal, Status)                    \
@@ -877,7 +877,7 @@
 
 #else   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
-#define MR_MMOS_ERROR  \
+#define MR_MMOS_ERROR                                                   \
         "own stack minimal model code entered when not enabled"
 
 #define MR_tbl_mmos_create_answer_block(debug, Generator, Size, AnswerBlock)\

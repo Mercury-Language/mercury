@@ -1,5 +1,5 @@
 /*
-** vim: sw=4 ts=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998-2002, 2004-2006, 2011 The University of Melbourne.
@@ -22,11 +22,11 @@
 
 #include "mercury_regs.h"           /* for MR_NUM_REAL_R_REGS, etc */
 
-#include <stdio.h>                  /* for FILE */
+#include <stdio.h>                  /* for FILE   */
 #include <stdlib.h>                 /* for size_t */
 
-#include "mercury_types.h"          /* for MR_Word */
-#include "mercury_std.h"            /* for MR_bool */
+#include "mercury_types.h"          /* for MR_Word                */
+#include "mercury_std.h"            /* for MR_bool                */
 #include "mercury_atomic_ops.h"     /* for MR_THREADSAFE_VOLATILE */
 
 typedef struct      MR_MemoryZone_Struct MR_MemoryZone;
@@ -187,8 +187,8 @@ struct MR_MemoryZonesFree_Struct {
 ** `start_address' to the end of the zone. This is used to avoid unwanted
 ** memory retention due to false hits in the conservative garbage collector.
 */
-#define MR_clear_zone_for_GC(zone, start_address) \
-    ((void) MR_memset((start_address), 0, \
+#define MR_clear_zone_for_GC(zone, start_address)                       \
+    ((void) MR_memset((start_address), 0,                               \
         (char*)((zone)->MR_zone_end) - (char *)(start_address)))
 
 /*

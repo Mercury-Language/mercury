@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2000-2005, 2007, 2011 The University of Melbourne.
@@ -10,7 +10,7 @@
 /*
 ** This file contains a piece of code that is included by mercury_ho_call.c
 ** six times:
-** 
+**
 ** - as the body of the mercury__builtin__unify_2_0 Mercury procedure,
 ** - as the body of the mercury__builtin__compare_3_3 Mercury procedure,
 ** - as the body of the mercury__builtin__compare_representation_3_0
@@ -25,7 +25,7 @@
 ** The reason why the unify and compare Mercury procedures share code is
 ** that unify is mostly just a special case of comparison; it differs only
 ** by treating "less than" and "greater than" the same way, and returning
-** its result slightly differently.  Likewise, compare_representation
+** its result slightly differently. Likewise, compare_representation
 ** is mostly the same as compare.
 **
 ** The reason why there is both a Mercury procedure and a C function for

@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 1996-1997, 1999-2000, 2002, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -14,7 +17,7 @@
 #ifndef MERCURY_PROF_MEM_H
 #define MERCURY_PROF_MEM_H
 
-#include <stddef.h>	/* for size_t */
+#include <stddef.h> /* for size_t */
 
 /*
 ** MR_prof_malloc() allocates memory in large chunks using MR_GC_malloc(),
@@ -38,7 +41,7 @@ extern void *MR_prof_malloc(size_t);
 /*
 ** Use the following macros rather than calling MR_prof_malloc() directly.
 */
-#define MR_PROF_NEW(t)		((t *) MR_prof_malloc(sizeof(t)))
-#define MR_PROF_NEW_ARRAY(t,n)	((t *) MR_prof_malloc(sizeof(t) * (n)))
+#define MR_PROF_NEW(t)          ((t *) MR_prof_malloc(sizeof(t)))
+#define MR_PROF_NEW_ARRAY(t,n)  ((t *) MR_prof_malloc(sizeof(t) * (n)))
 
 #endif /* not MERCURY_PROF_MEM_H */

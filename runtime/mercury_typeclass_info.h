@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2002-2005, 2007, 2012 The University of Melbourne.
@@ -51,7 +51,7 @@ The new RTTI design records a lot more information than the old one, but
 the growth is mostly in statically allocated data structures. Also, the new
 design is in type-safe C, for ease of debugging its implementation. There
 should be a type-safe Mercury version of it as well, for future use in the
-Java and IL backends. The reason why there isn't one yet is that some these
+Java and IL backends. The reason why there isn't one yet is that some of these
 structures must contain references to polymorphic procedures, since methods
 may be polymorphic. Mercury doesn't (yet) support polymorphic procedures,
 even if (as here) only the compiler can create them.
@@ -84,7 +84,7 @@ Zoltan.
 
 #include "mercury_types.h"         
 #include "mercury_type_info.h"      /* for MR_PseudoTypeInfo */
-#include "mercury_stack_layout.h"   /* for MR_PredFunc */
+#include "mercury_stack_layout.h"   /* for MR_PredFunc       */
 
 /*****************************************************************************/
 

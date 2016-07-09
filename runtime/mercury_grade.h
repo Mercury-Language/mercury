@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-2011 The University of Melbourne.
@@ -55,7 +55,7 @@
 #define MERCURY_GRADES_H
 
 #include "mercury_std.h"        /* for MR_STRINGIFY and MR_PASTE2 */
-#include "mercury_tags.h"       /* for MR_TAGBITS */
+#include "mercury_tags.h"       /* for MR_TAGBITS                 */
 
 /*
 ** The following series of tests define two macros piece by piece.
@@ -112,11 +112,11 @@
   ** This grade component is repeated below version information.
   */
   #ifdef MR_THREAD_SAFE
-    #define MR_GRADE_PART_3       MR_PASTE2(MR_GRADE_PART_2, _par)
-    #define MR_GRADE_OPT_PART_3   MR_GRADE_OPT_PART_2 ".par"
+    #define MR_GRADE_PART_3             MR_PASTE2(MR_GRADE_PART_2, _par)
+    #define MR_GRADE_OPT_PART_3         MR_GRADE_OPT_PART_2 ".par"
   #else
-    #define MR_GRADE_PART_3       MR_GRADE_PART_2
-    #define MR_GRADE_OPT_PART_3   MR_GRADE_OPT_PART_2
+    #define MR_GRADE_PART_3             MR_GRADE_PART_2
+    #define MR_GRADE_OPT_PART_3         MR_GRADE_OPT_PART_2
   #endif
 
 #else /* ! MR_HIGHLEVEL_CODE */
@@ -212,16 +212,16 @@
         #define MR_GRADE_PART_5         MR_PASTE2(MR_GRADE_PART_4, _prof)
         #define MR_GRADE_OPT_PART_5     MR_GRADE_OPT_PART_4 ".prof"
       #endif /* ! MR_MPROF_PROFILE_MEMORY */
-    #else /* ! MR_MPROF_PROFILE_CALLS */
+    #else /* ! MR_MPROF_PROFILE_CALLS     */
       #ifdef MR_MPROF_PROFILE_MEMORY
         #error "memory profiling requires call profiling"
       #else /* ! MR_MPROF_PROFILE_MEMORY */
-        /* Currently useless, but... */
+        /* Currently useless, but...     */
         #define MR_GRADE_PART_5         MR_PASTE2(MR_GRADE_PART_4, _proftime)
         #define MR_GRADE_OPT_PART_5     MR_GRADE_OPT_PART_4 ".proftime"
       #endif /* MR_MPROF_PROFILE_MEMORY */
-    #endif /* MR_MPROF_PROFILE_CALLS */
-  #else /* ! MR_MPROF_PROFILE_TIME */
+    #endif /* MR_MPROF_PROFILE_CALLS    */
+  #else /* ! MR_MPROF_PROFILE_TIME      */
     #ifdef MR_MPROF_PROFILE_CALLS
       #ifdef MR_MPROF_PROFILE_MEMORY
         #define MR_GRADE_PART_5         MR_PASTE2(MR_GRADE_PART_4, _memprof)
@@ -230,16 +230,16 @@
         #define MR_GRADE_PART_5         MR_PASTE2(MR_GRADE_PART_4, _profcalls)
         #define MR_GRADE_OPT_PART_5     MR_GRADE_OPT_PART_4 ".profcalls"
       #endif /* MR_MPROF_PROFILE_MEMORY */
-    #else /* ! MR_MPROF_PROFILE_CALLS */
+    #else /* ! MR_MPROF_PROFILE_CALLS   */
       #ifdef MR_MPROF_PROFILE_MEMORY
         #error "memory profiling requires call profiling"
       #else /* ! MR_MPROF_PROFILE_MEMORY */
         #define MR_GRADE_PART_5         MR_GRADE_PART_4
         #define MR_GRADE_OPT_PART_5     MR_GRADE_OPT_PART_4
       #endif /* MR_MPROF_PROFILE_MEMORY */
-    #endif /* MR_MPROF_PROFILE_CALLS */
-  #endif /* ! MR_MPROF_PROFILE_TIME */
-#endif /* MR_DEEP_PROFILING */
+    #endif /* MR_MPROF_PROFILE_CALLS    */
+  #endif /* ! MR_MPROF_PROFILE_TIME     */
+#endif /* MR_DEEP_PROFILING             */
 
 #ifdef MR_RECORD_TERM_SIZES
   #ifdef MR_RECORD_TERM_SIZES_AS_CELLS
@@ -304,7 +304,7 @@
   #define MR_GRADE_OPT_PART_9   MR_GRADE_OPT_PART_8
 #endif
 
-#if (defined(MR_USE_MINIMAL_MODEL_STACK_COPY) || \
+#if (defined(MR_USE_MINIMAL_MODEL_STACK_COPY) ||                        \
         defined(MR_USE_MINIMAL_MODEL_OWN_STACKS))
   /*
   ** One implementation of minimal model tabling works by saving and restoring
@@ -384,10 +384,10 @@
 #if MR_TAGBITS == 0
   #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9, _notags)
 #elif defined(MR_HIGHTAGS)
-  #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9, \
+  #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9,              \
                                         MR_PASTE2(_hightags, MR_TAGBITS))
 #else
-  #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9, \
+  #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9,              \
                                         MR_PASTE2(_tags, MR_TAGBITS))
 #endif
 #define MR_GRADE_OPT_PART_10    MR_GRADE_OPT_PART_9

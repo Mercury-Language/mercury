@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 INIT mercury_sys_init_trace
@@ -27,11 +27,11 @@ ENDINIT
 #include "mercury_misc.h"
 #include "mercury_hash_table.h"
 #include "mercury_layout_util.h"    /* for MR_generate_proc_name_from_layout */
-#include "mercury_runtime_util.h"   /* for MR_strerror */
-#include "mercury_signal.h"         /* for MR_setup_signal() */
-#include "mercury_builtin_types.h"  /* for type_ctor_infos */
-#include "mercury_array_macros.h"   /* for type_ctor_infos */
-#include <signal.h>                 /* for SIGINT */
+#include "mercury_runtime_util.h"   /* for MR_strerror                       */
+#include "mercury_signal.h"         /* for MR_setup_signal()                 */
+#include "mercury_builtin_types.h"  /* for type_ctor_infos                   */
+#include "mercury_array_macros.h"   /* for type_ctor_infos                   */
+#include <signal.h>                 /* for SIGINT                            */
 #include <stdio.h>
 #include <errno.h>
 
@@ -44,7 +44,7 @@ ENDINIT
 #endif
 
 #if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
-  #define snprintf	_snprintf
+  #define snprintf  _snprintf
 #endif
 
 #define MR_TRACE_COUNT_SUMMARY_MAX_DEFAULT  20
@@ -78,7 +78,7 @@ MR_bool             MR_trace_tailrec_have_reused_frames = MR_FALSE;
 MR_Unsigned         MR_trace_tailrec_num_reused_frames = 0;
 
 /*
-** I/O tabling is documented in library/table_builtin.m
+** I/O tabling is documented in library/table_builtin.m.
 */
 
 MR_IoTablingPhase   MR_io_tabling_phase = MR_IO_TABLING_UNINIT;
@@ -305,12 +305,12 @@ MR_trace_record_label_exec_counts(void *dummy)
             name = MR_malloc(name_len);
 
             fp = NULL;
-            /* search for a suffix that doesn't exist yet */
+            /* Search for a suffix that doesn't exist yet. */
             for (i = 1; i <= MR_trace_count_summary_max; i++) {
                 snprintf(name, name_len, "%s.%d",
                     MR_trace_count_summary_file, i);
                 if (! MR_FILE_EXISTS(name)) {
-                    /* file doesn't exist, commit to this one */
+                    /* File doesn't exist, commit to this one. */
                     if (i == MR_trace_count_summary_max) {
                         summarize = MR_TRUE;
                     }
@@ -319,9 +319,7 @@ MR_trace_record_label_exec_counts(void *dummy)
                 }
             }
         } else {
-            /*
-            ** The summary file doesn't yet exist, create it.
-            */
+            /* The summary file doesn't yet exist, create it. */
             name = MR_copy_string(MR_trace_count_summary_file);
         }
     } else if (MR_trace_counts_file) {
@@ -433,7 +431,7 @@ MR_trace_record_label_exec_counts(void *dummy)
             mv_status = system(cmd);
 
             if (mv_status == 0) {
-                /* delete all files whose data is now in the summary file */
+                /* Delete all files whose data is now in the summary file. */
                 for (i = 1; i <= MR_trace_count_summary_max; i++) {
                     snprintf(name, name_len, "%s.%d",
                         MR_trace_count_summary_file, i);
@@ -794,10 +792,9 @@ MR_trace_start(MR_bool enabled)
 
     /*
     ** Install the SIGINT signal handler.
-    ** We only do this if tracing is enabled, and only
-    ** for the internal debugger.  (This is a bit conservative:
-    ** it might work fine for the external debugger too,
-    ** but I'm just not certain of that.)
+    ** We only do this if tracing is enabled, and only for the
+    ** internal debugger.  (This is a bit conservative: it might work fine
+    ** for the external debugger too, but I'm just not certain of that.)
     */
     if (enabled &&
         MR_address_of_trace_interrupt_handler != NULL &&
@@ -966,7 +963,7 @@ MR_trace_report(FILE *fp)
 void
 MR_trace_report_raw(int fd)
 {
-    char    buf[80];    /* that ought to be more than long enough */
+    char    buf[80];    /* That ought to be more than long enough. */
     int     ret;
 
     if (MR_trace_event_number > 0) {
@@ -977,7 +974,7 @@ MR_trace_report_raw(int fd)
 
         if (MR_trace_report_msg != NULL) {
             do {
-                /* XXX we don't handle successful but partial writes */
+                /* XXX We don't handle successful but partial writes. */
                 ret = write(fd, MR_trace_report_msg,
                     strlen(MR_trace_report_msg));
             } while (ret == -1 && MR_is_eintr(errno));
@@ -991,7 +988,7 @@ MR_trace_report_raw(int fd)
                 (long) MR_trace_event_number);
         }
         do {
-            /* XXX we don't handle successful but partial writes */
+            /* XXX We don't handle successful but partial writes. */
             ret = write(fd, buf, strlen(buf));
         } while (ret == -1 && MR_is_eintr(errno));
     }

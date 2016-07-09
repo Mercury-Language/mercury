@@ -1,11 +1,10 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
-
-/*
-**
 */
 
 #ifndef MERCURY_TYPE_DESC_H
@@ -13,8 +12,8 @@
 
 #include "mercury_types.h"
 #include "mercury_type_info.h"
-#include "mercury_builtin_types.h"	/* for the type_ctor_infos of the   */
-					/* variable arity type constructors */
+#include "mercury_builtin_types.h"  /* for the type_ctor_infos of the   */
+                    /* variable arity type constructors                 */
 
 /*
 ** Values of type `type_ctor.type_desc' are represented the same way as
@@ -67,21 +66,21 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 ** 1024 arguments, which is more than ../LIMITATIONS promises.
 */
 
-#define MR_MAX_VARIABLE_ARITY		MR_MAX_VIRTUAL_R_REG
+#define MR_MAX_VARIABLE_ARITY       MR_MAX_VIRTUAL_R_REG
 
 /*
 ** Constructors for the MR_TypeCtorDesc ADT
 */
 
-#define MR_TYPECTOR_DESC_MAKE_PRED(Arity)				\
-	( (MR_TypeCtorDesc) ((Arity) * 4) )
-#define MR_TYPECTOR_DESC_MAKE_FUNC(Arity)				\
-	( (MR_TypeCtorDesc) ((Arity) * 4 + 1) )
-#define MR_TYPECTOR_DESC_MAKE_TUPLE(Arity)				\
-	( (MR_TypeCtorDesc) ((Arity) * 4 + 2) )
-#define MR_TYPECTOR_DESC_MAKE_FIXED_ARITY(type_ctor_info)		\
-	( MR_CHECK_EXPR_TYPE(type_ctor_info, MR_TypeCtorInfo),		\
-	  (MR_TypeCtorDesc) type_ctor_info )
+#define MR_TYPECTOR_DESC_MAKE_PRED(Arity)                               \
+    ( (MR_TypeCtorDesc) ((Arity) * 4) )
+#define MR_TYPECTOR_DESC_MAKE_FUNC(Arity)                               \
+    ( (MR_TypeCtorDesc) ((Arity) * 4 + 1) )
+#define MR_TYPECTOR_DESC_MAKE_TUPLE(Arity)                              \
+    ( (MR_TypeCtorDesc) ((Arity) * 4 + 2) )
+#define MR_TYPECTOR_DESC_MAKE_FIXED_ARITY(type_ctor_info)               \
+    ( MR_CHECK_EXPR_TYPE(type_ctor_info, MR_TypeCtorInfo),              \
+      (MR_TypeCtorDesc) type_ctor_info )
 
 /*
 ** Access macros for the MR_TypeCtor ADT.
@@ -92,36 +91,36 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 ** should only be called if MR_TYPECTOR_DESC_IS_VARIABLE_ARITY() returns false.
 */
 
-#define MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(T)				\
-	( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-	  (MR_Unsigned) (T) <= (4 * MR_MAX_VARIABLE_ARITY + 2) )
-#define MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(T)		\
-	( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-	  (MR_TypeCtorInfo) (T) )
-#define MR_TYPECTOR_DESC_GET_VA_ARITY(T)				\
-	( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-	  (MR_Unsigned) (T) / 4 )
-#define MR_TYPECTOR_DESC_GET_VA_NAME(T)					\
-	( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-	  (MR_ConstString) (((MR_Unsigned) (T) % 4 == 0)		\
-		? "pred"						\
-		: (((MR_Unsigned) (T) % 4 == 1)				\
-			? "func"					\
-			: "{}" )) )
-#define MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(T)				\
-	( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-	  (MR_ConstString) "builtin" )
-#define MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(T)			\
-	( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-	  (((MR_Unsigned) (T) % 4 == 0)					\
-		? &MR_TYPE_CTOR_INFO_NAME(builtin, pred, 0)		\
-		: (((MR_Unsigned) (T) % 4 == 1)				\
-			? &MR_TYPE_CTOR_INFO_NAME(builtin, func, 0)	\
-			: &MR_TYPE_CTOR_INFO_NAME(builtin, tuple, 0))) )
-#define MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(T)				\
-	( MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(T)				\
-	  ? MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(T)			\
-	  : MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(T))
+#define MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(T)                           \
+    ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                           \
+      (MR_Unsigned) (T) <= (4 * MR_MAX_VARIABLE_ARITY + 2) )
+#define MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(T)              \
+    ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                           \
+      (MR_TypeCtorInfo) (T) )
+#define MR_TYPECTOR_DESC_GET_VA_ARITY(T)                                \
+    ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                           \
+      (MR_Unsigned) (T) / 4 )
+#define MR_TYPECTOR_DESC_GET_VA_NAME(T)                                 \
+    ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                           \
+      (MR_ConstString) (((MR_Unsigned) (T) % 4 == 0)                    \
+        ? "pred"                                                        \
+        : (((MR_Unsigned) (T) % 4 == 1)                                 \
+            ? "func"                                                    \
+            : "{}" )) )
+#define MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(T)                          \
+    ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                           \
+      (MR_ConstString) "builtin" )
+#define MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(T)                       \
+    ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                           \
+      (((MR_Unsigned) (T) % 4 == 0)                                     \
+        ? &MR_TYPE_CTOR_INFO_NAME(builtin, pred, 0)                     \
+        : (((MR_Unsigned) (T) % 4 == 1)                                 \
+            ? &MR_TYPE_CTOR_INFO_NAME(builtin, func, 0)                 \
+            : &MR_TYPE_CTOR_INFO_NAME(builtin, tuple, 0))) )
+#define MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(T)                          \
+    ( MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(T)                             \
+      ? MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(T)                       \
+      : MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(T))
 
 /*
 ** Create and return a MR_TypeCtorDesc that describes the same type as
@@ -130,8 +129,8 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 ** extracted from.
 */
 
-extern	MR_TypeCtorDesc MR_make_type_ctor_desc(MR_TypeInfo type_info,
-				MR_TypeCtorInfo type_ctor_info);
+extern  MR_TypeCtorDesc MR_make_type_ctor_desc(MR_TypeInfo type_info,
+                            MR_TypeCtorInfo type_ctor_info);
 
 /*
 ** Create and return a MR_TypeCtorDesc that describes the same type as
@@ -140,8 +139,8 @@ extern	MR_TypeCtorDesc MR_make_type_ctor_desc(MR_TypeInfo type_info,
 ** extracted from.
 */
 
-extern	MR_TypeCtorDesc MR_make_type_ctor_desc_pseudo(MR_PseudoTypeInfo pseudo,
-				MR_TypeCtorInfo type_ctor_info);
+extern  MR_TypeCtorDesc MR_make_type_ctor_desc_pseudo(MR_PseudoTypeInfo pseudo,
+                            MR_TypeCtorInfo type_ctor_info);
 
 /*
 ** Given type_info, return the MR_TypeCtorDesc describing its outermost type
@@ -153,10 +152,10 @@ extern	MR_TypeCtorDesc MR_make_type_ctor_desc_pseudo(MR_PseudoTypeInfo pseudo,
 ** calls to this function.
 */
 
-extern	void		MR_type_ctor_and_args(MR_TypeInfo type_info,
-				MR_bool collapse_equivalences,
-				MR_TypeCtorDesc *type_ctor_desc_ptr,
-				MR_Word *arg_type_info_list_ptr);
+extern  void            MR_type_ctor_and_args(MR_TypeInfo type_info,
+                            MR_bool collapse_equivalences,
+                            MR_TypeCtorDesc *type_ctor_desc_ptr,
+                            MR_Word *arg_type_info_list_ptr);
 
 /*
 ** Given pseudo_type_info representing a variable, return MR_FALSE. Given a
@@ -170,11 +169,11 @@ extern	void		MR_type_ctor_and_args(MR_TypeInfo type_info,
 ** calls to this function.
 */
 
-extern	MR_bool		MR_pseudo_type_ctor_and_args(MR_PseudoTypeInfo
-				pseudo_type_info,
-				MR_bool collapse_equivalences,
-				MR_TypeCtorDesc *type_ctor_desc_ptr,
-				MR_Word *arg_type_info_list_ptr);
+extern  MR_bool         MR_pseudo_type_ctor_and_args(MR_PseudoTypeInfo
+                            pseudo_type_info,
+                            MR_bool collapse_equivalences,
+                            MR_TypeCtorDesc *type_ctor_desc_ptr,
+                            MR_Word *arg_type_info_list_ptr);
 
 /*
 ** ML_make_type(arity, type_ctor_info, arg_types_list):
@@ -190,8 +189,8 @@ extern	MR_bool		MR_pseudo_type_ctor_and_args(MR_PseudoTypeInfo
 ** calls to this function.
 */
 
-extern	MR_TypeInfo	MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
-				MR_Word arg_type_list);
+extern  MR_TypeInfo     MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
+                            MR_Word arg_type_list);
 
 /*
 ** Compare two type_ctor_info structures, using an ordering based on the
@@ -203,8 +202,8 @@ extern	MR_TypeInfo	MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 ** calls to this function.
 */
 
-extern	int		MR_compare_type_ctor_desc(MR_TypeCtorDesc tcd1,
-				MR_TypeCtorDesc tcd2);
+extern  int             MR_compare_type_ctor_desc(MR_TypeCtorDesc tcd1,
+                            MR_TypeCtorDesc tcd2);
 
 /*
 ** Unify two type_ctor_info structures, using an ordering based on the
@@ -216,7 +215,7 @@ extern	int		MR_compare_type_ctor_desc(MR_TypeCtorDesc tcd1,
 ** calls to this function.
 */
 
-extern	MR_bool		MR_unify_type_ctor_desc(MR_TypeCtorDesc tcd1,
-				MR_TypeCtorDesc tcd2);
+extern  MR_bool         MR_unify_type_ctor_desc(MR_TypeCtorDesc tcd1,
+                            MR_TypeCtorDesc tcd2);
 
-#endif	/* MERCURY_TYPE_DESC_H */
+#endif  /* MERCURY_TYPE_DESC_H */

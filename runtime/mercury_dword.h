@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 1998, 2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -33,23 +36,23 @@
 
   typedef MR_uint_least64_t MR_Dword;
 
-  #define MR_convert_dword_to_double(dword_form, double_form) \
-		((double_form) = (double) (dword_form))
+  #define MR_convert_dword_to_double(dword_form, double_form)           \
+        ((double_form) = (double) (dword_form))
 
-  #define MR_zero_dword(dword) \
-		((dword) = 0)
+  #define MR_zero_dword(dword)                                          \
+        ((dword) = 0)
 
-  #define MR_increment_dword(dword, inc) \
-		((dword) += (inc))
+  #define MR_increment_dword(dword, inc)                                \
+        ((dword) += (inc))
 
-  #define MR_increment_dword_tmp(dword, inc, tmp) \
-		((dword) += (inc))
+  #define MR_increment_dword_tmp(dword, inc, tmp)                       \
+        ((dword) += (inc))
 
-  #define MR_add_two_dwords(src_dest_dword, src_dword) \
-		((src_dest_dword) += (src_dword))
+  #define MR_add_two_dwords(src_dest_dword, src_dword)                  \
+        ((src_dest_dword) += (src_dword))
 
-  #define MR_add_two_dwords_tmp(src_dest_dword, src_dword, tmp) \
-		((src_dest_dword) += (src_dword))
+  #define MR_add_two_dwords_tmp(src_dest_dword, src_dword, tmp)         \
+        ((src_dest_dword) += (src_dword))
 
 #else
 
@@ -59,61 +62,61 @@
 
   typedef struct MR_Dword_Struct
   {
-	MR_uint_least32_t MR_dword_low;
-	MR_uint_least32_t MR_dword_high;
+    MR_uint_least32_t MR_dword_low;
+    MR_uint_least32_t MR_dword_high;
   } MR_Dword;
 
-  #define MR_HIGHWORD_TO_DOUBLE	(((double) MR_UINT_LEAST32_MAX) + 1.0)
+  #define MR_HIGHWORD_TO_DOUBLE (((double) MR_UINT_LEAST32_MAX) + 1.0)
 
-  #define MR_convert_dword_to_double(dword_form, double_form) 		\
-	do {								\
-		double_form = (MR_HIGHWORD_TO_DOUBLE			\
-			* (double) (dword_form).MR_dword_high) 		\
-			+ (double) (dword_form).MR_dword_low;		\
-	} while (0)
+  #define MR_convert_dword_to_double(dword_form, double_form)           \
+    do {                                                                \
+        double_form = (MR_HIGHWORD_TO_DOUBLE                            \
+            * (double) (dword_form).MR_dword_high)                      \
+            + (double) (dword_form).MR_dword_low;                       \
+    } while (0)
 
-  #define MR_zero_dword(dword) 						\
-	do { 								\
-		(dword).MR_dword_low = 0;				\
-		(dword).MR_dword_high = 0;				\
-	} while (0)
+  #define MR_zero_dword(dword)                                          \
+    do {                                                                \
+        (dword).MR_dword_low = 0;                                       \
+        (dword).MR_dword_high = 0;                                      \
+    } while (0)
 
-  #define MR_increment_dword(dword, inc) 				\
-	do { 								\
-		MR_uint_least32_t old_low_word = (dword).MR_dword_low;	\
-		(dword).MR_dword_low += (inc);				\
-		if ((dword).MR_dword_low < old_low_word) {		\
-			(dword).MR_dword_high += 1;			\
-		}							\
-	} while (0)
+  #define MR_increment_dword(dword, inc)                                \
+    do {                                                                \
+        MR_uint_least32_t old_low_word = (dword).MR_dword_low;          \
+        (dword).MR_dword_low += (inc);                                  \
+        if ((dword).MR_dword_low < old_low_word) {                      \
+            (dword).MR_dword_high += 1;                                 \
+        }                                                               \
+    } while (0)
 
-  #define MR_increment_dword_tmp(dword, inc, low_tmp)			\
-	( 								\
-		(low_tmp) = (dword).MR_dword_low,			\
-		(dword).MR_dword_low += (inc),				\
-		((dword).MR_dword_low < (low_tmp)) ?			\
-			(dword).MR_dword_high += 1 : (void) 0		\
-	)
+  #define MR_increment_dword_tmp(dword, inc, low_tmp)                   \
+    (                                                                   \
+        (low_tmp) = (dword).MR_dword_low,                               \
+        (dword).MR_dword_low += (inc),                                  \
+        ((dword).MR_dword_low < (low_tmp)) ?                            \
+            (dword).MR_dword_high += 1 : (void) 0                       \
+    )
 
-  #define MR_add_two_dwords(src_dest_dword, src_dword) 			\
-	do { 								\
-		MR_uint_least32_t old_low_word;				\
-		old_low_word = (src_dest_dword).MR_dword_low;		\
-		(src_dest_dword).MR_dword_low += (src_dword).MR_dword_low;\
-		if ((src_dest_dword).MR_dword_low < old_low_word) {	\
-			(src_dest_dword).MR_dword_high += 1;		\
-		}							\
-		(src_dest_dword).MR_dword_high += (src_dword).MR_dword_high;\
-	} while (0)
+  #define MR_add_two_dwords(src_dest_dword, src_dword)                  \
+    do {                                                                \
+        MR_uint_least32_t old_low_word;                                 \
+        old_low_word = (src_dest_dword).MR_dword_low;                   \
+        (src_dest_dword).MR_dword_low += (src_dword).MR_dword_low;      \
+        if ((src_dest_dword).MR_dword_low < old_low_word) {             \
+            (src_dest_dword).MR_dword_high += 1;                        \
+        }                                                               \
+        (src_dest_dword).MR_dword_high += (src_dword).MR_dword_high;    \
+    } while (0)
 
-  #define MR_add_two_dwords_tmp(src_dest_dword, src_dword, low_tmp)	\
-	( 								\
-		(low_tmp) = (src_dest_dword).MR_dword_low; 		\
-		(src_dest_dword).MR_dword_low += (src_dword).MR_dword_low;\
-		((src_dest_dword).MR_dword_low < (low_tmp)) ?		\
-			(src_dest_dword).MR_dword_high += 1 : (void) 0,	\
-		(src_dest_dword).MR_dword_high += (src_dword).MR_dword_high\
-	)
+  #define MR_add_two_dwords_tmp(src_dest_dword, src_dword, low_tmp)     \
+    (                                                                   \
+        (low_tmp) = (src_dest_dword).MR_dword_low;                      \
+        (src_dest_dword).MR_dword_low += (src_dword).MR_dword_low;      \
+        ((src_dest_dword).MR_dword_low < (low_tmp)) ?                   \
+            (src_dest_dword).MR_dword_high += 1 : (void) 0,             \
+        (src_dest_dword).MR_dword_high += (src_dword).MR_dword_high     \
+    )
 
 #endif /* not MR_INT_LEAST32_TYPE */
 

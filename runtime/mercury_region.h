@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2007-2009, 2011 The University of Melbourne.
@@ -97,7 +97,7 @@ struct MR_RegionHeader_Struct {
     /* Sequence number of the region. */
     MR_Word                             MR_region_sequence_number;
 
-    /* If the region has been removed in forward execution. */
+    /* If the region has been removed in forward execution.           */
     /* XXX Currently it is not used for anything, we just maintain it */
     MR_Word                             MR_region_logical_removed;
 
@@ -403,7 +403,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
 /*
 ** This is to prepare for instant reclaiming at the start of else. For instant
 ** reclaiming a region we save its current size by taking a snapshot of it. The
-** natural question would be for which regions.  The very first criterion is
+** natural question would be for which regions. The very first criterion is
 ** whether a region will be destroyed right at the start of the else. It is
 ** because we need not to reclaim memory for those which will be destroyed
 ** anyway right after that. To decide if a region will be destroyed at the
@@ -568,7 +568,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
 #endif      /* MR_RBMM_USE_MACROS */
 
 /* XXX: This can be made more efficient because we will save them all */
-/* XXX: disj_sp is actually not needed. */
+/* XXX: disj_sp is actually not needed.                               */
 
 #ifdef      MR_RBMM_USE_MACROS
 
@@ -1093,7 +1093,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
             } while (0)
 
 /*---------------------------------------------------------------------------*/
-/* Helpers for ite support. */
+/* Helpers for ite support.                                                  */
 
 /*
 ** At the start of else, we
@@ -1217,7 +1217,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 #endif      /* MR_RBMM_USE_MACROS */
 
 /*---------------------------------------------------------------------------*/
-/* Helpers for nondet disjunction support. */
+/* Helpers for nondet disjunction support.                                   */
 
 /*
 ** At any non-first disjunct, try instant reclaiming from snapshots.
@@ -1400,7 +1400,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
             } while (0)
 
 /*---------------------------------------------------------------------------*/
-/* Debug RBMM messages. */
+/* Debug RBMM messages.                                                      */
 
 #ifdef MR_RBMM_DEBUG
     #define     MR_region_debug_create_region(region)                       \
@@ -1616,7 +1616,7 @@ extern  void    MR_region_ite_unprotect_msg(MR_RegionHeader *);
 extern  void    MR_region_restore_from_snapshot_msg(MR_RegionSnapshot *);
 
 /*---------------------------------------------------------------------------*/
-/* Profiling RBMM. */
+/* Profiling RBMM.                                                           */
 
 #ifdef MR_RBMM_PROFILING
 
@@ -1864,6 +1864,7 @@ extern  int     MR_region_get_number_of_pages(MR_RegionPage *,
                     MR_RegionPage *);
 
 extern  void    MR_region_print_profiling_info(void);
+
 /*---------------------------------------------------------------------------*/
 
 #endif  /* MR_USE_REGIONS */

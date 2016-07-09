@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1995-2006 The University of Melbourne.
@@ -339,7 +339,7 @@ MR_declare_entry(MR_pop_nondetstack_segment);
 #define MR_tmp_detfr_slot(fr)   ((MR_Word *) MR_tmp_detfr_slot_word(fr))
 #define MR_table_detfr_slot(fr) ((MR_Word *) MR_table_detfr_slot_word(fr))
 
-#define MR_based_framevar_addr(fr, n) \
+#define MR_based_framevar_addr(fr, n)                                   \
                                 (&(((MR_Word *) (fr))[MR_SAVEVAL + 1 - (n)]))
 
 #define MR_based_framevar(fr, n) (((MR_Word *) (fr))[MR_SAVEVAL + 1 - (n)])
@@ -569,7 +569,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 
     /*
     ** The value of MR_trace_from_full, saved at the time the frame was
-    ** created.  This holds a value of type MR_bool, but it is declared
+    ** created. This holds a value of type MR_bool, but it is declared
     ** to have type MR_Word to ensure that everything remains word-aligned.
     */
     MR_Word             MR_excp_full_trace;
@@ -616,52 +616,52 @@ typedef struct MR_Exception_Handler_Frame_struct {
     (((MR_Exception_Handler_Frame *)                                          \
         (MR_curfr + 1 - MR_EXCEPTION_FRAMEVARS - MR_NONDET_FIXED_SIZE)) - 1)
 
-#define MR_create_exception_handler(name,                                     \
-        handler_code_model, handler_closure, redoip)                          \
-    do {                                                                      \
-        /*                                                                    \
-        ** Create a handler on the stack with the special redoip of           \
-        ** `MR_exception_handler_do_fail' (we'll look for this redoip when    \
-        ** unwinding the nondet stack in builtin_throw/1), and save the stuff \
-        ** we will need if an exception is thrown.                            \
-        */                                                                    \
-        MR_mkpragmaframe((name), MR_EXCEPTION_FRAMEVARS,                      \
-            MR_Exception_Handler_Frame_struct,                                \
-            MR_ENTRY(MR_exception_handler_do_fail));                          \
-        /* Record the handler's code model. */                                \
-        MR_EXCEPTION_STRUCT->MR_excp_code_model = (handler_code_model);       \
-        /* Save the handler's closure. */                                     \
-        MR_EXCEPTION_STRUCT->MR_excp_handler = (handler_closure);             \
-        /* Save the full tracing flag. */                                     \
+#define MR_create_exception_handler(name,                                      \
+        handler_code_model, handler_closure, redoip)                           \
+    do {                                                                       \
+        /*                                                                     \
+        ** Create a handler on the stack with the special redoip of            \
+        ** `MR_exception_handler_do_fail' (we'll look for this redoip when     \
+        ** unwinding the nondet stack in builtin_throw/1), and save the stuff  \
+        ** we will need if an exception is thrown.                             \
+        */                                                                     \
+        MR_mkpragmaframe((name), MR_EXCEPTION_FRAMEVARS,                       \
+            MR_Exception_Handler_Frame_struct,                                 \
+            MR_ENTRY(MR_exception_handler_do_fail));                           \
+        /* Record the handler's code model. */                                 \
+        MR_EXCEPTION_STRUCT->MR_excp_code_model = (handler_code_model);        \
+        /* Save the handler's closure. */                                      \
+        MR_EXCEPTION_STRUCT->MR_excp_handler = (handler_closure);              \
+        /* Save the full tracing flag. */                                      \
         MR_EXCEPTION_STRUCT->MR_excp_full_trace = (MR_Word) MR_trace_from_full;\
-        /* Save the det stack pointer. */                                     \
-        MR_EXCEPTION_STRUCT->MR_excp_stack_ptr = MR_sp;                       \
-        MR_IF_NOT_CONSERVATIVE_GC(                                            \
-            /* Save the heap and solutions heap pointers. */                  \
-            MR_EXCEPTION_STRUCT->MR_excp_heap_ptr = MR_hp;                    \
-            MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr = MR_sol_hp;          \
-            MR_EXCEPTION_STRUCT->MR_excp_heap_zone =                          \
-                MR_ENGINE(MR_eng_heap_zone);                                  \
-        )                                                                     \
-        MR_IF_USE_TRAIL(                                                      \
-            /* Save the trail state. */                                       \
-            MR_mark_ticket_stack(MR_EXCEPTION_STRUCT->MR_excp_ticket_counter);\
-            MR_store_ticket(MR_EXCEPTION_STRUCT->MR_excp_trail_ptr);          \
-        )                                                                     \
-                                                                              \
-        /*                                                                    \
-        ** Now we need to create another frame. This is so that we can be sure\
-        ** that no-one will hijack the redoip of the special frame we created \
-        ** above. (The compiler sometimes generates ``hijacking'' code that   \
-        ** saves the topmost redoip on the stack, and temporarily replaces it \
-        ** with a new redoip that will do some processing on failure before   \
-        ** restoring the original redoip. This would cause problems when doing\
-        ** stack unwinding in builtin_throw/1, because we wouldn't be able to \
-        ** find the special redoip. But code will only ever hijack the topmost\
-        ** frame, so we can avoid this by creating a second frame above the   \
-        ** special frame.)                                                    \
-        */                                                                    \
-        MR_mktempframe(redoip);                                               \
+        /* Save the det stack pointer. */                                      \
+        MR_EXCEPTION_STRUCT->MR_excp_stack_ptr = MR_sp;                        \
+        MR_IF_NOT_CONSERVATIVE_GC(                                             \
+            /* Save the heap and solutions heap pointers. */                   \
+            MR_EXCEPTION_STRUCT->MR_excp_heap_ptr = MR_hp;                     \
+            MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr = MR_sol_hp;           \
+            MR_EXCEPTION_STRUCT->MR_excp_heap_zone =                           \
+                MR_ENGINE(MR_eng_heap_zone);                                   \
+        )                                                                      \
+        MR_IF_USE_TRAIL(                                                       \
+            /* Save the trail state. */                                        \
+            MR_mark_ticket_stack(MR_EXCEPTION_STRUCT->MR_excp_ticket_counter); \
+            MR_store_ticket(MR_EXCEPTION_STRUCT->MR_excp_trail_ptr);           \
+        )                                                                      \
+                                                                               \
+        /*                                                                     \
+        ** Now we need to create another frame. This is so that we can be sure \
+        ** that no-one will hijack the redoip of the special frame we created  \
+        ** above. (The compiler sometimes generates ``hijacking'' code that    \
+        ** saves the topmost redoip on the stack, and temporarily replaces it  \
+        ** with a new redoip that will do some processing on failure before    \
+        ** restoring the original redoip. This would cause problems when doing \
+        ** stack unwinding in builtin_throw/1, because we wouldn't be able to  \
+        ** find the special redoip. But code will only ever hijack the topmost \
+        ** frame, so we can avoid this by creating a second frame above the    \
+        ** special frame.)                                                     \
+        */                                                                     \
+        MR_mktempframe(redoip);                                                \
     } while (0)
 
 /*---------------------------------------------------------------------------*/

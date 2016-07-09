@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 et ft=c
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1999-2006, 2011 The University of Melbourne.
@@ -33,13 +33,13 @@
 #include "mercury_std.h"                /* for the MR_CALL macro (and others) */
 #include "mercury_type_info.h"
 #include "mercury_builtin_types.h" 
-#include "mercury_library_types.h"      /* for MercuryFilePtr, for files */
-                                        /* that use the type in io.m, whose */
+#include "mercury_library_types.h"      /* for MercuryFilePtr, for files     */
+                                        /* that use the type in io.m, whose  */
                                         /* foreign_type is MercuryFilePtr XXX */
-#include "mercury_ho_call.h"            /* for the `MR_Closure' type */
-#include "mercury_memory.h"             /* for memory allocation routines */
-#include "mercury_type_tables.h"        /* for MR_register_type_ctor_info */
-#include "mercury_misc.h"               /* for MR_fatal_error() */
+#include "mercury_ho_call.h"            /* for the `MR_Closure' type         */
+#include "mercury_memory.h"             /* for memory allocation routines    */
+#include "mercury_type_tables.h"        /* for MR_register_type_ctor_info    */
+#include "mercury_misc.h"               /* for MR_fatal_error()              */
 
 #ifdef MR_CONSERVATIVE_GC
   #ifdef MR_BOEHM_GC
@@ -50,17 +50,17 @@
     #endif
   #endif
 #else
-  #include "mercury_regs.h"             /* for MR_hp */
+  #include "mercury_regs.h"             /* for MR_hp                         */
   #include "mercury_engine.h"           /* for MR_fake_reg (needed by MR_hp) */
-  #include "mercury_overflow.h"         /* for MR_heap_overflow_check() */
+  #include "mercury_overflow.h"         /* for MR_heap_overflow_check()      */
   #ifdef MR_NATIVE_GC
-    #include "mercury_accurate_gc.h"    /* for MR_garbage_collect() */
+    #include "mercury_accurate_gc.h"    /* for MR_garbage_collect()        */
     #include "mercury_layout_util.h"    /* for MR_materialize_closure...() */
   #endif
 #endif
 
 #if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_MPROF_PROFILE_TIME)
-  #include "mercury_prof.h"             /* for MR_prof_call_profile */
+  #include "mercury_prof.h"             /* for MR_prof_call_profile     */
                                         /* and MR_set_prof_current_proc */
 #endif
 
@@ -72,7 +72,7 @@
   #include "mercury_goto.h"             /* for MR_init_entry */
 #endif
 
-#include <setjmp.h> /* for jmp_buf etc., which are used for commits */
+#include <setjmp.h> /* for jmp_buf etc., which are used for commits   */
 #include <string.h> /* for strcmp(), which is used for =/2 on strings */
 
 /*---------------------------------------------------------------------------*/
@@ -157,8 +157,8 @@ extern  MR_Word mercury__private_builtin__dummy_var;
 ** The GNU versions are the same as the standard versions,
 ** except that they are more efficient, and that they have two restrictions:
 **
-**  1.  The second argument to __builtin_longjmp() must always be `1'.
-**  2.  The call to __builtin_longjmp() must not be in the same
+**  1. The second argument to __builtin_longjmp() must always be `1'.
+**  2. The call to __builtin_longjmp() must not be in the same
 **      function as the call to __builtin_setjmp().
 */
 #if (MR_GNUC > 2 || (MR_GNUC == 2 && __GNUC_MINOR__ >= 8))
@@ -186,7 +186,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
     ** This must be a macro, not an inline function, because GNU C's
     ** `__builtin_constant_p' does not work inside inline functions.
     */
-    #define MR_GC_MALLOC_INLINE(bytes) \
+    #define MR_GC_MALLOC_INLINE(bytes)                                      \
         ( __extension__ __builtin_constant_p(bytes) &&                      \
         (bytes) <= 16 * sizeof(MR_Word)                                     \
             ? ({                                                            \
@@ -203,7 +203,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
           })                                                                \
         : GC_MALLOC(bytes)                                                  \
         )
-    #define MR_new_object(type, size, alloc_id, name) \
+    #define MR_new_object(type, size, alloc_id, name)                   \
         ((type *) MR_GC_MALLOC_INLINE(size))
     /*
     ** Since the Boehm collector defined GC_MALLOC_WORDS but not
@@ -214,19 +214,19 @@ extern  MR_Word mercury__private_builtin__dummy_var;
     ** GC_MALLOC_ATOMIC_WORDS.
     ** XXX We don't provide MR_GC_MALLOC_ATOMIC.
     */
-    #define MR_new_object_atomic(type, size, alloc_id, name) \
+    #define MR_new_object_atomic(type, size, alloc_id, name)            \
         ((type *) GC_MALLOC_ATOMIC(size))
   #else /* !MR_INLINE_ALLOC */
 
     #ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
-    #define MR_new_object(type, size, alloc_id, name) \
+    #define MR_new_object(type, size, alloc_id, name)                   \
         ((type *) MR_new_object_func(size, alloc_id, name))
-    #define MR_new_object_atomic(type, size, alloc_id, name) \
+    #define MR_new_object_atomic(type, size, alloc_id, name)            \
         ((type *) MR_new_object_atomic_func(size, alloc_id, name))
     #else
-    #define MR_new_object(type, size, alloc_id, name) \
+    #define MR_new_object(type, size, alloc_id, name)                   \
         ((type *) GC_MALLOC(size))
-    #define MR_new_object_atomic(type, size, alloc_id, name) \
+    #define MR_new_object_atomic(type, size, alloc_id, name)            \
         ((type *) GC_MALLOC_ATOMIC(size))
     #endif
   #endif /* !MR_INLINE_ALLOC */
@@ -248,7 +248,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
   ** if they don't fit in a word. This would need to change if we ever start
   ** using unboxed fields whose alignment requirement is greater than one word.
   */
-  #define MR_new_object(type, size, alloc_id, name) \
+  #define MR_new_object(type, size, alloc_id, name)                     \
     ({                                                                  \
         size_t  MR_new_object_num_words;                                \
         MR_Word MR_new_object_ptr;                                      \
@@ -258,7 +258,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
             (alloc_id), (name));                                        \
         /* return */ (type *) MR_new_object_ptr;                        \
     })
-  #define MR_new_object_atomic(type, size, alloc_id, name) \
+  #define MR_new_object_atomic(type, size, alloc_id, name)              \
     MR_new_object(type, size, alloc_id, name)
 
 #endif
@@ -280,7 +280,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
   #ifdef MR_BOXED_FLOAT
 
     #if defined(MR_GNUC)
-      #define MR_box_float(f) \
+      #define MR_box_float(f)                                           \
       ({                                                                \
           MR_Float *MR_box_float_ptr;                                   \
                                                                         \
@@ -315,7 +315,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
     #define MR_unbox_float(B)   MR_word_to_float((MR_Word)(B))
 
   #endif /* ! MR_BOXED_FLOAT */
-#endif /* MR_HIGHLEVEL_CODE */
+#endif /* MR_HIGHLEVEL_CODE  */
 
 /*---------------------------------------------------------------------------*/
 
@@ -323,7 +323,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
 ** MR_GC_check():
 **  Check to see if we need to do a garbage collection, and if so, do it.
 */
-#define MR_GC_check() \
+#define MR_GC_check()                                                   \
     do {                                                                \
         if ((char *) MR_hp >=                                           \
             MR_ENGINE(MR_eng_heap_zone)->MR_zone_gc_threshold)          \
@@ -342,6 +342,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
 ** functions that reference MR_new_object(). So does mercury_string.h.
 ** mercury_univ.h includes mercury_heap.h.
 */
+
 #include "mercury_heap.h"       /* for MR_MAYBE_(UN)BOX_FOREIGN_TYPE() */
 #include "mercury_univ.h"
 #include "mercury_string.h"     /* for MR_nth_code_unit/MR_offset_streq() */

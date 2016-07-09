@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2004-2007, 2011 The University of Melbourne.
@@ -335,7 +335,7 @@ MR_gen_subgoal(MR_Generator *generator)
         return "NULL";
     }
 
-     /*
+    /*
     ** The argument registers will be meaningful only if they contain integers,
     ** but that is sufficient for debugging. Likewise, debugging can be done
     ** with predicates of no more than three input arguments; printing more
@@ -882,7 +882,7 @@ MR_define_entry(MR_mmos_initialize_generator);
 MR_END_MODULE
 
 #endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
-#endif  /* MR_HIGHLEVEL_CODE */
+#endif  /* MR_HIGHLEVEL_CODE               */
 
 /* Ensure that the initialization code for the above module gets to run. */
 /*
@@ -915,8 +915,8 @@ void mercury_sys_init_mmos_modules_init_type_tables(void)
 #ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_mmos_modules_write_out_proc_statics(FILE *fp)
 {
-    /* no proc_statics to write out */
+    /* no proc_statics to write out          */
     /* XXX we need to fix the deep profiling */
-    /* of minimal model tabled predicates */
+    /* of minimal model tabled predicates    */
 }
 #endif

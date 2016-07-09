@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 et
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1995-2006, 2010-2011 The University of Melbourne.
@@ -23,15 +23,15 @@
 #ifndef MERCURY_HEAP_H
 #define MERCURY_HEAP_H
 
-#include "mercury_conf.h"               /* for MR_CONSERVATIVE_GC */
-#include "mercury_conf_param.h"         /* for MR_RECORD_TERM_SIZES */
-#include "mercury_types.h"              /* for `MR_Word' */
+#include "mercury_conf.h"               /* for MR_CONSERVATIVE_GC           */
+#include "mercury_conf_param.h"         /* for MR_RECORD_TERM_SIZES         */
+#include "mercury_types.h"              /* for `MR_Word'                    */
 #include "mercury_context.h"            /* for min_heap_reclamation_point() */
-#include "mercury_heap_profile.h"       /* for MR_record_allocation() */
+#include "mercury_heap_profile.h"       /* for MR_record_allocation()       */
 #include "mercury_deep_profiling.h"     /* for MR_current_call_site_dynamic */
-#include "mercury_std.h"                /* for MR_EXTERN_INLINE */
-#include "mercury_reg_workarounds.h"    /* for MR_memcpy */
-#include "mercury_debug.h"              /* for MR_debugtagoffsetincrhp* */
+#include "mercury_std.h"                /* for MR_EXTERN_INLINE             */
+#include "mercury_reg_workarounds.h"    /* for MR_memcpy                    */
+#include "mercury_debug.h"              /* for MR_debugtagoffsetincrhp*     */
 #ifdef MR_HIGHLEVEL_CODE
   #include "mercury.h"                  /* for MR_new_object() */
 #endif
@@ -44,7 +44,7 @@
     #define GC_I_HIDE_POINTERS
     #include "gc.h"
     #include "gc_mark.h"                /* for GC_least_plausible_heap_addr */
-                                        /* GC_greatest_plausible_heap_addr */
+                                        /* GC_greatest_plausible_heap_addr  */
   #endif
 #endif
 
@@ -118,21 +118,21 @@
 
     /*
     ** The following stuff uses the macros in the `gc_inline.h' header file in
-    ** the Boehm garbage collector.  They improve performance a little for
+    ** the Boehm garbage collector. They improve performance a little for
     ** highly allocation-intensive programs (e.g. the `nrev' benchmark).
-    ** You'll probably need to fool around with the `-I' options to get this
-    ** to work.  Also, you must make sure that you compile with the same
+    ** You will probably need to fool around with the `-I' options to get this
+    ** to work. Also, you must make sure that you compile with the same
     ** setting for -DSILENT that the boehm_gc directory was compiled with.
     **
     ** We only want to inline allocations if the allocation size is a
-    ** compile-time constant.  This should be true for almost all the code that
+    ** compile-time constant. This should be true for almost all the code that
     ** we generate, but with GCC we can use the `__builtin_constant_p()'
     ** extension to find out.
     **
     ** The inline allocation macros are used only for allocating amounts
     ** of less than 16 words, to avoid fragmenting memory by creating too
-    ** many distinct free lists.  The garbage collector also requires that
-    ** if we're allocating more than one word, we round up to an even number
+    ** many distinct free lists. The garbage collector also requires that
+    ** if we are allocating more than one word, we round up to an even number
     ** of words.
     */
 
@@ -255,8 +255,8 @@
             /*
             ** XXX This version causes gcc 4.4.4 on x86 to abort when
             ** compiling mercury_bitmap.c.
+            ** MR_field((tag), (dest), 0) = (MR_Word) (alloc_id)
             */
-            /* MR_field((tag), (dest), 0) = (MR_Word) (alloc_id) */
             /*
             ** Hand-written code must set the MR_asi_type field at runtime.
             ** When the type argument is NULL, as it is for generated code,
@@ -392,7 +392,7 @@
 
 /*
 ** These are only used by the compiler in non-memory profiling grades,
-** so do not have _msg equivalents.  Avoid these in hand-written code.
+** so do not have _msg equivalents. Avoid these in hand-written code.
 */
 #define     MR_alloc_heap(dest, count)                                      \
             MR_tag_offset_incr_hp((dest), MR_mktag(0), 0, (count))
@@ -471,7 +471,7 @@
 
   /*
   ** We don't have any way to check whether `addr' is dynamically allocated,
-  ** so just assume that it is.  For this to be safe `--static-ground-terms'
+  ** so just assume that it is. For this to be safe, `--static-ground-terms'
   ** needs to be disabled.
   */
   #define   MR_in_heap_range(addr)  (MR_TRUE)
@@ -527,7 +527,7 @@
                 ** in grades that use boxes.                                \
                 */                                                          \
                 MR_offset_incr_hp_msg(box_word, 0, size_in_words,           \
-                    MR_ALLOC_SITE_FOREIGN, NULL);                    \
+                    MR_ALLOC_SITE_FOREIGN, NULL);                           \
                 box = (MR_Box) box_word;                                    \
                 MR_assign_structure(*(T *)(box), (value));                  \
                 MR_profmem_record_allocation(size_in_words, NULL,           \

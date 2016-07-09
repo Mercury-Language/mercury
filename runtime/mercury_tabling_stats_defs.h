@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2006-2007 The University of Melbourne.
@@ -17,8 +17,8 @@
         do {                                                                \
             stats->MR_tss_hash_num_key_compares_dupl += key_compare_count;  \
         } while (0)
-#define MR_table_record_hash_not_dupl_count()                               \
-        do {                                                                \
+#define MR_table_record_hash_not_dupl_count()                                 \
+        do {                                                                  \
             stats->MR_tss_hash_num_key_compares_not_dupl += key_compare_count;\
         } while (0)
 #define MR_table_record_hash_resize_count(old, new)                         \

@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1997-2001, 2003, 2005-2007, 2009-2011 The University of Melbourne.
@@ -100,7 +100,7 @@ MR_create_worksteal_thread_2(void *arg)
   #ifdef MR_HAVE_THREAD_PINNING
     /*
      ** TODO: We may use the cpu value returned to determine which CPUs
-     ** which engines are on.  This can help with some interesting work
+     ** which engines are on. This can help with some interesting work
      ** stealing algorithms.
      */
     MR_pin_thread();
@@ -123,7 +123,7 @@ MR_init_thread(MR_when_to_use when_to_use)
 #ifdef MR_THREAD_SAFE
     /*
     ** Check to see whether there is already an engine that is initialized
-    ** in this thread.  If so we just return, there's nothing for us to do.
+    ** in this thread. If so we just return, there is nothing for us to do.
     */
     if (MR_thread_engine_base != NULL) {
         return MR_FALSE;
@@ -162,8 +162,8 @@ MR_init_thread_inner(MR_when_to_use when_to_use, MR_EngineType engine_type)
 
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_THREADSCOPE)
     /*
-    ** TSC Synchronization is not used, support is commented out.  See
-    ** runtime/mercury_threadscope.h for an explanation.
+    ** TSC Synchronization is not used, support is commented out.
+    ** See runtime/mercury_threadscope.h for an explanation.
     **
     if (when_to_use == MR_use_later) {
         MR_threadscope_sync_tsc_slave();
@@ -177,7 +177,7 @@ MR_init_thread_inner(MR_when_to_use when_to_use, MR_EngineType engine_type)
             MR_fatal_error("Sorry, not implemented: "
                 "--high-level-code and multiple engines");
 #else
-            /* This call never returns */
+            /* This call never returns. */
             (void) MR_call_engine(MR_ENTRY(MR_do_idle), MR_FALSE);
 #endif
             return MR_FALSE;
@@ -325,7 +325,7 @@ MR_mutex_lock(MercuryLock *lock, const char *from)
 {
     int err;
 
-    fprintf(stderr, 
+    fprintf(stderr,
         "%" MR_INTEGER_LENGTH_MODIFIER "d locking on %p (%s)\n",
         MR_SELF_THREAD_ID, lock, from);
     fflush(stderr);
@@ -474,7 +474,7 @@ MR_sem_post(MercurySem *sem, const char *from)
 }
 
 /*
-** For pthreads-win32 MR_null_thread() is defined as follows.  For other
+** For pthreads-win32 MR_null_thread() is defined as follows. For other
 ** pthread implementations it is defined as a macro in mercury_thread.h.
 */
 #if defined(MR_PTHREADS_WIN32)

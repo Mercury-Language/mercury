@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2003-2005, 2007, 2009, 2011 The University of Melbourne.
@@ -55,7 +55,7 @@ try_again:
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_RESERVED_ADDR:
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-            /* XXX the code to handle these cases hasn't been written yet */
+            /* XXX The code to handle these cases hasn't been written yet. */
             MR_fatal_error("MR_term_size: RESERVED_ADDR");
 
         case MR_TYPECTOR_REP_DU:
@@ -118,11 +118,11 @@ try_again:
                             (void *) term,
                             (int) MR_field(MR_mktag(ptag), term, -1));
                         printf("type %s.%s/%d, functor %s\n",
-                                type_ctor_info->MR_type_ctor_module_name,
-                                type_ctor_info->MR_type_ctor_name,
-                                type_ctor_info->MR_type_ctor_arity,
-                                ptag_layout->MR_sectag_alternatives[sectag]->
-                                    MR_du_functor_name);
+                            type_ctor_info->MR_type_ctor_module_name,
+                            type_ctor_info->MR_type_ctor_name,
+                            type_ctor_info->MR_type_ctor_arity,
+                            ptag_layout->MR_sectag_alternatives[sectag]->
+                                MR_du_functor_name);
                     }
 #endif
                     return MR_field(MR_mktag(ptag), term, -1);
@@ -188,7 +188,7 @@ try_again:
         case MR_TYPECTOR_REP_TUPLE:
             arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
             if (arity == 0) {
-                /* term may be a NULL pointer, so don't follow it */
+                /* Term may be a NULL pointer, so don't follow it. */
                 size = 0;
             } else {
                 size = MR_field(MR_mktag(0), term, -1);
@@ -209,11 +209,11 @@ try_again:
                 printf("MR_term_size: pred/func %p\n", (void *) term);
             }
 #endif
-            /* currently we don't collect stats on closure sizes */
+            /* Currently we don't collect stats on closure sizes. */
             return 0;
 
         case MR_TYPECTOR_REP_ARRAY:
-            /* currently we don't collect stats on array sizes */
+            /* Currently we don't collect stats on array sizes. */
 #ifdef MR_DEBUG_TERM_SIZES
             if (MR_heapdebug && MR_lld_print_enabled) {
                 printf("MR_term_size: array %p\n", (void *) term);
@@ -237,7 +237,7 @@ try_again:
             }
 #endif
             return 0;
-        
+
         case MR_TYPECTOR_REP_FOREIGN_ENUM:
         case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
 #ifdef MR_DEBUG_TERMSIZES
@@ -415,7 +415,7 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
     }
 
     cmd_buf = MR_malloc(100 + 2 * full_proc_name_len);
-        /* will be big enough */
+        /* Will be big enough. */
 
     if (! MR_have_created_complexity_dirs) {
         sprintf(cmd_buf, "mkdir -p %s %s",
@@ -435,17 +435,17 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
     }
 
     args_filename = MR_malloc(100 + full_proc_name_len);
-        /* will be big enough */
+        /* Will be big enough. */
     sprintf(args_filename, "%s/%s", MR_COMPLEXITY_ARGS_DIR, full_proc_name);
 
     if (stat(args_filename, &statbuf) != 0) {
-        /* args_filename does not exist */
+        /* args_filename does not exist. */
         fp = fopen(args_filename, "w");
         if (fp == NULL) {
             fprintf(stderr, "%s: cannot open %s: %s\n",
                 MR_progname, args_filename,
                 MR_strerror(errno, errbuf, sizeof(errbuf)));
-            /* there is no point in aborting */
+            /* There is no point in aborting. */
             return;
         }
 
@@ -453,7 +453,7 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
         fclose(fp);
         data_filemode = "w";
     } else {
-        /* args_filename does exist */
+        /* args_filename does exist. */
         char    *tmp_filename;
 
         tmp_filename = MR_malloc(100 + full_proc_name_len);
@@ -464,7 +464,7 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
             fprintf(stderr, "%s: cannot open %s: %s\n",
                 MR_progname, tmp_filename,
                 MR_strerror(errno, errbuf, sizeof(errbuf)));
-            /* there is no point in aborting */
+            /* There is no point in aborting. */
             return;
         }
 
@@ -473,11 +473,11 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
 
         sprintf(cmd_buf, "cmp -s %s %s", args_filename, tmp_filename);
         if (system(cmd_buf) == 0) {
-            /* the files are identical */
+            /* The files are identical. */
             (void) unlink(tmp_filename);
             data_filemode = "a";
         } else {
-            /* the files are different */
+            /* The files are different. */
             rename(tmp_filename, args_filename);
             data_filemode = "w";
         }
@@ -491,7 +491,7 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
         fprintf(stderr, "%s: cannot open %s: %s\n",
             MR_progname, data_filename,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
-        /* there is no point in aborting */
+        /* There is no point in aborting. */
         return;
     }
 

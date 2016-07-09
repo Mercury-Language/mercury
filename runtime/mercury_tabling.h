@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 1997-2000,2002-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -12,8 +15,8 @@
 ** library/table_builtin.m.
 */
 
-#ifndef	MERCURY_TABLING_H
-#define	MERCURY_TABLING_H
+#ifndef MERCURY_TABLING_H
+#define MERCURY_TABLING_H
 
 #include "mercury_types.h"
 #include "mercury_bitmap.h"
@@ -21,8 +24,8 @@
 #include "mercury_float.h"
 #include "mercury_reg_workarounds.h"
 #include "mercury_dlist.h"
-#include "mercury_goto.h"	/* for MR_declare_entry */
-#include "mercury_tags.h"   	/* for `MR_DEFINE_BUILTIN_ENUM_CONST' */
+#include "mercury_goto.h"   /* for MR_declare_entry                   */
+#include "mercury_tags.h"       /* for `MR_DEFINE_BUILTIN_ENUM_CONST' */
 
 #ifndef MR_CONSERVATIVE_GC
   #include "mercury_deep_copy.h"
@@ -30,10 +33,10 @@
 
 #include <stdio.h>
 
-#ifdef	MR_TABLE_DEBUG
-#define	MR_TABLE_DEBUG_BOOL	MR_TRUE
+#ifdef  MR_TABLE_DEBUG
+#define MR_TABLE_DEBUG_BOOL MR_TRUE
 #else
-#define	MR_TABLE_DEBUG_BOOL	MR_FALSE
+#define MR_TABLE_DEBUG_BOOL MR_FALSE
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -125,57 +128,57 @@
 */
 
 /* these macros are used to interpret the MR_loop_status field */
-#define	MR_LOOP_INACTIVE	0
-#define	MR_LOOP_ACTIVE		1
+#define MR_LOOP_INACTIVE    0
+#define MR_LOOP_ACTIVE      1
 
 /* these macros are used to interpret the MR_memo_status field */
-#define	MR_MEMO_INACTIVE	0
-#define	MR_MEMO_ACTIVE		1
-#define	MR_MEMO_SUCCEEDED	2
-#define	MR_MEMO_FAILED		3
-#define	MR_MEMO_BLOCK		4
+#define MR_MEMO_INACTIVE    0
+#define MR_MEMO_ACTIVE      1
+#define MR_MEMO_SUCCEEDED   2
+#define MR_MEMO_FAILED      3
+#define MR_MEMO_BLOCK       4
 
 typedef enum {
-	MR_MEMO_NON_INACTIVE,
-	MR_MEMO_NON_ACTIVE,
-	MR_MEMO_NON_INCOMPLETE,
-	MR_MEMO_NON_COMPLETE
+    MR_MEMO_NON_INACTIVE,
+    MR_MEMO_NON_ACTIVE,
+    MR_MEMO_NON_INCOMPLETE,
+    MR_MEMO_NON_COMPLETE
 } MR_MemoNonStatus;
 
 typedef enum {
-	MR_SUBGOAL_INACTIVE,
-	MR_SUBGOAL_ACTIVE,
-	MR_SUBGOAL_COMPLETE
+    MR_SUBGOAL_INACTIVE,
+    MR_SUBGOAL_ACTIVE,
+    MR_SUBGOAL_COMPLETE
 } MR_SubgoalStatus;
 
 struct MR_AnswerListNode_Struct {
-	MR_Word			*MR_aln_answer_block;
-	MR_AnswerList		MR_aln_next_answer;
+    MR_Word             *MR_aln_answer_block;
+    MR_AnswerList       MR_aln_next_answer;
 };
 
 union MR_TableNode_Union {
-	MR_Integer		MR_integer;
-	MR_HashTable		*MR_hash_table;
-	MR_TableNode		*MR_fix_table;
-	MR_TableNode		*MR_start_table;
-	MR_Unsigned		MR_loop_status;
-	MR_Unsigned		MR_memo_status;
-	MR_Subgoal		*MR_subgoal;
-	MR_MemoNonRecordPtr	MR_memo_non_record;
-	MR_GeneratorPtr		MR_generator;
-	MR_AnswerBlock		MR_answerblock;
-	MR_Dlist		*MR_type_table;
+    MR_Integer          MR_integer;
+    MR_HashTable        *MR_hash_table;
+    MR_TableNode        *MR_fix_table;
+    MR_TableNode        *MR_start_table;
+    MR_Unsigned         MR_loop_status;
+    MR_Unsigned         MR_memo_status;
+    MR_Subgoal          *MR_subgoal;
+    MR_MemoNonRecordPtr MR_memo_non_record;
+    MR_GeneratorPtr     MR_generator;
+    MR_AnswerBlock      MR_answerblock;
+    MR_Dlist            *MR_type_table;
 };
 
-#define	MR_trie_node_seen_before(t) 		((t)->MR_integer != 0)
+#define MR_trie_node_seen_before(t)         ((t)->MR_integer != 0)
 
 struct MR_MemoNonRecord_Struct {
-	MR_TrieNode		MR_mn_back_ptr;
-	MR_MemoNonStatus	MR_mn_status;
-	int			MR_mn_num_answers;
-	MR_TableNode		MR_mn_answer_table;
-	MR_AnswerList		MR_mn_answer_list;
-	MR_AnswerList		*MR_mn_answer_list_tail;
+    MR_TrieNode         MR_mn_back_ptr;
+    MR_MemoNonStatus    MR_mn_status;
+    int                 MR_mn_num_answers;
+    MR_TableNode        MR_mn_answer_table;
+    MR_AnswerList       MR_mn_answer_list;
+    MR_AnswerList       *MR_mn_answer_list_tail;
 };
 
 /*
@@ -231,11 +234,11 @@ struct MR_MemoNonRecord_Struct {
 ** to delete internal nodes of the trie that become empty after evictions.
 */
 
-typedef	enum {
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_LOOPCHECK),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_MEMO),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS)
+typedef enum {
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_LOOPCHECK),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_MEMO),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS)
 } MR_TableType;
 
 /*
@@ -244,121 +247,121 @@ typedef	enum {
 */
 
 typedef enum {
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_DUMMY),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_INT),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_CHAR),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_STRING),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_FLOAT),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_ENUM),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_FOREIGN_ENUM),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN_ADDR),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN_POLY),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN_POLY_ADDR),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_TYPEINFO),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_TYPECLASSINFO),
-	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_PROMISE_IMPLIED)
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_DUMMY),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_INT),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_CHAR),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_STRING),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_FLOAT),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_ENUM),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_FOREIGN_ENUM),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN_ADDR),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN_POLY),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_GEN_POLY_ADDR),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_TYPEINFO),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_TYPECLASSINFO),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_PROMISE_IMPLIED)
 } MR_TableTrieStep;
 
-typedef	MR_Unsigned	MR_Counter;
+typedef MR_Unsigned MR_Counter;
 
 typedef enum {
-	MR_TABLE_STATS_DETAIL_HASH,
-	MR_TABLE_STATS_DETAIL_ENUM,
-	MR_TABLE_STATS_DETAIL_START,
-	MR_TABLE_STATS_DETAIL_DU,
-	MR_TABLE_STATS_DETAIL_POLY,
-	MR_TABLE_STATS_DETAIL_NONE
+    MR_TABLE_STATS_DETAIL_HASH,
+    MR_TABLE_STATS_DETAIL_ENUM,
+    MR_TABLE_STATS_DETAIL_START,
+    MR_TABLE_STATS_DETAIL_DU,
+    MR_TABLE_STATS_DETAIL_POLY,
+    MR_TABLE_STATS_DETAIL_NONE
 } MR_TableStepStatsKind;
 
 struct MR_TableStepStats_Struct {
-	MR_Counter			MR_tss_num_lookups;
-	MR_Counter			MR_tss_num_lookups_is_dupl;
-	MR_TableStepStatsKind		MR_tss_detail_kind;
+    MR_Counter              MR_tss_num_lookups;
+    MR_Counter              MR_tss_num_lookups_is_dupl;
+    MR_TableStepStatsKind   MR_tss_detail_kind;
 
-	MR_Counter			MR_tss_hash_num_table_allocs;
-	MR_Counter			MR_tss_hash_num_table_alloc_bytes;
-	MR_Counter			MR_tss_hash_num_link_chunk_allocs;
-	MR_Counter			MR_tss_hash_num_link_chunk_alloc_bytes;
-	MR_Counter			MR_tss_hash_num_key_compares_not_dupl;
-	MR_Counter			MR_tss_hash_num_key_compares_dupl;
-	MR_Counter			MR_tss_hash_num_resizes;
-	MR_Counter			MR_tss_hash_resize_old_entries;
-	MR_Counter			MR_tss_hash_resize_new_entries;
+    MR_Counter              MR_tss_hash_num_table_allocs;
+    MR_Counter              MR_tss_hash_num_table_alloc_bytes;
+    MR_Counter              MR_tss_hash_num_link_chunk_allocs;
+    MR_Counter              MR_tss_hash_num_link_chunk_alloc_bytes;
+    MR_Counter              MR_tss_hash_num_key_compares_not_dupl;
+    MR_Counter              MR_tss_hash_num_key_compares_dupl;
+    MR_Counter              MR_tss_hash_num_resizes;
+    MR_Counter              MR_tss_hash_resize_old_entries;
+    MR_Counter              MR_tss_hash_resize_new_entries;
 
-	MR_Counter			MR_tss_enum_num_node_allocs;
-	MR_Counter			MR_tss_enum_num_node_alloc_bytes;
+    MR_Counter              MR_tss_enum_num_node_allocs;
+    MR_Counter              MR_tss_enum_num_node_alloc_bytes;
 
-	MR_Counter			MR_tss_du_num_node_allocs;
-	MR_Counter			MR_tss_du_num_node_alloc_bytes;
-	MR_Counter			MR_tss_du_num_arg_lookups;
-	MR_Counter			MR_tss_du_num_exist_lookups;
+    MR_Counter              MR_tss_du_num_node_allocs;
+    MR_Counter              MR_tss_du_num_node_alloc_bytes;
+    MR_Counter              MR_tss_du_num_arg_lookups;
+    MR_Counter              MR_tss_du_num_exist_lookups;
 
-	MR_Counter			MR_tss_start_num_allocs;
-	MR_Counter			MR_tss_start_num_alloc_bytes;
+    MR_Counter              MR_tss_start_num_allocs;
+    MR_Counter              MR_tss_start_num_alloc_bytes;
 };
 
 struct MR_TableStats_Struct {
-	MR_Counter			MR_ts_num_lookups;
-	MR_Counter			MR_ts_num_lookups_is_dupl;
-	/*
-	** The number of steps is given by MR_pt_num_inputs for the call table
-	** and MR_pt_num_outputs for the answer table.
-	*/
-	MR_TableStepStats		*MR_ts_steps;
+    MR_Counter              MR_ts_num_lookups;
+    MR_Counter              MR_ts_num_lookups_is_dupl;
+    /*
+    ** The number of steps is given by MR_pt_num_inputs for the call table
+    ** and MR_pt_num_outputs for the answer table.
+    */
+    MR_TableStepStats       *MR_ts_steps;
 };
 
-#define	MR_TABLE_CALL_TABLE	0
-#define	MR_TABLE_ANSWER_TABLE	1
+#define MR_TABLE_CALL_TABLE 0
+#define MR_TABLE_ANSWER_TABLE   1
 
-#define	MR_TABLE_STATS_CURR	0
-#define	MR_TABLE_STATS_PREV	1
+#define MR_TABLE_STATS_CURR 0
+#define MR_TABLE_STATS_PREV 1
 
 struct MR_TableStepDesc_Struct {
-	MR_ConstString			MR_tsd_var_name;
-	MR_TableTrieStep		MR_tsd_trie_step;
-	MR_Integer			MR_tsd_trie_enum_param;
+    MR_ConstString          MR_tsd_var_name;
+    MR_TableTrieStep        MR_tsd_trie_step;
+    MR_Integer              MR_tsd_trie_enum_param;
 };
 
 struct MR_ProcTableInfo_Struct {
-	MR_TableType			MR_pt_table_type;
-	int				MR_pt_num_inputs;
-	int				MR_pt_num_outputs;
-	int				MR_pt_has_answer_table;
-	const MR_PseudoTypeInfo		*MR_pt_ptis;
-	const MR_TypeParamLocns		*MR_pt_type_params;
+    MR_TableType            MR_pt_table_type;
+    int                     MR_pt_num_inputs;
+    int                     MR_pt_num_outputs;
+    int                     MR_pt_has_answer_table;
+    const MR_PseudoTypeInfo *MR_pt_ptis;
+    const MR_TypeParamLocns *MR_pt_type_params;
 
-	MR_TableNode			MR_pt_tablenode;
+    MR_TableNode            MR_pt_tablenode;
 
-	/*
-	** The index should be either MR_TABLE_CALL_TABLE or
-	** MR_TABLE_ANSWER_TABLE. The size of the pointed-to array is
-	** MR_pt_num_inputs for MR_TABLE_CALL_TABLE and MR_pt_num_outputs
-	** for MR_TABLE_ANSWER_TABLE.
-	*/
-	const MR_TableStepDesc		*MR_pt_steps_desc[2];
+    /*
+    ** The index should be either MR_TABLE_CALL_TABLE or
+    ** MR_TABLE_ANSWER_TABLE. The size of the pointed-to array is
+    ** MR_pt_num_inputs for MR_TABLE_CALL_TABLE and MR_pt_num_outputs
+    ** for MR_TABLE_ANSWER_TABLE.
+    */
+    const MR_TableStepDesc  *MR_pt_steps_desc[2];
 
-	/*
-	** The first index should be either MR_TABLE_CALL_TABLE or
-	** MR_TABLE_ANSWER_TABLE, while the second index should be either
-	** MR_TABLE_STATS_CURR or MR_TABLE_STATS_PREV.
-	*/
-	MR_TableStats			MR_pt_stats[2][2];
+    /*
+    ** The first index should be either MR_TABLE_CALL_TABLE or
+    ** MR_TABLE_ANSWER_TABLE, while the second index should be either
+    ** MR_TABLE_STATS_CURR or MR_TABLE_STATS_PREV.
+    */
+    MR_TableStats           MR_pt_stats[2][2];
 
-	MR_Unsigned			MR_pt_size_limit;
-	MR_TrieNode			*MR_pt_call_table_tips;
-	MR_Unsigned			MR_pt_num_call_table_tips;
-	MR_Unsigned			MR_pt_next_to_evict;
+    MR_Unsigned             MR_pt_size_limit;
+    MR_TrieNode             *MR_pt_call_table_tips;
+    MR_Unsigned             MR_pt_num_call_table_tips;
+    MR_Unsigned             MR_pt_next_to_evict;
 };
 
 /* This type is only for backward compatibility */
 typedef struct MR_Table_Gen_Struct {
-	int				MR_table_gen_num_inputs;
-	int				MR_table_gen_num_outputs;
-	const MR_TableTrieStep		*MR_table_gen_input_steps;
-	const MR_Integer		*MR_table_gen_enum_params;
-	const MR_PseudoTypeInfo		*MR_table_gen_ptis;
-	const MR_TypeParamLocns		*MR_table_gen_type_params;
+    int                     MR_table_gen_num_inputs;
+    int                     MR_table_gen_num_outputs;
+    const MR_TableTrieStep  *MR_table_gen_input_steps;
+    const MR_Integer        *MR_table_gen_enum_params;
+    const MR_PseudoTypeInfo *MR_table_gen_ptis;
+    const MR_TypeParamLocns *MR_table_gen_type_params;
 } MR_Table_Gen;
 
 /*---------------------------------------------------------------------------*/
@@ -377,79 +380,79 @@ typedef struct MR_Table_Gen_Struct {
 ** These functions assume that the table is a dynamically resizable hash table.
 */
 
-extern	MR_TrieNode	MR_int_hash_lookup_or_add(MR_TrieNode table,
-				MR_Integer key);
-extern	MR_TrieNode	MR_int_hash_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_Integer key);
-extern	MR_TrieNode	MR_float_hash_lookup_or_add(MR_TrieNode table,
-				MR_Float key);
-extern	MR_TrieNode	MR_float_hash_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_Float key);
-extern	MR_TrieNode	MR_string_hash_lookup_or_add(MR_TrieNode table,
-				MR_ConstString key);
-extern	MR_TrieNode	MR_string_hash_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_ConstString key);
-extern	MR_TrieNode	MR_bitmap_hash_lookup_or_add(MR_TrieNode table,
-				MR_ConstBitmapPtr key);
-extern	MR_TrieNode	MR_bitmap_hash_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_ConstBitmapPtr key);
-extern	MR_TrieNode	MR_word_hash_lookup_or_add(MR_TrieNode table,
-				MR_Word key);
-extern	MR_TrieNode	MR_word_hash_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_Word key);
+extern  MR_TrieNode MR_int_hash_lookup_or_add(MR_TrieNode table,
+                        MR_Integer key);
+extern  MR_TrieNode MR_int_hash_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_Integer key);
+extern  MR_TrieNode MR_float_hash_lookup_or_add(MR_TrieNode table,
+                        MR_Float key);
+extern  MR_TrieNode MR_float_hash_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_Float key);
+extern  MR_TrieNode MR_string_hash_lookup_or_add(MR_TrieNode table,
+                        MR_ConstString key);
+extern  MR_TrieNode MR_string_hash_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_ConstString key);
+extern  MR_TrieNode MR_bitmap_hash_lookup_or_add(MR_TrieNode table,
+                        MR_ConstBitmapPtr key);
+extern  MR_TrieNode MR_bitmap_hash_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_ConstBitmapPtr key);
+extern  MR_TrieNode MR_word_hash_lookup_or_add(MR_TrieNode table,
+                        MR_Word key);
+extern  MR_TrieNode MR_word_hash_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_Word key);
 
 /*
 ** These functions assume that the table is a statically sized array,
 ** with the index ranging from 0 to range - 1.
 */
 
-extern	MR_TrieNode	MR_int_fix_index_enum_lookup_or_add(MR_TrieNode table,
-				MR_Integer range, MR_Integer key);
-extern	MR_TrieNode	MR_int_fix_index_enum_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_Integer range, MR_Integer key);
+extern  MR_TrieNode MR_int_fix_index_enum_lookup_or_add(MR_TrieNode table,
+                        MR_Integer range, MR_Integer key);
+extern  MR_TrieNode MR_int_fix_index_enum_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_Integer range, MR_Integer key);
 
-extern	MR_TrieNode	MR_int_fix_index_du_lookup_or_add(MR_TrieNode table,
-				MR_Integer range, MR_Integer key);
-extern	MR_TrieNode	MR_int_fix_index_du_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_Integer range, MR_Integer key);
+extern  MR_TrieNode MR_int_fix_index_du_lookup_or_add(MR_TrieNode table,
+                        MR_Integer range, MR_Integer key);
+extern  MR_TrieNode MR_int_fix_index_du_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_Integer range, MR_Integer key);
 
 /*
 ** These functions assume that the table is an expandable array,
 ** with the smallest valid index value being start.
 */
 
-extern	MR_TrieNode	MR_int_start_index_lookup_or_add(MR_TrieNode table,
-				MR_Integer start, MR_Integer key);
-extern	MR_TrieNode	MR_int_start_index_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_Integer start, MR_Integer key);
+extern  MR_TrieNode MR_int_start_index_lookup_or_add(MR_TrieNode table,
+                        MR_Integer start, MR_Integer key);
+extern  MR_TrieNode MR_int_start_index_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_Integer start, MR_Integer key);
 
 /*
 ** These functions table type_infos in a hash table.
 */
 
-extern	MR_TrieNode	MR_type_info_lookup_or_add(MR_TrieNode table,
-				MR_TypeInfo type_info);
-extern	MR_TrieNode	MR_type_info_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_TypeInfo type_info);
+extern  MR_TrieNode MR_type_info_lookup_or_add(MR_TrieNode table,
+                        MR_TypeInfo type_info);
+extern  MR_TrieNode MR_type_info_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_TypeInfo type_info);
 
 /*
 ** These functions table typeclass_infos in a hash table.
 */
 
-extern	MR_TrieNode	MR_type_class_info_lookup_or_add(MR_TrieNode table,
-				MR_Word *type_class_info);
-extern	MR_TrieNode	MR_type_class_info_lookup_or_add_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_Word *type_class_info);
+extern  MR_TrieNode MR_type_class_info_lookup_or_add(MR_TrieNode table,
+                        MR_Word *type_class_info);
+extern  MR_TrieNode MR_type_class_info_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        MR_Word *type_class_info);
 
 /*
 ** These functions table values of arbitrary types; the form of the data
@@ -459,26 +462,26 @@ extern	MR_TrieNode	MR_type_class_info_lookup_or_add_stats(
 ** will be detected.
 */
 
-extern	MR_TrieNode	MR_table_type(MR_TrieNode table,
-				MR_TypeInfo type_info, MR_Word data_value);
-extern	MR_TrieNode	MR_table_type_debug(MR_TrieNode table,
-				MR_TypeInfo type_info, MR_Word data_value);
-extern	MR_TrieNode	MR_table_type_stats(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_TypeInfo type_info, MR_Word data_value);
-extern	MR_TrieNode	MR_table_type_stats_debug(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_TypeInfo type_info, MR_Word data_value);
-extern	MR_TrieNode	MR_table_type_back(MR_TrieNode table,
-				MR_TypeInfo type_info, MR_Word data_value);
-extern	MR_TrieNode	MR_table_type_debug_back(MR_TrieNode table,
-				MR_TypeInfo type_info, MR_Word data_value);
-extern	MR_TrieNode	MR_table_type_stats_back(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_TypeInfo type_info, MR_Word data_value);
-extern	MR_TrieNode	MR_table_type_stats_debug_back(
-				MR_TableStepStats *stats, MR_TrieNode table,
-				MR_TypeInfo type_info, MR_Word data_value);
+extern  MR_TrieNode MR_table_type(MR_TrieNode table,
+                        MR_TypeInfo type_info, MR_Word data_value);
+extern  MR_TrieNode MR_table_type_debug(MR_TrieNode table,
+                        MR_TypeInfo type_info, MR_Word data_value);
+extern  MR_TrieNode MR_table_type_stats(MR_TableStepStats *stats,
+                        MR_TrieNode table,
+                        MR_TypeInfo type_info, MR_Word data_value);
+extern  MR_TrieNode MR_table_type_stats_debug(MR_TableStepStats *stats,
+                        MR_TrieNode table,
+                        MR_TypeInfo type_info, MR_Word data_value);
+extern  MR_TrieNode MR_table_type_back(MR_TrieNode table,
+                        MR_TypeInfo type_info, MR_Word data_value);
+extern  MR_TrieNode MR_table_type_debug_back(MR_TrieNode table,
+                        MR_TypeInfo type_info, MR_Word data_value);
+extern  MR_TrieNode MR_table_type_stats_back(MR_TableStepStats *stats,
+                        MR_TrieNode table,
+                        MR_TypeInfo type_info, MR_Word data_value);
+extern  MR_TrieNode MR_table_type_stats_debug_back(MR_TableStepStats *stats,
+                        MR_TrieNode table,
+                        MR_TypeInfo type_info, MR_Word data_value);
 
 /*
 ** These functions look to see if the given key is in the given table.
@@ -488,16 +491,16 @@ extern	MR_TrieNode	MR_table_type_stats_debug_back(
 ** These functions assume that the table is a dynamically resizable hash table.
 */
 
-extern	MR_TrieNode	MR_int_hash_lookup(MR_TrieNode table,
-				MR_Integer key);
-extern	MR_TrieNode	MR_float_hash_lookup(MR_TrieNode table,
-				MR_Float key);
-extern	MR_TrieNode	MR_string_hash_lookup(MR_TrieNode table,
-				MR_ConstString key);
-extern	MR_TrieNode	MR_bitmap_hash_lookup(MR_TrieNode table,
-				MR_ConstBitmapPtr key);
-extern	MR_TrieNode	MR_word_hash_lookup(MR_TrieNode table,
-				MR_Word data_value);
+extern  MR_TrieNode MR_int_hash_lookup(MR_TrieNode table,
+                        MR_Integer key);
+extern  MR_TrieNode MR_float_hash_lookup(MR_TrieNode table,
+                        MR_Float key);
+extern  MR_TrieNode MR_string_hash_lookup(MR_TrieNode table,
+                        MR_ConstString key);
+extern  MR_TrieNode MR_bitmap_hash_lookup(MR_TrieNode table,
+                        MR_ConstBitmapPtr key);
+extern  MR_TrieNode MR_word_hash_lookup(MR_TrieNode table,
+                        MR_Word data_value);
 
 /*
 ** These functions return a dynamically resizable array (using the primitives
@@ -505,173 +508,169 @@ extern	MR_TrieNode	MR_word_hash_lookup(MR_TrieNode table,
 ** dynamically resizable hash table.
 */
 
-extern	MR_bool		MR_get_int_hash_table_contents(MR_TrieNode t,
-				MR_Integer **values_ptr, int *value_next_ptr);
-extern	MR_bool		MR_get_float_hash_table_contents(MR_TrieNode t,
-				MR_Float **values_ptr, int *value_next_ptr);
-extern	MR_bool		MR_get_string_hash_table_contents(MR_TrieNode t,
-				MR_ConstString **values_ptr,
-				int *value_next_ptr);
-extern	MR_bool		MR_get_bitmap_hash_table_contents(MR_TrieNode t,
-				MR_ConstBitmapPtr **values_ptr,
-				int *value_next_ptr);
+extern  MR_bool     MR_get_int_hash_table_contents(MR_TrieNode t,
+                        MR_Integer **values_ptr, int *value_next_ptr);
+extern  MR_bool     MR_get_float_hash_table_contents(MR_TrieNode t,
+                        MR_Float **values_ptr, int *value_next_ptr);
+extern  MR_bool     MR_get_string_hash_table_contents(MR_TrieNode t,
+                        MR_ConstString **values_ptr, int *value_next_ptr);
+extern  MR_bool     MR_get_bitmap_hash_table_contents(MR_TrieNode t,
+                        MR_ConstBitmapPtr **values_ptr, int *value_next_ptr);
 
 /*
 ** This function prints statistics about the operation of tabling, if the
 ** collection of such statistics is enabled, on the given stream.
 */
 
-extern	void		MR_table_report_statistics(FILE *fp);
+extern  void        MR_table_report_statistics(FILE *fp);
 
 /*
 ** These functions return printable representations of the MR_loop_status
 ** MR_memo_status and MR_mn_status fields.
 */
 
-extern	const char	*MR_loopcheck_status(MR_Unsigned);
-extern	const char	*MR_memo_status(MR_Unsigned);
-extern	const char	*MR_memo_non_status(MR_MemoNonStatus);
+extern  const char  *MR_loopcheck_status(MR_Unsigned);
+extern  const char  *MR_memo_status(MR_Unsigned);
+extern  const char  *MR_memo_non_status(MR_MemoNonStatus);
 
 /*
 ** These functions print the tips of the call tables for loopcheck and memo
 ** tabled predicates to fp.
 */
 
-extern	void		MR_print_loopcheck_tip(FILE *fp,
-				const MR_ProcLayout *proc, MR_TrieNode table);
-extern	void		MR_print_memo_tip(FILE *fp,
-				const MR_ProcLayout *proc, MR_TrieNode table);
-extern	void		MR_print_memo_non_record(FILE *fp,
-				const MR_ProcLayout *proc,
-				MR_MemoNonRecordPtr record);
+extern  void        MR_print_loopcheck_tip(FILE *fp,
+                        const MR_ProcLayout *proc, MR_TrieNode table);
+extern  void        MR_print_memo_tip(FILE *fp,
+                        const MR_ProcLayout *proc, MR_TrieNode table);
+extern  void        MR_print_memo_non_record(FILE *fp,
+                        const MR_ProcLayout *proc, MR_MemoNonRecordPtr record);
 
 /*
 ** Prints the given answer_block of the given procedure to fp.
 */
 
-extern	void		MR_print_answerblock(FILE *fp,
-				const MR_ProcLayout *proc,
-				MR_Word *answer_block);
+extern  void        MR_print_answerblock(FILE *fp,
+                        const MR_ProcLayout *proc, MR_Word *answer_block);
 
 /*---------------------------------------------------------------------------*/
 
 #ifndef MR_NATIVE_GC
 
-  #define MR_TABLE_NEW(type)						\
-	MR_GC_NEW_ATTRIB(type, MR_ALLOC_SITE_TABLING)
+  #define MR_TABLE_NEW(type)                                            \
+    MR_GC_NEW_ATTRIB(type, MR_ALLOC_SITE_TABLING)
 
-  #define MR_TABLE_NEW_ARRAY(type, count)				\
-	MR_GC_NEW_ARRAY_ATTRIB(type, (count), MR_ALLOC_SITE_TABLING)
+  #define MR_TABLE_NEW_ARRAY(type, count)                               \
+    MR_GC_NEW_ARRAY_ATTRIB(type, (count), MR_ALLOC_SITE_TABLING)
 
-  #define MR_TABLE_RESIZE_ARRAY(ptr, type, count)			\
-	MR_GC_RESIZE_ARRAY_ATTRIB((ptr), type, (count))
+  #define MR_TABLE_RESIZE_ARRAY(ptr, type, count)                       \
+    MR_GC_RESIZE_ARRAY_ATTRIB((ptr), type, (count))
 
-  #define MR_table_allocate_words(size)					\
-	((MR_Word *) MR_GC_malloc_attrib(sizeof(MR_Word) * (size),      \
+  #define MR_table_allocate_words(size)                                 \
+    ((MR_Word *) MR_GC_malloc_attrib(sizeof(MR_Word) * (size),          \
             MR_ALLOC_SITE_TABLING))
 
-  #define MR_table_allocate_struct(type)				\
-	((type *) MR_GC_malloc_attrib(sizeof(type),                     \
+  #define MR_table_allocate_struct(type)                                \
+    ((type *) MR_GC_malloc_attrib(sizeof(type),                         \
             MR_ALLOC_SITE_TABLING))
 
-  #define MR_table_allocate_structs(num, type)				\
-	((type *) MR_GC_malloc_attrib(sizeof(type) * (num),             \
+  #define MR_table_allocate_structs(num, type)                          \
+    ((type *) MR_GC_malloc_attrib(sizeof(type) * (num),                 \
             MR_ALLOC_SITE_TABLING))
 
-  #define MR_table_free(pointer)					\
-	MR_GC_free_attrib((pointer))
+  #define MR_table_free(pointer)                                        \
+    MR_GC_free_attrib((pointer))
 
 #else /* MR_NATIVE_GC */
 
-  #define MR_TABLE_NATIVE_GC_MSG					\
-	"Sorry, not implemented: tabling in native gc grades"
+  #define MR_TABLE_NATIVE_GC_MSG                                        \
+    "Sorry, not implemented: tabling in native gc grades"
 
-  #define MR_TABLE_NEW(type)						\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
-	(void *) NULL)
-  #define MR_TABLE_NEW_ARRAY(type, count)				\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
-	(void *) NULL)
-  #define MR_TABLE_RESIZE_ARRAY(pointer, type, count)			\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
-	(void *) NULL)
+  #define MR_TABLE_NEW(type)                                            \
+    (MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),                            \
+    (void *) NULL)
+  #define MR_TABLE_NEW_ARRAY(type, count)                               \
+    (MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),                            \
+    (void *) NULL)
+  #define MR_TABLE_RESIZE_ARRAY(pointer, type, count)                   \
+    (MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),                            \
+    (void *) NULL)
 #if 0
-  #define MR_table_allocate_bytes(size)					\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
-	(void *) NULL)
+  #define MR_table_allocate_bytes(size)                                 \
+    (MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),                            \
+    (void *) NULL)
 #endif
-  #define MR_table_allocate_words(size)					\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
-	(void *) NULL)
-  #define MR_table_allocate_struct(type)				\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
-	(void *) NULL)
-  #define MR_table_allocate_structs(num, type)				\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
-	(void *) NULL)
-  #define MR_table_free(pointer)					\
-	MR_fatal_error(MR_TABLE_NATIVE_GC_MSG)
+  #define MR_table_allocate_words(size)                                 \
+    (MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),                            \
+    (void *) NULL)
+  #define MR_table_allocate_struct(type)                                \
+    (MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),                            \
+    (void *) NULL)
+  #define MR_table_allocate_structs(num, type)                          \
+    (MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),                            \
+    (void *) NULL)
+  #define MR_table_free(pointer)                                        \
+    MR_fatal_error(MR_TABLE_NATIVE_GC_MSG)
 
 #endif /* MR_NATIVE_GC */
 
 /*
 ** XXX The extra memory attribution word is not yet copied.
 */
-#define MR_table_copy_words(dest, source, size)				\
-	(MR_CHECK_EXPR_TYPE((dest), MR_Word *),				\
-	(MR_CHECK_EXPR_TYPE((source), MR_Word *),			\
-	MR_memcpy((char *) (dest), (char *) (source),			\
-		sizeof(MR_Word) * (size))))
+#define MR_table_copy_words(dest, source, size)                         \
+    (MR_CHECK_EXPR_TYPE((dest), MR_Word *),                             \
+    (MR_CHECK_EXPR_TYPE((source), MR_Word *),                           \
+    MR_memcpy((char *) (dest), (char *) (source),                       \
+        sizeof(MR_Word) * (size))))
 
-#define MR_table_copy_structs(dest, source, num, type)			\
-	(MR_CHECK_EXPR_TYPE((dest), type *),				\
-	(MR_CHECK_EXPR_TYPE((source), type *),				\
-	MR_memcpy((char *) (dest), (char *) (source),			\
-		sizeof(type) * (num))))
+#define MR_table_copy_structs(dest, source, num, type)                  \
+    (MR_CHECK_EXPR_TYPE((dest), type *),                                \
+    (MR_CHECK_EXPR_TYPE((source), type *),                              \
+    MR_memcpy((char *) (dest), (char *) (source),                       \
+        sizeof(type) * (num))))
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef	MR_HIGHLEVEL_CODE
+#ifdef  MR_HIGHLEVEL_CODE
     #ifdef MR_USE_GCC_NESTED_FUNCTIONS
         extern void MR_CALL
             mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
                 MR_Box record, MR_Box *answer_block_ptr,
-		MR_NestedCont cont);
+                MR_NestedCont cont);
 
-	extern void MR_CALL
-	    mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
-	        MR_Box record, MR_Box *answer_block_ptr,
-		MR_NestedCont cont);
-    #else	/* ! MR_USE_GCC_NESTED_FUNCTIONS */
+        extern void MR_CALL
+            mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
+                MR_Box record, MR_Box *answer_block_ptr,
+                MR_NestedCont cont);
+    #else   /* ! MR_USE_GCC_NESTED_FUNCTIONS */
         extern void MR_CALL
              mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
                 MR_Box record, MR_Box *answer_block_ptr,
                 MR_Cont cont, void *cont_env_ptr);
         
-	extern void MR_CALL
-              mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
+        extern void MR_CALL
+             mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
                 MR_Box record, MR_Box *answer_block_ptr,
                 MR_Cont cont, void *cont_env_ptr);
     #endif /* MR_USE_GCC_NESTED_FUNCTIONS */
 
-#else	/* ! MR_HIGHLEVEL_CODE */
-  #define MR_MEMO_NON_RET_ALL_NONDET_ENTRY				\
-	MR_proc_entry_user_name(table_builtin,				\
-		table_memo_return_all_answers_nondet, 2, 0)
-  #define MR_MEMO_NON_RET_ALL_MULTI_ENTRY				\
-	MR_proc_entry_user_name(table_builtin,				\
-		table_memo_return_all_answers_multi, 2, 0)
+#else   /* ! MR_HIGHLEVEL_CODE */
+  #define MR_MEMO_NON_RET_ALL_NONDET_ENTRY                              \
+    MR_proc_entry_user_name(table_builtin,                              \
+        table_memo_return_all_answers_nondet, 2, 0)
+  #define MR_MEMO_NON_RET_ALL_MULTI_ENTRY                               \
+    MR_proc_entry_user_name(table_builtin,                              \
+        table_memo_return_all_answers_multi, 2, 0)
 
   MR_declare_entry(MR_MEMO_NON_RET_ALL_NONDET_ENTRY);
   MR_declare_entry(MR_MEMO_NON_RET_ALL_MULTI_ENTRY);
-#endif	/* MR_HIGHLEVEL_CODE */
+#endif  /* MR_HIGHLEVEL_CODE */
 
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_tabling_macros.h"
 #include "mercury_tabling_preds.h"
 
-#include "mercury_stack_layout.h"	/* for MR_ProcLayout and */
-					/* MR_TypeParamLocns */
+#include "mercury_stack_layout.h"   /* for MR_ProcLayout and */
+                                    /* MR_TypeParamLocns     */
 
-#endif	/* not MERCURY_TABLING_H */
+#endif  /* not MERCURY_TABLING_H */

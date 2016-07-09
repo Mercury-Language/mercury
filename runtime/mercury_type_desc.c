@@ -1,5 +1,5 @@
 /*
-** vim:sw=4 ts=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2002-2004, 2006 The University of Melbourne.
@@ -19,7 +19,7 @@
 #include "mercury_type_info.h"
 #include "mercury_type_desc.h"
 #include "mercury_heap.h"       /* for MR_offset_incr_hp_msg() */
-#include "mercury_misc.h"       /* for MR_fatal_error() */
+#include "mercury_misc.h"       /* for MR_fatal_error()        */
 
 MR_TypeCtorDesc
 MR_make_type_ctor_desc(MR_TypeInfo type_info, MR_TypeCtorInfo type_ctor_info)

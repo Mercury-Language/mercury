@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
@@ -403,7 +403,7 @@ MR_dump_long_value(MR_LongLval locn, MR_MemoryZone *heap_zone,
         case MR_LONG_LVAL_TYPE_INDIRECT:
             fprintf(stderr, "offset %d from ",
                 MR_LONG_LVAL_INDIRECT_OFFSET(locn_num));
-            /* XXX Tyson will have to complete this */
+            /* XXX Tyson will have to complete this       */
             /* based on what he wants this function to do */
 
         case MR_LONG_LVAL_TYPE_UNKNOWN:

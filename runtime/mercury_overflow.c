@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2014 The Mercury team
@@ -9,9 +9,9 @@
 
 #include "mercury_imp.h"
 #include "mercury_overflow.h"
-#include "mercury_memory_zones.h"   /* for MR_MemoryZone */
+#include "mercury_memory_zones.h"   /* for MR_MemoryZone       */
 #include "mercury_debug.h"          /* for MR_print_zone() etc */
-#include "mercury_misc.h"           /* for MR_fatal_error() */
+#include "mercury_misc.h"           /* for MR_fatal_error()    */
 
 #if !defined(MR_HIGHLEVEL_CODE)
 void

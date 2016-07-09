@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2004, 2006-2007 The University of Melbourne.
@@ -21,14 +21,16 @@
 
     debug_key_msg(key, key_format, key_cast);
 
+    /* Deref the table pointer. */
+    table = t->MR_hash_table;
     /* Has the table been built? */
-    table = t->MR_hash_table; /* Deref the table pointer */
     if (table == NULL) {
         MR_table_record_hash_table_alloc_count(sizeof(MR_HashTable) +
             (HASH_TABLE_START_SIZE * sizeof(MR_HashTableSlotPtr)));
         MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,
             table_field, HASH_TABLE_START_SIZE);
-        table = t->MR_hash_table; /* Deref the table pointer */
+        /* Deref the table pointer. */
+        table = t->MR_hash_table;
     }
 
     /* Rehash the table if it has grown too full. */

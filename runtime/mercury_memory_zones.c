@@ -1,5 +1,5 @@
 /*
-** vim:sw=4 ts=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1998-2000, 2002-2007, 2010-2012 The University of Melbourne.
@@ -12,7 +12,7 @@
 ** for managing the memory zones.
 **
 ** The offset of each zone can be supplied to allow us to control how
-** they map onto direct mapped caches.  The provided next_offset()
+** they map onto direct mapped caches. The provided next_offset()
 ** function can be used to generate these offsets.
 **
 ** We allocate a large arena, preferably aligned on a boundary that
@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <stdlib.h>   /* for memalign and posix_memalign */
+#include <stdlib.h>         /* for memalign and posix_memalign */
 
 #ifdef MR_HAVE_MALLOC_H
     #include <malloc.h>     /* for memalign */
@@ -132,7 +132,7 @@ MR_alloc_zone_memory(size_t size)
     ** Mark the memory zone as being allocated by the Mercury runtime.
     ** We do not use a helper function like MR_GC_malloc_uncollectable_attrib
     ** as that returns an offset pointer which can interfere with memory page
-    ** protection.  The first word will be within the redzone so it will not be
+    ** protection. The first word will be within the redzone so it will not be
     ** clobbered later.
     */
     *ptr = (MR_Word) MR_ALLOC_SITE_RUNTIME;
@@ -254,11 +254,10 @@ MR_dealloc_zone_memory(void *base, size_t size)
 
 /*
 ** DESCRIPTION
-**  The function mprotect() changes the  access  protections  on
-**  the mappings specified by the range [addr, addr + len) to be
-**  that specified by prot.  Legitimate values for prot are  the
-**  same  as  those  permitted  for  mmap  and  are  defined  in
-**  <sys/mman.h> as:
+**  The function mprotect() changes the access protections on the mappings
+**  specified by the range [addr, addr + len) to be that specified by prot.
+**  Legitimate values for prot are the same as those permitted for mmap
+**  and are defined in <sys/mman.h> as:
 **
 ** PROT_READ    page can be read
 ** PROT_WRITE   page can be written
@@ -272,18 +271,17 @@ MR_dealloc_zone_memory(void *base, size_t size)
 
   #ifdef MR_CONSERVATIVE_GC
     /*
-    ** The conservative garbage collectors scans through
-    ** all these areas, so we need to allow reads.
-    ** XXX This probably causes efficiency problems:
-    ** too much memory for the GC to scan, and it probably
-    ** all gets paged in.
+    ** The conservative garbage collectors scans through all these areas,
+    ** so we need to allow reads.
+    ** XXX This probably causes efficiency problems: too much memory
+    ** for the GC to scan, and it probably all gets paged in.
     */
     #define REDZONE_PROT PROT_READ
   #else
     #define REDZONE_PROT PROT_NONE
   #endif
 
-  /* The BSDI BSD/386 1.1 headers don't define PROT_NONE */
+  /* The BSDI BSD/386 1.1 headers don't define PROT_NONE. */
   #ifndef PROT_NONE
     #define PROT_NONE 0
   #endif
@@ -337,7 +335,7 @@ static MercuryLock  zone_id_counter_lock;
 
 /*
 ** This list contains used zones that need a signal handler, for example those
-** that have redzones.  Other used zones may exist that are not on this list
+** that have redzones. Other used zones may exist that are not on this list
 ** because:
 **
 **   1) They don't have a redzone.
@@ -354,13 +352,13 @@ used_memory_zones = NULL;
 #ifdef  MR_THREAD_SAFE
   /*
   ** You must take this lock to write to either of the zone lists, or to read
-  ** the complete zone lists.  Reading a zone list without taking the lock is
-  ** also supported _iff_ partial information is okay.  Any code that writes
+  ** the complete zone lists. Reading a zone list without taking the lock is
+  ** also supported _iff_ partial information is okay. Any code that writes
   ** the list must guarantee that memory writes occur in the correct order so
   ** that the list is always well formed from a reader's perspective.
   **
   ** This is necessary so that signal handlers can read the list without taking
-  ** a lock.  They may not take a lock because pthread_mutex_lock cannot be
+  ** a lock. They may not take a lock because pthread_mutex_lock cannot be
   ** used safely within a signal handler.
   */
   static MercuryLock    memory_zones_lock;
@@ -606,7 +604,7 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
     total_size = desired_size + redzone_size + MR_page_size;
     /*
     ** The total size must also be rounded to a page boundary, so that it can
-    ** be allocated from mmap if we're using accurate GC.
+    ** be allocated from mmap if we are using accurate GC.
     */
     total_size = MR_round_up(total_size, MR_page_size);
 
@@ -628,7 +626,7 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
 
     zone = MR_GC_NEW_ATTRIB(MR_MemoryZone, MR_ALLOC_SITE_RUNTIME);
 
-    /* The name is initialized by our caller */
+    /* The name is initialized by our caller. */
     zone->MR_zone_name = NULL;
 #ifdef MR_LL_PARALLEL_CONJ
     zone->MR_zone_id = MR_atomic_add_and_fetch_uint(&zone_id_counter, 1);
@@ -643,7 +641,7 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
     zone->MR_zone_redzone_size = redzone_size;
 
 #ifdef  MR_CHECK_OVERFLOW_VIA_MPROTECT
-    /* Our caller will set the handler */
+    /* Our caller will set the handler. */
     zone->MR_zone_handler = NULL;
 #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 
@@ -726,7 +724,7 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     }
 
     /*
-    ** XXX the casts to MR_Integer are here because this code was
+    ** XXX The casts to MR_Integer are here because this code was
     ** relying on the gcc extension that allows arithmetic on void
     ** pointers - this breaks when compiling with Visual C - juliensf.
     */
@@ -802,7 +800,7 @@ MR_setup_redzones(MR_MemoryZone *zone)
 #endif
 
     /*
-    ** setup the redzone
+    ** Setup the redzone.
     */
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
     MR_configure_redzone_size(zone, redsize);
@@ -823,10 +821,10 @@ MR_setup_redzones(MR_MemoryZone *zone)
 #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 
     /*
-    ** setup the hardzone
+    ** Setup the hardzone.
     */
 #if defined(MR_PROTECTPAGE)
-    /* The % MR_page_size is to ensure page alignment */
+    /* The % MR_page_size is to ensure page alignment. */
     zone->MR_zone_hardmax = (MR_Word *)((MR_Unsigned) zone->MR_zone_top -
             MR_page_size - ((MR_Unsigned) zone->MR_zone_top % MR_page_size));
     res = MR_protect_pages((char *) zone->MR_zone_hardmax, MR_page_size,
@@ -890,7 +888,7 @@ MR_reset_redzone(MR_MemoryZone *zone)
 
     zone->MR_zone_redzone = zone->MR_zone_redzone_base;
 
-    /* unprotect the non-redzone area */
+    /* Unprotect the non-redzone area. */
     res = MR_protect_pages((char *) zone->MR_zone_bottom,
         ((char *) zone->MR_zone_redzone) - ((char *) zone->MR_zone_bottom),
         NORMAL_PROT);
@@ -902,7 +900,7 @@ MR_reset_redzone(MR_MemoryZone *zone)
             zone->MR_zone_bottom, zone->MR_zone_redzone);
         MR_fatal_error(buf);
     }
-    /* protect the redzone area */
+    /* Protect the redzone area. */
     res = MR_protect_pages((char *) zone->MR_zone_redzone,
         ((char *) zone->MR_zone_top) - ((char *) zone->MR_zone_redzone),
         REDZONE_PROT);
@@ -934,7 +932,7 @@ MR_in_zone(const MR_Word *ptr, const MR_MemoryZone *zone)
 ** Caching of memory zones.
 */
 
-/* Define this macro to test the performance without caching */
+/* Define this macro to test the performance without caching. */
 #ifdef MR_DO_NOT_CACHE_FREE_MEMORY_ZONES
 
 static MR_MemoryZone *
@@ -963,7 +961,7 @@ MR_maybe_gc_zones(void)
 ** above their respective high water marks and stops when both are below their
 ** low water marks.
 **
-** TODO: Test for optimal values of these settings, however there's probably
+** TODO: Test for optimal values of these settings, however there is probably
 ** not much to be gained here that can't be more easily gained somewhere else
 ** first.
 */
@@ -1005,16 +1003,16 @@ static MR_MemoryZonesFree * MR_THREADSAFE_VOLATILE
     free_memory_zones = NULL;
 
 /*
-** This value is used to maintain a position within the list of free zones.  If
-** it is null then no position is maintained.  Otherwise it points to a
+** This value is used to maintain a position within the list of free zones.
+** If it is null then no position is maintained. Otherwise it points to a
 ** position within the list, in this case it represents a sub-list of free
-** zones.  This sub list always contains the least-recently-used zones.
+** zones. This sub list always contains the least-recently-used zones.
 **
 ** Some actions can invalidate this pointer, in these cases it should be set to
 ** NULL.
 **
 ** When this value is non-null, it can be used to quickly find the least
-** recently used zones.  This is used by the garbage collection loop.
+** recently used zones. This is used by the garbage collection loop.
 */
 static MR_MemoryZonesFree * MR_THREADSAFE_VOLATILE
     lru_free_memory_zones = NULL;
@@ -1032,7 +1030,7 @@ static MR_THREADSAFE_VOLATILE MR_Unsigned free_memory_zones_pages = 0;
 /*
 ** The next token to be given to a memory zone as it is added to the free list.
 ** The tokens are used to detect the least recently used zones when freeing
-** them.  Zones with larger tokens have been used more recently than zones with
+** them. Zones with larger tokens have been used more recently than zones with
 ** smaller tokens.
 */
 static MR_THREADSAFE_VOLATILE MR_Unsigned lru_memory_zone_token = 0;
@@ -1091,7 +1089,7 @@ MR_get_free_zone(size_t size)
             if (lru_free_memory_zones == zones_list) {
                 /*
                 ** This zone list had the least recently used zone on it,
-                ** invalidate the lru_free_memory_zones pointer.  The garbage
+                ** invalidate the lru_free_memory_zones pointer. The garbage
                 ** collection loop will re-initialise this.
                 */
                 lru_free_memory_zones = NULL;
@@ -1114,14 +1112,14 @@ MR_get_free_zone(size_t size)
 static void
 MR_return_zone_to_free_list(MR_MemoryZone *zone)
 {
-    /* The current list in iterations over the list of free lists */
+    /* The current list in iterations over the list of free lists. */
     MR_MemoryZonesFree      *cur_list;
     size_t                  size;
 
     size = get_zone_alloc_size(zone);
 
 #ifdef MR_CONSERVATIVE_GC
-    /* Make sure the GC doesn't find any pointers in this zone */
+    /* Make sure the GC doesn't find any pointers in this zone. */
     MR_clear_zone_for_GC(zone, zone->MR_zone_min);
 #endif
 
@@ -1147,8 +1145,8 @@ MR_return_zone_to_free_list(MR_MemoryZone *zone)
         else if (cur_list->MR_zonesfree_size > size)
         {
             /*
-            ** Set this to null to represent our failure to find a zone list of
-            ** the right size.
+            ** Set this to null to represent our failure to find a zone list
+            ** of the right size.
             */
             cur_list = NULL;
             break;
@@ -1253,11 +1251,10 @@ MR_gc_zones(void)
             /*
             ** GCC 3.3 thinks that oldest_lru_token will used uninitialised.
             ** But it won't, lru_free_memory_zones will always be NULL and
-            ** therefore the ** if branch will be followed to set this
-            ** variable before it is read in the condition of the else if
-            ** branch.
+            ** therefore the if branch will be followed to set this variable
+            ** before it is read in the condition of the else-if branch.
             **
-            ** To avoid this problem we initialise oldest_lru_token.
+            ** To avoid this problem, we initialise oldest_lru_token.
             */
             oldest_lru_token = 0;
             while(cur_list != NULL) {
@@ -1279,8 +1276,8 @@ MR_gc_zones(void)
 
         if (NULL == lru_free_memory_zones) {
             /*
-            ** There's no memory to collect, perhaps there was a race before we
-            ** locked mercury_zones_lock.
+            ** There is no memory to collect, perhaps there was a race
+            ** before we locked mercury_zones_lock.
             */
             MR_UNLOCK(&memory_zones_lock, "MR_gc_zones");
             return;
@@ -1301,12 +1298,13 @@ MR_gc_zones(void)
         MR_assert(NULL != zone);
 
         /*
-         * Unlink zone from the free list.
-         */
+        * Unlink zone from the free list.
+        */
         if (prev_zone == NULL) {
             /*
-             * The list that contained zone is now free, unlink it from it's list.
-             */
+            * The list that contained zone is now free, unlink it
+            ** from its list.
+            */
             if (NULL != lru_free_memory_zones->MR_zonesfree_major_prev) {
                 lru_free_memory_zones->MR_zonesfree_major_prev->
                         MR_zonesfree_major_next =
@@ -1322,8 +1320,8 @@ MR_gc_zones(void)
             }
         } else {
             /*
-             * Simply unlink zone
-             */
+            ** Simply unlink zone.
+            */
             prev_zone->MR_zone_next = NULL;
             lru_free_memory_zones->MR_zonesfree_minor_tail = prev_zone;
         }
@@ -1333,8 +1331,8 @@ MR_gc_zones(void)
         MR_free_zone(zone);
 
         /*
-         * Clear the LRU information
-         */
+        ** Clear the LRU information.
+        */
         lru_free_memory_zones = NULL;
 
     } while (!MR_should_stop_gc_memory_zones());

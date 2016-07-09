@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2006-2007, 2011 The University of Melbourne.
@@ -31,7 +31,7 @@
     }
 
     switch (MR_type_ctor_rep(type_ctor_info)) {
-        case MR_TYPECTOR_REP_ENUM: 
+        case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
             MR_TABLE_ENUM(STATS, DEBUG, BACK, table_next, table,
                 MR_type_ctor_num_functors(type_ctor_info), data);
@@ -45,7 +45,7 @@
             table = table_next;
             return table;
 
-        case MR_TYPECTOR_REP_DUMMY: 
+        case MR_TYPECTOR_REP_DUMMY:
             /*
             ** If we are ever asked to table a value of a dummy type, we treat
             ** it mostly as an enum, with the exception being that we ignore
@@ -63,12 +63,12 @@
             table = table_next;
             return table;
 
-        case MR_TYPECTOR_REP_RESERVED_ADDR: 
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ: 
+        case MR_TYPECTOR_REP_RESERVED_ADDR:
+        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
             {
                 int                         i;
                 MR_ReservedAddrTypeLayout   ra_layout;
-                
+
                 ra_layout = MR_type_ctor_layout(type_ctor_info).
                     MR_layout_reserved_addr;
 
@@ -107,7 +107,7 @@
                         return table;
                     }
                 }
-                    
+
                 /*
                 ** Otherwise, it is not one of the reserved addresses,
                 ** so handle it like a normal DU type.
@@ -116,14 +116,14 @@
                 goto du_type;
             }
 
-        case MR_TYPECTOR_REP_DU: 
-        case MR_TYPECTOR_REP_DU_USEREQ: 
+        case MR_TYPECTOR_REP_DU:
+        case MR_TYPECTOR_REP_DU_USEREQ:
             du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
             /* fall through */
-        
+
         /*
         ** This label handles both the DU case and the second half of the
-        ** RESERVED_ADDR case.  `du_type_layout' must be set before
+        ** RESERVED_ADDR case. `du_type_layout' must be set before
         ** this code is entered.
         */
         du_type:
@@ -255,7 +255,7 @@
             }
             return table;
 
-        case MR_TYPECTOR_REP_NOTAG: 
+        case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
             {
                 MR_MemoryList       allocated_memory_cells = NULL;
@@ -272,7 +272,7 @@
             }
             return table;
 
-        case MR_TYPECTOR_REP_NOTAG_GROUND: 
+        case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
             MR_TABLE_ANY(STATS, DEBUG, BACK, "notag ground arg",
                 table_next, table,

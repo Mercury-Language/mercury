@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -16,30 +19,30 @@
 
 #include "mercury_std.h"
 
-typedef	struct MR_CTerm_Struct		*MR_CTerm;
-typedef	struct MR_CArgs_Struct		*MR_CArgs;
+typedef struct MR_CTerm_Struct      *MR_CTerm;
+typedef struct MR_CArgs_Struct      *MR_CArgs;
 
-typedef	struct MR_FlatTerm_Struct	*MR_FlatTerm;
-typedef	struct MR_FlatArgs_Struct	*MR_FlatArgs;
+typedef struct MR_FlatTerm_Struct   *MR_FlatTerm;
+typedef struct MR_FlatArgs_Struct   *MR_FlatArgs;
 
 struct MR_CTerm_Struct {
-	char		*MR_term_functor;
-	MR_CArgs	MR_term_args;
+    char        *MR_term_functor;
+    MR_CArgs    MR_term_args;
 };
 
 struct MR_CArgs_Struct {
-	MR_CTerm	MR_args_head;
-	MR_CArgs	MR_args_tail;
+    MR_CTerm    MR_args_head;
+    MR_CArgs    MR_args_tail;
 };
 
 struct MR_FlatTerm_Struct {
-	char		*MR_flat_term_functor;
-	MR_FlatArgs	MR_flat_term_args;
+    char        *MR_flat_term_functor;
+    MR_FlatArgs MR_flat_term_args;
 };
 
 struct MR_FlatArgs_Struct {
-	char		*MR_flat_args_head;
-	MR_FlatArgs	MR_flat_args_tail;
+    char        *MR_flat_args_head;
+    MR_FlatArgs MR_flat_args_tail;
 };
 
 /*
@@ -63,14 +66,14 @@ struct MR_FlatArgs_Struct {
 **   and to the site of the syntax error otherwise.
 */
 
-extern	MR_CTerm	MR_create_cterm(char *str, char **rest,
-				MR_bool *mismatch, char **error);
+extern  MR_CTerm    MR_create_cterm(char *str, char **rest,
+                        MR_bool *mismatch, char **error);
 
 /*
 ** Print this term to the given file.
 */
 
-extern	void		MR_print_cterm(FILE *fp, MR_CTerm term);
+extern  void        MR_print_cterm(FILE *fp, MR_CTerm term);
 
 /*
 ** Release the memory taken by the structures inside term. The memory taken
@@ -78,6 +81,6 @@ extern	void		MR_print_cterm(FILE *fp, MR_CTerm term);
 ** is up to the caller.
 */
 
-extern	void		MR_delete_cterm(MR_CTerm term);
+extern  void        MR_delete_cterm(MR_CTerm term);
 
 #endif /* MERCURY_TRACE_TERM_H */

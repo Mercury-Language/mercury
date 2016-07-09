@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 INIT mercury_sys_init_stacks
@@ -918,7 +918,7 @@ static void
 MR_cleanup_generator_ptr(MR_SubgoalPtr subgoal)
 {
     if (subgoal->MR_sg_status == MR_SUBGOAL_COMPLETE) {
-        /* there is nothing to do, everything is OK */
+        /* There is nothing to do, everything is OK. */
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("no cleanup: generator %p -> %s is complete\n",
@@ -926,7 +926,7 @@ MR_cleanup_generator_ptr(MR_SubgoalPtr subgoal)
         }
 #endif
     } else {
-        /* this generator will never complete the subgoal */
+        /* This generator will never complete the subgoal. */
         MR_ConsumerList consumer_list;
 
 #ifdef  MR_TABLE_DEBUG

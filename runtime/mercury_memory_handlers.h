@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab ft=c
+*/
+/*
 ** Copyright (C) 1998,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -11,8 +14,8 @@
 ** including accesses to the redzones at the end of each zone.
 */
 
-#ifndef	MERCURY_MEMORY_HANDLERS_H
-#define	MERCURY_MEMORY_HANDLERS_H
+#ifndef MERCURY_MEMORY_HANDLERS_H
+#define MERCURY_MEMORY_HANDLERS_H
 
 #include "mercury_memory_zones.h"
 
@@ -22,14 +25,14 @@
 ** fail if there is no space left in the zone.
 */
 
-extern	MR_ZoneHandler MR_default_handler;
+extern  MR_ZoneHandler MR_default_handler;
 
 /*
 ** MR_null_handler is a function that can be passed to MR_create_zone
 ** which always fails.
 */
 
-extern	MR_ZoneHandler MR_null_handler;
+extern  MR_ZoneHandler MR_null_handler;
 
 /*
 **
@@ -37,7 +40,7 @@ extern	MR_ZoneHandler MR_null_handler;
 **
 */
 
-extern	void	MR_setup_signals(void);
+extern  void    MR_setup_signals(void);
 
 #ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
 /*

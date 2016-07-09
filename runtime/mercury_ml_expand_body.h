@@ -1,5 +1,5 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2001-2007, 2012 The University of Melbourne.
@@ -120,9 +120,9 @@
 */
 
 #include <stdio.h>
-#include "mercury_library_types.h" /* for MR_ArrayType */
+#include "mercury_library_types.h" /* for MR_ArrayType                       */
 #include "mercury_layout_util.h"   /* for MR_materialize_closure_type_params */
-#include "mercury_ho_call.h"       /* for MR_ClosureId etc */
+#include "mercury_ho_call.h"       /* for MR_ClosureId etc                   */
 
 #ifdef MR_DEEP_PROFILING
   #include  "mercury_deep_profiling.h"
@@ -154,39 +154,39 @@
 
 /* set up macro for setting field names without #ifdefs */
 #ifdef  EXPAND_FUNCTOR_FIELD
-  #define copy_and_handle_functor_name(name)                            \
-            do {                                                        \
-                MR_restore_transient_hp();                              \
+  #define copy_and_handle_functor_name(name)                                  \
+            do {                                                              \
+                MR_restore_transient_hp();                                    \
                 MR_make_aligned_string_copy(expand_info->EXPAND_FUNCTOR_FIELD,\
-                    name);                                              \
-                MR_save_transient_hp();                                 \
+                    name);                                                    \
+                MR_save_transient_hp();                                       \
             } while (0)
-  #define handle_functor_name(name)                                     \
-            do {                                                        \
-                MR_restore_transient_hp();                              \
+  #define handle_functor_name(name)                                      \
+            do {                                                         \
+                MR_restore_transient_hp();                               \
                 MR_make_aligned_string(expand_info->EXPAND_FUNCTOR_FIELD,\
-                    name);                                              \
-                MR_save_transient_hp();                                 \
+                    name);                                               \
+                MR_save_transient_hp();                                  \
             } while (0)
-  #define handle_noncanonical_name(tci)                                 \
-            do {                                                        \
-                MR_ConstString  name;                                   \
-                                                                        \
-                name = MR_expand_type_name(tci, MR_TRUE);               \
-                MR_restore_transient_hp();                              \
+  #define handle_noncanonical_name(tci)                                  \
+            do {                                                         \
+                MR_ConstString  name;                                    \
+                                                                         \
+                name = MR_expand_type_name(tci, MR_TRUE);                \
+                MR_restore_transient_hp();                               \
                 MR_make_aligned_string(expand_info->EXPAND_FUNCTOR_FIELD,\
-                    name);                                              \
-                MR_save_transient_hp();                                 \
+                    name);                                               \
+                MR_save_transient_hp();                                  \
             } while (0)
-  #define handle_type_ctor_name(tci)                                    \
-            do {                                                        \
-                MR_ConstString  name;                                   \
-                                                                        \
-                name = MR_expand_type_name(tci, MR_FALSE);              \
-                MR_restore_transient_hp();                              \
+  #define handle_type_ctor_name(tci)                                     \
+            do {                                                         \
+                MR_ConstString  name;                                    \
+                                                                         \
+                name = MR_expand_type_name(tci, MR_FALSE);               \
+                MR_restore_transient_hp();                               \
                 MR_make_aligned_string(expand_info->EXPAND_FUNCTOR_FIELD,\
-                    name);                                              \
-                MR_save_transient_hp();                                 \
+                    name);                                               \
+                MR_save_transient_hp();                                  \
             } while (0)
   #define handle_functor_number(num)                                    \
             do {                                                        \
@@ -405,35 +405,35 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_RESERVED_ADDR:
             {
-				int i;
-				MR_Word data;
-				MR_ReservedAddrTypeLayout ra_layout;
+                int i;
+                MR_Word data;
+                MR_ReservedAddrTypeLayout ra_layout;
 
-				ra_layout = MR_type_ctor_layout(type_ctor_info).
+                ra_layout = MR_type_ctor_layout(type_ctor_info).
                     MR_layout_reserved_addr;
-				data = *data_word_ptr;
+                data = *data_word_ptr;
 
-				/*
-				** First check if this value is one of
-				** the numeric reserved addresses.
-				*/
-				if ((MR_Unsigned) data <
-					(MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
-				{
-					handle_functor_name(ra_layout->MR_ra_constants[data]->
-							MR_ra_functor_name);
+                /*
+                ** First check if this value is one of
+                ** the numeric reserved addresses.
+                */
+                if ((MR_Unsigned) data <
+                    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
+                {
+                    handle_functor_name(ra_layout->MR_ra_constants[data]->
+                            MR_ra_functor_name);
                     handle_type_functor_number(type_ctor_info,
-					        ra_layout->MR_ra_constants[data]->
-						    	MR_ra_functor_ordinal);
-					handle_zero_arity_args();
-					return;
-				}
+                            ra_layout->MR_ra_constants[data]->
+                                MR_ra_functor_ordinal);
+                    handle_zero_arity_args();
+                    return;
+                }
 
-				/*
-				** Next check if this value is one of the
-				** the symbolic reserved addresses.
-				*/
-				for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
+                /*
+                ** Next check if this value is one of the
+                ** the symbolic reserved addresses.
+                */
+                for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
                     if (data == (MR_Word) ra_layout->
                         MR_ra_res_symbolic_addrs[i])
                     {
@@ -444,19 +444,19 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         handle_type_functor_number(type_ctor_info,
                             ra_layout->MR_ra_constants[offset]->
                                 MR_ra_functor_ordinal);
-						handle_zero_arity_args();
-						/* "break" here would just exit the "for" loop */
-						return;
-					}
-				}
+                        handle_zero_arity_args();
+                        /* "break" here would just exit the "for" loop */
+                        return;
+                    }
+                }
 
-				/*
-				** Otherwise, it is not one of the reserved addresses,
-				** so handle it like a normal DU type.
-				*/
-				du_type_layout = ra_layout->MR_ra_other_functors;
-				goto du_type;
-			}
+                /*
+                ** Otherwise, it is not one of the reserved addresses,
+                ** so handle it like a normal DU type.
+                */
+                du_type_layout = ra_layout->MR_ra_other_functors;
+                goto du_type;
+            }
 
         case MR_TYPECTOR_REP_DU_USEREQ:
             if (noncanon == MR_NONCANON_ABORT) {
@@ -472,16 +472,16 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             /* else fall through */
 
         case MR_TYPECTOR_REP_DU:
-			du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
-			/* fall through */
+            du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
+            /* fall through */
 
-			/*
-			** This label handles both the DU case and the second half of the
-			** RESERVED_ADDR case.  `du_type_layout' must be set before
-			** this code is entered.
-			*/
-		du_type:
-			{
+            /*
+            ** This label handles both the DU case and the second half of the
+            ** RESERVED_ADDR case. `du_type_layout' must be set before
+            ** this code is entered.
+            */
+        du_type:
+            {
                 const MR_DuPtagLayout   *ptag_layout;
                 const MR_DuFunctorDesc  *functor_desc;
                 const MR_DuExistInfo    *exist_info;
@@ -527,11 +527,11 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                         handle_functor_name("<<variable>>");
                         handle_zero_arity_args();
-						return;
+                        return;
                     default:
                         MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                              ": invalid sectag_locn");
-				}
+                }
 
                 handle_functor_name(functor_desc->MR_du_functor_name);
                 handle_type_functor_number(type_ctor_info,
@@ -887,10 +887,10 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 goto predfunc;
             }
 
-			/*
-			** This label handles the MR_NONCANON_CC case of both predicates
+            /*
+            ** This label handles the MR_NONCANON_CC case of both predicates
             ** and functions.
-			*/
+            */
         predfunc:
             {
                 MR_Closure          *closure;

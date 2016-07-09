@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2002-2007, 2010 The University of Melbourne.
@@ -29,9 +29,9 @@
   #include "mercury_imp.h"
 #endif
 
-#include "mercury_type_info.h"          /* for MR_TYPECTOR_REP* */
-#include "mercury_type_desc.h"          /* for MR_TypeCtorDesc */
-#include "mercury_misc.h"               /* for MR_fatal_error() */
+#include "mercury_type_info.h"          /* for MR_TYPECTOR_REP*            */
+#include "mercury_type_desc.h"          /* for MR_TypeCtorDesc             */
+#include "mercury_misc.h"               /* for MR_fatal_error()            */
 #include "mercury_heap.h"               /* for MR_create[1-3]() prototypes */
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
@@ -700,8 +700,8 @@ mercury__private_builtin__do_compare__base_typeclass_info_0_0(
 
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mercury_builtin_types;
 
-  #define MR_UNIFY_COMPARE_REP_DEFNS(m, n, a)                               \
-    MR_define_extern_entry(MR_proc_entry_uci_name(m, __Unify__, n, a, 0));  \
+  #define MR_UNIFY_COMPARE_REP_DEFNS(m, n, a)                                \
+    MR_define_extern_entry(MR_proc_entry_uci_name(m, __Unify__, n, a, 0));   \
     MR_define_extern_entry(MR_proc_entry_uci_name(m, __Compare__, n, a, 0)); \
     MR_define_extern_entry(MR_proc_entry_uci_name(m, __CompareRep__, n, a, 0));
 

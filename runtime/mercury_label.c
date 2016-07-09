@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1994-2001, 2003-2004, 2006-2007 The University of Melbourne.
@@ -21,11 +21,11 @@
 
 #include    "mercury_label.h"
 
-#include    "mercury_stack_layout.h"    /* for MR_ProcLayout */
+#include    "mercury_stack_layout.h"    /* for MR_ProcLayout             */
 #include    "mercury_hash_table.h"      /* for MR_Hash_Table and its ops */
-#include    "mercury_prof.h"            /* for prof_output_addr_decl() */
-#include    "mercury_engine.h"          /* for MR_progdebug */
-#include    "mercury_wrapper.h"         /* for MR_do_init_modules() */
+#include    "mercury_prof.h"            /* for prof_output_addr_decl()   */
+#include    "mercury_engine.h"          /* for MR_progdebug              */
+#include    "mercury_wrapper.h"         /* for MR_do_init_modules()      */
 
 #if defined(MR_MINIMAL_MODEL_DEBUG) && !defined(MR_TABLE_DEBUG)
   /*
@@ -336,7 +336,7 @@ MR_process_all_internal_labels(void f(const void *))
 
 /*
 ** The code of MR_lookup_entry_or_internal is similar to, but significantly
-** simpler than, MR_print_label in mercury_debug.c
+** simpler than, MR_print_label in mercury_debug.c.
 */
 
 const char *

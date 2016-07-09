@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1995-2011 The University of Melbourne.
@@ -25,8 +25,9 @@
 #include "mercury_conf.h"
 
 /*
-** MR_VARIABLE_SIZED -- what to put between the []s when declaring
-**          a variable length array at the end of a struct.
+** MR_VARIABLE_SIZED --
+** what to put between the []s when declaring a variable length array
+** at the end of a struct.
 **
 ** The preferred values, if the compiler understands them, convey to the
 ** implementation that the array has a variable length. The default value
@@ -40,10 +41,10 @@
 */
 
 #if __STDC_VERSION__ >= 199901  /* January 1999 */
-  /* Use C9X-style variable-length arrays. */
-  #define   MR_VARIABLE_SIZED   /* nothing */
+  /* Use C9X-style variable-length arrays.      */
+  #define   MR_VARIABLE_SIZED   /* nothing      */
 #elif defined(MR_GNUC)
-  /* Use GNU-style variable-length arrays */
+  /* Use GNU-style variable-length arrays  */
   /* Note: clang does *not* support these. */
   #define   MR_VARIABLE_SIZED   0
 #else
@@ -147,16 +148,16 @@ typedef const char      *MR_ConstString;
 */
 
 typedef struct {
-    MR_Integer size;
-    MR_Word elements[MR_VARIABLE_SIZED];
+    MR_Integer              size;
+    MR_Word                 elements[MR_VARIABLE_SIZED];
 } MR_ArrayType;
 
 typedef MR_ArrayType        *MR_ArrayPtr;
 typedef const MR_ArrayType  *MR_ConstArrayPtr;
 
 typedef struct {
-    MR_Integer num_bits;
-    MR_uint_least8_t elements[MR_VARIABLE_SIZED];
+    MR_Integer              num_bits;
+    MR_uint_least8_t        elements[MR_VARIABLE_SIZED];
 } MR_BitmapType;
 
 typedef MR_BitmapType       *MR_BitmapPtr;
@@ -231,7 +232,7 @@ typedef struct MR_TrailEntry_Struct             MR_TrailEntry;
 typedef struct MR_TrailEntry_Struct             *MR_TrailEntryPtr;
 
 typedef struct MR_Closure_Struct                MR_Closure;
-typedef const MR_Closure                        *MR_ClosurePtr;
+typedef const  MR_Closure                       *MR_ClosurePtr;
 
 typedef struct MR_ClosureId_Struct              MR_ClosureId;
 typedef struct MR_UserClosureId_Struct          MR_UserClosureId;

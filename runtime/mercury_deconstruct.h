@@ -1,7 +1,6 @@
 /*
-** vim:ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
-
 /*
 ** Copyright (C) 2002, 2005, 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General

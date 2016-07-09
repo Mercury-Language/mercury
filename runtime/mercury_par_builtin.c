@@ -1,5 +1,5 @@
 /*
-vim: ft=c ts=4 sw=4 et
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2009, 2011 The University of Melbourne.
@@ -52,7 +52,7 @@ MR_lc_create(unsigned num_workers)
     for (i = 0; i < num_workers; i++) {
         /*
         ** We allocate contexts as necessary, so that we never allocate a
-        ** context we don't use.  Also, by allocating the contexts in
+        ** context we don't use. Also, by allocating the contexts in
         ** MR_lc_spawn_off, already spawned off computations can run in
         ** parallel with the allocation of contexts for computations that are
         ** about to be spawned off.
@@ -142,8 +142,8 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
 
     /*
     ** We have to determine if we're either the last of first workers to
-    ** finish.  To do this we cannot use atomic decrement since we need to do
-    ** more than one comparison, Therefore we use a CAS.
+    ** finish. To do this we cannot use atomic decrement since we need to do
+    ** more than one comparison. We therefore use a CAS.
     */
     last_worker =
         MR_atomic_dec_and_is_zero_int(&(lc->MR_lc_outstanding_workers));
@@ -156,7 +156,7 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
     if (last_worker) {
         MR_US_SPIN_LOCK(&(lc->MR_lc_master_context_lock));
         /*
-        ** Don't read the master field until after we have the lock
+        ** Don't read the master field until after we have the lock.
         */
         MR_CPU_MFENCE;
     }
@@ -175,20 +175,20 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
         if (!last_worker) {
             MR_US_SPIN_LOCK(&(lc->MR_lc_master_context_lock));
             /*
-            ** Don't read the master field until after we have the lock
+            ** Don't read the master field until after we have the lock.
             */
             MR_CPU_MFENCE;
         }
         wakeup_context = lc->MR_lc_master_context;
         lc->MR_lc_master_context = NULL;
-        MR_CPU_SFENCE; /* Make sure the field to nULL */
+        MR_CPU_SFENCE; /* Make sure the field is set to NULL in memory. */
         MR_US_UNLOCK(&(lc->MR_lc_master_context_lock));
         if (wakeup_context != NULL) {
 #ifdef MR_DEBUG_LOOP_CONTROL
             fprintf(stderr, "Waking up master\n");
 #endif
             /*
-            ** XXX: it is faster to switch to this context ourselves
+            ** XXX: It is faster to switch to this context ourselves
             ** since we are going to unload our own context.
             ** Or we should switch to another worker context if there is one.
             */

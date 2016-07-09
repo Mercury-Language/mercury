@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 1996-2000,2002, 2006, 2010-2011 The University of Melbourne.
@@ -90,7 +90,7 @@ MR_fatal_error(const char *fmt, ...)
     int error = errno;
     char errbuf[MR_STRERROR_BUF_SIZE];
 
-    fflush(stdout);     /* in case stdout and stderr are the same */
+    fflush(stdout);     /* In case stdout and stderr are the same. */
 
     if (error != 0) {
         fprintf(stderr, "Errno = %d: %s\n", error,
@@ -106,7 +106,7 @@ MR_fatal_error(const char *fmt, ...)
     MR_trace_report(stderr);
 #endif
 
-    fflush(NULL);       /* flushes all stdio output streams */
+    fflush(NULL);       /* Flushes all stdio output streams. */
 
     exit(EXIT_FAILURE);
 }
@@ -116,7 +116,7 @@ MR_external_fatal_error(const char *locn, const char *fmt, ...)
 {
     va_list args;
 
-    fflush(stdout);     /* in case stdout and stderr are the same */
+    fflush(stdout);     /* In case stdout and stderr are the same. */
 
     fprintf(stderr, "%s: ", locn);
     va_start(args, fmt);
@@ -128,7 +128,7 @@ MR_external_fatal_error(const char *locn, const char *fmt, ...)
     MR_trace_report(stderr);
 #endif
 
-    fflush(NULL);       /* flushes all stdio output streams */
+    fflush(NULL);       /* Flushes all stdio output streams. */
 
     exit(EXIT_FAILURE);
 }

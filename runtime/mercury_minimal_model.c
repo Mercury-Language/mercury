@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2003-2006 The University of Melbourne.
@@ -1107,7 +1107,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
             saved_state->MR_ss_top_layout, MR_sp, MR_curfr);
     }
   #endif /* MR_MINIMAL_MODEL_DEBUG */
-#endif /* MR_TABLE_DEBUG */
+#endif /* MR_TABLE_DEBUG           */
 
     MR_save_transient_registers();
 }
@@ -2503,7 +2503,7 @@ MR_define_label(RET_ALL_MULTI_LABEL(Next));
 MR_END_MODULE
 
 #endif /* MR_USE_MINIMAL_MODEL_STACK_COPY */
-#endif /* MR_HIGHLEVEL_CODE */
+#endif /* MR_HIGHLEVEL_CODE               */
 
 /* Ensure that the initialization code for the above modules gets to run. */
 /*
@@ -2536,8 +2536,8 @@ void mercury_sys_init_mmsc_modules_init_type_tables(void)
 #ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_mmsc_modules_write_out_proc_statics(FILE *fp)
 {
-    /* no proc_statics to write out */
+    /* no proc_statics to write out          */
     /* XXX we need to fix the deep profiling */
-    /* of minimal model tabled predicates */
+    /* of minimal model tabled predicates    */
 }
 #endif

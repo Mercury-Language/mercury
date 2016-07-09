@@ -1,5 +1,5 @@
 /*
-** vim: ts=4 sw=4 expandtab
+** vim: ts=4 sw=4 expandtab ft=c
 */
 /*
 ** Copyright (C) 2009-2011 The University of Melbourne.
@@ -95,6 +95,7 @@
 /*
 ** Markers for begin/end of the Header.
 */
+
 #define MR_TS_EVENT_HEADER_BEGIN    0x68647262 /* 'h' 'd' 'r' 'b' */
 #define MR_TS_EVENT_HEADER_END      0x68647265 /* 'h' 'd' 'r' 'e' */
 
@@ -106,37 +107,40 @@
 ** Header, Event Type, Begin = hetb
 ** Header, Event Type, End = hete
 */
+
 #define MR_TS_EVENT_HET_BEGIN       0x68657462 /* 'h' 'e' 't' 'b' */
 #define MR_TS_EVENT_HET_END         0x68657465 /* 'h' 'e' 't' 'e' */
 
 /*
 ** Markers for the beginning and end of individual event types.
 */
+
 #define MR_TS_EVENT_ET_BEGIN        0x65746200 /* 'e' 't' 'b' 0 */
 #define MR_TS_EVENT_ET_END          0x65746500 /* 'e' 't' 'e' 0 */
 
 /*
-** The threadscope events:
+** The threadscope events.
 */
-#define MR_TS_EVENT_CREATE_THREAD        0 /* (thread)               */
-#define MR_TS_EVENT_RUN_THREAD           1 /* (thread)               */
-#define MR_TS_EVENT_STOP_THREAD          2 /* (thread, status)       */
-#define MR_TS_EVENT_THREAD_RUNNABLE      3 /* (thread)               */
-#define MR_TS_EVENT_MIGRATE_THREAD       4 /* (thread, new_cap)      */
-#define MR_TS_EVENT_SHUTDOWN             7 /* ()                     */
-#define MR_TS_EVENT_THREAD_WAKEUP        8 /* (thread, other_cap)    */
-#define MR_TS_EVENT_GC_START             9 /* ()                     */
-#define MR_TS_EVENT_GC_END              10 /* ()                     */
-#define MR_TS_EVENT_REQUEST_SEQ_GC      11 /* ()                     */
-#define MR_TS_EVENT_REQUEST_PAR_GC      12 /* ()                     */
-#define MR_TS_EVENT_CREATE_SPARK_THREAD 15 /* (spark_thread)         */
-#define MR_TS_EVENT_LOG_MSG             16 /* (message ...)          */
-#define MR_TS_EVENT_STARTUP             17 /* (num_capabilities)     */
+
+#define MR_TS_EVENT_CREATE_THREAD        0 /* (thread)                     */
+#define MR_TS_EVENT_RUN_THREAD           1 /* (thread)                     */
+#define MR_TS_EVENT_STOP_THREAD          2 /* (thread, status)             */
+#define MR_TS_EVENT_THREAD_RUNNABLE      3 /* (thread)                     */
+#define MR_TS_EVENT_MIGRATE_THREAD       4 /* (thread, new_cap)            */
+#define MR_TS_EVENT_SHUTDOWN             7 /* ()                           */
+#define MR_TS_EVENT_THREAD_WAKEUP        8 /* (thread, other_cap)          */
+#define MR_TS_EVENT_GC_START             9 /* ()                           */
+#define MR_TS_EVENT_GC_END              10 /* ()                           */
+#define MR_TS_EVENT_REQUEST_SEQ_GC      11 /* ()                           */
+#define MR_TS_EVENT_REQUEST_PAR_GC      12 /* ()                           */
+#define MR_TS_EVENT_CREATE_SPARK_THREAD 15 /* (spark_thread)               */
+#define MR_TS_EVENT_LOG_MSG             16 /* (message ...)                */
+#define MR_TS_EVENT_STARTUP             17 /* (num_capabilities)           */
 #define MR_TS_EVENT_BLOCK_MARKER        18 /* (size, end_time, capability) */
-#define MR_TS_EVENT_USER_MSG            19 /* (message ...)          */
-#define MR_TS_EVENT_GC_IDLE             20 /* () */
-#define MR_TS_EVENT_GC_WORK             21 /* () */
-#define MR_TS_EVENT_GC_DONE             22 /* () */
+#define MR_TS_EVENT_USER_MSG            19 /* (message ...)                */
+#define MR_TS_EVENT_GC_IDLE             20 /* ()                           */
+#define MR_TS_EVENT_GC_WORK             21 /* ()                           */
+#define MR_TS_EVENT_GC_DONE             22 /* ()                           */
 
 /* 23, 24 used by eden */
 
@@ -144,36 +148,37 @@
 ** Capsets or capability sets are groups of engines with some association,
 ** for instance a group of threads in a process.
 */
-#define MR_TS_EVENT_CAPSET_CREATE       25 /* (capset, capset_type)  */
-#define MR_TS_EVENT_CAPSET_DELETE       26 /* (capset)               */
-#define MR_TS_EVENT_CAPSET_ASSIGN_CAP   27 /* (capset, cap)          */
-#define MR_TS_EVENT_CAPSET_REMOVE_CAP   28 /* (capset, cap)          */
-/* the RTS identifier is in the form of "GHC-version rts_way"  */
+
+#define MR_TS_EVENT_CAPSET_CREATE       25 /* (capset, capset_type)         */
+#define MR_TS_EVENT_CAPSET_DELETE       26 /* (capset)                      */
+#define MR_TS_EVENT_CAPSET_ASSIGN_CAP   27 /* (capset, cap)                 */
+#define MR_TS_EVENT_CAPSET_REMOVE_CAP   28 /* (capset, cap)                 */
+/* the RTS identifier is in the form of "GHC-version rts_way"               */
 #define MR_TS_EVENT_RTS_IDENTIFIER      29 /* (capset, name_version_string) */
-/* the vectors in two these events are null separated strings             */
+/* the vectors in two these events are null separated strings               */
 #define MR_TS_EVENT_PROGRAM_ARGS        30 /* (capset, commandline_vector)  */
 #define MR_TS_EVENT_PROGRAM_ENV         31 /* (capset, environment_vector)  */
 
-#define MR_TS_EVENT_OSPROCESS_PID       32 /* (capset, pid) */
-#define MR_TS_EVENT_OSPROCESS_PPID      33 /* (capset, parent_pid) */
-#define MR_TS_EVENT_SPARK_COUNTERS      34 /* (crt,dud,ovf,cnv,fiz,gcd,rem) */
-#define MR_TS_EVENT_SPARK_CREATE        35 /* () */
-#define MR_TS_EVENT_SPARK_DUD           36 /* () */
-#define MR_TS_EVENT_SPARK_OVERFLOW      37 /* () */
-#define MR_TS_EVENT_SPARK_RUN           38 /* () */
-#define MR_TS_EVENT_SPARK_STEAL         39 /* (victim_cap) */
-#define MR_TS_EVENT_SPARK_FIZZLE        40 /* () */
-#define MR_TS_EVENT_SPARK_GC            41 /* () */
-#define MR_TS_EVENT_INTERN_STRING       42 /* (string, id) */
+#define MR_TS_EVENT_OSPROCESS_PID       32 /* (capset, pid)                  */
+#define MR_TS_EVENT_OSPROCESS_PPID      33 /* (capset, parent_pid)           */
+#define MR_TS_EVENT_SPARK_COUNTERS      34 /* (crt,dud,ovf,cnv,fiz,gcd,rem)  */
+#define MR_TS_EVENT_SPARK_CREATE        35 /* ()                             */
+#define MR_TS_EVENT_SPARK_DUD           36 /* ()                             */
+#define MR_TS_EVENT_SPARK_OVERFLOW      37 /* ()                             */
+#define MR_TS_EVENT_SPARK_RUN           38 /* ()                             */
+#define MR_TS_EVENT_SPARK_STEAL         39 /* (victim_cap)                   */
+#define MR_TS_EVENT_SPARK_FIZZLE        40 /* ()                             */
+#define MR_TS_EVENT_SPARK_GC            41 /* ()                             */
+#define MR_TS_EVENT_INTERN_STRING       42 /* (string, id)                   */
 #define MR_TS_EVENT_WALL_CLOCK_TIME     43 /* (capset, unix_epoch_seconds, nanoseconds) */
-#define MR_TS_EVENT_THREAD_LABEL        44 /* (thread, name_string)  */
-#define MR_TS_EVENT_CAP_CREATE          45 /* (cap)                  */
-#define MR_TS_EVENT_CAP_DELETE          46 /* (cap)                  */
-#define MR_TS_EVENT_CAP_DISABLE         47 /* (cap)                  */
-#define MR_TS_EVENT_CAP_ENABLE          48 /* (cap)                  */
-#define MR_TS_EVENT_HEAP_ALLOCATED      49 /* (heap_capset, alloc_bytes) */
-#define MR_TS_EVENT_HEAP_SIZE           50 /* (heap_capset, size_bytes) */
-#define MR_TS_EVENT_HEAP_LIVE           51 /* (heap_capset, live_bytes) */
+#define MR_TS_EVENT_THREAD_LABEL        44 /* (thread, name_string)          */
+#define MR_TS_EVENT_CAP_CREATE          45 /* (cap)                          */
+#define MR_TS_EVENT_CAP_DELETE          46 /* (cap)                          */
+#define MR_TS_EVENT_CAP_DISABLE         47 /* (cap)                          */
+#define MR_TS_EVENT_CAP_ENABLE          48 /* (cap)                          */
+#define MR_TS_EVENT_HEAP_ALLOCATED      49 /* (heap_capset, alloc_bytes)     */
+#define MR_TS_EVENT_HEAP_SIZE           50 /* (heap_capset, size_bytes)      */
+#define MR_TS_EVENT_HEAP_LIVE           51 /* (heap_capset, live_bytes)      */
 #define MR_TS_EVENT_HEAP_INFO_GHC       52 /* (heap_capset, n_generations,
                                          max_heap_size, alloc_area_size,
                                          mblock_size, block_size) */
@@ -181,57 +186,60 @@
                                          copied_bytes, slop_bytes, frag_bytes,
                                          par_n_threads,
                                          par_max_copied, par_tot_copied) */
-#define MR_TS_EVENT_GC_GLOBAL_SYNC      54 /* ()                     */
+#define MR_TS_EVENT_GC_GLOBAL_SYNC      54 /* ()                         */
 
 #define MR_TS_NUM_EVENT_TAGS            55
 
 #define MR_TS_MER_EVENT_START           100
 
 #define MR_TS_MER_EVENT_START_PAR_CONJ      100 /* (int id, memo'd string id) */
-#define MR_TS_MER_EVENT_END_PAR_CONJ        101 /* (int id) */
-#define MR_TS_MER_EVENT_END_PAR_CONJUNCT    102 /* (int id) */
+#define MR_TS_MER_EVENT_END_PAR_CONJ        101 /* (int id)                  */
+#define MR_TS_MER_EVENT_END_PAR_CONJUNCT    102 /* (int id)                  */
 
 /*
 ** Creating sparks is not specifically mercury, but conjunct IDs are.
 ** If other systems wish to use this event, they can move it
 ** to the main events section.
 */
+
 #define MR_TS_MER_EVENT_SPARK_CREATE        103 /* (int id, spark id) */
 
 #define MR_TS_MER_EVENT_FUT_CREATE          104 /* (fut id, memo'd name id) */
-#define MR_TS_MER_EVENT_FUT_WAIT_NOSUSPEND  105 /* (fut id) */
-#define MR_TS_MER_EVENT_FUT_WAIT_SUSPENDED  106 /* (fut id) */
-#define MR_TS_MER_EVENT_FUT_SIGNAL          107 /* (fut id) */
+#define MR_TS_MER_EVENT_FUT_WAIT_NOSUSPEND  105 /* (fut id)                 */
+#define MR_TS_MER_EVENT_FUT_WAIT_SUSPENDED  106 /* (fut id)                 */
+#define MR_TS_MER_EVENT_FUT_SIGNAL          107 /* (fut id)                 */
 #define MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT \
-                                            108 /* () */
-#define MR_TS_MER_EVENT_WORK_STEALING       109 /* () */
+                                            108 /* ()           */
+#define MR_TS_MER_EVENT_WORK_STEALING       109 /* ()           */
 #define MR_TS_MER_EVENT_RELEASE_CONTEXT     110 /* (context id) */
-#define MR_TS_MER_EVENT_ENGINE_SLEEPING     111 /* () */
+#define MR_TS_MER_EVENT_ENGINE_SLEEPING     111 /* ()           */
 #define MR_TS_MER_EVENT_LOOKING_FOR_LOCAL_SPARK \
-                                            112 /* () */
-#define MR_TS_MER_EVENT_CALLING_MAIN        113 /* () */
-#define MR_TS_MER_EVENT_SPARK_RUN           114 /* (spark id) */
-#define MR_TS_MER_EVENT_SPARK_STEAL         115 /* (victim cap, spark id) */
+                                            112 /* ()                        */
+#define MR_TS_MER_EVENT_CALLING_MAIN        113 /* ()                        */
+#define MR_TS_MER_EVENT_SPARK_RUN           114 /* (spark id)                */
+#define MR_TS_MER_EVENT_SPARK_STEAL         115 /* (victim cap, spark id)    */
 #define MR_TS_MER_EVENT_REUSE_THREAD        116 /* (context id, old context id) */
 #define MR_TS_NUM_MER_EVENTS                 17
 
-#if 0  /* DEPRECATED EVENTS: */
-#define EVENT_CREATE_SPARK        13 /* (cap, thread) */
-#define EVENT_SPARK_TO_THREAD     14 /* (cap, thread, spark_thread) */
-#define MR_TS_EVENT_RUN_SPARK     5 /* (thread, spark_id)     */
+#if 0  /* DEPRECATED EVENTS:                                          */
+#define EVENT_CREATE_SPARK        13 /* (cap, thread)                 */
+#define EVENT_SPARK_TO_THREAD     14 /* (cap, thread, spark_thread)   */
+#define MR_TS_EVENT_RUN_SPARK     5 /* (thread, spark_id)             */
 #define MR_TS_EVENT_STEAL_SPARK   6 /* (thread, victim_cap, spark_id) */
 #endif
 
 /*
 ** Engine set type values for EVENT_CAPSET_CREATE.
 */
+
 #define MR_TS_ENGSET_TYPE_CUSTOM      1 /* reserved for end-user applications */
 #define MR_TS_ENGSET_TYPE_OSPROCESS   2 /* engines belong to same OS process  */
 #define MR_TS_ENGSET_TYPE_CLOCKDOMAIN 3 /* engines share a local clock/time   */
 
 /*
-** Event extension types
+** Event extension types.
 */
+
 #define MR_EXT_TYPE_EXTENSION         1 /* This event extends another event */
 
 /*
@@ -240,13 +248,14 @@
 ** _sensible_ for the buffer to be much larger so that we make system calls
 ** less often.
 */
+
 #define MR_TS_BUFFERSIZE (2*1024*1024)
 #define MR_TS_FILENAME_FORMAT ("%s.eventlog")
 #define MR_TSC_SYNC_NUM_ROUNDS (10)
 #define MR_TSC_SYNC_NUM_BEST_ROUNDS (3)
 
 /* Uncomment this to enable some debugging code */
-/* #define MR_DEBUG_THREADSCOPE 1 */
+/* #define MR_DEBUG_THREADSCOPE 1               */
 
 #if MR_DEBUG_THREADSCOPE
 #define MR_DO_THREADSCOPE_DEBUG(x) do { x; } while(0)
@@ -370,7 +379,7 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** Called from MR_schedule_context()
+        ** Called from MR_schedule_context().
         */
         MR_TS_EVENT_THREAD_RUNNABLE,
         "The context is being placed on the run queue",
@@ -533,13 +542,13 @@ static EventTypeDesc event_type_descs[] = {
         0xFFFF
     },
     /*
-     * We don't use events 43--53.
-     */
+    ** We don't use events 43--53.
+    */
     {
         MR_TS_EVENT_GC_GLOBAL_SYNC,
         /*
         ** If using parallel marking this also means that marker threads are
-        ** ready.  This doesn't apply to Mercury as Boehm uses separate
+        ** ready. This doesn't apply to Mercury as Boehm uses separate
         ** threads
         */
         "The world has stopped and GC may begin",
@@ -709,7 +718,8 @@ get_next_engset_id(void)
 /***************************************************************************/
 
 MR_STATIC_INLINE MR_int_least16_t
-event_type_size(EventType event_type) {
+event_type_size(EventType event_type)
+{
     MR_int_least16_t size;
 
     if (event_type < MR_TS_NUM_EVENT_TAGS) {
@@ -756,8 +766,8 @@ enough_room_for_variable_size_event(struct MR_threadscope_event_buffer *buffer,
 /*
 ** Is a block currently open?
 */
-MR_STATIC_INLINE MR_bool block_is_open(
-    struct MR_threadscope_event_buffer *buffer)
+MR_STATIC_INLINE MR_bool
+block_is_open(struct MR_threadscope_event_buffer *buffer)
 {
     return !(buffer->MR_tsbuffer_block_open_pos == -1);
 }
@@ -765,42 +775,45 @@ MR_STATIC_INLINE MR_bool block_is_open(
 /*
 ** Put words into the current engine's buffer in big endian order.
 */
-MR_STATIC_INLINE void put_byte(struct MR_threadscope_event_buffer *buffer,
-    int byte)
+MR_STATIC_INLINE void
+put_byte(struct MR_threadscope_event_buffer *buffer, int byte)
 {
     buffer->MR_tsbuffer_data[buffer->MR_tsbuffer_pos++] = byte;
 }
 
-MR_STATIC_INLINE void put_be_int16(struct MR_threadscope_event_buffer *buffer,
-    MR_int_least16_t word)
+MR_STATIC_INLINE void
+put_be_int16(struct MR_threadscope_event_buffer *buffer, MR_int_least16_t word)
 {
     put_byte(buffer, (word >> 8) & 0xFF);
     put_byte(buffer, word & 0xFF);
 }
 
-MR_STATIC_INLINE void put_be_uint16(struct MR_threadscope_event_buffer *buffer,
+MR_STATIC_INLINE void
+put_be_uint16(struct MR_threadscope_event_buffer *buffer,
     MR_uint_least16_t word)
 {
     put_byte(buffer, (word >> 8) & 0xFF);
     put_byte(buffer, word & 0xFF);
 }
 
-MR_STATIC_INLINE void put_be_uint32(struct MR_threadscope_event_buffer *buffer,
+MR_STATIC_INLINE void
+put_be_uint32(struct MR_threadscope_event_buffer *buffer,
     MR_uint_least32_t word)
 {
     put_be_uint16(buffer, (word >> 16) & 0xFFFF);
     put_be_uint16(buffer, word & 0xFFFF);
 }
 
-MR_STATIC_INLINE void put_be_uint64(struct MR_threadscope_event_buffer *buffer,
+MR_STATIC_INLINE void
+put_be_uint64(struct MR_threadscope_event_buffer *buffer,
     MR_uint_least64_t word)
 {
     put_be_uint32(buffer, (word >> 32) & 0xFFFFFFFF);
     put_be_uint32(buffer, word & 0xFFFFFFFF);
 }
 
-MR_STATIC_INLINE void put_raw_string(
-    struct MR_threadscope_event_buffer *buffer,
+MR_STATIC_INLINE void
+put_raw_string(struct MR_threadscope_event_buffer *buffer,
     const char *string, unsigned len)
 {
     unsigned i;
@@ -813,8 +826,9 @@ MR_STATIC_INLINE void put_raw_string(
 ** Put a string in the given buffer. The string will be preceded
 ** by a 16 bit integer giving the string's length.
 */
-MR_STATIC_INLINE void put_string_size16(
-    struct MR_threadscope_event_buffer *buffer, const char *string)
+MR_STATIC_INLINE void
+put_string_size16(struct MR_threadscope_event_buffer *buffer,
+    const char *string)
 {
     unsigned i, len;
 
@@ -827,8 +841,9 @@ MR_STATIC_INLINE void put_string_size16(
 ** Put a string in the given buffer. The string will be preceded
 ** by a 32 bit integer giving the string's length.
 */
-MR_STATIC_INLINE void put_string_size32(
-    struct MR_threadscope_event_buffer *buffer, const char *string)
+MR_STATIC_INLINE void
+put_string_size32(struct MR_threadscope_event_buffer *buffer,
+    const char *string)
 {
     unsigned i, len;
 
@@ -837,76 +852,82 @@ MR_STATIC_INLINE void put_string_size32(
     put_raw_string(buffer, string, len);
 }
 
-MR_STATIC_INLINE void put_timestamp(struct MR_threadscope_event_buffer *buffer,
-    Time timestamp)
+MR_STATIC_INLINE void
+put_timestamp(struct MR_threadscope_event_buffer *buffer, Time timestamp)
 {
     put_be_uint64(buffer, timestamp);
 }
 
-MR_STATIC_INLINE void put_eventlog_offset(
-    struct MR_threadscope_event_buffer *buffer, EventlogOffset offset)
+MR_STATIC_INLINE void
+put_eventlog_offset(struct MR_threadscope_event_buffer *buffer,
+    EventlogOffset offset)
 {
     put_be_uint32(buffer, offset);
 }
 
-MR_STATIC_INLINE void put_event_header(
-    struct MR_threadscope_event_buffer *buffer,
+MR_STATIC_INLINE void
+put_event_header(struct MR_threadscope_event_buffer *buffer,
     EventType event_type, Time timestamp)
 {
     put_be_uint16(buffer, event_type);
     put_timestamp(buffer, timestamp);
 }
 
-MR_STATIC_INLINE void put_engine_id(struct MR_threadscope_event_buffer *buffer,
+MR_STATIC_INLINE void
+put_engine_id(struct MR_threadscope_event_buffer *buffer,
     MR_EngineId engine_num)
 {
     put_be_uint16(buffer, engine_num);
 }
 
-MR_STATIC_INLINE void put_context_id(
-    struct MR_threadscope_event_buffer *buffer, MR_ContextId context_id)
+MR_STATIC_INLINE void
+put_context_id(struct MR_threadscope_event_buffer *buffer,
+    MR_ContextId context_id)
 {
     put_be_uint32(buffer, context_id);
 }
 
-MR_STATIC_INLINE void put_stop_reason(
-    struct MR_threadscope_event_buffer *buffer, MR_ContextStopReason reason)
+MR_STATIC_INLINE void
+put_stop_reason(struct MR_threadscope_event_buffer *buffer,
+    MR_ContextStopReason reason)
 {
     put_be_uint16(buffer, reason);
 }
 
-MR_STATIC_INLINE void put_string_id(struct MR_threadscope_event_buffer *buffer,
-    MR_TS_StringId id)
+MR_STATIC_INLINE void
+put_string_id(struct MR_threadscope_event_buffer *buffer, MR_TS_StringId id)
 {
     put_be_uint32(buffer, id);
 }
 
-MR_STATIC_INLINE void put_par_conj_dynamic_id(
-    struct MR_threadscope_event_buffer *buffer, MR_Word* id)
+MR_STATIC_INLINE void
+put_par_conj_dynamic_id(struct MR_threadscope_event_buffer *buffer,
+    MR_Word* id)
 {
     put_be_uint64(buffer, (MR_Word)id);
 }
 
-MR_STATIC_INLINE void put_spark_id(struct MR_threadscope_event_buffer *buffer,
-    MR_SparkId spark_id)
+MR_STATIC_INLINE void
+put_spark_id(struct MR_threadscope_event_buffer *buffer, MR_SparkId spark_id)
 {
     put_be_uint32(buffer, spark_id);
 }
 
-MR_STATIC_INLINE void put_engset_id(struct MR_threadscope_event_buffer *buffer,
+MR_STATIC_INLINE void
+put_engset_id(struct MR_threadscope_event_buffer *buffer,
     MR_EngSetId engset_id)
 {
     put_be_uint32(buffer, engset_id);
 }
 
-MR_STATIC_INLINE void put_engset_type(
-    struct MR_threadscope_event_buffer *buffer, MR_EngSetType type)
+MR_STATIC_INLINE void
+put_engset_type(struct MR_threadscope_event_buffer *buffer, MR_EngSetType type)
 {
     put_be_uint16(buffer, type);
 }
 
-MR_STATIC_INLINE void put_future_id(struct MR_threadscope_event_buffer *buffer,
-    MR_Future* id)
+MR_STATIC_INLINE void
+put_future_id(struct MR_threadscope_event_buffer *buffer, MR_Future* id)
 {
     put_be_uint64(buffer, (MR_Word)id);
 }
@@ -934,8 +955,7 @@ static void open_block(struct MR_threadscope_event_buffer *buffer,
 
 /***************************************************************************/
 
-static MR_TS_StringId
-MR_threadscope_register_string(const char *string);
+static MR_TS_StringId MR_threadscope_register_string(const char *string);
 
 /*
 ** These four events are used to create and manage engine sets.
@@ -1009,7 +1029,7 @@ MR_setup_threadscope(void)
         MR_gettimeofday_offset = -1 * gettimeofday_nsecs();
     }
 
-    /* Configure Boehm */
+    /* Configure Boehm. */
 #ifdef MR_BOEHM_GC
     GC_mercury_callback_start_collect = start_gc_callback;
     GC_mercury_callback_stop_collect = stop_gc_callback;
@@ -1017,24 +1037,20 @@ MR_setup_threadscope(void)
     GC_mercury_callback_resume_thread = resume_thread_gc_callback;
 #endif
 
-    /* Clear the global buffer and setup the file */
+    /* Clear the global buffer and setup the file. */
     global_buffer.MR_tsbuffer_pos = 0;
     global_buffer.MR_tsbuffer_block_open_pos = -1;
     global_buffer.MR_tsbuffer_lock = MR_US_LOCK_INITIAL_VALUE;
     MR_open_output_file_and_write_prelude();
 
-    /*
-    ** Post the initial events to the buffer.
-    */
+    /* Post the initial events to the buffer. */
     process_engset_id = get_next_engset_id();
     MR_threadscope_post_create_engset(process_engset_id,
         MR_TS_ENGSET_TYPE_OSPROCESS);
     MR_threadscope_post_runtime_identifier(process_engset_id,
         "mmc-" MR_VERSION);
 
-    /*
-    ** Put the startup event in the buffer.
-    */
+    /* Put the startup event in the buffer. */
     put_event_header(&global_buffer, MR_TS_EVENT_STARTUP, 0);
     put_engine_id(&global_buffer, (MR_EngineId)MR_num_ws_engines);
 
@@ -1669,7 +1685,7 @@ MR_threadscope_register_string(const char *string)
     ** +4 for the string id.
     */
     if (!enough_room_for_variable_size_event(&global_buffer, strlen(string)
-            + 2 + 4))
+        + 2 + 4))
     {
         flush_event_buffer(&global_buffer);
     }
@@ -2014,7 +2030,7 @@ put_event_type(struct MR_threadscope_event_buffer *buffer,
         put_be_uint16(buffer, SZ_EVENT_TYPE);
         put_be_uint16(buffer, event_type_desc->edt_extends_event);
     } else {
-        /* There is no extended data in this event */
+        /* There is no extended data in this event. */
         put_be_uint32(buffer, 0);
     }
 
@@ -2098,7 +2114,7 @@ start_gc_callback(void)
     );
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
     if (buffer == NULL) {
-        /* GC might be running before we're done setting up */
+        /* GC might be running before we are done setting up. */
         return;
     }
     MR_DO_THREADSCOPE_DEBUG(
@@ -2152,7 +2168,7 @@ stop_gc_callback(void)
     if (MR_thread_engine_base == NULL) return;
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
     if (buffer == NULL) {
-        /* GC might be running before we're done setting up */
+        /* GC might be running before we are done setting up. */
         return;
     }
 
@@ -2188,7 +2204,7 @@ pause_thread_gc_callback(void)
     if (MR_thread_engine_base == NULL) return;
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
     if (buffer == NULL) {
-        /* GC might be running before we're done setting up */
+        /* GC might be running before we are done setting up. */
         return;
     }
 
@@ -2215,7 +2231,7 @@ resume_thread_gc_callback(void)
     if (MR_thread_engine_base == NULL) return;
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
     if (buffer == NULL) {
-        /* GC might be running before we're done setting up */
+        /* GC might be running before we are done setting up. */
         return;
     }
 
@@ -2260,8 +2276,8 @@ gettimeofday_nsecs(void)
         */
         return 0;
     }
-    return (Time)tv.tv_sec * 1000000000 +
-            (Time)tv.tv_usec * 1000;
+    return (Time) tv.tv_sec  * 1000000000 +
+           (Time) tv.tv_usec * 1000;
 }
 
 /***************************************************************************/
