@@ -156,8 +156,7 @@
     % Reads all the characters (code points) from the current input stream
     % until eof or error.
     %
-:- pred read_file(maybe_partial_res(list(char))::out, io::di, io::uo)
-    is det.
+:- pred read_file(maybe_partial_res(list(char))::out, io::di, io::uo) is det.
 
     % Reads all the characters (code points) from the current input stream
     % until eof or error. Returns the result as a string rather than
