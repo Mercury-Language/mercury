@@ -746,8 +746,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         NumTagBits1 = NumTagBits0
     ),
 
-    % If --num-tag-bits negative or unspecified, issue a warning
-    % and assume --num-tag-bits 0.
+    % If --num-tag-bits is negative (which may or may not be its default
+    % value of -1), issue a warning and assume --num-tag-bits 0.
     ( if NumTagBits1 < 0 then
         NumTagBits = 0,
         NumTagBitsSpec =
