@@ -133,9 +133,9 @@ using the following idiom:
 #ifndef MODULE_H
 #define	MODULE_H
 
-/* body of module.h */
+... body of module.h ...
 
-#endif	/* not MODULE_H */
+#endif // not MODULE_H
 </pre>
 <font color="#000000">
 
@@ -187,6 +187,7 @@ working out how an exported function works.
 
 Every source file should have a prologue comment which includes:
 <ul>
+<li>	Vim tag line: "vim: ts=4 sw=4 expandtab ft=c"
 <li>	Copyright notice.
 <li>	Licence info (e.g. GPL or LGPL).
 <li>	Short description of the purpose of the module.
@@ -205,7 +206,14 @@ a global.
 <h3>
 2.2. Comment style</h3>
 
-Use comments of this form:
+New comments should use this form:
+<font color="#0000ff">
+<pre>
+	// Here is a comment.
+	// And here is some more comment.
+</pre>
+<font color="#000000">
+Older comments had this form:
 <font color="#0000ff">
 <pre>
 	/*
@@ -214,7 +222,13 @@ Use comments of this form:
 	*/
 </pre>
 <font color="#000000">
-For annotations to a single line of code:
+New annotations to a single line of code should use this form:
+<font color="#0000ff">
+<pre>
+	i += 3; // Here is a comment about this line of code.
+</pre>
+<font color="#000000">
+Older annotations had this form:
 <font color="#0000ff">
 <pre>
 	i += 3; /* Here's a comment about this line of code. */
@@ -231,9 +245,7 @@ Any code that needs to be revisited because it is a temporary hack
 (or some other expediency) must have a comment of the form:
 <font color="#0000ff">
 <pre>
-	/*
-	** XXX: &lt;reason for revisit&gt;
-	*/
+	// XXX: &lt;reason for revisit&gt;
 </pre>
 <font color="#000000">
 
@@ -249,10 +261,10 @@ be commented like so if they extend for more than a few lines of code:
 <font color="#0000ff">
 <pre>
 #ifdef SOME_VAR
-	/*...*/
-#else	/* not SOME_VAR */
-	/*...*/
-#endif	/* not SOME_VAR */
+	...
+#else	// not SOME_VAR
+	...
+#endif	// not SOME_VAR
 </pre>
 <font color="#000000">
 
@@ -260,24 +272,24 @@ Similarly for
 <font color="#0000ff"><tt>#ifndef</tt><font color="#000000">.
 <p>
 Use the GNU convention of comments that indicate whether the variable
-is true in the #if and #else parts of an #ifdef or #ifndef. For
-instance:
+is true in the #if and #else parts of an #ifdef or #ifndef.
+For instance:
 <font color="#0000ff">
 <pre>
 #ifdef SOME_VAR
-#endif /* SOME_VAR */
+#endif // SOME_VAR
 
 #ifdef SOME_VAR
-	/*...*/
-#else /* not SOME_VAR */
-	/*...*/
-#endif /* not SOME_VAR */
+	...
+#else // not SOME_VAR
+	...
+#endif // not SOME_VAR
 
 #ifndef SOME_VAR
-	/*...*/
-#else	/* SOME_VAR */
-	/*...*/
-#endif	/* SOME_VAR */
+	...
+#else	// SOME_VAR
+	...
+#endif	// SOME_VAR
 </pre>
 <font color="#000000">
 
@@ -375,7 +387,7 @@ same depth as the second line. For example:
 			in_the_condition_of_an +
 			if_then))
 	{
-		/*...*/
+		...
 	}
 		
 </pre>
@@ -391,31 +403,25 @@ Here are example layout styles for the various syntactic constructs:
 <h4> 
 5.2.1. If statement</h4>
 
-Use the "/* end if */" comment if the if statement is larger than a page.
+Add an "// end if" comment if the if statement is larger than a page.
 
 <font color="#0000ff">
 <pre>
-/*
-** Curlies are placed in a K&R-ish manner.
-** And comments look like this.
-*/
+// Curlies are placed according to the K&R one true brace style.
+// And comments look like this.
 if (blah) {
-	/* Always use curlies, even when there's only
-	** one statement in the block.
-	*/
+	// Always use curlies, even when there is only one statement
+    // in the block.
 } else {
-	/* ... */
-} /* end if */
+	...
+} // end if
 
-/*
-** if the condition is so long that the open curly doesn't 
-** fit on the same line as the `if', put it on a line of
-** its own
-*/
+// If the condition is so long that the open curly doesn't fit
+// on the same line as the `if', put it on a line of its own.
 if (a_very_long_condition() &&
 	another_long_condition_that_forces_a_line_wrap())
 {
-	/* ... */
+	...
 }
 
 </pre>
@@ -426,15 +432,15 @@ if (a_very_long_condition() &&
 
 Function names are flush against the left margin. This makes it
 easier to grep for function definitions (as opposed to their invocations).
-In argument lists, put space after commas. And use the <tt>/* func */</tt>
+In argument lists, put space after commas. And use the <tt>// func</tt>
 comment when the function is longer than a page.
 
 <font color="#0000ff">
 <pre>
 int
 rhododendron(int a, float b, double c) {
-	/* ... */
-} /* end rhododendron() */
+	..
+} // end rhododendron()
 </pre>
 <font color="#000000">
 
@@ -461,18 +467,18 @@ int a[] = {
 <pre>
 switch (blah) {
 	case BLAH1:
-		/*...*/
+		...
 		break;
 	case BLAH2: {
 		int i;
 
-		/*...*/
+		...
 		break;
 	}
 	default:
-		/*...*/
+		...
 		break;
-} /* switch */
+} // switch
 </pre>
 <font color="#000000">
 
@@ -490,7 +496,7 @@ struct Point {
 	} cool;
 };
 enum Stuff {
-	STUFF_A, STUFF_B /*...*/
+	STUFF_A, STUFF_B ...
 };
 </pre>
 <font color="#000000">
@@ -501,24 +507,24 @@ enum Stuff {
 <font color="#0000ff">
 <pre>
 while (stuff) {
-	/*...*/
+	...
 }
 
 do {
-	/*...*/
-} while(stuff)
+	...
+} while (stuff)
 
 for (this; that; those) {
-	/* Always use curlies, even if no body. */
+	// Always use curlies, even if there is no body.
 }
 
-/*
-** If no body, do this...
-*/
-while (stuff)
-	{}
-for (this; that; those)
-	{}
+// If no body, do this...
+while (stuff) {
+    // Do nothing.
+}
+for (this; that; those) {
+    // Do nothing.
+}
 
 </pre>
 <font color="#000000">
@@ -537,10 +543,10 @@ each level of nesting. For example:
 
 #ifdef GUAVA
   #ifndef PAPAYA
-  #else /* PAPAYA */
-  #endif /* PAPAYA */
-#else /* not GUAVA */
-#endif /* not GUAVA */
+  #else // PAPAYA
+  #endif // PAPAYA
+#else // not GUAVA
+#endif // not GUAVA
 
 </pre>
 <font color="#000000">
