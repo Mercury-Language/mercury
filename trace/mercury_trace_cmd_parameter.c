@@ -1,28 +1,23 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "parameter" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "parameter" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
-#include "mercury_stack_trace.h"    /* for MR_ContextPosition  */
+#include "mercury_stack_trace.h"    // for MR_ContextPosition
 #include "mercury_string.h"
 
 #include "mercury_trace.h"
@@ -34,10 +29,10 @@
 #include "mercury_trace_alias.h"
 #include "mercury_trace_util.h"
 
-#include "mdb.browser_info.mh"      /* for ML_BROWSE_get_num_io_actions etc */
-#include "mdb.listing.mh"           /* for ML_LISTING_get_list_path etc     */
+#include "mdb.browser_info.mh"      // for ML_BROWSE_get_num_io_actions etc
+#include "mdb.listing.mh"           // for ML_LISTING_get_list_path etc
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 char                    *MR_mmc_options = NULL;
 
@@ -68,7 +63,7 @@ MR_Unsigned             MR_num_context_lines = 2;
 
 MR_SpyWhen              MR_default_breakpoint_scope = MR_SPY_INTERFACE;
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  MR_bool     MR_trace_options_cmd_format(MR_Word *print_set,
                         MR_Word *browse_set, MR_Word *print_all_set,
@@ -79,7 +74,7 @@ static  MR_bool     MR_trace_options_cmd_format_param(MR_Word *print_set,
                         MR_Word *verbose_format, MR_Word *pretty_format,
                         char ***words, int *word_count);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_mmc_options(char **words, int word_count, MR_TraceCmdInfo *cmd,
@@ -88,7 +83,7 @@ MR_trace_cmd_mmc_options(char **words, int word_count, MR_TraceCmdInfo *cmd,
     size_t len;
     size_t i;
 
-    /* allocate the right amount of space */
+    // Allocate the right amount of space.
     len = 0;
     for (i = 1; i < word_count; i++) {
         len += strlen(words[i]) + 1;
@@ -96,7 +91,7 @@ MR_trace_cmd_mmc_options(char **words, int word_count, MR_TraceCmdInfo *cmd,
     len++;
     MR_mmc_options = MR_realloc(MR_mmc_options, len);
 
-    /* copy the arguments to MR_mmc_options */
+    // Copy the arguments to MR_mmc_options.
     MR_mmc_options[0] = '\0';
     for (i = 1; i < word_count; i++) {
         strcat(MR_mmc_options, words[i]);
@@ -451,10 +446,9 @@ MR_trace_cmd_echo(char **words, int word_count, MR_TraceCmdInfo *cmd,
             }
         } else if (MR_streq(words[1], "on")) {
             if (!MR_echo_commands) {
-                /*
-                ** Echo the `echo on' command. This is needed for historical
-                ** reasons (compatibility with our existing test suite).
-                */
+                // Echo the `echo on' command. This is needed for historical
+                // reasons (compatibility with our existing test suite).
+
                 fprintf(MR_mdb_out, "echo on\n");
                 MR_echo_commands = MR_TRUE;
             }
@@ -662,10 +656,9 @@ MR_trace_cmd_max_io_actions(char **words, int word_count,
                 MR_trace_browser_persistent_state, &n);
         );
 
-        /*
-        ** We do this to avoid warnings about MR_Integer and int
-        ** having different sizes on 64-bit architectures.
-        */
+        // We do this to avoid warnings about MR_Integer and int
+        // having different sizes on 64-bit architectures.
+
         num_io_actions = (int) n;
 
         fprintf(MR_mdb_out,
@@ -767,7 +760,8 @@ MR_trace_cmd_format(char **words, int word_count,
     if (! MR_trace_options_cmd_format(&print, &browse, &print_all,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2 &&
         MR_trace_is_portray_format(words[1], &new_format))
     {
@@ -802,7 +796,8 @@ MR_trace_cmd_format_param(char **words, int word_count,
     if (! MR_trace_options_cmd_format_param(&print, &browse, &print_all,
         &flat, &raw_pretty, &verbose, &pretty, &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count != 3) {
         MR_trace_usage_cur_cmd();
     } else {
@@ -899,7 +894,7 @@ MR_trace_cmd_unalias(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 void
 MR_trace_listing_path_ensure_init(void)
@@ -914,7 +909,7 @@ MR_trace_listing_path_ensure_init(void)
     }
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 const char *const    MR_trace_printlevel_cmd_args[] =
     { "none", "some", "all", NULL };
@@ -943,7 +938,7 @@ const char *const    MR_trace_format_param_cmd_args[] =
     "depth", "size", "width", "lines",
     "flat", "pretty", "verbose", NULL };
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static struct MR_option MR_trace_param_cmd_format_opts[] =
 {

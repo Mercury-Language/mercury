@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "help" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "help" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -30,14 +25,14 @@
 #include "mercury_trace_help.h"
 #include "mercury_trace_util.h"
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/* The initial number of lines in documentation entries. */
+// The initial number of lines in documentation entries.
 #define MR_INIT_DOC_CHARS   800
 
 static  const char  *MR_trace_read_help_text(void);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_document_category(char **words, int word_count,
@@ -107,14 +102,12 @@ MR_trace_cmd_help(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Read lines until we find one that contains only "end".
-** Return the lines concatenated together.
-** The memory returned is allocated with MR_malloc();
-** it is the caller's responsibility to MR_free() it when appropriate.
-*/
+// Read lines until we find one that contains only "end".
+// Return the lines concatenated together.
+// The memory returned is allocated with MR_malloc();
+// it is the caller's responsibility to MR_free() it when appropriate.
 
 static const char *
 MR_trace_read_help_text(void)

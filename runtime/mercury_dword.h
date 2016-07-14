@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1998, 2000-2001 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** File: mercury_dword.h
-** Author: zs.
-**
-** This module provides facilities for maintaining unsigned counters (dwords)
-** whose size is at least 64 bits. The reason why we need such counters is that
-** e.g. the amount of memory allocated by a program may be too big to be
-** represented using 32 bits, even on 32 bit platforms, in the presence of
-** e.g. garbage collection.
-*/
+// Copyright (C) 1998, 2000-2001 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-/*---------------------------------------------------------------------------*/
+// File: mercury_dword.h
+// Author: zs.
+//
+// This module provides facilities for maintaining unsigned counters (dwords)
+// whose size is at least 64 bits. The reason why we need such counters is that
+// e.g. the amount of memory allocated by a program may be too big to be
+// represented using 32 bits, even on 32 bit platforms, in the presence of
+// e.g. garbage collection.
+
+////////////////////////////////////////////////////////////////////////////
 
 #ifndef MERCURY_DWORD_H
 #define MERCURY_DWORD_H
@@ -26,13 +21,11 @@
 #include <limits.h>
 #include "mercury_types.h"
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_INT_LEAST64_TYPE
 
-  /*
-  ** This case is nice and simple.
-  */
+  // This case is nice and simple.
 
   typedef MR_uint_least64_t MR_Dword;
 
@@ -56,9 +49,7 @@
 
 #else
 
-  /*
-  ** oh well, guess we have to do it the hard way :-(
-  */
+  // Oh well, guess we have to do it the hard way :-(
 
   typedef struct MR_Dword_Struct
   {
@@ -118,6 +109,6 @@
         (src_dest_dword).MR_dword_high += (src_dword).MR_dword_high     \
     )
 
-#endif /* not MR_INT_LEAST32_TYPE */
+#endif // not MR_INT_LEAST32_TYPE
 
-#endif /* MERCURY_DWORD_H */
+#endif // MERCURY_DWORD_H

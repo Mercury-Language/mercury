@@ -1,5 +1,5 @@
 #!/bin/sh
-# vim: ts=4 sw=4 et
+# vim: ts=4 sw=4 et ft=sh
 
 # If you change max_spec_explicit_arg, you should consider changing
 # the value of the max_specialized_do_call_class_method option in
@@ -87,7 +87,7 @@ do
             spec_hidden_arg=`expr $spec_hidden_arg + 1`
         done
         echo "        default:"
-        echo "            /* fall through to the general case below */"
+        echo "            // Fall through to the general case below"
         echo "            break;"
         echo "    }"
         echo
@@ -97,18 +97,18 @@ do
     if test $spec_explicit_arg -lt 0
     then
         echo "    if (num_hidden_args < MR_CLASS_METHOD_CALL_INPUTS_COMPACT) {"
-        echo "        /* copy the explicit args to the left, from the left */"
+        echo "        // Copy the explicit args to the left, from the left."
         echo "        for (i = 1; i <= num_explicit_args; i++) {"
         echo "            MR_virtual_reg_assign(i + num_hidden_args,"
         echo "                MR_virtual_reg_value(i + MR_CLASS_METHOD_CALL_INPUTS_COMPACT));"
         echo "        }"
         echo "    } else if (num_hidden_args > MR_CLASS_METHOD_CALL_INPUTS_COMPACT) {"
-        echo "        /* copy the explicit args to the right, from the right */"
+        echo "        // Copy the explicit args to the right, from the right."
         echo "        for (i = num_explicit_args; i > 0 ; i--) {"
         echo "            MR_virtual_reg_assign(i + num_hidden_args,"
         echo "                MR_virtual_reg_value(i + MR_CLASS_METHOD_CALL_INPUTS_COMPACT));"
         echo "        }"
-        echo "    } /* else the explicit args are in the right place */"
+        echo "    } // else The explicit args are in the right place."
     else
         i=1
         while test $i -le $spec_explicit_arg

@@ -1,16 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 2005-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 2005-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
 #include "mercury_imp.h"
-#include "mercury_array_macros.h"       /* MR_bsearch etc */
-#include "mercury_trace_base.h"         /* MR_TRACE_CALL_MERCURY */
-#include "type_desc.mh"                 /* ML_get_type_info_for_type_info */
+#include "mercury_array_macros.h"       // MR_bsearch etc
+#include "mercury_trace_base.h"         // MR_TRACE_CALL_MERCURY
+#include "type_desc.mh"                 // ML_get_type_info_for_type_info
 #include "mercury_trace_hold_vars.h"
 
 typedef struct {
@@ -19,7 +16,7 @@ typedef struct {
     MR_Word     MR_held_value;
 } MR_HeldVar;
 
-/* The initial size of the held vars table. */
+// The initial size of the held vars table.
 #define MR_INIT_HELD_VARS   10
 
 static MR_HeldVar   *MR_held_vars;

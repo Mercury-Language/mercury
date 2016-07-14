@@ -1,32 +1,26 @@
 %{
-/*
-** vim: ts=4 sw=4 et
-*/
-/*
-** Copyright (C) 2006-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=yacc
 
-/*
-** Grammar for event set specifications.
-*/
+// Copyright (C) 2006-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// Grammar for event set specifications.
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 
-#include "mercury_trace_term.h"             /* for MR_CTerm and MR_FlatTerm */
-#include "mercury_memory.h"                 /* for MR_NEW */
+#include "mercury_trace_term.h"             // for MR_CTerm and MR_FlatTerm
+#include "mercury_memory.h"                 // for MR_NEW
 
-#include "mercury_event_spec.h"             /* for MR_EventSpecs etc */
-#include "mercury_event_spec_missing.h"     /* for mercury_event_text etc */
-/* #include "mercury_event_parser.h"           the content of this header is
-                                               in bison's .c output anyway;
-                                               including it again chokes GCC
-                                               in some configurations. */
-#include "mercury_event_scanner.h"          /* for mercury_event_lex etc */
+#include "mercury_event_spec.h"             // for MR_EventSpecs etc
+#include "mercury_event_spec_missing.h"     // for mercury_event_text etc
+// #include "mercury_event_parser.h"
+// The content of this header is in bison's .c output anyway;
+// including it again chokes GCC in some configurations.
+#include "mercury_event_scanner.h"          // for mercury_event_lex etc
 
 MR_EventSet         mercury_event_parsetree;
 static  unsigned    mercury_event_next_num = 0;
@@ -83,14 +77,14 @@ static  void        mercury_event_error(const char *s);
 
 %%
 
-/**********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 file        :   TOKEN_EVENT TOKEN_SET TOKEN_ID events
                 {
                     $$ = MR_NEW(struct MR_EventSet_Struct);
                     $$->MR_event_set_name = $3;
                     $$->MR_event_set_spec_list = $4;
-                    /* The following fields are filled in later. */
+                    // The following fields are filled in later.
                     $$->MR_event_set_specs = NULL;
                     $$->MR_event_set_num_events = 0;
                     mercury_event_parsetree = $$;

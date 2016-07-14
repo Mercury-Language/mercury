@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2008,2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "forward" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2008,2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "forward" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -29,12 +24,12 @@
 #include "mercury_trace_cmd_parameter.h"
 #include "mercury_trace_util.h"
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  MR_bool     MR_trace_options_movement_cmd(MR_TraceCmdInfo *cmd,
                         char ***words, int *word_count);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_step(char **words, int word_count, MR_TraceCmdInfo *cmd,
@@ -47,7 +42,8 @@ MR_trace_cmd_step(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1) {
         cmd->MR_trace_cmd = MR_CMD_STEP;
         return STOP_INTERACTING;
@@ -74,7 +70,8 @@ MR_trace_cmd_goto(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         generator_name = NULL;
         if (MR_trace_event_number < n
@@ -85,8 +82,8 @@ MR_trace_cmd_goto(char **words, int word_count, MR_TraceCmdInfo *cmd,
             cmd->MR_trace_stop_generator = generator_name;
             return STOP_INTERACTING;
         } else {
-            /* XXX this message is misleading */
             fflush(MR_mdb_out);
+            // XXX This message is misleading.
             fprintf(MR_mdb_err, "The debugger cannot go to a past event.\n");
         }
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
@@ -97,15 +94,14 @@ MR_trace_cmd_goto(char **words, int word_count, MR_TraceCmdInfo *cmd,
         {
             cmd->MR_trace_cmd = MR_CMD_GOTO;
             cmd->MR_trace_stop_event = n;
-            /*
-            ** We don't ever deallocate the memory allocated here,
-            ** but this memory leak leaks only negligible amounts of memory.
-            */
+            // We don't ever deallocate the memory allocated here,
+            // but this memory leak leaks only negligible amounts of memory.
+
             cmd->MR_trace_stop_generator = strdup(generator_name);
             return STOP_INTERACTING;
         } else {
-            /* XXX this message is misleading */
             fflush(MR_mdb_out);
+            // XXX This message is misleading.
             fprintf(MR_mdb_err, "The debugger cannot go to a past event.\n");
         }
 #endif
@@ -130,7 +126,7 @@ MR_trace_cmd_next(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_Word                 *base_curfr;
     MR_Unsigned             reused_frames;
     MR_Level                actual_level;
-    const char              *problem;       /* not used */
+    const char              *problem;       // Not used.
 
     depth = event_info->MR_call_depth;
     cmd->MR_trace_strict = MR_TRUE;
@@ -138,7 +134,8 @@ MR_trace_cmd_next(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
         return KEEP_INTERACTING;
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         stop_depth = depth - n;
@@ -203,7 +200,7 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_Word                 *base_curfr;
     MR_Unsigned             reused_frames;
     MR_Level                actual_level;
-    const char              *problem;       /* not used */
+    const char              *problem;       // Not used.
 
     depth = event_info->MR_call_depth;
     cmd->MR_trace_strict = MR_TRUE;
@@ -211,7 +208,8 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
         return KEEP_INTERACTING;
     } else if (word_count == 2 &&
         ( MR_streq(words[1], "entry") || MR_streq(words[1], "clentry")))
@@ -219,7 +217,7 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
         if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_FRAME,
             &ancestor_level))
         {
-            /* the error message has already been printed */
+            // The error message has already been printed.
             return KEEP_INTERACTING;
         }
     } else if (word_count == 2 && MR_streq(words[1], "clparent"))
@@ -227,7 +225,7 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
         if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_PARENT_FRAME,
             &ancestor_level))
         {
-            /* the error message has already been printed */
+            // The error message has already been printed.
             return KEEP_INTERACTING;
         }
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
@@ -297,7 +295,7 @@ MR_trace_cmd_fail(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
         return KEEP_INTERACTING;
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         stop_depth = depth - n;
@@ -316,11 +314,9 @@ MR_trace_cmd_fail(char **words, int word_count, MR_TraceCmdInfo *cmd,
         return KEEP_INTERACTING;
     }
 
-    /*
-    ** A procedure that lives on the nondet stack cannot have its stack frame
-    ** reused by tail recursive calls (at least not when any kind of debugging
-    ** is enabled).
-    */
+    // A procedure that lives on the nondet stack cannot have its stack frame
+    // reused by tail recursive calls (at least not when any kind of debugging
+    // is enabled).
 
     if (depth == stop_depth && event_info->MR_trace_port == MR_PORT_FAIL) {
         MR_trace_do_noop();
@@ -348,7 +344,8 @@ MR_trace_cmd_exception(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1) {
         if (event_info->MR_trace_port != MR_PORT_EXCEPTION) {
             cmd->MR_trace_cmd = MR_CMD_EXCP;
@@ -372,7 +369,8 @@ MR_trace_cmd_return(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1) {
         if (event_info->MR_trace_port == MR_PORT_EXIT) {
             cmd->MR_trace_cmd = MR_CMD_RETURN;
@@ -396,7 +394,8 @@ MR_trace_cmd_user(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1) {
         cmd->MR_trace_cmd = MR_CMD_USER;
         return STOP_INTERACTING;
@@ -416,7 +415,8 @@ MR_trace_cmd_forward(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1) {
         MR_TracePort    port;
 
@@ -448,7 +448,8 @@ MR_trace_cmd_mindepth(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2 &&
         MR_trace_is_natural_number(words[1], &newdepth))
     {
@@ -473,7 +474,8 @@ MR_trace_cmd_maxdepth(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2 &&
         MR_trace_is_natural_number(words[1], &newdepth))
     {
@@ -496,14 +498,14 @@ MR_trace_cmd_continue(char **words, int word_count, MR_TraceCmdInfo *cmd,
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1) {
         cmd->MR_trace_cmd = MR_CMD_TO_END;
         if (! cmd->MR_trace_print_level_specified) {
-            /*
-            ** The user did not specify the print level;
-            ** select the intelligent default.
-            */
+            // The user did not specify the print level;
+            // select the intelligent default.
+
             if (cmd->MR_trace_strict) {
                 cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
             } else {
@@ -518,14 +520,14 @@ MR_trace_cmd_continue(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 const char *const    MR_trace_movement_cmd_args[] =
     { "-N", "-S", "-a", "-i", "-n", "-s",
     "--none", "--some", "--all", "--integrity",
     "--strict", "--no-strict", NULL };
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static struct MR_option MR_trace_movement_cmd_opts[] =
 {

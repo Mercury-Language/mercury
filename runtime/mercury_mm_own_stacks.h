@@ -1,17 +1,12 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2004-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_mm_own_stacks.h:
-** definitions of some basic stuff used for the own stack style of
-** minimal model tabling.
-*/
+// Copyright (C) 2004-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_mm_own_stacks.h:
+// definitions of some basic stuff used for the own stack style of
+// minimal model tabling.
 
 #ifndef MERCURY_MM_OWN_STACKS_H
 #define MERCURY_MM_OWN_STACKS_H
@@ -22,36 +17,34 @@
 
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
 
-/*
-** There is one MR_Generator structure per active generator.
-**
-** The back_ptr field points back to the MR_TrieNode that points to this
-** generator.
-**
-** The context field points to the MR_Context struct of the context that holds
-** the state of this generator, including its pair of stacks.
-**
-** The proc_layout field is set only if debugging is enabled; it allows us
-** to find out what subgoal we are the generator for, and to interpret
-** the answer table.
-**
-** The pred_id field is currently always set to a string identifying the
-** main predicate of the subgoal we are the generator for. It is used for
-** debugging. Once the mmos grade is debugged, we can disable this field.
-**
-** The leader field points to the leader of the clique this generator belongs
-** to; if this generator is the leader, this field points to its own structure.
-** Not yet functional.
-**
-** If this generator is the leader of its clique, the led_generators field will
-** point to a list of all generators in the clique, including itself. If this
-** generator is not the leader of its clique, this field will contain an empty
-** list. Not yet functional.
-**
-** XXX more fields
-**
-** XXX Try encoding the value of MR_cons_registered in the redoip.
-*/
+// There is one MR_Generator structure per active generator.
+//
+// The back_ptr field points back to the MR_TrieNode that points to this
+// generator.
+//
+// The context field points to the MR_Context struct of the context that holds
+// the state of this generator, including its pair of stacks.
+//
+// The proc_layout field is set only if debugging is enabled; it allows us
+// to find out what subgoal we are the generator for, and to interpret
+// the answer table.
+//
+// The pred_id field is currently always set to a string identifying the
+// main predicate of the subgoal we are the generator for. It is used for
+// debugging. Once the mmos grade is debugged, we can disable this field.
+//
+// The leader field points to the leader of the clique this generator belongs
+// to; if this generator is the leader, this field points to its own structure.
+// Not yet functional.
+//
+// If this generator is the leader of its clique, the led_generators field will
+// point to a list of all generators in the clique, including itself. If this
+// generator is not the leader of its clique, this field will contain an empty
+// list. Not yet functional.
+//
+// XXX more fields
+//
+// XXX Try encoding the value of MR_cons_registered in the redoip.
 
 struct MR_Generator_Struct {
     MR_TrieNode             MR_gen_back_ptr;
@@ -81,7 +74,7 @@ struct MR_Consumer_Struct {
     MR_AnswerList           *MR_cons_remaining_answer_list_ptr;
 };
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 extern  MR_Word         MR_mmos_arg_regs[MR_MAX_FAKE_REG];
 extern  MR_GeneratorPtr MR_mmos_new_generator;
@@ -140,7 +133,7 @@ extern  MR_GeneratorPtr MR_table_mmos_setup_generator(MR_TrieNode trie_node,
                             MR_Word genererator_pred,
                             MR_ConstString pred_id);
 
-#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+#endif  // MR_USE_MINIMAL_MODEL_OWN_STACKS
 
 #ifdef  MR_HIGHLEVEL_CODE
 
@@ -153,7 +146,7 @@ extern  MR_GeneratorPtr MR_table_mmos_setup_generator(MR_TrieNode trie_node,
         MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
         MR_Cont cont, void *cont_env_ptr);
 
-#else   /* MR_HIGHLEVEL_CODE */
+#else   // MR_HIGHLEVEL_CODE
 
   #define MR_MMOS_RET_ALL_NONDET_ENTRY                                  \
     MR_proc_entry_user_name(table_builtin,                              \
@@ -162,6 +155,6 @@ extern  MR_GeneratorPtr MR_table_mmos_setup_generator(MR_TrieNode trie_node,
     MR_proc_entry_user_name(table_builtin,                              \
         table_mmos_consume_next_answer_multi, 2, 0)
 
-#endif  /* MR_HIGHLEVEL_CODE */
+#endif  // MR_HIGHLEVEL_CODE
 
-#endif  /* MERCURY_MM_OWN_STACKS_H */
+#endif  // MERCURY_MM_OWN_STACKS_H

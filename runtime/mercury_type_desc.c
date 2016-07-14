@@ -1,16 +1,11 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2002-2004, 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module exists to handle user-visible descriptions of types and type
-** constructors.
-*/
+// Copyright (C) 2002-2004, 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module exists to handle user-visible descriptions of types and type
+// constructors.
 
 #include "mercury_conf.h"
 #ifndef MR_HIGHLEVEL_CODE
@@ -18,8 +13,8 @@
 #endif
 #include "mercury_type_info.h"
 #include "mercury_type_desc.h"
-#include "mercury_heap.h"       /* for MR_offset_incr_hp_msg() */
-#include "mercury_misc.h"       /* for MR_fatal_error()        */
+#include "mercury_heap.h"       // for MR_offset_incr_hp_msg()
+#include "mercury_misc.h"       // for MR_fatal_error()
 
 MR_TypeCtorDesc
 MR_make_type_ctor_desc(MR_TypeInfo type_info, MR_TypeCtorInfo type_ctor_info)
@@ -157,9 +152,7 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
     MR_TypeInfo     *new_type_info_args;
     int             i;
 
-    /*
-    ** We need to treat variable-arity types as a special case here.
-    */
+    // We need to treat variable-arity types as a special case here.
 
     if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
         type_ctor_info = MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(
@@ -208,10 +201,8 @@ MR_compare_type_ctor_desc(MR_TypeCtorDesc tcd1, MR_TypeCtorDesc tcd2)
     int             arity2;
     int             result;
 
-    /*
-    ** We use this algorithm to get comparison results that are
-    ** consistent with MR_compare_type_ctor_info.
-    */
+    // We use this algorithm to get comparison results that are
+    // consistent with MR_compare_type_ctor_info.
 
     tci1 = MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(tcd1);
     tci2 = MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(tcd2);
@@ -222,11 +213,9 @@ MR_compare_type_ctor_desc(MR_TypeCtorDesc tcd1, MR_TypeCtorDesc tcd2)
     }
 
     if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(tcd1)) {
-        /*
-        ** We already know that the two type_ctor_descs refer to
-        ** the same variable-arity type constructor, so they can
-        ** differ only in the arity.
-        */
+        // We already know that the two type_ctor_descs refer to
+        // the same variable-arity type constructor, so they can differ
+        // only in the arity.
 
         arity1 = MR_TYPECTOR_DESC_GET_VA_ARITY(tcd1);
         arity2 = MR_TYPECTOR_DESC_GET_VA_ARITY(tcd2);
@@ -251,10 +240,8 @@ MR_unify_type_ctor_desc(MR_TypeCtorDesc tcd1, MR_TypeCtorDesc tcd2)
     int             arity1;
     int             arity2;
 
-    /*
-    ** We use this algorithm to get comparison results that are
-    ** consistent with MR_unify_type_ctor_info.
-    */
+    // We use this algorithm to get comparison results that are
+    // consistent with MR_unify_type_ctor_info.
 
     tci1 = MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(tcd1);
     tci2 = MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(tcd2);
@@ -264,11 +251,9 @@ MR_unify_type_ctor_desc(MR_TypeCtorDesc tcd1, MR_TypeCtorDesc tcd2)
     }
 
     if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(tcd1)) {
-        /*
-        ** We already know that the two type_ctor_descs refer to
-        ** the same variable-arity type constructor, so they can
-        ** differ only in the arity.
-        */
+        // We already know that the two type_ctor_descs refer to
+        // the same variable-arity type constructor, so they can differ
+        // only in the arity.
 
         arity1 = MR_TYPECTOR_DESC_GET_VA_ARITY(tcd1);
         arity2 = MR_TYPECTOR_DESC_GET_VA_ARITY(tcd2);

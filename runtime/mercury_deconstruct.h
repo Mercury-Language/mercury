@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2002, 2005, 2007, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_deconstruct.h
-**
-** This file declares utility functions for deconstructing terms,
-** for use by the standard library and the debugger.
-*/
+// Copyright (C) 2002, 2005, 2007, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_deconstruct.h
+//
+// This file declares utility functions for deconstructing terms,
+// for use by the standard library and the debugger.
 
 #ifndef MERCURY_DECONSTRUCT_H
 #define MERCURY_DECONSTRUCT_H
@@ -62,18 +57,16 @@ typedef struct {
     MR_TypeInfo             chosen_type_info;
 } MR_ExpandChosenArgOnlyInfo;
 
-/*
-** MR_NONCANON_ABORT asks that deconstructions of noncanonical types should
-** cause a runtime abort.
-**
-** MR_NONCANON_ALLOW asks that deconstructions of noncanonical types should
-** return a constant that indicates this fact.
-**
-** MR_NONCANON_CC asks that deconstruction of noncanonical types should
-** deconstruct the term as if it were canonical. Since by definition,
-** noncanonical types may have more than one representation for the same value,
-** this requires the caller to be in a committed choice context.
-*/
+// MR_NONCANON_ABORT asks that deconstructions of noncanonical types should
+// cause a runtime abort.
+//
+// MR_NONCANON_ALLOW asks that deconstructions of noncanonical types should
+// return a constant that indicates this fact.
+//
+// MR_NONCANON_CC asks that deconstruction of noncanonical types should
+// deconstruct the term as if it were canonical. Since by definition,
+// noncanonical types may have more than one representation for the same value,
+// this requires the caller to be in a committed choice context.
 
 typedef enum {
     MR_NONCANON_ABORT,
@@ -107,31 +100,27 @@ extern  void    MR_expand_named_arg_only(MR_TypeInfo type_info,
                     MR_ConstString chosen_name,
                     MR_ExpandChosenArgOnlyInfo *expand_info);
 
-/*
-** MR_arg() takes the address of a term, its type, and an
-** argument position (the first argument being at position 1).
-** If the given term has an argument at that position, MR_arg
-** returns MR_TRUE and fills in the locations pointed to by the
-** argument_ptr and arg_type_info_ptr arguments with the value
-** and type of the argument at the selected position.
-** If it doesn't, it fails (i.e. returns MR_FALSE).
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
-*/
+// MR_arg() takes the address of a term, its type, and an
+// argument position (the first argument being at position 1).
+// If the given term has an argument at that position, MR_arg
+// returns MR_TRUE and fills in the locations pointed to by the
+// argument_ptr and arg_type_info_ptr arguments with the value
+// and type of the argument at the selected position.
+// If it doesn't, it fails (i.e. returns MR_FALSE).
+//
+// You need to wrap MR_{save/restore}_transient_hp() around
+// calls to this function.
 
 extern  MR_bool MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
                     MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr,
                     const MR_DuArgLocn **arg_locn_ptr,
                     MR_noncanon_handling noncanon);
 
-/*
-** MR_named_arg() is just like MR_arg, except the argument
-** is selected by name, not by position.
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
-*/
+// MR_named_arg() is just like MR_arg, except the argument
+// is selected by name, not by position.
+//
+// You need to wrap MR_{save/restore}_transient_hp() around
+// calls to this function.
 
 extern  MR_bool MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
                     MR_ConstString arg_name, MR_TypeInfo *arg_type_info_ptr,
@@ -139,16 +128,14 @@ extern  MR_bool MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
                     const MR_DuArgLocn **arg_locn_ptr,
                     MR_noncanon_handling noncanon);
 
-/*
-** MR_named_arg_num() takes the address of a term, its type,
-** and an argument name. If the given term has an argument
-** with the given name, it succeeds and returns the argument
-** number (counted starting from 0) of the argument. If it
-** doesn't, it fails (i.e. returns MR_FALSE).
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
-*/
+// MR_named_arg_num() takes the address of a term, its type,
+// and an argument name. If the given term has an argument
+// with the given name, it succeeds and returns the argument
+// number (counted starting from 0) of the argument. If it
+// doesn't, it fails (i.e. returns MR_FALSE).
+//
+// You need to wrap MR_{save/restore}_transient_hp() around
+// calls to this function.
 
 extern  MR_bool MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                     const char *arg_name, int *arg_num_ptr);
@@ -162,4 +149,4 @@ extern  MR_bool MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 extern  MR_Word MR_arg_value_uncommon(MR_Word *arg_ptr,
                     const MR_DuArgLocn *arg_locn);
 
-#endif /* MERCURY_DECONSTRUCT_H */
+#endif // MERCURY_DECONSTRUCT_H

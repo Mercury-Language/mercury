@@ -1,19 +1,14 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2006-2007, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This files defines the bodies of the various variants of the
-** MR_table_type() function.
-**
-** NOTE: Any changes to this function will probably also have to be reflected
-** in the places listed in mercury_type_info.h.
-*/
+// Copyright (C) 2006-2007, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This files defines the bodies of the various variants of the
+// MR_table_type() function.
+//
+// NOTE: Any changes to this function will probably also have to be reflected
+// in the places listed in mercury_type_info.h.
 
     MR_TypeCtorInfo type_ctor_info;
     MR_DuTypeLayout du_type_layout;
@@ -46,19 +41,18 @@
             return table;
 
         case MR_TYPECTOR_REP_DUMMY:
-            /*
-            ** If we are ever asked to table a value of a dummy type, we treat
-            ** it mostly as an enum, with the exception being that we ignore
-            ** the actual value to be tabled (since it contains garbage) and
-            ** substitute the constant zero, which ought to be the enum value
-            ** assigned to the type's only function symbol.
-            **
-            ** We would like the compiler to simply not insert any arguments
-            ** of dummy types into tables. Unfortunately, while the compiler
-            ** can filter out any dummy arguments whose type is statically
-            ** known, it cannot do so for arguments whose type becomes known
-            ** only at runtime.
-            */
+            // If we are ever asked to table a value of a dummy type, we treat
+            // it mostly as an enum, with the exception being that we ignore
+            // the actual value to be tabled (since it contains garbage) and
+            // substitute the constant zero, which ought to be the enum value
+            // assigned to the type's only function symbol.
+            //
+            // We would like the compiler to simply not insert any arguments
+            // of dummy types into tables. Unfortunately, while the compiler
+            // can filter out any dummy arguments whose type is statically
+            // known, it cannot do so for arguments whose type becomes known
+            // only at runtime.
+
             MR_TABLE_ENUM(STATS, DEBUG, BACK, table_next, table, 1, 0);
             table = table_next;
             return table;
@@ -72,10 +66,9 @@
                 ra_layout = MR_type_ctor_layout(type_ctor_info).
                     MR_layout_reserved_addr;
 
-                /*
-                ** First check if this value is one of
-                ** the numeric reserved addresses.
-                */
+                // First check if this value is one of
+                // the numeric reserved addresses.
+
                 if ((MR_Unsigned) data <
                     (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
                 {
@@ -87,10 +80,9 @@
                     break;
                 }
 
-                /*
-                ** Next check if this value is one of the
-                ** the symbolic reserved addresses.
-                */
+                // Next check if this value is one of the
+                // the symbolic reserved addresses.
+
                 for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
                     if (data == (MR_Word)
                         ra_layout->MR_ra_res_symbolic_addrs[i])
@@ -103,15 +95,14 @@
                             ra_layout->MR_ra_constants[offset]->
                                 MR_ra_functor_ordinal);
                         table = table_next;
-                        /* "break" here would just exit the "for" loop */
+                        // "break" here would just exit the "for" loop
                         return table;
                     }
                 }
 
-                /*
-                ** Otherwise, it is not one of the reserved addresses,
-                ** so handle it like a normal DU type.
-                */
+                // Otherwise, it is not one of the reserved addresses,
+                // so handle it like a normal DU type.
+
                 du_type_layout = ra_layout->MR_ra_other_functors;
                 goto du_type;
             }
@@ -119,13 +110,12 @@
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
             du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
-            /* fall through */
+            // fall through
 
-        /*
-        ** This label handles both the DU case and the second half of the
-        ** RESERVED_ADDR case. `du_type_layout' must be set before
-        ** this code is entered.
-        */
+        // This label handles both the DU case and the second half of the
+        // RESERVED_ADDR case. `du_type_layout' must be set before
+        // this code is entered.
+
         du_type:
             {
                 MR_MemoryList           allocated_memory_cells = NULL;
@@ -337,11 +327,10 @@
         case MR_TYPECTOR_REP_FUNC:
         case MR_TYPECTOR_REP_PRED:
             {
-                /*
-                ** XXX tabling of the closures by tabling their code address
-                ** and arguments is not yet implemented, due to the overhead
-                ** of figuring out the closure argument types.
-                */
+                // XXX tabling of the closures by tabling their code address
+                // and arguments is not yet implemented, due to the overhead
+                // of figuring out the closure argument types.
+
         #if 0
                 MR_closure  closure;
                 MR_Word     num_hidden_args;
@@ -360,11 +349,10 @@
                     table = table_next;
                 }
         #else
-                /*
-                ** Instead, we use the following rather simplistic means of
-                ** tabling closures: we just table based on the closure
-                ** address.
-                */
+                // Instead, we use the following rather simplistic means of
+                // tabling closures: we just table based on the closure
+                // address.
+
                 MR_TABLE_INT(STATS, DEBUG, BACK, table_next, table, data);
                 table = table_next;
         #endif
@@ -384,7 +372,7 @@
                 arg_type_info_vector =
                     MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
                 for (i = 0; i < arity; i++) {
-                    /* type_infos are counted starting at one */
+                    // Type_infos are counted starting at one.
                     MR_TABLE_ANY(STATS, DEBUG, BACK, "tuple arg",
                         table_next, table,
                         arg_type_info_vector[i + 1], data_value[i]);
@@ -404,21 +392,19 @@
             MR_fatal_error("Attempt to table a C_POINTER");
 
         case MR_TYPECTOR_REP_STABLE_C_POINTER:
-            /*
-            ** This works because a stable C pointer guarantees that the
-            ** data structures pointed to, indirectly as well as directly,
-            ** will remain stable until the program exits.
-            */
+            // This works because a stable C pointer guarantees that the
+            // data structures pointed to, indirectly as well as directly,
+            // will remain stable until the program exits.
+
             MR_TABLE_INT(STATS, DEBUG, BACK, table_next, table, data);
             table = table_next;
             return table;
 
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
-            /*
-            ** This works because a stable foreign type guarantees that the
-            ** data structures pointed to, indirectly as well as directly,
-            ** will remain stable until the program exits.
-            */
+            // This works because a stable foreign type guarantees that the
+            // data structures pointed to, indirectly as well as directly,
+            // will remain stable until the program exits.
+
             MR_TABLE_INT(STATS, DEBUG, BACK, table_next, table, data);
             table = table_next;
             return table;
@@ -500,7 +486,7 @@
         case MR_TYPECTOR_REP_REFERENCE:
             MR_fatal_error("Attempt to table a value of a reference type");
 
-        case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
+        case MR_TYPECTOR_REP_UNKNOWN: // fallthru
             MR_fatal_error("Unknown layout tag in table_any");
     }
 

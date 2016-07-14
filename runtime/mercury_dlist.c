@@ -1,15 +1,10 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1995, 1997, 1999-2000, 2004-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** Linked list module.
-*/
+// Copyright (C) 1995, 1997, 1999-2000, 2004-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// Linked list module.
 
 #include    "mercury_imp.h"
 #include    <stdio.h>
@@ -53,10 +48,10 @@ MR_dlist_addhead(MR_Dlist *list, const void *data)
     MR_dlist_data(item) = data;
     MR_dlist_length_field(list)++;
 
-    /* item's pointers  */
+    // Item's pointers.
     MR_dlist_next(item) = MR_dlist_next(list);
     MR_dlist_prev(item) = list;
-    /* neighbours' pointers */
+    // Neighbours' pointers.
     MR_dlist_next(MR_dlist_prev(item)) = item;
     MR_dlist_prev(MR_dlist_next(item)) = item;
 
@@ -76,10 +71,10 @@ MR_dlist_addtail(MR_Dlist *list, const void *data)
     MR_dlist_data(item) = data;
     MR_dlist_length_field(list)++;
 
-    /* item's pointers  */
+    // Item's pointers.
     MR_dlist_next(item) = list;
     MR_dlist_prev(item) = MR_dlist_prev(list);
-    /* neighbours' pointers */
+    // Neighbours' pointers.
     MR_dlist_next(MR_dlist_prev(item)) = item;
     MR_dlist_prev(MR_dlist_next(item)) = item;
 
@@ -100,19 +95,19 @@ MR_dlist_addlist(MR_Dlist *list1, MR_Dlist *list2)
     if (MR_dlist_length(list2) > 0) {
         if (MR_dlist_length(list1) == 0) {
             MR_dlist_data(list1) = MR_dlist_data(list2);
-            /* pointers from header */
+            // Pointers from header.
             MR_dlist_next(list1) = MR_dlist_next(list2);
             MR_dlist_prev(list1) = MR_dlist_prev(list2);
-            /* pointers to header   */
+            // Pointers to header.
             MR_dlist_prev(MR_dlist_next(list1)) = list1;
             MR_dlist_next(MR_dlist_prev(list1)) = list1;
         } else {
             MR_dlist_length_field(list1) = MR_dlist_length(list1)
                 + MR_dlist_length(list2);
-            /* end of list 1 to start of list 2 */
+            // End of list 1 to start of list 2.
             MR_dlist_next(MR_dlist_prev(list1)) = MR_dlist_next(list2);
             MR_dlist_prev(MR_dlist_next(list2)) = MR_dlist_prev(list1);
-            /* end of list 2 to start of list 1 */
+            // End of list 2 to start of list 1.
             MR_dlist_next(MR_dlist_prev(list2)) = list1;
             MR_dlist_prev(list1) = MR_dlist_prev(list2);
         }
@@ -151,10 +146,10 @@ MR_dlist_insert_before(MR_Dlist *list, MR_Dlist *where, const void *data)
     MR_dlist_data(item) = data;
     MR_dlist_length_field(list)++;
 
-    /* item's pointers */
+    // Item's pointers.
     MR_dlist_next(item) = where;
     MR_dlist_prev(item) = MR_dlist_prev(where);
-    /* neighbour's pointers */
+    // Neighbour's pointers.
     MR_dlist_next(MR_dlist_prev(item)) = item;
     MR_dlist_prev(MR_dlist_next(item)) = item;
 }
@@ -168,19 +163,17 @@ MR_dlist_insert_after(MR_Dlist *list, MR_Dlist *where, const void *data)
     MR_dlist_data(item) = data;
     MR_dlist_length_field(list)++;
 
-    /* item's pointers */
+    // Item's pointers.
     MR_dlist_next(item) = MR_dlist_next(where);
     MR_dlist_prev(item) = where;
-    /* neighbour's pointers */
+    // Neighbour's pointers.
     MR_dlist_next(MR_dlist_prev(item)) = item;
     MR_dlist_prev(MR_dlist_next(item)) = item;
 
     return;
 }
 
-/*
-**  Return the length of a given list.
-*/
+//Return the length of a given list.
 
 int
 MR_dlist_maybe_null_length(const MR_Dlist *list)
@@ -192,10 +185,8 @@ MR_dlist_maybe_null_length(const MR_Dlist *list)
     return MR_dlist_length(list);
 }
 
-/*
-**  Delete an item from its linked list, and free the node,
-**  and maybe the data.
-*/
+// Delete an item from its linked list, and free the node,
+// and maybe the data.
 
 void
 MR_dlist_delete(MR_Dlist *list, MR_Dlist *item, void (* func)(const void *))

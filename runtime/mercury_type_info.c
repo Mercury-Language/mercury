@@ -1,32 +1,27 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1995-2006, 2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_type_info.c -
-**  Definitions for dealing with type_infos needed by the Mercury
-**  runtime system.
-*/
+// Copyright (C) 1995-2006, 2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_type_info.c -
+//  Definitions for dealing with type_infos needed by the Mercury
+//  runtime system.
 
 #include "mercury_conf.h"
 #ifndef MR_HIGHLEVEL_CODE
   #include "mercury_imp.h"
 #endif
 #include "mercury_type_info.h"
-#include "mercury_misc.h"           /* for MR_fatal_error()        */
-#include "mercury_heap.h"           /* for MR_incr_saved_hp()      */
-#include "mercury_builtin_types.h"  /* for void/0's type_ctor_info */
+#include "mercury_misc.h"           // for MR_fatal_error()
+#include "mercury_heap.h"           // for MR_incr_saved_hp()
+#include "mercury_builtin_types.h"  // for void/0's type_ctor_info
 
 MR_ConstString  MR_ctor_rep_name[] = {
     MR_CTOR_REP_NAMES
 };
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 static MR_PseudoTypeInfo    MR_get_arg_pseudo_type_info(
                                 const MR_PseudoTypeInfoParams params,
@@ -40,7 +35,7 @@ static MR_TypeInfo          MR_get_arg_type_info(
                                 const MR_Word *data_value,
                                 const MR_DuFunctorDesc *functor_desc);
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #define usual_func              MR_make_type_info
 #define exist_func              MR_make_type_info_maybe_existq
@@ -87,17 +82,19 @@ static MR_TypeInfo          MR_get_arg_type_info(
 #ifdef MR_NATIVE_GC
   #define ALLOCATE_WORDS(target, size)                              \
     do {                                                            \
-        /* reserve one extra word for GC forwarding pointer */      \
-        /* (see comments in compiler/mlds_to_c.m for details) */    \
+        /*                                                          \
+        ** Reserve one extra word for GC forwarding pointer         \
+        ** (see comments in compiler/mlds_to_c.m for details).      \
+        */                                                          \
         MR_offset_incr_saved_hp((target), 0, 1, NULL, NULL);        \
         MR_offset_incr_saved_hp((target), 0, (size), NULL, NULL);   \
     } while (0)
-#else /* !MR_NATIVE_GC */
+#else // !MR_NATIVE_GC
   #define ALLOCATE_WORDS(target, size)                              \
     do {                                                            \
         MR_offset_incr_saved_hp((target), 0, (size), NULL, NULL);   \
     } while (0)
-#endif /* !MR_NATIVE_GC */
+#endif // !MR_NATIVE_GC
 
 #include "mercury_make_type_info_body.h"
 #undef  usual_func
@@ -121,17 +118,19 @@ static MR_TypeInfo          MR_get_arg_type_info(
 #ifdef MR_NATIVE_GC
   #define ALLOCATE_WORDS(target, size)                              \
     do {                                                            \
-        /* reserve one extra word for GC forwarding pointer */      \
-        /* (see comments in compiler/mlds_to_c.m for details) */    \
+        /*                                                          \
+        ** Reserve one extra word for GC forwarding pointer         \
+        ** (see comments in compiler/mlds_to_c.m for details).      \
+        */                                                          \
         MR_offset_incr_saved_hp((target), 0, 1, NULL, NULL);        \
         MR_offset_incr_saved_hp((target), 0, (size), NULL, NULL);   \
     } while (0)
-#else /* !MR_NATIVE_GC */
+#else // !MR_NATIVE_GC
   #define ALLOCATE_WORDS(target, size)                              \
     do {                                                            \
         MR_offset_incr_saved_hp((target), 0, (size), NULL, NULL);   \
     } while (0)
-#endif /* !MR_NATIVE_GC */
+#endif // !MR_NATIVE_GC
 
 #include "mercury_make_type_info_body.h"
 #undef  usual_func
@@ -156,24 +155,17 @@ MR_get_arg_pseudo_type_info(const MR_PseudoTypeInfoParams params,
     int                     slot;
     int                     offset;
 
-    /*
-    ** Most changes here should also be reflected in MR_get_arg_type_info
-    ** below.
-    */
+    // Most changes here should also be reflected in MR_get_arg_type_info
+    // below.
 
     arg_num = (MR_Unsigned) pseudo_type_info;
 
     if (MR_TYPE_VARIABLE_IS_UNIV_QUANT(pseudo_type_info)) {
-        /*
-        ** This is a universally quantified type variable.
-        */
+        // This is a universally quantified type variable.
         return params[arg_num];
     }
 
-    /*
-    ** This is an existentially quantified type variable.
-    */
-
+    // This is an existentially quantified type variable.
     exist_info = functor_desc->MR_du_functor_exist_info;
     if (exist_info == NULL) {
         MR_fatal_error("MR_get_arg_pseudo_type_info: no exist_info");
@@ -203,24 +195,17 @@ MR_get_arg_type_info(const MR_TypeInfoParams params,
     int                     slot;
     int                     offset;
 
-    /*
-    ** Most changes here should also be reflected in
-    ** MR_get_arg_pseudo_type_info above.
-    */
+    // Most changes here should also be reflected in
+    // MR_get_arg_pseudo_type_info above.
 
     arg_num = (MR_Unsigned) pseudo_type_info;
 
     if (MR_TYPE_VARIABLE_IS_UNIV_QUANT(pseudo_type_info)) {
-        /*
-        ** This is a universally quantified type variable.
-        */
+        // This is a universally quantified type variable.
         return params[arg_num];
     }
 
-    /*
-    ** This is an existentially quantified type variable.
-    */
-
+    // This is an existentially quantified type variable.
     exist_info = functor_desc->MR_du_functor_exist_info;
     if (exist_info == NULL) {
         MR_fatal_error("MR_get_arg_type_info: no exist_info");
@@ -250,35 +235,26 @@ MR_compare_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     int                 i;
     int                 comp;
 
-    /*
-    ** Try to optimize a common case:
-    ** If type_info addresses are equal, they must represent the
-    ** same type.
-    */
+    // Try to optimize a common case:
+    // If type_info addresses are equal, they must represent the same type.
 
     if (pti1 == pti2) {
         return MR_COMPARE_EQUAL;
     }
 
-    /*
-    ** Otherwise, we need to expand equivalence types, if any.
-    */
+    // Otherwise, we need to expand equivalence types, if any.
 
     pti1 = MR_collapse_equivalences_pseudo(pti1);
     pti2 = MR_collapse_equivalences_pseudo(pti2);
 
-    /*
-    ** Perhaps they are equal now...
-    */
+    // Perhaps they are equal now...
 
     if (pti1 == pti2) {
         return MR_COMPARE_EQUAL;
     }
 
-    /*
-    ** Handle the comparison if either pseudo_type_info is a variable.
-    ** Any non-variable is greater than a variable.
-    */
+    // Handle the comparison if either pseudo_type_info is a variable.
+    // Any non-variable is greater than a variable.
 
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti1) &&
         MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti2))
@@ -300,9 +276,7 @@ MR_compare_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
         return MR_COMPARE_GREATER;
     }
 
-    /*
-    ** Otherwise find the type_ctor_infos, and compare those.
-    */
+    // Otherwise find the type_ctor_infos, and compare those.
 
     tci1 = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti1);
     tci2 = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti2);
@@ -312,19 +286,17 @@ MR_compare_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
         return comp;
     }
 
-    /*
-    ** If the type_ctor_infos are equal, we don't need to compare
-    ** the arity of the types - they must be the same - unless they are
-    ** higher-order (which are all mapped to pred/0 or func/0) or tuples
-    ** (which are all mapped to tuple/0), in which cases we must compare
-    ** the arities before we can check the argument types.
-    */
+    // If the type_ctor_infos are equal, we don't need to compare
+    // the arity of the types - they must be the same - unless they are
+    // higher-order (which are all mapped to pred/0 or func/0) or tuples
+    // (which are all mapped to tuple/0), in which cases we must compare
+    // the arities before we can check the argument types.
 
     if (MR_type_ctor_has_variable_arity(tci1)) {
         num_arg_types_1 = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pti1);
         num_arg_types_2 = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pti2);
 
-            /* Check arity */
+        // Check the arities.
         if (num_arg_types_1 < num_arg_types_2) {
             return MR_COMPARE_LESS;
         } else if (num_arg_types_1 > num_arg_types_2) {
@@ -339,7 +311,7 @@ MR_compare_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
         arg_vector_2 = MR_PSEUDO_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(pti2);
     }
 
-        /* compare the argument types */
+    // Compare the argument types.
     for (i = 1; i <= num_arg_types_1; i++) {
         comp = MR_compare_pseudo_type_info(arg_vector_1[i], arg_vector_2[i]);
         if (comp != MR_COMPARE_EQUAL) {
@@ -361,34 +333,26 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     int                 num_arg_types_2;
     int                 i;
 
-    /*
-    ** Try to optimize a common case:
-    ** If type_info addresses are equal, they must represent the same type.
-    */
+    // Try to optimize a common case:
+    // If type_info addresses are equal, they must represent the same type.
 
     if (pti1 == pti2) {
         return MR_TRUE;
     }
 
-    /*
-    ** Otherwise, we need to expand equivalence types, if any.
-    */
+    // Otherwise, we need to expand equivalence types, if any.
 
     pti1 = MR_collapse_equivalences_pseudo(pti1);
     pti2 = MR_collapse_equivalences_pseudo(pti2);
 
-    /*
-    ** Perhaps they are equal now...
-    */
+    // Perhaps they are equal now...
 
     if (pti1 == pti2) {
         return MR_TRUE;
     }
 
-    /*
-    ** Handle the comparison if either pseudo_type_info is a variable.
-    ** Any non-variable is greater than a variable.
-    */
+    // Handle the comparison if either pseudo_type_info is a variable.
+    // Any non-variable is greater than a variable.
 
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti1) &&
         MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti2))
@@ -408,9 +372,7 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
         return MR_FALSE;
     }
 
-    /*
-    ** Otherwise find the type_ctor_infos, and compare those.
-    */
+    // Otherwise find the type_ctor_infos, and compare those.
 
     tci1 = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti1);
     tci2 = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti2);
@@ -419,19 +381,17 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
         return MR_FALSE;
     }
 
-    /*
-    ** If the type_ctor_infos are equal, we don't need to compare
-    ** the arity of the types - they must be the same - unless they are
-    ** higher-order (which are all mapped to pred/0 or func/0) or tuples
-    ** (which are all mapped to tuple/0), in which cases we must compare
-    ** the arities before we can check the argument types.
-    */
+    // If the type_ctor_infos are equal, we don't need to compare
+    // the arity of the types - they must be the same - unless they are
+    // higher-order (which are all mapped to pred/0 or func/0) or tuples
+    // (which are all mapped to tuple/0), in which cases we must compare
+    // the arities before we can check the argument types.
 
     if (MR_type_ctor_has_variable_arity(tci1)) {
         num_arg_types_1 = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pti1);
         num_arg_types_2 = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pti2);
 
-        /* Check arity. */
+        // Check the arities.
         if (num_arg_types_1 != num_arg_types_2) {
             return MR_FALSE;
         }
@@ -444,7 +404,7 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
         arg_vector_2 = MR_PSEUDO_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(pti2);
     }
 
-    /* Compare the argument types. */
+    // Compare the argument types.
     for (i = 1; i <= num_arg_types_1; i++) {
         if (! MR_unify_pseudo_type_info(arg_vector_1[i], arg_vector_2[i])) {
             return MR_FALSE;
@@ -481,33 +441,25 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
     int             i;
     int             comp;
 
-    /*
-    ** Try to optimize a common case:
-    ** If type_info addresses are equal, they must represent the same type.
-    */
+    // Try to optimize a common case:
+    // If type_info addresses are equal, they must represent the same type.
 
     if (ti1 == ti2) {
         return MR_COMPARE_EQUAL;
     }
 
-    /*
-    ** Otherwise, we need to expand equivalence types, if any.
-    */
+    // Otherwise, we need to expand equivalence types, if any.
 
     ti1 = MR_collapse_equivalences(ti1);
     ti2 = MR_collapse_equivalences(ti2);
 
-    /*
-    ** Perhaps they are equal now...
-    */
+    // Perhaps they are equal now...
 
     if (ti1 == ti2) {
         return MR_COMPARE_EQUAL;
     }
 
-    /*
-    ** Otherwise find the type_ctor_infos, and compare those.
-    */
+    // Otherwise find the type_ctor_infos, and compare those.
 
     tci1 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(ti1);
     tci2 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(ti2);
@@ -517,19 +469,17 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
         return comp;
     }
 
-    /*
-    ** If the type_ctor_infos are equal, we don't need to compare
-    ** the arity of the types - they must be the same - unless they are
-    ** higher-order (which are all mapped to pred/0 or func/0) or tuples
-    ** (which are all mapped to tuple/0), in which cases we must compare
-    ** the arities before we can check the argument types.
-    */
+    // If the type_ctor_infos are equal, we don't need to compare
+    // the arity of the types - they must be the same - unless they are
+    // higher-order (which are all mapped to pred/0 or func/0) or tuples
+    // (which are all mapped to tuple/0), in which cases we must compare
+    // the arities before we can check the argument types.
 
     if (MR_type_ctor_has_variable_arity(tci1)) {
         num_arg_types_1 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti1);
         num_arg_types_2 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti2);
 
-        /* Check arity. */
+        // Check the arities.
         if (num_arg_types_1 < num_arg_types_2) {
             return MR_COMPARE_LESS;
         } else if (num_arg_types_1 > num_arg_types_2) {
@@ -544,7 +494,7 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
         arg_vector_2 = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(ti2);
     }
 
-    /* Compare the argument types. */
+    // Compare the argument types.
     for (i = 1; i <= num_arg_types_1; i++) {
         comp = MR_compare_type_info(arg_vector_1[i], arg_vector_2[i]);
         if (comp != MR_COMPARE_EQUAL) {
@@ -566,33 +516,25 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
     int             num_arg_types_2;
     int             i;
 
-    /*
-    ** Try to optimize a common case:
-    ** If type_info addresses are equal, they must represent the same type.
-    */
+    // Try to optimize a common case:
+    // If type_info addresses are equal, they must represent the same type.
 
     if (ti1 == ti2) {
         return MR_TRUE;
     }
 
-    /*
-    ** Otherwise, we need to expand equivalence types, if any.
-    */
+    // Otherwise, we need to expand equivalence types, if any.
 
     ti1 = MR_collapse_equivalences(ti1);
     ti2 = MR_collapse_equivalences(ti2);
 
-    /*
-    ** Perhaps they are equal now...
-    */
+    // Perhaps they are equal now...
 
     if (ti1 == ti2) {
         return MR_TRUE;
     }
 
-    /*
-    ** Otherwise find the type_ctor_infos, and compare those.
-    */
+    // Otherwise find the type_ctor_infos, and compare those.
 
     tci1 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(ti1);
     tci2 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(ti2);
@@ -601,19 +543,17 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
         return MR_FALSE;
     }
 
-    /*
-    ** If the type_ctor_infos are equal, we don't need to compare
-    ** the arity of the types - they must be the same - unless they are
-    ** higher-order (which are all mapped to pred/0 or func/0) or tuples
-    ** (which are all mapped to tuple/0), in which cases we must compare
-    ** the arities before we can check the argument types.
-    */
+    // If the type_ctor_infos are equal, we don't need to compare
+    // the arity of the types - they must be the same - unless they are
+    // higher-order (which are all mapped to pred/0 or func/0) or tuples
+    // (which are all mapped to tuple/0), in which cases we must compare
+    // the arities before we can check the argument types.
 
     if (MR_type_ctor_has_variable_arity(tci1)) {
         num_arg_types_1 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti1);
         num_arg_types_2 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti2);
 
-            /* Check arity */
+        // Check the arities.
         if (num_arg_types_1 != num_arg_types_2) {
             return MR_FALSE;
         }
@@ -626,7 +566,7 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
         arg_vector_2 = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(ti2);
     }
 
-    /* Compare the argument types. */
+    // Compare the argument types.
     for (i = 1; i <= num_arg_types_1; i++) {
         if (! MR_unify_type_info(arg_vector_1[i], arg_vector_2[i])) {
             return MR_FALSE;
@@ -647,14 +587,12 @@ MR_compare_type_ctor_info(MR_TypeCtorInfo tci1, MR_TypeCtorInfo tci2)
     int             arity1;
     int             arity2;
 
-    /*
-    ** We are relying on the fact that type_ctor_infos are always
-    ** statically allocated to ensure that two type_ctor_infos are
-    ** for the same type iff their address is the same.
-    **
-    ** The casts to (MR_Unsigned) here are in the hope of increasing
-    ** the chance that this will work on a segmented architecture.
-    */
+    // We are relying on the fact that type_ctor_infos are always
+    // statically allocated to ensure that two type_ctor_infos are
+    // for the same type iff their address is the same.
+    //
+    // The casts to (MR_Unsigned) here are in the hope of increasing
+    // the chance that this will work on a segmented architecture.
 
     if ((MR_Unsigned) tci1 == (MR_Unsigned) tci2) {
         return MR_COMPARE_EQUAL;
@@ -693,14 +631,12 @@ MR_compare_type_ctor_info(MR_TypeCtorInfo tci1, MR_TypeCtorInfo tci2)
 MR_bool
 MR_unify_type_ctor_info(MR_TypeCtorInfo tci1, MR_TypeCtorInfo tci2)
 {
-    /*
-    ** We are relying on the fact that type_ctor_infos are always
-    ** statically allocated to ensure that two type_ctor_infos are
-    ** for the same type iff their address is the same.
-    **
-    ** The casts to (MR_Unsigned) here are in the hope of increasing
-    ** the chance that this will work on a segmented architecture.
-    */
+    // We are relying on the fact that type_ctor_infos are always
+    // statically allocated to ensure that two type_ctor_infos are
+    // for the same type iff their address is the same.
+    //
+    // The casts to (MR_Unsigned) here are in the hope of increasing
+    // the chance that this will work on a segmented architecture.
 
     if ((MR_Unsigned) tci1 == (MR_Unsigned) tci2) {
         return MR_TRUE;
@@ -716,7 +652,7 @@ MR_collapse_equivalences(MR_TypeInfo maybe_equiv_type_info)
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(maybe_equiv_type_info);
 
-    /* Look past equivalences. */
+    // Look past equivalences.
     while (MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_EQUIV_GROUND
         || MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_EQUIV)
     {
@@ -742,7 +678,7 @@ MR_collapse_equivalences_pseudo(MR_PseudoTypeInfo maybe_equiv_pseudo_type_info)
     type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(
         maybe_equiv_pseudo_type_info);
 
-        /* Look past equivalences */
+    // Look past equivalences.
     while (MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_EQUIV_GROUND
         || MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_EQUIV)
     {
@@ -762,19 +698,16 @@ MR_collapse_equivalences_pseudo(MR_PseudoTypeInfo maybe_equiv_pseudo_type_info)
     return maybe_equiv_pseudo_type_info;
 }
 
-/*
-** MR_deallocate() frees up a list of memory cells.
-*/
+// MR_deallocate() frees up a list of memory cells.
 
 void
 MR_deallocate(MR_MemoryList allocated)
 {
     while (allocated != NULL) {
         MR_MemoryList next = allocated->next;
-        /*
-        ** These were allocated with MR_GC_NEW_ARRAY_ATTRIB so we must free
-        ** using MR_GC_free_attrib.
-        **/
+        // These were allocated with MR_GC_NEW_ARRAY_ATTRIB so we must free
+        // using MR_GC_free_attrib.
+
         MR_GC_free_attrib(allocated->data);
         MR_GC_free_attrib(allocated);
         allocated = next;
@@ -825,7 +758,7 @@ MR_arg_name_vector_to_list(int arity, const MR_ConstString *arg_names)
     arg_names_list = MR_list_empty();
 
     if (arg_names == NULL) {
-        /* No arguments have names. */
+        // No arguments have names.
         while (arity > 0) {
             --arity;
             arg_names_list = MR_string_list_cons((MR_Word) NULL,
@@ -856,7 +789,7 @@ MR_pseudo_type_info_vector_to_pseudo_type_info_list(int arity,
     pseudo_type_info_list = MR_list_empty();
 
     while (--arity >= 0) {
-        /* Get the argument type_info. */
+        // Get the argument type_info.
 
         pseudo = arg_pseudo_type_infos[arity];
         if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo) &&
@@ -905,7 +838,7 @@ MR_typeclass_ref_error(MR_Word tci, int n, const char *msg)
     fprintf(stderr, "access parameters: %s, %d\n", msg, n);
     MR_fatal_error("typeclass_info reference error");
 
-    /* not reached */
+    /*NOTREACHED*/
     return 0;
 }
 
@@ -959,4 +892,4 @@ MR_print_type(FILE *fp, MR_TypeInfo type_info)
     }
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////

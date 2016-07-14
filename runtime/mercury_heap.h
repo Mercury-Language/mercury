@@ -1,39 +1,34 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1995-2006, 2010-2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_heap.h - definitions for manipulating the Mercury heap.
-**
-** This file defines several levels of macros for allocating space on
-** the Mercury heap.
-**
-** It would be simpler if all these macros expanded out to statements. However,
-** many cannot, since they must be usable inside expressions. The ultimate
-** reason for this is MR_float_to_word, which is used not just as an operand
-** in expressions, but also as an initializer in static cells generated
-** by the compiler.
-*/
+// Copyright (C) 1995-2006, 2010-2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_heap.h - definitions for manipulating the Mercury heap.
+//
+// This file defines several levels of macros for allocating space on
+// the Mercury heap.
+//
+// It would be simpler if all these macros expanded out to statements. However,
+// many cannot, since they must be usable inside expressions. The ultimate
+// reason for this is MR_float_to_word, which is used not just as an operand
+// in expressions, but also as an initializer in static cells generated
+// by the compiler.
 
 #ifndef MERCURY_HEAP_H
 #define MERCURY_HEAP_H
 
-#include "mercury_conf.h"               /* for MR_CONSERVATIVE_GC           */
-#include "mercury_conf_param.h"         /* for MR_RECORD_TERM_SIZES         */
-#include "mercury_types.h"              /* for `MR_Word'                    */
-#include "mercury_context.h"            /* for min_heap_reclamation_point() */
-#include "mercury_heap_profile.h"       /* for MR_record_allocation()       */
-#include "mercury_deep_profiling.h"     /* for MR_current_call_site_dynamic */
-#include "mercury_std.h"                /* for MR_EXTERN_INLINE             */
-#include "mercury_reg_workarounds.h"    /* for MR_memcpy                    */
-#include "mercury_debug.h"              /* for MR_debugtagoffsetincrhp*     */
+#include "mercury_conf.h"               // for MR_CONSERVATIVE_GC
+#include "mercury_conf_param.h"         // for MR_RECORD_TERM_SIZES
+#include "mercury_types.h"              // for `MR_Word'
+#include "mercury_context.h"            // for min_heap_reclamation_point()
+#include "mercury_heap_profile.h"       // for MR_record_allocation()
+#include "mercury_deep_profiling.h"     // for MR_current_call_site_dynamic
+#include "mercury_std.h"                // for MR_EXTERN_INLINE
+#include "mercury_reg_workarounds.h"    // for MR_memcpy
+#include "mercury_debug.h"              // for MR_debugtagoffsetincrhp*
 #ifdef MR_HIGHLEVEL_CODE
-  #include "mercury.h"                  /* for MR_new_object() */
+  #include "mercury.h"                  // for MR_new_object()
 #endif
 
 #ifdef MR_CONSERVATIVE_GC
@@ -43,19 +38,17 @@
   #ifdef MR_BOEHM_GC
     #define GC_I_HIDE_POINTERS
     #include "gc.h"
-    #include "gc_mark.h"                /* for GC_least_plausible_heap_addr */
-                                        /* GC_greatest_plausible_heap_addr  */
+    #include "gc_mark.h"                // for GC_least_plausible_heap_addr
+                                        // GC_greatest_plausible_heap_addr
   #endif
 #endif
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** The first level of heap allocation macros. These are concerned with
-** the raw business of allocating memory, taking and restoring snapshots
-** of the state of the heap, and recording profiling information for the
-** profdeep grade and complexity experiments.
-*/
+// The first level of heap allocation macros. These are concerned with
+// the raw business of allocating memory, taking and restoring snapshots
+// of the state of the heap, and recording profiling information for the
+// profdeep grade and complexity experiments.
 
 #ifdef MR_DEBUG_HEAP_ALLOC
   #define   MR_tag_offset_sanity_check(offset, count)                       \
@@ -116,31 +109,28 @@
 
   #ifdef MR_INLINE_ALLOC
 
-    /*
-    ** The following stuff uses the macros in the `gc_inline.h' header file in
-    ** the Boehm garbage collector. They improve performance a little for
-    ** highly allocation-intensive programs (e.g. the `nrev' benchmark).
-    ** You will probably need to fool around with the `-I' options to get this
-    ** to work. Also, you must make sure that you compile with the same
-    ** setting for -DSILENT that the boehm_gc directory was compiled with.
-    **
-    ** We only want to inline allocations if the allocation size is a
-    ** compile-time constant. This should be true for almost all the code that
-    ** we generate, but with GCC we can use the `__builtin_constant_p()'
-    ** extension to find out.
-    **
-    ** The inline allocation macros are used only for allocating amounts
-    ** of less than 16 words, to avoid fragmenting memory by creating too
-    ** many distinct free lists. The garbage collector also requires that
-    ** if we are allocating more than one word, we round up to an even number
-    ** of words.
-    */
+    // The following stuff uses the macros in the `gc_inline.h' header file in
+    // the Boehm garbage collector. They improve performance a little for
+    // highly allocation-intensive programs (e.g. the `nrev' benchmark).
+    // You will probably need to fool around with the `-I' options to get this
+    // to work. Also, you must make sure that you compile with the same
+    // setting for -DSILENT that the boehm_gc directory was compiled with.
+    //
+    // We only want to inline allocations if the allocation size is a
+    // compile-time constant. This should be true for almost all the code that
+    // we generate, but with GCC we can use the `__builtin_constant_p()'
+    // extension to find out.
+    //
+    // The inline allocation macros are used only for allocating amounts
+    // of less than 16 words, to avoid fragmenting memory by creating too
+    // many distinct free lists. The garbage collector also requires that
+    // if we are allocating more than one word, we round up to an even number
+    // of words.
 
     #ifndef MR_GNUC
-      /*
-      ** Without the gcc extensions __builtin_constant_p() and ({...}),
-      ** MR_INLINE_ALLOC would probably be a performance _loss_.
-      */
+      // Without the gcc extensions __builtin_constant_p() and ({...}),
+      // MR_INLINE_ALLOC would probably be a performance _loss_.
+
       #error "MR_INLINE_ALLOC requires the use of GCC"
     #endif
     #ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
@@ -156,7 +146,7 @@
                 MR_tag_offset_sanity_check((offset), (count)),              \
                 MR_maybe_increment_complexity_counters((count)),            \
                 MR_profdeep_maybe_record_allocation((count)),               \
-                /* if size > 1, round up to an even number of words */      \
+                /* If size > 1, round up to an even number of words. */     \
                 MR_Word num_words = ((count) == 1 ? 1 :                     \
                     2 * (((count) + 1) / 2));                               \
                 GC_MALLOC_WORDS(temp, num_words);                           \
@@ -166,12 +156,12 @@
             : MR_tag_offset_incr_hp_n((dest), (tag), (offset), (count))     \
             )
 
-  #else /* !MR_INLINE_ALLOC */
+  #else // !MR_INLINE_ALLOC
 
     #define MR_tag_offset_incr_hp(dest, tag, offset, count)                 \
             MR_tag_offset_incr_hp_n((dest), (tag), (offset), (count))
 
-  #endif /* MR_INLINE_ALLOC */
+  #endif // MR_INLINE_ALLOC
 
   #define   MR_mark_hp(dest)        ((void) 0)
   #define   MR_restore_hp(src)      ((void) 0)
@@ -183,7 +173,7 @@
                 }                                                           \
             } while (0)
 
-#else /* not MR_CONSERVATIVE_GC */
+#else // not MR_CONSERVATIVE_GC
 
   #define   MR_tag_offset_incr_hp_base(dest, tag, offset, count, is_atomic) \
             (                                                               \
@@ -206,12 +196,11 @@
 
   #define   MR_mark_hp(dest)      ((dest) = MR_hp_word)
 
-  /*
-  ** When restoring MR_hp, we must make sure that we don't truncate the heap
-  ** further than it is safe to. We can only truncate it as far as
-  ** min_heap_reclamation_point. See the comments in mercury_context.h next to
-  ** the MR_set_min_heap_reclamation_point() macro.
-  */
+  // When restoring MR_hp, we must make sure that we don't truncate the heap
+  // further than it is safe to. We can only truncate it as far as
+  // min_heap_reclamation_point. See the comments in mercury_context.h next to
+  // the MR_set_min_heap_reclamation_point() macro.
+
   #define   MR_restore_hp(src)                                              \
             (                                                               \
                 MR_hp_word = (MR_Word) (src),                               \
@@ -230,15 +219,13 @@
 
   #define   MR_free_heap(ptr)     ((void) 0)
 
-#endif /* not MR_CONSERVATIVE_GC */
+#endif // not MR_CONSERVATIVE_GC
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** The second level of heap allocation macros. These are concerned with
-** recording profiling information for memory profiling grades. Memory
-** attribution profiling adds an extra word at the start of each object.
-*/
+// The second level of heap allocation macros. These are concerned with
+// recording profiling information for memory profiling grades. Memory
+// attribution profiling adds an extra word at the start of each object.
 
 #if defined(MR_MPROF_PROFILE_MEMORY)
   #define   MR_profmem_record_allocation(count, alloc_id, type)             \
@@ -252,16 +239,14 @@
   #define   MR_profmem_attrib_word   (1)
   #define   MR_profmem_set_attrib(dest, tag, alloc_id)                      \
             ((MR_Word *) MR_strip_tag(dest))[-1] = (MR_Word) (alloc_id)
-            /*
-            ** XXX This version causes gcc 4.4.4 on x86 to abort when
-            ** compiling mercury_bitmap.c.
-            ** MR_field((tag), (dest), 0) = (MR_Word) (alloc_id)
-            */
-            /*
-            ** Hand-written code must set the MR_asi_type field at runtime.
-            ** When the type argument is NULL, as it is for generated code,
-            ** the C compiler can optimise away the condition and assignment.
-            */
+            // XXX This version causes gcc 4.4.4 on x86 to abort when
+            // compiling mercury_bitmap.c.
+            // MR_field((tag), (dest), 0) = (MR_Word) (alloc_id)
+
+            // Hand-written code must set the MR_asi_type field at runtime.
+            // When the type argument is NULL, as it is for generated code,
+            // the C compiler can optimise away the condition and assignment.
+
   #define   MR_profmem_set_alloc_type(alloc_id, type)                       \
             ((alloc_id) != NULL && (type) != NULL &&                        \
              (((MR_AllocSiteInfo *) (alloc_id))->MR_asi_type = (type)))
@@ -294,12 +279,10 @@
                 MR_profmem_record_allocation((count), (alloc_id), (type))   \
             )
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** The third level of heap allocation macros. These are shorthands, supplying
-** default values of some of the parameters of the previous macros.
-*/
+// The third level of heap allocation macros. These are shorthands, supplying
+// default values of some of the parameters of the previous macros.
 
 #define     MR_tag_incr_hp(dest, tag, count)                                \
             MR_tag_offset_incr_hp((dest), (tag), 0, (count))
@@ -312,10 +295,8 @@
             MR_tag_offset_incr_hp_atomic_msg((dest), (tag), 0, (count),     \
                 (alloc_id), (type))
 
-/*
-** The MR_offset_incr_hp*() macros are defined in terms of the
-** MR_tag_offset_incr_hp*() macros.
-*/
+// The MR_offset_incr_hp*() macros are defined in terms of the
+// MR_tag_offset_incr_hp*() macros.
 
 #define     MR_offset_incr_hp(dest, offset, count)                          \
             MR_tag_offset_incr_hp((dest), MR_mktag(0), (offset), (count))
@@ -331,7 +312,7 @@
                 (count), (alloc_id), (type))
 
 #ifdef  MR_CONSERVATIVE_GC
-            /* we use `MR_hp_word' as a convenient temporary here */
+            // We use `MR_hp_word' as a convenient temporary here.
   #define   MR_hp_alloc(count) (                                            \
                 MR_offset_incr_hp(MR_hp_word, 0, (count)),                  \
                 MR_hp_word = (MR_Word) (MR_hp + (count)),                   \
@@ -343,7 +324,7 @@
                 MR_hp_word = (MR_Word) (MR_hp + (count)),                   \
                 (void) 0                                                    \
             )
-#else /* !MR_CONSERVATIVE_GC */
+#else // !MR_CONSERVATIVE_GC
 
   #define   MR_hp_alloc(count)                                              \
             MR_offset_incr_hp(MR_hp_word, 0, (count))
@@ -351,14 +332,12 @@
             MR_offset_incr_hp_atomic_msg(MR_hp_word, 0, (count),            \
                 (alloc_id), (type))
 
-#endif /* MR_CONSERVATIVE_GC */
+#endif // MR_CONSERVATIVE_GC
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** The fourth level of heap allocation macros. These implement the various
-** cases of the incr_hp LLDS instruction, and look after recording term sizes.
-*/
+// The fourth level of heap allocation macros. These implement the various
+// cases of the incr_hp LLDS instruction, and look after recording term sizes.
 
 #ifndef MR_RECORD_TERM_SIZES
 
@@ -390,10 +369,9 @@
                 (dest) = (typename *) tmp;                                  \
             } while (0)
 
-/*
-** These are only used by the compiler in non-memory profiling grades,
-** so do not have _msg equivalents. Avoid these in hand-written code.
-*/
+// These are only used by the compiler in non-memory profiling grades,
+// so do not have _msg equivalents. Avoid these in hand-written code.
+
 #define     MR_alloc_heap(dest, count)                                      \
             MR_tag_offset_incr_hp((dest), MR_mktag(0), 0, (count))
 #define     MR_alloc_heap_atomic(dest, count)                               \
@@ -405,13 +383,13 @@
 
 #ifdef MR_HIGHLEVEL_CODE
 
-/* term size profiling is not supported with MR_HIGHLEVEL_CODE */
+  // Term size profiling is not supported with MR_HIGHLEVEL_CODE.
   #define       MR_SIZE_SLOT_SIZE                           0
   #define       MR_cell_size(arity)                         0
   #define       MR_define_size_slot(ptag, new, size)        0
   #define       MR_copy_size_slot(nptag, new, optag, old)   0
 
-#else /* ! MR_HIGHLEVEL_CODE */
+#else // ! MR_HIGHLEVEL_CODE
 
   #ifdef  MR_RECORD_TERM_SIZES
     #define MR_SIZE_SLOT_SIZE 1
@@ -424,11 +402,11 @@
     #define     MR_define_size_slot(ptag, new, size)                        \
                 do {                                                        \
                     MR_field(ptag, new, -1) = size;                         \
-                } while(0)
+                } while (0)
     #define     MR_copy_size_slot(nptag, new, optag, old)                   \
                 do {                                                        \
                     MR_field(nptag, new, -1) = MR_field(optag, old, -1);    \
-                } while(0)
+                } while (0)
   #else
     #define     MR_SIZE_SLOT_SIZE                             0
     #define     MR_cell_size(arity)                           0
@@ -436,15 +414,13 @@
     #define     MR_copy_size_slot(nptag, new, optag, old)     0
   #endif
 
-#endif /* ! MR_HIGHLEVEL_CODE */
+#endif // ! MR_HIGHLEVEL_CODE
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Macros to implement structure reuse, conditional on whether the structure
-** to reuse is really dynamically allocated. If not, fall back to allocating
-** a new object on the heap.
-*/
+// Macros to implement structure reuse, conditional on whether the structure
+// to reuse is really dynamically allocated. If not, fall back to allocating
+// a new object on the heap.
 
 #define     MR_reuse_or_alloc_heap(dest, reuse, fallback_alloc)             \
             MR_tag_reuse_or_alloc_heap((dest), 0, (reuse), (fallback_alloc))
@@ -467,16 +443,15 @@
             ((void *) (addr) >= GC_least_plausible_heap_addr &&             \
              (void *) (addr) < GC_greatest_plausible_heap_addr)             \
 
-#else /* ! MR_BOEHM_GC || MR_UNCONDITIONAL_STRUCTURE_REUSE  */
+#else // ! MR_BOEHM_GC || MR_UNCONDITIONAL_STRUCTURE_REUSE
 
-  /*
-  ** We don't have any way to check whether `addr' is dynamically allocated,
-  ** so just assume that it is. For this to be safe, `--static-ground-terms'
-  ** needs to be disabled.
-  */
+  // We don't have any way to check whether `addr' is dynamically allocated,
+  // so just assume that it is. For this to be safe, `--static-ground-terms'
+  // needs to be disabled.
+
   #define   MR_in_heap_range(addr)  (MR_TRUE)
 
-#endif /* ! MR_BOEHM_GC || MR_UNCONDITIONAL_STRUCTURE_REUSE  */
+#endif // ! MR_BOEHM_GC || MR_UNCONDITIONAL_STRUCTURE_REUSE
 
 #define     MR_tag_reuse_or_alloc_heap_flag(dest, tag, flag, reuse_addr,    \
                 fallback_alloc)                                             \
@@ -497,17 +472,13 @@
                 (dest) = MR_in_heap_range(tmp) ? tmp : (MR_Word) NULL;      \
             } while (0)
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Macros to box/unbox types declared with `pragma foreign_type'.
-*/
+// Macros to box/unbox types declared with `pragma foreign_type'.
 
-/*
-** void MR_MAYBE_BOX_FOREIGN_TYPE(type T, const T &value, MR_Box &box):
-** Copy a value of type T from `value' to `box', boxing it if necessary
-** (i.e. if type T won't fit in type MR_Box).
-*/
+// void MR_MAYBE_BOX_FOREIGN_TYPE(type T, const T &value, MR_Box &box):
+// Copy a value of type T from `value' to `box', boxing it if necessary
+// (i.e. if type T won't fit in type MR_Box).
 
 #define MR_MAYBE_BOX_FOREIGN_TYPE(T, value, box)                            \
         do {                                                                \
@@ -519,8 +490,10 @@
                 MR_Word     box_word;                                       \
                 size_t size_in_words =                                      \
                     (sizeof(T) + sizeof(MR_Word) - 1) / sizeof(MR_Word);    \
-                /* XXX this assumes that nothing requires */                \
-                /* stricter alignment than MR_Float */                      \
+                /*                                                          \
+                ** XXX This assumes that nothing requires stricter          \
+                ** alignment than MR_Float.                                 \
+                */                                                          \
                 MR_make_hp_float_aligned();                                 \
                 /*                                                          \
                 ** This assumes that we don't keep term sizes               \
@@ -533,13 +506,16 @@
                 MR_profmem_record_allocation(size_in_words, NULL,           \
                     "foreign type: " MR_STRINGIFY(T));                      \
             } else {                                                        \
-                /* We can't take the address of `box' here, */              \
-                /* since it might be a global register. */                  \
-                /* Hence we need to use a temporary copy. */                \
+                /*                                                          \
+                ** We can't take the address of `box' here,                 \
+                ** since it might be a global register.                     \
+                ** Hence we need to use a temporary copy.                   \
+                */                                                          \
                 MR_Box box_copy;                                            \
                 if (sizeof(T) < sizeof(MR_Box)) {                           \
-                    /* make sure we don't leave any */                      \
-                    /* part of it uninitialized */                          \
+                    /*                                                      \
+                    ** Make sure we don't leave any part of it uninitialized. \
+                    */                                                      \
                     box_copy = 0;                                           \
                 }                                                           \
                 MR_memcpy(&box_copy, &(value), sizeof(T));                  \
@@ -547,10 +523,8 @@
             }                                                               \
         } while (0)
 
-/*
-** void MR_MAYBE_UNBOX_FOREIGN_TYPE(type T, MR_Box box, T &value):
-** Copy a value of type T from `box' to `value', unboxing it if necessary.
-*/
+// void MR_MAYBE_UNBOX_FOREIGN_TYPE(type T, MR_Box box, T &value):
+// Copy a value of type T from `box' to `value', unboxing it if necessary.
 
 #define MR_MAYBE_UNBOX_FOREIGN_TYPE(T, box, value)                          \
         do {                                                                \
@@ -559,9 +533,11 @@
             if (sizeof(T) > sizeof(MR_Word)) {                              \
                 MR_assign_structure((value), * (T *) (box));                \
             } else {                                                        \
-                /* We can't take the address of `box' here, */              \
-                /* since it might be a global register. */                  \
-                /* Hence we need to use a temporary copy. */                \
+                /*                                                          \
+                ** We can't take the address of `box' here,                 \
+                ** since it might be a global register.                     \
+                ** Hence we need to use a temporary copy.                   \
+                */                                                          \
                 MR_Box box_copy = (box);                                    \
                 if (sizeof(T) == sizeof(MR_Box)) {                          \
                     (value) = * (T *) &box_copy;                            \
@@ -571,20 +547,16 @@
             }                                                               \
         } while (0)
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** The rest of this file defines macros designed to help hand-written C code
-** create cells on the heap. These macros can be used directly, or indirectly
-** via macros built on top of them. mercury_string.h and mercury_tags.h define
-** some such macros.
-*/
+// The rest of this file defines macros designed to help hand-written C code
+// create cells on the heap. These macros can be used directly, or indirectly
+// via macros built on top of them. mercury_string.h and mercury_tags.h define
+// some such macros.
 
 #ifdef MR_HIGHLEVEL_CODE
 
-/*
-** Note that this code is also duplicated in mercury.c.
-*/
+// Note that this code is also duplicated in mercury.c.
 
 MR_EXTERN_INLINE MR_Word MR_create1_func(MR_Word w1);
 MR_EXTERN_INLINE MR_Word MR_create2_func(MR_Word w1, MR_Word w2);
@@ -640,7 +612,7 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
   #define   MR_create3_msg(ti1, w1, ti2, w2, ti3, w3, alloc_id, type)       \
             MR_create3((ti1), (w1), (ti2), (w2), (ti3), (w3))
 
-#else /* ! MR_HIGHLEVEL_CODE */
+#else // ! MR_HIGHLEVEL_CODE
 
   #ifdef  MR_RECORD_TERM_SIZES
     #define     MR_fill_create1_size(hp, ti1, w1)                           \
@@ -676,13 +648,11 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
     #define     MR_fill_create3_origin(hp, alloc_id)     ((void) 0)
   #endif
 
-/*
-** Note that gcc optimizes `hp += 2; return hp - 2;'
-** to `tmp = hp; hp += 2; return tmp;', so we don't need to use
-** gcc's expression statements in the code below.
-*/
+// Note that gcc optimizes `hp += 2; return hp - 2;'
+// to `tmp = hp; hp += 2; return tmp;', so we don't need to use
+// gcc's expression statements in the code below.
 
-/* used only by hand-written code not by the automatically generated code */
+// Used only by hand-written code not by the automatically generated code.
   #define   MR_create1(ti1, w1)                                             \
             (                                                               \
                 MR_hp_alloc(MR_SIZE_SLOT_SIZE + 1),                         \
@@ -692,7 +662,7 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
                 /* return */ (MR_Word) (MR_hp - 1)                          \
             )
 
-/* used only by hand-written code not by the automatically generated code */
+// Used only by hand-written code not by the automatically generated code.
   #define   MR_create2(ti1, w1, ti2, w2)                                    \
             (                                                               \
                 MR_hp_alloc(MR_SIZE_SLOT_SIZE + 2),                         \
@@ -703,7 +673,7 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
                 /* return */ (MR_Word) (MR_hp - 2)                          \
             )
 
-/* used only by hand-written code not by the automatically generated code */
+// Used only by hand-written code not by the automatically generated code.
   #define   MR_create3(ti1, w1, ti2, w2, ti3, w3)                           \
             (                                                               \
                 MR_hp_alloc(MR_SIZE_SLOT_SIZE + 3),                         \
@@ -715,7 +685,7 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
                 /* return */ (MR_Word) (MR_hp - 3)                          \
             )
 
-/* used only by hand-written code not by the automatically generated code */
+// Used only by hand-written code not by the automatically generated code.
   #define   MR_create1_msg(ti1, w1, alloc_id, type)                         \
             (                                                               \
                 MR_profmem_record_allocation(MR_SIZE_SLOT_SIZE + 1,         \
@@ -729,7 +699,7 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
                 /* return */ (MR_Word) (MR_hp - 1)                          \
             )
 
-/* used only by hand-written code not by the automatically generated code */
+// Used only by hand-written code not by the automatically generated code.
   #define   MR_create2_msg(ti1, w1, ti2, w2, alloc_id, type)                \
             (                                                               \
                 MR_profmem_record_allocation(MR_SIZE_SLOT_SIZE + 2,         \
@@ -744,7 +714,7 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
                 /* return */ (MR_Word) (MR_hp - 2)                          \
             )
 
-/* used only by hand-written code not by the automatically generated code */
+// Used only by hand-written code not by the automatically generated code.
   #define   MR_create3_msg(ti1, w1, ti2, w2, ti3, w3, alloc_id, type)       \
             (                                                               \
                 MR_profmem_record_allocation(MR_SIZE_SLOT_SIZE + 3,         \
@@ -760,19 +730,17 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
                 /* return */ (MR_Word) (MR_hp - 3)                          \
             )
 
-#endif /* ! MR_HIGHLEVEL_CODE */
+#endif // ! MR_HIGHLEVEL_CODE
 
-/*
-** Intended for use in handwritten C code where the Mercury registers
-** may have been clobbered due to C function calls (eg, on the SPARC due
-** to sliding register windows).
-** Remember to MR_save_transient_hp() before calls to such code, and
-** MR_restore_transient_hp() after.
-**
-** There are intentionally no versions that do not specify an offset;
-** this is to force anyone who wants to allocate cells on the saved heap
-** to think about the implications of their code for term size profiling.
-*/
+// Intended for use in handwritten C code where the Mercury registers
+// may have been clobbered due to C function calls (eg, on the SPARC due
+// to sliding register windows).
+// Remember to MR_save_transient_hp() before calls to such code, and
+// MR_restore_transient_hp() after.
+//
+// There are intentionally no versions that do not specify an offset;
+// this is to force anyone who wants to allocate cells on the saved heap
+// to think about the implications of their code for term size profiling.
 
 #define MR_offset_incr_saved_hp(dest, offset, count, alloc_id, type)        \
         do {                                                                \
@@ -790,4 +758,4 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
             MR_save_transient_hp();                                         \
         } while (0)
 
-#endif /* not MERCURY_HEAP_H */
+#endif // not MERCURY_HEAP_H

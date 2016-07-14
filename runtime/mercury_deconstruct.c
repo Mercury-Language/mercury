@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2002-2007, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_deconstruct.c
-**
-** This file provides utility functions for deconstructing terms, for use by
-** the standard library.
-*/
+// Copyright (C) 2002-2007, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_deconstruct.c
+//
+// This file provides utility functions for deconstructing terms, for use by
+// the standard library.
 
 #include "mercury_imp.h"
 #include "mercury_deconstruct.h"
@@ -20,10 +15,9 @@
 #include "mercury_type_desc.h"
 #include "mercury_minimal_model.h"
 
-/*
-** We reserve a buffer to hold the names we dynamically generate
-** for "functors" of foreign types. This macro gives its size.
-*/
+// We reserve a buffer to hold the names we dynamically generate
+// for "functors" of foreign types. This macro gives its size.
+
 #define MR_FOREIGN_NAME_BUF_SIZE    256
 
 static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
@@ -82,11 +76,9 @@ static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 #undef  EXPAND_TYPE_NAME
 #undef  EXPAND_NAMED_ARG
 
-/*
-** N.B. any modifications to the signature of this function will require
-** changes not only to library/deconstruct.m, but also to library/store.m
-** and extras/trailed_update/tr_store.m.
-*/
+// N.B. any modifications to the signature of this function will require
+// changes not only to library/deconstruct.m, but also to library/store.m
+// and extras/trailed_update/tr_store.m.
 
 MR_bool
 MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
@@ -98,7 +90,7 @@ MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     MR_expand_chosen_arg_only(type_info, term_ptr, noncanon, arg_index,
         &expand_info);
 
-    /* Check range. */
+    // Check range.
     if (expand_info.chosen_index_exists) {
         *arg_type_info_ptr = expand_info.chosen_type_info;
         *arg_ptr = expand_info.chosen_value_ptr;
@@ -119,7 +111,7 @@ MR_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
     MR_expand_named_arg_only(type_info, term_ptr, noncanon, arg_name,
         &expand_info);
 
-    /* Check range. */
+    // Check range.
     if (expand_info.chosen_index_exists) {
         *arg_type_info_ptr = expand_info.chosen_type_info;
         *arg_ptr = expand_info.chosen_value_ptr;
@@ -161,34 +153,30 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                 MR_layout_reserved_addr;
             data = *term_ptr;
 
-            /*
-            ** First check if this value is one of
-            ** the numeric reserved addresses.
-            */
+            // First check if this value is one of
+            // the numeric reserved addresses.
+
             if ((MR_Unsigned) data <
                 (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
             {
-                /*
-                ** If so, it must be a constant, and constants never have
-                ** any arguments.
-                */
+                // If so, it must be a constant, and constants never have
+                // any arguments.
+
                 return MR_FALSE;
             }
 
-            /*
-            ** Next check if this value is one of the
-            ** the symbolic reserved addresses.
-            */
+            // Next check if this value is one of the
+            // the symbolic reserved addresses.
+
             for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
                 if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i]) {
                     return MR_FALSE;
                 }
             }
 
-            /*
-            ** Otherwise, it is not one of the reserved addresses,
-            ** so handle it like a normal DU type.
-            */
+            // Otherwise, it is not one of the reserved addresses,
+            // so handle it like a normal DU type.
+
             du_type_layout = ra_layout->MR_ra_other_functors;
             goto du_type;
         }
@@ -197,13 +185,12 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_DU:
             data = *term_ptr;
             du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
-            /* fall through */
+            // fall through
 
-        /*
-        ** This label handles both the DU case and the second half of the
-        ** RESERVED_ADDR case. `du_type_layout' and `data' must both be set
-        ** before this code is entered.
-        */
+        // This label handles both the DU case and the second half of the
+        // RESERVED_ADDR case. `du_type_layout' and `data' must both be set
+        // before this code is entered.
+
         du_type:
             ptag = MR_tag(data);
             ptag_layout = &du_type_layout[ptag];
@@ -324,14 +311,14 @@ MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
 
     len = 0;
     len += strlen(tci->MR_type_ctor_module_name);
-    len += 1;   /* '.' */
+    len += 1;   // '.'
     len += strlen(tci->MR_type_ctor_name);
-    len += 1;   /* '/'                                         */
-    len += 4;   /* arity; we do not support arities above 1024 */
+    len += 1;   // '/'
+    len += 4;   // arity; we do not support arities above 1024
     if (wrap) {
-        len += 4;   /* <<>> */
+        len += 4;   // <<>>
     }
-    len += 1;   /* NULL */
+    len += 1;   // NULL
 
     if (tci->MR_type_ctor_arity > 9999) {
         MR_fatal_error("MR_expand_type_name: arity > 9999");
@@ -357,10 +344,9 @@ MR_arg_value_uncommon(MR_Word *arg_ptr, const MR_DuArgLocn *arg_locn)
 #endif
     MR_Word     val;
 
-    /*
-    ** MR_arg_bits == -1 means the argument is a double-precision floating
-    ** point value occupying two words.
-    */
+    // MR_arg_bits == -1 means the argument is a double-precision floating
+    // point value occupying two words.
+
     if (arg_locn->MR_arg_bits == -1) {
 #ifdef MR_BOXED_FLOAT
         flt = MR_float_from_dword(arg_ptr[0], arg_ptr[1]);
@@ -374,7 +360,7 @@ MR_arg_value_uncommon(MR_Word *arg_ptr, const MR_DuArgLocn *arg_locn)
 #endif
     }
 
-    /* The argument is a packed enumeration value. */
+    // The argument is a packed enumeration value.
     val = *arg_ptr;
     val = (val >> arg_locn->MR_arg_shift)
         & ((MR_Word) (1 << arg_locn->MR_arg_bits) - 1);

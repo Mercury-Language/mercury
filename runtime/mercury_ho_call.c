@@ -1,30 +1,24 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 1995-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module provides much of the functionality for doing higher order
+// calls (with the rest provided by code generation of the generic_call
+// HLDS construct), and most of the functionality for doing generic
+// unifications and comparisons (with the rest provided by the
+// compiler-generated unify, index and compare predicates).
+
+// Note that the routines here don't need any special handling for accurate GC,
+// since they only do tail-calls (or equivalent); their stack stack frames
+// will never be live on the stack when a garbage collection occurs (or if they
+// are, will never contain any live variables that might contain pointers to
+// the Mercury heap).
+
 /*
 INIT mercury_sys_init_call
 ENDINIT
-*/
-/*
-** Copyright (C) 1995-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
-
-/*
-** This module provides much of the functionality for doing higher order
-** calls (with the rest provided by code generation of the generic_call
-** HLDS construct), and most of the functionality for doing generic
-** unifications and comparisons (with the rest provided by the
-** compiler-generated unify, index and compare predicates).
-*/
-
-/*
-** Note that the routines here don't need any special handling for accurate GC,
-** since they only do tail-calls (or equivalent); their stack stack frames
-** will never be live on the stack when a garbage collection occurs (or if they
-** are, will never contain any live variables that might contain pointers to
-** the Mercury heap).
 */
 
 #include "mercury_imp.h"
@@ -35,7 +29,7 @@ ENDINIT
 #include "mercury_layout_util.h"
 #include "mercury_builtin_types.h"
 #include "mercury_builtin_types_proc_layouts.h"
-         /* for unify/compare of pred/func and for proc_layout structures */
+         // for unify/compare of pred/func and for proc_layout structures
 #include "mercury_types.h"
 #include "mercury_bitmap.h"
 
@@ -93,9 +87,7 @@ MR_SpecialPredHooks MR_special_pred_hooks;
 
 #ifdef MR_HIGHLEVEL_CODE
 
-/*
-** Define the generic unify/2 and compare/3 functions.
-*/
+// Define the generic unify/2 and compare/3 functions.
 
 MR_bool MR_CALL
 mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
@@ -111,10 +103,9 @@ mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
     type_info = (MR_TypeInfo) ti;
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-    /*
-    ** Tuple and higher-order types do not have a fixed arity,
-    ** so they need to be special cased here.
-    */
+    // Tuple and higher-order types do not have a fixed arity,
+    // so they need to be special cased here.
+
     type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
     if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
         if (MR_special_pred_hooks.MR_unify_tuple_pred != NULL) {
@@ -133,12 +124,10 @@ mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
 
     unify_pred = type_ctor_info->MR_type_ctor_unify_pred;
 
-    /*
-    ** Cast unify_pred to the right type and then call it,
-    ** passing the right number of type_info arguments.
-    */
+    // Cast unify_pred to the right type and then call it,
+    // passing the right number of type_info arguments.
 
-    switch(arity) {
+    switch (arity) {
         case 0:
             return ((MR_UnifyFunc_0 *) unify_pred)(x, y);
 
@@ -180,10 +169,9 @@ mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info ti,
     type_info = (MR_TypeInfo) ti;
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-    /*
-    ** Tuple and higher-order types do not have a fixed arity,
-    ** so they need to be special cased here.
-    */
+    // Tuple and higher-order types do not have a fixed arity,
+    // so they need to be special cased here.
+
     type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
     if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
         if (MR_special_pred_hooks.MR_compare_tuple_pred != NULL) {
@@ -205,12 +193,10 @@ mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info ti,
 
     compare_pred = type_ctor_info->MR_type_ctor_compare_pred;
 
-    /*
-    ** Cast compare_pre to the right type and then call it,
-    ** passing the right number of type_info arguments.
-    */
+    // Cast compare_pre to the right type and then call it,
+    // passing the right number of type_info arguments.
 
-    switch(arity) {
+    switch (arity) {
         case 0:
             ((MR_CompareFunc_0 *) compare_pred)(res, x, y);
             break;
@@ -274,57 +260,53 @@ mercury__builtin__compare_representation_3_p_0(MR_Mercury_Type_Info ti,
     MR_SORRY("compare_representation/3 for HIGHLEVEL_CODE");
 }
 
-#else   /* ! MR_HIGHLEVEL_CODE */
+#else   // ! MR_HIGHLEVEL_CODE
 
 static  MR_Word MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 static  MR_Word MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 static  MR_Word MR_generic_compare_representation(MR_TypeInfo type_info,
             MR_Word x, MR_Word y);
-static  MR_Word MR_compare_closures_representation(MR_Closure *x, 
+static  MR_Word MR_compare_closures_representation(MR_Closure *x,
             MR_Closure *y);
 
-/*
-** The called closure may contain only input arguments. The extra arguments
-** provided by the higher-order call may be input or output, and may appear
-** in any order.
-**
-** The input arguments to do_call_closure_compact are the closure in MR_r1,
-** the number of additional input arguments in MR_r2, and the additional input
-** arguments themselves in MR_r3, MR_r4, etc. The output arguments are
-** returned in registers MR_r1, MR_r2, etc for det and nondet calls or
-** registers MR_r2, MR_r3, etc for semidet calls.
-**
-** When float registers are enabled, float input arguments are passed
-** in MR_f1, MR_f2, etc. Float output arguments are returned in registers
-** MR_f1, MR_f2, etc.
-**
-** The placement of the extra input arguments into MR_rN and MR_fN etc. is done
-** by the code generator, as is the movement of the output arguments to their
-** eventual destinations.
-**
-** Each do_call_closure_N variant is specialized for the case where the number
-** of additional input arguments is N. When calling them, the code generator
-** puts the additional arguments (if any) in MR_r2, MR_r3 etc.
-*/
+// The called closure may contain only input arguments. The extra arguments
+// provided by the higher-order call may be input or output, and may appear
+// in any order.
+//
+// The input arguments to do_call_closure_compact are the closure in MR_r1,
+// the number of additional input arguments in MR_r2, and the additional input
+// arguments themselves in MR_r3, MR_r4, etc. The output arguments are
+// returned in registers MR_r1, MR_r2, etc for det and nondet calls or
+// registers MR_r2, MR_r3, etc for semidet calls.
+//
+// When float registers are enabled, float input arguments are passed
+// in MR_f1, MR_f2, etc. Float output arguments are returned in registers
+// MR_f1, MR_f2, etc.
+//
+// The placement of the extra input arguments into MR_rN and MR_fN etc. is done
+// by the code generator, as is the movement of the output arguments to their
+// eventual destinations.
+//
+// Each do_call_closure_N variant is specialized for the case where the number
+// of additional input arguments is N. When calling them, the code generator
+// puts the additional arguments (if any) in MR_r2, MR_r3 etc.
 
-    /*
-    ** Number of input arguments to do_call_*_closure_compact,
-    ** MR_r1 -> closure
-    ** MR_r2 -> number of immediate input arguments: (R | F<<16)
-    **
-    ** R is the number of regular register input arguments
-    ** F is the number of float register input arguments.
-    */
+    // Number of input arguments to do_call_*_closure_compact,
+    // MR_r1 -> closure
+    // MR_r2 -> number of immediate input arguments: (R | F<<16)
+    //
+    // R is the number of regular register input arguments
+    // F is the number of float register input arguments.
+
 #define MR_HO_CALL_INPUTS_COMPACT   2
 
-    /*
-    ** Number of input arguments to do_call_*_class_method_compact,
-    ** MR_r1 -> typeclass info
-    ** MR_r2 -> index of method in typeclass info
-    ** MR_r3 -> number of immediate input arguments.
-    **
-    ** Method calls do not yet use float registers for input or output.
-    */
+    // Number of input arguments to do_call_*_class_method_compact,
+    // MR_r1 -> typeclass info
+    // MR_r2 -> index of method in typeclass info
+    // MR_r3 -> number of immediate input arguments.
+    //
+    // Method calls do not yet use float registers for input or output.
+
 #define MR_CLASS_METHOD_CALL_INPUTS_COMPACT 3
 
 #ifdef MR_DO_CALL_STATS
@@ -396,16 +378,12 @@ MR_print_hidden_arg_stats(FILE *fp)
 
 #endif
 
-/*
-** These are the real implementations of higher order calls and method calls.
-*/
+// These are the real implementations of higher order calls and method calls.
 
 #include "mercury_ho_call_declares.i"
 #include "mercury_method_call_declares.i"
 
-/*
-** These are the real implementations of unify and compare.
-*/
+// These are the real implementations of unify and compare.
 
 MR_define_extern_entry(mercury__builtin__unify_2_0);
 MR_define_extern_entry(mercury__builtin__compare_3_0);
@@ -427,33 +405,29 @@ MR_BEGIN_MODULE(call_module)
     MR_init_entry_an(mercury__builtin__compare_representation_3_0);
 MR_BEGIN_CODE
 
-/*
-** The various variants of do_call_closure and do_call_class_method are
-** created by tools/make_spec_ho_call and tools/make_spec_method_call
-** respectively.
-**
-** Each of routine starts by picking up its input arguments from the relevant
-** Mercury abstract machine registers and putting them in local variables.
-** This allows the values of these arguments to be printed in gdb without
-** worrying about which real machine registers, if any, hold them.
-**
-** Also note that in each case, when we invoke the higher order value,
-** we pass MR_prof_ho_caller_proc as the second argument of MR_tailcall
-** instead of the name of the routine itself, so that the call gets recorded
-** as having come from our caller.
-**
-** Each of these routines get ignored for profiling. That means they should be
-** called using noprof_call() rather than call(). See the comment in
-** output_call in compiler/llds_out for the explanation.
-*/
+// The various variants of do_call_closure and do_call_class_method are
+// created by tools/make_spec_ho_call and tools/make_spec_method_call
+// respectively.
+//
+// Each of routine starts by picking up its input arguments from the relevant
+// Mercury abstract machine registers and putting them in local variables.
+// This allows the values of these arguments to be printed in gdb without
+// worrying about which real machine registers, if any, hold them.
+//
+// Also note that in each case, when we invoke the higher order value,
+// we pass MR_prof_ho_caller_proc as the second argument of MR_tailcall
+// instead of the name of the routine itself, so that the call gets recorded
+// as having come from our caller.
+//
+// Each of these routines get ignored for profiling. That means they should be
+// called using noprof_call() rather than call(). See the comment in
+// output_call in compiler/llds_out for the explanation.
 
 #include "mercury_ho_call_codes.i"
 #include "mercury_method_call_codes.i"
 
-/*
-** mercury__builtin__unify_2_0 is called as `unify(TypeInfo, X, Y)'
-** in the mode `unify(in, in, in) is semidet'.
-*/
+// mercury__builtin__unify_2_0 is called as `unify(TypeInfo, X, Y)'
+// in the mode `unify(in, in, in) is semidet'.
 
 MR_define_entry(mercury__builtin__unify_2_0);
 {
@@ -470,14 +444,14 @@ MR_define_entry(mercury__builtin__unify_2_0);
         x = MR_r2;                                                          \
         y = MR_r3;                                                          \
         saved_succip_word = MR_succip_word;                                 \
-    } while(0)
+    } while (0)
 
 #define raw_return_answer(answer)                                           \
     do {                                                                    \
         MR_r1 = (answer);                                                   \
         MR_succip_word = saved_succip_word;                                 \
         MR_proceed();                                                       \
-    } while(0)
+    } while (0)
 
 #define tailcall_tci_pred()                                                 \
     tailcall(type_ctor_info->MR_type_ctor_unify_pred)
@@ -506,12 +480,10 @@ MR_define_entry(mercury__builtin__unify_2_0);
 
 }
 
-/*
-** mercury__builtin__compare_3_3 is called as `compare(TypeInfo, Result, X, Y)'
-** in the mode `compare(in, out, in, in) is det'.
-**
-** (The additional entry points replace either or both "in"s with "ui"s.)
-*/
+// mercury__builtin__compare_3_3 is called as `compare(TypeInfo, Result, X, Y)'
+// in the mode `compare(in, out, in, in) is det'.
+//
+// (The additional entry points replace either or both "in"s with "ui"s.)
 
 MR_define_entry(mercury__builtin__compare_3_0);
 #ifdef MR_MPROF_PROFILE_CALLS
@@ -549,14 +521,14 @@ MR_define_entry(mercury__builtin__compare_3_3);
         x = MR_r2;                                                          \
         y = MR_r3;                                                          \
         saved_succip_word = MR_succip_word;                                 \
-    } while(0)
+    } while (0)
 
 #define raw_return_answer(answer)                                           \
     do {                                                                    \
         MR_r1 = (answer);                                                   \
         MR_succip_word = saved_succip_word;                                 \
         MR_proceed();                                                       \
-    } while(0)
+    } while (0)
 
 #define tailcall_tci_pred()                                                 \
     tailcall(type_ctor_info->MR_type_ctor_compare_pred)
@@ -587,11 +559,9 @@ MR_define_entry(mercury__builtin__compare_3_3);
 
 }
 
-/*
-** mercury__builtin__compare_representation_3_0 is called as
-** `compare_representation(TypeInfo, Result, X, Y)' in the mode
-** `compare_representation(in, uo, in, in) is cc_multi'.
-*/
+// mercury__builtin__compare_representation_3_0 is called as
+// `compare_representation(TypeInfo, Result, X, Y)' in the mode
+// `compare_representation(in, uo, in, in) is cc_multi'.
 
 MR_define_entry(mercury__builtin__compare_representation_3_0);
 {
@@ -608,14 +578,14 @@ MR_define_entry(mercury__builtin__compare_representation_3_0);
         x = MR_r2;                                                          \
         y = MR_r3;                                                          \
         saved_succip_word = MR_succip_word;                                 \
-    } while(0)
+    } while (0)
 
 #define raw_return_answer(answer)                                           \
     do {                                                                    \
         MR_r1 = (answer);                                                   \
         MR_succip_word = saved_succip_word;                                 \
         MR_proceed();                                                       \
-    } while(0)
+    } while (0)
 
 #define tailcall(label)                                                     \
     MR_tailcall(label, MR_LABEL(mercury__builtin__compare_representation_3_0))
@@ -808,9 +778,8 @@ MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
     int                 i;
     int                 result;
 
-    /*
-    ** Optimize the simple case.
-    */
+    // Optimize the simple case.
+
     if (x == y) {
         return MR_COMPARE_EQUAL;
     }
@@ -852,8 +821,10 @@ MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
         }
     }
 
-    x_num_args = MR_closure_num_hidden_r_args(x) + MR_closure_num_hidden_f_args(x);
-    y_num_args = MR_closure_num_hidden_r_args(y) + MR_closure_num_hidden_f_args(y);
+    x_num_args =
+        MR_closure_num_hidden_r_args(x) + MR_closure_num_hidden_f_args(x);
+    y_num_args =
+        MR_closure_num_hidden_r_args(y) + MR_closure_num_hidden_f_args(y);
     if (x_num_args < y_num_args) {
         return MR_COMPARE_LESS;
     } else if (x_num_args > y_num_args) {
@@ -916,12 +887,10 @@ finish_closure_compare:
     return result;
 }
 
-#endif /* not MR_HIGHLEVEL_CODE */
+#endif // not MR_HIGHLEVEL_CODE
 
-/*---------------------------------------------------------------------------*/
-/*
-** Code to construct closures, for use by browser/dl.m.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Code to construct closures, for use by browser/dl.m.
 
 #ifdef MR_HIGHLEVEL_CODE
 extern MR_Box MR_CALL MR_generic_closure_wrapper(void *closure,
@@ -944,18 +913,15 @@ MR_make_closure(MR_Code *proc_addr)
 
     MR_restore_transient_hp();
 
-    /* create a goal path that encodes a unique id for this closure */
+    // Create a goal path that encodes a unique id for this closure.
     closure_counter++;
     sprintf(buf, "@%d;", closure_counter);
 
-    /*
-    ** XXX All the allocations in this code should use malloc
-    ** in deep profiling grades.
-    */
+    // XXX All the allocations in this code should use malloc
+    // in deep profiling grades.
 
-    /*
-    ** Construct the MR_ClosureId.
-    */
+    // Construct the MR_ClosureId.
+
     MR_incr_hp_type_msg(closure_id, MR_ClosureId,
         MR_ALLOC_SITE_RUNTIME, NULL);
     closure_id->MR_closure_proc_id.MR_proc_user.MR_user_pred_or_func =
@@ -972,18 +938,16 @@ MR_make_closure(MR_Code *proc_addr)
     MR_make_aligned_string_copy_msg(closure_id->MR_closure_goal_path, buf,
         MR_ALLOC_SITE_STRING);
 
-    /*
-    ** Construct the MR_Closure_Layout.
-    */
+    // Construct the MR_Closure_Layout.
+
     MR_incr_hp_type_msg(closure_layout, MR_Closure_Dyn_Link_Layout,
         MR_ALLOC_SITE_RUNTIME, NULL);
     closure_layout->MR_closure_dl_id = closure_id;
     closure_layout->MR_closure_dl_type_params = NULL;
     closure_layout->MR_closure_dl_num_all_args = 0;
 
-    /*
-    ** Construct the MR_Closure.
-    */
+    // Construct the MR_Closure.
+
 #ifdef MR_HIGHLEVEL_CODE
     num_hidden_r_args = 1;
 #else
@@ -1005,40 +969,39 @@ MR_make_closure(MR_Code *proc_addr)
 }
 
 #ifdef MR_HIGHLEVEL_CODE
-/*
-** For the --high-level-code grades, the closure will be passed
-** as an argument to the wrapper procedure.  The wrapper procedure
-** then extracts any needed curried arguments from the closure,
-** and calls the real procedure.  Normally the wrapper procedure
-** knows which real procedure it will call, but for dl.m we use
-** a generic wrapper procedure, and treat the real procedure
-** as a curried argument of the generic wrapper.  That is always
-** the only curried argument, so all the wrapper needs to do
-** is to extract the procedure address from the closure, and
-** then call it, passing the same arguments that it was passed,
-** except for the closure itself.
-**
-** XXX Using a single generic wrapper procedure is a nasty hack. 
-** We play fast and loose with the C type system here.  In reality
-** this will get called with different return type, different
-** argument types, and with fewer than 20 arguments.  Likewise, the
-** procedure that it calls may actually have different arity, return type
-** and argument types than we pass.  So we really ought to have lots of
-** different wrapper procedures, for each different return type, number
-** of arguments, and even for each different set of argument types.
-** Doing it right might require run-time code generation!
-** But with traditional C calling conventions, using a single wrapper
-** like this will work anyway, at least for arguments whose type is the
-** same size as MR_Box.  It fails for arguments of type `char' or `float'.
-**
-** XXX This will also fail for calling conventions where the callee pops the
-** arguments.  To handle that right, we'd need different wrappers for
-** each different number of arguments.  (Doing that would also be slightly
-** more efficient, so it may worth doing...)
-**
-** There are also a couple of libraries called `ffcall' and `libffi'
-** which we might be able use to do this in a more portable manner.
-*/
+// For the --high-level-code grades, the closure will be passed
+// as an argument to the wrapper procedure. The wrapper procedure
+// then extracts any needed curried arguments from the closure,
+// and calls the real procedure. Normally the wrapper procedure
+// knows which real procedure it will call, but for dl.m we use
+// a generic wrapper procedure, and treat the real procedure
+// as a curried argument of the generic wrapper. That is always
+// the only curried argument, so all the wrapper needs to do
+// is to extract the procedure address from the closure, and
+// then call it, passing the same arguments that it was passed,
+// except for the closure itself.
+//
+// XXX Using a single generic wrapper procedure is a nasty hack.
+// We play fast and loose with the C type system here. In reality
+// this will get called with different return type, different
+// argument types, and with fewer than 20 arguments. Likewise, the
+// procedure that it calls may actually have different arity, return type
+// and argument types than we pass. So we really ought to have lots of
+// different wrapper procedures, for each different return type, number
+// of arguments, and even for each different set of argument types.
+// Doing it right might require run-time code generation!
+// But with traditional C calling conventions, using a single wrapper
+// like this will work anyway, at least for arguments whose type is the
+// same size as MR_Box. It fails for arguments of type `char' or `float'.
+//
+// XXX This will also fail for calling conventions where the callee pops the
+// arguments. To handle that right, we'd need different wrappers for
+// each different number of arguments. (Doing that would also be slightly
+// more efficient, so it may worth doing...)
+//
+// There are also a couple of libraries called `ffcall' and `libffi'
+// which we might be able use to do this in a more portable manner.
+
 MR_Box MR_CALL
 MR_generic_closure_wrapper(void *closure,
     MR_Box arg1, MR_Box arg2, MR_Box arg3, MR_Box arg4, MR_Box arg5,
@@ -1058,16 +1021,14 @@ MR_generic_closure_wrapper(void *closure,
         arg11, arg12, arg13, arg14, arg15,
         arg16, arg17, arg18, arg19, arg20);
 }
-#endif /* MR_HIGHLEVEL_CODE */
+#endif // MR_HIGHLEVEL_CODE
 
-/*
-** The initialization function needs to be defined even when
-** MR_HIGHLEVEL_CODE is set, because it will get included
-** in the list of initialization functions that get called.
-** So for MR_HIGHLEVEL_CODE it just does nothing.
-*/
+// The initialization function needs to be defined even when
+// MR_HIGHLEVEL_CODE is set, because it will get included
+// in the list of initialization functions that get called.
+// So for MR_HIGHLEVEL_CODE it just does nothing.
 
-/* forward decls to suppress gcc warnings */
+// Forward decls to suppress gcc warnings.
 void mercury_sys_init_call_init(void);
 void mercury_sys_init_call_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
@@ -1078,16 +1039,17 @@ void mercury_sys_init_call_init(void)
 {
 #ifndef MR_HIGHLEVEL_CODE
     call_module();
-#endif /* not MR_HIGHLEVEL_CODE */
+#endif // not MR_HIGHLEVEL_CODE
 }
 
 void mercury_sys_init_call_init_type_tables(void)
 {
-    /* no types to register */
+    // No types to register.
 }
 
 #ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_call_write_out_proc_statics(FILE *fp)
 {
+    // No proc_statics to write out.
 }
 #endif

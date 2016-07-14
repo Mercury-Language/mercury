@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file contains the declarations that flex and bison should put,
-** or let us programmers put, into the header files they create, but don't.
-**
-** Main author: Zoltan Somogyi.
-*/
+// Copyright (C) 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file contains the declarations that flex and bison should put,
+// or let us programmers put, into the header files they create, but don't.
+//
+// Main author: Zoltan Somogyi.
 
 #ifndef MERCURY_TRACE_EVENT_MISSING_H
 #define MERCURY_TRACE_EVENT_MISSING_H
@@ -27,4 +22,4 @@ extern  int             mercury_event_linenum;
 extern  MR_EventSet     mercury_event_parsetree;
 extern  int             mercury_event_parse(void);
 
-#endif  /* not MERCURY_TRACE_EVENT_MISSING_H */
+#endif  // not MERCURY_TRACE_EVENT_MISSING_H

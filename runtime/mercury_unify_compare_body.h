@@ -1,54 +1,49 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2000-2005, 2007, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file contains a piece of code that is included by mercury_ho_call.c
-** six times:
-**
-** - as the body of the mercury__builtin__unify_2_0 Mercury procedure,
-** - as the body of the mercury__builtin__compare_3_3 Mercury procedure,
-** - as the body of the mercury__builtin__compare_representation_3_0
-**   Mercury procedure,
-** - as the body of the MR_generic_unify C function,
-** - as the body of the MR_generic_compare C function, and
-** - as the body of the MR_generic_compare_representation C function.
-**
-** The inclusions are surrounded by #defines and #undefs of the macros
-** that personalize each copy of the code.
-**
-** The reason why the unify and compare Mercury procedures share code is
-** that unify is mostly just a special case of comparison; it differs only
-** by treating "less than" and "greater than" the same way, and returning
-** its result slightly differently. Likewise, compare_representation
-** is mostly the same as compare.
-**
-** The reason why there is both a Mercury procedure and a C function for
-** unifications and comparisons is that the Mercury procedure needs a
-** mechanism that allows it to unify or compare each argument of a function
-** symbol, and doing it with a loop body that calls a C function is
-** significantly easier to program, and probably more efficient, than
-** using recursion in Mercury. The Mercury procedure and C function share code
-** because they implement the same task.
-**
-** XXX does the rationale still hold? Only rarely used code paths still have
-** loop bodies in C and they are likely incorrect for deep profiling.
-** Also, the Mercury implementation of tuple unify/compare predicates is
-** faster than the hand-written version was in asm_fast.gc. --pw
-**
-** We need separate C functions for unifications and comparison because
-** with --no-special-preds, a type with user-defined equality (but not
-** comparison) has a non-NULL unify_pred field in its type_ctor_info but a
-** NULL compare_pred field. While in principle unification is a special case
-** of comparison, we cannot implement unifications by comparisons for such
-** types: they support unifications but not comparisons. Since we cannot do
-** it for such types, it is simplest not to do it for any types.
-*/
+// Copyright (C) 2000-2005, 2007, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file contains a piece of code that is included by mercury_ho_call.c
+// six times:
+//
+// - as the body of the mercury__builtin__unify_2_0 Mercury procedure,
+// - as the body of the mercury__builtin__compare_3_3 Mercury procedure,
+// - as the body of the mercury__builtin__compare_representation_3_0
+//   Mercury procedure,
+// - as the body of the MR_generic_unify C function,
+// - as the body of the MR_generic_compare C function, and
+// - as the body of the MR_generic_compare_representation C function.
+//
+// The inclusions are surrounded by #defines and #undefs of the macros
+// that personalize each copy of the code.
+//
+// The reason why the unify and compare Mercury procedures share code is
+// that unify is mostly just a special case of comparison; it differs only
+// by treating "less than" and "greater than" the same way, and returning
+// its result slightly differently. Likewise, compare_representation
+// is mostly the same as compare.
+//
+// The reason why there is both a Mercury procedure and a C function for
+// unifications and comparisons is that the Mercury procedure needs a
+// mechanism that allows it to unify or compare each argument of a function
+// symbol, and doing it with a loop body that calls a C function is
+// significantly easier to program, and probably more efficient, than
+// using recursion in Mercury. The Mercury procedure and C function share code
+// because they implement the same task.
+//
+// XXX does the rationale still hold? Only rarely used code paths still have
+// loop bodies in C and they are likely incorrect for deep profiling.
+// Also, the Mercury implementation of tuple unify/compare predicates is
+// faster than the hand-written version was in asm_fast.gc. --pw
+//
+// We need separate C functions for unifications and comparison because
+// with --no-special-preds, a type with user-defined equality (but not
+// comparison) has a non-NULL unify_pred field in its type_ctor_info but a
+// NULL compare_pred field. While in principle unification is a special case
+// of comparison, we cannot implement unifications by comparisons for such
+// types: they support unifications but not comparisons. Since we cannot do
+// it for such types, it is simplest not to do it for any types.
 
 #ifdef  select_compare_code
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
@@ -120,7 +115,7 @@ start_label:
 
   #ifdef include_compare_rep_code
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
-            /* fall through */
+            // fall through
   #endif
         case MR_TYPECTOR_REP_NOTAG:
             MR_save_transient_hp();
@@ -133,7 +128,7 @@ start_label:
 
   #ifdef include_compare_rep_code
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-            /* fall through */
+            // fall through
   #endif
         case MR_TYPECTOR_REP_NOTAG_GROUND:
             type_info = (MR_TypeInfo) MR_type_ctor_layout(type_ctor_info).
@@ -142,7 +137,7 @@ start_label:
 
   #ifdef include_compare_rep_code
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-            /* fall through */
+            // fall through
   #endif
         case MR_TYPECTOR_REP_RESERVED_ADDR:
             MR_fatal_error("sorry, not implemented: "
@@ -168,16 +163,14 @@ start_label:
 
   #ifdef include_compare_rep_code
         case MR_TYPECTOR_REP_DU_USEREQ:
-            /* fall through */
+            // fall through
   #endif
         case MR_TYPECTOR_REP_DU:
-            /*
-            ** When deep profiling is enabled, we use the call, exit and (for
-            ** unifications) fail ports of dummy unify, compare and compare_rep
-            ** predicates for the dummy type_ctor builtin.user_by_rtti/0.
-            **
-            ** XXX the deep profiler invariants are likely broken in the loop
-            */
+            // When deep profiling is enabled, we use the call, exit and (for
+            // unifications) fail ports of dummy unify, compare and compare_rep
+            // predicates for the dummy type_ctor builtin.user_by_rtti/0.
+            //
+            // XXX The deep profiler invariants are likely broken in the loop.
 
             {
                 const MR_DuFunctorDesc  *functor_desc;
@@ -239,11 +232,11 @@ start_label:
                             sectag = 0;                                       \
                             break;                                            \
                         case MR_SECTAG_VARIABLE:                              \
-                            sectag = 0;     /* avoid a warning */             \
+                            sectag = 0;     /* Avoid a warning. */            \
                             MR_fatal_error("find_du_functor_desc(): "         \
                                 "attempt get functor desc of variable");      \
                         default:                                              \
-                            sectag = 0;     /* avoid a warning */             \
+                            sectag = 0;     /* Avoid a warning. */            \
                             MR_fatal_error("find_du_functor_desc(): "         \
                                 "unrecognised sectag locn");                  \
                     }                                                         \
@@ -271,7 +264,7 @@ start_label:
                 }
 
                 functor_desc = x_functor_desc;
-  #else /* ! select_compare_code */
+  #else // ! select_compare_code
                 x_ptag = MR_tag(x);
                 y_ptag = MR_tag(y);
 
@@ -318,12 +311,12 @@ start_label:
                 }
 
                 functor_desc = ptaglayout->MR_sectag_alternatives[x_sectag];
-  #endif /* select_compare_code */
+  #endif // select_compare_code
 
                 switch (functor_desc->MR_du_functor_sectag_locn) {
 
                 case MR_SECTAG_NONE_DIRECT_ARG:
-                    /* the work is done in the switch */
+                    // The work is done in the switch.
                     {
                         MR_TypeInfo arg_type_info;
 
@@ -355,13 +348,13 @@ start_label:
 
                 case MR_SECTAG_REMOTE:
                     cur_slot = 1;
-                    /* the work is done after the switch */
+                    // The work is done after the switch.
                     break;
 
                 case MR_SECTAG_NONE:
                 case MR_SECTAG_LOCAL:
                     cur_slot = 0;
-                    /* the work is done after the switch */
+                    // The work is done after the switch.
                     break;
 
                 default:
@@ -468,7 +461,7 @@ start_label:
 
             MR_fatal_error(MR_STRINGIFY(start_label) ": unexpected fall thru");
 
-#endif  /* defined(MR_COMPARE_BY_RTTI) || defined(include_compare_rep_code) */
+#endif  // defined(MR_COMPARE_BY_RTTI) || defined(include_compare_rep_code)
 
 #ifndef include_compare_rep_code
   #ifndef MR_COMPARE_BY_RTTI
@@ -478,7 +471,7 @@ start_label:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_RESERVED_ADDR:
         case MR_TYPECTOR_REP_DU:
-            /* fall through */
+            // fall through
   #endif
 
         case MR_TYPECTOR_REP_ENUM_USEREQ:
@@ -492,35 +485,33 @@ start_label:
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
         case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
 
-            /*
-            ** In deep profiling grades, the caller of builtin.unify or
-            ** builtin.compare (the predicates this piece of code implements)
-            ** has prepared for a normal call, which must be followed by
-            ** the execution of the call port code and then of either the exit
-            ** or the fail port code.
-            **
-            ** That would be a problem if you wanted to pretest x == y here.
-            ** First, at the moment there is no simple or fast way
-            ** to get from the type_ctor_info (which we have) to the proc
-            ** layout structures of the type's unify or compare predicates
-            ** (which port codes need). Second, even if we put the addresses
-            ** of those proc layout structures into the type_ctor_info,
-            ** incrementing just the call and exit/fail port counts would
-            ** leave the called predicate's counts inconsistent in cases where
-            ** the body of that predicate did not have any paths through it
-            ** without making calls (since those calls are being
-            ** short-circuited here).
-            **
-            ** Our solution is to check x == y not here, but at the starts of
-            ** compiler-generated unify and compare predicates. This delays
-            ** the check until after the extraction of any typeinfos
-            ** representing the arguments of the main type constructor,
-            ** but it also ensures that the check is performed not just on the
-            ** top function symbols of the terms being unified or compared,
-            ** but on all other function symbols too. Measurements show that
-            ** the overhead of these extra tests is less than the amount of
-            ** work that these extra pretests avoid.
-            */
+            // In deep profiling grades, the caller of builtin.unify or
+            // builtin.compare (the predicates this piece of code implements)
+            // has prepared for a normal call, which must be followed by
+            // the execution of the call port code and then of either the exit
+            // or the fail port code.
+            //
+            // That would be a problem if you wanted to pretest x == y here.
+            // First, at the moment there is no simple or fast way
+            // to get from the type_ctor_info (which we have) to the proc
+            // layout structures of the type's unify or compare predicates
+            // (which port codes need). Second, even if we put the addresses
+            // of those proc layout structures into the type_ctor_info,
+            // incrementing just the call and exit/fail port counts would
+            // leave the called predicate's counts inconsistent in cases where
+            // the body of that predicate did not have any paths through it
+            // without making calls (since those calls are being
+            // short-circuited here).
+            //
+            // Our solution is to check x == y not here, but at the starts of
+            // compiler-generated unify and compare predicates. This delays
+            // the check until after the extraction of any typeinfos
+            // representing the arguments of the main type constructor,
+            // but it also ensures that the check is performed not just on the
+            // top function symbols of the terms being unified or compared,
+            // but on all other function symbols too. Measurements show that
+            // the overhead of these extra tests is less than the amount of
+            // work that these extra pretests avoid.
 
 #ifndef MR_DEEP_PROFILING
   #if 0
@@ -536,18 +527,16 @@ start_label:
   #endif
 #endif
 
-            /*
-            ** We call the type-specific compare routine as
-            ** `CompPred(...ArgTypeInfos..., Result, X, Y)' is det.
-            ** The ArgTypeInfo arguments are input, and are passed
-            ** in MR_r1, MR_r2, ... MR_rN. The X and Y arguments are also
-            ** input, and are passed in MR_rN+1 and MR_rN+2.
-            ** The Result argument is output in MR_r1.
-            **
-            ** We specialize the case where the type_ctor arity is 0, 1 or 2,
-            ** in order to avoid the loop. If type_ctors with higher arities
-            ** were commonly used, we could specialize them too.
-            */
+            // We call the type-specific compare routine as
+            // `CompPred(...ArgTypeInfos..., Result, X, Y)' is det.
+            // The ArgTypeInfo arguments are input, and are passed
+            // in MR_r1, MR_r2, ... MR_rN. The X and Y arguments are also
+            // input, and are passed in MR_rN+1 and MR_rN+2.
+            // The Result argument is output in MR_r1.
+            //
+            // We specialize the case where the type_ctor arity is 0, 1 or 2,
+            // in order to avoid the loop. If type_ctors with higher arities
+            // were commonly used, we could specialize them too.
 
             if (type_ctor_info->MR_type_ctor_arity == 0) {
                 MR_r1 = x;
@@ -579,7 +568,7 @@ start_label:
                     MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
                 MR_save_registers();
 
-                /* CompPred(...ArgTypeInfos..., Res, X, Y) * */
+                // CompPred(...ArgTypeInfos..., Res, X, Y)
                 for (i = 1; i <= type_arity; i++) {
                     MR_virtual_reg_assign(i, args_base[i]);
                 }
@@ -590,14 +579,13 @@ start_label:
             }
 
             tailcall_tci_pred();
-#endif  /* !include_compare_rep_code */
+#endif  // !include_compare_rep_code
 
         case MR_TYPECTOR_REP_TUPLE:
-            /*
-            ** The tuple unify and compare predicates are implemented in
-            ** Mercury, mainly so that the compiler can perform the deep
-            ** profiler transformation on them.
-            */
+            // The tuple unify and compare predicates are implemented in
+            // Mercury, mainly so that the compiler can perform the deep
+            // profiler transformation on them.
+
 #ifdef select_compare_code
     #ifdef include_compare_rep_code
             if (MR_special_pred_hooks.MR_compare_rep_tuple_pred != NULL) {
@@ -623,7 +611,7 @@ start_label:
 #ifdef  include_compare_rep_code
         case MR_TYPECTOR_REP_ENUM_USEREQ:
         case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
-            /* fall through */
+            // fall through
 #endif
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_FOREIGN_ENUM:
@@ -644,10 +632,9 @@ start_label:
 #endif
 
         case MR_TYPECTOR_REP_DUMMY:
-            /*
-            ** Since dummy types contain only value, all unifies succeed and
-            ** all comparisons return "equal".
-            */
+            // Since dummy types contain only value, all unifies succeed and
+            // all comparisons return "equal".
+
 #ifdef  select_compare_code
             return_compare_answer(builtin, dummy, 0, MR_COMPARE_EQUAL);
 #else
@@ -696,19 +683,18 @@ start_label:
 #endif
             }
 
-            /*
-            ** We use the c_pointer statistics for stable_c_pointer
-            ** until the stable_c_pointer type is actually added,
-            ** which will be *after* the builtin types' handwritten
-            ** unify and compare preds are replaced by automatically
-            ** generated code.
-            **
-            ** XXX This is a temporary measure.
-            */
+            // We use the c_pointer statistics for stable_c_pointer
+            // until the stable_c_pointer type is actually added,
+            // which will be *after* the builtin types' handwritten
+            // unify and compare preds are replaced by automatically
+            // generated code.
+            //
+            // XXX This is a temporary measure.
+
 #ifdef include_compare_rep_code
-        case MR_TYPECTOR_REP_STABLE_FOREIGN: /* fallthru */
+        case MR_TYPECTOR_REP_STABLE_FOREIGN: // fallthru
 #endif
-        case MR_TYPECTOR_REP_STABLE_C_POINTER: /* fallthru */
+        case MR_TYPECTOR_REP_STABLE_C_POINTER: // fallthru
         case MR_TYPECTOR_REP_C_POINTER:
 #ifdef  select_compare_code
             if ((void *) x == (void *) y) {
@@ -748,10 +734,8 @@ start_label:
             }
 
         case MR_TYPECTOR_REP_TYPEDESC:
-            /*
-            ** Differs from the code for MR_TYPECTOR_REP_TYPEINFO
-            ** only in recording profiling information elsewhere.
-            */
+            // Differs from the code for MR_TYPECTOR_REP_TYPEINFO
+            // only in recording profiling information elsewhere.
 
             {
 #ifdef  select_compare_code
@@ -897,11 +881,10 @@ start_label:
 
         case MR_TYPECTOR_REP_REFERENCE:
 #ifdef  select_compare_code
-            /*
-            ** This is not permitted, because keeping the order of references
-            ** consistent would cause significant difficulty for a copying
-            ** garbage collector.
-            */
+            // This is not permitted, because keeping the order of references
+            // consistent would cause significant difficulty for a copying
+            // garbage collector.
+
             MR_fatal_error(attempt_msg "terms of a reference type");
 #else
             return_unify_answer(private_builtin, ref, 1,

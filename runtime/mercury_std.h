@@ -1,51 +1,41 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1993-1995, 1997-2005, 2011-2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** std.h - "standard" [sic] definitions for C:
-**  MR_bool, MR_TRUE, MR_FALSE, MR_min(), MR_max(), MR_streq(), etc.
-*/
+// Copyright (C) 1993-1995, 1997-2005, 2011-2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// std.h - "standard" [sic] definitions for C:
+//  MR_bool, MR_TRUE, MR_FALSE, MR_min(), MR_max(), MR_streq(), etc.
 
 #ifndef MERCURY_STD_H
 #define MERCURY_STD_H
 
-/*
-** We include mercury_regs.h to ensure we define any global register variables
-** before any functions, even if the system libraries we include below it
-** define any functions.
-*/
+// We include mercury_regs.h to ensure we define any global register variables
+// before any functions, even if the system libraries we include below it
+// define any functions.
 
 #include "mercury_regs.h"
 
-#include <stdlib.h> /* for size_t          */
-#include <assert.h> /* for assert()        */
-#include <errno.h>  /* for EINTR           */
-#include <ctype.h>  /* for isalnum(), etc. */
+#include <stdlib.h> // for size_t
+#include <assert.h> // for assert()
+#include <errno.h>  // for EINTR
+#include <ctype.h>  // for isalnum(), etc.
 
-/*
-** The boolean type, MR_bool, with constants MR_TRUE and MR_FALSE.
-**
-** We use `int' rather than `char' for MR_bool, because GCC has problems
-** optimizing tail calls for functions that return types smaller than `int'.
-** In most cases, `int' is more efficient anyway.
-** The only exception is that in some cases it is more important to optimize
-** space rather than time; in those (rare) cases, you can use `MR_small_bool'
-** instead of `MR_bool'.
-*/
+// The boolean type, MR_bool, with constants MR_TRUE and MR_FALSE.
+//
+// We use `int' rather than `char' for MR_bool, because GCC has problems
+// optimizing tail calls for functions that return types smaller than `int'.
+// In most cases, `int' is more efficient anyway.
+// The only exception is that in some cases it is more important to optimize
+// space rather than time; in those (rare) cases, you can use `MR_small_bool'
+// instead of `MR_bool'.
+
 typedef int         MR_bool;
 typedef char        MR_small_bool;
 
-/*
-** The values of MR_TRUE and MR_FALSE should correspond with the representation
-** of the Mercury standard library type bool.bool, so that they can be used as
-** values for bool arguments of exported Mercury procs.
-*/
+// The values of MR_TRUE and MR_FALSE should correspond with the representation
+// of the Mercury standard library type bool.bool, so that they can be used as
+// values for bool arguments of exported Mercury procs.
 
 #define MR_TRUE     1
 #define MR_FALSE    0
@@ -56,12 +46,10 @@ typedef char        MR_small_bool;
 #define MR_max(a, b)    ((a) > (b) ? (a) : (b))
 #define MR_min(a, b)    ((a) < (b) ? (a) : (b))
 
-/*
-** The ANSI C isalnum(), etc. macros require that the argument be cast to
-** `unsigned char'; if you pass a signed char, the behaviour is undefined.
-** Hence we define `MR_' versions of these that do the cast -- you should
-** make sure to always use the `MR_' versions rather than the standard ones.
-*/
+// The ANSI C isalnum(), etc. macros require that the argument be cast to
+// `unsigned char'; if you pass a signed char, the behaviour is undefined.
+// Hence we define `MR_' versions of these that do the cast -- you should
+// make sure to always use the `MR_' versions rather than the standard ones.
 
 #define MR_isupper(c)           isupper((unsigned char) (c))
 #define MR_islower(c)           islower((unsigned char) (c))
@@ -80,16 +68,15 @@ typedef char        MR_small_bool;
 
 #define MR_ungetchar(c)         ungetc(c, stdin)
 
-/*
-** For speed, turn assertions off, unless low-level debugging is enabled.
-*/
+// For speed, turn assertions off, unless low-level debugging is enabled.
+
 #ifdef MR_LOWLEVEL_DEBUG
   #define MR_assert(ASSERTION)  assert(ASSERTION)
 #else
   #define MR_assert(ASSERTION)  ((void)0)
 #endif
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef EINTR
   #define MR_is_eintr(x)    ((x) == EINTR)
@@ -97,119 +84,116 @@ typedef char        MR_small_bool;
   #define MR_is_eintr(x)    MR_FALSE
 #endif
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Macros for inlining.
-**
-** Inlining is treated differently by C++, C99, and GNU C.
-** We also need to make it work for C89, which doesn't have
-** any explicit support for inlining.
-**
-** To make a function inline, you should declare it as either
-** `MR_INLINE', `MR_EXTERN_INLINE', or `MR_STATIC_INLINE'.
-** You should not use `extern' or `static' in combination with these macros.
-**
-** `MR_STATIC_INLINE' should be used for functions that are defined and
-** used only in a single translation unit (i.e. a single C source file).
-**
-** If the inline function is to be used from more than one translation unit,
-** then the function definition (not just declaration) should go in
-** a header file, and you should use either MR_INLINE or MR_EXTERN_INLINE;
-** the difference between these two is explained below.
-**
-** MR_INLINE creates an inline definition of the function, and
-** if needed it also creates an out-of-line definition of the function
-** for the current translation unit, in case the function can't be inlined
-** (e.g. because the function's address was taken, or because the
-** file is compiled with the C compiler's optimizations turned off.)
-** For C++, these definitions will be shared between different
-** compilation units, but for C, each compilation unit that needs
-** an out-of-line definition will gets its own definition.
-** Generally that is not much of a problem, but if the C compiler
-** doesn't optimize away such out-of-line definitions when they're
-** not needed, this can get quite bad.
-**
-** MR_EXTERN_INLINE creates an inline definition of the function,
-** but it does NOT guarantee to create an out-of-line definition,
-** even if one might be needed. You need to explicitly provide
-** an out-of-line definition for the function in one of the C files.
-** This should be done using the MR_OUTLINE_DEFN(decl,body) macro,
-** e.g. `MR_OUTLINE_DEFN(int foo(int x), { return x; })'.
-**
-** The advantage of MR_EXTERN_INLINE is that it is more code-space-efficient,
-** especially in the case where you are compiling with C compiler optimizations
-** turned off.
-**
-** It is OK to take the address of an inline function,
-** but you should not assume that the address of a function declared
-** MR_INLINE or MR_EXTERN_INLINE will be the same in all translation units.
-*/
+// Macros for inlining.
+//
+// Inlining is treated differently by C++, C99, and GNU C.
+// We also need to make it work for C89, which doesn't have
+// any explicit support for inlining.
+//
+// To make a function inline, you should declare it as either
+// `MR_INLINE', `MR_EXTERN_INLINE', or `MR_STATIC_INLINE'.
+// You should not use `extern' or `static' in combination with these macros.
+//
+// `MR_STATIC_INLINE' should be used for functions that are defined and
+// used only in a single translation unit (i.e. a single C source file).
+//
+// If the inline function is to be used from more than one translation unit,
+// then the function definition (not just declaration) should go in
+// a header file, and you should use either MR_INLINE or MR_EXTERN_INLINE;
+// the difference between these two is explained below.
+//
+// MR_INLINE creates an inline definition of the function, and
+// if needed it also creates an out-of-line definition of the function
+// for the current translation unit, in case the function can't be inlined
+// (e.g. because the function's address was taken, or because the
+// file is compiled with the C compiler's optimizations turned off.)
+// For C++, these definitions will be shared between different
+// compilation units, but for C, each compilation unit that needs
+// an out-of-line definition will gets its own definition.
+// Generally that is not much of a problem, but if the C compiler
+// doesn't optimize away such out-of-line definitions when they're
+// not needed, this can get quite bad.
+//
+// MR_EXTERN_INLINE creates an inline definition of the function,
+// but it does NOT guarantee to create an out-of-line definition,
+// even if one might be needed. You need to explicitly provide
+// an out-of-line definition for the function in one of the C files.
+// This should be done using the MR_OUTLINE_DEFN(decl,body) macro,
+// e.g. `MR_OUTLINE_DEFN(int foo(int x), { return x; })'.
+//
+// The advantage of MR_EXTERN_INLINE is that it is more code-space-efficient,
+// especially in the case where you are compiling with C compiler optimizations
+// turned off.
+//
+// It is OK to take the address of an inline function,
+// but you should not assume that the address of a function declared
+// MR_INLINE or MR_EXTERN_INLINE will be the same in all translation units.
 
 #if defined(__cplusplus)
-  /* C++ */
+  // C++
   #define MR_STATIC_INLINE              static inline
   #define MR_INLINE                     inline
   #define MR_EXTERN_INLINE              inline
   #define MR_OUTLINE_DEFN(DECL,BODY)
 #elif defined(MR_CLANG)
   #if __STDC_VERSION__ >= 199901
-    /* C99 style inlining. */
+    // C99 style inlining.
     #define MR_STATIC_INLINE            static inline
     #define MR_INLINE                   static inline
     #define MR_EXTERN_INLINE            inline
     #define MR_OUTLINE_DEFN(DECL,BODY)  extern DECL;
   #else
-   /*
-   ** C89: note that by default we use clang in C99 mode so this alternative
-   ** will only be used if user explicitly sets -std to use something prior
-   ** to C99.
-   */
+   // C89: note that by default we use clang in C99 mode so this alternative
+   // will only be used if user explicitly sets -std to use something prior
+   // to C99.
+
    #define MR_STATIC_INLINE             static
    #define MR_INLINE                    static
    #define MR_EXTERN_INLINE             static
    #define MR_OUTLINE_DEFN(DECL,BODY)
   #endif
-#elif defined(MR_GNUC) 
-  /* GNU C: in (GNU) C99 or later mode GCC will use C99 style
-  ** inline functions; otherwise GNU style inline functions will
-  ** will be used.
-  */
+#elif defined(MR_GNUC)
+  // GNU C: in (GNU) C99 or later mode GCC will use C99 style
+  // inline functions; otherwise GNU style inline functions will
+  // will be used.
+
   #if defined(__GNUC_STDC_INLINE__)
-    /* C99 style inlining. */
+    // C99 style inlining.
     #define MR_STATIC_INLINE            static inline
     #define MR_INLINE                   static inline
     #define MR_EXTERN_INLINE            inline
     #define MR_OUTLINE_DEFN(DECL,BODY)  extern DECL;
   #else
-    /* GNU C90 style inlining. */
+    // GNU C90 style inlining.
     #define MR_STATIC_INLINE            static __inline__
     #define MR_INLINE                   static __inline__
     #define MR_EXTERN_INLINE            extern __inline__
     #define MR_OUTLINE_DEFN(DECL,BODY)  DECL BODY
-  #endif /* ! __GNUC_STDC_INLINE */
+  #endif // ! __GNUC_STDC_INLINE
 #elif defined(MR_MSVC)
   #define MR_STATIC_INLINE              static __inline
   #define MR_INLINE                     static __inline
   #define MR_EXTERN_INLINE              extern __inline
   #define MR_OUTLINE_DEFN(DECL, BODY)
 #elif __STDC_VERSION__ >= 199901
-  /* C99 */
+  // C99
   #define MR_STATIC_INLINE              static inline
   #define MR_INLINE                     static inline
   #define MR_EXTERN_INLINE              inline
   #define MR_OUTLINE_DEFN(DECL,BODY)    extern DECL;
 #else
-  /* C89 */
+  // C89
   #define MR_STATIC_INLINE              static
   #define MR_INLINE                     static
   #define MR_EXTERN_INLINE              static
   #define MR_OUTLINE_DEFN(DECL,BODY)
 #endif
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/* A macro for declaring functions that never return. */
+// A macro for declaring functions that never return.
 
 #if defined(MR_GNUC) || defined(MR_CLANG)
   #define MR_NO_RETURN(x) x __attribute__((noreturn))
@@ -219,39 +203,35 @@ typedef char        MR_small_bool;
   #define MR_NO_RETURN(x) x
 #endif
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** MR_CALL:
-** A macro for specifying the calling convention to use for C functions
-** generated by the MLDS back-end (and for builtins such as unification
-** which must use the same calling convention). This can expand to whatever
-** implementation-specific magic is required to tell the C compiler to use
-** a different calling convention.
-**
-** If MR_USE_REGPARM was defined, and we were using gcc on x86,
-** then we USED to use a non-standard but more efficient calling convention
-** that passes parameters in registers. Otherwise we just used the default
-** C calling convention.
-**
-** However, since 32-bit x86s are rare these days, and this non-standard
-** calling convention is *slower* on x86/64 platforms than the standard one,
-** we don't do this anymore.
-*/
+// MR_CALL:
+// A macro for specifying the calling convention to use for C functions
+// generated by the MLDS back-end (and for builtins such as unification
+// which must use the same calling convention). This can expand to whatever
+// implementation-specific magic is required to tell the C compiler to use
+// a different calling convention.
+//
+// If MR_USE_REGPARM was defined, and we were using gcc on x86,
+// then we USED to use a non-standard but more efficient calling convention
+// that passes parameters in registers. Otherwise we just used the default
+// C calling convention.
+//
+// However, since 32-bit x86s are rare these days, and this non-standard
+// calling convention is *slower* on x86/64 platforms than the standard one,
+// we don't do this anymore.
 
 #define MR_CALL
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** C preprocessor tricks.
-*/
+// C preprocessor tricks.
 
-/* Convert a macro to a string. */
+// Convert a macro to a string.
 #define MR_STRINGIFY(x)     MR_STRINGIFY_2(x)
 #define MR_STRINGIFY_2(x)   #x
 
-/* Paste some macros together. */
+// Paste some macros together.
 #define MR_PASTE2(a,b)          MR_PASTE2_2(a,b)
 #define MR_PASTE2_2(a,b)        a##b
 #define MR_PASTE3(a,b,c)        MR_PASTE3_2(a,b,c)
@@ -279,48 +259,43 @@ typedef char        MR_small_bool;
 #define MR_PASTE12_2(a,b,c,d,e,f,g,h,i,j,k,l)                           \
                 a##b##c##d##e##f##g##h##i##j##k##l
 
-/*
-** MR_CHECK_EXPR_TYPE(expr, type):
-** This macro checks that the given expression has a type
-** which is compatible with (assignable to) the specified type,
-** forcing a compile error if it does not.
-** It does not evaluate the expression.
-** Note that the specified type must be a complete type,
-** i.e. it must not be a pointer to a struct which has not been defined.
-**
-** This macro is useful for defining type-safe function-like macros.
-**
-** The implementation of this macro looks like it dereferences
-** a null pointer, but because that code is inside sizeof(), it will
-** not get executed; the compiler will instead just check that it is
-** type-correct.
-*/
+// MR_CHECK_EXPR_TYPE(expr, type):
+// This macro checks that the given expression has a type
+// which is compatible with (assignable to) the specified type,
+// forcing a compile error if it does not.
+// It does not evaluate the expression.
+// Note that the specified type must be a complete type,
+// i.e. it must not be a pointer to a struct which has not been defined.
+//
+// This macro is useful for defining type-safe function-like macros.
+//
+// The implementation of this macro looks like it dereferences
+// a null pointer, but because that code is inside sizeof(), it will
+// not get executed; the compiler will instead just check that it is
+// type-correct.
+
 #define MR_CHECK_EXPR_TYPE(expr, type)                                  \
     ((void) sizeof(*(type *)NULL = (expr)))
 
-/*
-** MR_STATIC_ASSERT(module, expr):
-** Assert at compile time that the given expression is true.
-** A named bit-field may not have zero width.
-*/
+// MR_STATIC_ASSERT(module, expr):
+// Assert at compile time that the given expression is true.
+// A named bit-field may not have zero width.
 
 #define MR_STATIC_ASSERT(module, expr)                                  \
     struct MR_PASTE4(static_assert_, module, _line_, __LINE__)          \
     { unsigned int bf : !!(expr); }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_SORRY(msg) MR_fatal_error("Sorry, not yet implemented: " msg);
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** MR_IF is for writing if-then-elses that must expand to expressions, not
-** statements.
-*/
+// MR_IF is for writing if-then-elses that must expand to expressions, not
+// statements.
 
 #define MR_IF(cond, val) ((cond) ? ((val), (void)0) : (void)0)
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-#endif /* not MERCURY_STD_H */
+#endif // not MERCURY_STD_H

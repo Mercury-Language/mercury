@@ -1,19 +1,14 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2009 Ralph Becket <ralphbecket@gmail.com>
-** Copyright (C) 2010 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** expanding_array.h
-**
-** Template definition for expanding arrays. The initial_size argument
-** must be at least 1. The storage used can be reclaimed with free().
-*/
+// Copyright (C) 2009 Ralph Becket <ralphbecket@gmail.com>
+// Copyright (C) 2010 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// expanding_array.h
+//
+// Template definition for expanding arrays. The initial_size argument
+// must be at least 1. The storage used can be reclaimed with free().
 
 #ifndef MERCURY_EXPANDING_ARRAY_H
 #define MERCURY_EXPANDING_ARRAY_H
@@ -31,9 +26,8 @@ typedef struct struct_##array_name array_name;                          \
 static array_name *                                                     \
 init_##array_name(void)                                                 \
 {                                                                       \
-    array_name *a = (array_name *)malloc(                               \
-            sizeof(array_name) + (initial_size - 1) * sizeof(item_type) \
-        );                                                              \
+    array_name *a = (array_name *) malloc(                              \
+        sizeof(array_name) + (initial_size - 1) * sizeof(item_type));   \
     if (a == NULL) {                                                    \
         fprintf(stderr, "%s:%s: init_%s: call to malloc failed.\n",     \
             __FILE__, __LINE__, #array_name);                           \
@@ -57,9 +51,8 @@ array_name##_append_item(array_name *a, item_type x)                    \
     unsigned int occs = a->occupants;                                   \
     if (occs == sz) {                                                   \
         sz += sz;                                                       \
-        a = (array_name *)realloc(a,                                    \
-                sizeof(array_name) + (sz - 1) * sizeof(item_type)       \
-            );                                                          \
+        a = (array_name *) realloc(a,                                   \
+            sizeof(array_name) + (sz - 1) * sizeof(item_type));         \
         if (a == NULL) {                                                \
             fprintf(stderr, "%s:%s: %s_append_item: "                   \
                 "call to realloc failed.\n",                            \
@@ -94,4 +87,4 @@ array_name##_set_item(array_name *a, unsigned int i, item_type x)       \
     a->items[i] = x;                                                    \
 }                                                                       \
 
-#endif /* ! MERCURY_EXPANDING_ARRAY_H */
+#endif // ! MERCURY_EXPANDING_ARRAY_H

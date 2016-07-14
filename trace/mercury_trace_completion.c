@@ -1,19 +1,14 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 2002, 2005-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_trace_completion.c
-**
-** Main author: stayl
-**
-** Command line completion for mdb.
-*/
+// Copyright (C) 2002, 2005-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_trace_completion.c
+//
+// Main author: stayl
+//
+// Command line completion for mdb.
 
 #include "mercury_memory.h"
 #include "mercury_std.h"
@@ -73,14 +68,12 @@ static  char                *MR_trace_map_completer_next(const char *word,
 static  void                MR_trace_free_map_completer_data(
                                 MR_CompleterData data);
 
-/*---------------------------------------------------------------------------*/
-/*
-** Called by Readline when the user requests completion.
-** Examine Readline's input buffer to work out which completers
-** should be used, then apply them.
-** Readline passes zero for `state' on the first call, and non-zero
-** on subsequent calls.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Called by Readline when the user requests completion.
+// Examine Readline's input buffer to work out which completers
+// should be used, then apply them.
+// Readline passes zero for `state' on the first call, and non-zero
+// on subsequent calls.
 
 char *
 MR_trace_line_completer(const char *passed_word, int state)
@@ -93,10 +86,9 @@ MR_trace_line_completer(const char *passed_word, int state)
     static size_t               word_len;
     char                        *completion;
 
-    /*
-    ** If `state' is 0, this is the first call for this `word',
-    ** so set up the list of completers.
-    */
+    // If `state' is 0, this is the first call for this `word',
+    // so set up the list of completers.
+
     if (state == 0) {
         char    *line;
         char    *command_end;
@@ -113,24 +105,23 @@ MR_trace_line_completer(const char *passed_word, int state)
         line = rl_line_buffer;
         insertion_point = rl_line_buffer + rl_point;
 
-        /*
-        ** There may be multiple commands in the line.
-        ** Skip to the one we are trying to complete.
-        */
+        // There may be multiple commands in the line.
+        // Skip to the one we are trying to complete.
+
         semicolon = strchr(line, ';');
         while (semicolon != NULL && semicolon < insertion_point) {
             line = semicolon + 1;
             semicolon = strchr(line, ';');
         }
 
-        /* Skip space or a number at the beginning of the command. */
+        // Skip space or a number at the beginning of the command.
         while (line < insertion_point &&
             (MR_isspace(*line) || MR_isdigit(*line)))
         {
             line++;
         }
 
-        /* Find the end of the command. */
+        // Find the end of the command.
         command_start = line;
         command_end = line;
         while (command_end < insertion_point && !MR_isspace(*command_end)) {
@@ -138,16 +129,15 @@ MR_trace_line_completer(const char *passed_word, int state)
         }
 
         if (command_end == insertion_point) {
-            /* We are completing the command itself. */
+            // We are completing the command itself.
             int                 num_digits;
             char                *digits;
             MR_CompleterList    *command_completer;
             MR_CompleterList    *alias_completer;
 
-            /*
-            ** Strip off any number preceding the command
-            ** (it will need to be added back later).
-            */
+            // Strip off any number preceding the command
+            // (it will need to be added back later).
+
             num_digits = 0;
             while (MR_isdigit(passed_word[num_digits])) {
                 num_digits++;
@@ -155,14 +145,14 @@ MR_trace_line_completer(const char *passed_word, int state)
             word = MR_copy_string(passed_word + num_digits);
             word_len = strlen(word);
 
-            /* Set up completers for commands and aliases. */
+            // Set up completers for commands and aliases.
             command_completer = MR_trace_command_completer(word, word_len);
             alias_completer = MR_trace_alias_completer(word, word_len);
 
             completer_list = command_completer;
             completer_list->MR_completer_list_next = alias_completer;
 
-            /* Add back the preceding number to the completions. */
+            // Add back the preceding number to the completions.
             if (num_digits != 0) {
                 digits = MR_malloc(num_digits + 1);
                 strncpy(digits, passed_word, num_digits);
@@ -171,7 +161,7 @@ MR_trace_line_completer(const char *passed_word, int state)
                     digits, MR_free_func, completer_list);
             }
         } else {
-            /* We are completing an argument of the command. */
+            // We are completing an argument of the command.
             #define MR_MAX_COMMAND_NAME_LEN 256
             char                command[MR_MAX_COMMAND_NAME_LEN];
             char                *expanded_command;
@@ -184,14 +174,14 @@ MR_trace_line_completer(const char *passed_word, int state)
 
             command_len = command_end - command_start;
             if (command_len >= MR_MAX_COMMAND_NAME_LEN) {
-                /* The string is too long to be a command. */
+                // The string is too long to be a command.
                 return NULL;
             } else {
                 strncpy(command, command_start, command_len);
                 command[command_len] = '\0';
             }
 
-            /* Expand aliases. */
+            // Expand aliases.
             if (MR_trace_lookup_alias(command, &words, &word_count)) {
                 if (word_count == 0) {
                     return NULL;
@@ -208,7 +198,7 @@ MR_trace_line_completer(const char *passed_word, int state)
                 return NULL;
             }
 
-            /* Set up a completer for the fixed argument strings. */
+            // Set up a completer for the fixed argument strings.
             completer_list = NULL;
             if (command_fixed_args != NULL) {
                 completer_list = MR_trace_string_array_completer(
@@ -218,7 +208,7 @@ MR_trace_line_completer(const char *passed_word, int state)
             word = MR_copy_string(passed_word);
             word_len = strlen(word);
 
-            /* Set up a completer for the non-fixed argument strings. */
+            // Set up a completer for the non-fixed argument strings.
             arg_completer = (*command_completer)(word, word_len);
             if (completer_list == NULL) {
                 completer_list = arg_completer;
@@ -236,7 +226,7 @@ MR_trace_line_completer(const char *passed_word, int state)
     }
 
     return completion;
-#endif /* ! MR_NO_USE_READLINE */
+#endif // ! MR_NO_USE_READLINE
 }
 
 static char *
@@ -255,7 +245,7 @@ MR_prepend_string(char *string, MR_CompleterData *data)
     return result;
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 static char *
 MR_trace_completer_list_next(const char *word, size_t word_len,
@@ -300,8 +290,8 @@ MR_trace_free_completer_list(MR_CompleterList *completer_list)
     }
 }
 
-/*---------------------------------------------------------------------------*/
-/* No completions. */
+////////////////////////////////////////////////////////////////////////////
+// No completions.
 
 MR_CompleterList *
 MR_trace_null_completer(const char *word, size_t word_len)
@@ -309,8 +299,8 @@ MR_trace_null_completer(const char *word, size_t word_len)
     return NULL;
 }
 
-/*---------------------------------------------------------------------------*/
-/* Complete on the labels of a sorted array. */
+////////////////////////////////////////////////////////////////////////////
+// Complete on the labels of a sorted array.
 
 typedef struct {
     MR_GetSlotName  MR_sorted_array_get_slot_name;
@@ -327,10 +317,9 @@ MR_trace_sorted_array_completer(const char *word, size_t word_length,
     int                         slot;
     MR_SortedArrayCompleterData *data;
 
-    /*
-    ** Find the slot containing the first possible match, optimizing for the
-    ** common case where we are finding all elements in the array.
-    */
+    // Find the slot containing the first possible match, optimizing for the
+    // common case where we are finding all elements in the array.
+
     if (word_length == 0) {
         found = (array_size != 0);
         slot = 0;
@@ -375,18 +364,16 @@ MR_trace_sorted_array_completer_next(const char *word,
     }
 }
 
-/*---------------------------------------------------------------------------*/
-/* Complete on the elements of an unsorted array of strings. */
+////////////////////////////////////////////////////////////////////////////
+// Complete on the elements of an unsorted array of strings.
 
 typedef struct MR_StringArrayCompleterData_struct {
     char    **MR_string_array;
     int     MR_string_array_current_offset;
 } MR_StringArrayCompleterData;
 
-/*
-** Complete on a NULL terminated array of strings.
-** The strings will not be `free'd.
-*/
+// Complete on a NULL terminated array of strings.
+// The strings will not be `free'd.
 
 static MR_CompleterList *
 MR_trace_string_array_completer(const char *const *strings)
@@ -423,31 +410,29 @@ MR_trace_string_array_completer_next(const char *word, size_t word_len,
     }
 }
 
-/*---------------------------------------------------------------------------*/
-/*
-** Complete on either a procedure specification, or a filename:linenumber pair.
-**
-** We construct the sorted array of filename:linenumber pairs by first
-** adding all such pairs implied by the module layout structures of the Mercury
-** modules that have debugging information to MR_source_file_lines,
-** and then sorting that array. We cannot use the macros defined in
-** mercury_array_util.h to keep the array sorted *during* the insertion
-** process, because the array can gen very big (more than 150,000 entries
-** for the Mercury compiler itself), and performing O(n) calls to
-** MR_prepare_insert_into_sorted, whose complexity is itself O(n),
-** would yield a quadratic algorithm.' We do the sorting using qsort,
-** whose expected complexity is O(n log n). (I don't expect its worst case
-** O(n^2) performance to ever occur in practice.)
-**
-** Since the MR_source_file_lines array is not sorted while we insert into it,
-** we have no cheap way to search the entirety of the so-far filled in parts
-** of the array to see whether the string we are about to add to it already
-** occurs in it. However, we can stop most duplicates from ever getting into
-** the array by simply checking if the string we are about to add is for
-** the same line number in the same file as the previous string, and we do
-** a final pass over the array after it is sorted, squeezing out the remaining
-** duplicates, which are now guaranteed to be adjacent to each other.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Complete on either a procedure specification, or a filename:linenumber pair.
+//
+// We construct the sorted array of filename:linenumber pairs by first
+// adding all such pairs implied by the module layout structures of the Mercury
+// modules that have debugging information to MR_source_file_lines,
+// and then sorting that array. We cannot use the macros defined in
+// mercury_array_util.h to keep the array sorted *during* the insertion
+// process, because the array can gen very big (more than 150,000 entries
+// for the Mercury compiler itself), and performing O(n) calls to
+// MR_prepare_insert_into_sorted, whose complexity is itself O(n),
+// would yield a quadratic algorithm.' We do the sorting using qsort,
+// whose expected complexity is O(n log n). (I don't expect its worst case
+// O(n^2) performance to ever occur in practice.)
+//
+// Since the MR_source_file_lines array is not sorted while we insert into it,
+// we have no cheap way to search the entirety of the so-far filled in parts
+// of the array to see whether the string we are about to add to it already
+// occurs in it. However, we can stop most duplicates from ever getting into
+// the array by simply checking if the string we are about to add is for
+// the same line number in the same file as the previous string, and we do
+// a final pass over the array after it is sorted, squeezing out the remaining
+// duplicates, which are now guaranteed to be adjacent to each other.
 
 #define INIT_SOURCE_FILE_LINE_TABLE_SIZE         10
 
@@ -488,27 +473,24 @@ MR_insert_module_into_source_file_line_table(const MR_ModuleLayout *module)
         MR_source_file_line_chars[file_name_len] = ':';
 
         num_lines = file->MR_mfl_label_count;
-        /* The +1 is for the sentinel. */
+        // The +1 is for the sentinel.
         MR_ensure_big_enough(MR_source_file_line_next + num_lines + 1,
             MR_source_file_line, const char *,
             INIT_SOURCE_FILE_LINE_TABLE_SIZE);
         for (cur_line = 0; cur_line < num_lines; cur_line++) {
             int line_num = file->MR_mfl_label_lineno[cur_line];
 
-            /*
-            ** Almost all duplicates that end up in MR_source_file_lines
-            ** get there from consecutive entries for the same line number
-            ** in the same module file layout structure. Look for this
-            ** relatively common case, and avoid adding the redundant entry
-            ** to the array if we find it.
-            */
+            // Almost all duplicates that end up in MR_source_file_lines
+            // get there from consecutive entries for the same line number
+            // in the same module file layout structure. Look for this
+            // relatively common case, and avoid adding the redundant entry
+            // to the array if we find it.
+
             if (cur_line > 0 &&
                 line_num == file->MR_mfl_label_lineno[cur_line - 1])
             {
-                /*
-                ** The string we would add would be the same as the string
-                ** for the previous line number.
-                */
+                // The string we would add would be the same as the string
+                // for the previous line number.
                 continue;
             }
 
@@ -522,7 +504,7 @@ MR_insert_module_into_source_file_line_table(const MR_ModuleLayout *module)
 }
 
 static int
-MR_compare_source_file_lines(const void *ptr1, const void *ptr2) 
+MR_compare_source_file_lines(const void *ptr1, const void *ptr2)
 {
     char * const    *sptr1 = (char * const *) ptr1;
     char * const    *sptr2 = (char * const *) ptr2;
@@ -538,10 +520,9 @@ MR_trace_break_completer(const char *word, size_t word_len)
     completer_list = MR_trace_proc_spec_completer(word, word_len);
 
     if (MR_strneq(word, "pred*", 5) || MR_strneq(word, "func*", 5)) {
-        /*
-        ** These prefixes say that the breakpoint is on a named procedure,
-        ** not on a filename/linenumber pair.
-        */
+        // These prefixes say that the breakpoint is on a named procedure,
+        // not on a filename/linenumber pair.
+
         return completer_list;
     }
 
@@ -558,21 +539,20 @@ MR_trace_break_completer(const char *word, size_t word_len)
         qsort(MR_source_file_lines, MR_source_file_line_next,
             sizeof(const char *), MR_compare_source_file_lines);
 
-        /*
-        ** Squeeze out any duplicate entries, which are now guaranteed
-        ** to be adjacent to each other.
-        */
+        // Squeeze out any duplicate entries, which are now guaranteed
+        // to be adjacent to each other.
+
         last = 0;
         for (i = 1; i < MR_source_file_line_next; i++) {
             if (MR_streq(MR_source_file_lines[i], MR_source_file_lines[last])) {
-                free(MR_source_file_lines[i]);
+                free((void *) MR_source_file_lines[i]);
             } else {
                 ++last;
                 MR_source_file_lines[last] = MR_source_file_lines[i];
             }
         }
 
-        /* Add the NULL entry as the sentinel. */
+        // Add the NULL entry as the sentinel.
         ++last;
         MR_source_file_lines[last] = NULL;
 
@@ -591,8 +571,8 @@ MR_trace_break_completer(const char *word, size_t word_len)
     return completer_list;
 }
 
-/*---------------------------------------------------------------------------*/
-/* Use Readline's filename completer. */
+////////////////////////////////////////////////////////////////////////////
+// Use Readline's filename completer.
 
 MR_CompleterList *
 MR_trace_filename_completer(const char *word, size_t word_len)
@@ -613,11 +593,11 @@ MR_trace_filename_completer_next(const char *word, size_t word_len,
     state = (MR_Integer) *data;
     *data = (MR_CompleterData) 1;
     return filename_completion_function((char *) word, (int) state);
-#endif /* ! MR_NO_USE_READLINE */
+#endif // ! MR_NO_USE_READLINE
 }
 
-/*---------------------------------------------------------------------------*/
-/* Apply a filter to the output of a completer. */
+////////////////////////////////////////////////////////////////////////////
+// Apply a filter to the output of a completer.
 
 typedef struct {
     MR_CompleterFilter      MR_filter_func;
@@ -674,8 +654,8 @@ MR_trace_free_filter_completer_data(MR_CompleterData completer_data)
     MR_free(data);
 }
 
-/*---------------------------------------------------------------------------*/
-/* Apply a mapping function to the output of a completer. */
+////////////////////////////////////////////////////////////////////////////
+// Apply a mapping function to the output of a completer.
 
 typedef struct {
     MR_Completer_Map        MR_map_func;
@@ -727,7 +707,7 @@ MR_trace_free_map_completer_data(MR_CompleterData completer_data)
     MR_free(data);
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 MR_CompleterList *
 MR_new_completer_elem(MR_Completer completer, MR_CompleterData data,

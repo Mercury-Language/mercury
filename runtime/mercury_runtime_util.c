@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001-2002, 2006 The University of Melbourne.
-** Copyright (C) 2014 The Mercury team.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module contains utility functions for the rest of the Mercury runtime.
-**
-** Author: petdr
-*/
+// Copyright (C) 2001-2002, 2006 The University of Melbourne.
+// Copyright (C) 2014 The Mercury team.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module contains utility functions for the rest of the Mercury runtime.
+//
+// Author: petdr
 
 #include    "mercury_imp.h"
 #include    "mercury_runtime_util.h"
@@ -32,7 +27,7 @@ generic_strerror(char *buf, size_t buflen, int errnum)
 #if defined(MR_HAVE_SNPRINTF)
     snprintf(buf, buflen, "Error %d", errnum);
 #elif defined(MR_HAVE__SNPRINTF)
-    /* _snprintf does not guarantee null termination. */
+    // _snprintf does not guarantee null termination.
     _snprintf(buf, buflen, "Error %d", errnum);
     if (buflen > 0) {
         buf[buflen - 1] = '\0';
@@ -46,22 +41,20 @@ const char *
 MR_strerror(int errnum, char *buf, size_t buflen)
 {
 #if defined(MR_HAVE_STRERROR_S) && !defined(MR_MINGW)
-    /*
-    ** MSVC has strerror_s. It also exists in C11 Annex K and is enabled by
-    ** defining a preprocessor macro __STDC_WANT_LIB_EXT1__
-    **
-    ** On MinGW-w64, strerror_s results in an undefined reference to strerror_s
-    ** in MSVCRT.DLL on Windows XP. Avoid it until we drop support for XP.
-    */
+    // MSVC has strerror_s. It also exists in C11 Annex K and is enabled by
+    // defining a preprocessor macro __STDC_WANT_LIB_EXT1__
+    //
+    // On MinGW-w64, strerror_s results in an undefined reference to strerror_s
+    // in MSVCRT.DLL on Windows XP. Avoid it until we drop support for XP.
+
     if (strerror_s(buf, buflen, errnum) != 0) {
         generic_strerror(buf, buflen, errnum);
     }
     return buf;
 #elif defined(MR_HAVE_STRERROR_R)
-    /*
-    ** The XSI-compliant and Mac OS X strerror_r populates buf unless it fails.
-    ** The GNU-specific strerror_r does not always populate buf.
-    */
+    // The XSI-compliant and Mac OS X strerror_r populates buf unless it fails.
+    // The GNU-specific strerror_r does not always populate buf.
+
   #if !defined(__GNU_LIBRARY__) || \
        ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE)
     int x = strerror_r(errnum, buf, buflen);
@@ -74,13 +67,12 @@ MR_strerror(int errnum, char *buf, size_t buflen)
     return s;
   #endif
 #else
-    /*
-    ** Fallback using deprecated variables. This is used on MinGW at least.
-    **
-    ** strerror_l is another thread-safe alternative, specified in POSIX.
-    ** It is locale-sensitive and takes a locale argument so we don't use it
-    ** for now.
-    */
+    // Fallback using deprecated variables. This is used on MinGW at least.
+    //
+    // strerror_l is another thread-safe alternative, specified in POSIX.
+    // It is locale-sensitive and takes a locale argument so we don't use it
+    // for now.
+
     if (errnum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
         return sys_errlist[errnum];
     } else {
@@ -161,7 +153,7 @@ MR_setenv(const char *name, const char *value, int overwrite)
     result = putenv(env);
 
     MR_free(env);
-    
+
     return result;
 #else
   #error "MR_setenv: unable to define"

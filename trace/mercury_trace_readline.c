@@ -1,20 +1,15 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** A simple interface to read a line, normally done using GNU readline.
-**
-** This module is compiled with warnings disabled (mgnuc --no-check),
-** since the GNU readline headers don't use prototypes, const, etc.
-**
-** Main authors: fjh, zs.
-*/
+// Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// A simple interface to read a line, normally done using GNU readline.
+//
+// This module is compiled with warnings disabled (mgnuc --no-check),
+// since the GNU readline headers don't use prototypes, const, etc.
+//
+// Main authors: fjh, zs.
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
@@ -40,14 +35,14 @@
     #include "readline/history.h"
   #endif
   #ifdef MR_HAVE_UNISTD_H
-     #include <unistd.h>    /* for isatty() */
+     #include <unistd.h>    // for isatty()
   #endif
 #endif
 
 #include <stdio.h>
 #include <stdlib.h>
 
-/* The initial size of the array of characters used to hold the line. */
+// The initial size of the array of characters used to hold the line.
 #define MR_INIT_BUF_LEN     80
 
 static  void    MR_dummy_prep_term_function(int ignored);
@@ -68,30 +63,26 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
         rl_instream = in;
         rl_outstream = out;
 
-        /*
-        ** The cast to (void *) silences a spurious "assignment from
-        ** incompatible pointer type" warning (old versions of readline
-        ** are very sloppy about declaring the types of function pointers).
-        */
+        // The cast to (void *) silences a spurious "assignment from
+        // incompatible pointer type" warning (old versions of readline
+        // are very sloppy about declaring the types of function pointers).
 
         rl_completion_entry_function = (void *) &MR_trace_line_completer;
         rl_readline_name = "mdb";
 
         if (!in_isatty) {
-            /*
-            ** This is necessary for tests/debugger/completion, otherwise
-            ** we get lots of messages about readline not being able to get
-            ** the terminal settings. This is possibly a bit flaky, but it is
-            ** only used by our tests.
-            */
+            // This is necessary for tests/debugger/completion, otherwise
+            // we get lots of messages about readline not being able to get
+            // the terminal settings. This is possibly a bit flaky, but it is
+            // only used by our tests.
+
             rl_prep_term_function = (void *) MR_dummy_prep_term_function;
             rl_deprep_term_function = (void *) MR_dummy_deprep_term_function;
         }
 
-        /*
-        ** If the prompt contains newlines then readline doesn't
-        ** display it properly.
-        */
+        // If the prompt contains newlines then readline doesn't
+        // display it properly.
+
         last_nl = strrchr(prompt, '\n');
         if (last_nl != NULL) {
             char    *real_prompt;
@@ -110,11 +101,10 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
             line = readline((char *) prompt);
         }
 
-        /*
-        ** readline() allocates with malloc(), and we want to return something
-        ** allocated with MR_malloc(), but that's OK, because MR_malloc() and
-        ** malloc() are interchangeable.
-        */
+        // readline() allocates with malloc(), and we want to return something
+        // allocated with MR_malloc(), but that's OK, because MR_malloc() and
+        // malloc() are interchangeable.
+
 #if 0
         {
             char *tmp = line;
@@ -130,9 +120,9 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 
         return line;
     }
-#endif /* have isatty && have fileno && !MR_NO_USE_READLINE */
+#endif // have isatty && have fileno && !MR_NO_USE_READLINE
 
-    /* otherwise, don't use readline */
+    // Otherwise, don't use readline.
     fprintf(out, "%s", prompt);
     fflush(out);
     return MR_trace_readline_raw(in);
@@ -186,9 +176,8 @@ MR_trace_readline_from_script(FILE *fp, char **args, int num_args)
         if (line == NULL) {
             return NULL;
         }
-        /*
-        ** Ignore lines starting with '#'.
-        */
+        // Ignore lines starting with '#'.
+
     } while (*line == '#');
 
     line_length = strlen(line);
@@ -208,10 +197,9 @@ MR_trace_readline_from_script(FILE *fp, char **args, int num_args)
             if (arg_num < num_args) {
                 arg = args[arg_num];
                 arg_length = strlen(arg);
-                /*
-                ** Subtract 2 for the "$n" which will not occur
-                ** in the expanded string.
-                */
+                // Subtract 2 for the "$n" which will not occur
+                // in the expanded string.
+
                 expanded_line_length += arg_length - 2;
                 expanded_line = MR_realloc(expanded_line,
                     expanded_line_length + 1);
@@ -219,7 +207,7 @@ MR_trace_readline_from_script(FILE *fp, char **args, int num_args)
                 strcat(expanded_line, arg);
                 expanded_line_index += arg_length;
             }
-            /* Skip the digit after the '$'. */
+            // Skip the digit after the '$'.
             line_index++;
         } else {
             expanded_line[expanded_line_index] = line[line_index];

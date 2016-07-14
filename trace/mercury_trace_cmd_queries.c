@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "queries" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "queries" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -29,7 +24,7 @@
 #include "mercury_trace_cmd_parameter.h"
 #include "mercury_trace_browse.h"
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_query(char **words, int word_count, MR_TraceCmdInfo *cmd,
@@ -55,4 +50,4 @@ MR_trace_cmd_io_query(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////

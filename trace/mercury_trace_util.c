@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 2000-2002,2004-2007,2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file contains utility functions that can be used by any or all
-** of the various kinds of Mercury debuggers.
-**
-** Author: zs.
-*/
+// Copyright (C) 2000-2002,2004-2007,2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file contains utility functions that can be used by any or all
+// of the various kinds of Mercury debuggers.
+//
+// Author: zs.
 
 #include "mercury_imp.h"
 #include "mercury_trace_internal.h"

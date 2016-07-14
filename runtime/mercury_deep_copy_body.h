@@ -1,23 +1,16 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1997-2005, 2007, 2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** The internals of deep copy.
-**
-** Functions such as "copy", "copy_arg", "copy_type_info", "in_range",
-** etc can be #defined to whatever functions are needed for a particular
-** copying application.
-*/
+// Copyright (C) 1997-2005, 2007, 2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-/*
-** Prototypes.
-*/
+// The internals of deep copy.
+//
+// Functions such as "copy", "copy_arg", "copy_type_info", "in_range",
+// etc can be #defined to whatever functions are needed for a particular
+// copying application.
+
+// Prototypes.
 
 static  MR_Word             copy_arg(const MR_Word *parent_data_ptr,
                                 MR_Word data,
@@ -42,42 +35,39 @@ static MR_AllocSiteInfoPtr  maybe_attrib(MR_Word *data_value);
 #define maybe_attrib(x)     NULL
 #endif
 
-/*
-** We need to make sure that we don't clobber any part of the closure
-** which might be used by the collector for tracing stack frames of
-** closure wrapper functions. So we store the forwarding pointer for closure
-** in the MR_closure_code field (which is not used by the collector),
-** rather than at offset zero (where it would clobber the closure layout,
-** which is used by the collector).
-*/
+// We need to make sure that we don't clobber any part of the closure
+// which might be used by the collector for tracing stack frames of
+// closure wrapper functions. So we store the forwarding pointer for closure
+// in the MR_closure_code field (which is not used by the collector),
+// rather than at offset zero (where it would clobber the closure layout,
+// which is used by the collector).
+
 #define CLOSURE_FORWARDING_PTR_OFFSET                                   \
     (offsetof(MR_Closure, MR_closure_code) / sizeof(MR_Word))
 
-/*
-** We must not clobber type_infos or typeclass_infos with forwarding pointers,
-** since they may be referenced by the garbage collector during collection.
-** Unfortunately in this case there is no spare field which we can use.
-** So we allocate an extra word before the front of the object (see the code
-** for new_object in compiler/mlds_to_c.m), and use that for the forwarding
-** pointer. Hence the offsets here are -1, meaning one word before the start
-** of the object.
-*/
+// We must not clobber type_infos or typeclass_infos with forwarding pointers,
+// since they may be referenced by the garbage collector during collection.
+// Unfortunately in this case there is no spare field which we can use.
+// So we allocate an extra word before the front of the object (see the code
+// for new_object in compiler/mlds_to_c.m), and use that for the forwarding
+// pointer. Hence the offsets here are -1, meaning one word before the start
+// of the object.
+
 #define TYPEINFO_FORWARDING_PTR_OFFSET -1
 #define TYPECLASSINFO_FORWARDING_PTR_OFFSET -1
 
-/*
-** RETURN_IF_OUT_OF_RANGE(MR_Word tagged_pointer, MR_Word *pointer,
-**          int forwarding_pointer_offset, rettype):
-**
-** Check if `pointer' is either out of range, or has already been processed,
-** and if so, return (from the function that called this macro) with the
-** appropriate value.
-**
-** If the pointer is out of range, we return the original tagged pointer
-** value unchanged. If the pointer has already been processed, then return
-** the forwarding pointer that was saved in the object, which will be stored
-** at pointer[forwarding_pointer_offset].
-*/
+// RETURN_IF_OUT_OF_RANGE(MR_Word tagged_pointer, MR_Word *pointer,
+//          int forwarding_pointer_offset, rettype):
+//
+// Check if `pointer' is either out of range, or has already been processed,
+// and if so, return (from the function that called this macro) with the
+// appropriate value.
+//
+// If the pointer is out of range, we return the original tagged pointer
+// value unchanged. If the pointer has already been processed, then return
+// the forwarding pointer that was saved in the object, which will be stored
+// at pointer[forwarding_pointer_offset].
+
 #define RETURN_IF_OUT_OF_RANGE(tagged_pointer, pointer, offset, rettype) \
         do {                                                             \
             if (!in_range(pointer)) {                                    \
@@ -109,13 +99,12 @@ try_again:
     case MR_TYPECTOR_REP_ENUM_USEREQ:
     case MR_TYPECTOR_REP_FOREIGN_ENUM:
     case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
-        return data;    /* just a copy of the actual item */
+        return data;    // Just a copy of the actual item.
 
     case MR_TYPECTOR_REP_DUMMY:
-        /*
-        ** The value we are asked to copy is a dummy, and the return value
-        ** won't be looked at either, so what we return doesn't really matter.
-        */
+        // The value we are asked to copy is a dummy, and the return value
+        // won't be looked at either, so what we return doesn't really matter.
+
         return data;
 
     case MR_TYPECTOR_REP_RESERVED_ADDR:
@@ -127,32 +116,29 @@ try_again:
             ra_layout =
                 MR_type_ctor_layout(type_ctor_info).MR_layout_reserved_addr;
 
-            /*
-            ** First check if this value is one of the numeric
-            ** reserved addresses.
-            */
+            // First check if this value is one of the numeric
+            // reserved addresses.
+
             if ((MR_Unsigned) data <
                 (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
             {
                 return data;
             }
 
-            /*
-            ** Next check if this value is one of the symbolic
-            ** reserved addresses.
-            */
+            // Next check if this value is one of the symbolic
+            // reserved addresses.
+
             for (j = 0; j < ra_layout->MR_ra_num_res_symbolic_addrs; j++) {
                 if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[j]) {
                    new_data = data;
-                   /* "break" here would just exit the "for" loop */
+                   // "break" here would just exit the "for" loop
                    return new_data;
                 }
             }
 
-            /*
-            ** Otherwise, it is not one of the reserved addresses,
-            ** so handle it like a normal DU type.
-            */
+            // Otherwise, it is not one of the reserved addresses,
+            // so handle it like a normal DU type.
+
             du_type_layout = ra_layout->MR_ra_other_functors;
             goto du_type;
         }
@@ -160,13 +146,12 @@ try_again:
     case MR_TYPECTOR_REP_DU:
     case MR_TYPECTOR_REP_DU_USEREQ:
         du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
-        /* fallthru */
+        // fallthru
 
-    /*
-    ** This label handles both the DU case and the second half of the
-    ** RESERVED_ADDR case. `du_type_layout' must be set before
-    ** this code is entered.
-    */
+    // This label handles both the DU case and the second half of the
+    // RESERVED_ADDR case. `du_type_layout' must be set before
+    // this code is entered.
+
     du_type:
         {
             MR_Word               *data_value;
@@ -178,28 +163,26 @@ try_again:
 
             switch (ptag_layout->MR_sectag_locn) {
             case MR_SECTAG_LOCAL:
-                return data;    /* just a copy of the actual item */
+                return data;    // Just a copy of the actual item.
 
-            /* case MR_SECTAG_REMOTE:          */
-            /* case MR_SECTAG_NONE:            */
-            /* case MR_SECTAG_NONE_DIRECT_ARG: */
-                /*
-                ** The code we want to execute for the MR_SECTAG_REMOTE
-                ** and MR_SECTAG_NONE cases is very similar. However,
-                ** speed is important here, and we don't want to check
-                ** the secondary tag location multiple times at run-time.
-                ** So we define the code for these two cases as a macro,
-                ** `MR_handle_sectag_remote_or_none(have_sectag)',
-                ** and invoke it twice below, with constant values for the
-                ** `have_sectag' argument. This ensures that the C
-                ** preprocessor will duplicate the code and the C compiler
-                ** will then optimize away the tests at compile time.
-                **
-                ** Likewise, we are careful to avoid testing
-                ** `exist_info != NULL' multiple times at run-time.
-                ** This requires two copies of the MR_get_first_slot() code,
-                ** which is why we define that as a macro too.
-                */
+            // case MR_SECTAG_REMOTE:
+            // case MR_SECTAG_NONE:
+            // case MR_SECTAG_NONE_DIRECT_ARG:
+                // The code we want to execute for the MR_SECTAG_REMOTE
+                // and MR_SECTAG_NONE cases is very similar. However,
+                // speed is important here, and we don't want to check
+                // the secondary tag location multiple times at run-time.
+                // So we define the code for these two cases as a macro,
+                // `MR_handle_sectag_remote_or_none(have_sectag)',
+                // and invoke it twice below, with constant values for the
+                // `have_sectag' argument. This ensures that the C
+                // preprocessor will duplicate the code and the C compiler
+                // will then optimize away the tests at compile time.
+                //
+                // Likewise, we are careful to avoid testing
+                // `exist_info != NULL' multiple times at run-time.
+                // This requires two copies of the MR_get_first_slot() code,
+                // which is why we define that as a macro too.
 
 #define MR_get_first_slot(have_sectag)                                      \
         do {                                                                \
@@ -210,7 +193,7 @@ try_again:
                     MR_field(0, new_data, 0) = sectag;                      \
                     cur_slot = 1;                                           \
                 }                                                           \
-        } while(0)
+        } while (0)
 
 #define MR_handle_sectag_remote_or_none(have_sectag)                           \
         do {                                                                   \
@@ -314,7 +297,7 @@ try_again:
                         if (MR_arg_type_may_contain_var(functor_desc, i)) {    \
                             MR_Word *parent_data = (MR_Word *) new_data;       \
                             if (have_sectag) {                                 \
-                                /* skip past the secondary tag */              \
+                                /* Skip past the secondary tag. */             \
                                 parent_data++;                                 \
                             }                                                  \
                             MR_field(0, new_data, cur_slot) =                  \
@@ -337,23 +320,22 @@ try_again:
                     new_data = (MR_Word) MR_mkword(ptag, new_data);            \
                     leave_forwarding_pointer(data_value, 0, new_data);         \
                 }                                                              \
-        } while(0)
+        } while (0)
 
             case MR_SECTAG_REMOTE:
-                /* see comments above */
+                // See comments above.
                 MR_handle_sectag_remote_or_none(MR_TRUE);
                 return new_data;
 
             case MR_SECTAG_NONE:
-                /* see comments above */
+                // See comments above.
                 MR_handle_sectag_remote_or_none(MR_FALSE);
                 return new_data;
 
             case MR_SECTAG_NONE_DIRECT_ARG:
-                /*
-                ** This code is a cut-down and specialized version
-                ** of the code for MR_SECTAG_NONE.
-                */
+                // This code is a cut-down and specialized version
+                // of the code for MR_SECTAG_NONE.
+
                 data_value = (MR_Word *) MR_body(data, ptag);
                 RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
                 {
@@ -382,11 +364,10 @@ try_again:
                         lower_limit, upper_limit);
 
                     new_data = (MR_Word) MR_mkword(ptag, new_data);
-                    /*
-                    ** We cannot (and shouldn't need to) leave a forwarding
-                    ** pointer for the whole term that is separate from the
-                    ** forwarding pointer for the argument.
-                    */
+                    // We cannot (and shouldn't need to) leave a forwarding
+                    // pointer for the whole term that is separate from the
+                    // forwarding pointer for the argument.
+
                 }
                 return new_data;
 
@@ -396,7 +377,7 @@ try_again:
             default:
                 MR_fatal_error("copy(): unknown sectag_locn");
 
-            } /* end switch on sectag_locn */
+            } // end switch on sectag_locn
         }
         break;
 
@@ -425,7 +406,7 @@ try_again:
             MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
         goto try_again;
 
-    case MR_TYPECTOR_REP_INT:  /* fallthru */
+    case MR_TYPECTOR_REP_INT:  // fallthru
     case MR_TYPECTOR_REP_CHAR:
         return data;
 
@@ -442,11 +423,10 @@ try_again:
                 {
                     MR_restore_transient_hp();
 #ifdef MR_HIGHLEVEL_CODE
-                    /*
-                    ** We can't use MR_float_to_word, since it uses MR_hp,
-                    ** which in grade hlc.par.gc will be a reference to
-                    ** thread-local storage that we haven't allocated.
-                    */
+                    // We can't use MR_float_to_word, since it uses MR_hp,
+                    // which in grade hlc.par.gc will be a reference to
+                    // thread-local storage that we haven't allocated.
+
                     new_data = (MR_Word) MR_box_float(MR_unbox_float(data));
 #else
                     new_data = MR_float_to_word(MR_word_to_float(data));
@@ -462,12 +442,10 @@ try_again:
 
     case MR_TYPECTOR_REP_STRING:
         {
-            /*
-            ** Not all Mercury strings are aligned; in particular,
-            ** string constants containing the empty string may be
-            ** allocated unaligned storage by the C compiler.
-            ** So we can't do `assert(MR_tag(data) == 0)' here.
-            */
+            // Not all Mercury strings are aligned; in particular,
+            // string constants containing the empty string may be
+            // allocated unaligned storage by the C compiler.
+            // So we can't do `assert(MR_tag(data) == 0)' here.
 
             RETURN_IF_OUT_OF_RANGE(data, (MR_Word *) data, 0, MR_Word);
 
@@ -494,13 +472,12 @@ try_again:
             RETURN_IF_OUT_OF_RANGE(data, data_value,
                     CLOSURE_FORWARDING_PTR_OFFSET, MR_Word);
 
-            /*
-            ** Closures have the structure given by the MR_Closure type.
-            **
-            ** Their type_infos have a pointer to type_ctor_info for
-            ** pred/0 or func/0, the number of argument typeinfos,
-            ** and then the argument typeinfos themselves.
-            */
+            // Closures have the structure given by the MR_Closure type.
+            //
+            // Their type_infos have a pointer to type_ctor_info for
+            // pred/0 or func/0, the number of argument typeinfos,
+            // and then the argument typeinfos themselves.
+
             {
                 MR_Unsigned         num_r_args;
                 MR_Unsigned         num_f_args;
@@ -521,26 +498,25 @@ try_again:
                 num_f_args = MR_closure_num_hidden_f_args(old_closure);
                 num_args = num_r_args + num_f_args;
 
-                /* Create new closure. */
+                // Create new closure.
                 attrib = maybe_attrib(data_value);
                 MR_offset_incr_saved_hp(new_closure_word, 0, num_args + 3,
                     attrib, NULL);
                 new_closure = (MR_Closure *) new_closure_word;
 
-                /* Copy the fixed fields. */
+                // Copy the fixed fields.
                 new_closure->MR_closure_layout = closure_layout;
                 new_closure->MR_closure_code = old_closure->MR_closure_code;
                 new_closure->MR_closure_num_hidden_args_rf =
                     old_closure->MR_closure_num_hidden_args_rf;
 
-                /*
-                ** Fill in the pseudo_typeinfos in the closure layout
-                ** with the values from the closure.
-                */
+                // Fill in the pseudo_typeinfos in the closure layout
+                // with the values from the closure.
+
                 type_info_arg_vector = MR_materialize_closure_type_params(
                     old_closure);
 
-                /* Copy the arguments. */
+                // Copy the arguments.
                 r_offset = 0;
                 f_offset = num_r_args;
 
@@ -597,7 +573,7 @@ try_again:
                 if (arity == 0) {
                     new_data = (MR_Word) NULL;
                 } else {
-                    /* Allocate space for the new tuple. */
+                    // Allocate space for the new tuple.
                     attrib = maybe_attrib(data_value);
                     MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,
                         MR_SIZE_SLOT_SIZE + arity, attrib, NULL);
@@ -607,7 +583,7 @@ try_again:
                     arg_typeinfo_vector =
                         MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
                     for (i = 0; i < arity; i++) {
-                       /* Type_infos are counted from one. */
+                       // Type_infos are counted from one.
                        new_data_ptr[i] = copy(data_value[i],
                             (const MR_TypeInfo) arg_typeinfo_vector[i + 1],
                             lower_limit, upper_limit);
@@ -691,14 +667,13 @@ try_again:
             lower_limit, upper_limit);
 
     case MR_TYPECTOR_REP_TYPECTORINFO:
-        /* Type_ctor_infos are always pointers to static data. */
+        // Type_ctor_infos are always pointers to static data.
         return data;
 
     case MR_TYPECTOR_REP_TYPECTORDESC:
-        /*
-        ** Type_ctor_descs are always either encoded integers,
-        ** or pointers to static data.
-        */
+        // Type_ctor_descs are always either encoded integers,
+        // or pointers to static data.
+
         return data;
 
     case MR_TYPECTOR_REP_TYPECLASSINFO:
@@ -706,25 +681,24 @@ try_again:
             lower_limit, upper_limit);
 
     case MR_TYPECTOR_REP_BASETYPECLASSINFO:
-        /* Base_typeclass_infos are always pointers to static data. */
+        // Base_typeclass_infos are always pointers to static data.
         return data;
 
-    case MR_TYPECTOR_REP_STABLE_C_POINTER: /* fallthru */
+    case MR_TYPECTOR_REP_STABLE_C_POINTER: // fallthru
     case MR_TYPECTOR_REP_C_POINTER:
         {
             MR_Word *data_value;
             int     data_tag;
 
-            /* XXX simplify: tag should be zero. */
+            // XXX simplify: tag should be zero.
             data_tag = MR_tag(data);
             data_value = (MR_Word *) MR_body(data, data_tag);
 
             if (in_range(data_value)) {
-                /*
-                ** This error occurs if we try to copy() a
-                ** `c_pointer' type that points to memory allocated
-                ** on the Mercury heap.
-                */
+                // This error occurs if we try to copy() a
+                // `c_pointer' type that points to memory allocated
+                // on the Mercury heap.
+
                 MR_fatal_error("Cannot copy a c_pointer type");
             } else {
                 new_data = data;
@@ -732,9 +706,9 @@ try_again:
         }
         return new_data;
 
-    case MR_TYPECTOR_REP_SUCCIP: /* fallthru */
+    case MR_TYPECTOR_REP_SUCCIP: // fallthru
     case MR_TYPECTOR_REP_REDOIP:
-        /* Code addresses are never relocated. */
+        // Code addresses are never relocated.
         return data;
 
     case MR_TYPECTOR_REP_HP:
@@ -747,15 +721,15 @@ try_again:
         }
         return new_data;
 
-    case MR_TYPECTOR_REP_CURFR: /* fallthru */
-    case MR_TYPECTOR_REP_MAXFR: /* fallthru */
+    case MR_TYPECTOR_REP_CURFR: // fallthru
+    case MR_TYPECTOR_REP_MAXFR: // fallthru
     case MR_TYPECTOR_REP_REDOFR:
-        /* We do not modify the layout of the nondet stack. */
+        // We do not modify the layout of the nondet stack.
         return data;
 
     case MR_TYPECTOR_REP_TRAIL_PTR:
     case MR_TYPECTOR_REP_TICKET:
-        /* XXX We do not yet compress the trail when doing gc. */
+        // XXX We do not yet compress the trail when doing gc.
         return data;
 
     case MR_TYPECTOR_REP_REFERENCE:
@@ -780,7 +754,7 @@ try_again:
         return new_data;
 
     case MR_TYPECTOR_REP_STABLE_FOREIGN:
-        /* By definition, stable foreign values are never relocated. */
+        // By definition, stable foreign values are never relocated.
         return data;
 
     case MR_TYPECTOR_REP_FOREIGN:
@@ -789,41 +763,38 @@ try_again:
 
             data_value = (MR_Word *) MR_strip_tag(data);
 
-            /*
-            ** Foreign types that are not pointers should not have
-            ** MR_TYPECTOR_REP_FOREIGN; instead, they should have
-            ** MR_TYPECTOR_REP_STABLE_FOREIGN.
-            */
+            // Foreign types that are not pointers should not have
+            // MR_TYPECTOR_REP_FOREIGN; instead, they should have
+            // MR_TYPECTOR_REP_STABLE_FOREIGN.
+
             if (lower_limit != NULL && !in_range(data_value)) {
-                /*
-                ** If the foreign value does not point into the area of
-                ** the heap that we are copying, then it is safe to
-                ** leave it unchanged.
-                **
-                ** It is important to allow these cases, when doing partial
-                ** copies (as occurs with accurate GC or solutions),
-                ** since they include the common cases of pointer types
-                ** that point to the C heap, global data, or stack data.
-                ** io__stream is a particularly important example.
-                **
-                ** However, when doing complete copies (lower_limit == NULL),
-                ** we should not allow shallow copying of foreign types,
-                ** because in cases where the foreign type is (or represents)
-                ** a pointer of some kind, that might violate unique mode
-                ** correctness. That's why we check lower_limit != NULL above.
-                */
+                // If the foreign value does not point into the area of
+                // the heap that we are copying, then it is safe to
+                // leave it unchanged.
+                //
+                // It is important to allow these cases, when doing partial
+                // copies (as occurs with accurate GC or solutions),
+                // since they include the common cases of pointer types
+                // that point to the C heap, global data, or stack data.
+                // io__stream is a particularly important example.
+                //
+                // However, when doing complete copies (lower_limit == NULL),
+                // we should not allow shallow copying of foreign types,
+                // because in cases where the foreign type is (or represents)
+                // a pointer of some kind, that might violate unique mode
+                // correctness. That's why we check lower_limit != NULL above.
+
                 new_data = data;
             } else {
-                /*
-                ** The foreign value points into the Mercury heap.
-                ** It might be a foreign pointer to a Mercury heap
-                ** value; or it might be a pointer to a foreign struct
-                ** which MR_MAYBE_BOX_FOREIGN_TYPE() has copied to the
-                ** Mercury heap; or it might be a non-pointer type
-                ** whose bit pattern happens to point to the heap.
-                **
-                ** We don't know how to copy it, so we have to abort.
-                */
+                // The foreign value points into the Mercury heap.
+                // It might be a foreign pointer to a Mercury heap
+                // value; or it might be a pointer to a foreign struct
+                // which MR_MAYBE_BOX_FOREIGN_TYPE() has copied to the
+                // Mercury heap; or it might be a non-pointer type
+                // whose bit pattern happens to point to the heap.
+                //
+                // We don't know how to copy it, so we have to abort.
+
                 char    *buf;
                 int     len;
 
@@ -845,16 +816,14 @@ try_again:
     MR_fatal_error(MR_STRINGIFY(copy) ": unexpected fallthrough");
 }
 
-/*
-** copy_arg is like copy() except that it takes a pseudo_type_info
-** (namely arg_pseudo_type_info) rather than a type_info.
-** The pseudo_type_info may contain type variables,
-** which refer to arguments of the term_type_info.
-**
-** It also takes a pointer to the data of the parent of this piece of data
-** and a functor descriptor for the parent in case the data being copied is
-** existentially quantified.
-*/
+// copy_arg is like copy() except that it takes a pseudo_type_info
+// (namely arg_pseudo_type_info) rather than a type_info.
+// The pseudo_type_info may contain type variables,
+// which refer to arguments of the term_type_info.
+//
+// It also takes a pointer to the data of the parent of this piece of data
+// and a functor descriptor for the parent in case the data being copied is
+// existentially quantified.
 
 static MR_Word
 copy_arg(const MR_Word *parent_data_ptr, MR_Word data,
@@ -882,9 +851,7 @@ static MR_TypeInfo
 copy_type_info(MR_TypeInfo type_info,
     const MR_Word *lower_limit, const MR_Word *upper_limit)
 {
-    /*
-    ** Most changes here should also be done in copy_pseudo_type_info below.
-    */
+    // Most changes here should also be done in copy_pseudo_type_info below.
 
     RETURN_IF_OUT_OF_RANGE((MR_Word) type_info, (MR_Word *) type_info,
         TYPEINFO_FORWARDING_PTR_OFFSET, MR_TypeInfo);
@@ -900,24 +867,20 @@ copy_type_info(MR_TypeInfo type_info,
         int             forwarding_pointer_size;
         MR_AllocSiteInfoPtr attrib;
 
-        /*
-        ** Note that we assume type_ctor_infos will always be
-        ** allocated statically, so we never copy them.
-        */
+        // Note that we assume type_ctor_infos will always be
+        // allocated statically, so we never copy them.
 
         type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-        /*
-        ** Optimize a special case: if there are no arguments,
-        ** we don't need to construct a type_info; instead,
-        ** we can just return the type_ctor_info.
-        */
+        // Optimize a special case: if there are no arguments,
+        // we don't need to construct a type_info; instead,
+        // we can just return the type_ctor_info.
 
         if ((MR_Word) type_info == (MR_Word) type_ctor_info) {
             return (MR_TypeInfo) type_ctor_info;
         }
 
-        /* Compute how many words to reserve for the forwarding pointer. */
+        // Compute how many words to reserve for the forwarding pointer.
 #ifdef MR_NATIVE_GC
         forwarding_pointer_size = 1;
 #else
@@ -966,9 +929,7 @@ static MR_PseudoTypeInfo
 copy_pseudo_type_info(MR_PseudoTypeInfo pseudo_type_info,
     const MR_Word *lower_limit, const MR_Word *upper_limit)
 {
-    /*
-    ** Most changes here should also be done in copy_type_info above.
-    */
+    // Most changes here should also be done in copy_type_info above.
 
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
         return pseudo_type_info;
@@ -989,25 +950,21 @@ copy_pseudo_type_info(MR_PseudoTypeInfo pseudo_type_info,
         int                 forwarding_pointer_size;
         MR_AllocSiteInfoPtr attrib;
 
-        /*
-        ** Note that we assume type_ctor_infos will always be
-        ** allocated statically, so we never copy them.
-        */
+        // Note that we assume type_ctor_infos will always be
+        // allocated statically, so we never copy them.
 
         type_ctor_info =
             MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info);
 
-        /*
-        ** Optimize a special case: if there are no arguments,
-        ** we don't need to construct a pseudo_type_info; instead,
-        ** we can just return the type_ctor_info.
-        */
+        // Optimize a special case: if there are no arguments,
+        // we don't need to construct a pseudo_type_info; instead,
+        // we can just return the type_ctor_info.
 
         if ((MR_Word) pseudo_type_info == (MR_Word) type_ctor_info) {
             return (MR_PseudoTypeInfo) type_ctor_info;
         }
 
-        /* Compute how many words to reserve for the forwarding pointer. */
+        // Compute how many words to reserve for the forwarding pointer.
 #ifdef MR_NATIVE_GC
         forwarding_pointer_size = 1;
 #else
@@ -1079,14 +1036,12 @@ copy_typeclass_info(MR_Word typeclass_info_param,
         int     i;
         int     forwarding_pointer_size;
 
-        /*
-        ** Note that we assume base_typeclass_infos will always be
-        ** allocated statically, so we never copy them.
-        */
+        // Note that we assume base_typeclass_infos will always be
+        // allocated statically, so we never copy them.
 
         base_typeclass_info = (MR_Word *) *typeclass_info;
 
-        /* Compute how many words to reserve for the forwarding pointer. */
+        // Compute how many words to reserve for the forwarding pointer.
 #ifdef MR_NATIVE_GC
         forwarding_pointer_size = 1;
 #else
@@ -1102,27 +1057,25 @@ copy_typeclass_info(MR_Word typeclass_info_param,
         num_arg_typeinfos = MR_typeclass_info_num_params(typeclass_info);
         MR_offset_incr_saved_hp(new_typeclass_info_word,
             forwarding_pointer_size,
-            forwarding_pointer_size + 1 /* for basetypeclass_info */
+            forwarding_pointer_size + 1 // for basetypeclass_info
             + num_instance_constraints + num_super + num_arg_typeinfos,
             NULL, NULL);
         new_typeclass_info = (MR_Word *) new_typeclass_info_word;
 
         new_typeclass_info[0] = (MR_Word) base_typeclass_info;
 
-        /*
-        ** First, copy typeinfos for unconstrained tvars from
-        ** the instance declaration.
-        */
+        // First, copy typeinfos for unconstrained tvars from
+        // the instance declaration.
+
         for (i = 1; i < num_unconstrained + 1; i++) {
             new_typeclass_info[i] = (MR_Word) copy_type_info(
                 (MR_TypeInfo) typeclass_info[i], lower_limit, upper_limit);
         }
-        /*
-        ** Next, copy all the typeclass infos: both the ones for constraints
-        ** on the instance declaration (instance constraints), and the ones
-        ** for constraints on the typeclass declaration
-        ** (superclass constraints).
-        */
+        // Next, copy all the typeclass infos: both the ones for constraints
+        // on the instance declaration (instance constraints), and the ones
+        // for constraints on the typeclass declaration
+        // (superclass constraints).
+
         for (i = num_unconstrained + 1;
             i <= num_unconstrained + num_instance_constraints + num_super;
             i++)
@@ -1131,10 +1084,9 @@ copy_typeclass_info(MR_Word typeclass_info_param,
                 typeclass_info[i], lower_limit, upper_limit);
         }
 
-        /*
-        ** Then, copy all the type infos for types in the
-        ** head of the type class declaration.
-        */
+        // Then, copy all the type infos for types in the
+        // head of the type class declaration.
+
         for (i = num_unconstrained + num_instance_constraints + num_super + 1;
             i <= num_unconstrained + num_instance_constraints + num_super
                 + num_arg_typeinfos;
@@ -1150,18 +1102,17 @@ copy_typeclass_info(MR_Word typeclass_info_param,
     }
 }
 
-/*
-** Try to return the allocation identifier for the given object, or NULL.
-** If present, allocation identifiers always occupy the first word of an
-** allocated object, with the Mercury cell starting at the second word.
-*/
+// Try to return the allocation identifier for the given object, or NULL.
+// If present, allocation identifiers always occupy the first word of an
+// allocated object, with the Mercury cell starting at the second word.
+
 #ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
 static MR_AllocSiteInfoPtr
 maybe_attrib(MR_Word *data_value)
 {
     MR_Word *base;
 
-    /* Strings are not always aligned, for example. */
+    // Strings are not always aligned, for example.
     if (MR_tag(data_value) == 0) {
         base = GC_base(data_value);
         if (&base[1] == data_value) {

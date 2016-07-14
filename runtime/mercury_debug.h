@@ -1,23 +1,20 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1995-2003, 2006, 2010 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/* mercury_debug.h - definitions for debugging messages */
+// Copyright (C) 1995-2003, 2006, 2010 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_debug.h - definitions for debugging messages
 
 #ifndef MERCURY_DEBUG_H
 #define MERCURY_DEBUG_H
 
-#include "mercury_types.h"          /* for MR_Word and MR_Code */
-#include "mercury_type_info.h"      /* for MR_TypeInfo         */
-#include "mercury_memory_zones.h"   /* for MR_MemoryZone       */
-#include <stdio.h>                  /* for FILE                */
+#include "mercury_types.h"          // for MR_Word and MR_Code
+#include "mercury_type_info.h"      // for MR_TypeInfo
+#include "mercury_memory_zones.h"   // for MR_MemoryZone
+#include <stdio.h>                  // for FILE
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_DEBUG_ON
     #define MR_DEBUG(action)        action
@@ -192,7 +189,7 @@
 #define MR_debugmsg3(msg, arg1, arg2, arg3)                             \
     MR_IF (MR_progdebug, (fprintf(stdout, msg, arg1, arg2, arg3)))
 
-#endif /* MR_LOWLEVEL_DEBUG */
+#endif // MR_LOWLEVEL_DEBUG
 
 #define MR_print_deep_prof_vars(fp, msg)                                     \
     do {                                                                     \
@@ -201,7 +198,7 @@
         MR_print_deep_prof_var(fp, "nextcsd", MR_next_call_site_dynamic);    \
     } while (0)
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_DEBUG_HEAP_ALLOC
 extern  void    MR_unravel_univ_msg(FILE *fp, MR_Word univ,
@@ -262,16 +259,15 @@ extern  void    MR_printlabel(FILE *fp, const MR_Code *w);
 extern  void    MR_print_deep_prof_var(FILE *fp, const char *name,
                     MR_CallSiteDynamic *csd);
 
-/*
-** Log a message for debugging purposes. This will log the message with
-** threadscope if available. In other parallel grades it will print the
-** address of the MercuryEngine structure with the message to stdout.
-** In all other grades, it will print the message to standard output.
-** There is never any need to put a newline character at the end
-** of the message; this function does that automatically.
-*/
+// Log a message for debugging purposes. This will log the message with
+// threadscope if available. In other parallel grades it will print the
+// address of the MercuryEngine structure with the message to stdout.
+// In all other grades, it will print the message to standard output.
+// There is never any need to put a newline character at the end
+// of the message; this function does that automatically.
+
 extern  void    MR_debug_log_message(const char *format, ...);
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-#endif /* not MERCURY_DEBUG_H */
+#endif // not MERCURY_DEBUG_H

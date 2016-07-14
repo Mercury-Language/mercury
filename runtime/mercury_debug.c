@@ -1,11 +1,8 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1996-2007, 2010 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 1996-2007, 2010 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
 #include    "mercury_imp.h"
 #include    "mercury_dlist.h"
@@ -33,7 +30,7 @@ static MR_bool  MR_find_zone_for_nondet_ptr(const MR_Word *ptr,
                     MR_Context **ctxt_ptr,
                     MR_MemoryZone **zone_ptr, int *zone_num_ptr);
 
-/*--------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_DEEP_PROFILING
 static void     MR_check_watch_csd_start(MR_Code *proc);
@@ -58,7 +55,7 @@ static MR_bool  MR_proc_matches_name(const MR_Code *proc, const char *name);
 
 static  MR_bool MR_print_raw_addrs = MR_PRINT_RAW_ADDRS;
 
-/* debugging messages */
+// Debugging messages.
 
 #ifdef MR_DEBUG_HEAP_ALLOC
 
@@ -96,7 +93,7 @@ MR_debug_tag_offset_incr_hp_base_msg(FILE *fp, MR_Word ptr,
     }
 }
 
-#endif /* MR_DEBUG_HEAP_ALLOC */
+#endif // MR_DEBUG_HEAP_ALLOC
 
 #ifdef MR_LOWLEVEL_DEBUG
 
@@ -284,7 +281,7 @@ MR_call_msg(FILE *fp, const MR_Code *proc, const MR_Code *succ_cont)
 
 #ifdef  MR_DEEP_PROFILING
     MR_check_watch_csd_start(proc);
-#endif  /* MR_DEEP_PROFILING */
+#endif  // MR_DEEP_PROFILING
 
     MR_do_watches(fp);
 
@@ -315,7 +312,7 @@ MR_tailcall_msg(FILE *fp, const MR_Code *proc)
 
 #ifdef  MR_DEEP_PROFILING
     MR_check_watch_csd_start(proc);
-#endif  /* MR_DEEP_PROFILING */
+#endif  // MR_DEEP_PROFILING
 
     MR_do_watches(fp);
 
@@ -453,7 +450,7 @@ MR_decr_sp_msg(FILE *fp, MR_Word val, const MR_Word *addr)
     MR_printdetstack(fp, addr);
 }
 
-#endif /* defined(MR_LOWLEVEL_DEBUG) */
+#endif // defined(MR_LOWLEVEL_DEBUG)
 
 #ifdef MR_DEBUG_GOTOS
 
@@ -483,7 +480,7 @@ MR_reg_msg(FILE *fp)
         return;
     }
 
-    for(i=1; i<=8; i++) {
+    for (i=1; i<=8; i++) {
         x = (MR_Integer) MR_get_reg(i);
 #ifndef MR_CONSERVATIVE_GC
         if ((MR_Integer) MR_ENGINE(MR_eng_heap_zone)->MR_zone_min <= x
@@ -497,13 +494,13 @@ MR_reg_msg(FILE *fp)
     fprintf(fp, "\n");
 }
 
-#endif /* defined(MR_DEBUG_GOTOS) */
+#endif // defined(MR_DEBUG_GOTOS)
 
-/*--------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_LOWLEVEL_DEBUG
 
-/* debugging printing tools */
+// Debugging printing tools.
 
 static void
 MR_count_call(FILE *fp, const MR_Code *proc)
@@ -552,7 +549,7 @@ MR_count_call(FILE *fp, const MR_Code *proc)
     }
 #endif
 
-    /* the bitwise ORs implement logical OR */
+    // The bitwise ORs implement logical OR.
     MR_lld_print_enabled = MR_lld_print_region_enabled
         | MR_lld_print_name_enabled | MR_lld_print_csd_enabled
         | MR_lld_debug_enabled | MR_lld_print_always_enabled;
@@ -682,36 +679,36 @@ MR_print_ordinary_regs(FILE *fp)
     }
 }
 
-/*--------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_DEEP_PROFILING
 
 static struct MR_CallSiteDynamic_Struct MR_watched_csd_last_value =
 {
-    /* MR_csd_callee_ptr */ NULL,
+    /* MR_csd_callee_ptr */     NULL,
     {
   #ifdef MR_DEEP_PROFILING_PORT_COUNTS
     #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
-    /* MR_own_calls */ 0,
+    /* MR_own_calls */          0,
     #else
-    /* calls are computed from the other fields */
+    // Calls are computed from the other fields.
     #endif
-    /* MR_own_exits */ 0,
-    /* MR_own_fails */ 0,
-    /* MR_own_redos */ 0,
+    /* MR_own_exits */          0,
+    /* MR_own_fails */          0,
+    /* MR_own_redos */          0,
   #endif
   #ifdef MR_DEEP_PROFILING_TIMING
-    /* MR_own_quanta */ 0,
+    /* MR_own_quanta */         0,
   #endif
   #ifdef MR_DEEP_PROFILING_CALL_SEQ
-    /* MR_own_call_seqs */ 0,
+    /* MR_own_call_seqs */      0,
   #endif
   #ifdef MR_DEEP_PROFILING_MEMORY
-    /* MR_own_allocs */ 0,
-    /* MR_own_words */ 0,
+    /* MR_own_allocs */         0,
+    /* MR_own_words */          0,
   #endif
     },
-    /* MR_csd_depth_count */ 0
+    /* MR_csd_depth_count */    0
 };
 
 static void
@@ -724,9 +721,8 @@ MR_check_watch_csd_start(MR_Code *proc)
 
     if (MR_proc_matches_name(proc, MR_watch_csd_start_name)) {
         if (MR_watch_csd_addr == MR_next_call_site_dynamic) {
-            /*
-            ** Optimize future checks and make MR_watch_csd_addr static.
-            */
+            // Optimize future checks and make MR_watch_csd_addr static.
+
             MR_watch_csd_started = MR_TRUE;
             MR_watch_csd_start_name = NULL;
         }
@@ -817,9 +813,9 @@ MR_assign_csd(MR_CallSiteDynamic *csd1, const MR_CallSiteDynamic *csd2)
     csd1->MR_csd_depth_count = csd2->MR_csd_depth_count;
 };
 
-#endif  /* MR_DEEP_PROFILING */
+#endif  // MR_DEEP_PROFILING
 
-/*--------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 static void
 MR_do_watches(FILE *fp)
@@ -841,7 +837,7 @@ MR_do_watches(FILE *fp)
             }
         }
     }
-#endif  /* MR_DEEP_PROFILING */
+#endif  // MR_DEEP_PROFILING
 }
 
 static MR_bool
@@ -859,11 +855,11 @@ MR_proc_matches_name(const MR_Code *proc, const char *name)
         }
     }
 
-#endif  /* MR_NEED_ENTRY_LABEL_ARRAY */
+#endif  // MR_NEED_ENTRY_LABEL_ARRAY
     return MR_FALSE;
 }
 
-#endif /* defined(MR_DEBUG_GOTOS) */
+#endif // defined(MR_DEBUG_GOTOS)
 
 #ifndef MR_HIGHLEVEL_CODE
 
@@ -986,7 +982,7 @@ MR_printnondetstack(FILE *fp, const MR_Word *s)
     }
 }
 
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
 
 void
 MR_print_heapptr(FILE *fp, const MR_Word *s)
@@ -1003,11 +999,9 @@ MR_print_heapptr(FILE *fp, const MR_Word *s)
     }
 }
 
-/*
-** The code of MR_print_label is similar to, but significantly more powerful
-** than, MR_lookup_entry_or_internal in mercury_label.c, since it does not
-** have to return a single short constant string.
-*/
+// The code of MR_print_label is similar to, but significantly more powerful
+// than, MR_lookup_entry_or_internal in mercury_label.c, since it does not
+// have to return a single short constant string.
 
 void
 MR_print_label(FILE *fp, const MR_Code *w)
@@ -1115,9 +1109,9 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
 #endif
 }
 
-/*--------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/* auxiliary routines for the code that prints debugging messages */
+// Auxiliary routines for the code that prints debugging messages.
 
 static MR_bool
 MR_find_zone_for_det_ptr_in_context(const MR_Word *ptr, MR_Context *ctxt,
@@ -1125,12 +1119,12 @@ MR_find_zone_for_det_ptr_in_context(const MR_Word *ptr, MR_Context *ctxt,
 {
 #ifdef  MR_HIGHLEVEL_CODE
     return MR_FALSE;
-#else   /* !MR_HIGHLEVEL_CODE */
+#else   // !MR_HIGHLEVEL_CODE
     return MR_find_zone_for_ptr(ptr,
         ctxt->MR_ctxt_detstack_zone,
         ctxt->MR_ctxt_prev_detstack_zones,
         zone_ptr, zone_num_ptr);
-#endif  /* !MR_HIGHLEVEL_CODE */
+#endif  // !MR_HIGHLEVEL_CODE
 }
 
 static MR_bool
@@ -1139,12 +1133,12 @@ MR_find_zone_for_nondet_ptr_in_context(const MR_Word *ptr, MR_Context *ctxt,
 {
 #ifdef  MR_HIGHLEVEL_CODE
     return MR_FALSE;
-#else   /* !MR_HIGHLEVEL_CODE */
+#else   // !MR_HIGHLEVEL_CODE
     return MR_find_zone_for_ptr(ptr,
         ctxt->MR_ctxt_nondetstack_zone,
         ctxt->MR_ctxt_prev_nondetstack_zones,
         zone_ptr, zone_num_ptr);
-#endif  /* !MR_HIGHLEVEL_CODE */
+#endif  // !MR_HIGHLEVEL_CODE
 }
 
 static MR_bool
@@ -1154,7 +1148,7 @@ MR_find_zone_for_ptr(const MR_Word *ptr,
 {
 #ifdef  MR_HIGHLEVEL_CODE
     return MR_FALSE;
-#else   /* !MR_HIGHLEVEL_CODE */
+#else   // !MR_HIGHLEVEL_CODE
     int             segment_number;
     MR_MemoryZones  *remaining_zones;
     MR_MemoryZone   *cur_zone;
@@ -1199,7 +1193,7 @@ MR_find_zone_for_ptr(const MR_Word *ptr,
     }
 
     return MR_TRUE;
-#endif  /* !MR_HIGHLEVEL_CODE */
+#endif  // !MR_HIGHLEVEL_CODE
 }
 
 static MR_bool
@@ -1234,7 +1228,7 @@ MR_find_zone_for_det_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
         }
     }
 
-#else   /* !MR_USE_MINIMAL_MODEL_OWN_STACKS */
+#else   // !MR_USE_MINIMAL_MODEL_OWN_STACKS
 
     if (MR_find_zone_for_det_ptr_in_context(ptr, &MR_ENGINE(MR_eng_context),
         zone_ptr, zone_num_ptr))
@@ -1246,7 +1240,7 @@ MR_find_zone_for_det_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
         return MR_TRUE;
     }
 
-#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+#endif  // MR_USE_MINIMAL_MODEL_OWN_STACKS
 
     return MR_FALSE;
 }
@@ -1283,7 +1277,7 @@ MR_find_zone_for_nondet_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
         }
     }
 
-#else   /* !MR_USE_MINIMAL_MODEL_OWN_STACKS */
+#else   // !MR_USE_MINIMAL_MODEL_OWN_STACKS
 
     if (MR_find_zone_for_nondet_ptr_in_context(ptr, &MR_ENGINE(MR_eng_context),
         zone_ptr, zone_num_ptr))
@@ -1295,12 +1289,12 @@ MR_find_zone_for_nondet_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
         return MR_TRUE;
     }
 
-#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+#endif  // MR_USE_MINIMAL_MODEL_OWN_STACKS
 
     return MR_FALSE;
 }
 
-/*--------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 void
 MR_debug_log_message(const char *format, ...)
@@ -1310,10 +1304,9 @@ MR_debug_log_message(const char *format, ...)
     int     result;
     va_list args;
 
-    /*
-    ** This should be a reasonable estimate of the size of the buffer that we
-    ** need. At least twice the size of the format string or 128 bytes.
-    */
+    // This should be a reasonable estimate of the size of the buffer that we
+    // need. At least twice the size of the format string or 128 bytes.
+
     len = strlen(format);
     len = len * 2;
     len = len < 128 ? 128 : len;
@@ -1334,7 +1327,7 @@ MR_debug_log_message(const char *format, ...)
             break;
         }
 
-        /* Make the buffer bigger. */
+        // Make the buffer bigger.
         len = len * 2;
         buffer = MR_GC_realloc(buffer, len);
     }
@@ -1347,5 +1340,3 @@ MR_debug_log_message(const char *format, ...)
     printf("%s\n", buffer);
 #endif
 }
-
-

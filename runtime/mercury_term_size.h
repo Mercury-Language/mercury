@@ -1,25 +1,20 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2003, 2005 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_term_size.h
-**
-** This module declares functions for returning the sizes of terms.
-*/
+// Copyright (C) 2003, 2005 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_term_size.h
+//
+// This module declares functions for returning the sizes of terms.
 
 #ifndef MR_MERCURY_TERM_SIZE_H
 #define MR_MERCURY_TERM_SIZE_H
 
-#include "mercury_std.h"        /* for MR_bool                               */
-#include "mercury_types.h"      /* for the typedefs of the structs we define */
+#include "mercury_std.h"        // for MR_bool
+#include "mercury_types.h"      // for the typedefs of the structs we define
 
-#include "mercury_complexity.h" /* for MR_ComplexityProc, etc */
+#include "mercury_complexity.h" // for MR_ComplexityProc, etc
 
 #ifdef  MR_RECORD_TERM_SIZES
 
@@ -71,19 +66,17 @@ extern  void    MR_complexity_redo_func(int procnum, int slot);
 extern  void    MR_complexity_fill_size_slot(MR_ComplexityProc *proc, int slot,
                     int num_input_args, int argnum, int size);
 
-#else   /* MR_RECORD_TERM_SIZES */
+#else   // MR_RECORD_TERM_SIZES
 
-/*
-** Term sizes are not meaningful if MR_RECORD_TERM_SIZES is not defined.
-** This macro, and others in mercury_heap.h, allows us to write code to
-** compute term sizes without worrying about whether MR_RECORD_TERM_SIZES
-** is defined or not.
-*/
+// Term sizes are not meaningful if MR_RECORD_TERM_SIZES is not defined.
+// This macro, and others in mercury_heap.h, allows us to write code to
+// compute term sizes without worrying about whether MR_RECORD_TERM_SIZES
+// is defined or not.
 
 #define MR_term_size(type_info, term)       0
 
-#endif  /* MR_RECORD_TERM_SIZES */
+#endif  // MR_RECORD_TERM_SIZES
 
-#endif  /* MR_MERCURY_TERM_SIZE_H */
+#endif  // MR_MERCURY_TERM_SIZE_H
 
 #define MR_COMPLEXITY_SLOTS_PER_CHUNK   1024

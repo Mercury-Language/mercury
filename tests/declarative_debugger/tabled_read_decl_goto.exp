@@ -135,7 +135,7 @@ mdb> f
      E10:     C6 EXIT pred tabled_read_decl_goto.fake_io/3-0 (det)
 mdb> dd -d 3 -n 7 -ad1
 The declarative debugger needs to perform a retry across
-an area in which IO is not tabled.  This is not always safe.
+an area in which IO is not tabled. This is not always safe.
 To avoid this warning restart mdb and issue a `table_io start'
 command at an event before the suspect area.
 Do you wish to proceed with the retry? y
@@ -143,7 +143,7 @@ fake_io(1, _, _)
 Warning: some IO actions for this atom are not tabled.
 Valid? y
 The declarative debugger needs to perform a retry across
-an area in which IO is not tabled.  This is not always safe.
+an area in which IO is not tabled. This is not always safe.
 To avoid this warning restart mdb and issue a `table_io start'
 command at an event before the suspect area.
 Do you wish to proceed with the retry? y
@@ -163,7 +163,7 @@ part_3(_, _)
 Warning: some IO actions for this atom are not tabled.
 Is this a bug? y
 The declarative debugger needs to perform a retry across
-an area in which IO is not tabled.  This is not always safe.
+an area in which IO is not tabled. This is not always safe.
 To avoid this warning restart mdb and issue a `table_io start'
 command at an event before the suspect area.
 Do you wish to proceed with the retry? y

@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1998-2007, 2009, 2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file implements utilities that can be useful
-** for both the internal and external debuggers.
-**
-** Main authors: Zoltan Somogyi and Fergus Henderson.
-*/
+// Copyright (C) 1998-2007, 2009, 2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file implements utilities that can be useful
+// for both the internal and external debuggers.
+//
+// Main authors: Zoltan Somogyi and Fergus Henderson.
 
 #include "mercury_imp.h"
 #include "mercury_stack_layout.h"
@@ -29,24 +24,22 @@ void
 MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs,
     int max_f_num, MR_Float *saved_f_regs)
 {
-    /*
-    ** In the process of browsing within the debugger, we call Mercury,
-    ** which may clobber the contents of the virtual machine registers,
-    ** both control and general purpose, and both real and virtual
-    ** registers. We must therefore save and restore these.
-    ** We store them in the saved_regs array.
-    **
-    ** The call to MR_trace will clobber the transient registers
-    ** on architectures that have them. The compiler generated code
-    ** will therefore call MR_save_transient_registers to save the
-    ** transient registers in the fake_reg array. We here restore them
-    ** to the real registers, save them with the other registers back in
-    ** fake_reg, and then copy all fake_reg entries to saved_regs.
-    **
-    ** If float registers are used, we must save them as well.
-    ** We never use real machine registers for floats so we just have
-    ** to copy them from the MR_float_reg array.
-    */
+    // In the process of browsing within the debugger, we call Mercury,
+    // which may clobber the contents of the virtual machine registers,
+    // both control and general purpose, and both real and virtual
+    // registers. We must therefore save and restore these.
+    // We store them in the saved_regs array.
+    //
+    // The call to MR_trace will clobber the transient registers
+    // on architectures that have them. The compiler generated code
+    // will therefore call MR_save_transient_registers to save the
+    // transient registers in the fake_reg array. We here restore them
+    // to the real registers, save them with the other registers back in
+    // fake_reg, and then copy all fake_reg entries to saved_regs.
+    //
+    // If float registers are used, we must save them as well.
+    // We never use real machine registers for floats so we just have
+    // to copy them from the MR_float_reg array.
 
     int i;
 
@@ -71,12 +64,10 @@ void
 MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs,
     int max_f_num, MR_Float *saved_f_regs)
 {
-    /*
-    ** We execute the converse procedure to MR_copy_regs_to_saved_regs.
-    ** The MR_save_transient_registers is there so that a call to the
-    ** MR_restore_transient_registers macro after MR_trace will do the
-    ** right thing.
-    */
+    // We execute the converse procedure to MR_copy_regs_to_saved_regs.
+    // The MR_save_transient_registers is there so that a call to the
+    // MR_restore_transient_registers macro after MR_trace will do the
+    // right thing.
 
     int i;
 
@@ -110,7 +101,7 @@ MR_materialize_type_params_base(const MR_LabelLayout *label_layout,
     MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr)
 {
     const MR_TypeParamLocns *tvar_locns;
-    
+
     tvar_locns = label_layout->MR_sll_tvars;
     if (tvar_locns != NULL) {
         MR_TypeInfoParams   type_params;
@@ -440,7 +431,7 @@ MR_lookup_typeclass_info_long_lval(MR_LongLval locn, MR_Word typeclass_info,
             if (MR_print_locn) {
                 printf("typeclassinfo r%d\n", locn_num);
             }
-            if (locn_num <= 
+            if (locn_num <=
                 MR_typeclass_info_num_extra_instance_args(typeclass_info))
             {
                 value = MR_typeclass_info_arg_typeclass_info(typeclass_info,
@@ -1001,7 +992,7 @@ MR_get_type_base(const MR_LabelLayout *label_layout, int i,
 
     pseudo_type_info = MR_var_pti(label_layout, i);
     *type_info = MR_create_type_info(type_params, pseudo_type_info);
-    
+
     return MR_TRUE;
 }
 
@@ -1048,13 +1039,11 @@ MR_proc_id_arity_addedargs_predfunc(const MR_ProcLayout *proc, int *arity_ptr,
     int *num_added_args_ptr, MR_PredFunc *pred_or_func_ptr)
 {
     if (MR_PROC_LAYOUT_IS_UCI(proc)) {
-        /*
-        ** MR_comp_type_arity is the arity of the type constructor.
-        ** Each argument of the type constructor adds a typeinfo
-        ** argument to the headvars for all predicates, unify, compare
-        ** and index. (The index predicate doesn't need these typeinfos,
-        ** but it has them anyway.)
-        */
+        // MR_comp_type_arity is the arity of the type constructor.
+        // Each argument of the type constructor adds a typeinfo
+        // argument to the headvars for all predicates, unify, compare
+        // and index. (The index predicate doesn't need these typeinfos,
+        // but it has them anyway.)
 
         *num_added_args_ptr = proc->MR_sle_uci.MR_uci_type_arity;
         *arity_ptr = proc->MR_sle_num_head_vars - *num_added_args_ptr;

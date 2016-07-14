@@ -1,23 +1,18 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001-2004, 2006-2008, 2010 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_deep_profiling.h -- definitions for deep profiling.
-**
-** See ../deep_profiler/README for some pointers to documentation on
-** deep profiling.
-*/
+// Copyright (C) 2001-2004, 2006-2008, 2010 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_deep_profiling.h -- definitions for deep profiling.
+//
+// See ../deep_profiler/README for some pointers to documentation on
+// deep profiling.
 
 #ifndef MERCURY_DEEP_PROFILING_H
 #define MERCURY_DEEP_PROFILING_H
 
-#include "mercury_types.h"      /* for MR_ConstString etc */
+#include "mercury_types.h"      // for MR_ConstString etc
 #include "mercury_ho_call.h"
 #include <stdio.h>
 
@@ -34,7 +29,7 @@ struct MR_ProfilingMetrics_Struct {
   #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
     unsigned                                MR_own_calls;
   #else
-    /* Calls are computed from the other fields. */
+    // Calls are computed from the other fields.
   #endif
     unsigned                                MR_own_exits;
     unsigned                                MR_own_fails;
@@ -52,7 +47,7 @@ struct MR_ProfilingMetrics_Struct {
     unsigned                                MR_own_words;
 #endif
 
-    /* ANSI/ISO C requires non-empty structs */
+    // ANSI/ISO C requires non-empty structs
 #if !defined(MR_DEEP_PROFILING_PORT_COUNTS) &&                          \
     !defined(MR_DEEP_PROFILING_TIMING) &&                               \
     !defined(MR_DEEP_PROFILING_MEMORY)
@@ -60,20 +55,18 @@ struct MR_ProfilingMetrics_Struct {
 #endif
 };
 
-/*
-** The coverage point types. Please update the enum and type within
-** mdbcomp/program_representation.m when updating this structure.
-*/
+// The coverage point types. Please update the enum and type within
+// mdbcomp/program_representation.m when updating this structure.
+
 typedef enum {
     MR_cp_type_coverage_after,
     MR_cp_type_branch_arm
-} MR_CPType; 
+} MR_CPType;
 
 typedef struct {
     const char                              *MR_cp_goal_path;
     const MR_CPType                         MR_cp_type;
 } MR_CoveragePointStatic;
-
 
 struct MR_CallSiteStatic_Struct {
     MR_CallSiteKind                         MR_css_kind;
@@ -99,19 +92,17 @@ struct MR_ProcStatic_Struct {
     int                                     MR_ps_old_outermost_stack_slot;
 
 #ifdef MR_DEEP_PROFILING_COVERAGE
-    /*
-    ** The number of coverage points in a procedure and static information
-    ** about them are fixed at compile time, so they are associated with
-    ** proc statics rather than proc dynamics.
-    */
+    // The number of coverage points in a procedure and static information
+    // about them are fixed at compile time, so they are associated with
+    // proc statics rather than proc dynamics.
+
     const MR_Unsigned                       MR_ps_num_coverage_points;
     const MR_CoveragePointStatic * const    MR_ps_coverage_points_static;
 
 #ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
-    /*
-    ** Coverage data is kept in the ProcStatic structure if we are
-    ** collecting it statically. See also MR_dyn_coverage_points
-    */
+    // Coverage data is kept in the ProcStatic structure if we are
+    // collecting it statically. See also MR_dyn_coverage_points.
+
     MR_Unsigned * const                     MR_ps_coverage_points;
 #endif
 #endif
@@ -127,11 +118,10 @@ struct MR_ProcDynamic_Struct {
     const MR_ProcLayout                     *MR_pd_proc_layout;
     MR_CallSiteDynamic                      **MR_pd_call_site_ptr_ptrs;
 #ifdef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
-    /*
-    ** Coverage data is kept in the ProcStatic structure initially, at a
-    ** later stage more fine-grained coverage data may be associated with
-    ** ProcDynamic if performance is not affected too much.
-    */
+    // Coverage data is kept in the ProcStatic structure initially, at a
+    // later stage more fine-grained coverage data may be associated with
+    // ProcDynamic if performance is not affected too much.
+
     MR_Unsigned                             *MR_pd_coverage_points;
 #endif
 };
@@ -160,10 +150,9 @@ typedef enum {
     MR_next_proc
 } MR_MoreProcs;
 
-/*
-** The definition of this type should be kept in sync with the code of
-** the string_proclabel_kind_* functions in compiler/prog_rep.m.
-*/
+// The definition of this type should be kept in sync with the code of
+// the string_proclabel_kind_* functions in compiler/prog_rep.m.
+
 typedef enum {
     MR_proclabel_user_predicate,
     MR_proclabel_user_function,
@@ -272,10 +261,9 @@ typedef enum {
     ((void) 0)
 #endif
 
-/*
-** TODO: Consider merging these mallocs into one, this should improve
-** efficiency.
-*/
+// TODO: Consider merging these mallocs into one, this should improve
+// efficiency.
+
 #define MR_new_proc_dynamic(pd, pl)                                     \
     do {                                                                \
         MR_ProcStatic   *psl;                                           \
@@ -301,7 +289,7 @@ typedef enum {
   extern void   MR_deep_profile_update_method_history(void);
 
   #define MR_maybe_init_search_len()                                    \
-    do { MR_deep_prof_search_len = 0; } while(0)
+    do { MR_deep_prof_search_len = 0; } while (0)
   #define MR_maybe_increment_search_len()                               \
     do { MR_deep_prof_search_len++; } while (0)
   #define MR_maybe_deep_profile_update_special_history()                \
@@ -433,7 +421,7 @@ extern  int MR_deep_prof_call_old;
 extern  int MR_deep_prof_call_builtin_new;
 extern  int MR_deep_prof_call_builtin_old;
 
-#endif  /* MR_DEEP_PROFILING_STATISTICS */
+#endif  // MR_DEEP_PROFILING_STATISTICS
 
 #ifdef MR_DEEP_PROFILING_LOG
 extern  FILE    *MR_deep_prof_log_file;
@@ -468,4 +456,4 @@ extern  void    MR_deep_prof_turn_off_time_profiling(void);
 #define MR_PROFILING_NEW(type)                  MR_NEW(type)
 #define MR_PROFILING_NEW_ARRAY(type, nelems)    MR_NEW_ARRAY(type, nelems)
 
-#endif  /* not MERCURY_DEEP_PROFILING_H */
+#endif  // not MERCURY_DEEP_PROFILING_H

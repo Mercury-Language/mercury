@@ -1,40 +1,31 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001, 2004 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** The internals of hand-written comparison routines.
-**
-** The versions of builtin_catch for the various determinisms should define
-** the following macros:
-** 
-** proc_label
-** proc_layout
-** body_code
-*/
+// Copyright (C) 2001, 2004 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-/*
-** Stackvar(1) and possibly stackvar(2) are used to save the inputs and/or
-** outputs of the comparison code. The first framevar available
-** for saving deep profiling information is stackvar(3).
-*/
+// The internals of hand-written comparison routines.
+//
+// The versions of builtin_catch for the various determinisms should define
+// the following macros:
+//
+// proc_label
+// proc_layout
+// body_code
+
+// Stackvar(1) and possibly stackvar(2) are used to save the inputs and/or
+// outputs of the comparison code. The first framevar available
+// for saving deep profiling information is stackvar(3).
 
 #define FIRST_DEEP_SLOT         3
 
-/*
-** Each procedure defines several local labels. The local label numbers are
-** allocated as follows.
-*/
+// Each procedure defines several local labels. The local label numbers are
+// allocated as follows.
 
 #define CALL_PORT_RETURN_LABEL(pl)  MR_label_name(pl, 1)
 #define EXIT_PORT_RETURN_LABEL(pl)  MR_label_name(pl, 2)
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_define_entry(proc_label);
 
@@ -71,7 +62,7 @@ MR_define_entry(proc_label);
 
 #endif
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #undef  CALL_PORT_RETURN_LABEL
 #undef  EXIT_PORT_RETURN_LABEL

@@ -1,19 +1,14 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2000, 2002 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module contains the implementation of Mercury streams using
-** C `FILE *' streams.
-*/
+// Copyright (C) 2000, 2002 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module contains the implementation of Mercury streams using
+// C `FILE *' streams.
 
 #include "mercury_file.h"
-#include "mercury_std.h"    /* for MR_assert */
+#include "mercury_std.h"    // for MR_assert
 
 #ifdef MR_NATIVE_GC
 static int next_id = 0;
@@ -30,7 +25,7 @@ MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf)
   #endif
 }
 
-#else /* MR_NEW_MERCURYFILE_STRUCT */
+#else // MR_NEW_MERCURYFILE_STRUCT
 
 void
 MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf)
@@ -54,16 +49,16 @@ MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf)
 }
 
 int
-MR_getch(MR_StreamInfo *info) 
+MR_getch(MR_StreamInfo *info)
 {
     MR_assert(info != NULL);
-    return getc(info->file);      
+    return getc(info->file);
 }
 
 int
 MR_ungetch(MR_StreamInfo *info, int ch)
 {
-    MR_assert(info != NULL);        
+    MR_assert(info != NULL);
     return ungetc(ch, info->file);
 }
 
@@ -77,14 +72,14 @@ MR_putch(MR_StreamInfo *info, int ch)
 int
 MR_close(MR_StreamInfo *info)
 {
-    MR_assert(info != NULL);                      
+    MR_assert(info != NULL);
     return fclose(info->file);
 }
 
 int
 MR_flush(MR_StreamInfo *info)
 {
-    MR_assert(info != NULL);                       
+    MR_assert(info != NULL);
     return fflush(info->file);
 }
 
@@ -99,14 +94,15 @@ MR_vfprintf(MR_StreamInfo *info, const char *format, va_list ap)
 
 int
 MR_read(MR_StreamInfo *info, void *buffer, size_t size)
-{ 
-    int rc;                                
-    MR_assert(info != NULL);                
+{
+    int rc;
+    MR_assert(info != NULL);
     rc = fread(buffer, sizeof(unsigned char), size, info->file);
 
-    /* Handle error/eof special cases */
+    // Handle error/eof special cases.
     if ((rc < size) && feof(info->file)) {
-        /* nothing to do */;
+        // Nothing to do.
+        ;
     } else if (ferror(info->file)) {
         rc = -1;
     }
@@ -117,7 +113,7 @@ MR_read(MR_StreamInfo *info, void *buffer, size_t size)
 int
 MR_write(MR_StreamInfo *info, const void *buffer, size_t size)
 {
-    int rc;                                
+    int rc;
 
     MR_assert(info != NULL);
     rc = fwrite(buffer, sizeof(unsigned char), size, info->file);
@@ -125,4 +121,4 @@ MR_write(MR_StreamInfo *info, const void *buffer, size_t size)
     return (rc < size ? -1 : rc);
 }
 
-#endif /* MR_NEW_MERCURYFILE_STRUCT */
+#endif // MR_NEW_MERCURYFILE_STRUCT

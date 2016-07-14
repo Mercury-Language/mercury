@@ -1,17 +1,12 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1995-1998, 2000-2002, 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** Profiling module
-**
-** Main Author: petdr
-*/
+// Copyright (C) 1995-1998, 2000-2002, 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// Profiling module
+//
+// Main Author: petdr
 
 #include        "mercury_imp.h"
 
@@ -24,26 +19,23 @@
 #include    <string.h>
 
 #include    "mercury_prof.h"
-#include    "mercury_heap_profile.h" /* for MR_prof_output_mem_tables() */
-#include    "mercury_prof_time.h"    /* for MR_turn_on_time_profiling() */
-#include    "mercury_prof_mem.h"     /* for prof_malloc()               */
+#include    "mercury_heap_profile.h" // for MR_prof_output_mem_tables()
+#include    "mercury_prof_time.h"    // for MR_turn_on_time_profiling()
+#include    "mercury_prof_mem.h"     // for prof_malloc()
 
 #include    "mercury_signal.h"
 #include    "mercury_std.h"
 #include    "mercury_timing.h"
 #include    "mercury_runtime_util.h"
 
-#include    <signal.h>      /* for SIGINT */
+#include    <signal.h>      // for SIGINT
 
-/*
-** XXX Ought to make these command line options.
-*/
+// XXX Ought to make these command line options.
+
 #define CALL_TABLE_SIZE 4096
 #define TIME_TABLE_SIZE 4096
 
-/*
-** Profiling node information.
-*/
+// Profiling node information.
 
 typedef struct s_prof_call_node {
     MR_Code                 *Callee;
@@ -60,9 +52,7 @@ typedef struct s_prof_time_node {
     struct s_prof_time_node *right;
 } prof_time_node;
 
-/*
-** Macro definitions.
-*/
+// Macro definitions.
 
 #define hash_addr_pair(Callee, Caller)                                      \
         (int) ((( (MR_Unsigned)(Callee) ^ (MR_Unsigned)(Caller) ) >> 2)     \
@@ -71,9 +61,7 @@ typedef struct s_prof_time_node {
 #define hash_prof_addr(Addr)                                                \
         (int) ( (( (MR_Unsigned)(Addr) ) >> 2) % TIME_TABLE_SIZE )
 
-/*
-** Global Variables.
-*/
+// Global Variables.
 
 MR_Code * volatile      MR_prof_current_proc;
 
@@ -81,9 +69,7 @@ MR_Code * volatile      MR_prof_current_proc;
   MR_Code               *MR_prof_ho_caller_proc;
 #endif
 
-/*
-** Private global variables.
-*/
+// Private global variables.
 
 #if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_MPROF_PROFILE_TIME)
   static volatile int     in_profiling_code = MR_FALSE;
@@ -100,9 +86,7 @@ MR_Code * volatile      MR_prof_current_proc;
   static prof_time_node *addr_table[TIME_TABLE_SIZE] = {NULL};
 #endif
 
-/*
-** Local function declarations.
-*/
+// Local function declarations.
 
 #ifdef MR_MPROF_PROFILE_TIME
   static void   prof_handle_tick(int);
@@ -126,16 +110,14 @@ MR_Code * volatile      MR_prof_current_proc;
   static void   prof_handle_sigint(void);
 #endif
 
-/* ======================================================================== */
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_MPROF_PROFILE_CALLS
 
-/*
-** prof_call_profile:
-**
-** Saves the callee, caller pair into a hash table. If the address pair
-** already exists, then it increments a count.
-*/
+// prof_call_profile:
+//
+// Saves the callee, caller pair into a hash table. If the address pair
+// already exists, then it increments a count.
 
 void
 MR_prof_call_profile(MR_Code *Callee, MR_Code *Caller)
@@ -182,19 +164,17 @@ MR_prof_call_profile(MR_Code *Callee, MR_Code *Caller)
     return;
 }
 
-#endif /* MR_MPROF_PROFILE_CALLS */
+#endif // MR_MPROF_PROFILE_CALLS
 
-/* ======================================================================== */
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_MPROF_PROFILE_TIME
 
-/*
-** prof_handle_tick:
-**
-** Signal handler to be called whenever a profiling signal is received.
-** Saves the current code address into a hash table.
-** If the address already exists, it increments its count.
-*/
+// prof_handle_tick:
+//
+// Signal handler to be called whenever a profiling signal is received.
+// Saves the current code address into a hash table.
+// If the address already exists, it increments its count.
 
 static void
 prof_handle_tick(int signum)
@@ -205,7 +185,7 @@ prof_handle_tick(int signum)
     int             hash_value;
     MR_Code         *current_proc;
 
-    /* Ignore any signals we get in this function or in prof_call_profile. */
+    // Ignore any signals we get in this function or in prof_call_profile.
     if (in_profiling_code) {
         return;
     }
@@ -237,20 +217,18 @@ prof_handle_tick(int signum)
 
     in_profiling_code = MR_FALSE;
     return;
-} /* end prof_handle_tick() */
+} // end prof_handle_tick()
 
-#endif /* MR_MPROF_PROFILE_TIME */
+#endif // MR_MPROF_PROFILE_TIME
 
-/* ======================================================================== */
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_MPROF_PROFILE_CALLS
 
-/*
-** prof_output_addr_pair_table:
-**
-** Writes the hash table to a file called "Prof.CallPair".
-** Caller then callee followed by count.
-*/
+// prof_output_addr_pair_table:
+//
+// Writes the hash table to a file called "Prof.CallPair".
+// Caller then callee followed by count.
 
 static void
 prof_output_addr_pair_table(void)
@@ -279,18 +257,16 @@ print_addr_pair_node(FILE *fptr, prof_call_node *node)
     }
 }
 
-#endif /* MR_MPROF_PROFILE_CALLS */
+#endif // MR_MPROF_PROFILE_CALLS
 
-/* ======================================================================== */
+////////////////////////////////////////////////////////////////////////////
 
 #if defined(MR_MPROF_PROFILE_CALLS)
 
-/*
-** prof_output_addr_decl:
-**
-** Outputs an entry label name and its corresponding machine address to a file
-** called "Prof.Decl". This is called from insert_entry() in mercury_label.c.
-*/
+// prof_output_addr_decl:
+//
+// Outputs an entry label name and its corresponding machine address to a file
+// called "Prof.Decl". This is called from insert_entry() in mercury_label.c.
 
 void
 MR_prof_output_addr_decl(const char *name, const MR_Code *address)
@@ -302,18 +278,16 @@ MR_prof_output_addr_decl(const char *name, const MR_Code *address)
         (MR_Integer) address, name);
 }
 
-#endif /* MR_MPROF_PROFILE_CALLS */
+#endif // MR_MPROF_PROFILE_CALLS
 
-/* ======================================================================== */
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_MPROF_PROFILE_TIME
 
-/*
-** prof_output_addr_table:
-**
-** Writes out the time profiling counts recorded by the profile signal handler
-** to the file `Prof.Counts'.
-*/
+// prof_output_addr_table:
+//
+// Writes out the time profiling counts recorded by the profile signal handler
+// to the file `Prof.Counts'.
 
 static void
 prof_output_addr_table(void)
@@ -325,12 +299,11 @@ prof_output_addr_table(void)
 
     fptr = MR_checked_fopen("Prof.Counts", "create", "w");
 
-    /*
-    ** Write out header line indicating what we are profiling,
-    ** the scale factor, and the units.
-    ** The scale factor is the time per profiling interrupt.
-    ** The units are seconds.
-    */
+    // Write out header line indicating what we are profiling,
+    // the scale factor, and the units.
+    // The scale factor is the time per profiling interrupt.
+    // The units are seconds.
+
     #if defined(MR_CLOCK_TICKS_PER_SECOND)
         scale = (double) MR_CLOCK_TICKS_PER_PROF_SIG /
             (double) MR_CLOCK_TICKS_PER_SECOND;
@@ -339,9 +312,8 @@ prof_output_addr_table(void)
         #error "Time profiling not supported on this system"
     #endif
 
-    /*
-    ** Write out the time profiling data: one one-line entry per node.
-    */
+    // Write out the time profiling data: one one-line entry per node.
+
     for (i = 0; i < TIME_TABLE_SIZE ; i++) {
         print_time_node(fptr, addr_table[i]);
     }
@@ -360,18 +332,16 @@ print_time_node(FILE *fptr, prof_time_node *node)
     }
 }
 
-#endif /* MR_MPROF_PROFILE_TIME */
+#endif // MR_MPROF_PROFILE_TIME
 
-/* ======================================================================== */
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_MPROF_PROFILE_MEMORY
 
-/*
-** prof_output_mem_tables:
-**
-** Writes the by-procedure memory profiling counts to the files
-** `Prof.MemoryWords' and `Prof.MemoryCells'.
-*/
+// prof_output_mem_tables:
+//
+// Writes the by-procedure memory profiling counts to the files
+// `Prof.MemoryWords' and `Prof.MemoryCells'.
 
 static void
 prof_output_mem_tables(void)
@@ -420,9 +390,9 @@ print_memory_node(FILE *words_fptr, FILE *cells_fptr, MR_memprof_record *node)
     }
 }
 
-#endif /* MR_MPROF_PROFILE_MEMORY */
+#endif // MR_MPROF_PROFILE_MEMORY
 
-/* ======================================================================== */
+////////////////////////////////////////////////////////////////////////////
 
 void
 MR_prof_init(void)
@@ -446,9 +416,8 @@ MR_prof_init(void)
 static void
 prof_handle_sigint(void)
 {
-    /*
-    ** exit() will call MR_prof_finish(), which we registered with atexit().
-    */
+    // exit() will call MR_prof_finish(), which we registered with atexit().
+
     exit(EXIT_FAILURE);
 }
 #endif
@@ -456,7 +425,7 @@ prof_handle_sigint(void)
 void
 MR_prof_finish(void)
 {
-    /* Ensure this routine only gets run once, even if called twice. */
+    // Ensure this routine only gets run once, even if called twice.
     static MR_bool done = MR_FALSE;
     if (done) {
         return;
@@ -526,4 +495,4 @@ MR_prof_turn_off_time_profiling(void)
 
 #endif
 
-/* ======================================================================== */
+////////////////////////////////////////////////////////////////////////////

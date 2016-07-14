@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2005-2007, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file implements utility functions operating on the data structures
-** defined in the corresponding header file.
-**
-** Author: Zoltan Somogyi
-*/
+// Copyright (C) 2005-2007, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file implements utility functions operating on the data structures
+// defined in the corresponding header file.
+//
+// Author: Zoltan Somogyi
 
 #include "mercury_imp.h"
 #include "mercury_stack_layout.h"
@@ -31,16 +26,16 @@ MR_hlds_var_name(const MR_ProcLayout *entry, int hlds_var_num,
     string_table_size = module_layout->MR_ml_string_table_size;
 
     if (hlds_var_num == 0) {
-        /* This value is not a variable. */
+        // This value is not a variable.
         return NULL;
     }
 
     if (hlds_var_num > entry->MR_sle_max_named_var_num) {
-        /* This value is a compiler-generated variable. */
+        // This value is a compiler-generated variable.
         return NULL;
     }
 
-    /* Variable number 1 is stored at offset 0. */
+    // Variable number 1 is stored at offset 0.
     name_code = entry->MR_sle_used_var_names[hlds_var_num - 1];
     return MR_name_in_string_table(string_table, string_table_size,
         name_code, should_copy);
@@ -50,11 +45,9 @@ MR_ConstString
 MR_name_in_string_table(const char *string_table, MR_Integer string_table_size,
     MR_uint_least32_t name_code, int *should_copy)
 {
-    /*
-    ** The encoding decoded here is create by lookup_string_in_table
-    ** in compiler/stack_layout.m. The code here and there must be kept
-    ** in sync.
-    */
+    // The encoding decoded here is create by lookup_string_in_table
+    // in compiler/stack_layout.m. The code here and there must be kept
+    // in sync.
 
     if ((name_code & 0x1) != 0) {
         static  char    buf[MR_MAX_VARNAME_SIZE];
@@ -174,7 +167,7 @@ MR_find_start_of_num_suffix(const char *str)
     if (s == str + len - 1) {
         return -1;
     } else {
-        /* *(s+1) is the first character of the numerical suffix. */
+        // *(s+1) is the first character of the numerical suffix.
         return (s + 1) - str;
     }
 }

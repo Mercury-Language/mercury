@@ -1,50 +1,45 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 1998-2001, 2003-2006, 2008, 2010-2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file contains code for printing statistics about stack frame sizes,
+// and for manipulating the generator stack, the cut stack and the pneg stack.
+//
+// The generator stack has one entry for each call to a minimal model tabled
+// procedure that is (a) acting as the generator for its subgoal and (b) is
+// in the active state. In systems such as XSB, each choice point has a flag
+// saying whether it is an active generator or not, and if yes, where its
+// subgoal's tabling information is stored. We achieve the same effect by
+// checking whether a nondet stack frame at a given offset has an entry in
+// the generator stack, an approach that minimizes the performance impact
+// of tabling on non-tabled procedures.
+//
+// The cut stack has one entry for each commit goal that execution has entered
+// but not yet exited. Each commit stack entry has a list of all the generators
+// that have been started inside the corresponding commit goal. When the commit
+// goal is exited, it is possible that some of these generators are left
+// incomplete; due to the commit, they will in fact never be completed.
+// The purpose of the cut stack is to enable us to reset the call table
+// entries of such generators to inactive.
+//
+// All the functions in this file that take MR_TrieNode arguments use
+// only the subgoal member of the union.
+
 /*
 INIT mercury_sys_init_stacks
 ENDINIT
 */
 
-/*
-** Copyright (C) 1998-2001, 2003-2006, 2008, 2010-2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
-
-/*
-** This file contains code for printing statistics about stack frame sizes,
-** and for manipulating the generator stack, the cut stack and the pneg stack.
-**
-** The generator stack has one entry for each call to a minimal model tabled
-** procedure that is (a) acting as the generator for its subgoal and (b) is
-** in the active state. In systems such as XSB, each choice point has a flag
-** saying whether it is an active generator or not, and if yes, where its
-** subgoal's tabling information is stored. We achieve the same effect by
-** checking whether a nondet stack frame at a given offset has an entry in
-** the generator stack, an approach that minimizes the performance impact
-** of tabling on non-tabled procedures.
-**
-** The cut stack has one entry for each commit goal that execution has entered
-** but not yet exited. Each commit stack entry has a list of all the generators
-** that have been started inside the corresponding commit goal. When the commit
-** goal is exited, it is possible that some of these generators are left
-** incomplete; due to the commit, they will in fact never be completed.
-** The purpose of the cut stack is to enable us to reset the call table
-** entries of such generators to inactive.
-**
-** All the functions in this file that take MR_TrieNode arguments use
-** only the subgoal member of the union.
-*/
-
 #include "mercury_imp.h"
 #include "mercury_runtime_util.h"
-#include "mercury_memory_handlers.h"    /* for MR_default_handler */
+#include "mercury_memory_handlers.h"    // for MR_default_handler
 #include "mercury_context.h"
 
 #include <stdio.h>
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_STACK_FRAME_STATS
 
@@ -67,10 +62,8 @@ MR_init_stack_frame_stats(void)
     MR_zero_dword(MR_non_frame_count);
     MR_zero_dword(MR_non_frame_total_size);
 
-    /*
-    ** We cannot initialize these to the starts of the their respective
-    ** memory areas, since those areas may not have been initialized yet.
-    */
+    // We cannot initialize these to the starts of the their respective
+    // memory areas, since those areas may not have been initialized yet.
 
     MR_det_frame_max = NULL;
     MR_non_frame_max = NULL;
@@ -115,9 +108,9 @@ MR_print_stack_frame_stats(void)
     MR_checked_fclose(fp, MR_STACK_FRAME_STATS);
 }
 
-#endif  /* MR_STACK_FRAME_STATS */
+#endif  // MR_STACK_FRAME_STATS
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_EXTEND_STACKS_WHEN_NEEDED
 
@@ -179,7 +172,7 @@ MR_extend_nondetstack(void)
     }
 
     base_incr = MR_extend_zone(zone, new_size);
-    /* XXX add code to adjust all the links in the nondet stack */
+    // XXX add code to adjust all the links in the nondet stack
 
     if (debug_fp != NULL) {
         MR_debug_zone_extend(debug_fp, "after", "nondetstack", zone);
@@ -197,7 +190,7 @@ MR_debug_zone_extend(FILE *fp, const char *when, const char *stackname,
 
 #endif
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #ifndef  MR_HIGHLEVEL_CODE
 
@@ -215,7 +208,7 @@ MR_new_detstack_segment(MR_Word *sp, int n)
 
     old_sp = sp;
 
-    /* We perform explicit overflow checks so redzones just waste space. */
+    // We perform explicit overflow checks so redzones just waste space.
     new_zone = MR_create_or_reuse_zone("detstack_segment",
         MR_detstack_size, 0, 0, MR_default_handler);
 
@@ -223,11 +216,10 @@ MR_new_detstack_segment(MR_Word *sp, int n)
         MR_ALLOC_SITE_RUNTIME);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
-    /*
-    ** If you ever need to debug this again, you will probably want to
-    ** change this debugging code to include the information printed out
-    ** by MR_new_nondetstack_segment() below.
-    */
+    // If you ever need to debug this again, you will probably want to
+    // change this debugging code to include the information printed out
+    // by MR_new_nondetstack_segment() below.
+
     MR_debug_log_message(
         "create new det segment: old zone: %p, old sp %p, old succip %p",
         MR_CONTEXT(MR_ctxt_detstack_zone), old_sp, MR_succip);
@@ -245,16 +237,15 @@ MR_new_detstack_segment(MR_Word *sp, int n)
     MR_stackvar(1) = (MR_Word) old_sp;
     MR_stackvar(2) = (MR_Word) MR_succip;
 
-    /*
-    ** This may not be for a leaf procedure; we abuse the macro to avoid
-    ** a check for whether we have run out of the new detstack segment.
-    **
-    ** XXX It is *theoretically* possible for a single stack frame to need
-    ** more memory than is available in the whole of the new segment.
-    ** However, if this is true, then the program is screwed anyway.
-    ** We cannot save it, though we *could* give a meaningful error message
-    ** instead of just leaving the program to crash.
-    */
+    // This may not be for a leaf procedure; we abuse the macro to avoid
+    // a check for whether we have run out of the new detstack segment.
+    //
+    // XXX It is *theoretically* possible for a single stack frame to need
+    // more memory than is available in the whole of the new segment.
+    // However, if this is true, then the program is screwed anyway.
+    // We cannot save it, though we *could* give a meaningful error message
+    // instead of just leaving the program to crash.
+
     MR_incr_sp_leaf(n);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
@@ -267,53 +258,51 @@ MR_new_detstack_segment(MR_Word *sp, int n)
     return MR_sp;
 }
 
-/*
-** There are two ways that normal execution can remove a nondet stack frame.
-**
-** - backward execution can remove the currently top nondet stack frame
-**   by invoking MR_fail(), and
-** - forward execution can remove a sequence of nondet stack frames
-**   at the top of the nondet stack when it commits to a solution.
-**
-** We implement commits by taking a snapshot of maxfr and later restoring it.
-** Since the nondet stack frames cut away by such a restoration of maxfr
-** do not get any control at commits, freeing nondet stack segments only
-** when control reaches the frame at the bottom of such segments is clearly
-** not sufficient on its own to eventually recover all nondet stack segments.
-**
-** We could make commits free all nondet stack segments beyond the one
-** containing the restored maxfr. However, that solution has three problems.
-**
-** - It requires stack-segment-specific code at commits.
-** - It requires more code at commits, slowing them down.
-** - It is likely that the freed segment will be needed quite soon. Freeing a
-**   zone and then allocating it again for the same purpose is probably
-**   slower than simply keeping and reusing it.
-**
-** We therefore adopt the following technique:
-**
-** 1 When we fail back to the last frame of a nondet stack segment, we
-**   KEEP that segment, but free any other segments beyond this.
-**
-** 2 When we run out of the current nondet stack segment, we check whether
-**   we already have allocated the next segment. If we haven't, we allocate
-**   a new one. If we have, we keep that segment, but free any segments
-**   beyond it.
-**
-** 3 We do not recover nondet stack stack segments at commits.
-**
-** Parts 1 and 2 above each limit the amount of allocated but not currently
-** used memory to about one segment. It is possible for the amount of
-** allocated but not currently used nondet stack space to exceed twice the
-** size of a segment, possibly by a lot, but in only one circumstance:
-** *after* a commit cuts away several segments of nondet stack, and *before*
-** the next time the program reaches either end (min or max) of the current
-** segment of the nondet stack. If the program uses the nondet stack at all
-** intensively, and if nondet stack segments are small, then this period of
-** time *should* be acceptably small. The gain we get from accepting this
-** downside is that we don't have to deal with segments except when we are
-** at a segment boundary.
-*/
+// There are two ways that normal execution can remove a nondet stack frame.
+//
+// - backward execution can remove the currently top nondet stack frame
+//   by invoking MR_fail(), and
+// - forward execution can remove a sequence of nondet stack frames
+//   at the top of the nondet stack when it commits to a solution.
+//
+// We implement commits by taking a snapshot of maxfr and later restoring it.
+// Since the nondet stack frames cut away by such a restoration of maxfr
+// do not get any control at commits, freeing nondet stack segments only
+// when control reaches the frame at the bottom of such segments is clearly
+// not sufficient on its own to eventually recover all nondet stack segments.
+//
+// We could make commits free all nondet stack segments beyond the one
+// containing the restored maxfr. However, that solution has three problems.
+//
+// - It requires stack-segment-specific code at commits.
+// - It requires more code at commits, slowing them down.
+// - It is likely that the freed segment will be needed quite soon. Freeing a
+//   zone and then allocating it again for the same purpose is probably
+//   slower than simply keeping and reusing it.
+//
+// We therefore adopt the following technique:
+//
+// 1 When we fail back to the last frame of a nondet stack segment, we
+//   KEEP that segment, but free any other segments beyond this.
+//
+// 2 When we run out of the current nondet stack segment, we check whether
+//   we already have allocated the next segment. If we haven't, we allocate
+//   a new one. If we have, we keep that segment, but free any segments
+//   beyond it.
+//
+// 3 We do not recover nondet stack stack segments at commits.
+//
+// Parts 1 and 2 above each limit the amount of allocated but not currently
+// used memory to about one segment. It is possible for the amount of
+// allocated but not currently used nondet stack space to exceed twice the
+// size of a segment, possibly by a lot, but in only one circumstance:
+// *after* a commit cuts away several segments of nondet stack, and *before*
+// the next time the program reaches either end (min or max) of the current
+// segment of the nondet stack. If the program uses the nondet stack at all
+// intensively, and if nondet stack segments are small, then this period of
+// time *should* be acceptably small. The gain we get from accepting this
+// downside is that we don't have to deal with segments except when we are
+// at a segment boundary.
 
 static  MR_MemoryZone   *MR_rewind_nondetstack_segments(MR_Word *maxfr);
 
@@ -341,13 +330,12 @@ MR_new_nondetstack_segment(MR_Word *maxfr, int incr)
 
     new_cur_zone = MR_rewind_nondetstack_segments(maxfr);
     if (new_cur_zone == NULL) {
-        /*
-        ** There is no old segment to reuse in the nondet stack itself,
-        ** so allocate a new one (possibly one that was freed earlier).
-        **
-        ** Note that we perform explicit overflow checks, so redzones
-        ** would just waste space.
-        */
+        // There is no old segment to reuse in the nondet stack itself,
+        // so allocate a new one (possibly one that was freed earlier).
+        //
+        // Note that we perform explicit overflow checks, so redzones
+        // would just waste space.
+
         new_cur_zone = MR_create_or_reuse_zone("nondetstack_segment",
             MR_nondetstack_size, 0, 0, MR_default_handler);
     }
@@ -380,40 +368,38 @@ MR_new_nondetstack_segment(MR_Word *maxfr, int incr)
     fflush(stdout);
 #endif
 
-    /*
-    ** The stack trace tracing code needs to know the size of each nondet
-    ** stack frame, since it uses the size to classify frames as temp or
-    ** ordinary. The size is given by the difference in address between
-    ** the address of the frame and the address of the previous frame.
-    ** This difference would yield an incorrect size and hence an incorrect
-    ** frame classification if a temp frame were allowed to have a frame
-    ** on a different segment as its immediate predecessor.
-    **
-    ** We prevent this by putting an ordinary (i.e. non-temp) frame at the
-    ** bottom of every new nondet stack segment as a sentinel. We hand-build
-    ** this frame, since it is not an "ordinary" ordinary frame. It is not
-    ** created by a call, so it has no meaningful success continuation,
-    ** and since it does not make any calls, no other frame's success
-    ** continuation can point to it either.
-    **
-    ** We store three pieces of information in the sentinel frame.
-    **
-    ** - The maxfr at the time the sentinel frame was created, which we store
-    **   in the prevfr slot. This is actually the address of the logically
-    **   previous frame, so we are using the slot for its intended purpose,
-    **   but the difference between the addresses of the two frames is NOT
-    **   the size of the sentinel frame.
-    **
-    ** - The curfr at the time the sentinel frame was created, which we store
-    **   in the succfr slot. This is NOT actually the frame of the success
-    **   continuation; we can store it there because this frame HAS no
-    **   meaningful success continuation, so the slot is not needed for its
-    **   intended purpose.
-    **
-    ** - The address of the MR_MemoryZone structure of the zone containing
-    **   the sentinel frame, which we store in framevar 1. This is used by
-    **   the code of MR_pop_nondetstack_segment.
-    */
+    // The stack trace tracing code needs to know the size of each nondet
+    // stack frame, since it uses the size to classify frames as temp or
+    // ordinary. The size is given by the difference in address between
+    // the address of the frame and the address of the previous frame.
+    // This difference would yield an incorrect size and hence an incorrect
+    // frame classification if a temp frame were allowed to have a frame
+    // on a different segment as its immediate predecessor.
+    //
+    // We prevent this by putting an ordinary (i.e. non-temp) frame at the
+    // bottom of every new nondet stack segment as a sentinel. We hand-build
+    // this frame, since it is not an "ordinary" ordinary frame. It is not
+    // created by a call, so it has no meaningful success continuation,
+    // and since it does not make any calls, no other frame's success
+    // continuation can point to it either.
+    //
+    // We store three pieces of information in the sentinel frame.
+    //
+    // - The maxfr at the time the sentinel frame was created, which we store
+    //   in the prevfr slot. This is actually the address of the logically
+    //   previous frame, so we are using the slot for its intended purpose,
+    //   but the difference between the addresses of the two frames is NOT
+    //   the size of the sentinel frame.
+    //
+    // - The curfr at the time the sentinel frame was created, which we store
+    //   in the succfr slot. This is NOT actually the frame of the success
+    //   continuation; we can store it there because this frame HAS no
+    //   meaningful success continuation, so the slot is not needed for its
+    //   intended purpose.
+    //
+    // - The address of the MR_MemoryZone structure of the zone containing
+    //   the sentinel frame, which we store in framevar 1. This is used by
+    //   the code of MR_pop_nondetstack_segment.
 
     sentinel_maxfr = MR_maxfr + (MR_NONDET_FIXED_SIZE + 1);
     MR_prevfr_slot_word(sentinel_maxfr) = (MR_Word) old_maxfr;
@@ -438,10 +424,9 @@ MR_new_nondetstack_segment(MR_Word *maxfr, int incr)
     printf("\n");
 #endif
 
-    /*
-    ** Reserve space for the new nondet stack frame on top of the
-    ** sentinel frame.
-    */
+    // Reserve space for the new nondet stack frame on top of the
+    // sentinel frame.
+
     MR_maxfr_word = (MR_Word) (sentinel_maxfr + incr);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
@@ -477,16 +462,15 @@ MR_rewind_nondetstack_segments(MR_Word *maxfr)
         MR_print_zone(stdout, zone);
 #endif
 
-        /*
-        ** If there are several currently unneeded segments, this algorithm
-        ** reuses the zone of the topmost segment (the first segment in the
-        ** list from the top), since its contents are more likely to have been
-        ** recently referred to, and thus more likely to be in the cache.
-        **
-        ** However, reusing the zone of the bottom-most unneeded segment
-        ** would look conceptually a bit neater in that it would preserve
-        ** the follows/precedes relationship between the zones.
-        */
+        // If there are several currently unneeded segments, this algorithm
+        // reuses the zone of the topmost segment (the first segment in the
+        // list from the top), since its contents are more likely to have been
+        // recently referred to, and thus more likely to be in the cache.
+        //
+        // However, reusing the zone of the bottom-most unneeded segment
+        // would look conceptually a bit neater in that it would preserve
+        // the follows/precedes relationship between the zones.
+
         if (zone_to_reuse == NULL) {
             zone_to_reuse = zone;
         } else {
@@ -512,9 +496,7 @@ MR_rewind_nondetstack_segments(MR_Word *maxfr)
     return zone_to_reuse;
 }
 
-/*
-** Needed for bootstrapping.
-*/
+// Needed for bootstrapping.
 
 extern void
 MR_nondetstack_segment_extend_slow_path(MR_Word *old_maxfr, int incr);
@@ -524,7 +506,7 @@ MR_nondetstack_segment_extend_slow_path(MR_Word *old_maxfr, int incr)
 {
 }
 
-#endif  /* MR_STACK_SEGMENTS */
+#endif  // MR_STACK_SEGMENTS
 
 MR_BEGIN_MODULE(stack_segment_module)
     MR_init_entry_an(MR_pop_detstack_segment);
@@ -564,14 +546,14 @@ MR_define_entry(MR_pop_detstack_segment);
     MR_sp_word = (MR_Word) orig_sp;
     MR_GOTO(orig_succip);
 }
-#else   /* ! MR_STACK_SEGMENTS */
+#else   // ! MR_STACK_SEGMENTS
     MR_fatal_error("MR_pop_detstack_segment reached\n");
-#endif  /* MR_STACK_SEGMENTS */
+#endif  // MR_STACK_SEGMENTS
 
 MR_define_entry(MR_pop_nondetstack_segment);
 #ifdef MR_STACK_SEGMENTS
 {
-    /* See the big comment before MR_new_nondetstack_segment. */
+    // See the big comment before MR_new_nondetstack_segment.
     MR_Word         *sentinel_frame;
     MR_Word         *orig_maxfr;
     MR_Word         *orig_curfr;
@@ -607,13 +589,11 @@ MR_define_entry(MR_pop_nondetstack_segment);
     fflush(stdout);
 #endif
 
-    /*
-    ** As explained in the big comment above, we do not free the zone
-    ** of the segment we are leaving. It is very likely that we will need
-    ** it again, very soon, and reusing it from the list of nondet stack
-    ** segments in the context is significantly cheaper than reusing it
-    ** from the general pool.
-    */
+    // As explained in the big comment above, we do not free the zone
+    // of the segment we are leaving. It is very likely that we will need
+    // it again, very soon, and reusing it from the list of nondet stack
+    // segments in the context is significantly cheaper than reusing it
+    // from the general pool.
 
     num_segments_removed = 0;
     while (cur_zone != orig_zone) {
@@ -655,15 +635,15 @@ MR_define_entry(MR_pop_nondetstack_segment);
 
     MR_redo();
 }
-#else   /* ! MR_STACK_SEGMENTS */
+#else   // ! MR_STACK_SEGMENTS
     MR_fatal_error("MR_pop_nondetstack_segment reached\n");
-#endif  /* MR_STACK_SEGMENTS */
+#endif  // MR_STACK_SEGMENTS
 
 MR_END_MODULE
 
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
 
-/* forward decls to suppress gcc warnings */
+// Forward decls to suppress gcc warnings.
 void mercury_sys_init_stacks_init(void);
 void mercury_sys_init_stacks_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
@@ -679,17 +659,17 @@ void mercury_sys_init_stacks_init(void)
 
 void mercury_sys_init_stacks_init_type_tables(void)
 {
-    /* no types to register */
+    // No types to register.
 }
 
 #ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_stacks_write_out_proc_statics(FILE *fp)
 {
-    /* no proc_statics to write out */
+    // No proc_statics to write out.
 }
 #endif
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #undef MR_TABLE_DEBUG
 
@@ -719,12 +699,10 @@ static  void    MR_cleanup_consumer_ptr(MR_TrieNode consumer_ptr);
 static  void    MR_print_pneg_stack_entry(FILE *fp, MR_Integer i,
                     MR_PNegStackFrame *p);
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Record that the nondet stack frame at address frame_addr is now the
-** generator for subgoal.
-*/
+// Record that the nondet stack frame at address frame_addr is now the
+// generator for subgoal.
 
 void
 MR_push_generator(MR_Word *frame_addr, MR_SubgoalPtr subgoal)
@@ -742,9 +720,7 @@ MR_push_generator(MR_Word *frame_addr, MR_SubgoalPtr subgoal)
 #endif
 }
 
-/*
-** Return the subgoal of the topmost generator on the nondet stack.
-*/
+// Return the subgoal of the topmost generator on the nondet stack.
 
 MR_Subgoal *
 MR_top_generator_table(void)
@@ -760,9 +736,7 @@ MR_top_generator_table(void)
     return MR_gen_stack[MR_gen_next - 1].MR_gen_subgoal;
 }
 
-/*
-** Record the deletion of the topmost generator on the nondet stack.
-*/
+// Record the deletion of the topmost generator on the nondet stack.
 
 void
 MR_pop_generator(void)
@@ -807,11 +781,9 @@ MR_print_gen_stack_entry(FILE *fp, MR_Integer i, MR_GenStackFrame *p)
     fprintf(fp, ", %s>\n", MR_subgoal_debug_name(subgoal_debug));
 }
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Record the entering of a committed choice context.
-*/
+// Record the entering of a committed choice context.
 
 void
 MR_commit_mark(void)
@@ -836,14 +808,12 @@ MR_commit_mark(void)
     MR_save_transient_registers();
 }
 
-/*
-** Record the leaving of a committed choice context, and clean up the
-** generators that were created within the context that are still active.
-** We need to clean them up because otherwise, consumers will be depend on this
-** generator to find all the answers to the generator's subgoal, but the
-** generation will never compute any more answers, since it will never be
-** backtracked into.
-*/
+// Record the leaving of a committed choice context, and clean up the
+// generators that were created within the context that are still active.
+// We need to clean them up because otherwise, consumers will be depend on this
+// generator to find all the answers to the generator's subgoal, but the
+// generation will never compute any more answers, since it will never be
+// backtracked into.
 
 void
 MR_commit_cut(void)
@@ -885,10 +855,8 @@ MR_commit_cut(void)
     MR_gen_next = MR_cut_stack[MR_cut_next].MR_cut_gen_next;
 }
 
-/*
-** Record the creation of a generator, for possible cleanup later by
-** MR_commit_cut.
-*/
+// Record the creation of a generator, for possible cleanup later by
+// MR_commit_cut.
 
 void
 MR_register_generator_ptr(MR_SubgoalPtr subgoal)
@@ -918,7 +886,7 @@ static void
 MR_cleanup_generator_ptr(MR_SubgoalPtr subgoal)
 {
     if (subgoal->MR_sg_status == MR_SUBGOAL_COMPLETE) {
-        /* There is nothing to do, everything is OK. */
+        // There is nothing to do, everything is OK.
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("no cleanup: generator %p -> %s is complete\n",
@@ -926,7 +894,7 @@ MR_cleanup_generator_ptr(MR_SubgoalPtr subgoal)
         }
 #endif
     } else {
-        /* This generator will never complete the subgoal. */
+        // This generator will never complete the subgoal.
         MR_ConsumerList consumer_list;
 
 #ifdef  MR_TABLE_DEBUG
@@ -1009,7 +977,7 @@ MR_print_cut_stack_entry(FILE *fp, MR_Integer i, MR_CutStackFrame *p)
     fprintf(fp, "\n");
 }
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 void
 MR_register_suspension(MR_Consumer *consumer)
@@ -1109,7 +1077,7 @@ MR_pneg_enter_else(const char *context)
         next = l->MR_pneg_next_consumer;
         consumer = l->MR_pneg_consumer_ptr;
         if (consumer->MR_cns_subgoal == NULL) {
-            /* This consumer has logically been deleted. */
+            // This consumer has logically been deleted.
             continue;
         }
 
@@ -1121,10 +1089,9 @@ MR_pneg_enter_else(const char *context)
 
             msg = "failing out of negated context with incomplete consumer";
             if (context != NULL) {
-                /*
-                ** The 10 accounts for the ": ", the final '\0',
-                ** and leaves some space to spare.
-                */
+                // The 10 accounts for the ": ", the final '\0',
+                // and leaves some space to spare.
+
                 len = strlen(context) + strlen(msg) + 10;
                 buf = malloc(len);
                 if (buf != NULL) {
@@ -1194,6 +1161,6 @@ MR_print_pneg_stack_entry(FILE *fp, MR_Integer i, MR_PNegStackFrame *p)
     fprintf(fp, "\n");
 }
 
-/***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY

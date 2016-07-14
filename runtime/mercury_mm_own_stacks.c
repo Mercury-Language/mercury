@@ -1,38 +1,31 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2004-2007, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module contains the functions related specifically to the own stack
-** style of minimal model tabling.
-*/
+// Copyright (C) 2004-2007, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module contains the functions related specifically to the own stack
+// style of minimal model tabling.
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
 #include "mercury_tabling.h"
 #include "mercury_mm_own_stacks.h"
 #include "mercury_dlist.h"
-#include "mercury_windows.h"                  /* for Sleep() */
+#include "mercury_windows.h"                  // for Sleep()
 
 #include <stdio.h>
 #ifdef MR_HAVE_UNISTD_H
-  #include <unistd.h>                         /* for sleep() */
+  #include <unistd.h>                         // for sleep()
 #endif
 
 #ifdef  MR_MINIMAL_MODEL_DEBUG
-  /*
-  ** MR_MINIMAL_MODEL_DEBUG implies MR_TABLE_DEBUG in this file, since
-  ** if we want to debug minimal model tabling we need to enable all the
-  ** debugging facilities of this file. However, since MR_TABLE_DEBUG
-  ** increases object file sizes and link times significantly (by implying
-  ** MR_DEBUG_LABEL_NAMES), we don't necessarily want this implication
-  ** to hold globally.
-  */
+  // MR_MINIMAL_MODEL_DEBUG implies MR_TABLE_DEBUG in this file, since
+  // if we want to debug minimal model tabling we need to enable all the
+  // debugging facilities of this file. However, since MR_TABLE_DEBUG
+  // increases object file sizes and link times significantly (by implying
+  // MR_DEBUG_LABEL_NAMES), we don't necessarily want this implication
+  // to hold globally.
 
   #define   MR_TABLE_DEBUG
 #endif
@@ -53,16 +46,14 @@ static  void            MR_table_mmos_make_gen_follow_leader(
                             MR_GeneratorPtr leader);
 #endif
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** This part of the file maintains data structures that can be used
-** to debug minimal model tabling. It does so by allowing the debugger
-** to refer to tabling data structures such as subgoals and consumers
-** by small, easily remembered numbers, not memory addresses.
-*/
+// This part of the file maintains data structures that can be used
+// to debug minimal model tabling. It does so by allowing the debugger
+// to refer to tabling data structures such as subgoals and consumers
+// by small, easily remembered numbers, not memory addresses.
 
-/* set by MR_trace_event, used by table_nondet_setup */
+// Set by MR_trace_event, used by table_nondet_setup.
 const MR_ProcLayout     *MR_subgoal_debug_cur_proc = NULL;
 
 struct MR_ConsDebug_Struct
@@ -335,12 +326,10 @@ MR_gen_subgoal(MR_Generator *generator)
         return "NULL";
     }
 
-    /*
-    ** The argument registers will be meaningful only if they contain integers,
-    ** but that is sufficient for debugging. Likewise, debugging can be done
-    ** with predicates of no more than three input arguments; printing more
-    ** arguments would lead to excessively long event report lines in mdb.
-    */
+    // The argument registers will be meaningful only if they contain integers,
+    // but that is sufficient for debugging. Likewise, debugging can be done
+    // with predicates of no more than three input arguments; printing more
+    // arguments would lead to excessively long event report lines in mdb.
 
     switch (generator->MR_gen_num_input_args) {
         case 0:
@@ -355,7 +344,7 @@ MR_gen_subgoal(MR_Generator *generator)
                 break;
 
         case 2:
-                sprintf(buf, "%s(%" MR_INTEGER_LENGTH_MODIFIER 
+                sprintf(buf, "%s(%" MR_INTEGER_LENGTH_MODIFIER
                    "d,%" MR_INTEGER_LENGTH_MODIFIER "d)",
                     generator->MR_gen_pred_id,
                     generator->MR_gen_input_args[0],
@@ -363,8 +352,8 @@ MR_gen_subgoal(MR_Generator *generator)
                 break;
 
         case 3:
-                sprintf(buf, "%s(%" MR_INTEGER_LENGTH_MODIFIER 
-                    "d,%" MR_INTEGER_LENGTH_MODIFIER 
+                sprintf(buf, "%s(%" MR_INTEGER_LENGTH_MODIFIER
+                    "d,%" MR_INTEGER_LENGTH_MODIFIER
                     "d,%" MR_INTEGER_LENGTH_MODIFIER "d)",
                     generator->MR_gen_pred_id,
                     generator->MR_gen_input_args[0],
@@ -518,7 +507,7 @@ MR_print_consumer(FILE *fp, const MR_ProcLayout *proc, MR_Consumer *consumer)
 
     fprintf(fp, "consumer %s", MR_cons_addr_name(consumer));
 
-    /* XXX check semantics of DELETED */
+    // XXX check semantics of DELETED
     if (consumer->MR_cons_answer_generator == NULL) {
         fprintf(fp, ", DELETED\n");
     } else {
@@ -542,7 +531,7 @@ MR_mm_own_stacks_report_stats(FILE *fp)
 {
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 static  int MR_next_gen_context = 1;
 
@@ -559,7 +548,7 @@ MR_get_context_for_gen(MR_GeneratorPtr generator)
         ctxt = (MR_Context *) MR_dlist_data(item);
         MR_dlist_delete(list, item, NULL);
     } else {
-        char    buf[80];    /* ought to be plenty big enough */
+        char    buf[80];    // ought to be plenty big enough
 
         sprintf(buf, "gen%d", MR_next_gen_context);
         MR_next_gen_context++;
@@ -588,15 +577,14 @@ MR_table_mmos_setup_consumer(MR_GeneratorPtr generator, MR_ConstString pred_id)
     if (containing_generator != NULL) {
         consumer->MR_cons_context = containing_generator->MR_gen_context;
 
-        /*
-        ** XXX We need to do something here to make `containing_generator'
-        ** depend on `generator'.
-        **
-        ** If the dependency is mutual, we need to make them part of the
-        ** same clique. We may delay this latter action until there is a
-        ** solution to return (since by then there may be more dependencies),
-        ** but doing it here may be better, since there may be many solutions.
-        */
+        // XXX We need to do something here to make `containing_generator'
+        // depend on `generator'.
+        //
+        // If the dependency is mutual, we need to make them part of the
+        // same clique. We may delay this latter action until there is a
+        // solution to return (since by then there may be more dependencies),
+        // but doing it here may be better, since there may be many solutions.
+
     } else {
         consumer->MR_cons_context = MR_ENGINE(MR_eng_main_context);
     }
@@ -609,7 +597,7 @@ MR_table_mmos_setup_consumer(MR_GeneratorPtr generator, MR_ConstString pred_id)
     MR_enter_cons_debug(consumer);
 
     if (MR_tabledebug) {
-        /* The pred_id and address are printed as part of the consumer name. */
+        // The pred_id and address are printed as part of the consumer name.
         printf("setting up consumer %s\n",
             MR_cons_addr_name(consumer));
         printf("the relevant generator is %s\n", MR_gen_addr_name(generator));
@@ -643,7 +631,7 @@ MR_table_mmos_setup_generator(MR_TrieNode trie_node, MR_Integer num_input_args,
     generator->MR_gen_answer_list = NULL;
     generator->MR_gen_answer_list_tail = &generator->MR_gen_answer_list;
 
-    /* The following fields are for debugging */
+    // The following fields are for debugging
     generator->MR_gen_pred_id = pred_id;
     generator->MR_gen_num_input_args = num_input_args;
     generator->MR_gen_input_args = MR_TABLE_NEW_ARRAY(MR_Word, num_input_args);
@@ -652,26 +640,25 @@ MR_table_mmos_setup_generator(MR_TrieNode trie_node, MR_Integer num_input_args,
         generator->MR_gen_input_args[i] = MR_mmos_arg_regs[i];
     }
 
-    /*
-    ** MR_subgoal_debug_cur_proc refers to the last procedure
-    ** that executed a call event, if any. If the procedure that is
-    ** executing table_mmos_setup_consumer is traced, this will be that
-    ** procedure, and recording the layout structure of the
-    ** processor in the generator allows us to interpret the contents
-    ** of the generator's answer tables. If the procedure executing
-    ** table_mmos_setup_consumer is not traced, then the layout structure
-    ** belongs to another procedure and any use of the MR_gen_proc_layout
-    ** field will probably cause a core dump.
-    ** For implementors debugging minimal model tabling, this is
-    ** the right tradeoff.
-    */
+    // MR_subgoal_debug_cur_proc refers to the last procedure
+    // that executed a call event, if any. If the procedure that is
+    // executing table_mmos_setup_consumer is traced, this will be that
+    // procedure, and recording the layout structure of the
+    // processor in the generator allows us to interpret the contents
+    // of the generator's answer tables. If the procedure executing
+    // table_mmos_setup_consumer is not traced, then the layout structure
+    // belongs to another procedure and any use of the MR_gen_proc_layout
+    // field will probably cause a core dump.
+    // For implementors debugging minimal model tabling, this is
+    // the right tradeoff.
+
     generator->MR_gen_proc_layout = MR_subgoal_debug_cur_proc;
 
 #ifdef  MR_TABLE_DEBUG
     MR_enter_gen_debug(generator);
 
     if (MR_tabledebug) {
-        /* The pred_id is printed as part of the generator name. */
+        // The pred_id is printed as part of the generator name.
         printf("setting up generator %p -> %s\n",
             trie_node, MR_gen_addr_name(generator));
         printf("answer slot %p\n", generator->MR_gen_answer_list_tail);
@@ -683,11 +670,11 @@ MR_table_mmos_setup_generator(MR_TrieNode trie_node, MR_Integer num_input_args,
 #endif
 
     trie_node->MR_generator = generator;
-    /* MR_save_transient_registers(); */
+    // MR_save_transient_registers();
     return generator;
 }
 
-#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+#endif  // MR_USE_MINIMAL_MODEL_OWN_STACKS
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -709,7 +696,7 @@ mercury__table_builtin__table_mmos_consume_next_answer_multi_2_p_0(
         "minimal model tabling with --high-level-code");
 }
 
-#else   /* ! MR_HIGHLEVEL_CODE */
+#else   // ! MR_HIGHLEVEL_CODE
 
 MR_define_extern_entry(MR_MMOS_RET_ALL_NONDET_ENTRY);
 MR_define_extern_entry(MR_MMOS_RET_ALL_MULTI_ENTRY);
@@ -738,7 +725,7 @@ MR_define_entry(MR_MMOS_RET_ALL_MULTI_ENTRY);
 
 MR_END_MODULE
 
-#else   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+#else   // MR_USE_MINIMAL_MODEL_OWN_STACKS
 
 MR_declare_entry(mercury__do_call_closure_0);
 
@@ -771,7 +758,7 @@ MR_define_entry(MR_MMOS_RET_ALL_NONDET_ENTRY);
     MR_fv(1) = (MR_Word) consumer;
     MR_fv(2) = (MR_Word) generator;
 
-    /* fall through */
+    // fall through
 }
 
 MR_define_label(MR_RETURN_ALL_LABEL(FromTable));
@@ -780,11 +767,10 @@ MR_define_label(MR_RETURN_ALL_LABEL(FromTable));
     MR_GeneratorPtr generator;
     MR_AnswerList   answer_list;
 
-    /*
-    ** We could and should delay the assignment to generator until we know
-    ** whether answer_list == NULL, but we need the value of generator
-    ** for the debugging code below.
-    */
+    // We could and should delay the assignment to generator until we know
+    // whether answer_list == NULL, but we need the value of generator
+    // for the debugging code below.
+
     consumer = (MR_ConsumerPtr) MR_fv(1);
     generator = (MR_GeneratorPtr) MR_fv(2);
 
@@ -820,7 +806,7 @@ MR_define_label(MR_RETURN_ALL_LABEL(FromTable));
 
             MR_fail();
         } else {
-            /* XXX Investigate the performance effects of adding at tail. */
+            // XXX Investigate the performance effects of adding at tail.
             if (!consumer->MR_cons_registered) {
                 if (MR_tabledebug) {
                     printf("registering %s with %s\n",
@@ -839,10 +825,9 @@ MR_define_label(MR_RETURN_ALL_LABEL(FromTable));
                     MR_cons_addr_name(consumer),
                     consumer->MR_cons_num_returned_answers,
                     MR_gen_addr_name(generator));
-                /*
-                ** The sleep is to allow the infinite loop that happens here
-                ** to be interrupted from the keyboard.
-                */
+
+                // The sleep is to allow the infinite loop that happens here
+                // to be interrupted from the keyboard.
                 #if defined(MR_HAVE_SLEEP)
                     sleep(1);
                 #elif defined(MR_HAVE_CAPITAL_S_SLEEP)
@@ -861,10 +846,9 @@ MR_define_label(MR_RETURN_ALL_LABEL(FromTable));
 }
 
 MR_define_entry(MR_MMOS_RET_ALL_MULTI_ENTRY);
-    /*
-    ** Although the two predicates differ in their determinism,
-    ** their implementation is the same.
-    */
+    // Although the two predicates differ in their determinism,
+    // their implementation is the same.
+
     MR_GOTO_ENTRY(MR_MMOS_RET_ALL_NONDET_ENTRY);
 
 MR_define_entry(MR_mmos_initialize_generator);
@@ -881,10 +865,10 @@ MR_define_entry(MR_mmos_initialize_generator);
 
 MR_END_MODULE
 
-#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
-#endif  /* MR_HIGHLEVEL_CODE               */
+#endif  // MR_USE_MINIMAL_MODEL_OWN_STACKS
+#endif  // MR_HIGHLEVEL_CODE
 
-/* Ensure that the initialization code for the above module gets to run. */
+// Ensure that the initialization code for the above module gets to run.
 /*
 INIT mercury_sys_init_mmos_modules
 */
@@ -893,7 +877,7 @@ INIT mercury_sys_init_mmos_modules
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mmos_module;
 #endif
 
-/* forward declarations to suppress gcc -Wmissing-decl warnings */
+// Forward declarations to suppress gcc -Wmissing-decl warnings.
 void mercury_sys_init_mmos_modules_init(void);
 void mercury_sys_init_mmos_modules_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
@@ -904,19 +888,19 @@ void mercury_sys_init_mmos_modules_init(void)
 {
 #ifndef MR_HIGHLEVEL_CODE
     mmos_module();
-#endif  /* MR_HIGHLEVEL_CODE */
+#endif  // MR_HIGHLEVEL_CODE
 }
 
 void mercury_sys_init_mmos_modules_init_type_tables(void)
 {
-    /* no types to register */
+    // No types to register.
 }
 
 #ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_mmos_modules_write_out_proc_statics(FILE *fp)
 {
-    /* no proc_statics to write out          */
-    /* XXX we need to fix the deep profiling */
-    /* of minimal model tabled predicates    */
+    // No proc_statics to write out.
+    // XXX We need to fix the deep profiling
+    // of minimal model tabled predicates.
 }
 #endif

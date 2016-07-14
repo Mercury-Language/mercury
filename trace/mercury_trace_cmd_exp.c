@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "exp" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "exp" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -34,11 +29,9 @@
 
 #include <stdio.h>
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** The default number of lines to display for a dice.
-*/
+// The default number of lines to display for a dice.
 
 #define MR_DEFAULT_DICE_LINES   50
 
@@ -51,7 +44,7 @@ static  MR_bool     MR_trace_options_dice(char **pass_trace_counts_file,
                         MR_Unsigned *number_of_lines, char **out_file,
                         char **module, char ***words, int *word_count);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_histogram_all(char **words, int word_count,
@@ -81,12 +74,12 @@ MR_trace_cmd_histogram_all(char **words, int word_count,
         MR_trace_usage_cur_cmd();
     }
 
-#else   /* MR_TRACE_HISTOGRAM */
+#else   // MR_TRACE_HISTOGRAM
 
     fprintf(MR_mdb_out, "mdb: the `histogram_all' command is available "
         "only when histogram gathering is enabled.\n");
 
-#endif  /* MR_TRACE_HISTOGRAM */
+#endif  // MR_TRACE_HISTOGRAM
 
     return KEEP_INTERACTING;
 }
@@ -119,12 +112,12 @@ MR_trace_cmd_histogram_exp(char **words, int word_count,
         MR_trace_usage_cur_cmd();
     }
 
-#else   /* MR_TRACE_HISTOGRAM */
+#else   // MR_TRACE_HISTOGRAM
 
     fprintf(MR_mdb_out, "mdb: the `histogram_exp' command is available "
         "only when histogram gathering is enabled.\n");
 
-#endif  /* MR_TRACE_HISTOGRAM */
+#endif  // MR_TRACE_HISTOGRAM
 
     return KEEP_INTERACTING;
 }
@@ -145,12 +138,12 @@ MR_trace_cmd_clear_histogram(char **words, int word_count,
         MR_trace_usage_cur_cmd();
     }
 
-#else   /* MR_TRACE_HISTOGRAM */
+#else   // MR_TRACE_HISTOGRAM
 
     fprintf(MR_mdb_out, "mdb: the `clear_histogram' command is available "
         "only when histogram gathering is enabled.\n");
 
-#endif  /* MR_TRACE_HISTOGRAM */
+#endif  // MR_TRACE_HISTOGRAM
 
     return KEEP_INTERACTING;
 }
@@ -178,7 +171,8 @@ MR_trace_cmd_dice(char **words, int word_count, MR_TraceCmdInfo *cmd,
         &fail_trace_counts_file, &sort_str, &number_of_lines, &out_file,
         &module, &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1) {
         if (pass_trace_counts_file == NULL) {
             fflush(MR_mdb_out);
@@ -220,7 +214,7 @@ MR_trace_cmd_dice(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  void
 MR_trace_print_dice(char *pass_trace_counts_file,
@@ -255,7 +249,7 @@ MR_trace_print_dice(char *pass_trace_counts_file,
             number_of_lines, aligned_module, &dice, &problem);
     );
 
-    /* The string in dice is a sequence of complete lines */
+    // The string in dice is a sequence of complete lines.
     if (MR_streq(problem, "")) {
         if (out_file == NULL) {
             fprintf(MR_mdb_out, "%s", dice);
@@ -280,7 +274,7 @@ MR_trace_print_dice(char *pass_trace_counts_file,
     }
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static struct MR_option MR_trace_dice_opts[] =
 {
@@ -309,27 +303,23 @@ MR_trace_options_dice(char **pass_trace_counts_file,
         switch (c) {
 
             case 'p':
-                /*
-                ** Don't free *pass_trace_counts_file even if non-NULL,
-                ** since its initial value comes from a global variable,
-                ** and thus will still be used after the dice command.
-                ** The waste of not freeing of the string allocated by
-                ** MR_copy_string if this option is duplicated can be
-                ** easily lived with.
-                */
+                // Don't free *pass_trace_counts_file even if non-NULL,
+                // since its initial value comes from a global variable,
+                // and thus will still be used after the dice command.
+                // The waste of not freeing of the string allocated by
+                // MR_copy_string if this option is duplicated can be
+                // easily lived with.
 
                 *pass_trace_counts_file = MR_copy_string(MR_optarg);
                 break;
 
             case 'f':
-                /*
-                ** Don't free *fail_trace_counts_file even if non-NULL,
-                ** since its initial value comes from a global variable,
-                ** and thus will still be used after the dice command.
-                ** The waste of not freeing of the string allocated by
-                ** MR_copy_string if this option is duplicated can be
-                ** easily lived with.
-                */
+                // Don't free *fail_trace_counts_file even if non-NULL,
+                // since its initial value comes from a global variable,
+                // and thus will still be used after the dice command.
+                // The waste of not freeing of the string allocated by
+                // MR_copy_string if this option is duplicated can be
+                // easily lived with.
 
                 *fail_trace_counts_file = MR_copy_string(MR_optarg);
                 break;

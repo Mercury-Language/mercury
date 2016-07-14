@@ -1,23 +1,18 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1993-1994,1997,2000, 2005-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** file: timing.c
-** main authors: fjh
-**
-**  Timing routines.
-*/
+// Copyright (C) 1993-1994,1997,2000, 2005-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// file: timing.c
+// main authors: fjh
+//
+//  Timing routines.
 
 #include "mercury_imp.h"
 
 #ifdef MR_HAVE_SYS_TIMES_H
-  #include <sys/times.h>        /* for times() and `struct tms' */
+  #include <sys/times.h>        // for times() and `struct tms'
 #endif
 
 #ifdef MR_HAVE_SYS_TIME_H
@@ -38,14 +33,14 @@ int
 MR_get_user_cpu_milliseconds(void)
 {
 #if defined(MR_WIN32_GETPROCESSTIMES)
-    #define FILETIME_TO_MILLISEC(time, msec)                                  \
-    do                                                                        \
-    {                                                                         \
-        SYSTEMTIME tmp;                                                       \
-        FileTimeToSystemTime(&time, &tmp);                                    \
-        msec = tmp.wMilliseconds + 1000 *                                     \
-            (tmp.wSecond + 60 * (tmp.wMinute + 60 * tmp.wHour));              \
-    } while(0)
+    #define FILETIME_TO_MILLISEC(time, msec)                            \
+    do                                                                  \
+    {                                                                   \
+        SYSTEMTIME tmp;                                                 \
+        FileTimeToSystemTime(&time, &tmp);                              \
+        msec = tmp.wMilliseconds + 1000 *                               \
+            (tmp.wSecond + 60 * (tmp.wMinute + 60 * tmp.wHour));        \
+    } while (0)
 
     FILETIME    creation_time;
     FILETIME    exit_time;

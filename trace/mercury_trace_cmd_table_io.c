@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "table_io" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "table_io" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -27,12 +22,12 @@
 #include "mercury_trace_cmds.h"
 #include "mercury_trace_cmd_table_io.h"
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  void        MR_print_unsigned_var(FILE *fp, const char *var,
                         MR_Unsigned value);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_table_io(char **words, int word_count, MR_TraceCmdInfo *cmd,
@@ -113,14 +108,12 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_print_unsigned_var(MR_mdb_out, "start", MR_io_tabling_start);
         MR_print_unsigned_var(MR_mdb_out, "end", MR_io_tabling_end);
     } else if (word_count == 2 && MR_streq(words[1], "allow")) {
-        /*
-        ** The "table_io allow" command allows the programmer to give
-        ** the command "table_io start" even in grades in which there
-        ** is no guarantee that all I/O primitives are tabled. It is
-        ** for developers only, because if it is used on programs in
-        ** which some but not all I/O primitives are tabled, the
-        ** results of turning on I/O tabling can be weird.
-        */
+        // The "table_io allow" command allows the programmer to give
+        // the command "table_io start" even in grades in which there
+        // is no guarantee that all I/O primitives are tabled. It is
+        // for developers only, because if it is used on programs in
+        // which some but not all I/O primitives are tabled, the
+        // results of turning on I/O tabling can be weird.
 
         MR_io_tabling_allowed = MR_TRUE;
     } else {
@@ -130,7 +123,7 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static void
 MR_print_unsigned_var(FILE *fp, const char *var, MR_Unsigned value)
@@ -138,15 +131,13 @@ MR_print_unsigned_var(FILE *fp, const char *var, MR_Unsigned value)
     fprintf(fp, "%s = %" MR_INTEGER_LENGTH_MODIFIER "u\n", var, value);
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** "table_io allow" is deliberately not documented as it is developer only.
-** "table_io begin" and "table_io end" are deliberately not documented in an
-** effort to encourage consistent use of start/stop.
-*/
+// "table_io allow" is deliberately not documented as it is developer only.
+// "table_io begin" and "table_io end" are deliberately not documented in an
+// effort to encourage consistent use of start/stop.
 
 const char *const    MR_trace_table_io_cmd_args[] =
     { "stats", "start", "stop", NULL };
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////

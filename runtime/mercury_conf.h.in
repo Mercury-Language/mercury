@@ -1,164 +1,144 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab
 
-/*
-** mercury_conf.h.in defines various configuration parameters.
-**
-** Configuration parameters fall into three groups.
-**
-** (1)  They can be set automatically by autoconf.
-**
-** (2)  They can be passed on the command line (e.g. the mgnuc script
-**      sets some options based on the grade).
-**
-** (3)  Or their values can be entirely determined by the settings
-**      of other parameters.
-**
-** The ones defined in this file are determined by autoconf.
-** The remainder are documented and/or defined in mercury_conf_param.h,
-** which is #included by this file.
-*/
+// Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-/*
-** IMPORTANT NOTE:
-** This file must not contain any other #include statements,
-** and may not define any global variables,
-** for reasons explained in mercury_imp.h.
-** This file should contain _only_ configuration macros.
-*/
+// mercury_conf.h.in defines various configuration parameters.
+//
+// Configuration parameters fall into three groups.
+//
+// (1)  They can be set automatically by autoconf.
+//
+// (2)  They can be passed on the command line (e.g. the mgnuc script
+//      sets some options based on the grade).
+//
+// (3)  Or their values can be entirely determined by the settings
+//      of other parameters.
+//
+// The ones defined in this file are determined by autoconf.
+// The remainder are documented and/or defined in mercury_conf_param.h,
+// which is #included by this file.
+
+// IMPORTANT NOTE:
+// This file must not contain any other #include statements,
+// and may not define any global variables,
+// for reasons explained in mercury_imp.h.
+// This file should contain _only_ configuration macros.
 
 #ifndef MERCURY_CONF_H
 #define MERCURY_CONF_H
 
-/*---------------------------------------------------------------------------*/
-/*
-** Configuration parameters determined by autoconf.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Configuration parameters determined by autoconf.
 
-/*
-** MR_WORD_TYPE: the base type for the definition of Word.
-** This must be a C integral type (e.g. int, long, or long long)
-** without any explicit signedness.
-** It ought to be the same size as the machine's general-purpose registers
-** (i.e. the same size as pointers).
-*/
+// MR_WORD_TYPE: the base type for the definition of Word.
+// This must be a C integral type (e.g. int, long, or long long)
+// without any explicit signedness.
+// It ought to be the same size as the machine's general-purpose registers
+// (i.e. the same size as pointers).
+
 #undef  MR_WORD_TYPE
 
-/*
-** MR_BYTES_PER_WORD: the number of bytes per MR_WORD_TYPE.
-*/
+// MR_BYTES_PER_WORD: the number of bytes per MR_WORD_TYPE.
+
 #undef  MR_BYTES_PER_WORD
 
-/*
-** MR_INTEGER_LENGTH_MODIFIER: the printf() length modifier for a MR_Integer.
-*/
+// MR_INTEGER_LENGTH_MODIFIER: the printf() length modifier for a MR_Integer.
+
 #undef MR_INTEGER_LENGTH_MODIFIER
 
-/*
-** MR_INT_LEAST64_TYPE:
-** This must be a C integral type (e.g. int, long, long long)
-** without any explicit signedness.
-** It ought to be at least 64 bits in size.
-** It may be bigger, but any bits beyond 64 are not used.
-*/
+// MR_INT_LEAST64_TYPE:
+// This must be a C integral type (e.g. int, long, long long)
+// without any explicit signedness.
+// It ought to be at least 64 bits in size.
+// It may be bigger, but any bits beyond 64 are not used.
+
 #undef  MR_INT_LEAST64_TYPE
 
-/*
-** MR_INT_LEAST64_LENGTH_MODIFIER: the print() length modifier for
-** a MR_int_least64_t.
-*/
+// MR_INT_LEAST64_LENGTH_MODIFIER: the print() length modifier for
+// a MR_int_least64_t.
+
 #undef  MR_INT_LEAST64_LENGTH_MODIFIER
 
-/*
-** MR_INT_LEAST32_TYPE:
-** This must be a C integral type (e.g. short, int, long)
-** without any explicit signedness.
-** It ought to be at least 32 bits in size.
-** It may be bigger, but any bits beyond 32 are not used.
-*/
+// MR_INT_LEAST32_TYPE:
+// This must be a C integral type (e.g. short, int, long)
+// without any explicit signedness.
+// It ought to be at least 32 bits in size.
+// It may be bigger, but any bits beyond 32 are not used.
+
 #undef  MR_INT_LEAST32_TYPE
 
-/*
-** MR_INT_LEAST16_TYPE:
-** This must be a C integral type (e.g. short, int)
-** without any explicit signedness.
-** It ought to be at least 16 bits in size.
-** It may be bigger, but any bits beyond 16 are not used.
-*/
+// MR_INT_LEAST16_TYPE:
+// This must be a C integral type (e.g. short, int)
+// without any explicit signedness.
+// It ought to be at least 16 bits in size.
+// It may be bigger, but any bits beyond 16 are not used.
+
 #undef  MR_INT_LEAST16_TYPE
 
-/*
-** MR_{UINT,INT}_LEAST{16,32}_MAX:
-** The symbolic names (defined in limits.h) of the maximum values for the
-** signed and unsigned forms of MR_INT_LEAST16_TYPE and MR_INT_LEAST32_TYPE.
-*/
+// MR_{UINT,INT}_LEAST{16,32}_MAX:
+// The symbolic names (defined in limits.h) of the maximum values for the
+// signed and unsigned forms of MR_INT_LEAST16_TYPE and MR_INT_LEAST32_TYPE.
+
 #undef  MR_INT_LEAST16_MAX
 #undef  MR_UINT_LEAST16_MAX
 #undef  MR_INT_LEAST32_MAX
 #undef  MR_UINT_LEAST32_MAX
 
-/*
-** MR_LOW_TAG_BITS: an integer, specifying the number of low-order tag bits
-** we can use. Normally this is the base-2 log of the word size in bytes.
-*/
+// MR_LOW_TAG_BITS: an integer, specifying the number of low-order tag bits
+// we can use. Normally this is the base-2 log of the word size in bytes.
+
 #undef  MR_LOW_TAG_BITS
 
-/*
-** MR_BOXED_FLOAT: defined if MR_Float is wider than a MR_Word,
-** i.e. when using double-precision floats on 32-bit architectures.
-** It does NOT mean that all floats are necessarily boxed.
-** A better name might be MR_OVERSIZED_FLOAT.
-**
-** Note that when bootstrapping from the source distribution,
-** we initially build things without MR_BOXED_FLOAT even on machines
-** for which sizeof(MR_Float) <= sizeof(MR_Word).
-** Conversely if MR_BOXED_FLOAT is undefined, it implies that
-** sizeof(MR_Float) <= sizeof(MR_Word).
-*/
+// MR_BOXED_FLOAT: defined if MR_Float is wider than a MR_Word,
+// i.e. when using double-precision floats on 32-bit architectures.
+// It does NOT mean that all floats are necessarily boxed.
+// A better name might be MR_OVERSIZED_FLOAT.
+//
+// Note that when bootstrapping from the source distribution,
+// we initially build things without MR_BOXED_FLOAT even on machines
+// for which sizeof(MR_Float) <= sizeof(MR_Word).
+// Conversely if MR_BOXED_FLOAT is undefined, it implies that
+// sizeof(MR_Float) <= sizeof(MR_Word).
+
 #undef  MR_BOXED_FLOAT
 
-/*
-** The following macros are defined iff the corresponding header file
-** is available:
-**
-**  MR_HAVE_SYS_SIGINFO_H   we have <sys/siginfo.h>
-**  MR_HAVE_SYS_SIGNAL_H    we have <sys/signal.h>
-**  MR_HAVE_UCONTEXT_H      we have <ucontext.h>
-**  MR_HAVE_SYS_UCONTEXT_H  we have <sys/ucontext.h>
-**  MR_HAVE_ASM_SIGCONTEXT_H we have <asm/sigcontext.h> (e.g. i386 Linux)
-**  MR_HAVE_SYS_TIME_H      we have <sys/time.h>
-**  MR_HAVE_UNISTD_H        we have <unistd.h>
-**  MR_HAVE_SYS_PARAM_H     we have <sys/param.h>
-**  MR_HAVE_SYS_WAIT_H      we have <sys/wait.h>
-**  MR_HAVE_SYS_STAT_H      we have <sys/stat.h>
-**  MR_HAVE_SYS_TYPES_H     we have <sys/types.h>
-**  MR_HAVE_SYS_TIMES_H     we have <sys/times.h>
-**  MR_HAVE_DLFCN_H         we have <dlfcn.h>
-**  MR_HAVE_FCNTL_H         we have <fcntl.h>
-**  MR_HAVE_TERMIOS_H       we have <termios.h>
-**  MR_HAVE_SYS_IOCTL_H     we have <sys/ioctl.h>
-**  MR_HAVE_SYS_STROPTS_H   we have <sys/stropts.h>
-**  MR_HAVE_WINDOWS_H       we have <windows.h>
-**  MR_HAVE_IEEEFP_H        we have <ieeefp.h>
-**  MR_HAVE_DIRENT_H        we have <dirent.h>
-**  MR_HAVE_MALLOC_H        we have <malloc.h>
-**  MR_HAVE_SEMAPHORE_H     we have <semaphore.h>
-**  MR_HAVE_PTHREAD_H       we have <pthread.h>
-**  MR_HAVE_TIME_H          we have <time.h>
-**  MR_HAVE_SPAWN_H         we have <spawn.h>
-**  MR_HAVE_FENV_H          we have <fenv.h>
-**  MR_HAVE_SYS_MMAN_H      we have <sys/mman.h>
-**  MR_HAVE_SYS_SEM_H       we have <sys/sem.h>
-**  MR_HAVE_SCHED_H         we have <sched.h>
-**  MR_HAVE_UTMPX_H         we have <utmpx.h>
-**  MR_HAVE_SYS_RESOURCE_H  we have <sys/resource.h>
-*/
+// The following macros are defined iff the corresponding header file
+// is available:
+//
+//  MR_HAVE_SYS_SIGINFO_H   we have <sys/siginfo.h>
+//  MR_HAVE_SYS_SIGNAL_H    we have <sys/signal.h>
+//  MR_HAVE_UCONTEXT_H      we have <ucontext.h>
+//  MR_HAVE_SYS_UCONTEXT_H  we have <sys/ucontext.h>
+//  MR_HAVE_ASM_SIGCONTEXT_H we have <asm/sigcontext.h> (e.g. i386 Linux)
+//  MR_HAVE_SYS_TIME_H      we have <sys/time.h>
+//  MR_HAVE_UNISTD_H        we have <unistd.h>
+//  MR_HAVE_SYS_PARAM_H     we have <sys/param.h>
+//  MR_HAVE_SYS_WAIT_H      we have <sys/wait.h>
+//  MR_HAVE_SYS_STAT_H      we have <sys/stat.h>
+//  MR_HAVE_SYS_TYPES_H     we have <sys/types.h>
+//  MR_HAVE_SYS_TIMES_H     we have <sys/times.h>
+//  MR_HAVE_DLFCN_H         we have <dlfcn.h>
+//  MR_HAVE_FCNTL_H         we have <fcntl.h>
+//  MR_HAVE_TERMIOS_H       we have <termios.h>
+//  MR_HAVE_SYS_IOCTL_H     we have <sys/ioctl.h>
+//  MR_HAVE_SYS_STROPTS_H   we have <sys/stropts.h>
+//  MR_HAVE_WINDOWS_H       we have <windows.h>
+//  MR_HAVE_IEEEFP_H        we have <ieeefp.h>
+//  MR_HAVE_DIRENT_H        we have <dirent.h>
+//  MR_HAVE_MALLOC_H        we have <malloc.h>
+//  MR_HAVE_SEMAPHORE_H     we have <semaphore.h>
+//  MR_HAVE_PTHREAD_H       we have <pthread.h>
+//  MR_HAVE_TIME_H          we have <time.h>
+//  MR_HAVE_SPAWN_H         we have <spawn.h>
+//  MR_HAVE_FENV_H          we have <fenv.h>
+//  MR_HAVE_SYS_MMAN_H      we have <sys/mman.h>
+//  MR_HAVE_SYS_SEM_H       we have <sys/sem.h>
+//  MR_HAVE_SCHED_H         we have <sched.h>
+//  MR_HAVE_UTMPX_H         we have <utmpx.h>
+//  MR_HAVE_SYS_RESOURCE_H  we have <sys/resource.h>
+
 #undef  MR_HAVE_SYS_SIGINFO_H
 #undef  MR_HAVE_SYS_SIGNAL_H
 #undef  MR_HAVE_UCONTEXT_H
@@ -191,122 +171,117 @@
 #undef  MR_HAVE_UTMPX_H
 #undef  MR_HAVE_SYS_RESOURCE_H
 
-/*
-** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
-** `struct tms' struct and times() function.
-*/
+// MR_HAVE_POSIX_TIMES is defined if we have the POSIX
+// `struct tms' struct and times() function.
+
 #undef MR_HAVE_POSIX_TIMES
 
-/*
-** MR_HAVE_ENVIRON is defined if we have the environ global variable.
-*/
+// MR_HAVE_ENVIRON is defined if we have the environ global variable.
+
 #undef MR_HAVE_ENVIRON
 
-/*
-** The following macros are defined iff the corresponding type
-** is available (in <stdint.h>, <inttypes.h>, or <sys/types.h>):
-**
-**  MR_HAVE_INTPTR_T        we have intptr_t and uintptr_t
-**  MR_HAVE_INT_LEASTN_T    we have {u,}int_least{8,16,32}_t
-**  MR_HAVE_DEV_T           we have dev_t
-**  MR_HAVE_INO_T           we have ino_t
-*/
+// The following macros are defined iff the corresponding type
+// is available (in <stdint.h>, <inttypes.h>, or <sys/types.h>):
+//
+//  MR_HAVE_INTPTR_T        we have intptr_t and uintptr_t
+//  MR_HAVE_INT_LEASTN_T    we have {u,}int_least{8,16,32}_t
+//  MR_HAVE_DEV_T           we have dev_t
+//  MR_HAVE_INO_T           we have ino_t
+
 #undef MR_HAVE_INTPTR_T
 #undef MR_HAVE_INT_LEASTN_T
 #undef MR_HAVE_DEV_T
 #undef MR_HAVE_INO_T
 
-/*
-** pid_t is defined as `int' iff the system headers don't define it.
-*/
+// pid_t is defined as `int' iff the system headers don't define it.
+
 #undef pid_t
 
-/*
-** The following macros are defined iff the corresponding function or
-** system call is available:
-**
-**  MR_HAVE_GETPID              we have the getpid() function.
-**  MR_HAVE_SETPGID             we have the setpgid() function.
-**  MR_HAVE_FORK                we have the fork() function.
-**  MR_HAVE_EXECLP              we have the execlp() function.
-**  MR_HAVE_WAIT                we have the wait() function.
-**  MR_HAVE_KILL                we have the kill() function.
-**  MR_HAVE_GETHOSTNAME         we have the gethostname() function.
-**  MR_HAVE_SNPRINTF            we have the snprintf() function.
-**  MR_HAVE__SNPRINTF           we have the _snprintf() function.
-**  MR_HAVE_VSNPRINTF           we have the vsnprintf() function.
-**  MR_HAVE__VSNPRINTF          we have the _vsnprintf() function.
-**  MR_HAVE_SYSCONF             we have the sysconf() system call.
-**  MR_HAVE_SIGACTION           we have the sigaction() system call.
-**  MR_HAVE_GETPAGESIZE         we have the getpagesize() system call.
-**  MR_HAVE_MMAP                we have the mmap() system call.
-**  MR_HAVE_MPROTECT            we have the mprotect() system call.
-**  MR_HAVE_MEMALIGN            we have the memalign() function.
-**  MR_HAVE_POSIX_MEMALIGN      we have the posix_memalign() function.
-**  MR_HAVE_SBRK                we have the sbrk() function.
-**  MR_HAVE_STRERROR            we have the strerror() function.
-**  MR_HAVE_STRERROR_R          we have the strerror_r() function.
-**  MR_HAVE_STRERROR_S          we have the strerror_s() function.
-**  MR_HAVE_SIGINTERRUPT        we have the siginterrupt() function.
-**  MR_HAVE_SETITIMER           we have the setitimer() function.
-**  MR_HAVE_MEMMOVE             we have the memmove() function.
-**  MR_HAVE_DLOPEN              we have the dlopen() function.
-**  MR_HAVE_DLCLOSE             we have the dlclose() function.
-**  MR_HAVE_DLSYM               we have the dlsym() function.
-**  MR_HAVE_DLERROR             we have the dlerror() function.
-**  MR_HAVE_STAT                we have the stat() function.
-**  MR_HAVE_LSTAT               we have the lstat() function.
-**  MR_HAVE_FSTAT               we have the fstat() function.
-**  MR_HAVE_FDOPEN              we have the fdopen() function.
-**  MR_HAVE_OPEN                we have the open() function.
-**  MR_HAVE_CLOSE               we have the close() function.
-**  MR_HAVE_DUP                 we have the dup() function.
-**  MR_HAVE_DUP2                we have the dup2() function.
-**  MR_HAVE_FILENO              we have the fileno() function.
-**                              Note that fileno() may be a macro
-**                              rather than a function, so you should use
-**                              #if defined(fileno) || defined(MR_HAVE_FILENO)
-**  MR_HAVE_ISATTY              we have the isatty() function.
-**  MR_HAVE_GRANTPT             we have the grantpt() function.
-**  MR_HAVE_UNLOCKPT            we have the unlockpt() function.
-**  MR_HAVE_PTSNAME             we have the ptsname() function.
-**  MR_HAVE_TCGETATTR           we have the tcgetattr() function.
-**  MR_HAVE_TCSETATTR           we have the tcsetattr() function.
-**  MR_HAVE_IOCTL               we have the ioctl() function.
-**  MR_HAVE_ACCESS              we have the access() function.
-**  MR_HAVE_SLEEP               we have the sleep() function.
-**  MR_HAVE_CAPITAL_S_SLEEP     we have the Sleep() function.
-**  MR_HAVE_OPENDIR             we have the opendir() function.
-**  MR_HAVE_READDIR             we have the readdir() function.
-**  MR_HAVE_CLOSEDIR            we have the closedir() function.
-**  MR_HAVE_MKDIR               we have the mkdir function.
-**  MR_HAVE_SYMLINK             we have the symlink function.
-**  MR_HAVE_READLINK            we have the readlink function.
-**  MR_HAVE_GETTIMEOFDAY        we have the gettimeofday function.
-**  MR_HAVE_SETENV              we have the setenv() function.
-**  MR_HAVE_PUTENV              we have the putenv() function.
-**  MR_HAVE__PUTENV             we have the _putenv() function.
-**  MR_HAVE_POSIX_SPAWN         we have the posix_spawn() function.
-**  MR_HAVE_SCHED_SETAFFINITY   we have the sched_setaffinity() function.
-**  MR_HAVE_SCHED_GETAFFINITY   we have the sched_getaffinity() function.
-**  MR_HAVE_SCHED_GETCPU        we have the sched_getcpu() function
-*                               (glibc specific).
-**  MR_HAVE_SCHED_YIELD         we have the sched_yield() function.
-**  MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED
-**                              we have the pthread_mutexattr_setpshared()
-**                              function.
-**  MR_HAVE_MKSTEMP             we have the mkstemp() function.
-**  MR_HAVE_MKDTEMP             we have the mkdtemp() function.
-**  MR_HAVE_SETRLIMIT           we have the setrlimit() function.
-**  MR_HAVE_ISNAN               we have the isnan() function.
-**  MR_HAVE_ISNANF              we have the isnanf() function.
-**  MR_HAVE_ISINF               we have the isinf() function.
-**  MR_HAVE_ISINFF              we have the isinff() function.
-**  MR_HAVE_FINITE              we have the finite() function.
-**  MR_HAVE_ISFINITE            we have the isfinite() function.
-**  MR_HAVE_FESETROUND          we have the fesetround() function.
-**  MR_HAVE_FMA                 we have the fma() function.
-*/
+// The following macros are defined iff the corresponding function or
+// system call is available:
+//
+//  MR_HAVE_GETPID              we have the getpid() function.
+//  MR_HAVE_SETPGID             we have the setpgid() function.
+//  MR_HAVE_FORK                we have the fork() function.
+//  MR_HAVE_EXECLP              we have the execlp() function.
+//  MR_HAVE_WAIT                we have the wait() function.
+//  MR_HAVE_KILL                we have the kill() function.
+//  MR_HAVE_GETHOSTNAME         we have the gethostname() function.
+//  MR_HAVE_SNPRINTF            we have the snprintf() function.
+//  MR_HAVE__SNPRINTF           we have the _snprintf() function.
+//  MR_HAVE_VSNPRINTF           we have the vsnprintf() function.
+//  MR_HAVE__VSNPRINTF          we have the _vsnprintf() function.
+//  MR_HAVE_SYSCONF             we have the sysconf() system call.
+//  MR_HAVE_SIGACTION           we have the sigaction() system call.
+//  MR_HAVE_GETPAGESIZE         we have the getpagesize() system call.
+//  MR_HAVE_MMAP                we have the mmap() system call.
+//  MR_HAVE_MPROTECT            we have the mprotect() system call.
+//  MR_HAVE_MEMALIGN            we have the memalign() function.
+//  MR_HAVE_POSIX_MEMALIGN      we have the posix_memalign() function.
+//  MR_HAVE_SBRK                we have the sbrk() function.
+//  MR_HAVE_STRERROR            we have the strerror() function.
+//  MR_HAVE_STRERROR_R          we have the strerror_r() function.
+//  MR_HAVE_STRERROR_S          we have the strerror_s() function.
+//  MR_HAVE_SIGINTERRUPT        we have the siginterrupt() function.
+//  MR_HAVE_SETITIMER           we have the setitimer() function.
+//  MR_HAVE_MEMMOVE             we have the memmove() function.
+//  MR_HAVE_DLOPEN              we have the dlopen() function.
+//  MR_HAVE_DLCLOSE             we have the dlclose() function.
+//  MR_HAVE_DLSYM               we have the dlsym() function.
+//  MR_HAVE_DLERROR             we have the dlerror() function.
+//  MR_HAVE_STAT                we have the stat() function.
+//  MR_HAVE_LSTAT               we have the lstat() function.
+//  MR_HAVE_FSTAT               we have the fstat() function.
+//  MR_HAVE_FDOPEN              we have the fdopen() function.
+//  MR_HAVE_OPEN                we have the open() function.
+//  MR_HAVE_CLOSE               we have the close() function.
+//  MR_HAVE_DUP                 we have the dup() function.
+//  MR_HAVE_DUP2                we have the dup2() function.
+//  MR_HAVE_FILENO              we have the fileno() function.
+//                              Note that fileno() may be a macro
+//                              rather than a function, so you should use
+//                              #if defined(fileno) || defined(MR_HAVE_FILENO)
+//  MR_HAVE_ISATTY              we have the isatty() function.
+//  MR_HAVE_GRANTPT             we have the grantpt() function.
+//  MR_HAVE_UNLOCKPT            we have the unlockpt() function.
+//  MR_HAVE_PTSNAME             we have the ptsname() function.
+//  MR_HAVE_TCGETATTR           we have the tcgetattr() function.
+//  MR_HAVE_TCSETATTR           we have the tcsetattr() function.
+//  MR_HAVE_IOCTL               we have the ioctl() function.
+//  MR_HAVE_ACCESS              we have the access() function.
+//  MR_HAVE_SLEEP               we have the sleep() function.
+//  MR_HAVE_CAPITAL_S_SLEEP     we have the Sleep() function.
+//  MR_HAVE_OPENDIR             we have the opendir() function.
+//  MR_HAVE_READDIR             we have the readdir() function.
+//  MR_HAVE_CLOSEDIR            we have the closedir() function.
+//  MR_HAVE_MKDIR               we have the mkdir function.
+//  MR_HAVE_SYMLINK             we have the symlink function.
+//  MR_HAVE_READLINK            we have the readlink function.
+//  MR_HAVE_GETTIMEOFDAY        we have the gettimeofday function.
+//  MR_HAVE_SETENV              we have the setenv() function.
+//  MR_HAVE_PUTENV              we have the putenv() function.
+//  MR_HAVE__PUTENV             we have the _putenv() function.
+//  MR_HAVE_POSIX_SPAWN         we have the posix_spawn() function.
+//  MR_HAVE_SCHED_SETAFFINITY   we have the sched_setaffinity() function.
+//  MR_HAVE_SCHED_GETAFFINITY   we have the sched_getaffinity() function.
+//  MR_HAVE_SCHED_GETCPU        we have the sched_getcpu() function
+//                              (glibc specific).
+//  MR_HAVE_SCHED_YIELD         we have the sched_yield() function.
+//  MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED
+//                              we have the pthread_mutexattr_setpshared()
+//                              function.
+//  MR_HAVE_MKSTEMP             we have the mkstemp() function.
+//  MR_HAVE_MKDTEMP             we have the mkdtemp() function.
+//  MR_HAVE_SETRLIMIT           we have the setrlimit() function.
+//  MR_HAVE_ISNAN               we have the isnan() function.
+//  MR_HAVE_ISNANF              we have the isnanf() function.
+//  MR_HAVE_ISINF               we have the isinf() function.
+//  MR_HAVE_ISINFF              we have the isinff() function.
+//  MR_HAVE_FINITE              we have the finite() function.
+//  MR_HAVE_ISFINITE            we have the isfinite() function.
+//  MR_HAVE_FESETROUND          we have the fesetround() function.
+//  MR_HAVE_FMA                 we have the fma() function.
+
 #undef  MR_HAVE_GETPID
 #undef  MR_HAVE_SETPGID
 #undef  MR_HAVE_FORK
@@ -383,231 +358,207 @@
 #undef  MR_HAVE_FESETROUND
 #undef  MR_HAVE_FMA
 
-/*
-** We use mprotect() and signals to catch stack and heap overflows.
-** In order to detect such overflows, we need to be able to figure out
-** what address we were trying to read from or write to when we get
-** a SIGSEGV signal. This is a fairly non-portable thing, so it has to be done
-** differently on different systems. The following macros specify whether
-** we can do it and if so, how.
-**
-**  MR_HAVE_SIGINFO     defined iff we can _somehow_ figure out the
-**                      fault address for SIGSEGVs.
-**  MR_HAVE_SIGINFO_T   defined iff we can figure out the fault address
-**                      for SIGSEGVs using sigaction and siginfo_t.
-**  MR_HAVE_SIGCONTEXT_STRUCT
-**                      defined iff normal signal handlers are given
-**                      sigcontext_struct arguments that we can use to
-**                      figure out the fault address for SIGSEGVs.
-**  MR_HAVE_SIGCONTEXT_STRUCT_3ARG
-**                      defined iff signal handlers have three parameters,
-**                      the third being the sigcontext struct.
-**  MR_HAVE_SIGCONTEXT_STRUCT_2ARG
-**                      defined iff signal handlers have two parameters,
-**                      the second being the sigcontext struct.
-*/
+// We use mprotect() and signals to catch stack and heap overflows.
+// In order to detect such overflows, we need to be able to figure out
+// what address we were trying to read from or write to when we get
+// a SIGSEGV signal. This is a fairly non-portable thing, so it has to be done
+// differently on different systems. The following macros specify whether
+// we can do it and if so, how.
+//
+//  MR_HAVE_SIGINFO     defined iff we can _somehow_ figure out the
+//                      fault address for SIGSEGVs.
+//  MR_HAVE_SIGINFO_T   defined iff we can figure out the fault address
+//                      for SIGSEGVs using sigaction and siginfo_t.
+//  MR_HAVE_SIGCONTEXT_STRUCT
+//                      defined iff normal signal handlers are given
+//                      sigcontext_struct arguments that we can use to
+//                      figure out the fault address for SIGSEGVs.
+//  MR_HAVE_SIGCONTEXT_STRUCT_3ARG
+//                      defined iff signal handlers have three parameters,
+//                      the third being the sigcontext struct.
+//  MR_HAVE_SIGCONTEXT_STRUCT_2ARG
+//                      defined iff signal handlers have two parameters,
+//                      the second being the sigcontext struct.
+
 #undef  MR_HAVE_SIGINFO
 #undef  MR_HAVE_SIGINFO_T
 #undef  MR_HAVE_SIGCONTEXT_STRUCT
 #undef  MR_HAVE_SIGCONTEXT_STRUCT_3ARG
 #undef  MR_HAVE_SIGCONTEXT_STRUCT_2ARG
 
-/*
-** For debugging purposes, if we get a fatal signal, we print out the
-** program counter (PC) at which the signal occurred.
-**
-** MR_PC_ACCESS, MR_PC_ACCESS_GREG: the way to access the saved
-** PC in ucontexts.
-**
-** If MR_PC_ACCESS_GREG is defined, then MR_PC_ACCESS specifies an index into
-** the `gregs' (general registers) array, which is a field of the `ucontext'
-** struct. Otherwise, if MR_PC_ACCESS is defined then it is a field name
-** in the `ucontext' struct. If MR_PC_ACCESS is not defined, then we don't
-** have any way of getting the saved PC.
-*/
+// For debugging purposes, if we get a fatal signal, we print out the
+// program counter (PC) at which the signal occurred.
+//
+// MR_PC_ACCESS, MR_PC_ACCESS_GREG: the way to access the saved
+// PC in ucontexts.
+//
+// If MR_PC_ACCESS_GREG is defined, then MR_PC_ACCESS specifies an index into
+// the `gregs' (general registers) array, which is a field of the `ucontext'
+// struct. Otherwise, if MR_PC_ACCESS is defined then it is a field name
+// in the `ucontext' struct. If MR_PC_ACCESS is not defined, then we don't
+// have any way of getting the saved PC.
+
 #undef  MR_PC_ACCESS
 #undef  MR_PC_ACCESS_GREG
 
-/*
-** MR_SIGACTION_FIELD: the name of the field in the sigaction struct
-** (either sa_handler or sa_sigaction). Defined only if MR_HAVE_SIGACTION
-** is defined.
-*/
+// MR_SIGACTION_FIELD: the name of the field in the sigaction struct
+// (either sa_handler or sa_sigaction). Defined only if MR_HAVE_SIGACTION
+// is defined.
+
 #undef  MR_SIGACTION_FIELD
 
-/*
-** Configuration parameters for multithreaded execution support.
-**
-** MR_THREAD_LOCAL_STORAGE is defined if the thread-local storage extension
-** is supported. That is, the compiler extends the C language with the
-** `__thread' specifier.
-**
-** MR_PTHREADS_WIN32 is defined if we are using the pthreads-win32 library.
-*/
+// Configuration parameters for multithreaded execution support.
+//
+// MR_THREAD_LOCAL_STORAGE is defined if the thread-local storage extension
+// is supported. That is, the compiler extends the C language with the
+// `__thread' specifier.
+//
+// MR_PTHREADS_WIN32 is defined if we are using the pthreads-win32 library.
+
 #undef MR_THREAD_LOCAL_STORAGE
 #undef MR_PTHREADS_WIN32
 
-/*
-** MR_HAVE_HWLOC is defined if the hwloc library is available.
-*/
+// MR_HAVE_HWLOC is defined if the hwloc library is available.
+
 #undef MR_HAVE_HWLOC
 
-/*
-** The bytecode files represent floats in 64-bit IEEE format.
-**
-** MR_FLOAT_IS_64_BITS: defined iff the C type `float' is exactly 64 bits.
-** MR_DOUBLE_IS_64_BITS: defined iff the C type `double' is exactly 64 bits.
-** MR_LONG_DOUBLE_IS_64_BITS: defined iff the C type `long double' is exactly
-** 64-bits.
-**
-** XXX why not just have a single MR_64_BIT_FLOAT_TYPE macro,
-** defined to `float', `double', or `long double' as appropriate?
-*/
+// The bytecode files represent floats in 64-bit IEEE format.
+//
+// MR_FLOAT_IS_64_BITS: defined iff the C type `float' is exactly 64 bits.
+// MR_DOUBLE_IS_64_BITS: defined iff the C type `double' is exactly 64 bits.
+// MR_LONG_DOUBLE_IS_64_BITS: defined iff the C type `long double' is exactly
+// 64-bits.
+//
+// XXX why not just have a single MR_64_BIT_FLOAT_TYPE macro,
+// defined to `float', `double', or `long double' as appropriate?
+
 #undef  MR_FLOAT_IS_64_BIT
 #undef  MR_DOUBLE_IS_64_BIT
 #undef  MR_LONG_DOUBLE_IS_64_BIT
 
-/*
-** The number of detstack slots (words) per MR_SyncTerm.
-*/
+// The number of detstack slots (words) per MR_SyncTerm.
+
 #undef  MR_SYNC_TERM_SIZE
 
-/*
-** The following macros specify the ordering of bytes within words.
-** They are used by the bytecode compiler and the bytecode interpreter
-** when writing/reading floats from/to bytecode files.
-**
-** MR_BIG_ENDIAN: defined iff the host system is big-endian.
-** MR_LITTLE_ENDIAN: defined iff the host system is little-endian.
-** (Weird-endian systems should define neither of these.)
-*/
+// The following macros specify the ordering of bytes within words.
+// They are used by the bytecode compiler and the bytecode interpreter
+// when writing/reading floats from/to bytecode files.
+//
+// MR_BIG_ENDIAN: defined iff the host system is big-endian.
+// MR_LITTLE_ENDIAN: defined iff the host system is little-endian.
+// (Weird-endian systems should define neither of these.)
+
 #undef  MR_BIG_ENDIAN
 #undef  MR_LITTLE_ENDIAN
 
-/*
-** Do we have the O_CREAT and O_EXCL macros?
-*/
+// Do we have the O_CREAT and O_EXCL macros?
+
 #undef  MR_HAVE_OCREAT_OEXCL
 
-/*
-** Which version of Mercury is this? (Taken from the file ../VERSION.)
-*/
+// Which version of Mercury is this? (Taken from the file ../VERSION.)
+
 #define MR_VERSION "unknown"
 
-/*
-** What system is this version of Mercury configured for?
-*/
+// What system is this version of Mercury configured for?
+
 #define MR_FULLARCH "unknown"
 
-/*
-** Should we build the Mercury libraries as Windows DLLs?
-*/
+// Should we build the Mercury libraries as Windows DLLs?
+
 #undef MR_USE_DLLS
 
-/*
-** For SPARC systems, does `as' not allow `.type' in inline asm?
-** (True for SunOS 4.x.)
-*/
+// For SPARC systems, does `as' not allow `.type' in inline asm?
+// (True for SunOS 4.x.)
+
 #undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
 
-/*
-** On some platforms, structure assignments can cause gcc to abort
-** with the message "fixed or forbidden register was spilled." in some grades.
-*/
+// On some platforms, structure assignments can cause gcc to abort
+// with the message "fixed or forbidden register was spilled." in some grades.
+
 #undef MR_CANNOT_USE_STRUCTURE_ASSIGNMENT
 
-/*
-** To handle contexts suspended on IO operations we use the select() system
-** call and supporting data structures which while POSIX, are not ANSI.
-*/
+// To handle contexts suspended on IO operations we use the select() system
+// call and supporting data structures which while POSIX, are not ANSI.
+
 #undef MR_CAN_DO_PENDING_IO
 
-/*
-** To see if the problem where the function prototype for bzero() is
-** not visible on some BSD based systems can be fixed by #including
-** strings.h.
-*/
+// To see if the problem where the function prototype for bzero() is
+// not visible on some BSD based systems can be fixed by #including
+// strings.h.
+
 #undef MR_BZERO_NEEDS_STRINGS_HEADER
 
-/*
-** __builtin_setjmp is broken with some versions of gcc on Darwin.
-*/
+// __builtin_setjmp is broken with some versions of gcc on Darwin.
+
 #undef MR_DARWIN_SETJMP_WORKAROUND
 
-/*
-** MR_USE_EXTERNAL_DEBUGGER:
-**
-** Allow MR_trace() to use an external process debugger (with communication
-** done via a socket interface) rather than using the debugger that is part of
-** the Mercury runtime. This requires that the system support sockets.
-** See trace/mercury_trace_external.c.
-*/
+// MR_USE_EXTERNAL_DEBUGGER:
+//
+// Allow MR_trace() to use an external process debugger (with communication
+// done via a socket interface) rather than using the debugger that is part of
+// the Mercury runtime. This requires that the system support sockets.
+// See trace/mercury_trace_external.c.
+
 #undef  MR_USE_EXTERNAL_DEBUGGER
 
-/*
-** MR_DEEP_PROFILER_ENABLED
-**
-** Enable the deep profiler. This should be defined only if all the features
-** (header files and system calls) needed by the deep profiler are available
-** on this platform.
-*/
+// MR_DEEP_PROFILER_ENABLED
+//
+// Enable the deep profiler. This should be defined only if all the features
+// (header files and system calls) needed by the deep profiler are available
+// on this platform.
+
 #undef  MR_DEEP_PROFILER_ENABLED
 
-/*
-** MR_NO_USE_READLINE
-**
-** Set this if you want to prevent the debugger from using the GNU readline
-** library for the command-line prompt. The autoconfiguration script sets this
-** if it can't find a termcap library.
-**
-** MR_HAVE_READLINE_READLINE_H
-** MR_HAVE_READLINE_HISTORY_H
-**
-** Defined if the header files readline/readline.h and
-** readline/history.h are available.
-*/
+// MR_NO_USE_READLINE
+//
+// Set this if you want to prevent the debugger from using the GNU readline
+// library for the command-line prompt. The autoconfiguration script sets this
+// if it can't find a termcap library.
+//
+// MR_HAVE_READLINE_READLINE_H
+// MR_HAVE_READLINE_HISTORY_H
+//
+// Defined if the header files readline/readline.h and
+// readline/history.h are available.
+
 #undef  MR_NO_USE_READLINE
 #undef  MR_HAVE_READLINE_READLINE_H
 #undef  MR_HAVE_READLINE_HISTORY_H
 
-/*
-** MR_MKFIFO
-**
-** The name of the shell command to make a named pipe. This will be the
-** empty string if autoconfiguration did not find such a command.
-*/
+// MR_MKFIFO
+//
+// The name of the shell command to make a named pipe. This will be the
+// empty string if autoconfiguration did not find such a command.
+
 #undef  MR_MKFIFO
 
-/*
-** MR_HOSTNAMECMD
-**
-** The name of the shell command to return the name of the host.
-** This will be the empty string if autoconfiguration did not find
-** such a command.
-*/
+// MR_HOSTNAMECMD
+//
+// The name of the shell command to return the name of the host.
+// This will be the empty string if autoconfiguration did not find
+// such a command.
+
 #undef  MR_HOSTNAMECMD
 
-/*
-** MR_NEW_MERCURYFILE_STRUCT
-**
-** Set this if you want to use the new MercuryFile structure. The new
-** structure contains pointers to functions to do all the basic IO functions.
-** See extras/logged_output for an example of how to override the pointers
-** to provide IO streams with extra functionality.
-*/
+// MR_NEW_MERCURYFILE_STRUCT
+//
+// Set this if you want to use the new MercuryFile structure. The new
+// structure contains pointers to functions to do all the basic IO functions.
+// See extras/logged_output for an example of how to override the pointers
+// to provide IO streams with extra functionality.
+
 #undef  MR_NEW_MERCURYFILE_STRUCT
 
-/*
-** MR_FORCE_NO_TAGGED_TRAIL
-**
-** Set this if you _do not_ want to use tagged trail entries, even if there are
-** sufficient tag bits to support a tagged trail.
-** See runtime/mercury_trail.h for further details.
-*/
+// MR_FORCE_NO_TAGGED_TRAIL
+//
+// Set this if you _do not_ want to use tagged trail entries, even if there are
+// sufficient tag bits to support a tagged trail.
+// See runtime/mercury_trail.h for further details.
+
 #undef  MR_FORCE_NO_TAGGED_TRAIL
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #include "mercury_conf_param.h"
 
-#endif /* MERCURY_CONF_H */
+#endif // MERCURY_CONF_H

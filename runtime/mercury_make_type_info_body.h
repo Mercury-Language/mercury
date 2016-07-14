@@ -1,26 +1,21 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2000-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file is intended to be #included in mercury_type_info.c to provide
-** the definitions of
-**
-**  MR_create_type_info
-**  MR_create_pseudo_type_info
-**  MR_make_type_info
-**
-** and their helper functions
-**
-**  MR_create_type_info_maybe_existq
-**  MR_create_pseudo_type_info_maybe_existq
-**  MR_make_type_info_maybe_existq.
-*/
+// Copyright (C) 2000-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file is intended to be #included in mercury_type_info.c to provide
+// the definitions of
+//
+//  MR_create_type_info
+//  MR_create_pseudo_type_info
+//  MR_make_type_info
+//
+// and their helper functions
+//
+//  MR_create_type_info_maybe_existq
+//  MR_create_pseudo_type_info_maybe_existq
+//  MR_make_type_info_maybe_existq.
 
 return_type
 usual_func(const params_type params, const MR_PseudoTypeInfo pseudo_type_info
@@ -44,10 +39,8 @@ exist_func(const params_type params, const MR_PseudoTypeInfo pseudo_type_info,
     int                 start_region_size;
     int                 i;
 
-    /*
-    ** The pseudo_type_info might be a polymorphic variable.
-    ** If so, substitute its value, and we are done.
-    */
+    // The pseudo_type_info might be a polymorphic variable.
+    // If so, substitute its value, and we are done.
 
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
 #if create_pseudo
@@ -78,7 +71,7 @@ exist_func(const params_type params, const MR_PseudoTypeInfo pseudo_type_info,
 
     type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info);
 
-    /* no arguments - optimise common case */
+    // No arguments - optimise common case.
     if ((MR_Word) type_ctor_info == (MR_Word) pseudo_type_info) {
 #if create_pseudo
         return pseudo_type_info;
@@ -95,12 +88,9 @@ exist_func(const params_type params, const MR_PseudoTypeInfo pseudo_type_info,
         start_region_size = 1;
     }
 
-    /*
-    ** Iterate over the arguments, figuring out whether we
-    ** need to make any substitutions.
-    ** If so, copy the resulting argument type_infos into
-    ** a new type_info.
-    */
+    // Iterate over the arguments, figuring out whether we need to make
+    // any substitutions. If so, copy the resulting argument type_infos into
+    // a new type_info.
 
     type_info_arena = NULL;
     pseudo_type_info_arena = (MR_PseudoTypeInfo *) pseudo_type_info;
@@ -121,11 +111,10 @@ exist_func(const params_type params, const MR_PseudoTypeInfo pseudo_type_info,
 #endif
 
         if (expanded != (return_type) pseudo_type_info_arena[i]) {
-            /*
-            ** We made a substitution.
-            ** We need to allocate a new type_info,
-            ** if we haven't done so already.
-            */
+            // We made a substitution.
+            // We need to allocate a new type_info,
+            // if we haven't done so already.
+
             if (type_info_arena == NULL) {
                 ALLOCATE_WORDS(type_info_arena_word,
                     arity + start_region_size);

@@ -1,18 +1,15 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1997-2001, 2003, 2005-2007, 2009-2011 The University of Melbourne.
-** Copyright (C) 2014 The Mercury team.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 1997-2001, 2003, 2005-2007, 2009-2011 The University of Melbourne.
+// Copyright (C) 2014 The Mercury team.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
 #include "mercury_imp.h"
 #include "mercury_regs.h"
 #include "mercury_engine.h"
 #include "mercury_memory.h"
-#include "mercury_context.h"    /* for MR_do_runnext */
+#include "mercury_context.h"    // for MR_do_runnext
 #include "mercury_thread.h"
 #include "mercury_threadscope.h"
 
@@ -72,11 +69,10 @@ MR_create_worksteal_thread(void)
 
     assert(!MR_thread_equal(MR_primordial_thread, MR_null_thread()));
 
-    /*
-    ** Create threads in the detached state so that resources will be
-    ** automatically freed when threads terminate (we don't call
-    ** pthread_join() anywhere).
-    */
+    // Create threads in the detached state so that resources will be
+    // automatically freed when threads terminate (we don't call
+    // pthread_join() anywhere).
+
     thread = MR_GC_NEW_ATTRIB(MercuryThread, MR_ALLOC_SITE_RUNTIME);
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
@@ -98,11 +94,10 @@ static void *
 MR_create_worksteal_thread_2(void *arg)
 {
   #ifdef MR_HAVE_THREAD_PINNING
-    /*
-     ** TODO: We may use the cpu value returned to determine which CPUs
-     ** which engines are on. This can help with some interesting work
-     ** stealing algorithms.
-     */
+     // TODO: We may use the cpu value returned to determine which CPUs
+     // which engines are on. This can help with some interesting work
+     // stealing algorithms.
+
     MR_pin_thread();
   #endif
     if (! MR_init_thread_inner(MR_use_later, MR_ENGINE_TYPE_SHARED)) {
@@ -111,31 +106,28 @@ MR_create_worksteal_thread_2(void *arg)
     return NULL;
 }
 
-#endif /* MR_LL_PARALLEL_CONJ */
+#endif // MR_LL_PARALLEL_CONJ
 
-/*
-** This interface is used by generated code and thread.m.
-** Internal code should call MR_init_thread_inner.
-*/
+// This interface is used by generated code and thread.m.
+// Internal code should call MR_init_thread_inner.
+
 MR_bool
 MR_init_thread(MR_when_to_use when_to_use)
 {
 #ifdef MR_THREAD_SAFE
-    /*
-    ** Check to see whether there is already an engine that is initialized
-    ** in this thread. If so we just return, there is nothing for us to do.
-    */
+    // Check to see whether there is already an engine that is initialized
+    // in this thread. If so we just return, there is nothing for us to do.
+
     if (MR_thread_engine_base != NULL) {
         return MR_FALSE;
     }
-#endif /* MR_THREAD_SAFE */
+#endif // MR_THREAD_SAFE
     assert(when_to_use == MR_use_now);
     return MR_init_thread_inner(when_to_use, MR_ENGINE_TYPE_EXCLUSIVE);
 }
 
-/*
-** Set up a Mercury engine in the current thread.
-*/
+// Set up a Mercury engine in the current thread.
+
 MR_bool
 MR_init_thread_inner(MR_when_to_use when_to_use, MR_EngineType engine_type)
 {
@@ -161,14 +153,13 @@ MR_init_thread_inner(MR_when_to_use when_to_use, MR_EngineType engine_type)
     MR_load_engine_regs(MR_cur_engine());
 
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_THREADSCOPE)
-    /*
-    ** TSC Synchronization is not used, support is commented out.
-    ** See runtime/mercury_threadscope.h for an explanation.
-    **
+    // TSC Synchronization is not used, support is commented out.
+    // See runtime/mercury_threadscope.h for an explanation.
+    //
     if (when_to_use == MR_use_later) {
         MR_threadscope_sync_tsc_slave();
     }
-    */
+
 #endif
 
     switch (when_to_use) {
@@ -177,16 +168,14 @@ MR_init_thread_inner(MR_when_to_use when_to_use, MR_EngineType engine_type)
             MR_fatal_error("Sorry, not implemented: "
                 "--high-level-code and multiple engines");
 #else
-            /* This call never returns. */
+            // This call never returns.
             (void) MR_call_engine(MR_ENTRY(MR_do_idle), MR_FALSE);
 #endif
             return MR_FALSE;
 
         case MR_use_now :
-            /*
-            ** The following is documented in mercury_engine.h, so any
-            ** changes here may need changes there as well.
-            */
+            // The following is documented in mercury_engine.h, so any
+            // changes here may need changes there as well.
 
             if (MR_ENGINE(MR_eng_this_context) == NULL) {
                 MR_ENGINE(MR_eng_this_context) =
@@ -205,9 +194,8 @@ MR_init_thread_inner(MR_when_to_use when_to_use, MR_EngineType engine_type)
     }
 }
 
-/*
-** Release resources associated with the Mercury engine for this thread.
-*/
+// Release resources associated with the Mercury engine for this thread.
+
 void
 MR_finalize_thread_engine(void)
 {
@@ -222,9 +210,7 @@ MR_finalize_thread_engine(void)
 }
 
 #ifdef MR_THREAD_SAFE
-/*
-** Additional setup/shutdown of the engine for threads support.
-*/
+// Additional setup/shutdown of the engine for threads support.
 
 static MR_bool
 MR_setup_engine_for_threads(MercuryEngine *eng, MR_EngineType engine_type)
@@ -237,7 +223,7 @@ MR_setup_engine_for_threads(MercuryEngine *eng, MR_EngineType engine_type)
 
     MR_LOCK(&MR_all_engine_bases_lock, "MR_setup_engine_for_threads");
 
-    /* Allocate an engine id. */
+    // Allocate an engine id.
     if (engine_type == MR_ENGINE_TYPE_SHARED) {
         min = 0;
         max = MR_num_ws_engines;
@@ -312,13 +298,11 @@ MR_shutdown_engine_for_threads(MercuryEngine *eng)
     MR_UNLOCK(&MR_all_engine_bases_lock, "MR_shutdown_engine_for_threads");
   #endif
 }
-#endif /* MR_THREAD_SAFE */
+#endif // MR_THREAD_SAFE
 
 #if defined(MR_THREAD_SAFE)
-/*
-** XXX: maybe these should only be conditionally compiled when MR_DEBUG_THREADS
-** is also set. - pbone
-*/
+// XXX: maybe these should only be conditionally compiled when MR_DEBUG_THREADS
+// is also set. - pbone
 
 int
 MR_mutex_lock(MercuryLock *lock, const char *from)
@@ -473,10 +457,9 @@ MR_sem_post(MercurySem *sem, const char *from)
     return err;
 }
 
-/*
-** For pthreads-win32 MR_null_thread() is defined as follows. For other
-** pthread implementations it is defined as a macro in mercury_thread.h.
-*/
+// For pthreads-win32 MR_null_thread() is defined as follows. For other
+// pthread implementations it is defined as a macro in mercury_thread.h.
+
 #if defined(MR_PTHREADS_WIN32)
 MercuryThread
 MR_null_thread(void)
@@ -484,9 +467,9 @@ MR_null_thread(void)
     const MercuryThread null_thread = {NULL, 0};
     return null_thread;
 }
-#endif /* MR_PTHREADS_WIN32 */
+#endif // MR_PTHREADS_WIN32
 
-#endif  /* MR_THREAD_SAFE */
+#endif  // MR_THREAD_SAFE
 
 MR_Unsigned
 MR_new_thread_local_mutable_index(void)

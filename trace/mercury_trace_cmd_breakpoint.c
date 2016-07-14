@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "breakpoint" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "breakpoint" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -31,7 +26,7 @@
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
         MR_MULTIMATCH_ASK, MR_MULTIMATCH_ALL, MR_MULTIMATCH_ONE
@@ -66,7 +61,7 @@ static  MR_bool     MR_trace_options_break_print(int *break_num,
 static  MR_bool     MR_trace_options_register(MR_bool *verbose, char ***words,
                         int *word_count);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
@@ -111,7 +106,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
     when = MR_default_breakpoint_scope;
     action = MR_SPY_STOP;
     multi_match = MR_MULTIMATCH_ASK;
-    /* The value of ignore_when doesn't matter while ignore_count == 0. */
+    // The value of ignore_when doesn't matter while ignore_count == 0.
     ignore_when = MR_SPY_DONT_IGNORE;
     ignore_count = 0;
     print_list = NULL;
@@ -119,7 +114,8 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
         &multi_match, &ignore_when, &ignore_count, &print_list,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count >= 2 && MR_streq(words[1], "user_event")) {
         const MR_UserEventSpec  *user_event_spec;
         const char              *user_event_set;
@@ -161,11 +157,10 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                         spec++)
                     {
                         if (MR_trace_event_sets[set].MR_tes_specs == NULL) {
-                            /*
-                            ** We couldn't parse the event set specification
-                            ** in the module. The error message has already
-                            ** been printed, so just ignore the event set.
-                            */
+                            // We couldn't parse the event set specification
+                            // in the module. The error message has already
+                            // been printed, so just ignore the event set.
+
                             continue;
                         }
 
@@ -333,7 +328,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 matches.match_proc_next - 1);
             line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
             if (line2 == NULL) {
-                /* This means the user input EOF. */
+                // This means the user input EOF.
                 fprintf(MR_mdb_out, "none of them\n");
             } else if (MR_streq(line2, "*")) {
                 for (i = 0; i < matches.match_proc_next; i++) {
@@ -405,7 +400,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 matches.match_proc_next - 1);
             line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
             if (line2 == NULL) {
-                /* This means the user input EOF. */
+                // This means the user input EOF.
                 fprintf(MR_mdb_out, "none of them\n");
                 return KEEP_INTERACTING;
             } else if (MR_trace_is_natural_number(line2, &i)) {
@@ -470,7 +465,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 matching_port_count - 1);
             line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
             if (line2 == NULL) {
-                /* This means the user input EOF. */
+                // This means the user input EOF.
                 fprintf(MR_mdb_out, "none of them\n");
                 MR_free(matching_labels);
                 return KEEP_INTERACTING;
@@ -560,7 +555,7 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (! MR_trace_options_condition(&break_num, &require_var, &require_path,
         &words, &word_count))
     {
-        /* the usage message has already been printed */
+        // The usage message has already been printed.
         return KEEP_INTERACTING;
     } else if (word_count < 4) {
         MR_trace_usage_cur_cmd();
@@ -661,11 +656,10 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
     }
 
     if (MR_spy_points[break_num]->MR_spy_when == MR_SPY_USER_EVENT_SET) {
-        /*
-        ** If the breakpoint is matched by all events in an event set (or
-        ** possibly all events in all event sets), then it doesn't make sense
-        ** to insist on any given variable name existing at the matching event.
-        */
+        // If the breakpoint is matched by all events in an event set (or
+        // possibly all events in all event sets), then it doesn't make sense
+        // to insist on any given variable name existing at the matching event.
+
         require_var = MR_FALSE;
         require_path = MR_FALSE;
     }
@@ -701,7 +695,8 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (! MR_trace_options_ignore_count(&ignore_when, &ignore_count,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         if (0 <= n && n < MR_spy_point_next &&
             MR_spy_points[n]->MR_spy_exists)
@@ -766,7 +761,8 @@ MR_trace_cmd_break_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (! MR_trace_options_break_print(&break_num, &format, &at_start, &warn,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count > 1) {
         if (break_num < 0) {
             fflush(MR_mdb_out);
@@ -993,7 +989,8 @@ MR_trace_cmd_register(char **words, int word_count, MR_TraceCmdInfo *cmd,
     verbose = MR_TRUE;
 
     if (! MR_trace_options_register(&verbose, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1) {
         MR_register_all_modules_and_procs(MR_mdb_out, verbose);
     } else {
@@ -1031,7 +1028,7 @@ MR_trace_cmd_procedures(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static MR_bool
 MR_matches_port_name(const char *word)
@@ -1064,14 +1061,14 @@ MR_parse_spy_print(MR_BrowseFormat format, MR_bool warn, char *word,
 
     if (MR_streq(word, "*")) {
         sp->MR_p_what = MR_SPY_PRINT_ALL;
-        /* The other fields are initialized to dummies. */
+        // The other fields are initialized to dummies.
         sp->MR_p_var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
         sp->MR_p_var_spec.MR_var_spec_number = -1;
         sp->MR_p_var_spec.MR_var_spec_name = NULL;
         sp->MR_p_path = NULL;
     } else if (MR_streq(word, "goal")) {
         sp->MR_p_what = MR_SPY_PRINT_GOAL;
-        /* The other fields are initialized to dummies. */
+        // The other fields are initialized to dummies.
         sp->MR_p_var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
         sp->MR_p_var_spec.MR_var_spec_number = -1;
         sp->MR_p_var_spec.MR_var_spec_name = NULL;
@@ -1147,7 +1144,7 @@ MR_parse_source_locn(char *word, const char **file, int *line)
     return MR_FALSE;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 const char *const    MR_trace_break_cmd_args[] =
     { "-A", "-E", "-I", "-O", "-P", "-S", "-a", "-e", "-i",
@@ -1158,7 +1155,7 @@ const char *const    MR_trace_break_cmd_args[] =
 const char *const    MR_trace_ignore_cmd_args[] =
     { "-E", "-I", "--ignore-entry", "--ignore-interface", NULL };
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static struct MR_option MR_trace_when_action_multi_ignore_opts[] =
 {
@@ -1308,10 +1305,8 @@ MR_trace_options_condition(int *break_num, MR_bool *require_var,
                 break;
 
             case 'v':
-                /*
-                ** If a variable is missing, then the path inside
-                ** is missing as well.
-                */
+                // If a variable is missing, then the path inside
+                // is missing as well.
 
                 *require_path = MR_FALSE;
                 *require_var = MR_FALSE;

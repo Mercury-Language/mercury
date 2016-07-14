@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2008,2010,2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "browsing" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2008,2010,2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "browsing" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -38,7 +33,7 @@
 #include "mdb.declarative_execution.mh"
 #include "mdbcomp.program_representation.mh"
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  void        MR_trace_set_level_and_report(int ancestor_level,
                         MR_bool detailed, MR_bool print_optionals);
@@ -49,7 +44,7 @@ static  const char  *MR_trace_browse_proc_body(MR_EventInfo *event_info,
                         MR_Browser browser, MR_BrowseCallerType caller,
                         MR_BrowseFormat format);
 
-/* Functions to invoke the user's XML browser on terms or goals */
+// Functions to invoke the user's XML browser on terms or goals.
 static  void        MR_trace_browse_xml(MR_Word type_info, MR_Word value,
                         MR_BrowseCallerType caller, MR_BrowseFormat format);
 static  void        MR_trace_browse_goal_xml(MR_ConstString name,
@@ -84,7 +79,7 @@ static  MR_bool     MR_trace_options_diff(MR_Unsigned *start,
 static  MR_bool     MR_trace_options_dump(MR_bool *quiet, MR_bool *xml,
                         char ***words, int *word_count);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_level(char **words, int word_count, MR_TraceCmdInfo *cmd,
@@ -96,21 +91,22 @@ MR_trace_cmd_level(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     detailed = MR_FALSE;
     if (! MR_trace_options_detailed(&detailed, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2 &&
         ( MR_streq(words[1], "clique") || MR_streq(words[1], "clentry") ))
     {
         if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_FRAME,
             &selected_level))
         {
-            /* the error message has already been printed */
+            // The error message has already been printed.
             return KEEP_INTERACTING;
         }
     } else if (word_count == 2 && MR_streq(words[1], "clparent")) {
         if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_PARENT_FRAME,
             &selected_level))
         {
-            /* the error message has already been printed */
+            // The error message has already been printed.
             return KEEP_INTERACTING;
         }
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
@@ -134,7 +130,8 @@ MR_trace_cmd_up(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     detailed = MR_FALSE;
     if (! MR_trace_options_detailed(&detailed, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         MR_trace_set_level_and_report(MR_trace_current_level() + n, detailed,
             MR_print_optionals);
@@ -157,7 +154,8 @@ MR_trace_cmd_down(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     detailed = MR_FALSE;
     if (! MR_trace_options_detailed(&detailed, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         MR_trace_set_level_and_report(MR_trace_current_level() - n, detailed,
             MR_print_optionals);
@@ -219,9 +217,10 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
     static MR_Unsigned  next_io_action = 0;
 
     if (! MR_trace_options_format(&format, &xml, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (xml) {
-        /* the --xml option is not valid for print */
+        // The --xml option is not valid for print.
         MR_trace_usage_cur_cmd();
     } else if (word_count == 1) {
         problem = MR_trace_browse_one_goal(MR_mdb_out,
@@ -363,7 +362,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
             &lo_action, &hi_action))
         {
             if (lo_action >= hi_action) {
-                /* swap lo_action and hi_action */
+                // Swap lo_action and hi_action.
                 MR_Unsigned tmp;
 
                 tmp = lo_action;
@@ -457,7 +456,8 @@ MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
     const char          *problem;
 
     if (! MR_trace_options_format(&format, &xml, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else {
         if (xml) {
             goal_browser = MR_trace_browse_goal_xml;
@@ -536,7 +536,7 @@ MR_trace_cmd_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (! MR_trace_options_stack_trace(&print_all, &detailed,
         &line_limit, &clique_line_limit, &frame_limit, &words, &word_count))
     {
-        /* the usage message has already been printed */
+        // The usage message has already been printed.
         return KEEP_INTERACTING;
     } else if (word_count == 1) {
         line_limit = MR_stack_default_line_limit;
@@ -602,7 +602,7 @@ MR_trace_cmd_view(char **words, int word_count, MR_TraceCmdInfo *cmd,
     const char      *window_cmd = NULL;
     const char      *server_cmd = NULL;
     const char      *server_name = NULL;
-    MR_Unsigned     timeout = 8;    /* seconds */
+    MR_Unsigned     timeout = 8;    // In seconds.
     MR_bool         force = MR_FALSE;
     MR_bool         verbose = MR_FALSE;
     MR_bool         split = MR_FALSE;
@@ -613,7 +613,8 @@ MR_trace_cmd_view(char **words, int word_count, MR_TraceCmdInfo *cmd,
         &timeout, &force, &verbose, &split, &close_window,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count != 1) {
         MR_trace_usage_cur_cmd();
     } else if (close_window) {
@@ -655,13 +656,13 @@ MR_trace_cmd_hold(char **words, int word_count, MR_TraceCmdInfo *cmd,
     }
 
     if (strpbrk(held_var_name, "^/") != NULL) {
-        /* Don't allow path separators in variable names. */
+        // Don't allow path separators in variable names.
         MR_trace_usage_cur_cmd();
         return KEEP_INTERACTING;
     }
 
     if (held_var_name[0] == '$') {
-        /* Ignore any unneeded initial $ signs. */
+        // Ignore any unneeded initial $ signs.
         held_var_name = &held_var_name[1];
     }
 
@@ -705,7 +706,7 @@ MR_trace_cmd_diff(char **words, int word_count, MR_TraceCmdInfo *cmd,
     start = 0;
     max = 20;
     if (! MR_trace_options_diff(&start, &max, &words, &word_count)) {
-        /* the usage message has already been printed */
+        // The usage message has already been printed.
         return KEEP_INTERACTING;
     } else if (word_count != 3) {
         MR_trace_usage_cur_cmd();
@@ -749,13 +750,13 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_bool         quiet = MR_FALSE;
     MR_bool         xml = MR_FALSE;
 
-    /*
-    ** Set this to NULL to avoid uninitialization warnings.
-    */
+    // Set this to NULL to avoid uninitialization warnings.
+
     browser_term = (MR_Word) NULL;
 
     if (! MR_trace_options_dump(&quiet, &xml, &words, &word_count)) {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count != 3) {
         MR_trace_usage_cur_cmd();
     } else {
@@ -828,18 +829,18 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-/*
-** list [num]
-**  List num lines of context around the line number of the context of the
-**  current point (i.e., level in the call stack).  If num is not given,
-**  the number of context lines defaults to the value of the context_lines
-**  setting.
-**
-** TODO: add the following (use MR_parse_source_locn()):
-** list filename:num[-num]
-**  List a range of lines from a given file.  If only one number is
-**  given, the default number of lines of context is used.
-*/
+// list [num]
+//
+// List num lines of context around the line number of the context of the
+// current point (i.e. level in the call stack). If num is not given,
+// the number of context lines defaults to the value of the context_lines
+// setting.
+//
+// TODO: add the following (use MR_parse_source_locn()):
+// list filename:num[-num]
+//
+// List a range of lines from a given file. If only one number is given,
+// the default number of lines of context is used.
 
 MR_Next
 MR_trace_cmd_list(char **words, int word_count,
@@ -878,7 +879,7 @@ MR_trace_cmd_list(char **words, int word_count,
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static void
 MR_trace_set_level_and_report(int ancestor_level, MR_bool detailed,
@@ -900,10 +901,8 @@ MR_trace_set_level_and_report(int ancestor_level, MR_bool detailed,
             &base_sp, &base_curfr);
         fprintf(MR_mdb_out, "%4d ", ancestor_level);
         if (detailed) {
-            /*
-            ** We want to print the trace info first regardless
-            ** of the value of MR_context_position.
-            */
+            // We want to print the trace info first regardless
+            // of the value of MR_context_position.
 
             MR_print_call_trace_info(MR_mdb_out, entry, base_sp, base_curfr);
             indent = 26;
@@ -1034,13 +1033,11 @@ MR_trace_browse_goal_xml(MR_ConstString name, MR_Word arg_list,
     MR_trace_save_and_invoke_xml_browser(browser_term);
 }
 
-/*
-** Implement the `view' command. First, check if there is a server attached.
-** If so, either stop it or abort the command, depending on whether '-f'
-** was given. Then, if a server name was not supplied, start a new server
-** with a unique name (which has been MR_malloc'd), otherwise attach to the
-** server with the supplied name (and make a MR_malloc'd copy of the name).
-*/
+// Implement the `view' command. First, check if there is a server attached.
+// If so, either stop it or abort the command, depending on whether '-f'
+// was given. Then, if a server name was not supplied, start a new server
+// with a unique name (which has been MR_malloc'd), otherwise attach to the
+// server with the supplied name (and make a MR_malloc'd copy of the name).
 
 static const char *
 MR_trace_new_source_window(const char *window_cmd, const char *server_cmd,
@@ -1050,9 +1047,8 @@ MR_trace_new_source_window(const char *window_cmd, const char *server_cmd,
     const char  *msg;
 
     if (MR_trace_source_server.server_name != NULL) {
-        /*
-        ** We are already attached to a server.
-        */
+        // We are already attached to a server.
+
         if (force) {
             MR_trace_maybe_close_source_window(verbose);
         } else {
@@ -1075,10 +1071,9 @@ MR_trace_new_source_window(const char *window_cmd, const char *server_cmd,
         msg = MR_trace_source_attach(&MR_trace_source_server, timeout,
             verbose);
         if (msg != NULL) {
-            /*
-            ** Something went wrong, so we should free the
-            ** strings we allocated just above.
-            */
+            // Something went wrong, so we should free the
+            // strings we allocated just above.
+
             MR_free(MR_trace_source_server.server_name);
             MR_trace_source_server.server_name = NULL;
             MR_free(MR_trace_source_server.server_cmd);
@@ -1097,7 +1092,7 @@ MR_trace_maybe_sync_source_window(MR_EventInfo *event_info, MR_bool verbose)
     int                     lineno;
     const char              *parent_filename;
     int                     parent_lineno;
-    const char              *problem; /* not used */
+    const char              *problem; // Not used.
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
     const char              *msg;
@@ -1114,10 +1109,9 @@ MR_trace_maybe_sync_source_window(MR_EventInfo *event_info, MR_bool verbose)
                 &filename, &lineno);
         }
 
-        /*
-        ** At interface ports we send both the parent context and the
-        ** current context. Otherwise, we just send the current context.
-        */
+        // At interface ports we send both the parent context and the
+        // current context. Otherwise, we just send the current context.
+
         if (MR_port_is_interface(event_info->MR_trace_port)) {
             base_sp = MR_saved_sp(event_info->MR_saved_regs);
             base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
@@ -1160,16 +1154,14 @@ MR_trace_maybe_close_source_window(MR_bool verbose)
     }
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 const char *const    MR_trace_print_cmd_args[] =
     { "-f", "-p", "-v", "--flat", "--pretty", "--verbose",
     "exception", "goal", "*", NULL };
 
-/*
-** It is better to have a single completion where possible,
-** so don't include `-d' here.
-*/
+// It is better to have a single completion where possible,
+// so don't include `-d' here.
 
 const char *const    MR_trace_stack_cmd_args[] =
     { "--detailed", NULL };
@@ -1180,7 +1172,7 @@ const char *const    MR_trace_view_cmd_args[] =
     "--window-command", "--server-command", "--server-name",
     "--timeout", NULL };
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static struct MR_option MR_trace_detailed_opts[] =
 {
@@ -1343,10 +1335,9 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
     while ((c = MR_getopt_long(*word_count, *words, "cw:s:n:t:fv2",
         MR_trace_view_opts, NULL)) != EOF)
     {
-        /*
-        ** Option '-c' is mutually incompatible with '-f', '-t',
-        ** '-s', '-n', '-w' and '-2'.
-        */
+        // Option '-c' is mutually incompatible with '-f', '-t',
+        // '-s', '-n', '-w' and '-2'.
+
         switch (c) {
 
             case 'c':
@@ -1516,4 +1507,4 @@ MR_trace_options_dump(MR_bool *quiet, MR_bool *xml,
     return MR_TRUE;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////

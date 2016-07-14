@@ -1,32 +1,25 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2002-2005 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_builtin_types.h
-**
-*/
+// Copyright (C) 2002-2005 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_builtin_types.h
+//
 
 #ifndef MERCURY_BUILTIN_TYPES_H
 #define MERCURY_BUILTIN_TYPES_H
 
 #include "mercury_types.h"
-#include "mercury_std.h"            /* for MR_CALL                  */
-#include "mercury_float.h"          /* for MR_Float etc             */
-#include "mercury_hlc_types.h"      /* for MR_Mercury_Type_Info etc */
-#include "mercury_type_info.h"      /* for MR_TypeCtorInfo_Struct   */
+#include "mercury_std.h"            // for MR_CALL
+#include "mercury_float.h"          // for MR_Float etc
+#include "mercury_hlc_types.h"      // for MR_Mercury_Type_Info etc
+#include "mercury_type_info.h"      // for MR_TypeCtorInfo_Struct
 
-/*---------------------------------------------------------------------------*/
-/*
-** Declarations of constants.
-**
-** Declare MR_TypeCtorInfo_Structs for the builtin types.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Declarations of constants.
+//
+// Declare MR_TypeCtorInfo_Structs for the builtin types.
 
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
     MR_TYPE_CTOR_INFO_NAME(builtin, int, 0));
@@ -65,14 +58,12 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
     MR_TYPE_CTOR_INFO_NAME(type_desc, type_desc, 0));
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_HIGHLEVEL_CODE
 
-/*
-** Function declarations for manipulating builtin types. All these functions
-** are specific to the high-level-code back-end.
-*/
+// Function declarations for manipulating builtin types. All these functions
+// are specific to the high-level-code back-end.
 
 MR_bool MR_CALL mercury__builtin____Unify____int_0_0(MR_Integer x,
                     MR_Integer y);
@@ -156,8 +147,6 @@ void MR_CALL    mercury__private_builtin____Compare____base_typeclass_info_0_0(
                     MR_Mercury_Base_TypeClass_Info x,
                     MR_Mercury_Base_TypeClass_Info y);
 
-/*---------------------------------------------------------------------------*/
+#endif // MR_HIGHLEVEL_CODE
 
-#endif /* MR_HIGHLEVEL_CODE */
-
-#endif /* not MERCURY_BUILTIN_TYPES_H */
+#endif // not MERCURY_BUILTIN_TYPES_H

@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2000,2002-2003, 2005-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_trace_alias.c - implements the table of aliases for the
-** internal debugger.
-**
-** Author: zs.
-*/
+// Copyright (C) 1998-2000,2002-2003, 2005-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_trace_alias.c - implements the table of aliases for the
+// internal debugger.
+//
+// Author: zs.
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
@@ -24,10 +19,10 @@ static  MR_Alias    *MR_alias_records = NULL;
 static  int         MR_alias_record_max = 0;
 static  int         MR_alias_record_next = 0;
 
-/* The initial size of arrays of words. */
+// The initial size of arrays of words.
 #define MR_INIT_WORD_COUNT  20
 
-/* The initial size of the alias table. */
+// The initial size of the alias table.
 #define INIT_ALIAS_COUNT    32
 
 static  void        MR_trace_print_alias_num(FILE *fp, int slot,
@@ -164,9 +159,8 @@ MR_trace_print_alias_num(FILE *fp, int slot, MR_bool mdb_command_format)
 MR_CompleterList *
 MR_trace_alias_completer(const char *word, size_t word_length)
 {
-    /*
-    ** Remove "EMPTY" and "NUMBER" from the possible matches.
-    */
+    // Remove "EMPTY" and "NUMBER" from the possible matches.
+
     return MR_trace_filter_completer(MR_trace_filter_alias_completions,
         NULL, MR_trace_no_free,
         MR_trace_sorted_array_completer(word, word_length,
@@ -210,12 +204,12 @@ MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
         MR_ensure_big_enough(*word_count + alias_word_count, *word, char *,
             MR_INIT_WORD_COUNT);
 
-        /* Move the original words (except the alias key) up. */
+        // Move the original words (except the alias key) up.
         for (i = *word_count - 1; i >= alias_copy_start; i--) {
             (*words)[i + alias_word_count - alias_copy_start] = (*words)[i];
         }
 
-        /* Move the alias body to the words array. */
+        // Move the alias body to the words array.
         for (i = 0; i < alias_word_count; i++) {
             (*words)[i] = alias_words[i];
         }

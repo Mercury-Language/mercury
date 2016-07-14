@@ -1,111 +1,106 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2009, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** Main authors: Mark Brown, Ian MacLarty
-**
-** This file implements the back end of the declarative debugger.  The back end
-** is an extension to the internal debugger which collects related trace events
-** and builds them into an annotated trace. Once built, the structure is
-** passed to the front end where it can be analysed to find bugs. The front end
-** is implemented in browser/declarative_debugger.m.
-**
-** The interface between the front and back ends is via the typeclass
-** annotated_trace/2, which is documented in browser/declarative_debugger.m.
-** It would be possible to replace the front end or the back end with an
-** alternative implementation which also conforms to the typeclass constraints.
-** For example:
-**
-** - An alternative back end could generate the same tree structure in a
-**   different way, such as via program transformation.
-** - An alternative front end could graphically display the generated trees
-**   as part of a visualization tool rather than analyzing them for bugs.
-**
-** The back end decides which events should be included in the annotated trace.
-** The back end can be called multiple times to materialize different portions
-** of the annotated trace. It is the responsibility of the front end to
-** connect the various portions of the annotated trace together into a
-** complete tree. This is done in declarative_edt.m.
-**
-** Overview of the declarative debugger back end
-** --------------------------------------------
-**
-** Building of a new portion of the annotated trace is started when either the
-** user issues a `dd' command from the procedural debugger, or the front end
-** requests that a new explicit subtree or supertree be built.
-**
-** Initially the trace is materialized down to a predefined depth, given by the
-** value of MR_edt_default_depth_limit. We retry to the CALL event
-** corresponding to the EXIT, FAIL or EXCP event where the `dd' command was
-** issued and rerun the program, collecting all events above the depth limit.
-** Once we get to the EXIT, FAIL or EXCP event where the `dd' command was
-** issued, we call the front end (in browser/declarative_debugger.m) and ask it
-** to analyse the generated trace. The front end then returns with one of
-** three possible responses:
-**
-** 1. The front end wants control to return to the procedural debugger.
-**    This could be because the bug has been found, or the user has
-**    exited the declarative debugging session.
-** 2. The front end wants the subtree of a specific node in the annotated
-**    trace. Here the front end will tell the back end what depth it wants
-**    the new subtree built to.
-** 3. The front end wants nodes generated above the currently materialized
-**    portion of the annotated trace (referred to here as a supertree).
-**
-** In case 1 the front end may want control returned to the procedural debugger
-** at an event other than the event where the `dd' command was issued. If this
-** is the case then we perform a retry to get to an event before the desired
-** event and then simulate a `goto' command, so that mdb prompts the user
-** at the desired event.
-**
-** In case 2 the front end will supply the event number and call sequence
-** number of the EXIT, FAIL or EXCP event at the root of the required subtree.
-** The back end will then retry to a CALL event before or equal to the CALL
-** with the given sequence number. The program is then reexecuted and nodes
-** are added to the annotated trace to the depth limit specified by the
-** front end.
-**
-** If, while the program is being reexecuted, the call depth exceeds the depth
-** limit, then we record (in the array MR_edt_implicit_subtree_counters) how
-** many events are at each depth below the depth limit. The data collected is
-** used to populate a field at each CALL event that is the root of an implicit
-** (unmaterialized) subtree in the annotated trace. The field (called the
-** ideal depth) gives the maximum depth to build the subtree to so that no more
-** than MR_edt_desired_nodes_in_subtree nodes are materialized. The front end
-** passes the ideal depth to the back end when requesting a new subtree.
-**
-** In case 3 the front end will supply the event number and call sequence
-** number of the EXIT, FAIL or EXCP event at the root of the currently
-** materialized tree. As with case 2 the back end will retry to a CALL before
-** the given call sequence number and start reexecuting the program, however
-** no events are added to the annotated trace yet. When execution reaches the
-** CALL event matching the sequence number given by the front end, another
-** retry is performed to get MR_edt_default_depth_limit levels above the
-** currently materialized tree. Execution is then restarted from this point
-** and collection of events begins. Events are collected down to the depth of
-** the root of the previously materialized tree as illustrated in the following
-** diagram.
-**
-**                     /\     |
-**                    /  \    |- Newly materialized supertree
-**                   /    \   |
-**                     /\       |
-**                    /  \      |
-**                   /    \     |- Previously materialized tree
-**                  /      \    |
-**                 /        \   |
-*/
+// Copyright (C) 1998-2009, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// Main authors: Mark Brown, Ian MacLarty
+//
+// This file implements the back end of the declarative debugger. The back end
+// is an extension to the internal debugger which collects related trace events
+// and builds them into an annotated trace. Once built, the structure is
+// passed to the front end where it can be analysed to find bugs. The front end
+// is implemented in browser/declarative_debugger.m.
+//
+// The interface between the front and back ends is via the typeclass
+// annotated_trace/2, which is documented in browser/declarative_debugger.m.
+// It would be possible to replace the front end or the back end with an
+// alternative implementation which also conforms to the typeclass constraints.
+// For example:
+//
+// - An alternative back end could generate the same tree structure in a
+//   different way, such as via program transformation.
+// - An alternative front end could graphically display the generated trees
+//   as part of a visualization tool rather than analyzing them for bugs.
+//
+// The back end decides which events should be included in the annotated trace.
+// The back end can be called multiple times to materialize different portions
+// of the annotated trace. It is the responsibility of the front end to
+// connect the various portions of the annotated trace together into a
+// complete tree. This is done in declarative_edt.m.
+//
+// Overview of the declarative debugger back end
+// --------------------------------------------
+//
+// Building of a new portion of the annotated trace is started when either the
+// user issues a `dd' command from the procedural debugger, or the front end
+// requests that a new explicit subtree or supertree be built.
+//
+// Initially the trace is materialized down to a predefined depth, given by the
+// value of MR_edt_default_depth_limit. We retry to the CALL event
+// corresponding to the EXIT, FAIL or EXCP event where the `dd' command was
+// issued and rerun the program, collecting all events above the depth limit.
+// Once we get to the EXIT, FAIL or EXCP event where the `dd' command was
+// issued, we call the front end (in browser/declarative_debugger.m) and ask it
+// to analyse the generated trace. The front end then returns with one of
+// three possible responses:
+//
+// 1. The front end wants control to return to the procedural debugger.
+//    This could be because the bug has been found, or the user has
+//    exited the declarative debugging session.
+// 2. The front end wants the subtree of a specific node in the annotated
+//    trace. Here the front end will tell the back end what depth it wants
+//    the new subtree built to.
+// 3. The front end wants nodes generated above the currently materialized
+//    portion of the annotated trace (referred to here as a supertree).
+//
+// In case 1 the front end may want control returned to the procedural debugger
+// at an event other than the event where the `dd' command was issued. If this
+// is the case then we perform a retry to get to an event before the desired
+// event and then simulate a `goto' command, so that mdb prompts the user
+// at the desired event.
+//
+// In case 2 the front end will supply the event number and call sequence
+// number of the EXIT, FAIL or EXCP event at the root of the required subtree.
+// The back end will then retry to a CALL event before or equal to the CALL
+// with the given sequence number. The program is then reexecuted and nodes
+// are added to the annotated trace to the depth limit specified by the
+// front end.
+//
+// If, while the program is being reexecuted, the call depth exceeds the depth
+// limit, then we record (in the array MR_edt_implicit_subtree_counters) how
+// many events are at each depth below the depth limit. The data collected is
+// used to populate a field at each CALL event that is the root of an implicit
+// (unmaterialized) subtree in the annotated trace. The field (called the
+// ideal depth) gives the maximum depth to build the subtree to so that no more
+// than MR_edt_desired_nodes_in_subtree nodes are materialized. The front end
+// passes the ideal depth to the back end when requesting a new subtree.
+//
+// In case 3 the front end will supply the event number and call sequence
+// number of the EXIT, FAIL or EXCP event at the root of the currently
+// materialized tree. As with case 2 the back end will retry to a CALL before
+// the given call sequence number and start reexecuting the program, however
+// no events are added to the annotated trace yet. When execution reaches the
+// CALL event matching the sequence number given by the front end, another
+// retry is performed to get MR_edt_default_depth_limit levels above the
+// currently materialized tree. Execution is then restarted from this point
+// and collection of events begins. Events are collected down to the depth of
+// the root of the previously materialized tree as illustrated in the following
+// diagram.
+//
+//                     /\     |
+//                    /  \    |- Newly materialized supertree
+//                   /    \   |
+//                     /\       |
+//                    /  \      |
+//                   /    \     |- Previously materialized tree
+//                  /      \    |
+//                 /        \   |
 
 #include "mercury_imp.h"
 #include "mercury_trace_declarative.h"
 
-#include "mercury_init.h"               /* for MR_trace_real */
+#include "mercury_init.h"               // for MR_trace_real
 #include "mercury_trace.h"
 #include "mercury_trace_browse.h"
 #include "mercury_trace_help.h"
@@ -132,10 +127,8 @@
 
 #include <errno.h>
 
-/*
-** These macros are to aid debugging of the code which constructs
-** the annotated trace.
-*/
+// These macros are to aid debugging of the code which constructs
+// the annotated trace.
 
 #ifdef MR_DEBUG_DD_BACK_END
 #define MR_DEBUG_DD_BACK_END_EVENT
@@ -192,12 +185,10 @@
 #define MR_decl_checkpoint_supertree(final, top_seqno, depth)   ((void) 0)
 #endif
 
-/*
-** If this macro is defined then some statistics, such as how many nodes were
-** added to the annotated trace in the current run and the amount of memory
-** consumed so far,  will be printed to stderr whenever a new subtree or
-** supertree is built.
-*/
+// If this macro is defined then some statistics, such as how many nodes were
+// added to the annotated trace in the current run and the amount of memory
+// consumed so far,  will be printed to stderr whenever a new subtree or
+// supertree is built.
 
 #ifdef MR_DD_PRINT_EDT_STATS
 
@@ -208,160 +199,128 @@ static  MR_Unsigned         MR_edt_stats_total_reexecutions = 0;
 #define MR_decl_maybe_print_edt_stats()         MR_decl_print_edt_stats()
 #define MR_decl_maybe_inc_constructed_nodes()   MR_decl_inc_constructed_nodes()
 
-#else /* MR_DD_PRINT_EDT_STATS */
+#else // MR_DD_PRINT_EDT_STATS
 
 #define MR_decl_maybe_print_edt_stats()
 #define MR_decl_maybe_inc_constructed_nodes()
 
-#endif /* MR_DD_PRINT_EDT_STATS */
+#endif // MR_DD_PRINT_EDT_STATS
 
-/*
-** The declarative debugger back end is controlled by the
-** settings of the following variables.  They are set in
-** MR_trace_start_decl_debug when the back end is started.  They
-** are used by MR_trace_decl_debug to decide what action to
-** take for a particular trace event.
-*/
+// The declarative debugger back end is controlled by the
+// settings of the following variables. They are set in
+// MR_trace_start_decl_debug when the back end is started.
+// They are used by MR_trace_decl_debug to decide what action to
+// take for a particular trace event.
 
 static  MR_DeclMode         MR_decl_mode = MR_DECL_NODUMP;
 
-/*
-** If we are building a subtree then reaching this event will cause the
-** declarative debugger to continue its analysis.  Reaching this event means
-** generation of the desired subtree is complete.  This variable is not used
-** when building a new explicit supertree.
-*/
+// If we are building a subtree then reaching this event will cause the
+// declarative debugger to continue its analysis. Reaching this event means
+// generation of the desired subtree is complete. This variable is not used
+// when building a new explicit supertree.
 
 static  MR_Unsigned         MR_edt_last_event;
 
-/*
-** If we are materializing a new subtree then MR_edt_start_seqno is the
-** call sequence number of the call at the top of the subtree we want to
-** materialize.  If we are building a new supertree then MR_edt_start_seqno
-** is the call sequence number of the call at the top of the existing
-** materialized portion of the annotated trace.
-*/
+// If we are materializing a new subtree then MR_edt_start_seqno is the
+// call sequence number of the call at the top of the subtree we want to
+// materialize. If we are building a new supertree then MR_edt_start_seqno
+// is the call sequence number of the call at the top of the existing
+// materialized portion of the annotated trace.
 
 static  MR_Unsigned         MR_edt_start_seqno;
 
-/*
-** This tells MR_trace_decl_debug whether it is inside a portion of the
-** annotated trace that should be materialized (ignoring any depth limit).  It
-** has opposite meanings depending on whether an explicit supertree or subtree
-** has been requested.  When materializing a subtree it will be true for all
-** nodes in the subtree.  When materializing a supertree it will be true for
-** all nodes outside the subtree above which a supertree was requested (we
-** don't want to include nodes in the subtree because that's already been
-** materialized).
-*/
+// This tells MR_trace_decl_debug whether it is inside a portion of the
+// annotated trace that should be materialized (ignoring any depth limit).
+// It has opposite meanings depending on whether an explicit supertree or
+// subtree has been requested. When materializing a subtree, it will be true
+// for all nodes in the subtree. When materializing a supertree, it will be
+// true for all nodes outside the subtree above which a supertree was requested
+// (we don't want to include nodes in the subtree because that has already been
+// materialized).
 
 static  MR_bool             MR_edt_inside;
 
-/*
-** The initial event at which the `dd' command was given.  This is used when
-** aborting diagnosis to return the user to the event where they initiated
-** the declarative debugging session.
-*/
+// The initial event at which the `dd' command was given. This is used when
+// aborting diagnosis to return the user to the event where they initiated
+// the declarative debugging session.
 
 static  MR_Unsigned         MR_edt_initial_event;
 
-/*
-** The node returned to the front end once a subtree or supertree has been
-** generated.  If a supertree is generated then the implicit root in the
-** new supertree that represents the existing tree is returned, otherwise
-** the root of the new explicit subtree is returned.
-*/
+// The node returned to the front end once a subtree or supertree has been
+// generated. If a supertree is generated then the implicit root in the
+// new supertree that represents the existing tree is returned, otherwise
+// the root of the new explicit subtree is returned.
 
 static  MR_TraceNode        MR_edt_return_node;
 
-/*
-** The time (in milliseconds since the start of the program) when collection of
-** events, for the current portion of the annotated trace being materialized,
-** started.
-*/
+// The time (in milliseconds since the start of the program) when collection of
+// events, for the current portion of the annotated trace being materialized,
+// started.
 
 static  MR_Unsigned         MR_edt_start_time;
 
-/*
-** This global keeps track of how many ticks have been printed so far in
-** the progress message.
-*/
+// This global keeps track of how many ticks have been printed so far in
+// the progress message.
 
 static  MR_Unsigned         MR_edt_progress_last_tick = 0;
 
-/*
-** The first event executed during the current re-execution.
-*/
+// The first event executed during the current re-execution.
 
 static  MR_Unsigned         MR_edt_first_event;
 
-/*
-** The declarative debugger ignores modules that were not compiled with
-** the required information.  However, this may result in incorrect
-** assumptions being made about the code, so the debugger gives a warning
-** if this happens.  The following flag indicates whether a warning
-** should be printed before calling the front end.
-*/
+// The declarative debugger ignores modules that were not compiled with
+// the required information. However, this may result in incorrect
+// assumptions being made about the code, so the debugger gives a warning
+// if this happens. The following flag indicates whether a warning
+// should be printed before calling the front end.
 
 static  MR_bool             MR_edt_compiler_flag_warning;
 
-/*
-** When building a supertree there will be 2 retries.  The first will
-** retry to an event before the topmost node of the currently materialized
-** tree and the second will be a retry from the topmost node to the root
-** of the new supertree.  This global records whether the user said it
-** was safe to do the first retry across untabled IO.  If they said this was
-** okay then there's no point asking them again for the second retry.
-*/
+// When building a supertree there will be 2 retries. The first will
+// retry to an event before the topmost node of the currently materialized
+// tree and the second will be a retry from the topmost node to the root
+// of the new supertree. This global records whether the user said it
+// was safe to do the first retry across untabled IO. If they said this was
+// okay then there is no point asking them again for the second retry.
 
 static  MR_bool             MR_edt_unsafe_retry_already_asked;
 
-/*
-** If trace counts are provided for failing and passing test cases, then
-** we add the suspicion (an integer between 0 and MR_TRACE_DECL_MAX_SUSPICION)
-** for each event to the accumulator below.  We then store the value of the
-** accumulator at CALL, EXIT, REDO, FAIL and EXCP events, which allows
-** the frontend to easily calculate the suspicion of any subtree in the EDT.
-*/
+// If trace counts are provided for failing and passing test cases, then
+// we add the suspicion (an integer between 0 and MR_TRACE_DECL_MAX_SUSPICION)
+// for each event to the accumulator below. We then store the value of the
+// accumulator at CALL, EXIT, REDO, FAIL and EXCP events, which allows
+// the frontend to easily calculate the suspicion of any subtree in the EDT.
 
 static  MR_Integer  MR_edt_suspicion_accumulator;
 static  MR_bool     MR_edt_update_suspicion_accumulator = MR_FALSE;
 
-/*
-** This is used as the abstract map from node identifiers to nodes
-** in the data structure passed to the front end.  It should be
-** incremented each time the data structure is destructively
-** updated, before being passed to Mercury code again.
-*/
+// This is used as the abstract map from node identifiers to nodes
+// in the data structure passed to the front end. It should be
+// incremented each time the data structure is destructively
+// updated, before being passed to Mercury code again.
 
 static  MR_Unsigned         MR_trace_node_store;
 
-/*
-** The front end state is stored here in between calls to it.
-** MR_trace_decl_ensure_init should be called before using the state.
-*/
+// The front end state is stored here in between calls to it.
+// MR_trace_decl_ensure_init should be called before using the state.
 
 static  MR_Word             MR_trace_front_end_state;
 
 static  void                MR_trace_decl_ensure_init(void);
 
-/*
-** MR_trace_current_node always contains the last node allocated,
-** or NULL if the collection has just started.
-*/
+// MR_trace_current_node always contains the last node allocated,
+// or NULL if the collection has just started.
 
 static  MR_TraceNode        MR_trace_current_node;
 
-/*
-** When in test mode, MR_trace_store_file points to an open file to
-** which the store should be written when built.  This global is
-** set in MR_trace_start_decl_debug, and keeps the same value
-** throughout the declarative debugging session.
-*/
+// When in test mode, MR_trace_store_file points to an open file to
+// which the store should be written when built. This global is set
+// in MR_trace_start_decl_debug, and keeps the same value
+// throughout the declarative debugging session.
 
 static  FILE                *MR_trace_store_file;
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static    MR_TraceNode      MR_trace_decl_call(MR_EventInfo *event_info,
                                 MR_TraceNode prev);
@@ -486,11 +445,9 @@ MR_Unsigned     MR_edt_implicit_subtree_num_counters;
 
 MR_bool         MR_edt_building_supertree;
 
-/*
-** This function is called for every traced event when building the
-** annotated trace.  It must decide which events are included in the
-** annotated trace.
-*/
+// This function is called for every traced event when building the
+// annotated trace. It must decide which events are included in the
+// annotated trace.
 
 MR_Code *
 MR_trace_decl_debug(MR_EventInfo *event_info)
@@ -517,11 +474,9 @@ MR_trace_decl_debug(MR_EventInfo *event_info)
     if (node_depth == MR_edt_max_depth
         && (port == MR_PORT_CALL || port == MR_PORT_REDO))
     {
-        /*
-        ** We are entering the top of an implicit subtree. Switch to the
-        ** event handler that processes the notes in the implicit subtree,
-        ** and reset the data structures it works with.
-        */
+        // We are entering the top of an implicit subtree. Switch to the
+        // event handler that processes the notes in the implicit subtree,
+        // and reset the data structures it works with.
 
         MR_decl_checkpoint_pass("SWITCHING TO IMPLICIT SUBTREE", MR_FALSE,
             event_info);
@@ -563,7 +518,7 @@ MR_trace_edt_build_sanity_check(MR_EventInfo *event_info,
     if (event_info->MR_event_number > MR_edt_last_event
         && !MR_edt_building_supertree)
     {
-        /* This shouldn't ever be reached. */
+        // This shouldn't ever be reached.
         fprintf(MR_mdb_err, "Error: missed final event.\n");
         fprintf(MR_mdb_err, "event %lu\nlast event %lu\n",
             (unsigned long) event_info->MR_event_number,
@@ -573,7 +528,7 @@ MR_trace_edt_build_sanity_check(MR_EventInfo *event_info,
     }
 
     if (!MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
-        /* XXX this should be handled better. */
+        // XXX this should be handled better.
         MR_fatal_error("layout has no execution tracing");
     }
 }
@@ -582,9 +537,7 @@ static MR_bool
 MR_trace_include_event(const MR_ProcLayout *entry,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    /*
-    ** Filter out events for compiler generated procedures.
-    */
+    // Filter out events for compiler generated procedures.
 
     if (MR_PROC_LAYOUT_IS_UCI(entry)) {
         *jumpaddr = NULL;
@@ -592,34 +545,29 @@ MR_trace_include_event(const MR_ProcLayout *entry,
     }
 
     if (entry->MR_sle_module_layout->MR_ml_suppressed_events != 0) {
-        /*
-        ** We ignore events from modules that were not compiled with the
-        ** necessary information.  Procedures in those modules are effectively
-        ** assumed correct, so we give the user a warning.
-        */
+        // We ignore events from modules that were not compiled with the
+        // necessary information. Procedures in those modules are effectively
+        // assumed correct, so we give the user a warning.
 
         MR_edt_compiler_flag_warning = MR_TRUE;
         *jumpaddr = NULL;
         return MR_FALSE;
     }
 
-    /*
-    ** Decide if we are inside or outside the subtree or supertree that
-    ** needs to be materialized, ignoring for now any depth limit.
-    ** If we are materializing a supertree then MR_edt_inside will
-    ** be true whenever we are not in the subtree rooted at the call
-    ** corresponding to MR_edt_start_seqno.  If we are materializing a
-    ** subtree then MR_edt_inside will be true whenever we are in the
-    ** subtree rooted at the call corresponding to MR_edt_start_segno.
-    */
+    // Decide if we are inside or outside the subtree or supertree that
+    // needs to be materialized, ignoring for now any depth limit.
+    // If we are materializing a supertree then MR_edt_inside will
+    // be true whenever we are not in the subtree rooted at the call
+    // corresponding to MR_edt_start_seqno. If we are materializing a
+    // subtree then MR_edt_inside will be true whenever we are in the
+    // subtree rooted at the call corresponding to MR_edt_start_segno.
+
     if (MR_edt_building_supertree) {
         if (!MR_edt_inside) {
             if (event_info->MR_call_seqno == MR_edt_start_seqno &&
                 MR_port_is_final(event_info->MR_trace_port))
             {
-                /*
-                ** We are exiting the subtree rooted at MR_edt_start_seqno.
-                */
+                // We are exiting the subtree rooted at MR_edt_start_seqno.
 
                 MR_decl_checkpoint_pass("SUPERTREE: SWITCHING TO INSIDE",
                     MR_FALSE, event_info);
@@ -628,13 +576,11 @@ MR_trace_include_event(const MR_ProcLayout *entry,
             } else if (event_info->MR_call_seqno == MR_edt_start_seqno
                 && MR_port_is_entry(event_info->MR_trace_port))
             {
-                /*
-                ** We are entering the top of the currently materialized
-                ** portion of the annotated trace. Since we are building
-                ** a supertree, we must retry to above the current event
-                ** and start building the new portion of the annotated trace
-                ** from there.
-                */
+                // We are entering the top of the currently materialized
+                // portion of the annotated trace. Since we are building
+                // a supertree, we must retry to above the current event
+                // and start building the new portion of the annotated trace
+                // from there.
 
                 MR_decl_checkpoint_pass("SUPERTREE: RETRYING", MR_TRUE,
                     event_info);
@@ -642,18 +588,14 @@ MR_trace_include_event(const MR_ProcLayout *entry,
                 *jumpaddr = MR_trace_decl_retry_supertree(MR_edt_max_depth,
                     event_info);
 
-                /*
-                ** Reset the depth since we will now be at the top of the
-                ** supertree to be materialized.  We set it to -1 since the
-                ** next call to MR_trace_decl_debug will set it to 0.
-                */
+                // Reset the depth since we will now be at the top of the
+                // supertree to be materialized. We set it to -1 since the
+                // next call to MR_trace_decl_debug will set it to 0.
 
                 MR_edt_depth = -1;
                 return MR_FALSE;
             } else {
-                /*
-                ** We are in an existing explicit subtree.
-                */
+                // We are in an existing explicit subtree.
 
                 MR_decl_checkpoint_pass("SUPERTREE: FILTER", MR_TRUE,
                     event_info);
@@ -663,11 +605,9 @@ MR_trace_include_event(const MR_ProcLayout *entry,
             }
         } else {
             if (event_info->MR_call_seqno == MR_edt_start_seqno) {
-                /*
-                ** The port must be either CALL or REDO; we are leaving the
-                ** supertree and entering the existing explicit subtree.
-                ** We must still however add this node to the generated EDT.
-                */
+                // The port must be either CALL or REDO; we are leaving the
+                // supertree and entering the existing explicit subtree.
+                // We must still however add this node to the generated EDT.
 
                 MR_decl_checkpoint_pass("SUPERTREE: SWITCHING TO OUTSIDE",
                     MR_FALSE, event_info);
@@ -680,9 +620,7 @@ MR_trace_include_event(const MR_ProcLayout *entry,
             if (event_info->MR_call_seqno == MR_edt_start_seqno
                 && MR_port_is_final(event_info->MR_trace_port))
             {
-                /*
-                ** We are leaving the topmost call.
-                */
+                // We are leaving the topmost call.
 
                 MR_decl_checkpoint_pass("INSIDE: SWITCHING TO OUTSIDE",
                     MR_FALSE, event_info);
@@ -691,10 +629,8 @@ MR_trace_include_event(const MR_ProcLayout *entry,
             }
         } else {
             if (event_info->MR_call_seqno == MR_edt_start_seqno) {
-                /*
-                ** The port must be either CALL or REDO;
-                ** we are (re)entering the topmost call.
-                */
+                // The port must be either CALL or REDO;
+                // we are (re)entering the topmost call.
 
                 MR_decl_checkpoint_pass("INSIDE: REENTERING TOPMOST",
                     MR_FALSE, event_info);
@@ -702,9 +638,7 @@ MR_trace_include_event(const MR_ProcLayout *entry,
                 MR_edt_depth = -1;
                 return MR_TRUE;
             } else {
-                /*
-                ** Ignore this event -- it is outside the topmost call.
-                */
+                // Ignore this event -- it is outside the topmost call.
 
                 MR_decl_checkpoint_pass("INSIDE: FILTERING", MR_TRUE,
                     event_info);
@@ -787,7 +721,7 @@ MR_trace_construct_node(MR_EventInfo *event_info)
             break;
 
         case MR_PORT_USER:
-            /* do nothing */
+            // do nothing
             break;
 
         case MR_PORT_TAILREC_CALL:
@@ -804,10 +738,8 @@ MR_trace_construct_node(MR_EventInfo *event_info)
     MR_trace_current_node = trace;
 }
 
-/*
-** Retry max_distance if there are that many ancestors, otherwise
-** retry as far as possible.
-*/
+// Retry max_distance if there are that many ancestors, otherwise
+// retry as far as possible.
 
 static MR_Code *
 MR_trace_decl_retry_supertree(MR_Unsigned max_distance,
@@ -826,10 +758,9 @@ MR_trace_decl_retry_supertree(MR_Unsigned max_distance,
         retry_distance = max_distance;
     }
 
-    /*
-    ** If the user was already asked if they want to do an unsafe retry
-    ** while building this supertree, then don't ask them again.
-    */
+    // If the user was already asked if they want to do an unsafe retry
+    // while building this supertree, then don't ask them again.
+
     if (MR_edt_unsafe_retry_already_asked) {
         retry_mode = MR_RETRY_IO_FORCE;
     } else {
@@ -892,10 +823,8 @@ MR_trace_decl_call(MR_EventInfo *event_info, MR_TraceNode prev)
         &base_sp, &base_curfr, &reused_frames, &problem);
     assert(reused_frames == 0);
 
-    /*
-    ** return_label_layout may be NULL even if result is MR_STEP_OK, if
-    ** the current event is inside the code of main/2.
-    */
+    // return_label_layout may be NULL even if result is MR_STEP_OK,
+    // if the current event is inside the code of main/2.
 
     MR_TRACE_CALL_MERCURY(
         if (result == MR_STEP_OK && return_label_layout != NULL) {
@@ -931,11 +860,10 @@ MR_trace_decl_exit(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_decl_checkpoint_match(call);
 
     MR_TRACE_CALL_MERCURY(
-        /*
-        ** We need to add 1 to MR_edt_depth since this is an EXIT event,
-        ** so 1 should already have been subtracted from MR_edt_depth
-        ** in MR_trace_calculate_event_depth.
-        */
+        // We need to add 1 to MR_edt_depth since this is an EXIT event,
+        // so 1 should already have been subtracted from MR_edt_depth
+        // in MR_trace_calculate_event_depth.
+
         MR_trace_maybe_update_implicit_tree_ideal_depth(
             MR_edt_depth + 1, call);
         last_interface = MR_DD_call_node_get_last_interface((MR_Word) call);
@@ -957,9 +885,8 @@ MR_trace_decl_redo(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_TraceNode    next;
     MR_Word         last_interface;
 
-    /*
-    ** Search through previous contour for a matching EXIT event.
-    */
+    // Search through previous contour for a matching EXIT event.
+
     next = MR_trace_find_prev_contour(prev);
     while (MR_trace_node_port(next) != MR_PORT_EXIT
         || MR_trace_node_seqno(next) != event_info->MR_call_seqno)
@@ -996,10 +923,9 @@ MR_trace_decl_fail(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_Word         redo;
 
     if (MR_trace_node_port(prev) == MR_PORT_CALL) {
-        /*
-        ** We are already at the corresponding call, so there
-        ** is no need to search for it.
-        */
+        // We are already at the corresponding call, so there
+        // is no need to search for it.
+
         call = prev;
     } else {
         next = MR_trace_find_prev_contour(prev);
@@ -1008,11 +934,10 @@ MR_trace_decl_fail(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_decl_checkpoint_match(call);
 
     MR_TRACE_CALL_MERCURY(
-        /*
-        ** We need to add 1 to MR_edt_depth since this is a FAIL event,
-        ** so 1 should already have been subtracted from MR_edt_depth
-        ** in MR_trace_calculate_event_depth.
-        */
+        // We need to add 1 to MR_edt_depth since this is a FAIL event,
+        // so 1 should already have been subtracted from MR_edt_depth
+        // in MR_trace_calculate_event_depth.
+
         MR_trace_maybe_update_implicit_tree_ideal_depth(
             MR_edt_depth + 1, call);
         redo = MR_DD_call_node_get_last_interface((MR_Word) call);
@@ -1037,11 +962,10 @@ MR_trace_decl_excp(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_decl_checkpoint_match(call);
 
     MR_TRACE_CALL_MERCURY(
-        /*
-        ** We need to add 1 to MR_edt_depth since this is an EXCP event,
-        ** so 1 should already have been subtracted from MR_edt_depth
-        ** in MR_trace_calculate_event_depth.
-        */
+        // We need to add 1 to MR_edt_depth since this is an EXCP event,
+        // so 1 should already have been subtracted from MR_edt_depth
+        // in MR_trace_calculate_event_depth.
+
         MR_trace_maybe_update_implicit_tree_ideal_depth(MR_edt_depth + 1,
             call);
         last_interface = MR_DD_call_node_get_last_interface((MR_Word) call);
@@ -1076,9 +1000,8 @@ MR_trace_decl_then(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_TraceNode    cond;
     const char      *path = event_info->MR_event_path;
 
-    /*
-    ** Search through current contour for a matching COND event.
-    */
+    // Search through current contour for a matching COND event.
+
     next = prev;
     while (!MR_trace_matching_cond(path, next)) {
         next = MR_trace_step_left_in_contour(next);
@@ -1102,9 +1025,8 @@ MR_trace_decl_else(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_TraceNode    cond;
     const char      *path = event_info->MR_event_path;
 
-    /*
-    ** Search through previous contour for a matching COND event.
-    */
+    // Search through previous contour for a matching COND event.
+
     if (MR_trace_matching_cond(path, prev)) {
         cond = prev;
     } else {
@@ -1147,9 +1069,8 @@ MR_trace_decl_neg_success(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_TraceNode    nege;
     const char      *path = event_info->MR_event_path;
 
-    /*
-    ** Search through previous contour for a matching NEGE event.
-    */
+    // Search through previous contour for a matching NEGE event.
+
     if (MR_trace_matching_neg(path, prev)) {
         nege = MR_trace_current_node;
     } else {
@@ -1179,9 +1100,8 @@ MR_trace_decl_neg_failure(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_TraceNode    node;
     MR_TraceNode    next;
 
-    /*
-    ** Search through current contour for a matching NEGE event.
-    */
+    // Search through current contour for a matching NEGE event.
+
     next = prev;
     while (!MR_trace_matching_neg(event_info->MR_event_path, next)) {
         next = MR_trace_step_left_in_contour(next);
@@ -1234,9 +1154,8 @@ MR_trace_decl_disj_later(MR_EventInfo *event_info, MR_TraceNode prev)
 
     path = event_info->MR_event_path;
 
-    /*
-    ** Search through previous nodes for a matching DISJ event.
-    */
+    // Search through previous nodes for a matching DISJ event.
+
     next = MR_trace_find_prev_contour(prev);
     while (!MR_trace_matching_disj(path, next)) {
         next = MR_trace_step_left_in_contour(next);
@@ -1244,9 +1163,8 @@ MR_trace_decl_disj_later(MR_EventInfo *event_info, MR_TraceNode prev)
 
     MR_decl_checkpoint_match(next);
 
-    /*
-    ** Find the first disj event of this disjunction.
-    */
+    // Find the first disj event of this disjunction.
+
     first = MR_trace_node_first_disj(next);
     if (first == (MR_TraceNode) NULL) {
         first = next;
@@ -1266,10 +1184,9 @@ MR_trace_matching_call(MR_TraceNode node)
 {
     MR_TraceNode    next;
 
-    /*
-    ** Search through contour for any CALL event. Since there is only one
-    ** CALL event which can be reached, we assume it is the correct one.
-    */
+    // Search through contour for any CALL event. Since there is only one
+    // CALL event which can be reached, we assume it is the correct one.
+
     next = node;
     while (MR_trace_node_port(next) != MR_PORT_CALL) {
         next = MR_trace_step_left_in_contour(next);
@@ -1283,9 +1200,8 @@ MR_trace_first_disjunct(MR_EventInfo *event_info)
 {
     const char  *path;
 
-    /*
-    ** Return MR_TRUE iff the last component of the path is "d1;".
-    */
+    // Return MR_TRUE iff the last component of the path is "d1;".
+
     path = event_info->MR_event_path;
     while (*path) {
         if (MR_string_equal(path, "d1;")) {
@@ -1355,33 +1271,30 @@ MR_trace_matching_disj(const char *path, MR_TraceNode node)
 static MR_bool
 MR_trace_same_construct(const char *p1, const char *p2)
 {
-    /*
-    ** Checks if the two arguments represent goals in the same construct.
-    ** If both strings are identical up to the last component, return MR_TRUE,
-    ** otherwise return MR_FALSE. If the arguments point to identical strings,
-    ** return MR_TRUE.
-    **
-    ** See the comment on the MR_sll_path field in
-    ** runtime/mercury_stack_layout.h for a possible way to do this test
-    ** in linear time, and why we currently do not do it that way.
-    */
+    // Checks if the two arguments represent goals in the same construct.
+    // If both strings are identical up to the last component, return MR_TRUE,
+    // otherwise return MR_FALSE. If the arguments point to identical strings,
+    // return MR_TRUE.
+    //
+    // See the comment on the MR_sll_path field in
+    // runtime/mercury_stack_layout.h for a possible way to do this test
+    // in linear time, and why we currently do not do it that way.
 
     while (*p1 == *p2) {
         if (*p1 == '\0' && *p2 == '\0') {
-            return MR_TRUE;     /* They are identical. */
+            return MR_TRUE;     // They are identical.
         }
         if (*p1 == '\0' || *p2 == '\0') {
-            return MR_FALSE;    /* Different number of elements. */
+            return MR_FALSE;    // Different number of elements.
         }
 
         p1++;
         p2++;
     }
 
-    /*
-    ** If there is exactly one component left in each string, then
-    ** the goal paths match, otherwise they don't.
-    */
+    // If there is exactly one component left in each string, then
+    // the goal paths match, otherwise they don't.
+
     return MR_trace_single_component(p1) && MR_trace_single_component(p2);
 }
 
@@ -1407,7 +1320,7 @@ MR_decl_make_atom_args(const MR_LabelLayout *layout, MR_Word *saved_regs,
     MR_PredFunc             pred_or_func;
     int                     arity;
     MR_Word                 atom_args;
-    int                     hv;   /* any head variable */
+    int                     hv;                 // Any head variable.
     int                     num_added_args;
     const MR_ProcLayout     *entry;
 
@@ -1435,7 +1348,7 @@ MR_decl_make_atom_args(const MR_LabelLayout *layout, MR_Word *saved_regs,
         problem = MR_trace_return_hlds_var_info(hlds_num, &arg_type,
                 &arg_value);
         if (problem != NULL) {
-            /* This head variable is not live at this port. */
+            // This head variable is not live at this port.
             MR_TRACE_CALL_MERCURY(
                 MR_DD_add_trace_atom_arg_no_value(hlds_num,
                     is_prog_visible_headvar, atom_args, &atom_args);
@@ -1648,11 +1561,10 @@ MR_trace_start_decl_debug(MR_DeclMode mode, const char *outfile,
 
     MR_edt_initial_event = event_info->MR_event_number;
 
-    /*
-    ** If it was requested that the previous session be resumed and
-    ** there was a previous dd session, then there is no need to
-    ** build a new annotated trace.
-    */
+    // If it was requested that the previous session be resumed and
+    // there was a previous dd session, then there is no need to
+    // build a new annotated trace.
+
     if (!new_session && !first_time) {
         MR_decl_mode = mode;
         MR_selected_trace_func_ptr = MR_trace_real_decl;
@@ -1754,10 +1666,9 @@ MR_trace_restart_decl_debug(MR_TraceNode call_preceding, MR_Unsigned event,
 
     MR_edt_return_node = (MR_TraceNode) NULL;
 
-    /*
-    ** Set this to the preceding node, so the new explicit tree's parent is
-    ** resolved correctly.
-    */
+    // Set this to the preceding node, so the new explicit tree's parent is
+    // resolved correctly.
+
     MR_trace_current_node = call_preceding;
 
     message = MR_trace_start_collecting(event, seqno, depth_limit,
@@ -1788,24 +1699,23 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 
     MR_edt_unsafe_retry_already_asked = MR_FALSE;
 
-    /*
-    ** We need to do a retry if the current event is greater than the
-    ** call event number corresponding to seqno.  Since we don't have the
-    ** call event number for seqno (`event' is the final event number,
-    ** not the call event number), we do a retry if:
-    **
-    **    a) The call sequence number of the current call is greater than
-    **       or equal to seqno, or
-    **    b) The current event number is greater than the final event
-    **       for seqno.
-    **
-    ** Case b) covers the situation where the current event is after the
-    ** final event for seqno and case a) covers the case where the current
-    ** event is greater than or equal to the call event for seqno and less
-    ** than or equal to the final event for seqno.  This means we will do
-    ** a retry if the call event for seqno is equal to the current event
-    ** but that is not a problem since the retry will be a no-op.
-    */
+    // We need to do a retry if the current event is greater than the
+    // call event number corresponding to seqno. Since we don't have the
+    // call event number for seqno (`event' is the final event number,
+    // not the call event number), we do a retry if:
+    //
+    //    a) The call sequence number of the current call is greater than
+    //       or equal to seqno, or
+    //    b) The current event number is greater than the final event
+    //       for seqno.
+    //
+    // Case b) covers the situation where the current event is after the
+    // final event for seqno and case a) covers the case where the current
+    // event is greater than or equal to the call event for seqno and less
+    // than or equal to the final event for seqno. This means we will do
+    // a retry if the call event for seqno is equal to the current event
+    // but that is not a problem since the retry will be a no-op.
+
     if (event_info->MR_call_seqno >= seqno ||
         event_info->MR_event_number > event)
     {
@@ -1838,15 +1748,13 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
         *jumpaddr = NULL;
     }
 
-    /*
-    ** Clear any warnings.
-    */
+    // Clear any warnings.
+
     MR_edt_compiler_flag_warning = MR_FALSE;
 
-    /*
-    ** Start collecting the trace from the desired call, with the
-    ** desired depth bound.
-    */
+    // Start collecting the trace from the desired call, with the
+    // desired depth bound.
+
     MR_edt_last_event = event;
     MR_edt_start_seqno = seqno;
     MR_edt_max_depth = maxdepth;
@@ -1856,17 +1764,15 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     MR_edt_start_time = MR_get_user_cpu_milliseconds();
     MR_edt_first_event = event_info->MR_event_number;
 
-    /*
-    ** The deepest we will build any implicit subtree to will be
-    ** the number of desired nodes divided by two, since the minimum
-    ** number of events at each depth will be 2 (the CALL and EXIT).
-    */
+    // The deepest we will build any implicit subtree to will be
+    // the number of desired nodes divided by two, since the minimum
+    // number of events at each depth will be 2 (the CALL and EXIT).
+
     counter_depth = (MR_edt_desired_nodes_in_subtree / 2) + 1;
     MR_trace_init_implicit_subtree_counters(counter_depth);
 
-    /*
-    ** Single step through every event.
-    */
+    // Single step through every event.
+
     cmd->MR_trace_cmd = MR_CMD_STEP;
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level_specified = MR_TRUE;
@@ -1921,9 +1827,8 @@ MR_decl_diagnosis(MR_TraceNode root, MR_TraceCmdInfo *cmd,
     }
 
     if (MR_trace_decl_debug_debugger_mode) {
-        /*
-        ** This is a quick and dirty way to debug the front end.
-        */
+        // This is a quick and dirty way to debug the front end.
+
         MR_debug_enabled = MR_TRUE;
         MR_update_trace_func_enabled();
         MR_selected_trace_func_ptr = MR_trace_real;
@@ -1965,10 +1870,8 @@ MR_decl_diagnosis(MR_TraceNode root, MR_TraceCmdInfo *cmd,
             (MR_Integer *) &topmost_seqno);
     );
 
-    /*
-    ** Turn off interactive debugging after the diagnosis in case a new
-    ** explicit subtree or supertree needs to be constructed.
-    */
+    // Turn off interactive debugging after the diagnosis in case
+    // a new explicit subtree or supertree needs to be constructed.
 
     MR_debug_enabled = MR_FALSE;
     MR_update_trace_func_enabled();
@@ -1983,20 +1886,17 @@ MR_decl_diagnosis(MR_TraceNode root, MR_TraceCmdInfo *cmd,
     }
 
     if (no_bug_found) {
-        /*
-        ** No bug found.  Return to the procedural debugger at the event
-        ** where the `dd' command was initially given.
-        */
+        // No bug found. Return to the procedural debugger at the event
+        // where the `dd' command was initially given.
 
         return MR_decl_go_to_selected_event(MR_edt_initial_event, cmd,
             event_info);
     }
 
     if (require_subtree) {
-        /*
-        ** The front end requires a subtree to be made explicit.
-        ** Restart the declarative debugger with the appropriate depth limit.
-        */
+        // The front end requires a subtree to be made explicit.
+        // Restart the declarative debugger with the appropriate depth limit.
+
         MR_decl_checkpoint_subtree(final_event, topmost_seqno,
             requested_subtree_depth);
         return MR_trace_restart_decl_debug(call_preceding, final_event,
@@ -2004,9 +1904,8 @@ MR_decl_diagnosis(MR_TraceNode root, MR_TraceCmdInfo *cmd,
     }
 
     if (require_supertree) {
-        /*
-        ** Front end requires a supertree to be made explicit.
-        */
+        // Front end requires a supertree to be made explicit.
+
         MR_decl_checkpoint_supertree(final_event, topmost_seqno,
             MR_edt_default_depth_limit);
         return MR_trace_restart_decl_debug((MR_TraceNode) NULL, final_event,
@@ -2014,7 +1913,7 @@ MR_decl_diagnosis(MR_TraceNode root, MR_TraceCmdInfo *cmd,
             event_info);
     }
 
-    /* We shouldn't ever get here. */
+    // We shouldn't ever get here.
     MR_fatal_error("unknown diagnoser response");
 }
 
@@ -2028,18 +1927,16 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_TraceCmdInfo *cmd,
     int             ancestor_level;
     MR_bool         unsafe_retry;
 
-    /*
-    ** Initialise this to avoid warnings that it might be used uninitialised.
-    */
+    // Initialise this to avoid warnings that it might be used uninitialised.
+
     retry_result = MR_RETRY_OK_DIRECT;
 
-    /*
-    ** We only need to do a retry if the event number we want to be at is
-    ** less than or equal to the current event number (we need to do a
-    ** retry if the event numbers are equal, because MR_trace_real will
-    ** increment the current event number, so the next event displayed by
-    ** mdb will be the current event + 1.
-    */
+    // We only need to do a retry if the event number we want to be at
+    // is less than or equal to the current event number (we need to do a retry
+    // if the event numbers are equal, because MR_trace_real will increment
+    // the current event number, so the next event displayed by mdb
+    // will be the current event + 1.
+
     if (event <= event_info->MR_event_number) {
         ancestor_level = MR_find_first_call_less_eq_seq_or_event(
             MR_FIND_FIRST_CALL_BEFORE_EVENT, event,
@@ -2048,11 +1945,10 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_TraceCmdInfo *cmd,
             MR_saved_curfr(event_info->MR_saved_regs), &problem);
 
         if (ancestor_level >= 0) {
-            /*
-            ** Perform a retry to get to before the given event. Then set
-            ** the command to go to the given event and return to interactive
-            ** mode.
-            */
+            // Perform a retry to get to before the given event. Then set
+            // the command to go to the given event and return to interactive
+            // mode.
+
 #ifdef    MR_DEBUG_RETRY
             MR_print_stack_regs(stdout, event_info->MR_saved_regs);
             MR_print_succip_reg(stdout, event_info->MR_saved_regs);
@@ -2089,11 +1985,10 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_TraceCmdInfo *cmd,
                 NULL);
         }
     } else {
-        /*
-        ** Since the event we want to be at is after the current event
-        ** don't jump anywhere, just do forward execution until we
-        ** get to the right event.
-        */
+        // Since the event we want to be at is after the current event,
+        // don't jump anywhere, just do forward execution until we
+        // get to the right event.
+
         jumpaddr = NULL;
     }
 
@@ -2246,12 +2141,11 @@ MR_trace_calc_implicit_subtree_ideal_depth(void)
         total += events_at_depth;
 
         if (total > MR_edt_desired_nodes_in_subtree) {
-            /*
-            ** Since we have gone over the desired number of nodes,
-            ** the ideal depth is depth - 1.  Note that we want the
-            ** depth limit to be at least one, otherwise we won't
-            ** add any new nodes to the annotated trace.
-            */
+            // Since we have gone over the desired number of nodes,
+            // the ideal depth is depth - 1. Note that we want the depth limit
+            // to be at least one, otherwise we won't add any new nodes
+            // to the annotated trace.
+
             return (depth - 1) < 1 ? 1 : (depth - 1);
         }
 
@@ -2262,17 +2156,14 @@ MR_trace_calc_implicit_subtree_ideal_depth(void)
         depth++;
     }
 
-    /*
-    ** We didn't record the number of events at greater depths, so
-    ** be conservative and return the biggest depth we recorded up to.
-    */
+    // We didn't record the number of events at greater depths, so
+    // be conservative and return the biggest depth we recorded up to.
+
     return (depth - 1) < 1 ? 1 : (depth - 1);
 }
 
-/*
-** NOTE:  This function must be called within a MR_TRACE_CALL_MERCURY
-** wrapper.
-*/
+// NOTE:  This function must be called within a MR_TRACE_CALL_MERCURY
+// wrapper.
 
 static void
 MR_trace_maybe_update_implicit_tree_ideal_depth(MR_Unsigned current_depth,
@@ -2283,16 +2174,15 @@ MR_trace_maybe_update_implicit_tree_ideal_depth(MR_Unsigned current_depth,
         MR_Unsigned    prev_ideal_depth;
 
         ideal_depth = MR_trace_calc_implicit_subtree_ideal_depth();
-        /*
-        ** Use the lowest depth if the ideal depth was set on a previous EXIT.
-        ** XXX In future the implicit subtree information should be
-        ** stored at final events, not CALL events, however this
-        ** goes hand in hand with a change to build pieces of the
-        ** annotated trace only between a REDO and its EXIT, if the
-        ** events between the CALL and the previous EXIT have already
-        ** been materialized (currently the events between the CALL
-        ** and EXIT will be materialized twice in this kind of situation).
-        */
+        // Use the lowest depth if the ideal depth was set on a previous EXIT.
+        // XXX In future the implicit subtree information should be stored
+        // at final events, not CALL events, however this goes hand in hand
+        // with a change to build pieces of the annotated trace
+        // only between a REDO and its EXIT, if the events between
+        // the CALL and the previous EXIT have already been materialized
+        // (currently the events between the CALL and EXIT will be materialized
+        // twice in this kind of situation).
+
         prev_ideal_depth = MR_DD_get_implicit_tree_ideal_depth(call);
         if (prev_ideal_depth == 0 || prev_ideal_depth > ideal_depth) {
             MR_DD_call_node_update_implicit_tree_info(call, ideal_depth);
@@ -2355,14 +2245,12 @@ MR_trace_decl_init_suspicion_table(char *pass_trace_counts_file,
         );
     }
 
-    /*
-    ** We have read in a valid dice, so we can go ahead and set up the
-    ** suspicion table.  We use the execution count table to store the
-    ** suspicions of each label.  This is a good idea because
-    ** (a) it is quick to look up a value in this table given a label, and
-    ** (b) it is not used for counting events during an interactive mdb
-    ** session.
-    */
+    // We have read in a valid dice, so we can go ahead and set up the
+    // suspicion table. We use the execution count table to store the
+    // suspicions of each label. This is a good idea because
+    // (a) it is quick to look up a value in this table given a label, and
+    // (b) it is not used for counting events during an interactive mdb
+    // session.
 
     num_modules = MR_module_info_next;
     for (module_num = 0; module_num < num_modules; module_num++) {
@@ -2381,11 +2269,10 @@ MR_trace_decl_init_suspicion_table(char *pass_trace_counts_file,
                     f_suspicion =
                         MR_MDBCOMP_get_suspicion_for_label_layout(dice, label);
                 );
-                /*
-                ** Instead of using a ratio between 0 and 1 we store an integer
-                ** between 0 and MR_TRACE_DECL_MAX_SUSPICION, since this is
-                ** quicker and requires less storage space.
-                */
+                // Instead of using a ratio between 0 and 1 we store an integer
+                // between 0 and MR_TRACE_DECL_MAX_SUSPICION, since this is
+                // quicker and requires less storage space.
+
                 *table_cell = (MR_Unsigned)
                     ((MR_Float) MR_TRACE_DECL_MAX_SUSPICION * f_suspicion);
             }
@@ -2408,7 +2295,7 @@ MR_trace_show_progress_subtree(MR_Unsigned event_number)
     {
         fprintf(MR_mdb_out, MR_DECL_PROGRESS_MESSAGE_SUBTREE);
         fflush(MR_mdb_out);
-        /* We count the initial progress message as the first tick. */
+        // We count the initial progress message as the first tick.
         MR_edt_progress_last_tick = 1;
     } else if (MR_edt_progress_last_tick > 0) {
         current_tick = (MR_Unsigned) ((
@@ -2429,11 +2316,9 @@ MR_trace_show_progress_subtree(MR_Unsigned event_number)
 void
 MR_trace_show_progress_supertree(MR_Unsigned event_number)
 {
-    /*
-    ** If we are building a supertree we don't know what the final event
-    ** will be, so we just show a tick every MR_DECL_DISPLAY_PROGRESS_DELAY
-    ** milliseconds, so at least the user knows something is happening.
-    */
+    // If we are building a supertree we don't know what the final event
+    // will be, so we just show a tick every MR_DECL_DISPLAY_PROGRESS_DELAY
+    // milliseconds, so at least the user knows something is happening.
 
     if (MR_edt_progress_last_tick == 0 &&
         (MR_edt_start_time + MR_DECL_DISPLAY_PROGRESS_DELAY
@@ -2519,10 +2404,9 @@ MR_decl_print_edt_stats(void)
     MR_edt_stats_total_reexecutions++;
 
     fflush(NULL);
-    /*
-    ** We use stderr instead of MR_mdb_err since ML_report_stats()
-    ** writes to stderr.
-    */
+    // We use stderr instead of MR_mdb_err since ML_report_stats()
+    // writes to stderr.
+
     fprintf(stderr, "EDT construction stats: \n");
     fprintf(stderr, "Total reexecutions so far = %i\n",
         MR_edt_stats_total_reexecutions);
@@ -2537,7 +2421,7 @@ MR_decl_print_edt_stats(void)
         MR_get_user_cpu_milliseconds() / 1000.0);
     pid = getpid();
     sprintf(cmdstr, "ps -p %i -o rss,vsz | tail -1 |"
-    	"awk '{print \"RSS = \" $1 \"\\nVSZ = \" $2}' 1>&2", pid);
+        "awk '{print \"RSS = \" $1 \"\\nVSZ = \" $2}' 1>&2", pid);
     MR_trace_call_system_display_error_on_failure(stderr, cmdstr);
 
     MR_debug_enabled = MR_FALSE;
@@ -2563,4 +2447,4 @@ MR_decl_inc_constructed_nodes(void)
     MR_edt_stats_constructed_nodes_this_time++;
 }
 
-#endif /* MR_DD_PRINT_EDT_STATS */
+#endif // MR_DD_PRINT_EDT_STATS

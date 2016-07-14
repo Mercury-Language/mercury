@@ -1,23 +1,18 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1997, 1999-2001, 2006, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** File: mercury_heap_profile.c.
-** Main authors: zs, fjh, wangp.
-**
-** This module records information about the allocations of cells on the heap.
-**
-** The information recorded by this module is used by code in
-** library/benchmarking.m.
-*/
+// Copyright (C) 1997, 1999-2001, 2006, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-/*---------------------------------------------------------------------------*/
+// File: mercury_heap_profile.c.
+// Main authors: zs, fjh, wangp.
+//
+// This module records information about the allocations of cells on the heap.
+//
+// The information recorded by this module is used by code in
+// library/benchmarking.m.
+
+////////////////////////////////////////////////////////////////////////////
 
 #include "mercury_imp.h"
 
@@ -29,17 +24,15 @@
 #include "mercury_heap_profile.h"
 #include "mercury_runtime_util.h"
 
-/* All fields of these variables are initialized to 0. */
+// All fields of these variables are initialized to 0.
 MR_memprof_counter  MR_memprof_overall;
 MR_memprof_table    MR_memprof_procs;
 MR_memprof_table    MR_memprof_types;
 
-/* Private global variables. */
+// Private global variables.
 static MR_bool      profile_heap = MR_TRUE;
 
-/*
-** Initialize a heap profiling counter.
-*/
+// Initialize a heap profiling counter.
 
 static void
 MR_init_counter(MR_memprof_counter *counter)
@@ -50,10 +43,8 @@ MR_init_counter(MR_memprof_counter *counter)
     MR_zero_dword(counter->words_since_period_start);
 }
 
-/*
-** Increment the fields in a heap profiling counter to record the allocation
-** of a single cell of `size' words.
-*/
+// Increment the fields in a heap profiling counter to record the allocation
+// of a single cell of `size' words.
 
 static void
 MR_increment_counter(MR_memprof_counter *counter, int size)
@@ -62,11 +53,9 @@ MR_increment_counter(MR_memprof_counter *counter, int size)
     MR_increment_dword(counter->words_since_period_start, size);
 }
 
-/*
-** Search the specified `table' to find the entry for the given `name'
-** allocating one if there isn't one already, and then increment
-** the counters for that entry for an allocation of the specified `size'.
-*/
+// Search the specified `table' to find the entry for the given `name'
+// allocating one if there isn't one already, and then increment
+// the counters for that entry for an allocation of the specified `size'.
 
 static void
 MR_increment_table_entry(MR_memprof_table *table,
@@ -77,17 +66,15 @@ MR_increment_table_entry(MR_memprof_table *table,
     MR_memprof_record   **node_addr;
     MR_memprof_record   *node;
 
-    /*
-    ** Search the tree either by procedure address or by type name.
-    */
+    // Search the tree either by procedure address or by type name.
+
     found = MR_FALSE;
     node_addr = &table->root;
     if (proc != NULL) {
         while ((node = *node_addr) != NULL) {
-            /*
-            ** The casts to MR_Integer are so that we work with C compilers
-            ** that do not support arithmetic with void pointers.
-            */
+            // The casts to MR_Integer are so that we work with C compilers
+            // that do not support arithmetic with void pointers.
+
             diff = (MR_Integer)proc - (MR_Integer)node->proc;
             if (diff < 0) {
                 node_addr = &node->left;
@@ -112,19 +99,17 @@ MR_increment_table_entry(MR_memprof_table *table,
         }
     }
 
-    /*
-    ** If the tree didn't already contain a node with this procedure address or
-    ** type name, create a new node for it.
-    */
+    // If the tree didn't already contain a node with this procedure address or
+    // type name, create a new node for it.
+
     if (!found) {
         node = MR_PROF_NEW(MR_memprof_record);
-        /*
-        ** We need to make a fresh copy of the name, rather than just copying
-        ** the pointer, because our caller may deallocate its copy of the name.
-        ** Normally the name will be a string literal, but even then it might
-        ** be a string literal from a dlopen()'ed module which will later
-        ** get dlclose()'d.
-        */
+        // We need to make a fresh copy of the name, rather than just copying
+        // the pointer, because our caller may deallocate its copy of the name.
+        // Normally the name will be a string literal, but even then it might
+        // be a string literal from a dlopen()'ed module which will later
+        // get dlclose()'d.
+
         if (type_name != NULL) {
             size_t len = strlen(type_name);
             char *copy_of_name = MR_PROF_NEW_ARRAY(char, len + 1);
@@ -143,14 +128,12 @@ MR_increment_table_entry(MR_memprof_table *table,
         table->num_entries++;
     }
 
-    /* Now record the counts in this node. */
+    // Now record the counts in this node.
     MR_increment_counter(&node->counter, size);
 }
 
-/*
-** Record heap profiling information for an allocation of size `size'
-** in procedure `proc' for an object of type `type'.
-*/
+// Record heap profiling information for an allocation of size `size'
+// in procedure `proc' for an object of type `type'.
 
 void
 MR_record_allocation(int size, const MR_AllocSiteInfoPtr alloc_id,
@@ -160,11 +143,10 @@ MR_record_allocation(int size, const MR_AllocSiteInfoPtr alloc_id,
         return;
     }
 
-    /*
-    ** Increment the overall totals,
-    ** record the allocation in the per-procedure table, and
-    ** record the allocation in the per-type table.
-    */
+    // Increment the overall totals,
+    // record the allocation in the per-procedure table, and
+    // record the allocation in the per-type table.
+
     MR_increment_counter(&MR_memprof_overall, size);
     MR_increment_table_entry(&MR_memprof_procs, alloc_id->MR_asi_proc, NULL,
         size);
@@ -189,35 +171,32 @@ MR_prof_turn_off_heap_profiling(void)
     profile_heap = MR_FALSE;
 }
 
-/*---------------------------------------------------------------------------*/
-/*
-** Memory attribution profiling
-**
-** Memory attribution profiling actually bears no particular relationship to
-** regular memory profiling, but in the interests of reducing the number of
-** grades both are lumped under the `--memory-profiling' option.
-**
-** For every memory cell, we allocate an extra memory word at the front of the
-** object which points to an MR_AllocSiteInfo structure, indicating the
-** procedure which allocated the cell, its type, and its true (desired) size.
-** We call that the "attribution".
-**
-** When `benchmarking.report_memory_attribution' is called we force a GC.
-** Using hooks inserted into Boehm GC, a function is called for every live
-** memory object on the heap.  During that callback we increment the counters
-** in a hash table (for attributed objects), or counters in a binary tree (for
-** unattributed objects, or Mercury runtime objects that we don't care to
-** distinguish).
-*/
+////////////////////////////////////////////////////////////////////////////
+// Memory attribution profiling.
+//
+// Memory attribution profiling actually bears no particular relationship to
+// regular memory profiling, but in the interests of reducing the number of
+// grades both are lumped under the `--memory-profiling' option.
+//
+// For every memory cell, we allocate an extra memory word at the front of the
+// object which points to an MR_AllocSiteInfo structure, indicating the
+// procedure which allocated the cell, its type, and its true (desired) size.
+// We call that the "attribution".
+//
+// When `benchmarking.report_memory_attribution' is called, we force a GC.
+// Using hooks inserted into Boehm GC, a function is called for every live
+// memory object on the heap. During that callback, we increment the counters
+// in a hash table (for attributed objects), or counters in a binary tree (for
+// unattributed objects, or Mercury runtime objects that we don't care to
+// distinguish).
 
 #ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
 
 typedef struct MR_AttribCount_Struct    MR_AttribCount;
 typedef struct MR_VarSizeCount_Struct   MR_VarSizeCount;
 
-/*
-** Counts for attributed objects.
-*/
+// Counts for attributed objects.
+
 struct MR_AttribCount_Struct {
     unsigned                MR_atc_id;
     MR_AllocSiteInfo const  *MR_atc_alloc_site;
@@ -225,11 +204,10 @@ struct MR_AttribCount_Struct {
     size_t                  MR_atc_num_words;
 };
 
-/*
-** Objects which are unattributed, or explicitly attributed as runtime
-** structures, may come in many different sizes.  We store the counters for
-** each different size as a separate node in a binary search tree.
-*/
+// Objects which are unattributed, or explicitly attributed as runtime
+// structures, may come in many different sizes. We store the counters for
+// each different size as a separate node in a binary search tree.
+
 struct MR_VarSizeCount_Struct {
     size_t              MR_vsc_size;
     size_t              MR_vsc_count;
@@ -238,7 +216,7 @@ struct MR_VarSizeCount_Struct {
 };
 
 #define SNAPSHOTS_FILENAME              "Prof.Snapshots"
-#define KNOWN_COUNT_TABLE_INITIAL_SIZE  (1 << 8)    /* power of two */
+#define KNOWN_COUNT_TABLE_INITIAL_SIZE  (1 << 8)    // power of two
 
 static MR_AttribCount   *attrib_count_table;
 static size_t           attrib_count_table_size;
@@ -267,7 +245,7 @@ static const char *maybe_filename(const char *s);
 #define MR_NUM_BUILTIN_ALLOC_SITES  7
 
 MR_AllocSiteInfo MR_builtin_alloc_sites[MR_NUM_BUILTIN_ALLOC_SITES] = {
-    /* These must match the macros in mercury_memory.h. */
+    // These must match the macros in mercury_memory.h.
     { NULL, "runtime", 0, "<runtime structs>",  0 },
     { NULL, "unknown", 0, "float.float/0",      MR_FLOAT_WORDS },
     { NULL, "unknown", 0, "string.string/0",    0 },
@@ -285,7 +263,7 @@ MR_register_alloc_sites(const MR_AllocSiteInfo *alloc_sites, int size)
     int         i;
 
     if (attrib_count_table == NULL) {
-        /* We must not use GC allocation here. */
+        // We must not use GC allocation here.
         attrib_count_table_size = KNOWN_COUNT_TABLE_INITIAL_SIZE;
         bytes = attrib_count_table_size * sizeof(MR_AttribCount);
         attrib_count_table = MR_malloc(bytes);
@@ -296,7 +274,7 @@ MR_register_alloc_sites(const MR_AllocSiteInfo *alloc_sites, int size)
     }
 
     for (i = 0; i < size; i++) {
-        /* Enlarge the hash table if necessary. */
+        // Enlarge the hash table if necessary.
         if (attrib_count_table_size > 0 &&
             2 * attrib_count_table_used >= attrib_count_table_size)
         {
@@ -361,12 +339,12 @@ rehash_attrib_count_table(void)
     assert(attrib_count_table_used == new_used);
 }
 
-/* http://www.concentric.net/~ttwang/tech/inthash.htm */
+// http://www.concentric.net/~ttwang/tech/inthash.htm
 static unsigned
 hash_addr(MR_Word key)
 {
     if (sizeof(MR_Word) == 4) {
-        unsigned c2 = 0x27d4eb2d; /* a prime or an odd constant */
+        unsigned c2 = 0x27d4eb2d; // a prime or an odd constant
         key = (key ^ 61) ^ (key >> 16);
         key = key + (key << 3);
         key = key ^ (key >> 4);
@@ -396,7 +374,7 @@ MR_report_memory_attribution(const char *label)
     snapshot_label = label;
 
   #ifndef MR_HIGHLEVEL_CODE
-    /* Clear out the stacks and registers before garbage collecting. */
+    // Clear out the stacks and registers before garbage collecting.
     MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp + 1);
     MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_nondetstack_zone),
         MR_maxfr + 1);
@@ -469,7 +447,7 @@ increment_var_size_count(MR_VarSizeCount **node, size_t words)
         }
     }
 
-    /* We must not use GC allocation here. */
+    // We must not use GC allocation here.
     *node = MR_NEW(MR_VarSizeCount);
     (*node)->MR_vsc_size = words;
     (*node)->MR_vsc_count = 1;
@@ -576,6 +554,6 @@ maybe_filename(const char *s)
     }
 }
 
-#endif  /* MR_MPROF_PROFILE_MEMORY_ATTRIBUTION */
+#endif  // MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////

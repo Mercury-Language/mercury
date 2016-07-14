@@ -1,16 +1,12 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2004, 2006-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
-/*
-** The code in this file implements several functions in mercury_tabling.h.
-** It is intended to be used only in that file, in the environment of the
-** macros defined in that file.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 2004, 2006-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// The code in this file implements several functions in mercury_tabling.h.
+// It is intended to be used only in that file, in the environment of the
+// macros defined in that file.
 
     MR_HashTable        *table;
     MR_HashTableSlotPtr *hash_table;
@@ -21,19 +17,19 @@
 
     debug_key_msg(key, key_format, key_cast);
 
-    /* Deref the table pointer. */
+    // Deref the table pointer.
     table = t->MR_hash_table;
-    /* Has the table been built? */
+    // Has the table been built?
     if (table == NULL) {
         MR_table_record_hash_table_alloc_count(sizeof(MR_HashTable) +
             (HASH_TABLE_START_SIZE * sizeof(MR_HashTableSlotPtr)));
         MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,
             table_field, HASH_TABLE_START_SIZE);
-        /* Deref the table pointer. */
+        // Deref the table pointer.
         table = t->MR_hash_table;
     }
 
-    /* Rehash the table if it has grown too full. */
+    // Rehash the table if it has grown too full.
     if (table->value_count > table->threshold) {
         MR_HashTableSlotPtr     *old_hash_table;
         MR_HashTableSlotPtr     *new_hash_table;
@@ -88,7 +84,7 @@
 
     home = abs_hash % table->size;
 
-    /* Find the element if it is present. */
+    // Find the element if it is present.
     hash_table = table->hash_table;
     slot = hash_table[home].table_field;
     while (slot != NULL) {
@@ -104,12 +100,12 @@
         slot = slot->next;
     }
 
-    /* Check whether we are allowed to add the element. */
+    // Check whether we are allowed to add the element.
     if (lookup_only) {
         return NULL;
     }
 
-    /* Add the element. */
+    // Add the element.
     debug_insert_msg(home);
     MR_table_record_hash_not_dupl_count();
 

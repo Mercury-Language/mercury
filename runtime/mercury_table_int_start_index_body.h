@@ -1,16 +1,11 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2006-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This files defines the bodies of the variants of the
-** MR_int_start_index_lookup_or_add() function.
-*/
+// Copyright (C) 2006-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This files defines the bodies of the variants of the
+// MR_int_start_index_lookup_or_add() function.
 
     MR_Integer      diff, size;
 

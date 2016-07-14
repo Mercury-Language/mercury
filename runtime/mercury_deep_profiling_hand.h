@@ -1,16 +1,11 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001, 2004, 2006-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_deep_profiling_hand.h -- definitions for deep profiling
-** for use in hand-written procedures.
-*/
+// Copyright (C) 2001, 2004, 2006-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_deep_profiling_hand.h -- definitions for deep profiling
+// for use in hand-written procedures.
 
 #ifndef MERCURY_DEEP_PROFILING_HAND_H
 #define MERCURY_DEEP_PROFILING_HAND_H
@@ -18,7 +13,7 @@
 #include "mercury_std.h"
 #include "mercury_deep_profiling.h"
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_proc_static_user_name(module, name, arity, mode)             \
     MR_PASTE8(mercury_data__proc_static__,                              \
@@ -34,7 +29,7 @@
     MR_PASTE10(mercury_data__proc_static_call_sites__mercury__,         \
         name, _, module, __, type, _, arity, _, mode)
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_USE_ACTIVATION_COUNTS
   #define   MR_maybe_activation_count_field     0,
@@ -97,7 +92,7 @@
         MR_call_sites_uci_name(module, name, type, arity, mode),        \
         file, line, interface)
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_call_sites_uci_one_normal(module, name, type, arity, mode,   \
         cmodule, cname, carity, cmode, line)                            \
@@ -115,7 +110,7 @@
         NULL, "", line, "" }                                            \
     }
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_deep_det_call_ac(proclabel, procstatic, first_slot, label)   \
     MR_r1 = (MR_Word) (MR_Word *) &procstatic;                          \
@@ -137,7 +132,7 @@
     MR_define_label(label);                                             \
     MR_update_prof_current_proc(MR_LABEL(proclabel))
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_deep_det_call_sr(proclabel, procstatic, first_slot, label)   \
     MR_r1 = (MR_Word) (MR_Word *) &procstatic;                          \
@@ -161,7 +156,7 @@
     MR_define_label(label);                                             \
     MR_update_prof_current_proc(MR_LABEL(proclabel))
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_deep_semi_call_ac(proclabel, procstatic, first_slot, label)  \
     MR_r1 = (MR_Word) (MR_Word *) &procstatic;                          \
@@ -192,7 +187,7 @@
     MR_define_label(label);                                             \
     MR_update_prof_current_proc(MR_LABEL(proclabel))
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_deep_semi_call_sr(proclabel, procstatic, first_slot, label)  \
     MR_r1 = (MR_Word) (MR_Word *) &procstatic;                          \
@@ -226,7 +221,7 @@
     MR_define_label(label);                                             \
     MR_update_prof_current_proc(MR_LABEL(proclabel))
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_deep_non_call_ac(proclabel, procstatic, first_slot, label)   \
     MR_r1 = (MR_Word) (MR_Word *) &procstatic;                          \
@@ -267,7 +262,7 @@
     MR_define_label(label);                                             \
     MR_update_prof_current_proc(MR_LABEL(proclabel))
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_deep_non_call_sr(proclabel, procstatic, first_slot, label)   \
     MR_r1 = (MR_Word) (MR_Word *) &procstatic;                          \
@@ -311,7 +306,7 @@
     MR_define_label(label);                                             \
     MR_update_prof_current_proc(MR_LABEL(proclabel))
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_USE_ACTIVATION_COUNTS
   #define   MR_deep_det_call(proclabel, proclayout, first_slot, label)  \
@@ -357,14 +352,12 @@
         MR_deep_non_fail_sr(proclabel, first_slot, label)
 #endif
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** MR_deep_prepare_normal_call and MR_deep_prepare_ho_call are for use
-** only from procedures that live on the det stack. For procedures that live
-** on the nondet stack, you will need variants that get MiddleCSD from the
-** appropriate framevar.
-*/
+// MR_deep_prepare_normal_call and MR_deep_prepare_ho_call are for use
+// only from procedures that live on the det stack. For procedures that live
+// on the nondet stack, you will need variants that get MiddleCSD from the
+// appropriate framevar.
 
 #define MR_deep_prepare_normal_call(proclabel, first_slot, label, site) \
     MR_r1 = site;                                                       \
@@ -383,4 +376,4 @@
     MR_define_label(label);                                                  \
     MR_update_prof_current_proc(MR_LABEL(proclabel))
 
-#endif  /* MERCURY_DEEP_PROFILING_HAND_H */
+#endif  // MERCURY_DEEP_PROFILING_HAND_H

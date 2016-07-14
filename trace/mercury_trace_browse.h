@@ -1,33 +1,26 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_trace_browse.h
-**
-** Defines the interface of the term browser and the interactive query
-** facility for the internal and external debuggers.
-*/
+// Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_trace_browse.h
+//
+// Defines the interface of the term browser and the interactive query
+// facility for the internal and external debuggers.
 
 #ifndef MERCURY_TRACE_BROWSE_H
 #define MERCURY_TRACE_BROWSE_H
 
-#include "mercury_conf.h"   /* for MR_USE_EXTERNAL_DEBUGGER */
-#include "mercury_types.h"  /* for MR_Word, MR_String       */
-#include "mercury_std.h"    /* for MR_bool                  */
-#include "mercury_tags.h"   /* for MR_DEFINE_MERCURY_ENUM_CONST */
+#include "mercury_conf.h"   // for MR_USE_EXTERNAL_DEBUGGER
+#include "mercury_types.h"  // for MR_Word, MR_String
+#include "mercury_std.h"    // for MR_bool
+#include "mercury_tags.h"   // for MR_DEFINE_MERCURY_ENUM_CONST
 
-#include <stdio.h>          /* for FILE */
+#include <stdio.h>          // for FILE
 
-/*
-** Convert a term (expressed either as a typeinfo/value pair or as a univ)
-** or a synthetic term to a browser term.
-*/
+// Convert a term (expressed either as a typeinfo/value pair or as a univ)
+// or a synthetic term to a browser term.
 
 extern  MR_Word     MR_type_value_to_browser_term(MR_TypeInfo type_info,
                         MR_Word value);
@@ -35,21 +28,17 @@ extern  MR_Word     MR_univ_to_browser_term(MR_Word univ);
 extern  MR_Word     MR_synthetic_to_browser_term(const char *functor,
                         MR_Word arg_list, MR_bool is_func);
 
-/*
-** Save the given browser term to the named file.
-*/
+// Save the given browser term to the named file.
 
 extern  void        MR_trace_save_term(const char *filename,
                         MR_Word browser_term);
 extern  void        MR_trace_save_term_xml(const char *filename,
                         MR_Word browser_term);
 
-/*
-** The constants defined by the following enums must correspond with the
-** values in the representation of browse_caller_type and portray_format in
-** browser/browser_info.m, so that it is possible to cast to/from MR_Word
-** in order to interface with Mercury code.
-*/
+// The constants defined by the following enums must correspond with the
+// values in the representation of browse_caller_type and portray_format in
+// browser/browser_info.m, so that it is possible to cast to/from MR_Word
+// in order to interface with Mercury code.
 
 typedef enum {
     MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_CALLER_PRINT),
@@ -64,23 +53,17 @@ typedef enum {
     MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_FORMAT_PRETTY)
 } MR_BrowseFormat;
 
-/*
-** This value must be different from any of the MR_BROWSE_FORMAT_* values.
-*/
+// This value must be different from any of the MR_BROWSE_FORMAT_* values.
 
 #define MR_BROWSE_DEFAULT_FORMAT    -1
 
-/*
-** If *str represents a value of type MR_BrowseFormat, set *format to that
-** value.
-*/
+// If *str represents a value of type MR_BrowseFormat, set *format to that
+// value.
 
 extern  MR_bool     MR_trace_is_portray_format(const char *str,
                         MR_BrowseFormat *format);
 
-/*
-** Interactively browse a term.
-*/
+// Interactively browse a term.
 
 extern  void        MR_trace_browse(MR_Word type_info, MR_Word value,
                         MR_BrowseFormat format);
@@ -91,15 +74,11 @@ extern  void        MR_trace_browse_external(MR_Word type_info, MR_Word value,
                         MR_BrowseCallerType caller, MR_BrowseFormat format);
 #endif
 
-/*
-** Browse a term using an XML browser.
-*/
+// Browse a term using an XML browser.
 
 extern  void        MR_trace_save_and_invoke_xml_browser(MR_Word browser_term);
 
-/*
-** Display a term non-interactively.
-*/
+// Display a term non-interactively.
 
 extern  void        MR_trace_print(MR_Word type_info, MR_Word value,
                         MR_BrowseCallerType caller, MR_BrowseFormat format);
@@ -107,26 +86,19 @@ extern  void        MR_trace_print_goal(MR_ConstString name, MR_Word arg_list,
                         MR_Word is_func, MR_BrowseCallerType caller,
                         MR_BrowseFormat format);
 
-
-/*
-** Print all the browser parameters. If mdb_command_format is true, print them
-** in the form of the mdb commands required to recreate this state; otherwise,
-** print them in a user-friendly form.
-*/
+// Print all the browser parameters. If mdb_command_format is true, print them
+// in the form of the mdb commands required to recreate this state; otherwise,
+// print them in a user-friendly form.
 
 extern  void        MR_trace_print_all_browser_params(FILE *fp,
                         MR_bool mdb_command_format);
 
-/*
-** Invoke an interactive query.
-*/
+// Invoke an interactive query.
 
-/*
-** The constants defined by the following enum must correspond with the
-** values in the representation of query_type in browser/interactive.m, so
-** that it is possible to cast to/from MR_Word in order to interface with
-** Mercury code.
-*/
+// The constants defined by the following enum must correspond with the
+// values in the representation of query_type in browser/interactive.m, so
+// that it is possible to cast to/from MR_Word in order to interface with
+// Mercury code.
 
 typedef enum {
     MR_DEFINE_MERCURY_ENUM_CONST(MR_NORMAL_QUERY),
@@ -143,19 +115,15 @@ extern  void        MR_trace_query_external(MR_QueryType type,
                         MR_Word imports_list);
 #endif
 
-/*
-** Points to the state of the interactive term browser that should persist
-** between browsing sessions, like the format settings.
-*/
+// Points to the state of the interactive term browser that should persist
+// between browsing sessions, like the format settings.
 
 extern  MR_Word     MR_trace_browser_persistent_state;
 extern  MR_TypeInfo MR_trace_browser_persistent_state_type;
 
-/*
-** Initializes the interactive term browser persistent state or does nothing
-** if it's already been initialized.
-*/
+// Initializes the interactive term browser persistent state, or does nothing
+// if it has already been initialized.
 
 extern  void        MR_trace_browse_ensure_init(void);
 
-#endif  /* MERCURY_TRACE_BROWSE_H */
+#endif  // MERCURY_TRACE_BROWSE_H

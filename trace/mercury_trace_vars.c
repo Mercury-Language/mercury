@@ -1,19 +1,14 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1999-2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file contains the code for managing information about the
-** variables of the program being debugged for both the internal
-** and external debuggers.
-**
-** Main author: Zoltan Somogyi.
-*/
+// Copyright (C) 1999-2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file contains the code for managing information about the
+// variables of the program being debugged for both the internal
+// and external debuggers.
+//
+// Main author: Zoltan Somogyi.
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
@@ -34,50 +29,48 @@
 #include <string.h>
 #include <ctype.h>
 
-/*
-** MR_ValueDetails structures contain all the debugger's information about
-** a value.
-**
-** A value can be the value of an attribute or the value of a program variable.
-** The value_kind field says which kind of value this is (and therefore which
-** alternative of the value_details union is valid), while the value_value
-** and value_type fields contain the value itself and the typeinfo describing
-** its type.
-**
-** For program variables' values, the fullname field obviously contains
-** the variable's full name. If this name ends with a sequence of digits,
-** then the basename field will contain the name of the variable minus
-** those digits, the num_suffix field will contain the numeric value of
-** this sequence of digits, and the has_suffix field will be set to true.
-** If the full name does not end with a sequence of digits, then the basename
-** field will contain the same string as the fullname field, and the has_suffix
-** field will be set to false (the num_suffix field will not contain anything
-** meaningful).
-**
-** If the variable is an argument (but not a type-info argument), the
-** is_headvar field is set to the argument number (starting at 1).
-** If the variable is not an argument, the is_headvar field will be 0.
-** This field is used to list the head variables in order before the
-** body variables.
-**
-** The is_ambiguous field will be set iff the full name of the variable
-** does not uniquely identify it among all the variables live at the
-** current point. What *is* guaranteed to uniquely identify a variable
-** is its HLDS number, which will be in the hlds_number field.
-** (Note that the HLDS numbers identifying variables to the debugger
-** are not the same as the numbers identifying those variables in the compiler;
-** variable numbers occurring in the RTTI are renumbered to be a dense set,
-** whereas the original variable numbers are not guaranteed to be dense.)
-**
-** For attribute values, the num field gives the position of this attribute
-** in the attribute list (the first attribute is attribute #0). The name
-** field gives the attribute's name. For non-synthesized attributes, the
-** var_hlds_number field gives the HLDS number of the variable whose value
-** gives the attribute value, and the synth_attr field will be NULL.
-** For synthesized attributes, the var_hlds_number field will contain zero,
-** and the synth_attr field will point to the description of the call that
-** synthesizes the attribute's value.
-*/
+// MR_ValueDetails structures contain all the debugger's information about
+// a value.
+//
+// A value can be the value of an attribute or the value of a program variable.
+// The value_kind field says which kind of value this is (and therefore which
+// alternative of the value_details union is valid), while the value_value
+// and value_type fields contain the value itself and the typeinfo describing
+// its type.
+//
+// For program variables' values, the fullname field obviously contains
+// the variable's full name. If this name ends with a sequence of digits,
+// then the basename field will contain the name of the variable minus
+// those digits, the num_suffix field will contain the numeric value of
+// this sequence of digits, and the has_suffix field will be set to true.
+// If the full name does not end with a sequence of digits, then the basename
+// field will contain the same string as the fullname field, and the has_suffix
+// field will be set to false (the num_suffix field will not contain anything
+// meaningful).
+//
+// If the variable is an argument (but not a type-info argument), the
+// is_headvar field is set to the argument number (starting at 1).
+// If the variable is not an argument, the is_headvar field will be 0.
+// This field is used to list the head variables in order before the
+// body variables.
+//
+// The is_ambiguous field will be set iff the full name of the variable
+// does not uniquely identify it among all the variables live at the
+// current point. What *is* guaranteed to uniquely identify a variable
+// is its HLDS number, which will be in the hlds_number field.
+// (Note that the HLDS numbers identifying variables to the debugger
+// are not the same as the numbers identifying those variables in the compiler;
+// variable numbers occurring in the RTTI are renumbered to be a dense set,
+// whereas the original variable numbers are not guaranteed to be dense.)
+//
+// For attribute values, the num field gives the position of this attribute
+// in the attribute list (the first attribute is attribute #0). The name
+// field gives the attribute's name. For non-synthesized attributes, the
+// var_hlds_number field gives the HLDS number of the variable whose value
+// gives the attribute value, and the synth_attr field will be NULL.
+// For synthesized attributes, the var_hlds_number field will contain zero,
+// and the synth_attr field will point to the description of the call that
+// synthesizes the attribute's value.
 
 typedef struct {
     char                *MR_var_fullname;
@@ -103,7 +96,7 @@ typedef union {
 } MR_KindDetails;
 
 typedef enum {
-    /* Some of the code below depends on attributes coming before variables. */
+    // Some of the code below depends on attributes coming before variables.
     MR_VALUE_ATTRIBUTE,
     MR_VALUE_PROG_VAR
 } MR_ValueKind;
@@ -118,39 +111,37 @@ typedef struct {
 #define MR_value_var    MR_value_details.MR_details_var
 #define MR_value_attr   MR_value_details.MR_details_attr
 
-/*
-** This structure contains all of the debugger's information about
-** all the variables that are live at the current program point,
-** where a program point is defined as the combination of a debugger
-** event and an ancestor level.
-**
-** The top_layout, top_saved_regs and top_port fields together describe the
-** abstract machine state at the current debugger event. The problem field
-** points to a string containing an error message describing why the debugger
-** can't print any variables at the current point. It will of course be
-** NULL if the debugger can do so, which requires not only that the
-** debugger have all the information it needs about the current point.
-** Since the debugger doesn't allow the setting of the ancestor level
-** to a given value if the selected point is missing any of the required
-** information, the problem field can only be non-NULL if the ancestor
-** level is zero (i.e. the point at the event itself is already missing
-** some required info).
-**
-** The level_entry field contains the proc layout structure of the
-** procedure at the selected ancestor level, and the level_base_sp and
-** level_base_curfr fields contain the values appropriate for addressing
-** the stack frame of the selected invocation of this procedure. This
-** information is useful in looking up e.g. the call number of this invocation.
-**
-** The var_count field says how many variables are live at the current
-** point. This many of the elements of the vars array are valid.
-** The number of elements of the vars array for which space has been
-** reserved is held in var_max.
-**
-** The attr_var_max field gives the hlds number of the highest numbered
-** variable that is also an attribute of an user defined event. If there are
-** no such attributes, attr_var_max will be negative.
-*/
+// This structure contains all of the debugger's information about
+// all the variables that are live at the current program point,
+// where a program point is defined as the combination of a debugger
+// event and an ancestor level.
+//
+// The top_layout, top_saved_regs and top_port fields together describe the
+// abstract machine state at the current debugger event. The problem field
+// points to a string containing an error message describing why the debugger
+// can't print any variables at the current point. It will of course be
+// NULL if the debugger can do so, which requires not only that the
+// debugger have all the information it needs about the current point.
+// Since the debugger doesn't allow the setting of the ancestor level
+// to a given value if the selected point is missing any of the required
+// information, the problem field can only be non-NULL if the ancestor
+// level is zero (i.e. the point at the event itself is already missing
+// some required info).
+//
+// The level_entry field contains the proc layout structure of the
+// procedure at the selected ancestor level, and the level_base_sp and
+// level_base_curfr fields contain the values appropriate for addressing
+// the stack frame of the selected invocation of this procedure. This
+// information is useful in looking up e.g. the call number of this invocation.
+//
+// The var_count field says how many variables are live at the current
+// point. This many of the elements of the vars array are valid.
+// The number of elements of the vars array for which space has been
+// reserved is held in var_max.
+//
+// The attr_var_max field gives the hlds number of the highest numbered
+// variable that is also an attribute of an user defined event. If there are
+// no such attributes, attr_var_max will be negative.
 
 typedef struct {
     const MR_LabelLayout    *MR_point_top_layout;
@@ -210,11 +201,9 @@ static  const char      *MR_trace_valid_var_number(int var_number);
 
 static  MR_Point        MR_point;
 
-/*
-** These extern declarations are necessary because the modules defining
-** these structures (some which are in Mercury and some of which are in C)
-** do not export them. The types are a lie, but a safe lie.
-*/
+// These extern declarations are necessary because the modules defining
+// these structures (some which are in Mercury and some of which are in C)
+// do not export them. The types are a lie, but a safe lie.
 
 MR_declare_entry(mercury__do_call_closure_compact);
 
@@ -258,16 +247,16 @@ extern const struct MR_TypeCtorInfo_Struct
 static  MR_TypeCtorInfo
 MR_trace_always_ignored_type_ctors[] =
 {
-    /* we ignore these until the browser can handle their varying arity, */
-    /* or their definitions are updated. XXX */
+    // We ignore these until the browser can handle their varying arity,
+    // or their definitions are updated. XXX
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 0),
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 0),
 
-    /* we ignore these because they should never be needed */
+    // We ignore these because they should never be needed.
     &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),
 
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_NATIVE_GC)
-    /* we ignore these because they are not interesting */
+    // We ignore these because they are not interesting.
     &MR_TYPE_CTOR_INFO_NAME(builtin, succip, 0),
     &MR_TYPE_CTOR_INFO_NAME(builtin, hp, 0),
     &MR_TYPE_CTOR_INFO_NAME(builtin, curfr, 0),
@@ -275,20 +264,19 @@ MR_trace_always_ignored_type_ctors[] =
     &MR_TYPE_CTOR_INFO_NAME(builtin, redoip, 0),
     &MR_TYPE_CTOR_INFO_NAME(builtin, redofr, 0),
 #endif
-    /* dummy member */
+    // Dummy member.
     NULL
 };
 
 static  MR_TypeCtorInfo
 MR_trace_maybe_ignored_type_ctors[] =
 {
-    /*
-    ** We can print values of these types (after a fashion),
-    ** but users are usually not interested in their values.
-    */
+    // We can print values of these types (after a fashion),
+    // but users are usually not interested in their values.
+
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 0),
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 0),
-    /* dummy member */
+    // dummy member
     NULL
 };
 
@@ -431,11 +419,9 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         linenumber = 0;
     }
 
-    /*
-    ** After this point, we cannot find any more problems that would prevent us
-    ** from assembling an accurate picture of the set of live variables
-    ** at the given level, so we are free to modify the MR_point structure.
-    */
+    // After this point, we cannot find any more problems that would prevent us
+    // from assembling an accurate picture of the set of live variables
+    // at the given level, so we are free to modify the MR_point structure.
 
     MR_point.MR_point_problem = NULL;
     MR_point.MR_point_level = ancestor_level;
@@ -448,14 +434,12 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
     if (MR_has_valid_var_info(level_layout)) {
         var_count = MR_all_desc_var_count(level_layout);
     } else {
-        /*
-        ** If the count of variables is negative, then the rest of the
-        ** information about the set of live variables (e.g. the type
-        ** parameter array pointer) is not present. Continuing would
-        ** therefore lead to a core dump.
-        **
-        ** Instead, we set up the remaining meaningful fields of MR_point.
-        */
+        // If the count of variables is negative, then the rest of the
+        // information about the set of live variables (e.g. the type
+        // parameter array pointer) is not present. Continuing would
+        // therefore lead to a core dump.
+        //
+        // Instead, we set up the remaining meaningful fields of MR_point.
 
         MR_point.MR_point_var_count = 0;
         return NULL;
@@ -495,10 +479,8 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
 
     for (slot = 0; slot < MR_point.MR_point_var_count; slot++) {
         switch (MR_point.MR_point_vars[slot].MR_value_kind) {
-            /*
-            ** Free the memory allocated by invocations of MR_copy_string
-            ** in the previous call to this function.
-            */
+            // Free the memory allocated by invocations of MR_copy_string
+            // in the previous call to this function.
 
             case MR_VALUE_PROG_VAR:
                 MR_free(MR_point.MR_point_vars[slot].MR_value_var.
@@ -526,12 +508,11 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
             if (user_spec->MR_ues_synth_attrs != NULL
                 && user_spec->MR_ues_synth_attrs[i].MR_sa_func_attr >= 0)
             {
-                /*
-                ** This is a synthesized attribute; we can't look up its value.
-                ** Fill in a dummy as the value, but fill in all other fields
-                ** for real. The value field will be filled in after we know
-                ** the values of all non-synthesized attributes.
-                */
+                // This is a synthesized attribute; we can't look up its value.
+                // Fill in a dummy as the value, but fill in all other fields
+                // for real. The value field will be filled in after we know
+                // the values of all non-synthesized attributes.
+
                 num_synth_attr++;
                 value = 0;
                 synth_attr = &user_spec->MR_ues_synth_attrs[i];
@@ -579,7 +560,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         }
 
         if (num_synth_attr > 0) {
-            /* Sanity check. */
+            // Sanity check.
             if (user_spec->MR_ues_synth_attr_order == NULL) {
                 MR_fatal_error("no order for synthesized attributes");
             }
@@ -606,10 +587,8 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
                     MR_virtual_reg_value(2));
 #endif
                 for (arg = 0; arg < synth_attr->MR_sa_num_arg_attrs; arg++) {
-                    /*
-                    ** Argument numbers start at zero, but register numbers
-                    ** start at one. The first argument (arg 0) goes into r3.
-                    */
+                    // Argument numbers start at zero, but register numbers
+                    // start at one. The first argument (arg 0) goes into r3.
 
                     MR_virtual_reg_assign(arg + 3,
                         MR_slot_value(synth_attr->MR_sa_arg_attrs[arg]));
@@ -631,9 +610,8 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
                 if (engine_result == NULL) {
                     MR_point.MR_point_vars[synth_slot].MR_value_value = MR_r1;
                 } else {
-                    /*
-                    ** Replace the value with the univ thrown by the exception.
-                    */
+                    // Replace the value with the univ thrown by the exception.
+
                     MR_point.MR_point_vars[synth_slot].MR_value_value =
                         (MR_Word) engine_result;
                     MR_point.MR_point_vars[synth_slot].MR_value_type =
@@ -641,7 +619,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
                 }
             }
 
-            /* Another sanity check. */
+            // Another sanity check.
             if (num_synth_attr != 0) {
                 MR_fatal_error("mismatch on number of synthesized attributes");
             }
@@ -670,7 +648,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
 #endif
 
         if (name == NULL || MR_streq(name, "")) {
-            /* This value is not a variable or is not named by the user. */
+            // This value is not a variable or is not named by the user.
             continue;
         }
 
@@ -683,7 +661,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
             base_sp, base_curfr, valid_saved_f_regs, type_params, &type_info,
             &value))
         {
-            /* This value is not a variable. */
+            // This value is not a variable.
             continue;
         }
 
@@ -699,13 +677,13 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         copy = MR_copy_string(name);
         var_details->MR_var_fullname = copy;
 
-        /* We need another copy we can cut apart. */
+        // We need another copy we can cut apart.
         copy = MR_copy_string(name);
         start_of_num = MR_find_start_of_num_suffix(copy);
 
         if (start_of_num < 0) {
             var_details->MR_var_has_suffix = MR_FALSE;
-            /* Num_suffix should not be used. */
+            // Num_suffix should not be used.
             var_details->MR_var_num_suffix = -1;
             var_details->MR_var_basename = copy;
         } else {
@@ -743,7 +721,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         qsort(MR_point.MR_point_vars, slot_max, sizeof(MR_ValueDetails),
             MR_trace_compare_value_details);
 
-        /* This depends on attributes coming before program variables. */
+        // This depends on attributes coming before program variables.
         slot = attr_count + 1;
         for (i = attr_count + 1; i < slot_max; i++) {
             if (MR_point.MR_point_vars[i].MR_value_var.MR_var_hlds_number ==
@@ -776,25 +754,23 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
 #endif
 }
 
-/*
-** This comparison function is used to sort values
-**
-**  - first on attribute vs variable
-**  - then,
-**      - for attributes, on attribute number
-**      - for variables, on
-**          - on basename,
-**          - then on suffix,
-**          - and then, if necessary, on HLDS number.
-**
-** The sorting on variable basenames is alphabetical except for head variables,
-** which always come out first.
-**
-** The sorting on suffixes orders variables with the same basename
-** so that they come out in order of numerically increasing suffix,
-** with any variable sharing the same name but without a numeric suffix
-** coming out last.
-*/
+// This comparison function is used to sort values
+//
+//  - first on attribute vs variable
+//  - then,
+//      - for attributes, on attribute number
+//      - for variables,
+//          - on basename,
+//          - then on suffix,
+//          - and then, if necessary, on HLDS number.
+//
+// The sorting on variable basenames is alphabetical except for head variables,
+// which always come out first.
+//
+// The sorting on suffixes orders variables with the same basename
+// so that they come out in order of numerically increasing suffix,
+// with any variable sharing the same name but without a numeric suffix
+// coming out last.
 
 static int
 MR_trace_compare_value_details(const void *arg1, const void *arg2)
@@ -820,7 +796,7 @@ MR_trace_compare_value_details(const void *arg1, const void *arg2)
     }
 
     MR_fatal_error("MR_trace_compare_value_details: fall through");
-    /* NOTREACHED */
+    /*NOTREACHED*/
     return 0;
 }
 
@@ -1105,11 +1081,9 @@ MR_trace_headvar_num(int var_number, int *arg_pos)
     return NULL;
 }
 
-/*
-** The following declaration allocates a cell to a typeinfo even if though
-** its arity is zero. This wastes a word of space but avoids depending on the
-** current typeinfo optimization scheme.
-*/
+// The following declaration allocates a cell to a typeinfo even if though
+// its arity is zero. This wastes a word of space but avoids depending on the
+// current typeinfo optimization scheme.
 
 #define unbound_ctor_name MR_NONSTD_TYPE_CTOR_INFO_NAME(mdb__browse, unbound, 0)
 
@@ -1126,19 +1100,19 @@ MR_convert_arg_to_var_spec(const char *word_spec, MR_VarSpec *var_spec)
     if (MR_trace_is_natural_number(word_spec, &n)) {
         var_spec->MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
         var_spec->MR_var_spec_number = n;
-        var_spec->MR_var_spec_name = NULL; /* unused */
+        var_spec->MR_var_spec_name = NULL; // unused
     } else if (word_spec[0] == '$') {
         var_spec->MR_var_spec_kind = MR_VAR_SPEC_HELD_NAME;
         var_spec->MR_var_spec_name = word_spec + 1;
-        var_spec->MR_var_spec_number = -1; /* unused */
+        var_spec->MR_var_spec_number = -1; // unused
     } else if (word_spec[0] == '!') {
         var_spec->MR_var_spec_kind = MR_VAR_SPEC_ATTRIBUTE;
         var_spec->MR_var_spec_name = word_spec + 1;
-        var_spec->MR_var_spec_number = -1; /* unused */
+        var_spec->MR_var_spec_number = -1; // unused
     } else {
         var_spec->MR_var_spec_kind = MR_VAR_SPEC_NAME;
         var_spec->MR_var_spec_name = word_spec;
-        var_spec->MR_var_spec_number = -1; /* unused */
+        var_spec->MR_var_spec_number = -1; // unused
     }
 }
 
@@ -1280,11 +1254,9 @@ MR_convert_goal_to_synthetic_term(const char **functor_ptr,
     qsort(var_slot_array, next, sizeof(int), MR_compare_slots_on_headvar_num);
 
     MR_TRACE_USE_HP(
-        /*
-        ** Replace the slot numbers in the argument list with the argument
-        ** values, adding entries for any unbound arguments (they will be
-        ** printed as `_').
-        */
+        // Replace the slot numbers in the argument list with the argument
+        // values, adding entries for any unbound arguments (they will be
+        // printed as `_').
 
         arg_list = MR_list_empty();
         i = next - 1;
@@ -1551,7 +1523,7 @@ MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
                 &MR_point.MR_point_vars[var_num]);
         }
 
-        /* Attribute names cannot be ambiguous; the compiler enforces this. */
+        // Attribute names cannot be ambiguous; the compiler enforces this.
 
         if (success_count == 0) {
             return "the selected path does not exist "
@@ -1727,7 +1699,7 @@ MR_trace_bad_path_in_var(MR_VarSpec *var_spec, char *fullpath, char *badpath)
     suffix_len = 0;
     switch (var_spec->MR_var_spec_kind) {
         case MR_VAR_SPEC_NUMBER:
-            /* This should be ample. */
+            // This should be ample.
             suffix_len = 20;
             break;
 
@@ -1811,10 +1783,8 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_BrowseFormat format)
                 attr_hlds_num = MR_point.MR_point_vars[var_num].
                     MR_value_attr.MR_attr_var_hlds_number;
 
-                /*
-                ** We are about to print the value of the variable with HLDS
-                ** number attr_var_num, so mark it as not to be printed again.
-                */
+                // We are about to print the value of the variable with HLDS
+                // number attr_var_num, so mark it as not to be printed again.
 
                 MR_assert(attr_hlds_num <= MR_point.MR_point_attr_var_max);
                 already_printed[attr_hlds_num] = MR_TRUE;
@@ -1826,7 +1796,7 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_BrowseFormat format)
                 if (var_hlds_num <= MR_point.MR_point_attr_var_max &&
                     already_printed[var_hlds_num])
                 {
-                    /* We have already printed this variable; skip it */
+                    // We have already printed this variable; skip it.
                     continue;
                 }
 
@@ -1881,7 +1851,7 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
         old_path = path;
 
         if (MR_isdigit(*path)) {
-            /* we have a field number */
+            // We have a field number.
 
             arg_num = 0;
             while (MR_isdigit(*path)) {
@@ -1889,10 +1859,10 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
                 path++;
             }
 
-            /* MR_arg numbers fields from 0, not 1 */
+            // MR_arg numbers fields from 0, not 1.
             --arg_num;
         } else {
-            /* we have a field name */
+            // We have a field name.
             char    saved_char;
 
             while (MR_isalnumunder(*path)) {
@@ -1913,7 +1883,7 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
 
         if (*path != '\0') {
             MR_assert(*path == '^' || *path == '/');
-            path++; /* step over / or ^ */
+            path++; // Step over / or ^.
         }
 
         if (MR_arg(type_info, value, arg_num, &new_type_info, &new_value,
@@ -1964,10 +1934,8 @@ MR_trace_browse_var(FILE *out, MR_bool print_var_name,
             MR_fatal_error("MR_trace_browse_var: out == NULL");
         }
 
-        /*
-        ** The initial blanks are to visually separate
-        ** the variable names from the prompt.
-        */
+        // The initial blanks are to visually separate
+        // the variable names from the prompt.
 
         fprintf(out, "%7s", "");
         fprintf(out, "%s", name);
@@ -1976,7 +1944,7 @@ MR_trace_browse_var(FILE *out, MR_bool print_var_name,
         if (path != NULL) {
             char    sep;
 
-            /* Try to conform to the separator used in the path. */
+            // Try to conform to the separator used in the path.
             if (strchr(path, '/') != NULL && strchr(path, '^') == NULL) {
                 sep = '/';
             } else {
@@ -1992,10 +1960,8 @@ MR_trace_browse_var(FILE *out, MR_bool print_var_name,
             len++;
         }
 
-        /*
-        ** We flush the output in case the browser is interactive.
-        ** XXX we should pass out (and in, and err) to the browser.
-        */
+        // We flush the output in case the browser is interactive.
+        // XXX We should pass out (and in, and err) to the browser.
 
         fflush(out);
     }
@@ -2007,20 +1973,18 @@ MR_trace_browse_var(FILE *out, MR_bool print_var_name,
     return NULL;
 }
 
-/*
-** Look up the specified variable. If the specified variable exists among the
-** variables of the current program point, return NULL, and set *var_index_ptr
-** to point to the index of the variable in the MR_point_vars array. If the
-** specification matches exactly than one variable in the array, then
-** *is_ambiguous_ptr will be set to false. If it matches more than one, then
-** *is_ambiguous_ptr will be set to true, and *var_index_ptr will be set
-** to the index of the lowest matching variable. You can then increment index
-** until the name no longer matches to find all the matching variables.
-** (Ambiguity is not possible if the variable is specified by number.)
-**
-** If the specified variable does not exist, the return value will point to an
-** error message.
-*/
+// Look up the specified variable. If the specified variable exists among the
+// variables of the current program point, return NULL, and set *var_index_ptr
+// to point to the index of the variable in the MR_point_vars array. If the
+// specification matches exactly than one variable in the array, then
+// *is_ambiguous_ptr will be set to false. If it matches more than one, then
+// *is_ambiguous_ptr will be set to true, and *var_index_ptr will be set
+// to the index of the lowest matching variable. You can then increment index
+// until the name no longer matches to find all the matching variables.
+// (Ambiguity is not possible if the variable is specified by number.)
+//
+// If the specified variable does not exist, the return value will point to an
+// error message.
 
 static const char *
 MR_lookup_var_spec(MR_VarSpec var_spec, MR_TypeInfo *type_info_ptr,
@@ -2179,7 +2143,7 @@ MR_trace_print_var_name(FILE *out, const MR_ProcLayout *proc,
     return len;
 }
 
-/* this should be plenty big enough */
+// This should be plenty big enough.
 #define MR_TRACE_VAR_NAME_BUF_SIZE 256
 static  char    MR_var_name_buf[MR_TRACE_VAR_NAME_BUF_SIZE];
 
@@ -2222,10 +2186,8 @@ MR_trace_printed_var_name(const MR_ProcLayout *proc,
         case MR_VALUE_PROG_VAR:
             var = &value->MR_value_var;
 
-            /*
-            ** If the variable name starts with "HeadVar__", then the
-            ** argument number is part of the name.
-            */
+            // If the variable name starts with "HeadVar__", then the
+            // argument number is part of the name.
 
             if (var->MR_var_is_headvar &&
                 ! MR_streq(var->MR_var_basename, "HeadVar__"))
@@ -2298,24 +2260,22 @@ MR_trace_check_integrity_on_cur_level(void)
     int         i;
 
     for (i = 0; i < MR_point.MR_point_var_count; i++) {
-        /*
-        ** Printing the variable will fail if any part of the variable's value
-        ** that is printed has been constructed incorrectly. The default print
-        ** command will print only the top few levels of the variable, but
-        ** since the construction of a memory cell is usually followed very
-        ** closely by a call or an exit, this should be sufficient to catch
-        ** most misconstructed terms.
-        */
+        // Printing the variable will fail if any part of the variable's value
+        // that is printed has been constructed incorrectly. The default print
+        // command will print only the top few levels of the variable, but
+        // since the construction of a memory cell is usually followed very
+        // closely by a call or an exit, this should be sufficient to catch
+        // most misconstructed terms.
+
         (void) MR_trace_browse_var(stdout, MR_TRUE,
             MR_point.MR_point_vars[i].MR_value_type,
             MR_point.MR_point_vars[i].MR_value_value,
             "IntegrityCheck", (MR_String) (MR_Integer) "", MR_trace_print,
             MR_BROWSE_CALLER_PRINT, MR_BROWSE_DEFAULT_FORMAT);
 
-        /*
-        ** Looking up the term size can lead to a crash if the term has a
-        ** memory cell that should have but doesn't have a size slot.
-        */
+        // Looking up the term size can lead to a crash if the term has a
+        // memory cell that should have but doesn't have a size slot.
+
         (void) MR_term_size(MR_point.MR_point_vars[i].MR_value_type,
             MR_point.MR_point_vars[i].MR_value_value);
     }
@@ -2343,7 +2303,7 @@ MR_trace_check_integrity(const MR_LabelLayout *layout, MR_TracePort port)
     MR_compute_max_mr_num(MR_check_max_mr_num, layout);
     MR_check_max_f_num = layout->MR_sll_entry->MR_sle_max_f_num;
     MR_restore_transient_registers();
-    /* This also saves the regs in MR_fake_regs. */
+    // This also saves the regs in MR_fake_regs.
     MR_copy_regs_to_saved_regs(MR_check_max_mr_num, MR_check_saved_regs,
         MR_check_max_f_num, MR_check_saved_f_regs);
     MR_trace_init_point_vars(layout, MR_check_saved_regs,
@@ -2360,7 +2320,7 @@ MR_trace_check_integrity(const MR_LabelLayout *layout, MR_TracePort port)
             MR_trace_event_number, level, MR_check_integrity_seq_num);
         MR_trace_report_msg = buf;
 #if 0
-        /* enable this code if necessary for debugging */
+        // Enable this code if necessary for debugging.
         fprintf(stdout, "%s", buf);
         fflush(stdout);
 #endif
@@ -2378,4 +2338,4 @@ MR_trace_check_integrity(const MR_LabelLayout *layout, MR_TracePort port)
     MR_update_trace_func_enabled();
 }
 
-#endif  /* MR_TRACE_CHECK_INTEGRITY */
+#endif  // MR_TRACE_CHECK_INTEGRITY

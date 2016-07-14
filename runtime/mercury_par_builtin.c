@@ -1,20 +1,17 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2009, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 2009, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
 #include "mercury_types.h"
 #include "mercury_par_builtin.h"
 
-/***************************************************************************
-**
-** Futures for decedent AND-parallelism..
-**
-***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
+//
+// Futures for decedent AND-parallelism..
+//
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_CONSERVATIVE_GC
 
@@ -32,11 +29,11 @@ MR_finalize_future(void *obj, void *cd)
 
 #endif
 
-/***************************************************************************
-**
-** Code for Loop controls..
-**
-***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
+//
+// Code for Loop controls..
+//
+////////////////////////////////////////////////////////////////////////////
 
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
 
@@ -50,13 +47,12 @@ MR_lc_create(unsigned num_workers)
         (num_workers-1) * sizeof(MR_LoopControlSlot));
     lc->MR_lc_num_slots = num_workers;
     for (i = 0; i < num_workers; i++) {
-        /*
-        ** We allocate contexts as necessary, so that we never allocate a
-        ** context we don't use. Also, by allocating the contexts in
-        ** MR_lc_spawn_off, already spawned off computations can run in
-        ** parallel with the allocation of contexts for computations that are
-        ** about to be spawned off.
-        */
+        // We allocate contexts as necessary, so that we never allocate a
+        // context we don't use. Also, by allocating the contexts in
+        // MR_lc_spawn_off, already spawned off computations can run in
+        // parallel with the allocation of contexts for computations that are
+        // about to be spawned off.
+
         lc->MR_lc_slots[i].MR_lcs_context = NULL;
         lc->MR_lc_slots[i].MR_lcs_is_free = MR_TRUE;
     }
@@ -73,9 +69,8 @@ MR_lc_create(unsigned num_workers)
     return lc;
 }
 
-/*
-** Deprecated, this was part of our old loop control design.
-*/
+// Deprecated, this was part of our old loop control design.
+
 MR_Bool
 MR_lc_try_get_free_slot(MR_LoopControl *lc, MR_Unsigned *lcs_idx)
 {
@@ -84,11 +79,10 @@ MR_lc_try_get_free_slot(MR_LoopControl *lc, MR_Unsigned *lcs_idx)
     } else {
         unsigned hint, offset, i;
 
-        /*
-        ** We start indexing into the array starting at this hint, it is either
-        ** set to a known free slot or the next unchecked slot after finding a
-        ** free slot.
-        */
+        // We start indexing into the array starting at this hint, it is either
+        // set to a known free slot or the next unchecked slot after finding a
+        // free slot.
+
         hint = lc->MR_lc_free_slot_hint;
 
         for (offset = 0; offset < lc->MR_lc_num_slots; offset++) {
@@ -137,61 +131,54 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
 
     lcs->MR_lcs_is_free = MR_TRUE;
     lc->MR_lc_free_slot_hint = lcs_idx;
-    /* Ensure the slot is free before we perform the decrement. */
+    // Ensure the slot is free before we perform the decrement.
     MR_CPU_SFENCE;
 
-    /*
-    ** We have to determine if we're either the last of first workers to
-    ** finish. To do this we cannot use atomic decrement since we need to do
-    ** more than one comparison. We therefore use a CAS.
-    */
+    // We have to determine if we are either the last of first workers to
+    // finish. To do this we cannot use atomic decrement since we need to do
+    // more than one comparison. We therefore use a CAS.
+
     last_worker =
         MR_atomic_dec_and_is_zero_int(&(lc->MR_lc_outstanding_workers));
 
-    /*
-    ** If this is the last worker to finish, then take the lock before checking
-    ** the master context field, otherwise we might race and end up never
-    ** resuming the master.
-    */
+    // If this is the last worker to finish, then take the lock before checking
+    // the master context field, otherwise we might race and end up never
+    // resuming the master.
+
     if (last_worker) {
         MR_US_SPIN_LOCK(&(lc->MR_lc_master_context_lock));
-        /*
-        ** Don't read the master field until after we have the lock.
-        */
+        // Don't read the master field until after we have the lock.
+
         MR_CPU_MFENCE;
     }
 
-    /*
-    ** If the master thread is suspended, wake it up, provided that either:
-    ** - the loop has finished and this is the last worker to exit, or
-    ** - the loop has not finished (so the master can create more work).
-    */
+    // If the master thread is suspended, wake it up, provided that either:
+    // - the loop has finished and this is the last worker to exit, or
+    // - the loop has not finished (so the master can create more work).
+
     if ((lc->MR_lc_master_context != NULL) &&
         ((lc->MR_lc_finished && last_worker) || (!lc->MR_lc_finished)))
     {
-        /*
-        ** Now take a lock and re-read the master context field.
-        */
+        // Now take a lock and re-read the master context field.
+
         if (!last_worker) {
             MR_US_SPIN_LOCK(&(lc->MR_lc_master_context_lock));
-            /*
-            ** Don't read the master field until after we have the lock.
-            */
+            // Don't read the master field until after we have the lock.
+
             MR_CPU_MFENCE;
         }
         wakeup_context = lc->MR_lc_master_context;
         lc->MR_lc_master_context = NULL;
-        MR_CPU_SFENCE; /* Make sure the field is set to NULL in memory. */
+        MR_CPU_SFENCE; // Make sure the field is set to NULL in memory.
         MR_US_UNLOCK(&(lc->MR_lc_master_context_lock));
         if (wakeup_context != NULL) {
 #ifdef MR_DEBUG_LOOP_CONTROL
             fprintf(stderr, "Waking up master\n");
 #endif
-            /*
-            ** XXX: It is faster to switch to this context ourselves
-            ** since we are going to unload our own context.
-            ** Or we should switch to another worker context if there is one.
-            */
+            // XXX: It is faster to switch to this context ourselves
+            // since we are going to unload our own context.
+            // Or we should switch to another worker context if there is one.
+
             MR_schedule_context(wakeup_context);
         }
     } else if (last_worker) {
@@ -199,5 +186,4 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
     }
 }
 
-#endif /* MR_THREAD_SAFE && MR_LL_PARALLEL_CONJ */
-
+#endif // MR_THREAD_SAFE && MR_LL_PARALLEL_CONJ

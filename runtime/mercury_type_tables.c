@@ -1,21 +1,16 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2000,2002-2005, 2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module manages tables that list the definitions of the type
-** constructors, type classes and type class instances defined in the program.
-**
-** The sizes of these tables can vary by several orders of magnitude,
-** so using a fixed size hash table would not be a good idea. This is why
-** we build on the implementation of expandable hash tables in the
-** mercury_tabling module.
-*/
+// Copyright (C) 2000,2002-2005, 2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module manages tables that list the definitions of the type
+// constructors, type classes and type class instances defined in the program.
+//
+// The sizes of these tables can vary by several orders of magnitude,
+// so using a fixed size hash table would not be a good idea. This is why
+// we build on the implementation of expandable hash tables in the
+// mercury_tabling module.
 
 #ifndef MR_HIGHLEVEL_CODE
   #include "mercury_imp.h"
@@ -27,22 +22,20 @@
 #include "mercury_memory.h"
 #include <string.h>
 
-/*
-** This module maintains four data structures: two hash tables and two lists.
-** One hash table and one list contain information about type constructors,
-** with the elements in the hash table and the list being MR_TypeCtorInfos,
-** while the other hash table and list contain information about type
-** classes and their instances, with the elements in the hash table and the
-** list being MR_TypeClassDeclInfo pointers.
-**
-** All four data structures are monotonic: you can insert information into
-** them, but you cannot remove anything from them.
-**
-** We assume that two registered structures (whether MR_TypeCtorInfos,
-** MR_TypeClassDecls, or MR_Instances) with different addresses contain
-** different information. This is OK because the registered structures are
-** supposed to be compiler generated, and the compiler ensures this invariant.
-*/
+// This module maintains four data structures: two hash tables and two lists.
+// One hash table and one list contain information about type constructors,
+// with the elements in the hash table and the list being MR_TypeCtorInfos,
+// while the other hash table and list contain information about type
+// classes and their instances, with the elements in the hash table and the
+// list being MR_TypeClassDeclInfo pointers.
+//
+// All four data structures are monotonic: you can insert information into
+// them, but you cannot remove anything from them.
+//
+// We assume that two registered structures (whether MR_TypeCtorInfos,
+// MR_TypeClassDecls, or MR_Instances) with different addresses contain
+// different information. This is OK because the registered structures are
+// supposed to be compiler generated, and the compiler ensures this invariant.
 
 static  MR_TableNode    MR_type_ctor_table = { 0 };
 static  MR_TableNode    MR_type_class_decl_info_table = { 0 };
@@ -92,7 +85,7 @@ MR_register_type_ctor_info(MR_TypeCtorInfo type_ctor_info)
 
         if (type_names_match_ctor(type_ctor_info, cur_type_ctor_info)) {
             if (cur_type_ctor_info == type_ctor_info) {
-                /* type_ctor_info has been registered before. */
+                // type_ctor_info has been registered before.
                 return;
             } else {
                 MR_fatal_error("MR_register_type_ctor_info: "
@@ -133,7 +126,7 @@ MR_do_register_type_class_decl(MR_TypeClassDecl type_class_decl)
 
         if (class_names_match_id(type_class_id, cur_type_class_id)) {
             if (cur_type_class_decl == type_class_decl) {
-                /* type_ctor_info has been registered before */
+                // type_ctor_info has been registered before
                 return cur_type_class_decl_info;
             } else {
                 MR_fatal_error("MR_do_register_type_class_decl: "
@@ -174,12 +167,12 @@ MR_register_type_class_instance(MR_Instance type_class_instance)
     {
         cur_instance = (MR_Instance) MR_dlist_data(element_ptr);
         if (cur_instance == type_class_instance) {
-            /* type_class_instance has been registered before. */
+            // type_class_instance has been registered before.
             return;
         }
     }
 
-    /* type_class_instance has not been registered before. */
+    // type_class_instance has not been registered before.
     type_class_decl_info->MR_tcd_info_instances =
         MR_dlist_addtail(type_class_decl_info->MR_tcd_info_instances,
             type_class_instance);

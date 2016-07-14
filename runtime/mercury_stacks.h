@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1995-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_stacks.h - definitions for manipulating the det and nondet stacks.
-**
-** See compiler/notes/failure.html for documentation on the nondet stack
-** frame handling.
-*/
+// Copyright (C) 1995-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_stacks.h - definitions for manipulating the det and nondet stacks.
+//
+// See compiler/notes/failure.html for documentation on the nondet stack
+// frame handling.
 
 #ifndef MERCURY_STACKS_H
 #define MERCURY_STACKS_H
@@ -36,12 +31,11 @@
   extern MR_Dword   MR_non_frame_total_size;
   extern MR_Word    *MR_non_frame_max;
 
-  /*
-  ** This temporary is for use in the MR_increment_dword_tmp macro only.
-  ** Making the temporary variable global (nonlocal to the macro) allows
-  ** the macro have the form of an expression, instead of a statement,
-  ** without relying on GNU extensions to C.
-  */
+  // This temporary is for use in the MR_increment_dword_tmp macro only.
+  // Making the temporary variable global (nonlocal to the macro) allows
+  // the macro have the form of an expression, instead of a statement,
+  // without relying on GNU extensions to C.
+
   extern MR_uint_least32_t MR_old_low_tmp;
 
   extern void       MR_init_stack_frame_stats(void);
@@ -64,14 +58,14 @@
             (MR_non_frame_max = MR_maxfr) : (void) 0)                         \
     )
 
-#else   /* !MR_STACK_FRAME_STATS */
+#else   // !MR_STACK_FRAME_STATS
 
   #define MR_collect_det_frame_stats(size)      ((void) 0)
   #define MR_collect_non_frame_stats(slots)     ((void) 0)
 
-#endif  /* !MR_STACK_FRAME_STATS */
+#endif  // !MR_STACK_FRAME_STATS
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_STACK_SEGMENTS
 
@@ -97,22 +91,20 @@
             MR_sp_word = (MR_Word) (MR_sp + (incr));                          \
         } while (0)
 
-  /*
-  ** Check whether there is room for a new frame whose size is incr words
-  ** in the current segment of the nondet stack, and if not, allocate
-  ** a new segment to hold it, and a sentinel frame at the bottom of that
-  ** new segment.
-  **
-  ** The prevfr argument should be a variable that holds the value that
-  ** the caller proposes to assign to the prevfr field of the new stack frame.
-  ** If this macro finds it necessary to create a new segment, it will update
-  ** this variable to point to the sentinel frame, since *that* will be
-  ** the stack frame immediately before the new frame.
-  **
-  ** The reason why we check for MR_maxfr < zone_min is that MR_maxfr may be
-  ** in a different stack segment than MR_CONTEXT(MR_ctxt_nondetstack_zone).
-  ** See the comment for MR_new_nondetstack_segment in mercury_stacks.c.
-  */
+  // Check whether there is room for a new frame whose size is incr words
+  // in the current segment of the nondet stack, and if not, allocate
+  // a new segment to hold it, and a sentinel frame at the bottom of that
+  // new segment.
+  //
+  // The prevfr argument should be a variable that holds the value that
+  // the caller proposes to assign to the prevfr field of the new stack frame.
+  // If this macro finds it necessary to create a new segment, it will update
+  // this variable to point to the sentinel frame, since *that* will be
+  // the stack frame immediately before the new frame.
+  //
+  // The reason why we check for MR_maxfr < zone_min is that MR_maxfr may be
+  // in a different stack segment than MR_CONTEXT(MR_ctxt_nondetstack_zone).
+  // See the comment for MR_new_nondetstack_segment in mercury_stacks.c.
 
   #define MR_nondetstack_extend_and_check(prevfr, incr)                       \
         do {                                                                  \
@@ -135,16 +127,15 @@
 
   extern    MR_Word     *MR_new_detstack_segment(MR_Word *sp, int n);
 
-  /*
-  ** This function reserves a stack frame of n words on the nondet stack,
-  ** after conceptually (a) freeing any nondet stack segments that are wholly
-  ** above old_maxfr, and (b) creating a new nondet stack segment.
-  ** In practice, it will reuse an existing memory zone, if one is available.
-  ** It returns the address that should be the new value of maxfr.
-  */
+  // This function reserves a stack frame of n words on the nondet stack,
+  // after conceptually (a) freeing any nondet stack segments that are wholly
+  // above old_maxfr, and (b) creating a new nondet stack segment.
+  // In practice, it will reuse an existing memory zone, if one is available.
+  // It returns the address that should be the new value of maxfr.
+
   extern    MR_Word     *MR_new_nondetstack_segment(MR_Word *old_maxfr, int n);
 
-#else   /* !MR_STACK_SEGMENTS */
+#else   // !MR_STACK_SEGMENTS
 
   #define MR_detstack_extend_and_check(incr)                                  \
         do {                                                                  \
@@ -161,7 +152,7 @@
             MR_maxfr_word = (MR_Word) (MR_maxfr + (incr));                    \
         } while (0)
 
-#endif  /* MR_STACK_SEGMENTS */
+#endif  // MR_STACK_SEGMENTS
 
 MR_declare_entry(MR_pop_detstack_segment);
 MR_declare_entry(MR_pop_nondetstack_segment);
@@ -180,27 +171,25 @@ MR_declare_entry(MR_pop_nondetstack_segment);
   extern    void            MR_extend_detstack(void);
   extern    void            MR_extend_nondetstack(void);
 
-#else   /* !MR_EXTEND_STACKS_WHEN_NEEDED */
+#else   // !MR_EXTEND_STACKS_WHEN_NEEDED
 
   #define MR_detstack_post_extend_check()       ((void) 0)
   #define MR_nondetstack_post_extend_check()    ((void) 0)
 
-#endif  /* MR_EXTEND_STACKS_WHEN_NEEDED */
+#endif  // MR_EXTEND_STACKS_WHEN_NEEDED
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/* DEFINITIONS FOR MANIPULATING THE DET STACK */
+// DEFINITIONS FOR MANIPULATING THE DET STACK
 
-/*
-** The first stack slot in each stack frame is MR_stackvar(1) while MR_sp
-** points to the topmost used word on the stack: this is why we need to add 1.
-** In compiler-generated code, the value of n is always known, so the C
-** compiler will be able to compute 1-n at compile time. The debugger will
-** need to perform the addition at runtime after it gets the value of n from
-** a layout structure, but this is not performance critical. It is useful
-** to have MR_sp and MR_maxfr both point to the topmost used words on their
-** stacks when moving stack segments around in minimal model tabling.
-*/
+// The first stack slot in each stack frame is MR_stackvar(1) while MR_sp
+// points to the topmost used word on the stack: this is why we need to add 1.
+// In compiler-generated code, the value of n is always known, so the C
+// compiler will be able to compute 1-n at compile time. The debugger will
+// need to perform the addition at runtime after it gets the value of n from
+// a layout structure, but this is not performance critical. It is useful
+// to have MR_sp and MR_maxfr both point to the topmost used words on their
+// stacks when moving stack segments around in minimal model tabling.
 
 #define MR_based_stackvar(base_sp, n)   ((base_sp)[1 - (n)])
 #define MR_stackvar(n)                  MR_based_stackvar(MR_sp, (n))
@@ -216,12 +205,11 @@ MR_declare_entry(MR_pop_nondetstack_segment);
         MR_collect_det_frame_stats(n);                                        \
     } while (0)
 
-/*
-** We reserve MR_stack_margin_size_words words at the end of every det stack
-** segment for leaf procedures whose stack frames fit into that many words.
-** The check is done in compiler/llds_out_instr; you can find it if you
-** search for uses of max_leaf_stack_frame_size.
-*/
+// We reserve MR_stack_margin_size_words words at the end of every det stack
+// segment for leaf procedures whose stack frames fit into that many words.
+// The check is done in compiler/llds_out_instr; you can find it if you
+// search for uses of max_leaf_stack_frame_size.
+
 #define MR_incr_sp_leaf(n)                                                    \
     do {                                                                      \
         MR_debugincrsp(n, MR_sp);                                             \
@@ -250,68 +238,60 @@ MR_declare_entry(MR_pop_nondetstack_segment);
         MR_GOTO(return_addr);                                                 \
     } while (0)
 
-/*
-** The msg argument of MR_incr_sp_push_msg is not used at runtime. It is
-** intended for use by tools/frame_sizes, which scans compiler-generated C
-** source files.
-*/
+// The msg argument of MR_incr_sp_push_msg is not used at runtime. It is
+// intended for use by tools/frame_sizes, which scans compiler-generated C
+// source files.
 
 #define MR_incr_sp_push_msg(n, msg) MR_incr_sp(n)
 
 #define MR_decr_sp_pop_msg(n)       MR_decr_sp(n)
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/* DEFINITIONS FOR NONDET STACK FRAMES */
+// DEFINITIONS FOR NONDET STACK FRAMES
 
-#define MR_PREVFR       (-0)    /* prev frame on stack, set up at call   */
-#define MR_REDOIP       (-1)    /* in this proc, set up at clause entry  */
-#define MR_REDOFR       (-2)    /* value for curfr on backtracking       */
-#define MR_SUCCIP       (-3)    /* in caller proc, set up at call        */
-#define MR_SUCCFR       (-4)    /* frame of caller proc, set up at call  */
-#define MR_TMP_DETFR    (-3)    /* sp, in model_det temp frames only     */
-#define MR_TABLE_DETFR  (-5)    /* sp, in minimal model main frames only */
+#define MR_PREVFR       (-0)    // prev frame on stack, set up at call
+#define MR_REDOIP       (-1)    // in this proc, set up at clause entry
+#define MR_REDOFR       (-2)    // value for curfr on backtracking
+#define MR_SUCCIP       (-3)    // in caller proc, set up at call
+#define MR_SUCCFR       (-4)    // frame of caller proc, set up at call
+#define MR_TMP_DETFR    (-3)    // sp, in model_det temp frames only
+#define MR_TABLE_DETFR  (-5)    // sp, in minimal model main frames only
 
-/*
-** This setup allows MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT to be defined
-** even if MR_USE_MINIMAL_MODEL_STACK_COPY isn't, which can be useful for
-** performance testing.
-*/
+// This setup allows MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT to be defined
+// even if MR_USE_MINIMAL_MODEL_STACK_COPY isn't, which can be useful for
+// performance testing.
 
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
   #define MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT
 #endif
 
-/*
-** MR_Code that traverses the nondet stack depends on the relationship
-** MR_NONDET_TEMP_SIZE < MR_DET_TEMP_SIZE < MR_NONDET_FIXED_SIZE.
-** All three sizes are measured in words.
-*/
+// MR_Code that traverses the nondet stack depends on the relationship
+// MR_NONDET_TEMP_SIZE < MR_DET_TEMP_SIZE < MR_NONDET_FIXED_SIZE.
+// All three sizes are measured in words.
 
-/* prevfr, redoip, redofr */
+// prevfr, redoip, redofr
 #define MR_NONDET_TEMP_SIZE         3
 
-/* prevfr, redoip, redofr, detfr */
+// prevfr, redoip, redofr, detfr
 #define MR_DET_TEMP_SIZE            4
 
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT
-/* prevfr, redoip, redofr, succip, succfr, sp */
+// prevfr, redoip, redofr, succip, succfr, sp
 #define MR_NONDET_FIXED_SIZE        6
 #else
-/* prevfr, redoip, redofr, succip, succfr */
+// prevfr, redoip, redofr, succip, succfr
 #define MR_NONDET_FIXED_SIZE        5
 #endif
 
-/*
-** In grades that have stack segments, each segment has a sentinel frame
-** at the bottom. These look like ordinary frames whose succfr and succip
-** fields are not used for their usual purpose. For further documentation
-** on these fields, see the comment on MR_new_nondetstack_segment in
-** mercury_stacks.c.
-*/
+// In grades that have stack segments, each segment has a sentinel frame
+// at the bottom. These look like ordinary frames whose succfr and succip
+// fields are not used for their usual purpose. For further documentation
+// on these fields, see the comment on MR_new_nondetstack_segment in
+// mercury_stacks.c.
 
 #define MR_SAVEVAL              (-MR_NONDET_FIXED_SIZE)
-                                /* saved values start at this offset    */
+                                // Saved values start at this offset.
 
 #define MR_prevfr_addr(fr)      (&((MR_Word *) (fr))[MR_PREVFR])
 #define MR_redoip_addr(fr)      (&((MR_Word *) (fr))[MR_REDOIP])
@@ -346,19 +326,17 @@ MR_declare_entry(MR_pop_nondetstack_segment);
 #define MR_framevar(n)          MR_based_framevar(MR_curfr, n)
 #define MR_fv(n)                MR_framevar(n)
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
+// DEFINITIONS FOR MANIPULATING THE NONDET STACK
 
 #define MR_nondet_zone_min  (MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min)
 
 #ifdef  MR_EXTEND_STACKS_WHEN_NEEDED
 
-  /*
-  ** Note: these macros don't work in the presence of stack segments,
-  ** which is why automatic stack extension and stack segments cannot
-  ** both enabled at the same time.
-  */
+  // Note: these macros don't work in the presence of stack segments,
+  // which is why automatic stack extension and stack segments cannot
+  // both enabled at the same time.
 
   #define   MR_save_maxfr(lval)                                               \
             do {                                                              \
@@ -426,8 +404,8 @@ MR_declare_entry(MR_pop_nondetstack_segment);
         MR_mkframe_basic(predname, numslots);                                 \
     } while (0)
 
-/* just like mkframe, but also reserves space for a struct     */
-/* with the given tag at the bottom of the nondet stack frame  */
+// Just like mkframe, but also reserves space for a struct
+// with the given tag at the bottom of the nondet stack frame.
 #define MR_mkpragmaframe(predname, numslots, structname, redoip)              \
     do {                                                                      \
         MR_mkframe_basic(predname, numslots +                                 \
@@ -505,9 +483,9 @@ MR_declare_entry(MR_pop_nondetstack_segment);
         MR_GOTO(MR_redoip_slot(MR_maxfr));                                    \
     } while (0)
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/* DEFINITIONS FOR EXCEPTION HANDLING */
+// DEFINITIONS FOR EXCEPTION HANDLING
 
 #ifdef MR_CONSERVATIVE_GC
   #define MR_IF_NOT_CONSERVATIVE_GC(x)
@@ -521,74 +499,64 @@ MR_declare_entry(MR_pop_nondetstack_segment);
   #define MR_IF_USE_TRAIL(x)
 #endif
 
-/*
-** This enum specifies the kind of handler in an exception handler
-** nondet stack frame.
-*/
+// This enum specifies the kind of handler in an exception handler
+// nondet stack frame.
+
 enum MR_HandlerCodeModel {
-    /*
-    ** For these three values, the exception handler is a Mercury closure with
-    ** the specified determinism. If an exception occurs, then after the
-    ** Mercury stacks have been unwound, the closure will be called.
-    */
+    // For these three values, the exception handler is a Mercury closure with
+    // the specified determinism. If an exception occurs, then after the
+    // Mercury stacks have been unwound, the closure will be called.
+
     MR_MODEL_DET_HANDLER,
     MR_MODEL_SEMI_HANDLER,
     MR_MODEL_NON_HANDLER,
-    /*
-    ** For this value, the exception will be handled by C code using
-    ** setjmp/longjmp. If an exception occurs, then after the Mercury stacks
-    ** have been unwound, `MR_longjmp(MR_ENGINE(MR_eng_jmp_buf))' will be
-    ** called.
-    */
+    // For this value, the exception will be handled by C code using
+    // setjmp/longjmp. If an exception occurs, then after the Mercury stacks
+    // have been unwound, `MR_longjmp(MR_ENGINE(MR_eng_jmp_buf))' will be
+    // called.
+
     MR_C_LONGJMP_HANDLER
 };
 
+// Define a struct for the framevars that we use in an exception handler
+// nondet stack frame. This struct gets allocated on the nondet stack
+// using MR_mkpragmaframe(), with a special redoip of
+// `MR_exception_handler_do_fail'.
 
-/*
-** Define a struct for the framevars that we use in an exception handler
-** nondet stack frame. This struct gets allocated on the nondet stack
-** using MR_mkpragmaframe(), with a special redoip of
-** `MR_exception_handler_do_fail'.
-*/
 typedef struct MR_Exception_Handler_Frame_struct {
-    /*
-    ** The `code_model' field is used to identify what kind of handler it is.
-    ** It holds values of type MR_HandlerCodeModel (see above), but it is
-    ** declared to have type `MR_Word' to ensure that everything remains
-    ** word-aligned.
-    */
+    // The `code_model' field is used to identify what kind of handler it is.
+    // It holds values of type MR_HandlerCodeModel (see above), but it is
+    // declared to have type `MR_Word' to ensure that everything remains
+    // word-aligned.
+
     MR_Word             MR_excp_code_model;
 
-    /*
-    ** If code_model is MR_MODEL_*_HANDLER, then the `handler' field holds the
-    ** Mercury closure for the handler, which will be a closure of the
-    ** specified determinism. If code_model is MR_C_LONGJMP, then this field
-    ** is unused.
-    */
+    // If code_model is MR_MODEL_*_HANDLER, then the `handler' field holds the
+    // Mercury closure for the handler, which will be a closure of the
+    // specified determinism. If code_model is MR_C_LONGJMP, then this field
+    // is unused.
+
     MR_Word             MR_excp_handler;
 
-    /*
-    ** The value of MR_trace_from_full, saved at the time the frame was
-    ** created. This holds a value of type MR_bool, but it is declared
-    ** to have type MR_Word to ensure that everything remains word-aligned.
-    */
+    // The value of MR_trace_from_full, saved at the time the frame was
+    // created. This holds a value of type MR_bool, but it is declared
+    // to have type MR_Word to ensure that everything remains word-aligned.
+
     MR_Word             MR_excp_full_trace;
 
-    /*
-    ** The remaining fields hold stuff that must be saved in order
-    ** to unwind the Mercury stacks.
-    */
+    // The remaining fields hold stuff that must be saved in order
+    // to unwind the Mercury stacks.
 
-    /* The det stack pointer. */
+    // The det stack pointer.
     MR_Word             *MR_excp_stack_ptr;
 
-    /* The trail state. */
+    // The trail state.
     MR_IF_USE_TRAIL(
         MR_Word         MR_excp_trail_ptr;
         MR_Word         MR_excp_ticket_counter;
     )
 
-    /* The heap state. */
+    // The heap state.
     MR_IF_NOT_CONSERVATIVE_GC(
         MR_Word         *MR_excp_heap_ptr;
         MR_Word         *MR_excp_solns_heap_ptr;
@@ -596,14 +564,12 @@ typedef struct MR_Exception_Handler_Frame_struct {
     )
 } MR_Exception_Handler_Frame;
 
-/*
-** In deep profiling grades, we need (a) 1 stack slot (framevar 1)
-** to save the input closure across the call port code; (b) up to 2 stack slots
-** (framevars 1 and 2) to store the result and maybe the success indicator,
-** and (c) 4 stack slots (frame vars 3 to 6) for use by the profiling
-** routines themselves. We can reuse framevar 1 for two purposes because their
-** live ranges do not overlap.
-*/
+// In deep profiling grades, we need (a) 1 stack slot (framevar 1)
+// to save the input closure across the call port code; (b) up to 2 stack slots
+// (framevars 1 and 2) to store the result and maybe the success indicator,
+// and (c) 4 stack slots (frame vars 3 to 6) for use by the profiling
+// routines themselves. We can reuse framevar 1 for two purposes because their
+// live ranges do not overlap.
 
 #ifdef  MR_DEEP_PROFILING
   #define MR_EXCEPTION_FRAMEVARS        6
@@ -664,26 +630,24 @@ typedef struct MR_Exception_Handler_Frame_struct {
         MR_mktempframe(redoip);                                                \
     } while (0)
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
-/* DEFINITIONS FOR GENERATOR STACK FRAMES */
+// DEFINITIONS FOR GENERATOR STACK FRAMES
 
-/*
-** The generator stack has one entry for each call to a minimal model tabled
-** procedure that is (a) acting as the generator for its subgoal and (b) is
-** in the active state. The MR_gen_frame field points to the home nondet stack
-** frame of the generator, and the MR_gen_subgoal field points to the
-** generator's data structure.
-**
-** In systems such as XSB, each choice point has a flag saying whether it is
-** an active generator or not, and if yes, where its subgoal's tabling
-** information is stored. In Mercury, the equivalent test checks whether
-** the generator stack has an entry whose MR_gen_frame field matches the
-** address of the nondet stack frame. This approach that minimizes the
-** performance impact of minimal model evaluation on non-tabled procedures.
-*/
+// The generator stack has one entry for each call to a minimal model tabled
+// procedure that is (a) acting as the generator for its subgoal and (b) is
+// in the active state. The MR_gen_frame field points to the home nondet stack
+// frame of the generator, and the MR_gen_subgoal field points to the
+// generator's data structure.
+//
+// In systems such as XSB, each choice point has a flag saying whether it is
+// an active generator or not, and if yes, where its subgoal's tabling
+// information is stored. In Mercury, the equivalent test checks whether
+// the generator stack has an entry whose MR_gen_frame field matches the
+// address of the nondet stack frame. This approach that minimizes the
+// performance impact of minimal model evaluation on non-tabled procedures.
 
 struct MR_GenStackFrameStruct {
     MR_Word                 *MR_gen_frame;
@@ -702,36 +666,34 @@ extern  void                MR_print_any_gen_stack(FILE *fp,
                                 MR_Integer gen_next,
                                 MR_GenStackFrame *gen_block);
 
-/* DEFINITIONS FOR CUT STACK FRAMES */
+// DEFINITIONS FOR CUT STACK FRAMES
 
-/*
-** The cut stack has one entry for each commit goal currently active.
-** (A commit goal is an existential quantification that has a different
-** determinism than the goal being quantified over.) We use the cut stack
-** to prevent generators in the quantified being left active but incomplete
-** when the commit goal succeeds. We need to clean up any such generators
-** because otherwise, consumers will be depend on the generator to find all
-** the answers to the generator's subgoal, but the generator will never
-** compute any more answers, since it will never be backtracked into.
-** The MR_cut_generators field of a cut stack entry contains the list of
-** generators that are inside the corresponding commit and not inside
-** some nested commit.
-**
-** The MR_cut_frame field specifies the address of the nondet stack frame
-** (it should be a temp frame) used by the commit to get control on the
-** failure of the quantified goal. The MR_cut_gen_next field records
-** the value of MR_gen_next (the size of the generator stack) when the
-** commit goal started. When the quantified goal succeeds, the commit cuts
-** away the nondet stack frame at and above MR_cut_frame; we must also throw
-** away the generator stack entries that act as markers on the discarded nondet
-** stack frames. This means the generator stack entries at index
-** MR_cut_gen_next and above.
-**
-** The MR_cut_depth field records the depth of the cut stack entry in
-** the interleaving of the cut stack and pneg stack entries dictated by
-** the nesting of committed choice and possibly negated contexts currently
-** active.
-*/
+// The cut stack has one entry for each commit goal currently active.
+// (A commit goal is an existential quantification that has a different
+// determinism than the goal being quantified over.) We use the cut stack
+// to prevent generators in the quantified being left active but incomplete
+// when the commit goal succeeds. We need to clean up any such generators
+// because otherwise, consumers will be depend on the generator to find all
+// the answers to the generator's subgoal, but the generator will never
+// compute any more answers, since it will never be backtracked into.
+// The MR_cut_generators field of a cut stack entry contains the list of
+// generators that are inside the corresponding commit and not inside
+// some nested commit.
+//
+// The MR_cut_frame field specifies the address of the nondet stack frame
+// (it should be a temp frame) used by the commit to get control on the
+// failure of the quantified goal. The MR_cut_gen_next field records
+// the value of MR_gen_next (the size of the generator stack) when the
+// commit goal started. When the quantified goal succeeds, the commit cuts
+// away the nondet stack frame at and above MR_cut_frame; we must also throw
+// away the generator stack entries that act as markers on the discarded nondet
+// stack frames. This means the generator stack entries at index
+// MR_cut_gen_next and above.
+//
+// The MR_cut_depth field records the depth of the cut stack entry in
+// the interleaving of the cut stack and pneg stack entries dictated by
+// the nesting of committed choice and possibly negated contexts currently
+// active.
 
 typedef struct MR_CutGeneratorListNode *MR_CutGeneratorList;
 struct MR_CutGeneratorListNode {
@@ -760,31 +722,29 @@ extern  void                MR_print_any_cut_stack(FILE *fp,
                                 MR_Integer cut_next,
                                 MR_CutStackFrame *cut_block);
 
-/* DEFINITIONS FOR PNEG STACK FRAMES */
+// DEFINITIONS FOR PNEG STACK FRAMES
 
-/*
-** The pneg stack has one entry for each possibly negated context currently
-** active. (Possibly negated contexts include the conditions of if-then-elses
-** as well negated goals.) The MR_pneg_consumers field of a pneg stack entry
-** records all the consumers that are inside the corresponding possibly negated
-** context and not inside any nested possibly negated context. When the goal
-** in the possibly negated context fails, we check whether any of these
-** consumers are waiting for more answers from their generator. If yes,
-** then the failure is an artifact of the tabling implementation, and
-** committing to the else branch of the if-then-else or continuing after the
-** negated goal would be incorrect, so we abort the program.
-**
-** The MR_pneg_frame field specifies the address of the nondet stack frame
-** (it should be a temp frame) used by the negation or if-then-else to get
-** control on the failure of the possibly negated goal. The MR_pneg_gen_next
-** field records the value of MR_gen_next (the size of the generator stack)
-** when the possibly negated goal started. Currently, neither field is used.
-**
-** The MR_pneg_depth field records the depth of the pneg stack entry in
-** the interleaving of the cut stack and pneg stack entries dictated by
-** the nesting of committed choice and possibly negated contexts currently
-** active.
-*/
+// The pneg stack has one entry for each possibly negated context currently
+// active. (Possibly negated contexts include the conditions of if-then-elses
+// as well negated goals.) The MR_pneg_consumers field of a pneg stack entry
+// records all the consumers that are inside the corresponding possibly negated
+// context and not inside any nested possibly negated context. When the goal
+// in the possibly negated context fails, we check whether any of these
+// consumers are waiting for more answers from their generator. If yes,
+// then the failure is an artifact of the tabling implementation, and
+// committing to the else branch of the if-then-else or continuing after the
+// negated goal would be incorrect, so we abort the program.
+//
+// The MR_pneg_frame field specifies the address of the nondet stack frame
+// (it should be a temp frame) used by the negation or if-then-else to get
+// control on the failure of the possibly negated goal. The MR_pneg_gen_next
+// field records the value of MR_gen_next (the size of the generator stack)
+// when the possibly negated goal started. Currently, neither field is used.
+//
+// The MR_pneg_depth field records the depth of the pneg stack entry in
+// the interleaving of the cut stack and pneg stack entries dictated by
+// the nesting of committed choice and possibly negated contexts currently
+// active.
 
 struct MR_PNegConsumerListNodeStruct {
     MR_Consumer             *MR_pneg_consumer_ptr;
@@ -813,6 +773,6 @@ extern  void                MR_print_any_pneg_stack(FILE *fp,
                                 MR_Integer pneg_next,
                                 MR_PNegStackFrame *pneg_block);
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY
 
-#endif  /* not MERCURY_STACKS_H */
+#endif  // not MERCURY_STACKS_H

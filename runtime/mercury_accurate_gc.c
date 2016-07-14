@@ -1,43 +1,36 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module contains the accurate garbage collector.
-**
-** Currently we are just using a simple copying collector.
-**
-** For the LLDS back-end, we detect heap overflow
-** using the virtual memory system; the page fault
-** handler will set the return address to call the
-** garbage collector.  See also compiler/notes/gc_and_c_code.html.
-**
-** XXX this may cause problems for tight loops that
-**     allocate memory and don't have any procedure
-**     returns in them... either because they
-**     loop via tail calls and/or retries
-**     (failure in nondet code).
-**
-** For the MLDS back-end, we can't use this technique
-** of overwriting the return address, so instead we
-** just explicitly call MR_GC_check() to check for
-** heap overflow before each heap allocation.
-**
-** For documentation on accurate collection in the MLDS back-end,
-** see compiler/ml_elim_nested.m.
-**
-** TODO for the LLDS back-end:
-**  - add code to support tracing the stack frames left by builtin__catch
-**  - fix issue with tight loops via tail calls (see XXX above)
-**  - fix issue with tight loops via retries (see XXX above)
-**  - handle semidet existentially typed procedures properly (see XXX below)
-**  - use write() rather than fprintf() in signal handler (see XXX below)
-*/
+// Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module contains the accurate garbage collector.
+//
+// Currently we are just using a simple copying collector.
+//
+// For the LLDS back-end, we detect heap overflow
+// using the virtual memory system; the page fault
+// handler will set the return address to call the
+// garbage collector. See also compiler/notes/gc_and_c_code.html.
+//
+// XXX This may cause problems for tight loops that allocate memory
+// and don't have any procedure returns in them... either because they
+// loop via tail calls and/or retries (failure in nondet code).
+//
+// For the MLDS back-end, we can't use this technique
+// of overwriting the return address, so instead we
+// just explicitly call MR_GC_check() to check for
+// heap overflow before each heap allocation.
+//
+// For documentation on accurate collection in the MLDS back-end,
+// see compiler/ml_elim_nested.m.
+//
+// TODO for the LLDS back-end:
+//  - add code to support tracing the stack frames left by builtin__catch;
+//  - fix issue with tight loops via tail calls (see XXX above);
+//  - fix issue with tight loops via retries (see XXX above);
+//  - handle semidet existentially typed procedures properly (see XXX below);
+//  - use write() rather than fprintf() in signal handler (see XXX below).
 
 #include "mercury_imp.h"
 
@@ -47,10 +40,8 @@
 #include "mercury_layout_util.h"
 #include "mercury_agc_debug.h"
 
-/*---------------------------------------------------------------------------*/
-/*
-** Function prototypes.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Function prototypes.
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -59,7 +50,7 @@
   static void   resize_and_reset_gc_threshold(MR_MemoryZone *old_heap,
                     MR_MemoryZone *new_heap);
 
-#else /* !MR_HIGHLEVEL_CODE */
+#else // !MR_HIGHLEVEL_CODE
 
   MR_define_extern_entry(mercury__garbage_collect_0_0);
 
@@ -82,7 +73,7 @@
                         MR_Word *stack_pointer, MR_Word *current_frame);
   static void   resize_and_reset_redzone(MR_MemoryZone *old_heap,
                         MR_MemoryZone *new_heap);
-  static void   copy_long_value(MR_LongLval locn, MR_TypeInfo type_info, 
+  static void   copy_long_value(MR_LongLval locn, MR_TypeInfo type_info,
                         MR_bool registers_live, MR_Word *stack_pointer,
                         MR_Word *current_frame);
   static void   copy_short_value(MR_ShortLval locn, MR_TypeInfo type_info,
@@ -101,10 +92,8 @@ static void     swap_heaps(void);
 static void     traverse_extra_roots(void);
 static void     maybe_clear_old_heap(MR_MemoryZone *old_heap, MR_Word *old_hp);
 
-/*---------------------------------------------------------------------------*/
-/*
-** Global variables (only used in this module, however).
-*/
+////////////////////////////////////////////////////////////////////////////
+// Global variables (only used in this module, however).
 
 #ifndef MR_HIGHLEVEL_CODE
 static MR_Code  *saved_success = NULL;
@@ -114,28 +103,26 @@ static MR_bool  gc_scheduled = MR_FALSE;
 static MR_bool  gc_running = MR_FALSE;
 #endif
 
-/* The list of roots */
+// The list of roots.
 static MR_RootList root_list = NULL;
 
-/* The last root on the list */
+// The last root on the list.
 static MR_RootList last_root = NULL;
 
-/*---------------------------------------------------------------------------*/
-/*
-** The MLDS version of the collector.
-*/
+////////////////////////////////////////////////////////////////////////////
+// The MLDS version of the collector.
 
 #ifdef MR_HIGHLEVEL_CODE
 
-/*
-** Perform a garbage collection:
-**      swap the two heaps;
-**      traverse the roots, copying data from the old heap to the new heap;
-**      reset the old heap;
-**
-** This is the version for the MLDS back-end.  Beware that there is some
-** code duplication with the version for the LLDS back-end, which is below.
-*/
+// Perform a garbage collection:
+//
+//  swap the two heaps;
+//  traverse the roots, copying data from the old heap to the new heap;
+//  reset the old heap;
+//
+// This is the version for the MLDS back-end. Beware that there is some
+// code duplication with the version for the LLDS back-end, which is below.
+
 void
 MR_garbage_collect(void)
 {
@@ -146,47 +133,39 @@ MR_garbage_collect(void)
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
     old_hp = MR_virtual_hp;
 
-    /*
-    ** Print some debugging messages.
-    */
+    // Print some debugging messages.
+
     notify_gc_start(old_heap, new_heap);
 
-    /*
-    ** Initialize the forwarding pointer bitmap.
-    */
+    // Initialize the forwarding pointer bitmap.
+
     init_forwarding_pointer_bitmap(old_heap, old_hp);
 
-    /*
-    ** Swap the two heaps.
-    ** The new heap pointer starts at the bottom of the new heap.
-    */
+    // Swap the two heaps.
+    // The new heap pointer starts at the bottom of the new heap.
+
     swap_heaps();
     MR_virtual_hp_word = (MR_Word) new_heap->MR_zone_min;
 
-    /*
-    ** Copy any roots on the stack
-    */
+    // Copy any roots on the stack.
+
     traverse_stack(mercury__private_builtin__stack_chain);
-    
-    /*
-    ** Copy any roots that are not on the stack.
-    */
+
+    // Copy any roots that are not on the stack.
+
     traverse_extra_roots();
 
-    /*
-    ** Clear out the old heap.
-    */
+    // Clear out the old heap.
+
     maybe_clear_old_heap(old_heap, old_hp);
 
-    /*
-    ** Compute the new size at which to GC,
-    ** and reset the gc_threshold on the new heap.
-    */
+    // Compute the new size at which to GC,
+    // and reset the gc_threshold on the new heap.
+
     resize_and_reset_gc_threshold(old_heap, new_heap);
 
-    /*
-    ** Print some more debugging messages,
-    */
+    // Print some more debugging messages,
+
     if (MR_agc_debug) {
         fprintf(stderr, "AFTER:\n");
     }
@@ -196,37 +175,35 @@ MR_garbage_collect(void)
 static void
 traverse_stack(struct MR_StackChain *stack_chain)
 {
-    /*
-    ** The trace() routines themselves should not allocate heap space;
-    ** they should use stack allocation.
-    */
+    // The trace() routines themselves should not allocate heap space;
+    // they should use stack allocation.
+
     while (stack_chain != NULL) {
         (*stack_chain->trace)(stack_chain);
         stack_chain = stack_chain->prev;
     }
 }
 
-/*
-** Compute the new size at which to GC,
-** and reset the redzone on the new heap.
-*/
+// Compute the new size at which to GC,
+// and reset the redzone on the new heap.
+
 static void
 resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 {
-    /* These counts include some wasted space between
-    ** ->MR_zone_min and ->MR_zone_bottom.
-    */
+    // These counts include some wasted space between
+    // ->MR_zone_min and ->MR_zone_bottom.
+
     size_t old_heap_space =
-        (char *) old_heap->MR_zone_gc_threshold - (char *) old_heap->MR_zone_bottom;
+        (char *) old_heap->MR_zone_gc_threshold -
+        (char *) old_heap->MR_zone_bottom;
     size_t new_heap_usage =
         (char *) MR_virtual_hp - (char *) new_heap->MR_zone_bottom;
     size_t gc_heap_size;
 
-    /*
-    ** Set the size at which to GC to be MR_heap_expansion_factor
-    ** (which defaults to two) times the current usage,
-    ** or the size at which we GC'd last time, whichever is larger.
-    */
+    // Set the size at which to GC to be MR_heap_expansion_factor
+    // (which defaults to two) times the current usage,
+    // or the size at which we GC'd last time, whichever is larger.
+
     gc_heap_size = MR_round_up(
         (size_t) (MR_heap_expansion_factor * new_heap_usage),
         MR_unit);
@@ -237,33 +214,26 @@ resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
         ((char *) old_heap->MR_zone_bottom + gc_heap_size);
 }
 
-/*---------------------------------------------------------------------------*/
-/*
-** The LLDS version of the collector.
-*/
+////////////////////////////////////////////////////////////////////////////
+// The LLDS version of the collector.
 
-#else /* !MR_HIGHLEVEL_CODE */
+#else // !MR_HIGHLEVEL_CODE
 
-/*
-** MR_schedule_agc:
-**      Schedule garbage collection.  
-**      
-**      We do this by replacing the succip that is saved in
-**      the current procedure's stack frame with the address
-**      of the garbage collector.  When the current procedure
-**      returns, it will call the garbage collector.
-**
-**      (We go to this trouble because then the stacks will
-**      be in a known state -- each stack frame is described
-**      by information associated with the continuation label
-**      that the code will return to).
-*/
+// MR_schedule_agc:
+//
+// Schedule garbage collection.
+//
+// We do this by replacing the succip that is saved in the current procedure's
+// stack frame with the address of the garbage collector. When the current
+// procedure returns, it will call the garbage collector.
+//
+// (We go to this trouble because then the stacks will be in a known state
+// -- each stack frame is described by information associated with the
+// continuation label that the code will return to).
 
-/*
-** XXX we should use write() rather than fprintf() here,
-**     since this code is called from a signal handler,
-**     and stdio is not guaranteed to be reentrant.
-**/
+// XXX We should use write() rather than fprintf() here, since this code
+// is called from a signal handler, and stdio is not guaranteed
+// to be reentrant.
 
 void
 MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
@@ -277,16 +247,13 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     MR_Determinism          determinism;
 
     if (gc_running) {
-        /*
-        ** This is bad news, but it can happen if you don't
-        ** collect any garbage.  We should try to avoid it by
-        ** resizing the heaps so they don't become too full.
-        **
-        ** It might also be worthwhile eventually turning off
-        ** the redzone in the destination heap (but only when
-        ** the large problem of handling collections with little
-        ** garbage has been solved).
-        */
+        // This is bad news, but it can happen if you don't collect
+        // any garbage. We should try to avoid it by resizing the heaps
+        // so they don't become too full.
+        //
+        // It might also be worthwhile eventually turning off the redzone
+        // in the destination heap (but only when the large problem of
+        // handling collections with little garbage has been solved).
 
         fprintf(stderr, "Mercury runtime: Garbage collection scheduled"
             " while collector is already running\n");
@@ -303,7 +270,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     fflush(NULL);
 #endif
 
-    /* Search for the entry label */
+    // Search for the entry label.
 
     entry_label = MR_prev_entry_by_addr(pc_at_signal);
     proc_layout = (entry_label != NULL ? entry_label->MR_entry_layout : NULL);
@@ -311,10 +278,9 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     determinism = (proc_layout != NULL ? proc_layout->MR_sle_detism : -1);
 
     if (determinism < 0) {
-        /*
-        ** This means we have reached some handwritten code that has
-        ** no further information about the stack frame.
-        */
+        // This means we have reached some handwritten code that has
+        // no further information about the stack frame.
+
         fprintf(stderr, "Mercury runtime: "
             "attempt to schedule garbage collection failed\n");
         if (entry_label != NULL) {
@@ -352,10 +318,9 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     fflush(NULL);
 #endif
 
-    /* 
-    ** If we have already scheduled a garbage collection, undo the last change,
-    ** and do a new one.
-    */
+    // If we have already scheduled a garbage collection, undo the last change,
+    // and do a new one.
+
     if (gc_scheduled) {
 #ifdef MR_DEBUG_AGC_SCHEDULING
         fprintf(stderr, "GC scheduled again. Replacing old scheduling,"
@@ -375,27 +340,24 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
             MR_fatal_error("can only handle stackvars");
         }
 
-        /*
-        ** Save the old succip and its location.
-        */
+        // Save the old succip and its location.
+
         saved_success_location = (MR_Code **)
                 & MR_based_stackvar(sp_at_signal, number);
         saved_success = *saved_success_location;
     } else {
         callee_was_model_semi = MR_FALSE;
-        /*
-        ** XXX we ought to also overwrite the redoip, otherwise we might miss
-        ** failure-driven loops which don't contain any returns.
-        */
-        /*
-        ** Save the old succip and its location.
-        **
-        ** Note that curfr always points to an ordinary procedure frame,
-        ** never to a temp frame, so it is safe to access the succip slot
-        ** of that frame without checking what kind of frame it is.
-        */
+        // XXX We ought to also overwrite the redoip, otherwise we might miss
+        // failure-driven loops which don't contain any returns.
+
+        // Save the old succip and its location.
+        //
+        // Note that curfr always points to an ordinary procedure frame,
+        // never to a temp frame, so it is safe to access the succip slot
+        // of that frame without checking what kind of frame it is.
+
         assert(location == -1);
-        /* succip is saved in succip_slot */
+        // succip is saved in succip_slot
         saved_success_location = MR_succip_slot_addr(curfr_at_signal);
         saved_success = *saved_success_location;
     }
@@ -407,9 +369,8 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
         (long) MR_ENTRY(mercury__garbage_collect_0_0));
 #endif
 
-    /*
-    ** Replace the old succip with the address of the garbage collector.
-    */
+    // Replace the old succip with the address of the garbage collector.
+
     *saved_success_location = MR_ENTRY(mercury__garbage_collect_0_0);
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
@@ -420,22 +381,20 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 MR_BEGIN_MODULE(native_gc)
 MR_BEGIN_CODE
 
-/*
-** Our garbage collection entry label.
-**
-** It saves the registers -- we use the saved registers
-** for garbage collection and leave the real ones alone.
-*/
+// Our garbage collection entry label.
+//
+// It saves the registers -- we use the saved registers
+// for garbage collection and leave the real ones alone.
+
 MR_define_entry(mercury__garbage_collect_0_0);
 
-    /* record that the collector is running */
+    // Record that the collector is running.
     gc_running = MR_TRUE;
 
-    /*
-    ** Restore the original contents of the saved success location.
-    ** This is needed in case it was on the nondet stack; in that
-    ** case, it might be used again after backtracking.
-    */
+    // Restore the original contents of the saved success location.
+    // This is needed in case it was on the nondet stack; in that case,
+    // it might be used again after backtracking.
+
     *saved_success_location = saved_success;
 
     MR_save_registers();
@@ -451,14 +410,13 @@ MR_define_entry(mercury__garbage_collect_0_0);
 
 MR_END_MODULE
 
-/*
-** MR_LLDS_garbage_collect:
-**
-**      The main garbage collection routine.
-**
-** This is the version for the LLDS back-end.  Beware that there is some
-** code duplication with the version for the MLDS back-end, which is above.
-*/
+// MR_LLDS_garbage_collect:
+//
+// The main garbage collection routine.
+//
+// This is the version for the LLDS back-end. Beware that there is some
+// code duplication with the version for the MLDS back-end, which is above.
+
 static void
 MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
     MR_Word *stack_pointer, MR_Word *max_frame, MR_Word *current_frame)
@@ -472,20 +430,17 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
     old_hp = MR_virtual_hp;
 
-    /*
-    ** Print some debugging messages
-    */
+    // Print some debugging messages.
+
     notify_gc_start(old_heap, new_heap);
 
-    /*
-    ** Initialize the forwarding pointer bitmap.
-    */
+    // Initialize the forwarding pointer bitmap.
+
     init_forwarding_pointer_bitmap(old_heap, old_hp);
 
-    /*
-    ** Swap the two heaps.
-    ** The new heap pointer starts at the bottom of the new heap.
-    */
+    // Swap the two heaps.
+    // The new heap pointer starts at the bottom of the new heap.
+
     swap_heaps();
     MR_virtual_hp_word = (MR_Word) new_heap->MR_zone_min;
 
@@ -501,50 +456,44 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
             current_frame, max_frame);
         MR_agc_dump_roots(root_list);
 
-        /* 
-        ** XXX the debug code seems to be messing up the heap pointer.
-        ** easier to reset it than debug the problem at the moment
-        */
+        // XXX The debug code seems to be messing up the heap pointer.
+        // Easier to reset it than debug the problem at the moment.
+
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
         MR_virtual_hp_word = (MR_Word) new_heap->MR_zone_min;
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
     }
 
-    /*
-    ** Traverse the stacks, copying the live data in the old heap to the
-    ** new heap.
-    */
+    // Traverse the stacks, copying the live data in the old heap to the
+    // new heap.
+
     traverse_det_stack(label_layout, callee_model_semi,
         stack_pointer, current_frame);
     traverse_nondet_stack(label_layout, callee_model_semi,
         stack_pointer, max_frame, current_frame);
 
-    /*
-    ** Copy any roots that are not on the stack.
-    */
+    // Copy any roots that are not on the stack.
+
     traverse_extra_roots();
 
-    /*
-    ** Clear out the old heap.  This needs to be
-    ** done _before_ we reset the redzone.
-    */
+    // Clear out the old heap. This needs to be done _before_
+    // we reset the redzone.
+
     maybe_clear_old_heap(old_heap, old_hp);
 
-    /*
-    ** Compute the new size at which to GC,
-    ** and reset the redzone on the new heap.
-    */
+    // Compute the new size at which to GC,
+    // and reset the redzone on the new heap.
+
     resize_and_reset_redzone(old_heap, new_heap);
 
-    /*
-    ** Print some more debugging messages
-    */
+    // Print some more debugging messages
+
     if (MR_agc_debug) {
         MR_Word *new_hp;
 
         fprintf(stderr, "AFTER:\n");
 
-        /* XXX save this, it appears to get clobbered */
+        // XXX Save this, it appears to get clobbered.
         new_hp = MR_virtual_hp;
 
         MR_agc_dump_stack_frames(label, new_heap, stack_pointer,
@@ -552,43 +501,39 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
         MR_agc_dump_nondet_stack_frames(label, new_heap,
             stack_pointer, current_frame, max_frame);
 
-        /* XXX restore this, it appears to get clobbered */
+        // XXX Restore this, it appears to get clobbered.
         MR_virtual_hp_word = (MR_Word) new_hp;
     }
 
     notify_gc_end(old_heap, new_heap, old_hp);
 }
 
-/*
-** Traverse the det stack.  In order to do this, we need to traverse
-** the call stack, which includes all of the det stack _plus_ the
-** success continuation frames on the nondet stack (but not the failure
-** continuation frames on the nondet stack).  But we skip all the nondet
-** frames.
-*/
+// Traverse the det stack. In order to do this, we need to traverse
+// the call stack, which includes all of the det stack _plus_ the
+// success continuation frames on the nondet stack (but not the failure
+// continuation frames on the nondet stack). But we skip all the nondet
+// frames.
+
 static void
 traverse_det_stack(const MR_LabelLayout *label_layout,
     MR_bool callee_model_semi, MR_Word *stack_pointer, MR_Word *current_frame)
 {
-    /*
-    ** Record whether this is the first frame on the call stack.
-    ** The very first frame on the call stack is special because it may have
-    ** live registers (the other frames should only have live stack slots).
-    */
+    // Record whether this is the first frame on the call stack.
+    // The very first frame on the call stack is special because it may have
+    // live registers (the other frames should only have live stack slots).
+
     MR_bool   is_first_frame = MR_TRUE;
 
-    /*
-    ** For each stack frame ...
-    */
+    // For each stack frame ...
+
     do {
         const MR_ProcLayout             *proc_layout;
         MR_StackWalkStepResult          result;
         MR_Unsigned                     reused_frames;
         const char                      *problem;
 
-        /*
-        ** Traverse this stack frame, if it is a det frame.
-        */
+        // Traverse this stack frame, if it is a det frame.
+
         proc_layout = label_layout->MR_sll_entry;
         if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
             MR_bool registers_live = are_registers_live(is_first_frame,
@@ -597,30 +542,27 @@ traverse_det_stack(const MR_LabelLayout *label_layout,
                 current_frame);
         }
 
-        /*
-        ** Get the next stack frame
-        */
+        // Get the next stack frame.
+
         result = MR_stack_walk_step(proc_layout, &label_layout,
             &stack_pointer, &current_frame, &reused_frames, &problem);
         if (result == MR_STEP_ERROR_BEFORE || result == MR_STEP_ERROR_AFTER) {
             MR_fatal_error(problem);
-        } 
+        }
 
         is_first_frame = MR_FALSE;
 
-    } while (label_layout != NULL); /* end for each stack frame... */
+    } while (label_layout != NULL); // end for each stack frame...
 }
 
 static MR_bool
 are_registers_live(MR_bool is_first_frame, MR_bool callee_model_semi)
 {
-    /*
-    ** The registers are live if this is the first (top) frame.
-    ** However, as an exception, if the called procedure was
-    ** semidet, and the success indicator (MR_r1) is false,
-    ** then the registers are not live (only MR_r1 is live,
-    ** and we don't need to traverse that).
-    */
+    // The registers are live if this is the first (top) frame.
+    // However, as an exception, if the called procedure was semidet,
+    // and the success indicator (MR_r1) is false, then the registers
+    // are not live (only MR_r1 is live, and we don't need to traverse that).
+
     MR_bool registers_live = is_first_frame;
     if (callee_model_semi && !MR_virtual_reg_value(1)) {
         registers_live = MR_FALSE;
@@ -628,16 +570,14 @@ are_registers_live(MR_bool is_first_frame, MR_bool callee_model_semi)
     return registers_live;
 }
 
-/*
-** Traverse the whole of the nondet stack.
-*/ 
+// Traverse the whole of the nondet stack.
 
 struct first_frame_data {
     const MR_LabelLayout    *first_frame_layout;
     MR_Word                 *first_frame_curfr;
     MR_bool                 first_frame_callee_model_semi;
 };
-    
+
 static void
 traverse_nondet_stack(const MR_LabelLayout *first_frame_layout,
     MR_bool callee_model_semi, MR_Word *stack_pointer,
@@ -654,29 +594,27 @@ traverse_nondet_stack(const MR_LabelLayout *first_frame_layout,
 static void
 traverse_nondet_frame(void *user_data, const MR_LabelLayout *label_layout,
     MR_Word *stack_pointer, MR_Word *current_frame)
-{   
+{
     MR_bool                 is_first_frame;
     MR_bool                 registers_live;
     struct first_frame_data *data = user_data;
-    
-    /*
-    ** Determine whether this is the first frame on the call stack.
-    ** The very first frame on the call stack is special because it may have
-    ** live registers (the other frames should only have live stack slots).
-    */
+
+    // Determine whether this is the first frame on the call stack.
+    // The very first frame on the call stack is special because it may have
+    // live registers (the other frames should only have live stack slots).
+
     is_first_frame = (current_frame == data->first_frame_curfr
         && !MR_DETISM_DET_STACK(
             data->first_frame_layout->MR_sll_entry->MR_sle_detism));
 
-    registers_live = are_registers_live(is_first_frame, 
+    registers_live = are_registers_live(is_first_frame,
         data->first_frame_callee_model_semi);
 
     traverse_frame(registers_live, label_layout, stack_pointer, current_frame);
 }
 
-/*
-** Traverse a stack frame (it could be either a det frame or a nondet frame).
-*/
+// Traverse a stack frame (it could be either a det frame or a nondet frame).
+
 static void
 traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
     MR_Word *stack_pointer, MR_Word *current_frame)
@@ -693,10 +631,9 @@ traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
     allocated_memory_cells = NULL;
 
     if (MR_agc_debug) {
-        /*
-        ** XXX we used to print the label name here, but that's
-        ** not available anymore
-        */
+        // XXX We used to print the label name here, but that is
+        // not available anymore.
+
         printf("traverse_frame: traversing frame with label layout %p\n",
             (const void *) label_layout);
         fflush(NULL);
@@ -705,25 +642,23 @@ traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
     long_var_count = MR_long_desc_var_count(label_layout);
     short_var_count = MR_short_desc_var_count(label_layout);
 
-    /* Get the type parameters from the stack frame. */
+    // Get the type parameters from the stack frame.
 
-    /*
-    ** For frames other than the first frame, we must pass NULL for the
-    ** registers here, since the registers have not been saved;
-    ** This should be OK, because none of the values used by a procedure
-    ** will be stored in registers across a call, since we have no
-    ** caller-save registers (they are all callee-save).
-    */
-    /*
-    ** XXX This won't handle calls to semidet existentially typed procedures.
-    ** We will try to dereference the type_infos for the existential type vars
-    ** here, even if the success indicator is false and hence the registers
-    ** are not live.
-    */
+    // For frames other than the first frame, we must pass NULL for the
+    // registers here, since the registers have not been saved;
+    // This should be OK, because none of the values used by a procedure
+    // will be stored in registers across a call, since we have no
+    // caller-save registers (they are all callee-save).
+
+    // XXX This won't handle calls to semidet existentially typed procedures.
+    // We will try to dereference the type_infos for the existential type vars
+    // here, even if the success indicator is false and hence the registers
+    // are not live.
+
     type_params = MR_materialize_type_params_base(label_layout,
         (registers_live ? MR_fake_reg : NULL), stack_pointer, current_frame);
-    
-    /* Copy each live variable */
+
+    // Copy each live variable.
 
     for (i = 0; i < long_var_count; i++) {
         locn = MR_long_desc_var_locn(label_layout, i);
@@ -752,16 +687,14 @@ traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
     MR_free(type_params);
 }
 
-/*
-** copy_long_value:
-**      Copies a value in a register or stack frame,
-**      replacing the original with the new copy.
-**
-**      The copying is done using MR_agc_deep_copy, which is
-**      the accurate GC version of MR_deep_copy (it leaves
-**      forwarding pointers in the old copy of the data, if
-**      it is on the old heap).
-*/
+// copy_long_value:
+//
+// Copies a value in a register or stack frame, replacing the original
+// with the new copy.
+//
+// The copying is done using MR_agc_deep_copy, which is the accurate GC version
+// of MR_deep_copy (it leaves forwarding pointers in the old copy of the data,
+// if it is on the old heap).
 
 static void
 copy_long_value(MR_LongLval locn, MR_TypeInfo type_info,
@@ -819,13 +752,12 @@ copy_long_value(MR_LongLval locn, MR_TypeInfo type_info,
         break;
 
     case MR_LONG_LVAL_TYPE_HP:
-        /*
-        ** Currently we don't support heap reclamation on failure
-        ** with accurate GC, so we shouldn't get any saved HP values.
-        ** XXX To support this, saved heap pointer values would need to be
-        ** updated to point to the new heap... but this is tricky -- see the
-        ** CVS log message for revision 1.21 of runtime/mercury_accurate_gc.c.
-        */
+        // Currently we don't support heap reclamation on failure
+        // with accurate GC, so we shouldn't get any saved HP values.
+        // XXX To support this, saved heap pointer values would need to be
+        // updated to point to the new heap... but this is tricky -- see the
+        // CVS log message for revision 1.21 of runtime/mercury_accurate_gc.c.
+
         MR_fatal_error("copy_long_value: MR_LONG_LVAL_TYPE_HP");
         break;
 
@@ -833,7 +765,7 @@ copy_long_value(MR_LongLval locn, MR_TypeInfo type_info,
         break;
 
     case MR_LONG_LVAL_TYPE_INDIRECT:
-        /* XXX Tyson will have to write the code for this */
+        // XXX Tyson will have to write the code for this.
         MR_fatal_error("NYI: copy_long_value on MR_LONG_LVAL_TYPE_INDIRECT");
         break;
 
@@ -887,16 +819,15 @@ copy_short_value(MR_ShortLval locn, MR_TypeInfo type_info,
     }
 }
 
-/*
-** Compute the new size at which to GC,
-** and reset the redzone on the new heap.
-*/
+// Compute the new size at which to GC,
+// and reset the redzone on the new heap.
+
 static void
 resize_and_reset_redzone(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 {
-    /* These counts include some wasted space between
-    ** ->MR_zone_min and ->MR_zone_bottom.
-    */
+    // These counts include some wasted space between
+    // ->MR_zone_min and ->MR_zone_bottom.
+
     size_t old_heap_space =
         (char *) old_heap->MR_zone_redzone_base -
             (char *) old_heap->MR_zone_bottom;
@@ -904,11 +835,10 @@ resize_and_reset_redzone(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
         (char *) MR_virtual_hp - (char *) new_heap->MR_zone_bottom;
     size_t gc_heap_size;
 
-    /*
-    ** Set the size at which to GC to be MR_heap_expansion_factor
-    ** (which defaults to two) times the current usage,
-    ** or the size at which we GC'd last time, whichever is larger.
-    */
+    // Set the size at which to GC to be MR_heap_expansion_factor
+    // (which defaults to two) times the current usage,
+    // or the size at which we GC'd last time, whichever is larger.
+
     gc_heap_size = MR_round_up(
         (size_t) (MR_heap_expansion_factor * new_heap_usage),
         MR_unit);
@@ -916,40 +846,36 @@ resize_and_reset_redzone(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
         gc_heap_size = old_heap_space;
     }
 
-    /* Reset the redzone on the new heap */
+    // Reset the redzone on the new heap
     old_heap->MR_zone_redzone_base = (MR_Word *)
         ((char *) old_heap->MR_zone_bottom + gc_heap_size);
     MR_reset_redzone(old_heap);
 }
 
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
 
-/*---------------------------------------------------------------------------*/
-/*
-** Subroutines shared between both the LLDS and MLDS versions of the collector.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Subroutines shared between both the LLDS and MLDS versions of the collector.
 
-/*
-** Print debugging messages at the start of a collection.
-*/
+// Print debugging messages at the start of a collection.
+
 static void
 notify_gc_start(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap)
 {
     if (MR_agc_debug) {
         fprintf(stderr, "\nGarbage collection started.\n");
 
-        fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
+        fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n",
             (long) old_heap->MR_zone_min, (long) old_heap->MR_zone_hardmax);
-        fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
+        fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n",
             (long) new_heap->MR_zone_min, (long) new_heap->MR_zone_hardmax);
 
         fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
     }
 }
 
-/*
-** Print debugging messages at the end of a collection.
-*/
+// Print debugging messages at the end of a collection.
+
 static void
 notify_gc_end(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap,
     const MR_Word *old_hp)
@@ -957,12 +883,12 @@ notify_gc_end(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap,
     if (MR_agc_debug) {
         MR_Word *new_hp;
 
-        /* XXX save this, it appears to get clobbered */
+        // XXX Save this, it appears to get clobbered.
         new_hp = MR_virtual_hp;
 
         MR_agc_dump_roots(root_list);
 
-        /* XXX restore this, it appears to get clobbered */
+        // XXX Restore this, it appears to get clobbered.
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
         MR_virtual_hp_word = (MR_Word) new_hp;
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
@@ -970,7 +896,7 @@ notify_gc_end(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap,
         fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
             (long) ((char *) old_hp - (char *) old_heap->MR_zone_min),
             (long) ((char *) MR_virtual_hp - (char *) new_heap->MR_zone_min));
-        fprintf(stderr, "%ld bytes recovered\n", 
+        fprintf(stderr, "%ld bytes recovered\n",
             (long) ((char *) old_hp - (char *) old_heap->MR_zone_min) -
             ((char *) MR_virtual_hp - (char *) new_heap->MR_zone_min));
 
@@ -978,10 +904,9 @@ notify_gc_end(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap,
     }
 }
 
-/*
-** Initialize the forwarding pointer bitmap (MR_has_forwarding_pointer[])
-** with all bits unset (zero).
-*/
+// Initialize the forwarding pointer bitmap (MR_has_forwarding_pointer[])
+// with all bits unset (zero).
+
 static void
 init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap, MR_Word *old_hp)
 {
@@ -1003,9 +928,8 @@ init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap, MR_Word *old_hp)
     MR_memset(MR_has_forwarding_pointer, 0, num_bytes_for_bitmap);
 }
 
-/*
-** Swap the two heaps.
-*/
+// Swap the two heaps.
+
 static void
 swap_heaps(void)
 {
@@ -1013,38 +937,34 @@ swap_heaps(void)
 
     tmp = MR_ENGINE(MR_eng_heap_zone2);
     MR_ENGINE(MR_eng_heap_zone2) = MR_ENGINE(MR_eng_heap_zone);
-    MR_ENGINE(MR_eng_heap_zone) = tmp; 
+    MR_ENGINE(MR_eng_heap_zone) = tmp;
 
     if (MR_agc_debug) {
-        fprintf(stderr, "Swapped heaps\n"); 
+        fprintf(stderr, "Swapped heaps\n");
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
     }
 }
 
-/*
-** traverse_extra_roots:
-** 
-**      Copies the extra roots.  The roots are overwritten
-**      with the new data.
-*/
+// traverse_extra_roots:
+//
+// Copies the extra roots. The roots are overwritten with the new data.
 
 static void
-traverse_extra_roots(void) 
+traverse_extra_roots(void)
 {
     MR_RootList current = root_list;
 
     while (current != NULL) {
         *current->root = MR_agc_deep_copy(*current->root, current->type_info,
-            MR_ENGINE(MR_eng_heap_zone2->MR_zone_min), 
+            MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
             MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
         current = current->next;
     }
 }
 
-/*
-** If we're debugging, wipe out the contents of the old heap.
-** This helps ensure that any bugs in the collector show up sooner.
-*/
+// If we are debugging, wipe out the contents of the old heap.
+// This helps ensure that any bugs in the collector show up sooner.
+
 static void
 maybe_clear_old_heap(MR_MemoryZone *old_heap, MR_Word *old_hp)
 {
@@ -1058,11 +978,9 @@ maybe_clear_old_heap(MR_MemoryZone *old_heap, MR_Word *old_hp)
     }
 }
 
-/*
-** MR_agc_add_root:
-** 
-**      Adds a new root to the set of extra roots.
-*/
+// MR_agc_add_root:
+//
+// Adds a new root to the set of extra roots.
 
 void
 MR_agc_add_root(MR_Word *root_addr, MR_TypeInfo type_info)
@@ -1083,4 +1001,4 @@ MR_agc_add_root(MR_Word *root_addr, MR_TypeInfo type_info)
     }
 }
 
-#endif /* MR_NATIVE_GC */
+#endif // MR_NATIVE_GC

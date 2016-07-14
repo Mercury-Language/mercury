@@ -1,32 +1,26 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1998-2000, 2002-2004, 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_library_types.h - definitions of some basic types used by the
-** Mercury library.
-*/
+// Copyright (C) 1998-2000, 2002-2004, 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_library_types.h - definitions of some basic types used by the
+// Mercury library.
 
 #ifndef MERCURY_LIBRARY_TYPES_H
 #define MERCURY_LIBRARY_TYPES_H
 
-#include "mercury_regs.h"   /* must include before system headers */
-#include "mercury_types.h"  /* for `MR_Word' and `MR_Integer'     */
-#include "mercury_std.h"    /* for MR_VARIABLE_SIZED              */
-#include <stdio.h>          /* for `FILE'                         */
-#include <stdarg.h>         /* for `va_list'                      */
+#include "mercury_regs.h"   // must include before system headers
+#include "mercury_types.h"  // for `MR_Word' and `MR_Integer'
+#include "mercury_std.h"    // for MR_VARIABLE_SIZED
+#include <stdio.h>          // for `FILE'
+#include <stdarg.h>         // for `va_list'
 
-/*
-** The C `MercuryFile' type is used for the Mercury `io.stream' type
-** in library/io.m.
-** Mercury files are not quite the same as C stdio FILEs,
-** because we keep track of a lot more information.
-*/
+// The C `MercuryFile' type is used for the Mercury `io.stream' type
+// in library/io.m.
+// Mercury files are not quite the same as C stdio FILEs,
+// because we keep track of a lot more information.
+
 #ifndef MR_NEW_MERCURYFILE_STRUCT
   typedef struct mercury_file {
     FILE *file1;
@@ -60,9 +54,9 @@
 
   #define MR_PUTCH(mf, ch)  putc((ch), MR_file(mf))
 
-#else /* MR_NEW_MERCURYFILE_STRUCT */
+#else // MR_NEW_MERCURYFILE_STRUCT
 
-    /* Possible types of a MercuryFile */
+  // The possible types of a MercuryFile.
   typedef enum {
     MR_FILE_STREAM      = 1,
     MR_SOCKET_STREAM    = 2,
@@ -70,9 +64,8 @@
     MR_USER_STREAM      = 4
   } MR_StreamType;
 
-  /*
-  ** A pointer to the data which can be used to access the MercuryFile.
-  */
+  // A pointer to the data which can be used to access the MercuryFile.
+
   typedef union {
     FILE *file;
     void *data;
@@ -88,36 +81,36 @@
   typedef int (MR_Stream_vprintf)(MR_StreamInfo *, const char *, va_list);
   typedef int (MR_Stream_putc)(MR_StreamInfo *, int);
 
-  /*
-  ** The MercuryFile structure records:
-  **    - the type of the stream
-  **    - a pointer to the information which describes the stream
-  **    - the line number we are up to in the stream
-  **
-  **    - pointer to functions which provide the same functionality
-  **      as close/read/write of fds.
-  **
-  **    - pointers to functions which provide the same functionality
-  **      as flush/ungetc/getc/vprintf/putc on stdio files.
-  **
-  ** MercuryFiles record all this extra information so that users can use all
-  ** the functionality of io.m on their own streams. For instance see
-  ** extras/logged_output.
-  */
+  // The MercuryFile structure records:
+  //
+  // - the type of the stream
+  // - a pointer to the information which describes the stream
+  // - the line number we are up to in the stream
+  //
+  // - pointer to functions which provide the same functionality
+  //   as close/read/write of fds.
+  //
+  // - pointers to functions which provide the same functionality
+  //   as flush/ungetc/getc/vprintf/putc on stdio files.
+  //
+  // MercuryFiles record all this extra information so that users can use all
+  // the functionality of io.m on their own streams. For instance see
+  // extras/logged_output.
+
   typedef struct mercury_file {
     MR_StreamType       stream_type;
     MR_StreamInfo       stream_info;
-    int     line_number;
+    int                 line_number;
   #ifdef MR_NATIVE_GC
-    int id;
+    int                 id;
   #endif
 
-        /* UNBUFFERED FUNCTIONS */
-    MR_Stream_close     *close;    
+    // UNBUFFERED FUNCTIONS
+    MR_Stream_close     *close;
     MR_Stream_read      *read;
     MR_Stream_write     *write;
 
-        /* BUFFERED FUNCTIONS */
+    // BUFFERED FUNCTIONS
     MR_Stream_flush     *flush;
     MR_Stream_ungetc    *ungetc;
     MR_Stream_getc      *getc;
@@ -125,15 +118,13 @@
     MR_Stream_putc      *putc;
   } MercuryFile;
 
-  /*
-  ** access the file and line number fields
-  */
+  // Access the file and line number fields.
+
   #define MR_file(mf)           (mf).stream_info.file
   #define MR_line_number(mf)    (mf).line_number
 
-  /*
-  ** Call the functions associated with the MercuryFile structure
-  */
+  // Call the functions associated with the MercuryFile structure.
+
   #define MR_CLOSE(mf)  ((mf).close)(&((mf).stream_info))
   #define MR_READ(mf, ptr, size)                                        \
         ((mf).read)(&((mf).stream_info), (ptr), (size))
@@ -149,31 +140,29 @@
   #define MR_PUTCH(mf, ch)                                              \
         ((mf).putc)(&((mf).stream_info), (ch))
 
-#endif  /* MR_NEW_MERCURYFILE_STRUCT */
+#endif  // MR_NEW_MERCURYFILE_STRUCT
 
 typedef MercuryFile *MercuryFilePtr;
 
-/*
-** This macro should be used to wrap arguments of type MercuryFilePtr
-** that are being passed to exported Mercury procedures where the type
-** of the corresponding argument in the Mercury procedure is
-** io.input_stream or io.binary_input_stream.
-*/
+// This macro should be used to wrap arguments of type MercuryFilePtr
+// that are being passed to exported Mercury procedures where the type
+// of the corresponding argument in the Mercury procedure is
+// io.input_stream or io.binary_input_stream.
+
 #define MR_wrap_output_stream(mf) ((MR_Word)(mf))
 
-/*
-** This macro should be used to wrap arguments of type MercuryFilePtr
-** that are being passed to exported Mercury procedures where the type
-** of the corresponding argument in the Mercury procedure is
-** io.output_stream or io.binary_output_stream.
-*/
+// This macro should be used to wrap arguments of type MercuryFilePtr
+// that are being passed to exported Mercury procedures where the type
+// of the corresponding argument in the Mercury procedure is
+// io.output_stream or io.binary_output_stream.
+
 #define MR_wrap_input_stream(mf) ((MR_Word)(mf))
 
-/* 
-** Do the reverse to above.
-** The only place we use this in browser/listing.m.
-*/
+//
+// Do the reverse to above.
+// The only place we use this in browser/listing.m.
+
 #define MR_unwrap_input_stream(mf) ((MercuryFilePtr)(mf))
 #define MR_unwrap_output_stream(mf) ((MercuryFilePtr)(mf))
 
-#endif /* not MERCURY_LIBRARY_TYPES_H */
+#endif // not MERCURY_LIBRARY_TYPES_H

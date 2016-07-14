@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2002-2005, 2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_construct.c
-**
-** This file provides utility functions for constructing terms, for use by
-** the standard library.
-*/
+// Copyright (C) 2002-2005, 2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_construct.c
+//
+// This file provides utility functions for constructing terms, for use by
+// the standard library.
 
 #include "mercury_conf.h"
 #ifndef MR_HIGHLEVEL_CODE
@@ -21,21 +16,19 @@
 #include "mercury_type_info.h"
 #include "mercury_construct.h"
 #include "mercury_univ.h"
-#include "mercury_misc.h"   /* for MR_fatal_error() */
+#include "mercury_misc.h"   // for MR_fatal_error()
 
 static  int  MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
                 MR_Construct_Info *construct_info);
 
-/*
-** MR_get_functor_info:
-**
-** Extract the information for functor number `functor_number',
-** for the type represented by type_info.
-** We succeed if the type is some sort of discriminated union.
-**
-** You need to save and restore transient registers around
-** calls to this function.
-*/
+// MR_get_functor_info:
+//
+// Extract the information for functor number `functor_number',
+// for the type represented by type_info.
+// We succeed if the type is some sort of discriminated union.
+//
+// You need to save and restore transient registers around
+// calls to this function.
 
 static int
 MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
@@ -50,7 +43,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
         MR_fatal_error("MR_get_functor_info: term of unknown representation");
     }
 
-    switch(MR_type_ctor_rep(type_ctor_info)) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
 
     case MR_TYPECTOR_REP_RESERVED_ADDR:
     case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
@@ -105,7 +98,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
         {
             const MR_ForeignEnumFunctorDesc  *functor_desc;
-            
+
             if (functor_number < 0 ||
                 functor_number >= MR_type_ctor_num_functors(type_ctor_info))
             {
@@ -160,7 +153,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
         construct_info->functor_name = "{}";
         construct_info->arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
 
-        /* Tuple types don't have pseudo-type_infos for the functors. */
+        // Tuple types don't have pseudo-type_infos for the functors.
         construct_info->arg_pseudo_type_infos = NULL;
         construct_info->arg_names = NULL;
         return MR_TRUE;
@@ -204,20 +197,18 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     MR_fatal_error("MR_get_functor_info: unexpected fallthrough");
 }
 
-/*
-** MR_typecheck_arguments:
-**
-** Given a list of univs (`arg_list'), and a vector of
-** type_infos (`arg_vector'), checks that they are all of the
-** same type; if so, returns MR_TRUE, otherwise returns MR_FALSE;
-** `arg_vector' may contain type variables, these
-** will be filled in by the type arguments of `type_info'.
-**
-** Assumes the length of the list has already been checked.
-**
-** You need to save and restore transient registers around
-** calls to this function.
-*/
+// MR_typecheck_arguments:
+//
+// Given a list of univs (`arg_list'), and a vector of type_infos
+// (`arg_vector'), checks that they are all of the same type;
+// if so, returns MR_TRUE, otherwise returns MR_FALSE;
+// `arg_vector' may contain type variables, these will be filled in
+// by the type arguments of `type_info'.
+//
+// Assumes the length of the list has already been checked.
+//
+// You need to save and restore transient registers around
+// calls to this function.
 
 MR_bool
 MR_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
@@ -228,7 +219,7 @@ MR_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
     int             comp;
     int             i;
 
-    /* Type check the list of arguments */
+    // Type check the list of arguments.
 
     for (i = 0; i < arity; i++) {
         if (MR_list_is_empty(arg_list)) {
@@ -256,43 +247,36 @@ MR_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
         arg_list = MR_list_tail(arg_list);
     }
 
-        /* List should now be empty */
+    // List should now be empty.
     return MR_list_is_empty(arg_list);
 }
 
-/*
-** MR_get_functors_check_range:
-**
-** Check that functor_number is in range, and get the functor
-** info if it is. Return MR_FALSE if it is out of range, or
-** if MR_get_functor_info returns MR_FALSE, otherwise return MR_TRUE.
-**
-** You need to save and restore transient registers around
-** calls to this function.
-*/
+// MR_get_functors_check_range:
+//
+// Check that functor_number is in range, and get the functor info if it is.
+// Return MR_FALSE if it is out of range, or if MR_get_functor_info returns
+// MR_FALSE, otherwise return MR_TRUE.
+//
+// You need to save and restore transient registers around
+// calls to this function.
 
 MR_bool
 MR_get_functors_check_range(int functor_number, MR_TypeInfo type_info,
     MR_Construct_Info *construct_info)
 {
-        /*
-        ** Check range of functor_number, get functors
-        ** vector
-        */
+    // Check range of functor_number, get functors vector.
     return functor_number < MR_get_num_functors(type_info) &&
         functor_number >= 0 &&
         MR_get_functor_info(type_info, functor_number, construct_info);
 }
 
-/*
-** MR_get_num_functors:
-**
-** Get the number of functors for a type. If it isn't a
-** discriminated union, return -1.
-**
-** You need to save and restore transient registers around
-** calls to this function.
-*/
+// MR_get_num_functors:
+//
+// Get the number of functors for a type. If it isn't a discriminated union,
+// return -1.
+//
+// You need to save and restore transient registers around
+// calls to this function.
 
 int
 MR_get_num_functors(MR_TypeInfo type_info)
@@ -305,7 +289,7 @@ MR_get_num_functors(MR_TypeInfo type_info)
         MR_fatal_error("MR_get_num_functors: term of unknown representation");
     }
 
-    switch(MR_type_ctor_rep(type_ctor_info)) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
         case MR_TYPECTOR_REP_RESERVED_ADDR:

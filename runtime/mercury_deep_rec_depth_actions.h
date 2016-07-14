@@ -1,27 +1,22 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file provides macros that library/profiling_builtin.m uses to compose
-** the code fragments passed to mercury_deep_rec_depth_body.h to create the
-** bodies of
-**  save_recursion_depth{1..9}
-**  restore_recursion_depth_exit{1..9}
-**  restore_recursion_depth_fail{1..9}
-**
-** These macros assume that the environments of their invocation define
-** the following variables:
-** 
-** pd:  should point to the MR_ProcDynamic structure of the caller.
-** pl:  should point to the MR_ProcLayout structure of the caller.
-** ps:  should point to the MR_ProcStatic structure of the caller.
-*/
+// Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file provides macros that library/profiling_builtin.m uses to compose
+// the code fragments passed to mercury_deep_rec_depth_body.h to create the
+// bodies of
+//  save_recursion_depth{1..9}
+//  restore_recursion_depth_exit{1..9}
+//  restore_recursion_depth_fail{1..9}
+//
+// These macros assume that the environments of their invocation define
+// the following variables:
+//
+// pd:  should point to the MR_ProcDynamic structure of the caller.
+// pl:  should point to the MR_ProcLayout structure of the caller.
+// ps:  should point to the MR_ProcStatic structure of the caller.
 
 #define MR_SAVE_DEPTH_ACTION(outer_count, csn)                          \
     do {                                                                \
@@ -48,7 +43,7 @@
             int inner_count;                                            \
                                                                         \
             inner_count = inner_csd->MR_csd_depth_count;                \
-            /* calls are computed from the other counts */              \
+            /* Calls are computed from the other counts. */             \
             inner_csd->MR_csd_own.inc_field += inner_count;             \
             inner_csd->MR_csd_depth_count = outer_count;                \
         } else {                                                        \

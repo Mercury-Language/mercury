@@ -1,16 +1,11 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2007, 2009, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** file: mercury_region.c
-** main author: qph
-*/
+// Copyright (C) 2007, 2009, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// file: mercury_region.c
+// main author: qph
 
 #include "mercury_imp.h"
 #include "mercury_region.h"
@@ -71,10 +66,10 @@ unsigned int        MR_rbmmp_regions_saved_at_commit = 0;
 
 #endif
 
-/* Request for more pages from the operating system. */
+// Request for more pages from the operating system.
 static MR_RegionPage    *MR_region_request_pages(void);
 
-/* Take a page from the free page list. */
+// Take a page from the free page list.
 static MR_RegionPage    *MR_region_get_free_page(void);
 
 static void             MR_region_nullify_entries_in_commit_stack(
@@ -100,8 +95,8 @@ static void             MR_region_get_new_pages_and_new_words(
                             MR_RegionSnapshot *snapshot, int *new_pages,
                             int *new_words);
 
-/*---------------------------------------------------------------------------*/
-/* Page operations.                                                          */
+////////////////////////////////////////////////////////////////////////////
+// Page operations.
 
 static MR_RegionPage *
 MR_region_request_pages(void)
@@ -139,7 +134,7 @@ MR_region_get_free_page(void)
 
     page = MR_region_free_page_list;
     MR_region_free_page_list = MR_region_free_page_list->MR_regionpage_next;
-    /* Disconnect the first free page from the free list. */
+    // Disconnect the first free page from the free list.
     page->MR_regionpage_next = NULL;
 
 #if defined(MR_RBMM_PROFILING)
@@ -149,16 +144,12 @@ MR_region_get_free_page(void)
     return page;
 }
 
-/*---------------------------------------------------------------------------*/
-/*
-** Region operations.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Region operations.
 
-/*
-** Create a region.
-** The MR_REGION_PAGE_SPACE_SIZE must be larger than the size of
-** Region_Struct.
-*/
+// Create a region.
+// The MR_REGION_PAGE_SPACE_SIZE must be larger than the size of
+// Region_Struct.
 
 MR_RegionHeader *
 MR_region_create_region(void)
@@ -166,14 +157,13 @@ MR_region_create_region(void)
     MR_RegionPage   *page;
     MR_RegionHeader *region;
 
-    /* This is the first page of the region. */
+    // This is the first page of the region.
     page = MR_region_get_free_page();
 
-    /*
-    ** In the first page, we will store the region header, which occupies
-    ** word_sizeof(MR_RegionHeader) words from the start of the data area
-    ** of the page.
-    */
+    // In the first page, we will store the region header, which occupies
+    // word_sizeof(MR_RegionHeader) words from the start of the data area
+    // of the page.
+
     region = MR_regionpage_to_region(page);
     region->MR_region_next_available_word = (MR_Word *)
         (page->MR_regionpage_space + word_sizeof(MR_RegionHeader));
@@ -185,7 +175,7 @@ MR_region_create_region(void)
     region->MR_region_commit_frame = NULL;
     region->MR_region_destroy_at_commit = 0;
 
-    /* Add the region to the head of the live region list. */
+    // Add the region to the head of the live region list.
     if (MR_live_region_list != NULL) {
         MR_live_region_list->MR_region_previous_region = region;
     }
@@ -225,10 +215,9 @@ MR_region_nullify_in_commit_frame(MR_RegionCommitFixedFrame *commit_frame,
     commit_save = ( MR_RegionCommitSave *) (
         (MR_Word *) commit_frame + MR_REGION_COMMIT_FRAME_FIXED_SIZE);
 
-    /*
-    ** Loop through the saved regions and nullify the entry of the input
-    ** region if found.
-    */
+    // Loop through the saved regions and nullify the entry of the input
+    // region if found.
+
     for (i = 0; i < commit_frame->MR_rcff_num_saved_regions; i++) {
         if (commit_save != NULL &&
             commit_save->MR_commit_save_region == region)
@@ -254,10 +243,9 @@ MR_region_nullify_in_ite_frame(MR_RegionHeader *region)
     ite_prot = (MR_RegionIteProtect *) ( (MR_Word *) ite_frame +
         MR_REGION_ITE_FRAME_FIXED_SIZE );
 
-    /*
-    ** Loop through the protected regions and nullify the entry of the input
-    ** region if found.
-    */
+    // Loop through the protected regions and nullify the entry of the input
+    // region if found.
+
     num_protected_regions = ite_frame->MR_riff_num_prot_regions;
     for (i = 0; i < num_protected_regions; i++) {
         if (ite_prot != NULL && ite_prot->MR_ite_prot_region == region) {
@@ -276,41 +264,41 @@ MR_region_destroy_region(MR_RegionHeader *region)
         MR_region_nullify_entries_in_commit_stack(region);
     }
 
-    /* Break the region from the live region list. */
+    // Break the region from the live region list.
     if (region == MR_live_region_list) {
-        /* Detach the newest. */
+        // Detach the newest.
         MR_live_region_list = region->MR_region_next_region;
     } else {
         region->MR_region_previous_region->MR_region_next_region =
             region->MR_region_next_region;
         if (region->MR_region_next_region != NULL) {
-            /* Detach one in the middle. */
+            // Detach one in the middle.
             region->MR_region_next_region->MR_region_previous_region =
                 region->MR_region_previous_region;
         }
     }
 
-    /* Return the page list of the region to the free page list. */
+    // Return the page list of the region to the free page list.
     MR_region_return_page_list(MR_region_to_first_regionpage(region),
         region->MR_region_last_page);
 
-    /* Collect profiling information. */
+    // Collect profiling information.
     MR_region_profile_destroyed_region(region);
 }
 
-/*
-** This method is to be called at the start of the then part of an ite with
-** semidet condition (most of the times).
-** At this point, we do not have to check whether this ite-protected region is
-** disj-protected or not because we know for sure that it is not:
-**  - the region is protected for this ite only if it has not been protected
-**  before the ite, which means that it is not disj-protected before the ite
-**  - from the start of this ite to this point (i.e., during the condition) it
-**  cannot be disj-protected by any disjunctions. This is because this
-**  condition is semidet and cannot contain nondet disjunctions. If it contains
-**  semidet disjunctions, at this point they must succeed and therefore the
-**  region is not disj-protected for them.
-*/
+// This method is to be called at the start of the then part of an ite with
+// semidet condition (most of the times).
+// At this point, we do not have to check whether this ite-protected region is
+// disj-protected or not, because we know for sure that it is not:
+//
+// - The region is protected for this ite only if it has not been protected
+//   before the ite, which means that it is not disj-protected before the ite.
+//
+// - From the start of this ite to this point (i.e. during the condition)
+//   it cannot be disj-protected by any disjunctions. This is because this
+//   condition is semidet and cannot contain nondet disjunctions.
+//   If it contains semidet disjunctions, at this point they must succeed
+//   and therefore the region is not disj-protected for them.
 
 void
 MR_remove_undisjprotected_region_ite_then_semidet(MR_RegionHeader *region)
@@ -325,12 +313,10 @@ MR_remove_undisjprotected_region_ite_then_semidet(MR_RegionHeader *region)
     MR_region_debug_destroy_region(region);
 }
 
-/*
-** This method is to be called at the start of the then part of an ite with
-** nondet condition.
-** We will destroy the region if it is not disj-protected and we will also
-** nullify its entry in the ite frame.
-*/
+// This method is to be called at the start of the then part of an ite with
+// nondet condition.
+// We will destroy the region if it is not disj-protected and we will also
+// nullify its entry in the ite frame.
 
 void
 MR_remove_undisjprotected_region_ite_then_nondet(MR_RegionHeader *region)
@@ -371,20 +357,20 @@ MR_region_remove_region(MR_RegionHeader *region)
     } else {
         region->MR_region_logical_removed = 1;
 
-        /*
-        ** This logical removal happens in a commit operation. If the region
-        ** is *new* since the start of the commit we mark the region so that
-        ** it will be destroyed at the commit point.
-        */
+        // This logical removal happens in a commit operation. If the region
+        // is *new* since the start of the commit we mark the region so that
+        // it will be destroyed at the commit point.
+
         if (MR_region_commit_sp != NULL &&
             MR_region_commit_sp->MR_rcff_saved_sequence_number <=
                 region->MR_region_sequence_number)
         {
             region->MR_region_destroy_at_commit = 1;
         }
-        /*if (MR_region_commit_sp != NULL) {
-            region->MR_region_destroy_at_commit = 1;
-        }*/
+
+        // if (MR_region_commit_sp != NULL) {
+        //     region->MR_region_destroy_at_commit = 1;
+        // }
 
         MR_region_debug_logically_remove_region(region);
     }
@@ -402,7 +388,7 @@ MR_region_alloc(MR_RegionHeader *region, unsigned int words)
     }
 
     allocated_cell = region->MR_region_next_available_word;
-    /* Allocate in the increasing direction of address. */
+    // Allocate in the increasing direction of address.
     region->MR_region_next_available_word += words;
 #if defined(MR_RBMM_PROFILING)
     MR_region_update_profiling_unit(&MR_rbmmp_words_used, words);
@@ -427,7 +413,7 @@ MR_region_extend_region(MR_RegionHeader *region)
     region->MR_region_next_available_word = page->MR_regionpage_space;
 }
 
-/* Destroy any marked regions allocated before the commit. */
+// Destroy any marked regions allocated before the commit.
 void
 MR_commit_success_destroy_marked_saved_regions(MR_Word num_saved_regions,
     MR_RegionCommitSave *first_commit_save)
@@ -440,13 +426,12 @@ MR_commit_success_destroy_marked_saved_regions(MR_Word num_saved_regions,
     for (i = 0; i < num_saved_regions; i++, commit_save++) {
         region = commit_save->MR_commit_save_region;
         if (region != NULL) {
-            /*
-            ** The region is saved here and has not been destroyed.
-            ** XXX Because we save only regions that are live at entry, not
-            ** live at exit, and not protected at entry, at the commit point it
-            ** must be the case that a logical removal has happened to the
-            ** region, So just need to destroy it at commit.
-            */
+            // The region is saved here and has not been destroyed.
+            // XXX Because we save only regions that are live at entry, not
+            // live at exit, and not protected at entry, at the commit point it
+            // must be the case that a logical removal has happened to the
+            // region, So just need to destroy it at commit.
+
             MR_region_destroy_region(region);
 #if defined(MR_RBMM_PROFILING)
             MR_region_profile_reclaim_region(region,
@@ -458,10 +443,9 @@ MR_commit_success_destroy_marked_saved_regions(MR_Word num_saved_regions,
     }
 }
 
-/*
-** Destroy any marked regions allocated since scope entry, i.e., *new* to
-** the commit.
-*/
+// Destroy any marked regions allocated since scope entry, i.e. *new* to
+// the commit.
+
 void
 MR_commit_success_destroy_marked_new_regions(MR_Word saved_region_seq_number)
 {
@@ -480,11 +464,10 @@ MR_commit_success_destroy_marked_new_regions(MR_Word saved_region_seq_number)
                 &MR_rbmmp_words_reclaimed_at_commit);
 #endif
         }
-        /*
-        ** XXX It is fine to destroy the region and then still use it to find
-        ** the next one because destroying a region is just returning
-        ** its pages, the "region" is still there in memory.
-        */
+        // XXX It is fine to destroy the region and then still use it to find
+        // the next one because destroying a region is just returning
+        // its pages, the "region" is still there in memory.
+
         region = region->MR_region_next_region;
     }
 }
@@ -503,10 +486,8 @@ MR_region_is_disj_protected(MR_RegionHeader *region)
 
 #if !defined(MR_RBMM_USE_MACROS)
 
-/*---------------------------------------------------------------------------*/
-/*
-** push_region_frame
-*/
+////////////////////////////////////////////////////////////////////////////
+// push_region_frame
 
 void
 MR_push_region_ite_frame_proc(MR_RegionIteFixedFrame *new_ite_frame)
@@ -541,7 +522,7 @@ MR_push_region_commit_frame_proc(MR_RegionCommitFixedFrame *new_commit_frame)
     MR_region_debug_push_commit_frame(new_commit_frame);
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 int
 MR_region_fill_ite_protect_func(MR_RegionIteFixedFrame *ite_sp,
@@ -583,7 +564,7 @@ MR_region_fill_ite_snapshot_removed_func(MR_RegionHeader *region,
         MR_region_debug_fill_ite_snapshot_removed(snapshot, region);
         incr = 1;
     } else {
-        /* Else the region is not protected. */
+        // Else the region is not protected.
         MR_region_debug_fill_ite_snapshot_removed(NULL, region);
         incr = 0;
     }
@@ -740,7 +721,7 @@ MR_use_region_disj_nonlast_semi_commit_proc(
     MR_RegionSemiDisjProtect    *semi_disj_prot;
 
     MR_region_debug_start("use_region_disj_nonlast_semi_commit");
-    /* Destroy any regions protected by the disj frame. */
+    // Destroy any regions protected by the disj frame.
     semi_disj_prot = (MR_RegionSemiDisjProtect *) (
         ( (MR_Word *) top_disj_frame ) + MR_REGION_DISJ_FRAME_FIXED_SIZE);
     for (i = 0; i < top_disj_frame->MR_rdff_num_prot_regions;
@@ -803,8 +784,8 @@ MR_use_region_commit_failure_proc(MR_RegionCommitFixedFrame *top_commit_frame)
     MR_region_debug_end("use_region_commit_failure");
 }
 
-/*---------------------------------------------------------------------------*/
-/* Helper procedures for ite support.                                        */
+////////////////////////////////////////////////////////////////////////////
+// Helper procedures for ite support.
 
 void
 MR_region_process_at_ite_else_proc(MR_RegionIteFixedFrame *top_ite_frame)
@@ -829,7 +810,7 @@ MR_region_ite_unprotect_proc(MR_RegionIteFixedFrame *top_ite_frame)
             i++, ite_prot++) {
         protected_region = ite_prot->MR_ite_prot_region;
         MR_region_debug_ite_unprotect(protected_region);
-        /* Try to protect the region by an outer condition. */
+        // Try to protect the region by an outer condition.
         protected_region->MR_region_ite_protected = NULL;
     }
     MR_region_debug_end("ite_unprotect");
@@ -863,8 +844,8 @@ MR_region_ite_destroy_new_regions_proc(MR_RegionIteFixedFrame *top_ite_frame)
     MR_region_debug_end("ite_destroy_new_regions");
 }
 
-/*---------------------------------------------------------------------------*/
-/* Helpers for nondet disjunction support.                                   */
+////////////////////////////////////////////////////////////////////////////
+// Helpers for nondet disjunction support.
 
 void
 MR_region_disj_restore_from_snapshots_proc(
@@ -893,7 +874,7 @@ MR_region_disj_destroy_new_regions_proc(
     MR_region_debug_end("disj_destroy_new_regions");
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 void
 MR_save_snapshot_proc(MR_RegionHeader *region, MR_RegionSnapshot *snapshot)
@@ -919,7 +900,7 @@ MR_restore_snapshots_proc(int num_snapshots,
         restoring_region = snapshot->MR_snapshot_region;
         saved_last_page = snapshot->MR_snapshot_saved_last_page;
         first_new_page = saved_last_page->MR_regionpage_next;
-        /* Collect profiling information. */
+        // Collect profiling information.
         MR_region_profile_restore_from_snapshot(snapshot);
         MR_region_debug_restore_from_snapshot(snapshot);
 
@@ -927,7 +908,7 @@ MR_restore_snapshots_proc(int num_snapshots,
             MR_region_return_page_list(first_new_page,
                 restoring_region->MR_region_last_page);
             restoring_region->MR_region_last_page = saved_last_page;
-        } /* else no new page added. */
+        } // else no new page added.
         restoring_region->MR_region_next_available_word =
             snapshot->MR_snapshot_saved_next_available_word;
     }
@@ -951,10 +932,10 @@ MR_region_frame_destroy_new_regions_proc(int saved_sequence_number,
     MR_live_region_list = region;
 }
 
-#endif  /* not defined MR_RBMM_USE_MACROS */
+#endif  // not defined MR_RBMM_USE_MACROS
 
-/*---------------------------------------------------------------------------*/
-/* Debugging messages for RBMM.                                              */
+////////////////////////////////////////////////////////////////////////////
+// Debugging messages for RBMM.
 
 #ifdef MR_RBMM_DEBUG
 
@@ -1055,10 +1036,9 @@ MR_region_ite_frame_protected_regions_msg(MR_RegionIteFixedFrame *ite_frame)
     MR_RegionIteProtect     *ite_prot;
     int                     i;
 
-    /*
-    ** This check is for development, when it becomes more stable,
-    ** the check can be removed. Normally we expect not many regions.
-    */
+    // This check is for development, when it becomes more stable,
+    // the check can be removed. Normally we expect not many regions.
+
     if (ite_frame->MR_riff_num_prot_regions > 10) {
         printf("Number of protected region: %d\n",
             ite_frame->MR_riff_num_prot_regions);
@@ -1201,10 +1181,9 @@ MR_region_commit_frame_saved_regions_msg(
     MR_RegionCommitSave *commit_save;
     int                 i;
 
-    /*
-    ** This check is for development, when it becomes more stable,
-    ** the check can be removed.
-    */
+    // This check is for development, when it becomes more stable,
+    // the check can be removed.
+
     if (commit_frame->MR_rcff_num_saved_regions > 10) {
         printf("Number of saved region: %d\n",
             commit_frame->MR_rcff_num_saved_regions);
@@ -1325,12 +1304,10 @@ MR_region_restore_from_snapshot_msg(MR_RegionSnapshot *snapshot)
         new_pages, new_words);
 }
 
-#endif /* End of MR_RBMM_DEBUG. */
+#endif // End of MR_RBMM_DEBUG.
 
-/*---------------------------------------------------------------------------*/
-/*
-** Profiling methods for RBMM.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Profiling methods for RBMM.
 
 #if defined(MR_RBMM_PROFILING)
 
@@ -1417,7 +1394,7 @@ MR_region_get_number_of_pages(MR_RegionPage *from_page, MR_RegionPage *to_page)
         number_of_pages += 1;
         page = page->MR_regionpage_next;
     }
-    /* Plus the last page. */
+    // Plus the last page.
     number_of_pages += 1;
     return number_of_pages;
 }
@@ -1472,7 +1449,7 @@ void
 MR_region_print_profiling_info(void)
 {
     printf("\n---------- Profiling information ----------\n");
-    /* Info about regions. */
+    // Info about regions.
     MR_region_print_profiling_unit("Regions:", &MR_rbmmp_regions_used);
     printf("Biggest region size: %d.\n", MR_rbmmp_biggest_region_size);
     printf("Biggest region's sequence number: %d.\n", MR_rbmmp_biggest_region);
@@ -1488,7 +1465,7 @@ MR_region_print_profiling_info(void)
     printf("\tBy remove instruction: %d.\n",
         MR_rbmmp_regions_reclaimed_by_remove_instr);
 
-    /* Info about words used. */
+    // Info about words used.
     MR_region_print_profiling_unit("Words:", &MR_rbmmp_words_used);
     printf("Reclaimed as follows:\n");
     printf("\tInstant reclaiming of new allocations: %d.\n",
@@ -1502,7 +1479,7 @@ MR_region_print_profiling_info(void)
     printf("\tBy remove instruction: %d.\n",
         MR_rbmmp_words_reclaimed_by_remove_instr);
 
-    /* Info about pages used. */
+    // Info about pages used.
     MR_region_print_profiling_unit("Pages:", &MR_rbmmp_pages_used);
     printf("Pages requested: %d.\n", MR_rbmmp_pages_requested);
     printf("Pages utilized: %lf.\n",
@@ -1518,7 +1495,7 @@ MR_region_print_profiling_info(void)
     printf("\tBy remove instruction: %d.\n",
         MR_rbmmp_pages_reclaimed_by_remove_instr);
 
-    /* Info about embedded frames. */
+    // Info about embedded frames.
     MR_region_print_profiling_unit("Disj frames used:",
         &MR_rbmmp_num_disj_frames);
     MR_region_print_profiling_unit("Words used by disj frames:",
@@ -1543,24 +1520,24 @@ MR_region_print_profiling_info(void)
         MR_rbmmp_regions_saved_at_commit);
 }
 
-#else /* Not define MR_RBMM_PROFILING. */
+#else // Not define MR_RBMM_PROFILING.
 
 void
 MR_region_update_profiling_unit(MR_RegionProfUnit *pu, int q)
 {
-    /* do nothing */
+    // Do nothing.
 }
 
 void
 MR_region_profile_destroyed_region(MR_RegionHeader *r)
 {
-    /* do nothing */
+    // Do nothing.
 }
 
 void
 MR_region_profile_restore_from_snapshot(MR_RegionSnapshot *s)
 {
-    /* do nothing */
+    // Do nothing.
 }
 
 void
@@ -1568,20 +1545,20 @@ MR_region_profile_reclaim_region(MR_RegionHeader *region,
     unsigned int *regions_reclaimed, unsigned int *pages_reclaimed,
     unsigned int *words_reclaimed)
 {
-    /* do nothing */
+    // Do nothing.
 }
 
 void
 MR_region_profile_reclaim_pages_and_words(MR_RegionHeader *region,
     unsigned int *pages_reclaimed, unsigned int *words_reclaimed)
 {
-    /* do nothing */
+    // Do nothing.
 }
 
 void
 MR_region_profile_increase_counter(unsigned int *counter)
 {
-    /* do nothing */
+    // Do nothing.
 }
 
 int
@@ -1595,7 +1572,7 @@ MR_region_print_profiling_info(void)
 {
 }
 
-#endif /* End of Not define MR_RBMM_PROFILING. */
+#endif // End of Not define MR_RBMM_PROFILING.
 
 static  void
 MR_region_get_new_pages_and_new_words(MR_RegionSnapshot *snapshot,
@@ -1622,4 +1599,4 @@ MR_region_get_new_pages_and_new_words(MR_RegionSnapshot *snapshot,
     }
 }
 
-#endif  /* MR_USE_REGIONS */
+#endif  // MR_USE_REGIONS

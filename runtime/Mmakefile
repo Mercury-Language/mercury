@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1998-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -8,7 +8,7 @@
 
 # This is the Mmakefile for the Mercury runtime library
 
-MAIN_TARGET=all
+MAIN_TARGET = all
 
 #-----------------------------------------------------------------------------#
 
@@ -21,199 +21,200 @@ MAIN_TARGET=all
 # circular dependency. For similar but different reasons,
 # $(LIB_DLL_H) also cannot be part of $(HDRS).
 
-#		  keep this list in alphabetical order, please
-HDRS		=	\
-			mercury.h		\
-			mercury_accurate_gc.h	\
-			mercury_agc_debug.h	\
-			mercury_array_macros.h	\
-			mercury_atomic_ops.h	\
-			mercury_backjump.h	\
-			mercury_bitmap.h	\
-			mercury_builtin_types.h	\
-			mercury_builtin_types_proc_layouts.h	\
-			mercury_calls.h		\
-			mercury_complexity.h	\
-			mercury_conf.h		\
-			mercury_conf_param.h	\
-			mercury_construct.h	\
-			mercury_context.h	\
-			mercury_debug.h		\
-			mercury_deconstruct.h	\
-			mercury_deconstruct_macros.h \
-			mercury_deep_copy.h	\
-			mercury_deep_profiling.h \
-			mercury_deep_profiling_hand.h \
-			mercury_dlist.h		\
-			mercury_dummy.h		\
-			mercury_dword.h		\
-			mercury_engine.h	\
-			mercury_expanding_array.h \
-			mercury_file.h		\
-			mercury_float.h		\
-			mercury_getopt.h	\
-			mercury_goto.h		\
-			mercury_grade.h		\
-			mercury_hash_table.h	\
-			mercury_heap.h		\
-			mercury_heap_profile.h	\
-			mercury_hgc.h			\
-			mercury_hlc_types.h	\
-			mercury_ho_call.h	\
-			mercury_imp.h		\
-			mercury_init.h		\
-			mercury_label.h		\
-			mercury_layout_util.h	\
-			mercury_library_types.h	\
-			mercury_memory.h	\
-			mercury_memory_handlers.h	\
-			mercury_memory_zones.h	\
-			mercury_minimal_model.h	\
-			mercury_misc.h		\
-			mercury_mm_own_stacks.h	\
-			mercury_overflow.h	\
-			mercury_par_builtin.h	\
-			mercury_proc_id.h	\
-			mercury_prof.h		\
-			mercury_prof_mem.h	\
-			mercury_prof_time.h	\
-			mercury_profiling_builtin.h	\
-			mercury_reg_workarounds.h	\
-			mercury_region.h	\
-			mercury_regs.h		\
-			mercury_runtime_util.h	\
-			mercury_signal.h	\
-			mercury_stack_layout.h	\
-			mercury_stack_trace.h	\
-			mercury_stacks.h	\
-			mercury_std.h		\
-			mercury_stm.h		\
-			mercury_string.h	\
-			mercury_tabling.h	\
-			mercury_tabling_macros.h	\
-			mercury_tags.h		\
-			mercury_term_size.h	\
-			mercury_thread.h	\
-			mercury_threadscope.h	\
-			mercury_timing.h	\
-			mercury_trace_base.h	\
-			mercury_trace_term.h	\
-			mercury_trail.h		\
-			mercury_type_desc.h	\
-			mercury_type_info.h	\
-			mercury_type_tables.h	\
-			mercury_typeclass_info.h	\
-			mercury_types.h		\
-			mercury_univ.h		\
-			mercury_windows.h	\
-			mercury_wrapper.h	\
-			mercury_wsdeque.h
+# Please keep this list in alphabetical order.
+HDRS = \
+	mercury.h				\
+	mercury_accurate_gc.h			\
+	mercury_agc_debug.h			\
+	mercury_array_macros.h			\
+	mercury_atomic_ops.h			\
+	mercury_backjump.h			\
+	mercury_bitmap.h			\
+	mercury_builtin_types.h			\
+	mercury_builtin_types_proc_layouts.h	\
+	mercury_calls.h				\
+	mercury_complexity.h			\
+	mercury_conf.h				\
+	mercury_conf_param.h			\
+	mercury_construct.h			\
+	mercury_context.h			\
+	mercury_debug.h				\
+	mercury_deconstruct.h			\
+	mercury_deconstruct_macros.h		\
+	mercury_deep_copy.h			\
+	mercury_deep_profiling.h		\
+	mercury_deep_profiling_hand.h		\
+	mercury_dlist.h				\
+	mercury_dummy.h				\
+	mercury_dword.h				\
+	mercury_engine.h			\
+	mercury_expanding_array.h		\
+	mercury_file.h				\
+	mercury_float.h				\
+	mercury_getopt.h			\
+	mercury_goto.h				\
+	mercury_grade.h				\
+	mercury_hash_table.h			\
+	mercury_heap.h				\
+	mercury_heap_profile.h			\
+	mercury_hgc.h				\
+	mercury_hlc_types.h			\
+	mercury_ho_call.h			\
+	mercury_imp.h				\
+	mercury_init.h				\
+	mercury_label.h				\
+	mercury_layout_util.h			\
+	mercury_library_types.h			\
+	mercury_memory.h			\
+	mercury_memory_handlers.h		\
+	mercury_memory_zones.h			\
+	mercury_minimal_model.h			\
+	mercury_misc.h				\
+	mercury_mm_own_stacks.h			\
+	mercury_overflow.h			\
+	mercury_par_builtin.h			\
+	mercury_proc_id.h			\
+	mercury_prof.h				\
+	mercury_prof_mem.h			\
+	mercury_prof_time.h			\
+	mercury_profiling_builtin.h		\
+	mercury_reg_workarounds.h		\
+	mercury_region.h			\
+	mercury_regs.h				\
+	mercury_runtime_util.h			\
+	mercury_signal.h			\
+	mercury_stack_layout.h			\
+	mercury_stack_trace.h			\
+	mercury_stacks.h			\
+	mercury_std.h				\
+	mercury_stm.h				\
+	mercury_string.h			\
+	mercury_tabling.h			\
+	mercury_tabling_macros.h		\
+	mercury_tags.h				\
+	mercury_term_size.h			\
+	mercury_thread.h			\
+	mercury_threadscope.h			\
+	mercury_timing.h			\
+	mercury_trace_base.h			\
+	mercury_trace_term.h			\
+	mercury_trail.h				\
+	mercury_type_desc.h			\
+	mercury_type_info.h			\
+	mercury_type_tables.h			\
+	mercury_typeclass_info.h		\
+	mercury_types.h				\
+	mercury_univ.h				\
+	mercury_windows.h			\
+	mercury_wrapper.h			\
+	mercury_wsdeque.h
 
 # The headers in $(BODY_HDRS) contain code schemes included multiple times
 # in one or more source files. Their dependencies must be explicitly listed.
 # They do not have to be syntactically well-formed.
 
-BODY_HDRS	=	\
-			mercury_deep_call_port_body.h	\
-			mercury_deep_copy_body.h	\
-			mercury_deep_leave_port_body.h	\
-			mercury_deep_rec_depth_actions.h \
-			mercury_deep_rec_depth_body.h	\
-			mercury_deep_redo_port_body.h	\
-			mercury_exception_catch_body.h	\
-			mercury_hand_compare_body.h	\
-			mercury_hand_unify_body.h	\
-			mercury_hash_lookup_or_add_body.h \
-			mercury_make_type_info_body.h	\
-			mercury_ml_arg_body.h		\
-			mercury_ml_deconstruct_body.h	\
-			mercury_ml_expand_body.h	\
-			mercury_ml_functor_body.h	\
-			mercury_table_int_fix_index_body.h \
-			mercury_table_int_start_index_body.h \
-			mercury_table_typeinfo_body.h 	\
-			mercury_table_type_body.h 	\
-			mercury_tabling_preds.h		\
-			mercury_tabling_stats_defs.h 	\
-			mercury_tabling_stats_nodefs.h 	\
-			mercury_tabling_stats_undefs.h 	\
-			mercury_unify_compare_body.h
+BODY_HDRS = \
+	mercury_deep_call_port_body.h		\
+	mercury_deep_copy_body.h		\
+	mercury_deep_leave_port_body.h		\
+	mercury_deep_rec_depth_actions.h	\
+	mercury_deep_rec_depth_body.h		\
+	mercury_deep_redo_port_body.h		\
+	mercury_exception_catch_body.h		\
+	mercury_hand_compare_body.h		\
+	mercury_hand_unify_body.h		\
+	mercury_hash_lookup_or_add_body.h	\
+	mercury_make_type_info_body.h		\
+	mercury_ml_arg_body.h			\
+	mercury_ml_deconstruct_body.h		\
+	mercury_ml_expand_body.h		\
+	mercury_ml_functor_body.h		\
+	mercury_table_int_fix_index_body.h	\
+	mercury_table_int_start_index_body.h	\
+	mercury_table_typeinfo_body.h		\
+	mercury_table_type_body.h		\
+	mercury_tabling_preds.h			\
+	mercury_tabling_stats_defs.h		\
+	mercury_tabling_stats_nodefs.h		\
+	mercury_tabling_stats_undefs.h		\
+	mercury_unify_compare_body.h
 
-MACHHDRS	= 	machdeps/no_regs.h	\
-			machdeps/alpha_regs.h	\
-			machdeps/i386_regs.h	\
-			machdeps/ia64_regs.h	\
-			machdeps/mips_regs.h	\
-			machdeps/pa_regs.h	\
-			machdeps/rs6000_regs.h  \
-			machdeps/arm_regs.h	\
-			machdeps/sparc_regs.h	\
-			machdeps/x86_64_regs.h
+MACHHDRS = \
+	machdeps/no_regs.h			\
+	machdeps/alpha_regs.h			\
+	machdeps/i386_regs.h			\
+	machdeps/ia64_regs.h			\
+	machdeps/mips_regs.h			\
+	machdeps/pa_regs.h			\
+	machdeps/rs6000_regs.h			\
+	machdeps/arm_regs.h			\
+	machdeps/sparc_regs.h			\
+	machdeps/x86_64_regs.h
 
-#		  keep this list in alphabetical order, please
-CFILES		= 	\
-			mercury.c		\
-			mercury_accurate_gc.c	\
-			mercury_agc_debug.c	\
-			mercury_atomic_ops.c	\
-			mercury_backjump.c	\
-			mercury_bitmap.c	\
-			mercury_builtin_types.c	\
-			mercury_construct.c	\
-			mercury_context.c	\
-			mercury_debug.c		\
-			mercury_deconstruct.c	\
-			mercury_deep_copy.c	\
-			mercury_deep_profiling.c \
-			mercury_dlist.c		\
-			mercury_dummy.c		\
-			mercury_engine.c	\
-			mercury_file.c		\
-			mercury_float.c		\
-			mercury_getopt.c	\
-			mercury_getopt1.c	\
-			mercury_grade.c		\
-			mercury_hash_table.c	\
-			mercury_heap_profile.c	\
-			mercury_hgc.c			\
-			mercury_ho_call.c	\
-			mercury_label.c		\
-			mercury_layout_util.c	\
-			mercury_memory.c	\
-			mercury_memory_handlers.c	\
-			mercury_memory_zones.c	\
-			mercury_minimal_model.c	\
-			mercury_misc.c		\
-			mercury_mm_own_stacks.c	\
-			mercury_overflow.c	\
-			mercury_par_builtin.c		\
-			mercury_prof.c		\
-			mercury_profiling_builtin.c	\
-			mercury_prof_mem.c	\
-			mercury_prof_time.c	\
-			mercury_region.c	\
-			mercury_regs.c		\
-			mercury_reg_workarounds.c	\
-			mercury_runtime_util.c	\
-			mercury_signal.c	\
-			mercury_stacks.c	\
-			mercury_stack_layout.c	\
-			mercury_stack_trace.c	\
-			mercury_stm.c		\
-			mercury_string.c	\
-			mercury_tabling.c	\
-			mercury_term_size.c	\
-			mercury_thread.c	\
-			mercury_threadscope.c	\
-			mercury_timing.c	\
-			mercury_trace_base.c	\
-			mercury_trace_term.c	\
-			mercury_trail.c 	\
-			mercury_type_desc.c	\
-			mercury_type_info.c	\
-			mercury_type_tables.c	\
-			mercury_wrapper.c	\
-			mercury_wsdeque.c
+# Please keep this list in alphabetical order.
+CFILES = \
+	mercury.c				\
+	mercury_accurate_gc.c			\
+	mercury_agc_debug.c			\
+	mercury_atomic_ops.c			\
+	mercury_backjump.c			\
+	mercury_bitmap.c			\
+	mercury_builtin_types.c			\
+	mercury_construct.c			\
+	mercury_context.c			\
+	mercury_debug.c				\
+	mercury_deconstruct.c			\
+	mercury_deep_copy.c			\
+	mercury_deep_profiling.c		\
+	mercury_dlist.c				\
+	mercury_dummy.c				\
+	mercury_engine.c			\
+	mercury_file.c				\
+	mercury_float.c				\
+	mercury_getopt.c			\
+	mercury_getopt1.c			\
+	mercury_grade.c				\
+	mercury_hash_table.c			\
+	mercury_heap_profile.c			\
+	mercury_hgc.c				\
+	mercury_ho_call.c			\
+	mercury_label.c				\
+	mercury_layout_util.c			\
+	mercury_memory.c			\
+	mercury_memory_handlers.c		\
+	mercury_memory_zones.c			\
+	mercury_minimal_model.c			\
+	mercury_misc.c				\
+	mercury_mm_own_stacks.c			\
+	mercury_overflow.c			\
+	mercury_par_builtin.c			\
+	mercury_prof.c				\
+	mercury_prof_mem.c			\
+	mercury_prof_time.c			\
+	mercury_profiling_builtin.c		\
+	mercury_reg_workarounds.c		\
+	mercury_region.c			\
+	mercury_regs.c				\
+	mercury_runtime_util.c			\
+	mercury_signal.c			\
+	mercury_stack_layout.c			\
+	mercury_stack_trace.c			\
+	mercury_stacks.c			\
+	mercury_stm.c				\
+	mercury_string.c			\
+	mercury_tabling.c			\
+	mercury_term_size.c			\
+	mercury_thread.c			\
+	mercury_threadscope.c			\
+	mercury_timing.c			\
+	mercury_trace_base.c			\
+	mercury_trace_term.c			\
+	mercury_trail.c				\
+	mercury_type_desc.c			\
+	mercury_type_info.c			\
+	mercury_type_tables.c			\
+	mercury_wrapper.c			\
+	mercury_wsdeque.c
 
 #-----------------------------------------------------------------------------#
 
@@ -238,8 +239,8 @@ Mmake.runtime.params: ;
 CFLAGS	+= $(DLL_CFLAGS)
 
 # We intentionally compile with C level debugging enabled so that problems
-# in the runtime can be debugged without having to recompile it.  The cost
-# of doing this is negligible.  The runtime can be compiled without
+# in the runtime can be debugged without having to recompile it. The cost
+# of doing this is negligible. The runtime can be compiled without
 # debugging enabled by removing the `--c-debug' flag below.
 MGNUCFLAGS	+= --c-debug --no-ansi
 
@@ -264,7 +265,7 @@ $(HDR_CHECK_OBJS):	mercury_conf.h
 
 #-----------------------------------------------------------------------------#
 
-# Stuff for Windows DLLs
+# Stuff for Windows DLLs.
 # This needs to come after the include of Mmake.common, which defines USE_DLLS.
 
 ifeq ($(USE_DLLS),yes)
@@ -373,9 +374,9 @@ lib$(RT_LIB_NAME).so: $(PIC_OBJS)
 
 # For Darwin we should pass the -install_name option.
 lib$(RT_LIB_NAME).dylib: $(PIC_OBJS)
-	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED) 				\
+	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED)				\
 		-o lib$(RT_LIB_NAME).dylib $(PIC_OBJS)			\
-		-install_name 						\
+		-install_name						\
 			$(FINAL_INSTALL_MERC_LIB_DIR)/lib$(RT_LIB_NAME).dylib \
 		$(ALL_LD_LIBFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
@@ -472,7 +473,7 @@ install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 endif
 
 # NOTE: we install the header files for the C version of the Mercury runtime
-# even in non-C grades.  The reason for this is that they are *not* installed
+# even in non-C grades. The reason for this is that they are *not* installed
 # by the install_lib target used by the install_grades target in ../Mmakefile.
 # If we don't install them as part of the main install target then they won't
 # ever be installed and installations with non-C grade Mercury compilers that

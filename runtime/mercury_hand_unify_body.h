@@ -1,44 +1,35 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001, 2004 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** The internals of hand-written unification and comparison routines.
-**
-** The versions of builtin_catch for the various determinisms should define
-** the following macros:
-** 
-** proc_label
-** proc_layout
-** body_code
-**
-** It should also define may_need_fail_action for the model_non versions.
-*/
+// Copyright (C) 2001, 2004 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-/*
-** Stackvar(1) and possibly stackvar(2) are used to save the inputs
-** of the unification code. The first framevar available for saving
-** deep profiling information is stackvar(3).
-*/
+// The internals of hand-written unification and comparison routines.
+//
+// The versions of builtin_catch for the various determinisms should define
+// the following macros:
+//
+// proc_label
+// proc_layout
+// body_code
+//
+// It should also define may_need_fail_action for the model_non versions.
+
+// Stackvar(1) and possibly stackvar(2) are used to save the inputs
+// of the unification code. The first framevar available for saving
+// deep profiling information is stackvar(3).
 
 #define FIRST_DEEP_SLOT         3
 
-/*
-** Each procedure defines several local labels. The local label numbers are
-** allocated as follows.
-*/
+// Each procedure defines several local labels. The local label numbers are
+// allocated as follows.
 
 #define CALL_PORT_RETURN_LABEL(pl)  MR_label_name(pl, 1)
 #define EXIT_PORT_RETURN_LABEL(pl)  MR_label_name(pl, 2)
 #define FAIL_LABEL(pl)          MR_label_name(pl, 3)
 #define FAIL_PORT_RETURN_LABEL(pl)  MR_label_name(pl, 4)
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_define_entry(proc_label);
 
@@ -88,7 +79,7 @@ MR_define_label(FAIL_LABEL(proc_label));
 
 #endif
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #undef  CALL_PORT_RETURN_LABEL
 #undef  EXIT_PORT_RETURN_LABEL

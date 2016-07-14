@@ -1,17 +1,12 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1997-2000, 2006-2008, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_trail.c - code for the Mercury trail.
-**
-** The trail is used to record values that need to be restored on backtracking.
-*/
+// Copyright (C) 1997-2000, 2006-2008, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_trail.c - code for the Mercury trail.
+//
+// The trail is used to record values that need to be restored on backtracking.
 
 #include "mercury_imp.h"
 #include "mercury_trail.h"
@@ -47,15 +42,15 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
     MR_TrailEntry   *tr_ptr;
     MR_TrailEntry   *tr_base;
 
-    /* Not needed, since MR_trail_ptr is never a real reg: */
-    /* MR_restore_transient_registers();                   */
+    // Not needed, since MR_trail_ptr is never a real reg:
+    // MR_restore_transient_registers();
     tr_ptr = MR_trail_ptr;
 
     switch (reason) {
     case MR_solve:
     case MR_commit:
 
-        /* Just handle the function trail entries. */
+        // Just handle the function trail entries.
         tr_base = MR_TRAIL_BASE;
         while (tr_ptr != old_trail_ptr) {
             tr_ptr--;
@@ -64,12 +59,11 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
                     MR_get_trail_entry_datum(tr_ptr), reason);
             }
 
-            /*
-            ** When we are using trail segments it is possible that
-            ** `old_trail_ptr' is not a location on the current trail segment.
-            ** We need to walk backwards through all the previous segments
-            ** (invoking function trail entries as we go) until we find it.
-            */
+            // When we are using trail segments it is possible that
+            // `old_trail_ptr' is not a location on the current trail segment.
+            // We need to walk backwards through all the previous segments
+            // (invoking function trail entries as we go) until we find it.
+
             #if defined(MR_TRAIL_SEGMENTS)
                 if (tr_ptr == tr_base
                     && tr_ptr != old_trail_ptr)
@@ -100,18 +94,17 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
                 }
             #endif
         }
-        /*
-        ** NB. We do _not_ reset the trail pointer here. Doing so would be
-        ** unsafe, for `mdi' modes, because we may still need to restore
-        ** the value if/when we backtrack to a choicepoint prior to the one
-        ** we are cutting away.
-        */
+        // NB. We do _not_ reset the trail pointer here. Doing so would be
+        // unsafe, for `mdi' modes, because we may still need to restore
+        // the value if/when we backtrack to a choicepoint prior to the one
+        // we are cutting away.
+
         break;
 
     case MR_undo:
     case MR_exception:
     case MR_retry:
-        /* Handle both function and value trail entries. */
+        // Handle both function and value trail entries.
         tr_base = MR_TRAIL_BASE;
         while (tr_ptr != old_trail_ptr) {
             tr_ptr--;
@@ -134,8 +127,8 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
         }
 
         MR_trail_ptr = tr_ptr;
-        /* Not needed, since MR_trail_ptr is never a real reg: */
-        /* MR_save_transient_registers();                      */
+        // Not needed, since MR_trail_ptr is never a real reg:
+        // MR_save_transient_registers();
         break;
 
     default:
@@ -143,7 +136,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
     }
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Unsigned
 MR_num_trail_entries(void)
@@ -161,14 +154,14 @@ MR_num_trail_entries(void)
             - (MR_TrailEntry *) zone->MR_zone_min;
         list = list->MR_zones_tail;
     }
-#endif /* MR_TRAIL_SEGMENTS */
+#endif // MR_TRAIL_SEGMENTS
 
     n_entries += MR_trail_ptr - MR_TRAIL_BASE;
 
     return n_entries;
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 void
 MR_reset_trail(void)
@@ -209,7 +202,7 @@ MR_reset_trail_zone(void) {
     MR_trail_ptr = tr_base;
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #if defined(MR_TRAIL_SEGMENTS)
 void
@@ -222,9 +215,8 @@ MR_new_trail_segment(void)
 
     old_trail_ptr = MR_trail_ptr;
 
-    /*
-    ** We perform explicit overflow checks so redzones just waste space.
-    */
+    // We perform explicit overflow checks so redzones just waste space.
+
     new_zone = MR_create_or_reuse_zone("trail_segment", MR_trail_size, 0,
         0, MR_default_handler);
 
@@ -288,7 +280,8 @@ MR_num_trail_segments(void)
     return n_segments;
 }
 
-#endif /* MR_TRAIL_SEGMENTS */
+#endif // MR_TRAIL_SEGMENTS
 
-#endif /* MR_USE_TRAIL                                                       */
-/*---------------------------------------------------------------------------*/
+#endif // MR_USE_TRAIL
+
+////////////////////////////////////////////////////////////////////////////

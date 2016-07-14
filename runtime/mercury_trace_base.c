@@ -1,23 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 1997-2008, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_trace_base.c implements the interface between the main part
+// of the runtime system (mainly mercury_wrapper.c) and the part of the
+// tracing subsystem that has to be present even if no module in the program
+// is compiled with execution tracing.
+//
+// Main author: Zoltan Somogyi.
+
 /*
 INIT mercury_sys_init_trace
 ENDINIT
-*/
-/*
-** Copyright (C) 1997-2008, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
-
-/*
-** mercury_trace_base.c implements the interface between the main part
-** of the runtime system (mainly mercury_wrapper.c) and the part of the
-** tracing subsystem that has to be present even if no module in the program
-** is compiled with execution tracing.
-**
-** Main author: Zoltan Somogyi.
 */
 
 #include "mercury_imp.h"
@@ -26,21 +22,21 @@ ENDINIT
 #include "mercury_wrapper.h"
 #include "mercury_misc.h"
 #include "mercury_hash_table.h"
-#include "mercury_layout_util.h"    /* for MR_generate_proc_name_from_layout */
-#include "mercury_runtime_util.h"   /* for MR_strerror                       */
-#include "mercury_signal.h"         /* for MR_setup_signal()                 */
-#include "mercury_builtin_types.h"  /* for type_ctor_infos                   */
-#include "mercury_array_macros.h"   /* for type_ctor_infos                   */
-#include <signal.h>                 /* for SIGINT                            */
+#include "mercury_layout_util.h"    // for MR_generate_proc_name_from_layout
+#include "mercury_runtime_util.h"   // for MR_strerror
+#include "mercury_signal.h"         // for MR_setup_signal()
+#include "mercury_builtin_types.h"  // for type_ctor_infos
+#include "mercury_array_macros.h"   // for type_ctor_infos
+#include <signal.h>                 // for SIGINT
 #include <stdio.h>
 #include <errno.h>
 
 #ifdef MR_HAVE_UNISTD_H
-  #include <unistd.h>       /* for the write system call */
+  #include <unistd.h>       // for the write system call
 #endif
 
 #ifdef MR_HAVE_SYS_WAIT_H
-  #include <sys/wait.h>     /* for the wait system call */
+  #include <sys/wait.h>     // for the wait system call
 #endif
 
 #if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
@@ -77,9 +73,7 @@ MR_bool             MR_trace_have_unhid_events = MR_FALSE;
 MR_bool             MR_trace_tailrec_have_reused_frames = MR_FALSE;
 MR_Unsigned         MR_trace_tailrec_num_reused_frames = 0;
 
-/*
-** I/O tabling is documented in library/table_builtin.m.
-*/
+// I/O tabling is documented in library/table_builtin.m.
 
 MR_IoTablingPhase   MR_io_tabling_phase = MR_IO_TABLING_UNINIT;
 MR_bool             MR_io_tabling_enabled = MR_FALSE;
@@ -120,10 +114,8 @@ static  MR_Unsigned MR_standardize_num(MR_Unsigned num,
                         MR_Hash_Table *table_ptr, MR_bool *init_ptr,
                         int *next_ptr);
 
-/**************************************************************************/
-/*
-** This section of this file deals with the actions executed at trace events.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file deals with the actions executed at trace events.
 
 MR_Code *
 MR_trace(const MR_LabelLayout *layout)
@@ -151,7 +143,7 @@ MR_tracing_not_enabled(void)
     MR_fatal_error("This executable is not set up for debugging.\n"
         "Rebuild the <main>_init.c file, "
         "and give the `-t' (or `--trace')\n"
-        "option to c2init when you do so.  "
+        "option to c2init when you do so. "
         "If you are using mmake, you\n"
         "can do this by including "
         "`-t' (or `--trace') in C2INITFLAGS.\n"
@@ -186,10 +178,8 @@ MR_trace_count(const MR_LabelLayout *label_layout)
         module_layout = proc_layout->MR_sle_module_layout;
         call_label_layout = proc_layout->MR_sle_call_label;
         if (label_layout != call_label_layout) {
-            /*
-            ** We should only get here if we have executed the call label,
-            ** which means its count should be nonzero.
-            */
+            // We should only get here if we have executed the call label,
+            // which means its count should be nonzero.
 
             call_label_number = call_label_layout->MR_sll_label_num_in_module;
             if (call_label_number >=
@@ -231,7 +221,7 @@ MR_trace_lookup_trace_count(const MR_LabelLayout *label_layout)
     return &(module_layout->MR_ml_label_exec_count[label_number]);
 }
 
-/**************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define INIT_MODULE_TABLE_SIZE  10
 
@@ -251,7 +241,7 @@ MR_insert_module_info_into_module_table(const MR_ModuleLayout *module)
     MR_module_infos[slot] = module;
 }
 
-/**************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  void        MR_trace_write_quoted_atom(FILE *fp, const char *atom);
 static  void        MR_trace_write_string(FILE *fp, const char *atom);
@@ -267,10 +257,10 @@ MR_PathPort         MR_named_count_port[MR_PORT_NONE + 1];
 #define TEMP_SUFFIX                     ".tmp"
 
 #if defined(F_OK)
-    /* unistd.h version */
+  // unistd.h version
   #define MR_PERMISSIONS    F_OK
 #else
-    /* win32 version */
+  // win32 version
   #define MR_PERMISSIONS    0
 #endif
 
@@ -300,17 +290,17 @@ MR_trace_record_label_exec_counts(void *dummy)
         if (MR_FILE_EXISTS(MR_trace_count_summary_file)) {
             int     i;
 
-            /* 30 bytes must be enough for the dot, the value of i, and '\0' */
+            // 30 bytes must be enough for the dot, the value of i, and '\0'.
             name_len = strlen(MR_trace_count_summary_file) + 30;
             name = MR_malloc(name_len);
 
             fp = NULL;
-            /* Search for a suffix that doesn't exist yet. */
+            // Search for a suffix that doesn't exist yet.
             for (i = 1; i <= MR_trace_count_summary_max; i++) {
                 snprintf(name, name_len, "%s.%d",
                     MR_trace_count_summary_file, i);
                 if (! MR_FILE_EXISTS(name)) {
-                    /* File doesn't exist, commit to this one. */
+                    // File doesn't exist, commit to this one.
                     if (i == MR_trace_count_summary_max) {
                         summarize = MR_TRUE;
                     }
@@ -319,7 +309,7 @@ MR_trace_record_label_exec_counts(void *dummy)
                 }
             }
         } else {
-            /* The summary file doesn't yet exist, create it. */
+            // The summary file doesn't yet exist, create it.
             name = MR_copy_string(MR_trace_count_summary_file);
         }
     } else if (MR_trace_counts_file) {
@@ -328,19 +318,17 @@ MR_trace_record_label_exec_counts(void *dummy)
     } else {
         char    *s;
 
-        /*
-        ** If no trace counts file name is provided, then we generate
-        ** a file name.
-        */
+        // If no trace counts file name is provided, then we generate
+        // a file name.
 
-        /* 100 bytes must be enough for the process id, dots and '\0' */
+        // 100 bytes must be enough for the process id, dots and '\0'.
         name_len = strlen(MERCURY_TRACE_COUNTS_PREFIX) + strlen(program_name)
             + 100;
         name = MR_malloc(name_len);
         snprintf(name, name_len, ".%s.%s.%d", MERCURY_TRACE_COUNTS_PREFIX,
             program_name, getpid());
 
-        /* Make sure name is an acceptable filename. */
+        // Make sure name is an acceptable filename.
         for (s = name; *s != '\0'; s++) {
             if (*s == '/') {
                 *s = '_';
@@ -357,21 +345,16 @@ MR_trace_record_label_exec_counts(void *dummy)
         (void) fclose(fp);
 
         if (num_written == 0 && !keep) {
-            /*
-            ** We did not write out any trace counts, so there is nothing
-            ** to gather.
-            */
-
+            // We did not write out any trace counts, so there is nothing
+            // to gather.
             (void) unlink(name);
             summarize = MR_FALSE;
         }
     } else {
         fprintf(stderr, "%s: %s\n", name,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
-        /*
-        ** You can't summarize a file list if you can't create
-        ** one of its files.
-        */
+        // You can't summarize a file list if you can't create
+        // one of its files.
         summarize = MR_FALSE;
     }
 
@@ -386,7 +369,7 @@ MR_trace_record_label_exec_counts(void *dummy)
         int         i;
         const char  *old_options;
 
-        /* 30 bytes must be enough for the dot, the value of i, and space */
+        // 30 bytes must be enough for the dot, the value of i, and space.
         name_len = strlen(MR_trace_count_summary_file) + 30;
         name = MR_malloc(name_len);
 
@@ -431,7 +414,7 @@ MR_trace_record_label_exec_counts(void *dummy)
             mv_status = system(cmd);
 
             if (mv_status == 0) {
-                /* Delete all files whose data is now in the summary file. */
+                // Delete all files whose data is now in the summary file.
                 for (i = 1; i <= MR_trace_count_summary_max; i++) {
                     snprintf(name, name_len, "%s.%d",
                         MR_trace_count_summary_file, i);
@@ -546,7 +529,7 @@ MR_trace_write_label_exec_counts_for_file(FILE *fp,
                 }
 
                 if (MR_strdiff(module_name, id->MR_user_decl_module)) {
-                    /* turn pproc/fproc into pprocdecl/fprocdecl */
+                    // Turn pproc/fproc into pprocdecl/fprocdecl.
                     fputs("decl ", fp);
                     MR_trace_write_quoted_atom(fp, id->MR_user_decl_module);
                 }
@@ -630,10 +613,9 @@ MR_trace_name_count_port_ensure_init()
     }
 }
 
-/*
-** The output of this is supposed to be equivalent to term_io__quote_atom
-** except that it always uses quotes, even if not strictly necessary.
-*/
+// The output of this is supposed to be equivalent to term_io__quote_atom
+// except that it always uses quotes, even if not strictly necessary.
+
 static void
 MR_trace_write_quoted_atom(FILE *fp, const char *atom)
 {
@@ -661,12 +643,12 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
                 fputs("\\b", fp);
                 break;
             default:
-                /* This assumes isalnum is the same as char__isalnum.
-                ** The line noise is the equivalent of
-                ** is_mercury_punctuation_char in library/term_io.m
-                ** and compiler/mercury_to_mercury.m; any changes here
-                ** may require similar changes there.
-                */
+                // This assumes isalnum is the same as char__isalnum.
+                // The line noise is the equivalent of
+                // is_mercury_punctuation_char in library/term_io.m
+                // and compiler/mercury_to_mercury.m; any changes here
+                // may require similar changes there.
+
                 if (MR_isalnum(*c) ||
                     strchr(" !@#$%^&*()-_+=`~{}[];:'\"<>.,/?\\|", *c))
                 {
@@ -681,9 +663,7 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
     fputc('\'', fp);
 }
 
-/*
-** The output of this is supposed to be equivalent to writing out a string.
-*/
+// The output of this is supposed to be equivalent to writing out a string.
 
 static void
 MR_trace_write_string(FILE *fp, const char *atom)
@@ -717,11 +697,9 @@ MR_trace_write_string(FILE *fp, const char *atom)
     fputc('\"', fp);
 }
 
-/**************************************************************************/
-/*
-** This section of this file deals with the actions executed at the start
-** and end of execution.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file deals with the actions executed at the start
+// and end of execution.
 
 #ifdef  MR_TABLE_DEBUG
 MR_bool MR_saved_tabledebug;
@@ -731,10 +709,8 @@ void
 MR_trace_init(void)
 {
 #ifdef  MR_TABLE_DEBUG
-    /*
-    ** We don't want to see any tabling debugging messages from
-    ** initialization code about entering and leaving commit goals.
-    */
+    // We don't want to see any tabling debugging messages from
+    // initialization code about entering and leaving commit goals.
 
     MR_saved_tabledebug = MR_tabledebug;
     MR_tabledebug = MR_FALSE;
@@ -764,9 +740,7 @@ MR_trace_final(void)
     }
 #endif
 
-    /*
-    ** If mdb started a window, make sure it dies now.
-    */
+    // If mdb started a window, make sure it dies now.
     if (MR_trace_shutdown != NULL) {
         (*MR_trace_shutdown)();
     }
@@ -783,19 +757,16 @@ MR_trace_start(MR_bool enabled)
     MR_update_trace_func_enabled();
 
 #ifdef  MR_TABLE_DEBUG
-    /*
-    ** Restore the value saved by MR_trace_init.
-    */
+    // Restore the value saved by MR_trace_init.
 
     MR_tabledebug = MR_saved_tabledebug;
 #endif
 
-    /*
-    ** Install the SIGINT signal handler.
-    ** We only do this if tracing is enabled, and only for the
-    ** internal debugger.  (This is a bit conservative: it might work fine
-    ** for the external debugger too, but I'm just not certain of that.)
-    */
+    // Install the SIGINT signal handler.
+    // We only do this if tracing is enabled, and only for the
+    // internal debugger. (This is a bit conservative: it might work fine
+    // for the external debugger too, but I'm just not certain of that.)
+
     if (enabled &&
         MR_address_of_trace_interrupt_handler != NULL &&
         MR_trace_handler == MR_TRACE_INTERNAL)
@@ -813,12 +784,10 @@ MR_trace_end(void)
     MR_update_trace_func_enabled();
 }
 
-/**************************************************************************/
-/*
-** This section of this file deals with the standardization of event and
-** call sequence numbers. We use standardized event and call numbers to
-** reduce the number of .exp files we need to create for debugger test cases.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file deals with the standardization of event and
+// call sequence numbers. We use standardized event and call numbers to
+// reduce the number of .exp files we need to create for debugger test cases.
 
 #define MR_STANDARD_HASH_TABLE_SIZE 1024
 
@@ -904,11 +873,9 @@ MR_standardize_call_num(MR_Unsigned call_num)
         &MR_init_call_num_hash, &MR_next_std_call_num);
 }
 
-/**************************************************************************/
-/*
-** This section of this file reports on trace events so far, for use
-** in messages about abnormal program termination.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file reports on trace events so far,
+// for use in messages about abnormal program termination.
 
 char    *MR_trace_report_msg = NULL;
 
@@ -916,10 +883,8 @@ void
 MR_trace_report(FILE *fp)
 {
     if (MR_trace_event_number > 0) {
-        /*
-        ** This means that the executable was compiled with tracing,
-        ** which implies that the user wants trace info on abort.
-        */
+        // This means that the executable was compiled with tracing,
+        // which implies that the user wants trace info on abort.
 
         if (MR_trace_report_msg != NULL) {
             fprintf(fp, "%s\n", MR_trace_report_msg);
@@ -956,25 +921,23 @@ MR_trace_report(FILE *fp)
                     MR_strerror(errno, errbuf, sizeof(errbuf)));
             }
         }
-#endif  /* MR_TRACE_HISTOGRAM */
+#endif  // MR_TRACE_HISTOGRAM
     }
 }
 
 void
 MR_trace_report_raw(int fd)
 {
-    char    buf[80];    /* That ought to be more than long enough. */
+    char    buf[80];    // That ought to be more than long enough.
     int     ret;
 
     if (MR_trace_event_number > 0) {
-        /*
-        ** This means that the executable was compiled with tracing,
-        ** which implies that the user wants trace info on abort.
-        */
+        // This means that the executable was compiled with tracing,
+        // which implies that the user wants trace info on abort.
 
         if (MR_trace_report_msg != NULL) {
             do {
-                /* XXX We don't handle successful but partial writes. */
+                // XXX We don't handle successful but partial writes.
                 ret = write(fd, MR_trace_report_msg,
                     strlen(MR_trace_report_msg));
             } while (ret == -1 && MR_is_eintr(errno));
@@ -988,16 +951,14 @@ MR_trace_report_raw(int fd)
                 (long) MR_trace_event_number);
         }
         do {
-            /* XXX We don't handle successful but partial writes. */
+            // XXX We don't handle successful but partial writes.
             ret = write(fd, buf, strlen(buf));
         } while (ret == -1 && MR_is_eintr(errno));
     }
 }
 
-/**************************************************************************/
-/*
-** This section of this file deals with I/O actions.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file deals with I/O actions.
 
 MR_bool
 MR_trace_get_action(MR_IoActionNum action_number, MR_ConstString *proc_name_ptr,
@@ -1063,24 +1024,20 @@ MR_trace_get_action(MR_IoActionNum action_number, MR_ConstString *proc_name_ptr,
         *arg_list_ptr = arg_list;
     } else {
         *have_arg_infos_ptr = MR_FALSE;
-        /*
-        ** *arg_list_ptr is not meaningful when *have_arg_infos_ptr is false,
-        ** but setting it to the empty list makes it easier to catch any
-        ** caller that ignores that fact.
-        */
+        // *arg_list_ptr is not meaningful when *have_arg_infos_ptr is false,
+        // but setting it to the empty list makes it easier to catch any
+        // caller that ignores that fact.
         *arg_list_ptr = MR_list_empty();
     }
 
     return MR_TRUE;
 }
 
-/**************************************************************************/
-/*
-** This section of this file deals with switching debugging on and off.
-**
-** XXX The code here is very similar to MR_TRACE_CALL_MERCURY in the header
-** file. Look into merging the two pieces of code.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file deals with switching debugging on and off.
+//
+// XXX The code here is very similar to MR_TRACE_CALL_MERCURY in the header
+// file. Look into merging the two pieces of code.
 
 void
 MR_turn_off_debug(MR_SavedDebugState *saved_state,
@@ -1133,10 +1090,8 @@ MR_turn_debug_back_on(const MR_SavedDebugState *saved_state)
 #endif
 }
 
-/**************************************************************************/
-/*
-** This section of this file deals with recording the value of an exception.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file deals with recording the value of an exception.
 
 static  MR_Word     MR_trace_exception_value = (MR_Word) NULL;
 
@@ -1152,11 +1107,9 @@ MR_trace_get_exception_value(void)
     return MR_trace_exception_value;
 }
 
-/**************************************************************************/
-/*
-** This section of this file deals with measuring the distribution of events
-** across depths.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file deals with measuring the distribution of events
+// across depths.
 
 #ifdef  MR_TRACE_HISTOGRAM
 
@@ -1177,13 +1130,11 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
     }
 }
 
-#endif  /* MR_TRACE_HISTOGRAM */
+#endif  // MR_TRACE_HISTOGRAM
 
-/**************************************************************************/
-/*
-** This section of this file deals with statistics about which procedures
-** are responsible for what fraction of I/O table entries.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file deals with statistics about which procedures
+// are responsible for what fraction of I/O table entries.
 
 #define MR_IO_TABLE_STATS_HASH_TABLE_SIZE 1024
 
@@ -1266,11 +1217,10 @@ MR_io_tabling_stats(FILE *fp)
     int                             count;
     int                             i;
 
-    /*
-    ** Create a fresh new hash table, separate from the table created by
-    ** any previous call to this function. We can't use structure assignment,
-    ** as that causes gcc 3.2 to throw a fit.
-    */
+    // Create a fresh new hash table, separate from the table created by
+    // any previous call to this function. We can't use structure assignment,
+    // as that causes gcc 3.2 to throw a fit.
+
     hash_table.MR_ht_size  = MR_io_tabling_stats_table.MR_ht_size;
     hash_table.MR_ht_store = NULL;
     hash_table.MR_ht_key   = MR_io_tabling_stats_table.MR_ht_key;
@@ -1327,21 +1277,19 @@ MR_io_tabling_stats(FILE *fp)
     }
 }
 
-/**************************************************************************/
-/*
-** This section of this file maps proc layouts to materialized procedure
-** body representations.
-**
-** We record information about procedure representations in a hash table
-** that is indexed by the proc layout address.
-**
-** This table is used by the declarative debugger. Since the declarative
-** debugger can be required in any grade, we always include this table, but
-** it is initialized (and the bulk of its memory allocated) only if the
-** declarative debugger is in fact invoked.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file maps proc layouts to materialized procedure
+// body representations.
+//
+// We record information about procedure representations in a hash table
+// that is indexed by the proc layout address.
+//
+// This table is used by the declarative debugger. Since the declarative
+// debugger can be required in any grade, we always include this table, but
+// it is initialized (and the bulk of its memory allocated) only if the
+// declarative debugger is in fact invoked.
 
-#define PROC_DEFN_REP_TABLE_SIZE (1 << 16)   /* 64k */
+#define PROC_DEFN_REP_TABLE_SIZE (1 << 16)   // 64k
 
 typedef struct {
     const MR_ProcLayout     *plr_layout;
@@ -1448,12 +1396,10 @@ MR_equal_proc_layouts(const void *addr1, const void *addr2)
     return ((const MR_ProcLayout *) addr1) == ((const MR_ProcLayout *) addr2);
 }
 
-/**************************************************************************/
-/*
-** This section of this file provides the code that generated redo events.
-** Its labels are pointed to by the temp frames pushed onto the nondet stack
-** by model_non procedures when they exit.
-*/
+////////////////////////////////////////////////////////////////////////////
+// This section of this file provides the code that generated redo events.
+// Its labels are pointed to by the temp frames pushed onto the nondet stack
+// by model_non procedures when they exit.
 
 #ifndef MR_HIGHLEVEL_CODE
 
@@ -1466,10 +1412,9 @@ MR_BEGIN_MODULE(MR_trace_labels_module)
 MR_BEGIN_CODE
 
 MR_define_entry(MR_do_trace_redo_fail_shallow);
-    /*
-    ** If this code ever needs changing, you may also need to change
-    ** the code in extras/exceptions/exception.m similarly.
-    */
+    // If this code ever needs changing, you may also need to change
+    // the code in extras/exceptions/exception.m similarly.
+
     if (MR_redo_fromfull_framevar(MR_redofr_slot(MR_curfr))) {
         MR_Code *MR_jumpaddr;
         MR_save_transient_registers();
@@ -1484,7 +1429,7 @@ MR_define_entry(MR_do_trace_redo_fail_shallow);
 
 MR_define_entry(MR_do_trace_redo_fail_deep);
 #if 0
-    /* For use in case this ever needs to be debugged again. */
+    // For use in case this ever needs to be debugged again.
     printf("MR_curfr = %p\n", MR_curfr);
     printf("MR_redofr_slot(MR_curfr) = %p\n", MR_redofr_slot(MR_curfr));
     printf("&MR_redo_layout_framevar(MR_redofr_slot(MR_curfr) = %p\n",
@@ -1492,10 +1437,9 @@ MR_define_entry(MR_do_trace_redo_fail_deep);
     printf("MR_redo_layout_framevar(MR_redofr_slot(MR_curfr) = %p\n",
         MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
 #endif
-    /*
-    ** If this code ever needs changing, you may also need to change
-    ** the code in library/exception.m similarly.
-    */
+    // If this code ever needs changing, you may also need to change
+    // the code in library/exception.m similarly.
+
     {
         MR_Code *MR_jumpaddr;
 
@@ -1511,9 +1455,9 @@ MR_define_entry(MR_do_trace_redo_fail_deep);
 
 MR_END_MODULE
 
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
 
-/* forward decls to suppress gcc warnings */
+// Forward decls to suppress gcc warnings.
 void mercury_sys_init_trace_init(void);
 void mercury_sys_init_trace_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
@@ -1529,12 +1473,12 @@ void mercury_sys_init_trace_init(void)
 
 void mercury_sys_init_trace_init_type_tables(void)
 {
-    /* no types to register */
+    // No types to register.
 }
 
 #ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_trace_write_out_proc_statics(FILE *fp)
 {
-    /* no proc_statics to write out */
+    // No proc_statics to write out.
 }
 #endif

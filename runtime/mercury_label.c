@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1994-2001, 2003-2004, 2006-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** label.c defines the label table, which is a pair of hash tables
-** that map from procedure names to addresses and vice versa.
-*/
+// Copyright (C) 1994-2001, 2003-2004, 2006-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-#include    "mercury_imp.h"     /* we need libmer_dll.h for Windows DLLs */
+// label.c defines the label table, which is a pair of hash tables
+// that map from procedure names to addresses and vice versa.
+
+#include    "mercury_imp.h"     // we need libmer_dll.h for Windows DLLs
 
 #include    <stdio.h>
 #include    <string.h>
@@ -21,59 +16,53 @@
 
 #include    "mercury_label.h"
 
-#include    "mercury_stack_layout.h"    /* for MR_ProcLayout             */
-#include    "mercury_hash_table.h"      /* for MR_Hash_Table and its ops */
-#include    "mercury_prof.h"            /* for prof_output_addr_decl()   */
-#include    "mercury_engine.h"          /* for MR_progdebug              */
-#include    "mercury_wrapper.h"         /* for MR_do_init_modules()      */
+#include    "mercury_stack_layout.h"    // for MR_ProcLayout
+#include    "mercury_hash_table.h"      // for MR_Hash_Table and its ops
+#include    "mercury_prof.h"            // for prof_output_addr_decl()
+#include    "mercury_engine.h"          // for MR_progdebug
+#include    "mercury_wrapper.h"         // for MR_do_init_modules()
 
 #if defined(MR_MINIMAL_MODEL_DEBUG) && !defined(MR_TABLE_DEBUG)
-  /*
-  ** MR_MINIMAL_MODEL_DEBUG implies MR_TABLE_DEBUG in some other files, since
-  ** if we want to debug minimal model tabling we need to enable all the
-  ** debugging facilities of those files. However, since MR_TABLE_DEBUG
-  ** increases object file sizes and link times significantly (by implying
-  ** MR_DEBUG_LABEL_NAMES), we don't necessarily want this implication
-  ** to hold globally. MR_TABLE_DEBUG therefore may not be defined globally.
-  ** If it isn't defined for this file, MR_NEED_ENTRY_LABEL_INFO and
-  ** MR_NEED_ENTRY_LABEL_ARRAY probably won't be defined either.
-  */
+  // MR_MINIMAL_MODEL_DEBUG implies MR_TABLE_DEBUG in some other files, since
+  // if we want to debug minimal model tabling we need to enable all the
+  // debugging facilities of those files. However, since MR_TABLE_DEBUG
+  // increases object file sizes and link times significantly (by implying
+  // MR_DEBUG_LABEL_NAMES), we don't necessarily want this implication
+  // to hold globally. MR_TABLE_DEBUG therefore may not be defined globally.
+  // If it isn't defined for this file, MR_NEED_ENTRY_LABEL_INFO and
+  // MR_NEED_ENTRY_LABEL_ARRAY probably won't be defined either.
 
   #define   MR_NEED_ENTRY_LABEL_INFO
   #define   MR_NEED_ENTRY_LABEL_ARRAY
 #endif
 
-/*
-** We record information about entry labels in an array that we sort
-** by code address once all the entry labels have been inserted.
-** Space for the array is provided by malloc, and it is expanded when needed.
-**
-** This array is needed only by accurate garbage collection and when
-** doing low-level debugging.
-*/
+// We record information about entry labels in an array that we sort
+// by code address once all the entry labels have been inserted.
+// Space for the array is provided by malloc, and it is expanded when needed.
+//
+// This array is needed only by accurate garbage collection and when
+// doing low-level debugging.
 
 #ifdef  MR_NEED_ENTRY_LABEL_ARRAY
 
-/* the number of entries in the initial array */
+// the number of entries in the initial array
 #define INIT_ENTRY_SIZE (1 << 8)
 
 static  MR_Entry    *entry_array;
-static  int         entry_array_size;   /* # of entries allocated */
-static  int         entry_array_next;   /* # of entries used      */
+static  int         entry_array_size;   // # of entries allocated
+static  int         entry_array_next;   // # of entries used
 static  MR_bool     entry_array_sorted;
 
-#endif  /* MR_NEED_ENTRY_LABEL_ARRAY */
+#endif  // MR_NEED_ENTRY_LABEL_ARRAY
 
-/*
-** We record information about internal labels in a hash table
-** that is indexed by the code address of the label.
-**
-** This table is used by stack tracing and execution tracing.
-** Since execution tracing and hence stack tracing can be required
-** in any grade, we always include this table.
-*/
+// We record information about internal labels in a hash table
+// that is indexed by the code address of the label.
+//
+// This table is used by stack tracing and execution tracing.
+// Since execution tracing and hence stack tracing can be required
+// in any grade, we always include this table.
 
-#define INTERNAL_SIZE   (1 << 16)   /* 64k */
+#define INTERNAL_SIZE   (1 << 16)   // 64k
 
 static  const void      *internal_addr(const void *internal);
 static  MR_bool         equal_addr(const void *addr1, const void *addr2);
@@ -113,22 +102,21 @@ MR_do_insert_entry_label(const char *name, MR_Code *addr,
     if (MR_profiling) {
         MR_prof_output_addr_decl(name, addr);
     }
-#endif  /* MR_MPROF_PROFILE_CALLS */
+#endif  // MR_MPROF_PROFILE_CALLS
 
 #ifdef  MR_LOWLEVEL_DEBUG
     if (MR_progdebug) {
-        /*
-        ** We can't assume that MR_LOWLEVEL_DEBUG was turned on in the code
-        ** that generated the call to this function just because
-        ** MR_LOWLEVEL_DEBUG is turned on here.
-        */
+        // We can't assume that MR_LOWLEVEL_DEBUG was turned on in the code
+        // that generated the call to this function just because
+        // MR_LOWLEVEL_DEBUG is turned on here.
+
         if (name != NULL) {
             printf("recording entry label %s at %p\n", name, addr);
         } else {
             printf("recording entry label at %p\n", addr);
         }
     }
-#endif  /* MR_LOWLEVEL_DEBUG */
+#endif  // MR_LOWLEVEL_DEBUG
 
 #ifdef  MR_NEED_ENTRY_LABEL_ARRAY
     if (entry_array_next >= entry_array_size) {
@@ -145,22 +133,21 @@ MR_do_insert_entry_label(const char *name, MR_Code *addr,
     entry_array[entry_array_next].MR_entry_layout = entry_layout;
     entry_array_next++;
     entry_array_sorted = MR_FALSE;
-#endif  /* MR_NEED_ENTRY_LABEL_ARRAY */
+#endif  // MR_NEED_ENTRY_LABEL_ARRAY
 }
 
-#else   /* MR_NEED_ENTRY_LABEL_INFO */
+#else   // MR_NEED_ENTRY_LABEL_INFO
 
 void
 MR_do_insert_entry_label(const char *name, MR_Code *addr,
     const MR_ProcLayout *entry_layout)
 {
-    /*
-    ** Do nothing, but the function must still exist, since entry labels
-    ** defined with MR_init_entry_an will generate calls to it.
-    */
+    // Do nothing, but the function must still exist, since entry labels
+    // defined with MR_init_entry_an will generate calls to it.
+
 }
 
-#endif  /* MR_NEED_ENTRY_LABEL_INFO */
+#endif  // MR_NEED_ENTRY_LABEL_INFO
 
 #ifdef  MR_NEED_ENTRY_LABEL_ARRAY
 
@@ -226,7 +213,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
     }
 }
 
-#else   /* MR_NEED_ENTRY_LABEL_ARRAY */
+#else   // MR_NEED_ENTRY_LABEL_ARRAY
 
 MR_Entry *
 MR_prev_entry_by_addr(const MR_Code *addr)
@@ -234,7 +221,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
     return NULL;
 }
 
-#endif  /* MR_NEED_ENTRY_LABEL_ARRAY */
+#endif  // MR_NEED_ENTRY_LABEL_ARRAY
 
 void
 MR_insert_internal_label(const char *name, MR_Code *addr,
@@ -252,11 +239,10 @@ MR_insert_internal_label(const char *name, MR_Code *addr,
 
 #ifdef  MR_LOWLEVEL_DEBUG
     if (MR_progdebug) {
-        /*
-        ** We can't assume that MR_LOWLEVEL_DEBUG was turned on in the code
-        ** that generated the call to this function just because
-        ** MR_LOWLEVEL_DEBUG is turned on here.
-        */
+        // We can't assume that MR_LOWLEVEL_DEBUG was turned on in the code
+        // that generated the call to this function just because
+        // MR_LOWLEVEL_DEBUG is turned on here.
+
         if (name != NULL) {
             printf("inserting internal label %s at %p\n", name, addr);
         } else {
@@ -269,19 +255,17 @@ MR_insert_internal_label(const char *name, MR_Code *addr,
         MR_insert_hash_table(internal_addr_table, internal);
 
     if (prev_internal != NULL) {
-        /*
-        ** Two labels at same location will happen quite often, when the code
-        ** generated between them turns out to be empty. In this case,
-        ** MR_insert_hash_table will not have inserted internal into the table.
-        **
-        ** If only one of internal and prev_internal have a layout structure,
-        ** make sure that we associate the layout structure with the label
-        ** address.
-        **
-        ** If both internal and prev_internal have a layout structure,
-        ** we rely on the compiler to make sure that it is ok to use
-        ** either of their layout structures.
-        */
+        // Two labels at same location will happen quite often, when the code
+        // generated between them turns out to be empty. In this case,
+        // MR_insert_hash_table will not have inserted internal into the table.
+        //
+        // If only one of internal and prev_internal have a layout structure,
+        // make sure that we associate the layout structure with the label
+        // address.
+        //
+        // If both internal and prev_internal have a layout structure,
+        // we rely on the compiler to make sure that it is ok to use
+        // either of their layout structures.
 
         if (prev_internal->MR_internal_layout == NULL) {
             prev_internal->MR_internal_layout = label_layout;
@@ -334,10 +318,8 @@ MR_process_all_internal_labels(void f(const void *))
     MR_process_all_entries(internal_addr_table, f);
 }
 
-/*
-** The code of MR_lookup_entry_or_internal is similar to, but significantly
-** simpler than, MR_print_label in mercury_debug.c.
-*/
+// The code of MR_lookup_entry_or_internal is similar to, but significantly
+// simpler than, MR_print_label in mercury_debug.c.
 
 const char *
 MR_lookup_entry_or_internal(const MR_Code *addr)

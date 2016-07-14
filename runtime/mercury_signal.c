@@ -1,17 +1,12 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1998,2000,2002, 2006, 2010 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module defines functions for setting up signal handlers.
-*/
+// Copyright (C) 1998,2000,2002, 2006, 2010 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-/*---------------------------------------------------------------------------*/
+// This module defines functions for setting up signal handlers.
+
+////////////////////////////////////////////////////////////////////////////
 
 #include "mercury_imp.h"
 #include "mercury_signal.h"
@@ -42,13 +37,12 @@
   #include <sys/ucontext.h>
 #endif
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** If we don't have SA_RESTART or SA_SIGINFO, defined them as 0.
-** It would be nice to have them, but it is still better to use
-** sigaction without SA_RESTART or SA_SIGINFO than to use signal.
-*/
+// If we don't have SA_RESTART or SA_SIGINFO, defined them as 0.
+// It would be nice to have them, but it is still better to use
+// sigaction without SA_RESTART or SA_SIGINFO than to use signal.
+
 #if !defined(SA_RESTART)
   #define   SA_RESTART 0
 #endif
@@ -99,7 +93,7 @@ MR_reset_signal(int sig)
     act.sa_flags = 0;
     act.sa_handler = SIG_DFL;
 #else
-    act = SIG_DFL; 
+    act = SIG_DFL;
 #endif
     MR_set_signal_action(sig, &act, "Couldn't reset signal");
 }
@@ -113,11 +107,10 @@ MR_init_signal_action(MR_signal_action *act, MR_Code *handler,
     act->sa_flags = (restart ? SA_RESTART : 0);
 
     if (need_info) {
-        /*
-        ** If we are using sigcontext struct, it means we have configured
-        ** to not use siginfo, and so when we request signals, we should not
-        ** ask for SA_SIGINFO, since our handler will not be of the right type.
-        */
+        // If we are using sigcontext struct, it means we have configured
+        // to not use siginfo, and so when we request signals, we should not
+        // ask for SA_SIGINFO, since our handler will not be of the right type.
+
 #if !defined(MR_HAVE_SIGCONTEXT_STRUCT)
         act->sa_flags |= SA_SIGINFO;
 #endif
@@ -130,11 +123,11 @@ MR_init_signal_action(MR_signal_action *act, MR_Code *handler,
     errno = 0;
 
     act->MR_SIGACTION_FIELD = handler;
-#else /* not MR_HAVE_SIGACTION */
+#else // not MR_HAVE_SIGACTION
 
     *act = handler;
 
-#endif /* not MR_HAVE_SIGACTION */
+#endif // not MR_HAVE_SIGACTION
 }
 
 void
@@ -145,13 +138,13 @@ MR_get_signal_action(int sig, MR_signal_action *act, const char *error_message)
         MR_perror(error_message);
         exit(1);
     }
-#else /* not MR_HAVE_SIGACTION */
+#else // not MR_HAVE_SIGACTION
     *act = signal(sig, NULL);
     if (*act == SIG_ERR) {
         MR_perror(error_message);
         exit(1);
     }
-#endif /* not MR_HAVE_SIGACTION */
+#endif // not MR_HAVE_SIGACTION
 }
 
 void
@@ -163,12 +156,12 @@ MR_set_signal_action(int sig, MR_signal_action *act,
         MR_perror(error_message);
         exit(1);
     }
-#else /* not MR_HAVE_SIGACTION */
+#else // not MR_HAVE_SIGACTION
     if (signal(sig, *act) == SIG_ERR) {
         MR_perror(error_message);
         exit(1);
     }
-#endif /* not MR_HAVE_SIGACTION */
+#endif // not MR_HAVE_SIGACTION
 }
 
 void

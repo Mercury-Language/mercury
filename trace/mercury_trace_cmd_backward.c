@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2008,2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "backward" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2008,2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "backward" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -31,14 +26,12 @@
 #include "mercury_trace_command_queue.h"
 #include "mercury_trace_util.h"
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** The message to print for retries through un-io-tabled areas, when
-** the MR_RETRY_IO_INTERACTIVE option is given.
-*/
+// The message to print for retries through un-io-tabled areas, when
+// the MR_RETRY_IO_INTERACTIVE option is given.
 
-#define MR_UNTABLED_IO_RETRY_MESSAGE \
+#define MR_UNTABLED_IO_RETRY_MESSAGE                    \
     "Retry across I/O operations is not always safe.\n" \
     "Are you sure you want to do it? "
 
@@ -46,7 +39,7 @@ static  MR_bool     MR_trace_options_retry(MR_RetryAcrossIo *across_io,
                         MR_bool *assume_all_io_is_tabled,
                         char ***words, int *word_count);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
@@ -66,21 +59,22 @@ MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (! MR_trace_options_retry(&across_io, &assume_all_io_is_tabled,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2 &&
         ( MR_streq(words[1], "clique") || MR_streq(words[1], "clentry")))
     {
         if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_FRAME,
             &ancestor_level))
         {
-            /* the error message has already been printed */
+            // The error message has already been printed.
             return KEEP_INTERACTING;
         }
     } else if (word_count == 2 && MR_streq(words[1], "clparent")) {
         if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_PARENT_FRAME,
             &ancestor_level))
         {
-            /* the error message has already been printed */
+            // The error message has already been printed.
             return KEEP_INTERACTING;
         }
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
@@ -115,8 +109,8 @@ MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
         cmd->MR_trace_strict = MR_TRUE;
         cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
 
-        /* Arrange to retry the call once it is finished. */
-        /* XXX we should use the same options as the original retry */
+        // Arrange to retry the call once it is finished.
+        // XXX We should use the same options as the original retry.
         MR_insert_command_line_at_head("retry -o");
         return STOP_INTERACTING;
 
@@ -126,8 +120,8 @@ MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
         cmd->MR_trace_strict = MR_TRUE;
         cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
 
-        /* Arrange to retry the call once it is finished. */
-        /* XXX we should use the same options as the original retry */
+        // Arrange to retry the call once it is finished.
+        // XXX We should use the same options as the original retry.
         MR_insert_command_line_at_head("retry -o");
         return STOP_INTERACTING;
 
@@ -140,17 +134,15 @@ MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_fatal_error("unrecognized retry result");
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** "retry --assume-all-io-is-tabled" is deliberately not documented as
-** it is for developers only.
-*/
+// "retry --assume-all-io-is-tabled" is deliberately not documented as
+// it is for developers only.
 
 const char *const    MR_trace_retry_cmd_args[] =
     { "--force", "--interactive", "--only-if-safe", NULL };
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static struct MR_option MR_trace_retry_opts[] =
 {

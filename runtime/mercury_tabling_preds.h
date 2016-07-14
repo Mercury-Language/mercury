@@ -1,15 +1,11 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2004-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
-/*
-** This file contains C macros that represent the bodies of predicates
-** in library/table_builtin.m.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 2004-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file contains C macros that represent the bodies of predicates
+// in library/table_builtin.m.
 
 #ifdef  MR_HIGHLEVEL_CODE
   #define MR_table_box_float(F)         (MR_Word) MR_box_float(F)
@@ -145,148 +141,148 @@
 
 #endif
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_lookup_insert_int(stats, debug, back, T0, V, T)              \
     do {                                                                    \
         MR_TABLE_INT(stats, debug, back, T, T0, (MR_Integer) V);            \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_start_int(stats, debug, back, T0, S, V, T)     \
     do {                                                                    \
         MR_TABLE_START_INT(stats, debug, back, T, T0,                       \
             (MR_Integer) S, (MR_Integer) V);                                \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_char(stats, debug, back, T0, V, T)             \
     do {                                                                    \
         MR_TABLE_CHAR(stats, debug, back, T, T0, (MR_Integer) V);           \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_string(stats, debug, back, T0, V, T)           \
     do {                                                                    \
         MR_TABLE_STRING(stats, debug, back, T, T0, (MR_String) V);          \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_float(stats, debug, back, T0, V, T)            \
     do {                                                                    \
         MR_TABLE_FLOAT(stats, debug, back, T, T0, V);                       \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_enum(stats, debug, back, T0, R, V, T)          \
     do {                                                                    \
         MR_TABLE_ENUM(stats, debug, back, T, T0, R, V);                     \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_foreign_enum(stats, debug, back, T0, V, T)     \
     do {                                                                    \
         MR_TABLE_FOREIGN_ENUM(stats, debug, back, T, T0, V);                \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_gen(stats, debug, back, T0, TI, V, T)          \
     do {                                                                    \
         MR_TABLE_ANY(stats, debug, back, "gen", T, T0,                      \
             (MR_TypeInfo) TI, (MR_Word) V);                                 \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_gen_poly(stats, debug, back, T0, TI, V, T)     \
     do {                                                                    \
         MR_TABLE_ANY(stats, debug, back, "gen poly", T, T0,                 \
             (MR_TypeInfo) TI, (MR_Word) V);                                 \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_gen_addr(stats, debug, back, T0, TI, V, T)     \
     do {                                                                    \
         MR_TABLE_ANY_ADDR(stats, debug, back, "gen addr", T, T0,            \
             (MR_TypeInfo) TI, (MR_Word) V);                                 \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_gen_poly_addr(stats, debug, back, T0, TI, V, T) \
     do {                                                                     \
         MR_TABLE_ANY_ADDR(stats, debug, back, "gen poly addr", T, T0,        \
             (MR_TypeInfo) TI, (MR_Word) V);                                  \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_typeinfo(stats, debug, back, T0, TI, T)        \
     do {                                                                    \
         MR_TABLE_TYPEINFO(stats, debug, back, T, T0, (MR_TypeInfo) TI);     \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_lookup_insert_typeclassinfo(stats, debug, back, T0, TCI, T)  \
     do {                                                                    \
         MR_TABLE_TYPECLASSINFO(stats, debug, back, T, T0, (MR_Word *) TCI); \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_save_int_answer(debug, AB, Offset, V)                        \
     do {                                                                    \
         MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
             &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0));                      \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_save_char_answer(debug, AB, Offset, V)                       \
     do {                                                                    \
         MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
             &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0));                \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_save_string_answer(debug, AB, Offset, V)                     \
     do {                                                                    \
         MR_TABLE_SAVE_ANSWER(debug, AB, Offset, (MR_Word) V,                \
             &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0));                   \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_save_float_answer(debug, AB, Offset, V)                      \
     do {                                                                    \
         MR_TABLE_SAVE_ANSWER(debug, AB, Offset, MR_table_box_float(V),      \
             &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));                    \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_save_io_state_answer(debug, AB, Offset, V)                   \
     do {                                                                    \
         MR_TABLE_SAVE_ANSWER(debug, AB, Offset, (MR_Word) V,                \
             &MR_TYPE_CTOR_INFO_NAME(io, state, 0));                         \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_save_any_answer(debug, AB, Offset, TI, V)                       \
     do {                                                                       \
         MR_TABLE_SAVE_ANSWER(debug, AB, Offset, (MR_Word) V, (MR_TypeInfo) TI);\
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_restore_int_answer(debug, AB, Offset, V)                     \
     do {                                                                    \
         V = (MR_Integer) MR_TABLE_GET_ANSWER(debug, AB, Offset);            \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_restore_char_answer(debug, AB, Offset, V)                    \
     do {                                                                    \
         V = (MR_Char) MR_TABLE_GET_ANSWER(debug, AB, Offset);               \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_restore_string_answer(debug, AB, Offset, V)                  \
     do {                                                                    \
         V = (MR_String) MR_TABLE_GET_ANSWER(debug, AB, Offset);             \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_restore_float_answer(debug, AB, Offset, V)                   \
     do {                                                                    \
         V = MR_table_unbox_float(MR_TABLE_GET_ANSWER(debug, AB, Offset));   \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_restore_io_state_answer(debug, AB, Offset, V)                \
     do {                                                                    \
         V = (MR_Word) MR_TABLE_GET_ANSWER(debug, AB, Offset);               \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_restore_any_answer(debug, AB, Offset, V)                     \
     do {                                                                    \
         V = (MR_Word) MR_TABLE_GET_ANSWER(debug, AB, Offset);               \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_loop_setup(debug, back, T, Status)                           \
     do {                                                                    \
@@ -304,7 +300,7 @@
 
 #define MR_tbl_loop_setup_shortcut(T0, T, Status)     ((void) 0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_loop_mark_as_inactive(debug, T)                              \
     do {                                                                    \
@@ -333,7 +329,7 @@
         T->MR_loop_status = MR_LOOP_ACTIVE;                                 \
     } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_setup(debug, back, T, Status)                           \
     do {                                                                    \
@@ -389,7 +385,7 @@
                                                                             \
         MR_restore_transient_registers();                                   \
         Status = MR_CONVERT_C_ENUM_CONSTANT(Status);                        \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_memo_det_setup_shortcut(T0, T, Status)     ((void) 0)
 
@@ -397,7 +393,7 @@
 
 #define MR_tbl_memo_non_setup_shortcut(T0, T, R, Status)  ((void) 0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_mark_as_succeeded(debug, T)                             \
     do {                                                                    \
@@ -406,9 +402,9 @@
         }                                                                   \
                                                                             \
         T->MR_memo_status = MR_MEMO_SUCCEEDED;                              \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_mark_as_failed(debug, T)                                \
     do {                                                                    \
@@ -416,9 +412,9 @@
             printf("marking %p as failed\n", T);                            \
         }                                                                   \
         T->MR_memo_status = MR_MEMO_FAILED;                                 \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_mark_as_incomplete(debug, R)                            \
     do {                                                                    \
@@ -447,19 +443,19 @@
         R->MR_mn_status = MR_MEMO_NON_COMPLETE;                             \
     } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_create_answer_block(debug, T, Size, AnswerBlock)        \
     do {                                                                    \
         MR_TABLE_CREATE_ANSWER_BLOCK(debug, T, Size);                       \
         AnswerBlock = T->MR_answerblock;                                    \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_fill_answer_block_shortcut(T)     ((void) 0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_get_answer_block(debug, T, AnswerBlock)                 \
     do {                                                                    \
@@ -475,13 +471,13 @@
         }                                                                   \
                                                                             \
         AnswerBlock = T->MR_answerblock;                                    \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_get_answer_block_shortcut(T)      ((void) 0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_non_get_answer_table(debug, Record, AnswerTable)        \
     do {                                                                    \
@@ -491,9 +487,9 @@
         }                                                                   \
                                                                             \
         AnswerTable = &(Record->MR_mn_answer_table);                        \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_non_create_answer_block(debug, Record, Size, AnswerBlock) \
     do {                                                                      \
@@ -526,17 +522,17 @@
         Slot = &(answer_node->MR_aln_answer_block);                           \
         MR_TABLE_CREATE_NODE_ANSWER_BLOCK(debug, Slot, Size);                 \
         AnswerBlock = *Slot;                                                  \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_memo_non_create_answer_block_shortcut(Record)                \
     ((void) 0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_non_return_all_shortcut(Record)                         \
     ((void) 0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_memo_non_answer_is_not_duplicate(debug, T, succ)             \
     do {                                                                    \
@@ -548,14 +544,14 @@
         }                                                                   \
                                                                             \
         is_new_answer = (T->MR_integer == 0);                               \
-        T->MR_integer = 1;  /* any nonzero value will do */                 \
+        T->MR_integer = 1;  /* Any nonzero value will do. */                \
         succ = is_new_answer;                                               \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_memo_non_answer_is_not_duplicate_shortcut(R, succ)           \
     ((void) 0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_io_in_range(debug, T, Counter, Start, Succ)                  \
     if (MR_io_tabling_enabled) {                                            \
@@ -598,7 +594,7 @@
         Succ = MR_FALSE;                                                    \
     }
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_io_has_occurred(debug, T, Succ)                              \
     do {                                                                    \
@@ -608,9 +604,9 @@
         }                                                                   \
                                                                             \
         Succ = (T->MR_answerblock != NULL);                                 \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_io_left_bracket_unitized_goal(TraceEnabled)                  \
     do {                                                                    \
@@ -618,22 +614,22 @@
         MR_debug_enabled = MR_FALSE;                                        \
         MR_update_trace_func_enabled();                                     \
         MR_io_tabling_enabled = MR_FALSE;                                   \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_io_right_bracket_unitized_goal(TraceEnabled)                 \
     do {                                                                    \
         MR_io_tabling_enabled = MR_TRUE;                                    \
         MR_debug_enabled = TraceEnabled;                                    \
         MR_update_trace_func_enabled();                                     \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_mm_setup(debug, back, T, Subgoal, Status)                    \
     do {                                                                    \
@@ -647,18 +643,18 @@
         }                                                                   \
         MR_restore_transient_registers();                                   \
         Status = MR_CONVERT_C_ENUM_CONSTANT(Status);                        \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_mm_setup_shortcut(Subgoal, Status)                           \
     do {                                                                    \
         MR_fatal_error("MR_tbl_mm_setup_shortcut");                         \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_mm_return_all_shortcut(AnswerBlock)    ((void) 0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_mm_get_answer_table(debug, Subgoal, AnswerTable)             \
     do {                                                                    \
@@ -668,9 +664,9 @@
         }                                                                   \
                                                                             \
         AnswerTable = &(Subgoal->MR_sg_answer_table);                       \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_mm_answer_is_not_duplicate(debug, T, succ)                   \
     do {                                                                    \
@@ -682,11 +678,11 @@
         }                                                                   \
                                                                             \
         is_new_answer = (T->MR_integer == 0);                               \
-        T->MR_integer = 1;  /* any nonzero value will do */                 \
+        T->MR_integer = 1;  /* Any nonzero value will do. */                \
         succ = is_new_answer;                                               \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_mm_create_answer_block(debug, Subgoal, Size, AnswerBlock)    \
     do {                                                                    \
@@ -721,15 +717,15 @@
         Slot = &(answer_node->MR_aln_answer_block);                         \
         MR_TABLE_CREATE_NODE_ANSWER_BLOCK(debug, Slot, Size);               \
         AnswerBlock = *Slot;                                                \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_mm_fill_answer_block_shortcut(Subgoal) ((void) 0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#else   // MR_USE_MINIMAL_MODEL_STACK_COPY
 
 #define MR_MMSC_ERROR                                                   \
         "stack copy minimal model code entered when not enabled"
@@ -737,33 +733,33 @@
 #define MR_tbl_mm_setup(debug, back, T, Subgoal, Status)                    \
     do {                                                                    \
         MR_fatal_error(MR_MMSC_ERROR);                                      \
-    } while(0)
+    } while (0)
 #define MR_tbl_mm_setup_shortcut(Subgoal, Status)                           \
     do {                                                                    \
         MR_fatal_error(MR_MMSC_ERROR);                                      \
-    } while(0)
+    } while (0)
 #define MR_tbl_mm_return_all_shortcut(AnswerBlock)                          \
     do {                                                                    \
         MR_fatal_error(MR_MMSC_ERROR);                                      \
-    } while(0)
+    } while (0)
 #define MR_tbl_mm_get_answer_table(debug, Subgoal, AnswerTable)             \
     do {                                                                    \
         MR_fatal_error(MR_MMSC_ERROR);                                      \
-    } while(0)
+    } while (0)
 #define MR_tbl_mm_answer_is_not_duplicate(debug, T, Succ)                   \
     do {                                                                    \
         MR_fatal_error(MR_MMSC_ERROR);                                      \
-    } while(0)
+    } while (0)
 #define MR_tbl_mm_create_answer_block(debug, Subgoal, Size, AnswerBlock)    \
     do {                                                                    \
         MR_fatal_error(MR_MMSC_ERROR);                                      \
-    } while(0)
+    } while (0)
 #define MR_tbl_mm_fill_answer_block_shortcut(Subgoal)                       \
     do {                                                                    \
         MR_fatal_error(MR_MMSC_ERROR);                                      \
-    } while(0)
+    } while (0)
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define MR_tbl_mmos_answer_is_not_duplicate(debug, T, succ)                 \
     do {                                                                    \
@@ -775,13 +771,13 @@
         }                                                                   \
                                                                             \
         is_new_answer = (T->MR_integer == 0);                               \
-        T->MR_integer = 1;  /* any nonzero value will do */                 \
+        T->MR_integer = 1;  /* Any nonzero value will do. */                \
         succ = is_new_answer;                                               \
-    } while(0)
+    } while (0)
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
 
@@ -818,7 +814,7 @@
         Slot = &(answer_node->MR_aln_answer_block);                         \
         MR_TABLE_CREATE_NODE_ANSWER_BLOCK(debug, Slot, Size);               \
         AnswerBlock = *Slot;                                                \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_mmos_return_answer(debug, generator)                         \
     do {                                                                    \
@@ -860,7 +856,7 @@
         }                                                                   \
                                                                             \
         MR_fatal_error("MR_tbl_mmos_return_answer: no waiting consumers");  \
-    } while(0)
+    } while (0)
 
 #define MR_tbl_mmos_completion(debug, generator)                            \
     do {                                                                    \
@@ -873,9 +869,9 @@
         }                                                                   \
                                                                             \
         MR_fail();                                                          \
-    } while(0)
+    } while (0)
 
-#else   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+#else   // MR_USE_MINIMAL_MODEL_OWN_STACKS
 
 #define MR_MMOS_ERROR                                                   \
         "own stack minimal model code entered when not enabled"
@@ -883,16 +879,16 @@
 #define MR_tbl_mmos_create_answer_block(debug, Generator, Size, AnswerBlock)\
     do {                                                                    \
         MR_fatal_error(MR_MMOS_ERROR);                                      \
-    } while(0)
+    } while (0)
 #define MR_tbl_mmos_return_answer(debug, generator)                         \
     do {                                                                    \
         MR_fatal_error(MR_MMOS_ERROR);                                      \
-    } while(0)
+    } while (0)
 #define MR_tbl_mmos_completion(debug, generator)                            \
     do {                                                                    \
         MR_fatal_error(MR_MMOS_ERROR);                                      \
-    } while(0)
+    } while (0)
 
-#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+#endif  // MR_USE_MINIMAL_MODEL_OWN_STACKS
 
-/***********************************************************************/
+////////////////////////////////////////////////////////////////////////////

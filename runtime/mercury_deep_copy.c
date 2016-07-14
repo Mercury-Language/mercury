@@ -1,19 +1,14 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1997-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module defines the MR_deep_copy() functions.
-**
-** Deep copy is used for a number of different purposes.  Each variant
-** has the same basic control structure, but differs in how memory
-** is allocated, or whether forwarding pointers are left behind.
-*/
+// Copyright (C) 1997-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module defines the MR_deep_copy() functions.
+//
+// Deep copy is used for a number of different purposes. Each variant
+// has the same basic control structure, but differs in how memory
+// is allocated, or whether forwarding pointers are left behind.
 
 #include "mercury_imp.h"
 #include "mercury_builtin_types.h"
@@ -24,9 +19,7 @@
 #include "mercury_memory.h"
 #include "mercury_accurate_gc.h"
 
-/*
-** MR_deep_copy(): see mercury_deep_copy.h for documentation.
-*/
+// MR_deep_copy(): see mercury_deep_copy.h for documentation.
 
 #undef  in_range
 #define in_range(X)             (lower_limit == NULL || \
@@ -58,12 +51,11 @@
 
 #include "mercury_deep_copy_body.h"
 
-/*
-** agc_deep_copy(): see mercury_deep_copy.h for documentation.
-*/
+// agc_deep_copy(): see mercury_deep_copy.h for documentation.
+
 #ifdef MR_NATIVE_GC
 
-    /* in_range() is true iff X is in the from-space */
+// in_range() is true iff X is in the from-space.
 #undef  in_range
 #define in_range(X)             ((X) >= lower_limit && (X) <= upper_limit)
 
@@ -89,10 +81,9 @@
   #define FORWARD_DEBUG_MSG(Msg, Data) ((void)0)
 #endif
 
-/*
-** This points to a bitmap, which is used to record which objects
-** have already been copied and now hold forwarding pointers.
-*/
+// This points to a bitmap, which is used to record which objects
+// have already been copied and now hold forwarding pointers.
+
 MR_Word *MR_has_forwarding_pointer;
 
 #define mark_as_forwarding_pointer(Data)                                      \
@@ -130,7 +121,7 @@ MR_Word *MR_has_forwarding_pointer;
 
 #endif
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #define SWAP(val1, val2, type)                                                \
     do {                                                                      \
@@ -140,11 +131,10 @@ MR_Word *MR_has_forwarding_pointer;
         (val2) = swap_tmp;                                                    \
     } while (0)
 
-/*
-** The above macro won't suffice when we want to swap the pointers to the
-** heap and the global heap since it will cause gcc to emit warnings about
-** lvalue casts being deprecated.  In that case we use the following macro.
-*/
+// The above macro won't suffice when we want to swap the pointers to the
+// heap and the global heap since it will cause gcc to emit warnings about
+// lvalue casts being deprecated. In that case we use the following macro.
+
 #define SWAP_HEAP_AND_GLOBAL_HEAP                                             \
     do {                                                                      \
         MR_Word *swap_tmp;                                                    \
@@ -155,16 +145,14 @@ MR_Word *MR_has_forwarding_pointer;
 
 #ifdef MR_MIGHT_RECLAIM_HP_ON_FAILURE
 
-/*
-** MR_make_long_lived(): see mercury_deep_copy.h for documentation.
-*/
+// MR_make_long_lived(): see mercury_deep_copy.h for documentation.
 
 MR_Word
 MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 {
     MR_Word result;
 
-    MR_restore_transient_hp();  /* Because we play with MR_hp */
+    MR_restore_transient_hp();  // Because we play with MR_hp.
 
     if (lower_limit < MR_ENGINE(MR_eng_heap_zone)->MR_zone_bottom ||
         lower_limit > MR_ENGINE(MR_eng_heap_zone)->MR_zone_top)
@@ -172,25 +160,25 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
         lower_limit = MR_ENGINE(MR_eng_heap_zone)->MR_zone_bottom;
     }
 
-    /* temporarily swap the heap with the global heap */
+    // Temporarily swap the heap with the global heap.
     SWAP(MR_ENGINE(MR_eng_heap_zone), MR_ENGINE(MR_eng_global_heap_zone),
         MR_MemoryZone *);
     SWAP_HEAP_AND_GLOBAL_HEAP;
 
-    /* copy values from the heap to the global heap */
+    // Copy values from the heap to the global heap.
     MR_save_transient_hp();
     result = MR_deep_copy(term, type_info, lower_limit,
         MR_ENGINE(MR_eng_global_heap_zone)->MR_zone_top);
     MR_restore_transient_hp();
 
-    /* swap the heap and global heap back again */
+    // swap the heap and global heap back again.
     SWAP(MR_ENGINE(MR_eng_heap_zone), MR_ENGINE(MR_eng_global_heap_zone),
         MR_MemoryZone *);
     SWAP_HEAP_AND_GLOBAL_HEAP;
 
-    MR_save_transient_hp(); /* Because we played with MR_hp */
+    MR_save_transient_hp(); // Because we played with MR_hp.
 
     return result;
 }
 
-#endif  /* MIGHT_RECLAIM_HP_ON_FAILURE */
+#endif  // MIGHT_RECLAIM_HP_ON_FAILURE

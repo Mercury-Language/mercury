@@ -1,17 +1,12 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1998-2009,2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_stack_trace.c - implements stack traces.
-**
-** Main authors: Tyson Dowd (trd), Zoltan Somogyi (zs).
-*/
+// Copyright (C) 1998-2009,2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_stack_trace.c - implements stack traces.
+//
+// Main authors: Tyson Dowd (trd), Zoltan Somogyi (zs).
 
 #include "mercury_imp.h"
 #include "mercury_stack_trace.h"
@@ -54,7 +49,7 @@ typedef void        MR_DumpOrTraverseNondetFrameFunc(void *user_data,
                         const MR_LabelLayout *layout, MR_Word *base_sp,
                         MR_Word *base_curfr, int level_number);
 
-/* These are two possible functions of type MR_DumpOrTraverseNondetFrameFunc. */
+// These are two possible functions of type MR_DumpOrTraverseNondetFrameFunc.
 static void         MR_dump_nondet_stack_frame(void *fp,
                         MR_NondetFrameCategory category, MR_Word *top_fr,
                         const MR_LabelLayout *top_layout, MR_Word *base_sp,
@@ -76,7 +71,7 @@ static  MR_bool     MR_nofail_ip(MR_Code *ip);
 static  MR_Code     *MR_find_nofail_temp_redoip(MR_Word *fr);
 static  void        MR_erase_temp_redoip(MR_Word *fr);
 
-#endif  /* !MR_HIGHLEVEL_CODE */
+#endif  // !MR_HIGHLEVEL_CODE
 
 typedef struct {
     const MR_ProcLayout     *pte_proc_layout;
@@ -84,8 +79,8 @@ typedef struct {
     int                     pte_last_level;
     int                     pte_num_frames;
     MR_bool                 pte_some_nonseq_frames;
-    int                     pte_left;       /* negative -> no left subtree  */
-    int                     pte_right;      /* negative -> no right subtree */
+    int                     pte_left;       // negative -> no left subtree
+    int                     pte_right;      // negative -> no right subtree
 } MR_ProcTableEntry;
 
 static  int         MR_find_proc_in_proc_table(
@@ -111,7 +106,7 @@ typedef struct {
     MR_Word                 *ste_trace_sp;
     MR_Word                 *ste_trace_curfr;
     MR_Unsigned             ste_reused_frames;
-    /* int                  ste_last_frame_in_proc; */
+    // int                  ste_last_frame_in_proc;
     int                     ste_proc_table_entry_slot;
 } MR_WalkedStackEntry;
 
@@ -159,7 +154,7 @@ static  MR_bool     MR_call_is_before_event_or_seq(
                         const MR_ProcLayout *proc_layout, MR_Word *base_sp,
                         MR_Word *base_curfr);
 
-/* See comments in mercury_stack_trace.h. */
+// See comments in mercury_stack_trace.h.
 MR_Code             *MR_stack_trace_bottom_ip;
 MR_Word             *MR_nondet_stack_trace_bottom_fr;
 #ifdef MR_STACK_SEGMENTS
@@ -470,10 +465,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
         rec_last_level = level;
         level++;
 
-        /*
-        ** XXX For higher order predicates like list.map, we should pretend
-        ** that we have not seen them before.
-        */
+        // XXX For higher order predicates like list.map, we should pretend
+        // that we have not seen them before.
 
         slot = MR_find_proc_in_proc_table(proc_table, proc_table_next,
             proc_layout, &parent, &side);
@@ -481,26 +474,24 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
         if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
             has_higher_order_arg = MR_proc_has_higher_order_arg(proc_layout);
         } else {
-            /*
-            ** We don't often encounter calls to procedures without debugging
-            ** info in programs compiled in debug grades. Since we don't know
-            ** whether the procedure has higher order args, the conservative
-            ** thing to say is "yes, it does". It will even be true for
-            ** procedures such as builtin_catch.
-            */
+            // We don't often encounter calls to procedures without debugging
+            // info in programs compiled in debug grades. Since we don't know
+            // whether the procedure has higher order args, the conservative
+            // thing to say is "yes, it does". It will even be true for
+            // procedures such as builtin_catch.
+
             has_higher_order_arg = MR_TRUE;
         }
 
         if (slot < 0 || has_higher_order_arg) {
-            /*
-            ** Either we have not seen this procedure before, or we are
-            ** pretending that we have not seen it before.
-            **
-            ** The reason for such pretense is that we don't want calls
-            ** to e.g. list.map in different places in the program
-            ** to collapse every call between those places into a single
-            ** clique.
-            */
+            // Either we have not seen this procedure before, or we are
+            // pretending that we have not seen it before.
+            //
+            // The reason for such pretense is that we don't want calls
+            // to e.g. list.map in different places in the program
+            // to collapse every call between those places into a single
+            // clique.
+
             slot = proc_table_next;
             proc_table[slot].pte_proc_layout =
                 walked_stack[rec_first_level].ste_proc_layout;
@@ -516,14 +507,14 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
 
             walked_stack[rec_first_level].ste_proc_table_entry_slot = slot;
         } else {
-            /* We have seen this procedure before. */
+            // We have seen this procedure before.
             proc_table[slot].pte_last_level = rec_last_level;
             proc_table[slot].pte_num_frames +=
                 rec_last_level + 1 - rec_first_level;
             proc_table[slot].pte_some_nonseq_frames = MR_TRUE;
 
             if (cliques_last == NULL) {
-                /* Add the first clique to the list. */
+                // Add the first clique to the list.
 
                 cl = MR_malloc(sizeof(MR_Clique));
                 cl->cl_first_level = proc_table[slot].pte_first_level;
@@ -535,10 +526,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
             } else if (cliques_last->cl_last_level
                 < proc_table[slot].pte_first_level)
             {
-                /*
-                ** The current clique does not overlap with the last clique,
-                ** so add a new clique to the list.
-                */
+                // The current clique does not overlap with the last clique,
+                // so add a new clique to the list.
 
                 cl = MR_malloc(sizeof(MR_Clique));
                 cl->cl_first_level = proc_table[slot].pte_first_level;
@@ -548,16 +537,14 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
                 cliques_last->cl_next_clique = cl;
                 cliques_last = cl;
             } else {
-                /*
-                ** The current clique does overlap with the last old clique,
-                ** and maybe others. Replace all the cliques in the list it
-                ** overlaps with just one clique. Put this clique in the
-                ** storage of the clique node that was nearest to
-                ** cliques_first.
-                */
+                // The current clique does overlap with the last old clique,
+                // and maybe others. Replace all the cliques in the list it
+                // overlaps with just one clique. Put this clique in the
+                // storage of the clique node that was nearest to
+                // cliques_first.
 
                 cl = cliques_last;
-                /* assert cl != NULL */
+                // assert cl != NULL
                 while (cl->cl_prev_clique != NULL &&
                     cl->cl_prev_clique->cl_last_level >
                         proc_table[slot].pte_first_level)
@@ -568,7 +555,7 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
                     cl = cl->cl_prev_clique;
                     MR_free(old_cl);
                 }
-                    
+
                 cl->cl_first_level = MR_min(cl->cl_first_level,
                     proc_table[slot].pte_first_level);
                 cl->cl_last_level = rec_last_level;
@@ -689,7 +676,7 @@ MR_find_proc_in_proc_table(const MR_ProcTableEntry *proc_table,
     int parent;
     int side;
 
-    /* XXX We don't need proc_table_next for anything else. */
+    // XXX We don't need proc_table_next for anything else.
     if (proc_table_next == 0) {
         MR_fatal_error("MR_find_proc_in_proc_table: table is empty");
     }
@@ -756,9 +743,9 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
     MR_Unsigned             reused_frames;
 
     const MR_ProcLayout     **procs_table;
-    int                     procs_table_size;    /* allocated      */
-    int                     procs_table_next;    /* next free slot */
-    int                     num_procs_in_clique; /* filled in      */
+    int                     procs_table_size;    // allocated
+    int                     procs_table_next;    // next free slot
+    int                     num_procs_in_clique; // filled in
 
     int                     highest_level_in_clique;
     int                     ancestor_level;
@@ -774,19 +761,17 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
     cur_label_layout = label_layout;
     cur_proc_layout = cur_label_layout->MR_sll_entry;
 
-    /*
-    ** procs_table is an array containing proc_table_size slots.
-    ** Of these, the slots at index 0 .. num_procs_in_clique-1 contain
-    ** pointers to the proc layouts of the procedures currently known
-    ** to be in the same clique as the original top level label_layout.
-    ** The slots from num_procs_in_clique to procs_table_next contain
-    ** pointers to the proc_layouts of the other procedures we have
-    ** encountered so far during our walk of the stack.
-    **
-    ** The slots at 0 .. num_procs_in_clique-1 are sorted, and have no
-    ** duplicates. The slots at num_procs_in_clique .. procs_table_next
-    ** are not sorted, and may have duplicates.
-    */
+    // procs_table is an array containing proc_table_size slots.
+    // Of these, the slots at index 0 .. num_procs_in_clique-1 contain
+    // pointers to the proc layouts of the procedures currently known
+    // to be in the same clique as the original top level label_layout.
+    // The slots from num_procs_in_clique to procs_table_next contain
+    // pointers to the proc_layouts of the other procedures we have
+    // encountered so far during our walk of the stack.
+    //
+    // The slots at 0 .. num_procs_in_clique-1 are sorted, and have no
+    // duplicates. The slots at num_procs_in_clique .. procs_table_next
+    // are not sorted, and may have duplicates.
 
     procs_table_size = 256;
     procs_table = MR_malloc(procs_table_size * sizeof(const MR_ProcLayout *));
@@ -822,13 +807,12 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
         cur_proc_layout = cur_label_layout->MR_sll_entry;
 
         ancestor_level++;
-        /*
-        ** Since the part of the procs_table up to num_procs_in_clique
-        ** is guaranteed to be sorted, we have the option of using either
-        ** linear search or binary search. We use linear search because
-        ** we expect the number of procedures in cliques to be small, and
-        ** linear search is likely to be faster for searching small arrays.
-        */
+        // Since the part of the procs_table up to num_procs_in_clique
+        // is guaranteed to be sorted, we have the option of using either
+        // linear search or binary search. We use linear search because
+        // we expect the number of procedures in cliques to be small, and
+        // linear search is likely to be faster for searching small arrays.
+
         in_clique = MR_FALSE;
         for (i = 0; i < num_procs_in_clique; i++) {
             if (cur_proc_layout == procs_table[i]) {
@@ -860,11 +844,9 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
 #endif
 
             if (ancestor_level > highest_level_in_clique+1) {
-                /*
-                ** There are some slots in the part of procs_table
-                ** that contains unsorted, possibly duplicate entries,
-                ** so first sort the whole table ...
-                */
+                // There are some slots in the part of procs_table
+                // that contains unsorted, possibly duplicate entries,
+                // so first sort the whole table ...
 
                 qsort(procs_table, procs_table_next,
                     sizeof(const MR_ProcLayout *),
@@ -876,10 +858,9 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
                     printf("SORTED %d %x\n", i, procs_table[i]);
                 }
 #endif
-                /*
-                ** ... and then eliminate any duplicates, which are now
-                ** guaranteed to be consecutive.
-                */
+                // ... and then eliminate any duplicates, which are now
+                // guaranteed to be consecutive.
+
                 last_filled = 0;
                 for (i = 1; i < procs_table_next; i++) {
                     if (procs_table[i] != procs_table[last_filled]) {
@@ -940,7 +921,7 @@ MR_find_nth_ancestor(const MR_LabelLayout *label_layout,
             &reused_frames, problem);
 
         if (result != MR_STEP_OK) {
-            /* *problem has already been filled in */
+            // *problem has already been filled in
             return NULL;
         }
 
@@ -973,10 +954,8 @@ MR_stack_walk_step(const MR_ProcLayout *proc_layout,
 
     determinism = proc_layout->MR_sle_detism;
     if (determinism < 0) {
-        /*
-        ** This means we have reached some handwritten code that has
-        ** no further information about the stack frame.
-        */
+        // This means we have reached some handwritten code that has
+        // no further information about the stack frame.
 
         *problem_ptr = "reached procedure with no stack trace info";
         return MR_STEP_ERROR_BEFORE;
@@ -1001,15 +980,13 @@ MR_stack_walk_step(const MR_ProcLayout *proc_layout,
         *stack_trace_sp_ptr = *stack_trace_sp_ptr -
             proc_layout->MR_sle_stack_slots;
     } else {
-        /* Succip is always saved in succip_slot/ */
+        // Succip is always saved in succip_slot.
         assert(location == -1);
-        /*
-        ** Note that curfr always points to an ordinary procedure frame,
-        ** never to a temp frame, and this property continues to hold
-        ** while we traverse the nondet stack via the succfr slot.
-        ** So it is safe to access the succip and succfr slots without checking
-        ** what kind of frame it is.
-        */
+        // Note that curfr always points to an ordinary procedure frame,
+        // never to a temp frame, and this property continues to hold
+        // while we traverse the nondet stack via the succfr slot.
+        // So it is safe to access the succip and succfr slots without checking
+        // what kind of frame it is.
 
         success = MR_succip_slot(*stack_trace_curfr_ptr);
         *reused_frames_ptr = 0;
@@ -1042,7 +1019,7 @@ MR_stack_walk_succip_layout(MR_Code *success,
         *problem_ptr = "reached MR_pop_nondetstack_segment";
         return MR_STEP_ERROR_AFTER;
     }
-#endif /* !MR_HIGHLEVEL_CODE && MR_STACK_SEGMENTS */
+#endif // !MR_HIGHLEVEL_CODE && MR_STACK_SEGMENTS
 
     label = MR_lookup_internal_by_addr(success);
     if (label == NULL) {
@@ -1059,7 +1036,7 @@ MR_stack_walk_succip_layout(MR_Code *success,
     return MR_STEP_OK;
 }
 
-/**************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 void
 MR_dump_nondet_stack(FILE *fp, MR_FrameLimit frame_limit,
@@ -1070,11 +1047,11 @@ MR_dump_nondet_stack(FILE *fp, MR_FrameLimit frame_limit,
     MR_dump_nondet_stack_from_layout(fp, frame_limit, line_limit,
         base_maxfr, NULL, NULL, NULL);
 
-#else   /* !MR_HIGHLEVEL_CODE */
+#else   // !MR_HIGHLEVEL_CODE
 
     MR_fatal_error("MR_dump_nondet_stack in high level C grade");
 
-#endif  /* !MR_HIGHLEVEL_CODE */
+#endif  // !MR_HIGHLEVEL_CODE
 }
 
 #ifdef MR_HIGHLEVEL_CODE
@@ -1088,58 +1065,56 @@ MR_dump_nondet_stack_from_layout(FILE *fp,
     MR_fatal_error("MR_dump_nondet_stack_from_layout in high level grade");
 }
 
-#else   /* !MR_HIGHLEVEL_CODE */
+#else   // !MR_HIGHLEVEL_CODE
 
-/*
-** Detailed nondet stack dumps and accurate GC both need to know
-** the values of the local variables in each nondet stack frame.
-** To find out what variables are live in each frame, we must know
-** through what label control will go back to that frame, so we
-** can use that label's layout structure.
-**
-** Control can reach a frame through one of three means.
-**
-** - It may already be there. This is true only for the frame defined by the
-**   arguments of MR_dump_nondet_stack_from_layout, and the layout structure
-**   we use is also among the arguments.
-**
-** - It may get there by backtracking. In this case, the layout structure to
-**   use is the one associated with the frame's redoip structure.
-**
-** - It may get there by returning from a call. In this case, the layout
-**   structure to use is the one associated with the return label.
-**
-** We distinguish the last two cases by keeping an array of nondet stack frames
-** that will be returned to from other nondet stack frames higher up, possibly
-** via other procedures that live on the det stack. Procedures that live on the
-** det stack may occur in the call chain of the currently active procedure, but
-** they may not occur in side branches of the search tree: a model_non call may
-** leave stack frames only on the nondet stack when it exits.
-**
-** When we find the top frame of a side branch, we don't know what the value
-** of the det stack pointer sp was when execution created that nondet stack
-** frame. This means that if that an ancestor of that nondet stack frame lives
-** on the det stack, we cannot find the address of the stack frame of the
-** ancestor. However, due that above invariant the only such ancestor a nondet
-** stack frame on a side branch can have is an ancestor it shares with the
-** currently executing call, and for the ancestors of the currently executing
-** call we *do* know the values of sp.
-**
-** The MR_nondet_branch_infos array has one entry for each nondet branch; this
-** entry gives the details of the next frame on the nondet stack from that
-** branch. The branch_curfr field is valid for all entries and all entries in
-** the array have distinct values for this field. The branch_sp field is valid
-** only for the entry on the main branch; for all other entries, in contains
-** NULL. The branch_layout field gives the address of the layout structure of
-** the return address through which control will return to that frame. (Frames
-** to which control returns via backtracking never get put into this array,
-** only their ancestors do.) The branch_topfr field gives the address of the
-** top frame in the branch; we print this because it makes the stack dump
-** easier to interpret.
-**
-** The MR_nondet_branch_infos array grows when we find the tops of new side
-** branches and shrinks when we find frames that created side branches.
-*/
+// Detailed nondet stack dumps and accurate GC both need to know
+// the values of the local variables in each nondet stack frame.
+// To find out what variables are live in each frame, we must know
+// through what label control will go back to that frame, so we
+// can use that label's layout structure.
+//
+// Control can reach a frame through one of three means.
+//
+// - It may already be there. This is true only for the frame defined by the
+//   arguments of MR_dump_nondet_stack_from_layout, and the layout structure
+//   we use is also among the arguments.
+//
+// - It may get there by backtracking. In this case, the layout structure to
+//   use is the one associated with the frame's redoip structure.
+//
+// - It may get there by returning from a call. In this case, the layout
+//   structure to use is the one associated with the return label.
+//
+// We distinguish the last two cases by keeping an array of nondet stack frames
+// that will be returned to from other nondet stack frames higher up, possibly
+// via other procedures that live on the det stack. Procedures that live on the
+// det stack may occur in the call chain of the currently active procedure, but
+// they may not occur in side branches of the search tree: a model_non call may
+// leave stack frames only on the nondet stack when it exits.
+//
+// When we find the top frame of a side branch, we don't know what the value
+// of the det stack pointer sp was when execution created that nondet stack
+// frame. This means that if that an ancestor of that nondet stack frame lives
+// on the det stack, we cannot find the address of the stack frame of the
+// ancestor. However, due that above invariant the only such ancestor a nondet
+// stack frame on a side branch can have is an ancestor it shares with the
+// currently executing call, and for the ancestors of the currently executing
+// call we *do* know the values of sp.
+//
+// The MR_nondet_branch_infos array has one entry for each nondet branch; this
+// entry gives the details of the next frame on the nondet stack from that
+// branch. The branch_curfr field is valid for all entries and all entries in
+// the array have distinct values for this field. The branch_sp field is valid
+// only for the entry on the main branch; for all other entries, in contains
+// NULL. The branch_layout field gives the address of the layout structure of
+// the return address through which control will return to that frame. (Frames
+// to which control returns via backtracking never get put into this array,
+// only their ancestors do.) The branch_topfr field gives the address of the
+// top frame in the branch; we print this because it makes the stack dump
+// easier to interpret.
+//
+// The MR_nondet_branch_infos array grows when we find the tops of new side
+// branches and shrinks when we find frames that created side branches.
 
 typedef struct
 {
@@ -1185,13 +1160,11 @@ MR_dump_nondet_stack_from_layout(FILE *fp,
         print_vars = MR_FALSE;
     }
 
-    /*
-    ** The comparison macro in the condition of the while loop should be
-    ** the "at_or_above" variant if you want the trace to include the bottom
-    ** frame created by mercury_wrapper.c (whose redoip/redofr field can be
-    ** hijacked by other code), and just "above" if you don't want the bottom
-    ** frame to be included.
-    */
+    // The comparison macro in the condition of the while loop should be
+    // the "at_or_above" variant if you want the trace to include the bottom
+    // frame created by mercury_wrapper.c (whose redoip/redofr field can be
+    // hijacked by other code), and just "above" if you don't want the bottom
+    // frame to be included.
 
     frames_traversed_so_far = 0;
     lines_dumped_so_far = 0;
@@ -1207,17 +1180,16 @@ MR_dump_nondet_stack_from_layout(FILE *fp,
             return;
         }
 
-        /*
-        ** Note that the actual frame size is NOT the apparent frame size
-        ** for the sentinel frames at the beginnings of the second and
-        ** later nondet stack segments. However, in such cases, the apparent
-        ** size will be either negative (if the logically previous segment is
-        ** at a higher address than the segment that holds the sentinel frame)
-        ** or a positive number that is least as big as the size of the
-        ** sentinel frame (if the logically previous segment is at a lower
-        ** address). Therefore if the apparent size is MR_NONDET_TEMP_SIZE or
-        ** MR_DET_TEMP_SIZE, that must be the actual size as well.
-        */
+        // Note that the actual frame size is NOT the apparent frame size
+        // for the sentinel frames at the beginnings of the second and
+        // later nondet stack segments. However, in such cases, the apparent
+        // size will be either negative (if the logically previous segment is
+        // at a higher address than the segment that holds the sentinel frame)
+        // or a positive number that is least as big as the size of the
+        // sentinel frame (if the logically previous segment is at a lower
+        // address). Therefore if the apparent size is MR_NONDET_TEMP_SIZE or
+        // MR_DET_TEMP_SIZE, that must be the actual size as well.
+
         apparent_frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
         if (apparent_frame_size == MR_NONDET_TEMP_SIZE) {
             MR_print_nondetstackptr(fp, base_maxfr);
@@ -1249,10 +1221,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp,
         } else if (MR_redoip_slot(base_maxfr) ==
             MR_ENTRY(MR_pop_nondetstack_segment))
         {
-            /*
-            ** For an explanation of sentinel frames, see the comment before
-            ** MR_new_nondetstack_segment in mercury_stacks.c.
-            */
+            // For an explanation of sentinel frames, see the comment before
+            // MR_new_nondetstack_segment in mercury_stacks.c.
 
             MR_print_nondetstackptr(fp, base_maxfr);
             fprintf(fp, ": segment sentinel\n");
@@ -1367,15 +1337,13 @@ MR_dump_nondet_stack_frame(void *fp, MR_NondetFrameCategory category,
     }
 
     if (category != MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH) {
-        /*
-        ** The browsing code is in Mercury, so we need to disable debugger
-        ** events and diagnostics inside.
-        */
+        // The browsing code is in Mercury, so we need to disable debugger
+        // events and diagnostics inside.
 
         MR_SavedDebugState  saved_debug_state;
 
         MR_turn_off_debug(&saved_debug_state, MR_TRUE);
-        /* XXX we ignore the return value */
+        // XXX We ignore the return value.
         (void) (*MR_address_of_trace_browse_all_on_level)(dump_fp, top_layout,
             base_sp, base_curfr, level_number, MR_TRUE);
         MR_turn_debug_back_on(&saved_debug_state);
@@ -1404,20 +1372,18 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
     func_info.func = func;
     func_info.func_data = func_data;
 
-    /*
-    ** The comparison macro in the condition of the while loop should be
-    ** the "at_or_above" variant if you want the trace to include the bottom
-    ** frame created by mercury_wrapper.c (whose redoip/redofr field can be
-    ** hijacked by other code), and the "above" variant if you don't want
-    ** the bottom frame to be included.
-    */
+    // The comparison macro in the condition of the while loop should be
+    // the "at_or_above" variant if you want the trace to include the bottom
+    // frame created by mercury_wrapper.c (whose redoip/redofr field can be
+    // hijacked by other code), and the "above" variant if you don't want
+    // the bottom frame to be included.
 
     while (MR_at_or_above_bottom_nondet_frame(base_maxfr)) {
         frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
         if (frame_size == MR_NONDET_TEMP_SIZE) {
             MR_record_temp_redoip(base_maxfr);
         } else if (frame_size == MR_DET_TEMP_SIZE) {
-            /* do nothing */
+            // do nothing
         } else {
             level_number++;
             if (MR_above_bottom_nondet_frame(base_maxfr)) {
@@ -1466,7 +1432,7 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
 
     MR_nondet_branch_info_next = 0;
 
-    /* Skip past any model_det frames. */
+    // Skip past any model_det frames.
     do {
         proc_layout = label_layout->MR_sll_entry;
         if (!MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
@@ -1480,7 +1446,7 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
 
     } while (label_layout != NULL);
 
-    /* Double-check that we didn't skip any model_non frames. */
+    // Double-check that we didn't skip any model_non frames.
     assert(current_frame == base_curfr);
 
     if (label_layout != NULL) {
@@ -1529,9 +1495,8 @@ MR_step_over_nondet_frame(MR_DumpOrTraverseNondetFrameFunc *func,
         MR_erase_temp_redoip(fr);
         proc_layout = label_layout->MR_sll_entry;
 
-        /*
-        ** Step past all other detstack-living ancestors on the main branch.
-        */
+        // Step past all other detstack-living ancestors on the main branch.
+
         while (MR_TRUE) {
             result = MR_stack_walk_step(proc_layout, &label_layout,
                 &base_sp, &base_curfr, &reused_frames, &problem);
@@ -1548,17 +1513,15 @@ MR_step_over_nondet_frame(MR_DumpOrTraverseNondetFrameFunc *func,
             determinism = proc_layout->MR_sle_detism;
 
             if (! MR_DETISM_DET_STACK(determinism)) {
-                /*
-                ** We will handle this call to a model_non procedure when the
-                ** sweep in MR_traverse_nondet_stack_from_layout reaches it.
-                ** For now, we only put it into the table.
-                */
+                // We will handle this call to a model_non procedure when the
+                // sweep in MR_traverse_nondet_stack_from_layout reaches it.
+                // For now, we only put it into the table.
+
                 break;
             } else if (base_sp == NULL) {
-                /*
-                ** We are on a side branch, and we must have arrived at
-                ** the common ancestor of the side branch and the main branch.
-                */
+                // We are on a side branch, and we must have arrived at
+                // the common ancestor of the side branch and the main branch.
+
                 return NULL;
             }
         }
@@ -1595,15 +1558,13 @@ MR_step_over_nondet_frame(MR_DumpOrTraverseNondetFrameFunc *func,
                 NULL, fr, level_number);
             MR_erase_temp_redoip(fr);
 
-            /*
-            ** Passing a NULL base_sp to MR_stack_walk_step is OK because
-            ** the procedure whose stack frame we are now looking at uses
-            ** the nondet stack. Putting a NULL base_sp into the table
-            ** is OK because all the ancestors of this procedure that are
-            ** not also ancestors of the call currently being executed
-            ** must also use the nondet stack. This is a consequence of the
-            ** invariant that model_non calls leave the det stack unchanged.
-            */
+            // Passing a NULL base_sp to MR_stack_walk_step is OK because
+            // the procedure whose stack frame we are now looking at uses
+            // the nondet stack. Putting a NULL base_sp into the table
+            // is OK because all the ancestors of this procedure that are
+            // not also ancestors of the call currently being executed
+            // must also use the nondet stack. This is a consequence of the
+            // invariant that model_non calls leave the det stack unchanged.
 
             base_sp = NULL;
             base_curfr = fr;
@@ -1624,14 +1585,12 @@ MR_step_over_nondet_frame(MR_DumpOrTraverseNondetFrameFunc *func,
         proc_layout = label_layout->MR_sll_entry;
         determinism = proc_layout->MR_sle_detism;
         if (MR_DETISM_DET_STACK(determinism)) {
-            /*
-            ** We must have found the common ancestor of the procedure call
-            ** whose variables we just printed and the call currently being
-            ** executed. While this common ancestor must include model_non
-            ** code, this may be inside a commit in a procedure that lives
-            ** on the det stack. If that is the case, the common ancestor
-            ** must not be put into MR_nondet_branch_info.
-            */
+            // We must have found the common ancestor of the procedure call
+            // whose variables we just printed and the call currently being
+            // executed. While this common ancestor must include model_non
+            // code, this may be inside a commit in a procedure that lives
+            // on the det stack. If that is the case, the common ancestor
+            // must not be put into MR_nondet_branch_info.
 
             return NULL;
         }
@@ -1670,18 +1629,16 @@ MR_find_matching_branch(MR_Word *fr, int *branch_ptr)
     return MR_FALSE;
 }
 
-/*
-** The contents of a nondet stack frame which control will enter via
-** backtracking is described by the layout structure of the label at which
-** execution will resume inside the procedure. This need not be the label in
-** the redoip slot in the procedure's ordinary stack frame; if the procedure
-** created any temporary nondet stack frames, it will be the label in the
-** redoip slot of the top temporary nondet stack frame created by the
-** procedure.
-**
-** We record the contents of topmost temp frames as go past them, and erase the
-** records as we go past the ordinary frames to which they refer.
-*/
+// The contents of a nondet stack frame which control will enter via
+// backtracking is described by the layout structure of the label at which
+// execution will resume inside the procedure. This need not be the label in
+// the redoip slot in the procedure's ordinary stack frame; if the procedure
+// created any temporary nondet stack frames, it will be the label in the
+// redoip slot of the top temporary nondet stack frame created by the
+// procedure.
+//
+// We record the contents of topmost temp frames as go past them, and erase the
+// records as we go past the ordinary frames to which they refer.
 
 typedef struct
 {
@@ -1702,7 +1659,7 @@ MR_record_temp_redoip(MR_Word *fr)
 
     for (slot = 0; slot < MR_temp_frame_info_next; slot++) {
         if (fr == MR_temp_frame_infos[slot].temp_redofr) {
-            /* This is not the top temp frame for this call. */
+            // This is not the top temp frame for this call.
             return;
         }
     }
@@ -1715,10 +1672,8 @@ MR_record_temp_redoip(MR_Word *fr)
     MR_temp_frame_info_next++;
 }
 
-/*
-** Return false iff the given label effectively implements the predicate "fail"
-** and true otherwise.
-*/
+// Return false iff the given label effectively implements the predicate "fail"
+// and true otherwise.
 
 static MR_bool
 MR_nofail_ip(MR_Code *ip)
@@ -1776,9 +1731,9 @@ MR_erase_temp_redoip(MR_Word *fr)
     }
 }
 
-#endif  /* !MR_HIGHLEVEL_CODE */
+#endif  // !MR_HIGHLEVEL_CODE
 
-/**************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static void
 MR_init_stack_dump_info(MR_StackDumpInfo *dump_info)
@@ -1807,15 +1762,14 @@ MR_dump_stack_record_frame(FILE *fp, MR_StackDumpParams *params,
         linenumber = 0;
     }
 
-    /*
-    ** We cannot merge two calls if they are to different procedures.
-    **
-    ** We cannot merge two calls even to the same procedure if we are printing
-    ** trace data, since this will differ between the calls.
-    **
-    ** Note that it is not possible for two calls to the same procedure
-    ** to differ on whether the procedure has trace layout data or not.
-    */
+    // We cannot merge two calls if they are to different procedures.
+    //
+    // We cannot merge two calls even to the same procedure if we are printing
+    // trace data, since this will differ between the calls.
+    //
+    // Note that it is not possible for two calls to the same procedure
+    // to differ on whether the procedure has trace layout data or not.
+
     must_flush =
         (proc_layout != dump_info->sdi_prev_frame_dump_info.MR_sdi_proc_layout)
         || params->sdp_include_trace_data;
@@ -1883,11 +1837,10 @@ MR_dump_stack_record_print(FILE *fp, MR_bool include_trace_data,
     fprintf(fp, "%4" MR_INTEGER_LENGTH_MODIFIER "d ",
         frame_dump_info->MR_sdi_min_level);
 
-    /*
-    ** If we are printing trace data, we need all the horizontal room
-    ** we can get, and there will not be any repeated lines, so we do not
-    ** reserve space for the repeat counts.
-    */
+    // If we are printing trace data, we need all the horizontal room
+    // we can get, and there will not be any repeated lines, so we do not
+    // reserve space for the repeat counts.
+
     if (! include_trace_data) {
         if (num_levels > 1) {
             if (num_levels != frame_dump_info->MR_sdi_num_frames) {
@@ -1964,10 +1917,8 @@ MR_maybe_print_call_trace_info(FILE *fp, MR_bool include_trace_data,
     }
 }
 
-/*
-** Note that MR_print_call_trace_info is more permissive than its documentation
-** in the header file.
-*/
+// Note that MR_print_call_trace_info is more permissive than its documentation
+// in the header file.
 
 void
 MR_print_call_trace_info(FILE *fp, const MR_ProcLayout *proc_layout,
@@ -2003,17 +1954,15 @@ MR_print_call_trace_info(FILE *fp, const MR_ProcLayout *proc_layout,
             depth = MR_call_depth_framevar(base_curfr);
         }
 
-        /*
-        ** The code below does has a job that is very similar to the job
-        ** of the function MR_trace_event_print_internal_report in
-        ** trace/mercury_trace_internal.c. Any changes here will probably
-        ** require similar changes there.
-        */
+        // The code below does has a job that is very similar to the job
+        // of the function MR_trace_event_print_internal_report in
+        // trace/mercury_trace_internal.c. Any changes here will probably
+        // require similar changes there.
 
         if (MR_standardize_event_details) {
-            char    buf[64];    /* plenty big enough */
+            char    buf[64];    // Plenty big enough.
 
-            /* Do not print the context id, since it is not standardized. */
+            // Do not print the context id, since it is not standardized.
             event_num = MR_standardize_event_num(event_num);
             call_num = MR_standardize_call_num(call_num);
             snprintf(buf, 64, "E%lu", event_num);
@@ -2022,20 +1971,19 @@ MR_print_call_trace_info(FILE *fp, const MR_ProcLayout *proc_layout,
             fprintf(fp, "%7s ", buf);
             fprintf(fp, "%4lu ", depth);
         } else {
-            /*
-            ** Do not print the context id, since it is the same for
-            ** all the calls in the stack.
-            */
+            // Do not print the context id, since it is the same for
+            // all the calls in the stack.
+
             fprintf(fp, "%7lu %7lu %4lu ", event_num, call_num, depth);
         }
     } else {
-        /* ensure that the remaining columns line up */
+        // Ensure that the remaining columns line up.
         fprintf(fp, "%21s", "");
     }
 
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_TABLE_DEBUG)
   #if 0
-    /* reenable this code if you need to */
+    // reenable this code if you need to
     if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
         MR_print_detstackptr(fp, base_sp);
     } else {
@@ -2321,11 +2269,10 @@ MR_call_details_are_valid(const MR_ProcLayout *proc_layout, MR_Word *base_sp,
     if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
         MR_Integer maybe_from_full = proc_layout->MR_sle_maybe_from_full;
         if (maybe_from_full > 0) {
-            /*
-            ** For procedures compiled with shallow tracing, the details
-            ** will be valid only if the value of MR_from_full saved in
-            ** the appropriate stack slot was MR_TRUE.
-            */
+            // For procedures compiled with shallow tracing, the details
+            // will be valid only if the value of MR_from_full saved in
+            // the appropriate stack slot was MR_TRUE.
+
             if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
                 return MR_based_stackvar(base_sp, maybe_from_full);
             } else {
@@ -2421,26 +2368,24 @@ MR_find_first_call_less_eq_seq_or_event(
     return -1;
 }
 
-/*
-** The different Mercury determinisms are internally represented by integers.
-** This array gives the correspondence with the internal representation and
-** the names that are usually used to denote determinisms.
-*/
+// The different Mercury determinisms are internally represented by integers.
+// This array gives the correspondence with the internal representation and
+// the names that are usually used to denote determinisms.
 
 const char * MR_detism_names[] = {
-    "failure",      /* 0  */
-    "",             /* 1  */
-    "semidet",      /* 2  */
-    "nondet",       /* 3  */
-    "erroneous",    /* 4  */
-    "",             /* 5  */
-    "det",          /* 6  */
-    "multi",        /* 7  */
-    "",             /* 8  */
-    "",             /* 9  */
-    "cc_nondet",    /* 10 */
-    "",             /* 11 */
-    "",             /* 12 */
-    "",             /* 13 */
-    "cc_multi"      /* 14 */
+    "failure",      // 0
+    "",             // 1
+    "semidet",      // 2
+    "nondet",       // 3
+    "erroneous",    // 4
+    "",             // 5
+    "det",          // 6
+    "multi",        // 7
+    "",             // 8
+    "",             // 9
+    "cc_nondet",    // 10
+    "",             // 11
+    "",             // 12
+    "",             // 13
+    "cc_multi"      // 14
 };

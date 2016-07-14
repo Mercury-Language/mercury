@@ -1,22 +1,17 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-**  Deep profiling module
-**
-**  See ../deep_profiler/README for some pointers to documentation
-**  on deep profiling.
-**
-**  Authors: conway, zs
-*/
+// Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-/* turn on assertions, to protect the integrity of the generated data files */
+// Deep profiling module
+//
+// See ../deep_profiler/README for some pointers to documentation
+// on deep profiling.
+//
+// Authors: conway, zs
+
+// Turn on assertions, to protect the integrity of the generated data files.
 #define MR_DEEP_CHECKS
 
 #include "mercury_imp.h"
@@ -86,7 +81,7 @@ MR_CallSiteDynamic  MR_main_grandparent_call_site_dynamic =
   #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
     1,
   #else
-    /* the call count is computed from the other counts */
+    // The call count is computed from the other counts.
   #endif
     1, 0, 0, 0,
 #endif
@@ -144,7 +139,7 @@ int     MR_deep_prof_call_old = 0;
 int     MR_deep_prof_call_builtin_new = 0;
 int     MR_deep_prof_call_builtin_old = 0;
 
-#endif  /* MR_DEEP_PROFILING_STATISTICS */
+#endif  // MR_DEEP_PROFILING_STATISTICS
 
 #ifdef MR_DEEP_PROFILING_LOG
 FILE    *MR_deep_prof_log_file = NULL;
@@ -248,13 +243,11 @@ MR_deep_profile_update_method_history()
     }
 }
 
-#endif  /* MR_DEEP_PROFILING_STATISTICS */
+#endif  // MR_DEEP_PROFILING_STATISTICS
 
-/*----------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Functions for writing out the data at the end of the execution.
-*/
+// Functions for writing out the data at the end of the execution.
 
 static  void    MR_deep_data_output_error(const char *msg, const char *file);
 static  void    MR_write_out_profiling_tree_check_unwritten(FILE *check_fp);
@@ -285,7 +278,7 @@ typedef enum node_kind {
     kind_csd, kind_pd, kind_css, kind_ps
 } MR_NodeKind;
 
-/* must correspond to fixed_size_int_bytes in deep_profiler/read_profile.m */
+// Must correspond to fixed_size_int_bytes in deep_profiler/read_profile.m.
 #define MR_FIXED_SIZE_INT_BYTES 8
 
 static  void    MR_write_csd_ptr(FILE *fp, const MR_CallSiteDynamic *csd);
@@ -302,11 +295,9 @@ static  void    MR_write_num(FILE *fp, unsigned long num);
 static  void    MR_write_fixed_size_int(FILE *fp, MR_uint_least64_t num);
 static  void    MR_write_string(FILE *fp, const char *ptr);
 
-/*----------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** We need some hash tables, so here are the structures for handling them....
-*/
+// We need some hash tables, so here are the structures for handling them....
 
 typedef struct MR_Profiling_Hash_Node_Struct {
     const void                              *item;
@@ -354,19 +345,17 @@ static  MR_ProfilingHashTable   *MR_call_site_static_table;
 static  MR_ProfilingHashTable   *MR_proc_dynamic_table;
 static  MR_ProfilingHashTable   *MR_proc_layout_table;
 
-/*----------------------------------------------------------------------------*/
-/*----------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** A convenient prime for the size of the node hash tables.
-** The compiler contains nearly 10,000 preds, so a width of 10007
-** (requiring about 40K of storage - not onerous compared to the
-** size of the tree) will yield chain lengths of about 1 for the
-** MR_needed_proc_statics table. For the MR_seen_nodes table, which
-** stores all the MR_ProcDynamic nodes that have been seen, the average
-** chain length will be longer - a typical run of the compiler can have
-** as many as 50,000 nodes, so we don't want the table any narrower than this.
-*/
+// A convenient prime for the size of the node hash tables.
+// The compiler contains nearly 10,000 preds, so a width of 10007
+// (requiring about 40K of storage - not onerous compared to the
+// size of the tree) will yield chain lengths of about 1 for the
+// MR_needed_proc_statics table. For the MR_seen_nodes table, which
+// stores all the MR_ProcDynamic nodes that have been seen, the average
+// chain length will be longer - a typical run of the compiler can have
+// as many as 50,000 nodes, so we don't want the table any narrower than this.
 
 static  const int   MR_hash_table_size = 10007;
 
@@ -392,7 +381,6 @@ MR_write_out_profiling_tree(void)
 #ifdef MR_DEEP_PROFILING_STATISTICS
     int                     i;
 #endif
-
 
     deep_fp = fopen(MR_MDPROF_DATA_FILENAME, "wb+");
     if (deep_fp == NULL) {
@@ -422,7 +410,7 @@ MR_write_out_profiling_tree(void)
 
     MR_write_out_deep_flags(deep_fp, MR_FALSE);
 
-    /* We overwrite these zeros after seeking back to table_sizes_offset */
+    // We overwrite these zeros after seeking back to table_sizes_offset.
     table_sizes_offset = ftell(deep_fp);
     if (table_sizes_offset == -1) {
         MR_deep_data_output_error("ftell failed for ",
@@ -656,7 +644,7 @@ MR_write_out_profiling_tree(void)
             fprintf(stderr, "\t%3d: %12d\n", i, MR_method_search_lengths[i]);
         }
     }
-#endif /* MR_DEEP_PROFILING_STATISTICS */
+#endif // MR_DEEP_PROFILING_STATISTICS
 
 #ifdef MR_DEEP_PROFILING_DEBUG
     check_fp = debug_fp;
@@ -675,11 +663,9 @@ MR_deep_data_output_error(const char *op, const char *filename)
     MR_warning("%s %s: %s", op, filename,
         MR_strerror(errno, errbuf, sizeof(errbuf)));
 
-    /*
-    ** An incomplete profiling data file is useless. Removing it prevents
-    ** misunderstandings about that, and may also cure a disk-full condition,
-    ** if the close failure was caused by that.
-    */
+    // An incomplete profiling data file is useless. Removing it prevents
+    // misunderstandings about that, and may also cure a disk-full condition,
+    // if the close failure was caused by that.
 
     if (remove(MR_MDPROF_DATA_FILENAME) != 0) {
         MR_warning("cannot remove %s: %s",
@@ -699,7 +685,7 @@ MR_deep_data_output_error(const char *op, const char *filename)
 static void
 MR_write_out_deep_id_string(FILE *fp)
 {
-    /* Must be the same as deep_id_string in deep_profiler/read_profile.m */
+    // Must be the same as deep_id_string in deep_profiler/read_profile.m
     const char  *id_string = "Mercury deep profiler data version 8\n";
 
     fputs(id_string, fp);
@@ -711,13 +697,12 @@ MR_write_out_program_name(FILE *fp)
     MR_write_string(fp, MR_progname);
 }
 
-/*
-** Flags in the deep profiler data file's header. Any bit without a meaning
-** here must be set to zero as it it may be used in the future. The next line
-** marks 16 bit boundaries in the 64 bit flags value:
-**
-**       48  32  16   0
-*/
+// Flags in the deep profiler data file's header. Any bit without a meaning
+// here must be set to zero as it it may be used in the future. The next line
+// marks 16 bit boundaries in the 64 bit flags value:
+//
+//       48  32  16   0
+
 #define MR_DEEP_FLAG_WORDSIZE_MASK \
     (0x00000000000000FF)
 #define MR_DEEP_FLAG_WORDSIZE_SHIFT \
@@ -730,7 +715,7 @@ MR_write_out_program_name(FILE *fp)
     (0x0000000000000C00)
 #define MR_DEEP_FLAG_COMPRESSION_SHIFT \
     (10)
-/* This flag is two bits wide had has three valid values */
+// This flag is two bits wide as it has three valid values.
 #define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_MASK \
     (0x0000000000003000)
 #define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_SHIFT \
@@ -755,7 +740,7 @@ MR_write_out_deep_flags(FILE *fp, MR_bool compress)
     flags |= MR_DEEP_FLAG_CANONICAL_MASK &
         (1 << MR_DEEP_FLAG_CANONICAL_SHIFT);
 
-    /* ignore compress for now */
+    // ignore compress for now
 
     flags |= MR_DEEP_FLAG_COVERAGE_DATA_TYPE_MASK &
         (MR_DEEP_FLAG_COVERAGE_DATA_TYPE_VALUE <<
@@ -767,10 +752,9 @@ MR_write_out_deep_flags(FILE *fp, MR_bool compress)
 static void
 MR_write_out_procrep_id_string(FILE *fp)
 {
-    /*
-    ** Must be the same as procrep_id_string (or new_procrep_id_string) in
-    ** mdbcomp/program_representation.m.
-    */
+    // Must be the same as procrep_id_string (or new_procrep_id_string) in
+    // mdbcomp/program_representation.m.
+
     const char  *id_string = "Mercury deep profiler procrep version 6\n";
 
     fputs(id_string, fp);
@@ -802,7 +786,7 @@ MR_deep_log_proc_statics(FILE *fp)
     (*MR_address_of_write_out_proc_statics)(fp);
     MR_deep_prof_doing_logging = MR_FALSE;
 }
-#endif  /* MR_DEEP_PROFILING_LOG */
+#endif  // MR_DEEP_PROFILING_LOG
 
 void
 MR_write_out_module_proc_reps_start(FILE *procrep_fp,
@@ -1012,10 +996,9 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
     MR_write_byte(deep_fp, ps->MR_ps_is_in_interface);
     MR_write_num(deep_fp, ps->MR_ps_num_call_sites);
 
-    /*
-    ** Write out pointers to Call Site Statics.  These are read in with the
-    ** proc static.
-    */
+    // Write out pointers to Call Site Statics. These are read in with the
+    // proc static.
+
     for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
         (void) MR_insert_call_site_static(&ps->MR_ps_call_sites[i], &css_id,
             NULL, MR_FALSE);
@@ -1031,17 +1014,15 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
         MR_write_ptr(deep_fp, kind_css, css_id);
     }
 
-    /*
-    ** Write out coverage points.  This is read in as part of the proc static.
-    */
+    // Write out coverage points. This is read in as part of the proc static.
+
 #ifdef MR_DEEP_PROFILING_COVERAGE
     MR_write_out_coverage_points_static(deep_fp, ps);
 #endif
 
-    /*
-    ** Write out the actual call site statics,  These are read in after the
-    ** proc static, not as part of it.
-    */
+    // Write out the actual call site statics,  These are read in after the
+    // proc static, not as part of it.
+
     for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
 #ifdef MR_DEEP_PROFILING_DEBUG
         if (debug_fp != NULL) {
@@ -1055,21 +1036,19 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
 
     const MR_uint_least8_t  *bytecode;
 
-    /*
-    ** Some predicates in the Mercury standard library, such as
-    ** exception.builtin_catch, have Mercury declarations but no Mercury
-    ** implementation, even as foreign_proc code. We do still generate
-    ** proc_static structures for them, since we *want* the hand-written
-    ** C code to be able to collect deep profiling data (in this case,
-    ** to count the number of executions of the EXCP port). This means that
-    ** (a) they will have proc_layout structures, and (b) the bytecode
-    ** pointer field in these structures will be NULL.
-    **
-    ** We handle such procedures by simply not including them in the
-    ** module representation. This is fine, as long as any code that reads
-    ** and processes the program representation is aware that the bodies
-    ** of procedures defined outside Mercury may be missing.
-    */
+    // Some predicates in the Mercury standard library, such as
+    // exception.builtin_catch, have Mercury declarations but no Mercury
+    // implementation, even as foreign_proc code. We do still generate
+    // proc_static structures for them, since we *want* the hand-written
+    // C code to be able to collect deep profiling data (in this case,
+    // to count the number of executions of the EXCP port). This means that
+    // (a) they will have proc_layout structures, and (b) the bytecode
+    // pointer field in these structures will be NULL.
+    //
+    // We handle such procedures by simply not including them in the
+    // module representation. This is fine, as long as any code that reads
+    // and processes the program representation is aware that the bodies
+    // of procedures defined outside Mercury may be missing.
 
     bytecode = proc_layout->MR_sle_body_bytes;
     if (bytecode != NULL) {
@@ -1186,7 +1165,7 @@ MR_write_out_call_site_static(FILE *fp, const MR_CallSiteStatic *css)
             MR_write_string(fp, "");
         }
     }
-    /* XXX MR_css_file_name */
+    // XXX MR_css_file_name
     MR_write_num(fp, css->MR_css_line_number);
     MR_write_string(fp, css->MR_css_goal_path);
 }
@@ -1232,10 +1211,8 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
 
     MR_write_ptr(fp, kind_pd, pd_id);
 
-    /*
-    ** The masks here must exactly correspond with the masks in
-    ** predicate read_profile in deep_profiler/read_profile.m.
-    */
+    // The masks here must exactly correspond with the masks in
+    // predicate read_profile in deep_profiler/read_profile.m.
 
 #ifdef MR_DEEP_PROFILING_PORT_COUNTS
   #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
@@ -1332,10 +1309,8 @@ MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
     int                     i;
 
     if (pd == NULL) {
-        /*
-        ** This shouldn't really happen except that we don't have
-        ** correct handling of nondet pragma_foreign_code yet.
-        */
+        // This shouldn't really happen except that we don't have
+        // correct handling of nondet pragma_foreign_code yet.
 
         return;
     }
@@ -1535,7 +1510,7 @@ MR_write_ptr(FILE *fp, MR_NodeKind kind, int node_id)
     }
 #endif
 
-    /* MR_write_byte(fp, (int) kind); */
+    // MR_write_byte(fp, (int) kind);
     MR_write_num(fp, node_id);
 }
 
@@ -1563,12 +1538,10 @@ MR_write_byte(FILE *fp, const char byte)
     putc(byte, fp);
 }
 
-/*
-** Write out a (non-negative) integer. The format we use is a multibyte format
-** which uses the least significant 7 bits as data bits and the most
-** significant bit to indicate whether there are more bytes following.
-** Numbers are written most significant byte first.
-*/
+// Write out a (non-negative) integer. The format we use is a multibyte format
+// which uses the least significant 7 bits as data bits and the most
+// significant bit to indicate whether there are more bytes following.
+// Numbers are written most significant byte first.
 
 static void
 MR_write_num(FILE *fp, unsigned long num)
@@ -1635,19 +1608,17 @@ MR_write_string(FILE *fp, const char *ptr)
     }
 }
 
-/*----------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** This section of the file implements the hash tables that turn the addresses
-** of ProcDynamic, ProcDynamic, and CallSiteDynamic nodes into node ids.
-** We use our own routines instead of reusing the hash table routines in
-** mercury_hash_table.c for efficiency. By writing our own code, we avoid
-** several sources of overhead: higher order calls, separate calls to lookup
-** a pointer and insert it if it isn't there, and the use of doubly-linked
-** lists. Efficiency is reasonably important, since the tables can have
-** millions of entries. Eventually, they should be implemented using
-** dynamically sized hash tables (extendible hashing or linear hashing).
-*/
+// This section of the file implements the hash tables that turn the addresses
+// of ProcDynamic, ProcDynamic, and CallSiteDynamic nodes into node ids.
+// We use our own routines instead of reusing the hash table routines in
+// mercury_hash_table.c for efficiency. By writing our own code, we avoid
+// several sources of overhead: higher order calls, separate calls to lookup
+// a pointer and insert it if it isn't there, and the use of doubly-linked
+// lists. Efficiency is reasonably important, since the tables can have
+// millions of entries. Eventually, they should be implemented using
+// dynamically sized hash tables (extendible hashing or linear hashing).
 
 static MR_ProfilingHashTable *
 MR_create_hash_table(int size)
@@ -1667,13 +1638,11 @@ MR_create_hash_table(int size)
     return ptr;
 }
 
-/****************************************************************************/
-/*
-** Type safe interfaces to the generic hash table routines.
-**
-** We declare those generic routines here to ensure that any calls to them
-** from above this point get error messages from mgnuc.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Type safe interfaces to the generic hash table routines.
+//
+// We declare those generic routines here to ensure that any calls to them
+// from above this point get error messages from mgnuc.
 
 static  MR_bool                 MR_hash_table_insert_INTERNAL(
                                     MR_ProfilingHashTable *table,
@@ -1816,11 +1785,11 @@ MR_hash_table_flag_written_INTERNAL(MR_ProfilingHashTable *table,
 static void
 MR_write_out_profiling_tree_check_unwritten(FILE *check_fp)
 {
-    int                     unwritten_csd;
-    int                     unwritten_css;
-    int                     unwritten_pd;
-    int                     unwritten_ps;
-    int                     any_unwritten;
+    int unwritten_csd;
+    int unwritten_css;
+    int unwritten_pd;
+    int unwritten_ps;
+    int any_unwritten;
 
     unwritten_ps = MR_hash_table_check_all_written_INTERNAL(check_fp,
         "ProcLayout", MR_proc_layout_table,
@@ -1940,7 +1909,7 @@ MR_hash_table_check_all_written_INTERNAL(FILE *fp, const char *type,
     return errors;
 }
 
-/*----------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 void
 MR_deep_prof_init(void)
@@ -1971,7 +1940,7 @@ MR_deep_prof_turn_off_time_profiling(void)
 #ifdef  MR_DEEP_PROFILING_TIMING
 
 static void
-MR_deep_tick_handler(/* unused */ int signum)
+MR_deep_tick_handler(/*unused */ int signum)
 {
     if (MR_inside_deep_profiling_code) {
         MR_quanta_inside_deep_profiling_code++;
@@ -1983,4 +1952,4 @@ MR_deep_tick_handler(/* unused */ int signum)
 
 #endif
 
-#endif  /* MR_DEEP_PROFILING */
+#endif  // MR_DEEP_PROFILING

@@ -1,17 +1,12 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001-2002, 2005-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_prof_time.c
-**
-** Author: petdr
-*/
+// Copyright (C) 2001-2002, 2005-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_prof_time.c
+//
+// Author: petdr
 
 const char      *MR_time_method;
 
@@ -44,12 +39,10 @@ static  MR_bool     MR_time_profiling_on = MR_FALSE;
 
 static  void        MR_checked_setitimer(int which, struct itimerval *value);
 
-/*
-** MR_init_time_profile_method:
-**
-** Initializes MR_itimer_type and MR_itimer_sig based on the setting of
-** MR_time_profile_method.
-*/
+// MR_init_time_profile_method:
+//
+// Initializes MR_itimer_type and MR_itimer_sig based on the setting of
+// MR_time_profile_method.
 
 void
 MR_init_time_profile_method(void)
@@ -81,15 +74,13 @@ MR_init_time_profile_method(void)
     }
 }
 
-/*
-** MR_turn_on_time_profiling:
-**
-** Sets up the profiling timer and starts it up. At the moment it is after
-** every MR_CLOCK_TICKS_PER_PROF_SIG ticks of the clock.
-**
-** WARNING: SYSTEM SPECIFIC CODE. This code is not very portable, because
-** it uses setitimer(), which is not part of POSIX.1 or ANSI C.
-*/
+// MR_turn_on_time_profiling:
+//
+// Sets up the profiling timer and starts it up. At the moment it is after
+// every MR_CLOCK_TICKS_PER_PROF_SIG ticks of the clock.
+//
+// WARNING: SYSTEM SPECIFIC CODE. This code is not very portable, because
+// it uses setitimer(), which is not part of POSIX.1 or ANSI C.
 
 void
 MR_turn_on_time_profiling(MR_time_signal_handler handler)
@@ -111,11 +102,9 @@ MR_turn_on_time_profiling(MR_time_signal_handler handler)
     MR_checked_setitimer(MR_itimer_type, &itime);
 }
 
-/*
-** MR_turn_off_time_profiling:
-**
-** Turns off the time profiling.
-*/
+// MR_turn_off_time_profiling:
+//
+// Turns off the time profiling.
 
 void
 MR_turn_off_time_profiling(void)
@@ -144,4 +133,4 @@ MR_checked_setitimer(int which, struct itimerval *value)
     }
 }
 
-#endif /* MR_MPROF_PROFILE_TIME || MR_DEEP_PROFILING_TIMING */
+#endif // MR_MPROF_PROFILE_TIME || MR_DEEP_PROFILING_TIMING

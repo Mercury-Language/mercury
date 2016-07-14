@@ -1,39 +1,34 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2002, 2004, 2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_ml_functor_body.h
-**
-** This file is included several times in library/deconstruct.m. Each inclusion
-** defines the body of one of several variants of the `functor' function.
-**
-** The code including this file must define these macros:
-**
-** TYPEINFO_ARG         Gives the name of the argument that contains the
-**                      typeinfo of the term being deconstructed.
-**
-** TERM_ARG             Gives the name of the argument that contains the
-**                      value of the term being deconstructed.
-**
-** FUNCTOR_ARG          Gives the name of the argument to which we assign
-**                      the function symbol of the term.
-**
-** FUNCTOR_NUMBER_ARG   Gives the name of the argument to which we assign
-**                      the function symbol number of the term.
-**
-** ARITY_ARG            Gives the name of the argument to which we assign
-**                      the arity of the term.
-**
-** NONCANON             Gives a value of type MR_noncanon_handling; its value
-**                      will govern the handling of values of noncanonical
-**                      types.
-*/
+// Copyright (C) 2002, 2004, 2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_ml_functor_body.h
+//
+// This file is included several times in library/deconstruct.m. Each inclusion
+// defines the body of one of several variants of the `functor' function.
+//
+// The code including this file must define these macros:
+//
+// TYPEINFO_ARG         Gives the name of the argument that contains the
+//                      typeinfo of the term being deconstructed.
+//
+// TERM_ARG             Gives the name of the argument that contains the
+//                      value of the term being deconstructed.
+//
+// FUNCTOR_ARG          Gives the name of the argument to which we assign
+//                      the function symbol of the term.
+//
+// FUNCTOR_NUMBER_ARG   Gives the name of the argument to which we assign
+//                      the function symbol number of the term.
+//
+// ARITY_ARG            Gives the name of the argument to which we assign
+//                      the arity of the term.
+//
+// NONCANON             Gives a value of type MR_noncanon_handling; its value
+//                      will govern the handling of values of noncanonical
+//                      types.
 
     MR_TypeInfo                 type_info;
     MR_ExpandFunctorOnlyInfo    expand_info;

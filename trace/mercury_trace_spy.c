@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2002, 2005-2008, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file contains code to manage spy points for both
-** the internal and external debuggers.
-**
-** Main author: Zoltan Somogyi.
-*/
+// Copyright (C) 1998-2002, 2005-2008, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file contains code to manage spy points for both
+// the internal and external debuggers.
+//
+// Main author: Zoltan Somogyi.
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
@@ -48,11 +43,9 @@ const char      *MR_spy_when_names[] =
     "user_event_set",
 };
 
-/*
-** The table of spy points, with one entry per existing (or deleted but
-** not yet reused) spy point, with counters saying which is the next
-** free slot and how many slots are allocated.
-*/
+// The table of spy points, with one entry per existing (or deleted but
+// not yet reused) spy point, with counters saying which is the next
+// free slot and how many slots are allocated.
 
 MR_SpyPoint     **MR_spy_points;
 int             MR_spy_point_next = 0;
@@ -60,16 +53,14 @@ int             MR_spy_point_max  = 0;
 
 int             MR_most_recent_spy_point = -1;
 
-/* The initial size of the spy points table. */
+// The initial size of the spy points table.
 #define MR_INIT_SPY_POINTS  10
 
-/*
-** The table of spied on procedures, with one entry per procedure that
-** has ever been spied on, giving the possibly empty list of spy points
-** (enabled or disabled but not deleted) that refer to that procedure,
-** with counters saying which is the next free slot and how many slots
-** are allocated.
-*/
+// The table of spied on procedures, with one entry per procedure that
+// has ever been spied on, giving the possibly empty list of spy points
+// (enabled or disabled but not deleted) that refer to that procedure,
+// with counters saying which is the next free slot and how many slots
+// are allocated.
 
 typedef struct {
     const MR_ProcLayout     *MR_sp_proc;
@@ -80,15 +71,13 @@ static  MR_SpiedProc        *MR_spied_procs;
 static  int                 MR_spied_proc_next = 0;
 static  int                 MR_spied_proc_max = 0;
 
-/* The initial size of the spied procs table. */
+// The initial size of the spied procs table.
 #define MR_INIT_SPIED_PROCS 10
 
-/*
-** The table of spied on return labels, with one entry per return label
-** that is currently being spied on, ordered on label layout structure address,
-** and with counters saying which is the next free slot and how many slots
-** are allocated.
-*/
+// The table of spied on return labels, with one entry per return label
+// that is currently being spied on, ordered on label layout structure address,
+// and with counters saying which is the next free slot and how many slots
+// are allocated.
 
 typedef struct {
     const MR_LabelLayout    *MR_sl_label;
@@ -99,19 +88,17 @@ static  MR_SpiedLabel       *MR_spied_labels;
 static  int                 MR_spied_label_next = 0;
 static  int                 MR_spied_label_max = 0;
 
-/* The initial size of the spied labels table. */
+// The initial size of the spied labels table.
 #define MR_INIT_SPIED_LABELS    10
 
-/*
-** The table of spied on user event names, with one entry per user event
-** name that is currently being spied on, ordered on the event name,
-** and with counters saying which is the next free slot and how many slots
-** are allocated.
-**
-** All the MR_SPY_USER_EVENT breakpoints are listed in MR_spied_user_events,
-** whether or not the breakpoint requires a specific event set as well as a
-** specific name.
-*/
+// The table of spied on user event names, with one entry per user event
+// name that is currently being spied on, ordered on the event name,
+// and with counters saying which is the next free slot and how many slots
+// are allocated.
+//
+// All the MR_SPY_USER_EVENT breakpoints are listed in MR_spied_user_events,
+// whether or not the breakpoint requires a specific event set as well as a
+// specific name.
 
 typedef struct {
     const char                  *MR_sue_user_event_name;
@@ -122,19 +109,17 @@ static  MR_SpiedUserEvent       *MR_spied_user_events;
 static  int                     MR_spied_user_event_next = 0;
 static  int                     MR_spied_user_event_max = 0;
 
-/* The initial size of the spied user events table. */
+// The initial size of the spied user events table.
 #define MR_INIT_SPIED_USER_EVENTS  10
 
-/*
-** The table of spied on user event set names, with one entry per user event
-** set name that is currently being spied on, ordered on the event set name,
-** and with counters saying which is the next free slot and how many slots
-** are allocated.
-**
-** Only the MR_SPY_USER_EVENT_SET breakpoints that specify an event set
-** are listed in MR_spied_user_event_sets. The ones that do not specify
-** an event set are all listed in MR_spied_universal_user_events.
-*/
+// The table of spied on user event set names, with one entry per user event
+// set name that is currently being spied on, ordered on the event set name,
+// and with counters saying which is the next free slot and how many slots
+// are allocated.
+//
+// Only the MR_SPY_USER_EVENT_SET breakpoints that specify an event set
+// are listed in MR_spied_user_event_sets. The ones that do not specify
+// an event set are all listed in MR_spied_universal_user_events.
 
 typedef struct {
     const char                  *MR_sues_user_event_set;
@@ -145,12 +130,12 @@ static  MR_SpiedUserEventSet    *MR_spied_user_event_sets;
 static  int                     MR_spied_user_event_set_next = 0;
 static  int                     MR_spied_user_event_set_max = 0;
 
-/* The initial size of the spied user event sets table. */
+// The initial size of the spied user event sets table.
 #define MR_INIT_SPIED_USER_EVENT_SETS  10
 
 static  MR_SpyPoint             *MR_spied_universal_user_events;
 
-/**************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  int         MR_compare_addr(const void *address1,
                         const void *address2);
@@ -175,35 +160,30 @@ static  void        MR_update_enabled_action(MR_SpyPoint *point,
 static  const char  *MR_ignore_when_to_string(MR_SpyIgnore_When ignore_when);
 static  void        MR_print_spy_print_what(FILE *fp, MR_SpyPrint sp);
 
-/*
-** Compare two addresses, and return an integer which is <0, 0, or >0
-** depending on whether the first address is less than, equal to, or
-** greater than the second.  Suitable for use with MR_bsearch() and
-** MR_prepare_insert_into_sorted().
-*/
+// Compare two addresses, and return an integer which is <0, 0, or >0
+// depending on whether the first address is less than, equal to, or
+// greater than the second. Suitable for use with MR_bsearch() and
+// MR_prepare_insert_into_sorted().
 
 static int
 MR_compare_addr(const void *address1, const void *address2)
 {
-    /*
-    ** Note that we can't just compare the pointers, because on a
-    ** segmented architecture, that might only compare the segments,
-    ** not the offsets (ANSI C doesn't require pointer comparisons to work
-    ** unless the pointers point into the same array, which is not necessarily
-    ** going to be the case here).
-    **
-    ** So instead we need to cast the pointers to integers and then
-    ** compare the integers.
-    */
+    // Note that we can't just compare the pointers, because on a
+    // segmented architecture, that might only compare the segments,
+    // not the offsets (ANSI C doesn't require pointer comparisons to work
+    // unless the pointers point into the same array, which is not necessarily
+    // going to be the case here).
+    //
+    // So instead we need to cast the pointers to integers and then
+    // compare the integers.
+
     MR_Unsigned num1 = (MR_Unsigned) address1;
     MR_Unsigned num2 = (MR_Unsigned) address2;
     return (num1 > num2 ? 1 : num1 == num2 ? 0 : -1);
 }
 
-/*
-** Return the index of the entry in MR_spied_procs whose MR_sp_proc field
-** is entry, or a negative number if absent.
-*/
+// Return the index of the entry in MR_spied_procs whose MR_sp_proc field
+// is entry, or a negative number if absent.
 
 static int
 MR_search_spy_table_for_proc(const MR_ProcLayout *entry)
@@ -220,10 +200,8 @@ MR_search_spy_table_for_proc(const MR_ProcLayout *entry)
     }
 }
 
-/*
-** Return the index of the entry in MR_spied_labels whose MR_sl_label field
-** is equal to the label argument, or a negative number if absent.
-*/
+// Return the index of the entry in MR_spied_labels whose MR_sl_label field
+// is equal to the label argument, or a negative number if absent.
 
 static int
 MR_search_spy_table_for_label(const MR_LabelLayout *label)
@@ -240,11 +218,9 @@ MR_search_spy_table_for_label(const MR_LabelLayout *label)
     }
 }
 
-/*
-** Return the index of the entry in MR_spied_user_events whose
-** MR_sue_user_event_name field is equal to the user_event_name argument,
-** or a negative number if absent.
-*/
+// Return the index of the entry in MR_spied_user_events whose
+// MR_sue_user_event_name field is equal to the user_event_name argument,
+// or a negative number if absent.
 
 static int
 MR_search_spy_table_for_user_event_name(const char *user_event_name)
@@ -262,11 +238,9 @@ MR_search_spy_table_for_user_event_name(const char *user_event_name)
     }
 }
 
-/*
-** Return the index of the entry in MR_spied_user_event_sets whose
-** MR_sues_user_event_set field is equal to the user_event_set argument,
-** or a negative number if absent.
-*/
+// Return the index of the entry in MR_spied_user_event_sets whose
+// MR_sues_user_event_set field is equal to the user_event_set argument,
+// or a negative number if absent.
 
 static int
 MR_search_spy_table_for_user_event_set(const char *user_event_set)
@@ -347,10 +321,8 @@ MR_event_matches_spy_point(const MR_LabelLayout *layout,
         user_event_name = user_event_spec->MR_ues_event_name;
         user_event_set = MR_user_event_set_name(layout);
 
-        /*
-        ** Check for breakpoints that specify an event name, and possibly
-        ** and event set.
-        */
+        // Check for breakpoints that specify an event name, and possibly
+        // and event set.
 
         slot = MR_search_spy_table_for_user_event_name(user_event_name);
         if (slot >= 0) {
@@ -371,9 +343,7 @@ MR_event_matches_spy_point(const MR_LabelLayout *layout,
             }
         }
 
-        /*
-        ** Check for breakpoints that specify just an event set.
-        */
+        // Check for breakpoints that specify just an event set.
 
         slot = MR_search_spy_table_for_user_event_set(user_event_set);
         if (slot >= 0) {
@@ -390,9 +360,7 @@ MR_event_matches_spy_point(const MR_LabelLayout *layout,
             }
         }
 
-        /*
-        ** Check for breakpoints that specify neither event name nor event set.
-        */
+        // Check for breakpoints that specify neither event name nor event set.
 
         for (point = MR_spied_universal_user_events; point != NULL;
             point = point->MR_spy_next)
@@ -552,10 +520,8 @@ MR_spy_cond_is_true(MR_SpyPoint *point, const MR_LabelLayout *label_layout)
 
     cond = point->MR_spy_cond;
 
-    /*
-    ** From this point, returning should be done by setting both
-    ** MR_spy_point_cond_problem and retval, and goto end.
-    */
+    // From this point, returning should be done by setting both
+    // MR_spy_point_cond_problem and retval, and goto end.
 
     MR_spy_point_cond_bad = cond;
     MR_spy_point_cond_problem = "internal error in MR_spy_cond_is_true";
@@ -563,7 +529,7 @@ MR_spy_cond_is_true(MR_SpyPoint *point, const MR_LabelLayout *label_layout)
 
     MR_compute_max_mr_num(max_mr_num, label_layout);
     max_f_num = label_layout->MR_sll_entry->MR_sle_max_f_num;
-    /* This also saves the regs in MR_fake_regs. */
+    // This also saves the regs in MR_fake_regs.
     MR_copy_regs_to_saved_regs(max_mr_num, saved_regs,
         max_f_num, saved_f_regs);
     MR_trace_init_point_vars(label_layout, saved_regs, saved_f_regs,
@@ -661,7 +627,7 @@ MR_add_spy_point(MR_bool reuse, MR_SpyPoint *point)
     int point_slot;
 
     if (reuse) {
-        /* Try to reuse an existing slot in the MR_spy_points array. */
+        // Try to reuse an existing slot in the MR_spy_points array.
         for (i = 0; i < MR_spy_point_next; i++) {
             if (! MR_spy_points[i]->MR_spy_exists) {
                 MR_most_recent_spy_point = i;
@@ -671,7 +637,7 @@ MR_add_spy_point(MR_bool reuse, MR_SpyPoint *point)
         }
     }
 
-    /* Allocate a new slot. */
+    // Allocate a new slot.
     MR_ensure_room_for_next(MR_spy_point, MR_SpyPoint *, MR_INIT_SPY_POINTS);
     point_slot = MR_spy_point_next;
     MR_spy_points[point_slot] = point;
@@ -692,7 +658,7 @@ MR_add_proc_spy_point(MR_SpyWhen when, MR_SpyAction action,
 
     *problem = NULL;
 
-    /* Insert the spy point at the head of the list for the proc. */
+    // Insert the spy point at the head of the list for the proc.
     point = MR_NEW(MR_SpyPoint);
     point->MR_spy_when             = when;
     point->MR_spy_exists           = MR_TRUE;
@@ -726,7 +692,7 @@ MR_add_proc_spy_point(MR_SpyWhen when, MR_SpyAction action,
     return MR_add_spy_point(MR_TRUE, point);
 }
 
-/* 1024 characters should be big enough ... */
+// 1024 characters should be big enough ...
 #define     MR_ERROR_MSG_BUF_SIZE   1024
 static char MR_error_msg_buf[MR_ERROR_MSG_BUF_SIZE];
 
@@ -749,10 +715,8 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
         return -1;
     }
 
-    /*
-    ** The original filename string may have come from a buffer
-    ** or other volatile storage.
-    */
+    // The original filename string may have come from a buffer
+    // or other volatile storage.
 
     filename = MR_copy_string(orig_filename);
 
@@ -766,11 +730,11 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
 
     if (new_size == old_size) {
         if (num_line_matches != 0) {
-            /* Every line match should add a new spy point. */
+            // Every line match should add a new spy point.
             MR_fatal_error("MR_add_line_spy_point: num_line_matches != 0");
         }
 
-        /* There were no matching labels. */
+        // There were no matching labels.
 #ifdef  MR_HAVE_A_SNPRINTF
         if (num_file_matches == 0) {
             snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
@@ -781,7 +745,7 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
                 linenumber, filename);
         }
 #else
-        /* Not absolutely safe, but the risk of overflow is minimal. */
+        // Not absolutely safe, but the risk of overflow is minimal.
         if (num_file_matches == 0) {
             sprintf(MR_error_msg_buf,
                 "there is no debuggable source file named %s", filename);
@@ -802,10 +766,8 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
         MR_fatal_error("MR_add_line_spy_point: num_line_matches == 0");
     }
 
-    /*
-    ** The matching labels were added at the end of the spied label table.
-    ** We must make the table sorted again.
-    */
+    // The matching labels were added at the end of the spied label table.
+    // We must make the table sorted again.
 
     qsort(MR_spied_labels, MR_spied_label_next, sizeof(MR_SpiedLabel),
         MR_compare_spied_labels);
@@ -944,12 +906,12 @@ MR_add_spy_point_print_list_start(int point_slot, MR_SpyPrintList print_list)
         return;
     }
 
-    /* Find the last node in print_list. */
+    // Find the last node in print_list.
     while (list->MR_pl_next != NULL) {
         list = list->MR_pl_next;
     }
 
-    /* Add the existing spy_print_list at the end of print_list. */
+    // Add the existing spy_print_list at the end of print_list.
     list->MR_pl_next = MR_spy_points[point_slot]->MR_spy_print_list;
     MR_spy_points[point_slot]->MR_spy_print_list = print_list;
 }
@@ -965,12 +927,12 @@ MR_add_spy_point_print_list_end(int point_slot, MR_SpyPrintList print_list)
         return;
     }
 
-    /* Find the last node in print_list. */
+    // Find the last node in print_list.
     while (list->MR_pl_next != NULL) {
         list = list->MR_pl_next;
     }
 
-    /* Add the print_list at the end of the existing spy_print_list. */
+    // Add the print_list at the end of the existing spy_print_list.
     list->MR_pl_next = print_list;
 }
 
@@ -1046,7 +1008,7 @@ MR_delete_spy_point(int point_table_slot)
     MR_spy_points[point_table_slot]->MR_spy_exists = MR_FALSE;
 
     MR_delete_spy_print_list(point->MR_spy_print_list);
-    /* In case it gets deleted again. */
+    // In case it gets deleted again.
     point->MR_spy_print_list = NULL;
 
     if (point->MR_spy_cond != NULL) {
@@ -1054,18 +1016,15 @@ MR_delete_spy_point(int point_table_slot)
         MR_free(point->MR_spy_cond->MR_cond_what_string);
         MR_free(point->MR_spy_cond);
 
-        /* In case it gets deleted again. */
+        // In case it gets deleted again.
         point->MR_spy_cond = NULL;
     }
 
     if (point->MR_spy_when == MR_SPY_LINENO) {
-        /* Release the storage acquired by MR_copy_string. */
+        // Release the storage acquired by MR_copy_string.
         MR_free(point->MR_spy_filename);
 
-        /*
-        ** Remove the spy point from the spied label table list.
-        */
-
+        // Remove the spy point from the spied label table list.
         label_slot = 0;
         for (i = 0; i < MR_spied_label_next; i++) {
             if (MR_spied_labels[i].MR_sl_point_num != point_table_slot) {
@@ -1079,10 +1038,7 @@ MR_delete_spy_point(int point_table_slot)
 
         MR_spied_label_next = label_slot;
     } else {
-        /*
-        ** Remove the spy point from the spied proc table list for its proc.
-        */
-
+        // Remove the spy point from the spied proc table list for its proc.
         proc_table_slot = MR_search_spy_table_for_proc(point->MR_spy_proc);
         if (proc_table_slot < 0) {
             MR_fatal_error("deleted spy point was not indexed by proc addr");
@@ -1144,7 +1100,7 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
             break;
 
         case MR_SPY_USER_EVENT:
-            /* MR_spy_when_names has already printed "user_event". */
+            // MR_spy_when_names has already printed "user_event".
             if (point->MR_spy_user_event_set != NULL) {
                 fprintf(fp, "%s %s",
                     point->MR_spy_user_event_set,
@@ -1156,7 +1112,7 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
             break;
 
         case MR_SPY_USER_EVENT_SET:
-            /* MR_spy_when_names has already printed "user_event_set". */
+            // MR_spy_when_names has already printed "user_event_set".
             if (point->MR_spy_user_event_set != NULL) {
                 fprintf(fp, "%s",
                     point->MR_spy_user_event_set);
@@ -1392,7 +1348,7 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
             fprintf(fp, "condition ");
 
             if (!cond->MR_cond_require_var) {
-                fprintf(fp, "-v "); /* also implies -p */
+                fprintf(fp, "-v "); // also implies -p
             } else if (!cond->MR_cond_require_path) {
                 fprintf(fp, "-p ");
             }
@@ -1434,7 +1390,6 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
                     fprintf(fp, " -n");
                 }
 
-
                 if ((int) node->MR_p_format != MR_BROWSE_DEFAULT_FORMAT) {
                     switch (node->MR_p_format) {
                         case MR_BROWSE_FORMAT_FLAT:
@@ -1442,7 +1397,7 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
                             break;
 
                         case MR_BROWSE_FORMAT_RAW_PRETTY:
-                            /* -p is the closest approximation */
+                            // -p is the closest approximation.
                             fprintf(fp, " -p");
                             break;
 

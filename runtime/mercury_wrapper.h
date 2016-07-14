@@ -1,94 +1,75 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1994-2011 The University of Melbourne.
-** Copyright (C) 2014 The Mercury team.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_wrapper.h - defines the interface to mercury_wrapper.c.
-** See mercury_wrapper.c for documentation.
-*/
+// Copyright (C) 1994-2011 The University of Melbourne.
+// Copyright (C) 2014 The Mercury team.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_wrapper.h - defines the interface to mercury_wrapper.c.
+// See mercury_wrapper.c for documentation.
 
 #ifndef MERCURY_WRAPPER_H
 #define MERCURY_WRAPPER_H
 
-#include "mercury_regs.h"           /* needs to come first                */
-#include <stddef.h>                 /* for `size_t'                       */
-#include "mercury_std.h"            /* for `MR_bool'                      */
-#include "mercury_stack_layout.h"   /* for `MR_LabelLayout' etc           */
-#include "mercury_trace_base.h"     /* for `MR_trace_port'                */
-#include "mercury_stacks.h"         /* for `MR_{Cut,Generator}StackFrame' */
-#include "mercury_type_info.h"      /* for `MR_TypeCtorInfo'              */
-#include "mercury_library_types.h"  /* for `MercuryFilePtr'               */
-#include "mercury_complexity.h"     /* for `MR_ComplexityProc'            */
-#include <stdio.h>                  /* for `FILE'                         */
+#include "mercury_regs.h"           // needs to come first
+#include <stddef.h>                 // for `size_t'
+#include "mercury_std.h"            // for `MR_bool'
+#include "mercury_stack_layout.h"   // for `MR_LabelLayout' etc
+#include "mercury_trace_base.h"     // for `MR_trace_port'
+#include "mercury_stacks.h"         // for `MR_{Cut,Generator}StackFrame'
+#include "mercury_type_info.h"      // for `MR_TypeCtorInfo'
+#include "mercury_library_types.h"  // for `MercuryFilePtr'
+#include "mercury_complexity.h"     // for `MR_ComplexityProc'
+#include <stdio.h>                  // for `FILE'
 
-/*
-** mercury_runtime_init() does some stuff to initialize the garbage collector
-** and the Mercury engine's data areas, and then calls io__init_state/2
-** in the Mercury library to initialize the io__state.
-*/
+// mercury_runtime_init() does some stuff to initialize the garbage collector
+// and the Mercury engine's data areas, and then calls io__init_state/2
+// in the Mercury library to initialize the io__state.
 
 extern void             mercury_runtime_init(int argc, char **argv);
 
-/*
-** mercury_runtime_main() basically just calls main/2,
-** with a bit of debugging scaffolding around it.
-*/
+// mercury_runtime_main() basically just calls main/2,
+// with a bit of debugging scaffolding around it.
 
 extern void             mercury_runtime_main(void);
 
-/*
-** mercury_runtime_terminate() does any necessary cleanup,
-** and then returns mercury_exit_status.
-*/
+// mercury_runtime_terminate() does any necessary cleanup,
+// and then returns mercury_exit_status.
 
 extern int              mercury_runtime_terminate(void);
 
-/*
-** MR_init_conservative_GC() initializes the conservative collector,
-** which is usually the Boehm et al collector, but could be the hgc collector.
-** This function is normally called from mercury_runtime_init().
-*/
+// MR_init_conservative_GC() initializes the conservative collector,
+// which is usually the Boehm et al collector, but could be the hgc collector.
+// This function is normally called from mercury_runtime_init().
 
 #ifdef MR_CONSERVATIVE_GC
 extern void             MR_init_conservative_GC(void);
 #endif
 
-/*
-** The following global variables are set by mercury_init() on startup.
-** The entry points are set based on the options to mkinit.c.
-** The address_of_foo pointers are set to the address of
-** the corresponding foo.
-*/
+// The following global variables are set by mercury_init() on startup.
+// The entry points are set based on the options to mkinit.c.
+// The address_of_foo pointers are set to the address of
+// the corresponding foo.
 
 #ifdef MR_HIGHLEVEL_CODE
 extern void MR_CALL     (*MR_program_entry_point)(void);
-                        /* normally main_2_p_0 */
+                        // normally main_2_p_0
 #else
 extern MR_Code          *MR_program_entry_point;
-                        /* normally mercury__main_2_0; */
+                        // normally mercury__main_2_0
 #endif
 
 #ifdef MR_HIGHLEVEL_CODE
 extern void MR_dummy_main(void);
 #endif
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** The values of the variables in this section of mercury_wrapper.h
-** are defined by the program's _init.c file, which is generated by mkinit.
-*/
+// The values of the variables in this section of mercury_wrapper.h
+// are defined by the program's _init.c file, which is generated by mkinit.
 
-/*
-** MR_runtime_flags holds program specific options, treated the same
-** as MERCURY_OPTIONS, that are burned into the program by mkinit.
-*/
+// MR_runtime_flags holds program specific options, treated the same
+// as MERCURY_OPTIONS, that are burned into the program by mkinit.
 
 extern const char   *MR_runtime_flags;
 
@@ -133,67 +114,55 @@ extern MR_TypeInfo  MR_type_info_for_list_of_pseudo_type_info;
 extern void         (*MR_address_of_init_gc)(void);
 #endif
 
-/*
-** MR_trace_getline(const char *, FILE *, FILE *) and
-** MR_trace_get_command(const char *, FILE *, FILE *) are defined in
-** trace/mercury_trace_internal.c but are called in browser/util.m.
-** As we cannot do direct calls from browser/ to trace/, we do indirect
-** calls via the following pointers.
-*/
+// MR_trace_getline(const char *, FILE *, FILE *) and
+// MR_trace_get_command(const char *, FILE *, FILE *) are defined in
+// trace/mercury_trace_internal.c but are called in browser/util.m.
+// As we cannot do direct calls from browser/ to trace/, we do indirect
+// calls via the following pointers.
 
 extern char *       (*MR_address_of_trace_getline)(const char *,
                         FILE *, FILE *);
 extern char *       (*MR_address_of_trace_get_command)(const char *,
                         FILE *, FILE *);
 
-/*
-** MR_trace_browse_all_on_level() is defined in trace/mercury_trace_vars.c
-** but may be called from runtime/mercury_stack_trace.c. As we can not do
-** direct calls from runtime/ to trace/, we do an indirect call via the
-** function pointer MR_address_of_trace_browse_all_on_level.
-*/
+// MR_trace_browse_all_on_level() is defined in trace/mercury_trace_vars.c
+// but may be called from runtime/mercury_stack_trace.c. As we can not do
+// direct calls from runtime/ to trace/, we do an indirect call via the
+// function pointer MR_address_of_trace_browse_all_on_level.
 
 extern const char   *(*MR_address_of_trace_browse_all_on_level)(FILE *,
                         const MR_LabelLayout *, MR_Word *, MR_Word *,
                         int, MR_bool);
 
-/*
-** MR_trace_init_external() and MR_trace_final_external() are defined
-** in trace/mercury_trace_external.c but are called in
-** runtime/mercury_trace_base.c. As we can not do direct calls from
-** runtime/ to trace/, we do an indirect call via a function
-** pointer MR_address_of_trace_init_external.
-*/
+// MR_trace_init_external() and MR_trace_final_external() are defined
+// in trace/mercury_trace_external.c but are called in
+// runtime/mercury_trace_base.c. As we can not do direct calls from
+// runtime/ to trace/, we do an indirect call via a function
+// pointer MR_address_of_trace_init_external.
 
 extern void         (*MR_address_of_trace_init_external)(void);
 extern void         (*MR_address_of_trace_final_external)(void);
 
-/*
-** MR_exec_trace_func_ptr is set to either MR_trace_real
-** (trace/mercury_trace.c), or MR_trace_fake (runtime/mercury_trace_base.c),
-** depending on whether execution tracing was enabled when creating the _init.c
-** file.
-*/
+// MR_exec_trace_func_ptr is set to either MR_trace_real
+// (trace/mercury_trace.c), or MR_trace_fake (runtime/mercury_trace_base.c),
+// depending on whether execution tracing was enabled when creating the _init.c
+// file.
 
 extern MR_Code      *(*MR_exec_trace_func_ptr)(const MR_LabelLayout *);
 
-/*
-** If the init file was built with tracing enabled, then
-** MR_address_of_trace_interrupt_handler points to
-** MR_trace_interrupt_handler, otherwise it is NULL.
-*/
+// If the init file was built with tracing enabled, then
+// MR_address_of_trace_interrupt_handler points to
+// MR_trace_interrupt_handler, otherwise it is NULL.
 
 extern void         (*MR_address_of_trace_interrupt_handler)(void);
 
-/*
-** If the init file was built with tracing enabled, then
-** MR_register_module_layout points to MR_register_module_layout_real,
-** otherwise it is NULL.
-*/
+// If the init file was built with tracing enabled, then
+// MR_register_module_layout points to MR_register_module_layout_real,
+// otherwise it is NULL.
 
 extern void         (*MR_register_module_layout)(const MR_ModuleLayout *);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 extern void                 MR_do_init_modules(void);
 extern void                 MR_do_init_modules_type_tables(void);
@@ -201,10 +170,9 @@ extern void                 MR_do_init_modules_debugger(void);
 #ifdef  MR_RECORD_TERM_SIZES
 extern  void                MR_do_init_modules_complexity(void);
 
-/*
-** MR_complexity_preds_size gives the number of elements in the
-** MR_complexity_preds array.
-*/
+// MR_complexity_preds_size gives the number of elements in the
+// MR_complexity_preds array.
+
 extern  MR_ComplexityProc   *MR_complexity_procs;
 extern  int                 MR_num_complexity_procs;
 #endif
@@ -214,7 +182,7 @@ extern int                  mercury_argc;
 extern char                 **mercury_argv;
 extern int                  mercury_exit_status;
 
-/* sizes of the data areas, *including* the red zone size */
+// Sizes of the data areas, *including* the red zone size.
 extern size_t               MR_heap_size;
 extern size_t               MR_detstack_size;
 extern size_t               MR_nondetstack_size;
@@ -230,7 +198,7 @@ extern size_t               MR_pnegstack_size;
 extern size_t               MR_gen_detstack_size;
 extern size_t               MR_gen_nondetstack_size;
 
-/* sizes of the red zones */
+// Sizes of the red zones.
 extern size_t               MR_heap_zone_size;
 extern size_t               MR_detstack_zone_size;
 extern size_t               MR_nondetstack_zone_size;
@@ -244,79 +212,70 @@ extern size_t               MR_pnegstack_zone_size;
 extern size_t               MR_gen_detstack_zone_size;
 extern size_t               MR_gen_nondetstack_zone_size;
 
-/* heap margin for MLDS->C accurate GC (documented in mercury_wrapper.c) */
+// Heap margin for MLDS->C accurate GC (documented in mercury_wrapper.c).
 extern size_t               MR_heap_margin_size;
 
-/* heap expansion factor for accurate GC (see mercury_accurate_gc.c) */
+// Heap expansion factor for accurate GC (see mercury_accurate_gc.c).
 extern double               MR_heap_expansion_factor;
 
-/* margin for the stack segment test (documented in mercury_wrapper.c) */
+// Margin for the stack segment test (documented in mercury_wrapper.c).
 extern size_t               MR_stack_margin_size_words;
 
-/*
-** Soft limit on the number of outstanding contexts we can create for parallel
-** execution.
-*/
+// Soft limit on the number of outstanding contexts we can create for parallel
+// execution.
 extern MR_Unsigned          MR_max_contexts_per_thread;
 extern MR_Unsigned          MR_max_outstanding_contexts;
 
-/*
-** The number of contexts to create per loop controlled loop.
-*/
+// The number of contexts to create per loop controlled loop.
+
 extern MR_Unsigned          MR_num_contexts_per_loop_control;
 
 #ifdef MR_LL_PARALLEL_CONJ
-/*
-** MR_num_ws_engines is the number of work-stealing Mercury engines.
-** This is initialized to zero. If it is still zero after configuration of the
-** runtime but before threads are started, then we set it to the number of
-** processors on the system (if support is available to detect this).
-** Otherwise, we fall back to 1.
-** After startup, the number of work-stealing Mercury engines is fixed.
-*/
+
+// MR_num_ws_engines is the number of work-stealing Mercury engines.
+// This is initialized to zero. If it is still zero after configuration of the
+// runtime but before threads are started, then we set it to the number of
+// processors on the system (if support is available to detect this).
+// Otherwise, we fall back to 1.
+// After startup, the number of work-stealing Mercury engines is fixed.
 extern MR_Unsigned          MR_num_ws_engines;
 
-/*
-** MR_max_engines is the maximum number of total engines we can create.
-** MR_num_ws_engines <= MR_max_engines < MR_ENGINE_ID_NONE
-*/
+// MR_max_engines is the maximum number of total engines we can create.
+// MR_num_ws_engines <= MR_max_engines < MR_ENGINE_ID_NONE
 extern MR_Unsigned          MR_max_engines;
 
-/*
-** This is used to set MR_granularity_wsdeque_length based on the value of
-** MR_num_ws_engines. A value of 2 says, allow twice as many threads in a
-** context's wsdeque than mercury engines before granularity control has an
-** effect.
-*/
+// This is used to set MR_granularity_wsdeque_length based on the value of
+// MR_num_ws_engines. A value of 2 says, allow twice as many threads in a
+// context's wsdeque than mercury engines before granularity control has an
+// effect.
 extern MR_Unsigned          MR_granularity_wsdeque_length_factor;
 
-/*
-** The length of a context's wsdeque before granularity control has an effect.
-*/
+// The length of a context's wsdeque before granularity control has an effect.
 extern MR_Unsigned          MR_granularity_wsdeque_length;
+
 #endif
 
-/* file names for the mdb debugging streams */
+// File names for the mdb debugging streams.
 extern const char           *MR_mdb_in_filename;
 extern const char           *MR_mdb_out_filename;
 extern const char           *MR_mdb_err_filename;
 
-/* should mdb be started in a window */
+// Should mdb be started in a window?
 extern MR_bool              MR_mdb_in_window;
 
-/* should the declarative debugger print progress messages */
+// Should the declarative debugger print progress messages?
 extern MR_bool              MR_mdb_decl_print_progress;
 
-/* should mdb be silent for benchmarking purposes */
+// Should mdb be silent for benchmarking purposes?
 extern MR_bool              MR_mdb_benchmark_silent;
 
-/* use readline() in the debugger even if the input stream is not a tty */
+// Use readline() in the debugger even if the input stream is not a tty.
 extern MR_bool              MR_force_readline;
 
-/* size of the primary cache */
+// Size of the primary cache.
 extern size_t               MR_pcache_size;
 
-/* low level debugging */
+// Low level debugging.
 extern MR_bool              MR_check_space;
 extern MR_Word              *MR_watch_addr;
 extern MR_CallSiteDynamic   *MR_watch_csd_addr;
@@ -338,17 +297,17 @@ extern unsigned long        MR_lld_print_min;
 extern unsigned long        MR_lld_print_max;
 extern char                 *MR_lld_print_more_min_max;
 
-/* timing */
+// Timing.
 extern int                  MR_user_time_at_start;
 extern int                  MR_user_time_at_last_stat;
 extern int                  MR_real_time_at_start;
 extern int                  MR_real_time_at_last_stat;
 
-/* time profiling */
+// Time profiling.
 enum MR_TimeProfileMethod {
-    MR_profile_real_time,               /* i.e. ITIMER_REAL    */
-    MR_profile_user_time,               /* i.e. ITIMER_VIRTUAL */
-    MR_profile_user_plus_system_time    /* i.e. ITIMER_PROF    */
+    MR_profile_real_time,               // i.e. ITIMER_REAL
+    MR_profile_user_time,               // i.e. ITIMER_VIRTUAL
+    MR_profile_user_plus_system_time    // i.e. ITIMER_PROF
 };
 extern  enum MR_TimeProfileMethod   MR_time_profile_method;
 
@@ -372,4 +331,4 @@ extern void         MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 extern void         MR_setup_call_intervals(char **more_str_ptr,
                         unsigned long *min_ptr, unsigned long *max_ptr);
 
-#endif /* not MERCURY_WRAPPER_H */
+#endif // not MERCURY_WRAPPER_H

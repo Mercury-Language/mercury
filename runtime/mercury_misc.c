@@ -1,11 +1,8 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1996-2000,2002, 2006, 2010-2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 1996-2000,2002, 2006, 2010-2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
 #include    "mercury_conf.h"
 #ifndef MR_HIGHLEVEL_CODE
@@ -44,7 +41,7 @@ MR_mdb_warning(const char *fmt, ...)
 static void
 MR_print_warning(const char *prog, const char *fmt, va_list args)
 {
-    fflush(stdout);     /* in case stdout and stderr are the same */
+    fflush(stdout);     // In case stdout and stderr are the same.
 
     fprintf(stderr, "%s: ", prog);
     vfprintf(stderr, fmt, args);
@@ -71,17 +68,15 @@ MR_do_perror(const char *prog, const char *message)
     int saved_errno;
 
     saved_errno = errno;
-    fflush(stdout);     /* in case stdout and stderr are the same */
+    fflush(stdout);     // In case stdout and stderr are the same.
 
     fprintf(stderr, "%s: ", prog);
     errno = saved_errno;
     perror(message);
 }
 
-/*
-** XXX will need to modify this to kill other threads if MR_THREAD_SAFE
-** (and cleanup resources, etc....)
-*/
+// XXX will need to modify this to kill other threads if MR_THREAD_SAFE
+// (and cleanup resources, etc....)
 
 void
 MR_fatal_error(const char *fmt, ...)
@@ -90,7 +85,7 @@ MR_fatal_error(const char *fmt, ...)
     int error = errno;
     char errbuf[MR_STRERROR_BUF_SIZE];
 
-    fflush(stdout);     /* In case stdout and stderr are the same. */
+    fflush(stdout);     // In case stdout and stderr are the same.
 
     if (error != 0) {
         fprintf(stderr, "Errno = %d: %s\n", error,
@@ -106,7 +101,7 @@ MR_fatal_error(const char *fmt, ...)
     MR_trace_report(stderr);
 #endif
 
-    fflush(NULL);       /* Flushes all stdio output streams. */
+    fflush(NULL);       // Flushes all stdio output streams.
 
     exit(EXIT_FAILURE);
 }
@@ -116,7 +111,7 @@ MR_external_fatal_error(const char *locn, const char *fmt, ...)
 {
     va_list args;
 
-    fflush(stdout);     /* In case stdout and stderr are the same. */
+    fflush(stdout);     // In case stdout and stderr are the same.
 
     fprintf(stderr, "%s: ", locn);
     va_start(args, fmt);
@@ -128,7 +123,7 @@ MR_external_fatal_error(const char *locn, const char *fmt, ...)
     MR_trace_report(stderr);
 #endif
 
-    fflush(NULL);       /* Flushes all stdio output streams. */
+    fflush(NULL);       // Flushes all stdio output streams.
 
     exit(EXIT_FAILURE);
 }

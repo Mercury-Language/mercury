@@ -1,19 +1,14 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2009-2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module contains the definitions of the primitive operations we use to
-** implement builtins for parallel grades as C macros. Some of these macros can
-** be invoked either from the predicates representing the operations in
-** par_builtin.m in the library directory, or from a foreign_proc version of
-** those predicates inserted directly into compiler-generated code.
-*/
+// Copyright (C) 2009-2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module contains the definitions of the primitive operations we use to
+// implement builtins for parallel grades as C macros. Some of these macros can
+// be invoked either from the predicates representing the operations in
+// par_builtin.m in the library directory, or from a foreign_proc version of
+// those predicates inserted directly into compiler-generated code.
 
 #ifndef MERCURY_PAR_BUILTIN_H
 #define MERCURY_PAR_BUILTIN_H
@@ -23,44 +18,42 @@
 #include "mercury_threadscope.h"
 #include "mercury_atomic_ops.h"
 
-/***************************************************************************
-**
-** Futures for dependant AND parallelism.
-**
-***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
+//
+// Futures for dependant AND parallelism.
+//
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_THREAD_SAFE
 
     struct MR_Future_Struct {
-        /* lock preventing concurrent accesses */
+        // Th lock preventing concurrent accesses.
         MercuryLock     MR_fut_lock;
 
-        /* linked list of all the contexts blocked on this future */
+        // A linked list of all the contexts blocked on this future.
         MR_Context      *MR_fut_suspended;
 
-        /* whether this future has been signalled yet */
+        // Has this future been signalled yet?
         volatile int    MR_fut_signalled;
 
         MR_Word         MR_fut_value;
     };
 
-#else /* !MR_THREAD_SAFE */
+#else // !MR_THREAD_SAFE
 
     struct MR_Future_Struct {
-        char dummy; /* ANSI C doesn't allow empty structs */
+        char dummy; // ANSI C doesn't allow empty structs
     };
 
-#endif /* !MR_THREAD_SAFE */
+#endif // !MR_THREAD_SAFE
 
-/*
-** The mutex needs to be destroyed when the future is garbage collected.
-** For efficiency we might want to ignore this altogether, e.g. on Linux
-** pthread_mutex_destroy() only checks that the mutex is unlocked.
-**
-** We initialize the value field only to prevent its previous value,
-** which may point to an allocated block, keeping that block alive.
-** Semantically, the value field is undefined at this point in time.
-*/
+// The mutex needs to be destroyed when the future is garbage collected.
+// For efficiency we might want to ignore this altogether, e.g. on Linux
+// pthread_mutex_destroy() only checks that the mutex is unlocked.
+//
+// We initialize the value field only to prevent its previous value,
+// which may point to an allocated block, keeping that block alive.
+// Semantically, the value field is undefined at this point in time.
 
 #ifdef MR_CONSERVATIVE_GC
     extern  void    MR_finalize_future(void *obj, void *cd);
@@ -94,32 +87,29 @@
         } while (0)
 
   #ifdef MR_THREADSCOPE
-    /*
-    ** In threadscope grades we need to pass the name of the future to the
-    ** threadscope event.
-    */
+    // In threadscope grades we need to pass the name of the future to the
+    // threadscope event.
+
     #define MR_par_builtin_new_future(Future, Name)                         \
         do {                                                                \
             MR_par_builtin_new_future_2(Future);                            \
             MR_threadscope_post_new_future(Future, Name);                   \
         } while (0)
 
-  #else /* ! MR_THREADSCOPE */
+  #else // ! MR_THREADSCOPE
 
     #define MR_par_builtin_new_future(Future)                               \
         do {                                                                \
             MR_par_builtin_new_future_2(Future);                            \
         } while (0)
 
-  #endif /* ! MR_THREADSCOPE */
+  #endif // ! MR_THREADSCOPE
 
-    /*
-    ** If MR_fut_signalled is true, then we guarantee that reading MR_fut_value
-    ** is safe, even without a lock; see the corresponding code in
-    ** MR_par_builtin_signal_future().
-    ** If MR_fut_signalled is false, then we do take a lock and re-read
-    ** this value (to ensure there was not a race).
-    */
+    // If MR_fut_signalled is true, then we guarantee that reading MR_fut_value
+    // is safe, even without a lock; see the corresponding code in
+    // MR_par_builtin_signal_future().
+    // If MR_fut_signalled is false, then we do take a lock and re-read
+    // this value (to ensure there was not a race).
 
     MR_declare_entry(mercury__par_builtin__wait_resume);
 
@@ -143,6 +133,7 @@
                     ** known to mercury__par_builtin__wait_resume, to wit,  \
                     ** the top of the stack.                                \
                     */                                                      \
+                                                                            \
                     MR_incr_sp(1);                                          \
                     MR_sv(1) = (MR_Word) Future;                            \
                                                                             \
@@ -150,6 +141,7 @@
                     ** Save this context and put it on the list of          \
                     ** suspended contexts for this future.                  \
                     */                                                      \
+                                                                            \
                     ctxt = MR_ENGINE(MR_eng_this_context);                  \
                     MR_save_context(ctxt);                                  \
                                                                             \
@@ -169,6 +161,7 @@
                     ** MR_idle will try to run a different context as that  \
                     ** has good chance of unblocking the future.            \
                     */                                                      \
+                                                                            \
                     MR_idle();                                              \
                 }                                                           \
             }                                                               \
@@ -189,6 +182,7 @@
             ** Post the threadscope signal future message before waking any \
             ** threads (and posting those messages).                        \
             */                                                              \
+                                                                            \
             MR_maybe_post_signal_future(Future);                            \
             MR_LOCK(&(Future->MR_fut_lock), "future.signal");               \
                                                                             \
@@ -196,6 +190,7 @@
             ** If the same future is passed twice to a procedure then it    \
             ** could be signalled twice, but the value must be the same.    \
             */                                                              \
+                                                                            \
             if (Future->MR_fut_signalled) {                                 \
                 assert(Future->MR_fut_value == Value);                      \
             } else {                                                        \
@@ -204,6 +199,7 @@
                 ** Ensure that the value is available before we update      \
                 ** MR_fut_signalled.                                        \
                 */                                                          \
+                                                                            \
                 MR_CPU_SFENCE;                                              \
                 Future->MR_fut_signalled = MR_TRUE;                         \
             }                                                               \
@@ -212,7 +208,7 @@
             ctxt = Future->MR_fut_suspended;                                \
             while (ctxt != NULL) {                                          \
                 next = ctxt->MR_ctxt_next;                                  \
-                MR_schedule_context(ctxt);  /* clobbers MR_ctxt_next */     \
+                MR_schedule_context(ctxt);  /* Clobbers MR_ctxt_next. */    \
                 ctxt = next;                                                \
             }                                                               \
             Future->MR_fut_suspended = NULL;                                \
@@ -283,11 +279,11 @@
 
 #endif
 
-/***************************************************************************
-**
-** Builtins for loop coordination.
-**
-***************************************************************************/
+////////////////////////////////////////////////////////////////////////////
+//
+// Builtins for loop coordination.
+//
+////////////////////////////////////////////////////////////////////////////
 
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
 
@@ -302,38 +298,34 @@ struct MR_LoopControlSlot_Struct
 
 struct MR_LoopControl_Struct
 {
-    /* Outstanding workers is manipulated with atomic instructions */
+    // Outstanding workers is manipulated with atomic instructions.
     MR_THREADSAFE_VOLATILE MR_Integer       MR_lc_outstanding_workers;
 
-    /* This lock protects only the next field */
+    // This lock protects only the next field
     MR_THREADSAFE_VOLATILE MR_Us_Lock       MR_lc_master_context_lock;
     MR_Context* MR_THREADSAFE_VOLATILE      MR_lc_master_context;
 
-    /* Unused atm */
+    // Unused atm
     MR_THREADSAFE_VOLATILE MR_bool          MR_lc_finished;
 
-    /*
-    ** When a slot becomes free, its index is stored here so that when a free
-    ** slot is requested, the slot with this index is checked first.
-    */
+    // When a slot becomes free, its index is stored here so that when a free
+    // slot is requested, the slot with this index is checked first.
+
     unsigned                                MR_lc_free_slot_hint;
 
-    /*
-    ** MR_lc_slots MUST be the last field, since in practice, we treat
-    ** the array as having as many slots as we need, adding the size of
-    ** all the elements except the first to sizeof(MR_LoopControl) when
-    ** we allocate memory for the structure.
-    */
+    // MR_lc_slots MUST be the last field, since in practice, we treat
+    // the array as having as many slots as we need, adding the size of
+    // all the elements except the first to sizeof(MR_LoopControl) when
+    // we allocate memory for the structure.
+
     unsigned                                MR_lc_num_slots;
     MR_LoopControlSlot                      MR_lc_slots[1];
 };
 
 #else
 
-/*
-** We have to define these types so that par_builtin.m can use them
-** as foreign types, even in grades that do not support them.
-*/
+// We have to define these types so that par_builtin.m can use them
+// as foreign types, even in grades that do not support them.
 
 typedef MR_Word MR_LoopControl;
 typedef MR_Word MR_LoopControlSlot;
@@ -354,21 +346,17 @@ typedef MR_Word MR_LoopControlSlot;
         } while (0);
 #endif
 
-/*
-** XXX: Make these functions macros, they are now functions to make debugging
-** and testing easier.
-*/
+// XXX: Make these functions macros, they are now functions to make debugging
+// and testing easier.
 
-/*
-** Create and initialize a loop control structure.
-*/
+// Create and initialize a loop control structure.
+
 extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
 
-/*
-** Wait for all workers, and then finalize and free the loop control structure.
-** The caller must pass a module-unique (unquoted) string for resume_point_name
-** that will be used in the name for a C label.
-*/
+// Wait for all workers, and then finalize and free the loop control structure.
+// The caller must pass a module-unique (unquoted) string for resume_point_name
+// that will be used in the name for a C label.
+
 #define MR_lc_finish_part1(lc, part2_label)                                 \
     MR_IF_DEBUG_LOOP_CONTORL(                                               \
         fprintf(stderr, "lc_finish_part1(%p, %p), sp: %p\n",                \
@@ -399,11 +387,11 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
                 (lc)->MR_lc_master_context = MR_ENGINE(MR_eng_this_context);\
                 MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));           \
                 MR_ENGINE(MR_eng_this_context) = NULL;                      \
-                MR_idle(); /* Release the engine to the idle loop */        \
+                MR_idle(); /* Release the engine to the idle loop. */       \
             }                                                               \
         }                                                                   \
         MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));                   \
-        /* Fall through to part2 */                                         \
+        /* Fall through to part2. */                                        \
     } while (0);
 
 #define MR_lc_finish_part2(lc)                                              \
@@ -413,9 +401,7 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
     do {                                                                    \
         unsigned i;                                                         \
                                                                             \
-        /*                                                                  \
-        ** All the jobs have finished.                                      \
-        */                                                                  \
+        /* All the jobs have finished. */                                   \
         for (i = 0; i < (lc)->MR_lc_num_slots; i++) {                       \
             if ((lc)->MR_lc_slots[i].MR_lcs_context != NULL) {              \
                 /*                                                          \
@@ -437,17 +423,15 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
         }                                                                   \
     } while (0);
 
-/*
-** Get a free slot in the loop control if there is one.
-**
-** Deprecated: this was part of our old loop control design.
-*/
+// Get a free slot in the loop control if there is one.
+//
+// Deprecated: this was part of our old loop control design.
+
 extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
     MR_Unsigned *lcs_idx);
 
-/*
-** Get a free slot in the loop control, or block until one is available.
-*/
+// Get a free slot in the loop control, or block until one is available.
+
 #define MR_lc_wait_free_slot(lc, lcs_idx, retry_label)                      \
     MR_IF_DEBUG_LOOP_CONTORL(                                               \
         fprintf(stderr, "lc_wait_free_slot(%p, _, %p), sp: %p\n",           \
@@ -500,9 +484,7 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
         }                                                                   \
                                                                             \
         if ((lc)->MR_lc_slots[i].MR_lcs_context == NULL) {                  \
-            /*                                                              \
-            ** Allocate a new context.                                      \
-            */                                                              \
+            /* Allocate a new context.*/                                    \
             (lc)->MR_lc_slots[i].MR_lcs_context =                           \
                 MR_create_context("Loop control",                           \
                     MR_CONTEXT_SIZE_FOR_LOOP_CONTROL_WORKER, NULL);         \
@@ -523,9 +505,8 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
                                                                             \
     } while (0);
 
-/*
-** Add a frame to the stack of the worker context in the loop control slot.
-*/
+// Add a frame to the stack of the worker context in the loop control slot.
+
 #define MR_lc_inc_worker_sp(lc, lcs_idx, N)                                 \
     do {                                                                    \
         MR_Context *ctxt;                                                   \
@@ -534,25 +515,22 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
         ctxt->MR_ctxt_sp += N;                                              \
     } while (0);
 
-/*
-** Access a slot on the stack of the worker context in the loop control slot.
-*/
+// Access a slot on the stack of the worker context in the loop control slot.
+
 #define MR_lc_worker_sv(lc, lcs_idx, N)                                     \
   MR_based_stackvar(((MR_LoopControl*)lc)->MR_lc_slots[lcs_idx].            \
     MR_lcs_context->MR_ctxt_sp, (N))
 
-/*
-** Try to spawn off this code using the free slot.
-*/
+// Try to spawn off this code using the free slot.
+
 #define MR_lc_spawn_off(lc, lcs_idx, label)                             \
     MR_lc_spawn_off_func((lc), (lcs_idx), label)
 
 extern void MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx,
     MR_Code *code_ptr);
 
-/*
-** Join and terminate a worker.
-*/
+// Join and terminate a worker.
+
 #define MR_lc_join_and_terminate(lc, lcs_idx)                                \
     do {                                                                     \
         MR_IF_DEBUG_LOOP_CONTORL(                                            \
@@ -565,11 +543,12 @@ extern void MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx,
         ** computation, but we do so that we save bookkeeping information.   \
         ** A similar mistake was the cause of a hard-to-diagnose bug in      \
         ** parallel stack segments grades.                                   \
-        ** XXX give a pointer to a description of that bug.                  \
+        ** XXX Give a pointer to a description of that bug.                  \
         ** The context must be saved before we free the loop control slot,   \
         ** otherwise another engine may begin using it before we have        \
         ** saved it.                                                         \
         */                                                                   \
+                                                                             \
         MR_save_context(MR_ENGINE(MR_eng_this_context));                     \
         MR_ENGINE(MR_eng_this_context) = NULL;                               \
                                                                              \
@@ -578,12 +557,11 @@ extern void MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx,
         MR_idle();                                                           \
     } while (0);
 
-/*
-** Join a worker context with the main thread. Termination of the context
-** is handled in the macro above.
-*/
+// Join a worker context with the main thread. Termination of the context
+// is handled in the macro above.
+
 extern void MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx);
 
-#endif /* MR_THREAD_SAFE && MR_LL_PARALLEL_CONJ */
+#endif // MR_THREAD_SAFE && MR_LL_PARALLEL_CONJ
 
-#endif /* not MERCURY_PAR_BUILTIN_H */
+#endif // not MERCURY_PAR_BUILTIN_H

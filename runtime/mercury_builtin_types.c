@@ -1,27 +1,20 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2002-2007, 2010 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_builtin_types.c
-**
-** This file defines the operations on the builtin types of Mercury.
-** It has separate implementations for the high level and low level C back
-** ends.
-*/
+// Copyright (C) 2002-2007, 2010 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
-/*
-** Note that the routines here don't need any special handling for accurate GC,
-** since they only do tail-calls (or equivalent); their stack stack frames
-** will never be live on the stack when a garbage collection occurs (or if
-** they are, will never contain any live variables that might contain pointers
-** to the Mercury heap).
-*/
+// mercury_builtin_types.c
+//
+// This file defines the operations on the builtin types of Mercury.
+// It has separate implementations for the high level and low level C
+// back ends.
+
+// Note that the routines here don't need any special handling for accurate GC,
+// since they only do tail-calls (or equivalent); their stack stack frames
+// will never be live on the stack when a garbage collection occurs (or if
+// they are, will never contain any live variables that might contain pointers
+// to the Mercury heap).
 
 #ifdef MR_HIGHLEVEL_CODE
   #include "mercury.h"
@@ -29,23 +22,21 @@
   #include "mercury_imp.h"
 #endif
 
-#include "mercury_type_info.h"          /* for MR_TYPECTOR_REP*            */
-#include "mercury_type_desc.h"          /* for MR_TypeCtorDesc             */
-#include "mercury_misc.h"               /* for MR_fatal_error()            */
-#include "mercury_heap.h"               /* for MR_create[1-3]() prototypes */
+#include "mercury_type_info.h"          // for MR_TYPECTOR_REP*
+#include "mercury_type_desc.h"          // for MR_TypeCtorDesc
+#include "mercury_misc.h"               // for MR_fatal_error()
+#include "mercury_heap.h"               // for MR_create[1-3]() prototypes
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
 #include "mercury_profiling_builtin.h"
 #include "mercury_builtin_types.h"
 #include "mercury_builtin_types_proc_layouts.h"
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Define MR_TypeCtorInfos for the builtin types
-*/
+// Define MR_TypeCtorInfos for the builtin types.
 
-#undef VOID 
+#undef VOID
 
 MR_DEFINE_TYPE_CTOR_INFO(builtin, int, 0, INT);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, character, 0, CHAR);
@@ -90,28 +81,24 @@ MR_DEFINE_TYPE_CTOR_INFO(type_desc, type_ctor_desc, 0, TYPECTORDESC);
 MR_DEFINE_TYPE_CTOR_INFO(type_desc, pseudo_type_desc, 0, PSEUDOTYPEDESC);
 MR_DEFINE_TYPE_CTOR_INFO(type_desc, type_desc, 0, TYPEDESC);
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_HIGHLEVEL_CODE
 
-/*---------------------------------------------------------------------------*/
-/*---------------------------------------------------------------------------*/
-/*
-** Definitions of the type-specific __Unify__ and __Compare__ procedures
-** for the builtin types.
-**
-** There are two versions of each of these.  The first version, __Unify__,
-** which is called when the type is known at compile time,
-** has the arguments unboxed.  The second version, do_unify_, which is
-** stored in the type_ctor_info and called from the generic
-** unify/2 or compare/3, is a wrapper that has the arguments boxed,
-** and just calls the first version.
-*/
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+// Definitions of the type-specific __Unify__ and __Compare__ procedures
+// for the builtin types.
+//
+// There are two versions of each of these. The first version, __Unify__,
+// which is called when the type is known at compile time,
+// has the arguments unboxed. The second version, do_unify_, which is
+// stored in the type_ctor_info and called from the generic
+// unify/2 or compare/3, is a wrapper that has the arguments boxed,
+// and just calls the first version.
 
-/*---------------------------------------------------------------------------*/
-/*
-** Unification procedures with the arguments unboxed.
-*/
+////////////////////////////////////////////////////////////////////////////
+// Unification procedures with the arguments unboxed.
 
 MR_bool MR_CALL
 mercury__builtin____Unify____int_0_0(MR_Integer x, MR_Integer y)
@@ -128,7 +115,7 @@ mercury__builtin____Unify____string_0_0(MR_String x, MR_String y)
 MR_bool MR_CALL
 mercury__builtin____Unify____float_0_0(MR_Float x, MR_Float y)
 {
-    /* XXX what should this function do when x and y are both NaNs? */
+    // XXX What should this function do when x and y are both NaNs?
     return x == y;
 }
 
@@ -248,11 +235,9 @@ mercury__private_builtin____Unify____base_typeclass_info_0_0(
     return MR_TRUE;
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Comparison procedures with the arguments unboxed.
-*/
+// Comparison procedures with the arguments unboxed.
 
 void MR_CALL
 mercury__builtin____Compare____int_0_0(
@@ -277,7 +262,7 @@ void MR_CALL
 mercury__builtin____Compare____float_0_0(
     MR_Comparison_Result *result, MR_Float x, MR_Float y)
 {
-    /* XXX what should this function do when x and y are both NaNs? */
+    // XXX What should this function do when x and y are both NaNs?
     *result = (x > y ? MR_COMPARE_GREATER :
           x == y ? MR_COMPARE_EQUAL :
           x < y ? MR_COMPARE_LESS :
@@ -307,7 +292,7 @@ void MR_CALL
 mercury__builtin____Compare____c_pointer_0_0(
     MR_Comparison_Result *result, MR_C_Pointer x, MR_C_Pointer y)
 {
-    *result = 
+    *result =
         ( (void *) x == (void *) y ? MR_COMPARE_EQUAL
         : (void *) x <  (void *) y ? MR_COMPARE_LESS
         : MR_COMPARE_GREATER
@@ -406,12 +391,10 @@ mercury__private_builtin____Compare____base_typeclass_info_0_0(
     MR_SORRY("compare for base_typeclass_info");
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unification procedures with the arguments boxed.
-** These are just wrappers which call the unboxed version.
-*/
+// Unification procedures with the arguments boxed.
+// These are just wrappers which call the unboxed version.
 
 MR_bool MR_CALL
 mercury__builtin__do_unify__int_0_0(MR_Box x, MR_Box y)
@@ -548,12 +531,10 @@ mercury__private_builtin__do_unify__base_typeclass_info_0_0(
         (MR_Mercury_Base_TypeClass_Info) y);
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Comparison procedures with the arguments boxed.
-** These are just wrappers which call the unboxed version.
-*/
+// Comparison procedures with the arguments boxed.
+// These are just wrappers which call the unboxed version.
 
 void MR_CALL
 mercury__builtin__do_compare__int_0_0(
@@ -696,7 +677,7 @@ mercury__private_builtin__do_compare__base_typeclass_info_0_0(
         (MR_Mercury_Base_TypeClass_Info) y);
 }
 
-#else   /* ! MR_HIGHLEVEL_CODE */
+#else   // ! MR_HIGHLEVEL_CODE
 
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mercury_builtin_types;
 
@@ -733,7 +714,7 @@ MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mercury_builtin_types;
       MR_init_label(MR_label_uci_name(m, __CompareRep__, n, a, 0, 1));      \
       MR_init_label(MR_label_uci_name(m, __CompareRep__, n, a, 0, 2));
 
-  #else  /* ! MR_DEEP_PROFILING */
+  #else  // ! MR_DEEP_PROFILING
 
     #define MR_UNIFY_COMPARE_REP_DECLS(m, n, a)                             \
       MR_declare_entry(MR_proc_entry_uci_name(m, __Unify__, n, a, 0));      \
@@ -745,7 +726,7 @@ MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mercury_builtin_types;
       MR_init_entry(MR_proc_entry_uci_name(m, __Compare__, n, a, 0));       \
       MR_init_entry(MR_proc_entry_uci_name(m, __CompareRep__, n, a, 0));
 
-  #endif /* MR_DEEP_PROFILING */
+  #endif // MR_DEEP_PROFILING
 
 MR_UNIFY_COMPARE_REP_DECLS(builtin, int, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, string, 0)
@@ -807,15 +788,13 @@ MR_UNIFY_COMPARE_REP_DEFNS(builtin, dummy, 0)
 
 #ifdef MR_DEEP_PROFILING
 
-/*
-** The generic unify, compare and compare_rep predicates do different things
-** for different kinds of type constructors, but these things all fall into
-** one of two categories: either the implementation is entirely in C code,
-** or the implementation is a tailcall to a Mercury predicate. In neither
-** case do the generic predicates allocate a stack frame, which is why
-** the stack traversal component of the procedure layouts won't ever be
-** referenced.
-*/
+// The generic unify, compare and compare_rep predicates do different things
+// for different kinds of type constructors, but these things all fall into
+// one of two categories: either the implementation is entirely in C code,
+// or the implementation is a tailcall to a Mercury predicate. In neither
+// case do the generic predicates allocate a stack frame, which is why
+// the stack traversal component of the procedure layouts won't ever be
+// referenced.
 
     #define MR_DEFINE_PROC_STATIC_LAYOUTS(mod, tname, tarity)               \
       MR_proc_static_uci_no_site(mod, __Unify__, tname, tarity, 0,          \
@@ -844,13 +823,11 @@ MR_UNIFY_COMPARE_REP_DEFNS(builtin, dummy, 0)
             &MR_proc_layout_uci_name(m, __CompareRep__, n, a, 0));          \
       } while (0)
 
-/*
-** If you add another entry to this list, you should also add the corresponding
-** declaration to mercury_builtin_types_proc_layouts.h.
-** You should also make sure that any changes made here are reflected in
-** the definition of the function
-** mercury_sys_init_mercury_builtin_types_write_out_proc_statics() below.
-*/
+// If you add another entry to this list, you should also add the corresponding
+// declaration to mercury_builtin_types_proc_layouts.h.
+// You should also make sure that any changes made here are reflected in
+// the definition of the function
+// mercury_sys_init_mercury_builtin_types_write_out_proc_statics() below.
 
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, int, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, string, 0);
@@ -881,7 +858,7 @@ MR_DEFINE_PROC_STATIC_LAYOUTS(type_desc, type_desc, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, user_by_rtti, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, dummy, 0);
 
-#endif /* MR_DEEP_PROFILING */
+#endif // MR_DEEP_PROFILING
 
 MR_BEGIN_MODULE(mercury_builtin_types)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, int, 0)
@@ -914,17 +891,17 @@ MR_BEGIN_MODULE(mercury_builtin_types)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, dummy, 0)
 MR_BEGIN_CODE
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define module          builtin
 #define type            int
 #define arity           0
 #define unify_code      MR_r1 = ((MR_Integer) MR_r1 == (MR_Integer) MR_r2);
-#define compare_code    MR_r1 =                                               \
-                            ((MR_Integer) MR_r1 == (MR_Integer) MR_r2 ?       \
-                                MR_COMPARE_EQUAL :                            \
-                            (MR_Integer) MR_r1 < (MR_Integer) MR_r2 ?         \
-                                MR_COMPARE_LESS :                             \
+#define compare_code    MR_r1 =                                         \
+                            ((MR_Integer) MR_r1 == (MR_Integer) MR_r2 ? \
+                                MR_COMPARE_EQUAL :                      \
+                            (MR_Integer) MR_r1 < (MR_Integer) MR_r2 ?   \
+                                MR_COMPARE_LESS :                       \
                             MR_COMPARE_GREATER);
 
 #include "mercury_hand_unify_compare_body.h"
@@ -935,7 +912,7 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define module          builtin
 #define type            string
@@ -954,17 +931,17 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define module          builtin
 #define type            float
 #define arity           0
-#define unify_code      MR_r1 = (MR_word_to_float(MR_r1)                      \
+#define unify_code      MR_r1 = (MR_word_to_float(MR_r1)                \
                             == MR_word_to_float(MR_r2));
-#define compare_code    MR_Float f1 = MR_word_to_float(MR_r1);                \
-                        MR_Float f2 = MR_word_to_float(MR_r2);                \
-                        MR_r1 = ((f1 > f2) ? MR_COMPARE_GREATER :             \
-                            (f1 < f2) ? MR_COMPARE_LESS :                     \
+#define compare_code    MR_Float f1 = MR_word_to_float(MR_r1);          \
+                        MR_Float f2 = MR_word_to_float(MR_r2);          \
+                        MR_r1 = ((f1 > f2) ? MR_COMPARE_GREATER :       \
+                            (f1 < f2) ? MR_COMPARE_LESS :               \
                             MR_COMPARE_EQUAL);
 
 #include "mercury_hand_unify_compare_body.h"
@@ -975,17 +952,17 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define module          builtin
 #define type            character
 #define arity           0
 #define unify_code      MR_r1 = ((MR_Char) MR_r1 == (MR_Char) MR_r2);
-#define compare_code    MR_r1 =                                               \
-                            ((MR_Char) MR_r1 > (MR_Char) MR_r2 ?              \
-                                MR_COMPARE_GREATER :                          \
-                            (MR_Char) MR_r1 < (MR_Char) MR_r2 ?               \
-                                MR_COMPARE_LESS :                             \
+#define compare_code    MR_r1 =                                         \
+                            ((MR_Char) MR_r1 > (MR_Char) MR_r2 ?        \
+                                MR_COMPARE_GREATER :                    \
+                            (MR_Char) MR_r1 < (MR_Char) MR_r2 ?         \
+                                MR_COMPARE_LESS :                       \
                             MR_COMPARE_EQUAL);
 
 #include "mercury_hand_unify_compare_body.h"
@@ -996,7 +973,7 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define module          builtin
 #define type            void
@@ -1012,22 +989,20 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-    /*
-    ** For c_pointer, we assume that equality and comparison
-    ** can be based on object identity (i.e. using address comparisons).
-    ** This is correct for types like io__stream, and necessary since
-    ** the io__state contains a map(io__stream, filename).
-    ** However, it might not be correct in general...
-    */
+// For c_pointer, we assume that equality and comparison
+// can be based on object identity (i.e. using address comparisons).
+// This is correct for types like io__stream, and necessary since
+// the io__state contains a map(io__stream, filename).
+// However, it might not be correct in general...
 
 #define module          builtin
 #define type            c_pointer
 #define arity           0
 #define unify_code      MR_r1 = (MR_r1 == MR_r2);
-#define compare_code    MR_r1 = (MR_r1 > MR_r2 ? MR_COMPARE_GREATER :         \
-                            MR_r1 < MR_r2 ? MR_COMPARE_LESS :                 \
+#define compare_code    MR_r1 = (MR_r1 > MR_r2 ? MR_COMPARE_GREATER :   \
+                            MR_r1 < MR_r2 ? MR_COMPARE_LESS :           \
                             MR_COMPARE_EQUAL);
 
 #include "mercury_hand_unify_compare_body.h"
@@ -1038,9 +1013,9 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/* Predicates cannot be unified or compared */
+// Predicates cannot be unified or compared.
 
 #define module          builtin
 #define type            pred
@@ -1056,9 +1031,9 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/* Functions cannot be unified or compared */
+// Functions cannot be unified or compared.
 
 #define module          builtin
 #define type            func
@@ -1074,12 +1049,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of tuples are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of tuples are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          builtin
 #define type            tuple
@@ -1095,12 +1068,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of succips are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of succips are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          builtin
 #define type            succip
@@ -1116,12 +1087,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of hps are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of hps are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          builtin
 #define type            hp
@@ -1137,12 +1106,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of curfrs are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of curfrs are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          builtin
 #define type            curfr
@@ -1158,12 +1125,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of maxfrs are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of maxfrs are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          builtin
 #define type            maxfr
@@ -1179,12 +1144,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of redofrs are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of redofrs are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          builtin
 #define type            redofr
@@ -1200,12 +1163,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of redoips are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of redoips are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          builtin
 #define type            redoip
@@ -1221,12 +1182,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of trailptrs are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of trailptrs are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          builtin
 #define type            trailptr
@@ -1242,12 +1201,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of tickets are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of tickets are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          builtin
 #define type            ticket
@@ -1263,12 +1220,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of heap_pointers are always handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of heap_pointers are always handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          private_builtin
 #define type            heap_pointer
@@ -1286,17 +1241,15 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of references are usually handled by the generic unify/2
-** and compare/3 predicates.
-*/
+// Unify and compare of references are usually handled by the generic unify/2
+// and compare/3 predicates.
 
 #define module          private_builtin
 #define type            ref
 #define arity           1
-/* The inputs are type_info in r1, first ref in r2, second ref in r3. */
+// The inputs are type_info in r1, first ref in r2, second ref in r3.
 #define unify_code      MR_r1 = (MR_r2 == MR_r3);
 #define compare_code    MR_fatal_error("called compare/3 for `ref' type");
 
@@ -1308,12 +1261,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of type_ctor_infos are usually handled by the generic
-** unify/2 and compare/3 predicates.
-*/
+// Unify and compare of type_ctor_infos are usually handled by the generic
+// unify/2 and compare/3 predicates.
 
 #define module          private_builtin
 #define type            type_ctor_info
@@ -1343,12 +1294,10 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of type_infos are usually handled by the generic
-** unify/2 and compare/3 predicates.
-*/
+// Unify and compare of type_infos are usually handled by the generic
+// unify/2 and compare/3 predicates.
 
 #define module          private_builtin
 #define type            type_info
@@ -1378,19 +1327,17 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of base_typeclass_infos are always handled by the generic
-** unify/2 and compare/3 predicates.
-*/
+// Unify and compare of base_typeclass_infos are always handled by the generic
+// unify/2 and compare/3 predicates.
 
 #define module          private_builtin
 #define type            base_typeclass_info
 #define arity           0
-#define unify_code      MR_fatal_error(                                       \
+#define unify_code      MR_fatal_error( \
                             "called unify/2 for `base_typeclass_info' type");
-#define compare_code    MR_fatal_error(                                       \
+#define compare_code    MR_fatal_error( \
                             "called compare/3 for `base_typeclass_info' type");
 
 #include "mercury_hand_unify_compare_body.h"
@@ -1401,19 +1348,17 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of typeclass_infos are always handled by the generic
-** unify/2 and compare/3 predicates.
-*/
+// Unify and compare of typeclass_infos are always handled by the generic
+// unify/2 and compare/3 predicates.
 
 #define module          private_builtin
 #define type            typeclass_info
 #define arity           0
-#define unify_code      MR_fatal_error(                                       \
+#define unify_code      MR_fatal_error( \
                             "called unify/2 for `base_typeclass_info' type");
-#define compare_code    MR_fatal_error(                                       \
+#define compare_code    MR_fatal_error( \
                             "called compare/3 for `base_typeclass_info' type");
 
 #include "mercury_hand_unify_compare_body.h"
@@ -1424,31 +1369,29 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of type_ctor_descs are usually handled by the generic
-** unify/2 and compare/3 predicates.
-*/
+// Unify and compare of type_ctor_descs are usually handled by the generic
+// unify/2 and compare/3 predicates.
 
 #define module          type_desc
 #define type            type_ctor_desc
 #define arity           0
-#define unify_code      int comp;                                             \
-                                                                              \
-                        MR_save_transient_registers();                        \
-                        comp = MR_compare_type_ctor_desc(                     \
-                            (MR_TypeCtorDesc) MR_r1,                          \
-                            (MR_TypeCtorDesc) MR_r2);                         \
-                        MR_restore_transient_registers();                     \
+#define unify_code      int comp;                                       \
+                                                                        \
+                        MR_save_transient_registers();                  \
+                        comp = MR_compare_type_ctor_desc(               \
+                            (MR_TypeCtorDesc) MR_r1,                    \
+                            (MR_TypeCtorDesc) MR_r2);                   \
+                        MR_restore_transient_registers();               \
                         MR_r1 = (comp == MR_COMPARE_EQUAL);
-#define compare_code    int comp;                                             \
-                                                                              \
-                        MR_save_transient_registers();                        \
-                        comp = MR_compare_type_ctor_desc(                     \
-                            (MR_TypeCtorDesc) MR_r1,                          \
-                            (MR_TypeCtorDesc) MR_r2);                         \
-                        MR_restore_transient_registers();                     \
+#define compare_code    int comp;                                       \
+                                                                        \
+                        MR_save_transient_registers();                  \
+                        comp = MR_compare_type_ctor_desc(               \
+                            (MR_TypeCtorDesc) MR_r1,                    \
+                            (MR_TypeCtorDesc) MR_r2);                   \
+                        MR_restore_transient_registers();               \
                         MR_r1 = comp;
 
 #include "mercury_hand_unify_compare_body.h"
@@ -1459,26 +1402,26 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 #define module          type_desc
 #define type            pseudo_type_desc
 #define arity           0
-#define unify_code      int comp;                                             \
-                                                                              \
-                        MR_save_transient_registers();                        \
-                        comp = MR_compare_pseudo_type_info(                   \
-                            (MR_PseudoTypeInfo) MR_r1,                        \
-                            (MR_PseudoTypeInfo) MR_r2);                       \
-                        MR_restore_transient_registers();                     \
+#define unify_code      int comp;                                       \
+                                                                        \
+                        MR_save_transient_registers();                  \
+                        comp = MR_compare_pseudo_type_info(             \
+                            (MR_PseudoTypeInfo) MR_r1,                  \
+                            (MR_PseudoTypeInfo) MR_r2);                 \
+                        MR_restore_transient_registers();               \
                         MR_r1 = (comp == MR_COMPARE_EQUAL);
-#define compare_code    int comp;                                             \
-                                                                              \
-                        MR_save_transient_registers();                        \
-                        comp = MR_compare_pseudo_type_info(                   \
-                            (MR_PseudoTypeInfo) MR_r1,                        \
-                            (MR_PseudoTypeInfo) MR_r2);                       \
-                        MR_restore_transient_registers();                     \
+#define compare_code    int comp;                                       \
+                                                                        \
+                        MR_save_transient_registers();                  \
+                        comp = MR_compare_pseudo_type_info(             \
+                            (MR_PseudoTypeInfo) MR_r1,                  \
+                            (MR_PseudoTypeInfo) MR_r2);                 \
+                        MR_restore_transient_registers();               \
                         MR_r1 = comp;
 
 #include "mercury_hand_unify_compare_body.h"
@@ -1489,31 +1432,29 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Unify and compare of type_descs are usually handled by the generic
-** unify/2 and compare/3 predicates.
-*/
+// Unify and compare of type_descs are usually handled by the generic
+// unify/2 and compare/3 predicates.
 
 #define module          type_desc
 #define type            type_desc
 #define arity           0
-#define unify_code      int comp;                                             \
-                                                                              \
-                        MR_save_transient_registers();                        \
-                        comp = MR_compare_type_info(                          \
-                            (MR_TypeInfo) MR_r1,                              \
-                            (MR_TypeInfo) MR_r2);                             \
-                        MR_restore_transient_registers();                     \
+#define unify_code      int comp;                                       \
+                                                                        \
+                        MR_save_transient_registers();                  \
+                        comp = MR_compare_type_info(                    \
+                            (MR_TypeInfo) MR_r1,                        \
+                            (MR_TypeInfo) MR_r2);                       \
+                        MR_restore_transient_registers();               \
                         MR_r1 = (comp == MR_COMPARE_EQUAL);
-#define compare_code    int comp;                                             \
-                                                                              \
-                        MR_save_transient_registers();                        \
-                        comp = MR_compare_type_info(                          \
-                            (MR_TypeInfo) MR_r1,                              \
-                            (MR_TypeInfo) MR_r2);                             \
-                        MR_restore_transient_registers();                     \
+#define compare_code    int comp;                                       \
+                                                                        \
+                        MR_save_transient_registers();                  \
+                        comp = MR_compare_type_info(                    \
+                            (MR_TypeInfo) MR_r1,                        \
+                            (MR_TypeInfo) MR_r2);                       \
+                        MR_restore_transient_registers();               \
                         MR_r1 = comp;
 
 #include "mercury_hand_unify_compare_body.h"
@@ -1524,23 +1465,21 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** We need a proc_static structure with which to record profiling information
-** about compare_representation when it compares the representations of
-** user-defined types. The proc_layout structure which contains the proc_static
-** structure also needs a procedure label. The simplest way to provide one
-** is to define unify, compare and compare_rep procedures, all of which are
-** designed to be unused (if they *are* called, they will abort).
-*/
+// We need a proc_static structure with which to record profiling information
+// about compare_representation when it compares the representations of
+// user-defined types. The proc_layout structure which contains the proc_static
+// structure also needs a procedure label. The simplest way to provide one
+// is to define unify, compare and compare_rep procedures, all of which are
+// designed to be unused (if they *are* called, they will abort).
 
 #define module          builtin
 #define type            user_by_rtti
 #define arity           0
-#define unify_code      MR_fatal_error(                                       \
+#define unify_code      MR_fatal_error( \
                             "called unify/2 for `user_by_rtti' type");
-#define compare_code    MR_fatal_error(                                       \
+#define compare_code    MR_fatal_error(  \
                             "called compare/3 for `user_by_rtti' type");
 
 #include "mercury_hand_unify_compare_body.h"
@@ -1551,16 +1490,14 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** We need a proc_static structure with which to record profiling information
-** about compare_representation when it compares the representations of
-** dummy types. The proc_layout structure which contains the proc_static
-** structure also needs a procedure label. The simplest way to provide one
-** is to define unify, compare and compare_rep procedures, all of which are
-** designed to be unused (if they *are* called, they will abort).
-*/
+// We need a proc_static structure with which to record profiling information
+// about compare_representation when it compares the representations of
+// dummy types. The proc_layout structure which contains the proc_static
+// structure also needs a procedure label. The simplest way to provide one
+// is to define unify, compare and compare_rep procedures, all of which are
+// designed to be unused (if they *are* called, they will abort).
 
 #define module          builtin
 #define type            dummy
@@ -1576,20 +1513,20 @@ MR_BEGIN_CODE
 #undef  unify_code
 #undef  compare_code
 
-/*****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_END_MODULE
 
-#endif /* ! MR_HIGHLEVEL_CODE */
+#endif // ! MR_HIGHLEVEL_CODE
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 /*
 INIT mercury_sys_init_mercury_builtin_types
 ENDINIT
 */
 
-/* forward decls, to suppress gcc -Wmissing-decl warnings. */
+// Forward decls, to suppress gcc -Wmissing-decl warnings.
 void mercury_sys_init_mercury_builtin_types_init(void);
 void mercury_sys_init_mercury_builtin_types_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
@@ -1602,14 +1539,12 @@ mercury_sys_init_mercury_builtin_types_init(void)
 {
 #ifdef MR_HIGHLEVEL_CODE
 
-    /*
-    ** We need to call MR_init_entry() for the unification and comparison
-    ** predicates for the types that are automatically predefined
-    ** by the type checker.  (Note that c_pointer is *not* predefined
-    ** by the type checker, instead it is explicitly declared in
-    ** library/builtin.m.)
-    */
-    
+    // We need to call MR_init_entry() for the unification and comparison
+    // predicates for the types that are automatically predefined
+    // by the type checker. (Note that c_pointer is *not* predefined
+    // by the type checker, instead it is explicitly declared in
+    // library/builtin.m.)
+
     MR_init_entry(mercury__builtin____Unify____int_0_0);
     MR_init_entry(mercury__builtin____Unify____string_0_0);
     MR_init_entry(mercury__builtin____Unify____float_0_0);
@@ -1628,11 +1563,11 @@ mercury_sys_init_mercury_builtin_types_init(void)
     MR_init_entry(mercury__builtin____Compare____func_0_0);
     MR_init_entry(mercury__builtin____Compare____tuple_0_0);
 
-#else   /* ! MR_HIGHLEVEL_CODE */
+#else   // ! MR_HIGHLEVEL_CODE
 
     mercury_builtin_types();
 
-#endif  /* MR_HIGHLEVEL_CODE */
+#endif  // MR_HIGHLEVEL_CODE
 
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, int, 0);
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, string, 0);
@@ -1732,9 +1667,9 @@ mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *deep_fp,
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, type_desc, type_ctor_desc, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, type_desc, pseudo_type_desc, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, type_desc, type_desc, 0);
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, user_by_rtti, 0); 
-    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, dummy, 0); 
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, user_by_rtti, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, dummy, 0);
 }
-#endif /* MR_DEEP_PROFILING */
+#endif // MR_DEEP_PROFILING
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////

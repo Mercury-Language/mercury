@@ -1,17 +1,12 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2005-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file contains code to manage terms, for conditional breakpoints.
-**
-** Author: Zoltan Somogyi.
-*/
+// Copyright (C) 2005-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file contains code to manage terms, for conditional breakpoints.
+//
+// Author: Zoltan Somogyi.
 
 #include "mercury_imp.h"
 #include "mercury_trace_term.h"
@@ -37,7 +32,7 @@ static  MR_CTerm    MR_make_cons_cterm(MR_CTerm head_term, MR_CTerm tail_term);
 static  char        *MR_copy_str_fragment(const char *original,
                         int string_length);
 
-/**************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_CTerm
 MR_create_cterm(char *str, char **rest, MR_bool *mismatch, char **error)
@@ -76,25 +71,23 @@ MR_parse_cterm(char *str, char endchar, char **rest,
             return NULL;
         }
 
-        /*
-        ** The EBNF grammar for nonempty lists that our code follows is:
-        **
-        ** list ::= "[" term {"," term}* {"|" term}? "]"
-        **
-        ** The initial "[" and the first term are read here; all the rest
-        ** are read by MR_parse_clist_tail.
-        */
+        // The EBNF grammar for nonempty lists that our code follows is:
+        //
+        // list ::= "[" term {"," term}* {"|" term}? "]"
+        //
+        // The initial "[" and the first term are read here; all the rest
+        // are read by MR_parse_clist_tail.
 
         head_term = MR_parse_cterm(&str[1], ']', &more, mismatch, error);
         if (head_term == NULL) {
-            /* MR_parse_cterm has already set *mismatch and *error. */
+            // MR_parse_cterm has already set *mismatch and *error.
             return NULL;
         }
 
         tail_term = MR_parse_clist_tail(&more[0], rest, &str[0],
             mismatch, error);
         if (tail_term == NULL) {
-            /* MR_parse_clist_tail has already set *mismatch and *error. */
+            // MR_parse_clist_tail has already set *mismatch and *error.
             MR_delete_cterm(head_term);
             return NULL;
         }
@@ -110,7 +103,7 @@ MR_parse_cterm(char *str, char endchar, char **rest,
 
         if (str[i] == '"') {
             term = MR_malloc(sizeof(struct MR_CTerm_Struct));
-            /* Include the double quotes in the function symbol. */
+            // Include the double quotes in the function symbol.
             term->MR_term_functor = MR_copy_str_fragment(&str[0], i + 1);
             term->MR_term_args = NULL;
             *rest = &str[i + 1];
@@ -134,7 +127,7 @@ MR_parse_cterm(char *str, char endchar, char **rest,
             return NULL;
         }
 
-        /* Don't include the single quotes in the function symbol. */
+        // Don't include the single quotes in the function symbol.
         functor = MR_copy_str_fragment(&str[1], i - 1);
         more = &str[i + 1];
     } else if (MR_isalnumunder(str[0]) && !MR_isupper(str[0])) {
@@ -166,7 +159,7 @@ MR_parse_cterm(char *str, char endchar, char **rest,
         args = MR_parse_cargs(&more[i + 1], ')', rest, &more[i],
             mismatch, error);
         if (args == NULL) {
-            /* MR_parse_cargs has already set *mismatch and *error. */
+            // MR_parse_cargs has already set *mismatch and *error.
             MR_free(functor);
             return NULL;
         }
@@ -206,7 +199,7 @@ MR_parse_clist_tail(char *str, char **rest, char *left_bracket,
 
         term = MR_parse_cterm(&str[i], ']', &more, mismatch, error);
         if (term == NULL) {
-            /* MR_parse_cterm has already set *mismatch and *error. */
+            // MR_parse_cterm has already set *mismatch and *error.
             return NULL;
         }
 
@@ -234,7 +227,7 @@ MR_parse_clist_tail(char *str, char **rest, char *left_bracket,
 
         head_term = MR_parse_cterm(&str[i], ']', &more, mismatch, error);
         if (head_term == NULL) {
-            /* MR_parse_cterm has already set *mismatch and *error. */
+            // MR_parse_cterm has already set *mismatch and *error.
             return NULL;
         }
 
@@ -253,7 +246,7 @@ MR_parse_clist_tail(char *str, char **rest, char *left_bracket,
         tail_term = MR_parse_clist_tail(&more[i], rest, left_bracket,
             mismatch, error);
         if (tail_term == NULL) {
-            /* MR_parse_clist_tail has already set *mismatch and *error. */
+            // MR_parse_clist_tail has already set *mismatch and *error.
             MR_delete_cterm(head_term);
             return NULL;
         }
@@ -278,7 +271,7 @@ MR_parse_cargs(char *str, char endchar, char **rest,
 
     term = MR_parse_cterm(str, endchar, &more, mismatch, error);
     if (term == NULL) {
-        /* MR_parse_cterm has already set *mismatch and *error. */
+        // MR_parse_cterm has already set *mismatch and *error.
         return NULL;
     }
 
@@ -312,7 +305,7 @@ MR_parse_cargs(char *str, char endchar, char **rest,
         tail = MR_parse_cargs(more + i, endchar, rest, left_paren,
             mismatch, error);
         if (tail == NULL) {
-            /* MR_parse_cargs has already set *mismatch and *error. */
+            // MR_parse_cargs has already set *mismatch and *error.
             MR_delete_cterm(term);
             return NULL;
         }
@@ -494,10 +487,8 @@ MR_make_cons_cterm(MR_CTerm head_term, MR_CTerm tail_term)
     return term;
 }
 
-/*
-** Make an MR_malloc'd copy of a fragment of a string: string_length bytes
-** starting at *original. Don't assume the original string is NULL-terminated.
-*/
+// Make an MR_malloc'd copy of a fragment of a string: string_length bytes
+// starting at *original. Don't assume the original string is NULL-terminated.
 
 static char *
 MR_copy_str_fragment(const char *original, int string_length)

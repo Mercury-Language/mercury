@@ -1,16 +1,11 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2003-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module contains the functions related specifically to the stack copy
-** style of minimal model tabling.
-*/
+// Copyright (C) 2003-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module contains the functions related specifically to the stack copy
+// style of minimal model tabling.
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
@@ -20,14 +15,12 @@
 #include <stdio.h>
 
 #ifdef  MR_MINIMAL_MODEL_DEBUG
-  /*
-  ** MR_MINIMAL_MODEL_DEBUG implies MR_TABLE_DEBUG in this file, since
-  ** if we want to debug minimal model tabling we need to enable all the
-  ** debugging facilities of this file. However, since MR_TABLE_DEBUG
-  ** increases object file sizes and link times significantly (by implying
-  ** MR_DEBUG_LABEL_NAMES), we don't necessarily want this implication
-  ** to hold globally.
-  */
+  // MR_MINIMAL_MODEL_DEBUG implies MR_TABLE_DEBUG in this file, since
+  // if we want to debug minimal model tabling, we need to enable all the
+  // debugging facilities of this file. However, since MR_TABLE_DEBUG
+  // increases object file sizes and link times significantly (by implying
+  // MR_DEBUG_LABEL_NAMES), we don't necessarily want this implication
+  // to hold globally.
 
   #define   MR_TABLE_DEBUG
 #endif
@@ -119,16 +112,14 @@ int             MR_minmodel_stats_cnt_dupl_check_not_dupl;
             ( ((value) > (max_counter)) ? (max_counter) = (value) : (void) 0 )
 #endif
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** This part of the file maintains data structures that can be used
-** to debug minimal model tabling. It does so by allowing the debugger
-** to refer to tabling data structures such as subgoals and consumers
-** by small, easily remembered numbers, not memory addresses.
-*/
+// This part of the file maintains data structures that can be used
+// to debug minimal model tabling. It does so by allowing the debugger
+// to refer to tabling data structures such as subgoals and consumers
+// by small, easily remembered numbers, not memory addresses.
 
-/* set by MR_trace_event, used by table_mm_setup */
+// Set by MR_trace_event, used by table_mm_setup.
 const MR_ProcLayout     *MR_subgoal_debug_cur_proc = NULL;
 
 struct MR_ConsumerDebug_Struct
@@ -491,18 +482,16 @@ MR_print_consumer(FILE *fp, const MR_ProcLayout *proc, MR_Consumer *consumer)
     }
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Subgoal *
 MR_setup_subgoal(MR_TrieNode trie_node)
 {
-    /*
-    ** Initialize the subgoal if this is the first time we see it.
-    ** If the subgoal structure already exists but is marked inactive,
-    ** then it was left by a previous generator that couldn't
-    ** complete the evaluation of the subgoal due to a commit.
-    ** In that case, we want to forget all about the old generator.
-    */
+    // Initialize the subgoal if this is the first time we see it.
+    // If the subgoal structure already exists but is marked inactive,
+    // then it was left by a previous generator that couldn't
+    // complete the evaluation of the subgoal due to a commit.
+    // In that case, we want to forget all about the old generator.
 
     MR_restore_transient_registers();
 
@@ -535,19 +524,17 @@ MR_setup_subgoal(MR_TrieNode trie_node)
         subgoal->MR_sg_consumer_list_tail = &subgoal->MR_sg_consumer_list;
 
 #ifdef  MR_MINIMAL_MODEL_DEBUG
-        /*
-        ** MR_subgoal_debug_cur_proc refers to the last procedure
-        ** that executed a call event, if any. If the procedure that is
-        ** executing table_mm_setup is traced, this will be that
-        ** procedure, and recording the layout structure of the
-        ** processor in the subgoal allows us to interpret the contents
-        ** of the subgoal's answer tables. If the procedure executing
-        ** table_mm_setup is not traced, then the layout structure
-        ** belongs to another procedure and the any use of the
-        ** MR_sg_proc_layout field will probably cause a core dump.
-        ** For implementors debugging minimal model tabling, this is
-        ** the right tradeoff.
-        */
+        // MR_subgoal_debug_cur_proc refers to the last procedure
+        // that executed a call event, if any. If the procedure that is
+        // executing table_mm_setup is traced, this will be that
+        // procedure, and recording the layout structure of the
+        // processor in the subgoal allows us to interpret the contents
+        // of the subgoal's answer tables. If the procedure executing
+        // table_mm_setup is not traced, then the layout structure
+        // belongs to another procedure and the any use of the
+        // MR_sg_proc_layout field will probably cause a core dump.
+        // For implementors debugging minimal model tabling, this is
+        // the right tradeoff.
 
         subgoal->MR_sg_proc_layout = MR_subgoal_debug_cur_proc;
 #endif
@@ -581,7 +568,7 @@ MR_setup_subgoal(MR_TrieNode trie_node)
     return trie_node->MR_subgoal;
 }
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_TABLE_STATISTICS
 
@@ -740,12 +727,10 @@ MR_minimal_model_report_stats(FILE *fp)
 
 #endif
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** This part of the file provides the utility functions needed for
-** suspensions and resumptions of derivations.
-*/
+// This part of the file provides the utility functions needed for
+// suspensions and resumptions of derivations.
 
 #define SUSPEND_LABEL(name)                                             \
     MR_label_name(MR_MMSC_SUSPEND_ENTRY, name)
@@ -756,12 +741,10 @@ MR_minimal_model_report_stats(FILE *fp)
 #define RET_ALL_NONDET_LABEL(name)                                      \
     MR_label_name(MR_MMSC_RET_ALL_NONDET_ENTRY, name)
 
-/*
-** With debugging of tabling code enabled, define function versions
-** of saved_to_real_nondet_stack and real_to_saved_nondet_stack, to allow
-** programmers to put breakpoints on them. These can execute sanity tests.
-** With debugging of tabling code disabled, define macro versions.
-*/
+// With debugging of tabling code enabled, define function versions
+// of saved_to_real_nondet_stack and real_to_saved_nondet_stack, to allow
+// programmers to put breakpoints on them. These can execute sanity tests.
+// With debugging of tabling code disabled, define macro versions.
 
 #ifdef  MR_TABLE_DEBUG
 
@@ -829,10 +812,8 @@ real_to_saved_nondet_stack(MR_SavedState *saved_state, MR_Word *real_ptr)
 
 #endif
 
-/*
-** Given pointers to two ordinary frames on the nondet stack, return the
-** address of the stack frame of their nearest common ancestor on that stack.
-*/
+// Given pointers to two ordinary frames on the nondet stack, return the
+// address of the stack frame of their nearest common ancestor on that stack.
 
 static MR_Word *
 nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2)
@@ -866,15 +847,13 @@ nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2)
     return fr1;
 }
 
-/*
-** Save the current state of the Mercury abstract machine, so that the
-** current computation may be suspended for a while, and restored later.
-** The generator_fr argument gives the point from which we need to copy the
-** nondet and (indirectly) the det stacks. The parts of those stacks below
-** the given points will not change between the suspension and the resumption
-** of this state, or if they do, the stack segments in the saved state
-** will be extended (via extend_consumer_stacks).
-*/
+// Save the current state of the Mercury abstract machine, so that the
+// current computation may be suspended for a while, and restored later.
+// The generator_fr argument gives the point from which we need to copy the
+// nondet and (indirectly) the det stacks. The parts of those stacks below
+// the given points will not change between the suspension and the resumption
+// of this state, or if they do, the stack segments in the saved state
+// will be extended (via extend_consumer_stacks).
 
 static void
 save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
@@ -892,11 +871,10 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
 #endif
 
     if (MR_not_nearest_flag) {
-        /*
-        ** This can yield incorrect results, as documented in mday_sld.tex
-        ** in papers/tabling2. It is included here only to allow demonstrations
-        ** of *why* this is incorrect.
-        */
+        // This can yield incorrect results, as documented in mday_sld.tex
+        // in papers/tabling2. It is included here only to allow demonstrations
+        // of *why* this is incorrect.
+
         common_ancestor_fr = generator_fr;
     } else {
         common_ancestor_fr = nearest_common_ancestor(MR_curfr, generator_fr);
@@ -914,7 +892,7 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
     saved_state->MR_ss_top_layout = top_layout;
 #endif
 
-    /* we copy from start_det to MR_sp, both inclusive */
+    // We copy from start_det to MR_sp, both inclusive.
     saved_state->MR_ss_det_stack_real_start = start_det;
     if (MR_sp >= start_det) {
         saved_state->MR_ss_det_stack_block_size = MR_sp + 1 - start_det;
@@ -935,7 +913,7 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
         saved_state->MR_ss_det_stack_saved_block = NULL;
     }
 
-    /* we copy from start_non to MR_maxfr, both inclusive */
+    // We copy from start_non to MR_maxfr, both inclusive.
     saved_state->MR_ss_non_stack_real_start = start_non;
     if (MR_maxfr >= start_non) {
         saved_state->MR_ss_non_stack_block_size = MR_maxfr + 1 - start_non;
@@ -1017,14 +995,12 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
         MR_dump_nondet_stack_from_layout(stdout, start_non, 0, 0, MR_maxfr,
             top_layout, MR_sp, MR_curfr);
     }
-  #endif /* MR_TABLE_DEBUG */
+  #endif // MR_TABLE_DEBUG
 
     MR_save_transient_registers();
 }
 
-/*
-** Restore the state of the Mercury abstract machine from saved_state.
-*/
+// Restore the state of the Mercury abstract machine from saved_state.
 
 static void
 restore_state(MR_SavedState *saved_state, const char *who, const char *what)
@@ -1106,23 +1082,21 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
             saved_state->MR_ss_non_stack_real_start, 0, 0, MR_maxfr,
             saved_state->MR_ss_top_layout, MR_sp, MR_curfr);
     }
-  #endif /* MR_MINIMAL_MODEL_DEBUG */
-#endif /* MR_TABLE_DEBUG           */
+  #endif // MR_MINIMAL_MODEL_DEBUG
+#endif // MR_TABLE_DEBUG
 
     MR_save_transient_registers();
 }
 
-/*
-** The saved state of a consumer for a subgoal (say subgoal A) includes
-** the stack segments between the tops of the stack at the time that
-** A's generator was entered and the time that A's consumer was entered.
-** When A becomes a follower of another subgoal B, the responsibility for
-** scheduling A's consumers passes to B's generator. Since by definition
-** B's nondet stack frame is lower in the stack than A's generator's,
-** nca(consumer, B) will in general be lower than nca(consumer, A)
-** (where nca = nearest common ancestor). The consumer's saved state
-** goes down to nca(consumer, A); we need to extend it to nca(consumer, B).
-*/
+// The saved state of a consumer for a subgoal (say subgoal A) includes
+// the stack segments between the tops of the stack at the time that
+// A's generator was entered and the time that A's consumer was entered.
+// When A becomes a follower of another subgoal B, the responsibility for
+// scheduling A's consumers passes to B's generator. Since by definition
+// B's nondet stack frame is lower in the stack than A's generator's,
+// nca(consumer, B) will in general be lower than nca(consumer, A)
+// (where nca = nearest common ancestor). The consumer's saved state
+// goes down to nca(consumer, A); we need to extend it to nca(consumer, B).
 
 static void
 extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
@@ -1156,7 +1130,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
         printf("\nold saved state:\n");
         print_saved_state(stdout, cons_saved_state);
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
     cons_saved_state->MR_ss_common_ancestor_fr = new_common_ancestor_fr;
 
@@ -1206,7 +1180,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
             printf("block: old %p, new %p\n",
                 cons_saved_state->MR_ss_det_stack_saved_block, arena_block);
         }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
         cons_saved_state->MR_ss_det_stack_saved_block = arena_block;
         cons_saved_state->MR_ss_det_stack_block_size = arena_size;
@@ -1258,7 +1232,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
             printf("block: old %p, new %p\n",
                 cons_saved_state->MR_ss_non_stack_saved_block, arena_block);
         }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
         cons_saved_state->MR_ss_non_stack_saved_block = arena_block;
         cons_saved_state->MR_ss_non_stack_block_size = arena_size;
@@ -1273,7 +1247,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
         printf("\nfinished extending saved consumer stacks\n");
         print_saved_state(stdout, cons_saved_state);
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 }
 
 MR_declare_entry(MR_table_mm_commit);
@@ -1315,7 +1289,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
             already_pruned);
         print_saved_state(stdout, saved_state);
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
     saved_stop_fr = saved_state->MR_ss_non_stack_saved_block - 1;
     saved_top_fr = saved_state->MR_ss_non_stack_saved_block +
@@ -1363,7 +1337,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
                 printf("already pruned %d -> %d\n",
                     already_pruned, already_pruned - frame_size);
             }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
             already_pruned -= frame_size;
 
@@ -1373,7 +1347,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
                     printf("next main sequence frame ");
                     MR_print_nondetstackptr(stdout, MR_succfr_slot(saved_fr));
                 }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
                 real_main_branch_fr = MR_succfr_slot(saved_fr);
             }
@@ -1385,18 +1359,17 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
 
                 printf("thrashing non-main-branch frame\n");
 
-                /*
-                ** The saved copies of the stack frames that aren't on
-                ** the main branch shouldn't be used after the state is
-                ** restored. The vandalism below is intended to test this.
-                */
+                // The saved copies of the stack frames that aren't on
+                // the main branch shouldn't be used after the state is
+                // restored. The vandalism below is intended to test this.
+
                 num_frame_vars = frame_size - MR_NONDET_FIXED_SIZE;
                 for (i = 1; i <= num_frame_vars; i++) {
                     *MR_based_framevar_addr(saved_fr, i) = -1;
                 }
             }
-#endif  /* MR_TABLE_DEBUG */
-            /* do nothing */;
+#endif  // MR_TABLE_DEBUG
+            // do nothing ;
         } else if (generator_is_at_bottom && saved_next_fr == saved_stop_fr) {
 #ifdef  MR_TABLE_DEBUG
             if (MR_tabledebug) {
@@ -1405,7 +1378,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
                     saved_to_real_nondet_stack(saved_state, saved_fr));
                 printf(" (in saved copy)\n");
             }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
             *MR_redoip_addr(saved_fr) =
                 (MR_Word) MR_ENTRY(MR_MMSC_COMPLETION_ENTRY);
@@ -1416,11 +1389,9 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
             assert(ordinary);
 
             if (MR_gen_stack[cur_gen].MR_gen_subgoal == subgoal) {
-                /*
-                ** This is the nondet stack frame of the generator
-                ** corresponding to the consumer whose saved state
-                ** we are pickling.
-                */
+                // This is the nondet stack frame of the generator
+                // corresponding to the consumer whose saved state
+                // we are pickling.
 
 #ifdef  MR_TABLE_DEBUG
                 if (MR_tabledebug) {
@@ -1429,16 +1400,14 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
                         saved_to_real_nondet_stack(saved_state, saved_fr));
                     printf(" (in saved copy)\n");
                 }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
                 *MR_redoip_addr(saved_fr) =
                     (MR_Word) MR_ENTRY(MR_MMSC_COMPLETION_ENTRY);
             } else {
-                /*
-                ** This is the nondet stack frame of some other generator.
-                */
+                // This is the nondet stack frame of some other generator.
 
-                /* reenable XXX */
+                // reenable XXX
                 assert(MR_prevfr_slot(saved_fr) !=
                     saved_to_real_nondet_stack(saved_state, saved_stop_fr));
 
@@ -1448,7 +1417,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
                     MR_print_nondetstackptr(stdout, real_fr);
                     printf(" (in saved copy)\n");
                 }
-  #endif    /* MR_TABLE_DEBUG */
+  #endif    // MR_TABLE_DEBUG
 
                 *MR_redoip_addr(saved_fr) = (MR_Word) MR_ENTRY(MR_do_fail);
 
@@ -1470,7 +1439,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
                 MR_print_nondetstackptr(stdout, real_fr);
                 printf(" (in saved copy)\n");
             }
-  #endif    /* MR_TABLE_DEBUG */
+  #endif    // MR_TABLE_DEBUG
 
             *MR_redoip_addr(saved_fr) = (MR_Word)
                 MR_ENTRY(MR_table_mm_commit);
@@ -1484,7 +1453,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
             }
 
             *MR_redoip_addr(saved_fr) = (MR_Word) MR_ENTRY(MR_do_fail);
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
         }
 
         saved_fr -= frame_size;
@@ -1497,12 +1466,10 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
 #endif
 }
 
-/*
-** When we discover that two subgoals depend on each other, neither can be
-** completed alone. We therefore pass responsibility for completing all
-** the subgoals in an SCC to the subgoal whose nondet stack frame is
-** lowest in the nondet stack.
-*/
+// When we discover that two subgoals depend on each other, neither can be
+// completed alone. We therefore pass responsibility for completing all
+// the subgoals in an SCC to the subgoal whose nondet stack frame is
+// lowest in the nondet stack.
 
 static void
 make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
@@ -1521,7 +1488,7 @@ make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
         printf("\nmaking %s follow %s\n",
             MR_subgoal_addr_name(this_follower), MR_subgoal_addr_name(leader));
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
     for (sub_follower = this_follower->MR_sg_followers;
         sub_follower != NULL; sub_follower = sub_follower->MR_sl_next)
@@ -1538,7 +1505,7 @@ make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
         sub_follower->MR_sl_item->MR_sg_leader = leader;
     }
 
-    /* XXX extend saved state of this_follower */
+    // XXX Extend saved state of this_follower.
 
     this_follower->MR_sg_leader = leader;
     *(leader->MR_sg_followers_tail) = this_follower->MR_sg_followers;
@@ -1560,12 +1527,12 @@ print_saved_state(FILE *fp, MR_SavedState *saved_state)
     fprintf(fp, "\nmaxfr:\t");
     MR_print_nondetstackptr(fp, saved_state->MR_ss_max_fr);
     fprintf(fp, "\n");
-    
+
     fprintf(fp, "slots saved: %" MR_INTEGER_LENGTH_MODIFIER "d non,",
         saved_state->MR_ss_non_stack_block_size);
     fprintf(fp, " %" MR_INTEGER_LENGTH_MODIFIER "d det,",
         saved_state->MR_ss_det_stack_block_size);
-    fprintf(fp, " %" MR_INTEGER_LENGTH_MODIFIER "d generator,", 
+    fprintf(fp, " %" MR_INTEGER_LENGTH_MODIFIER "d generator,",
         saved_state->MR_ss_gen_stack_block_size);
     fprintf(fp, " %" MR_INTEGER_LENGTH_MODIFIER "d cut,",
         saved_state->MR_ss_cut_next);
@@ -1591,7 +1558,7 @@ print_saved_state(FILE *fp, MR_SavedState *saved_state)
         fprint_stack_segment(fp, saved_state->MR_ss_non_stack_saved_block,
             saved_state->MR_ss_non_stack_block_size);
     }
-  #endif /* MR_TABLE_SEGMENT_DEBUG */
+  #endif // MR_TABLE_SEGMENT_DEBUG
 
     if (saved_state->MR_ss_det_stack_block_size > 0) {
         fprintf(fp, "det region from ");
@@ -1612,7 +1579,7 @@ print_saved_state(FILE *fp, MR_SavedState *saved_state)
         print_stack_segment(fp, saved_state->MR_ss_det_stack_saved_block,
             saved_state->MR_ss_det_stack_block_size);
     }
-  #endif /* MR_TABLE_SEGMENT_DEBUG */
+  #endif // MR_TABLE_SEGMENT_DEBUG
 
     if (saved_state->MR_ss_gen_stack_block_size > 0) {
         fprintf(fp, "gen region from %" MR_INTEGER_LENGTH_MODIFIER "d",
@@ -1633,7 +1600,7 @@ print_saved_state(FILE *fp, MR_SavedState *saved_state)
         MR_print_any_gen_stack(fp, saved_state->MR_ss_gen_stack_block_size,
             saved_state->MR_ss_gen_stack_saved_block);
     }
-  #endif /* MR_TABLE_SEGMENT_DEBUG */
+  #endif // MR_TABLE_SEGMENT_DEBUG
 
     MR_print_any_cut_stack(fp, saved_state->MR_ss_cut_next,
         saved_state->MR_ss_cut_stack_saved_block);
@@ -1654,24 +1621,22 @@ print_stack_segment(FILE *fp, MR_Word *segment, MR_Integer size)
     }
 }
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** This part of the file implements the suspension and and resumption
-** of derivations.
-**
-** We need to define stubs for the predicates which are marked as `:- external'
-** in table_builtin.m, even if MR_USE_MINIMAL_MODEL_STACK_COPY is not enabled,
-** because in profiling grades the code generated for table_builtin.m will
-** take their address to store in the label table.
-**
-** We provide three definitions for these procedures: one for high level
-** code (which is incompatible with minimal model tabling), and two for low
-** level code. The first of the latter two is for grades without minimal model
-** tabling, the second is for grades with minimal model tabling.
-*/
+// This part of the file implements the suspension and and resumption
+// of derivations.
+//
+// We need to define stubs for the predicates which are marked as `:- external'
+// in table_builtin.m, even if MR_USE_MINIMAL_MODEL_STACK_COPY is not enabled,
+// because in profiling grades the code generated for table_builtin.m will
+// take their address to store in the label table.
+//
+// We provide three definitions for these procedures: one for high level
+// code (which is incompatible with minimal model tabling), and two for low
+// level code. The first of the latter two is for grades without minimal model
+// tabling, the second is for grades with minimal model tabling.
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -1708,7 +1673,7 @@ mercury__table_builtin__table_mm_return_all_multi_2_p_0(
         "minimal model tabling with --high-level-code");
 }
 
-#else   /* ! MR_HIGHLEVEL_CODE */
+#else   // ! MR_HIGHLEVEL_CODE
 
 MR_define_extern_entry(MR_MMSC_SUSPEND_ENTRY);
 MR_define_extern_entry(MR_MMSC_COMPLETION_ENTRY);
@@ -1751,7 +1716,7 @@ MR_define_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
         "without stack copy minimal model tabling");
 MR_END_MODULE
 
-#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#else   // MR_USE_MINIMAL_MODEL_STACK_COPY
 
 MR_Subgoal      *MR_cur_leader;
 
@@ -1823,29 +1788,26 @@ MR_BEGIN_MODULE(mmsc_module)
 MR_BEGIN_CODE
 
 MR_define_entry(MR_MMSC_SUSPEND_ENTRY);
-    /*
-    ** The suspend procedure saves the state of the Mercury runtime so that
-    ** it may be used in the table_mm_completion procedure below to return
-    ** answers through this saved state. table_mm_suspend_consumer is
-    ** declared as nondet but the code below is obviously of detism failure;
-    ** the reason for this is quite simple. Normally when a nondet proc is
-    ** called it will first return all of its answers and then fail. In the
-    ** case of calls to this procedure this is reversed: first the call will
-    ** fail then later on, when the answers are found, answers will be
-    ** returned. It is also important to note that the answers are returned
-    ** not from the procedure that was originally called
-    ** (table_mm_suspend_consumer) but from the procedure table_mm_completion.
-    ** So essentially what is below is the code to do the initial fail;
-    ** the code to return the answers is in table_mm_completion.
-    */
+    // The suspend procedure saves the state of the Mercury runtime so that
+    // it may be used in the table_mm_completion procedure below to return
+    // answers through this saved state. table_mm_suspend_consumer is
+    // declared as nondet but the code below is obviously of detism failure;
+    // the reason for this is quite simple. Normally when a nondet proc is
+    // called it will first return all of its answers and then fail. In the
+    // case of calls to this procedure this is reversed: first the call will
+    // fail then later on, when the answers are found, answers will be
+    // returned. It is also important to note that the answers are returned
+    // not from the procedure that was originally called
+    // (table_mm_suspend_consumer) but from the procedure table_mm_completion.
+    // So essentially what is below is the code to do the initial fail;
+    // the code to return the answers is in table_mm_completion.
 
-    /*
-    ** This frame is not used in table_mm_suspend_consumer, but it is copied
-    ** to the suspend list as part of the saved nondet stack fragment,
-    ** and it *will* be used when table_mm_completion copies back the
-    ** nondet stack fragment. The framevar slot is for use by
-    ** table_mm_completion.
-    */
+    // This frame is not used in table_mm_suspend_consumer, but it is copied
+    // to the suspend list as part of the saved nondet stack fragment,
+    // and it *will* be used when table_mm_completion copies back the
+    // nondet stack fragment. The framevar slot is for use by
+    // table_mm_completion.
+
     MR_mkframe(MR_STRINGIFY(MR_MMSC_SUSPEND_ENTRY), 1, MR_ENTRY(MR_do_fail));
 
 MR_define_label(SUSPEND_LABEL(Call));
@@ -1913,7 +1875,7 @@ MR_define_label(SUSPEND_LABEL(Call));
                 MR_subgoal_addr_name(subgoal));
         printf("\n\tat slot %p\n", subgoal->MR_sg_consumer_list_tail);
     }
-  #endif    /* MR_TABLE_DEBUG */
+  #endif    // MR_TABLE_DEBUG
 
     assert(*(subgoal->MR_sg_consumer_list_tail) == NULL);
     listnode = MR_table_allocate_struct(MR_ConsumerListNode);
@@ -1925,23 +1887,21 @@ MR_define_label(SUSPEND_LABEL(Call));
     MR_fail();
 
 MR_define_entry(MR_MMSC_COMPLETION_ENTRY);
-    /*
-    ** The completion procedure restores answers to suspended consumers.
-    ** It works by restoring the consumer state saved by the consumer's call
-    ** to table_mm_suspend_consumer. By restoring such states and then
-    ** returning answers, table_mm_completion is essentially returning answers
-    ** out of the call to table_mm_suspend_consumer, not out of the call to
-    ** table_mm_completion.
-    **
-    ** The code is arranged as a three level iteration to a fixpoint. The
-    ** three levels are: iterating over all subgoals in a connected component,
-    ** iterating over all consumers of each of those subgoals, and iterating
-    ** over all the answers to be returned to each of those consumers.
-    ** Note that returning an answer could lead to further answers for
-    ** any of the subgoals in the connected component; it can even lead
-    ** to the expansion of the component (i.e. the addition of more subgoals
-    ** to it).
-    */
+    // The completion procedure restores answers to suspended consumers.
+    // It works by restoring the consumer state saved by the consumer's call
+    // to table_mm_suspend_consumer. By restoring such states and then
+    // returning answers, table_mm_completion is essentially returning answers
+    // out of the call to table_mm_suspend_consumer, not out of the call to
+    // table_mm_completion.
+    //
+    // The code is arranged as a three level iteration to a fixpoint. The
+    // three levels are: iterating over all subgoals in a connected component,
+    // iterating over all consumers of each of those subgoals, and iterating
+    // over all the answers to be returned to each of those consumers.
+    // Note that returning an answer could lead to further answers for
+    // any of the subgoals in the connected component; it can even lead
+    // to the expansion of the component (i.e. the addition of more subgoals
+    // to it).
 
     MR_cur_leader = MR_top_generator_table();
 
@@ -1958,17 +1918,15 @@ MR_define_label(COMPLETION_LABEL(StartCompletionOp));
 #endif
 
     if (MR_cur_leader->MR_sg_leader != NULL) {
-        /*
-        ** The predicate that called table_mm_completion is not the leader
-        ** of its component. We will leave all answers to be returned
-        ** by the leader.
-        */
+        // The predicate that called table_mm_completion is not the leader
+        // of its component. We will leave all answers to be returned
+        // by the leader.
 
   #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("non-leader table_mm_completion fails\n");
         }
-  #endif  /* MR_TABLE_DEBUG */
+  #endif  // MR_TABLE_DEBUG
 
         (void) MR_pop_generator();
         MR_redo();
@@ -1979,7 +1937,7 @@ MR_define_label(COMPLETION_LABEL(StartCompletionOp));
         printf("table_mm_completion enter: current leader is %s\n",
             MR_subgoal_addr_name(MR_cur_leader));
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
     if (MR_cur_leader->MR_sg_completion_info != NULL) {
 #ifdef  MR_TABLE_DEBUG
@@ -1988,7 +1946,7 @@ MR_define_label(COMPLETION_LABEL(StartCompletionOp));
                 MR_cur_leader->MR_sg_completion_info);
         }
         completion_info = MR_cur_leader->MR_sg_completion_info;
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
     } else {
         completion_info = MR_TABLE_NEW(MR_CompletionInfo);
         MR_cur_leader->MR_sg_completion_info = completion_info;
@@ -1998,18 +1956,16 @@ MR_define_label(COMPLETION_LABEL(StartCompletionOp));
             printf("completion info succip ");
             MR_printlabel(stdout, MR_succip);
         }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
-        /*
-        ** XXX
-        **
-        ** We should compute, for all followers, the common ancestor
-        ** of the follower and this generator, and save to the deepest
-        ** common ancestor.
-        **
-        ** We should special case the situation where there are no answers
-        ** we have not yet returned to consumers.
-        */
+        // XXX
+        //
+        // We should compute, for all followers, the common ancestor
+        // of the follower and this generator, and save to the deepest
+        // common ancestor.
+        //
+        // We should special case the situation where there are no answers
+        // we have not yet returned to consumers.
 
         MR_save_transient_registers();
         save_state(&(completion_info->MR_ri_leader_state),
@@ -2027,7 +1983,7 @@ MR_define_label(COMPLETION_LABEL(StartCompletionOp));
         if (MR_tabledebug) {
             printf("creating new completion info %p\n", completion_info);
         }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
     }
 
 #ifdef  MR_TABLE_DEBUG
@@ -2043,12 +1999,12 @@ MR_define_label(COMPLETION_LABEL(StartCompletionOp));
         }
         printf("\n");
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
-    /* fall through to LoopOverSubgoals */
+    // Fall through to LoopOverSubgoals.
 }
 
-    /* For each of the subgoals on our list of followers */
+    // For each of the subgoals on our list of followers.
 MR_define_label(COMPLETION_LABEL(LoopOverSubgoals));
 {
     MR_CompletionInfo   *completion_info;
@@ -2064,7 +2020,7 @@ MR_define_label(COMPLETION_LABEL(LoopOverSubgoals));
         if (MR_tabledebug) {
             printf("no more subgoals in the followers list\n");
         }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
         MR_GOTO_LABEL(COMPLETION_LABEL(FixPointCheck));
     }
@@ -2092,12 +2048,12 @@ MR_define_label(COMPLETION_LABEL(LoopOverSubgoals));
         }
         printf("\n");
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
-    /* fall through to LoopOverSuspensions */
+    // Fall through to LoopOverSuspensions.
 }
 
-    /* For each of the suspended nodes for cur_subgoal */
+    // For each of the suspended nodes for cur_subgoal.
 MR_define_label(COMPLETION_LABEL(LoopOverSuspensions));
 {
     MR_CompletionInfo   *completion_info;
@@ -2114,7 +2070,7 @@ MR_define_label(COMPLETION_LABEL(LoopOverSuspensions));
         if (MR_tabledebug) {
             printf("no more consumers for current subgoal\n");
         }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
         MR_GOTO_LABEL(COMPLETION_LABEL(LoopOverSubgoals));
     }
 
@@ -2132,7 +2088,7 @@ MR_define_label(COMPLETION_LABEL(LoopOverSuspensions));
         if (MR_tabledebug) {
             printf("no first answer for this consumers\n");
         }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
         MR_GOTO_LABEL(COMPLETION_LABEL(LoopOverSuspensions));
     }
 
@@ -2142,23 +2098,21 @@ MR_define_label(COMPLETION_LABEL(LoopOverSuspensions));
             MR_consumer_addr_name(completion_info->MR_ri_cur_consumer),
             MR_subgoal_addr_name(completion_info->MR_ri_cur_subgoal));
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
     MR_save_transient_registers();
     restore_state(&(completion_info->MR_ri_cur_consumer->MR_cns_saved_state),
         "resumption", "consumer");
     MR_restore_transient_registers();
 
-    /* check that there is room for exactly one framevar */
+    // Check that there is room for exactly one framevar.
     assert((MR_maxfr - MR_prevfr_slot(MR_maxfr)) ==
         (MR_NONDET_FIXED_SIZE + 1));
 
-    /*
-    ** We set up the stack frame of the suspend predicate so that a redo into
-    ** the call to suspend from the consumer will return the next answer
-    */
+    // We set up the stack frame of the suspend predicate so that a redo into
+    // the call to suspend from the consumer will return the next answer
 
-    /* MR_gen_next = completion_info->MR_ri_leader_state.MR_ss_gen_next; BUG? */
+    // MR_gen_next = completion_info->MR_ri_leader_state.MR_ss_gen_next; BUG?
     MR_redoip_slot_word(MR_maxfr) = (MR_Word)
         MR_LABEL(COMPLETION_LABEL(RedoPoint));
     MR_redofr_slot_word(MR_maxfr) = MR_maxfr_word;
@@ -2182,12 +2136,12 @@ MR_define_label(COMPLETION_LABEL(LoopOverSuspensions));
                     consumer->MR_cns_subgoal->MR_sg_proc_layout,
                     answer_list->MR_aln_answer_block);
         }
-  #endif  /* MR_MINIMAL_MODEL_DEBUG */
+  #endif  // MR_MINIMAL_MODEL_DEBUG
         printf("\n");
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
-    /* fall through to ReturnAnswer */
+    // Fall through to ReturnAnswer.
 }
 
 MR_define_label(COMPLETION_LABEL(ReturnAnswer));
@@ -2204,15 +2158,13 @@ MR_define_label(COMPLETION_LABEL(ReturnAnswer));
     consumer = completion_info->MR_ri_cur_consumer;
     answer_list = *consumer->MR_cns_remaining_answer_list_ptr;
 
-    /*
-    ** Return the next answer in the answer_list of the current consumer
-    ** to the current consumer. Since we have already restored the context
-    ** of the suspended consumer before we returned the first answer,
-    ** we don't need to restore it again, since will not have changed
-    ** in the meantime.
-    **
-    ** XXX we need to prove that assertion
-    */
+    // Return the next answer in the answer_list of the current consumer
+    // to the current consumer. Since we have already restored the context
+    // of the suspended consumer before we returned the first answer,
+    // we don't need to restore it again, since will not have changed
+    // in the meantime.
+    //
+    // XXX We need to prove that assertion.
 
     MR_r1 = (MR_Word) answer_list->MR_aln_answer_block;
     consumer->MR_cns_remaining_answer_list_ptr =
@@ -2229,13 +2181,12 @@ MR_define_label(COMPLETION_LABEL(ReturnAnswer));
                 answer_list->MR_aln_answer_block);
   #endif
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
-    /*
-    ** Return the answer. Since we just restored the state of the
-    ** computation that existed when suspend was called, the code
-    ** that we return to is the code following the call to suspend.
-    */
+    // Return the answer. Since we just restored the state of the
+    // computation that existed when suspend was called, the code
+    // that we return to is the code following the call to suspend.
+
     MR_succeed();
 }
 
@@ -2246,17 +2197,15 @@ MR_define_label(COMPLETION_LABEL(RedoPoint));
     MR_minmodel_stats_cnt_completion_redo_point++;
 #endif
 
-    /*
-    ** This is where the current consumer suspension will go on
-    ** backtracking when it wants the next solution. If there is a solution
-    ** we haven't returned to this consumer yet, we do so, otherwise we
-    ** remember how many answers we have returned to this consumer so far
-    ** and move on to the next suspended consumer of the current subgoal.
-    */
+    // This is where the current consumer suspension will go on
+    // backtracking when it wants the next solution. If there is a solution
+    // we haven't returned to this consumer yet, we do so, otherwise we
+    // remember how many answers we have returned to this consumer so far
+    // and move on to the next suspended consumer of the current subgoal.
 
     MR_cur_leader = (MR_Subgoal *) MR_based_framevar(MR_maxfr, 1);
 
-    /* fall through to RestartPoint */
+    // Fall through to RestartPoint.
 
 MR_define_label(COMPLETION_LABEL(RestartPoint));
 {
@@ -2287,7 +2236,7 @@ MR_define_label(COMPLETION_LABEL(RestartPoint));
     if (MR_tabledebug) {
         printf("no more unreturned answers for this consumer\n");
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
     MR_GOTO_LABEL(COMPLETION_LABEL(LoopOverSuspensions));
 }
@@ -2324,7 +2273,7 @@ MR_define_label(COMPLETION_LABEL(FixPointCheck));
                         MR_consumer_addr_name(consumer),
                         MR_subgoal_addr_name(subgoal));
                 }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
                 found_changes = MR_TRUE;
             }
         }
@@ -2335,13 +2284,13 @@ MR_define_label(COMPLETION_LABEL(FixPointCheck));
         if (MR_tabledebug) {
             printf("no fixpoint; start completion op all over again\n");
         }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
         completion_info->MR_ri_subgoal_list = MR_cur_leader->MR_sg_followers;
         MR_GOTO_LABEL(COMPLETION_LABEL(StartCompletionOp));
     }
 
-    /* fall through to ReachedFixpoint */
+    // Fall through to ReachedFixpoint.
 }
 
 MR_define_label(COMPLETION_LABEL(ReachedFixpoint));
@@ -2369,13 +2318,13 @@ MR_define_label(COMPLETION_LABEL(ReachedFixpoint));
 
     completion_info = MR_cur_leader->MR_sg_completion_info;
 
-    /* Restore the state we had when table_mm_completion was called */
+    // Restore the state we had when table_mm_completion was called.
     MR_save_transient_registers();
     restore_state(&(completion_info->MR_ri_leader_state),
         "resumption", "generator");
     MR_restore_transient_registers();
 
-    /* XXX this will go code that does fail() */
+    // XXX This will go to code that does fail().
     MR_succip_word = (MR_Word) completion_info->MR_ri_saved_succip;
 
 #ifdef  MR_TABLE_DEBUG
@@ -2383,12 +2332,12 @@ MR_define_label(COMPLETION_LABEL(ReachedFixpoint));
         printf("using completion info succip ");
         MR_printlabel(stdout, MR_succip);
     }
-#endif  /* MR_TABLE_DEBUG */
+#endif  // MR_TABLE_DEBUG
 
-    /* we should free the old completion_info structure */
+    // We should free the old completion_info structure.
     MR_cur_leader->MR_sg_completion_info = NULL;
 
-    /* We are done with this generator */
+    // We are done with this generator.
     (void) MR_pop_generator();
 
     MR_proceed();
@@ -2422,7 +2371,7 @@ MR_define_entry(MR_MMSC_RET_ALL_NONDET_ENTRY);
     AnswerBlock = CurNode0->MR_aln_answer_block;
     CurNode = CurNode0->MR_aln_next_answer;
 
-    /* Consider not creating the stack frame if CurNode is NULL. */
+    // Consider not creating the stack frame if CurNode is NULL.
 
     MR_mkframe("pred table_builtin.table_mm_return_all_nondet/2-0", 1,
         MR_LABEL(RET_ALL_NONDET_LABEL(Next)));
@@ -2473,7 +2422,7 @@ MR_define_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
     AnswerBlock = CurNode0->MR_aln_answer_block;
     CurNode = CurNode0->MR_aln_next_answer;
 
-    /* Consider not creating the stack frame if CurNode is NULL. */
+    // Consider not creating the stack frame if CurNode is NULL.
 
     MR_mkframe("pred table_builtin.table_mm_return_all_multi/2-0", 1,
         MR_LABEL(RET_ALL_MULTI_LABEL(Next)));
@@ -2502,10 +2451,10 @@ MR_define_label(RET_ALL_MULTI_LABEL(Next));
 
 MR_END_MODULE
 
-#endif /* MR_USE_MINIMAL_MODEL_STACK_COPY */
-#endif /* MR_HIGHLEVEL_CODE               */
+#endif // MR_USE_MINIMAL_MODEL_STACK_COPY
+#endif // MR_HIGHLEVEL_CODE
 
-/* Ensure that the initialization code for the above modules gets to run. */
+// Ensure that the initialization code for the above modules gets to run.
 /*
 INIT mercury_sys_init_mmsc_modules
 */
@@ -2514,7 +2463,7 @@ INIT mercury_sys_init_mmsc_modules
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mmsc_module;
 #endif
 
-/* forward declarations to suppress gcc -Wmissing-decl warnings */
+// Forward declarations to suppress gcc -Wmissing-decl warnings.
 void mercury_sys_init_mmsc_modules_init(void);
 void mercury_sys_init_mmsc_modules_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
@@ -2525,19 +2474,19 @@ void mercury_sys_init_mmsc_modules_init(void)
 {
 #ifndef MR_HIGHLEVEL_CODE
     mmsc_module();
-#endif  /* MR_HIGHLEVEL_CODE */
+#endif  // MR_HIGHLEVEL_CODE
 }
 
 void mercury_sys_init_mmsc_modules_init_type_tables(void)
 {
-    /* no types to register */
+    // No types to register.
 }
 
 #ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_mmsc_modules_write_out_proc_statics(FILE *fp)
 {
-    /* no proc_statics to write out          */
-    /* XXX we need to fix the deep profiling */
-    /* of minimal model tabled predicates    */
+    // No proc_statics to write out.
+    // XXX We need to fix the deep profiling
+    // of minimal model tabled predicates.
 }
 #endif

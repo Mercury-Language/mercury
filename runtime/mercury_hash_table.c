@@ -1,20 +1,15 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1993-2000, 2004-2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** Hash table handling module.
-**
-** This file supplies data manipulation routines to other modules;
-** it does not store any data itself. Its routines are generic,
-** applicable to the storage of any kind of data structure with
-** a primary key and a hash function on it.
-*/
+// Copyright (C) 1993-2000, 2004-2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// Hash table handling module.
+//
+// This file supplies data manipulation routines to other modules;
+// it does not store any data itself. Its routines are generic,
+// applicable to the storage of any kind of data structure with
+// a primary key and a hash function on it.
 
 #include    "mercury_imp.h"
 

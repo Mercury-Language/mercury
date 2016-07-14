@@ -1,31 +1,26 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2007, 2010-2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_wsdeque.c
-**
-** This file implements the basic algorithm from David Chase, Yossi Lev:
-** "Dynamic circular work-stealing deque". SPAA 2005: 21-28.
-**
-** A work-stealing deque is a double ended queue in which only one thread can
-** access one end of the queue (the bottom) while other threads can only pop
-** elements from the other end (the top).
-**
-** XXX: we need to insert memory barriers in the right places.
-*/
+// Copyright (C) 2007, 2010-2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_wsdeque.c
+//
+// This file implements the basic algorithm from David Chase, Yossi Lev:
+// "Dynamic circular work-stealing deque". SPAA 2005: 21-28.
+//
+// A work-stealing deque is a double ended queue in which only one thread can
+// access one end of the queue (the bottom) while other threads can only pop
+// elements from the other end (the top).
+//
+// XXX: We need to insert memory barriers in the right places.
 
 #include "mercury_imp.h"
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
 #include "mercury_wsdeque.h"
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_LL_PARALLEL_CONJ
 
@@ -73,15 +68,15 @@ MR_wsdeque_steal_top(MR_SparkDeque *dq, MR_Spark *ret_spark)
     size = bot - top;
 
     if (size <= 0) {
-        return 0;   /* empty */
+        return 0;   // empty
     }
 
     *ret_spark = MR_sa_element(arr, top);
     if (!MR_compare_and_swap_int(&dq->MR_sd_top, top, top + 1)) {
-        return -1;  /* abort */
+        return -1;  // abort
     }
 
-    return 1;       /* success */
+    return 1;       // success
 }
 
 int
@@ -98,12 +93,12 @@ MR_wsdeque_take_top(MR_SparkDeque *dq, MR_Spark *ret_spark)
 
     size = bot - top;
     if (size <= 0) {
-        return 0;   /* empty */
+        return 0;   // empty
     }
 
     *ret_spark = MR_sa_element(arr, top);
     dq->MR_sd_top = top + 1;
-    return 1;       /* success */
+    return 1;       // success
 }
 
 static MR_SparkArray *
@@ -136,4 +131,4 @@ MR_grow_spark_array(const MR_SparkArray *old_arr, MR_Integer bot,
     return new_arr;
 }
 
-#endif /* !MR_LL_PARALLEL_CONJ */
+#endif // !MR_LL_PARALLEL_CONJ

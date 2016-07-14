@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "dd" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "dd" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -31,7 +26,7 @@
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_Unsigned *default_depth, MR_Unsigned *num_nodes,
@@ -44,7 +39,7 @@ static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_bool *testing, MR_bool *debug,
                         char ***words, int *word_count);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
@@ -77,7 +72,8 @@ MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
         &reset_kb, &testing, &MR_trace_decl_debug_debugger_mode, &words,
         &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count <= 2) {
         if (word_count == 2 && MR_trace_decl_debug_debugger_mode) {
             decl_mode = MR_DECL_DUMP;
@@ -156,14 +152,14 @@ MR_trace_cmd_trust(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
 
-        /* First see if the argument is a module name */
+        // First see if the argument is a module name.
         spec.MR_proc_module = words[1];
         matches = MR_search_for_matching_procedures(&spec);
         if (matches.match_proc_next > 0) {
             MR_decl_add_trusted_module(words[1]);
             fprintf(MR_mdb_out, "Trusting module %s\n", words[1]);
         } else if (MR_parse_proc_spec(words[1], &spec)) {
-            /* Check to see if the argument is a pred/func */
+            // Check to see if the argument is a pred/func.
             matches = MR_search_for_matching_procedures(&spec);
             MR_filter_user_preds(&matches);
             if (matches.match_proc_next == 0) {
@@ -192,7 +188,7 @@ MR_trace_cmd_trust(char **words, int word_count, MR_TraceCmdInfo *cmd,
                     matches.match_proc_next - 1);
                 line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
                 if (line2 == NULL) {
-                    /* This means the user input EOF. */
+                    // This means the user input EOF.
                     fprintf(MR_mdb_out, "none of them\n");
                 } else if (MR_streq(line2, "*")) {
                     for (i = 0; i < matches.match_proc_next; i++) {
@@ -263,7 +259,7 @@ MR_trace_cmd_trusted(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 const char *const    MR_trace_dd_cmd_args[] =
     { "-a", "-d", "-n", "-r", "-R", "-s",
@@ -272,7 +268,7 @@ const char *const    MR_trace_dd_cmd_args[] =
       "dq" "divide_and_query", "sdq", "suspicion_divide_and_query",
       "td", "top_down", NULL };
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static struct MR_option MR_trace_dd_opts[] =
 {

@@ -1,38 +1,33 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** The implementation of {det,semi,non}_{exit,fail}_port_code_{ac,sr}.
-**
-** The code including this file should define the following macros:
-**
-** MR_PROCNAME:                 The name of the procedure whose body this is.
-** MR_FAIL_PORT or MR_EXIT_PORT:
-**                              Says which field to increment and whether the
-**                              procedure has detism det or failure.
-** MR_VERSION_AC or MR_VERSION_SR:
-**                              Says whether the procedure whose body this is
-**                              is intended for use with or without
-**                              MR_USE_ACTIVATION_COUNTS.
-**
-** The code including this file should have the following variables in scope:
-**
-** MiddleCSD:                   The id of the current csd.
-** TopCSD:                      The id of the parent's csd.
-** OldOutermostActivationPtr:   The id of the outermost activation of the
-**                              current user procedure before the current call
-**                              to it. Needed only with MR_VERSION_SR.
-**
-** Note that the code in ML_trace_throw() in library/exception.m is based
-** on the logic of this file, so if you make any changes here, you should
-** consider similar changes there.
-*/
+// Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// The implementation of {det,semi,non}_{exit,fail}_port_code_{ac,sr}.
+//
+// The code including this file should define the following macros:
+//
+// MR_PROCNAME:                 The name of the procedure whose body this is.
+// MR_FAIL_PORT or MR_EXIT_PORT:
+//                              Says which field to increment and whether the
+//                              procedure has detism det or failure.
+// MR_VERSION_AC or MR_VERSION_SR:
+//                              Says whether the procedure whose body this is
+//                              is intended for use with or without
+//                              MR_USE_ACTIVATION_COUNTS.
+//
+// The code including this file should have the following variables in scope:
+//
+// MiddleCSD:                   The id of the current csd.
+// TopCSD:                      The id of the parent's csd.
+// OldOutermostActivationPtr:   The id of the outermost activation of the
+//                              current user procedure before the current call
+//                              to it. Needed only with MR_VERSION_SR.
+//
+// Note that the code in ML_trace_throw() in library/exception.m is based
+// on the logic of this file, so if you make any changes here, you should
+// consider similar changes there.
 
 #ifdef MR_DEEP_PROFILING
 {
@@ -42,7 +37,7 @@
 
   #ifdef MR_EXEC_TRACE
     if (! MR_disable_deep_profiling_in_debugger) {
-    /* The matching parenthesis is at the end of the file */
+    // The matching parenthesis is at the end of the file.
   #endif
 
     MR_enter_instrumentation();
@@ -51,7 +46,7 @@
     MR_deep_assert(csd, NULL, NULL, csd == MR_current_call_site_dynamic);
 
   #ifdef MR_DEEP_PROFILING_PORT_COUNTS
-    /* increment exit/fail count */
+    // increment exit/fail count
     #if defined(MR_FAIL_PORT)
     csd->MR_csd_own.MR_own_fails++;
     #elif defined(MR_EXIT_PORT)
@@ -87,7 +82,7 @@
 
   #if defined(MR_VERSION_AC)
     #ifdef MR_USE_ACTIVATION_COUNTS
-    /* decrement activation count */
+    // Decrement activation count.
     ps->MR_ps_activation_count--;
     MR_deep_assert(csd, pl, ps, ps->MR_ps_activation_count >= 0);
     #else
@@ -95,7 +90,7 @@
     #endif
   #elif defined(MR_VERSION_SR)
     #ifndef MR_USE_ACTIVATION_COUNTS
-    /* set outermost activation pointer */
+    // Set outermost activation pointer.
     ps->MR_ps_outermost_activation_ptr =
         (MR_ProcDynamic *) OldOutermostActivationPtr;
     #else
@@ -105,18 +100,16 @@
     #error "mercury_deep_leave_port_body.h: neither MR_VERSION_AC nor MR_VERSION_SR"
   #endif
 
-    /* set current csd */
+    // Set current csd.
     MR_current_call_site_dynamic = (MR_CallSiteDynamic *) TopCSD;
 
     MR_leave_instrumentation();
 
-    /*
-    ** For MR_FAIL_PORT code, the failure we should execute here
-    ** is handled by code inserted by the compiler.
-    */
+    // For MR_FAIL_PORT code, the failure we should execute here
+    // is handled by code inserted by the compiler.
 
   #ifdef MR_EXEC_TRACE
-    /* The matching parenthesis is at the start of the file */
+    // The matching parenthesis is at the start of the file.
     }
   #endif
 }

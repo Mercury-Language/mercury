@@ -1,17 +1,14 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2014 The Mercury team
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 2014 The Mercury team
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
 #include "mercury_imp.h"
 #include "mercury_overflow.h"
-#include "mercury_memory_zones.h"   /* for MR_MemoryZone       */
-#include "mercury_debug.h"          /* for MR_print_zone() etc */
-#include "mercury_misc.h"           /* for MR_fatal_error()    */
+#include "mercury_memory_zones.h"   // for MR_MemoryZone
+#include "mercury_debug.h"          // for MR_print_zone() etc
+#include "mercury_misc.h"           // for MR_fatal_error()
 
 #if !defined(MR_HIGHLEVEL_CODE)
 void
@@ -44,7 +41,7 @@ MR_nondetstack_inclusion_check(MR_Word *maxfr,
         prev_zones = prev_zones->MR_zones_tail;
     }
 }
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
 
 void
 MR_fatal_zone_error(MR_OverflowZone ptr_kind,

@@ -1,31 +1,24 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 2008 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module looks after a queue of lines containing commands for mdb.
-** Its main use is during initialization.
-**
-** Main author: Zoltan Somogyi.
-*/
+// Copyright (C) 2008 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module looks after a queue of lines containing commands for mdb.
+// Its main use is during initialization.
+//
+// Main author: Zoltan Somogyi.
 
 #include "mercury_imp.h"
 #include "mercury_trace_command_queue.h"
-#include "mercury_trace_internal.h" /* for MR_trace_echo_queue_commands */
+#include "mercury_trace_internal.h" // for MR_trace_echo_queue_commands
 
-/*
-** MR_cmd_queue_head points to the first node in the list, while
-** MR_cmd_queue_tail points to the last. It is an invariant that
-** if one of these two variables is NULL, the other is NULL as well.
-*/
+// MR_cmd_queue_head points to the first node in the list, while
+// MR_cmd_queue_tail points to the last. It is an invariant that
+// if one of these two variables is NULL, the other is NULL as well.
 
 static  MR_CmdLines *MR_cmd_queue_head = NULL;
-static  MR_CmdLines	*MR_cmd_queue_tail = NULL;
+static  MR_CmdLines *MR_cmd_queue_tail = NULL;
 
 void
 MR_insert_command_line_at_head(const char *line_contents)
@@ -73,7 +66,7 @@ MR_insert_command_lines_at_head(MR_CmdLines *new_lines)
         last_new_node->MR_cmd_line_next != NULL;
         last_new_node = last_new_node->MR_cmd_line_next)
     {
-        /* do nothing */
+        // Do nothing.
     }
 
     MR_assert(last_new_node->MR_cmd_line_next == NULL);
@@ -98,7 +91,7 @@ MR_insert_command_lines_at_tail(MR_CmdLines *new_lines)
         last_new_node->MR_cmd_line_next != NULL;
         last_new_node = last_new_node->MR_cmd_line_next)
     {
-        /* do nothing */
+        // Do nothing.
     }
 
     MR_assert(last_new_node->MR_cmd_line_next == NULL);

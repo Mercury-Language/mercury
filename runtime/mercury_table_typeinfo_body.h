@@ -1,16 +1,11 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This files defines the bodies of the variants of the
-** MR_type_info_lookup_or_add() function.
-*/
+// Copyright (C) 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This files defines the bodies of the variants of the
+// MR_type_info_lookup_or_add() function.
 
     MR_TypeCtorInfo     type_ctor_info;
     MR_TrieNode         node;
@@ -18,22 +13,20 @@
     int                 arity;
     int                 i;
 
-    /* XXX memory allocation here should be optimized */
+    // XXX memory allocation here should be optimized
     type_info = MR_collapse_equivalences(type_info);
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     node = tci_call(table, (MR_Integer) type_ctor_info);
 
-    /*
-    ** All calls to MR_type_info_lookup_or_add that have the same value
-    ** of node at this point agree on the type_ctor_info of the type
-    ** being tabled. They must therefore also agree on its arity.
-    ** This is why looping over all the arguments works.
-    **
-    ** If type_info has a zero-arity type_ctor, then it may be stored
-    ** using a one-cell type_info, and type_info_args does not make sense.
-    ** This is OK, because in that case it will never be used.
-    */
+    // All calls to MR_type_info_lookup_or_add that have the same value
+    // of node at this point agree on the type_ctor_info of the type
+    // being tabled. They must therefore also agree on its arity.
+    // This is why looping over all the arguments works.
+    //
+    // If type_info has a zero-arity type_ctor, then it may be stored
+    // using a one-cell type_info, and type_info_args does not make sense.
+    // This is OK, because in that case it will never be used.
 
     if (MR_type_ctor_has_variable_arity(type_ctor_info)) {
         arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);

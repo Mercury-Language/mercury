@@ -1,30 +1,25 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** The implementation of non_redo_port_code_{ac,sr}.
-**
-** The code including this file should define the following macros:
-** 
-** MR_PROCNAME:                 The name of the procedure whose body this is.
-** MR_VERSION_AC or MR_VERSION_SR:
-**                              Says whether the procedure whose body this is
-**                              is intended for use with or without
-**                              MR_USE_ACTIVATION_COUNTS.
-**
-** The code including this file should have the following variables in scope:
-**
-** MiddleCSD:                   The id of the current csd.
-** NewOutermostActivationPtr:   The id of the outermost activation of the
-**                              procedure being backtracked into after the
-**                              current call to it.
-*/
+// Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// The implementation of non_redo_port_code_{ac,sr}.
+//
+// The code including this file should define the following macros:
+//
+// MR_PROCNAME:                 The name of the procedure whose body this is.
+// MR_VERSION_AC or MR_VERSION_SR:
+//                              Says whether the procedure whose body this is
+//                              is intended for use with or without
+//                              MR_USE_ACTIVATION_COUNTS.
+//
+// The code including this file should have the following variables in scope:
+//
+// MiddleCSD:                   The id of the current csd.
+// NewOutermostActivationPtr:   The id of the outermost activation of the
+//                              procedure being backtracked into after the
+//                              current call to it.
 
 #ifdef MR_DEEP_PROFILING
 {
@@ -35,7 +30,7 @@
 
   #ifdef MR_EXEC_TRACE
     if (! MR_disable_deep_profiling_in_debugger) {
-    /* The matching parenthesis is at the end of the file */
+    // The matching parenthesis is at the end of the file.
   #endif
 
   #ifdef MR_DEEP_PROFILING_LOG
@@ -68,7 +63,7 @@
 
   #if defined(MR_VERSION_AC)
     #ifdef MR_USE_ACTIVATION_COUNTS
-    /* increment activation count */
+    // Increment activation count.
     ps->MR_ps_activation_count++;
     ps->MR_ps_outermost_activation_ptr =
         (MR_ProcDynamic *) NewOutermostActivationPtr;
@@ -77,7 +72,7 @@
     #endif
   #elif defined(MR_VERSION_SR)
     #ifndef MR_USE_ACTIVATION_COUNTS
-    /* set outermost activation pointer */
+    // Set outermost activation pointer.
     ps->MR_ps_outermost_activation_ptr =
         (MR_ProcDynamic *) NewOutermostActivationPtr;
     #else
@@ -88,7 +83,7 @@
   #endif
 
   #ifdef MR_EXEC_TRACE
-    /* The matching parenthesis is at the start of the file */
+    // The matching parenthesis is at the start of the file.
     }
   #endif
 

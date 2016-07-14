@@ -1,31 +1,24 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2003-2004 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** mercury_univ.h - definitions for manipulating univs.
-*/
+// Copyright (C) 2003-2004 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_univ.h - definitions for manipulating univs.
 
 #ifndef MERCURY_UNIV_H
 #define MERCURY_UNIV_H
 
-#include "mercury_regs.h"           /* must come first (see mercury_imp.h) */
-#include "mercury_conf_param.h"     /* for MR_RECORD_TERM_SIZES            */
-#include "mercury_tags.h"           /* for MR_field                        */
-#include "mercury_heap.h"           /* for MR_tag_offset_incr_hp_msg       */
+#include "mercury_regs.h"           // must come first (see mercury_imp.h)
+#include "mercury_conf_param.h"     // for MR_RECORD_TERM_SIZES
+#include "mercury_tags.h"           // for MR_field
+#include "mercury_heap.h"           // for MR_tag_offset_incr_hp_msg
 #include "mercury_debug.h"
 
-/*
-** `univ' is usually represented as a two word structure.
-** The first word contains the address of a type_info for the type.
-** The second word contains the data. With MR_RECORD_TERM_SIZES,
-** we add an extra field at offset -1 to record the size of the term.
-*/
+// `univ' is usually represented as a two word structure.
+// The first word contains the address of a type_info for the type.
+// The second word contains the data. With MR_RECORD_TERM_SIZES,
+// we add an extra field at offset -1 to record the size of the term.
 
 #define MR_UNIV_OFFSET_FOR_TYPEINFO        0
 #define MR_UNIV_OFFSET_FOR_DATA            1
@@ -58,8 +51,8 @@
       MR_debug_unravel_univ((univ), (typeinfo), (value));               \
   } while (0)
 
-  /* Allocate a univ on the heap                        */
-  /* XXX we should use MR_tag_offset_incr_hp_msg() here */
+  // Allocate a univ on the heap
+  // XXX We should use MR_tag_offset_incr_hp_msg() here.
 #define MR_new_univ_on_hp(univ, typeinfo, value)                        \
   do {                                                                  \
       MR_tag_offset_incr_hp((univ), MR_UNIV_TAG, MR_SIZE_SLOT_SIZE,     \
@@ -68,4 +61,4 @@
       MR_debug_new_univ_on_hp((univ), (typeinfo), (value));             \
   } while (0)
 
-#endif /* MERCURY_UNIV_H */
+#endif // MERCURY_UNIV_H

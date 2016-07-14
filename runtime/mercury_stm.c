@@ -1,13 +1,10 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2007-2009 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/* mercury_stm.c - runtime support for software transactional memory. */
+// Copyright (C) 2007-2009 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// mercury_stm.c - runtime support for software transactional memory.
 
 #include "mercury_std.h"
 #include "mercury_stm.h"
@@ -226,7 +223,6 @@ MR_STM_unsafe_write_var(MR_STM_Var *var, MR_Word value)
     var->MR_STM_var_value = value;
 }
 
-
 void
 MR_STM_write_var(MR_STM_Var *var, MR_Word value, MR_STM_TransLog *tlog)
 {
@@ -234,10 +230,9 @@ MR_STM_write_var(MR_STM_Var *var, MR_Word value, MR_STM_TransLog *tlog)
     MR_STM_TransRecord  *current;
     MR_bool             has_existing_record = MR_FALSE;
 
-    /*
-    ** Check to see if this transaction variable has an existing record in
-    ** transaction log; if so, update it.
-    */
+    // Check to see if this transaction variable has an existing record in
+    // transaction log; if so, update it.
+
     current = tlog->MR_STM_tl_records;
     while (current != NULL) {
         if (current->MR_STM_tr_var == var) {
@@ -249,10 +244,8 @@ MR_STM_write_var(MR_STM_Var *var, MR_Word value, MR_STM_TransLog *tlog)
         current = current->MR_STM_tr_next;
     }
 
-    /*
-    ** Add a new entry for the transaction variable if didn't already
-    ** have one.
-    */
+    // Add a new entry for the transaction variable if didn't already have one.
+
     if (!has_existing_record) {
         MR_STM_record_transaction(tlog, var, var->MR_STM_var_value, value);
     }
@@ -284,14 +277,13 @@ MR_STM_read_var(MR_STM_Var *var, MR_STM_TransLog *tlog)
         current_tlog = current_tlog->MR_STM_tl_parent;
     }
 
-    /*
-    ** We will only get to this point if the transaction variable does not
-    ** currently have a record in the log or one of the enclosing logs,
-    ** i.e. if this is the first time that its value has been read during
-    ** this atomic scope.
-    ** Add an entry that indicates that it has been read and then return
-    ** the value that is stored in the transaction variable.
-    */
+    // We will only get to this point if the transaction variable does not
+    // currently have a record in the log or one of the enclosing logs,
+    // i.e. if this is the first time that its value has been read during
+    // this atomic scope.
+    // Add an entry that indicates that it has been read and then return
+    // the value that is stored in the transaction variable.
+
     MR_STM_record_transaction(tlog, var, var->MR_STM_var_value,
         var->MR_STM_var_value);
 
@@ -341,20 +333,18 @@ MR_STM_merge_transactions(MR_STM_TransLog *tlog)
         (MR_Word) tlog);
 #endif
 
-    /* Deallocate child log */
+    // Deallocate child log.
 #if !defined(MR_CONSERVATIVE_GC)
-    /* XXX -- Free tlog and log entries */
+    // XXX -- Free tlog and log entries.
 #endif
 }
 
-
 #if defined(MR_HIGHLEVEL_CODE)
-/*
-** MR_STM_block_thread is called to block the thread in high level C grades,
-** using POSIX thread facilities, as there is a POSIX thread for every
-** Mercury thread in these grades. The low level C grade equivalent of this
-** code is defined in the stm_builtin library module.
-*/
+// MR_STM_block_thread is called to block the thread in high level C grades,
+// using POSIX thread facilities, as there is a POSIX thread for every
+// Mercury thread in these grades. The low level C grade equivalent of this
+// code is defined in the stm_builtin library module.
+
 void
 MR_STM_block_thread(MR_STM_TransLog *tlog)
 {
@@ -384,26 +374,23 @@ MR_STM_block_thread(MR_STM_TransLog *tlog)
     MR_fatal_error("Blocking thread in non-parallel grade");
 #endif
 }
-#endif  /* MR_HIGHLEVEL_CODE */
-
+#endif  // MR_HIGHLEVEL_CODE
 
 #if !defined(MR_HIGHLEVEL_CODE)
-/*
-** In the low level C grades, the "condition variable" created when an STM
-** transaction blocks is actually a pointer to the transaction log.
-** "Signalling" it consists of going through the STM variables listed in the
-** log and removing the waiters attached to them for the context listed
-** in the log. After this, the context can be safely rescheduled.
-*/
+// In the low level C grades, the "condition variable" created when an STM
+// transaction blocks is actually a pointer to the transaction log.
+// "Signalling" it consists of going through the STM variables listed in the
+// log and removing the waiters attached to them for the context listed
+// in the log. After this, the context can be safely rescheduled.
+
 void
 MR_STM_condvar_signal(MR_STM_ConditionVar *cvar)
 {
-    /*
-    ** Calling MR_STM_unwait here should be safe, as this signalling is called
-    ** in response to a commit, while the committing thread holds the global
-    ** STM lock. Note that a MR_STM_ConditionVar IS a MR_STM_TransLog if
-    ** MR_HIGHLEVEL_CODE is not defined, which is why cvar is passed twice.
-    */
+    // Calling MR_STM_unwait here should be safe, as this signalling is called
+    // in response to a commit, while the committing thread holds the global
+    // STM lock. Note that a MR_STM_ConditionVar IS a MR_STM_TransLog if
+    // MR_HIGHLEVEL_CODE is not defined, which is why cvar is passed twice.
+
     MR_STM_unwait(cvar, cvar);
 
 #if defined(MR_STM_DEBUG)
@@ -413,4 +400,4 @@ MR_STM_condvar_signal(MR_STM_ConditionVar *cvar)
     MR_schedule_context(MR_STM_context_from_condvar(cvar));
 }
 
-#endif  /* !MR_HIGHLEVEL_CODE */
+#endif  // !MR_HIGHLEVEL_CODE

@@ -1,15 +1,10 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** Debugging support for the accurate garbage collector.
-*/
+// Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// Debugging support for the accurate garbage collector.
 
 #include "mercury_imp.h"
 #include "mercury_layout_util.h"
@@ -18,9 +13,8 @@
 
 #ifdef MR_NATIVE_GC
 
-/*
-** Function prototypes.
-*/
+// Function prototypes.
+
 static  void    MR_dump_long_value(MR_LongLval locn, MR_MemoryZone *heap_zone,
                     MR_Word * stack_pointer, MR_Word *current_frame,
                     MR_bool do_regs);
@@ -31,13 +25,11 @@ static  void    MR_dump_live_variables(const MR_LabelLayout *layout,
                     MR_MemoryZone *heap_zone, MR_bool top_frame,
                     MR_Word *stack_pointer, MR_Word *current_frame);
 
-/*---------------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** Currently this variable is never modified by the Mercury runtime code,
-** but it can be modified manually in gdb.
-** XXX It would be nicer to set it based on a runtime option setting.
-*/
+// Currently this variable is never modified by the Mercury runtime code,
+// but it can be modified manually in gdb.
+// XXX It would be nicer to set it based on a runtime option setting.
 
 #ifdef MR_DEBUG_AGC_PRINT_VARS
   static MR_bool MR_debug_agc_print_vars = MR_TRUE;
@@ -59,18 +51,17 @@ MR_agc_dump_roots(MR_RootList roots)
     if (MR_debug_agc_print_vars) {
         while (roots != NULL) {
 #ifndef MR_HIGHLEVEL_CODE
-            /*
-            ** Restore the registers, because we need to save them to a more
-            ** permanent backing store (we are going to call Mercury soon,
-            ** and we don't want it messing with the saved registers).
-            */
+            // Restore the registers, because we need to save them to a more
+            // permanent backing store (we are going to call Mercury soon,
+            // and we don't want it messing with the saved registers).
+
             MR_restore_registers();
             MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs,
                 MR_MAX_VIRTUAL_F_REG - 1, saved_f_regs);
 
             MR_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
             MR_virtual_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
 
             fflush(NULL);
             MR_write_variable(roots->type_info, *roots->root);
@@ -81,7 +72,7 @@ MR_agc_dump_roots(MR_RootList roots)
             MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1, saved_regs,
                 MR_MAX_VIRTUAL_F_REG, saved_f_regs);
             MR_save_registers();
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
             roots = roots->next;
         }
     }
@@ -129,10 +120,9 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
             if (label && label->MR_internal_layout) {
                 MR_dump_live_variables(label->MR_internal_layout, heap_zone,
                     registers_valid, MR_tmp_detfr_slot(max_frame), max_frame);
-                /*
-                ** XXX should max_frame above be
-                ** MR_redoip_slot(max_frame) instead?
-                */
+                // XXX Should max_frame above be
+                // MR_redoip_slot(max_frame) instead?
+
             }
 
         } else {
@@ -148,7 +138,7 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
             fflush(NULL);
             fprintf(stderr, " succfr: %p\n", MR_succfr_slot(max_frame));
 
-            /* XXX ??? */
+            // XXX ???
             label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
 
             if (label != NULL && label->MR_internal_layout) {
@@ -161,7 +151,7 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
         max_frame = MR_prevfr_slot(max_frame);
     }
 
-    /* XXX Lookup the address (redoip?) and dump the variables */
+    // XXX Lookup the address (redoip?) and dump the variables.
 
     fflush(NULL);
 }
@@ -186,9 +176,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
     success_ip = label->MR_internal_addr;
     entry_layout = layout->MR_sll_entry;
 
-    /*
-    ** For each stack frame...
-    */
+    // For each stack frame...
 
     top_frame = MR_TRUE;
     while (MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)) {
@@ -204,9 +192,8 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 
         MR_dump_live_variables(layout, heap_zone, top_frame,
             stack_pointer, current_frame);
-        /*
-        ** Move to the next stack frame.
-        */
+        // Move to the next stack frame.
+
         {
             MR_LongLval     location;
             MR_LongLvalType type;
@@ -252,12 +239,10 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
     long_var_count = MR_long_desc_var_count(label_layout);
     short_var_count = MR_short_desc_var_count(label_layout);
 
-    /*
-    ** For the top stack frame, we should pass a pointer to a filled-in
-    ** saved_regs instead of NULL. For other stack frames, passing NULL
-    ** is fine, since output arguments are not live yet for any call
-    ** except the top one.
-    */
+    // For the top stack frame, we should pass a pointer to a filled-in
+    // saved_regs instead of NULL. For other stack frames, passing NULL
+    // is fine, since output arguments are not live yet for any call
+    // except the top one.
 
     MR_restore_registers();
     MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs,
@@ -284,9 +269,7 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
         fflush(NULL);
 
         if (MR_debug_agc_print_vars) {
-            /*
-            ** Call Mercury but use the debugging heap.
-            */
+            // Call Mercury but use the debugging heap.
 
             MR_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
             MR_virtual_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
@@ -315,9 +298,7 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
         fflush(NULL);
 
         if (MR_debug_agc_print_vars) {
-            /*
-            ** Call Mercury but use the debugging heap.
-            */
+            // Call Mercury but use the debugging heap.
 
             MR_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
             MR_virtual_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
@@ -403,8 +384,8 @@ MR_dump_long_value(MR_LongLval locn, MR_MemoryZone *heap_zone,
         case MR_LONG_LVAL_TYPE_INDIRECT:
             fprintf(stderr, "offset %d from ",
                 MR_LONG_LVAL_INDIRECT_OFFSET(locn_num));
-            /* XXX Tyson will have to complete this       */
-            /* based on what he wants this function to do */
+            // XXX Tyson will have to complete this
+            // based on what he wants this function to do.
 
         case MR_LONG_LVAL_TYPE_UNKNOWN:
             fprintf(stderr, "unknown");
@@ -500,6 +481,6 @@ MR_dump_short_value(MR_ShortLval locn, MR_MemoryZone *heap_zone,
     }
 }
 
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
 
-#endif /* MR_NATIVE_GC */
+#endif // MR_NATIVE_GC

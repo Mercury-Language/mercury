@@ -1,11 +1,8 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 1997, 2000-2001, 2004, 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+
+// Copyright (C) 1997, 2000-2001, 2004, 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
 
 #include "mercury_imp.h"
 #include "mercury_regs.h"
@@ -75,7 +72,7 @@ MR_print_register_usage_counts(void)
     printf("MR_parent_sp");
     printf(MR_COUNT_FORMAT, MR_num_uses[MR_PARENT_SP_SLOT]);
 }
-#endif  /* MR_MEASURE_REGISTER_USAGE */
+#endif  // MR_MEASURE_REGISTER_USAGE
 
 #ifdef  MR_VERIFY_FAKE_REGISTERS
 
@@ -134,7 +131,7 @@ MR_verify_fake_registers(void)
     printf("MR_parent_sp");
     printf(MR_VERIFY_FORMAT, MR_PARENT_SP_SLOT);
 }
-#endif  /* MR_VERIFY_FAKE_REGISTERS */
+#endif  // MR_VERIFY_FAKE_REGISTERS
 
 MR_Word
 MR_get_reg(int num)
@@ -177,7 +174,7 @@ MR_get_reg(int num)
 
     }
 
-    /* NOTREACHED */
+    /*NOTREACHED*/
     fprintf(stderr, "register %d out of range in get_reg\n", num);
     abort();
     return 0;
@@ -224,7 +221,7 @@ MR_set_reg(int num, MR_Word val)
 
     }
 
-    /* NOTREACHED */
+    /*NOTREACHED*/
     fprintf(stderr, "register %d out of range in set_reg\n", num);
     abort();
     return 0;

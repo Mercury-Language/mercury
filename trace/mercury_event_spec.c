@@ -1,18 +1,13 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This file contains the functions that we use to manipulate user-defined
-** event types.
-**
-** Main author: Zoltan Somogyi.
-*/
+// Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This file contains the functions that we use to manipulate user-defined
+// event types.
+//
+// Main author: Zoltan Somogyi.
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
@@ -27,12 +22,10 @@
 
 #include <stdlib.h>
 
-/**************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** The table of event specifications, with counters saying which is the next
-** free slot and how many slots are allocated.
-*/
+// The table of event specifications, with counters saying which is the next
+// free slot and how many slots are allocated.
 
 static const char   *MR_event_spec_chars;
 static unsigned     MR_event_spec_char_next;
@@ -43,7 +36,7 @@ static  int         MR_compare_event_specs(const void *, const void *);
 static  void        MR_print_attr_type_term(FILE *fp, MR_CTerm term);
 static  void        MR_print_attr_synth_call(FILE *fp, MR_FlatTerm call);
 
-/**************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 int
 MR_event_get_input(char *buf, int buf_size)
@@ -82,11 +75,10 @@ MR_read_event_set(const char *filename, const char *input_data)
     MR_Unsigned     num_events;
     MR_Unsigned     i;
 
-    /*
-    ** Set these globals up for calls to MR_event_get_input by the scanner.
-    ** The -1 is because MR_event_spec_char_max should contain the index
-    ** of the last byte in the string, not the index of the NULL byte.
-    */
+    // Set these globals up for calls to MR_event_get_input by the scanner.
+    // The -1 is because MR_event_spec_char_max should contain the index
+    // of the last byte in the string, not the index of the NULL byte.
+
     MR_event_spec_chars = input_data;
     MR_event_spec_char_max = strlen(input_data) - 1;
     MR_event_spec_char_next = 0;
@@ -120,11 +112,9 @@ MR_read_event_set(const char *filename, const char *input_data)
         i++;
     }
 
-    /*
-    ** We keep the events in the original order, which will be the order
-    ** in which we assign them event numbers; the code here is in case
-    ** in future we want to order them by name.
-    */
+    // We keep the events in the original order, which will be the order
+    // in which we assign them event numbers; the code here is in case
+    // in future we want to order them by name.
 
 #if 0
     qsort(MR_event_specs, MR_event_spec_max, sizeof(MR_EventSpec),

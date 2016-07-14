@@ -1,24 +1,19 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-2008, 2011 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** This module implements the mdb commands in the "developer" category.
-**
-** The structure of these files is:
-**
-** - all the #includes
-** - local macros and declarations of local static functions
-** - one function for each command in the category
-** - any auxiliary functions
-** - any command argument strings
-** - option processing functions.
-*/
+// Copyright (C) 1998-2008, 2011 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// This module implements the mdb commands in the "developer" category.
+//
+// The structure of these files is:
+//
+// - all the #includes
+// - local macros and declarations of local static functions
+// - one function for each command in the category
+// - any auxiliary functions
+// - any command argument strings
+// - option processing functions.
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
@@ -37,7 +32,7 @@
 
 #include <stdio.h>
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  void        MR_trace_cmd_nondet_stack_2(MR_EventInfo *event_info,
                         MR_bool detailed, MR_FrameLimit frame_limit,
@@ -47,51 +42,49 @@ static  const MR_ProcLayout
                     *MR_find_single_matching_proc(MR_ProcSpec *spec,
                         MR_bool verbose);
 
-/*
-** The following data structures describe the information we have about the
-** input arguments of tabled procedures. We use them to decode the call tables
-** of such procedures.
-**
-** We use one MR_CallTableArg structure for each input argument.
-**
-** The step field specifies what data structure the tabling system uses to
-** implement the trie nodes at the level of the call table corresponding to
-** the relevant argument. At the moment, we support only four values of this
-** field, MR_TABLE_STEP_INT, MR_TABLE_STEP_FLOAT, MR_TABLE_STEP_STRING and
-** MR_TABLE_STEP_PROMISE_IMPLIED. The first three of these implicitly select
-** the corresponding alternative in the arg_values union; the last one
-** indicates the absence of a step.
-**
-** The start_node field specifies the start node of the relevant trie. For the
-** first input argument, this will be the tabling pointer variable for the
-** given procedure. For later input arguments, it will be the trie node you
-** reach after following the current values of the previous arguments through
-** the call table.
-**
-** The MR_{Int,Float,String}TableArgValues structs have the same fields and
-** the same meanings, differing only in the types of the values they store.
-** Each struct is used for one of two things.
-**
-** 1. To describe a value supplied by the user on the mdb command line.
-**    In this case, the only field that matters is the cur_value field.
-**
-** 2. To describe the set of values you can find in a trie node, the one given
-**    by the start_node field, and to specify which is the current one.
-**    In this case, all the fields matter.
-**
-** The code that manipulates these structures distinguishes between the two
-** uses based on argument number.
-**
-** The values array is managed with the macros in mercury_array_macros.h,
-** so its size is given by the value_next field. The cur_index field gives the
-** index of the current value, while the cur_value field gives the current
-** value itself. (The contents of the cur_value field can be deduced from the
-** contents of the other fields with use 2, but not with use 1.)
-**
-** The valid field in the MR_CallTableArg structure gives the validity
-** of the values subfield of its arg_values field; if it is false, then the
-** array is logically considered empty.
-*/
+// The following data structures describe the information we have about the
+// input arguments of tabled procedures. We use them to decode the call tables
+// of such procedures.
+//
+// We use one MR_CallTableArg structure for each input argument.
+//
+// The step field specifies what data structure the tabling system uses to
+// implement the trie nodes at the level of the call table corresponding to
+// the relevant argument. At the moment, we support only four values of this
+// field, MR_TABLE_STEP_INT, MR_TABLE_STEP_FLOAT, MR_TABLE_STEP_STRING and
+// MR_TABLE_STEP_PROMISE_IMPLIED. The first three of these implicitly select
+// the corresponding alternative in the arg_values union; the last one
+// indicates the absence of a step.
+//
+// The start_node field specifies the start node of the relevant trie. For the
+// first input argument, this will be the tabling pointer variable for the
+// given procedure. For later input arguments, it will be the trie node you
+// reach after following the current values of the previous arguments through
+// the call table.
+//
+// The MR_{Int,Float,String}TableArgValues structs have the same fields and
+// the same meanings, differing only in the types of the values they store.
+// Each struct is used for one of two things.
+//
+// 1. To describe a value supplied by the user on the mdb command line.
+//    In this case, the only field that matters is the cur_value field.
+//
+// 2. To describe the set of values you can find in a trie node, the one given
+//    by the start_node field, and to specify which is the current one.
+//    In this case, all the fields matter.
+//
+// The code that manipulates these structures distinguishes between the two
+// uses based on argument number.
+//
+// The values array is managed with the macros in mercury_array_macros.h,
+// so its size is given by the value_next field. The cur_index field gives the
+// index of the current value, while the cur_value field gives the current
+// value itself. (The contents of the cur_value field can be deduced from the
+// contents of the other fields with use 2, but not with use 1.)
+//
+// The valid field in the MR_CallTableArg structure gives the validity
+// of the values subfield of its arg_values field; if it is false, then the
+// array is logically considered empty.
 
 typedef struct {
     MR_Integer                  *MR_ctai_values;
@@ -155,13 +148,11 @@ typedef struct {
 #define MR_cta_string_cur_value MR_cta_arg_values.MR_cta_values_string.\
                                     MR_ctas_cur_value
 
-/*
-** These functions fill in the data structure describing one input argument
-** of a tabled procedure with a constant value given on the mdb command line.
-** They return true if they succeed, and false if they fail (e.g. because the
-** string given on the mdb command line does not describe a value of the
-** required type).
-*/
+// These functions fill in the data structure describing one input argument
+// of a tabled procedure with a constant value given on the mdb command line.
+// They return true if they succeed, and false if they fail (e.g. because the
+// string given on the mdb command line does not describe a value of the
+// required type).
 
 static  MR_bool     MR_trace_fill_in_int_table_arg_slot(
                         MR_TrieNode *table_cur_ptr,
@@ -176,12 +167,10 @@ static  MR_bool     MR_trace_fill_in_string_table_arg_slot(
                         int arg_num, MR_ConstString given_arg,
                         MR_CallTableArg *call_table_arg_ptr);
 
-/*
-** These functions fill in the data structure describing one input argument
-** of a tabled procedure with the next value taken from the given trie node.
-** They return true if there are no more values in the trie node, and false
-** otherwise.
-*/
+// These functions fill in the data structure describing one input argument
+// of a tabled procedure with the next value taken from the given trie node.
+// They return true if there are no more values in the trie node, and false
+// otherwise.
 
 static  MR_bool     MR_update_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
                         MR_CallTableArg *call_table_arg_ptr);
@@ -190,44 +179,44 @@ static  MR_bool     MR_update_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
 static  MR_bool     MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
                         MR_CallTableArg *call_table_arg_ptr);
 
-/* Prints the given subgoal of the given procedure to MR_mdb_out. */
+// Prints the given subgoal of the given procedure to MR_mdb_out.
 static  void        MR_trace_cmd_table_print_tip(const MR_ProcLayout *proc,
                         int filtered_num_inputs,
                         MR_CallTableArg *call_table_args, MR_TrieNode table);
 
-/* Prints the given subgoal of the given procedure to MR_mdb_out. */
+// Prints the given subgoal of the given procedure to MR_mdb_out.
 static  void        MR_trace_print_subgoal(const MR_ProcLayout *proc,
                         MR_Subgoal *subgoal);
 static  void        MR_trace_print_subgoal_debug(const MR_ProcLayout *proc,
                         MR_SubgoalDebug *subgoal_debug);
 
-/* Prints the given generator of the given procedure to MR_mdb_out. */
+// Prints the given generator of the given procedure to MR_mdb_out.
 static  void        MR_trace_print_generator(const MR_ProcLayout *proc,
                         MR_Generator *generator);
 static  void        MR_trace_print_generator_debug(const MR_ProcLayout *proc,
                         MR_GenDebug *generator_debug);
 
-/* Prints the given consumer of the given procedure to MR_mdb_out. */
+// Prints the given consumer of the given procedure to MR_mdb_out.
 static  void        MR_trace_print_consumer(const MR_ProcLayout *proc,
                         MR_Consumer *consumer);
 static  void        MR_trace_print_consumer_debug(const MR_ProcLayout *proc,
                         MR_ConsumerDebug *consumer_debug);
 
-/* Prints the requested information inside the given MR_TypeCtorInfo. */
+// Prints the requested information inside the given MR_TypeCtorInfo.
 static  void        MR_print_type_ctor_info(FILE *fp,
                         MR_TypeCtorInfo type_ctor_info,
                         MR_bool print_rep, MR_bool print_functors);
 
-/* Prints the requested information inside the given MR_TypeClassDeclInfo. */
+// Prints the requested information inside the given MR_TypeClassDeclInfo.
 static  void        MR_print_class_decl_info(FILE *fp,
                         MR_TypeClassDeclInfo *type_class_decl_info,
                         MR_bool print_methods, MR_bool print_instances);
 
-/* Print the given pseudo-typeinfo. */
+// Print the given pseudo-typeinfo.
 static  void        MR_print_pseudo_type_info(FILE *fp,
                         MR_PseudoTypeInfo pseudo);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static  MR_bool     MR_trace_options_nondet_stack(MR_bool *detailed,
                         MR_FrameLimit *frame_limit, char ***words,
@@ -248,7 +237,7 @@ static  MR_bool     MR_trace_options_ambiguity(const char **outfile,
                         MR_bool *print_functors, char ***words,
                         int *word_count);
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 MR_Next
 MR_trace_cmd_var_details(char **words, int word_count, MR_TraceCmdInfo *cmd,
@@ -303,15 +292,13 @@ MR_trace_cmd_flag(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_bool     found;
     const char  *set_word;
 
-    /* Set this to NULL to avoid uninitialization warnings. */
+    // Set this to NULL to avoid uninitialization warnings.
     flagptr = NULL;
 
     if (word_count == 1) {
         for (i = 0; i < MR_MAXFLAG; i++) {
-            /*
-            ** The true values of the debugging flags are stored in
-            ** MR_saved_debug_state inside the call tree of MR_trace_event.
-            */
+            // The true values of the debugging flags are stored in
+            // MR_saved_debug_state inside the call tree of MR_trace_event.
 
             flagptr = &MR_saved_debug_state.MR_sds_debugflags[
                 MR_debug_flag_info[i].MR_debug_flag_index];
@@ -338,10 +325,8 @@ MR_trace_cmd_flag(char **words, int word_count, MR_TraceCmdInfo *cmd,
     found = MR_FALSE;
     for (i = 0; i < MR_MAXFLAG; i++) {
         if (MR_streq(MR_debug_flag_info[i].MR_debug_flag_name, name)) {
-            /*
-            ** The true values of the debugging flags are stored in
-            ** MR_saved_debug_state inside the call tree of MR_trace_event.
-            */
+            // The true values of the debugging flags are stored in
+            // MR_saved_debug_state inside the call tree of MR_trace_event.
 
             flagptr = &MR_saved_debug_state.MR_sds_debugflags[
                 MR_debug_flag_info[i].MR_debug_flag_index];
@@ -399,12 +384,12 @@ MR_trace_cmd_subgoal(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_trace_usage_cur_cmd();
     }
 
-#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#else   // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     fprintf(MR_mdb_out, "mdb: the `subgoal' command is available "
         "only in stack copy minimal model tabling grades.\n");
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     return KEEP_INTERACTING;
 }
@@ -432,12 +417,12 @@ MR_trace_cmd_consumer(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_trace_usage_cur_cmd();
     }
 
-#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#else   // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     fprintf(MR_mdb_out, "mdb: the `consumer' command is available "
         "only in stack copy minimal model tabling grades.\n");
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     return KEEP_INTERACTING;
 }
@@ -460,12 +445,12 @@ MR_trace_cmd_gen_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_trace_usage_cur_cmd();
     }
 
-#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#else   // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     fprintf(MR_mdb_out, "mdb: the `gen_stack' command is available "
         "only in stack copy minimal model tabling grades.\n");
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     return KEEP_INTERACTING;
 }
@@ -488,12 +473,12 @@ MR_trace_cmd_cut_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_trace_usage_cur_cmd();
     }
 
-#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#else   // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     fprintf(MR_mdb_out, "mdb: the `cut_stack' command is available "
         "only in stack copy minimal model tabling grades.\n");
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     return KEEP_INTERACTING;
 }
@@ -516,12 +501,12 @@ MR_trace_cmd_pneg_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_trace_usage_cur_cmd();
     }
 
-#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#else   // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     fprintf(MR_mdb_out, "mdb: the `pneg_stack' command is available "
         "only in stack copy minimal model tabling grades.\n");
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     return KEEP_INTERACTING;
 }
@@ -548,12 +533,12 @@ MR_trace_cmd_mm_stacks(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_trace_usage_cur_cmd();
     }
 
-#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#else   // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     fprintf(MR_mdb_out, "mdb: the `pneg_stack' command is available "
         "only in stack copy minimal model tabling grades.\n");
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  // MR_USE_MINIMAL_MODEL_STACK_COPY
 
     return KEEP_INTERACTING;
 }
@@ -571,7 +556,8 @@ MR_trace_cmd_nondet_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (! MR_trace_options_nondet_stack(&detailed, &frame_limit,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1) {
         MR_trace_cmd_nondet_stack_2(event_info, detailed, frame_limit,
             line_limit);
@@ -652,7 +638,7 @@ MR_trace_cmd_stats(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     filename = NULL;
     if (! MR_trace_options_stats(&filename, &words, &word_count)) {
-        /* the usage message has already been printed */
+        // The usage message has already been printed.
         return KEEP_INTERACTING;
     }
 
@@ -795,11 +781,9 @@ MR_trace_cmd_table(char **words, int word_count,
             return KEEP_INTERACTING;
     }
 
-    /*
-    ** words[0] is the command, words[1] is the procedure spec;
-    ** words[2] is the first argument. We step over the command and the
-    ** procedure spec, to leave words[] containing only the argument values.
-    */
+    // words[0] is the command, words[1] is the procedure spec;
+    // words[2] is the first argument. We step over the command and the
+    // procedure spec, to leave words[] containing only the argument values.
 
     words += 2;
     word_count -= 2;
@@ -826,7 +810,7 @@ MR_trace_cmd_table(char **words, int word_count,
             case MR_TABLE_STEP_INT:
             case MR_TABLE_STEP_FLOAT:
             case MR_TABLE_STEP_STRING:
-                /* These are OK. */
+                // These are OK.
                 call_table_args[filtered_cur_arg].MR_cta_step =
                     input_step_descs[cur_arg].MR_tsd_trie_step;
                 call_table_args[filtered_cur_arg].MR_cta_valid = MR_FALSE;
@@ -835,7 +819,7 @@ MR_trace_cmd_table(char **words, int word_count,
                 filtered_cur_arg++;
 
             case MR_TABLE_STEP_PROMISE_IMPLIED:
-                /* This argument doesn't exist in the table. */
+                // This argument doesn't exist in the table.
                 break;
 
             default:
@@ -855,10 +839,8 @@ MR_trace_cmd_table(char **words, int word_count,
         return KEEP_INTERACTING;
     }
 
-    /*
-    ** Set up the values of the input arguments supplied on the command line,
-    ** to enable us to print them out in each call table entry.
-    */
+    // Set up the values of the input arguments supplied on the command line,
+    // to enable us to print them out in each call table entry.
 
     for (filtered_cur_arg = 0;
         filtered_cur_arg < word_count;
@@ -890,18 +872,16 @@ MR_trace_cmd_table(char **words, int word_count,
         }
 
         if (! success) {
-            /* the error message has already been printed */
+            // the error message has already been printed
             MR_GC_free(call_table_args);
             return KEEP_INTERACTING;
         }
     }
 
     if (word_count == filtered_num_inputs) {
-        /*
-        ** The user specified values for all the input arguments,
-        ** so what we print is a single entry, not a table of entries,
-        ** and we don't need to loop over all the entries.
-        */
+        // The user specified values for all the input arguments,
+        // so what we print is a single entry, not a table of entries,
+        // and we don't need to loop over all the entries.
 
         MR_trace_cmd_table_print_tip(proc, filtered_num_inputs,
             call_table_args, table_cur);
@@ -909,10 +889,8 @@ MR_trace_cmd_table(char **words, int word_count,
         return KEEP_INTERACTING;
     }
 
-    /*
-    ** The user left the values of some input arguments unspecified,
-    ** so we print a table of entries. Here we print the header.
-    */
+    // The user left the values of some input arguments unspecified,
+    // so we print a table of entries. Here we print the header.
 
     switch (MR_sle_eval_method(proc)) {
         case MR_EVAL_METHOD_LOOP_CHECK:
@@ -943,41 +921,39 @@ MR_trace_cmd_table(char **words, int word_count,
             MR_fatal_error("MR_trace_cmd_table: bad eval method");
     }
 
-    /*
-    ** This loop prints the entries in the table.
-    **
-    ** If we knew in advance that the user left (say) two input argument
-    ** positions unspecified, we could use a loop structure such as:
-    **
-    **  for value1 in <values in the trie at node start_node[0]>
-    **      cur_value[1] = value1
-    **      start_node[1] = follow value1 in start_node[0]
-    **      for value2 in <values in the trie at node start_node[1]>
-    **          cur_value[2] = value2
-    **          start_node[2] = follow value2 in start_node[1]
-    **          print <fixed args>, cur_value[1], cur_value[2]
-    **      end for
-    **  end for
-    **
-    ** However, we don't know in advance how many input arguments the user
-    ** left unspecified. We therefore simulate the above with a single
-    ** loop, which can function as any one of the above nested loops.
-    **
-    ** The value of cur_arg controls which one it is simulating at any
-    ** given time. Initially, cur_arg grows as we enter each of the above
-    ** loops one after another, at each stage recording the set of values
-    ** in the current trie node in the values array of the relevant
-    ** argument.
-    **
-    ** We number the input arguments from 0 to filtered_num_inputs-1.
-    ** When cur_arg becomes equal to filtered_num_inputs, this means that
-    ** we have values for all the tabled input arguments, so we print the
-    ** corresponding call table entry. We then initiate backtracking:
-    ** we decrement cur_arg to get the next value of the last argument.
-    ** We also do this whenever we run out of values in any trie.
-    **
-    ** We stop when we are about to backtrack out of the outermost loop.
-    */
+    // This loop prints the entries in the table.
+    //
+    // If we knew in advance that the user left (say) two input argument
+    // positions unspecified, we could use a loop structure such as:
+    //
+    //  for value1 in <values in the trie at node start_node[0]>
+    //      cur_value[1] = value1
+    //      start_node[1] = follow value1 in start_node[0]
+    //      for value2 in <values in the trie at node start_node[1]>
+    //          cur_value[2] = value2
+    //          start_node[2] = follow value2 in start_node[1]
+    //          print <fixed args>, cur_value[1], cur_value[2]
+    //      end for
+    //  end for
+    //
+    // However, we don't know in advance how many input arguments the user
+    // left unspecified. We therefore simulate the above with a single
+    // loop, which can function as any one of the above nested loops.
+    //
+    // The value of cur_arg controls which one it is simulating at any
+    // given time. Initially, cur_arg grows as we enter each of the above
+    // loops one after another, at each stage recording the set of values
+    // in the current trie node in the values array of the relevant
+    // argument.
+    //
+    // We number the input arguments from 0 to filtered_num_inputs-1.
+    // When cur_arg becomes equal to filtered_num_inputs, this means that
+    // we have values for all the tabled input arguments, so we print the
+    // corresponding call table entry. We then initiate backtracking:
+    // we decrement cur_arg to get the next value of the last argument.
+    // We also do this whenever we run out of values in any trie.
+    //
+    // We stop when we are about to backtrack out of the outermost loop.
 
     cur_arg = word_count;
     num_tips = 0;
@@ -1006,18 +982,14 @@ MR_trace_cmd_table(char **words, int word_count,
         }
 
         if (no_more) {
-            /*
-            ** There aren't any more values in the current trie
-            ** of input argument cur_arg.
-            */
+            // There aren't any more values in the current trie
+            // of input argument cur_arg.
 
             start_backtrack = MR_TRUE;
         } else {
-            /*
-            ** There is at least one more value in the current trie
-            ** of input argument cur_arg, so go on to the next trie
-            ** (if there is one).
-            */
+            // There is at least one more value in the current trie
+            // of input argument cur_arg, so go on to the next trie
+            // (if there is one).
 
             cur_arg++;
 
@@ -1065,7 +1037,8 @@ MR_trace_cmd_type_ctor(char **words, int word_count,
     if (! MR_trace_options_type_ctor(&print_rep, &print_functors,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 4 &&
         MR_trace_is_natural_number(words[3], &arity))
     {
@@ -1103,7 +1076,8 @@ MR_trace_cmd_class_decl(char **words, int word_count,
     if (! MR_trace_options_class_decl(&print_methods, &print_instances,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 4 &&
         MR_trace_is_natural_number(words[3], &arity))
     {
@@ -1143,7 +1117,8 @@ MR_trace_cmd_all_type_ctors(char **words, int word_count,
     if (! MR_trace_options_type_ctor(&print_rep, &print_functors,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1 || word_count == 2) {
         if (word_count == 2) {
             module_name = words[1];
@@ -1201,7 +1176,8 @@ MR_trace_cmd_all_class_decls(char **words, int word_count,
     if (! MR_trace_options_class_decl(&print_methods, &print_instances,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 1 || word_count == 2) {
         if (word_count == 2) {
             module_name = words[1];
@@ -1260,7 +1236,8 @@ MR_trace_cmd_all_procedures(char **words, int word_count,
     if (! MR_trace_options_all_procedures(&separate, &uci, &module,
         &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else if (word_count == 2) {
         filename = words[1];
         fp = fopen(filename, "w");
@@ -1304,7 +1281,8 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
     if (! MR_trace_options_ambiguity(&filename, &print_procs, &print_types,
         &print_functors, &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        // The usage message has already been printed.
+        ;
     } else {
         if (!print_procs && !print_types && !print_functors) {
             print_procs = MR_TRUE;
@@ -1326,12 +1304,10 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
             }
         }
 
-        /*
-        ** The words on the command line after the command name and the already
-        ** processed options are a list of modules names. If this list is not
-        ** empty, then we consider only the modules named here when looking for
-        ** ambiguities.
-        */
+        // The words on the command line after the command name and the already
+        // processed options are a list of modules names. If this list is not
+        // empty, then we consider only the modules named here when looking for
+        // ambiguities.
 
         MR_print_ambiguities(fp, print_procs, print_types, print_functors,
             &words[1], word_count - 1);
@@ -1373,17 +1349,17 @@ MR_trace_cmd_trail_details(char **words, int word_count,
             (unsigned long) MR_num_trail_segments());
     #endif
 
-#else /* ! MR_USE_TRAIL */
+#else // ! MR_USE_TRAIL
 
     fprintf(MR_mdb_out, "mdb: the `trail_details' command is available "
         "only in trailing grades.\n");
 
-#endif /* ! MR_USE_TRAIL */
+#endif // ! MR_USE_TRAIL
 
     return KEEP_INTERACTING;
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static void
 MR_trace_cmd_nondet_stack_2(MR_EventInfo *event_info, MR_bool detailed,
@@ -1567,7 +1543,7 @@ MR_update_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
         if (! MR_get_int_hash_table_contents(*table_cur_ptr,
             &values, &value_next))
         {
-            /* there are no values in this trie node */
+            // There are no values in this trie node.
             call_table_arg_ptr->MR_cta_valid = MR_FALSE;
             return MR_TRUE;
         }
@@ -1582,7 +1558,7 @@ MR_update_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
     if (call_table_arg_ptr->MR_cta_int_cur_index
         >= call_table_arg_ptr->MR_cta_int_value_next)
     {
-        /* we have already returned all the values in this trie node */
+        // We have already returned all the values in this trie node.
         call_table_arg_ptr->MR_cta_valid = MR_FALSE;
         return MR_TRUE;
     }
@@ -1618,7 +1594,7 @@ MR_update_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
         if (! MR_get_float_hash_table_contents(*table_cur_ptr,
             &values, &value_next))
         {
-            /* there are no values in this trie node */
+            // There are no values in this trie node.
             call_table_arg_ptr->MR_cta_valid = MR_FALSE;
             return MR_TRUE;
         }
@@ -1633,7 +1609,7 @@ MR_update_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
     if (call_table_arg_ptr->MR_cta_float_cur_index
         >= call_table_arg_ptr->MR_cta_float_value_next)
     {
-        /* we have already returned all the values in this trie node */
+        // We have already returned all the values in this trie node.
         call_table_arg_ptr->MR_cta_valid = MR_FALSE;
         return MR_TRUE;
     }
@@ -1669,7 +1645,7 @@ MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
         if (! MR_get_string_hash_table_contents(*table_cur_ptr,
             &values, &value_next))
         {
-            /* there are no values in this trie node */
+            // There are no values in this trie node.
             call_table_arg_ptr->MR_cta_valid = MR_FALSE;
             return MR_TRUE;
         }
@@ -1684,7 +1660,7 @@ MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
     if (call_table_arg_ptr->MR_cta_string_cur_index
         >= call_table_arg_ptr->MR_cta_string_value_next)
     {
-        /* we have already returned all the values in this trie node */
+        // We have already returned all the values in this trie node.
         call_table_arg_ptr->MR_cta_valid = MR_FALSE;
         return MR_TRUE;
     }
@@ -2060,12 +2036,10 @@ MR_print_pseudo_type_info(FILE *fp, MR_PseudoTypeInfo pseudo)
     }
 }
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
-/*
-** It is better to have a single completion where possible,
-** so don't include `-d' here.
-*/
+// It is better to have a single completion where possible,
+// so don't include `-d' here.
 
 const char *const    MR_trace_nondet_stack_cmd_args[] =
     { "--detailed", NULL };
@@ -2073,7 +2047,7 @@ const char *const    MR_trace_nondet_stack_cmd_args[] =
 const char *const    MR_trace_stats_cmd_args[] =
     { "procs", "labels", "var_names", "io_tabling", NULL };
 
-/****************************************************************************/
+////////////////////////////////////////////////////////////////////////////
 
 static struct MR_option MR_trace_nondet_stack_opts[] =
 {

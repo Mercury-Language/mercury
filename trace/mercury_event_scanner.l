@@ -1,15 +1,11 @@
 %{
-/*
-** vim: ts=4 sw=4 et
-*/
-/*
-** Copyright (C) 2006-2007, 2009 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
-/*
-** Scanner for solver event specifications.
-*/
+// vim: ts=4 sw=4 expandtab ft=lex
+
+// Copyright (C) 2006-2007, 2009 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// Scanner for solver event specifications.
 
 #ifndef __USE_SVID
 #define __USE_SVID
@@ -29,9 +25,9 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "mercury_conf.h"		/* for MR_HAVE_UNISTD_H */
-#include "mercury_misc.h"               /* for MR_fatal_error */
-#include "mercury_trace_term.h"         /* for MR_Cterm etc */
+#include "mercury_conf.h"               // for MR_HAVE_UNISTD_H
+#include "mercury_misc.h"               // for MR_fatal_error
+#include "mercury_trace_term.h"         // for MR_Cterm etc
 
 #include "mercury_event_spec.h"
 #include "mercury_event_spec_missing.h"
@@ -41,12 +37,9 @@
 #define YY_NO_UNISTD_H
 #endif
 
-
-/*
-** We should #include mercury_event_scanner.h as well, but flex puts into the
-** header file it creates a #undef for a macro it needs, so #including
-** mercury_event_scanner.h leads to compilation failure.
-*/
+// We should #include mercury_event_scanner.h as well, but flex puts into the
+// header file it creates a #undef for a macro it needs, so #including
+// mercury_event_scanner.h leads to compilation failure.
 
 #undef  mercury_event_yywrap
 #define YY_NO_UNPUT
@@ -60,24 +53,20 @@ extern  void    mercury_event_init(void);
 const char      *mercury_event_filename = "no input file";
 int             mercury_event_linenum = 1;
 
-/*
-** Add the declarations for local functions that flex is too lazy to add.
-**
-** These functions should be static, but flex defines them as non-static,
-** and we cannot declare them to be static without risking error messages
-** from mgnuc about mixing static declarations with non-static definitions.
-*/
-
+// Add the declarations for local functions that flex is too lazy to add.
+//
+// These functions should be static, but flex defines them as non-static,
+// and we cannot declare them to be static without risking error messages
+// from mgnuc about mixing static declarations with non-static definitions.
 
 int     mercury_event_get_lineno(void);
 FILE    *mercury_event_get_in(void);
 FILE    *mercury_event_get_out(void);
-/*
-** flex can generate different return values for the following function
-** depending on the platform, so we don't provide a declaration to avoid
-** potential compilation errors.
-int     mercury_event_get_leng(void);
-*/
+// Flex can generate different return values for the this function
+// depending on the platform, so we don't provide a declaration to avoid
+// potential compilation errors.
+// int  mercury_event_get_leng(void);
+
 char    *mercury_event_get_text(void);
 void    mercury_event_set_lineno(int line_number);
 void    mercury_event_set_in(FILE *in_str);

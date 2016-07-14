@@ -1,39 +1,34 @@
-/*
-** vim: ts=4 sw=4 expandtab ft=c
-*/
-/*
-** Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
-** Public License - see the file COPYING.LIB in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
 
-/*
-** The implementation of {det,semi,non}_call_port_code_{ac,sr}.
-**
-** The code including this file should define the following macros:
-**
-** MR_PROCNAME:                 The name of the procedure whose body this is.
-** MR_VERSION_AC or MR_VERSION_SR:
-**                              Says whether the procedure whose body this is
-**                              is intended for use with or without
-**                              MR_USE_ACTIVATION_COUNTS.
-** MR_NEED_NEW_OUTERMOST:       Says whether we need to know the new value of
-**                              the outermost activation pointer. Should be
-**                              true only for non_call_port_code_*.
-**
-** The code including this file should have the following variables in scope:
-**
-** ProcLayout:                  The proc_layout of the procedure whose call
-**                              port we are at.
-** MiddleCSD:                   The id of the current csd.
-** TopCSD:                      The id of the parent's csd.
-** OldOutermostActivationPtr:   The id of the outermost activation of the
-**                              current user procedure before the call.
-**                              Needed only with MR_VERSION_SR.
-** NewOutermostActivationPtr:   The id of the outermost activation of the
-**                              current user procedure after the call.
-**                              Needed only with MR_NEED_NEW_OUTERMOST.
-*/
+// Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+
+// The implementation of {det,semi,non}_call_port_code_{ac,sr}.
+//
+// The code including this file should define the following macros:
+//
+// MR_PROCNAME:                 The name of the procedure whose body this is.
+// MR_VERSION_AC or MR_VERSION_SR:
+//                              Says whether the procedure whose body this is
+//                              is intended for use with or without
+//                              MR_USE_ACTIVATION_COUNTS.
+// MR_NEED_NEW_OUTERMOST:       Says whether we need to know the new value of
+//                              the outermost activation pointer. Should be
+//                              true only for non_call_port_code_*.
+//
+// The code including this file should have the following variables in scope:
+//
+// ProcLayout:                  The proc_layout of the procedure whose call
+//                              port we are at.
+// MiddleCSD:                   The id of the current csd.
+// TopCSD:                      The id of the parent's csd.
+// OldOutermostActivationPtr:   The id of the outermost activation of the
+//                              current user procedure before the call.
+//                              Needed only with MR_VERSION_SR.
+// NewOutermostActivationPtr:   The id of the outermost activation of the
+//                              current user procedure after the call.
+//                              Needed only with MR_NEED_NEW_OUTERMOST.
 
 #ifdef MR_DEEP_PROFILING
 {
@@ -43,7 +38,7 @@
 
   #ifdef MR_EXEC_TRACE
     if (! MR_disable_deep_profiling_in_debugger) {
-    /* The matching parenthesis is at the end of the file */
+    // The matching parenthesis is at the end of the file
   #endif
 
     MR_enter_instrumentation();
@@ -76,7 +71,7 @@
     #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
     csd->MR_csd_own.MR_own_calls++;
     #else
-    /* calls are computed from the other counts */
+    // Calls are computed from the other counts.
     #endif
   #endif
 
@@ -86,8 +81,8 @@
   #endif
 
   #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
-    /* After we copy it, MR_next_call_site_dynamic is not meaningful; */
-    /* zeroing it makes debugging output less cluttered.              */
+    // After we copy it, MR_next_call_site_dynamic is not meaningful;
+    // zeroing it makes debugging output less cluttered.
     MR_next_call_site_dynamic = NULL;
   #endif
 
@@ -169,7 +164,7 @@
     MR_leave_instrumentation();
 
   #ifdef MR_EXEC_TRACE
-    /* The matching parenthesis is at the start of the file */
+    // The matching parenthesis is at the start of the file.
     }
   #endif
 }
