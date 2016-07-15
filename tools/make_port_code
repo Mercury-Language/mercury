@@ -297,7 +297,7 @@ void mercury_sys_init_${module}_init_type_tables(void)
 }
 
 #ifdef  MR_DEEP_PROFILING
-void merc/ry_sys_init_${module}_write_out_proc_statics(FILE *fp)
+void mercury_sys_init_${module}_write_out_proc_statics(FILE *fp)
 {
     // No proc_statics to write out.
 }
