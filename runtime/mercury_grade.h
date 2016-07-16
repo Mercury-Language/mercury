@@ -346,7 +346,8 @@
   // The trail handler will be thoroughly confused by such a sequence.
   //
   // Until we can figure out (and implement) a fix for this problem,
-  // trailing cannot be used together with either form ofminimal model tabling.
+  // trailing cannot be used together with either form of minimal model
+  // tabling.
 
   #if defined(MR_USE_TRAIL)
     #error "trailing and minimal model tabling are not compatible"
