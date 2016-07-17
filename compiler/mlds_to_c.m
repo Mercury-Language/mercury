@@ -455,7 +455,7 @@ mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
     mlds_output_init_fn_defns(Opts, MLDS_ModuleName, FuncDefns,
         TypeCtorInfoDefns, AllocSites, InitPreds, FinalPreds, !IO),
     io.nl(!IO),
-    mlds_output_grade_var(!IO),
+    mlds_output_grade_check_fn_defn(MLDS_ModuleName, !IO),
     io.nl(!IO),
     mlds_output_src_end(Indent, ModuleName, !IO).
 
@@ -672,15 +672,16 @@ mlds_output_auto_gen_comment(Opts, ModuleName, !IO) :-
     % file gets compiled with. This ensures that we don't try to link objects
     % files compiled in different grades.
     %
-:- pred mlds_output_grade_var(io::di, io::uo) is det.
+:- pred mlds_output_grade_check_fn_defn(mlds_module_name::in, io::di, io::uo) is det.
 
-mlds_output_grade_var(!IO) :-
+mlds_output_grade_check_fn_defn(ModuleName, !IO) :-
     io.write_string(
-        "/* ensure everything is compiled with the same grade */\n",
+        "// Ensure everything is compiled with the same grade.\n",
         !IO),
-    io.write_string(
-        "static const void *const MR_grade = &MR_GRADE_VAR;\n",
-        !IO).
+    output_grade_check_fn_name(ModuleName, !IO),
+    io.write_string("\n{\n", !IO),
+    io.write_string("    return &MR_GRADE_VAR;\n", !IO),
+    io.write_string("}\n", !IO).
 
     % Get the foreign code for C.
     %
@@ -729,7 +730,9 @@ mlds_output_init_fn_decls(ModuleName, InitPreds, FinalPreds, !IO) :-
         FinalPreds = [_ | _],
         output_required_fn_name(ModuleName, "required_final", !IO),
         io.write_string(";\n", !IO)
-    ).
+    ),
+    output_grade_check_fn_name(ModuleName, !IO),
+    io.write_string(";\n", !IO).
 
 :- pred mlds_output_init_fn_defns(mlds_to_c_opts::in, mlds_module_name::in,
     list(mlds_defn)::in, list(mlds_defn)::in,
@@ -846,6 +849,20 @@ output_required_fn_name(ModuleName, Suffix, !IO) :-
     io.write_string("__", !IO),
     io.write_string(Suffix, !IO),
     io.write_string("(void)", !IO).
+
+:- pred output_grade_check_fn_name(mlds_module_name::in,
+    io::di, io::uo) is det.
+
+output_grade_check_fn_name(ModuleName, !IO) :-
+    ModuleNameString0 = sym_name_mangle(
+        mlds_module_name_to_sym_name(ModuleName)),
+    ( if string.prefix(ModuleNameString0, "mercury__") then
+        ModuleNameString = ModuleNameString0
+    else
+        ModuleNameString = "mercury__" ++ ModuleNameString0
+    ),
+    io.format("const char *%s__grade_check(void)",
+        [s(ModuleNameString)], !IO).
 
     % Generate calls to MR_init_entry() for the specified functions.
     %

@@ -619,9 +619,12 @@ static const char mercury_main_func[] =
     "\n"
     ;
 
-static const char mercury_grade_var[] =
-    "/* ensure that everything gets compiled in the same grade */\n"
-    "static const void *const MR_grade = &MR_GRADE_VAR;\n"
+static const char mercury_grade_check_func[] =
+    "// Ensure that everything gets compiled in the same grade.\n"
+    "const char *mercury_init_grade_check(void)\n"
+    "{\n"
+    "    return &MR_GRADE_VAR;\n"
+    "}\n"
     "\n"
     ;
 
@@ -1201,7 +1204,7 @@ output_main(void)
         fputs(mercury_main_func, stdout);
     }
 
-    fputs(mercury_grade_var, stdout);
+    fputs(mercury_grade_check_func, stdout);
 
     if (output_main_func) {
         fputs(main_func, stdout);

@@ -482,6 +482,10 @@ output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
         io.write_string("required_final(void);\n", !IO)
     ),
 
+    io.write_string("const char *", !IO),
+    output_init_name(ModuleName, !IO),
+    io.write_string("grade_check(void);\n", !IO),
+
     io.write_string("\n", !IO),
 
     io.write_string("void ", !IO),
@@ -609,14 +613,19 @@ output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
         io.write_string("required_final(void)\n", !IO),
         io.write_string("{\n", !IO),
         output_required_init_or_final_calls(FinalPredNames, !IO),
-        io.write_string("}\n", !IO)
+        io.write_string("}\n", !IO),
+        io.nl(!IO)
     ),
 
     io.write_string(
-        "/* ensure everything is compiled with the same grade */\n",
+        "// Ensure everything is compiled with the same grade.\n",
         !IO),
-    io.write_string(
-        "static const void *const MR_grade = &MR_GRADE_VAR;\n", !IO).
+    io.write_string("const char *", !IO),
+    output_init_name(ModuleName, !IO),
+    io.write_string("grade_check(void)\n", !IO),
+    io.write_string("{\n", !IO),
+    io.write_string("    return &MR_GRADE_VAR;\n", !IO),
+    io.write_string("}\n", !IO).
 
 :- pred module_defines_label_with_layout(llds_out_info::in,
     annotated_c_module::in) is semidet.
