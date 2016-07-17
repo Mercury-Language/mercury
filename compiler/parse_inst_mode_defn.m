@@ -47,7 +47,6 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module bag.
-:- import_module bool.
 :- import_module cord.
 :- import_module maybe.
 :- import_module set.

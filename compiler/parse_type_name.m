@@ -103,7 +103,6 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
-:- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module require.

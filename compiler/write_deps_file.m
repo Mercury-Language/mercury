@@ -133,7 +133,6 @@
 :- import_module require.
 :- import_module sparse_bitset.
 :- import_module string.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

@@ -11,6 +11,7 @@ MCFLAGS-arg_order_rearrangment	= --introduce-accumulators \
 					--excess-assign --common-struct \
 					--trace-optimized
 
+MCFLAGS-bug412		= --warn-unused-imports
 MCFLAGS-duplicate_call		= --warn-duplicate-calls
 MCFLAGS-duplicate_const		= --warn-duplicate-calls
 MCFLAGS-unused_args_analysis    = --intermodule-analysis \

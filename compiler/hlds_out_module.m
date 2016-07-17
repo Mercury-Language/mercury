@@ -630,21 +630,41 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
         io.write_string("% abstract", !IO)
     ;
         Body = instance_body_concrete(Methods),
-        io.write_string("% Instance Methods: ", !IO),
-        mercury_output_instance_methods(Methods, !IO)
+        io.write_string("% Instance methods:\n", !IO),
+        write_instance_methods(Methods, Indent, 1, !IO)
     ),
     io.nl(!IO),
 
     (
         MaybePredProcIds = yes(PredProcIds),
         write_indent(Indent, !IO),
-        io.write_string("% procedures: ", !IO),
+        io.write_string("% Procedures: ", !IO),
         io.write(PredProcIds, !IO),
         io.nl(!IO)
     ;
         MaybePredProcIds = no
     ),
     write_constraint_proof_map(VarSet, VarNamePrint, Indent, ProofMap, !IO).
+
+:- pred write_instance_methods(list(instance_method)::in, int::in, int::in,
+    io::di, io::uo) is det.
+
+write_instance_methods([], _, _, !IO).
+write_instance_methods([Method | Methods], Indent, !.CurMethodNum, !IO) :-
+    Method = instance_method(PredOrFunc, MethodName, _Defn, Arity, _Context),
+    write_indent(Indent, !IO),
+    io.format("%% method %d, %s %s/%d\n",
+        [i(!.CurMethodNum), s(pred_or_func_to_str(PredOrFunc)),
+        s(sym_name_to_string(MethodName)), i(Arity)], !IO),
+    mercury_output_instance_method(Method, !IO),
+    (
+        Methods = [_ | _],
+        io.write_string(",\n", !IO),
+        !:CurMethodNum = !.CurMethodNum + 1,
+        write_instance_methods(Methods, Indent, !.CurMethodNum, !IO)
+    ;
+        Methods = []
+    ).
 
 %-----------------------------------------------------------------------------%
 %

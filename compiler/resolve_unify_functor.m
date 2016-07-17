@@ -64,12 +64,10 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
-:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module string.
 :- import_module term_io.
 :- import_module varset.
 

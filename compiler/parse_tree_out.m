@@ -95,11 +95,11 @@
 
 %---------------------------------------------------------------------------%
 %
-% Output some components of instance definitions.
+% Output some components of an instance definition.
 %
 
-:- pred mercury_output_instance_methods(list(instance_method)::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_instance_method(instance_method::in, io::di, io::uo)
+    is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -125,13 +125,10 @@
 :- import_module recompilation.version.
 
 :- import_module bool.
-:- import_module char.
 :- import_module cord.
 :- import_module map.
-:- import_module ops.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -1328,12 +1325,13 @@ mercury_output_item_instance(_, ItemInstance, !IO) :-
     ),
     io.write_string(".\n", !IO).
 
+:- pred mercury_output_instance_methods(list(instance_method)::in,
+    io::di, io::uo) is det.
+
 mercury_output_instance_methods(Methods, !IO) :-
-    io.write_list(Methods, ",\n", output_instance_method, !IO).
+    io.write_list(Methods, ",\n", mercury_output_instance_method, !IO).
 
-:- pred output_instance_method(instance_method::in, io::di, io::uo) is det.
-
-output_instance_method(Method, !IO) :-
+mercury_output_instance_method(Method, !IO) :-
     Method = instance_method(PredOrFunc, MethodName, Defn, Arity, _Context),
     (
         Defn = instance_proc_def_name(PredName),

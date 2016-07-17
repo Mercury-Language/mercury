@@ -176,7 +176,6 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module string.
 
 :- type bt_array(T)
     --->    bt_array(int, int, ra_list(T)).

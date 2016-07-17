@@ -131,9 +131,7 @@
 
 :- import_module libs.lp_rational.
 
-:- import_module bool.
 :- import_module map.
-:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%

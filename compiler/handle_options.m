@@ -78,7 +78,6 @@
 :- import_module mdbcomp.feedback.
 
 :- import_module bool.
-:- import_module char.
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module int.

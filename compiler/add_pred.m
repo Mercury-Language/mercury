@@ -96,7 +96,6 @@
 :- import_module bool.
 :- import_module map.
 :- import_module require.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 

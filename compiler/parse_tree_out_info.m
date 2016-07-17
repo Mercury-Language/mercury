@@ -130,7 +130,6 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
-:- import_module ops.
 :- import_module string.
 :- import_module term_io.
 

@@ -79,8 +79,6 @@
 
 :- import_module parse_tree.parse_tree_out_term.
 
-:- import_module bool.
-
 %---------------------------------------------------------------------------%
 
 parse_possibly_repeated_vars(Term, VarSet, ContextPieces, MaybeVars) :-

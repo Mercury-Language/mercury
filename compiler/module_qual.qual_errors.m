@@ -166,6 +166,8 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
+:- import_module string.
+
 %---------------------------------------------------------------------------%
 %
 % Error reporting predicates.

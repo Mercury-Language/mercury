@@ -116,7 +116,6 @@
 :- import_module assoc_list.
 :- import_module char.
 :- import_module int.
-:- import_module ops.
 :- import_module pair.
 :- import_module require.
 :- import_module set.

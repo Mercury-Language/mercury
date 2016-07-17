@@ -207,7 +207,6 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.

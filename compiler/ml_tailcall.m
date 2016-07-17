@@ -90,7 +90,6 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

@@ -177,7 +177,6 @@
 :- import_module mdb.sized_pretty.
 
 :- import_module bool.
-:- import_module char.
 :- import_module deconstruct.
 :- import_module getopt.
 :- import_module int.

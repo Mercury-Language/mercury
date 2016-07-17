@@ -128,10 +128,6 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
-:- import_module bool.
-:- import_module char.
-:- import_module ops.
-:- import_module string.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%

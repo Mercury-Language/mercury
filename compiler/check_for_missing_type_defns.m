@@ -46,7 +46,6 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
-:- import_module string.
 
 check_for_missing_type_defns(ModuleInfo, Specs) :-
     module_info_get_type_table(ModuleInfo, TypeTable),

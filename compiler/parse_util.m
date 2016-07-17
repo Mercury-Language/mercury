@@ -121,8 +121,6 @@
 
 :- import_module parse_tree.parse_sym_name.
 
-:- import_module bool.
-
 %---------------------------------------------------------------------------%
 
 parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-

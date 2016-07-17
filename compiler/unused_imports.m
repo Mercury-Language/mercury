@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2016 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,10 +63,12 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
+:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -314,37 +316,102 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
     % of the parents to the set of used modules, as an import in the parent
     % may only be consumed by the parent.
     module_info_get_used_modules(ModuleInfo, !:UsedModules),
-
-    % We do not want to generate unused module warnings for implicitly
-    % imported modules, since the user cannot prevent their imports.
-    % We therefore include them as "used" modules.
-    ImplicitImports = all_builtin_modules,
-    list.foldl(record_module_and_ancestors_as_used(visibility_public),
-        ImplicitImports, !UsedModules),
+    UsedModulesInit = !.UsedModules,
 
     module_info_get_type_table(ModuleInfo, TypeTable),
     foldl_over_type_ctor_defns(type_used_modules, TypeTable, !UsedModules),
+    UsedModulesTypeCtor = !.UsedModules,
 
     module_info_get_inst_table(ModuleInfo, InstTable),
     inst_table_get_user_insts(InstTable, UserInstTable),
     map.foldl(user_inst_used_modules, UserInstTable, !UsedModules),
+    UsedModulesUserInst = !.UsedModules,
 
     module_info_get_mode_table(ModuleInfo, ModeTable),
     mode_table_get_mode_defns(ModeTable, ModeDefns),
     map.foldl(mode_used_modules, ModeDefns, !UsedModules),
-
-    module_info_get_class_table(ModuleInfo, ClassTable),
-    map.foldl(class_used_modules, ClassTable, !UsedModules),
-
-    module_info_get_instance_table(ModuleInfo, InstanceTable),
-    map.foldl(class_instances_used_modules, InstanceTable, !UsedModules),
+    UsedModulesMode = !.UsedModules,
 
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
     const_struct_db_get_structs(ConstStructDb, ConstStructs),
     list.foldl(const_struct_used_modules, ConstStructs, !UsedModules),
+    UsedModulesConstStruct = !.UsedModules,
 
     module_info_get_preds(ModuleInfo, PredTable),
-    map.foldl(pred_info_used_modules, PredTable, !UsedModules).
+    map.foldl(pred_info_used_modules, PredTable, !UsedModules),
+    UsedModulesPredInfo = !.UsedModules,
+
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    map.foldl(class_used_modules, ClassTable, !UsedModules),
+    UsedModulesClass = !.UsedModules,
+
+    module_info_get_name(ModuleInfo, ThisModuleName),
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
+    map.foldl(class_instances_used_modules(ThisModuleName),
+        InstanceTable, !UsedModules),
+    UsedModulesInstance = !.UsedModules,
+
+    % We do not want to generate unused module warnings for implicitly
+    % imported modules, since the user cannot prevent their imports.
+    % We therefore include them as "used" modules.
+    % XXX We can do better in two different ways.
+    % (1) Instead of considering *all* builtin modules to be used,
+    % we could record the set of modules that we *actually* implicitly import,
+    % and add only *those* to !UsedModules.
+    % (2) While the usual message about the module being unused is not
+    % appropriate for implicitly imported modules, we may want to report
+    % a warning if any module that the compiler imports implicitly
+    % is *also* imported *explicitly* by the user.
+    ImplicitImports = all_builtin_modules,
+    list.foldl(record_module_and_ancestors_as_used(visibility_public),
+        ImplicitImports, !UsedModules),
+    UsedModulesBuiltin = !.UsedModules,
+
+    UsedModulesHistory = [
+        "initial" - UsedModulesInit,
+        "type_ctor_defns" - UsedModulesTypeCtor,
+        "user_insts" - UsedModulesUserInst,
+        "modes" - UsedModulesMode,
+        "pred_infos" - UsedModulesPredInfo,
+        "const_structs" - UsedModulesConstStruct,
+        "classes" - UsedModulesClass,
+        "instances" - UsedModulesInstance,
+        "builtin" - UsedModulesBuiltin
+    ],
+
+    trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+        dump_used_modules_history(set.init, set.init, UsedModulesHistory, !IO)
+    ).
+
+:- pred dump_used_modules_history(set(module_name)::in, set(module_name)::in,
+    assoc_list(string, used_modules)::in, io::di, io::uo) is det.
+
+dump_used_modules_history(_, _, [], !IO).
+dump_used_modules_history(!.IntUsed, !.ImpUsed, [Head | Tail], !IO) :-
+    Head = HeadStr - used_modules(HeadInt, HeadImp),
+    set.difference(HeadInt, !.IntUsed, NewHeadInt),
+    set.difference(HeadImp, !.ImpUsed, NewHeadImp),
+    io.format("modules added at stage %s\n", [s(HeadStr)], !IO),
+    ( if set.is_empty(NewHeadInt) then
+        true
+    else
+        io.write_string("interface:\n", !IO),
+        set.to_sorted_list(NewHeadInt, NewHeadIntList),
+        io.write(NewHeadIntList, !IO),
+        io.nl(!IO)
+    ),
+    ( if set.is_empty(NewHeadImp) then
+        true
+    else
+        io.write_string("implementation:\n", !IO),
+        set.to_sorted_list(NewHeadImp, NewHeadImpList),
+        io.write(NewHeadImpList, !IO),
+        io.nl(!IO)
+    ),
+
+    set.union(HeadInt, !IntUsed),
+    set.union(HeadImp, !ImpUsed),
+    dump_used_modules_history(!.IntUsed, !.ImpUsed, Tail, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -381,17 +448,17 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
 
 ctor_used_modules(Visibility, Ctor, !UsedModules) :-
     Ctor = ctor(_, Constraints, _, Args, _, _),
-    list.foldl(prog_constraint_used_module(Visibility), Constraints,
+    list.foldl(prog_constraint_used_modules(Visibility), Constraints,
         !UsedModules),
     list.foldl(
-        (pred(Arg::in, !.M::in, !:M::out) is det :-
+        ( pred(Arg::in, !.M::in, !:M::out) is det :-
             mer_type_used_modules(Visibility, Arg ^ arg_type, !M)
         ), Args, !UsedModules).
 
-:- pred prog_constraint_used_module(item_visibility::in, prog_constraint::in,
+:- pred prog_constraint_used_modules(item_visibility::in, prog_constraint::in,
     used_modules::in, used_modules::out) is det.
 
-prog_constraint_used_module(Visibility, Constraint, !UsedModules) :-
+prog_constraint_used_modules(Visibility, Constraint, !UsedModules) :-
     Constraint = constraint(ClassName, ArgTypes),
     record_sym_name_module_as_used(Visibility, ClassName, !UsedModules),
     list.foldl(mer_type_used_modules(Visibility), ArgTypes, !UsedModules).
@@ -453,7 +520,7 @@ class_used_modules(class_id(Name, _Arity), ClassDefn, !UsedModules) :-
         DefinedInThisModule = yes,
         Visibility = typeclass_visibility(TypeClassStatus),
         record_sym_name_module_as_used(Visibility, Name, !UsedModules),
-        list.foldl(prog_constraint_used_module(Visibility),
+        list.foldl(prog_constraint_used_modules(Visibility),
             ClassDefn ^ classdefn_supers, !UsedModules)
     ;
         DefinedInThisModule = no
@@ -462,48 +529,43 @@ class_used_modules(class_id(Name, _Arity), ClassDefn, !UsedModules) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred class_instances_used_modules(class_id::in,
-    list(hlds_instance_defn)::in, used_modules::in, used_modules::out) is det.
-
-class_instances_used_modules(ClassId, InstanceDefns, !UsedModules) :-
-    list.foldl(instance_used_modules(ClassId), InstanceDefns, !UsedModules).
-
-:- pred instance_used_modules(class_id::in, hlds_instance_defn::in,
+:- pred class_instances_used_modules(module_name::in,
+    class_id::in, list(hlds_instance_defn)::in,
     used_modules::in, used_modules::out) is det.
 
-instance_used_modules(ClassId, InstanceDefn, !UsedModules) :-
-    ClassId = class_id(Name, _Arity),
-    InstanceDefn = hlds_instance_defn(_InstanceModule, Types, _OriginalTypes,
-        InstanceStatus, _Context, Constraints, _Body,
+class_instances_used_modules(ThisModuleName,
+        ClassId, InstanceDefns, !UsedModules) :-
+    list.foldl(instance_used_modules(ThisModuleName, ClassId),
+        InstanceDefns, !UsedModules).
+
+:- pred instance_used_modules(module_name::in,
+    class_id::in, hlds_instance_defn::in,
+    used_modules::in, used_modules::out) is det.
+
+instance_used_modules(ThisModuleName, ClassId, InstanceDefn, !UsedModules) :-
+    ClassId = class_id(ClassName, ClassArity),
+    InstanceDefn = hlds_instance_defn(InstanceModuleName,
+        Types, _OriginalTypes, InstanceStatus, _Context, Constraints, _Body,
         _MaybePredProcIds, _VarSet, _ProofMap),
 
-    Visibility = instance_visibility(InstanceStatus),
-    % XXX When it sees an abstract instance declaration, the code of
-    % add_pass_2_instance makes the status of the instance abstract,
-    % but it does so by effectively setting ImportStatus to abstract_imported,
-    % the second half of which is a lie.
-    %
-    % We should process Name and Types only if the instance is defined
-    % in this module, but we cannot trust the value of DefinedInThisModule
-    % in these cases. Since it is better to miss some warnings than to
-    % generate warnings for perfectly good code, we always process them.
-    %
-    % The Constraints will be empty for instances in which DefinedInThisModule
-    % is wrong, so it is OK to traverse them only if DefinedInThisModule = yes.
-    record_sym_name_module_as_used(Visibility, Name, !UsedModules),
-    list.foldl(mer_type_used_modules(Visibility), Types, !UsedModules),
+    trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+        io.format("instance_used_modules: class id %s/%d, instance in %s\n",
+            [s(sym_name_to_string(ClassName)), i(ClassArity),
+            s(sym_name_to_string(InstanceModuleName))], !IO)
+    ),
 
-    DefinedInThisModule =
-        instance_status_defined_in_this_module(InstanceStatus),
-    (
-        DefinedInThisModule = yes,
-        % The methods of the class are stored in the pred_table and hence
-        % will be processed by pred_info_used_modules.
-        % XXX is this true?
-        list.foldl(prog_constraint_used_module(Visibility), Constraints,
+    ( if ThisModuleName = InstanceModuleName then
+        Visibility = instance_visibility(InstanceStatus),
+        record_sym_name_module_as_used(Visibility, ClassName, !UsedModules),
+        list.foldl(mer_type_used_modules(Visibility), Types, !UsedModules),
+
+        list.foldl(prog_constraint_used_modules(Visibility), Constraints,
             !UsedModules)
-    ;
-        DefinedInThisModule = no
+
+        % The methods of the class are stored in the pred_table,
+        % and thus should have been processed by pred_info_used_modules.
+    else
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -540,21 +602,24 @@ const_struct_arg_used_modules(ConstStructArg, !UsedModules) :-
 :- pred pred_info_used_modules(pred_id::in, pred_info::in,
     used_modules::in, used_modules::out) is det.
 
-pred_info_used_modules(_PredId, PredInfo, !UsedModules) :-
+pred_info_used_modules(PredId, PredInfo, !UsedModules) :-
     pred_info_get_status(PredInfo, PredStatus),
     DefinedInThisModule = pred_status_defined_in_this_module(PredStatus),
     (
         DefinedInThisModule = yes,
-        Visibility = pred_visibility(PredStatus),
 
-        pred_info_get_arg_types(PredInfo, Args),
-        list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules),
+        trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+            io.format("examining pred_info of pred_id %d\n",
+                [i(pred_id_to_int(PredId))], !IO)
+        ),
+
+        Visibility = pred_visibility(PredStatus),
 
         pred_info_get_class_context(PredInfo, Constraints),
         Constraints = constraints(UnivConstraints, ExistConstraints),
-        list.foldl(prog_constraint_used_module(Visibility),
+        list.foldl(prog_constraint_used_modules(Visibility),
             UnivConstraints, !UsedModules),
-        list.foldl(prog_constraint_used_module(Visibility),
+        list.foldl(prog_constraint_used_modules(Visibility),
             ExistConstraints, !UsedModules),
 
         pred_info_get_proc_table(PredInfo, ProcTable),
@@ -563,13 +628,38 @@ pred_info_used_modules(_PredId, PredInfo, !UsedModules) :-
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_used_modules(ClausesInfo, !UsedModules)
     ;
-        DefinedInThisModule = no
+        DefinedInThisModule = no,
+
+        trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+            io.format("NOT examining pred_info of pred_id %d\n",
+                [i(pred_id_to_int(PredId))], !IO)
+        )
     ).
 
 :- pred proc_info_used_modules(item_visibility::in, proc_id::in, proc_info::in,
     used_modules::in, used_modules::out) is det.
 
 proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
+    % In some rare cases, the type of a variable can refer to a module
+    % that is used nowhere else in the module, not even in the types of
+    % the arguments of the procedure. The instance method predicate
+    % for the function method named "analyses" defined in mmc_analysis.m
+    % demonstrates such a case. In this case, the function returns a value
+    % of an tuple type with existentially-typed slots, and some of the
+    % clauses of the function fill in the existentially-typed slots
+    % in the tuple with references to types that are defined in modules
+    % that not used anywhere else in mmc_analysis.m.
+    %
+    % Looking through the types of all the variables is significantly slower
+    % than looking through just the types of the arguments, but the above
+    % shows that it is needed for correctness. Looking through types
+    % in all the proc_infos in a pred_info should not be a problem,
+    % given that the average number of proc_infos per pred_info typically
+    % hovers in the 1.01-to-1.2 range.
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    map.foldl_values(mer_type_used_modules(Visibility), VarTypes,
+        !UsedModules),
+
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
     (
         MaybeArgModes = yes(Modes),

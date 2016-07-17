@@ -80,7 +80,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module string.
 :- import_module varset.
 
 %----------------------------------------------------------------------------%

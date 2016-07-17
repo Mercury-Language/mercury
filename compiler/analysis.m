@@ -48,6 +48,12 @@
 
     % Describe the analyses which can be performed by a compiler.
     %
+    % XXX This should be a predicate, for two reasons. First, the main mode
+    % of a function should not be semidet. Second, this method should have
+    % two modes: the present <in, in, out> mode, and a new <in, out, out> mode,
+    % since that would allow a caller to discover the set of supported
+    % analyses.
+    %
     func analyses(Compiler, analysis_name) = analysis_type is semidet,
 
     % module_name_to_read_file_name(Compiler, Globals, ModuleName, Ext,

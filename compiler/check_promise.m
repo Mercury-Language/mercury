@@ -56,7 +56,6 @@
 
 :- import_module bool.
 :- import_module require.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 

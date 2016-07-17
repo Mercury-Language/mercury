@@ -1,6 +1,5 @@
 import_in_parent.m:009: In module `import_in_parent':
 import_in_parent.m:009:   warning: module `bool' has a `:- import_module'
-import_in_parent.m:009:   declaration in the interface, but is not used in the
-import_in_parent.m:009:   interface.
+import_in_parent.m:009:   declaration, but is not used anywhere in the module.
 import_in_parent.m:027: In clause for predicate `foo'/1:
 import_in_parent.m:027:   error: undefined predicate `bool.foo'/1.
