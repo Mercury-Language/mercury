@@ -364,8 +364,8 @@ parse_result_entry(Compiler, Term, !Results) :-
             [VersionNumberTerm, FuncIdTerm,
             CallPatternTerm, AnswerPatternTerm, StatusTerm], _),
         StatusTerm = term.functor(term.atom(StatusString), [], _),
-        analysis_type(_ : unit(Call), _ : unit(Answer)) =
-            analyses(Compiler, AnalysisName),
+        analyses(Compiler, AnalysisName, Analysis),
+        analysis_type(_ : unit(Call), _ : unit(Answer)) = Analysis,
 
         parse_func_id(FuncIdTerm, FuncId),
         from_term(CallPatternTerm, CallPattern : Call),
@@ -418,8 +418,8 @@ parse_request_entry(Compiler, Term, !Requests) :-
         Term = term.functor(atom("->"), [CallerModuleTerm, RHS], _),
         RHS = term.functor(atom(AnalysisName),
             [VersionNumberTerm, FuncIdTerm, CallPatternTerm], _),
-        analysis_type(_ : unit(Call), _ : unit(Answer)) =
-            analyses(Compiler, AnalysisName),
+        analyses(Compiler, AnalysisName, Analysis),
+        analysis_type(_ : unit(Call), _ : unit(Answer)) = Analysis,
 
         try_parse_module_name(CallerModuleTerm, CallerModule),
         parse_func_id(FuncIdTerm, FuncId),
@@ -467,8 +467,8 @@ parse_imdg_arc(Compiler, Term, !Arcs) :-
         Term = term.functor(atom("->"), [DependentModuleTerm, ResultTerm], _),
         ResultTerm = functor(atom(AnalysisName),
             [VersionNumberTerm, FuncIdTerm, CallPatternTerm], _),
-        analysis_type(_ : unit(Call), _ : unit(Answer))
-            = analyses(Compiler, AnalysisName),
+        analyses(Compiler, AnalysisName, Analysis),
+        analysis_type(_ : unit(Call), _ : unit(Answer)) = Analysis,
 
         try_parse_module_name(DependentModuleTerm, DependentModule),
         parse_func_id(FuncIdTerm, FuncId),
@@ -764,8 +764,8 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
 write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
     Request = analysis_request(Call, CallerModule),
     ( if
-        analysis_type(_ : unit(Call), _ : unit(Answer))
-            = analyses(Compiler, AnalysisName)
+        analyses(Compiler, AnalysisName, Analysis),
+        analysis_type(_ : unit(Call), _ : unit(Answer)) = Analysis
     then
         VersionNumber = analysis_version_number(_ : Call, _ :  Answer)
     else
@@ -796,8 +796,8 @@ write_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
 write_imdg_arc(Compiler, AnalysisName, FuncId, Arc, !IO) :-
     Arc = imdg_arc(Call, DependentModule),
     ( if
-        analysis_type(_ : unit(Call), _ : unit(Answer))
-            = analyses(Compiler, AnalysisName)
+        analyses(Compiler, AnalysisName, Analysis),
+        analysis_type(_ : unit(Call), _ : unit(Answer)) = Analysis
     then
         VersionNumber = analysis_version_number(_ : Call, _ : Answer)
     else
@@ -1009,10 +1009,10 @@ init_analysis_unpicklers(Compiler) = Unpicklers :-
     <= compiler(Compiler).
 
 unpickle_analysis_result(Compiler, Unpicklers, Handle, _Type, Univ, !State) :-
-    unpickle(Unpicklers, Handle, Name : string, !State),
+    unpickle(Unpicklers, Handle, AnalysisName : string, !State),
     ( if
-        analysis_type(_ : unit(Call), _ : unit(Answer))
-            = analyses(Compiler, Name)
+        analyses(Compiler, AnalysisName, Analysis),
+        analysis_type(_ : unit(Call), _ : unit(Answer)) = Analysis
     then
         unpickle(Unpicklers, Handle, Call : Call, !State),
         unpickle(Unpicklers, Handle, Answer : Answer, !State),
@@ -1020,7 +1020,7 @@ unpickle_analysis_result(Compiler, Unpicklers, Handle, _Type, Univ, !State) :-
         Result = 'new some_analysis_result'(Call, Answer, Status),
         type_to_univ(Result, Univ)
     else
-        unexpected($module, $pred, Name)
+        unexpected($module, $pred, AnalysisName)
     ).
 
 % This is only needed so we can get the type_ctor_desc of

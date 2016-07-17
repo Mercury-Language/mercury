@@ -72,35 +72,38 @@
 :- instance compiler(mmc) where [
     compiler_name(mmc) = "mmc",
 
-    analyses(mmc, "mm_tabling_analysis") =
-        'new analysis_type'(
-            unit1 : unit(any_call),
-            unit1 : unit(mm_tabling_analysis_answer)),
-
-    analyses(mmc, "trail_usage") =
-        'new analysis_type'(
-            unit1 : unit(any_call),
-            unit1 : unit(trailing_analysis_answer)),
-
-    analyses(mmc, "exception_analysis") =
-        'new analysis_type'(
-            unit1 : unit(any_call),
-            unit1 : unit(exception_analysis_answer)),
-
-    analyses(mmc, "unused_args") =
-        'new analysis_type'(
-            unit1 : unit(unused_args_call),
-            unit1 : unit(unused_args_answer)),
-
-    analyses(mmc, "structure_sharing") =
-        'new analysis_type'(
-            unit1 : unit(structure_sharing_call),
-            unit1 : unit(structure_sharing_answer)),
-
-    analyses(mmc, "structure_reuse") =
-        'new analysis_type'(
-            unit1 : unit(structure_reuse_call),
-            unit1 : unit(structure_reuse_answer)),
+    analyses(mmc, Name, Analysis) :-
+        (
+            Name = "mm_tabling_analysis",
+            Analysis = 'new analysis_type'(
+                unit1 : unit(any_call),
+                unit1 : unit(mm_tabling_analysis_answer))
+        ;
+            Name = "trail_usage",
+            Analysis = 'new analysis_type'(
+                unit1 : unit(any_call),
+                unit1 : unit(trailing_analysis_answer))
+        ;
+            Name = "exception_analysis",
+            Analysis = 'new analysis_type'(
+                unit1 : unit(any_call),
+                unit1 : unit(exception_analysis_answer))
+        ;
+            Name = "unused_args",
+            Analysis = 'new analysis_type'(
+                unit1 : unit(unused_args_call),
+                unit1 : unit(unused_args_answer))
+        ;
+            Name = "structure_sharing",
+            Analysis = 'new analysis_type'(
+                unit1 : unit(structure_sharing_call),
+                unit1 : unit(structure_sharing_answer))
+        ;
+            Name = "structure_reuse",
+            Analysis = 'new analysis_type'(
+                unit1 : unit(structure_reuse_call),
+                unit1 : unit(structure_reuse_answer))
+        ),
 
     module_name_to_read_file_name(mmc, Globals, ModuleName, Ext,
             MaybeFileName, !IO) :-
