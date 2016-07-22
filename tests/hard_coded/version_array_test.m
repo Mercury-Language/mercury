@@ -132,6 +132,20 @@ main(!IO) :-
     else io.write_string("failed\n", !IO)
     ),
 
+    FromList1 = version_array.from_list([] : list(int)),
+    write_array("from_list([])", FromList1, !IO),
+    FromList2 = version_array.from_list([1]),
+    write_array("from_list([1])", FromList2, !IO),
+    FromList3 = version_array.from_list([1, 2]),
+    write_array("from_list([1, 2])", FromList3, !IO),
+
+    FromRevList1 = version_array.from_reverse_list([] : list(int)),
+    write_array("from_reverse_list([])", FromRevList1, !IO),
+    FromRevList2 = version_array.from_reverse_list([1]),
+    write_array("from_reverse_list([1])", FromRevList2, !IO),
+    FromRevList3 = version_array.from_reverse_list([2, 1]),
+    write_array("from_reverse_list([2, 1])", FromRevList3, !IO),
+
     true.
 
 :- pred test_exception((pred)::in((pred) is semidet),

@@ -114,6 +114,11 @@
     %
 :- func from_list(list(T)) = version_array(T).
 
+    % from_reverse_list(Xs) returns an array constructed from the items in the
+    % list Xs in reverse order.
+    %
+:- func from_reverse_list(list(T)) = version_array(T).
+
     % A ^ elem(I) = X iff the I'th member of A is X (the first item has
     % index 0).
     %
@@ -281,6 +286,20 @@ version_array_2(I, [X | Xs], !VA) :-
 
 from_list(Xs) = version_array(Xs).
 
+from_reverse_list([]) = version_array.empty.
+from_reverse_list([X | Xs]) = VA :-
+    NumElems = 1 + list.length(Xs),
+    VA0 = version_array.init(NumElems, X),
+    from_reverse_list_2(NumElems - 2, Xs, VA0, VA).
+
+:- pred from_reverse_list_2(int::in, list(T)::in,
+    version_array(T)::in, version_array(T)::out) is det.
+
+from_reverse_list_2(_, [], !VA).
+from_reverse_list_2(I, [X | Xs], !VA) :-
+    set(I, X, !VA),
+    from_reverse_list_2(I - 1, Xs, !VA).
+
 %---------------------------------------------------------------------------%
 
 :- pragma inline(version_array.elem/2).
@@ -288,7 +307,7 @@ from_list(Xs) = version_array(Xs).
 lookup(VA, I) = X :-
     ( if get_if_in_range(VA, I, X0) then
         X = X0
-      else
+    else
         out_of_bounds_error(I, max(VA), "version_array.lookup")
     ).
 
@@ -941,7 +960,7 @@ extern MR_Integer
 ML_va_size_dolock(ML_const_va_ptr);
 
 /*
-** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
+** If I is in range then ML_va_get(VA, I, &X) sets X to the I'th item
 ** in VA (counting from zero) and returns MR_TRUE. Otherwise it
 ** returns MR_FALSE.
 */
@@ -950,7 +969,7 @@ ML_va_get_dolock(ML_const_va_ptr, MR_Integer, MR_Word *);
 
 /*
 ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
-** updated with the Ith item as X (counting from zero) and
+** updated with the I'th item as X (counting from zero) and
 ** returns MR_TRUE. Otherwise it returns MR_FALSE.
 */
 extern MR_bool
@@ -984,7 +1003,7 @@ static MR_Integer
 ML_va_size(ML_const_va_ptr);
 
 /*
-** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
+** If I is in range then ML_va_get(VA, I, &X) sets X to the I'th item
 ** in VA (counting from zero) and returns MR_TRUE. Otherwise it
 ** returns MR_FALSE.
 */
@@ -993,7 +1012,7 @@ ML_va_get(ML_const_va_ptr VA, MR_Integer I, MR_Word *Xptr);
 
 /*
 ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
-** updated with the Ith item as X (counting from zero) and
+** updated with the I'th item as X (counting from zero) and
 ** returns MR_TRUE. Otherwise it returns MR_FALSE.
 */
 static MR_bool

@@ -169,6 +169,8 @@ Changes to the Mercury standard library:
 * We have added thread.spawn_native/4 to dedicate an OS thread to a Mercury
   thread. thread.spawn/4 was added as well.
 
+* We have added the function from_reverse_list/1 to the version_array module.
+
 * We have added thread.num_processors/3 which returns the number of
   processors available for parallel work.
 
