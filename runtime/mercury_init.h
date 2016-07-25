@@ -59,6 +59,12 @@ extern  void    mercury_call_main(void);
 
 extern  int     mercury_terminate(void);
 
+// mercury_init_grade_check is defined in the <module>_init.c file.
+// It is used to ensure that everything gets compiled in the same grade.
+// See mercury_grade.h for details.
+
+extern const char *mercury_init_grade_check(void);
+
 ////////////////////////////////////////////////////////////////////////////
 
 // This part defines things which are used by the automatically
