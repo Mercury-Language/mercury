@@ -1,0 +1,14 @@
+#!/bin/sh
+# vim: ts=4 sw=4 et ft=sh
+#
+# A program to rank source files in order of their `source lines',
+# which we define to be the number of non-blank non-comment lines in them.
+# The comment syntax we recognize is the one used by Mercury.
+
+usage="Usage: src_lines file1 [file2 ...]"
+
+for filename in "$@"
+do
+    lines=`sed -e '/^ *$/d' -e '/^ *%/d' < $filename | wc -l`
+    echo "$lines $filename"
+done | sort -nr

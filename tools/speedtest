@@ -1,50 +1,17 @@
 #!/bin/sh
-# vim: ts=4 sw=4 et
+# vim: ts=4 sw=4 et ft=sh
 #
 # A program to test different versions of the compiler.
 
-usage="Usage: speedtest [-dsmtz] [-l | -1] [-e dir] [-g grade] [-c cmd] [-o option]* [-nN] [-ON] [-fFILE] batchname"
+usage="Usage: speedtest [-dsmtz] [-l | -1 | -N N] [-e dir] [-g grade] [-c cmd] [-o option]* [-nN] [-ON] [-fFILE] batchname"
 
-single_modulelist="typecheck.m"
-
-# I (pbone) generated these module lists using
-# for name in *.m; do echo -n "$name "; cat $name | grep -v '^%' | wc -l;
-# done | sed -e 's/\(.*\) \(.*\)/\2 \1/' | sort -nr | head -n 20
-# This sorts them by the number of lines of code excluding comment lines.
-
-# As of 23 Feb 2016, these are the ten largest modules of the compiler.
-short_modulelist="
-    options.m
-    polymorphism.m
-    mlds_to_java.m
-    mlds_to_c.m
-    table_gen.m
-    hlds_pred.m
-    dep_par_conj.m
-    typecheck.m
-    code_loc_dep.m
-    parse_pragma.m
-"
-# As of 23 Feb 2016, these are the ten next largest modules of the compiler.
-long_modulelist="$short_modulelist
-    higher_order.m
-    mlds_to_cs.m
-    ml_unify_gen.m
-    intermod.m
-    compile_target_code.m
-    hlds_goal.m
-    layout_out.m
-    fact_table.m
-    stm_expand.m
-    var_locn.m
-"
 cmd=""
 debug=false
 execdir="arena"
 grade="--grade asm_fast.gc"
 framesizefile=""
 mix=false
-modulelist="$short_modulelist"
+num_modules=10
 limit=6
 options=""
 optlevel="-O2"
@@ -93,11 +60,11 @@ do
             ;;
 
         -l)
-            modulelist="${long_modulelist}"
+            num_modules=20
             ;;
 
         -1)
-            modulelist="${single_modulelist}"
+            num_modules=1
             ;;
 
         -m)
@@ -110,6 +77,14 @@ do
             ;;
         -n*)
             limit="`expr $1 : '-n\(.*\)'`"
+            ;;
+
+        -N)
+            num_modules="$2"
+            shift
+            ;;
+        -N*)
+            num_modules="`expr $1 : '-N\(.*\)'`"
             ;;
 
         -o)
@@ -154,9 +129,20 @@ do
     shift
 done
 
+root=`/bin/pwd`
+
+# Put src_lines in ${PATH}.
+PATH="${root}/tools:${PATH}"
+export PATH
+
 if test "${cmd}" = ""
 then
-    cmd="mmc -C $optlevel ${options} $grade $modulelist"
+    cd ${execdir}
+    modulelist=`src_lines *.m | head -${num_modules} | awk -e '{print $2;}'`
+    cd ${root}
+    # In case the programmer wants to know, e.g. for comparison purposes.
+    echo ${modulelist} > .module_list
+    cmd="mmc -C ${optlevel} ${options} ${grade} ${modulelist}"
 fi
 
 if test $# != 1
@@ -166,8 +152,6 @@ then
 fi
 
 batch=$1
-
-root=`/bin/pwd`
 
 if $zip
 then
