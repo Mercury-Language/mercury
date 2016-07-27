@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2016 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,12 +47,12 @@
     %   FoundDeconstruct):
     %
     % Used by both switch_detection and cse_detection. Searches through
-    % `Goal0' looking for the first deconstruction unification with `Var'
-    % or an alias of `Var'. If a deconstruction unification of the
-    % variable is found, `ProcessUnify' is called to handle it (which may
-    % replace the unification with some other goals, which is why we return
-    % Goal), and searching is stopped. If we don't find such a deconstruction,
-    % `!Result' is unchanged.
+    % Goal0 looking for the first deconstruction unification with Var
+    % or an alias of Var. If find_bind_var finds a deconstruction unification
+    % of the variable, it calls ProcessUnify to handle it (which may replace
+    % the unification with some other goals, which is why we return Goal),
+    % and it stops searching. If it doesn't find such a deconstruction,
+    % find_bind_var leaves !Result unchanged.
     %
 :- pred find_bind_var(prog_var::in,
     process_unify(Result, Info)::in(process_unify),
@@ -128,7 +128,7 @@ init_switch_detect_info(ModuleInfo) = Info :-
 %-----------------------------------------------------------------------------%
 
 detect_switches_in_module(!ModuleInfo) :-
-    % Traverse the module structure, calling `detect_switches_in_goal'
+    % Traverse the module structure, calling detect_switches_in_goal
     % for each procedure body.
     Info = init_switch_detect_info(!.ModuleInfo),
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
@@ -299,8 +299,8 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
                     set_of_var.to_sorted_list(NonLocals, VarsToTry)
                 )
             ),
-            detect_switches_in_disj(GoalInfo, VarsToTry, Disjuncts0, VarsToTry,
-                InstMap0, [], GoalExpr, !LocalInfo)
+            detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, VarsToTry,
+                GoalExpr, !LocalInfo)
         )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
@@ -682,8 +682,195 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
     ),
     CasesTable = cases_table(CasesMap, ConflictConsIds).
 
-:- type again
-    --->    again(prog_var, list(hlds_goal), list(case)).
+%-----------------------------------------------------------------------------%
+
+    % A disjunction is a candidate for conversion to a switch on cs_var
+    % if the conditions that is_candidate_switch tests for are satisfied.
+    %
+    % The disjuncts of the original disjunction will each end up in one
+    % the next three fields: cs_cases, cs_unreachable_case_goals, and
+    % cs_left_over_disjuncts.
+    %
+    % The left over disjuncts are the disjuncts that do not unify cs_var
+    % with any function symbol, at least in a way that is visible to
+    % switch detection. The disjuncts that *do* unify cs_var with a function
+    % symbol will be converted into cases. If two (or more) disjuncts
+    % unify cs_var with the same function symbol, those disjuncts will be put
+    % into the same case (with the case's goal being a disjunction containing
+    % just these disjuncts). Some cases will turn out to be unselectable,
+    % because cs_var's initial inst guarantees that it won't be unifiable
+    % with the case's function symbol; cs_unreachable_case_goals contains
+    % the bodies of such cases.
+    %
+    % Since we try to convert only non-empty disjunctions to switches,
+    % the above guarantees that at least one of cs_cases,
+    % cs_unreachable_case_goals and cs_left_over_disjuncts will be non-empty.
+    % If both cs_cases and cs_unreachable_case_goals would be empty for a given
+    % variable, then we won't consider converting the disjunction into
+    % a switch on that variable, so for any candidate_switch we *do* construct,
+    % at least one of cs_cases and cs_unreachable_case_goals will be nonempty.
+    % However, it is possible for either one of those fields to be empty
+    % if the other contains at least one entry.
+    %
+    % Some disjunctions can be converted into switches on more than one
+    % variable. We prefer to pick the variable that will allow determinism
+    % analysis to find the tightest possible bounds on the number of solutions.
+    % As a heuristic to help us choose well, we associate a rank with each
+    % candidate conversion scheme. If there is more than candidate switch
+    % we can turn the disjunction into, we choose the candidate with
+    % the highest rank; we break any ties by picking the candidate
+    % with the smallest variable number.
+    %
+    % When we convert the disjunction into a switch based on the chosen
+    % candidate, we need to fill in the can_fail field of the the switch
+    % we create. We get the value we need from the cs_can_fail field.
+:- type candidate_switch
+    --->    candidate_switch(
+                cs_var                      :: prog_var,
+                cs_cases                    :: list(case),
+                cs_unreachable_case_goals   :: list(hlds_goal),
+                cs_left_over_disjuncts      :: list(hlds_goal),
+                cs_rank                     :: candidate_switch_rank,
+                cs_can_fail                 :: can_fail
+            ).
+
+    % The order of preference that we use to decide which candidate switch
+    % to turn a disjunction into, for disjunctions in which we actually
+    % have a choice. The ranks are in order from the least attractive
+    % to the most attractive choice.
+    %
+    % In general, we prefer to have no disjuncts "left over" after we convert
+    % disjuncts to case arms. All else being equal, we also prefer switches
+    % in which the resulting switch arms cover all the function symbols
+    % in the type of the switched-on variable that are allowed by the instmap
+    % at entry to the switch.
+    % 
+:- type candidate_switch_rank
+    --->    some_leftover_can_fail(
+                % Some of the disjuncts will have to remain outside the switch,
+                % and the switch will be can_fail. This is the least useful
+                % kind of switch that switch detection can create.
+                int     % number of case arms
+            )
+
+    ;       some_leftover_cannot_fail(
+                % Some of the disjuncts will have to remain outside the switch,
+                % but at least the switch will be cannot_fail (though the
+                % code inside the switch arms may fail).
+                int     % number of case arms
+            )
+
+    ;       no_leftover_twoplus_cases_finite_can_fail
+            % All disjuncts unify the switch variable with a function symbol,
+            % but there is at least one function symbol that the switch
+            % variable can be bound to at the start of the disjunction
+            % that is not covered by any of the original disjuncts.
+            % There are at least two cases, and at least one is reachable
+            % (the rest may be unreachable).
+
+    ;       no_leftover_one_case
+            % With no_leftover_twoplus_cases_finite_can_fail, we *know*
+            % that the resulting switch will be can_fail, and therefore
+            % it can't be det. However, if all the disjuncts unify this
+            % candidate var with the *same* function symbol, which is the
+            % situation that no_leftover_one_case describes, then we know that
+            % cse_detection.m will pull this deconstruction unification
+            % out of all the disjuncts. Then, when cse_detection.m repeats
+            % switch detection, there is at least a chance that we will be
+            % able to transform this disjunction to a det switch.
+
+    ;       no_leftover_twoplus_cases_infinite_can_fail
+            % All disjuncts unify the switch variable with a function symbol,
+            % but the domain of the switch variable is infinite, so it is
+            % not possible for all the function symbols in the domain
+            % to be covered by a case.
+            %
+            % I (zs) don't know of any strong argument for deciding
+            % the relative order of no_leftover_twoplus_cases_infinite_can_fail 
+            % and no_leftover_one_case either way. The current order replicates
+            % the relative order between these two cases that was effectively
+            % imposed by old code.
+
+    ;       no_leftover_twoplus_cases_finite_cannot_fail
+            % The best switch we can hope for in normal circumstances;
+            % all disjuncts unify the switch variable with a function symbol,
+            % and every function symbol that the switch variable can be
+            % bound to at the start of the disjunction is covered by at least
+            % one disjunct. There are at least two cases, and at least one
+            % is reachable (the rest may be unreachable).
+
+    ;       all_disjuncts_are_unreachable.
+            % We can convert the entire disjunction to just `fail'.
+            % This is possible only in the very rare case when all disjuncts
+            % unify the switch variable with a function symbol that the switch
+            % variable's initial inst rules out, but when it *is* possible,
+            % it gives us the resulting goal the tightest possible determinism
+            % we can hope for, failure.
+
+:- pred detect_switches_in_disj(hlds_goal_info::in, list(hlds_goal)::in,
+    instmap::in, list(prog_var)::in, hlds_goal_expr::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
+
+detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, AllVars, GoalExpr,
+        !LocalInfo) :-
+    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0, AllVars,
+        cord.init, CandidatesCord, !LocalInfo),
+    Candidates = cord.to_list(CandidatesCord),
+    (
+        Candidates = [],
+        detect_sub_switches_in_disj(InstMap0, Disjuncts0, Disjuncts,
+            !LocalInfo),
+        GoalExpr = disj(Disjuncts)
+    ;
+        Candidates = [FirstCandidate | LaterCandidates],
+        (
+            LaterCandidates = [],
+            BestCandidate = FirstCandidate
+        ;
+            LaterCandidates = [_ | _],
+            BestCandidate0 = FirstCandidate,
+            select_best_candidate_switch(LaterCandidates,
+                BestCandidate0, BestCandidate)
+        ),
+        BestRank = BestCandidate ^ cs_rank,
+        (
+            BestRank = no_leftover_one_case,
+            % Leave the disjunction unchanged for now. Let cse_detection
+            % lift the unification that occurs in all the disjunct out of
+            % those disjuncts, and let the invocation of switch detection
+            % *after* cse look for switches in the transformed disjunction.
+            %
+            % We don't even look for switches *inside* each disjunct,
+            % since that could hide the common unifications inside them
+            % from the code of cse_detection.m (by wrapping them up
+            % inside switches). This is why we don't call
+            % detect_sub_switches_in_disj here.
+            GoalExpr = disj(Disjuncts0)
+        ;
+            ( BestRank = some_leftover_can_fail(_)
+            ; BestRank = some_leftover_cannot_fail(_)
+            ; BestRank = no_leftover_twoplus_cases_finite_can_fail
+            ; BestRank = no_leftover_twoplus_cases_infinite_can_fail
+            ; BestRank = no_leftover_twoplus_cases_finite_cannot_fail
+            ; BestRank = all_disjuncts_are_unreachable
+            ),
+            cases_to_switch(BestCandidate, InstMap0, SwitchGoalExpr,
+                !LocalInfo),
+            LeftDisjuncts0 = BestCandidate ^ cs_left_over_disjuncts,
+            (
+                LeftDisjuncts0 = [],
+                GoalExpr = SwitchGoalExpr
+            ;
+                LeftDisjuncts0 = [_ | _],
+                detect_switches_in_disj(GoalInfo, LeftDisjuncts0,  InstMap0,
+                    AllVars, LeftGoal, !LocalInfo),
+                goal_to_disj_list(hlds_goal(LeftGoal, GoalInfo),
+                    LeftDisjuncts),
+                SwitchGoal = hlds_goal(SwitchGoalExpr, GoalInfo),
+                GoalExpr = disj([SwitchGoal | LeftDisjuncts])
+            )
+        )
+    ).
 
     % This is the interesting bit - we have found a non-empty disjunction,
     % and we have got a list of the non-local variables of that disjunction.
@@ -691,95 +878,165 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
     % of the disjuncts such that each group of disjunctions can only succeed
     % if the variable is bound to a different functor.
     %
-:- pred detect_switches_in_disj(hlds_goal_info::in, list(prog_var)::in,
-    list(hlds_goal)::in, list(prog_var)::in, instmap::in, list(again)::in,
-    hlds_goal_expr::out,
+:- pred detect_switch_candidates_in_disj(hlds_goal_info::in,
+    list(hlds_goal)::in, instmap::in, list(prog_var)::in,
+    cord(candidate_switch)::in, cord(candidate_switch)::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
-        [Var | Vars], InstMap, AgainList0, GoalExpr, !LocalInfo) :-
+detect_switch_candidates_in_disj(_GoalInfo, _Disjuncts0, _InstMap0,
+        [], !Candidates, !LocalInfo).
+detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
+        [Var | Vars], !Candidates, !LocalInfo) :-
     % Can we do at least a partial switch on this variable?
     ModuleInfo = !.LocalInfo ^ lsdi_module_info,
-    instmap_lookup_var(InstMap, Var, VarInst0),
+    instmap_lookup_var(InstMap0, Var, VarInst0),
     ( if
         inst_is_bound(ModuleInfo, VarInst0),
-        partition_disj(Disjuncts0, Var, GoalInfo, Left, CasesList, !LocalInfo)
+        partition_disj(Disjuncts0, Var, GoalInfo, Left, Cases, !LocalInfo),
+
+        VarTypes = !.LocalInfo ^ lsdi_vartypes,
+        lookup_var_type(VarTypes, Var, VarType),
+        is_candidate_switch(ModuleInfo, Var, VarType, VarInst0,
+            Cases, Left, Candidate)
     then
-        % A switch needs to have at least two cases.
-        %
-        % But, if there is a complete one-case switch for a goal, we must leave
-        % it as a disjunction rather than doing an incomplete switch on a
-        % different variable, because otherwise we might get determinism
-        % analysis wrong.  (The complete one-case switch may be decomposable
-        % into other complete sub-switches on the functor's arguments)
+        !:Candidates = cord.snoc(!.Candidates, Candidate)
+    else
+        true
+    ),
+    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
+        Vars, !Candidates, !LocalInfo).
+
+:- pred is_candidate_switch(module_info::in, prog_var::in,
+    mer_type::in, mer_inst::in, list(case)::in, list(hlds_goal)::in,
+    candidate_switch::out) is semidet.
+
+is_candidate_switch(ModuleInfo, Var, VarType, VarInst0, Cases0, LeftOver,
+        Candidate) :-
+    (
+        % If every disjunct unifies Var with a function symbol, then
+        % it is candidate switch on Var even if all disjuncts unify Var
+        % with the *same* function symbol. This is because the resulting
+        % single-arm switch may turn out to contain sub-switches on the
+        % *arguments* of that function symbol.
+        LeftOver = []
+    ;
+        % If some disjunct does not unify Var with any function symbol,
+        % then we insist on at least two cases (though one may unreachable,
+        % see below). We do this because the presence of the LeftOver
+        % disjunct(s) requires us to have an outer disjunction anyway;
+        % having one of its arms be a single-arm switch would be
+        % indistinguishable from the original disjunction in almost all cases.
+        % The only exception I (zs) can think of would happen if the same
+        % X = f(...) goal occurred inside all the disjuncts that would end up
+        % in an inner disjunction inside the single-arm switch's single arm,
+        % but not in the other disjuncts. In that case, acting on the
+        % candidate we would create here may allow cse_detection.m to make
+        % a change could enable later follow-on changes by switch detection
+        % itself. However, I have never seen any real-life code that could
+        % benefit from this theoretical possibility, and until we do see
+        % such code, so the gain from deleting this test would be minimal
+        % at best, while the cost of deleting it would be to greatly increase
+        % the number of candidates and thus the time taken by switch detection.
+        Cases0 = [_, _ | _]
+    ),
+    can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
+        CanFail, CasesMissing, Cases, UnreachableCaseGoals),
+    require_det (
         (
-            % Are there any disjuncts that are not part of the switch? No.
-            Left = [],
+            LeftOver = [],
             (
-                CasesList = [_, _ | _],
-                cases_to_switch(Var, CasesList, InstMap, GoalExpr, !LocalInfo)
+                Cases = [],
+                Rank = all_disjuncts_are_unreachable
             ;
-                ( CasesList = []
-                ; CasesList = [_]
-                ),
-                detect_sub_switches_in_disj(InstMap, Disjuncts0, Disjuncts,
-                    !LocalInfo),
-                GoalExpr = disj(Disjuncts)
+                Cases = [_FirstCase | LaterCases],
+                ( if
+                    LaterCases = [],
+                    UnreachableCaseGoals = []
+                then
+                    Rank = no_leftover_one_case
+                else
+                    % FirstCase is one case, and whichever of LaterCases and
+                    % UnreachableCaseGoals is nonempty is the second case.
+                    (
+                        CasesMissing = some_cases_missing,
+                        Rank = no_leftover_twoplus_cases_finite_can_fail
+                    ;
+                        CasesMissing = no_cases_missing,
+                        Rank = no_leftover_twoplus_cases_finite_cannot_fail
+                    ;
+                        CasesMissing = unbounded_cases,
+                        Rank = no_leftover_twoplus_cases_infinite_can_fail
+                    )
+                )
             )
         ;
-            % Are there any disjuncts that are not part of the switch? Yes.
-            Left = [_ | _],
-            % Insert this switch into the list of incomplete switches
-            % only if it has at least two cases.
+            LeftOver = [_ | _],
+            list.length(Cases, NumCases),
             (
-                CasesList = [_, _ | _],
-                AgainList1 = [again(Var, Left, CasesList) | AgainList0]
+                CanFail = cannot_fail,
+                Rank = some_leftover_cannot_fail(NumCases)
             ;
-                ( CasesList = []
-                ; CasesList = [_]
-                ),
-                AgainList1 = AgainList0
-            ),
-            % Try to find a switch.
-            detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
-                Vars, InstMap, AgainList1, GoalExpr, !LocalInfo)
+                CanFail = can_fail,
+                Rank = some_leftover_can_fail(NumCases)
+            )
+        ),
+        Candidate = candidate_switch(Var, Cases, UnreachableCaseGoals,
+            LeftOver, Rank, CanFail)
+    ).
+
+:- type cases_missing
+    --->    no_cases_missing
+    ;       some_cases_missing
+    ;       unbounded_cases.
+
+:- pred can_candidate_switch_fail(module_info::in, mer_type::in, mer_inst::in,
+    list(case)::in, can_fail::out, cases_missing::out, list(case)::out,
+    list(hlds_goal)::out) is det.
+
+can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
+        CanFail, CasesMissing, Cases, UnreachableCaseGoals) :-
+    ( if inst_is_bound_to_functors(ModuleInfo, VarInst0, Functors) then
+        type_to_ctor_det(VarType, TypeCtor),
+        bound_insts_to_cons_ids(TypeCtor, Functors, ConsIds),
+        delete_unreachable_cases(Cases0, ConsIds, Cases, UnreachableCaseGoals),
+        compute_can_fail(ConsIds, Cases, CanFail, CasesMissing)
+    else
+        % We do not have any inst information that would allow us to decide
+        % that any case is unreachable.
+        Cases = Cases0,
+        UnreachableCaseGoals = [],
+        ( if switch_type_num_functors(ModuleInfo, VarType, NumFunctors) then
+            % We could check for each cons_id of the type whether a case covers
+            % it, but given that type checking ensures that the set of covered
+            % cons_ids is a subset of the set of cons_ids of the type, checking
+            % whether the cardinalities of the two sets match is *equivalent*
+            % to checking whether they are the same set.
+            switch_covers_n_cases(NumFunctors, Cases, CanFail, CasesMissing)
+        else
+            % switch_type_num_functors fails only for types on which
+            % you cannot have a complete switch, e.g. integers and strings.
+            CanFail = can_fail,
+            CasesMissing = unbounded_cases
         )
-    else
-        detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
-            Vars, InstMap, AgainList0, GoalExpr, !LocalInfo)
     ).
-detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
-        [], InstMap, AgainList0, disj(Disjuncts), !LocalInfo) :-
+
+%-----------------------------------------------------------------------------%
+
+:- pred select_best_candidate_switch(list(candidate_switch)::in,
+    candidate_switch::in, candidate_switch::out) is det.
+
+select_best_candidate_switch([], !BestCandidate).
+select_best_candidate_switch([Candidate | Candidates], !BestCandidate) :-
+    compare(Result, Candidate ^ cs_rank, !.BestCandidate ^ cs_rank),
     (
-        AgainList0 = [],
-        detect_sub_switches_in_disj(InstMap, Disjuncts0, Disjuncts, !LocalInfo)
+        ( Result = (<)
+        ; Result = (=)
+        )
     ;
-        AgainList0 = [Again | AgainList1],
-        select_best_switch(AgainList1, Again, BestAgain),
-        BestAgain = again(Var, Left0, CasesList),
-        cases_to_switch(Var, CasesList, InstMap, SwitchGoalExpr, !LocalInfo),
-        detect_switches_in_disj(GoalInfo, AllVars, Left0, AllVars, InstMap,
-            [], Left, !LocalInfo),
-        goal_to_disj_list(hlds_goal(Left, GoalInfo), LeftList),
-        Disjuncts = [hlds_goal(SwitchGoalExpr, GoalInfo) | LeftList]
-    ).
-
-:- pred select_best_switch(list(again)::in, again::in, again::out) is det.
-
-select_best_switch([], BestAgain, BestAgain).
-select_best_switch([Again | AgainList], BestAgain0, BestAgain) :-
-    ( if
-        Again = again(_, _, CasesList),
-        BestAgain0 = again(_, _, BestCasesList),
-        list.length(CasesList, Length),
-        list.length(BestCasesList, BestLength),
-        Length < BestLength
-    then
-        BestAgain1 = BestAgain0
-    else
-        BestAgain1 = Again
+        Result = (>),
+        !:BestCandidate = Candidate
     ),
-    select_best_switch(AgainList, BestAgain1, BestAgain).
+    select_best_candidate_switch(Candidates, !BestCandidate).
 
 %-----------------------------------------------------------------------------%
 
@@ -1142,44 +1399,26 @@ conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
 
 %-----------------------------------------------------------------------------%
 
-:- pred cases_to_switch(prog_var::in, list(case)::in, instmap::in,
+:- pred cases_to_switch(candidate_switch::in, instmap::in,
     hlds_goal_expr::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-cases_to_switch(Var, Cases0, InstMap, GoalExpr, !LocalInfo) :-
-    ModuleInfo = !.LocalInfo ^ lsdi_module_info,
-    VarTypes = !.LocalInfo ^ lsdi_vartypes,
-    instmap_lookup_var(InstMap, Var, VarInst),
-    lookup_var_type(VarTypes, Var, Type),
-    ( if inst_is_bound_to_functors(ModuleInfo, VarInst, Functors) then
-        type_to_ctor_det(Type, TypeCtor),
-        bound_insts_to_cons_ids(TypeCtor, Functors, ConsIds),
-        delete_unreachable_cases(Cases0, ConsIds, Cases1,
-            UnreachableCaseGoals),
-        CanFail = compute_can_fail(ConsIds, Cases1),
+cases_to_switch(Candidate, InstMap0, GoalExpr, !LocalInfo) :-
+    Candidate = candidate_switch(Var, Cases0, UnreachableCaseGoals, _Left,
+        _Rank, CanFail),
+    (
+        UnreachableCaseGoals = []
+    ;
+        UnreachableCaseGoals = [_ | _],
+        UnreachableCalledProcs = goals_proc_refs(UnreachableCaseGoals),
 
         DeletedCallCallees0 = !.LocalInfo ^ lsdi_deleted_callees,
-        UnreachableCalledProcs = goals_proc_refs(UnreachableCaseGoals),
         set.union(UnreachableCalledProcs,
             DeletedCallCallees0, DeletedCallCallees),
         !LocalInfo ^ lsdi_deleted_callees := DeletedCallCallees
-    else
-        Cases1 = Cases0,
-        ( if switch_type_num_functors(ModuleInfo, Type, NumFunctors) then
-            % We could check for each cons_id of the type whether a case covers
-            % it, but given that type checking ensures that the set of covered
-            % cons_ids is a subset of the set of cons_ids of the type, checking
-            % whether the cardinalities of the two sets match is *equivalent*
-            % to checking whether they are the same set.
-            CanFail = switch_covers_n_cases(NumFunctors, Cases1)
-        else
-            % switch_type_num_functors fails only for types on which
-            % you cannot have a complete switch, e.g. integers and strings.
-            CanFail = can_fail
-        )
     ),
-    detect_switches_in_cases(Var, InstMap, Cases1, Cases, !LocalInfo),
 
+    detect_switches_in_cases(Var, InstMap0, Cases0, Cases, !LocalInfo),
     % We turn switches with no arms into fail, since this avoids having
     % the code generator flush the control variable of the switch.
     % We can't easily eliminate switches with one arm, since the
@@ -1194,15 +1433,18 @@ cases_to_switch(Var, Cases0, InstMap, GoalExpr, !LocalInfo) :-
         GoalExpr = switch(Var, CanFail, Cases)
     ).
 
-:- func compute_can_fail(list(cons_id), list(case)) = can_fail.
+:- pred compute_can_fail(list(cons_id)::in, list(case)::in,
+    can_fail::out, cases_missing::out) is det.
 
-compute_can_fail(Functors, Cases) = SwitchCanFail :-
+compute_can_fail(Functors, Cases, SwitchCanFail, CasesMissing) :-
     UncoveredFunctors0 = set_tree234.list_to_set(Functors),
     delete_covered_functors(Cases, UncoveredFunctors0, UncoveredFunctors),
     ( if set_tree234.empty(UncoveredFunctors) then
-        SwitchCanFail = cannot_fail
+        SwitchCanFail = cannot_fail,
+        CasesMissing = no_cases_missing
     else
-        SwitchCanFail = can_fail
+        SwitchCanFail = can_fail,
+        CasesMissing = some_cases_missing
     ).
 
     % Delete from !UncoveredConsIds all cons_ids mentioned in any of the cases.
@@ -1219,14 +1461,17 @@ delete_covered_functors([Case | Cases], !UncoveredConsIds) :-
 
     % Check whether a switch handles the given number of cons_ids.
     %
-:- func switch_covers_n_cases(int, list(case)) = can_fail.
+:- pred switch_covers_n_cases(int::in, list(case)::in,
+    can_fail::out, cases_missing::out) is det.
 
-switch_covers_n_cases(NumFunctors, Cases) = SwitchCanFail :-
+switch_covers_n_cases(NumFunctors, Cases, SwitchCanFail, CasesMissing) :-
     NumCoveredConsIds = count_covered_cons_ids(Cases),
     ( if NumCoveredConsIds = NumFunctors then
-        SwitchCanFail = cannot_fail
+        SwitchCanFail = cannot_fail,
+        CasesMissing = no_cases_missing
     else
-        SwitchCanFail = can_fail
+        SwitchCanFail = can_fail,
+        CasesMissing = some_cases_missing
     ).
 
 :- func count_covered_cons_ids(list(case)) = int.
