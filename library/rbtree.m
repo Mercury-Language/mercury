@@ -222,6 +222,14 @@
 :- mode foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
 
+:- pred foldl_values(pred(V, A, A), rbtree(K, V), A, A).
+:- mode foldl_values(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldl_values(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl_values(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldl_values(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl_values(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldl_values(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+
 :- func map_values(func(K, V) = W, rbtree(K, V)) = rbtree(K, W).
 :- pred map_values(pred(K, V, W), rbtree(K, V), rbtree(K, W)).
 :- mode map_values(pred(in, in, out) is det, in, out) is det.
@@ -1090,6 +1098,18 @@ foldl3(Pred, black(K, V, Left, Right), !Acc1, !Acc2, !Acc3) :-
     rbtree.foldl3(Pred, Left, !Acc1, !Acc2, !Acc3),
     Pred(K, V, !Acc1, !Acc2, !Acc3),
     rbtree.foldl3(Pred, Right, !Acc1, !Acc2, !Acc3).
+
+%---------------------------------------------------------------------------%
+
+foldl_values(_Pred, empty, !Acc).
+foldl_values(Pred, red(_K, V, Left, Right), !Acc) :-
+    rbtree.foldl_values(Pred, Left, !Acc),
+    Pred(V, !Acc),
+    rbtree.foldl_values(Pred, Right, !Acc).
+foldl_values(Pred, black(_K, V, Left, Right), !Acc) :-
+    rbtree.foldl_values(Pred, Left, !Acc),
+    Pred(V, !Acc),
+    rbtree.foldl_values(Pred, Right, !Acc).
 
 %---------------------------------------------------------------------------%
 
