@@ -1,0 +1,29 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2016 The Mercury team.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
+MLFLAGS = --mercury-libs static
+
+-include ../Mmake.params
+
+PROGRAM_NAME=align_right
+
+.PHONY: default_target
+default_target:	$(PROGRAM_NAME)
+
+.PHONY: install
+install:
+	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	cp $(PROGRAM_NAME) $(INSTALL_BINDIR)
+
+.PHONY: depend
+depend:	$(PROGRAM_NAME).depend
+
+.PHONY: check
+check:
+	true
