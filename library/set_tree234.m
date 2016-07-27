@@ -714,20 +714,24 @@ list_to_set(List) = Tree :-
     list_to_set(List, Tree).
 
 list_to_set(List, Tree) :-
-    list_to_set_loop(List, empty, Tree).
+    list.sort_and_remove_dups(List, SortedList),
+    sorted_list_to_set(SortedList, Tree).
+
+% We used to use this loop to implement list_to_set, but sorting the list
+% and then building the tree directly from the result is faster.
+%
+% :- pred list_to_set_loop(list(E)::in,
+%     set_tree234(E)::in, set_tree234(E)::out) is det.
+% 
+% list_to_set_loop([], !Tree).
+% list_to_set_loop([E | Es], !Tree) :-
+%     insert(E, !Tree),
+%     list_to_set_loop(Es, !Tree).
 
 from_list(List) = list_to_set(List).
 
 from_list(List, Tree) :-
     Tree = list_to_set(List).
-
-:- pred list_to_set_loop(list(E)::in, set_tree234(E)::in, set_tree234(E)::out)
-    is det.
-
-list_to_set_loop([], !Tree).
-list_to_set_loop([E | Es], !Tree) :-
-    insert(E, !Tree),
-    list_to_set_loop(Es, !Tree).
 
 from_set(Set) =
     sorted_list_to_set(set.to_sorted_list(Set)).
