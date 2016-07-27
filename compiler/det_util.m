@@ -77,7 +77,7 @@
     % delete_unreachable_cases(Cases0, ConsIds, ReachableCases,
     %   UnreachableGoals):
     %
-    % Given Cases, and a ConsIds, a list of the possible cons_ids that
+    % Given Cases, and ConsIds, a list of the possible cons_ids that
     % the switch variable could be bound to, return as ReachableCases
     % the subset of Cases whose cons_id occurs in ConsIds.
     %
