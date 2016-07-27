@@ -2218,15 +2218,12 @@ merge_sort(List, SortedList) :-
 merge_sort_and_remove_dups_2(Length, List, SortedList) :-
     ( if Length > 1 then
         HalfLength = Length // 2,
-        ( if list.split_list(HalfLength, List, Front, Back) then
-            list.merge_sort_and_remove_dups_2(HalfLength,
-                Front, SortedFront),
-            list.merge_sort_and_remove_dups_2(Length - HalfLength,
-                Back, SortedBack),
-            list.merge_and_remove_dups(SortedFront, SortedBack, SortedList)
-        else
-            unexpected($module, $pred, "split failed")
-        )
+        list.det_split_list(HalfLength, List, Front, Back),
+        list.merge_sort_and_remove_dups_2(HalfLength,
+            Front, SortedFront),
+        list.merge_sort_and_remove_dups_2(Length - HalfLength,
+            Back, SortedBack),
+        list.merge_and_remove_dups(SortedFront, SortedBack, SortedList)
     else
         SortedList = List
     ).
@@ -2239,13 +2236,10 @@ merge_sort_and_remove_dups_2(Length, List, SortedList) :-
 merge_sort_2(Length, List, SortedList) :-
     ( if Length > 1 then
         HalfLength = Length // 2,
-        ( if list.split_list(HalfLength, List, Front, Back) then
-            list.merge_sort_2(HalfLength, Front, SortedFront),
-            list.merge_sort_2(Length - HalfLength, Back, SortedBack),
-            list.merge(SortedFront, SortedBack, SortedList)
-        else
-            unexpected($module, $pred, "split failed")
-        )
+        list.det_split_list(HalfLength, List, Front, Back),
+        list.merge_sort_2(HalfLength, Front, SortedFront),
+        list.merge_sort_2(Length - HalfLength, Back, SortedBack),
+        list.merge(SortedFront, SortedBack, SortedList)
     else
         SortedList = List
     ).
@@ -2320,13 +2314,21 @@ split_list(N, List, Start, End) :-
     ).
 
 det_split_list(N, List, Start, End) :-
-    ( if list.split_list(N, List, StartPrime, EndPrime) then
-        Start = StartPrime,
-        End = EndPrime
+    ( if N > 0 then
+        (
+            List = [Head | Tail],
+            list.det_split_list(N - 1, Tail, StartTail, End),
+            Start = [Head | StartTail]
+        ;
+            List = [],
+            unexpected($module, $pred, "index out of range")
+        )
+    else if N = 0 then
+        Start = [],
+        End = List
     else
         unexpected($module, $pred, "index out of range")
     ).
-
 
 split_upto(N, List, Start, End) :-
     ( if N < 0 then
