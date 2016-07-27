@@ -132,24 +132,24 @@
 
 %---------------------------------------------------------------------------%
 
-pqueue.init = PQ :-
+init = PQ :-
     pqueue.init(PQ).
 
-pqueue.init(empty).
+init(empty).
 
 %---------------------------------------------------------------------------%
 
-pqueue.is_empty(empty).
+is_empty(empty).
 
 %---------------------------------------------------------------------------%
 
-pqueue.peek(pqueue(_, K, V, _, _), K, V).
-pqueue.peek_key(pqueue(_, K, _, _, _), K).
-pqueue.peek_value(pqueue(_, _, V, _, _), V).
+peek(pqueue(_, K, V, _, _), K, V).
+peek_key(pqueue(_, K, _, _, _), K).
+peek_value(pqueue(_, _, V, _, _), V).
 
 %---------------------------------------------------------------------------%
 
-pqueue.det_peek(PQ, K, V) :-
+det_peek(PQ, K, V) :-
     ( if pqueue.peek(PQ, KPrime, VPrime) then
         K = KPrime,
         V = VPrime
@@ -157,18 +157,18 @@ pqueue.det_peek(PQ, K, V) :-
         unexpected($file, $pred, "empty priority queue")
     ).
 
-pqueue.det_peek_key(PQ) = K :-
+det_peek_key(PQ) = K :-
     pqueue.det_peek(PQ, K, _).
-pqueue.det_peek_value(PQ) = V :-
+det_peek_value(PQ) = V :-
     pqueue.det_peek(PQ, _, V).
 
 %---------------------------------------------------------------------------%
 
-pqueue.insert(!.PQ, K, V) = !:PQ :-
+insert(!.PQ, K, V) = !:PQ :-
     pqueue.insert(K, V, !PQ).
 
-pqueue.insert(K, V, empty, pqueue(0, K, V, empty, empty)).
-pqueue.insert(K, V, pqueue(D0, K0, V0, L0, R0), PQ) :-
+insert(K, V, empty, pqueue(0, K, V, empty, empty)).
+insert(K, V, pqueue(D0, K0, V0, L0, R0), PQ) :-
     D = D0 + 1,
     compare(CMP, K, K0),
     ( if CMP = (<) then
@@ -185,12 +185,12 @@ pqueue.insert(K, V, pqueue(D0, K0, V0, L0, R0), PQ) :-
 :- pred pqueue.insert_2(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::in,
     pqueue(K, V)::out, pqueue(K, V)::out) is det.
 
-pqueue.insert_2(K, V, empty, empty, pqueue(0, K, V, empty, empty), empty).
-pqueue.insert_2(K, V, pqueue(D0, K0, V0, L0, R0), empty,
+insert_2(K, V, empty, empty, pqueue(0, K, V, empty, empty), empty).
+insert_2(K, V, pqueue(D0, K0, V0, L0, R0), empty,
         pqueue(D0, K0, V0, L0, R0), pqueue(0, K, V, empty, empty)).
-pqueue.insert_2(K, V, empty, pqueue(D0, K0, V0, L0, R0),
+insert_2(K, V, empty, pqueue(D0, K0, V0, L0, R0),
         pqueue(0, K, V, empty, empty), pqueue(D0, K0, V0, L0, R0)).
-pqueue.insert_2(K, V, pqueue(D0, K0, V0, L0, R0),
+insert_2(K, V, pqueue(D0, K0, V0, L0, R0),
         pqueue(D1, K1, V1, L1, R1), PQ1, PQ2) :-
     ( if D0 > D1 then
         pqueue.insert(K, V, pqueue(D1, K1, V1, L1, R1), PQ2),
@@ -202,7 +202,7 @@ pqueue.insert_2(K, V, pqueue(D0, K0, V0, L0, R0),
 
 %---------------------------------------------------------------------------%
 
-pqueue.det_remove(K, V, !PQ) :-
+det_remove(K, V, !PQ) :-
     ( if pqueue.remove(K0, V0, !PQ) then
         K = K0,
         V = V0
@@ -210,16 +210,16 @@ pqueue.det_remove(K, V, !PQ) :-
         unexpected($file, $pred, "empty priority queue")
     ).
 
-pqueue.remove(K, V, pqueue(_, K, V, L0, R0), PQ) :-
+remove(K, V, pqueue(_, K, V, L0, R0), PQ) :-
     pqueue.remove_2(L0, R0, PQ).
 
 :- pred pqueue.remove_2(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out)
     is det.
 
-pqueue.remove_2(empty, empty, empty).
-pqueue.remove_2(empty, pqueue(D, K, V, L, R), pqueue(D, K, V, L, R)).
-pqueue.remove_2(pqueue(D, K, V, L, R), empty, pqueue(D, K, V, L, R)).
-pqueue.remove_2(pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1), PQ) :-
+remove_2(empty, empty, empty).
+remove_2(empty, pqueue(D, K, V, L, R), pqueue(D, K, V, L, R)).
+remove_2(pqueue(D, K, V, L, R), empty, pqueue(D, K, V, L, R)).
+remove_2(pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1), PQ) :-
     compare(CMP, K0, K1),
     ( if CMP = (<) then
         D0M1 = D0 - 1,
@@ -267,10 +267,10 @@ do_merge(A, B, C) :-
 
 %---------------------------------------------------------------------------%
 
-pqueue.to_assoc_list(PQ) = AL :-
+to_assoc_list(PQ) = AL :-
     pqueue.to_assoc_list(PQ, AL).
 
-pqueue.to_assoc_list(Q0, L) :-
+to_assoc_list(Q0, L) :-
     ( if pqueue.remove(K, V, Q0, Q1) then
         pqueue.to_assoc_list(Q1, L0),
         L = [K - V | L0]
@@ -278,22 +278,22 @@ pqueue.to_assoc_list(Q0, L) :-
         L = []
     ).
 
-pqueue.assoc_list_to_pqueue(AL) = PQ2 :-
+assoc_list_to_pqueue(AL) = PQ2 :-
     pqueue.assoc_list_to_pqueue(AL, PQ2).
 
-pqueue.assoc_list_to_pqueue([], Q) :-
+assoc_list_to_pqueue([], Q) :-
     pqueue.init(Q).
-pqueue.assoc_list_to_pqueue([K - V | L], Q) :-
+assoc_list_to_pqueue([K - V | L], Q) :-
     pqueue.assoc_list_to_pqueue(L, Q0),
     pqueue.insert(K, V, Q0, Q).
 
-pqueue.from_assoc_list(List) = PQueue :-
+from_assoc_list(List) = PQueue :-
     pqueue.assoc_list_to_pqueue(List, PQueue).
 
 %---------------------------------------------------------------------------%
 
-pqueue.length(empty) = 0.
-pqueue.length(pqueue(D, _, _, _, _)) = D + 1.
+length(empty) = 0.
+length(pqueue(D, _, _, _, _)) = D + 1.
 
 %---------------------------------------------------------------------------%
 :- end_module pqueue.
