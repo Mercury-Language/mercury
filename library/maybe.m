@@ -169,6 +169,11 @@
     %
 :- pred maybe_is_yes(maybe(T)::in, T::out) is semidet.
 
+    % Return the value from within the maybe or a default value if there is
+    % none.
+    %
+:- func maybe_default(T, maybe(T)) = T.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -204,6 +209,9 @@ map_fold3_maybe(P, yes(T0), yes(T), !A, !B, !C) :-
     P(T0, T, !A, !B, !C).
 
 maybe_is_yes(yes(X), X).
+
+maybe_default(_, yes(X)) = X.
+maybe_default(D, no) = D.
 
 %---------------------------------------------------------------------------%
 :- end_module maybe.
