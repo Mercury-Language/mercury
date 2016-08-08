@@ -76,6 +76,12 @@
 :- pred remove(assoc_list(K, V)::in, K::in, V::out, assoc_list(K, V)::out)
     is semidet.
 
+    % As above, but with an argument ordering that is more conducive to
+    % the use of state variable notation.
+    %
+:- pred svremove(K::in, V::out, assoc_list(K, V)::in, assoc_list(K, V)::out)
+    is semidet.
+
 :- func map_keys_only(func(K) = L, assoc_list(K, V)) = assoc_list(L, V).
 :- pred map_keys_only(pred(K, L), assoc_list(K, V), assoc_list(L, V)).
 :- mode map_keys_only(pred(in, out) is det, in, out) is det.
@@ -212,17 +218,17 @@
 
 %---------------------------------------------------------------------------%
 
-assoc_list.reverse_members(AL1) = AL2 :-
+reverse_members(AL1) = AL2 :-
     assoc_list.reverse_members(AL1, AL2).
 
-assoc_list.reverse_members([], []).
-assoc_list.reverse_members([K - V | KVs], [V - K | VKs]) :-
+reverse_members([], []).
+reverse_members([K - V | KVs], [V - K | VKs]) :-
     assoc_list.reverse_members(KVs, VKs).
 
-assoc_list.from_corresponding_lists(Ks, Vs) = AL :-
+from_corresponding_lists(Ks, Vs) = AL :-
     assoc_list.from_corresponding_lists(Ks, Vs, AL).
 
-assoc_list.from_corresponding_lists(Ks, Vs, KVs) :-
+from_corresponding_lists(Ks, Vs, KVs) :-
     ( if assoc_list.from_corresponding_2(Ks, Vs, KVsPrime) then
         KVs = KVsPrime
     else
@@ -244,29 +250,29 @@ assoc_list.from_corresponding_lists(Ks, Vs, KVs) :-
 :- pred assoc_list.from_corresponding_2(list(K)::in, list(V)::in,
     assoc_list(K,V)::out) is semidet.
 
-assoc_list.from_corresponding_2([], [], []).
-assoc_list.from_corresponding_2([A | As], [B | Bs], [A - B | ABs]) :-
+from_corresponding_2([], [], []).
+from_corresponding_2([A | As], [B | Bs], [A - B | ABs]) :-
     assoc_list.from_corresponding_2(As, Bs, ABs).
 
-assoc_list.keys(AL) = Ks :-
+keys(AL) = Ks :-
     assoc_list.keys(AL, Ks).
 
-assoc_list.keys([], []).
-assoc_list.keys([K - _ | KVs], [K | Ks]) :-
+keys([], []).
+keys([K - _ | KVs], [K | Ks]) :-
     assoc_list.keys(KVs, Ks).
 
-assoc_list.values(AL) = Vs :-
+values(AL) = Vs :-
     assoc_list.values(AL, Vs).
 
-assoc_list.values([], []).
-assoc_list.values([_ - V | KVs], [V | Vs]) :-
+values([], []).
+values([_ - V | KVs], [V | Vs]) :-
     assoc_list.values(KVs, Vs).
 
-assoc_list.keys_and_values([], [], []).
-assoc_list.keys_and_values([K - V | KVs], [K | Ks], [V | Vs]) :-
+keys_and_values([], [], []).
+keys_and_values([K - V | KVs], [K | Ks], [V | Vs]) :-
     assoc_list.keys_and_values(KVs, Ks, Vs).
 
-assoc_list.search([K - V | KVs], Key, Value) :-
+search([K - V | KVs], Key, Value) :-
     ( if K = Key then
         Value = V
     else
@@ -283,7 +289,7 @@ AL ^ det_elem(K) = V :-
         report_lookup_error("assoc_list.det_elem: key not found", K)
     ).
 
-assoc_list.remove([K - V | KVs], Key, Value, Filtered) :-
+remove([K - V | KVs], Key, Value, Filtered) :-
     ( if K = Key then
         Value = V,
         Filtered = KVs
@@ -292,38 +298,41 @@ assoc_list.remove([K - V | KVs], Key, Value, Filtered) :-
         Filtered = [K - V | FilteredTail]
     ).
 
-assoc_list.map_keys_only(_P, [], []).
-assoc_list.map_keys_only(P, [K0 - V | KVs0], [K - V | KVs]) :-
+svremove(Key, Value, !AL) :-
+    assoc_list.remove(!.AL, Key, Value, !:AL).
+
+map_keys_only(_P, [], []).
+map_keys_only(P, [K0 - V | KVs0], [K - V | KVs]) :-
     P(K0, K),
     assoc_list.map_keys_only(P, KVs0, KVs).
 
-assoc_list.map_keys_only(_F, []) = [].
-assoc_list.map_keys_only(F, [K0 - V | KVs0]) = [K - V | KVs] :-
+map_keys_only(_F, []) = [].
+map_keys_only(F, [K0 - V | KVs0]) = [K - V | KVs] :-
     K = F(K0),
     KVs = assoc_list.map_keys_only(F, KVs0).
 
-assoc_list.map_values_only(_P, [], []).
-assoc_list.map_values_only(P, [K - V0 | KVs0], [K - V | KVs]) :-
+map_values_only(_P, [], []).
+map_values_only(P, [K - V0 | KVs0], [K - V | KVs]) :-
     P(V0, V),
     assoc_list.map_values_only(P, KVs0, KVs).
 
-assoc_list.map_values_only(_F, []) = [].
-assoc_list.map_values_only(F, [K - V0 | KVs0]) = [K - V | KVs] :-
+map_values_only(_F, []) = [].
+map_values_only(F, [K - V0 | KVs0]) = [K - V | KVs] :-
     V = F(V0),
     KVs = assoc_list.map_values_only(F, KVs0).
 
-assoc_list.map_values(_P, [], []).
-assoc_list.map_values(P, [K - V0 | KVs0], [K - V | KVs]) :-
+map_values(_P, [], []).
+map_values(P, [K - V0 | KVs0], [K - V | KVs]) :-
     P(K, V0, V),
     assoc_list.map_values(P, KVs0, KVs).
 
-assoc_list.map_values(_F, []) = [].
-assoc_list.map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-
+map_values(_F, []) = [].
+map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-
     V = F(K, V0),
     KVs = assoc_list.map_values(F, KVs0).
 
-assoc_list.filter(_, [],  []).
-assoc_list.filter(P, [HK - HV | T], True) :-
+filter(_, [],  []).
+filter(P, [HK - HV | T], True) :-
     ( if P(HK) then
         assoc_list.filter(P, T, TrueTail),
         True = [HK - HV | TrueTail]
@@ -331,11 +340,11 @@ assoc_list.filter(P, [HK - HV | T], True) :-
         assoc_list.filter(P, T, True)
     ).
 
-assoc_list.filter(P, List) = Trues :-
+filter(P, List) = Trues :-
     assoc_list.filter(P, List, Trues).
 
-assoc_list.negated_filter(_, [],  []).
-assoc_list.negated_filter(P, [HK - HV | T], False) :-
+negated_filter(_, [],  []).
+negated_filter(P, [HK - HV | T], False) :-
     ( if P(HK) then
         assoc_list.negated_filter(P, T, False)
     else
@@ -343,11 +352,11 @@ assoc_list.negated_filter(P, [HK - HV | T], False) :-
         False = [HK - HV | FalseTail]
     ).
 
-assoc_list.negated_filter(P, List) = Falses :-
+negated_filter(P, List) = Falses :-
     assoc_list.negated_filter(P, List, Falses).
 
-assoc_list.filter(_, [],  [], []).
-assoc_list.filter(P, [HK - HV | T], True, False) :-
+filter(_, [],  [], []).
+filter(P, [HK - HV | T], True, False) :-
     ( if P(HK) then
         assoc_list.filter(P, T, TrueTail, False),
         True = [HK - HV | TrueTail]
@@ -356,13 +365,13 @@ assoc_list.filter(P, [HK - HV | T], True, False) :-
         False = [HK - HV | FalseTail]
     ).
 
-assoc_list.merge(As, Bs) = ABs :-
+merge(As, Bs) = ABs :-
     assoc_list.merge(As, Bs, ABs).
 
-assoc_list.merge([], [], []).
-assoc_list.merge([A | As], [], [A | As]).
-assoc_list.merge([], [B | Bs], [B | Bs]).
-assoc_list.merge([A | As], [B | Bs], Cs) :-
+merge([], [], []).
+merge([A | As], [], [A | As]).
+merge([], [B | Bs], [B | Bs]).
+merge([A | As], [B | Bs], Cs) :-
     ( if
         A = AK - _AV,
         B = BK - _BV,
@@ -376,26 +385,26 @@ assoc_list.merge([A | As], [B | Bs], Cs) :-
         Cs = [A | Cs0]
     ).
 
-assoc_list.foldl_keys(_, [], !Acc).
-assoc_list.foldl_keys(P, [KV | KVs], !Acc) :-
+foldl_keys(_, [], !Acc).
+foldl_keys(P, [KV | KVs], !Acc) :-
     KV = K - _V,
     P(K, !Acc),
     assoc_list.foldl_keys(P, KVs, !Acc).
 
-assoc_list.foldl_values(_, [], !Acc).
-assoc_list.foldl_values(P, [KV | KVs], !Acc) :-
+foldl_values(_, [], !Acc).
+foldl_values(P, [KV | KVs], !Acc) :-
     KV = _K - V,
     P(V, !Acc),
     assoc_list.foldl_values(P, KVs, !Acc).
 
-assoc_list.foldl2_values(_, [], !Acc1, !Acc2).
-assoc_list.foldl2_values(P, [KV | KVs], !Acc1, !Acc2) :-
+foldl2_values(_, [], !Acc1, !Acc2).
+foldl2_values(P, [KV | KVs], !Acc1, !Acc2) :-
     KV = _K - V,
     P(V, !Acc1, !Acc2),
     assoc_list.foldl2_values(P, KVs, !Acc1, !Acc2).
 
-assoc_list.foldl3_values(_, [], !Acc1, !Acc2, !Acc3).
-assoc_list.foldl3_values(P, [KV | KVs], !Acc1, !Acc2, !Acc3) :-
+foldl3_values(_, [], !Acc1, !Acc2, !Acc3).
+foldl3_values(P, [KV | KVs], !Acc1, !Acc2, !Acc3) :-
     KV = _K - V,
     P(V, !Acc1, !Acc2, !Acc3),
     assoc_list.foldl3_values(P, KVs, !Acc1, !Acc2, !Acc3).

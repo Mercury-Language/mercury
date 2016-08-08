@@ -362,9 +362,19 @@ Changes to the Mercury standard library:
    - mktime/1
    - ctime/1
 
-* The following predicate has been added to the rbtree module:
+* The following predicates have been added to the rbtree module:
 
    - foldl_values/4
+   - foldl2_values/6
+
+* The following predicates have been added to the hash_table module:
+
+   - fold2/6
+   - fold3/8
+
+* We have added the predicate svremove/4 to the assoc_list module.
+  This like the remove/4 predicate but with its arguments are in
+  an order more conducive to the use of state variable notation.
 
 Changes to the Mercury compiler:
 

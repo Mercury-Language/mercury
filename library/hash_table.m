@@ -215,7 +215,7 @@
 
     % Fold a predicate over the key-value bindings in a hash table.
     %
-:- pred fold(pred(K, V, T, T), hash_table(K, V), T, T).
+:- pred fold(pred(K, V, A, A), hash_table(K, V), A, A).
 :- mode fold(in(pred(in, in, in, out) is det), hash_table_ui,
     in, out) is det.
 :- mode fold(in(pred(in, in, mdi, muo) is det), hash_table_ui,
@@ -228,6 +228,35 @@
     mdi, muo) is semidet.
 :- mode fold(in(pred(in, in, di, uo) is semidet), hash_table_ui,
     di, uo) is semidet.
+
+:- pred fold2(pred(K, V, A, A, B, B), hash_table(K, V), A, A, B, B).
+:- mode fold2(in(pred(in, in, in, out, in, out) is det), hash_table_ui,
+    in, out, in, out) is det.
+:- mode fold2(in(pred(in, in, in, out, mdi, muo) is det), hash_table_ui,
+    in, out, mdi, muo) is det.
+:- mode fold2(in(pred(in, in, in, out, di, uo) is det), hash_table_ui,
+    in, out, di, uo) is det.
+:- mode fold2(in(pred(in, in, in, out, in, out) is semidet), hash_table_ui,
+    in, out, in, out) is semidet.
+:- mode fold2(in(pred(in, in, in, out, mdi, muo) is semidet), hash_table_ui,
+    in, out, mdi, muo) is semidet.
+:- mode fold2(in(pred(in, in, in, out, di, uo) is semidet), hash_table_ui,
+    in, out, di, uo) is semidet.
+
+:- pred fold3(pred(K, V, A, A, B, B, C, C), hash_table(K, V), A, A, B, B,
+    C, C).
+:- mode fold3(in(pred(in, in, in, out, in, out, in, out) is det),
+    hash_table_ui, in, out, in, out, in, out) is det.
+:- mode fold3(in(pred(in, in, in, out, in, out, mdi, muo) is det),
+    hash_table_ui, in, out, in, out, mdi, muo) is det.
+:- mode fold3(in(pred(in, in, in, out, in, out, di, uo) is det),
+    hash_table_ui, in, out, in, out, di, uo) is det.
+:- mode fold3(in(pred(in, in, in, out, in, out, in, out) is semidet),
+    hash_table_ui, in, out, in, out, in, out) is semidet.
+:- mode fold3(in(pred(in, in, in, out, in, out, mdi, muo) is semidet),
+    hash_table_ui, in, out, in, out, mdi, muo) is semidet.
+:- mode fold3(in(pred(in, in, in, out, in, out, di, uo) is semidet),
+    hash_table_ui, in, out, in, out, di, uo) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -758,7 +787,7 @@ fold_f(F, List, A0, A) :-
 fold(P, HT, !A) :-
     foldl(fold_p(P), HT ^ buckets, !A).
 
-:- pred fold_p(pred(K, V, T, T), hash_table_alist(K, V), T, T).
+:- pred fold_p(pred(K, V, A, A), hash_table_alist(K, V), A, A).
 :- mode fold_p(pred(in, in, in, out) is det, in, in, out) is det.
 :- mode fold_p(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode fold_p(pred(in, in, di, uo) is det, in, di, uo) is det.
@@ -776,6 +805,69 @@ fold_p(P, List, !A) :-
         List = ht_cons(K, V, KVs),
         P(K, V, !A),
         fold_p(P, KVs, !A)
+    ).
+
+%---------------------------------------------------------------------------%
+
+fold2(P, HT, !A, !B) :-
+    foldl2(fold2_p(P), HT ^ buckets, !A, !B).
+
+:- pred fold2_p(pred(K, V, A, A, B, B), hash_table_alist(K, V), A, A, B, B).
+:- mode fold2_p(pred(in, in, in, out, in, out) is det, in, in, out,
+    in, out) is det.
+:- mode fold2_p(pred(in, in, in, out, mdi, muo) is det, in, in, out,
+    mdi, muo) is det.
+:- mode fold2_p(pred(in, in, in, out, di, uo) is det, in, in, out,
+    di, uo) is det.
+:- mode fold2_p(pred(in, in, in, out, in, out) is semidet, in, in, out,
+    in, out) is semidet.
+:- mode fold2_p(pred(in, in, in, out, mdi, muo) is semidet, in,in, out,
+    mdi, muo) is semidet.
+:- mode fold2_p(pred(in, in, in, out, di, uo) is semidet, in, in, out,
+    di, uo) is semidet.
+
+fold2_p(P, List, !A, !B) :-
+    (
+        List = ht_nil
+    ;
+        List = ht_single(K, V),
+        P(K, V, !A, !B)
+    ;
+        List = ht_cons(K, V, KVs),
+        P(K, V, !A, !B),
+        fold2_p(P, KVs, !A, !B)
+    ).
+
+%---------------------------------------------------------------------------%
+
+fold3(P, HT, !A, !B, !C) :-
+    foldl3(fold3_p(P), HT ^ buckets, !A, !B, !C).
+
+:- pred fold3_p(pred(K, V, A, A, B, B, C, C), hash_table_alist(K, V),
+    A, A, B, B, C, C).
+:- mode fold3_p(pred(in, in, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out) is det.
+:- mode fold3_p(pred(in, in, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, mdi, muo) is det.
+:- mode fold3_p(pred(in, in, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, di, uo) is det.
+:- mode fold3_p(pred(in, in, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out) is semidet.
+:- mode fold3_p(pred(in, in, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode fold3_p(pred(in, in, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, di, uo) is semidet.
+
+fold3_p(P, List, !A, !B, !C) :-
+    (
+        List = ht_nil
+    ;
+        List = ht_single(K, V),
+        P(K, V, !A, !B, !C)
+    ;
+        List = ht_cons(K, V, KVs),
+        P(K, V, !A, !B, !C),
+        fold3_p(P, KVs, !A, !B, !C)
     ).
 
 %---------------------------------------------------------------------------%
