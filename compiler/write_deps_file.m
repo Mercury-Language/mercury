@@ -236,7 +236,9 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                 FactDeps = []
             ),
 
-            ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
+            ( if
+                string.remove_suffix(SourceFileName, ".m", SourceFileBase)
+            then
                 ErrFileName = SourceFileBase ++ ".err"
             else
                 unexpected($module, $pred, "source file doesn't end in `.m'")
@@ -271,9 +273,12 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             else
                 io.write_strings(DepStream, [" ", Int0FileName], !IO)
             ),
-            write_dependencies_set(Globals, DepStream, ".int0", ParentDeps, !IO),
-            write_dependencies_set(Globals, DepStream, ".int", LongDeps, !IO),
-            write_dependencies_set(Globals, DepStream, ".int2", ShortDeps, !IO),
+            write_dependencies_set(Globals, DepStream,
+                ".int0", ParentDeps, !IO),
+            write_dependencies_set(Globals, DepStream,
+                ".int", LongDeps, !IO),
+            write_dependencies_set(Globals, DepStream,
+                ".int2", ShortDeps, !IO),
 
             NestedExts = [
                 ".optdate",
@@ -287,10 +292,11 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             ( if set.is_empty(NestedDeps) then
                 true
             else
-                Write = (pred(Ext::in, !.LIO::di, !:LIO::uo) is det :-
+                Write = ( pred(Ext::in, !.LIO::di, !:LIO::uo) is det :-
                     module_name_to_file_name(Globals, ModuleName, Ext,
                         do_not_create_dirs, ExtName, !LIO),
-                    io.write_strings(DepStream, ["\n\n", ExtName, " : "], !LIO),
+                    io.write_strings(DepStream, ["\n\n", ExtName, " : "],
+                        !LIO),
                     write_dependencies_set(Globals, DepStream, Ext, NestedDeps,
                         !LIO)
                 ),
@@ -352,9 +358,10 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                 % from the current directory, so that inter-module optimization
                 % works when the .opt files for the library are unavailable.
                 % This is only necessary because make doesn't allow conditional
-                % dependencies. The dependency on the current module's .opt file
-                % is to make sure the module gets type-checked without having
-                % the definitions of abstract types from other modules.
+                % dependencies. The dependency on the current module's
+                % .opt file is to make sure the module gets type-checked
+                % without having the definitions of abstract types
+                % from other modules.
                 %
                 % XXX The code here doesn't correctly handle dependencies
                 % on `.int' and `.int2' files needed by the `.opt' files.
@@ -419,7 +426,8 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                     PicObjFileName, " ",
                     ObjFileName, " :"
                 ], !IO),
-                write_dependencies_set(Globals, DepStream, ".mih", AllDeps, !IO)
+                write_dependencies_set(Globals, DepStream, ".mih", AllDeps,
+                    !IO)
             else
                 true
             ),
@@ -495,8 +503,10 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             write_dependencies_set(Globals, DepStream, ".date0", ParentDeps,
                 !IO),
             io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-            write_dependencies_set(Globals, DepStream, ".int3", LongDeps, !IO),
-            write_dependencies_set(Globals, DepStream, ".int3", ShortDeps, !IO),
+            write_dependencies_set(Globals, DepStream, ".int3", LongDeps,
+                !IO),
+            write_dependencies_set(Globals, DepStream, ".int3", ShortDeps,
+                !IO),
             io.write_string(DepStream, "\n\n", !IO),
 
             % If we can pass the module name rather than the file name, then
@@ -932,6 +942,24 @@ generate_dependencies_write_d_files(_, [], _, _, _, _, _, _, !IO).
 generate_dependencies_write_d_files(Globals, [Dep | Deps],
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptOrder, DepsMap, !IO) :-
+    generate_dependencies_write_d_file(Globals, Dep,
+        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+        TransOptOrder, DepsMap, !IO),
+    generate_dependencies_write_d_files(Globals, Deps,
+        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+        TransOptOrder, DepsMap, !IO).
+
+:- pred generate_dependencies_write_d_file(globals::in, deps::in,
+    deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
+    list(module_name)::in, deps_map::in, io::di, io::uo) is det.
+
+generate_dependencies_write_d_file(Globals, Dep,
+        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+        TransOptOrder, _DepsMap, !IO) :-
+    % XXX The fact that _DepsMap is unused here may be a bug.
+    %
+    % XXX Updating !ModuleAndImports does not look a correct thing to do
+    % in this predicate, since it doesn't actually process any module imports.
     some [!ModuleAndImports] (
         Dep = deps(_, !:ModuleAndImports),
 
@@ -962,6 +990,8 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
 
         % Assume we need the `.mh' files for all imported modules
         % (we will if they define foreign types).
+        % XXX This overly conservative assumption can lead to a lot of
+        % unnecessary recompilations.
         ForeignImportModules0 = init_foreign_import_modules,
         globals.get_target(Globals, Target),
         (
@@ -1012,11 +1042,7 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
                 yes(TransOptDeps), !IO)
         else
             true
-        ),
-        generate_dependencies_write_d_files(Globals, Deps,
-            IntDepsGraph, ImpDepsGraph,
-            IndirectDepsGraph, IndirectOptDepsGraph,
-            TransOptOrder, DepsMap, !IO)
+        )
     ).
 
 :- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
