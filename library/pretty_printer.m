@@ -150,35 +150,26 @@
     % write_doc(Doc, !IO):
     % write_doc(FileStream, Doc, !IO):
     %
-    % Format Doc to io.stdout_stream or FileStream respectively, using
-    % write_doc_to stream, with include_details_cc, the default formatter_map,
-    % and the default pp_params.
+    % Format Doc to io.stdout_stream or FileStream respectively using put_doc,
+    % with include_details_cc, the default formatter_map, and the default
+    % pp_params.
     %
 :- pred write_doc(doc::in, io::di, io::uo) is det.
 :- pred write_doc(io.output_stream::in, doc::in, io::di, io::uo) is det.
 
-    % write_doc_to_stream(Stream, FMap, LineWidth, MaxLines, Limit,
-    %   Doc, !State):
+    % put_doc(Stream, Canonicalize, FMap, Params, Doc, !State):
     %
-    % Format Doc to fit on lines of LineWidth chars, truncating after
-    % MaxLines lines, formatting format_univ(_) docs using specialised
-    % formatters Formatters starting with pretty-printer limits Limit.
+    % Format Doc to Stream. Format format_univ(_) docs using specialised
+    % formatters Formatters, and using Params as the pretty printer parameters.
+    % The Canonicalize argument controls how put_doc deconstructs values
+    % of noncanonical types (see the documentation of the noncanon_handling
+    % type for details).
     %
-    % NOTE_TO_IMPLEMENTORS: XXX The name of this predicate is wrong.
-    % NOTE_TO_IMPLEMENTORS: This name should be attached to the predicate
-    % NOTE_TO_IMPLEMENTORS: that is currently named write_doc/4; THIS predicate
-    % NOTE_TO_IMPLEMENTORS: should be named something like write_doc_general.
-    % NOTE_TO_IMPLEMENTORS: Note that "stream" here has two related but NOT
-    % NOTE_TO_IMPLEMENTORS: IDENTICAL meanings (the stream typeclass, and
-    % NOTE_TO_IMPLEMENTORS: io.output_stream), and thus using it for this name
-    % NOTE_TO_IMPLEMENTORS: is more confusing than helpful.
-:- pred write_doc_to_stream(Stream, noncanon_handling, formatter_map, int, int,
-    formatting_limit, doc, State, State)
+:- pred put_doc(Stream, noncanon_handling, formatter_map, pp_params,
+    doc, State, State)
     <= stream.writer(Stream, string, State).
-:- mode write_doc_to_stream(in, in(canonicalize), in, in, in, in, in,
-    di, uo) is det.
-:- mode write_doc_to_stream(in, in(include_details_cc), in, in, in, in, in,
-    di, uo) is cc_multi.
+:- mode put_doc(in, in(canonicalize), in, in, in, di, uo) is det.
+:- mode put_doc(in, in(include_details_cc), in, in, in, di, uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %
@@ -201,20 +192,17 @@
     %
 :- func new_formatter_map = formatter_map.
 
-    % set_formatter(ModuleName, TypeName, TypeArity, Formatter, FMap):
+    % set_formatter(ModuleName, TypeName, TypeArity, Formatter, !FMap):
     %
-    % Update FMap to use Formatter to format the type
+    % Update !FMap to use Formatter to format the type
     % ModuleName.TypeName/TypeArity.
     %
-    % NOTE_TO_IMPLEMENTORS: This should be a predicate, to allow the use of
-    % NOTE_TO_IMPLEMENTORS: state variable notation in chained calls.
-    % NOTE_TO_IMPLEMENTORS: See set_formatter_sv below.
-:- func set_formatter(string, string, int, formatter, formatter_map) =
-    formatter_map.
+:- pred set_formatter(string::in, string::in, int::in, formatter::in,
+    formatter_map::in, formatter_map::out) is det.
 
 %---------------------%
 
-    % The formatting_limit type controls *how many* of the function symbols
+    % The func_symbol_limit type controls *how many* of the function symbols
     % stored in the term inside a format_univ, format_list, or format_term doc
     % the write_doc family of functions should include in the resulting string.
     %
@@ -234,11 +222,7 @@
     % triangular(N), triangular(N - 1), ... respectively. When the limit
     % is exhausted, terms are output as just "...".
     %
-    % NOTE_TO_IMPLEMENTORS: "formatting_limit" is a misleading name
-    % NOTE_TO_IMPLEMENTORS: for this type, since it implies that it includes
-    % NOTE_TO_IMPLEMENTORS: *everything* that limits formatting. However,
-    % NOTE_TO_IMPLEMENTORS: the type that actually does this is pp_params.
-:- type formatting_limit
+:- type func_symbol_limit
     --->    linear(int)
     ;       triangular(int).
 
@@ -250,16 +234,16 @@
     %
 :- type pp_params
     --->    pp_params(
-                pp_line_width   :: int,             % Line width in characters.
-                pp_max_lines    :: int,             % Max lines to output.
-                pp_limit        :: formatting_limit % Term formatting limit.
+                pp_line_width   :: int,
+                pp_max_lines    :: int,
+                pp_limit        :: func_symbol_limit
             ).
 
 %---------------------%
 
-    % A user-configurable default set of type-specific formatters and formatting
-    % parameters is always attached to the I/O state. The write_doc predicate
-    % (in both its arities) uses these settings.
+    % A user-configurable default set of type-specific formatters and
+    % formatting parameters is always attached to the I/O state.
+    % The write_doc predicate (in both its arities) uses these settings.
     %
     % The get_default_formatter_map predicate reads the default formatter_map
     % from the current I/O state, while set_default_formatter_map writes
@@ -339,7 +323,7 @@
             % Set the current priority for printing operator terms with the
             % correct parenthesisation.
 
-    ;       set_limit(formatting_limit).
+    ;       set_limit(func_symbol_limit).
             % Set the truncation limit.
 
     % Maps module names (first map), type names (second map) and type arities
@@ -391,25 +375,24 @@ write_doc(Doc, !IO) :-
 
 write_doc(Stream, Doc, !IO) :-
     get_default_formatter_map(Formatters, !IO),
-    get_default_params(pp_params(LineWidth, MaxLines, Limit), !IO),
+    get_default_params(Params, !IO),
     promise_equivalent_solutions [!:IO] (
-        write_doc_to_stream(Stream, include_details_cc, Formatters,
-            LineWidth, MaxLines, Limit, Doc, !IO)
+        put_doc(Stream, include_details_cc, Formatters, Params, Doc, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, MaxLines, Limit,
-        Doc, !IO) :-
+put_doc(Stream, Canonicalize, FMap, Params, Doc, !IO) :-
     Pri = ops.max_priority(ops.init_mercury_op_table),
+    Params = pp_params(LineWidth, MaxLines, Limit),
     RemainingWidth = LineWidth,
     Indents = indent_empty,
-    do_write_doc(Stream, Canonicalize, FMap, LineWidth, [Doc],
+    do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc],
         RemainingWidth, _, Indents, _, MaxLines, _, Limit, _, Pri, _, !IO).
 
 %---------------------------------------------------------------------------%
 
-    % do_write_doc(FMap, LineWidth, Docs, !RemainingWidth, !Indents,
+    % do_put_doc(FMap, LineWidth, Docs, !RemainingWidth, !Indents,
     %   !RemainingLines, !Limit, !Pri, !IO):
     %
     % Format Docs to fit on LineWidth chars per line,
@@ -420,19 +403,19 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, MaxLines, Limit,
     % - tracking current operator priority !Pri.
     % Assumes that Docs is the output of expand.
     %
-:- pred do_write_doc(Stream, noncanon_handling, formatter_map, int,
+:- pred do_put_doc(Stream, noncanon_handling, formatter_map, int,
     docs, int, int, indent_stack, indent_stack, int, int,
-    formatting_limit, formatting_limit,
+    func_symbol_limit, func_symbol_limit,
     ops.priority, ops.priority, State, State)
     <= stream.writer(Stream, string, State).
-:- mode do_write_doc(in, in(canonicalize), in, in, in,
+:- mode do_put_doc(in, in(canonicalize), in, in, in,
     in, out, in, out, in, out, in, out, in, out, di, uo) is det.
-:- mode do_write_doc(in, in(include_details_cc), in, in, in,
+:- mode do_put_doc(in, in(include_details_cc), in, in, in,
     in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
-do_write_doc(_Stream, _Canonicalize, _FMap, _LineWidth, [],
+do_put_doc(_Stream, _Canonicalize, _FMap, _LineWidth, [],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO).
-do_write_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
+do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO) :-
     ( if !.RemainingLines =< 0 then
         stream.put(Stream, "...", !IO)
@@ -527,7 +510,7 @@ do_write_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             !:Pri = NewPri,
             Docs = Docs0
         ),
-        do_write_doc(Stream, Canonicalize, FMap, LineWidth, Docs,
+        do_put_doc(Stream, Canonicalize, FMap, LineWidth, Docs,
             !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO)
     ).
 
@@ -583,7 +566,8 @@ output_current_group(Stream, LineWidth, Indents, OpenGroups,
     % !R tracks the remaining line width after accounting for expansion.
     %
 :- pred expand_docs(noncanon_handling, formatter_map, docs, docs, int,
-    formatting_limit, formatting_limit, ops.priority, ops.priority, int, int).
+    func_symbol_limit, func_symbol_limit,
+    ops.priority, ops.priority, int, int).
 :- mode expand_docs(in(canonicalize), in, in, out, in, in, out,
     in, out, in, out) is det.
 :- mode expand_docs(in(include_details_cc), in, in, out, in, in, out,
@@ -614,7 +598,9 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
             expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
-            ( Doc = nl ; Doc = hard_nl ),
+            ( Doc = nl
+            ; Doc = hard_nl
+            ),
             ( if OpenGroups =< 0 then
                 Docs = [Doc | Docs0]
             else
@@ -712,7 +698,7 @@ output_indentation(Stream, indent_nonempty(IndentStack, Indent),
     % pretty-printer limit has been exhausted, then geenrate only "...".
     %
 :- pred expand_pp(noncanon_handling, formatter_map, univ, doc,
-    formatting_limit, formatting_limit, ops.priority).
+    func_symbol_limit, func_symbol_limit, ops.priority).
 :- mode expand_pp(in(canonicalize), in, in, out, in, out, in)
     is det.
 :- mode expand_pp(in(include_details_cc), in, in, out, in, out, in)
@@ -733,7 +719,7 @@ expand_pp(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
     then
         decrement_limit(!Limit),
         Doc0 = Formatter(Univ, ArgTypeDescs),
-        set_formatting_limit_correctly(!.Limit, Doc0, Doc)
+        set_func_symbol_limit_correctly(!.Limit, Doc0, Doc)
     else
         deconstruct(univ_value(Univ), Canonicalize, Name, _Arity, Args),
         expand_format_term(Name, Args, Doc, !Limit, CurrentPri)
@@ -752,7 +738,7 @@ get_formatter(FMap, ModuleName, TypeName, Arity, Formatter) :-
     % Expand a list of univs into docs using the given separator.
     %
 :- pred expand_format_list(list(univ)::in, doc::in, doc::out,
-    formatting_limit::in, formatting_limit::out) is det.
+    func_symbol_limit::in, func_symbol_limit::out) is det.
 
 expand_format_list([], _Sep, docs([]), !Limit).
 expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
@@ -775,7 +761,7 @@ expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
     % term syntax.
     %
 :- pred expand_format_term(string::in, list(univ)::in, doc::out,
-    formatting_limit::in, formatting_limit::out, ops.priority::in) is det.
+    func_symbol_limit::in, func_symbol_limit::out, ops.priority::in) is det.
 
 expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
     ( if Args = [] then
@@ -796,10 +782,10 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
         ])
     ),
     decrement_limit(!Limit),
-    set_formatting_limit_correctly(!.Limit, Doc0, Doc).
+    set_func_symbol_limit_correctly(!.Limit, Doc0, Doc).
 
 :- pred expand_format_susp(((func) = doc)::in, doc::out,
-    formatting_limit::in, formatting_limit::out) is det.
+    func_symbol_limit::in, func_symbol_limit::out) is det.
 
 expand_format_susp(Susp, Doc, !Limit) :-
     ( if limit_overrun(!.Limit) then
@@ -807,7 +793,7 @@ expand_format_susp(Susp, Doc, !Limit) :-
     else
         decrement_limit(!Limit),
         Doc0 = apply(Susp),
-        set_formatting_limit_correctly(!.Limit, Doc0, Doc)
+        set_func_symbol_limit_correctly(!.Limit, Doc0, Doc)
     ).
 
     % Expand a name and list of univs into docs corresponding to Mercury
@@ -901,16 +887,16 @@ ellipsis = str("...").
 
     % Update the limits properly after processing a pp_term.
     %
-:- pred set_formatting_limit_correctly(formatting_limit::in,
+:- pred set_func_symbol_limit_correctly(func_symbol_limit::in,
     doc::in, doc::out) is det.
 
-set_formatting_limit_correctly(linear(_), Doc, Doc).
-set_formatting_limit_correctly(Limit @ triangular(_), Doc0, Doc) :-
+set_func_symbol_limit_correctly(linear(_), Doc, Doc).
+set_func_symbol_limit_correctly(Limit @ triangular(_), Doc0, Doc) :-
     Doc = docs([Doc0, pp_internal(set_limit(Limit))]).
 
     % Succeeds if the pretty-printer state limits have been used up.
     %
-:- pred limit_overrun(formatting_limit::in) is semidet.
+:- pred limit_overrun(func_symbol_limit::in) is semidet.
 
 limit_overrun(linear(N)) :-
     N =< 0.
@@ -919,7 +905,7 @@ limit_overrun(triangular(N)) :-
 
     % Reduce the pretty-printer limit by one.
     %
-:- pred decrement_limit(formatting_limit::in, formatting_limit::out) is det.
+:- pred decrement_limit(func_symbol_limit::in, func_symbol_limit::out) is det.
 
 decrement_limit(linear(N), linear(N - 1)).
 decrement_limit(triangular(N), triangular(N - 1)).
@@ -929,8 +915,8 @@ decrement_limit(triangular(N), triangular(N - 1)).
 
 new_formatter_map = map.init.
 
-set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0) = FMap :-
-    ( if map.search(FMap0, ModuleName, FMapTypeArity0) then
+set_formatter(ModuleName, TypeName, Arity, Formatter, !FMap) :-
+    ( if map.search(!.FMap, ModuleName, FMapTypeArity0) then
         ( if map.search(FMapTypeArity0, TypeName, FMapArity0) then
             map.det_update(Arity, Formatter, FMapArity0, FMapArity),
             map.det_update(TypeName, FMapArity,
@@ -940,11 +926,11 @@ set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0) = FMap :-
             map.det_insert(TypeName, FMapArity,
                 FMapTypeArity0, FMapTypeArity)
         ),
-        map.det_update(ModuleName, FMapTypeArity, FMap0, FMap)
+        map.det_update(ModuleName, FMapTypeArity, !FMap)
     else
         FMapArity = map.singleton(Arity, Formatter),
         FMapTypeArity = map.singleton(TypeName, FMapArity),
-        map.det_insert(ModuleName, FMapTypeArity, FMap0, FMap)
+        map.det_insert(ModuleName, FMapTypeArity, !FMap)
     ).
 
 get_default_formatter_map(FMap, !IO) :-
@@ -963,7 +949,7 @@ get_default_formatter_map(FMap, !IO) :-
 
 set_default_formatter(ModuleName, TypeName, TypeArity, Formatter, !IO) :-
     get_default_formatter_map(FMap0, !IO),
-    FMap = set_formatter(ModuleName, TypeName, TypeArity, Formatter, FMap0),
+    set_formatter(ModuleName, TypeName, TypeArity, Formatter, FMap0, FMap),
     set_default_formatter_map(FMap, !IO).
 
 %---------------------%
@@ -1125,21 +1111,15 @@ set_default_formatter(ModuleName, TypeName, TypeArity, Formatter, !IO) :-
 
 initial_formatter_map = !:Formatters :-
     !:Formatters = new_formatter_map,
-    set_formatter_sv("builtin", "character", 0, fmt_char,    !Formatters),
-    set_formatter_sv("builtin", "float",     0, fmt_float,   !Formatters),
-    set_formatter_sv("builtin", "int",       0, fmt_int,     !Formatters),
-    set_formatter_sv("builtin", "string",    0, fmt_string,  !Formatters),
-    set_formatter_sv("array",   "array",     1, fmt_array,   !Formatters),
-    set_formatter_sv("list",    "list",      1, fmt_list,    !Formatters),
-    set_formatter_sv("tree234", "tree234",   2, fmt_tree234, !Formatters),
-    set_formatter_sv("version_array", "version_array", 1, fmt_version_array,
+    set_formatter("builtin", "character", 0, fmt_char,    !Formatters),
+    set_formatter("builtin", "float",     0, fmt_float,   !Formatters),
+    set_formatter("builtin", "int",       0, fmt_int,     !Formatters),
+    set_formatter("builtin", "string",    0, fmt_string,  !Formatters),
+    set_formatter("array",   "array",     1, fmt_array,   !Formatters),
+    set_formatter("list",    "list",      1, fmt_list,    !Formatters),
+    set_formatter("tree234", "tree234",   2, fmt_tree234, !Formatters),
+    set_formatter("version_array", "version_array", 1, fmt_version_array,
         !Formatters).
-
-:- pred set_formatter_sv(string::in, string::in, int::in, formatter::in,
-    formatter_map::in, formatter_map::out) is det.
-
-set_formatter_sv(ModuleName, TypeName, Arity, Formatter, FMap0, FMap) :-
-    FMap = set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0).
 
 %---------------------%
 

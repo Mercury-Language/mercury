@@ -36,7 +36,7 @@
     --->    test_case(
                 line_width              :: int,
                 max_lines               :: int,
-                formatting_limit        :: formatting_limit,
+                fs_limit                :: func_symbol_limit,
                 doc                     :: doc
             ).
 
@@ -206,30 +206,30 @@ test_case(test_case(LineWidth, MaxLines, Limit, Doc)) :-
         format(non_canonical_bool(42)), nl,
         format(non_canonical_bool(43)), nl
     ]),
-    (   Limit = linear(100)
-    ;   Limit = linear(10)
-    ;   Limit = triangular(100)
-    ;   Limit = triangular(10)
-    ;   Limit = linear(1)
-    ;   Limit = triangular(1)
+    ( Limit = linear(100)
+    ; Limit = linear(10)
+    ; Limit = triangular(100)
+    ; Limit = triangular(10)
+    ; Limit = linear(1)
+    ; Limit = triangular(1)
     ),
-    (   MaxLines = 10
-    ;   MaxLines = 3
+    ( MaxLines = 10
+    ; MaxLines = 3
     ),
-    (   LineWidth = 78
-    ;   LineWidth = 38
+    ( LineWidth = 78
+    ; LineWidth = 38
     ),
-    (   Doc = format(List)
-    ;   Doc = format_list(ListUniv, str(", "))
-    ;   Doc = format(MapFloat)
-    ;   Doc = format(MapStr)
-    ;   Doc = format(OpTree)
-    ;   Doc = format(Church)
-    ;   Doc = fmt_susp_seq(100)
-    ;   Doc = format(Tuple)
-    ;   Doc = format(Square)
-    ;   Doc = NonCanonTest
-    ;   Doc = IndentTest
+    ( Doc = format(List)
+    ; Doc = format_list(ListUniv, str(", "))
+    ; Doc = format(MapFloat)
+    ; Doc = format(MapStr)
+    ; Doc = format(OpTree)
+    ; Doc = format(Church)
+    ; Doc = fmt_susp_seq(100)
+    ; Doc = format(Tuple)
+    ; Doc = format(Square)
+    ; Doc = NonCanonTest
+    ; Doc = IndentTest
     ).
 
 :- func mk_op_tree(int) = op_tree.

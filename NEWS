@@ -198,7 +198,7 @@ Changes to the Mercury standard library:
     - is_leading_surrogate/1, is_trailing_surrogate/1
 
   The following predicates in the char module have been deprecated and will
-  either be removed or have their semantics changed in a future release.
+  either be removed or have their semantics changed in a future release:
 
     - is_hex_digit/2
     - int_to_hex_char/2
@@ -375,6 +375,19 @@ Changes to the Mercury standard library:
 * We have added the predicate svremove/4 to the assoc_list module.
   This like the remove/4 predicate but with its arguments are in
   an order more conducive to the use of state variable notation.
+
+* We have made several changes to the pretty_printer module:
+
+  - The type formatter_limit has been renamed to func_symbol_limit,
+    since this better reflects the type's purpose.
+  - We have replaced the set_formatter function with a predicate
+    of the same name, since this allows the use of state variable notation
+    when setting up more than one type-specific formatter,
+  - We have renamed the write_doc_to_stream predicate as put_doc,
+    to better fit in with the names other predicates that operate on
+    values of the stream.writer typeclass, and changed its interface
+    to group the prettyprinter parameters together in a value of the type
+    that was designed for this purpose.
 
 Changes to the Mercury compiler:
 

@@ -1286,9 +1286,9 @@ browser_term_to_string_pretty(S, Term, Width, Lines, Size, Depth, !IO) :-
         Limit = linear(Size)
     ),
 
+    Params = pp_params(Width, Lines, Limit),
     promise_equivalent_solutions [!:IO] (
-        write_doc_to_stream(S, include_details_cc, Formatters,
-            Width, Lines, Limit, Doc, !IO)
+        put_doc(S, include_details_cc, Formatters, Params, Doc, !IO)
     ).
 
 %---------------------------------------------------------------------------%
