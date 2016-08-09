@@ -223,21 +223,11 @@
     % Add the type_info variables for a complicated unification to
     % the appropriate fields in the unification and the goal_info.
     %
+    % Exported for modecheck_unify.m.
+    %
 :- pred unification_typeinfos_rtti_varmaps(mer_type::in, rtti_varmaps::in,
     unification::in, unification::out, hlds_goal_info::in, hlds_goal_info::out)
     is det.
-
-    % Add the type_info variables for a new call goal. This predicate assumes
-    % that process_module has already been run so the called pred has already
-    % been processed.
-    %
-    % XXX This predicate does not yet handle calls whose arguments include
-    % existentially quantified types or type class constraints.
-    %
-:- pred polymorphism_process_new_call(pred_info::in, proc_info::in,
-    pred_id::in, proc_id::in, list(prog_var)::in, builtin_state::in,
-    maybe(call_unify_context)::in, sym_name::in, hlds_goal_info::in,
-    hlds_goal::out, poly_info::in, poly_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1561,7 +1551,9 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
     %
     % with
     %
-    %   X = (pred(A1::in, A2::out) is ... :- list.append(Y, A1, A2))
+    %   X = (
+    %       pred(A1::in, A2::out) is ... :- list.append(Y, A1, A2)
+    %   )
     %
     % We do this because it makes two things easier. First, mode analysis
     % needs to check that the lambda goal doesn't bind any nonlocal variables
@@ -1627,7 +1619,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
     else if
         % Is this a construction or deconstruction of an existentially
         % typed data type?
-
+        %
         % Check whether the functor had a "new " prefix.
         % If so, assume it is a construction, and strip off the prefix.
         % Otherwise, assume it is a deconstruction.
@@ -2258,6 +2250,18 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
     ).
 
 %-----------------------------------------------------------------------------%
+
+    % Add the type_info variables for a new call goal. This predicate assumes
+    % that process_module has already been run so the called pred has already
+    % been processed.
+    %
+    % XXX This predicate does not yet handle calls whose arguments include
+    % existentially quantified types or type class constraints.
+    %
+:- pred polymorphism_process_new_call(pred_info::in, proc_info::in,
+    pred_id::in, proc_id::in, list(prog_var)::in, builtin_state::in,
+    maybe(call_unify_context)::in, sym_name::in, hlds_goal_info::in,
+    hlds_goal::out, poly_info::in, poly_info::out) is det.
 
 polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
         CallArgs0, BuiltinState, MaybeCallUnifyContext, SymName,
