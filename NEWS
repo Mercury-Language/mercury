@@ -275,6 +275,7 @@ Changes to the Mercury standard library:
 
    - fold2_maybe/6
    - maybe_default/2
+   - pred_to_maybe/1
 
 * The following predicates and functions have been added to the calendar
   module:

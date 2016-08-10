@@ -169,6 +169,13 @@
     %
 :- pred maybe_is_yes(maybe(T)::in, T::out) is semidet.
 
+    % pred_to_maybe(Pred) = MaybeResult.
+    %
+    % Make a maybe value from a semidet predicate.
+    %
+:- func pred_to_maybe(pred(X)) = maybe(X).
+:- mode pred_to_maybe(pred(out) is semidet) = out is det.
+
     % Return the value from within the maybe or a default value if there is
     % none.
     %
@@ -209,6 +216,13 @@ map_fold3_maybe(P, yes(T0), yes(T), !A, !B, !C) :-
     P(T0, T, !A, !B, !C).
 
 maybe_is_yes(yes(X), X).
+
+pred_to_maybe(Pred) = Result :-
+    ( if Pred(X) then
+        Result = yes(X)
+    else
+        Result = no
+    ).
 
 maybe_default(_, yes(X)) = X.
 maybe_default(D, no) = D.
