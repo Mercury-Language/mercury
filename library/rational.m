@@ -109,22 +109,22 @@
     Cmp = cmp(R1, R2),
     (Cmp = (>) ; Cmp = (=)).
 
-rational.rational(Int) = rational_norm(integer(Int), integer.one).
+rational(Int) = rational_norm(integer(Int), integer.one).
 
-rational.rational(Num, Den) = rational_norm(integer(Num), integer(Den)).
+rational(Num, Den) = rational_norm(integer(Num), integer(Den)).
 
-rational.from_integer(Integer) = rational_norm(Integer, integer.one).
+from_integer(Integer) = rational_norm(Integer, integer.one).
 
-rational.from_integers(Num, Den) = rational_norm(Num, Den).
+from_integers(Num, Den) = rational_norm(Num, Den).
 
 %% XXX: There are ways to do this in some cases even if the
 %% float conversions would overflow.
 % rational.float(r(Num, Den)) =
 %   float:'/'(integer.float(Num), integer.float(Den)).
 
-rational.one = r(integer.one, integer.one).
+one = r(integer.one, integer.one).
 
-rational.zero = r(integer.zero, integer.one).
+zero = r(integer.zero, integer.one).
 
 '+'(Rat) = Rat.
 
@@ -147,18 +147,18 @@ r(An, Ad) * r(Bn, Bd) = rational_norm(Numer, Denom) :-
 
 R1 / R2 = R1 * reciprocal(R2).
 
-rational.reciprocal(r(Num, Den)) =
+reciprocal(r(Num, Den)) =
     ( if Num = integer.zero then
         func_error("rational.reciprocal: division by zero")
     else
         r(signum(Num) * Den, integer.abs(Num))
     ).
 
-rational.numer(r(Num, _)) = Num.
+numer(r(Num, _)) = Num.
 
-rational.denom(r(_, Den)) = Den.
+denom(r(_, Den)) = Den.
 
-rational.abs(r(Num, Den)) = r(integer.abs(Num), Den).
+abs(r(Num, Den)) = r(integer.abs(Num), Den).
 
 :- func rational_norm(integer, integer) = rational.
 

@@ -342,7 +342,7 @@
     % digits that if the underlying implementation's
     % floating point parsing routines are good, it should
     % to be accurate enough for 128-bit IEEE float.
-math.pi = 3.1415926535897932384626433832795029.
+pi = 3.1415926535897932384626433832795029.
 
     % Base of natural logarithms
 :- pragma foreign_proc("C",
@@ -369,7 +369,7 @@ math.pi = 3.1415926535897932384626433832795029.
     % digits that if the underlying implementation's
     % floating point parsing routines are good, it should
     % to be accurate enough for 128-bit IEEE float.
-math.e = 2.7182818284590452353602874713526625.
+e = 2.7182818284590452353602874713526625.
 
 :- pragma foreign_proc("C",
     math.ceiling(Num::in) = (Ceil::out),
@@ -462,11 +462,11 @@ math.e = 2.7182818284590452353602874713526625.
 "
     Rounded = float(round(Num))
 ").
-math.round(Num) = math.floor(Num + 0.5).
+round(Num) = math.floor(Num + 0.5).
 
-math.truncate(X) = ( if X < 0.0 then math.ceiling(X) else math.floor(X)).
+truncate(X) = ( if X < 0.0 then math.ceiling(X) else math.floor(X)).
 
-math.sqrt(X) = SquareRoot :-
+sqrt(X) = SquareRoot :-
     ( if math_domain_checks, X < 0.0 then
         throw(domain_error("math.sqrt"))
     else
@@ -500,9 +500,9 @@ math.sqrt(X) = SquareRoot :-
 ").
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-math.unchecked_sqrt(X) = math.exp(math.ln(X) / 2.0).
+unchecked_sqrt(X) = math.exp(math.ln(X) / 2.0).
 
-math.solve_quadratic(A, B, C) = Roots :-
+solve_quadratic(A, B, C) = Roots :-
     % This implementation is designed to minimise numerical errors;
     % it is adapted from "Numerical recipes in C".
     DSquared = B * B - 4.0 * A * C,
@@ -536,7 +536,7 @@ math.solve_quadratic(A, B, C) = Roots :-
         Roots = two_roots(Root1, Root2)
     ).
 
-math.pow(X, Y) = Res :-
+pow(X, Y) = Res :-
     ( if math_domain_checks, X < 0.0 then
         throw(domain_error("math.pow"))
     else if X = 0.0 then
@@ -604,7 +604,7 @@ math.pow(X, Y) = Res :-
     Exp = math:exp(X)
 ").
 
-math.ln(X) = Log :-
+ln(X) = Log :-
     ( if math_domain_checks, X =< 0.0 then
         throw(domain_error("math.ln"))
     else
@@ -637,7 +637,7 @@ math.ln(X) = Log :-
     Log = math:log(X)
 ").
 
-math.log10(X) = Log :-
+log10(X) = Log :-
     ( if math_domain_checks, X =< 0.0 then
         throw(domain_error("math.log10"))
     else
@@ -664,9 +664,9 @@ math.log10(X) = Log :-
     Log10 = math:log10(X)
 ").
 % Java doesn't have a built-in log10, so default to mercury here.
-math.unchecked_log10(X) = math.unchecked_ln(X) / math.unchecked_ln(10.0).
+unchecked_log10(X) = math.unchecked_ln(X) / math.unchecked_ln(10.0).
 
-math.log2(X) = Log :-
+log2(X) = Log :-
     ( if math_domain_checks, X =< 0.0 then
         throw(domain_error("math.log2"))
     else
@@ -692,9 +692,9 @@ math.log2(X) = Log :-
 "
     Log2 = java.lang.Math.log(X) / ML_FLOAT_LN2;
 ").
-math.unchecked_log2(X) = math.unchecked_ln(X) / math.unchecked_ln(2.0).
+unchecked_log2(X) = math.unchecked_ln(X) / math.unchecked_ln(2.0).
 
-math.log(B, X) = Log :-
+log(B, X) = Log :-
     ( if
         math_domain_checks,
         ( X =< 0.0
@@ -722,7 +722,7 @@ math.log(B, X) = Log :-
 ").
 % Java implementation will default to mercury here.
 % Erlang implementation will default to mercury here.
-math.unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
+unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
 
 :- pragma foreign_proc("C",
     math.sin(X::in) = (Sin::out),
@@ -802,7 +802,7 @@ math.unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
     Tan = math:tan(X)
 ").
 
-math.asin(X) = ASin :-
+asin(X) = ASin :-
     ( if
         math_domain_checks,
         ( X < -1.0
@@ -840,7 +840,7 @@ math.asin(X) = ASin :-
     ASin = math:asin(X)
 ").
 
-math.acos(X) = ACos :-
+acos(X) = ACos :-
     ( if
         math_domain_checks,
         ( X < -1.0
@@ -956,7 +956,7 @@ math.acos(X) = ACos :-
     Sinh = math:sinh(X)
 ").
 % Version for back-ends that do not have a foreign_proc version.
-math.sinh(X) = Sinh :-
+sinh(X) = Sinh :-
     Sinh = (exp(X)-exp(-X)) / 2.0.
 
 :- pragma foreign_proc("C",
@@ -985,7 +985,7 @@ math.sinh(X) = Sinh :-
     Cosh = math:cosh(X)
 ").
 % Version for back-ends that do not have a foreign_proc version.
-math.cosh(X) = Cosh :-
+cosh(X) = Cosh :-
     Cosh = (exp(X)+exp(-X)) / 2.0.
 
 :- pragma foreign_proc("C",
@@ -1014,7 +1014,7 @@ math.cosh(X) = Cosh :-
     Tanh = math:tanh(X)
 ").
 % Version for back-ends that do not have a foreign_proc version.
-math.tanh(X) = Tanh :-
+tanh(X) = Tanh :-
     Tanh = (exp(X)-exp(-X)) / (exp(X)+exp(-X)).
 
 %---------------------------------------------------------------------------%

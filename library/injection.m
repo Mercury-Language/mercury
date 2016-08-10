@@ -317,90 +317,90 @@
 
 %---------------------------------------------------------------------------%
 
-injection.init = injection(F, R) :-
+init = injection(F, R) :-
     map.init(F),
     map.init(R).
 
-injection.init(injection.init).
+init(injection.init).
 
-injection.singleton(K, V) = injection(F, R) :-
+singleton(K, V) = injection(F, R) :-
     F = map.singleton(K, V),
     R = map.singleton(V, K).
 
-injection.is_empty(injection(F, _)) :-
+is_empty(injection(F, _)) :-
     map.is_empty(F).
 
-injection.forward_search(injection(F, _), K) = map.search(F, K).
+forward_search(injection(F, _), K) = map.search(F, K).
 
-injection.forward_search(I, K, injection.forward_search(I, K)).
+forward_search(I, K, injection.forward_search(I, K)).
 
-injection.reverse_search(injection(_, R), V) = map.search(R, V).
+reverse_search(injection(_, R), V) = map.search(R, V).
 
-injection.reverse_search(I, injection.reverse_search(I, V), V).
+reverse_search(I, injection.reverse_search(I, V), V).
 
 :- pragma promise_equivalent_clauses(injection.search/3).
 
-injection.search(injection(F, _)::in, K::in, V::out) :-
+search(injection(F, _)::in, K::in, V::out) :-
     map.search(F, K, V0),
     cc_multi_equal(V0, V).
-injection.search(injection(_, R)::in, K::out, V::in) :-
+search(injection(_, R)::in, K::out, V::in) :-
     map.search(R, V, K).
 
-injection.lookup(injection(F, _), K) = map.lookup(F, K).
+lookup(injection(F, _), K) = map.lookup(F, K).
 
-injection.lookup(I, K, injection.lookup(I, K)).
+lookup(I, K, injection.lookup(I, K)).
 
-injection.reverse_lookup(injection(_, R), V) = map.lookup(R, V).
+reverse_lookup(injection(_, R), V) = map.lookup(R, V).
 
-injection.reverse_lookup(I, injection.reverse_lookup(I, V), V).
+reverse_lookup(I, injection.reverse_lookup(I, V), V).
 
-injection.keys(injection(F, _)) = map.keys(F).
+keys(injection(F, _)) = map.keys(F).
 
-injection.keys(I, injection.keys(I)).
+keys(I, injection.keys(I)).
 
-injection.values(injection(_, R)) = map.keys(R).
+values(injection(_, R)) = map.keys(R).
 
-injection.values(I, injection.values(I)).
+values(I, injection.values(I)).
 
-injection.contains_key(injection(F, _), K) :-
+contains_key(injection(F, _), K) :-
     map.contains(F, K).
 
-injection.contains_value(injection(_, R), V) :-
+contains_value(injection(_, R), V) :-
     map.contains(R, V).
 
-injection.insert(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
+insert(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
     map.insert(K, V, !F),
     map.insert(V, K, !R).
 
-injection.insert(I, K, V, injection.insert(I, K, V)).
+insert(I, K, V, injection.insert(I, K, V)).
 
-injection.det_insert(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
+det_insert(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
     map.det_insert(K, V, !F),
     map.det_insert(V, K, !R).
 
-injection.det_insert(I, K, V, injection.det_insert(I, K, V)).
+det_insert(I, K, V, injection.det_insert(I, K, V)).
 
-injection.update(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
+update(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
     map.update(K, V, !F),
     map.insert(V, K, !R).
 
-injection.update(I, K, V, injection.update(I, K, V)).
+update(I, K, V, injection.update(I, K, V)).
 
-injection.det_update(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
+det_update(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
     map.det_update(K, V, !F),
     map.det_insert(V, K, !R).
 
-injection.det_update(I, K, V, injection.det_update(I, K, V)).
+det_update(I, K, V, injection.det_update(I, K, V)).
 
-injection.set(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
+set(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
     injection.set_2(K, V, !F, !R).
 
-injection.set(I, K, V, injection.set(I, K, V)).
+set(I, K, V, injection.set(I, K, V)).
 
 :- pred injection.set_2(K::in, V::in, map(K, V)::in, map(K, V)::out,
     map(V, K)::in, map(V, K)::out) is semidet.
 
-injection.set_2(K, V, !F, !R) :-
+set_2(K, V, !F, !R) :-
     map.set(K, V, !F),
     ( if map.search(!.R, V, OrigK) then
         % Fail if the existing key is not the same as the given key.
@@ -409,15 +409,15 @@ injection.set_2(K, V, !F, !R) :-
         map.det_insert(V, K, !R)
     ).
 
-injection.det_set(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
+det_set(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
     injection.det_set_2(K, V, !F, !R).
 
-injection.det_set(I, K, V, injection.det_set(I, K, V)).
+det_set(I, K, V, injection.det_set(I, K, V)).
 
 :- pred injection.det_set_2(K::in, V::in, map(K, V)::in, map(K, V)::out,
     map(V, K)::in, map(V, K)::out) is det.
 
-injection.det_set_2(K, V, !F, !R) :-
+det_set_2(K, V, !F, !R) :-
     map.set(K, V, !F),
     ( if map.search(!.R, V, OrigK) then
         % Abort if the existing key is not the same as the given key.
@@ -431,7 +431,7 @@ injection.det_set_2(K, V, !F, !R) :-
         map.det_insert(V, K, !R)
     ).
 
-injection.insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
+insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
     P = ( pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
             KV = K - V,
             map.insert(K, V, !F),
@@ -439,9 +439,9 @@ injection.insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
         ),
     list.foldl2(P, A, F0, F, R0, R).
 
-injection.insert_from_assoc_list(A, I, injection.insert_from_assoc_list(A, I)).
+insert_from_assoc_list(A, I, injection.insert_from_assoc_list(A, I)).
 
-injection.det_insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
+det_insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
     P = ( pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
             KV = K - V,
             map.det_insert(K, V, !F),
@@ -449,29 +449,29 @@ injection.det_insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
         ),
     list.foldl2(P, A, F0, F, R0, R).
 
-injection.det_insert_from_assoc_list(A, I,
+det_insert_from_assoc_list(A, I,
     injection.det_insert_from_assoc_list(A, I)).
 
-injection.set_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
+set_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
     P = ( pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
             KV = K - V,
             injection.set_2(K, V, !F, !R)
         ),
     list.foldl2(P, A, F0, F, R0, R).
 
-injection.set_from_assoc_list(A, I, injection.set_from_assoc_list(A, I)).
+set_from_assoc_list(A, I, injection.set_from_assoc_list(A, I)).
 
-injection.det_set_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
+det_set_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
     P = ( pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
             KV = K - V,
             injection.det_set_2(K, V, !F, !R)
         ),
     list.foldl2(P, A, F0, F, R0, R).
 
-injection.det_set_from_assoc_list(A, I,
+det_set_from_assoc_list(A, I,
     injection.det_set_from_assoc_list(A, I)).
 
-injection.insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
+insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
         injection(F, R) :-
     P = ( pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
             map.insert(K, V, !F),
@@ -479,10 +479,10 @@ injection.insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
         ),
     list.foldl2_corresponding(P, As, Bs, F0, F, R0, R).
 
-injection.insert_from_corresponding_lists(As, Bs, I,
+insert_from_corresponding_lists(As, Bs, I,
     injection.insert_from_corresponding_lists(As, Bs, I)).
 
-injection.det_insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
+det_insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
         injection(F, R) :-
     P = ( pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
             map.det_insert(K, V, !F),
@@ -490,31 +490,31 @@ injection.det_insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
         ),
     list.foldl2_corresponding(P, As, Bs, F0, F, R0, R).
 
-injection.det_insert_from_corresponding_lists(As, Bs, I,
+det_insert_from_corresponding_lists(As, Bs, I,
     injection.det_insert_from_corresponding_lists(As, Bs, I)).
 
-injection.set_from_corresponding_lists(As, Bs, injection(!.F, !.R)) =
+set_from_corresponding_lists(As, Bs, injection(!.F, !.R)) =
         injection(!:F, !:R) :-
     list.foldl2_corresponding(injection.set_2, As, Bs, !F, !R).
 
-injection.set_from_corresponding_lists(As, Bs, I,
+set_from_corresponding_lists(As, Bs, I,
     injection.set_from_corresponding_lists(As, Bs, I)).
 
-injection.det_set_from_corresponding_lists(As, Bs, injection(!.F, !.R)) =
+det_set_from_corresponding_lists(As, Bs, injection(!.F, !.R)) =
         injection(!:F, !:R) :-
     list.foldl2_corresponding(injection.det_set_2, As, Bs, !F, !R).
 
-injection.det_set_from_corresponding_lists(As, Bs, I,
+det_set_from_corresponding_lists(As, Bs, I,
     injection.det_set_from_corresponding_lists(As, Bs, I)).
 
-injection.delete_key(injection(!.F, !.R), K) = injection(!:F, !:R) :-
+delete_key(injection(!.F, !.R), K) = injection(!:F, !:R) :-
     ( if map.remove(K, _, !F) then
         map.foldl(filter_values_with_key(K), !.R, map.init, !:R)
     else
         true
     ).
 
-injection.delete_key(K, I, injection.delete_key(I, K)).
+delete_key(K, I, injection.delete_key(I, K)).
 
 :- pred filter_values_with_key(K::in, V::in, K::in, map(V, K)::in,
     map(V, K)::out) is det.
@@ -526,7 +526,7 @@ filter_values_with_key(FilterKey, V, K, !Map) :-
         map.det_insert(V, K, !Map)
     ).
 
-injection.delete_value(injection(!.F, !.R), V) = injection(!:F, !:R) :-
+delete_value(injection(!.F, !.R), V) = injection(!:F, !:R) :-
     ( if map.remove(V, K, !R) then
         % Only K could possibly be associated with V.  If it is,
         % then we throw an exception.
@@ -539,45 +539,45 @@ injection.delete_value(injection(!.F, !.R), V) = injection(!:F, !:R) :-
         true
     ).
 
-injection.delete_value(V, I, injection.delete_value(I, V)).
+delete_value(V, I, injection.delete_value(I, V)).
 
-injection.delete_keys(Ks, !I) :-
+delete_keys(Ks, !I) :-
     list.foldl(injection.delete_key, Ks, !I).
 
-injection.delete_keys(I0, Ks) = I :-
+delete_keys(I0, Ks) = I :-
     injection.delete_keys(Ks, I0, I).
 
-injection.delete_values(Vs, !I) :-
+delete_values(Vs, !I) :-
     list.foldl(injection.delete_value, Vs, !I).
 
-injection.delete_values(I0, Vs) = I :-
+delete_values(I0, Vs) = I :-
     injection.delete_values(Vs, I0, I).
 
-injection.merge(injection(FA, RA), injection(FB, RB)) = injection(F, R) :-
+merge(injection(FA, RA), injection(FB, RB)) = injection(F, R) :-
     map.merge(FA, FB, F),
     map.merge(RA, RB, R).
 
-injection.merge(A, B, injection.merge(A, B)).
+merge(A, B, injection.merge(A, B)).
 
-injection.overlay(injection(FA, RA), injection(FB, RB)) = injection(F, R) :-
+overlay(injection(FA, RA), injection(FB, RB)) = injection(F, R) :-
     map.overlay(FA, FB, F),
     map.merge(RA, RB, R).
 
-injection.overlay(A, B, injection.overlay(A, B)).
+overlay(A, B, injection.overlay(A, B)).
 
-injection.apply_forward_map_to_list(injection(F, _), Ks) =
+apply_forward_map_to_list(injection(F, _), Ks) =
     map.apply_to_list(Ks, F).
 
-injection.apply_forward_map_to_list(I, Ks,
+apply_forward_map_to_list(I, Ks,
     injection.apply_forward_map_to_list(I, Ks)).
 
-injection.apply_reverse_map_to_list(injection(_, R), Vs) =
+apply_reverse_map_to_list(injection(_, R), Vs) =
     map.apply_to_list(Vs, R).
 
-injection.apply_reverse_map_to_list(I, Vs,
+apply_reverse_map_to_list(I, Vs,
     injection.apply_reverse_map_to_list(I, Vs)).
 
-injection.map_keys(Func, injection(F0, R0)) = injection(F, R) :-
+map_keys(Func, injection(F0, R0)) = injection(F, R) :-
     F = map.foldl(insert_transformed_key_f(Func), F0, map.init),
     R = map.map_values(Func, R0).
 
@@ -586,7 +586,7 @@ injection.map_keys(Func, injection(F0, R0)) = injection(F, R) :-
 insert_transformed_key_f(Func, K, V, !.Map) = !:Map :-
     map.set(Func(V, K), V, !Map).
 
-injection.map_keys(Pred, injection(!.F, !.R), injection(!:F, !:R)) :-
+map_keys(Pred, injection(!.F, !.R), injection(!:F, !:R)) :-
     map.foldl(insert_transformed_key_p(Pred), !.F, map.init, !:F),
     map.map_values(Pred, !R).
 
@@ -597,7 +597,7 @@ insert_transformed_key_p(Pred, K, V, !Map) :-
     Pred(V, K, L),
     map.set(L, V, !Map).
 
-injection.filter_map_keys(Pred, injection(F0, R0), injection(F, R)) :-
+filter_map_keys(Pred, injection(F0, R0), injection(F, R)) :-
     F = map.foldl(maybe_set_transformed_key(Pred), F0, map.init),
     map.to_assoc_list(R0, AL0),
     list.filter_map(maybe_transform_key(Pred), AL0, AL),
@@ -620,7 +620,7 @@ maybe_set_transformed_key(Pred, K, V, !.Map) = !:Map :-
 maybe_transform_key(Pred, V - K, V - L) :-
     Pred(V, K, L).
 
-injection.map_values(Func, injection(F0, R0)) = injection(F, R) :-
+map_values(Func, injection(F0, R0)) = injection(F, R) :-
     F = map.map_values(Func, F0),
     R = map.foldl(insert_transformed_value_f(Func), R0, map.init).
 
@@ -642,15 +642,15 @@ insert_transformed_value_f(Func, V, K, !.Map) = !:Map :-
         )
     ).
 
-injection.map_values(Pred, I0, I) :-
+map_values(Pred, I0, I) :-
     Func = (func(K, V) = W :- Pred(K, V, W)),
     I = injection.map_values(Func, I0).
 
-injection.forward_map(injection(F, _)) = F.
-injection.forward_map(injection(F, _), F).
+forward_map(injection(F, _)) = F.
+forward_map(injection(F, _), F).
 
-injection.reverse_map(injection(_, R)) = R.
-injection.reverse_map(injection(_, R), R).
+reverse_map(injection(_, R)) = R.
+reverse_map(injection(_, R), R).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -50,11 +50,11 @@
 :- type counter
     --->    counter(int).
 
-counter.init(N) = counter(N).
+init(N) = counter(N).
 
-counter.init(N, counter.init(N)).
+init(N, counter.init(N)).
 
-counter.allocate(N, counter(N), counter(N + 1)).
+allocate(N, counter(N), counter(N + 1)).
 
 %---------------------------------------------------------------------------%
 :- end_module counter.

@@ -538,234 +538,234 @@
 
 :- implementation.
 
-set.init = S :-
+init = S :-
     set.init(S).
 
-set.init(Set) :-
+init(Set) :-
     set_ordlist.init(Set).
 
-set.make_singleton_set(T) = S :-
+make_singleton_set(T) = S :-
     set.singleton_set(T, S).
 
-set.singleton_set(X, Set) :-
+singleton_set(X, Set) :-
     set_ordlist.singleton_set(X, Set).
 
-set.is_singleton(Set, X) :-
+is_singleton(Set, X) :-
     set_ordlist.is_singleton(Set, X).
 
-set.list_to_set(Xs) = S :-
+list_to_set(Xs) = S :-
     set.list_to_set(Xs, S).
 
-set.sorted_list_to_set(Xs) = S :-
+sorted_list_to_set(Xs) = S :-
     set.sorted_list_to_set(Xs, S).
 
-set.list_to_set(List, Set) :-
+list_to_set(List, Set) :-
     set_ordlist.list_to_set(List, Set).
 
-set.from_list(List) = set_ordlist.from_list(List).
+from_list(List) = set_ordlist.from_list(List).
 
-set.set(List) = set_ordlist.from_list(List).
+set(List) = set_ordlist.from_list(List).
 
-set.sorted_list_to_set(List, Set) :-
+sorted_list_to_set(List, Set) :-
     set_ordlist.sorted_list_to_set(List, Set).
 
-set.from_sorted_list(List) = set_ordlist.from_sorted_list(List).
+from_sorted_list(List) = set_ordlist.from_sorted_list(List).
 
-set.to_sorted_list(S) = Xs :-
+to_sorted_list(S) = Xs :-
     set.to_sorted_list(S, Xs).
 
-set.to_sorted_list(Set, List) :-
+to_sorted_list(Set, List) :-
     set_ordlist.to_sorted_list(Set, List).
 
-set.insert_list(S1, Xs) = S2 :-
+insert_list(S1, Xs) = S2 :-
     set.insert_list(Xs, S1, S2).
 
-set.insert_list(List, !Set) :-
+insert_list(List, !Set) :-
     set_ordlist.insert_list(List, !Set).
 
-set.insert(S1, T) = S2 :-
+insert(S1, T) = S2 :-
     set.insert(T, S1, S2).
 
-set.insert(X, !Set) :-
+insert(X, !Set) :-
     set_ordlist.insert(X, !Set).
 
-set.insert_new(X, !Set) :-
+insert_new(X, !Set) :-
     set_ordlist.insert_new(X, !Set).
 
-set.equal(SetA, SetB) :-
+equal(SetA, SetB) :-
     set_ordlist.equal(SetA, SetB).
 
-set.empty(Set) :-
+empty(Set) :-
     set_ordlist.is_empty(Set).
 
-set.is_empty(Set) :-
+is_empty(Set) :-
     set_ordlist.is_empty(Set).
 
-set.non_empty(Set) :-
+non_empty(Set) :-
     set_ordlist.is_non_empty(Set).
 
-set.is_non_empty(Set) :-
+is_non_empty(Set) :-
     set_ordlist.is_non_empty(Set).
 
-set.subset(SetA, SetB) :-
+subset(SetA, SetB) :-
     set_ordlist.subset(SetA, SetB).
 
-set.superset(SetA, SetB) :-
+superset(SetA, SetB) :-
     set_ordlist.superset(SetA, SetB).
 
 :- pragma promise_equivalent_clauses(set.member/2).
 
-set.member(X::in, Set::in) :-
+member(X::in, Set::in) :-
     set_ordlist.is_member(X, Set, yes).
-set.member(X::out, Set::in) :-
+member(X::out, Set::in) :-
     set_ordlist.member(X, Set).
 
-set.is_member(X, Set, Result) :-
+is_member(X, Set, Result) :-
     set_ordlist.is_member(X, Set, Result).
 
-set.contains(Set, X) :-
+contains(Set, X) :-
     set_ordlist.contains(Set, X).
 
-set.delete_list(S1, Xs) = S2 :-
+delete_list(S1, Xs) = S2 :-
     set.delete_list(Xs, S1, S2).
 
-set.delete_list(List, !Set) :-
+delete_list(List, !Set) :-
     set_ordlist.delete_list(List, !Set).
 
-set.delete(S1, T) = S2 :-
+delete(S1, T) = S2 :-
     set.delete(T, S1, S2).
 
-set.delete(X, !Set) :-
+delete(X, !Set) :-
     set_ordlist.delete(X, !Set).
 
-set.remove_list(List, !Set) :-
+remove_list(List, !Set) :-
     set_ordlist.remove_list(List, !Set).
 
-set.remove(X, !Set) :-
+remove(X, !Set) :-
     set_ordlist.remove(X, !Set).
 
-set.remove_least(X, !Set) :-
+remove_least(X, !Set) :-
     set_ordlist.remove_least(X, !Set).
 
-set.union(S1, S2) = S3 :-
+union(S1, S2) = S3 :-
     set.union(S1, S2, S3).
 
-set.union(SetA, SetB, Set) :-
+union(SetA, SetB, Set) :-
     set_ordlist.union(SetA, SetB, Set).
 
-set.union_list(Sets) = set_ordlist.union_list(Sets).
+union_list(Sets) = set_ordlist.union_list(Sets).
 
-set.power_union(SS) = S :-
+power_union(SS) = S :-
     set.power_union(SS, S).
 
-set.power_union(Sets, Set) :-
+power_union(Sets, Set) :-
     set_ordlist.power_union(Sets, Set).
 
-set.intersect(S1, S2) = S3 :-
+intersect(S1, S2) = S3 :-
     set.intersect(S1, S2, S3).
 
-set.intersect(SetA, SetB, Set) :-
+intersect(SetA, SetB, Set) :-
     set_ordlist.intersect(SetA, SetB, Set).
 
-set.power_intersect(SS) = S :-
+power_intersect(SS) = S :-
     set.power_intersect(SS, S).
 
-set.difference(S1, S2) = S3 :-
+difference(S1, S2) = S3 :-
     set.difference(S1, S2, S3).
 
-set.power_intersect(Sets, Set) :-
+power_intersect(Sets, Set) :-
     set_ordlist.power_intersect(Sets, Set).
 
-set.intersect_list(Sets) = set_ordlist.intersect_list(Sets).
+intersect_list(Sets) = set_ordlist.intersect_list(Sets).
 
-set.difference(SetA, SetB, Set) :-
+difference(SetA, SetB, Set) :-
     set_ordlist.difference(SetA, SetB, Set).
 
-set.count(S) = N :-
+count(S) = N :-
     set.count(S, N).
 
-set.count(Set, Count) :-
+count(Set, Count) :-
     set_ordlist.count(Set, Count).
 
-set.map(P, S1, S2) :-
+map(P, S1, S2) :-
     set.to_sorted_list(S1, L1),
     list.map(P, L1, L2),
     set.list_to_set(L2, S2).
 
-set.map(F, Set) = TransformedSet :-
+map(F, Set) = TransformedSet :-
     List = set.to_sorted_list(Set),
     TransformedList = list.map(F, List),
     TransformedSet = set.list_to_set(TransformedList).
 
-set.map_fold(P, S0, S, A0, A) :-
+map_fold(P, S0, S, A0, A) :-
     L0 = set.to_sorted_list(S0),
     list.map_foldl(P, L0, L, A0, A),
     S = set.list_to_set(L).
 
-set.filter(P, Set) =
+filter(P, Set) =
     set_ordlist.filter(P, Set).
 
-set.filter(P, Set, TrueSet) :-
+filter(P, Set, TrueSet) :-
     set_ordlist.filter(P, Set, TrueSet).
 
-set.filter(P, Set, TrueSet, FalseSet) :-
+filter(P, Set, TrueSet, FalseSet) :-
     set_ordlist.filter(P, Set, TrueSet, FalseSet).
 
-set.filter_map(PF, Set) =
+filter_map(PF, Set) =
     set_ordlist.filter_map(PF, Set).
 
-set.filter_map(P, Set, TransformedTrueSet) :-
+filter_map(P, Set, TransformedTrueSet) :-
     set_ordlist.filter_map(P, Set, TransformedTrueSet).
 
-set.fold(F, S, A) =
+fold(F, S, A) =
     set.foldl(F, S, A).
 
-set.foldl(F, S, A) =
+foldl(F, S, A) =
     set_ordlist.fold(F, S, A).
 
-set.fold(F, S, !A) :-
+fold(F, S, !A) :-
     set.foldl(F, S, !A).
 
-set.foldl(F, S, !A) :-
+foldl(F, S, !A) :-
     set_ordlist.fold(F, S, !A).
 
-set.fold2(F, S, !A, !B) :-
+fold2(F, S, !A, !B) :-
     set.foldl2(F, S, !A, !B).
 
-set.foldl2(F, S, !A, !B) :-
+foldl2(F, S, !A, !B) :-
     set_ordlist.fold2(F, S, !A, !B).
 
-set.fold3(F, S, !A, !B, !C) :-
+fold3(F, S, !A, !B, !C) :-
     set.foldl3(F, S, !A, !B, !C).
 
-set.foldl3(F, S, !A, !B, !C) :-
+foldl3(F, S, !A, !B, !C) :-
     set_ordlist.fold3(F, S, !A, !B, !C).
 
-set.fold4(F, S, !A, !B, !C, !D) :-
+fold4(F, S, !A, !B, !C, !D) :-
     set.foldl4(F, S, !A, !B, !C, !D).
 
-set.foldl4(F, S, !A, !B, !C, !D) :-
+foldl4(F, S, !A, !B, !C, !D) :-
     set_ordlist.fold4(F, S, !A, !B, !C, !D).
 
-set.fold5(F, S, !A, !B, !C, !D, !E) :-
+fold5(F, S, !A, !B, !C, !D, !E) :-
     set.foldl5(F, S, !A, !B, !C, !D, !E).
 
-set.foldl5(F, S, !A, !B, !C, !D, !E) :-
+foldl5(F, S, !A, !B, !C, !D, !E) :-
     set_ordlist.fold5(F, S, !A, !B, !C, !D, !E).
 
-set.fold6(F, S, !A, !B, !C, !D, !E, !F) :-
+fold6(F, S, !A, !B, !C, !D, !E, !F) :-
     set.foldl6(F, S, !A, !B, !C, !D, !E, !F).
 
-set.foldl6(F, S, !A, !B, !C, !D, !E, !F) :-
+foldl6(F, S, !A, !B, !C, !D, !E, !F) :-
     set_ordlist.fold6(F, S, !A, !B, !C, !D, !E, !F).
 
-set.all_true(P, S) :-
+all_true(P, S) :-
     set_ordlist.all_true(P, S).
 
-set.divide(P, Set, TruePart, FalsePart) :-
+divide(P, Set, TruePart, FalsePart) :-
     set_ordlist.divide(P, Set, TruePart, FalsePart).
 
-set.divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
+divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
     set_ordlist.divide_by_set(DivideBySet, Set, TruePart, FalsePart).
 
 intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB) :-

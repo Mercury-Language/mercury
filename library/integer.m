@@ -405,7 +405,7 @@ X `xor` Y = Result :-
 
 \ X = big_neg(big_plus(X, integer.one)).
 
-integer.abs(N) = big_abs(N).
+abs(N) = big_abs(N).
 
 :- func big_abs(integer) = integer.
 
@@ -1155,7 +1155,7 @@ pos_geq(Xs, Ys) :-
     ; C = (=)
     ).
 
-integer.pow(A, N) = P :-
+pow(A, N) = P :-
     ( if big_isnegative(N) then
         throw(math.domain_error("integer.pow: negative exponent"))
     else
@@ -1198,7 +1198,7 @@ big_pow_sqmul(A, N) = Result :-
         )
     ).
 
-integer.float(i(_, List)) = float_list(float.float(base), 0.0, List).
+float(i(_, List)) = float_list(float.float(base), 0.0, List).
 
 :- func float_list(float, float, list(int)) = float.
 
@@ -1206,13 +1206,13 @@ float_list(_, Accum, []) = Accum.
 float_list(FBase, Accum, [H | T]) =
     float_list(FBase, Accum * FBase + float.float(H), T).
 
-integer.to_int(Integer, Int) :-
+to_int(Integer, Int) :-
     Integer >= integer(int.min_int),
     Integer =< integer(int.max_int),
     Integer = i(_Sign, Digits),
     Int = int_list(Digits, 0).
 
-integer.det_to_int(Integer) = Int :-
+det_to_int(Integer) = Int :-
     ( if integer.to_int(Integer, IntPrime) then
         Int = IntPrime
     else
@@ -1220,7 +1220,7 @@ integer.det_to_int(Integer) = Int :-
             "integer.det_to_int: domain error (conversion would overflow)"))
     ).
 
-integer.int(Integer) = integer.det_to_int(Integer).
+int(Integer) = integer.det_to_int(Integer).
 
 :- func int_list(list(int), int) = int.
 
@@ -1251,14 +1251,14 @@ ten = i(1, [10]).
 % Converting strings to integers.
 %
 
-integer.from_string(S) = Big :-
+from_string(S) = Big :-
     integer.from_string(S, Big).
 
-integer.from_string(S, Big) :-
+from_string(S, Big) :-
     string.to_char_list(S, Cs),
     string_to_integer(Cs, Big).
 
-integer.det_from_string(S) = I :-
+det_from_string(S) = I :-
     ( if integer.from_string(S, IPrime) then
         I = IPrime
     else
@@ -1483,10 +1483,10 @@ printbase_pos_mul_list(Base, [X | Xs], Carry, Y) =
 
 %---------------------------------------------------------------------------%
 
-integer.from_base_string(Base, String) = Integer :-
+from_base_string(Base, String) = Integer :-
     integer.from_base_string(Base, String, Integer).
 
-integer.from_base_string(Base, String, Integer) :-
+from_base_string(Base, String, Integer) :-
     string.index(String, 0, Char),
     Len = string.length(String),
     ( if Char = ('-') then
@@ -1511,7 +1511,7 @@ accumulate_integer(Base, Char, !N) :-
     Digit = integer(Digit0),
     !:N = (integer(Base) * !.N) + Digit.
 
-integer.det_from_base_string(Base, String) = Integer :-
+det_from_base_string(Base, String) = Integer :-
     ( if integer.from_base_string(Base, String, IntegerPrime) then
         Integer = IntegerPrime
     else

@@ -270,7 +270,7 @@
 
 %---------------------------------------------------------------------------%
 
-dir.directory_separator = (if have_win32 then ('\\') else ('/')).
+directory_separator = (if have_win32 then ('\\') else ('/')).
 
 :- pragma foreign_proc("C#",
     dir.directory_separator = (Sep::out),
@@ -286,11 +286,11 @@ dir.directory_separator = (if have_win32 then ('\\') else ('/')).
     Sep = java.io.File.separatorChar;
 ").
 
-dir.directory_separator(dir.directory_separator).
+directory_separator(dir.directory_separator).
 
 :- func dir.alt_directory_separator = char.
 
-dir.alt_directory_separator = (if io.have_cygwin then ('\\') else ('/')).
+alt_directory_separator = (if io.have_cygwin then ('\\') else ('/')).
 
 :- pragma foreign_proc("C#",
     dir.alt_directory_separator = (Sep::out),
@@ -299,7 +299,7 @@ dir.alt_directory_separator = (if io.have_cygwin then ('\\') else ('/')).
     Sep = System.IO.Path.AltDirectorySeparatorChar;
 ").
 
-dir.is_directory_separator(Char) :-
+is_directory_separator(Char) :-
     (
         Char = dir.directory_separator,
         Char \= dir.alt_directory_separator
@@ -312,13 +312,13 @@ dir.is_directory_separator(Char) :-
     %
 :- pred dir.is_directory_separator_semidet(char::in) is semidet.
 
-dir.is_directory_separator_semidet(Char) :-
+is_directory_separator_semidet(Char) :-
     dir.is_directory_separator(Char).
 
 :- pred dir.ends_with_directory_separator(string::in, int::in, int::out)
     is semidet.
 
-dir.ends_with_directory_separator(String, End, PrevIndex) :-
+ends_with_directory_separator(String, End, PrevIndex) :-
     string.unsafe_prev_index(String, End, PrevIndex, Char),
     dir.is_directory_separator(Char).
 
@@ -329,24 +329,24 @@ use_windows_paths :- dir.directory_separator = ('\\').
 :- pragma foreign_export("C#", (dir.this_directory = out),
     "ML_dir_this_directory").
 
-dir.this_directory = ".".
+this_directory = ".".
 
-dir.this_directory(dir.this_directory).
+this_directory(dir.this_directory).
 
-dir.parent_directory = "..".
+parent_directory = "..".
 
-dir.parent_directory(dir.parent_directory).
+parent_directory(dir.parent_directory).
 
 %---------------------------------------------------------------------------%
 
-dir.det_basename(FileName) =
+det_basename(FileName) =
     ( if BaseName = dir.basename(FileName) then
         BaseName
     else
         unexpected($pred, "given directory is root directory")
     ).
 
-dir.basename(FileName) = BaseName :-
+basename(FileName) = BaseName :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
     not dir.is_root_directory(FileNameChars),
     not (
@@ -365,11 +365,11 @@ dir.basename(FileName) = BaseName :-
         BaseName = FileName
     ).
 
-dir.basename(S, dir.basename(S)).
+basename(S, dir.basename(S)).
 
 %---------------------------------------------------------------------------%
 
-dir.dirname(FileName) = DirName :-
+dirname(FileName) = DirName :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
     ( if
         dir.is_root_directory(FileNameChars)
@@ -395,9 +395,9 @@ dir.dirname(FileName) = DirName :-
         DirName = dir.this_directory
     ).
 
-dir.dirname(S, dir.dirname(S)).
+dirname(S, dir.dirname(S)).
 
-dir.split_name(FileName, DirName, BaseName) :-
+split_name(FileName, DirName, BaseName) :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
     not is_root_directory(FileNameChars),
     dir.split_name_2(FileNameChars, DirName, BaseName).
@@ -411,7 +411,7 @@ dir.split_name(FileName, DirName, BaseName) :-
     % directory is a root directory.
 :- pred dir.split_name_2(list(char)::in, string::out, string::out) is semidet.
 
-dir.split_name_2(FileNameChars0, DirName, BaseName) :-
+split_name_2(FileNameChars0, DirName, BaseName) :-
     FileNameChars0 = [_ | _],
     FileNameWithoutSlash = remove_trailing_dir_separator(FileNameChars0),
     FileNameWithoutSlash \= string.to_char_list(dir.this_directory),
@@ -427,7 +427,7 @@ dir.split_name_2(FileNameChars0, DirName, BaseName) :-
 
 :- pred dir.split_name_3(list(char)::in, string::out, string::out) is semidet.
 
-dir.split_name_3(FileNameChars, DirName, BaseName) :-
+split_name_3(FileNameChars, DirName, BaseName) :-
     % Remove any trailing separator.
     RevFileNameChars0 = reverse(FileNameChars),
     ( if
@@ -485,7 +485,7 @@ dir.split_name_3(FileNameChars, DirName, BaseName) :-
 :- pred dir.split_name_dotnet(string::in, string::out, string::out)
     is semidet.
 
-dir.split_name_dotnet(_, "", "") :-
+split_name_dotnet(_, "", "") :-
     semidet_fail.
 
 % The .NET CLI provides functions to split directory names in a
@@ -587,7 +587,7 @@ remove_trailing_dir_separator(Chars) =
         Chars
     ).
 
-dir.path_name_is_root_directory(PathName) :-
+path_name_is_root_directory(PathName) :-
     is_root_directory(canonicalize_path_chars(string.to_char_list(PathName))).
 
     % Assumes repeated directory separators have been removed.
@@ -720,7 +720,7 @@ is_dotnet_root_directory_2(_) :-
 
 %---------------------------------------------------------------------------%
 
-dir.path_name_is_absolute(FileName) :-
+path_name_is_absolute(FileName) :-
     ( if
         have_dotnet
     then
@@ -739,7 +739,7 @@ dir.path_name_is_absolute(FileName) :-
 
 :- pred dir.dotnet_path_name_is_absolute(string::in) is semidet.
 
-dir.dotnet_path_name_is_absolute(FileName) :-
+dotnet_path_name_is_absolute(FileName) :-
     dir.dotnet_path_name_is_absolute_2(FileName),
 
     % The .NET CLI function System.IO.Path.IsPathRooted succeeds for
@@ -764,7 +764,7 @@ dir.dotnet_path_name_is_absolute(FileName) :-
 
 :- pred dir.dotnet_path_name_is_absolute_2(string::in) is semidet.
 
-dir.dotnet_path_name_is_absolute_2(_) :-
+dotnet_path_name_is_absolute_2(_) :-
     unexpected($pred, "called on non-.NET CLI backend").
 
 :- pragma foreign_proc("C#",
@@ -780,7 +780,7 @@ dir.dotnet_path_name_is_absolute_2(_) :-
 
 %---------------------------------------------------------------------------%
 
-dir.make_path_name(DirName, FileName) = DirName/FileName.
+make_path_name(DirName, FileName) = DirName/FileName.
 
 :- pragma foreign_export("C", dir.make_path_name(in, in) = out,
     "ML_make_path_name").
@@ -847,7 +847,7 @@ DirName0/FileName0 = PathName :-
             FileName])
     ).
 
-dir.relative_path_name_from_components(Components) = PathName :-
+relative_path_name_from_components(Components) = PathName :-
     Sep = string.from_char(dir.directory_separator),
     PathName = string.join_list(Sep, Components).
 
@@ -949,7 +949,7 @@ dir.relative_path_name_from_components(Components) = PathName :-
 
 %---------------------------------------------------------------------------%
 
-dir.make_directory(PathName, Result, !IO) :-
+make_directory(PathName, Result, !IO) :-
     ( if can_implement_make_directory then
         DirName = dir.dirname(PathName),
         ( if PathName = DirName then
@@ -1086,7 +1086,7 @@ can_implement_make_directory :-
     SUCCESS_INDICATOR = true
 ").
 
-dir.make_single_directory(DirName, Result, !IO) :-
+make_single_directory(DirName, Result, !IO) :-
     dir.make_single_directory_2(1, DirName, Result, !IO).
 
 :- pragma foreign_export("Erlang",
@@ -1225,7 +1225,7 @@ dir.make_single_directory(DirName, Result, !IO) :-
 :- pragma foreign_export("Erlang", (dir.make_mkdir_res_ok = out),
     "ML_make_mkdir_res_ok").
 
-dir.make_mkdir_res_ok = ok.
+make_mkdir_res_ok = ok.
 
 :- pred dir.make_mkdir_res_error(io.system_error::in, io.res::out,
     io::di, io::uo) is det.
@@ -1238,7 +1238,7 @@ dir.make_mkdir_res_ok = ok.
 :- pragma foreign_export("Erlang", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
 
-dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
+make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
     io.make_maybe_win32_err_msg(Error, "dir.make_directory failed: ",
         Msg, !IO).
 
@@ -1257,7 +1257,7 @@ dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
     dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
 
-dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
+make_mkdir_res_exists(Error, DirName, Res, !IO) :-
     io.file_type(yes, DirName, TypeResult, !IO),
     ( if TypeResult = ok(directory) then
         dir.check_dir_accessibility(DirName, Res, !IO)
@@ -1276,17 +1276,17 @@ dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
 :- pragma foreign_export("Erlang", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
 
-dir.check_dir_accessibility(DirName, Res, !IO) :-
+check_dir_accessibility(DirName, Res, !IO) :-
     % Check whether we can read and write the directory.
     io.check_file_accessibility(DirName, [read, write, execute], Res, !IO).
 
 %---------------------------------------------------------------------------%
 
-dir.foldl2(P, DirName, T, Res, !IO) :-
+foldl2(P, DirName, T, Res, !IO) :-
     dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], no,
         no, _, T, Res, !IO).
 
-dir.recursive_foldl2(P, DirName, FollowLinks, T, Res, !IO) :-
+recursive_foldl2(P, DirName, FollowLinks, T, Res, !IO) :-
     dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], yes,
         FollowLinks, _, T, Res, !IO).
 
@@ -1318,13 +1318,13 @@ fixup_dirname(Dir0) = Dir :-
     list(file_id)::in, string::in, bool::in, bool::in, T::in,
     {io.maybe_partial_res(T), bool}::out, io::di, io::uo) is det.
 
-dir.foldl2_process_dir2(!Dir, SymLinkParent, P, DirName, ParentIds, FirstEntry,
+foldl2_process_dir2(!Dir, SymLinkParent, P, DirName, ParentIds, FirstEntry,
         Recursive, FollowLinks, T0, {Res, Cont}, !IO) :-
     dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName,
         ok(FirstEntry), ParentIds, Recursive, FollowLinks, Cont,
         T0, Res, !IO).
 
-dir.foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
+foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
         FollowLinks, Continue, T0, Result, !IO) :-
     ( if can_implement_dir_foldl then
         ( if
@@ -1411,10 +1411,10 @@ dir.foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
     bool::in, bool::out, T::in, io.maybe_partial_res(T)::out,
     io::di, io::uo) is det.
 
-dir.foldl2_process_entries(!Dir, _, _, _, error(Error), _, _, _, no,
+foldl2_process_entries(!Dir, _, _, _, error(Error), _, _, _, no,
         T0, error(T0, Error), !IO).
-dir.foldl2_process_entries(!Dir, _, _, _, eof, _, _, _, yes, T0, ok(T0), !IO).
-dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName, ok(FileName),
+foldl2_process_entries(!Dir, _, _, _, eof, _, _, _, yes, T0, ok(T0), !IO).
+foldl2_process_entries(!Dir, SymLinkParent, P, DirName, ok(FileName),
         ParentIds, Recursive, FollowLinks, Continue, T0, Res, !IO) :-
     PathName = DirName/FileName,
     io.file_type(no, PathName, FileTypeRes, !IO),
@@ -1615,7 +1615,7 @@ can_implement_dir_foldl :-
 :- pred dir.open(string::in, io.result({dir.stream, string})::out,
     io::di, io::uo) is det.
 
-dir.open(DirName, Res, !IO) :-
+open(DirName, Res, !IO) :-
     ( if can_implement_dir_foldl then
         dir.open_2(DirName, Res, !IO)
     else
@@ -1718,7 +1718,7 @@ dir.open(DirName, Res, !IO) :-
 :- pragma foreign_export("C", dir.check_dir_readable(in, out, out, di, uo),
     "ML_check_dir_readable").
 
-dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
+check_dir_readable(DirName, IsReadable, Result, !IO) :-
     io.file_type(yes, DirName, FileTypeRes, !IO),
     (
         FileTypeRes = ok(FileType),
@@ -1769,7 +1769,7 @@ dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
 :- pragma foreign_export("Erlang", dir.read_first_entry(in, out, di, uo),
     "ML_dir_read_first_entry").
 
-dir.read_first_entry(Dir, Result, !IO) :-
+read_first_entry(Dir, Result, !IO) :-
     dir.read_entry(Dir, Result, !IO),
     (
         Result = ok(_)
@@ -1838,7 +1838,7 @@ make_dir_open_result_error(Error, error(io.make_io_error(Msg)), !IO) :-
 
 :- pred dir.close(dir.stream::in, io.res::out, io::di, io::uo) is det.
 
-dir.close(Dir, Res, !IO) :-
+close(Dir, Res, !IO) :-
     dir.close_2(Dir, Status, Error, !IO),
     ( if Status = 0 then
         io.make_maybe_win32_err_msg(Error,
@@ -1897,7 +1897,7 @@ dir.close(Dir, Res, !IO) :-
 :- pred dir.read_entry(dir.stream::in, io.result({dir.stream, string})::out,
     io::di, io::uo) is det.
 
-dir.read_entry(Dir0, Res, !IO) :-
+read_entry(Dir0, Res, !IO) :-
     dir.read_entry_2(Dir0, Dir, Status, Error, FileName, !IO),
     ( if
         Status = 0

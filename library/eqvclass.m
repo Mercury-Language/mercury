@@ -170,29 +170,29 @@
 
 :- type partition_id    ==  int.
 
-eqvclass.init = EqvClass :-
+init = EqvClass :-
     eqvclass.init(EqvClass).
 
-eqvclass.init(EqvClass) :-
+init(EqvClass) :-
     map.init(PartitionMap),
     map.init(ElementMap),
     EqvClass = eqvclass(counter.init(0), PartitionMap, ElementMap).
 
-eqvclass.is_member(EqvClass, Element) :-
+is_member(EqvClass, Element) :-
     ElementMap = EqvClass ^ keys,
     map.search(ElementMap, Element, _).
 
-eqvclass.partition_id(EqvClass, Element, PartitionId) :-
+partition_id(EqvClass, Element, PartitionId) :-
     ElementMap = EqvClass ^ keys,
     map.search(ElementMap, Element, PartitionId).
 
-eqvclass.ensure_element(!.EqvClass, X) = !:EqvClass :-
+ensure_element(!.EqvClass, X) = !:EqvClass :-
     eqvclass.ensure_element(X, !EqvClass).
 
-eqvclass.ensure_element(Element, !EqvClass) :-
+ensure_element(Element, !EqvClass) :-
     eqvclass.ensure_element_partition_id(Element, _, !EqvClass).
 
-eqvclass.ensure_element_partition_id(Element, Id, !EqvClass) :-
+ensure_element_partition_id(Element, Id, !EqvClass) :-
     ElementMap = !.EqvClass ^ keys,
     ( if map.search(ElementMap, Element, OldId) then
         Id = OldId
@@ -200,10 +200,10 @@ eqvclass.ensure_element_partition_id(Element, Id, !EqvClass) :-
         eqvclass.add_element(Element, Id, !EqvClass)
     ).
 
-eqvclass.new_element(!.EqvClass, X) = !:EqvClass :-
+new_element(!.EqvClass, X) = !:EqvClass :-
     eqvclass.new_element(X, !EqvClass).
 
-eqvclass.new_element(Element, !EqvClass) :-
+new_element(Element, !EqvClass) :-
     ElementMap0 = !.EqvClass ^ keys,
     ( if map.search(ElementMap0, Element, _OldId) then
         unexpected($module, $pred,
@@ -215,7 +215,7 @@ eqvclass.new_element(Element, !EqvClass) :-
 :- pred eqvclass.add_element(T::in, partition_id::out,
     eqvclass(T)::in, eqvclass(T)::out) is det.
 
-eqvclass.add_element(Element, Id, !EqvClass) :-
+add_element(Element, Id, !EqvClass) :-
     !.EqvClass = eqvclass(Counter0, PartitionMap0, ElementMap0),
     counter.allocate(Id, Counter0, Counter),
     map.det_insert(Element, Id, ElementMap0, ElementMap),
@@ -223,10 +223,10 @@ eqvclass.add_element(Element, Id, !EqvClass) :-
     map.det_insert(Id, Partition, PartitionMap0, PartitionMap),
     !:EqvClass = eqvclass(Counter, PartitionMap, ElementMap).
 
-eqvclass.ensure_equivalence(!.EqvClass, X, Y) = !:EqvClass :-
+ensure_equivalence(!.EqvClass, X, Y) = !:EqvClass :-
     eqvclass.ensure_equivalence(X, Y, !EqvClass).
 
-eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
+ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
     % The following code is logically equivalent to this code:
     %
     % eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
@@ -281,10 +281,10 @@ eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
         )
     ).
 
-eqvclass.new_equivalence(!.EqvClass, X, Y) = !:EqvClass :-
+new_equivalence(!.EqvClass, X, Y) = !:EqvClass :-
     eqvclass.new_equivalence(X, Y, !EqvClass).
 
-eqvclass.new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
+new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
     % This code is the same as eqvclass.ensure_equivalence, with the
     % exception that we abort if IdA = IdB in EqvClass0.
 
@@ -327,22 +327,22 @@ eqvclass.new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
         )
     ).
 
-eqvclass.ensure_corresponding_equivalences([], [], !EqvClass).
-eqvclass.ensure_corresponding_equivalences([], [_ | _], !EqvClass) :-
+ensure_corresponding_equivalences([], [], !EqvClass).
+ensure_corresponding_equivalences([], [_ | _], !EqvClass) :-
     unexpected($module, $pred, "list length mismatch").
-eqvclass.ensure_corresponding_equivalences([_ | _], [], !EqvClass) :-
+ensure_corresponding_equivalences([_ | _], [], !EqvClass) :-
     unexpected($module, $pred, "list length mismatch").
-eqvclass.ensure_corresponding_equivalences([H1 | T1], [H2 | T2], !EqvClass) :-
+ensure_corresponding_equivalences([H1 | T1], [H2 | T2], !EqvClass) :-
     eqvclass.ensure_equivalence(H1, H2, !EqvClass),
     eqvclass.ensure_corresponding_equivalences(T1, T2, !EqvClass).
 
-eqvclass.ensure_corresponding_equivalences(L1, L2, EqvClass0) = EqvClass :-
+ensure_corresponding_equivalences(L1, L2, EqvClass0) = EqvClass :-
     eqvclass.ensure_corresponding_equivalences(L1, L2, EqvClass0, EqvClass).
 
 :- pred eqvclass.add_equivalence(partition_id::in, partition_id::in,
     eqvclass(T)::in, eqvclass(T)::out) is det.
 
-eqvclass.add_equivalence(IdA, IdB, EqvClass0, EqvClass) :-
+add_equivalence(IdA, IdB, EqvClass0, EqvClass) :-
     EqvClass0 = eqvclass(NextId0, PartitionMap0, ElementMap0),
     map.lookup(PartitionMap0, IdA, PartitionA),
     map.lookup(PartitionMap0, IdB, PartitionB),
@@ -365,19 +365,19 @@ eqvclass.add_equivalence(IdA, IdB, EqvClass0, EqvClass) :-
 :- pred eqvclass.change_partition(list(T)::in, partition_id::in,
     map(T, partition_id)::in, map(T, partition_id)::out) is det.
 
-eqvclass.change_partition([], _Id, !ElementMap).
-eqvclass.change_partition([Element | Elements], Id, !ElementMap) :-
+change_partition([], _Id, !ElementMap).
+change_partition([Element | Elements], Id, !ElementMap) :-
     map.set(Element, Id, !ElementMap),
     eqvclass.change_partition(Elements, Id, !ElementMap).
 
-eqvclass.same_eqvclass(EqvClass0, Element1, Element2) :-
+same_eqvclass(EqvClass0, Element1, Element2) :-
     ElementMap0 = EqvClass0 ^ keys,
     map.search(ElementMap0, Element1, Id1),
     map.search(ElementMap0, Element2, Id2),
     Id1 = Id2.
 
-eqvclass.same_eqvclass_list(_, []).
-eqvclass.same_eqvclass_list(EqvClass, [Element | Elements]) :-
+same_eqvclass_list(_, []).
+same_eqvclass_list(EqvClass, [Element | Elements]) :-
     ElementMap = EqvClass ^ keys,
     map.search(ElementMap, Element, Id),
     eqvclass.same_eqvclass_list_2(ElementMap, Elements, Id).
@@ -385,23 +385,23 @@ eqvclass.same_eqvclass_list(EqvClass, [Element | Elements]) :-
 :- pred eqvclass.same_eqvclass_list_2(map(T, partition_id)::in,
     list(T)::in, partition_id::in) is semidet.
 
-eqvclass.same_eqvclass_list_2(_, [], _).
-eqvclass.same_eqvclass_list_2(ElementMap, [Element | Elements], Id) :-
+same_eqvclass_list_2(_, [], _).
+same_eqvclass_list_2(ElementMap, [Element | Elements], Id) :-
     map.search(ElementMap, Element, Id),
     eqvclass.same_eqvclass_list_2(ElementMap, Elements, Id).
 
-eqvclass.partition_set(EqvClass) = S :-
+partition_set(EqvClass) = S :-
     eqvclass.partition_set(EqvClass, S).
 
-eqvclass.partition_set(EqvClass0, PartitionSet) :-
+partition_set(EqvClass0, PartitionSet) :-
     eqvclass.partition_ids(EqvClass0, Ids),
     eqvclass.partitions(EqvClass0, Ids, PartitionList),
     set.list_to_set(PartitionList, PartitionSet).
 
-eqvclass.partition_list(EqvClass) = Xs :-
+partition_list(EqvClass) = Xs :-
     eqvclass.partition_list(EqvClass, Xs).
 
-eqvclass.partition_list(EqvClass, PartitionList) :-
+partition_list(EqvClass, PartitionList) :-
     eqvclass.partition_ids(EqvClass, Ids),
     eqvclass.partitions(EqvClass, Ids, PartitionList).
 
@@ -410,8 +410,8 @@ eqvclass.partition_list(EqvClass, PartitionList) :-
 :- pred eqvclass.partitions(eqvclass(T)::in, list(partition_id)::in,
     list(set(T))::out) is det.
 
-eqvclass.partitions(_EqvClass0, [], []).
-eqvclass.partitions(EqvClass0, [Id | Ids], [Partition | Partitions]) :-
+partitions(_EqvClass0, [], []).
+partitions(EqvClass0, [Id | Ids], [Partition | Partitions]) :-
     eqvclass.id_to_partition(EqvClass0, Id, Partition),
     eqvclass.partitions(EqvClass0, Ids, Partitions).
 
@@ -420,7 +420,7 @@ eqvclass.partitions(EqvClass0, [Id | Ids], [Partition | Partitions]) :-
 :- pred eqvclass.partition_ids(eqvclass(T)::in, list(partition_id)::out)
     is det.
 
-eqvclass.partition_ids(EqvClass0, Ids) :-
+partition_ids(EqvClass0, Ids) :-
     PartitionMap0 = EqvClass0 ^ partitions,
     map.keys(PartitionMap0, Ids).
 
@@ -429,7 +429,7 @@ eqvclass.partition_ids(EqvClass0, Ids) :-
 :- pred eqvclass.id_to_partition(eqvclass(T)::in, partition_id::in,
     set(T)::out) is det.
 
-eqvclass.id_to_partition(EqvClass0, Id, Partition) :-
+id_to_partition(EqvClass0, Id, Partition) :-
     PartitionMap0 = EqvClass0 ^ partitions,
     ( if map.search(PartitionMap0, Id, PartitionPrime) then
         Partition = PartitionPrime
@@ -438,19 +438,19 @@ eqvclass.id_to_partition(EqvClass0, Id, Partition) :-
             "partition id not known to equivalence class")
     ).
 
-eqvclass.partition_set_to_eqvclass(Set) = EqvClass :-
+partition_set_to_eqvclass(Set) = EqvClass :-
     eqvclass.partition_set_to_eqvclass(Set, EqvClass).
 
-eqvclass.partition_set_to_eqvclass(SetSet, EqvClass) :-
+partition_set_to_eqvclass(SetSet, EqvClass) :-
     set.to_sorted_list(SetSet, ListSet),
     eqvclass.partition_list_to_eqvclass(ListSet, EqvClass).
 
-eqvclass.partition_list_to_eqvclass(Xs) = EqvClass :-
+partition_list_to_eqvclass(Xs) = EqvClass :-
     eqvclass.partition_list_to_eqvclass(Xs, EqvClass).
 
-eqvclass.partition_list_to_eqvclass([], EqvClass) :-
+partition_list_to_eqvclass([], EqvClass) :-
     eqvclass.init(EqvClass).
-eqvclass.partition_list_to_eqvclass([Partition | Ps], EqvClass) :-
+partition_list_to_eqvclass([Partition | Ps], EqvClass) :-
     eqvclass.partition_list_to_eqvclass(Ps, EqvClass0),
     EqvClass0 = eqvclass(Counter0, PartitionMap0, ElementMap0),
     set.to_sorted_list(Partition, Elements),
@@ -470,26 +470,26 @@ eqvclass.partition_list_to_eqvclass([Partition | Ps], EqvClass) :-
 :- pred eqvclass.make_partition(list(T)::in, partition_id::in,
     map(T, partition_id)::in, map(T, partition_id)::out) is det.
 
-eqvclass.make_partition([], _Id, !ElementMap).
-eqvclass.make_partition([Element | Elements], Id, !ElementMap) :-
+make_partition([], _Id, !ElementMap).
+make_partition([Element | Elements], Id, !ElementMap) :-
     map.det_insert(Element, Id, !ElementMap),
     eqvclass.make_partition(Elements, Id, !ElementMap).
 
-eqvclass.get_equivalent_elements(eqvclass(_, PartitionMap, ElementMap), X) =
+get_equivalent_elements(eqvclass(_, PartitionMap, ElementMap), X) =
     ( if Eqv = map.search(PartitionMap, map.search(ElementMap, X)) then
         Eqv
     else
         set.make_singleton_set(X)
     ).
 
-eqvclass.get_minimum_element(EqvClass, X) =
+get_minimum_element(EqvClass, X) =
     list.det_head(
         set.to_sorted_list(eqvclass.get_equivalent_elements(EqvClass, X))).
 
-eqvclass.remove_equivalent_elements(X, !EqvClass) :-
+remove_equivalent_elements(X, !EqvClass) :-
     !:EqvClass = remove_equivalent_elements(!.EqvClass, X).
 
-eqvclass.remove_equivalent_elements(eqvclass(Id, P0, E0), X) =
+remove_equivalent_elements(eqvclass(Id, P0, E0), X) =
         eqvclass(Id, P, E) :-
     ( if map.search(E0, X, Partition) then
         map.det_remove(Partition, Eq, P0, P),

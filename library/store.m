@@ -282,7 +282,7 @@ store_compare(_, _, _) :-
 :- type generic_mutvar(T, S) ---> mutvar(private_builtin.ref(T)).
 :- type generic_ref(T, S) ---> ref(private_builtin.ref(T)).
 
-store.init(S) :-
+init(S) :-
     store.do_init(S).
 
 :- some [S] pred store.do_init(store(S)::uo) is det.
@@ -461,7 +461,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
     Mutvar = new mutvar.Mutvar();
 ").
 
-store.new_cyclic_mutvar(Func, MutVar, !Store) :-
+new_cyclic_mutvar(Func, MutVar, !Store) :-
     store.unsafe_new_uninitialized_mutvar(MutVar, !Store),
     Value = apply(Func, MutVar),
     store.set_mutvar(MutVar, Value, !Store).

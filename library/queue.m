@@ -142,25 +142,25 @@
 
 %---------------------------------------------------------------------------%
 
-queue.init = Q :-
+init = Q :-
     queue.init(Q).
 
-queue.init(queue([], [])).
+init(queue([], [])).
 
-queue.equal(queue(OnA, OffA), queue(OnB, OffB)) :-
+equal(queue(OnA, OffA), queue(OnB, OffB)) :-
     QA = OffA ++ list.reverse(OnA),
     QB = OffB ++ list.reverse(OnB),
     QA = QB.
 
-queue.is_empty(queue(_, [])).
+is_empty(queue(_, [])).
 
-queue.is_full(_) :-
+is_full(_) :-
     semidet_fail.
 
-queue.put(!.Q, T) = !:Q :-
+put(!.Q, T) = !:Q :-
     queue.put(T, !Q).
 
-queue.put(Elem, queue(On0, Off0), queue(On, Off)) :-
+put(Elem, queue(On0, Off0), queue(On, Off)) :-
     (
         Off0 = [],
         On = On0,
@@ -171,10 +171,10 @@ queue.put(Elem, queue(On0, Off0), queue(On, Off)) :-
         Off = Off0
     ).
 
-queue.put_list(!.Q, Xs) = !:Q :-
+put_list(!.Q, Xs) = !:Q :-
     queue.put_list(Xs, !Q).
 
-queue.put_list(Xs, queue(On0, Off0), queue(On, Off)) :-
+put_list(Xs, queue(On0, Off0), queue(On, Off)) :-
     (
         Off0 = [],
         On = On0,
@@ -187,13 +187,13 @@ queue.put_list(Xs, queue(On0, Off0), queue(On, Off)) :-
 
 :- pred queue.put_list_2(list(T)::in, list(T)::in, list(T)::out) is det.
 
-queue.put_list_2([], On, On).
-queue.put_list_2([X | Xs], On0, On) :-
+put_list_2([], On, On).
+put_list_2([X | Xs], On0, On) :-
     queue.put_list_2(Xs, [X | On0], On).
 
-queue.first(queue(_, [Elem | _]), Elem).
+first(queue(_, [Elem | _]), Elem).
 
-queue.get(Elem, queue(On0, [Elem | Off0]), queue(On, Off)) :-
+get(Elem, queue(On0, [Elem | Off0]), queue(On, Off)) :-
     (
         Off0 = [],
         list.reverse(On0, Off),
@@ -204,27 +204,27 @@ queue.get(Elem, queue(On0, [Elem | Off0]), queue(On, Off)) :-
         Off = Off0
     ).
 
-queue.length(Q) = N :-
+length(Q) = N :-
     queue.length(Q, N).
 
-queue.length(queue(On, Off), Length) :-
+length(queue(On, Off), Length) :-
     list.length(On, LengthOn),
     list.length(Off, LengthOff),
     Length = LengthOn + LengthOff.
 
-queue.list_to_queue(Xs) = Q :-
+list_to_queue(Xs) = Q :-
     queue.list_to_queue(Xs, Q).
 
-queue.list_to_queue(List, queue([], List)).
+list_to_queue(List, queue([], List)).
 
-queue.from_list(List) = queue([], List).
+from_list(List) = queue([], List).
 
-queue.to_list(queue(On, Off)) = Off ++ list.reverse(On).
+to_list(queue(On, Off)) = Off ++ list.reverse(On).
 
-queue.delete_all(!.Q, T) = !:Q :-
+delete_all(!.Q, T) = !:Q :-
     queue.delete_all(T, !Q).
 
-queue.delete_all(Elem ,queue(On0, Off0), queue(On, Off)) :-
+delete_all(Elem ,queue(On0, Off0), queue(On, Off)) :-
     list.delete_all(On0, Elem, On1),
     list.delete_all(Off0, Elem, Off1),
     (
@@ -237,17 +237,17 @@ queue.delete_all(Elem ,queue(On0, Off0), queue(On, Off)) :-
         Off = Off1
     ).
 
-queue.put_on_front(Elem, queue(On, Off), queue(On, [Elem | Off])).
+put_on_front(Elem, queue(On, Off), queue(On, [Elem | Off])).
 
-queue.put_on_front(!.Queue, Elem) = !:Queue :-
+put_on_front(!.Queue, Elem) = !:Queue :-
     queue.put_on_front(Elem, !Queue).
 
-queue.put_list_on_front(Elems, queue(On, Off), queue(On, Elems ++ Off)).
+put_list_on_front(Elems, queue(On, Off), queue(On, Elems ++ Off)).
 
-queue.put_list_on_front(!.Queue, Elems) = !:Queue :-
+put_list_on_front(!.Queue, Elems) = !:Queue :-
     queue.put_list_on_front(Elems, !Queue).
 
-queue.get_from_back(Elem, queue(On0, Off0), queue(On, Off)) :-
+get_from_back(Elem, queue(On0, Off0), queue(On, Off)) :-
     (
         % The On list is non-empty and the last element in the queue
         % is the head of the On list.

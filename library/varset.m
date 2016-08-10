@@ -321,10 +321,10 @@
 
 %---------------------------------------------------------------------------%
 
-varset.init = VarSet :-
+init = VarSet :-
     varset.init(VarSet).
 
-varset.init(VarSet) :-
+init(VarSet) :-
     term.init_var_supply(VarSupply),
     map.init(Names),
     map.init(Values),
@@ -332,30 +332,30 @@ varset.init(VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-varset.is_empty(varset(VarSupply, _, _)) :-
+is_empty(varset(VarSupply, _, _)) :-
     term.init_var_supply(VarSupply).
 
 %---------------------------------------------------------------------------%
 
-varset.new_var(Var, !VarSet) :-
+new_var(Var, !VarSet) :-
     MaxId0 = !.VarSet ^ var_supply,
     term.create_var(Var, MaxId0, MaxId),
     !VarSet ^ var_supply := MaxId.
 
-varset.new_named_var(Name, Var, !VarSet) :-
+new_named_var(Name, Var, !VarSet) :-
     !.VarSet = varset(MaxId0, Names0, Values),
     term.create_var(Var, MaxId0, MaxId),
     map.set(Var, Name, Names0, Names),
     !:VarSet = varset(MaxId, Names, Values).
 
-varset.new_uniquely_named_var(Name, Var, !VarSet) :-
+new_uniquely_named_var(Name, Var, !VarSet) :-
     !.VarSet = varset(MaxId0, Names0, Values),
     term.create_var(Var, MaxId0, MaxId),
     N = term.var_to_int(Var),
     map.set(Var, string.format("%s_%d", [s(Name), i(N)]), Names0, Names),
     !:VarSet = varset(MaxId, Names, Values).
 
-varset.new_maybe_named_var(MaybeName, Var, !VarSet) :-
+new_maybe_named_var(MaybeName, Var, !VarSet) :-
     !.VarSet = varset(MaxId0, Names0, Values),
     term.create_var(Var, MaxId0, MaxId),
     (
@@ -367,7 +367,7 @@ varset.new_maybe_named_var(MaybeName, Var, !VarSet) :-
     ),
     !:VarSet = varset(MaxId, Names, Values).
 
-varset.new_vars(NumVars, NewVars, !VarSet) :-
+new_vars(NumVars, NewVars, !VarSet) :-
     varset.new_vars_loop(NumVars, [], RevNewVars, !VarSet),
     % Return the new variables in order.
     list.reverse(RevNewVars, NewVars).
@@ -375,7 +375,7 @@ varset.new_vars(NumVars, NewVars, !VarSet) :-
 :- pred varset.new_vars_loop(int::in, list(var(T))::in,
     list(var(T))::out, varset(T)::in, varset(T)::out) is det.
 
-varset.new_vars_loop(NumVars, !RevNewVars, !VarSet) :-
+new_vars_loop(NumVars, !RevNewVars, !VarSet) :-
     ( if NumVars > 0 then
         varset.new_var(Var, !VarSet),
         !:RevNewVars = [Var | !.RevNewVars],
@@ -388,10 +388,10 @@ varset.new_vars_loop(NumVars, !RevNewVars, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-varset.delete_var(!.VarSet, DeleteVar) = !:VarSet :-
+delete_var(!.VarSet, DeleteVar) = !:VarSet :-
     varset.delete_var(DeleteVar, !VarSet).
 
-varset.delete_var(DeleteVar, !VarSet) :-
+delete_var(DeleteVar, !VarSet) :-
     !.VarSet = varset(MaxId, Names0, Values0),
     map.delete(DeleteVar, Names0, Names),
     map.delete(DeleteVar, Values0, Values),
@@ -399,19 +399,19 @@ varset.delete_var(DeleteVar, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-varset.delete_vars(!.VarSet, DeleteVars) = !:VarSet :-
+delete_vars(!.VarSet, DeleteVars) = !:VarSet :-
     varset.delete_vars(DeleteVars, !VarSet).
 
-varset.delete_vars(DeleteVars, !VarSet) :-
+delete_vars(DeleteVars, !VarSet) :-
     !.VarSet = varset(MaxId, Names0, Values0),
     map.delete_list(DeleteVars, Names0, Names),
     map.delete_list(DeleteVars, Values0, Values),
     !:VarSet = varset(MaxId, Names, Values).
 
-varset.delete_sorted_vars(!.VarSet, DeleteVars) = !:VarSet :-
+delete_sorted_vars(!.VarSet, DeleteVars) = !:VarSet :-
     varset.delete_sorted_vars(DeleteVars, !VarSet).
 
-varset.delete_sorted_vars(DeleteVars, !VarSet) :-
+delete_sorted_vars(DeleteVars, !VarSet) :-
     !.VarSet = varset(MaxId, Names0, Values0),
     map.delete_sorted_list(DeleteVars, Names0, Names),
     map.delete_sorted_list(DeleteVars, Values0, Values),
@@ -419,10 +419,10 @@ varset.delete_sorted_vars(DeleteVars, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-varset.vars(VarSet) = Vars :-
+vars(VarSet) = Vars :-
     varset.vars(VarSet, Vars).
 
-varset.vars(VarSet, Vars) :-
+vars(VarSet, Vars) :-
     MaxId = VarSet ^ var_supply,
     term.init_var_supply(N0),
     varset.vars_loop(N0, MaxId, [], RevVars),
@@ -431,7 +431,7 @@ varset.vars(VarSet, Vars) :-
 :- pred varset.vars_loop(var_supply(T)::in, var_supply(T)::in,
     list(var(T))::in, list(var(T))::out) is det.
 
-varset.vars_loop(Cur, Max, !RevVars) :-
+vars_loop(Cur, Max, !RevVars) :-
     ( if Cur = Max then
         true
     else
@@ -442,20 +442,20 @@ varset.vars_loop(Cur, Max, !RevVars) :-
 
 %---------------------------------------------------------------------------%
 
-varset.name_var(!.VarSet, Var, Name) = !:VarSet :-
+name_var(!.VarSet, Var, Name) = !:VarSet :-
     varset.name_var(Var, Name, !VarSet).
 
-varset.name_var(Var, Name, !VarSet) :-
+name_var(Var, Name, !VarSet) :-
     Names0 = !.VarSet ^ var_names,
     map.set(Var, Name, Names0, Names),
     !VarSet ^ var_names := Names.
 
 %---------------------------------------------------------------------------%
 
-varset.lookup_name(VarSet, Var) = Name :-
+lookup_name(VarSet, Var) = Name :-
     varset.lookup_name(VarSet, Var, Name).
 
-varset.lookup_name(VarSet, Var, Name) :-
+lookup_name(VarSet, Var, Name) :-
     ( if varset.search_name(VarSet, Var, NamePrime) then
         Name = NamePrime
     else
@@ -463,10 +463,10 @@ varset.lookup_name(VarSet, Var, Name) :-
         Name = "V_" ++ string.int_to_string(VarNum)
     ).
 
-varset.lookup_name(VarSet, Id, Prefix) = Name :-
+lookup_name(VarSet, Id, Prefix) = Name :-
     varset.lookup_name(VarSet, Id, Prefix, Name).
 
-varset.lookup_name(VarSet, Id, Prefix, Name) :-
+lookup_name(VarSet, Id, Prefix, Name) :-
     ( if varset.search_name(VarSet, Id, NamePrime) then
         Name = NamePrime
     else
@@ -474,63 +474,63 @@ varset.lookup_name(VarSet, Id, Prefix, Name) :-
         Name = Prefix ++ string.int_to_string(VarNum)
     ).
 
-varset.search_name(VarSet, Var, Name) :-
+search_name(VarSet, Var, Name) :-
     VarSet = varset(_, Names, _),
     map.search(Names, Var, Name).
 
 %---------------------------------------------------------------------------%
 
-varset.bind_var(!.VarSet, Var, Value) = !:VarSet :-
+bind_var(!.VarSet, Var, Value) = !:VarSet :-
     varset.bind_var(Var, Value, !VarSet).
 
-varset.bind_var(Var, Value, !VarSet) :-
+bind_var(Var, Value, !VarSet) :-
     Values0 = !.VarSet ^ var_values,
     map.set(Var, Value, Values0, Values),
     !VarSet ^ var_values := Values.
 
 %---------------------------------------------------------------------------%
 
-varset.bind_vars(!.VarSet, Subst) = !:VarSet :-
+bind_vars(!.VarSet, Subst) = !:VarSet :-
     varset.bind_vars(Subst, !VarSet).
 
-varset.bind_vars(Subst, !VarSet) :-
+bind_vars(Subst, !VarSet) :-
     map.to_assoc_list(Subst, VarsValues),
     varset.bind_vars_loop(VarsValues, !VarSet).
 
 :- pred varset.bind_vars_loop(assoc_list(var(T), term(T))::in, varset(T)::in,
     varset(T)::out) is det.
 
-varset.bind_vars_loop([], !VarSet).
-varset.bind_vars_loop([Var - Value | VarsValues], !VarSet) :-
+bind_vars_loop([], !VarSet).
+bind_vars_loop([Var - Value | VarsValues], !VarSet) :-
     varset.bind_var(Var, Value, !VarSet),
     varset.bind_vars_loop(VarsValues, !VarSet).
 
 %---------------------------------------------------------------------------%
 
-varset.search_var(VarSet, Var, Value) :-
+search_var(VarSet, Var, Value) :-
     Values = VarSet ^ var_values,
     map.search(Values, Var, Value).
 
 %---------------------------------------------------------------------------%
 
-varset.lookup_vars(VarSet) = Values :-
+lookup_vars(VarSet) = Values :-
     varset.lookup_vars(VarSet, Values).
 
-varset.lookup_vars(VarSet, Values) :-
+lookup_vars(VarSet, Values) :-
     Values = VarSet ^ var_values.
 
 %---------------------------------------------------------------------------%
 
-varset.get_bindings(VarSet) = Values :-
+get_bindings(VarSet) = Values :-
     varset.get_bindings(VarSet, Values).
 
-varset.get_bindings(VarSet, Values) :-
+get_bindings(VarSet, Values) :-
     Values = VarSet ^ var_values.
 
-varset.set_bindings(!.VarSet, Values) = !:VarSet :-
+set_bindings(!.VarSet, Values) = !:VarSet :-
     varset.set_bindings(!.VarSet, Values, !:VarSet).
 
-varset.set_bindings(!.VarSet, Values, !:VarSet) :-
+set_bindings(!.VarSet, Values, !:VarSet) :-
     !VarSet ^ var_values := Values.
 
 %---------------------------------------------------------------------------%
@@ -544,7 +544,7 @@ varset.set_bindings(!.VarSet, Values, !:VarSet) :-
 % in the next block.
 %
 
-varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming) :-
+merge_renaming(VarSetA, VarSetB, VarSet, Renaming) :-
     VarSetB = varset(SupplyB, NamesB, _ValuesB),
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
@@ -559,7 +559,7 @@ varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming) :-
     map(var(T), string)::in, map(var(T), string)::out,
     renaming(T)::in, renaming(T)::out) is det.
 
-varset.merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
+merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
         !Supply, !Names, !Renaming) :-
     ( if !.SupplyB = MaxSupplyB then
         true
@@ -576,7 +576,7 @@ varset.merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
             !Supply, !Names, !Renaming)
     ).
 
-varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming) :-
+merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming) :-
     VarSetB = varset(SupplyB, _NamesB, _ValuesB),
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
@@ -589,7 +589,7 @@ varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming) :-
     var_supply(T)::in, var_supply(T)::in, var_supply(T)::out,
     renaming(T)::in, renaming(T)::out) is det.
 
-varset.merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
+merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
         !Supply, !Renaming) :-
     ( if !.SupplyB = MaxSupplyB then
         true
@@ -606,7 +606,7 @@ varset.merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
 % The structure of this code is identical to the structure of the code
 % in the previous block.
 
-varset.merge_subst(VarSetA, VarSetB, VarSet, Subst) :-
+merge_subst(VarSetA, VarSetB, VarSet, Subst) :-
     VarSetB = varset(SupplyB, NamesB, _ValuesB),
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
@@ -621,7 +621,7 @@ varset.merge_subst(VarSetA, VarSetB, VarSet, Subst) :-
     map(var(T), string)::in, map(var(T), string)::out,
     substitution(T)::in, substitution(T)::out) is det.
 
-varset.merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
+merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
         !Supply, !Names, !Subst) :-
     ( if !.SupplyB = MaxSupplyB then
         true
@@ -639,7 +639,7 @@ varset.merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
             !Supply, !Names, !Subst)
     ).
 
-varset.merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst) :-
+merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst) :-
     VarSetB = varset(SupplyB, _NamesB, _ValuesB),
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
@@ -652,7 +652,7 @@ varset.merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst) :-
     var_supply(T)::in, var_supply(T)::in, var_supply(T)::out,
     substitution(T)::in, substitution(T)::out) is det.
 
-varset.merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
+merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
         !Supply, !Subst) :-
     ( if !.SupplyB = MaxSupplyB then
         true
@@ -667,20 +667,20 @@ varset.merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
 
 %---------------------------------------------------------------------------%
 
-varset.merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
+merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
     varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming),
     term.apply_renaming_in_terms(Renaming, TermList0, TermList).
 
-varset.merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
+merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
     varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming),
     term.apply_renaming_in_terms(Renaming, TermList0, TermList).
 
 %---------------------------------------------------------------------------%
 
-varset.create_name_var_map(VarSet) = NameVars :-
+create_name_var_map(VarSet) = NameVars :-
     varset.create_name_var_map(VarSet, NameVars).
 
-varset.create_name_var_map(VarSet, NameVars) :-
+create_name_var_map(VarSet, NameVars) :-
     VarNames = VarSet ^ var_names,
     map.keys(VarNames, Vars),
     map.values(VarNames, Names),
@@ -688,19 +688,19 @@ varset.create_name_var_map(VarSet, NameVars) :-
 
 %---------------------------------------------------------------------------%
 
-varset.var_name_list(VarSet) = VarNameList :-
+var_name_list(VarSet) = VarNameList :-
     varset.var_name_list(VarSet, VarNameList).
 
-varset.var_name_list(VarSet, VarNameList) :-
+var_name_list(VarSet, VarNameList) :-
     VarNames = VarSet ^ var_names,
     map.to_assoc_list(VarNames, VarNameList).
 
 %---------------------------------------------------------------------------%
 
-varset.ensure_unique_names(AllVars, Suffix, !.VarSet) = !:VarSet :-
+ensure_unique_names(AllVars, Suffix, !.VarSet) = !:VarSet :-
     varset.ensure_unique_names(AllVars, Suffix, !VarSet).
 
-varset.ensure_unique_names(AllVars, Suffix, !VarSet) :-
+ensure_unique_names(AllVars, Suffix, !VarSet) :-
     VarNames0 = !.VarSet ^ var_names,
     varset.ensure_unique_names_loop(AllVars, Suffix, set.init, VarNames0,
         map.init, VarNames),
@@ -710,8 +710,8 @@ varset.ensure_unique_names(AllVars, Suffix, !VarSet) :-
     set(string)::in, map(var(T), string)::in, map(var(T), string)::in,
     map(var(T), string)::out) is det.
 
-varset.ensure_unique_names_loop([], _, _, _, !VarNames).
-varset.ensure_unique_names_loop([Var | Vars], Suffix, !.UsedNames,
+ensure_unique_names_loop([], _, _, _, !VarNames).
+ensure_unique_names_loop([Var | Vars], Suffix, !.UsedNames,
         OldVarNames, !VarNames) :-
     ( if map.search(OldVarNames, Var, OldName) then
         ( if set.member(OldName, !.UsedNames) then
@@ -743,10 +743,10 @@ append_suffix_until_unique(Trial0, Suffix, UsedNames, Final) :-
 
 %---------------------------------------------------------------------------%
 
-varset.select(!.VarSet, Vars) = !:VarSet :-
+select(!.VarSet, Vars) = !:VarSet :-
     varset.select(Vars, !VarSet).
 
-varset.select(Vars, !VarSet) :-
+select(Vars, !VarSet) :-
     !.VarSet = varset(Supply, VarNameMap0, Values0),
     map.select(VarNameMap0, Vars, VarNameMap),
     map.select(Values0, Vars, Values),
@@ -754,7 +754,7 @@ varset.select(Vars, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-varset.squash(OldVarSet, KeptVars, NewVarSet, Subst) :-
+squash(OldVarSet, KeptVars, NewVarSet, Subst) :-
     % Create a new varset with the same number of variables.
     list.length(KeptVars, NumVars),
     varset.init(NewVarSet0),
@@ -784,10 +784,10 @@ copy_var_names([OldVar - Name | Rest], Subst, !NewVarSet) :-
 
 %---------------------------------------------------------------------------%
 
-varset.coerce(!.VarSet) = !:VarSet :-
+coerce(!.VarSet) = !:VarSet :-
     varset.coerce(!VarSet).
 
-varset.coerce(!VarSet) :-
+coerce(!VarSet) :-
     % Normally calls to this predicate should only be generated by the
     % compiler, but type coercion by copying was taking about 3% of the
     % compiler's runtime.
@@ -795,9 +795,9 @@ varset.coerce(!VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-varset.max_var(varset(VarSupply, _, _)) = term.var_supply_max_var(VarSupply).
+max_var(varset(VarSupply, _, _)) = term.var_supply_max_var(VarSupply).
 
-varset.num_allocated(varset(VarSupply, _, _)) =
+num_allocated(varset(VarSupply, _, _)) =
     term.var_supply_num_allocated(VarSupply).
 
 %---------------------------------------------------------------------------%
