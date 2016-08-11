@@ -132,31 +132,25 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, NestedChildren, RawCompUnit, HaveReadModuleMaps,
-        !:ModuleAndImports, !IO) :-
-    % The predicates grab_imported_modules and grab_unqual_imported_modules
-    % have quite similar tasks. Please keep the corresponding parts of these
-    % two predicates in sync.
-    %
-    % XXX ITEM_LIST Why aren't we updating !HaveReadModuleMaps?
-    some [!Specs,
-        !IntUsed, !IntImported, !ImpUsed, !ImpImported,
-        !IntIndirectImported, !IntImpIndirectImported,
-        !ImpIndirectImported, !ImpImpIndirectImported]
-    (
-        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-            RawItemBlocks),
-        get_src_item_blocks_public_children(RawCompUnit, SrcItemBlocks,
-            PublicChildren),
+:- type which_grab
+    --->    grab_imported(maybe(timestamp), set(module_name))
+    ;       grab_unqual_imported.
 
-        % Construct the initial module import structure.
-        !:Specs = [],
-        % XXX ITEM_LIST Store the FactDeps and ForeignIncludeFiles
-        % in the raw_comp_unit.
-        get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactDeps),
-        get_foreign_include_files_in_item_blocks(RawItemBlocks,
-            ForeignIncludeFiles),
+:- pred grab_maybe_qual_imported_modules(file_name::in, module_name::in,
+    which_grab::in, raw_compilation_unit::in,
+    list(src_item_block)::out, module_and_imports::out,
+    set(module_name)::out, set(module_name)::out,
+    set(module_name)::out, set(module_name)::out, io::di, io::uo) is det.
+
+grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
+        WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports,
+        !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed, !IO) :-
+    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+        RawItemBlocks),
+    % XXX Why do we compute NestedChildren, FactDeps, ForeignIncludeFiles,
+    % SrcItemBlocks and PublicChildren differently in these two cases?
+    (
+        WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
         (
             MaybeTimestamp = yes(Timestamp),
             MaybeTimestampMap = yes(map.singleton(ModuleName,
@@ -165,16 +159,61 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             MaybeTimestamp = no,
             MaybeTimestampMap = no
         ),
-        make_module_and_imports(SourceFileName, SourceFileModuleName,
-            ModuleName, ModuleNameContext, SrcItemBlocks, !.Specs,
-            PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
-            MaybeTimestampMap, !:ModuleAndImports),
 
-        % Find the modules named in import_module and use_module decls.
-        get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
-            !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed),
+        get_src_item_blocks_public_children(RawCompUnit,
+            SrcItemBlocks, PublicChildren),
+
+        % XXX ITEM_LIST Store the FactDeps and ForeignIncludeFiles
+        % in the raw_comp_unit.
+        get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactDeps),
+        get_foreign_include_files_in_item_blocks(RawItemBlocks,
+            ForeignIncludeFiles)
+    ;
+        WhichGrab = grab_unqual_imported,
+        set.init(NestedChildren),
+        MaybeTimestampMap = no,
+
+        raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
+        set.init(PublicChildren),
+
+        FactDeps = [],
+        ForeignIncludeFiles = cord.init
+    ),
+
+    % Construct the initial module import structure.
+    InitSpecs = [],
+    make_module_and_imports(SourceFileName, SourceFileModuleName,
+        ModuleName, ModuleNameContext, SrcItemBlocks, InitSpecs,
+        PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
+        MaybeTimestampMap, !:ModuleAndImports),
+
+    % Find the modules named in import_module and use_module decls.
+    get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
+        !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed).
+
+grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
+        MaybeTimestamp, NestedChildren, RawCompUnit, HaveReadModuleMaps,
+        !:ModuleAndImports, !IO) :-
+    % The predicates grab_imported_modules and grab_unqual_imported_modules
+    % have quite similar tasks. Please keep the corresponding parts of these
+    % two predicates in sync.
+    %
+    % XXX ITEM_LIST Why aren't we updating !HaveReadModuleMaps?
+    some [!Specs, !IntUsed, !IntImported, !ImpUsed, !ImpImported,
+        !IntIndirectImported, !ImpIndirectImported, 
+        !IntImpIndirectImported, !ImpImpIndirectImported]
+    (
+        WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
+        grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
+            WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports,
+            !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed, !IO),
+
+        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+            RawItemBlocks),
 
         Ancestors = set.list_to_set(get_ancestors(ModuleName)),
+
+        !:Specs = [],
         IntOrImpImportedOrUsed = set.union_list([
             !.IntImported, !.IntUsed, !.ImpImported, !.ImpUsed]),
         warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
@@ -305,28 +344,18 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
     % two predicates in sync.
     %
     % XXX ITEM_LIST Why aren't we updating !HaveReadModuleMaps?
-    some [!Specs, !IntUsed, !IntImported, !ImpUsed, !ImpImported,
+
+    some [!IntUsed, !IntImported, !ImpUsed, !ImpImported,
         !IntIndirectImported, !ImpIndirectImported]
     (
-        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+        WhichGrab = grab_unqual_imported,
+        % XXX _SrcItemBlocks
+        grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
+            WhichGrab, RawCompUnit, _SrcItemBlocks, !:ModuleAndImports,
+            !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed, !IO),
+
+        RawCompUnit = raw_compilation_unit(ModuleName, _ModuleNameContext,
             RawItemBlocks),
-        raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
-        set.init(NoPublicChildren),
-
-        % Construct the initial module import structure.
-        !:Specs = [],
-        set.init(NoNestedChildren),
-        NoFactDeps = [],
-        NoForeignIncludeFiles = cord.init,
-        NoTimeStamp = no,
-        make_module_and_imports(SourceFileName, SourceFileModuleName,
-            ModuleName, ModuleNameContext, SrcItemBlocks, !.Specs,
-            NoPublicChildren, NoNestedChildren, NoFactDeps,
-            NoForeignIncludeFiles, NoTimeStamp, !:ModuleAndImports),
-
-        % Find the modules named in import_module and use_module decls.
-        get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
-            !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed),
 
         % Add `builtin' and `private_builtin', and any other builtin modules
         % needed by any of the items, to the imported modules.
@@ -340,8 +369,9 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         HaveReadModuleMaps =
             have_read_module_maps(map.init, map.init, map.init),
 
-        % Get the .int0 files of the ancestor modules.
         Ancestors = set.list_to_set(get_ancestors(ModuleName)),
+
+        % Get the .int0 files of the ancestor modules.
         process_module_private_interfaces(Globals, HaveReadModuleMaps,
             "unqual_ancestors", Ancestors,
             make_ims_imported(import_locn_interface),
@@ -416,8 +446,9 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             _, _),
         AllImportedOrUsed = set.union_list([!.IntImported, !.IntUsed,
             !.ImpImported, !.ImpUsed]),
-        check_imports_accessibility(AugCompUnit, AllImportedOrUsed, !Specs),
-        module_and_imports_add_specs(!.Specs, !ModuleAndImports)
+        check_imports_accessibility(AugCompUnit, AllImportedOrUsed,
+            [], ImportAccessSpecs),
+        module_and_imports_add_specs(ImportAccessSpecs, !ModuleAndImports)
     ).
 
 %---------------------------------------------------------------------------%
