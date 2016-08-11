@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2010-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2016 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module mcov.
-
 :- interface.
 
 :- import_module io.
@@ -95,18 +94,10 @@ do_coverage_testing(OptionTable, Args, !IO) :-
             else
                 io.write_string(StdErr, consistency_warning, !IO)
             ),
-            lookup_bool_option(OptionTable, detailed, Detailed),
             lookup_accumulating_option(OptionTable, modules, Modules),
             (
                 Modules = [],
-                lookup_bool_option(OptionTable, ignore_stdlib, IgnoreStdLib),
-                (
-                    IgnoreStdLib = no,
-                    RestrictToModules = module_restriction_none
-                ;
-                    IgnoreStdLib = yes,
-                    RestrictToModules = module_restriction_no_stdlib
-                )
+                RestrictToModules = module_restriction_default
             ;
                 Modules = [_ | _],
                 ModuleSyms = list.map(string_to_sym_name, Modules),
@@ -115,13 +106,13 @@ do_coverage_testing(OptionTable, Args, !IO) :-
             ),
             lookup_string_option(OptionTable, output_filename, OutputFile),
             ( if OutputFile = "" then
-                write_coverage_test(Detailed, RestrictToModules,
+                write_coverage_test(OptionTable, RestrictToModules,
                     TraceCounts, !IO)
             else
                 io.tell(OutputFile, OpenRes, !IO),
                 (
                     OpenRes = ok,
-                    write_coverage_test(Detailed, RestrictToModules,
+                    write_coverage_test(OptionTable, RestrictToModules,
                         TraceCounts, !IO)
                 ;
                     OpenRes = error(OpenError),
@@ -168,30 +159,46 @@ consistency_warning =
     assoc_list(proc_label_in_context, proc_trace_counts).
 
 :- type module_restriction
-    --->    module_restriction_none
-            % No module restriction.
-
-    ;       module_restriction_no_stdlib
-            % All modules except those in the standard library.
+    --->    module_restriction_default
+            % The user did not specify a module restriction.
+            % Apply whatever restriction is implied by the command line
+            % options.
 
     ;       module_restriction_user(set(module_name)).
-            % Only the user-specified set of modules given by the argument.
+            % Only print coverage data for the user-specified set of modules
+            % given by the argument.
 
-:- pred write_coverage_test(bool::in, module_restriction::in,
+:- pred write_coverage_test(option_table(option)::in, module_restriction::in,
     trace_counts::in, io::di, io::uo) is det.
 
-write_coverage_test(Detailed, RestrictToModules, TraceCountMap, !IO) :-
+write_coverage_test(OptionTable, RestrictToModules, TraceCountMap, !IO) :-
     map.to_assoc_list(TraceCountMap, TraceCounts0),
     (
-        RestrictToModules = module_restriction_none,
-        TraceCounts = TraceCounts0
-    ;
-        RestrictToModules = module_restriction_no_stdlib,
-        list.negated_filter(in_stdlib_module, TraceCounts0, TraceCounts)
+        RestrictToModules = module_restriction_default,
+        lookup_bool_option(OptionTable, ignore_stdlib, IgnoreStdlib),
+        lookup_bool_option(OptionTable, ignore_mdbcomp, IgnoreMdbcomp),
+        (
+            IgnoreStdlib = yes,
+            IgnoreMdbcomp = yes,
+            list.negated_filter(in_stdlib_or_mdbcomp_module, TraceCounts0, TraceCounts)
+        ;
+            IgnoreStdlib = yes,
+            IgnoreMdbcomp = no,
+            list.negated_filter(in_stdlib_module, TraceCounts0, TraceCounts)
+        ;
+            IgnoreStdlib = no,
+            IgnoreMdbcomp = yes,
+            list.negated_filter(in_mdbcomp_module, TraceCounts0, TraceCounts)
+        ;
+            IgnoreStdlib = no,
+            IgnoreMdbcomp = no,
+            TraceCounts = TraceCounts0
+        )
     ;
         RestrictToModules = module_restriction_user(Modules),
         list.filter(in_module_set(Modules), TraceCounts0, TraceCounts)
     ),
+    lookup_bool_option(OptionTable, detailed, Detailed),
     (
         Detailed = no,
         collect_zero_count_local_procs(TraceCounts, ZeroCountProcs),
@@ -219,6 +226,22 @@ in_module_set(Modules, ProcLabelInContext - _) :-
 in_stdlib_module(ProcLabelInContext - _) :-
     ProcLabelInContext = proc_label_in_context(Module, _, _),
     is_std_lib_module_name(Module, _).
+
+:- pred in_mdbcomp_module(pair(proc_label_in_context, proc_trace_counts)::in)
+    is semidet.
+
+in_mdbcomp_module(ProcLabelInContext - _) :-
+    ProcLabelInContext = proc_label_in_context(Module, _, _),
+    is_mdbcomp_module_name(Module).
+
+:- pred in_stdlib_or_mdbcomp_module(
+    pair(proc_label_in_context, proc_trace_counts)::in) is semidet.
+
+in_stdlib_or_mdbcomp_module(ProcLabelInContext - _) :-
+    ProcLabelInContext = proc_label_in_context(Module, _, _),
+    ( is_std_lib_module_name(Module, _)
+    ; is_mdbcomp_module_name(Module)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -395,7 +418,7 @@ short_usage(!IO) :-
         "Mercury Coverage Testing Tool, version ", Version,
             ", on ", FullArch, ".\n",
         "Copyright (C) 2006-2007, 2010-2012 The University of Melbourne\n",
-        "Copyright (C) 2015 The Mercury team\n",
+        "Copyright (C) 2015-2016 The Mercury team\n",
         "Usage: ", ProgName, " [<options>] [<files>]\n",
         "Use `", ProgName, " --help' for more information.\n"
     ], !IO).
@@ -437,6 +460,10 @@ long_usage(!IO) :-
         "--no-ignore-stdlib",
         "\tInclude information about labels in the Mercury standard library",
         "\tin the reports."
+        % This option is only useful for Mercury developers.
+        %"--no-ignore-mdbcomp",
+        %"\tInclude information about labels in the mdbcomp library in the",
+        %"\treports.".
     ], !IO).
 
 :- pred write_tabbed_lines(list(string)::in, io::di, io::uo) is det.
@@ -455,7 +482,8 @@ write_tabbed_lines([Str | Strs], !IO) :-
     ;       modules
     ;       output_filename
     ;       flags_file
-    ;       ignore_stdlib.
+    ;       ignore_stdlib
+    ;       ignore_mdbcomp.
 
 :- type option_table == option_table(option).
 
@@ -478,6 +506,7 @@ long_option("output-file",      output_filename).
 long_option("flags",            flags_file).
 long_option("flags-file",       flags_file).
 long_option("ignore-stdlib",    ignore_stdlib).
+long_option("ignore-mdbcomp",   ignore_mdbcomp).
 
 :- pred option_default(option::out, option_data::out) is multi.
 
@@ -488,6 +517,7 @@ option_default(modules,         accumulating([])).
 option_default(output_filename, string("")).
 option_default(flags_file,      file_special).
 option_default(ignore_stdlib,   bool(yes)).
+option_default(ignore_mdbcomp,  bool(yes)).
 
 %-----------------------------------------------------------------------------%
 

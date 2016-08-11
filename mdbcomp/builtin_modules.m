@@ -148,6 +148,8 @@
     %
 :- pred non_traced_mercury_builtin_module(sym_name::in) is semidet.
 
+:- pred is_mdbcomp_module_name(sym_name::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -231,6 +233,10 @@ non_traced_mercury_builtin_module(Module) :-
     ; Module = mercury_par_builtin_module
     ; Module = mercury_ssdb_builtin_module
     ).
+
+is_mdbcomp_module_name(ModuleName) :-
+    Name = sym_name_to_string(ModuleName),
+    mercury_mdbcomp_module(Name).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.builtin_modules.
