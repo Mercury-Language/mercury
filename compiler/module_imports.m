@@ -38,8 +38,44 @@
 
 %-----------------------------------------------------------------------------%
 
-    % When doing smart recompilation record for each module the suffix of
-    % the file that was read and the modification time of the file.
+    % When doing smart recompilation, we record, for each module,
+    % which of its versions (source .m file, generated .int0/.int3/.int2/.int
+    % file, or generated .opt/.transopt file) we read, and the modification
+    % time of the file.
+    %
+    % We also record whether we expected the file we read to be
+    % fully module qualified or not.
+    %
+    % XXX The handling of the map looks wrong to me (zs),
+    % for two separate reasons.
+    %
+    % The first reason is that the need_qualifier field is set by
+    % the code that *wants to read* a file, and is not a field
+    % whose value should be filled in by *reading* the file.
+    % (The timestamp field is properly filled in by reading
+    % the file.)
+    %
+    % The second reason is that when we read in e.g. mod1.int, we simply
+    % overwrite any existing entry in the module_timestamp_map for mod1.
+    % I see no documented argument anywhere any of the following propositions,
+    % which could each make the above the right thing to do.
+    %
+    % - Proposition 1: when we add an entry for a module, the map
+    %   cannot contain any previous entry for that module.
+    %
+    % - Proposition 2a: when we add an entry for a module, the map
+    %   *can* contain a previous entry for the module, but for
+    %   a file of that module than contains at most as much information
+    %   as the previously-read-in file (as e.g. a .int2 file cannot
+    %   contain more information than a .int file for the same
+    %   module).
+    %
+    % - Proposition 2b: when we add an entry for a module, the map
+    %   *can* contain a previous entry for the module, the need_qualifier
+    %   field in the new entry is at least as restrictive as in
+    %   the old entry. (This means that once we required the file
+    %   we read for a module to be fully module qualified, we shouldn't
+    %   later forget about that requirement.
     %
 :- type module_timestamp_map == map(module_name, module_timestamp).
 :- type module_timestamp
