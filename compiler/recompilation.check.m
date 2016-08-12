@@ -1109,9 +1109,10 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
         UsedItemMap = extract_pred_or_func_set(UsedItems, ItemType),
         Name = unqualify_name(SymName),
         ( if map.search(UsedItemMap, Name, MatchingArityList) then
-            list.foldl(check_for_pred_or_func_item_ambiguity_1(WithType,
-                ItemType, NeedQualifier, SymName, Arity), MatchingArityList,
-                !Info)
+            list.foldl(
+                check_for_pred_or_func_item_ambiguity_1(WithType,
+                    ItemType, NeedQualifier, SymName, Arity),
+                MatchingArityList, !Info)
         else
             true
         ),
@@ -1240,17 +1241,22 @@ check_functor_ambiguities(NeedQualifier, TypeCtor, Ctor, !Info) :-
     constructor_arg::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_field_ambiguities(_, _, ctor_arg(no, _, _, _), !Info).
-check_field_ambiguities(NeedQualifier, ResolvedCtor,
-        ctor_arg(yes(ctor_field_name(FieldName, _Ctxt)), _, _, _), !Info) :-
-    % XXX The arities to match below will need to change if we ever
-    % allow taking the address of field access functions.
-    field_access_function_name(get, FieldName, ExtractFuncName),
-    check_functor_ambiguities_by_name(NeedQualifier, ExtractFuncName,
-        match_arity_exact(1), ResolvedCtor, !Info),
-    field_access_function_name(set, FieldName, UpdateFuncName),
-    check_functor_ambiguities_by_name(NeedQualifier, UpdateFuncName,
-        match_arity_exact(2), ResolvedCtor, !Info).
+check_field_ambiguities(NeedQualifier, ResolvedCtor, CtorArg, !Info) :-
+    CtorArg = ctor_arg(MaybeCtorFieldName, _, _, _),
+    (
+        MaybeCtorFieldName = no
+    ;
+        MaybeCtorFieldName = yes(CtorFieldName),
+        CtorFieldName = ctor_field_name(FieldName, _Ctxt),
+        % XXX The arities to match below will need to change if we ever
+        % allow taking the address of field access functions.
+        field_access_function_name(get, FieldName, ExtractFuncName),
+        field_access_function_name(set, FieldName, UpdateFuncName),
+        check_functor_ambiguities_by_name(NeedQualifier, ExtractFuncName,
+            match_arity_exact(1), ResolvedCtor, !Info),
+        check_functor_ambiguities_by_name(NeedQualifier, UpdateFuncName,
+            match_arity_exact(2), ResolvedCtor, !Info)
+    ).
 
     % Predicates and functions used as functors can match any arity
     % less than or equal to the predicate or function's arity.
