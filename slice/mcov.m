@@ -366,6 +366,7 @@ write_label_info(LabelInfo, !IO) :-
     LabelInfo = label_info(FileName, LineNumber, ProcLabel, PathPort),
     write_context(FileName, LineNumber, !IO),
     write_proc_label_for_user(ProcLabel, !IO),
+    io.write_char(' ', !IO),
     write_path_port_for_user(PathPort, !IO),
     io.nl(!IO).
 
