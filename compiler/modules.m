@@ -200,7 +200,7 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
     %
     % XXX ITEM_LIST Why aren't we updating !HaveReadModuleMaps?
     some [!Specs, !IntUsed, !IntImported, !ImpUsed, !ImpImported,
-        !IntIndirectImported, !ImpIndirectImported, 
+        !IntIndirectImported, !ImpIndirectImported,
         !IntImpIndirectImported, !ImpImpIndirectImported]
     (
         WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
@@ -210,6 +210,8 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
 
         RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
             RawItemBlocks),
+
+        HaveReadModuleMapInt = HaveReadModuleMaps ^ hrmm_int,
 
         Ancestors = set.list_to_set(get_ancestors(ModuleName)),
 
@@ -238,7 +240,7 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         % to be visible in the current module.
         % XXX grab_unqual_imported_modules treats ParentImported and ParentUsed
         % slightly differently from !.IntImported and !.IntUsed.
-        process_module_private_interfaces(Globals, HaveReadModuleMaps,
+        process_module_private_interfaces(Globals, HaveReadModuleMapInt,
             "ancestors", Ancestors,
             make_ims_imported(import_locn_interface),
             make_ims_imported(import_locn_ancestor_private_interface_proper),
@@ -250,14 +252,14 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         set.init(!:ImpIndirectImported),
         set.init(!:IntImpIndirectImported),
         set.init(!:ImpImpIndirectImported),
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "int_imported", may_be_unqualified, !.IntImported, ifk_int,
             make_ims_imported(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
             !IntIndirectImported, !IntImpIndirectImported,
             !ModuleAndImports, !IO),
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "imp_imported", may_be_unqualified, !.ImpImported, ifk_int,
             make_ims_imported(import_locn_implementation),
             make_ims_abstract_imported,
@@ -266,14 +268,14 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             !ModuleAndImports, !IO),
 
         % Get the .int files of the modules imported using `use_module'.
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "int_used", must_be_qualified, !.IntUsed, ifk_int,
             make_ims_used(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
             !IntIndirectImported, !IntImpIndirectImported,
             !ModuleAndImports, !IO),
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "imp_used", must_be_qualified, !.ImpUsed, ifk_int,
             make_ims_used(import_locn_implementation),
             make_ims_abstract_imported,
@@ -283,7 +285,7 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
 
         % Get the .int files of the modules imported using `use_module'
         % in the interface and `import_module' in the implementation.
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "int_used_imp_imported", may_be_unqualified,
             IntUsedImpImported, ifk_int,
             make_ims_used_and_imported(import_locn_interface),
@@ -294,14 +296,14 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
 
         % Get the .int2 files of the modules imported in .int files.
         process_module_short_interfaces_transitively(Globals,
-            HaveReadModuleMaps, "int_indirect_imported",
+            HaveReadModuleMapInt, "int_indirect_imported",
             !.IntIndirectImported, ifk_int2,
             make_ims_used(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_indirect_int_item_blocks,
             !IntImpIndirectImported, !ModuleAndImports, !IO),
         process_module_short_interfaces_transitively(Globals,
-            HaveReadModuleMaps, "imp_indirect_imported",
+            HaveReadModuleMapInt, "imp_indirect_imported",
             !.ImpIndirectImported, ifk_int2,
             make_ims_used(import_locn_implementation),
             make_ims_abstract_imported,
@@ -317,13 +319,13 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         % modules shouldn't be visible to typechecking -- they are used for
         % fully expanding equivalence types after the semantic checking passes.
         process_module_short_interfaces_and_impls_transitively(Globals,
-            HaveReadModuleMaps, "int_imp_indirect_imported",
+            HaveReadModuleMapInt, "int_imp_indirect_imported",
             !.IntImpIndirectImported, ifk_int2,
             make_ims_abstract_imported, make_ims_abstract_imported,
             module_and_imports_add_indirect_int_item_blocks,
             !ModuleAndImports, !IO),
         process_module_short_interfaces_and_impls_transitively(Globals,
-            HaveReadModuleMaps, "imp_imp_indirect_imported",
+            HaveReadModuleMapInt, "imp_imp_indirect_imported",
             !.ImpImpIndirectImported, ifk_int2,
             make_ims_abstract_imported, make_ims_abstract_imported,
             module_and_imports_add_indirect_int_item_blocks,
@@ -357,6 +359,8 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit = raw_compilation_unit(ModuleName, _ModuleNameContext,
             RawItemBlocks),
 
+        map.init(HaveReadModuleMapInt),
+
         % Add `builtin' and `private_builtin', and any other builtin modules
         % needed by any of the items, to the imported modules.
         % XXX Why are these added to the interface, and not the implementation
@@ -366,13 +370,10 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         set.union(ImplicitIntImported, !IntImported),
         set.union(ImplicitIntUsed, !IntUsed),
 
-        HaveReadModuleMaps =
-            have_read_module_maps(map.init, map.init, map.init),
-
         Ancestors = set.list_to_set(get_ancestors(ModuleName)),
 
         % Get the .int0 files of the ancestor modules.
-        process_module_private_interfaces(Globals, HaveReadModuleMaps,
+        process_module_private_interfaces(Globals, HaveReadModuleMapInt,
             "unqual_ancestors", Ancestors,
             make_ims_imported(import_locn_interface),
             make_ims_imported(import_locn_ancestor_private_interface_proper),
@@ -383,21 +384,21 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         % Get the .int3 files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
         set.init(!:ImpIndirectImported),
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "unqual_parent_imported", may_be_unqualified,
             ParentImported, ifk_int3,
             make_ims_imported(import_locn_import_by_ancestor),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "unqual_int_imported", may_be_unqualified,
             !.IntImported, ifk_int3,
             make_ims_imported(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "unqual_imp_imported", may_be_unqualified,
             !.ImpImported, ifk_int3,
             make_ims_imported(import_locn_implementation),
@@ -406,20 +407,20 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             !ImpIndirectImported, set.init, _, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `use_module'.
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "unqual_parent_used", may_be_unqualified,
             ParentUsed, ifk_int3,
             make_ims_imported(import_locn_import_by_ancestor),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "unqual_int_used", must_be_qualified,
             !.IntUsed, ifk_int3,
             make_ims_used(import_locn_interface), make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
-        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt,
             "unqual_imp_used", must_be_qualified,
             !.ImpUsed, ifk_int3,
             make_ims_used(import_locn_implementation),
@@ -429,13 +430,13 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
 
         % Get the .int3 files of the modules imported in .int3 files.
         process_module_short_interfaces_transitively(Globals,
-            HaveReadModuleMaps, "unqual_int_indirect_imported",
+            HaveReadModuleMapInt, "unqual_int_indirect_imported",
             !.IntIndirectImported, ifk_int3,
             make_ims_used(import_locn_interface), make_ims_abstract_imported,
             module_and_imports_add_indirect_int_item_blocks,
             set.init, _, !ModuleAndImports, !IO),
         process_module_short_interfaces_transitively(Globals,
-            HaveReadModuleMaps, "unqual_imp_indirect_imported",
+            HaveReadModuleMapInt, "unqual_imp_indirect_imported",
             !.ImpIndirectImported, ifk_int3,
             make_ims_used(import_locn_implementation),
             make_ims_abstract_imported,
@@ -787,8 +788,8 @@ wrap_symname(ModuleName) = sym_name(ModuleName).
 
 %---------------------------------------------------------------------------%
 
-    % process_module_private_interfaces(Globals, Ancestors, Why,
-    %   NewIntSection, NewImpSection, SectionAppend,
+    % process_module_private_interfaces(Globals, HaveReadModuleMapInt, Why,
+    %   Ancestors, NewIntSection, NewImpSection, SectionAppend,
     %   !DirectImports, !DirectUses, !ModuleAndImports, !IO):
     %
     % Read the complete private interfaces (.int0 files) for all the modules
@@ -801,14 +802,14 @@ wrap_symname(ModuleName) = sym_name(ModuleName).
     % in the int_module_section section kind generated by NewImpSection.
     %
 :- pred process_module_private_interfaces(globals::in,
-    have_read_module_maps::in, string::in, set(module_name)::in,
+    have_read_module_int_map::in, string::in, set(module_name)::in,
     int_section_maker(MS)::in, int_section_maker(MS)::in,
     section_appender(MS)::in(section_appender),
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-process_module_private_interfaces(Globals, HaveReadModuleMaps, Why,
+process_module_private_interfaces(Globals, HaveReadModuleMapInt, Why,
         Ancestors, NewIntSection, NewImpSection, SectionAppend,
         !DirectImports, !DirectUses, !ModuleAndImports, !IO) :-
     ( if set.remove_least(FirstAncestor, Ancestors, LaterAncestors) then
@@ -823,86 +824,27 @@ process_module_private_interfaces(Globals, HaveReadModuleMaps, Why,
         else
             maybe_log_augment_decision(Why, "private", FirstAncestor, ifk_int0,
                 yes, !IO),
-            process_module_private_interface(Globals, HaveReadModuleMaps,
+            process_module_private_interface(Globals, HaveReadModuleMapInt,
                 FirstAncestor, NewIntSection, NewImpSection, SectionAppend,
                 !DirectImports, !DirectUses, !ModuleAndImports, !IO)
         ),
-        process_module_private_interfaces(Globals, HaveReadModuleMaps, Why,
+        process_module_private_interfaces(Globals, HaveReadModuleMapInt, Why,
             LaterAncestors, NewIntSection, NewImpSection, SectionAppend,
             !DirectImports, !DirectUses, !ModuleAndImports, !IO)
     else
         true
     ).
 
-:- pred process_module_private_interface(globals::in,
-    have_read_module_maps::in, module_name::in,
-    int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender),
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
-    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
-
-process_module_private_interface(Globals, HaveReadModuleMaps,
-        Ancestor, NewIntSection, NewImpSection, SectionAppend,
-        !DirectImports, !DirectUses, !ModuleAndImports, !IO) :-
-    maybe_return_timestamp(!.ModuleAndImports ^ mai_maybe_timestamp_map,
-        ReturnTimestamp),
-    maybe_read_module_int(Globals, HaveReadModuleMaps ^ hrmm_int,
-        "Reading private interface for module", do_search,
-        Ancestor, ifk_int0, _AncestorFileName,
-        ReturnTimestamp, MaybeTimestamp,
-        PrivateIntParseTree, PrivateIntSpecs, PrivateIntErrors, !IO),
-
-    maybe_record_timestamp(Ancestor, ifk_int0, may_be_unqualified,
-        MaybeTimestamp, !ModuleAndImports),
-
-    PrivateIntParseTree = parse_tree_int(PrivateIntModuleName,
-        PrivateIntKind, PrivateIntContext, MaybeVersionNumbers,
-        PrivateIntIntIncls, PrivateIntImpIncls,
-        PrivateIntIntAvails, PrivateIntImpAvails,
-        PrivateIntIntItems, PrivateIntImpItems),
-    module_and_imports_maybe_add_module_version_numbers(
-        PrivateIntModuleName, MaybeVersionNumbers, !ModuleAndImports),
-    int_imp_items_to_item_blocks(PrivateIntContext,
-        NewIntSection(Ancestor, PrivateIntKind),
-        NewImpSection(Ancestor, PrivateIntKind),
-        PrivateIntIntIncls, PrivateIntImpIncls,
-        PrivateIntIntAvails, PrivateIntImpAvails,
-        PrivateIntIntItems, PrivateIntImpItems,
-        PrivateIntItemBlocks),
-
-    get_dependencies_in_item_blocks(PrivateIntItemBlocks,
-        AncDirectImports, AncDirectUses),
-    set.union(AncDirectImports, !DirectImports),
-    set.union(AncDirectUses, !DirectUses),
-
-    SectionAppend(PrivateIntItemBlocks, !ModuleAndImports),
-    module_and_imports_add_specs_errors(PrivateIntSpecs, PrivateIntErrors,
-        !ModuleAndImports),
-
-    globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
-    maybe_report_stats(Statistics, !IO),
-
-    set.intersect(PrivateIntErrors, fatal_read_module_errors,
-        FatalPrivateIntErrors),
-    ( if set.is_empty(FatalPrivateIntErrors) then
-        ModAncestors0 = !.ModuleAndImports ^ mai_parent_deps,
-        set.insert(Ancestor, ModAncestors0, ModAncestors),
-        !ModuleAndImports ^ mai_parent_deps := ModAncestors
-    else
-        true
-    ).
-
 %---------------------------------------------------------------------------%
 
-    % process_module_long_interfaces(Globals, HaveReadModuleMaps, Why,
-    %   NeedQual, Imports, IntFileKind,
+    % process_module_long_interfaces(Globals, HaveReadModuleMapInt, Why,
+    %   NeedQual, Modules, IntFileKind,
     %   NewIntSection, NewImpSection, SectionAppend,
     %   !IndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO):
     %
     % Read the interface files (.int or .int2, as indicated by IntFileKind)
-    % for all the modules in Imports (unless they have already been read in),
-    % and append any imports/uses in those modules to the IndirectImports list,
+    % for all the modules in Modules (unless they have already been read in).
+    % Append any imports/uses in those modules to the IndirectImports list,
     % and append any imports/uses in the implementation sections of those
     % modules to the ImpIndirectImports list.
     %
@@ -911,101 +853,46 @@ process_module_private_interface(Globals, HaveReadModuleMaps,
     % generated by NewIntSection, and putting all the ms_implementation blocks
     % in the int_module_section kind generated by NewImpSection.
     %
-:- pred process_module_long_interfaces(globals::in, have_read_module_maps::in,
-    string::in, need_qualifier::in, set(module_name)::in, int_file_kind::in,
+    % XXX Despite the above, this predicate is sometimes invoked with
+    % IntFileKind NOT in {ifk_int, ifk_int2}.
+    %
+:- pred process_module_long_interfaces(globals::in,
+    have_read_module_int_map::in, string::in,
+    need_qualifier::in, set(module_name)::in, int_file_kind::in,
     int_section_maker(MS)::in, int_section_maker(MS)::in,
     section_appender(MS)::in(section_appender),
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-process_module_long_interfaces(Globals, HaveReadModuleMaps, Why, NeedQual,
-        Imports, IntFileKind, NewIntSection, NewImpSection,
+process_module_long_interfaces(Globals, HaveReadModuleMapInt, Why, NeedQual,
+        Modules, IntFileKind, NewIntSection, NewImpSection,
         SectionAppend, !IndirectImports, !ImpIndirectImports,
         !ModuleAndImports, !IO) :-
-    ( if set.remove_least(FirstImport, Imports, LaterImports) then
+    ( if set.remove_least(FirstModule, Modules, LaterModules) then
         ModuleName = !.ModuleAndImports ^ mai_module_name,
         ( if
-            % Have we already processed FirstImport.IntFileKind?
-            ( FirstImport = ModuleName
-            ; set.member(FirstImport, !.ModuleAndImports ^ mai_parent_deps)
-            ; set.member(FirstImport, !.ModuleAndImports ^ mai_int_deps)
-            ; set.member(FirstImport, !.ModuleAndImports ^ mai_imp_deps)
+            % Have we already processed FirstModule.IntFileKind?
+            ( FirstModule = ModuleName
+            ; set.member(FirstModule, !.ModuleAndImports ^ mai_parent_deps)
+            ; set.member(FirstModule, !.ModuleAndImports ^ mai_int_deps)
+            ; set.member(FirstModule, !.ModuleAndImports ^ mai_imp_deps)
             )
         then
-            maybe_log_augment_decision(Why, "long", FirstImport, IntFileKind,
+            maybe_log_augment_decision(Why, "long", FirstModule, IntFileKind,
                 no, !IO)
         else
-            maybe_log_augment_decision(Why, "long", FirstImport, IntFileKind,
+            maybe_log_augment_decision(Why, "long", FirstModule, IntFileKind,
                 yes, !IO),
-            process_module_long_interface(Globals, HaveReadModuleMaps,
-                NeedQual, FirstImport, IntFileKind,
+            process_module_long_interface(Globals, HaveReadModuleMapInt,
+                NeedQual, FirstModule, IntFileKind,
                 NewIntSection, NewImpSection, SectionAppend,
                 !IndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO)
         ),
-        process_module_long_interfaces(Globals, HaveReadModuleMaps, Why,
-            NeedQual, LaterImports, IntFileKind, NewIntSection, NewImpSection,
+        process_module_long_interfaces(Globals, HaveReadModuleMapInt, Why,
+            NeedQual, LaterModules, IntFileKind, NewIntSection, NewImpSection,
             SectionAppend, !IndirectImports, !ImpIndirectImports,
             !ModuleAndImports, !IO)
-    else
-        true
-    ).
-
-:- pred process_module_long_interface(globals::in, have_read_module_maps::in,
-    need_qualifier::in, module_name::in, int_file_kind::in,
-    int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender),
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
-    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
-
-process_module_long_interface(Globals, HaveReadModuleMaps, NeedQual,
-        Import, IntFileKind, NewIntSection, NewImpSection,
-        SectionAppend, !IndirectImports, !ImpIndirectImports,
-        !ModuleAndImports, !IO) :-
-    maybe_return_timestamp(!.ModuleAndImports ^ mai_maybe_timestamp_map,
-        ReturnTimestamp),
-    maybe_read_module_int(Globals, HaveReadModuleMaps ^ hrmm_int,
-        "Reading interface for module", do_search,
-        Import, IntFileKind, _LongIntFileName,
-        ReturnTimestamp, MaybeTimestamp,
-        LongIntParseTree, LongIntSpecs, LongIntErrors, !IO),
-
-    LongIntParseTree = parse_tree_int(LongIntModuleName, LongIntKind,
-        LongIntContext, MaybeVersionNumbers,
-        LongIntIntIncls, LongIntImpIncls,
-        LongIntIntAvails, LongIntImpAvails,
-        LongIntIntItems, LongIntImpItems),
-    module_and_imports_maybe_add_module_version_numbers(
-        LongIntModuleName, MaybeVersionNumbers, !ModuleAndImports),
-    get_dependencies_in_avails(LongIntIntAvails,
-        IndirectImports1, IndirectUses1),
-    get_dependencies_in_avails(LongIntImpAvails,
-        ImpIndirectImports1, ImpIndirectUses1),
-    int_imp_items_to_item_blocks(LongIntContext,
-        NewIntSection(Import, LongIntKind), NewImpSection(Import, LongIntKind),
-        LongIntIntIncls, LongIntImpIncls, LongIntIntAvails, LongIntImpAvails,
-        LongIntIntItems, LongIntImpItems, LongIntItemBlocks),
-
-    !:IndirectImports = set.union_list([!.IndirectImports,
-        IndirectImports1, IndirectUses1]),
-    !:ImpIndirectImports = set.union_list([!.ImpIndirectImports,
-        ImpIndirectImports1, ImpIndirectUses1]),
-
-    SectionAppend(LongIntItemBlocks, !ModuleAndImports),
-    module_and_imports_add_specs_errors(LongIntSpecs, LongIntErrors,
-        !ModuleAndImports),
-
-    globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
-    maybe_report_stats(Statistics, !IO),
-
-    set.intersect(LongIntErrors, fatal_read_module_errors, FatalLongIntErrors),
-    ( if set.is_empty(FatalLongIntErrors) then
-        maybe_record_timestamp(Import, IntFileKind, NeedQual,
-            MaybeTimestamp, !ModuleAndImports),
-        ModImpImports0 = !.ModuleAndImports ^ mai_imp_deps,
-        set.insert(Import, ModImpImports0, ModImpImports),
-        !ModuleAndImports ^ mai_imp_deps := ModImpImports
     else
         true
     ).
@@ -1013,79 +900,85 @@ process_module_long_interface(Globals, HaveReadModuleMaps, NeedQual,
 %---------------------------------------------------------------------------%
 
     % process_module_short_interfaces_and_impls_transitively(Globals,
-    %   HaveReadModuleMaps, Why, IndirectImports, IntFileKind,
-    %   NewIntSection, NewImpSection, SectionAppend, !ModuleAndImports):
+    %   HaveReadModuleMapInt, Why, Modules, IntFileKind,
+    %   NewIntSection, NewImpSection, SectionAppend, !ModuleAndImports, !IO):
     %
-    % Read the short interfaces for modules in IndirectImports (unless they've
-    % already been read in) and any modules that those modules import
-    % (transitively) in the interface or implementation.
+    % Read the short interfaces for modules in Modules (unless
+    % they have already been read in) and any modules that those modules
+    % import (transitively) in the interface or implementation.
     %
     % Append all the item blocks in the read-in files to !ModuleAndImports,
     % putting all the ms_interface blocks in the int_module_section kind
     % generated by NewIntSection, and putting all the ms_implementation blocks
     % in the int_module_section kind generated by NewImpSection.
     %
+    % XXX Despite the above, this predicate is sometimes invoked with
+    % IntFileKind != ifk_int3.
+    %
 :- pred process_module_short_interfaces_and_impls_transitively(globals::in,
-    have_read_module_maps::in, string::in,
+    have_read_module_int_map::in, string::in,
     set(module_name)::in, int_file_kind::in,
     int_section_maker(MS)::in, int_section_maker(MS)::in,
     section_appender(MS)::in(section_appender),
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 process_module_short_interfaces_and_impls_transitively(Globals,
-        HaveReadModuleMaps, Why, Imports, IntFileKind,
+        HaveReadModuleMapInt, Why, Modules, IntFileKind,
         NewIntSection, NewImpSection, SectionAppend, !ModuleAndImports, !IO) :-
-    process_module_short_interfaces_transitively(Globals, HaveReadModuleMaps,
-        Why, Imports, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
+    process_module_short_interfaces_transitively(Globals, HaveReadModuleMapInt,
+        Why, Modules, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
         set.init, ImpIndirectImports, !ModuleAndImports, !IO),
     ( if set.is_empty(ImpIndirectImports) then
         true
     else
         process_module_short_interfaces_and_impls_transitively(Globals,
-            HaveReadModuleMaps, Why, ImpIndirectImports, IntFileKind,
+            HaveReadModuleMapInt, Why, ImpIndirectImports, IntFileKind,
             NewIntSection, NewImpSection, SectionAppend,
             !ModuleAndImports, !IO)
     ).
 
-    % process_module_short_interfaces_transitively(Globals, HaveReadModuleMaps,
-    %   Why, IndirectImports, IntFileKind,
+    % process_module_short_interfaces_transitively(Globals,
+    %   HaveReadModuleMapInt, Why, Modules, IntFileKind,
     %   NewIntSection, NewImpSection, SectionAppend,
     %   !ImpIndirectImports, !ModuleAndImports):
     %
-    % Read the short interfaces (.int3) for modules in IndirectImports
-    % (unless they have already been read in), and any modules that those
-    % modules import (transitively) in the interface.
+    % Read the short interfaces (.int3) for modules in Modules (unless
+    % they have already been read in) and any modules that those modules
+    % import (transitively) in the interface.
     %
     % Append all the item blocks in the read-in files to !ModuleAndImports,
     % putting all the ms_interface blocks in the int_module_section kind
     % generated by NewIntSection, and putting all the ms_implementation blocks
     % in the int_module_section kind generated by NewImpSection.
     %
+    % XXX Despite the above, this predicate is sometimes invoked with
+    % IntFileKind != ifk_int3.
+    %
 :- pred process_module_short_interfaces_transitively(globals::in,
-    have_read_module_maps::in, string::in,
+    have_read_module_int_map::in, string::in,
     set(module_name)::in, int_file_kind::in,
     int_section_maker(MS)::in, int_section_maker(MS)::in,
     section_appender(MS)::in(section_appender),
     set(module_name)::in, set(module_name)::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-process_module_short_interfaces_transitively(Globals, HaveReadModuleMaps,
-        Why, Imports, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
+process_module_short_interfaces_transitively(Globals, HaveReadModuleMapInt,
+        Why, Modules, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
         !ImpIndirectImports, !ModuleAndImports, !IO) :-
-    process_module_short_interfaces(Globals, HaveReadModuleMaps, Why, Imports,
-        IntFileKind, NewIntSection, NewImpSection, SectionAppend,
+    process_module_short_interfaces(Globals, HaveReadModuleMapInt,
+        Why, Modules, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
         set.init, IndirectImports, !ImpIndirectImports,
         !ModuleAndImports, !IO),
     ( if set.is_empty(IndirectImports) then
         true
     else
         process_module_short_interfaces_transitively(Globals,
-            HaveReadModuleMaps, Why, IndirectImports, IntFileKind,
+            HaveReadModuleMapInt, Why, IndirectImports, IntFileKind,
             NewIntSection, NewImpSection, SectionAppend, !ImpIndirectImports,
             !ModuleAndImports, !IO)
     ).
 
-    % process_module_short_interfaces(Globals, HaveReadModuleMaps,
+    % process_module_short_interfaces(Globals, HaveReadModuleMapInt,
     %   Modules, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
     %   !IndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO):
     %
@@ -1100,7 +993,7 @@ process_module_short_interfaces_transitively(Globals, HaveReadModuleMaps,
     % in the int_module_section kind generated by NewImpSection.
     %
 :- pred process_module_short_interfaces(globals::in,
-    have_read_module_maps::in, string::in,
+    have_read_module_int_map::in, string::in,
     set(module_name)::in, int_file_kind::in,
     int_section_maker(MS)::in, int_section_maker(MS)::in,
     section_appender(MS)::in(section_appender),
@@ -1108,92 +1001,194 @@ process_module_short_interfaces_transitively(Globals, HaveReadModuleMaps,
     set(module_name)::in, set(module_name)::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-process_module_short_interfaces(Globals, HaveReadModuleMaps, Why,
-        Imports, IntFileKind, NewIntSection, NewImpSection,
+process_module_short_interfaces(Globals, HaveReadModuleMapInt, Why,
+        Modules, IntFileKind, NewIntSection, NewImpSection,
         SectionAppend, !IndirectImports, !ImpIndirectImports,
         !ModuleAndImports, !IO) :-
-    ( if set.remove_least(FirstImport, Imports, LaterImports) then
+    ( if set.remove_least(FirstModule, Modules, LaterModules) then
         ( if
-            % Have we already processed FirstImport.IntFileKind?
-            ( FirstImport = !.ModuleAndImports ^ mai_module_name
-            ; set.member(FirstImport, !.ModuleAndImports ^ mai_parent_deps)
-            ; set.member(FirstImport, !.ModuleAndImports ^ mai_int_deps)
-            ; set.member(FirstImport, !.ModuleAndImports ^ mai_imp_deps)
-            ; set.member(FirstImport, !.ModuleAndImports ^ mai_indirect_deps)
+            % Have we already processed FirstModule.IntFileKind?
+            ( FirstModule = !.ModuleAndImports ^ mai_module_name
+            ; set.member(FirstModule, !.ModuleAndImports ^ mai_parent_deps)
+            ; set.member(FirstModule, !.ModuleAndImports ^ mai_int_deps)
+            ; set.member(FirstModule, !.ModuleAndImports ^ mai_imp_deps)
+            ; set.member(FirstModule, !.ModuleAndImports ^ mai_indirect_deps)
             )
         then
-            maybe_log_augment_decision(Why, "short", FirstImport, IntFileKind,
+            maybe_log_augment_decision(Why, "short", FirstModule, IntFileKind,
                 no, !IO)
         else
-            maybe_log_augment_decision(Why, "short", FirstImport, IntFileKind,
+            maybe_log_augment_decision(Why, "short", FirstModule, IntFileKind,
                 yes, !IO),
-            process_module_short_interface(Globals, HaveReadModuleMaps,
-                FirstImport, IntFileKind, NewIntSection, NewImpSection,
+            process_module_short_interface(Globals, HaveReadModuleMapInt,
+                FirstModule, IntFileKind, NewIntSection, NewImpSection,
                 SectionAppend, !IndirectImports, !ImpIndirectImports,
                 !ModuleAndImports, !IO)
         ),
-        process_module_short_interfaces(Globals, HaveReadModuleMaps, Why,
-            LaterImports, IntFileKind, NewIntSection, NewImpSection,
+        process_module_short_interfaces(Globals, HaveReadModuleMapInt, Why,
+            LaterModules, IntFileKind, NewIntSection, NewImpSection,
             SectionAppend, !IndirectImports, !ImpIndirectImports,
             !ModuleAndImports, !IO)
     else
         true
     ).
 
-:- pred process_module_short_interface(globals::in,
-    have_read_module_maps::in, module_name::in, int_file_kind::in,
+%---------------------------------------------------------------------------%
+
+:- pred process_module_private_interface(globals::in,
+    have_read_module_int_map::in, module_name::in,
     int_section_maker(MS)::in, int_section_maker(MS)::in,
     section_appender(MS)::in(section_appender),
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-process_module_short_interface(Globals, HaveReadModuleMaps,
-        Import, IntFileKind, NewIntSection, NewImpSection,
-        SectionAppend, !IndirectImports, !ImpIndirectImports,
+process_module_private_interface(Globals, HaveReadModuleMapInt,
+        Module, NewIntSection, NewImpSection, SectionAppend,
+        !DirectImports, !DirectUses, !ModuleAndImports, !IO) :-
+    ProcessInterfaceKind = pik_private,
+    process_module_interface_general(Globals, ProcessInterfaceKind,
+        HaveReadModuleMapInt, Module,
+        NewIntSection, NewImpSection, SectionAppend,
+        _IntAvails, _ImpAvails, ItemBlocks, !ModuleAndImports, !IO),
+    get_dependencies_in_item_blocks(ItemBlocks,
+        AncDirectImports, AncDirectUses),
+    set.union(AncDirectImports, !DirectImports),
+    set.union(AncDirectUses, !DirectUses).
+
+:- pred process_module_long_interface(globals::in, have_read_module_int_map::in,
+    need_qualifier::in, module_name::in, int_file_kind::in,
+    int_section_maker(MS)::in, int_section_maker(MS)::in,
+    section_appender(MS)::in(section_appender),
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
+
+process_module_long_interface(Globals, HaveReadModuleMapInt, NeedQual,
+        Module, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
+        !IntImportsUses, !ImpImportsUses, !ModuleAndImports, !IO) :-
+    % XXX It should be possible to factor our the differences between
+    % process_module_{long,short}_interface.
+    ProcessInterfaceKind = pik_long(IntFileKind, NeedQual),
+    process_module_interface_general(Globals, ProcessInterfaceKind,
+        HaveReadModuleMapInt, Module,
+        NewIntSection, NewImpSection, SectionAppend,
+        IntAvails, ImpAvails, _ItemBlocks, !ModuleAndImports, !IO),
+    get_dependencies_in_avails(IntAvails, IntImports, IntUses),
+    get_dependencies_in_avails(ImpAvails, ImpImports, ImpUses),
+    !:IntImportsUses = set.union_list([!.IntImportsUses, IntImports, IntUses]),
+    !:ImpImportsUses = set.union_list([!.ImpImportsUses, ImpImports, ImpUses]).
+
+:- pred process_module_short_interface(globals::in,
+    have_read_module_int_map::in, module_name::in, int_file_kind::in,
+    int_section_maker(MS)::in, int_section_maker(MS)::in,
+    section_appender(MS)::in(section_appender),
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
+
+process_module_short_interface(Globals, HaveReadModuleMapInt,
+        Module, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
+        !IntImportsUses, !ImpImportsUses, !ModuleAndImports, !IO) :-
+    % XXX It should be possible to factor our the differences between
+    % process_module_{long,short}_interface.
+    ProcessInterfaceKind = pik_short(IntFileKind),
+    process_module_interface_general(Globals, ProcessInterfaceKind,
+        HaveReadModuleMapInt, Module,
+        NewIntSection, NewImpSection, SectionAppend,
+        IntAvails, ImpAvails, _ItemBlocks, !ModuleAndImports, !IO),
+    get_dependencies_in_avails(IntAvails, IntImports, IntUses),
+    get_dependencies_in_avails(ImpAvails, ImpImports, ImpUses),
+    !:IntImportsUses = set.union_list([!.IntImportsUses, IntImports, IntUses]),
+    !:ImpImportsUses = set.union_list([!.ImpImportsUses, ImpImports, ImpUses]).
+
+:- type process_interface_kind
+    --->    pik_private
+    ;       pik_short(int_file_kind)
+    ;       pik_long(int_file_kind, need_qualifier).
+
+:- pred process_module_interface_general(globals::in,
+    process_interface_kind::in, have_read_module_int_map::in,
+    module_name::in,
+    int_section_maker(MS)::in, int_section_maker(MS)::in,
+    section_appender(MS)::in(section_appender),
+    list(item_avail)::out, list(item_avail)::out, list(item_block(MS))::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
+
+process_module_interface_general(Globals, ProcessInterfaceKind,
+        HaveReadModuleMapInt, Module, NewIntSection, NewImpSection,
+        SectionAppend, IntAvails, ImpAvails, ItemBlocks,
         !ModuleAndImports, !IO) :-
+    (
+        ProcessInterfaceKind = pik_private,
+        IntFileKind = ifk_int0
+    ;
+        ProcessInterfaceKind = pik_short(IntFileKind)
+    ;
+        ProcessInterfaceKind = pik_long(IntFileKind, _)
+    ),
+    IFKStr = int_file_kind_to_extension(IntFileKind),
+    MsgPrefix = "Reading " ++ IFKStr ++ " interface for module",
+
     maybe_return_timestamp(!.ModuleAndImports ^ mai_maybe_timestamp_map,
         ReturnTimestamp),
-    maybe_read_module_int(Globals, HaveReadModuleMaps ^ hrmm_int,
-        "Reading short interface for module", do_search,
-        Import, IntFileKind, _ImportFileName,
-        ReturnTimestamp, MaybeTimestamp,
-        ShortIntParseTree, ShortIntSpecs, ShortIntError, !IO),
-    maybe_record_timestamp(Import, IntFileKind, must_be_qualified,
-        MaybeTimestamp, !ModuleAndImports),
+    maybe_read_module_int(Globals, HaveReadModuleMapInt, MsgPrefix, do_search,
+        Module, IntFileKind, _FileName, ReturnTimestamp, MaybeTimestamp,
+        ParseTree, Specs, Errors, !IO),
 
-    ShortIntParseTree = parse_tree_int(ShortIntModuleName, ShortIntKind,
-        ShortIntContext, MaybeVersionNumbers,
-        ShortIntIntIncls, ShortIntImpIncls,
-        ShortIntIntAvails, ShortIntImpAvails,
-        ShortIntIntItems, ShortIntImpItems),
+    ParseTree = parse_tree_int(ModuleName, IntKind,
+        Context, MaybeVersionNumbers,
+        IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems),
     module_and_imports_maybe_add_module_version_numbers(
-        ShortIntModuleName, MaybeVersionNumbers, !ModuleAndImports),
-    get_dependencies_in_avails(ShortIntIntAvails, IntImports1, IntUses1),
-    get_dependencies_in_avails(ShortIntImpAvails, ImpImports1, ImpUses1),
-    int_imp_items_to_item_blocks(ShortIntContext,
-        NewIntSection(Import, ShortIntKind),
-        NewImpSection(Import, ShortIntKind),
-        ShortIntIntIncls, ShortIntImpIncls,
-        ShortIntIntAvails, ShortIntImpAvails,
-        ShortIntIntItems, ShortIntImpItems,
-        ShortIntItemBlocks),
+        ModuleName, MaybeVersionNumbers, !ModuleAndImports),
+    int_imp_items_to_item_blocks(Context,
+        NewIntSection(Module, IntKind), NewImpSection(Module, IntKind),
+        IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems,
+        ItemBlocks),
 
-    !:IndirectImports = set.union_list([!.IndirectImports,
-        IntImports1, IntUses1]),
-    !:ImpIndirectImports = set.union_list([!.ImpIndirectImports,
-        ImpImports1, ImpUses1]),
-
-    SectionAppend(ShortIntItemBlocks, !ModuleAndImports),
-    module_and_imports_add_specs_errors(ShortIntSpecs, ShortIntError,
-        !ModuleAndImports),
+    SectionAppend(ItemBlocks, !ModuleAndImports),
+    module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports),
 
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(Statistics, !IO),
 
-    ModIndirectImports0 = !.ModuleAndImports ^ mai_indirect_deps,
-    set.insert(Import, ModIndirectImports0, ModIndirectImports),
-    !ModuleAndImports ^ mai_indirect_deps := ModIndirectImports.
+    % XXX To me (zs), the differences here seem accidental rather than
+    % deliberate.
+    (
+        ProcessInterfaceKind = pik_private,
+        % XXX Why do we ignore Errors here for the timestamp (only)?
+        maybe_record_timestamp(Module, ifk_int0, may_be_unqualified,
+            MaybeTimestamp, !ModuleAndImports),
+        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+        ( if set.is_empty(FatalErrors) then
+            ModAncestors0 = !.ModuleAndImports ^ mai_parent_deps,
+            set.insert(Module, ModAncestors0, ModAncestors),
+            !ModuleAndImports ^ mai_parent_deps := ModAncestors
+        else
+            true
+        )
+    ;
+        ProcessInterfaceKind = pik_short(_),
+        % XXX Why do we ignore Errors here for (a) the timestamp,
+        % and (b) for the update of !ModuleAndImports?
+        maybe_record_timestamp(Module, IntFileKind, must_be_qualified,
+            MaybeTimestamp, !ModuleAndImports),
+        ModIndirectImports0 = !.ModuleAndImports ^ mai_indirect_deps,
+        set.insert(Module, ModIndirectImports0, ModIndirectImports),
+        !ModuleAndImports ^ mai_indirect_deps := ModIndirectImports
+    ;
+        ProcessInterfaceKind = pik_long(_, NeedQual),
+        set.intersect(Errors, fatal_read_module_errors, FatalIntErrors),
+        ( if set.is_empty(FatalIntErrors) then
+            maybe_record_timestamp(Module, IntFileKind, NeedQual,
+                MaybeTimestamp, !ModuleAndImports),
+            ModImpImports0 = !.ModuleAndImports ^ mai_imp_deps,
+            set.insert(Module, ModImpImports0, ModImpImports),
+            !ModuleAndImports ^ mai_imp_deps := ModImpImports
+        else
+            true
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1585,10 +1580,10 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     ),
 
     % Read .int0 files required by the `.opt' files.
-    HaveReadModuleMaps = have_read_module_maps(map.init, map.init, map.init),
+    map.init(HaveReadModuleMapInt),
     OptFileAncestors = set.power_union(set.map(get_ancestors_set, OptFiles)),
     Int0Files = set.delete(OptFileAncestors, ModuleName),
-    process_module_private_interfaces(Globals, HaveReadModuleMaps,
+    process_module_private_interfaces(Globals, HaveReadModuleMapInt,
         "opt_int0s", Int0Files, make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
         set.init, AncestorImports1, set.init, AncestorImports2,
@@ -1605,14 +1600,14 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
         AncestorImports1, AncestorImports2]),
 
     % Read in the .int, and .int2 files needed by the .opt files.
-    process_module_long_interfaces(Globals, HaveReadModuleMaps,
+    process_module_long_interfaces(Globals, HaveReadModuleMapInt,
         "opt_new_deps", must_be_qualified, NewDeps, ifk_int,
         make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
         set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
         !ModuleAndImports, !IO),
     process_module_short_interfaces_and_impls_transitively(Globals,
-        HaveReadModuleMaps, "opt_new_indirect_deps",
+        HaveReadModuleMapInt, "opt_new_indirect_deps",
         set.union(NewIndirectDeps, NewImplIndirectDeps), ifk_int2,
         make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
