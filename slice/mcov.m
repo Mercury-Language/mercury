@@ -432,7 +432,7 @@ long_usage(!IO) :-
         [s(Version), s(FullArch)], !IO),
     io.write_string("Copyright: Copyright (C) 2006-2007, 2010-2012 " ++
         "The University of Melbourne\n", !IO),
-    io.write_string("           Copyright (C) 2015 " ++
+    io.write_string("           Copyright (C) 2015-2016 " ++
         "The Mercury team\n", !IO),
     io.write_string("Usage: mcov [<options>] <arguments>\n", !IO),
     io.write_string("Arguments:\n", !IO),
