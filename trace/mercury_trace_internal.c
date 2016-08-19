@@ -10,6 +10,13 @@
 //
 // Main author: Zoltan Somogyi.
 
+#ifndef _GNU_SOURCE
+   // For the GNU C library we need to define the following in order to make
+   // the declarations for the UNIX98 pseudoterminal functions visible.
+   // Note that we need to define this *before* stdlib.h is included.
+   #define _GNU_SOURCE
+#endif
+
 #include "mercury_imp.h"
 #include "mercury_layout_util.h"
 #include "mercury_array_macros.h"
