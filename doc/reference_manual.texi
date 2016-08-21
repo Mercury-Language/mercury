@@ -9594,8 +9594,10 @@ True if the module is compiled with deep profiling enabled.
 True if the module is compiled with parallel execution enabled.
 @item @samp{trail}
 True if the module is compiled with trailing enabled.
-@item @samp{rbmm}
-True if the module is compiled with region based memory management enabled.
+@c The next one is commented because the rbmm grades are not yet publicly
+@c documented.
+@c @item @samp{rbmm}
+@c True if the module is compiled with region based memory management enabled.
 @item @samp{llds}
 True if the module is compiled with @samp{--highlevel-code} disabled.
 @item @samp{mlds}
