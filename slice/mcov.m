@@ -443,7 +443,7 @@ long_usage(!IO) :-
     write_tabbed_lines([
         "-?, -h, --help",
         "\tPrint help about using mcov (on the standard output) and exit",
-        "\twithout doing any further processing",
+        "\twithout doing any further processing.",
         "-v, --verbose",
         "\tPrint the name of each trace count file as it is added to the union",
         "-d, --detailed",
