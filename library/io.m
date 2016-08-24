@@ -112,14 +112,14 @@
     ;       eof
     ;       error(string, int). % error message, line number
 
-:- type io.error.   % Use error_message to decode it.
+:- type error.   % Use error_message to decode it.
 
     % Poly-type is used for write_many and format,
     % which do printf-like formatting.
     %
-:- type io.poly_type == string.poly_type.
+:- type poly_type == string.poly_type.
 
-    % io.whence denotes the base for a seek operation.
+    % whence denotes the base for a seek operation.
     %   set - seek relative to the start of the file
     %   cur - seek relative to the current position in the file
     %   end - seek relative to the end of the file.
@@ -1943,25 +1943,25 @@ using System.Security.Principal;
     public static univ.Univ_0 ML_io_user_globals = null;
 ").
 
-:- type io.input_stream  ---> input_stream(io.stream).
-:- type io.output_stream ---> output_stream(io.stream).
+:- type input_stream  ---> input_stream(stream).
+:- type output_stream ---> output_stream(stream).
 
-:- type io.binary_input_stream ---> binary_input_stream(io.stream).
-:- type io.binary_output_stream ---> binary_output_stream(io.stream).
+:- type binary_input_stream ---> binary_input_stream(stream).
+:- type binary_output_stream ---> binary_output_stream(stream).
 
-:- type io.stream
+:- type stream
     --->    stream(c_pointer).
-:- pragma foreign_type("C", io.stream, "MercuryFilePtr",
+:- pragma foreign_type("C", stream, "MercuryFilePtr",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type("C#", io.stream, "io.MR_MercuryFileStruct").
-:- pragma foreign_type("Java", io.stream, "io.MR_MercuryFileStruct").
-:- pragma foreign_type("Erlang", io.stream, "").
+:- pragma foreign_type("C#", stream, "io.MR_MercuryFileStruct").
+:- pragma foreign_type("Java", stream, "io.MR_MercuryFileStruct").
+:- pragma foreign_type("Erlang", stream, "").
 
     % A unique identifier for an I/O stream.
     %
-:- type io.stream_id == int.
+:- type stream_id == int.
 
-:- func io.get_stream_id(io.stream) = io.stream_id.
+:- func get_stream_id(stream) = stream_id.
 
     % This inter-language stuff is tricky.
     % We communicate via ints rather than via io.result_codes because
@@ -1975,37 +1975,35 @@ using System.Security.Principal;
     % indicators, e.g. CR-LF for Windows, to '\n' characters.
     % Returns -1 if at EOF, -2 if an error occurs.
     %
-:- pred io.read_char_code(io.input_stream::in, int::out, io::di, io::uo)
-    is det.
+:- pred read_char_code(input_stream::in, int::out, io::di, io::uo) is det.
 
     % Reads a byte from specified stream.
     % Returns -1 if at EOF, -2 if an error occurs.
     %
-:- pred io.read_byte_val(io.input_stream::in, int::out,
-    io::di, io::uo) is det.
+:- pred read_byte_val(input_stream::in, int::out, io::di, io::uo) is det.
 
-    % io.call_system_code(Command, Status, Success, Message, !IO):
+    % call_system_code(Command, Status, Success, Message, !IO):
     %
     % Invokes the operating system shell with the specified Command.
     % On success Success = yes and Status is valid. On failure Success = no and
     % Message will contain the error message.
     %
-:- pred io.call_system_code(string::in, int::out, bool::out, string::out,
+:- pred call_system_code(string::in, int::out, bool::out, string::out,
     io::di, io::uo) is det.
 
-    % io.getenv(Var, Value):
+    % getenv(Var, Value):
     %
     % Gets the value Value associated with the environment variable Var.
     % Fails if the variable was not set.
     %
-:- semipure pred io.getenv(string::in, string::out) is semidet.
+:- semipure pred getenv(string::in, string::out) is semidet.
 
-    % io.setenv(NameString, ValueString):
+    % setenv(NameString, ValueString):
     %
     % Sets the named environment variable to the specified value.
     % Fails if the operation does not work.
     %
-:- impure pred io.setenv(string::in, string::in) is semidet.
+:- impure pred setenv(string::in, string::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -2065,12 +2063,12 @@ init_current_streams(!IO) :-
     % In C grades the "current" streams are thread-local values, so can only be
     % set after the MR_Context has been initialised for the initial thread.
     %
-    io.set_input_stream(io.stdin_stream, _, !IO),
-    io.set_output_stream(io.stdout_stream, _, !IO),
-    io.stdin_binary_stream(StdinBinary, !IO),
-    io.stdout_binary_stream(StdoutBinary, !IO),
-    io.set_binary_input_stream(StdinBinary, _, !IO),
-    io.set_binary_output_stream(StdoutBinary, _, !IO).
+    set_input_stream(stdin_stream, _, !IO),
+    set_output_stream(stdout_stream, _, !IO),
+    stdin_binary_stream(StdinBinary, !IO),
+    stdout_binary_stream(StdoutBinary, !IO),
+    set_binary_input_stream(StdinBinary, _, !IO),
+    set_binary_output_stream(StdoutBinary, _, !IO).
 
     % XXX Ditto for C#?
     %
@@ -2090,7 +2088,7 @@ finalize_state(!IO).
 :- pred gc_init(type_desc::in, type_desc::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.gc_init(StreamDbType::in, UserGlobalsType::in, _IO0::di, _IO::uo),
+    gc_init(StreamDbType::in, UserGlobalsType::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, not_thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -2107,12 +2105,12 @@ gc_init(_, _, !IO).
 :- pred insert_std_stream_names(io::di, io::uo) is det.
 
 insert_std_stream_names(!IO) :-
-    io.stdin_stream(input_stream(Stdin), !IO),
-    io.insert_stream_info(Stdin, stream(0, input, preopen, stdin), !IO),
-    io.stdout_stream(output_stream(Stdout), !IO),
-    io.insert_stream_info(Stdout, stream(1, output, preopen, stdout), !IO),
-    io.stderr_stream(output_stream(Stderr), !IO),
-    io.insert_stream_info(Stderr, stream(1, output, preopen, stderr), !IO).
+    stdin_stream(input_stream(Stdin), !IO),
+    insert_stream_info(Stdin, stream(0, input, preopen, stdin), !IO),
+    stdout_stream(output_stream(Stdout), !IO),
+    insert_stream_info(Stdout, stream(1, output, preopen, stdout), !IO),
+    stderr_stream(output_stream(Stderr), !IO),
+    insert_stream_info(Stderr, stream(1, output, preopen, stderr), !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -2120,15 +2118,15 @@ insert_std_stream_names(!IO) :-
 %
 
 % We want to inline these, to allow deforestation.
-:- pragma inline(io.read_char/3).
-:- pragma inline(io.read_char/4).
+:- pragma inline(read_char/3).
+:- pragma inline(read_char/4).
 
 read_char(Result, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.read_char(Stream, Result, !IO).
+    input_stream(Stream, !IO),
+    read_char(Stream, Result, !IO).
 
 read_char(Stream, Result, !IO) :-
-    io.read_char_code(Stream, Code, !IO),
+    read_char_code(Stream, Code, !IO),
     ( if Code = -1 then
         Result = eof
     else if char.to_int(Char, Code) then
@@ -2138,10 +2136,10 @@ read_char(Stream, Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
-:- pragma inline(io.read_char_unboxed/5).
+:- pragma inline(read_char_unboxed/5).
 
 read_char_unboxed(Stream, Result, Char, !IO) :-
-    io.read_char_code(Stream, Code, !IO),
+    read_char_code(Stream, Code, !IO),
     ( if Code = -1 then
         Result = eof,
         Char = char.det_from_int(0)
@@ -2149,37 +2147,37 @@ read_char_unboxed(Stream, Result, Char, !IO) :-
         Result = ok,
         Char = Char0
     else
-        io.make_err_msg("read failed: ", Msg, !IO),
+        make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg)),
         Char = char.det_from_int(0)
     ).
 
 % We want to inline these, to allow deforestation.
-:- pragma inline(io.read_byte/3).
-:- pragma inline(io.read_byte/4).
+:- pragma inline(read_byte/3).
+:- pragma inline(read_byte/4).
 
 read_byte(Result, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.read_byte(Stream, Result, !IO).
+    binary_input_stream(Stream, !IO),
+    read_byte(Stream, Result, !IO).
 
 read_byte(binary_input_stream(Stream), Result, !IO) :-
-    io.read_byte_val(input_stream(Stream), Code, !IO),
+    read_byte_val(input_stream(Stream), Code, !IO),
     ( if Code >= 0 then
         Result = ok(Code)
     else if Code = -1 then
         Result = eof
     else
-        io.make_err_msg("read failed: ", Msg, !IO),
+        make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
 read_bitmap(!Bitmap, BytesRead, Result, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO).
+    binary_input_stream(Stream, !IO),
+    read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO).
 
 read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.read_bitmap(Stream, StartByte, NumBytes, !Bitmap,
+    binary_input_stream(Stream, !IO),
+    read_bitmap(Stream, StartByte, NumBytes, !Bitmap,
         BytesRead, Result, !IO).
 
 read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO) :-
@@ -2196,9 +2194,9 @@ read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
         byte_in_range(!.Bitmap, Start),
         byte_in_range(!.Bitmap, Start + NumBytes - 1)
     then
-        io.do_read_bitmap(Stream, Start, NumBytes,
+        do_read_bitmap(Stream, Start, NumBytes,
             !Bitmap, 0, BytesRead, !IO),
-        io.ferror(Stream, ErrInt, ErrMsg, !IO),
+        ferror(Stream, ErrInt, ErrMsg, !IO),
         ( if ErrInt = 0 then
             Result = ok
         else
@@ -2215,20 +2213,20 @@ read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
                 Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
 
-:- pred io.do_read_bitmap(io.stream::in, byte_index::in, num_bytes::in,
+:- pred do_read_bitmap(stream::in, byte_index::in, num_bytes::in,
     bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::in, num_bytes::out,
     io::di, io::uo) is det.
-:- pragma promise_pure(io.do_read_bitmap/9).
+:- pragma promise_pure(do_read_bitmap/9).
 
     % Default implementation for C# and Java.
 do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
     ( if NumBytes > 0 then
-        io.read_byte(binary_input_stream(Stream), ByteResult, !IO),
+        read_byte(binary_input_stream(Stream), ByteResult, !IO),
         (
             ByteResult = ok(Byte),
             !:Bitmap = !.Bitmap ^ unsafe_byte(Start) := Byte,
             !:BytesRead = !.BytesRead + 1,
-            io.do_read_bitmap(Stream, Start + 1, NumBytes - 1,
+            do_read_bitmap(Stream, Start + 1, NumBytes - 1,
                 !Bitmap, !BytesRead, !IO)
         ;
             ByteResult = eof
@@ -2239,7 +2237,7 @@ do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
         true
     ).
 :- pragma foreign_proc("C",
-    io.do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
+    do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
         Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
@@ -2250,18 +2248,18 @@ do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
 ").
 
 read_binary_file_as_bitmap(Result, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.read_binary_file_as_bitmap(Stream, Result, !IO).
+    binary_input_stream(Stream, !IO),
+    read_binary_file_as_bitmap(Stream, Result, !IO).
 
 read_binary_file_as_bitmap(Stream, Result, !IO) :-
     % Check if the stream is a regular file; if so, allocate a buffer
     % according to the size of the file. Otherwise, just use a default buffer
     % size of 4k minus a bit (to give malloc some room).
-    io.binary_input_stream_file_size(Stream, FileSize, !IO),
+    binary_input_stream_file_size(Stream, FileSize, !IO),
     ( if FileSize >= 0 then
         some [!BM] (
             !:BM = bitmap.init(FileSize * bits_per_byte),
-            io.read_bitmap(Stream, 0, FileSize,
+            read_bitmap(Stream, 0, FileSize,
                 !BM, BytesRead, ReadResult, !IO),
             (
                 ReadResult = ok,
@@ -2278,7 +2276,7 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
         )
     else
         BufferSize = 4000,
-        io.read_binary_file_as_bitmap_2(Stream, BufferSize,
+        read_binary_file_as_bitmap_2(Stream, BufferSize,
             Res, [], RevBitmaps, !IO),
         (
             Res = ok,
@@ -2289,14 +2287,14 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
         )
     ).
 
-:- pred io.read_binary_file_as_bitmap_2(io.binary_input_stream::in,
+:- pred read_binary_file_as_bitmap_2(io.binary_input_stream::in,
     num_bytes::in, io.res::out, list(bitmap)::in, list(bitmap)::out,
     io::di, io::uo) is det.
 
 read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
     some [!BM] (
         !:BM = bitmap.init(BufferSize * bits_per_byte),
-        io.read_bitmap(0, BufferSize, !BM, NumBytesRead, ReadRes, !IO),
+        read_bitmap(0, BufferSize, !BM, NumBytesRead, ReadRes, !IO),
         (
             ReadRes = ok,
             ( if NumBytesRead < BufferSize then
@@ -2308,7 +2306,7 @@ read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
                 !:BMs = [!.BM | !.BMs],
 
                 % Double the buffer size each time.
-                io.read_binary_file_as_bitmap_2(Stream, BufferSize * 2,
+                read_binary_file_as_bitmap_2(Stream, BufferSize * 2,
                     Res, !BMs, !IO)
             )
         ;
@@ -2320,8 +2318,8 @@ read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
 %---------------------------------------------------------------------------%
 
 read_word(Result, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.read_word(Stream, Result, !IO).
+    input_stream(Stream, !IO),
+    read_word(Stream, Result, !IO).
 
 read_word(Stream, Result, !IO) :-
     io.ignore_whitespace(Stream, WSResult, !IO),
@@ -2333,14 +2331,14 @@ read_word(Stream, Result, !IO) :-
         Result = eof
     ;
         WSResult = ok,
-        io.read_word_2(Stream, Result, !IO)
+        read_word_2(Stream, Result, !IO)
     ).
 
-:- pred io.read_word_2(io.input_stream::in, io.result(list(char))::out,
+:- pred read_word_2(io.input_stream::in, io.result(list(char))::out,
     io::di, io::uo) is det.
 
 read_word_2(Stream, Result, !IO) :-
-    io.read_char(Stream, CharResult, !IO),
+    read_char(Stream, CharResult, !IO),
     (
         CharResult = error(Error),
         Result = error(Error)
@@ -2350,10 +2348,10 @@ read_word_2(Stream, Result, !IO) :-
     ;
         CharResult = ok(Char),
         ( if char.is_whitespace(Char) then
-            io.putback_char(Stream, Char, !IO),
+            putback_char(Stream, Char, !IO),
             Result = ok([])
         else
-            io.read_word_2(Stream, Result0, !IO),
+            read_word_2(Stream, Result0, !IO),
             (
                 Result0 = ok(Chars),
                 Result = ok([Char | Chars])
@@ -2368,37 +2366,37 @@ read_word_2(Stream, Result, !IO) :-
     ).
 
 read_line(Result, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.read_line(Stream, Result, !IO).
+    input_stream(Stream, !IO),
+    read_line(Stream, Result, !IO).
 
 read_line(Stream, Result, !IO) :-
-    io.read_char_code(Stream, Code, !IO),
+    read_char_code(Stream, Code, !IO),
     ( if Code = -1 then
         Result = eof
     else if char.to_int(Char, Code) then
         ( if Char = '\n' then
             Result = ok([Char])
         else
-            io.read_line_2(Stream, Result0, !IO),
+            read_line_2(Stream, Result0, !IO),
             Result = ok([Char | Result0])
         )
     else
-        io.make_err_msg("read failed: ", Msg, !IO),
+        make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
-:- pred io.read_line_2(io.input_stream::in, list(char)::out,
+:- pred read_line_2(input_stream::in, list(char)::out,
     io::di, io::uo) is det.
 
 read_line_2(Stream, Result, !IO) :-
-    io.read_char_code(Stream, Code, !IO),
+    read_char_code(Stream, Code, !IO),
     ( if Code = -1 then
         Result = []
     else if char.to_int(Char, Code) then
         ( if Char = '\n' then
             Result = [Char]
         else
-            io.read_line_2(Stream, Chars, !IO),
+            read_line_2(Stream, Chars, !IO),
             Result = [Char | Chars]
         )
     else
@@ -2406,29 +2404,29 @@ read_line_2(Stream, Result, !IO) :-
     ).
 
 read_line_as_string(Result, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.read_line_as_string(Stream, Result, !IO).
+    input_stream(Stream, !IO),
+    read_line_as_string(Stream, Result, !IO).
 
 read_line_as_string(input_stream(Stream), Result, !IO) :-
-    io.read_line_as_string_2(Stream, yes, Res, String, !IO),
+    read_line_as_string_2(Stream, yes, Res, String, !IO),
     ( if Res < 0 then
         ( if Res = -1 then
             Result = eof
         else if Res = -2 then
             Result = error(io_error("null character in input"))
         else
-            io.make_err_msg("read failed: ", Msg, !IO),
+            make_err_msg("read failed: ", Msg, !IO),
             Result = error(io_error(Msg))
         )
     else
         Result = ok(String)
     ).
 
-:- pred io.read_line_as_string_2(io.stream::in, bool::in, int::out,
+:- pred read_line_as_string_2(io.stream::in, bool::in, int::out,
     string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.read_line_as_string_2(Stream::in, _FirstCall::in, Res::out,
+    read_line_as_string_2(Stream::in, _FirstCall::in, Res::out,
         RetString::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -2510,7 +2508,7 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
 read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
     % XXX This is terribly inefficient, a better approach would be to
     % use a buffer like what is done for io.read_file_as_string.
-    io.read_char(input_stream(Stream), Result, !IO),
+    read_char(input_stream(Stream), Result, !IO),
     (
         Result = ok(Char),
         ( if Char = '\n' then
@@ -2520,7 +2518,7 @@ read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
             Res = -2,
             String = ""
         else
-            io.read_line_as_string_2(Stream, no, Res, String0, !IO),
+            read_line_as_string_2(Stream, no, Res, String0, !IO),
             string.first_char(String, Char, String0)
         )
     ;
@@ -2541,17 +2539,17 @@ read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
     ).
 
 read_file(Result, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.read_file(Stream, Result, !IO).
+    input_stream(Stream, !IO),
+    read_file(Stream, Result, !IO).
 
 read_file(Stream, Result, !IO) :-
-    io.read_file_2(Stream, [], Result, !IO).
+    read_file_2(Stream, [], Result, !IO).
 
-:- pred io.read_file_2(io.input_stream::in, list(char)::in,
-    io.maybe_partial_res(list(char))::out, io::di, io::uo) is det.
+:- pred read_file_2(input_stream::in, list(char)::in,
+    maybe_partial_res(list(char))::out, io::di, io::uo) is det.
 
 read_file_2(Stream, Chars0, Result, !IO) :-
-    io.read_char(Stream, Result0, !IO),
+    read_char(Stream, Result0, !IO),
     (
         Result0 = eof,
         Result = ok(list.reverse(Chars0))
@@ -2560,17 +2558,17 @@ read_file_2(Stream, Chars0, Result, !IO) :-
         Result = error(list.reverse(Chars0), Err)
     ;
         Result0 = ok(Char),
-        io.read_file_2(Stream, [Char | Chars0], Result, !IO)
+        read_file_2(Stream, [Char | Chars0], Result, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
 read_file_as_string(Result, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.read_file_as_string(Stream, Result, !IO).
+    input_stream(Stream, !IO),
+    read_file_as_string(Stream, Result, !IO).
 
 :- pragma foreign_proc("Java",
-    io.read_file_as_string(InputStream::in, Result::out, _IO0::di, _IO::uo),
+    read_file_as_string(InputStream::in, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -2590,7 +2588,7 @@ read_file_as_string(Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.read_file_as_string(InputStream::in, Result::out, _IO0::di, _IO::uo),
+    read_file_as_string(InputStream::in, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     {input_stream, Stream} = InputStream,
@@ -2601,23 +2599,23 @@ read_file_as_string(Stream, Result, !IO) :-
     % Check if the stream is a regular file; if so, allocate a buffer
     % according to the size of the file. Otherwise, just use a default buffer
     % size of 4k minus a bit (to give malloc some room).
-    io.input_stream_file_size(Stream, FileSize, !IO),
+    input_stream_file_size(Stream, FileSize, !IO),
     ( if FileSize >= 0 then
         BufferSize0 = FileSize + 1
     else
         BufferSize0 = 4000
     ),
-    io.alloc_buffer(BufferSize0, Buffer0),
+    alloc_buffer(BufferSize0, Buffer0),
 
     % Read the file into the buffer (resizing it as we go if necessary),
     % convert the buffer into a string, and see if anything went wrong.
-    io.input_clear_err(Stream, !IO),
+    input_clear_err(Stream, !IO),
     Pos0 = 0,
-    io.read_file_as_string_2(Stream, Buffer0, Buffer, Pos0, Pos,
+    read_file_as_string_2(Stream, Buffer0, Buffer, Pos0, Pos,
         BufferSize0, BufferSize, !IO),
     require(Pos < BufferSize, "io.read_file_as_string: overflow"),
-    ( if io.buffer_to_string(Buffer, Pos, String) then
-        io.input_check_err(Stream, Result0, !IO),
+    ( if buffer_to_string(Buffer, Pos, String) then
+        input_check_err(Stream, Result0, !IO),
         (
             Result0 = ok,
             Result = ok(String)
@@ -2629,7 +2627,7 @@ read_file_as_string(Stream, Result, !IO) :-
         Result = error("", io_error("null character in input"))
     ).
 
-:- pred io.read_file_as_string_2(io.input_stream::in, buffer::buffer_di,
+:- pred read_file_as_string_2(input_stream::in, buffer::buffer_di,
     buffer::buffer_uo, int::in, int::out, int::in, int::out, io::di, io::uo)
     is det.
 
@@ -2637,31 +2635,31 @@ read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO) :-
     Pos0 = !.Pos,
     Size0 = !.Size,
     Stream = input_stream(RealStream),
-    io.read_into_buffer(RealStream, !Buffer, !Pos, !.Size, !IO),
+    read_into_buffer(RealStream, !Buffer, !Pos, !.Size, !IO),
     ( if !.Pos =< Pos0 then
         % End-of-file or error.
         true
     else if !.Pos = Size0 then
         % Full buffer.
         !:Size = Size0 * 2,
-        io.resize_buffer(Size0, !.Size, !Buffer),
-        io.read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
+        resize_buffer(Size0, !.Size, !Buffer),
+        read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
     else
-        io.read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
+        read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
 input_stream_foldl(Pred, T0, Res, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.input_stream_foldl(Stream, Pred, T0, Res, !IO).
+    input_stream(Stream, !IO),
+    input_stream_foldl(Stream, Pred, T0, Res, !IO).
 
 input_stream_foldl(Stream, Pred, T0, Res, !IO) :-
-    io.read_char(Stream, CharResult, !IO),
+    read_char(Stream, CharResult, !IO),
     (
         CharResult = ok(Char),
         Pred(Char, T0, T1),
-        io.input_stream_foldl(Stream, Pred, T1, Res, !IO)
+        input_stream_foldl(Stream, Pred, T1, Res, !IO)
     ;
         CharResult = eof,
         Res = ok(T0)
@@ -2671,15 +2669,15 @@ input_stream_foldl(Stream, Pred, T0, Res, !IO) :-
     ).
 
 input_stream_foldl_io(Pred, Res, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.input_stream_foldl_io(Stream, Pred, Res, !IO).
+    input_stream(Stream, !IO),
+    input_stream_foldl_io(Stream, Pred, Res, !IO).
 
 input_stream_foldl_io(Stream, Pred, Res, !IO) :-
-    io.read_char(Stream, CharResult, !IO),
+    read_char(Stream, CharResult, !IO),
     (
         CharResult = ok(Char),
         Pred(Char, !IO),
-        io.input_stream_foldl_io(Stream, Pred, Res, !IO)
+        input_stream_foldl_io(Stream, Pred, Res, !IO)
     ;
         CharResult = eof,
         Res = ok
@@ -2689,15 +2687,15 @@ input_stream_foldl_io(Stream, Pred, Res, !IO) :-
     ).
 
 input_stream_foldl2_io(Pred, T0, Res, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.input_stream_foldl2_io(Stream, Pred, T0, Res, !IO).
+    input_stream(Stream, !IO),
+    input_stream_foldl2_io(Stream, Pred, T0, Res, !IO).
 
 input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
-    io.read_char(Stream, CharResult, !IO),
+    read_char(Stream, CharResult, !IO),
     (
         CharResult = ok(Char),
         Pred(Char, T0, T1, !IO),
-        io.input_stream_foldl2_io(Stream, Pred, T1, Res, !IO)
+        input_stream_foldl2_io(Stream, Pred, T1, Res, !IO)
     ;
         CharResult = eof,
         Res = ok(T0)
@@ -2707,11 +2705,11 @@ input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
     ).
 
 input_stream_foldl2_io_maybe_stop(Pred, T0, Res, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO).
+    input_stream(Stream, !IO),
+    input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO).
 
 input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
-    io.read_char(Stream, CharResult, !IO),
+    read_char(Stream, CharResult, !IO),
     (
         CharResult = ok(Char),
         Pred(Char, Continue, T0, T1, !IO),
@@ -2720,7 +2718,7 @@ input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
             Res = ok(T1)
         ;
             Continue = yes,
-            io.input_stream_foldl2_io_maybe_stop(Stream, Pred, T1, Res, !IO)
+            input_stream_foldl2_io_maybe_stop(Stream, Pred, T1, Res, !IO)
         )
     ;
         CharResult = eof,
@@ -2732,22 +2730,22 @@ input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred io.input_clear_err(io.input_stream::in, io::di, io::uo) is det.
+:- pred input_clear_err(io.input_stream::in, io::di, io::uo) is det.
 
 input_clear_err(input_stream(Stream), !IO) :-
-    io.clear_err(Stream, !IO).
+    clear_err(Stream, !IO).
 
-:- pred io.output_clear_err(io.output_stream::in, io::di, io::uo) is det.
+:- pred output_clear_err(output_stream::in, io::di, io::uo) is det.
 
 output_clear_err(output_stream(Stream), !IO) :-
-    io.clear_err(Stream, !IO).
+    clear_err(Stream, !IO).
 
     % Same as ANSI C's clearerr().
     %
-:- pred io.clear_err(stream::in, io::di, io::uo) is det.
+:- pred clear_err(stream::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.clear_err(Stream::in, _IO0::di, _IO::uo),
+    clear_err(Stream::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -2759,7 +2757,7 @@ output_clear_err(output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.clear_err(_Stream::in, _IO0::di, _IO::uo),
+    clear_err(_Stream::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     // XXX no error flag to reset as in .NET an error is thrown
@@ -2768,14 +2766,14 @@ output_clear_err(output_stream(Stream), !IO) :-
 }").
 
 :- pragma foreign_proc("Java",
-    io.clear_err(_Stream::in, _IO0::di, _IO::uo),
+    clear_err(_Stream::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     // XXX as for .NET above
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.clear_err(_Stream::in, _IO0::di, _IO::uo),
+    clear_err(_Stream::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     % XXX as for .NET above
@@ -2786,12 +2784,12 @@ output_clear_err(output_stream(Stream), !IO) :-
     is det.
 
 input_check_err(input_stream(Stream), Result, !IO) :-
-    io.check_err(Stream, Result, !IO).
+    check_err(Stream, Result, !IO).
 
-:- pred io.check_err(stream::in, io.res::out, io::di, io::uo) is det.
+:- pred check_err(stream::in, io.res::out, io::di, io::uo) is det.
 
 check_err(Stream, Res, !IO) :-
-    io.ferror(Stream, Int, Msg, !IO),
+    ferror(Stream, Int, Msg, !IO),
     ( if Int = 0 then
         Res = ok
     else
@@ -2800,7 +2798,7 @@ check_err(Stream, Res, !IO) :-
 
     % Similar to ANSI C's ferror().
     %
-:- pred io.ferror(stream::in, int::out, string::out, io::di, io::uo) is det.
+:- pred ferror(stream::in, int::out, string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     ferror(Stream::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
@@ -2842,16 +2840,16 @@ check_err(Stream, Res, !IO) :-
     RetStr = <<>>
 ").
 
-:- pred io.make_err_msg(string::in, string::out, io::di, io::uo) is det.
+:- pred make_err_msg(string::in, string::out, io::di, io::uo) is det.
 
 make_err_msg(Msg0, Msg, !IO) :-
-    io.get_system_error(Error, !IO),
-    io.make_err_msg(Error, Msg0, Msg, !IO).
+    get_system_error(Error, !IO),
+    make_err_msg(Error, Msg0, Msg, !IO).
 
-:- pred io.get_system_error(io.system_error::out, io::di, io::uo) is det.
+:- pred get_system_error(system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.get_system_error(Error::out, _IO0::di, _IO::uo),
+    get_system_error(Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "{
@@ -2865,21 +2863,21 @@ make_err_msg(Msg0, Msg, !IO) :-
 }").
 
 :- pragma foreign_proc("C#",
-    io.get_system_error(Error::out, _IO0::di, _IO::uo),
+    get_system_error(Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
     Error = io.MR_io_exception;
 }").
 
 :- pragma foreign_proc("Java",
-    io.get_system_error(Error::out, _IO0::di, _IO::uo),
+    get_system_error(Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     Error = io.MR_io_exception.get();
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.get_system_error(Error::out, _IO0::di, _IO::uo),
+    get_system_error(Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     Error = get('MR_io_exception')
@@ -2995,29 +2993,29 @@ make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred io.input_stream_file_size(io.input_stream::in, int::out,
+:- pred input_stream_file_size(io.input_stream::in, int::out,
     io::di, io::uo) is det.
 
 input_stream_file_size(input_stream(Stream), Size, !IO) :-
-    io.stream_file_size(Stream, Size, !IO).
+    stream_file_size(Stream, Size, !IO).
 
-:- pred io.binary_input_stream_file_size(io.binary_input_stream::in, int::out,
+:- pred binary_input_stream_file_size(io.binary_input_stream::in, int::out,
     io::di, io::uo) is det.
 
 binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
-    io.stream_file_size(Stream, Size, !IO).
+    stream_file_size(Stream, Size, !IO).
 
-:- pred io.output_stream_file_size(io.output_stream::in, int::out,
+:- pred output_stream_file_size(io.output_stream::in, int::out,
     io::di, io::uo) is det.
 
 output_stream_file_size(output_stream(Stream), Size, !IO) :-
-    io.stream_file_size(Stream, Size, !IO).
+    stream_file_size(Stream, Size, !IO).
 
-    % io.stream_file_size(Stream, Size):
+    % stream_file_size(Stream, Size):
     % If Stream is a regular file, then Size is its size (in bytes),
     % otherwise Size is -1.
     %
-:- pred io.stream_file_size(stream::in, int::out, io::di, io::uo) is det.
+:- pred stream_file_size(stream::in, int::out, io::di, io::uo) is det.
 
 :- pragma foreign_decl("C", "
 #ifdef MR_HAVE_UNISTD_H
@@ -3031,7 +3029,7 @@ output_stream_file_size(output_stream(Stream), Size, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
+    stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -3053,7 +3051,7 @@ output_stream_file_size(output_stream(Stream), Size, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
+    stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     if (Stream.stream.CanSeek) {
@@ -3064,7 +3062,7 @@ output_stream_file_size(output_stream(Stream), Size, !IO) :-
 }").
 
 :- pragma foreign_proc("Java",
-    io.stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
+    stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -3075,14 +3073,14 @@ output_stream_file_size(output_stream(Stream), Size, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
+    stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Size = mercury__io:mercury_get_file_size(Stream)
 ").
 
 file_modification_time(File, Result, !IO) :-
-    io.file_modification_time_2(File, Status, Msg, Time, !IO),
+    file_modification_time_2(File, Status, Msg, Time, !IO),
     ( if Status = 1 then
         Result = ok(Time)
     else
@@ -3093,7 +3091,7 @@ file_modification_time(File, Result, !IO) :-
     time_t::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.file_modification_time_2(FileName::in, Status::out, Msg::out,
+    file_modification_time_2(FileName::in, Status::out, Msg::out,
         Time::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -3125,7 +3123,7 @@ file_modification_time(File, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.file_modification_time_2(FileName::in, Status::out, Msg::out,
+    file_modification_time_2(FileName::in, Status::out, Msg::out,
         Time::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
@@ -3149,7 +3147,7 @@ file_modification_time(File, Result, !IO) :-
 }").
 
 :- pragma foreign_proc("Java",
-    io.file_modification_time_2(FileName::in, Status::out, Msg::out,
+    file_modification_time_2(FileName::in, Status::out, Msg::out,
         Time::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -3171,7 +3169,7 @@ file_modification_time(File, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.file_modification_time_2(FileName::in, Status::out, Msg::out,
+    file_modification_time_2(FileName::in, Status::out, Msg::out,
         Time::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -3241,11 +3239,11 @@ file_type_implemented :-
     SUCCESS_INDICATOR = true
 ").
 
-:- pred io.file_type_2(int::in, string::in, io.res(io.file_type)::out,
+:- pred file_type_2(int::in, string::in, io.res(io.file_type)::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.file_type_2(FollowSymLinks::in, FileName::in, Result::out,
+    file_type_2(FollowSymLinks::in, FileName::in, Result::out,
         _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
@@ -3380,7 +3378,7 @@ file_type_implemented :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.file_type_2(_FollowSymLinks::in, FileName::in, Result::out,
+    file_type_2(_FollowSymLinks::in, FileName::in, Result::out,
         _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
@@ -3413,7 +3411,7 @@ file_type_implemented :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.file_type_2(_FollowSymLinks::in, FileName::in,
+    file_type_2(_FollowSymLinks::in, FileName::in,
         Result::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         may_not_duplicate],
@@ -3441,7 +3439,7 @@ file_type_implemented :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.file_type_2(FollowSymLinks::in, FileName::in,
+    file_type_2(FollowSymLinks::in, FileName::in,
         Result::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         may_not_duplicate],
@@ -3568,16 +3566,16 @@ file_type_unknown = unknown.
 
 check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     ( if have_dotnet then
-        io.check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO)
+        check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO)
     else
-        io.check_file_accessibility_2(FileName, AccessTypes, Result, !IO)
+        check_file_accessibility_2(FileName, AccessTypes, Result, !IO)
     ).
 
-:- pred io.check_file_accessibility_2(string::in, list(access_type)::in,
+:- pred check_file_accessibility_2(string::in, list(access_type)::in,
     io.res::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
+    check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
         _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
@@ -3637,7 +3635,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.check_file_accessibility_2(FileName::in, AccessTypes::in,
+    check_file_accessibility_2(FileName::in, AccessTypes::in,
         Result::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         may_not_duplicate],
@@ -3686,7 +3684,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
+    check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
         _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, may_not_duplicate],
@@ -3730,7 +3728,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     end
 ").
 
-:- pred io.check_file_accessibility_dotnet(string::in, list(access_type)::in,
+:- pred check_file_accessibility_dotnet(string::in, list(access_type)::in,
     io.res::out, io::di, io::uo) is det.
 
 check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
@@ -3744,7 +3742,7 @@ check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
     % We need to be able to read a file to execute it.
     CheckRead = bool.or(CheckRead0, CheckExec),
 
-    io.file_type(yes, FileName, FileTypeRes, !IO),
+    file_type(yes, FileName, FileTypeRes, !IO),
     (
         FileTypeRes = ok(FileType),
         ( if FileType = directory then
@@ -3753,7 +3751,7 @@ check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
         else
             (
                 CheckRead = yes,
-                io.open_input(FileName, InputRes, !IO),
+                open_input(FileName, InputRes, !IO),
                 (
                     InputRes = ok(InputStream),
                     io.close_input(InputStream, !IO),
@@ -3770,7 +3768,7 @@ check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
                 CheckReadRes = ok,
                 CheckWrite = yes
             then
-                io.open_append(FileName, OutputRes, !IO),
+                open_append(FileName, OutputRes, !IO),
                 (
                     OutputRes = ok(OutputStream),
                     io.close_output(OutputStream, !IO),
@@ -4148,11 +4146,11 @@ file_id(FileName, Result, !IO) :-
             "on this platform"))
     ).
 
-:- pred io.file_id_2(string::in, int::out, string::out, file_id::out,
+:- pred file_id_2(string::in, int::out, string::out, file_id::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.file_id_2(FileName::in, Status::out, Msg::out,
+    file_id_2(FileName::in, Status::out, Msg::out,
         FileId::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -4182,7 +4180,7 @@ file_id(FileName, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.file_id_2(_FileName::in, _Status::out, _Msg::out,
+    file_id_2(_FileName::in, _Status::out, _Msg::out,
         _FileId::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -4195,7 +4193,7 @@ file_id(FileName, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.file_id_2(FileName::in, Status::out, Msg::out,
+    file_id_2(FileName::in, Status::out, Msg::out,
         FileId::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -4257,10 +4255,10 @@ have_file_ids :- semidet_fail.
 :- mode buffer_di == di(uniq_buffer).
 :- mode buffer_uo == out(uniq_buffer).
 
-:- pred io.alloc_buffer(int::in, buffer::buffer_uo) is det.
+:- pred alloc_buffer(int::in, buffer::buffer_uo) is det.
 
 :- pragma foreign_proc("C",
-    io.alloc_buffer(Size::in, Buffer::buffer_uo),
+    alloc_buffer(Size::in, Buffer::buffer_uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "{
@@ -4275,11 +4273,11 @@ alloc_buffer(Size, buffer(Array)) :-
     char.det_from_int(0, NullChar),
     array.init(Size, NullChar, Array).
 
-:- pred io.resize_buffer(int::in, int::in,
+:- pred resize_buffer(int::in, int::in,
     buffer::buffer_di, buffer::buffer_uo) is det.
 
 :- pragma foreign_proc("C",
-    io.resize_buffer(OldSize::in, NewSize::in,
+    resize_buffer(OldSize::in, NewSize::in,
         Buffer0::buffer_di, Buffer::buffer_uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
@@ -4319,10 +4317,10 @@ resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
     char.det_from_int(0, Char),
     array.resize(NewSize, Char, Array0, Array).
 
-:- pred io.buffer_to_string(buffer::buffer_di, int::in, string::uo) is semidet.
+:- pred buffer_to_string(buffer::buffer_di, int::in, string::uo) is semidet.
 
 :- pragma foreign_proc("C",
-    io.buffer_to_string(Buffer::buffer_di, Len::in, Str::uo),
+    buffer_to_string(Buffer::buffer_di, Len::in, Str::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "{
@@ -4341,11 +4339,11 @@ buffer_to_string(buffer(Array), Len, String) :-
     array.fetch_items(Array, min(Array), min(Array) + Len - 1, List),
     string.semidet_from_char_list(List, String).
 
-:- pred io.read_into_buffer(stream::in, buffer::buffer_di, buffer::buffer_uo,
+:- pred read_into_buffer(stream::in, buffer::buffer_di, buffer::buffer_uo,
     int::in, int::out, int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.read_into_buffer(Stream::in, Buffer0::buffer_di, Buffer::buffer_uo,
+    read_into_buffer(Stream::in, Buffer0::buffer_di, Buffer::buffer_uo,
         Pos0::in, Pos::out, Size::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
@@ -4362,9 +4360,9 @@ buffer_to_string(buffer(Array), Len, String) :-
 ").
 
 read_into_buffer(Stream, buffer(Array0), buffer(Array), !Pos, Size, !IO) :-
-    io.read_into_array(Stream, Array0, Array, !Pos, Size, !IO).
+    read_into_array(Stream, Array0, Array, !Pos, Size, !IO).
 
-:- pred io.read_into_array(stream::in,
+:- pred read_into_array(stream::in,
     array(char)::array_di, array(char)::array_uo, int::in, int::out,
     int::in, io::di, io::uo) is det.
 
@@ -4388,17 +4386,17 @@ read_into_array(Stream, !Array, !Pos, Size, !IO) :-
 %---------------------------------------------------------------------------%
 
 read_binary_file(Result, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.read_binary_file(Stream, Result, !IO).
+    binary_input_stream(Stream, !IO),
+    read_binary_file(Stream, Result, !IO).
 
 read_binary_file(Stream, Result, !IO) :-
-    io.read_binary_file_2(Stream, [], Result, !IO).
+    read_binary_file_2(Stream, [], Result, !IO).
 
-:- pred io.read_binary_file_2(io.binary_input_stream::in, list(int)::in,
+:- pred read_binary_file_2(binary_input_stream::in, list(int)::in,
     io.result(list(int))::out, io::di, io::uo) is det.
 
 read_binary_file_2(Stream, Bytes0, Result, !IO) :-
-    io.read_byte(Stream, Result0, !IO),
+    read_byte(Stream, Result0, !IO),
     (
         Result0 = eof,
         list.reverse(Bytes0, Bytes),
@@ -4408,21 +4406,21 @@ read_binary_file_2(Stream, Bytes0, Result, !IO) :-
         Result = error(Err)
     ;
         Result0 = ok(Byte),
-        io.read_binary_file_2(Stream, [Byte | Bytes0], Result, !IO)
+        read_binary_file_2(Stream, [Byte | Bytes0], Result, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
 binary_input_stream_foldl(Pred, T0, Res, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.binary_input_stream_foldl(Stream, Pred, T0, Res, !IO).
+    binary_input_stream(Stream, !IO),
+    binary_input_stream_foldl(Stream, Pred, T0, Res, !IO).
 
 binary_input_stream_foldl(Stream, Pred, T0, Res, !IO) :-
-    io.read_byte(Stream, ByteResult, !IO),
+    read_byte(Stream, ByteResult, !IO),
     (
         ByteResult = ok(Byte),
         Pred(Byte, T0, T1),
-        io.binary_input_stream_foldl(Stream, Pred, T1, Res, !IO)
+        binary_input_stream_foldl(Stream, Pred, T1, Res, !IO)
     ;
         ByteResult = eof,
         Res = ok(T0)
@@ -4432,32 +4430,32 @@ binary_input_stream_foldl(Stream, Pred, T0, Res, !IO) :-
     ).
 
 binary_input_stream_foldl_io(Pred, Res, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.binary_input_stream_foldl_io(Stream, Pred, Res, !IO).
+    binary_input_stream(Stream, !IO),
+    binary_input_stream_foldl_io(Stream, Pred, Res, !IO).
 
 binary_input_stream_foldl_io(Stream, Pred, Res, !IO) :-
     should_reduce_stack_usage(ShouldReduce),
     (
         ShouldReduce = no,
-        io.binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO)
+        binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO)
     ;
         ShouldReduce = yes,
         io.binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO)
     ).
 
-:- pred io.binary_input_stream_foldl_io_plain(io.binary_input_stream,
+:- pred binary_input_stream_foldl_io_plain(binary_input_stream,
     pred(int, io, io), io.res, io, io).
-:- mode io.binary_input_stream_foldl_io_plain(in,
+:- mode binary_input_stream_foldl_io_plain(in,
     (pred(in, di, uo) is det), out, di, uo) is det.
-:- mode io.binary_input_stream_foldl_io_plain(in,
+:- mode binary_input_stream_foldl_io_plain(in,
     (pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
 
 binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO) :-
-    io.read_byte(Stream, ByteResult, !IO),
+    read_byte(Stream, ByteResult, !IO),
     (
         ByteResult = ok(Byte),
         Pred(Byte, !IO),
-        io.binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO)
+        binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO)
     ;
         ByteResult = eof,
         Res = ok
@@ -4466,15 +4464,15 @@ binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO) :-
         Res = error(Error)
     ).
 
-:- pred io.binary_input_stream_foldl_io_chunk(io.binary_input_stream,
+:- pred binary_input_stream_foldl_io_chunk(binary_input_stream,
     pred(int, io, io), io.res, io, io).
-:- mode io.binary_input_stream_foldl_io_chunk(in,
+:- mode binary_input_stream_foldl_io_chunk(in,
     (pred(in, di, uo) is det), out, di, uo) is det.
-:- mode io.binary_input_stream_foldl_io_chunk(in,
+:- mode binary_input_stream_foldl_io_chunk(in,
     (pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
 
 binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO) :-
-    io.binary_input_stream_foldl_io_inner(chunk_size, Stream, Pred,
+    binary_input_stream_foldl_io_inner(chunk_size, Stream, Pred,
         InnerRes, !IO),
     (
         InnerRes = ok,
@@ -4484,23 +4482,23 @@ binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO) :-
         Res = error(Error)
     ;
         InnerRes = more,
-        io.binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO)
+        binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO)
     ).
 
-:- pred io.binary_input_stream_foldl_io_inner(int, io.binary_input_stream,
+:- pred binary_input_stream_foldl_io_inner(int, binary_input_stream,
     pred(int, io, io), chunk_inner_res0, io, io).
-:- mode io.binary_input_stream_foldl_io_inner(in, in,
+:- mode binary_input_stream_foldl_io_inner(in, in,
     (pred(in, di, uo) is det), out, di, uo) is det.
-:- mode io.binary_input_stream_foldl_io_inner(in, in,
+:- mode binary_input_stream_foldl_io_inner(in, in,
     (pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
 
 binary_input_stream_foldl_io_inner(Left, Stream, Pred, Res, !IO) :-
     ( if Left > 0 then
-        io.read_byte(Stream, ByteResult, !IO),
+        read_byte(Stream, ByteResult, !IO),
         (
             ByteResult = ok(Byte),
             Pred(Byte, !IO),
-            io.binary_input_stream_foldl_io_inner(Left - 1,
+            binary_input_stream_foldl_io_inner(Left - 1,
                 Stream, Pred, Res, !IO)
         ;
             ByteResult = eof,
@@ -4514,32 +4512,32 @@ binary_input_stream_foldl_io_inner(Left, Stream, Pred, Res, !IO) :-
     ).
 
 binary_input_stream_foldl2_io(Pred, T0, Res, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.binary_input_stream_foldl2_io(Stream, Pred, T0, Res, !IO).
+    binary_input_stream(Stream, !IO),
+    binary_input_stream_foldl2_io(Stream, Pred, T0, Res, !IO).
 
 binary_input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
     should_reduce_stack_usage(ShouldReduce),
     (
         ShouldReduce = no,
-        io.binary_input_stream_foldl2_io_plain(Stream, Pred, T0, Res, !IO)
+        binary_input_stream_foldl2_io_plain(Stream, Pred, T0, Res, !IO)
     ;
         ShouldReduce = yes,
-        io.binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res, !IO)
+        binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res, !IO)
     ).
 
-:- pred io.binary_input_stream_foldl2_io_plain(io.binary_input_stream,
+:- pred binary_input_stream_foldl2_io_plain(binary_input_stream,
     pred(int, T, T, io, io), T, io.maybe_partial_res(T), io, io).
-:- mode io.binary_input_stream_foldl2_io_plain(in,
+:- mode binary_input_stream_foldl2_io_plain(in,
     (pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
-:- mode io.binary_input_stream_foldl2_io_plain(in,
+:- mode binary_input_stream_foldl2_io_plain(in,
     (pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_plain(Stream, Pred, T0, Res, !IO) :-
-    io.read_byte(Stream, ByteResult, !IO),
+    read_byte(Stream, ByteResult, !IO),
     (
         ByteResult = ok(Byte),
         Pred(Byte, T0, T1, !IO),
-        io.binary_input_stream_foldl2_io_plain(Stream, Pred, T1, Res, !IO)
+        binary_input_stream_foldl2_io_plain(Stream, Pred, T1, Res, !IO)
     ;
         ByteResult = eof,
         Res = ok(T0)
@@ -4548,15 +4546,15 @@ binary_input_stream_foldl2_io_plain(Stream, Pred, T0, Res, !IO) :-
         Res = error(T0, Error)
     ).
 
-:- pred io.binary_input_stream_foldl2_io_chunk(io.binary_input_stream,
+:- pred binary_input_stream_foldl2_io_chunk(binary_input_stream,
     pred(int, T, T, io, io), T, io.maybe_partial_res(T), io, io).
-:- mode io.binary_input_stream_foldl2_io_chunk(in,
+:- mode binary_input_stream_foldl2_io_chunk(in,
     (pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
-:- mode io.binary_input_stream_foldl2_io_chunk(in,
+:- mode binary_input_stream_foldl2_io_chunk(in,
     (pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res, !IO) :-
-    io.binary_input_stream_foldl2_io_inner(chunk_size, Stream, Pred, T0,
+    binary_input_stream_foldl2_io_inner(chunk_size, Stream, Pred, T0,
         InnerRes, !IO),
     (
         InnerRes = ok(T),
@@ -4566,23 +4564,23 @@ binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res, !IO) :-
         Res = error(T, Error)
     ;
         InnerRes = more(T1),
-        io.binary_input_stream_foldl2_io_chunk(Stream, Pred, T1, Res, !IO)
+        binary_input_stream_foldl2_io_chunk(Stream, Pred, T1, Res, !IO)
     ).
 
-:- pred io.binary_input_stream_foldl2_io_inner(int, io.binary_input_stream,
+:- pred binary_input_stream_foldl2_io_inner(int, binary_input_stream,
     pred(int, T, T, io, io), T, chunk_inner_res(T), io, io).
-:- mode io.binary_input_stream_foldl2_io_inner(in, in,
+:- mode binary_input_stream_foldl2_io_inner(in, in,
     (pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
-:- mode io.binary_input_stream_foldl2_io_inner(in, in,
+:- mode binary_input_stream_foldl2_io_inner(in, in,
     (pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_inner(Left, Stream, Pred, T0, Res, !IO) :-
     ( if Left > 0 then
-        io.read_byte(Stream, ByteResult, !IO),
+        read_byte(Stream, ByteResult, !IO),
         (
             ByteResult = ok(Byte),
             Pred(Byte, T0, T1, !IO),
-            io.binary_input_stream_foldl2_io_inner(Left - 1,
+            binary_input_stream_foldl2_io_inner(Left - 1,
                 Stream, Pred, T1, Res, !IO)
         ;
             ByteResult = eof,
@@ -4596,34 +4594,34 @@ binary_input_stream_foldl2_io_inner(Left, Stream, Pred, T0, Res, !IO) :-
     ).
 
 binary_input_stream_foldl2_io_maybe_stop(Pred, T0, Res, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO).
+    binary_input_stream(Stream, !IO),
+    binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO).
 
 binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
     should_reduce_stack_usage(ShouldReduce),
     (
         ShouldReduce = no,
-        io.binary_input_stream_foldl2_io_maybe_stop_plain(Stream,
+        binary_input_stream_foldl2_io_maybe_stop_plain(Stream,
             Pred, T0, Res, !IO)
     ;
         ShouldReduce = yes,
-        io.binary_input_stream_foldl2_io_maybe_stop_chunk(Stream,
+        binary_input_stream_foldl2_io_maybe_stop_chunk(Stream,
             Pred, T0, Res, !IO)
     ).
 
-:- pred io.binary_input_stream_foldl2_io_maybe_stop_plain(
-    io.binary_input_stream, pred(int, bool, T, T, io, io),
+:- pred binary_input_stream_foldl2_io_maybe_stop_plain(
+    binary_input_stream, pred(int, bool, T, T, io, io),
     T, io.maybe_partial_res(T), io, io).
-:- mode io.binary_input_stream_foldl2_io_maybe_stop_plain(
+:- mode binary_input_stream_foldl2_io_maybe_stop_plain(
     in, (pred(in, out, in, out, di, uo) is det),
     in, out, di, uo) is det.
-:- mode io.binary_input_stream_foldl2_io_maybe_stop_plain(
+:- mode binary_input_stream_foldl2_io_maybe_stop_plain(
     in, (pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_maybe_stop_plain(Stream, Pred, T0, Res,
         !IO) :-
-    io.read_byte(Stream, ByteResult, !IO),
+    read_byte(Stream, ByteResult, !IO),
     (
         ByteResult = ok(Byte),
         Pred(Byte, Continue, T0, T1, !IO),
@@ -4632,7 +4630,7 @@ binary_input_stream_foldl2_io_maybe_stop_plain(Stream, Pred, T0, Res,
             Res = ok(T1)
         ;
             Continue = yes,
-            io.binary_input_stream_foldl2_io_maybe_stop_plain(
+            binary_input_stream_foldl2_io_maybe_stop_plain(
                 Stream, Pred, T1, Res, !IO)
         )
     ;
@@ -4643,19 +4641,19 @@ binary_input_stream_foldl2_io_maybe_stop_plain(Stream, Pred, T0, Res,
         Res = error(T0, Error)
     ).
 
-:- pred io.binary_input_stream_foldl2_io_maybe_stop_chunk(
-    io.binary_input_stream, pred(int, bool, T, T, io, io),
+:- pred binary_input_stream_foldl2_io_maybe_stop_chunk(
+    binary_input_stream, pred(int, bool, T, T, io, io),
     T, io.maybe_partial_res(T), io, io).
-:- mode io.binary_input_stream_foldl2_io_maybe_stop_chunk(
+:- mode binary_input_stream_foldl2_io_maybe_stop_chunk(
     in, (pred(in, out, in, out, di, uo) is det),
     in, out, di, uo) is det.
-:- mode io.binary_input_stream_foldl2_io_maybe_stop_chunk(
+:- mode binary_input_stream_foldl2_io_maybe_stop_chunk(
     in, (pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_maybe_stop_chunk(Stream, Pred, T0, Res,
         !IO) :-
-    io.binary_input_stream_foldl2_io_maybe_stop_inner(chunk_size,
+    binary_input_stream_foldl2_io_maybe_stop_inner(chunk_size,
         Stream, Pred, T0, InnerRes, !IO),
     (
         InnerRes = ok(T),
@@ -4665,24 +4663,24 @@ binary_input_stream_foldl2_io_maybe_stop_chunk(Stream, Pred, T0, Res,
         Res = error(T, Error)
     ;
         InnerRes = more(T1),
-        io.binary_input_stream_foldl2_io_maybe_stop_chunk(Stream,
+        binary_input_stream_foldl2_io_maybe_stop_chunk(Stream,
             Pred, T1, Res, !IO)
     ).
 
-:- pred io.binary_input_stream_foldl2_io_maybe_stop_inner(int,
-    io.binary_input_stream, pred(int, bool, T, T, io, io),
+:- pred binary_input_stream_foldl2_io_maybe_stop_inner(int,
+    binary_input_stream, pred(int, bool, T, T, io, io),
     T, chunk_inner_res(T), io, io).
-:- mode io.binary_input_stream_foldl2_io_maybe_stop_inner(in,
+:- mode binary_input_stream_foldl2_io_maybe_stop_inner(in,
     in, (pred(in, out, in, out, di, uo) is det),
     in, out, di, uo) is det.
-:- mode io.binary_input_stream_foldl2_io_maybe_stop_inner(in,
+:- mode binary_input_stream_foldl2_io_maybe_stop_inner(in,
     in, (pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_maybe_stop_inner(Left, Stream, Pred, T0, Res,
         !IO) :-
     ( if Left > 0 then
-        io.read_byte(Stream, ByteResult, !IO),
+        read_byte(Stream, ByteResult, !IO),
         (
             ByteResult = ok(Byte),
             Pred(Byte, Continue, T0, T1, !IO),
@@ -4750,24 +4748,24 @@ chunk_size = 1000.
 %---------------------------------------------------------------------------%
 
 putback_char(Char, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.putback_char(Stream, Char, !IO).
+    input_stream(Stream, !IO),
+    putback_char(Stream, Char, !IO).
 
 putback_byte(Char, !IO) :-
-    io.binary_input_stream(Stream, !IO),
-    io.putback_byte(Stream, Char, !IO).
+    binary_input_stream(Stream, !IO),
+    putback_byte(Stream, Char, !IO).
 
 read(Result, !IO) :-
     term_io.read_term(ReadResult, !IO),
-    io.get_line_number(LineNumber, !IO),
-    io.process_read_term(ReadResult, LineNumber, Result).
+    get_line_number(LineNumber, !IO),
+    process_read_term(ReadResult, LineNumber, Result).
 
 read_from_string(FileName, String, Len, Result, !Posn) :-
     parser.read_term_from_substring(FileName, String, Len, !Posn, ReadResult),
     !.Posn = posn(LineNumber, _, _),
-    io.process_read_term(ReadResult, LineNumber, Result).
+    process_read_term(ReadResult, LineNumber, Result).
 
-:- pred io.process_read_term(read_term::in, int::in, io.read_result(T)::out)
+:- pred process_read_term(read_term::in, int::in, io.read_result(T)::out)
     is det.
 
 process_read_term(ReadResult, LineNumber, Result) :-
@@ -4794,16 +4792,16 @@ process_read_term(ReadResult, LineNumber, Result) :-
     ).
 
 read(Stream, Result, !IO) :-
-    io.set_input_stream(Stream, OrigStream, !IO),
-    io.read(Result, !IO),
-    io.set_input_stream(OrigStream, _Stream, !IO).
+    set_input_stream(Stream, OrigStream, !IO),
+    read(Result, !IO),
+    set_input_stream(OrigStream, _Stream, !IO).
 
 ignore_whitespace(Result, !IO) :-
-    io.input_stream(Stream, !IO),
-    io.ignore_whitespace(Stream, Result, !IO).
+    input_stream(Stream, !IO),
+    ignore_whitespace(Stream, Result, !IO).
 
 ignore_whitespace(Stream, Result, !IO) :-
-    io.read_char(Stream, CharResult, !IO),
+    read_char(Stream, CharResult, !IO),
     (
         CharResult = error(Error),
         Result = error(Error)
@@ -4813,9 +4811,9 @@ ignore_whitespace(Stream, Result, !IO) :-
     ;
         CharResult = ok(Char),
         ( if char.is_whitespace(Char) then
-            io.ignore_whitespace(Stream, Result, !IO)
+            ignore_whitespace(Stream, Result, !IO)
         else
-            io.putback_char(Stream, Char, !IO),
+            putback_char(Stream, Char, !IO),
             Result = ok
         )
     ).
@@ -4825,45 +4823,45 @@ ignore_whitespace(Stream, Result, !IO) :-
 % Output predicates.
 
 nl(!IO) :-
-    io.write_char('\n', !IO).
+    write_char('\n', !IO).
 
 nl(Stream, !IO) :-
-    io.write_char(Stream, '\n', !IO).
+    write_char(Stream, '\n', !IO).
 
 write_strings(Strings, !IO) :-
-    io.output_stream(Stream, !IO),
-    io.write_strings(Stream, Strings, !IO).
+    output_stream(Stream, !IO),
+    write_strings(Stream, Strings, !IO).
 
 write_strings(_Stream, [], !IO).
 write_strings(Stream, [S | Ss], !IO) :-
-    io.write_string(Stream, S, !IO),
-    io.write_strings(Stream, Ss, !IO).
+    write_string(Stream, S, !IO),
+    write_strings(Stream, Ss, !IO).
 
 format(FormatString, Arguments, !IO) :-
-    io.output_stream(Stream, !IO),
+    output_stream(Stream, !IO),
     io.format(Stream, FormatString, Arguments, !IO).
 
 format(Stream, FormatString, Arguments, !IO) :-
     string.format(FormatString, Arguments, String),
-    io.write_string(Stream, String, !IO).
+    write_string(Stream, String, !IO).
 
 write_many(Poly_list, !IO) :-
-    io.output_stream(Stream, !IO),
-    io.write_many(Stream, Poly_list, !IO).
+    output_stream(Stream, !IO),
+    write_many(Stream, Poly_list, !IO).
 
 write_many(_Stream, [], !IO).
 write_many(Stream, [c(C) | Rest], !IO) :-
-    io.write_char(Stream, C, !IO),
-    io.write_many(Stream, Rest, !IO).
+    write_char(Stream, C, !IO),
+    write_many(Stream, Rest, !IO).
 write_many(Stream, [i(I) | Rest], !IO) :-
-    io.write_int(Stream, I, !IO),
-    io.write_many(Stream, Rest, !IO).
+    write_int(Stream, I, !IO),
+    write_many(Stream, Rest, !IO).
 write_many(Stream, [s(S) | Rest], !IO) :-
-    io.write_string(Stream, S, !IO),
-    io.write_many(Stream, Rest, !IO).
+    write_string(Stream, S, !IO),
+    write_many(Stream, Rest, !IO).
 write_many(Stream, [f(F) | Rest], !IO) :-
-    io.write_float(Stream, F, !IO),
-    io.write_many(Stream, Rest, !IO).
+    write_float(Stream, F, !IO),
+    write_many(Stream, Rest, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -4878,7 +4876,7 @@ write_many(Stream, [f(F) | Rest], !IO) :-
     "ML_io_print_to_cur_stream").
 
 print(Term, !IO) :-
-    io.output_stream(Stream, !IO),
+    output_stream(Stream, !IO),
     stream.string_writer.print(Stream, canonicalize, Term, !IO).
 
 print(Stream, Term, !IO) :-
@@ -4888,7 +4886,7 @@ print(Stream, NonCanon, Term, !IO) :-
     stream.string_writer.print(Stream, NonCanon, Term, !IO).
 
 print_cc(Term, !IO) :-
-    io.output_stream(Stream, !IO),
+    output_stream(Stream, !IO),
     stream.string_writer.print_cc(Stream, Term, !IO).
 
 :- pred io.print_to_stream(io.stream::in, T::in, io::di, io::uo) is det.
@@ -4903,7 +4901,7 @@ print_to_stream(Stream, Term, !IO) :-
 
 print_line(Term, !IO) :-
     io.print(Term, !IO),
-    io.nl(!IO).
+    nl(!IO).
 
 print_line(Stream, Term, !IO) :-
     io.print(Stream, Term, !IO),
@@ -4923,7 +4921,7 @@ print_line_cc(Term, !IO) :-
 %
 
 write(X, !IO) :-
-    io.output_stream(Stream, !IO),
+    output_stream(Stream, !IO),
     stream.string_writer.write(Stream, canonicalize, X, !IO).
 
 write(Stream, X, !IO) :-
@@ -4933,7 +4931,7 @@ write(Stream, NonCanon, X, !IO) :-
     stream.string_writer.write(Stream, NonCanon, X, !IO).
 
 write_cc(X, !IO) :-
-    io.output_stream(Stream, !IO),
+    output_stream(Stream, !IO),
     stream.string_writer.write(Stream, include_details_cc, X, !IO).
 
 write_line(X, !IO) :-
@@ -4961,7 +4959,7 @@ write_list([Head | Tail], Separator, OutputPred, !IO) :-
         Tail = []
     ;
         Tail = [TailHead | TailTail],
-        io.write_list_lag(TailHead, TailTail, Separator, OutputPred, !IO)
+        write_list_lag(TailHead, TailTail, Separator, OutputPred, !IO)
     ).
 
 :- pred write_list_lag(T, list(T), string, pred(T, io, io), io, io).
@@ -4970,19 +4968,19 @@ write_list([Head | Tail], Separator, OutputPred, !IO) :-
     is cc_multi.
 
 write_list_lag(Head, Tail, Separator, OutputPred, !IO) :-
-    io.write_string(Separator, !IO),
+    write_string(Separator, !IO),
     OutputPred(Head, !IO),
     (
         Tail = []
     ;
         Tail = [TailHead | TailTail],
-        io.write_list_lag(TailHead, TailTail, Separator, OutputPred, !IO)
+        write_list_lag(TailHead, TailTail, Separator, OutputPred, !IO)
     ).
 
 write_list(Stream, List, Separator, OutputPred, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    io.write_list(List, Separator, OutputPred, !IO),
-    io.set_output_stream(OrigStream, _Stream, !IO).
+    set_output_stream(Stream, OrigStream, !IO),
+    write_list(List, Separator, OutputPred, !IO),
+    set_output_stream(OrigStream, _Stream, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -5004,7 +5002,7 @@ write_array(Array, Separator, OutputPred, !IO) :-
 
 do_write_array(Array, Separator, OutputPred, I, Hi, !IO) :-
     ( if I =< Hi then
-        io.write_string(Separator, !IO),
+        write_string(Separator, !IO),
         array.unsafe_lookup(Array, I, E),
         OutputPred(E, !IO),
         do_write_array(Array, Separator, OutputPred, I + 1, Hi, !IO)
@@ -5013,28 +5011,28 @@ do_write_array(Array, Separator, OutputPred, I, Hi, !IO) :-
     ).
 
 write_array(Stream, Array, Separator, OutputPred, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    io.write_array(Array, Separator, OutputPred, !IO),
-    io.set_output_stream(OrigStream, _, !IO).
+    set_output_stream(Stream, OrigStream, !IO),
+    write_array(Array, Separator, OutputPred, !IO),
+    set_output_stream(OrigStream, _, !IO).
 
 %---------------------------------------------------------------------------%
 
 write_binary(Stream, Term, !IO) :-
-    io.set_binary_output_stream(Stream, OrigStream, !IO),
-    io.write_binary(Term, !IO),
-    io.set_binary_output_stream(OrigStream, _Stream, !IO).
+    set_binary_output_stream(Stream, OrigStream, !IO),
+    write_binary(Term, !IO),
+    set_binary_output_stream(OrigStream, _Stream, !IO).
 
 read_binary(Stream, Result, !IO) :-
-    io.set_binary_input_stream(Stream, OrigStream, !IO),
-    io.read_binary(Result, !IO),
-    io.set_binary_input_stream(OrigStream, _Stream, !IO).
+    set_binary_input_stream(Stream, OrigStream, !IO),
+    read_binary(Result, !IO),
+    set_binary_input_stream(OrigStream, _Stream, !IO).
 
 write_binary(Term, !IO) :-
     % A quick-and-dirty implementation... not very space-efficient
     % (not really binary!)
     % XXX This will not work for the Java back-end. See the comment at the
     % top of the MR_MercuryFileStruct class definition.
-    io.binary_output_stream(binary_output_stream(Stream), !IO),
+    binary_output_stream(binary_output_stream(Stream), !IO),
     io.write(output_stream(Stream), Term, !IO),
     io.write_string(output_stream(Stream), ".\n", !IO).
 
@@ -5043,13 +5041,13 @@ read_binary(Result, !IO) :-
     % (not really binary!)
     % XXX This will not work for the Java back-end. See the comment at the
     % top of the MR_MercuryFileStruct class definition.
-    io.binary_input_stream(binary_input_stream(Stream), !IO),
-    io.read(input_stream(Stream), ReadResult, !IO),
+    binary_input_stream(binary_input_stream(Stream), !IO),
+    read(input_stream(Stream), ReadResult, !IO),
     (
         ReadResult = ok(T),
         % We've read the newline and the trailing full stop.
         % Now skip the newline after the full stop.
-        io.read_char(input_stream(Stream), NewLineRes, !IO),
+        read_char(input_stream(Stream), NewLineRes, !IO),
         (
             NewLineRes = error(Error),
             Result = error(Error)
@@ -5078,68 +5076,68 @@ read_binary(Result, !IO) :-
 %
 
 open_input(FileName, Result, !IO) :-
-    io.do_open_text(FileName, "r", Result0, OpenCount, NewStream, !IO),
+    do_open_text(FileName, "r", Result0, OpenCount, NewStream, !IO),
     ( if Result0 = -1 then
-        io.make_err_msg("can't open input file: ", Msg, !IO),
+        make_err_msg("can't open input file: ", Msg, !IO),
         Result = error(io_error(Msg))
     else
         Result = ok(input_stream(NewStream)),
-        io.insert_stream_info(NewStream,
+        insert_stream_info(NewStream,
             stream(OpenCount, input, text, file(FileName)), !IO)
     ).
 
 open_output(FileName, Result, !IO) :-
-    io.do_open_text(FileName, "w", Result0, OpenCount, NewStream, !IO),
+    do_open_text(FileName, "w", Result0, OpenCount, NewStream, !IO),
     ( if Result0 = -1 then
-        io.make_err_msg("can't open output file: ", Msg, !IO),
+        make_err_msg("can't open output file: ", Msg, !IO),
         Result = error(io_error(Msg))
     else
         Result = ok(output_stream(NewStream)),
-        io.insert_stream_info(NewStream,
+        insert_stream_info(NewStream,
             stream(OpenCount, output, text, file(FileName)), !IO)
     ).
 
 open_append(FileName, Result, !IO) :-
-    io.do_open_text(FileName, "a", Result0, OpenCount, NewStream, !IO),
+    do_open_text(FileName, "a", Result0, OpenCount, NewStream, !IO),
     ( if Result0 = -1 then
-        io.make_err_msg("can't append to file: ", Msg, !IO),
+        make_err_msg("can't append to file: ", Msg, !IO),
         Result = error(io_error(Msg))
     else
         Result = ok(output_stream(NewStream)),
-        io.insert_stream_info(NewStream,
+        insert_stream_info(NewStream,
             stream(OpenCount, append, text, file(FileName)), !IO)
     ).
 
 open_binary_input(FileName, Result, !IO) :-
-    io.do_open_binary(FileName, "rb", Result0, OpenCount, NewStream, !IO),
+    do_open_binary(FileName, "rb", Result0, OpenCount, NewStream, !IO),
     ( if Result0 = -1 then
-        io.make_err_msg("can't open input file: ", Msg, !IO),
+        make_err_msg("can't open input file: ", Msg, !IO),
         Result = error(io_error(Msg))
     else
         Result = ok(binary_input_stream(NewStream)),
-        io.insert_stream_info(NewStream,
+        insert_stream_info(NewStream,
             stream(OpenCount, input, binary, file(FileName)), !IO)
     ).
 
 open_binary_output(FileName, Result, !IO) :-
-    io.do_open_binary(FileName, "wb", Result0, OpenCount, NewStream, !IO),
+    do_open_binary(FileName, "wb", Result0, OpenCount, NewStream, !IO),
     ( if Result0 = -1 then
-        io.make_err_msg("can't open output file: ", Msg, !IO),
+        make_err_msg("can't open output file: ", Msg, !IO),
         Result = error(io_error(Msg))
     else
         Result = ok(binary_output_stream(NewStream)),
-        io.insert_stream_info(NewStream,
+        insert_stream_info(NewStream,
             stream(OpenCount, output, binary, file(FileName)), !IO)
     ).
 
 open_binary_append(FileName, Result, !IO) :-
-    io.do_open_binary(FileName, "ab", Result0, OpenCount, NewStream, !IO),
+    do_open_binary(FileName, "ab", Result0, OpenCount, NewStream, !IO),
     ( if Result0 = -1 then
-        io.make_err_msg("can't append to file: ", Msg, !IO),
+        make_err_msg("can't append to file: ", Msg, !IO),
         Result = error(io_error(Msg))
     else
         Result = ok(binary_output_stream(NewStream)),
-        io.insert_stream_info(NewStream,
+        insert_stream_info(NewStream,
             stream(OpenCount, append, binary, file(FileName)), !IO)
     ).
 
@@ -5148,10 +5146,10 @@ open_binary_append(FileName, Result, !IO) :-
 % Declarative versions of Prolog's see/1 and seen/0.
 
 see(File, Result, !IO) :-
-    io.open_input(File, Result0, !IO),
+    open_input(File, Result0, !IO),
     (
         Result0 = ok(Stream),
-        io.set_input_stream(Stream, _, !IO),
+        set_input_stream(Stream, _, !IO),
         Result = ok
     ;
         Result0 = error(Error),
@@ -5159,17 +5157,17 @@ see(File, Result, !IO) :-
     ).
 
 seen(!IO) :-
-    io.stdin_stream(Stdin, !IO),
-    io.set_input_stream(Stdin, OldStream, !IO),
-    io.close_input(OldStream, !IO).
+    stdin_stream(Stdin, !IO),
+    set_input_stream(Stdin, OldStream, !IO),
+    close_input(OldStream, !IO).
 
 % Plus binary IO versions.
 
 see_binary(File, Result, !IO) :-
-    io.open_binary_input(File, Result0, !IO),
+    open_binary_input(File, Result0, !IO),
     (
         Result0 = ok(Stream),
-        io.set_binary_input_stream(Stream, _, !IO),
+        set_binary_input_stream(Stream, _, !IO),
         Result = ok
     ;
         Result0 = error(Error),
@@ -5177,24 +5175,24 @@ see_binary(File, Result, !IO) :-
     ).
 
 seen_binary(!IO) :-
-    io.stdin_binary_stream(Stdin, !IO),
-    io.set_binary_input_stream(Stdin, OldStream, !IO),
-    io.close_binary_input(OldStream, !IO).
+    stdin_binary_stream(Stdin, !IO),
+    set_binary_input_stream(Stdin, OldStream, !IO),
+    close_binary_input(OldStream, !IO).
 
 %---------------------------------------------------------------------------%
 
 % Declarative versions of Prolog's tell/1 and told/0.
 
 told(!IO) :-
-    io.stdout_stream(Stdout, !IO),
-    io.set_output_stream(Stdout, OldStream, !IO),
-    io.close_output(OldStream, !IO).
+    stdout_stream(Stdout, !IO),
+    set_output_stream(Stdout, OldStream, !IO),
+    close_output(OldStream, !IO).
 
 tell(File, Result, !IO) :-
-    io.open_output(File, Result0, !IO),
+    open_output(File, Result0, !IO),
     (
         Result0 = ok(Stream),
-        io.set_output_stream(Stream, _, !IO),
+        set_output_stream(Stream, _, !IO),
         Result = ok
     ;
         Result0 = error(Msg),
@@ -5202,15 +5200,15 @@ tell(File, Result, !IO) :-
     ).
 
 told_binary(!IO) :-
-    io.stdout_binary_stream(Stdout, !IO),
-    io.set_binary_output_stream(Stdout, OldStream, !IO),
-    io.close_binary_output(OldStream, !IO).
+    stdout_binary_stream(Stdout, !IO),
+    set_binary_output_stream(Stdout, OldStream, !IO),
+    close_binary_output(OldStream, !IO).
 
 tell_binary(File, Result, !IO) :-
-    io.open_binary_output(File, Result0, !IO),
+    open_binary_output(File, Result0, !IO),
     (
         Result0 = ok(Stream),
-        io.set_binary_output_stream(Stream, _, !IO),
+        set_binary_output_stream(Stream, _, !IO),
         Result = ok
     ;
         Result0 = error(Msg),
@@ -5224,37 +5222,37 @@ tell_binary(File, Result, !IO) :-
 %
 
 input_stream_name(Name, !IO) :-
-    io.input_stream(input_stream(Stream), !IO),
-    io.stream_name(Stream, Name, !IO).
+    input_stream(input_stream(Stream), !IO),
+    stream_name(Stream, Name, !IO).
 
 input_stream_name(input_stream(Stream), Name, !IO) :-
-    io.stream_name(Stream, Name, !IO).
+    stream_name(Stream, Name, !IO).
 
 output_stream_name(Name, !IO) :-
-    io.output_stream(output_stream(Stream), !IO),
-    io.stream_name(Stream, Name, !IO).
+    output_stream(output_stream(Stream), !IO),
+    stream_name(Stream, Name, !IO).
 
 output_stream_name(output_stream(Stream), Name, !IO) :-
-    io.stream_name(Stream, Name, !IO).
+    stream_name(Stream, Name, !IO).
 
 binary_input_stream_name(Name, !IO) :-
-    io.binary_input_stream(binary_input_stream(Stream), !IO),
-    io.stream_name(Stream, Name, !IO).
+    binary_input_stream(binary_input_stream(Stream), !IO),
+    stream_name(Stream, Name, !IO).
 
 binary_input_stream_name(binary_input_stream(Stream), Name, !IO) :-
-    io.stream_name(Stream, Name, !IO).
+    stream_name(Stream, Name, !IO).
 
 binary_output_stream_name(Name, !IO) :-
-    io.binary_output_stream(binary_output_stream(Stream), !IO),
-    io.stream_name(Stream, Name, !IO).
+    binary_output_stream(binary_output_stream(Stream), !IO),
+    stream_name(Stream, Name, !IO).
 
 binary_output_stream_name(binary_output_stream(Stream), Name, !IO) :-
-    io.stream_name(Stream, Name, !IO).
+    stream_name(Stream, Name, !IO).
 
-:- pred io.stream_name(io.stream::in, string::out, io::di, io::uo) is det.
+:- pred stream_name(stream::in, string::out, io::di, io::uo) is det.
 
 stream_name(Stream, Name, !IO) :-
-    io.stream_info(Stream, MaybeInfo, !IO),
+    stream_info(Stream, MaybeInfo, !IO),
     (
         MaybeInfo = yes(Info),
         Info = stream(_, _, _, Source),
@@ -5264,13 +5262,13 @@ stream_name(Stream, Name, !IO) :-
         Name = "<stream name unavailable>"
     ).
 
-:- pred io.stream_info(io.stream::in, maybe(stream_info)::out,
+:- pred stream_info(io.stream::in, maybe(stream_info)::out,
     io::di, io::uo) is det.
 
 stream_info(Stream, MaybeInfo, !IO) :-
-    io.lock_stream_db(!IO),
-    io.get_stream_db(StreamDb, !IO),
-    io.unlock_stream_db(!IO),
+    lock_stream_db(!IO),
+    get_stream_db(StreamDb, !IO),
+    unlock_stream_db(!IO),
     ( if map.search(StreamDb, get_stream_id(Stream), Info) then
         MaybeInfo = yes(Info)
     else
@@ -5278,18 +5276,18 @@ stream_info(Stream, MaybeInfo, !IO) :-
     ).
 
 input_stream_info(StreamDb, input_stream(Stream)) =
-    io.maybe_stream_info(StreamDb, Stream).
+    maybe_stream_info(StreamDb, Stream).
 
 output_stream_info(StreamDb, output_stream(Stream)) =
-    io.maybe_stream_info(StreamDb, Stream).
+    maybe_stream_info(StreamDb, Stream).
 
 binary_input_stream_info(StreamDb, binary_input_stream(Stream)) =
-    io.maybe_stream_info(StreamDb, Stream).
+    maybe_stream_info(StreamDb, Stream).
 
 binary_output_stream_info(StreamDb, binary_output_stream(Stream)) =
-    io.maybe_stream_info(StreamDb, Stream).
+    maybe_stream_info(StreamDb, Stream).
 
-:- func io.maybe_stream_info(io.stream_db, io.stream) = maybe_stream_info.
+:- func maybe_stream_info(io.stream_db, io.stream) = maybe_stream_info.
 
 maybe_stream_info(StreamDb, Stream) = Info :-
     ( if map.search(StreamDb, get_stream_id(Stream), Info0) then
@@ -5338,7 +5336,7 @@ source_name(stderr) = "<standard error>".
     % Caller must NOT hold the stream_db lock.
     %
 :- pragma foreign_proc("C",
-    io.get_stream_db_with_locking(StreamDb::out),
+    get_stream_db_with_locking(StreamDb::out),
     [will_not_call_mercury, thread_safe, tabled_for_io],
 "
     MR_LOCK(&ML_io_stream_db_lock, ""io.get_stream_db/1"");
@@ -5349,7 +5347,7 @@ source_name(stderr) = "<standard error>".
     % Caller must hold the stream_db lock.
     %
 :- pragma foreign_proc("C",
-    io.get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
+    get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness],
 "
@@ -5358,17 +5356,17 @@ source_name(stderr) = "<standard error>".
 
     % Caller must hold the stream_db lock.
     %
-:- pred io.set_stream_db(io.stream_db::in, io::di, io::uo) is det.
+:- pred set_stream_db(io.stream_db::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
+    set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     ML_io_stream_db = StreamDb;
 ").
 
-:- pred io.lock_stream_db(io::di, io::uo) is det.
+:- pred lock_stream_db(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     io.lock_stream_db(_IO0::di, _IO::uo),
@@ -5380,10 +5378,10 @@ source_name(stderr) = "<standard error>".
 
 lock_stream_db(!IO).
 
-:- pred io.unlock_stream_db(io::di, io::uo) is det.
+:- pred unlock_stream_db(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.unlock_stream_db(_IO0::di, _IO::uo),
+    unlock_stream_db(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         no_sharing],
 "
@@ -5393,42 +5391,42 @@ lock_stream_db(!IO).
 unlock_stream_db(!IO).
 
 :- pragma foreign_proc("C#",
-    io.get_stream_db_with_locking(StreamDb::out),
+    get_stream_db_with_locking(StreamDb::out),
     [will_not_call_mercury, tabled_for_io],
 "
     StreamDb = io.ML_io_stream_db;
 ").
 
 :- pragma foreign_proc("C#",
-    io.get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
+    get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     StreamDb = io.ML_io_stream_db;
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
+    set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.ML_io_stream_db = StreamDb;
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_stream_db_with_locking(StreamDb::out),
+    get_stream_db_with_locking(StreamDb::out),
     [will_not_call_mercury, tabled_for_io],
 "
     StreamDb = io.ML_io_stream_db;
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
+    get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     StreamDb = io.ML_io_stream_db;
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
+    set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.ML_io_stream_db = StreamDb;
@@ -5437,21 +5435,21 @@ unlock_stream_db(!IO).
 % XXX the following Erlang implementation doesn't work with multiple threads
 
 :- pragma foreign_proc("Erlang",
-    io.get_stream_db_with_locking(StreamDb::out),
+    get_stream_db_with_locking(StreamDb::out),
     [will_not_call_mercury, tabled_for_io],
 "
     StreamDb = get('ML_io_stream_db')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
+    get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     StreamDb = get('ML_io_stream_db')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
+    set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     put('ML_io_stream_db', StreamDb)
@@ -5459,28 +5457,28 @@ unlock_stream_db(!IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred io.insert_stream_info(io.stream::in, stream_info::in,
-    io::di, io::uo) is det.
+:- pred insert_stream_info(stream::in, stream_info::in, io::di, io::uo)
+    is det.
 
 insert_stream_info(Stream, Name, !IO) :-
-    io.lock_stream_db(!IO),
-    io.get_stream_db(StreamDb0, !IO),
+    lock_stream_db(!IO),
+    get_stream_db(StreamDb0, !IO),
     map.set(get_stream_id(Stream), Name, StreamDb0, StreamDb),
-    io.set_stream_db(StreamDb, !IO),
-    io.unlock_stream_db(!IO).
+    set_stream_db(StreamDb, !IO),
+    unlock_stream_db(!IO).
 
-:- pred io.maybe_delete_stream_info(io.stream::in, io::di, io::uo) is det.
+:- pred maybe_delete_stream_info(io.stream::in, io::di, io::uo) is det.
 
 maybe_delete_stream_info(Stream, !IO) :-
-    io.may_delete_stream_info(MayDeleteStreamInfo, !IO),
+    may_delete_stream_info(MayDeleteStreamInfo, !IO),
     ( if MayDeleteStreamInfo = 0 then
         true
     else
-        io.lock_stream_db(!IO),
-        io.get_stream_db(StreamDb0, !IO),
+        lock_stream_db(!IO),
+        get_stream_db(StreamDb0, !IO),
         map.delete(get_stream_id(Stream), StreamDb0, StreamDb),
-        io.set_stream_db(StreamDb, !IO),
-        io.unlock_stream_db(!IO)
+        set_stream_db(StreamDb, !IO),
+        unlock_stream_db(!IO)
     ).
 
     % Return an integer that is nonzero if and only if we should delete
@@ -5491,10 +5489,10 @@ maybe_delete_stream_info(Stream, !IO) :-
     % hang on to the stream info until the end of the execution. This is a
     % space leak, but one that is acceptable in a program being debugged.
     %
-:- pred io.may_delete_stream_info(int::out, io::di, io::uo) is det.
+:- pred may_delete_stream_info(int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.may_delete_stream_info(MayDelete::out, _IO0::di, _IO::uo),
+    may_delete_stream_info(MayDelete::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -5510,20 +5508,20 @@ may_delete_stream_info(1, !IO).
 %
 
 get_globals(Globals, !IO) :-
-    io.lock_globals(!IO),
-    io.unsafe_get_globals(Globals, !IO),
-    io.unlock_globals(!IO).
+    lock_globals(!IO),
+    unsafe_get_globals(Globals, !IO),
+    unlock_globals(!IO).
 
 set_globals(Globals, !IO) :-
-    io.lock_globals(!IO),
-    io.unsafe_set_globals(Globals, !IO),
-    io.unlock_globals(!IO).
+    lock_globals(!IO),
+    unsafe_set_globals(Globals, !IO),
+    unlock_globals(!IO).
 
-:- pragma promise_pure(io.update_globals/3).
+:- pragma promise_pure(update_globals/3).
 
 update_globals(UpdatePred, !IO) :-
-    io.lock_globals(!IO),
-    io.unsafe_get_globals(Globals0, !IO),
+    lock_globals(!IO),
+    unsafe_get_globals(Globals0, !IO),
     promise_equivalent_solutions [!:IO] (
         Update = (pred(G::out) is det :-
             UpdatePred(Globals0, G)
@@ -5531,8 +5529,8 @@ update_globals(UpdatePred, !IO) :-
         try(Update, UpdateResult),
         (
             UpdateResult = succeeded(Globals),
-            io.unsafe_set_globals(Globals, !IO),
-            io.unlock_globals(!IO)
+            unsafe_set_globals(Globals, !IO),
+            unlock_globals(!IO)
         ;
             % If the update operation threw an exception
             % then release the lock and rethrow the exception.
@@ -5542,9 +5540,9 @@ update_globals(UpdatePred, !IO) :-
         )
     ).
 
-:- pred io.lock_globals(io::di, io::uo) is det.
+:- pred lock_globals(io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.lock_globals(_IO0::di, _IO::uo),
+    lock_globals(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -5557,9 +5555,9 @@ update_globals(UpdatePred, !IO) :-
     %
 lock_globals(!IO).
 
-:- pred io.unlock_globals(io::di, io::uo) is det.
+:- pred unlock_globals(io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.unlock_globals(_IO0::di, _IO::uo),
+    unlock_globals(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -5572,9 +5570,9 @@ lock_globals(!IO).
     %
 unlock_globals(!IO).
 
-:- impure pred io.unlock_globals is det.
+:- impure pred unlock_globals is det.
 :- pragma foreign_proc("C",
-    io.unlock_globals,
+    unlock_globals,
     [will_not_call_mercury, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -5592,18 +5590,18 @@ unlock_globals :-
     % predicates should be surrounded by calls to io.{lock, unlock}_globals/2
     % this is safe.
     %
-:- pred io.unsafe_get_globals(univ::out, io::di, io::uo) is det.
+:- pred unsafe_get_globals(univ::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.unsafe_get_globals(Globals::out, _IO0::di, _IO::uo),
+    unsafe_get_globals(Globals::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
     Globals = ML_io_user_globals;
 ").
 
-:- pred io.unsafe_set_globals(univ::in, io::di, io::uo) is det.
+:- pred unsafe_set_globals(univ::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.unsafe_set_globals(Globals::in, _IO0::di, _IO::uo),
+    unsafe_set_globals(Globals::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -5612,28 +5610,28 @@ unlock_globals :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
+    unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Globals = io.ML_io_user_globals;
 ").
 
 :- pragma foreign_proc("C#",
-    io.unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
+    unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.ML_io_user_globals = Globals;
 ").
 
 :- pragma foreign_proc("Java",
-    io.unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
+    unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
     Globals = io.ML_io_user_globals;
 ").
 
 :- pragma foreign_proc("Java",
-    io.unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
+    unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
     io.ML_io_user_globals = Globals;
@@ -5642,14 +5640,14 @@ unlock_globals :-
 % XXX the following Erlang implementation doesn't work with multiple threads
 
 :- pragma foreign_proc("Erlang",
-    io.unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
+    unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Globals = get('ML_io_user_globals')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
+    unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     put('ML_io_user_globals', Globals)
@@ -5658,11 +5656,11 @@ unlock_globals :-
 %---------------------------------------------------------------------------%
 
 progname_base(DefaultName, PrognameBase, !IO) :-
-    io.progname(DefaultName, Progname, !IO),
+    progname(DefaultName, Progname, !IO),
     PrognameBase = dir.det_basename(Progname).
 
 :- pragma foreign_proc("C",
-    io.get_stream_id(Stream::in) = (Id::out),
+    get_stream_id(Stream::in) = (Id::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -5682,21 +5680,21 @@ progname_base(DefaultName, PrognameBase, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.get_stream_id(Stream::in) = (Id::out),
+    get_stream_id(Stream::in) = (Id::out),
     [will_not_call_mercury, promise_pure],
 "
     Id = Stream.id;
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_stream_id(Stream::in) = (Id::out),
+    get_stream_id(Stream::in) = (Id::out),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     Id = Stream.id;
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.get_stream_id(Stream::in) = (Id::out),
+    get_stream_id(Stream::in) = (Id::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     {'ML_stream', Id, _IoDevice} = Stream
@@ -5707,21 +5705,21 @@ progname_base(DefaultName, PrognameBase, !IO) :-
 
 % Environment interface predicates
 
-:- pragma promise_pure(io.get_environment_var/4).
+:- pragma promise_pure(get_environment_var/4).
 
 get_environment_var(Var, OptValue, !IO) :-
-    ( if semipure io.getenv(Var, Value) then
+    ( if semipure getenv(Var, Value) then
         OptValue0 = yes(Value)
     else
         OptValue0 = no
     ),
     OptValue = OptValue0.
 
-:- pragma promise_pure(io.set_environment_var/5).
+:- pragma promise_pure(set_environment_var/5).
 
 set_environment_var(Var, Value, Res, !IO) :-
-    ( if io.have_set_environment_var then
-        ( if impure io.setenv(Var, Value) then
+    ( if have_set_environment_var then
+        ( if impure setenv(Var, Value) then
             Res = ok
         else
             string.format("Could not set environment variable `%s'",
@@ -5749,7 +5747,7 @@ set_environment_var(Var, Value, IO0, IO) :-
 % Statistics reporting predicates.
 
 report_stats(!IO) :-
-    io.report_stats("standard", !IO).
+    report_stats("standard", !IO).
 
 :- pragma promise_pure(io.report_stats/3).
 
@@ -5773,7 +5771,7 @@ report_stats(Selector, !IO) :-
 %
 
 call_system(Command, Result, !IO) :-
-    io.call_system_return_signal(Command, Result0, !IO),
+    call_system_return_signal(Command, Result0, !IO),
     (
         Result0 = ok(exited(Code)),
         Result = ok(Code)
@@ -5788,7 +5786,7 @@ call_system(Command, Result, !IO) :-
     ).
 
 call_system_return_signal(Command, Result, !IO) :-
-    io.call_system_code(Command, Code, Success, Msg, !IO),
+    call_system_code(Command, Code, Success, Msg, !IO),
     (
         Success = no,
         Result = error(io_error(Msg))
@@ -5823,22 +5821,22 @@ set_op_table(_OpTable, !IO).
 
 % For use by the debugger:
 
-:- pred io.get_io_input_stream_type(type_desc::out, io::di, io::uo) is det.
+:- pred get_io_input_stream_type(type_desc::out, io::di, io::uo) is det.
 
-:- pragma foreign_export("C", io.get_io_input_stream_type(out, di, uo),
+:- pragma foreign_export("C", get_io_input_stream_type(out, di, uo),
     "ML_io_input_stream_type").
 
 get_io_input_stream_type(Type, !IO) :-
-    io.stdin_stream(Stream, !IO),
+    stdin_stream(Stream, !IO),
     Type = type_of(Stream).
 
-:- pred io.get_io_output_stream_type(type_desc::out, io::di, io::uo) is det.
+:- pred get_io_output_stream_type(type_desc::out, io::di, io::uo) is det.
 
-:- pragma foreign_export("C", io.get_io_output_stream_type(out, di, uo),
+:- pragma foreign_export("C", get_io_output_stream_type(out, di, uo),
     "ML_io_output_stream_type").
 
 get_io_output_stream_type(Type, !IO) :-
-    io.stdout_stream(Stream, !IO),
+    stdout_stream(Stream, !IO),
     Type = type_of(Stream).
 
 %---------------------------------------------------------------------------%
@@ -7728,13 +7726,13 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
 %
 
 read_char_code(input_stream(Stream), CharCode, !IO) :-
-    io.read_char_code_2(Stream, CharCode, !IO).
+    read_char_code_2(Stream, CharCode, !IO).
 
-:- pred io.read_char_code_2(io.stream::in, int::out, io::di, io::uo)
+:- pred read_char_code_2(stream::in, int::out, io::di, io::uo)
     is det.
 
 :- pragma foreign_proc("C",
-    io.read_char_code_2(Stream::in, CharCode::out, _IO0::di, _IO::uo),
+    read_char_code_2(Stream::in, CharCode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing, may_not_duplicate],
 "
@@ -7782,12 +7780,11 @@ read_char_code(input_stream(Stream), CharCode, !IO) :-
 ").
 
 read_byte_val(input_stream(Stream), ByteVal, !IO) :-
-    io.read_byte_val_2(Stream, ByteVal, !IO).
+    read_byte_val_2(Stream, ByteVal, !IO).
 
-:- pred io.read_byte_val_2(io.stream::in, int::out, io::di, io::uo)
-    is det.
+:- pred read_byte_val_2(stream::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.read_byte_val_2(Stream::in, ByteVal::out, _IO0::di, _IO::uo),
+    read_byte_val_2(Stream::in, ByteVal::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -7795,11 +7792,11 @@ read_byte_val(input_stream(Stream), ByteVal, !IO) :-
 ").
 
 putback_char(input_stream(Stream), Character, !IO) :-
-    io.putback_char_2(Stream, Character, !IO).
+    putback_char_2(Stream, Character, !IO).
 
-:- pred io.putback_char_2(io.stream::in, char::in, io::di, io::uo) is det.
+:- pred putback_char_2(stream::in, char::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.putback_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
+    putback_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
         does_not_affect_liveness, no_sharing, may_not_duplicate],
 "
@@ -7825,11 +7822,11 @@ putback_char(input_stream(Stream), Character, !IO) :-
 ").
 
 putback_byte(binary_input_stream(Stream), Character, !IO) :-
-    io.putback_byte_2(Stream, Character, !IO).
+    putback_byte_2(Stream, Character, !IO).
 
-:- pred io.putback_byte_2(io.stream::in, int::in, io::di, io::uo) is det.
+:- pred putback_byte_2(stream::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.putback_byte_2(Stream::in, Character::in, _IO0::di, _IO::uo),
+    putback_byte_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7840,7 +7837,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
+    read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     io.MR_MercuryFileStruct mf = File;
@@ -7848,7 +7845,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.read_byte_val_2(File::in, ByteVal::out, _IO0::di, _IO::uo),
+    read_byte_val_2(File::in, ByteVal::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     io.MR_MercuryFileStruct mf = File;
@@ -7861,7 +7858,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
+    putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, terminates],
 "{
     io.MR_MercuryFileStruct mf = File;
@@ -7869,7 +7866,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 }").
 
 :- pragma foreign_proc("C#",
-    io.putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
+    putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, terminates],
 "{
     io.MR_MercuryFileStruct mf = File;
@@ -7881,7 +7878,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 }").
 
 :- pragma foreign_proc("Java",
-    io.read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
+    read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -7893,7 +7890,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.read_byte_val_2(File::in, ByteVal::out, _IO0::di, _IO::uo),
+    read_byte_val_2(File::in, ByteVal::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -7905,21 +7902,21 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
+    putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, terminates, tabled_for_io],
 "
     ((io.MR_TextInputFile) File).ungetc(Character);
 ").
 
 :- pragma foreign_proc("Java",
-    io.putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
+    putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, terminates, tabled_for_io],
 "
     ((io.MR_BinaryInputFile) File).ungetc((byte) Byte);
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.read_char_code_2(Stream::in, CharCode::out, _IO0::di, _IO::uo),
+    read_char_code_2(Stream::in, CharCode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
@@ -7927,7 +7924,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.read_byte_val_2(Stream::in, ByteVal::out, _IO0::di, _IO::uo),
+    read_byte_val_2(Stream::in, ByteVal::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
@@ -7935,14 +7932,14 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
+    putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, terminates],
 "
     mercury__io:mercury_putback(File, Character)
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
+    putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, terminates],
 "
     mercury__io:mercury_putback(File, Byte)
@@ -7954,7 +7951,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 %
 
 :- pragma foreign_proc("C",
-    io.write_string(Message::in, _IO0::di, _IO::uo),
+    write_string(Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7962,7 +7959,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.write_char(Character::in, _IO0::di, _IO::uo),
+    write_char(Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7989,7 +7986,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.write_int(Val::in, _IO0::di, _IO::uo),
+    write_int(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8000,7 +7997,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.write_float(Val::in, _IO0::di, _IO::uo),
+    write_float(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8015,7 +8012,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.write_byte(Byte::in, _IO0::di, _IO::uo),
+    write_byte(Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8028,15 +8025,15 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 write_bitmap(Bitmap, !IO) :-
-    io.binary_output_stream(Stream, !IO),
-    io.write_bitmap(Stream, Bitmap, !IO).
+    binary_output_stream(Stream, !IO),
+    write_bitmap(Stream, Bitmap, !IO).
 
 write_bitmap(Bitmap, Start, NumBytes, !IO) :-
-    io.binary_output_stream(Stream, !IO),
-    io.write_bitmap(Stream, Bitmap, Start, NumBytes, !IO).
+    binary_output_stream(Stream, !IO),
+    write_bitmap(Stream, Bitmap, Start, NumBytes, !IO).
 
 :- pragma foreign_proc("C",
-    io.flush_output(_IO0::di, _IO::uo),
+    flush_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8047,7 +8044,7 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.flush_binary_output(_IO0::di, _IO::uo),
+    flush_binary_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8058,14 +8055,14 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_string(Message::in, _IO0::di, _IO::uo),
+    write_string(Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_print_string(io.mercury_current_text_output, Message);
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_char(Character::in, _IO0::di, _IO::uo),
+    write_char(Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates,
         may_not_duplicate],
 "
@@ -8093,14 +8090,14 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_int(Val::in, _IO0::di, _IO::uo),
+    write_int(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_print_string(io.mercury_current_text_output, Val.ToString());
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_byte(Byte::in, _IO0::di, _IO::uo),
+    write_byte(Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_current_binary_output.stream.WriteByte(
@@ -8108,27 +8105,27 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.flush_output(_IO0::di, _IO::uo),
+    flush_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_current_text_output.stream.Flush();
 ").
 
 :- pragma foreign_proc("C#",
-    io.flush_binary_output(_IO0::di, _IO::uo),
+    flush_binary_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_current_binary_output.stream.Flush();
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_string(Message::in, _IO0::di, _IO::uo),
+    write_string(Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_current_text_output.get().write_or_throw(Message);
 ").
 :- pragma foreign_proc("Java",
-    io.write_char(Chr::in, _IO0::di, _IO::uo),
+    write_char(Chr::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.MR_TextOutputFile stream = io.mercury_current_text_output.get();
@@ -8138,13 +8135,13 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     }
 ").
 :- pragma foreign_proc("Java",
-    io.write_int(Val::in, _IO0::di, _IO::uo),
+    write_int(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_current_text_output.get().write_or_throw(Integer.toString(Val));
 ").
 :- pragma foreign_proc("Java",
-    io.write_float(Val::in, _IO0::di, _IO::uo),
+    write_float(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.MR_TextOutputFile stream = io.mercury_current_text_output.get();
@@ -8163,28 +8160,28 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_byte(Byte::in, _IO0::di, _IO::uo),
+    write_byte(Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_current_binary_output.get().put_or_throw((byte) Byte);
 ").
 
 :- pragma foreign_proc("Java",
-    io.flush_output(_IO0::di, _IO::uo),
+    flush_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_current_text_output.get().flush_or_throw();
 ").
 
 :- pragma foreign_proc("Java",
-    io.flush_binary_output(_IO0::di, _IO::uo),
+    flush_binary_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_current_binary_output.get().flush_or_throw();
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.write_string(Message::in, _IO0::di, _IO::uo),
+    write_string(Message::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
@@ -8192,7 +8189,7 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     mercury__io:mercury_write_string(Stream, Message)
 ").
 :- pragma foreign_proc("Erlang",
-    io.write_char(Character::in, _IO0::di, _IO::uo),
+    write_char(Character::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
@@ -8200,7 +8197,7 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     mercury__io:mercury_write_char(Stream, Character)
 ").
 :- pragma foreign_proc("Erlang",
-    io.write_int(Val::in, _IO0::di, _IO::uo),
+    write_int(Val::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
@@ -8209,7 +8206,7 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.write_byte(Byte::in, _IO0::di, _IO::uo),
+    write_byte(Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     Stream = ?ML_get_current_binary_output,
@@ -8217,7 +8214,7 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.flush_output(_IO0::di, _IO::uo),
+    flush_output(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
@@ -8225,7 +8222,7 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     mercury__io:mercury_sync(Stream)
 ").
 :- pragma foreign_proc("Erlang",
-    io.flush_binary_output(_IO0::di, _IO::uo),
+    flush_binary_output(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
@@ -8234,7 +8231,7 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 write_float(Float, !IO) :-
-    io.write_string(string.float_to_string(Float), !IO).
+    write_string(string.float_to_string(Float), !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -8249,17 +8246,17 @@ whence_to_int(end, 2).
 
 seek_binary_input(binary_input_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
-    io.seek_binary_2(Stream, Flag, Offset, !IO).
+    seek_binary_2(Stream, Flag, Offset, !IO).
 
 seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
-    io.seek_binary_2(Stream, Flag, Offset, !IO).
+    seek_binary_2(Stream, Flag, Offset, !IO).
 
-:- pred io.seek_binary_2(io.stream::in, int::in, int::in,
+:- pred seek_binary_2(stream::in, int::in, int::in,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
+    seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -8275,15 +8272,14 @@ seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
 ").
 
 binary_input_stream_offset(binary_input_stream(Stream), Offset, !IO) :-
-    io.binary_stream_offset_2(Stream, Offset, !IO).
+    binary_stream_offset_2(Stream, Offset, !IO).
 
 binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
-    io.binary_stream_offset_2(Stream, Offset, !IO).
+    binary_stream_offset_2(Stream, Offset, !IO).
 
-:- pred io.binary_stream_offset_2(io.stream::in, int::out,
-    io::di, io::uo) is det.
+:- pred binary_stream_offset_2(stream::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
+    binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -8303,11 +8299,11 @@ binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
 %
 
 write_string(output_stream(Stream), Message, !IO) :-
-    io.write_string_2(Stream, Message, !IO).
+    write_string_2(Stream, Message, !IO).
 
-:- pred io.write_string_2(io.stream::in, string::in, io::di, io::uo) is det.
+:- pred write_string_2(stream::in, string::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
+    write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8315,11 +8311,11 @@ write_string(output_stream(Stream), Message, !IO) :-
 ").
 
 write_char(output_stream(Stream), Character, !IO) :-
-    io.write_char_2(Stream, Character, !IO).
+    write_char_2(Stream, Character, !IO).
 
-:- pred io.write_char_2(io.stream::in, char::in, io::di, io::uo) is det.
+:- pred write_char_2(stream::in, char::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
+    write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8345,11 +8341,11 @@ write_char(output_stream(Stream), Character, !IO) :-
 ").
 
 write_int(output_stream(Stream), Val, !IO) :-
-    io.write_int_2(Stream, Val, !IO).
+    write_int_2(Stream, Val, !IO).
 
-:- pred io.write_int_2(io.stream::in, int::in, io::di, io::uo) is det.
+:- pred write_int_2(stream::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
+    write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8359,11 +8355,11 @@ write_int(output_stream(Stream), Val, !IO) :-
 ").
 
 write_float(output_stream(Stream), Val, !IO) :-
-    io.write_float_2(Stream, Val, !IO).
+    write_float_2(Stream, Val, !IO).
 
-:- pred io.write_float_2(io.stream::in, float::in, io::di, io::uo) is det.
+:- pred write_float_2(stream::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
+    write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8377,9 +8373,9 @@ write_float(output_stream(Stream), Val, !IO) :-
 write_byte(binary_output_stream(Stream), Byte, !IO) :-
     io.write_byte_2(Stream, Byte, !IO).
 
-:- pred io.write_byte_2(io.stream::in, int::in, io::di, io::uo) is det.
+:- pred io.write_byte_2(stream::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
+    write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8391,7 +8387,7 @@ write_byte(binary_output_stream(Stream), Byte, !IO) :-
 
 write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
     ( if NumBytes = Bitmap ^ num_bytes then
-        io.do_write_bitmap(Stream, Bitmap, 0, NumBytes, !IO)
+        do_write_bitmap(Stream, Bitmap, 0, NumBytes, !IO)
     else
         error("io.write_bitmap: bitmap contains partial final byte")
     ).
@@ -8401,29 +8397,29 @@ write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
         byte_in_range(Bitmap, Start),
         byte_in_range(Bitmap, Start + NumBytes - 1)
     then
-        io.do_write_bitmap(Stream, Bitmap, Start, NumBytes, !IO)
+        do_write_bitmap(Stream, Bitmap, Start, NumBytes, !IO)
     else
         bitmap.throw_bounds_error(Bitmap, "io.write_bitmap",
             Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
 
-:- pred io.do_write_bitmap(io.stream, bitmap, int, int, io, io).
-%:- mode io.do_write_bitmap(in, bitmap_ui, in, in, di, uo) is det.
-:- mode io.do_write_bitmap(in, in, in, in, di, uo) is det.
-:- pragma promise_pure(io.do_write_bitmap/6).
+:- pred do_write_bitmap(stream, bitmap, int, int, io, io).
+%:- mode do_write_bitmap(in, bitmap_ui, in, in, di, uo) is det.
+:- mode do_write_bitmap(in, in, in, in, di, uo) is det.
+:- pragma promise_pure(do_write_bitmap/6).
 
     % Default implementation for C# and Java.
 do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
     ( if Length > 0 then
-        io.write_byte(binary_output_stream(Stream),
+        write_byte(binary_output_stream(Stream),
             Bitmap ^ unsafe_byte(Start), !IO),
-        io.do_write_bitmap(Stream, Bitmap, Start + 1, Length - 1, !IO)
+        do_write_bitmap(Stream, Bitmap, Start + 1, Length - 1, !IO)
     else
         true
     ).
 
 :- pragma foreign_proc("C",
-    io.do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in,
+    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in,
         _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         no_sharing],
@@ -8436,11 +8432,11 @@ do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
 ").
 
 flush_output(output_stream(Stream), !IO) :-
-    io.flush_output_2(Stream, !IO).
+    flush_output_2(Stream, !IO).
 
-:- pred io.flush_output_2(io.stream::in, io::di, io::uo) is det.
+:- pred flush_output_2(stream::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.flush_output_2(Stream::in, _IO0::di, _IO::uo),
+    flush_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8450,11 +8446,11 @@ flush_output(output_stream(Stream), !IO) :-
 ").
 
 flush_binary_output(binary_output_stream(Stream), !IO) :-
-    io.flush_binary_output_2(Stream, !IO).
+    flush_binary_output_2(Stream, !IO).
 
-:- pred io.flush_binary_output_2(io.stream::in, io::di, io::uo) is det.
+:- pred flush_binary_output_2(stream::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
+    flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8464,14 +8460,14 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
+    write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_print_string(Stream, Message);
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
+    write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates,
         may_not_duplicate],
 "
@@ -8499,35 +8495,35 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
+    write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "{
     io.mercury_print_string(Stream, Val.ToString());
 }").
 
 :- pragma foreign_proc("C#",
-    io.write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
+    write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "{
     Stream.stream.WriteByte(System.Convert.ToByte(Byte));
 }").
 
 :- pragma foreign_proc("C#",
-    io.flush_output_2(Stream::in, _IO0::di, _IO::uo),
+    flush_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "{
     Stream.stream.Flush();
 }").
 
 :- pragma foreign_proc("C#",
-    io.flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
+    flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "{
     Stream.stream.Flush();
 }").
 
 :- pragma foreign_proc("Java",
-    io.seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
+    seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates],
 "
@@ -8539,7 +8535,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
+    binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates],
 "
@@ -8551,14 +8547,14 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
+    write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     ((io.MR_TextOutputFile) Stream).write_or_throw(Message);
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
+    write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     char[] buf = java.lang.Character.toChars(Character);
@@ -8568,14 +8564,14 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
+    write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
     ((io.MR_TextOutputFile) Stream).write_or_throw(String.valueOf(Val));
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
+    write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
     io.MR_TextOutputFile stream = (io.MR_TextOutputFile) Stream;
@@ -8594,28 +8590,28 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
+    write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     ((io.MR_BinaryOutputFile) Stream).put_or_throw((byte) Byte);
 ").
 
 :- pragma foreign_proc("Java",
-    io.flush_output_2(Stream::in, _IO0::di, _IO::uo),
+    flush_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     ((io.MR_TextOutputFile) Stream).flush_or_throw();
 ").
 
 :- pragma foreign_proc("Java",
-    io.flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
+    flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     ((io.MR_BinaryOutputFile) Stream).flush_or_throw();
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
+    seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates],
 "
@@ -8630,7 +8626,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
+    binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates],
 "
@@ -8638,7 +8634,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
+    write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
@@ -8646,14 +8642,14 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
+    write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
     mercury__io:mercury_write_int(Stream, Val)
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
+    write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
@@ -8661,14 +8657,14 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
+    write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     mercury__io:mercury_write_char(Stream, Byte)
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.flush_output_2(Stream::in, _IO0::di, _IO::uo),
+    flush_output_2(Stream::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
@@ -8676,7 +8672,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
+    flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
 "
@@ -8684,25 +8680,25 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 write_float_2(Stream, Float, !IO) :-
-    io.write_string_2(Stream, string.float_to_string(Float), !IO).
+    write_string_2(Stream, string.float_to_string(Float), !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Stream predicates
 %
 
-:- pragma foreign_export("C", io.stdin_stream_2(out, di, uo),
+:- pragma foreign_export("C", stdin_stream_2(out, di, uo),
     "ML_io_stdin_stream").
-:- pragma foreign_export("C", io.stdout_stream_2(out, di, uo),
+:- pragma foreign_export("C", stdout_stream_2(out, di, uo),
     "ML_io_stdout_stream").
-:- pragma foreign_export("C", io.stderr_stream_2(out, di, uo),
+:- pragma foreign_export("C", stderr_stream_2(out, di, uo),
     "ML_io_stderr_stream").
 
-stdin_stream = input_stream(io.stdin_stream_2).
+stdin_stream = input_stream(stdin_stream_2).
 
-:- func io.stdin_stream_2 = io.stream.
+:- func stdin_stream_2 = stream.
 :- pragma foreign_proc("C",
-    io.stdin_stream_2 = (Stream::out),
+    stdin_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8711,7 +8707,7 @@ stdin_stream = input_stream(io.stdin_stream_2).
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdin_stream_2 = (Stream::out),
+    stdin_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
@@ -8719,7 +8715,7 @@ stdin_stream = input_stream(io.stdin_stream_2).
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdin_stream_2 = (Stream::out),
+    stdin_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
@@ -8727,11 +8723,11 @@ stdin_stream = input_stream(io.stdin_stream_2).
 ").
 
 stdin_stream(input_stream(Stream), !IO) :-
-    io.stdin_stream_2(Stream, !IO).
+    stdin_stream_2(Stream, !IO).
 
-:- pred io.stdin_stream_2(io.stream::out, io::di, io::uo) is det.
+:- pred stdin_stream_2(stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8741,9 +8737,9 @@ stdin_stream(input_stream(Stream), !IO) :-
 
 stdout_stream = output_stream(io.stdout_stream_2).
 
-:- func io.stdout_stream_2 = io.stream.
+:- func stdout_stream_2 = stream.
 :- pragma foreign_proc("C",
-    io.stdout_stream_2 = (Stream::out),
+    stdout_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8752,7 +8748,7 @@ stdout_stream = output_stream(io.stdout_stream_2).
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdout_stream_2 = (Stream::out),
+    stdout_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
@@ -8760,7 +8756,7 @@ stdout_stream = output_stream(io.stdout_stream_2).
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdout_stream_2 = (Stream::out),
+    stdout_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
@@ -8768,11 +8764,11 @@ stdout_stream = output_stream(io.stdout_stream_2).
 ").
 
 stdout_stream(output_stream(Stream), !IO) :-
-    io.stdout_stream_2(Stream, !IO).
+    stdout_stream_2(Stream, !IO).
 
-:- pred io.stdout_stream_2(io.stream::out, io::di, io::uo) is det.
+:- pred stdout_stream_2(stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8780,11 +8776,11 @@ stdout_stream(output_stream(Stream), !IO) :-
     Stream = &mercury_stdout;
 ").
 
-stderr_stream = output_stream(io.stderr_stream_2).
+stderr_stream = output_stream(stderr_stream_2).
 
-:- func io.stderr_stream_2 = io.stream.
+:- func stderr_stream_2 = stream.
 :- pragma foreign_proc("C",
-    io.stderr_stream_2 = (Stream::out),
+    stderr_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8793,7 +8789,7 @@ stderr_stream = output_stream(io.stderr_stream_2).
 ").
 
 :- pragma foreign_proc("C#",
-    io.stderr_stream_2 = (Stream::out),
+    stderr_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
@@ -8801,7 +8797,7 @@ stderr_stream = output_stream(io.stderr_stream_2).
 ").
 
 :- pragma foreign_proc("Java",
-    io.stderr_stream_2 = (Stream::out),
+    stderr_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
@@ -8809,11 +8805,11 @@ stderr_stream = output_stream(io.stderr_stream_2).
 ").
 
 stderr_stream(output_stream(Stream), !IO) :-
-    io.stderr_stream_2(Stream, !IO).
+    stderr_stream_2(Stream, !IO).
 
-:- pred io.stderr_stream_2(io.stream::out, io::di, io::uo) is det.
+:- pred stderr_stream_2(stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8822,11 +8818,11 @@ stderr_stream(output_stream(Stream), !IO) :-
 ").
 
 stdin_binary_stream(binary_input_stream(Stream), !IO) :-
-    io.stdin_binary_stream_2(Stream, !IO).
+    stdin_binary_stream_2(Stream, !IO).
 
-:- pred io.stdin_binary_stream_2(io.stream::out, io::di, io::uo) is det.
+:- pred stdin_binary_stream_2(stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8835,11 +8831,11 @@ stdin_binary_stream(binary_input_stream(Stream), !IO) :-
 ").
 
 stdout_binary_stream(binary_output_stream(Stream), !IO) :-
-    io.stdout_binary_stream_2(Stream, !IO).
+    stdout_binary_stream_2(Stream, !IO).
 
-:- pred io.stdout_binary_stream_2(io.stream::out, io::di, io::uo) is det.
+:- pred stdout_binary_stream_2(stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8848,11 +8844,11 @@ stdout_binary_stream(binary_output_stream(Stream), !IO) :-
 ").
 
 input_stream(input_stream(Stream), !IO) :-
-    io.input_stream_2(Stream, !IO).
+    input_stream_2(Stream, !IO).
 
-:- pred io.input_stream_2(io.stream::out, io::di, io::uo) is det.
+:- pred input_stream_2(stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
+    input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8861,11 +8857,11 @@ input_stream(input_stream(Stream), !IO) :-
 ").
 
 output_stream(output_stream(Stream), !IO) :-
-    io.output_stream_2(Stream, !IO).
+    output_stream_2(Stream, !IO).
 
-:- pred io.output_stream_2(io.stream::out, io::di, io::uo) is det.
+:- pred output_stream_2(stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
+    output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8874,11 +8870,11 @@ output_stream(output_stream(Stream), !IO) :-
 ").
 
 binary_input_stream(binary_input_stream(Stream), !IO) :-
-    io.binary_input_stream_2(Stream, !IO).
+    binary_input_stream_2(Stream, !IO).
 
-:- pred io.binary_input_stream_2(io.stream::out, io::di, io::uo) is det.
+:- pred binary_input_stream_2(stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
+    binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8887,11 +8883,11 @@ binary_input_stream(binary_input_stream(Stream), !IO) :-
 ").
 
 binary_output_stream(binary_output_stream(Stream), !IO) :-
-    io.binary_output_stream_2(Stream, !IO).
+    binary_output_stream_2(Stream, !IO).
 
-:- pred io.binary_output_stream_2(io.stream::out, io::di, io::uo) is det.
+:- pred binary_output_stream_2(stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
+    binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8900,7 +8896,7 @@ binary_output_stream(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.get_line_number(LineNum::out, _IO0::di, _IO::uo),
+    get_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -8908,11 +8904,11 @@ binary_output_stream(binary_output_stream(Stream), !IO) :-
 ").
 
 get_line_number(input_stream(Stream), LineNum, !IO) :-
-    io.get_line_number_2(Stream, LineNum, !IO).
+    get_line_number_2(Stream, LineNum, !IO).
 
-:- pred io.get_line_number_2(io.stream::in, int::out, io::di, io::uo) is det.
+:- pred get_line_number_2(stream::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -8920,7 +8916,7 @@ get_line_number(input_stream(Stream), LineNum, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.set_line_number(LineNum::in, _IO0::di, _IO::uo),
+    set_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -8928,13 +8924,13 @@ get_line_number(input_stream(Stream), LineNum, !IO) :-
 ").
 
 set_line_number(input_stream(Stream), LineNum, !IO) :-
-    io.set_line_number_2(Stream, LineNum,!IO).
+    set_line_number_2(Stream, LineNum,!IO).
 
-:- pred io.set_line_number_2(io.stream::in, int::in, io::di, io::uo)
+:- pred set_line_number_2(stream::in, int::in, io::di, io::uo)
     is det.
 
 :- pragma foreign_proc("C",
-    io.set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -8942,7 +8938,7 @@ set_line_number(input_stream(Stream), LineNum, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
+    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -8950,13 +8946,13 @@ set_line_number(input_stream(Stream), LineNum, !IO) :-
 ").
 
 get_output_line_number(output_stream(Stream), LineNum, !IO) :-
-    io.get_output_line_number_2(Stream, LineNum, !IO).
+    get_output_line_number_2(Stream, LineNum, !IO).
 
-:- pred io.get_output_line_number_2(io.stream::in, int::out,
-    io::di, io::uo) is det.
+:- pred get_output_line_number_2(stream::in, int::out, io::di, io::uo)
+    is det.
 
 :- pragma foreign_proc("C",
-    io.get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -8964,7 +8960,7 @@ get_output_line_number(output_stream(Stream), LineNum, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
+    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -8972,12 +8968,11 @@ get_output_line_number(output_stream(Stream), LineNum, !IO) :-
 ").
 
 set_output_line_number(output_stream(Stream), LineNum, !IO) :-
-    io.set_output_line_number_2(Stream, LineNum, !IO).
+    set_output_line_number_2(Stream, LineNum, !IO).
 
-:- pred io.set_output_line_number_2(io.stream::in, int::in,
-    io::di, io::uo) is det.
+:- pred set_output_line_number_2(stream::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -8985,12 +8980,12 @@ set_output_line_number(output_stream(Stream), LineNum, !IO) :-
 ").
 
 set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
-    io.set_input_stream_2(NewStream, OutStream, !IO).
+    set_input_stream_2(NewStream, OutStream, !IO).
 
-:- pred io.set_input_stream_2(io.stream::in, io.stream::out,
-    io::di, io::uo) is det.
+:- pred set_input_stream_2(stream::in, stream::out, io::di, io::uo)
+    is det.
 :- pragma foreign_proc("C",
-    io.set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -9002,13 +8997,12 @@ set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
 
 set_output_stream(output_stream(NewStream), output_stream(OutStream),
         !IO) :-
-    io.set_output_stream_2(NewStream, OutStream, !IO).
+    set_output_stream_2(NewStream, OutStream, !IO).
 
-:- pred io.set_output_stream_2(io.stream::in, io.stream::out,
-    io::di, io::uo) is det.
+:- pred set_output_stream_2(stream::in, stream::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -9020,12 +9014,12 @@ set_output_stream(output_stream(NewStream), output_stream(OutStream),
 
 set_binary_input_stream(binary_input_stream(NewStream),
         binary_input_stream(OutStream), !IO) :-
-    io.set_binary_input_stream_2(NewStream, OutStream, !IO).
+    set_binary_input_stream_2(NewStream, OutStream, !IO).
 
-:- pred io.set_binary_input_stream_2(io.stream::in, io.stream::out,
+:- pred set_binary_input_stream_2(stream::in, stream::out,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.set_binary_input_stream_2(NewStream::in, OutStream::out,
+    set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
@@ -9038,12 +9032,12 @@ set_binary_input_stream(binary_input_stream(NewStream),
 
 set_binary_output_stream(binary_output_stream(NewStream),
         binary_output_stream(OutStream), !IO) :-
-    io.set_binary_output_stream_2(NewStream, OutStream, !IO).
+    set_binary_output_stream_2(NewStream, OutStream, !IO).
 
-:- pred io.set_binary_output_stream_2(io.stream::in, io.stream::out,
+:- pred set_binary_output_stream_2(stream::in, stream::out,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.set_binary_output_stream_2(NewStream::in, OutStream::out,
+    set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
@@ -9055,126 +9049,126 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stdin;
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stdout;
 ").
 
 :- pragma foreign_proc("C#",
-    io.stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stderr;
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stdin_binary;
 ").
 
 :- pragma foreign_proc("C#",
-    io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stdout_binary;
 ").
 
 :- pragma foreign_proc("C#",
-    io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
+    input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = io.mercury_current_text_input;
 ").
 
 :- pragma foreign_proc("C#",
-    io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
+    output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = io.mercury_current_text_output;
 ").
 
 :- pragma foreign_proc("C#",
-    io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
+    binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = io.mercury_current_binary_input;
 ").
 
 :- pragma foreign_proc("C#",
-    io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
+    binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = io.mercury_current_binary_output;
 ").
 
 :- pragma foreign_proc("C#",
-    io.get_line_number(LineNum::out, _IO0::di, _IO::uo),
+    get_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = io.mercury_current_text_input.line_number;
 ").
 
 :- pragma foreign_proc("C#",
-    io.get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = Stream.line_number;
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_line_number(LineNum::in, _IO0::di, _IO::uo),
+    set_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.mercury_current_text_input.line_number = LineNum;
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     Stream.line_number = LineNum;
 }").
 
 :- pragma foreign_proc("C#",
-    io.get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
+    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = io.mercury_current_text_output.line_number;
 ").
 
 :- pragma foreign_proc("C#",
-    io.get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     LineNum = Stream.line_number;
 }").
 
 :- pragma foreign_proc("C#",
-    io.set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
+    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.mercury_current_text_output.line_number = LineNum;
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     Stream.line_number = LineNum;
 }").
 
 :- pragma foreign_proc("C#",
-    io.set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = io.mercury_current_text_input;
@@ -9182,7 +9176,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = io.mercury_current_text_output;
@@ -9190,7 +9184,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_binary_input_stream_2(NewStream::in, OutStream::out,
+    set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -9199,7 +9193,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_binary_output_stream_2(NewStream::in, OutStream::out,
+    set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -9208,28 +9202,28 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stdin;
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stdout;
 ").
 
 :- pragma foreign_proc("Java",
-    io.stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stderr;
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -9238,7 +9232,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -9247,7 +9241,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
+    input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         may_not_duplicate],
 "
@@ -9255,7 +9249,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
+    output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         may_not_duplicate],
 "
@@ -9263,7 +9257,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
+    binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         may_not_duplicate],
 "
@@ -9271,7 +9265,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
+    binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         may_not_duplicate],
 "
@@ -9279,56 +9273,56 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_line_number(LineNum::out, _IO0::di, _IO::uo),
+    get_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = io.mercury_current_text_input.get().line_number;
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = ((io.MR_TextInputFile) Stream).line_number;
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_line_number(LineNum::in, _IO0::di, _IO::uo),
+    set_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.mercury_current_text_input.get().line_number = LineNum;
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ((io.MR_TextInputFile) Stream).line_number = LineNum;
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
+    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = io.mercury_current_text_output.get().line_number;
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = ((io.MR_TextOutputFile) Stream).line_number;
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
+    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.mercury_current_text_output.get().line_number = LineNum;
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ((io.MR_TextOutputFile) Stream).line_number = LineNum;
@@ -9339,7 +9333,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
     % Returns the previous stream.
 
 :- pragma foreign_proc("Java",
-    io.set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = io.mercury_current_text_input.get();
@@ -9347,7 +9341,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = io.mercury_current_text_output.get();
@@ -9355,7 +9349,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_binary_input_stream_2(NewStream::in, OutStream::out,
+    set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -9364,7 +9358,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_binary_output_stream_2(NewStream::in, OutStream::out,
+    set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -9373,91 +9367,91 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.stdin_stream_2 = (Stream::out),
+    stdin_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = get('ML_stdin_stream')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.stdout_stream_2 = (Stream::out),
+    stdout_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = get('ML_stdout_stream')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.stderr_stream_2 = (Stream::out),
+    stderr_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = get('ML_stderr_stream')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = get('ML_stdin_stream')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = get('ML_stdout_stream')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = get('ML_stderr_stream')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = get('ML_stdin_binary_stream')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
+    stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = get('ML_stdout_binary_stream')
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
+    input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = ?ML_get_current_text_input
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
+    output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = ?ML_get_current_text_output
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
+    binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = ?ML_get_current_binary_input
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
+    binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = ?ML_get_current_binary_output
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.get_line_number(LineNum::out, _IO0::di, _IO::uo),
+    get_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = ?ML_get_current_text_input,
@@ -9465,14 +9459,14 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = mercury__io:mercury_get_line_number(Stream)
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_line_number(LineNum::in, _IO0::di, _IO::uo),
+    set_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = ?ML_get_current_text_input,
@@ -9480,14 +9474,14 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     mercury__io:mercury_set_line_number(Stream, LineNum)
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
+    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = ?ML_get_current_text_output,
@@ -9495,14 +9489,14 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = mercury__io:mercury_get_line_number(Stream)
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
+    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = ?ML_get_current_text_output,
@@ -9510,14 +9504,14 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     mercury__io:mercury_set_line_number(Stream, LineNum)
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = ?ML_get_current_text_input,
@@ -9525,7 +9519,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = ?ML_get_current_text_output,
@@ -9533,7 +9527,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_binary_input_stream_2(NewStream::in, OutStream::out,
+    set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -9542,7 +9536,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_binary_output_stream_2(NewStream::in, OutStream::out,
+    set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -9561,14 +9555,14 @@ set_binary_output_stream(binary_output_stream(NewStream),
     % StreamId is a unique integer identifying the open.
     % Both StreamId and Stream are valid only if Result == 0.
     %
-:- pred io.do_open_binary(string::in, string::in, int::out, int::out,
-    io.stream::out, io::di, io::uo) is det.
+:- pred do_open_binary(string::in, string::in, int::out, int::out,
+    stream::out, io::di, io::uo) is det.
 
-:- pred io.do_open_text(string::in, string::in, int::out, int::out,
-    io.stream::out, io::di, io::uo) is det.
+:- pred do_open_text(string::in, string::in, int::out, int::out,
+    stream::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.do_open_text(FileName::in, Mode::in, ResultCode::out,
+    do_open_text(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -9584,7 +9578,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C",
-    io.do_open_binary(FileName::in, Mode::in, ResultCode::out,
+    do_open_binary(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -9600,7 +9594,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.do_open_text(FileName::in, Mode::in, ResultCode::out,
+    do_open_text(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -9617,7 +9611,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("C#",
-    io.do_open_binary(FileName::in, Mode::in, ResultCode::out,
+    do_open_binary(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -9634,7 +9628,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.do_open_text(FileName::in, Mode::in, ResultCode::out,
+    do_open_text(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -9665,7 +9659,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.do_open_binary(FileName::in, Mode::in, ResultCode::out,
+    do_open_binary(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -9700,7 +9694,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.do_open_text(FileName::in, Mode::in, ResultCode::out,
+    do_open_text(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -9721,7 +9715,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.do_open_binary(FileName::in, Mode::in, ResultCode::out,
+    do_open_binary(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -9742,25 +9736,25 @@ set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 close_input(input_stream(Stream), !IO) :-
-    io.maybe_delete_stream_info(Stream, !IO),
-    io.close_stream(Stream, !IO).
+    maybe_delete_stream_info(Stream, !IO),
+    close_stream(Stream, !IO).
 
 close_output(output_stream(Stream), !IO) :-
-    io.maybe_delete_stream_info(Stream, !IO),
-    io.close_stream(Stream, !IO).
+    maybe_delete_stream_info(Stream, !IO),
+    close_stream(Stream, !IO).
 
 close_binary_input(binary_input_stream(Stream), !IO) :-
-    io.maybe_delete_stream_info(Stream, !IO),
-    io.close_stream(Stream, !IO).
+    maybe_delete_stream_info(Stream, !IO),
+    close_stream(Stream, !IO).
 
 close_binary_output(binary_output_stream(Stream), !IO) :-
-    io.maybe_delete_stream_info(Stream, !IO),
-    io.close_stream(Stream, !IO).
+    maybe_delete_stream_info(Stream, !IO),
+    close_stream(Stream, !IO).
 
-:- pred io.close_stream(stream::in, io::di, io::uo) is det.
+:- pred close_stream(stream::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.close_stream(Stream::in, _IO0::di, _IO::uo),
+    close_stream(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -9768,14 +9762,14 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.close_stream(Stream::in, _IO0::di, _IO::uo),
+    close_stream(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
     io.mercury_close(Stream);
 ").
 
 :- pragma foreign_proc("Java",
-    io.close_stream(Stream::in, _IO0::di, _IO::uo),
+    close_stream(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         may_not_duplicate],
 "
@@ -9787,7 +9781,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.close_stream(Stream::in, _IO0::di, _IO::uo),
+    close_stream(Stream::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates],
 "
@@ -9797,7 +9791,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 % Miscellaneous predicates.
 
 :- pragma foreign_proc("C",
-    io.progname(DefaultProgname::in, PrognameOut::out, _IO0::di, _IO::uo),
+    progname(DefaultProgname::in, PrognameOut::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -9809,7 +9803,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.command_line_arguments(Args::out, _IO0::di, _IO::uo),
+    command_line_arguments(Args::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, may_not_duplicate,
         no_sharing],
@@ -9829,7 +9823,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 }").
 
 :- pragma foreign_proc("C",
-    io.get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
+    get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -9837,7 +9831,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
+    set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -10050,7 +10044,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 :- pragma foreign_proc("C#",
-    io.command_line_arguments(Args::out, _IO0::di, _IO::uo),
+    command_line_arguments(Args::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     string[] arg_vector = System.Environment.GetCommandLineArgs();
@@ -10063,21 +10057,21 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 :- pragma foreign_proc("C#",
-    io.get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
+    get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ExitStatus = System.Environment.ExitCode;
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
+    set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     System.Environment.ExitCode = ExitStatus;
 ").
 
 :- pragma foreign_proc("C#",
-    io.call_system_code(Command::in, Status::out, Success::out, Msg::out,
+    call_system_code(Command::in, Status::out, Success::out, Msg::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -10128,7 +10122,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 :- pragma foreign_proc("Java",
-    io.progname(_Default::in, PrognameOut::out, _IO0::di, _IO::uo),
+    progname(_Default::in, PrognameOut::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
@@ -10136,7 +10130,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
+    get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         may_not_duplicate],
 "
@@ -10144,7 +10138,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
+    set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         may_not_duplicate],
 "
@@ -10152,7 +10146,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.command_line_arguments(Args::out, _IO0::di, _IO::uo),
+    command_line_arguments(Args::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     ArgStrings = init:get_plain_arguments(),
@@ -10160,7 +10154,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
+    get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     'ML_erlang_global_server' ! {get_exit_status, self()},
@@ -10171,7 +10165,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
+    set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     'ML_erlang_global_server' ! {set_exit_status, ExitStatus}
@@ -10218,7 +10212,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.call_system_code(Command::in, Status::out, Success::out, Msg::out,
+    call_system_code(Command::in, Status::out, Success::out, Msg::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
@@ -10297,7 +10291,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("C",
-    io.getenv(Var::in, Value::out),
+    getenv(Var::in, Value::out),
     [promise_semipure, will_not_call_mercury, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -10315,7 +10309,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.getenv(Var::in, Value::out),
+    getenv(Var::in, Value::out),
     [promise_semipure, will_not_call_mercury, tabled_for_io],
 "
     Value = System.Environment.GetEnvironmentVariable(Var);
@@ -10323,7 +10317,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.getenv(Var::in, Value::out),
+    getenv(Var::in, Value::out),
     [promise_semipure, will_not_call_mercury, tabled_for_io,
         may_not_duplicate],
 "
@@ -10332,7 +10326,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.getenv(Var::in, Value::out),
+    getenv(Var::in, Value::out),
     [promise_semipure, will_not_call_mercury, tabled_for_io],
 "
     case os:getenv(binary_to_list(Var)) of
@@ -10346,7 +10340,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("C",
-    io.setenv(Var::in, Value::in),
+    setenv(Var::in, Value::in),
     [will_not_call_mercury, not_thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
@@ -10359,7 +10353,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.setenv(Var::in, Value::in),
+    setenv(Var::in, Value::in),
     [will_not_call_mercury, tabled_for_io],
 "
     try {
@@ -10371,7 +10365,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.setenv(Var::in, Value::in),
+    setenv(Var::in, Value::in),
     [will_not_call_mercury, tabled_for_io, may_not_duplicate],
 "
     // Java does not provide a method to set environment variables, only a way
@@ -10382,7 +10376,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.setenv(Var::in, Value::in),
+    setenv(Var::in, Value::in),
     [will_not_call_mercury, tabled_for_io],
 "
     VarStr = binary_to_list(Var),
@@ -11083,18 +11077,18 @@ system_temp_dir("", 0, !IO).
 ").
 
 remove_file(FileName, Result, !IO) :-
-    io.remove_file_2(FileName, Res, ResString, !IO),
+    remove_file_2(FileName, Res, ResString, !IO),
     ( if Res = 0 then
         Result = ok
     else
         Result = error(io_error(ResString))
     ).
 
-:- pred io.remove_file_2(string::in, int::out, string::out, io::di, io::uo)
+:- pred remove_file_2(string::in, int::out, string::out, io::di, io::uo)
     is det.
 
 :- pragma foreign_proc("C",
-    io.remove_file_2(FileName::in, RetVal::out, RetStr::out,
+    remove_file_2(FileName::in, RetVal::out, RetStr::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -11109,8 +11103,7 @@ remove_file(FileName, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.remove_file_2(FileName::in, RetVal::out, RetStr::out,
-        _IO0::di, _IO::uo),
+    remove_file_2(FileName::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
     try {
@@ -11130,8 +11123,7 @@ remove_file(FileName, Result, !IO) :-
 }").
 
 :- pragma foreign_proc("Java",
-    io.remove_file_2(FileName::in, RetVal::out, RetStr::out,
-        _IO0::di, _IO::uo),
+    remove_file_2(FileName::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
@@ -11155,8 +11147,7 @@ remove_file(FileName, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.remove_file_2(FileName::in, RetVal::out, RetStr::out,
-        _IO0::di, _IO::uo),
+    remove_file_2(FileName::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
@@ -11174,7 +11165,7 @@ remove_file(FileName, Result, !IO) :-
 
 remove_file_recursively(FileName, Res, !IO) :-
     FollowSymLinks = no,
-    io.file_type(FollowSymLinks, FileName, ResFileType, !IO),
+    file_type(FollowSymLinks, FileName, ResFileType, !IO),
     (
         ResFileType = ok(FileType),
         (
@@ -11184,7 +11175,7 @@ remove_file_recursively(FileName, Res, !IO) :-
                 Res0 = ok(MaybeError),
                 (
                     MaybeError = ok,
-                    io.remove_file(FileName, Res, !IO)
+                    remove_file(FileName, Res, !IO)
                 ;
                     MaybeError = error(Error),
                     Res = error(Error)
@@ -11205,7 +11196,7 @@ remove_file_recursively(FileName, Res, !IO) :-
             ; FileType = shared_memory
             ; FileType = unknown
             ),
-            io.remove_file(FileName, Res, !IO)
+            remove_file(FileName, Res, !IO)
         )
     ;
         ResFileType = error(Error),
@@ -11228,18 +11219,18 @@ remove_directory_entry(DirName, FileName, _FileType, Continue, _, Res, !IO) :-
     ).
 
 rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
-    io.rename_file_2(OldFileName, NewFileName, Res, ResString, IO0, IO),
+    rename_file_2(OldFileName, NewFileName, Res, ResString, IO0, IO),
     ( if Res = 0 then
         Result = ok
     else
         Result = error(io_error(ResString))
     ).
 
-:- pred io.rename_file_2(string::in, string::in, int::out, string::out,
+:- pred rename_file_2(string::in, string::in, int::out, string::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
+    rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
         RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -11255,7 +11246,7 @@ rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
+    rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
         RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
@@ -11276,7 +11267,7 @@ rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 }").
 
 :- pragma foreign_proc("Java",
-    io.rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
+    rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
         RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -11306,7 +11297,7 @@ rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
+    rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
         RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -11326,7 +11317,7 @@ rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 have_symlinks :- semidet_fail.
 
 :- pragma foreign_proc("C",
-    io.have_symlinks,
+    have_symlinks,
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -11338,7 +11329,7 @@ have_symlinks :- semidet_fail.
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.have_symlinks,
+    have_symlinks,
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
@@ -11360,11 +11351,11 @@ make_symlink(FileName, LinkFileName, Result, !IO) :-
             "io.make_symlink not supported on this platform"))
     ).
 
-:- pred io.make_symlink_2(string::in, string::in, int::out,
-    io::di, io::uo) is det.
+:- pred make_symlink_2(string::in, string::in, int::out, io::di, io::uo)
+    is det.
 
 :- pragma foreign_proc("C",
-    io.make_symlink_2(FileName::in, LinkFileName::in, Status::out,
+    make_symlink_2(FileName::in, LinkFileName::in, Status::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -11377,7 +11368,7 @@ make_symlink(FileName, LinkFileName, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.make_symlink_2(FileName::in, LinkFileName::in, Status::out,
+    make_symlink_2(FileName::in, LinkFileName::in, Status::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
@@ -11394,10 +11385,10 @@ make_symlink(FileName, LinkFileName, Result, !IO) :-
 ").
 
 read_symlink(FileName, Result, !IO) :-
-    ( if io.have_symlinks then
-        io.read_symlink_2(FileName, TargetFileName, Status, Error, !IO),
+    ( if have_symlinks then
+        read_symlink_2(FileName, TargetFileName, Status, Error, !IO),
         ( if Status = 0 then
-            io.make_err_msg(Error, "io.read_symlink failed: ", Msg, !IO),
+            make_err_msg(Error, "io.read_symlink failed: ", Msg, !IO),
             Result = error(make_io_error(Msg))
         else
             Result = ok(TargetFileName)
@@ -11407,12 +11398,12 @@ read_symlink(FileName, Result, !IO) :-
             "io.read_symlink not supported on this platform"))
     ).
 
-:- pred io.read_symlink_2(string::in, string::out, int::out,
-    io.system_error::out, io::di, io::uo) is det.
+:- pred read_symlink_2(string::in, string::out, int::out,
+    system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.read_symlink_2(FileName::in, TargetFileName::out,
-        Status::out, Error::out, _IO0::di, _IO::uo),
+    read_symlink_2(FileName::in, TargetFileName::out, Status::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -11466,8 +11457,8 @@ read_symlink(FileName, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.read_symlink_2(FileName::in, TargetFileName::out,
-        Status::out, Error::out, _IO0::di, _IO::uo),
+    read_symlink_2(FileName::in, TargetFileName::out, Status::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
@@ -11487,7 +11478,7 @@ read_symlink(FileName, Result, !IO) :-
 % called:
 
 :- pragma foreign_proc("Java",
-    io.make_symlink_2(_FileName::in, _LinkFileName::in, _Status::out,
+    make_symlink_2(_FileName::in, _LinkFileName::in, _Status::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -11499,7 +11490,7 @@ read_symlink(FileName, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.read_symlink_2(_FileName::in, _TargetFileName::out, _Status::out,
+    read_symlink_2(_FileName::in, _TargetFileName::out, _Status::out,
         _Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -11516,7 +11507,7 @@ read_symlink(FileName, Result, !IO) :-
 % Instances of the stream typeclass
 %
 
-:- instance stream.error(io.error) where [
+:- instance stream.error(error) where [
     func(stream.error_message/1) is io.error_message
 ].
 
@@ -11525,26 +11516,26 @@ read_symlink(FileName, Result, !IO) :-
 % Text input streams
 %
 
-:- instance stream.stream(io.input_stream, io) where [
-    pred(name/4) is io.input_stream_name
+:- instance stream.stream(input_stream, io) where [
+    pred(name/4) is input_stream_name
 ].
 
-:- instance stream.input(io.input_stream, io) where [].
+:- instance stream.input(input_stream, io) where [].
 
-:- instance stream.reader(io.input_stream, char, io, io.error)
+:- instance stream.reader(input_stream, char, io, io.error)
     where
 [
     ( get(Stream, Result, !IO) :-
-        io.read_char(Stream, Result0, !IO),
+        read_char(Stream, Result0, !IO),
         Result = io.result_to_stream_result(Result0)
     )
 ].
 
-:- instance stream.reader(io.input_stream, line, io, io.error)
+:- instance stream.reader(input_stream, line, io, io.error)
     where
 [
     ( get(Stream, Result, !IO) :-
-        io.read_line_as_string(Stream, Result0, !IO),
+        read_line_as_string(Stream, Result0, !IO),
         (
             Result0 = ok(String),
             Result = ok(line(String))
@@ -11558,11 +11549,11 @@ read_symlink(FileName, Result, !IO) :-
     )
 ].
 
-:- instance stream.reader(io.input_stream, text_file, io, io.error)
+:- instance stream.reader(input_stream, text_file, io, io.error)
     where
 [
     ( get(Stream, Result, !IO) :-
-        io.read_file_as_string(Stream, Result0, !IO),
+        read_file_as_string(Stream, Result0, !IO),
         (
             Result0 = ok(String),
             Result = ok(text_file(String))
@@ -11573,18 +11564,18 @@ read_symlink(FileName, Result, !IO) :-
     )
 ].
 
-:- instance stream.putback(io.input_stream, char, io, io.error) where
+:- instance stream.putback(input_stream, char, io, io.error) where
 [
-    pred(unget/4) is io.putback_char
+    pred(unget/4) is putback_char
 ].
 
-:- func io.result_to_stream_result(io.result(T)) = stream.result(T, io.error).
+:- func result_to_stream_result(io.result(T)) = stream.result(T, io.error).
 
 result_to_stream_result(ok(T)) = ok(T).
 result_to_stream_result(eof) = eof.
 result_to_stream_result(error(Error)) = error(Error).
 
-:- instance stream.line_oriented(io.input_stream, io) where
+:- instance stream.line_oriented(input_stream, io) where
 [
     pred(get_line/4) is io.get_line_number,
     pred(set_line/4) is io.set_line_number
@@ -11595,48 +11586,48 @@ result_to_stream_result(error(Error)) = error(Error).
 % Text output streams
 %
 
-:- instance stream.stream(io.output_stream, io) where [
-    pred(name/4) is io.output_stream_name
+:- instance stream.stream(output_stream, io) where [
+    pred(name/4) is output_stream_name
 ].
 
-:- instance stream.output(io.output_stream, io) where [
-    pred(flush/3) is io.flush_output
+:- instance stream.output(output_stream, io) where [
+    pred(flush/3) is flush_output
 ].
 
-:- instance stream.writer(io.output_stream, char, io)
+:- instance stream.writer(output_stream, char, io)
     where
 [
-    pred(put/4) is io.write_char
+    pred(put/4) is write_char
 ].
 
-:- instance stream.writer(io.output_stream, float, io)
+:- instance stream.writer(output_stream, float, io)
     where
 [
-    pred(put/4) is io.write_float
+    pred(put/4) is write_float
 ].
 
-:- instance stream.writer(io.output_stream, int, io)
+:- instance stream.writer(output_stream, int, io)
     where
 [
-    pred(put/4) is io.write_int
+    pred(put/4) is write_int
 ].
 
-:- instance stream.writer(io.output_stream, string, io)
+:- instance stream.writer(output_stream, string, io)
     where
 [
-    pred(put/4) is io.write_string
+    pred(put/4) is write_string
 ].
 
-:- instance stream.writer(io.output_stream, univ, io)
+:- instance stream.writer(output_stream, univ, io)
     where
 [
     pred(put/4) is stream.string_writer.write_univ
 ].
 
-:- instance stream.line_oriented(io.output_stream, io) where
+:- instance stream.line_oriented(output_stream, io) where
 [
-    pred(get_line/4) is io.get_output_line_number,
-    pred(set_line/4) is io.set_output_line_number
+    pred(get_line/4) is get_output_line_number,
+    pred(set_line/4) is set_output_line_number
 ].
 
 %---------------------------------------------------------------------------%
@@ -11644,47 +11635,47 @@ result_to_stream_result(error(Error)) = error(Error).
 % Binary input streams
 %
 
-:- instance stream.stream(io.binary_input_stream, io)
+:- instance stream.stream(binary_input_stream, io)
     where
 [
-    pred(name/4) is io.binary_input_stream_name
+    pred(name/4) is binary_input_stream_name
 ].
 
-:- instance stream.input(io.binary_input_stream, io)
+:- instance stream.input(binary_input_stream, io)
     where [].
 
-:- instance stream.reader(io.binary_input_stream, int, io, io.error)
+:- instance stream.reader(binary_input_stream, int, io, io.error)
     where
 [
     ( get(Stream, Result, !IO) :-
-        io.read_byte(Stream, Result0, !IO),
-        Result = io.result_to_stream_result(Result0)
+        read_byte(Stream, Result0, !IO),
+        Result = result_to_stream_result(Result0)
     )
 ].
 
-:- instance stream.bulk_reader(io.binary_input_stream, int,
+:- instance stream.bulk_reader(binary_input_stream, int,
         bitmap, io, io.error)
     where
 [
     ( bulk_get(Stream, Index, Int, !Store, NumRead, Result, !State) :-
-        io.read_bitmap(Stream, Index, Int, !Store, NumRead,
+        read_bitmap(Stream, Index, Int, !Store, NumRead,
             Result0, !State),
-        Result = io.res_to_stream_res(Result0)
+        Result = res_to_stream_res(Result0)
     )
 ].
 
-:- instance stream.putback(io.binary_input_stream, int, io, io.error)
+:- instance stream.putback(binary_input_stream, int, io, io.error)
     where
 [
-    pred(unget/4) is io.putback_byte
+    pred(unget/4) is putback_byte
 ].
 
-:- instance stream.seekable(io.binary_input_stream, io)
+:- instance stream.seekable(binary_input_stream, io)
     where
 [
     ( seek(Stream, Whence0, OffSet, !IO) :-
         Whence = stream_whence_to_io_whence(Whence0),
-        io.seek_binary_input(Stream, Whence, OffSet, !IO)
+        seek_binary_input(Stream, Whence, OffSet, !IO)
     )
 ].
 
@@ -11704,45 +11695,45 @@ res_to_stream_res(error(E)) = error(E).
 % Binary output streams
 %
 
-:- instance stream.stream(io.binary_output_stream, io)
+:- instance stream.stream(binary_output_stream, io)
     where
 [
-    pred(name/4) is io.binary_output_stream_name
+    pred(name/4) is binary_output_stream_name
 ].
 
-:- instance stream.output(io.binary_output_stream, io)
+:- instance stream.output(binary_output_stream, io)
     where
 [
-    pred(flush/3) is io.flush_binary_output
+    pred(flush/3) is flush_binary_output
 ].
 
-:- instance stream.writer(io.binary_output_stream, byte, io)
+:- instance stream.writer(binary_output_stream, byte, io)
     where
 [
-    pred(put/4) is io.write_byte
+    pred(put/4) is write_byte
 ].
 
-:- instance stream.writer(io.binary_output_stream, bitmap, io)
+:- instance stream.writer(binary_output_stream, bitmap, io)
     where
 [
-    pred(put/4) is io.write_bitmap
+    pred(put/4) is write_bitmap
 ].
 
-:- instance stream.writer(io.binary_output_stream, bitmap.slice, io)
+:- instance stream.writer(binary_output_stream, bitmap.slice, io)
     where
 [
     ( put(Stream, Slice, !IO) :-
-        io.write_bitmap(Stream, Slice ^ slice_bitmap,
+        write_bitmap(Stream, Slice ^ slice_bitmap,
             Slice ^ slice_start_byte_index, Slice ^ slice_num_bytes, !IO)
     )
 ].
 
-:- instance stream.seekable(io.binary_output_stream, io)
+:- instance stream.seekable(binary_output_stream, io)
     where
 [
     ( seek(Stream, Whence0, OffSet, !IO) :-
         Whence = stream_whence_to_io_whence(Whence0),
-        io.seek_binary_output(Stream, Whence, OffSet, !IO)
+        seek_binary_output(Stream, Whence, OffSet, !IO)
     )
 ].
 
