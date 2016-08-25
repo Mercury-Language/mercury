@@ -62,6 +62,7 @@
 :- import_module char.
 :- import_module io.
 :- import_module list.
+:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -113,7 +114,7 @@
     pred add_eval_method(eval_method::in, U::di, U::uo) is det,
     pred add_lambda_eval_method(lambda_eval_method::in, U::di, U::uo) is det,
     pred add_escaped_string(string::in, U::di, U::uo) is det,
-    pred add_format(string::in, list(io.poly_type)::in, U::di, U::uo) is det,
+    pred add_format(string::in, list(poly_type)::in, U::di, U::uo) is det,
     pred add_list(list(T)::in, string::in,
         pred(T, U, U)::in(pred(in, di, uo) is det), U::di, U::uo) is det
 ].
@@ -130,7 +131,6 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
-:- import_module string.
 :- import_module term_io.
 
 %---------------------------------------------------------------------------%
@@ -307,7 +307,7 @@ output_eval_eval_method(EvalMethod, !Str) :-
 output_lambda_eval_method(lambda_normal, !Str) :-
     output_string("normal", !Str).
 
-:- pred output_format(string::in, list(io.poly_type)::in,
+:- pred output_format(string::in, list(poly_type)::in,
     string::di, string::uo) is det.
 
 output_format(Format, Items, Str0, Str) :-

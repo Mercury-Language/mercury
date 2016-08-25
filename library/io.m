@@ -114,11 +114,6 @@
 
 :- type io.error.   % Use error_message to decode it.
 
-    % Poly-type is used for write_many and format,
-    % which do printf-like formatting.
-    %
-:- type io.poly_type == string.poly_type.
-
     % whence denotes the base for a seek operation.
     %   set - seek relative to the start of the file
     %   cur - seek relative to the current position in the file
@@ -541,22 +536,22 @@
     % using string.format, and then writes the result to the current
     % output stream. (See the documentation of string.format for details.)
     %
-:- pred format(string::in, list(io.poly_type)::in, io::di, io::uo) is det.
+:- pred format(string::in, list(poly_type)::in, io::di, io::uo) is det.
 
     % Formats the specified argument list according to the format string,
     % using string.format, and then writes the result to the specified
     % output stream. (See the documentation of string.format for details.)
     %
-:- pred format(text_output_stream::in, string::in, list(io.poly_type)::in,
+:- pred format(text_output_stream::in, string::in, list(poly_type)::in,
     io::di, io::uo) is det.
 
     % Writes the specified arguments to the current output stream.
     %
-:- pred write_many(list(io.poly_type)::in, io::di, io::uo) is det.
+:- pred write_many(list(poly_type)::in, io::di, io::uo) is det.
 
     % Writes the specified arguments to the specified output stream.
     %
-:- pred write_many(text_output_stream::in, list(io.poly_type)::in,
+:- pred write_many(text_output_stream::in, list(poly_type)::in,
     io::di, io::uo) is det.
 
     % write_list(List, Separator, OutputPred, !IO):
