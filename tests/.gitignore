@@ -4,6 +4,7 @@
 *.date
 *.date0
 *.date3
+*.java_date
 *.dep
 *.dep_err
 *.dv

@@ -2122,10 +2122,13 @@ read_char(Result, !IO) :-
 
 read_char(Stream, Result, !IO) :-
     read_char_code(Stream, Code, !IO),
-    ( if Code = -1 then
-        Result = eof
-    else if char.to_int(Char, Code) then
+    ( if
+        Code >= 0,
+        char.to_int(Char, Code)
+    then
         Result = ok(Char)
+    else if Code = -1 then
+        Result = eof
     else
         io.make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
@@ -2135,12 +2138,15 @@ read_char(Stream, Result, !IO) :-
 
 read_char_unboxed(Stream, Result, Char, !IO) :-
     read_char_code(Stream, Code, !IO),
-    ( if Code = -1 then
-        Result = eof,
-        Char = char.det_from_int(0)
-    else if char.to_int(Char0, Code) then
+    ( if
+        Code >= 0,
+        char.to_int(Char0, Code)
+    then
         Result = ok,
         Char = Char0
+    else if Code = -1 then
+        Result = eof,
+        Char = char.det_from_int(0)
     else
         make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg)),
@@ -2366,15 +2372,18 @@ read_line(Result, !IO) :-
 
 read_line(Stream, Result, !IO) :-
     read_char_code(Stream, Code, !IO),
-    ( if Code = -1 then
-        Result = eof
-    else if char.to_int(Char, Code) then
+    ( if
+        Code >= 0,
+        char.to_int(Char, Code)
+    then
         ( if Char = '\n' then
             Result = ok([Char])
         else
             read_line_2(Stream, Result0, !IO),
             Result = ok([Char | Result0])
         )
+    else if Code = -1 then
+        Result = eof
     else
         make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
@@ -2385,15 +2394,18 @@ read_line(Stream, Result, !IO) :-
 
 read_line_2(Stream, Result, !IO) :-
     read_char_code(Stream, Code, !IO),
-    ( if Code = -1 then
-        Result = []
-    else if char.to_int(Char, Code) then
+    ( if
+        Code >= 0,
+        char.to_int(Char, Code)
+    then
         ( if Char = '\n' then
             Result = [Char]
         else
             read_line_2(Stream, Chars, !IO),
             Result = [Char | Chars]
         )
+    else if Code = -1 then
+        Result = []
     else
         Result = []
     ).
@@ -2441,7 +2453,11 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
         char_code = mercury_get_byte(Stream);
         if (char_code == EOF) {
             if (i == 0) {
-                Res = -1;
+                if (MR_FERROR(*Stream)) {
+                    Res = -2;
+                } else {
+                    Res = -1;
+                }
             }
             break;
         }
@@ -7523,6 +7539,12 @@ ME_closed_stream_putch(MR_StreamInfo *info, int ch)
     return EOF;
 }
 
+static int
+ME_closed_stream_ferror(MR_StreamInfo *info)
+{
+    return 0;
+}
+
 static const MercuryFile MR_closed_stream = {
     /* stream_type  = */    MR_USER_STREAM,
     /* stream_info  = */    { NULL },
@@ -7536,7 +7558,8 @@ static const MercuryFile MR_closed_stream = {
     /* ungetc   = */    ME_closed_stream_ungetch,
     /* getc     = */    ME_closed_stream_getch,
     /* vprintf  = */    ME_closed_stream_vfprintf,
-    /* putc     = */    ME_closed_stream_putch
+    /* putc     = */    ME_closed_stream_putch,
+    /* ferror   = */    ME_closed_stream_ferror
 };
 
 #endif /* MR_NEW_MERCURYFILE_STRUCT */
@@ -7742,7 +7765,11 @@ read_char_code(input_stream(Stream), CharCode, !IO) :-
     if (uc <= 0x7f) {
         CharCode = uc;
     } else if (c == EOF) {
-        CharCode = -1;
+        if (MR_FERROR(*Stream)) {
+            CharCode = -2;
+        } else {
+            CharCode = -1;
+        }
     } else {
         if ((uc & 0xE0) == 0xC0) {
             nbytes = 2;
@@ -7756,7 +7783,17 @@ read_char_code(input_stream(Stream), CharCode, !IO) :-
         if (nbytes > 0) {
             buf[0] = (char) uc;
             for (i = 1; i < nbytes; i++) {
-                uc = mercury_get_byte(Stream);
+                c = mercury_get_byte(Stream);
+                uc = c;
+                if (c == EOF) {
+                    /*
+                    ** If the byte sequence ends early then it is invalid.
+                    ** The next read attempt will determine if this is EOF or
+                    ** an IO error.
+                    */
+                    errno = EILSEQ;
+                    CharCode = -2;
+                }
                 buf[i] = uc;
             }
             buf[i] = '\\0';
@@ -7783,7 +7820,17 @@ read_byte_val(input_stream(Stream), ByteVal, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
-    ByteVal = mercury_get_byte(Stream);
+    int c = mercury_get_byte(Stream);
+
+    if (c == EOF) {
+        if (MR_FERROR(*Stream)) {
+            ByteVal = -2;
+        } else {
+            ByteVal = -1;
+        }
+    } else {
+        ByteVal = c;
+    }
 ").
 
 putback_char(input_stream(Stream), Character, !IO) :-

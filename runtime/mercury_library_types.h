@@ -54,6 +54,8 @@
 
   #define MR_PUTCH(mf, ch)  putc((ch), MR_file(mf))
 
+  #define MR_FERROR(mf) ferror(MR_file(mf))
+
 #else // MR_NEW_MERCURYFILE_STRUCT
 
   // The possible types of a MercuryFile.
@@ -80,6 +82,7 @@
   typedef int (MR_Stream_getc)(MR_StreamInfo *);
   typedef int (MR_Stream_vprintf)(MR_StreamInfo *, const char *, va_list);
   typedef int (MR_Stream_putc)(MR_StreamInfo *, int);
+  typedef int (MR_Stream_ferror)(MR_StreamInfo *);
 
   // The MercuryFile structure records:
   //
@@ -116,6 +119,8 @@
     MR_Stream_getc      *getc;
     MR_Stream_vprintf   *vprintf;
     MR_Stream_putc      *putc;
+    MR_Stream_ferror    *ferror;
+
   } MercuryFile;
 
   // Access the file and line number fields.
@@ -139,6 +144,7 @@
         ((mf).vprintf)(&((mf).stream_info), (fmt), (args))
   #define MR_PUTCH(mf, ch)                                              \
         ((mf).putc)(&((mf).stream_info), (ch))
+  #define MR_FERROR(mf) ((mf).ferror)(&((mf).stream_info))
 
 #endif  // MR_NEW_MERCURYFILE_STRUCT
 

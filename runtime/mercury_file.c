@@ -43,6 +43,7 @@ MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf)
     mf->getc        = MR_getch;
     mf->vprintf     = MR_vfprintf;
     mf->putc        = MR_putch;
+    mf->ferror      = MR_ferror;
   #ifdef MR_NATIVE_GC
     mf->id = ++next_id;
   #endif
@@ -67,6 +68,13 @@ MR_putch(MR_StreamInfo *info, int ch)
 {
     MR_assert(info != NULL);
     return putc(ch, info->file);
+}
+
+int
+MR_ferror(MR_StreamInfo *info)
+{
+    MR_assert(info != NULL);
+    return ferror(info->file);
 }
 
 int

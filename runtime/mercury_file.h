@@ -24,6 +24,7 @@ void MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf);
   int MR_vfprintf(MR_StreamInfo *info, const char *format, va_list ap);
   int MR_read(MR_StreamInfo *info, void *buffer, size_t size);
   int MR_write(MR_StreamInfo *info, const void *buffer, size_t size);
+  int MR_ferror(MR_StreamInfo *info);
 #endif
 
 #endif // MERCURY_FILE_H
