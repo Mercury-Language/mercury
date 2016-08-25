@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2012 The University of Melbourne.
+% Copyright (C) 1993-2012, 2016 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -112,12 +112,12 @@
     ;       eof
     ;       error(string, int). % error message, line number
 
-:- type error.   % Use error_message to decode it.
+:- type io.error.   % Use error_message to decode it.
 
     % Poly-type is used for write_many and format,
     % which do printf-like formatting.
     %
-:- type poly_type == string.poly_type.
+:- type io.poly_type == string.poly_type.
 
     % whence denotes the base for a seek operation.
     %   set - seek relative to the start of the file
