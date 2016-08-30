@@ -5,6 +5,6 @@ bug191.m:020:   Final instantiatedness of `HeadVar__3' was `ground',
 bug191.m:020:   expected final instantiatedness was
 bug191.m:020:     named inst a,
 bug191.m:020:     which expands to
-bug191.m:020:     bound(
-bug191.m:020:       a(ground)
-bug191.m:020:     ).
+bug191.m:020:       bound(
+bug191.m:020:         a(ground)
+bug191.m:020:       ).

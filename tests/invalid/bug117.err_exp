@@ -4,6 +4,6 @@ bug117.m:022:   Final instantiatedness of `X' was `ground',
 bug117.m:022:   expected final instantiatedness was
 bug117.m:022:     named inst list.non_empty_list,
 bug117.m:022:     which expands to
-bug117.m:022:     bound(
-bug117.m:022:       '[|]'(ground, ground)
-bug117.m:022:     ).
+bug117.m:022:       bound(
+bug117.m:022:         '[|]'(ground, ground)
+bug117.m:022:       ).

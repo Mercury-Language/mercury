@@ -21,13 +21,10 @@ ho_default_func_4.m:036:     ),
 ho_default_func_4.m:036:     /* unique */ (func(
 ho_default_func_4.m:036:       named inst one,
 ho_default_func_4.m:036:       which expands to
-ho_default_func_4.m:036:       bound(
-ho_default_func_4.m:036:         1
-ho_default_func_4.m:036:       ) >> named inst one,
-ho_default_func_4.m:036:       which expands to
-ho_default_func_4.m:036:       bound(
-ho_default_func_4.m:036:         1
-ho_default_func_4.m:036:       )
+ho_default_func_4.m:036:         bound(
+ho_default_func_4.m:036:           1
+ho_default_func_4.m:036:         )
+ho_default_func_4.m:036:       >> named inst one
 ho_default_func_4.m:036:     ) = out is det),
 ho_default_func_4.m:036:     free
 ho_default_func_4.m:036:   which does not match any of the modes for function

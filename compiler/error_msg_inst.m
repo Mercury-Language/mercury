@@ -74,7 +74,9 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
 
+:- import_module counter.
 :- import_module int.
+:- import_module map.
 :- import_module set.
 :- import_module string.
 
@@ -87,13 +89,41 @@
                 imi_expand_named_insts  :: maybe_expand_named_insts
             ).
 
+    % We record which inst names we have seen before. The main reason why
+    % we do this is to prevent infinite loops when expanding inst names
+    % whose definitions are recursive, but even in the absence of recursion,
+    % printing just the name of a named inst on its second and later
+    % occurrences can make the output smaller and easier to read.
+    %
+:- type expansions_info
+    --->    expansions_info(
+                % We put every inst name into this map if it can be recursive.
+                % The value associated with an inst name is what we should
+                % print on any later references to the inst name.
+                %
+                % XXX Internally generated inst names can be quite big.
+                % If comparisons on these inside map lookups ever become
+                % a problem, we could make the key not the inst_name,
+                % but its address.
+                ei_seen_inst_names      :: map(inst_name,
+                                            list(format_component)),
+
+                % Inst names generated internally by the compiler don't have
+                % intuitively understandable names we can print, so
+                % we give these inst names a number. We allocate these
+                % using this counter.
+                ei_inst_num_counter     :: counter
+            ).
+
 error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
         ShortInstQF, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0)
         = Pieces :-
     Info = inst_msg_info(ModuleInfo, InstVarSet, ExpandNamedInsts),
     strip_builtin_qualifiers_from_inst(Inst0, Inst),
-    set.init(Expansions0),
-    InlinePieces = inst_to_inline_pieces(Info, Expansions0, Inst, []),
+    Expansions0 = expansions_info(map.init, counter.init(1)),
+    SuffixPieces = [],
+    inst_to_inline_pieces(Info, Expansions0, _InlineExpansions, Inst,
+        SuffixPieces, InlinePieces),
     InlineStr = error_pieces_to_string(InlinePieces),
     % We could base the decision on whether to put the inst inline
     % on criteria other than its length, such as
@@ -128,23 +158,25 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
     else
         % Showing the inst on a separate line from the English text
         % provides enough separation by itself.
-        Pieces = LongInstPrefix ++
-            inst_to_pieces(Info, Expansions0, Inst, LongInstSuffix)
+        inst_to_pieces(Info, Expansions0, _NonInlineExpansions, Inst,
+            LongInstSuffix, NonInlinePieces),
+        Pieces = LongInstPrefix ++ NonInlinePieces
     ).
 
 %---------------------------------------------------------------------------%
 %
-% The following functions are sort-of duplicated. The functions whose names
+% The following predicates are sort-of duplicated. The predicates whose names
 % end in "to_pieces" generate output that put different parts of the inst
 % on (mostly) separate lines, showing the structure of the inst through
-% indentation. The functions whose names end in "to_inline_pieces" generate
+% indentation. The predicates whose names end in "to_inline_pieces" generate
 % output that contains the same components, but all on one line.
 %
 
-:- func inst_to_pieces(inst_msg_info, set(inst_name), mer_inst,
-    list(format_component)) = list(format_component).
+:- pred inst_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out, mer_inst::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
-inst_to_pieces(Info, Expansions0, Inst, Suffix) = Pieces :-
+inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
     (
         ( Inst = free
         ; Inst = free(_)
@@ -158,18 +190,17 @@ inst_to_pieces(Info, Expansions0, Inst, Suffix) = Pieces :-
             Pieces = [fixed(BoundName) | Suffix]
         ;
             BoundInsts = [HeadBoundInst | TailBoundInsts],
-            BoundPieces = bound_insts_to_pieces(Info,
-                Expansions0, HeadBoundInst, TailBoundInsts,
-                [nl_indent_delta(-1)]),
+            bound_insts_to_pieces(Info, !Expansions,
+                HeadBoundInst, TailBoundInsts, [], BoundPieces),
             Pieces = [fixed(BoundName), suffix("("), nl_indent_delta(1) |
-                BoundPieces] ++ [fixed(")") | Suffix]
+                BoundPieces] ++ [nl_indent_delta(-1), fixed(")") | Suffix]
         )
     ;
         Inst = ground(Uniq, HOInstInfo),
         (
             HOInstInfo = higher_order(PredInstInfo),
-            HOPieces = pred_inst_info_to_pieces(Info,
-                Expansions0, "", Uniq, PredInstInfo),
+            pred_inst_info_to_pieces(Info, !Expansions, "", Uniq,
+                PredInstInfo, HOPieces),
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
@@ -180,8 +211,8 @@ inst_to_pieces(Info, Expansions0, Inst, Suffix) = Pieces :-
         Inst = any(Uniq, HOInstInfo),
         (
             HOInstInfo = higher_order(PredInstInfo),
-            HOPieces = pred_inst_info_to_pieces(Info,
-                Expansions0, "any_", Uniq, PredInstInfo),
+            pred_inst_info_to_pieces(Info, !Expansions, "any_", Uniq,
+                PredInstInfo, HOPieces),
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
@@ -198,28 +229,26 @@ inst_to_pieces(Info, Expansions0, Inst, Suffix) = Pieces :-
         InstVarSet = Info ^ imi_inst_varset,
         mercury_format_vars(InstVarSet, print_name_only,
             set.to_sorted_list(Vars), "", Names),
-        Pieces = [fixed("("), words(Names), fixed("=<") |
-            inst_to_pieces(Info, Expansions0,
-                ConstrainedInst, [fixed(")") | Suffix])]
+        inst_to_pieces(Info, !Expansions, ConstrainedInst,
+            [fixed(")") | Suffix], InstPieces),
+        Pieces = [fixed("("), words(Names), fixed("=<") | InstPieces]
     ;
         Inst = abstract_inst(Name, ArgInsts),
         InstName = user_inst(Name, ArgInsts),
-        Pieces = inst_name_to_pieces(Info, Expansions0,
-            InstName, Suffix)
+        inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces)
     ;
         Inst = defined_inst(InstName),
-        Pieces = inst_name_to_pieces(Info, Expansions0,
-            InstName, Suffix)
+        inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces)
     ;
         Inst = not_reached,
         Pieces = [fixed("not_reached") | Suffix]
     ).
 
-:- func inst_to_inline_pieces(inst_msg_info, set(inst_name),
-    mer_inst, list(format_component)) = list(format_component).
+:- pred inst_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out, mer_inst::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
-inst_to_inline_pieces(Info, Expansions0, Inst, Suffix)
-        = Pieces :-
+inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
     (
         ( Inst = free
         ; Inst = free(_)
@@ -233,8 +262,8 @@ inst_to_inline_pieces(Info, Expansions0, Inst, Suffix)
             Pieces = [fixed(BoundName) | Suffix]
         ;
             BoundInsts = [HeadBoundInst | TailBoundInsts],
-            BoundPieces = bound_insts_to_inline_pieces(Info,
-                Expansions0, HeadBoundInst, TailBoundInsts, []),
+            bound_insts_to_inline_pieces(Info, !Expansions,
+                HeadBoundInst, TailBoundInsts, [], BoundPieces),
             Pieces = [prefix(BoundName ++ "(") | BoundPieces] ++
                 [suffix(")") | Suffix]
         )
@@ -242,8 +271,8 @@ inst_to_inline_pieces(Info, Expansions0, Inst, Suffix)
         Inst = ground(Uniq, HOInstInfo),
         (
             HOInstInfo = higher_order(PredInstInfo),
-            HOPieces = pred_inst_info_to_inline_pieces(Info,
-                Expansions0, "", Uniq, PredInstInfo),
+            pred_inst_info_to_inline_pieces(Info, !Expansions, "", Uniq,
+                PredInstInfo, HOPieces),
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
@@ -254,8 +283,8 @@ inst_to_inline_pieces(Info, Expansions0, Inst, Suffix)
         Inst = any(Uniq, HOInstInfo),
         (
             HOInstInfo = higher_order(PredInstInfo),
-            HOPieces = pred_inst_info_to_inline_pieces(Info,
-                Expansions0, "any_", Uniq, PredInstInfo),
+            pred_inst_info_to_inline_pieces(Info, !Expansions, "any_", Uniq,
+                PredInstInfo, HOPieces),
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
@@ -272,18 +301,16 @@ inst_to_inline_pieces(Info, Expansions0, Inst, Suffix)
         InstVarSet = Info ^ imi_inst_varset,
         mercury_format_vars(InstVarSet, print_name_only,
             set.to_sorted_list(Vars), "", Names),
-        Pieces = [fixed("("), words(Names), fixed("=<") |
-            inst_to_inline_pieces(Info, Expansions0,
-                ConstrainedInst, [fixed(")") | Suffix])]
+        inst_to_inline_pieces(Info, !Expansions, ConstrainedInst,
+            [fixed(")") | Suffix], InstPieces),
+        Pieces = [fixed("("), words(Names), fixed("=<") | InstPieces]
     ;
         Inst = abstract_inst(Name, ArgInsts),
         InstName = user_inst(Name, ArgInsts),
-        Pieces = inst_name_to_inline_pieces(Info,
-            Expansions0, InstName, Suffix)
+        inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces)
     ;
         Inst = defined_inst(InstName),
-        Pieces = inst_name_to_inline_pieces(Info,
-            Expansions0, InstName, Suffix)
+        inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces)
     ;
         Inst = not_reached,
         Pieces = [fixed("not_reached") | Suffix]
@@ -291,55 +318,57 @@ inst_to_inline_pieces(Info, Expansions0, Inst, Suffix)
 
 %---------------------------------------------------------------------------%
 
-:- func insts_to_pieces(inst_msg_info, set(inst_name),
-    mer_inst, list(mer_inst), list(format_component)) = list(format_component).
+:- pred insts_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    mer_inst::in, list(mer_inst)::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
-insts_to_pieces(Info, Expansions0, HeadInst, TailInsts,
-        Suffix) = Pieces :-
+insts_to_pieces(Info, !Expansions, HeadInst, TailInsts, Suffix, Pieces) :-
     (
         TailInsts = [],
         HeadSuffix = Suffix
     ;
         TailInsts = [HeadTailInst | TailTailInsts],
-        TailPieces = insts_to_pieces(Info, Expansions0,
-            HeadTailInst, TailTailInsts, Suffix),
+        insts_to_pieces(Info, !Expansions, HeadTailInst, TailTailInsts,
+            Suffix, TailPieces),
         HeadSuffix = [suffix(","), nl] ++ TailPieces
     ),
-    Pieces = inst_to_pieces(Info, Expansions0, HeadInst,
-        HeadSuffix).
+    inst_to_pieces(Info, !Expansions, HeadInst, HeadSuffix, Pieces).
 
-:- func insts_to_inline_pieces(inst_msg_info, set(inst_name),
-    mer_inst, list(mer_inst), list(format_component)) = list(format_component).
+:- pred insts_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    mer_inst::in, list(mer_inst)::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
-insts_to_inline_pieces(Info, Expansions0,
-        HeadInst, TailInsts, Suffix) = Pieces :-
+insts_to_inline_pieces(Info, !Expansions, HeadInst, TailInsts, Suffix,
+        Pieces) :-
     (
         TailInsts = [],
         HeadSuffix = Suffix
     ;
         TailInsts = [HeadTailInst | TailTailInsts],
-        TailPieces = insts_to_inline_pieces(Info,
-            Expansions0, HeadTailInst, TailTailInsts, Suffix),
+        insts_to_inline_pieces(Info, !Expansions, HeadTailInst, TailTailInsts,
+            Suffix, TailPieces),
         HeadSuffix = [suffix(",")] ++ TailPieces
     ),
-    Pieces = inst_to_inline_pieces(Info, Expansions0,
-        HeadInst, HeadSuffix).
+    inst_to_inline_pieces(Info, !Expansions, HeadInst, HeadSuffix, Pieces).
 
 %---------------------------------------------------------------------------%
 
-:- func bound_insts_to_pieces(inst_msg_info, set(inst_name),
-    bound_inst, list(bound_inst), list(format_component))
-    = list(format_component).
+:- pred bound_insts_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    bound_inst::in, list(bound_inst)::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
-bound_insts_to_pieces(Info, Expansions0,
-        HeadBoundInst, TailBoundInsts, Suffix) = Pieces :-
+bound_insts_to_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
+        Suffix, Pieces) :-
     (
         TailBoundInsts = [],
         HeadSuffix = Suffix
     ;
         TailBoundInsts = [HeadTailBoundInst | TailTailBoundInsts],
-        TailPieces = bound_insts_to_pieces(Info, Expansions0,
-            HeadTailBoundInst, TailTailBoundInsts, Suffix),
+        bound_insts_to_pieces(Info, !Expansions,
+            HeadTailBoundInst, TailTailBoundInsts, Suffix, TailPieces),
         HeadSuffix = [nl_indent_delta(-1), fixed(";"), nl_indent_delta(1) |
             TailPieces]
     ),
@@ -356,22 +385,23 @@ bound_insts_to_pieces(Info, Expansions0,
         ConsId = ConsId0
     ),
     mercury_format_cons_id(does_not_need_brackets, ConsId, "", ConsIdStr),
-    Pieces = name_and_arg_insts_to_pieces(Info, Expansions0,
-        ConsIdStr, ArgInsts, HeadSuffix).
+    name_and_arg_insts_to_pieces(Info, !Expansions, ConsIdStr, ArgInsts,
+        HeadSuffix, Pieces).
 
-:- func bound_insts_to_inline_pieces(inst_msg_info, set(inst_name),
-    bound_inst, list(bound_inst), list(format_component))
-    = list(format_component).
+:- pred bound_insts_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    bound_inst::in, list(bound_inst)::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
-bound_insts_to_inline_pieces(Info, Expansions0,
-        HeadBoundInst, TailBoundInsts, Suffix) = Pieces :-
+bound_insts_to_inline_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
+        Suffix, Pieces) :-
     (
         TailBoundInsts = [],
         HeadSuffix = Suffix
     ;
         TailBoundInsts = [HeadTailBoundInst | TailTailBoundInsts],
-        TailPieces = bound_insts_to_inline_pieces(Info,
-            Expansions0, HeadTailBoundInst, TailTailBoundInsts, Suffix),
+        bound_insts_to_inline_pieces(Info, !Expansions,
+            HeadTailBoundInst, TailTailBoundInsts, Suffix, TailPieces),
         HeadSuffix = [fixed(";") | TailPieces]
     ),
     HeadBoundInst = bound_functor(ConsId0, ArgInsts),
@@ -387,205 +417,246 @@ bound_insts_to_inline_pieces(Info, Expansions0,
         ConsId = ConsId0
     ),
     mercury_format_cons_id(does_not_need_brackets, ConsId, "", ConsIdStr),
-    Pieces = name_and_arg_insts_to_inline_pieces(Info,
-        Expansions0, ConsIdStr, ArgInsts, HeadSuffix).
+    name_and_arg_insts_to_inline_pieces(Info, !Expansions, ConsIdStr, ArgInsts,
+        HeadSuffix, Pieces).
 
 %---------------------------------------------------------------------------%
 
-:- func inst_name_to_pieces(inst_msg_info, set(inst_name),
-    inst_name, list(format_component)) = list(format_component).
+:- pred inst_name_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out, inst_name::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
-inst_name_to_pieces(Info, Expansions0, InstName, Suffix)
-        = Pieces :-
-    (
-        InstName = user_inst(SymName, ArgInsts),
-        ModuleInfo = Info ^ imi_module_info,
+inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
+    ( if have_we_expanded_inst_name(!.Expansions, InstName, PastPieces) then
+        Pieces = PastPieces
+    else
         (
-            SymName = qualified(ModuleName, BaseName),
-            module_info_get_name(ModuleInfo, CurModuleName),
-            ( if ModuleName = CurModuleName then
+            InstName = user_inst(SymName, ArgInsts),
+            ModuleInfo = Info ^ imi_module_info,
+            (
+                SymName = qualified(ModuleName, BaseName),
+                module_info_get_name(ModuleInfo, CurModuleName),
+                ( if ModuleName = CurModuleName then
+                    SymNameStr = BaseName
+                else
+                    SymNameStr = sym_name_to_string(SymName)
+                )
+            ;
+                SymName = unqualified(BaseName),
                 SymNameStr = BaseName
-            else
-                SymNameStr = sym_name_to_string(SymName)
-            )
-        ;
-            SymName = unqualified(BaseName),
-            SymNameStr = BaseName
-        ),
-        set.insert(InstName, Expansions0, Expansions1),
-        ExpandInsts = Info ^ imi_expand_named_insts,
-        (
-            ExpandInsts = dont_expand_named_insts,
-            Pieces = name_and_arg_insts_to_pieces(Info,
-                Expansions1, SymNameStr, ArgInsts, Suffix)
-        ;
-            ExpandInsts = expand_named_insts,
-            % We do the circularity check by looking up InstName
-            % in Expansions0, but do everything else with Expansions1.
-            ( if set.contains(Expansions0, InstName) then
-                NamePieces = name_and_arg_insts_to_pieces(Info,
-                    Expansions1, SymNameStr, ArgInsts, Suffix),
-                Pieces = [words("named inst") | NamePieces]
-            else
+            ),
+            name_and_arg_insts_to_pieces(Info, !Expansions,
+                SymNameStr, ArgInsts, [], NamePieces),
+            NamedNamePieces = [words("named inst") | NamePieces],
+            record_user_inst_name(InstName, NamedNamePieces, !Expansions),
+
+            ExpandInsts = Info ^ imi_expand_named_insts,
+            (
+                ExpandInsts = dont_expand_named_insts,
+                % XXX Would NamedNamePieces look better in the output?
+                Pieces = NamePieces ++ Suffix
+            ;
+                ExpandInsts = expand_named_insts,
                 inst_lookup(ModuleInfo, InstName, EqvInst),
                 ( if
                     ( EqvInst = defined_inst(InstName)
                     ; EqvInst = abstract_inst(SymName, ArgInsts)
                     )
                 then
-                    NamePieces = name_and_arg_insts_to_pieces(Info,
-                        Expansions1, SymNameStr, ArgInsts, Suffix),
-                    Pieces = [words("named inst") | NamePieces]
+                    % XXX Would NamePieces look better in the output?
+                    Pieces = NamedNamePieces ++ Suffix
                 else
-                    NamePieces = name_and_arg_insts_to_pieces(Info,
-                        Expansions1, SymNameStr, ArgInsts, [suffix(","), nl]),
-                    ExpandedPieces = inst_to_pieces(Info, Expansions1,
-                        EqvInst, Suffix),
-                    Pieces = [words("named inst") | NamePieces] ++
-                        [words("which expands to"), nl | ExpandedPieces]
+                    inst_to_pieces(Info, !Expansions, EqvInst,
+                        Suffix, EqvPieces),
+                    Pieces = NamedNamePieces ++ [suffix(","), nl,
+                        words("which expands to"),
+                        nl_indent_delta(1) | EqvPieces] ++
+                        [nl_indent_delta(-1)]
                 )
             )
-        )
-    ;
-        InstName = typed_inst(_Type, SubInstName),
-        % The user doesn't care about the typed_inst wrapper.
-        Pieces = inst_name_to_pieces(Info, Expansions0, SubInstName, Suffix)
-    ;
-        InstName = typed_ground(Uniq, _Type),
-        % The user doesn't care about the typed_ground wrapper.
-        EqvInst = ground(Uniq, none_or_default_func),
-        Pieces = inst_to_pieces(Info, Expansions0, EqvInst, Suffix)
-    ;
-        (
-            InstName = unify_inst(_, _, _, _),
-            InstNameStr = "$unify_inst"
         ;
-            InstName = merge_inst(_, _),
-            InstNameStr = "$merge_inst"
+            InstName = typed_inst(_Type, SubInstName),
+            % The user doesn't care about the typed_inst wrapper.
+            inst_name_to_pieces(Info, !Expansions, SubInstName, Suffix, Pieces)
         ;
-            InstName = ground_inst(_, _, _, _),
-            InstNameStr = "$ground_inst"
+            InstName = typed_ground(Uniq, _Type),
+            % The user doesn't care about the typed_ground wrapper.
+            EqvInst = ground(Uniq, none_or_default_func),
+            inst_to_pieces(Info, !Expansions, EqvInst, Suffix, Pieces)
         ;
-            InstName = any_inst(_, _, _, _),
-            InstNameStr = "$any_inst"
-        ;
-            InstName = shared_inst(_),
-            InstNameStr = "$shared_inst"
-        ;
-            InstName = mostly_uniq_inst(_),
-            InstNameStr = "$mostly_uniq_inst"
-        ),
-        ModuleInfo = Info ^ imi_module_info,
-        inst_lookup(ModuleInfo, InstName, EqvInst),
-        ( if EqvInst = defined_inst(InstName) then
-            Pieces = [fixed(InstNameStr) | Suffix]
-        else
-            Pieces = inst_to_pieces(Info, Expansions0,
-                EqvInst, Suffix)
+            (
+                InstName = unify_inst(_, _, _, _),
+                InstNameStr = "$unify_inst"
+            ;
+                InstName = merge_inst(_, _),
+                InstNameStr = "$merge_inst"
+            ;
+                InstName = ground_inst(_, _, _, _),
+                InstNameStr = "$ground_inst"
+            ;
+                InstName = any_inst(_, _, _, _),
+                InstNameStr = "$any_inst"
+            ;
+                InstName = shared_inst(_),
+                InstNameStr = "$shared_inst"
+            ;
+                InstName = mostly_uniq_inst(_),
+                InstNameStr = "$mostly_uniq_inst"
+            ),
+            ModuleInfo = Info ^ imi_module_info,
+            inst_lookup(ModuleInfo, InstName, EqvInst),
+            ( if EqvInst = defined_inst(InstName) then
+                Pieces = [fixed(InstNameStr) | Suffix]
+            else
+                record_internal_inst_name(InstName, InstNameStr, InstNumPieces,
+                    !Expansions),
+                inst_to_inline_pieces(Info, !Expansions, EqvInst, Suffix,
+                    EqvPieces),
+                Pieces = InstNumPieces ++ [suffix(","), nl,
+                    words("which expands to"),
+                    nl_indent_delta(1) | EqvPieces] ++ [nl_indent_delta(-1)]
+            )
         )
     ).
 
-:- func inst_name_to_inline_pieces(inst_msg_info, set(inst_name),
-    inst_name, list(format_component)) = list(format_component).
+:- pred inst_name_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out, inst_name::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
-inst_name_to_inline_pieces(Info, Expansions0,
-        InstName, Suffix) = Pieces :-
-    (
-        InstName = user_inst(SymName, ArgInsts),
-        ModuleInfo = Info ^ imi_module_info,
+inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
+    ( if have_we_expanded_inst_name(!.Expansions, InstName, PastPieces) then
+        Pieces = PastPieces
+    else
         (
-            SymName = qualified(ModuleName, BaseName),
-            module_info_get_name(ModuleInfo, CurModuleName),
-            ( if ModuleName = CurModuleName then
+            InstName = user_inst(SymName, ArgInsts),
+            ModuleInfo = Info ^ imi_module_info,
+            (
+                SymName = qualified(ModuleName, BaseName),
+                module_info_get_name(ModuleInfo, CurModuleName),
+                ( if ModuleName = CurModuleName then
+                    SymNameStr = BaseName
+                else
+                    SymNameStr = sym_name_to_string(SymName)
+                )
+            ;
+                SymName = unqualified(BaseName),
                 SymNameStr = BaseName
-            else
-                SymNameStr = sym_name_to_string(SymName)
-            )
-        ;
-            SymName = unqualified(BaseName),
-            SymNameStr = BaseName
-        ),
-        set.insert(InstName, Expansions0, Expansions1),
-        ExpandInsts = Info ^ imi_expand_named_insts,
-        (
-            ExpandInsts = dont_expand_named_insts,
-            Pieces = name_and_arg_insts_to_pieces(Info,
-                Expansions1, SymNameStr, ArgInsts, Suffix)
-        ;
-            ExpandInsts = expand_named_insts,
-            % We do the circularity check by looking up InstName
-            % in Expansions0, but do everything else with Expansions1.
-            ( if set.contains(Expansions0, InstName) then
-                NamePieces = name_and_arg_insts_to_inline_pieces(Info,
-                    Expansions1, SymNameStr, ArgInsts, Suffix),
-                Pieces = [words("named inst") | NamePieces]
-            else
+            ),
+            name_and_arg_insts_to_inline_pieces(Info, !Expansions,
+                SymNameStr, ArgInsts, [], NamePieces),
+            NamedNamePieces = [words("named inst") | NamePieces],
+            record_user_inst_name(InstName, NamedNamePieces, !Expansions),
+
+            ExpandInsts = Info ^ imi_expand_named_insts,
+            (
+                ExpandInsts = dont_expand_named_insts,
+                % XXX Would NamedNamePieces look better in the output?
+                Pieces = NamePieces ++ Suffix
+            ;
+                ExpandInsts = expand_named_insts,
                 inst_lookup(ModuleInfo, InstName, EqvInst),
                 ( if
                     ( EqvInst = defined_inst(InstName)
                     ; EqvInst = abstract_inst(SymName, ArgInsts)
                     )
                 then
-                    NamePieces = name_and_arg_insts_to_inline_pieces(Info,
-                        Expansions1, SymNameStr, ArgInsts, Suffix),
-                    Pieces = [words("named inst") | NamePieces]
+                    % XXX Would NamePieces look better in the output?
+                    Pieces = NamedNamePieces ++ Suffix
                 else
-                    NamePieces = name_and_arg_insts_to_inline_pieces(Info,
-                        Expansions1, SymNameStr, ArgInsts, [suffix(","), nl]),
-                    ExpandedPieces = inst_to_inline_pieces(Info,
-                        Expansions1, EqvInst, Suffix),
-                    Pieces = [words("named inst") | NamePieces] ++
-                        [words("which expands to"), nl | ExpandedPieces]
+                    inst_to_inline_pieces(Info, !Expansions, EqvInst,
+                        Suffix, ExpandedPieces),
+                    Pieces = NamedNamePieces ++ [suffix(","),
+                        words("which expands to"),
+                        prefix("<") | ExpandedPieces] ++ [suffix(">")]
                 )
             )
-        )
-    ;
-        InstName = typed_inst(_Type, SubInstName),
-        % The user doesn't care about the typed_inst wrapper.
-        Pieces = inst_name_to_inline_pieces(Info, Expansions0,
-            SubInstName, Suffix)
-    ;
-        InstName = typed_ground(Uniq, _Type),
-        % The user doesn't care about the typed_ground wrapper.
-        EqvInst = ground(Uniq, none_or_default_func),
-        Pieces = inst_to_inline_pieces(Info, Expansions0, EqvInst, Suffix)
-    ;
-        (
-            InstName = unify_inst(_, _, _, _),
-            InstNameStr = "$unify_inst"
         ;
-            InstName = merge_inst(_, _),
-            InstNameStr = "$merge_inst"
+            InstName = typed_inst(_Type, SubInstName),
+            % The user doesn't care about the typed_inst wrapper,
+            % and the wrapper cannot make an inst recursive.
+            inst_name_to_inline_pieces(Info, !Expansions, SubInstName, Suffix,
+                Pieces)
         ;
-            InstName = ground_inst(_, _, _, _),
-            InstNameStr = "$ground_inst"
+            InstName = typed_ground(Uniq, _Type),
+            % The user doesn't care about the typed_ground wrapper,
+            % and the wrapper cannot make an inst recursive.
+            EqvInst = ground(Uniq, none_or_default_func),
+            inst_to_inline_pieces(Info, !Expansions, EqvInst, Suffix, Pieces)
         ;
-            InstName = any_inst(_, _, _, _),
-            InstNameStr = "$any_inst"
-        ;
-            InstName = shared_inst(_),
-            InstNameStr = "$shared_inst"
-        ;
-            InstName = mostly_uniq_inst(_),
-            InstNameStr = "$mostly_uniq_inst"
-        ),
-        ModuleInfo = Info ^ imi_module_info,
-        inst_lookup(ModuleInfo, InstName, EqvInst),
-        ( if EqvInst = defined_inst(InstName) then
-            Pieces = [fixed(InstNameStr) | Suffix]
-        else
-            Pieces = inst_to_inline_pieces(Info, Expansions0,
-                EqvInst, Suffix)
+            (
+                InstName = unify_inst(_, _, _, _),
+                InstNameStr = "$unify_inst"
+            ;
+                InstName = merge_inst(_, _),
+                InstNameStr = "$merge_inst"
+            ;
+                InstName = ground_inst(_, _, _, _),
+                InstNameStr = "$ground_inst"
+            ;
+                InstName = any_inst(_, _, _, _),
+                InstNameStr = "$any_inst"
+            ;
+                InstName = shared_inst(_),
+                InstNameStr = "$shared_inst"
+            ;
+                InstName = mostly_uniq_inst(_),
+                InstNameStr = "$mostly_uniq_inst"
+            ),
+            ModuleInfo = Info ^ imi_module_info,
+            inst_lookup(ModuleInfo, InstName, EqvInst),
+            ( if EqvInst = defined_inst(InstName) then
+                Pieces = [fixed(InstNameStr) | Suffix]
+            else
+                record_internal_inst_name(InstName, InstNameStr, InstNumPieces,
+                    !Expansions),
+                inst_to_inline_pieces(Info, !Expansions, EqvInst, Suffix,
+                    EqvPieces),
+                Pieces = InstNumPieces ++ [suffix(","),
+                    words("which expands to"),
+                    prefix("<") | EqvPieces] ++ [suffix(">")]
+            )
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-:- func pred_inst_info_to_pieces(inst_msg_info, set(inst_name),
-    string, uniqueness, pred_inst_info) = list(format_component).
+:- pred have_we_expanded_inst_name(expansions_info::in, inst_name::in,
+    list(format_component)::out) is semidet.
 
-pred_inst_info_to_pieces(Info, Expansions0, AnyPrefix, Uniq,
-        PredInstInfo) = Pieces :-
+have_we_expanded_inst_name(Expansions, InstName, PastPieces) :-
+    Expansions = expansions_info(ExpansionsMap, _),
+    map.search(ExpansionsMap, InstName, PastPieces).
+
+:- pred record_user_inst_name(inst_name::in, list(format_component)::in,
+    expansions_info::in, expansions_info::out) is det.
+
+record_user_inst_name(InstName, NamedNamePieces, !Expansions) :-
+    !.Expansions = expansions_info(ExpansionsMap0, ExpansionsCounter0),
+    map.det_insert(InstName, NamedNamePieces, ExpansionsMap0, ExpansionsMap),
+    !:Expansions = expansions_info(ExpansionsMap, ExpansionsCounter0).
+
+:- pred record_internal_inst_name(inst_name::in, string::in,
+    list(format_component)::out,
+    expansions_info::in, expansions_info::out) is det.
+
+record_internal_inst_name(InstName, InstNameStr, InstNumPieces, !Expansions) :-
+    !.Expansions = expansions_info(ExpansionsMap0, ExpansionsCounter0),
+    counter.allocate(InstNum, ExpansionsCounter0, ExpansionsCounter),
+    InstNameNumStr = "internal " ++ InstNameStr ++
+        " #" ++ int_to_string(InstNum),
+    InstNumPieces = [fixed(InstNameNumStr)],
+    map.det_insert(InstName, InstNumPieces, ExpansionsMap0, ExpansionsMap),
+    !:Expansions = expansions_info(ExpansionsMap, ExpansionsCounter).
+
+%---------------------------------------------------------------------------%
+
+:- pred pred_inst_info_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    string::in, uniqueness::in, pred_inst_info::in,
+    list(format_component)::out) is det.
+
+pred_inst_info_to_pieces(Info, !Expansions, AnyPrefix, Uniq,
+        PredInstInfo, Pieces) :-
     PredInstInfo = pred_inst_info(PredOrFunc, ArgModes, _MaybeArgRegs, Det),
     (
         Uniq = shared,
@@ -599,8 +670,7 @@ pred_inst_info_to_pieces(Info, Expansions0, AnyPrefix, Uniq,
         mercury_format_uniqueness(Uniq, "ground", "", BoundName),
         UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
     ),
-    ArgModesPieces = list.map(
-        mode_to_pieces(Info, Expansions0), ArgModes),
+    modes_to_pieces(Info, !Expansions, ArgModes, ArgModesPieces),
     mercury_format_det(Det, "is ", IsDetStr),
     % XXX Should we print each argument mode on a separate line?
     (
@@ -643,12 +713,13 @@ pred_inst_info_to_pieces(Info, Expansions0, AnyPrefix, Uniq,
     ),
     Pieces = UniqPieces ++ ModesDetPieces.
 
-:- func pred_inst_info_to_inline_pieces(inst_msg_info,
-    set(inst_name), string, uniqueness, pred_inst_info)
-    = list(format_component).
+:- pred pred_inst_info_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    string::in, uniqueness::in, pred_inst_info::in,
+    list(format_component)::out) is det.
 
-pred_inst_info_to_inline_pieces(Info, Expansions0,
-        AnyPrefix, Uniq, PredInstInfo) = Pieces :-
+pred_inst_info_to_inline_pieces(Info, !Expansions, AnyPrefix, Uniq,
+        PredInstInfo, Pieces) :-
     PredInstInfo = pred_inst_info(PredOrFunc, ArgModes, _MaybeArgRegs, Det),
     (
         Uniq = shared,
@@ -662,8 +733,7 @@ pred_inst_info_to_inline_pieces(Info, Expansions0,
         mercury_format_uniqueness(Uniq, "ground", "", BoundName),
         UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
     ),
-    ArgModesPieces = list.map(
-        mode_to_inline_pieces(Info, Expansions0), ArgModes),
+    modes_to_inline_pieces(Info, !Expansions, ArgModes, ArgModesPieces),
     mercury_format_det(Det, "is ", IsDetStr),
     (
         PredOrFunc = pf_predicate,
@@ -706,10 +776,31 @@ pred_inst_info_to_inline_pieces(Info, Expansions0,
 
 %---------------------------------------------------------------------------%
 
-:- func mode_to_pieces(inst_msg_info, set(inst_name), mer_mode)
-    = list(format_component).
+:- pred modes_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    list(mer_mode)::in, list(list(format_component))::out) is det.
 
-mode_to_pieces(Info, Expansions0, Mode) = Pieces :-
+modes_to_pieces(_Info, !Expansions, [], []).
+modes_to_pieces(Info, !Expansions, [HeadMode | TailModes],
+        [HeadPieces | TailPieces]) :-
+    mode_to_pieces(Info, !Expansions, HeadMode, HeadPieces),
+    modes_to_pieces(Info, !Expansions, TailModes, TailPieces).
+
+:- pred modes_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    list(mer_mode)::in, list(list(format_component))::out) is det.
+
+modes_to_inline_pieces(_Info, !Expansions, [], []).
+modes_to_inline_pieces(Info, !Expansions, [HeadMode | TailModes],
+        [HeadPieces | TailPieces]) :-
+    mode_to_inline_pieces(Info, !Expansions, HeadMode, HeadPieces),
+    modes_to_inline_pieces(Info, !Expansions, TailModes, TailPieces).
+
+:- pred mode_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    mer_mode::in, list(format_component)::out) is det.
+
+mode_to_pieces(Info, !Expansions, Mode, Pieces) :-
     (
         Mode = from_to_mode(InitInst0, FinalInst0),
         % XXX We should strip these wrappers everywhere in both insts,
@@ -766,10 +857,8 @@ mode_to_pieces(Info, Expansions0, Mode) = Pieces :-
         then
             Pieces = [fixed("muo")]
         else
-            InitPieces = inst_to_pieces(Info, Expansions0,
-                InitInst, []),
-            FinalPieces = inst_to_pieces(Info, Expansions0,
-                FinalInst, []),
+            inst_to_pieces(Info, !Expansions, InitInst, [], InitPieces),
+            inst_to_pieces(Info, !Expansions, FinalInst, [], FinalPieces),
             Pieces = InitPieces ++ [fixed(">>") | FinalPieces]
         )
     ;
@@ -780,9 +869,7 @@ mode_to_pieces(Info, Expansions0, Mode) = Pieces :-
             Pieces = [fixed(BaseModeName)]
         ;
             ArgInsts = [_ | _],
-            ArgInstPieces = list.map(
-                arg_inst_to_pieces(Info, Expansions0),
-                ArgInsts),
+            arg_insts_to_pieces(Info, !Expansions, ArgInsts, ArgInstPieces),
             Pieces =
                 [prefix(BaseModeName ++ "(") |
                     strict_component_lists_to_pieces(ArgInstPieces)] ++
@@ -790,10 +877,11 @@ mode_to_pieces(Info, Expansions0, Mode) = Pieces :-
         )
     ).
 
-:- func mode_to_inline_pieces(inst_msg_info, set(inst_name),
-    mer_mode) = list(format_component).
+:- pred mode_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    mer_mode::in, list(format_component)::out) is det.
 
-mode_to_inline_pieces(Info, Expansions0, Mode) = Pieces :-
+mode_to_inline_pieces(Info, !Expansions, Mode, Pieces) :-
     (
         Mode = from_to_mode(InitInst0, FinalInst0),
         % XXX We should strip these wrappers everywhere in both insts,
@@ -832,10 +920,9 @@ mode_to_inline_pieces(Info, Expansions0, Mode) = Pieces :-
         then
             Pieces = [fixed("uo")]
         else
-            InitPieces = inst_to_inline_pieces(Info,
-                Expansions0, InitInst, []),
-            FinalPieces = inst_to_inline_pieces(Info,
-                Expansions0, FinalInst, []),
+            inst_to_inline_pieces(Info, !Expansions, InitInst, [], InitPieces),
+            inst_to_inline_pieces(Info, !Expansions, FinalInst, [],
+                FinalPieces),
             Pieces = InitPieces ++ [fixed(">>") | FinalPieces]
         )
     ;
@@ -846,9 +933,8 @@ mode_to_inline_pieces(Info, Expansions0, Mode) = Pieces :-
             Pieces = [fixed(BaseModeName)]
         ;
             ArgInsts = [_ | _],
-            ArgInstPieces = list.map(
-                arg_inst_to_inline_pieces(Info, Expansions0),
-                ArgInsts),
+            arg_insts_to_inline_pieces(Info, !Expansions,
+                ArgInsts, ArgInstPieces),
             Pieces =
                 [prefix(BaseModeName ++ "(") |
                     strict_component_lists_to_pieces(ArgInstPieces)] ++
@@ -856,58 +942,65 @@ mode_to_inline_pieces(Info, Expansions0, Mode) = Pieces :-
         )
     ).
 
-:- func arg_inst_to_pieces(inst_msg_info, set(inst_name), mer_inst)
-    = list(format_component).
+:- pred arg_insts_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    list(mer_inst)::in, list(list(format_component))::out) is det.
 
-arg_inst_to_pieces(Info, Expansions0, Inst) =
-    inst_to_pieces(Info, Expansions0, Inst, []).
+arg_insts_to_pieces(_Info, !Expansions, [], []).
+arg_insts_to_pieces(Info, !Expansions, [HeadArgInst | TailArgInsts],
+        [HeadPieces | TailPieces]) :-
+    inst_to_pieces(Info, !Expansions, HeadArgInst, [], HeadPieces),
+    arg_insts_to_pieces(Info, !Expansions, TailArgInsts, TailPieces).
 
-:- func arg_inst_to_inline_pieces(inst_msg_info, set(inst_name),
-    mer_inst) = list(format_component).
+:- pred arg_insts_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    list(mer_inst)::in, list(list(format_component))::out) is det.
 
-arg_inst_to_inline_pieces(Info, Expansions0, Inst) =
-    inst_to_inline_pieces(Info, Expansions0, Inst, []).
+arg_insts_to_inline_pieces(_Info, !Expansions, [], []).
+arg_insts_to_inline_pieces(Info, !Expansions, [HeadArgInst | TailArgInsts],
+        [HeadPieces | TailPieces]) :-
+    inst_to_inline_pieces(Info, !Expansions, HeadArgInst, [], HeadPieces),
+    arg_insts_to_inline_pieces(Info, !Expansions, TailArgInsts, TailPieces).
 
 %---------------------------------------------------------------------------%
 
-:- func name_and_arg_insts_to_pieces(inst_msg_info, set(inst_name),
-    string, list(mer_inst), list(format_component)) = list(format_component).
+:- pred name_and_arg_insts_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    string::in, list(mer_inst)::in, list(format_component)::in,
+    list(format_component)::out) is det.
 
-name_and_arg_insts_to_pieces(Info, Expansions0, Name,
-        ArgInsts, Suffix) = Pieces :-
+name_and_arg_insts_to_pieces(Info, !Expansions, Name, ArgInsts, Suffix,
+        Pieces) :-
     (
         ArgInsts = [],
         Pieces = [fixed(Name) | Suffix]
     ;
         ArgInsts = [HeadArgInst | TailArgInsts],
-        ArgPieces = insts_to_pieces(Info, Expansions0,
-            HeadArgInst, TailArgInsts, [nl_indent_delta(-1)]),
-        ( if
-            summarize_a_few_arg_insts(ArgPieces, 4, ArgSummary)
-        then
+        insts_to_pieces(Info, !Expansions, HeadArgInst, TailArgInsts,
+            [], ArgPieces),
+        ( if summarize_a_few_arg_insts(ArgPieces, 4, ArgSummary) then
             Pieces = [fixed(Name), suffix("(" ++ ArgSummary ++ ")") | Suffix]
         else
             Pieces = [fixed(Name), suffix("("), nl_indent_delta(1)] ++
-                ArgPieces ++ [fixed(")") | Suffix]
+                ArgPieces ++ [nl_indent_delta(-1), fixed(")") | Suffix]
         )
     ).
 
-:- func name_and_arg_insts_to_inline_pieces(inst_msg_info,
-    set(inst_name), string, list(mer_inst), list(format_component))
-    = list(format_component).
+:- pred name_and_arg_insts_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    string::in, list(mer_inst)::in, list(format_component)::in,
+    list(format_component)::out) is det.
 
-name_and_arg_insts_to_inline_pieces(Info, Expansions0,
-        Name, ArgInsts, Suffix) = Pieces :-
+name_and_arg_insts_to_inline_pieces(Info, !Expansions, Name, ArgInsts, Suffix,
+        Pieces) :-
     (
         ArgInsts = [],
         Pieces = [fixed(Name) | Suffix]
     ;
         ArgInsts = [HeadArgInst | TailArgInsts],
-        ArgPieces = insts_to_inline_pieces(Info, Expansions0,
-            HeadArgInst, TailArgInsts, []),
-        ( if
-            summarize_a_few_arg_insts(ArgPieces, 4, ArgSummary)
-        then
+        insts_to_inline_pieces(Info, !Expansions, HeadArgInst, TailArgInsts,
+            [], ArgPieces),
+        ( if summarize_a_few_arg_insts(ArgPieces, 4, ArgSummary) then
             Pieces = [fixed(Name ++ "(" ++ ArgSummary ++ ")") | Suffix]
         else
             Pieces = [prefix(Name ++ "(") | ArgPieces] ++
@@ -924,7 +1017,7 @@ summarize_a_few_arg_insts(Pieces, Left, Summary) :-
     Left > 0,
     Pieces = [fixed(FirstFixed) | AfterFirstFixed],
     (
-        AfterFirstFixed = [nl_indent_delta(-1)],
+        AfterFirstFixed = [],
         Summary = FirstFixed
     ;
         AfterFirstFixed = [suffix(","), nl |  TailPieces],

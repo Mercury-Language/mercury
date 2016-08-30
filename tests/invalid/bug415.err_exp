@@ -1,0 +1,42 @@
+bug415.m:046: In clause for `ip_chunk_2(in(list.list((I =< ground))), in,
+bug415.m:046:   in(list.list((I =< ground))), in, out(list.list((I =<
+bug415.m:046:   ground))))':
+bug415.m:046:   mode error: argument 6 became too instantiated.
+bug415.m:046:   Final instantiatedness of `HeadVar__5' was
+bug415.m:046:     bound(
+bug415.m:046:       []
+bug415.m:046:     ;
+bug415.m:046:       '[|]'(
+bug415.m:046:         ground,
+bug415.m:046:         bound(
+bug415.m:046:           []
+bug415.m:046:         ;
+bug415.m:046:           '[|]'(
+bug415.m:046:             ( I =< ground ),
+bug415.m:046:             internal $merge_inst #1,
+bug415.m:046:             which expands to
+bug415.m:046:               bound([] ; '[|]'(( I =< ground ),
+bug415.m:046:               internal $merge_inst #1))
+bug415.m:046:           )
+bug415.m:046:         )
+bug415.m:046:       )
+bug415.m:046:     ),
+bug415.m:046:   expected final instantiatedness was
+bug415.m:046:     named inst list.list(
+bug415.m:046:       ( I =< ground )
+bug415.m:046:     ),
+bug415.m:046:     which expands to
+bug415.m:046:       named inst list.list_skel(
+bug415.m:046:         ( I =< ground )
+bug415.m:046:       ),
+bug415.m:046:       which expands to
+bug415.m:046:         bound(
+bug415.m:046:           []
+bug415.m:046:         ;
+bug415.m:046:           '[|]'(
+bug415.m:046:             ( I =< ground ),
+bug415.m:046:             named inst list.list_skel(
+bug415.m:046:               ( I =< ground )
+bug415.m:046:             )
+bug415.m:046:           )
+bug415.m:046:         ).
