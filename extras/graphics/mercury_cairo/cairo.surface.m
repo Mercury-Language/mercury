@@ -135,7 +135,6 @@
     cairo_surface_mark_dirty(((MCAIRO_surface *)Surface)->mcairo_raw_surface);
 ").
 
-
 :- pragma foreign_proc("C",
     mark_dirty_rectangle(Surface::in, X::in, Y::in, Width::in, Height::in,
         _IO0::di, _IO::uo),

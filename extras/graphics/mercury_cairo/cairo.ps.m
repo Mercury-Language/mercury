@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
-% 
+%
 % This sub-module contains support for rendering PostScript documents.
 %
 %---------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
 :- type ps_level
     --->    ps_level_2
             % The language level 2 of the PostScript specification.
-          
+
     ;       ps_level_3.
             % The language level 3 of the PostScript specification.
 
@@ -47,7 +47,7 @@
     % exception if any other error occurs.
     %
 :- pred create_surface(string::in, float::in, float::in, ps_surface::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % ps.restrict_to_level(Surface, Level, !IO):
     % Restrict Surface to the given Level of the PostScript specification.
@@ -107,7 +107,7 @@
 ").
 
 :- pragma foreign_type("C", ps_surface, "MCAIRO_surface *",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 
 :- instance surface(ps_surface) where [].
 
@@ -152,18 +152,18 @@ create_surface(FileName, Width, Height, Surface, !IO) :-
     bool::out, cairo.status::out, ps_surface::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	create_surface_2(FileName::in, W::in, H::in,
+    create_surface_2(FileName::in, W::in, H::in,
         Supported::out, Status::out, Surface::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
 #if defined(CAIRO_HAS_PS_SURFACE)
 
-    cairo_surface_t		*raw_surface;
+    cairo_surface_t     *raw_surface;
 
     Supported = MR_YES;
     raw_surface = cairo_ps_surface_create(FileName, W, H);
     Status = cairo_surface_status(raw_surface);
-    
+
     if (Status == CAIRO_STATUS_SUCCESS) {
         Surface = MR_GC_NEW(MCAIRO_surface);
         Surface->mcairo_raw_surface = raw_surface;
@@ -181,12 +181,12 @@ create_surface(FileName, Width, Height, Surface, !IO) :-
 
 :- pragma foreign_proc("C",
     restrict_to_level(Surface::in, Level::in, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
 #if defined(CAIRO_HAS_PS_SURFACE)
     cairo_ps_surface_restrict_to_level(Surface->mcairo_raw_surface, Level);
 #else
-   MR_external_fatal_error(\"Mercury cairo\",
+    MR_external_fatal_error(\"Mercury cairo\",
         \" PostScript surfaces are not supported by this installation\");
 #endif
 ").
@@ -220,7 +220,7 @@ create_surface(FileName, Width, Height, Surface, !IO) :-
 #if defined(CAIRO_HAS_PS_SURFACE)
     cairo_ps_surface_set_size(Surface->mcairo_raw_surface, W, H);
 #endif
-").    
+").
 
 :- pragma foreign_proc("C",
     dsc_begin_setup(Surface::in, _IO0::di, _IO::uo),

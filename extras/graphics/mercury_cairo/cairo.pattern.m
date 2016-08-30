@@ -7,12 +7,12 @@
 %-----------------------------------------------------------------------------%
 %
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
-% 
+%
 % This sub-module contains predicates and types that deal with patterns.
-%  
+%
 % TODO: there are a few unimplemented predicates in this module.
 % (Search for NYI.)
-%   
+%
 %---------------------------------------------------------------------------%
 
 :- module cairo.pattern.
@@ -25,16 +25,16 @@
     % surface bounds or outside the gradient geometry).
     %
 :- type extend
-	--->	extend_none
+    --->    extend_none
             % Pixels outside of the source pattern are fully transparent.
 
-	;	    extend_repeat
+    ;       extend_repeat
             % The pattern is tiled by repeating.
-	
-    ;	    extend_reflect
+
+    ;       extend_reflect
             % The pattern is tiled by reflecting at the edges.
-           
-	;	    extend_pad.
+
+    ;       extend_pad.
             % Pixels outside of the pattern copy the closest pixel from
             % the source.
 
@@ -42,59 +42,59 @@
     % from patterns.
     %
 :- type filter
-	--->	filter_fast
+    --->    filter_fast
             % A high-performance filter, with quality similar to
             % filter_nearest.
 
-	;	    filter_good
+    ;       filter_good
             % A reasonable-performance filter, with quality similar to
             % filter_bilinear.
 
-	;	    filter_best
+    ;       filter_best
             % The highest-quality available.  May not b suitable for
             % interactive use.
 
-	;	    filter_nearest
+    ;       filter_nearest
             % Nearest-neighbour filtering.
 
-   	;	    filter_bilinear.
+    ;       filter_bilinear.
             % Linear interpolation in two dimensions.
 
     % Values of this type describe the type of a given pattern.
     %
 :- type pattern_type
-	--->	pattern_type_solid
+    --->    pattern_type_solid
             % The pattern is a solid (uniform) color.
             % It may be opaque or translucent.
 
-	;	    pattern_type_surface
+    ;       pattern_type_surface
             % The pattern is a based on a surface (an image).
 
-	;	    pattern_type_linear
+    ;       pattern_type_linear
             % The pattern is a linear gradient.
 
-	;	    pattern_type_radial.
+    ;       pattern_type_radial.
             % The pattern is a radial gradient.
 
 %---------------------------------------------------------------------------%
 
-	% pattern.add_color_stop_rgb(Pattern, Offset, Red, Green, Blue, !IO):
+    % pattern.add_color_stop_rgb(Pattern, Offset, Red, Green, Blue, !IO):
     % Adds an opaque color stop to a gradient pattern.
     % Offset specifies the location along the gradient's control vector.
     % Throws a cairo.error/0 exception if Pattern is not a gradient pattern.
-	%
-:- pred add_color_stop_rgb(pattern::in, float::in, float::in, float::in,
-	float::in, io::di, io::uo) is det.
-
-	% pattern.add_color_stop_rgba(Pattern, Offset, Red, Green, Blue, Alpha,
-	%   !IO):
     %
-	% Adds a translucent color stop to a gradient pattern.
-	% The offset specifies the location along the gradient's control vector.
+:- pred add_color_stop_rgb(pattern::in, float::in, float::in, float::in,
+    float::in, io::di, io::uo) is det.
+
+    % pattern.add_color_stop_rgba(Pattern, Offset, Red, Green, Blue, Alpha,
+    %   !IO):
+    %
+    % Adds a translucent color stop to a gradient pattern.
+    % The offset specifies the location along the gradient's control vector.
     % Throws a cairo.error/0 exception if Pattern is not a gradient pattern.
-	%
+    %
 :- pred add_color_stop_rgba(pattern::in, float::in, float::in, float::in,
-	float::in, float::in, io::di, io::uo) is det.
+    float::in, float::in, io::di, io::uo) is det.
 
 % TODO: NYI.
 % :- pred get_color_stop_count
@@ -106,7 +106,7 @@
     % Value outside that range will be clamped.
     %
 :- pred create_rgb(float::in, float::in, float::in, pattern::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % pattern.create_rgba(Red, Green, Blue, Alpha, Pattern, !IO):
     % Pattern is a new pattern corresponding to a translucent color.
@@ -114,7 +114,7 @@
     % range [0, 1].  Value outside that range will be clamped.
     %
 :- pred create_rgba(float::in, float::in, float::in, float::in, pattern::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 % :- pred get_rgba - NYI
 
@@ -122,14 +122,14 @@
     % Pattern is a new pattern for Surface.
     %
 :- pred create_for_surface(S::in, pattern::out, io::di, io::uo)
-	is det <= surface(S).
+    is det <= surface(S).
 
     % pattern.create_linear(X0, Y0, X1, Y1, Pattern, !IO):
     % Pattern is a new linear gradient pattern along the line defined by
     % (X0, Y0) and (X1, Y1).
     %
 :- pred create_linear(float::in, float::in, float::in, float::in, pattern::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 % :- pred get_linear_points - NYI.
 
@@ -191,7 +191,7 @@
     extend_repeat  - "CAIRO_EXTEND_REPEAT",
     extend_reflect - "CAIRO_EXTEND_REFLECT",
     extend_pad     - "CAIRO_EXTEND_PAD"
-]). 
+]).
 
 :- pragma foreign_enum("C", filter/0, [
     filter_fast     - "CAIRO_FILTER_FAST",
@@ -202,10 +202,10 @@
 ]).
 
 :- pragma foreign_enum("C", pattern_type/0, [
-	pattern_type_solid   - "CAIRO_PATTERN_TYPE_SOLID",
-	pattern_type_surface - "CAIRO_PATTERN_TYPE_SURFACE",
-	pattern_type_linear  - "CAIRO_PATTERN_TYPE_LINEAR",
-	pattern_type_radial  - "CAIRO_PATTERN_TYPE_RADIAL"
+    pattern_type_solid   - "CAIRO_PATTERN_TYPE_SOLID",
+    pattern_type_surface - "CAIRO_PATTERN_TYPE_SURFACE",
+    pattern_type_linear  - "CAIRO_PATTERN_TYPE_LINEAR",
+    pattern_type_radial  - "CAIRO_PATTERN_TYPE_RADIAL"
 ]).
 
 %---------------------------------------------------------------------------%
@@ -223,15 +223,15 @@ add_color_stop_rgb(Pattern, Offset, R, G, B, !IO) :-
     ).
 
 :- pred add_color_stop_rgb_2(pattern::in, float::in, float::in, float::in,
-	float::in, io::di, io::uo) is det.
+    float::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	add_color_stop_rgb_2(Pattern::in, Offset::in, R::in, G::in, B::in,
-		_IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    add_color_stop_rgb_2(Pattern::in, Offset::in, R::in, G::in, B::in,
+        _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_add_color_stop_rgb(Pattern->mcairo_raw_pattern,
-	    Offset, R, G, B);
+    cairo_pattern_add_color_stop_rgb(Pattern->mcairo_raw_pattern,
+        Offset, R, G, B);
 ").
 
 add_color_stop_rgba(Pattern, Offset, R, G, B, A, !IO) :-
@@ -247,132 +247,132 @@ add_color_stop_rgba(Pattern, Offset, R, G, B, A, !IO) :-
     ).
 
 :- pred add_color_stop_rgba_2(pattern::in, float::in, float::in, float::in,
-	float::in, float::in, io::di, io::uo) is det.
+    float::in, float::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	add_color_stop_rgba_2(Pattern::in, Offset::in,
+    add_color_stop_rgba_2(Pattern::in, Offset::in,
         R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_add_color_stop_rgba(Pattern->mcairo_raw_pattern,
-	    Offset, R, G, B, A);
+    cairo_pattern_add_color_stop_rgba(Pattern->mcairo_raw_pattern,
+        Offset, R, G, B, A);
 ").
 
 :- pragma foreign_proc("C",
-	create_rgb(R::in, G::in, B::in, Pattern::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    create_rgb(R::in, G::in, B::in, Pattern::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_t		*raw_pattern;
-	
-	raw_pattern = cairo_pattern_create_rgb(R, G, B);
-	Pattern = MR_GC_NEW(MCAIRO_pattern);
-	Pattern->mcairo_raw_pattern = raw_pattern;
+    cairo_pattern_t     *raw_pattern;
+
+    raw_pattern = cairo_pattern_create_rgb(R, G, B);
+    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
 
 :- pragma foreign_proc("C",
-	create_rgba(R::in, G::in, B::in, A::in, Pattern::out,
+    create_rgba(R::in, G::in, B::in, A::in, Pattern::out,
         _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_t		*raw_pattern;
-	
-	raw_pattern = cairo_pattern_create_rgba(R, G, B, A);
-	Pattern = MR_GC_NEW(MCAIRO_pattern);
-	Pattern->mcairo_raw_pattern = raw_pattern;
+    cairo_pattern_t     *raw_pattern;
+
+    raw_pattern = cairo_pattern_create_rgba(R, G, B, A);
+    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
 
 :- pragma foreign_proc("C",
-	create_for_surface(Surface::in, Pattern::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    create_for_surface(Surface::in, Pattern::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_t		*raw_pattern;
-	raw_pattern = cairo_pattern_create_for_surface(
-		((MCAIRO_surface *)Surface)->mcairo_raw_surface);
-	Pattern = MR_GC_NEW(MCAIRO_pattern);
-	Pattern->mcairo_raw_pattern = raw_pattern;
+    cairo_pattern_t     *raw_pattern;
+    raw_pattern = cairo_pattern_create_for_surface(
+        ((MCAIRO_surface *)Surface)->mcairo_raw_surface);
+    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
-").	
+").
 
 :- pragma foreign_proc("C",
-	create_linear(X0::in, Y0::in, X1::in, Y1::in, Pattern::out,
+    create_linear(X0::in, Y0::in, X1::in, Y1::in, Pattern::out,
         _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_t		*raw_pattern;
-	
-	raw_pattern = cairo_pattern_create_linear(X0, Y0, X1, Y1);
-	Pattern = MR_GC_NEW(MCAIRO_pattern);
-	Pattern->mcairo_raw_pattern = raw_pattern;
+    cairo_pattern_t     *raw_pattern;
+
+    raw_pattern = cairo_pattern_create_linear(X0, Y0, X1, Y1);
+    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
 
 :- pragma foreign_proc("C",
-	create_radial(Cx0::in, Cy0::in, Radius0::in,
+    create_radial(Cx0::in, Cy0::in, Radius0::in,
         Cx1::in, Cy1::in, Radius1::in,
-	    Pattern::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+        Pattern::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_t		*raw_pattern;
+    cairo_pattern_t     *raw_pattern;
 
-	raw_pattern = cairo_pattern_create_radial(Cx0, Cy0, Radius0,
-	    Cx1, Cy1, Radius1);
-	
-	Pattern = MR_GC_NEW(MCAIRO_pattern);
-	Pattern->mcairo_raw_pattern = raw_pattern;
+    raw_pattern = cairo_pattern_create_radial(Cx0, Cy0, Radius0,
+        Cx1, Cy1, Radius1);
+
+    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
 
 
 :- pragma foreign_proc("C",
-	set_extend(Pattern::in, Extend::in, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    set_extend(Pattern::in, Extend::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_set_extend(Pattern->mcairo_raw_pattern, Extend);
+    cairo_pattern_set_extend(Pattern->mcairo_raw_pattern, Extend);
 ").
 
 :- pragma foreign_proc("C",
-	get_extend(Pattern::in, Extend::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    get_extend(Pattern::in, Extend::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	Extend = cairo_pattern_get_extend(Pattern->mcairo_raw_pattern);
+    Extend = cairo_pattern_get_extend(Pattern->mcairo_raw_pattern);
 ").
 
 :- pragma foreign_proc("C",
-	set_filter(Pattern::in, Filter::in, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    set_filter(Pattern::in, Filter::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_set_filter(Pattern->mcairo_raw_pattern, Filter);
+    cairo_pattern_set_filter(Pattern->mcairo_raw_pattern, Filter);
 ").
 
 :- pragma foreign_proc("C",
-	get_filter(Pattern::in, Filter::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    get_filter(Pattern::in, Filter::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	Filter = cairo_pattern_get_filter(Pattern->mcairo_raw_pattern);
+    Filter = cairo_pattern_get_filter(Pattern->mcairo_raw_pattern);
 ").
 
 :- pragma foreign_proc("C",
-	set_matrix(Pattern::in, Matrix::in, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    set_matrix(Pattern::in, Matrix::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	cairo_pattern_set_matrix(Pattern->mcairo_raw_pattern, Matrix);
+    cairo_pattern_set_matrix(Pattern->mcairo_raw_pattern, Matrix);
 ").
 
 :- pragma foreign_proc("C",
-	get_matrix(Pattern::in, Matrix::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    get_matrix(Pattern::in, Matrix::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	Matrix = MR_GC_NEW(cairo_matrix_t);
-	cairo_pattern_get_matrix(Pattern->mcairo_raw_pattern, Matrix);
+    Matrix = MR_GC_NEW(cairo_matrix_t);
+    cairo_pattern_get_matrix(Pattern->mcairo_raw_pattern, Matrix);
 ").
 
 :- pragma foreign_proc("C",
-	get_type(Pattern::in, PatternType::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    get_type(Pattern::in, PatternType::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-	PatternType = cairo_pattern_get_type(Pattern->mcairo_raw_pattern);
+    PatternType = cairo_pattern_get_type(Pattern->mcairo_raw_pattern);
 ").
 
 %---------------------------------------------------------------------------%

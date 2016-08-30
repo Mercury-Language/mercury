@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
-% 
+%
 % This sub-module contains support for reading and writing PNG images.
 %
 %---------------------------------------------------------------------------%
@@ -30,7 +30,7 @@
     % Throws a cairo.error/0 exception if an error occurs.
     %
 :- pred image_surface_create_from_png(string::in, image_surface::out,
-    io::di, io::uo) is det.	
+    io::di, io::uo) is det.
 
     % write_surface_to_png(Surface, FileName, !IO):
     % Write the contents of Surface to a new file FileName as a PNG image.
@@ -51,9 +51,9 @@
     [promise_pure, will_not_call_mercury],
 "
 #if defined(CAIRO_HAS_PNG_FUNCTIONS)
-   SUCCESS_INDICATOR = MR_TRUE;
+    SUCCESS_INDICATOR = MR_TRUE;
 #else
-   SUCCESS_INDICATOR = MR_FALSE;
+    SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
 
@@ -64,7 +64,7 @@ image_surface_create_from_png(FileName, Surface, !IO) :-
     cairo.surface_status(Surface, Status, !IO),
     (
         Status = status_success
-    ;   
+    ;
         ( Status = status_null_pointer
         ; Status = status_no_memory
         ; Status = status_read_error
@@ -76,14 +76,14 @@ image_surface_create_from_png(FileName, Surface, !IO) :-
     ).
 
 :- pred image_surface_create_from_png_2(string::in, image_surface::out,
-    io::di, io::uo) is det.	
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     image_surface_create_from_png_2(FileName::in, Surface::out,
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    cairo_surface_t	*raw_image;
+    cairo_surface_t *raw_image;
 
     raw_image = cairo_image_surface_create_from_png(FileName);
     Surface = MR_GC_NEW(MCAIRO_surface);
@@ -97,7 +97,7 @@ image_surface_create_from_png(FileName, Surface, !IO) :-
     --->    status_success
     ;       status_no_memory
     ;       status_surface_type_mismatch
-    ;       status_write_error.    
+    ;       status_write_error.
 
 write_surface_to_png(Surface, FileName, !IO) :-
     write_surface_to_png_2(Surface, FileName, Result, !IO),
@@ -120,7 +120,7 @@ write_surface_to_png(Surface, FileName, !IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Result = cairo_surface_write_to_png(
-	    ((MCAIRO_surface *)Surface)->mcairo_raw_surface, FileName);
+        ((MCAIRO_surface *)Surface)->mcairo_raw_surface, FileName);
 ").
 
 %---------------------------------------------------------------------------%

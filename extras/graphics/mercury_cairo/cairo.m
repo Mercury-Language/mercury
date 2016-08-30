@@ -11,7 +11,7 @@
 % A Mercury binding to the cairo 2D graphics library.
 %
 % TODO: scaled fonts
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module cairo.
@@ -93,7 +93,7 @@
     ;       format_rgb24
             % Each pixel is a 32-bit quantity, with the upper 8 bits unused.
             % Red, Green, and Blue are stored in the remaining 24 bits in that
-            % order. 
+            % order.
 
     ;       format_a8
             % Each pixel is a 8-bit quantity holding an alpha value.
@@ -216,7 +216,7 @@
     % stack of saved states for Context.
     %
 :- pred save(context(S)::in, io::di, io::uo) is det.
-    
+
     % cairo.restore(Context, !IO):
     % Restore Context to the state saved by a preceding call to cairo.save/3
     % and remove that state from the stack of saved states.
@@ -359,7 +359,7 @@
 
     ;       line_join_round
             % Use a rounded join, the center of the circle is the joint point.
-    
+
     ;       line_join_bevel.
             % Use a cut-off join, the join is cut off at half the line width
             % from the joint point.
@@ -410,7 +410,7 @@
     ;       operator_dest_atop
     ;       operator_xor
     ;       operator_add
-    ;       operator_saturate.  
+    ;       operator_saturate.
 
     % cairo.set_operator(Context, Operator, !IO):
     % Set the compositing operator for Context to Operator.
@@ -608,7 +608,7 @@
 :- pragma foreign_decl("C", "
 
 #include <cairo.h>
-    
+
 typedef struct {
     cairo_t         *mcairo_raw_context;
     MR_Word         mcairo_cached_font_face;
@@ -617,7 +617,7 @@ typedef struct {
 typedef struct {
     cairo_pattern_t *mcairo_raw_pattern;
 } MCAIRO_pattern;
-    
+
 typedef struct {
     cairo_surface_t *mcairo_raw_surface;
 } MCAIRO_surface;
@@ -839,7 +839,7 @@ create_context(Surface, Context, !IO) :-
     [promise_pure, will_not_call_mercury],
 "
     cairo_t *raw_context;
-    
+
     raw_context = cairo_create(
         ((MCAIRO_surface *)Surface)->mcairo_raw_surface);
     Context = MR_GC_NEW(MCAIRO_context);
@@ -847,12 +847,12 @@ create_context(Surface, Context, !IO) :-
     /*
     ** We fill the cached font face in later.
     */
-    Context->mcairo_cached_font_face = 0;    
+    Context->mcairo_cached_font_face = 0;
     MR_GC_register_finalizer(Context, MCAIRO_finalize_context, 0);
 ").
 
 %---------------------------------------------------------------------------%
-    
+
 :- pragma foreign_proc("C",
     save(Ctxt::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
@@ -873,9 +873,9 @@ create_context(Surface, Context, !IO) :-
 "
     cairo_surface_t     *raw_surface;
     MCAIRO_surface      *wrapped_surface;
-    
+
     raw_surface = cairo_get_target(Ctxt->mcairo_raw_context);
-    /* 
+    /*
     ** The object returned by cairo_get_target() is owned by cairo.
     ** Since we are keeping a reference to it we need to increment
     ** its reference count.
@@ -906,7 +906,7 @@ create_context(Surface, Context, !IO) :-
     [promise_pure, will_not_call_mercury],
 "
     cairo_pattern_t *new_pattern;
-    
+
     new_pattern = cairo_pop_group(Ctxt->mcairo_raw_context);
     Pattern = MR_GC_NEW(MCAIRO_pattern);
     Pattern->mcairo_raw_pattern = new_pattern;
@@ -926,7 +926,7 @@ create_context(Surface, Context, !IO) :-
 "
     cairo_surface_t     *raw_surface;
     MCAIRO_surface      *wrapped_surface;
-    
+
     raw_surface = cairo_get_group_target(Ctxt->mcairo_raw_context);
     /*
     ** The object returned by cairo_get_group_target() is owned by cairo.
@@ -980,7 +980,7 @@ create_context(Surface, Context, !IO) :-
     cairo_pattern_t *raw_pattern;
 
     raw_pattern = cairo_get_source(Ctxt->mcairo_raw_context);
-    
+
     /*
     ** The value returned by cairo_get_surface() is owned by
     ** by cairo.  Since we are going to retain a reference to
@@ -996,56 +996,56 @@ create_context(Surface, Context, !IO) :-
     set_fill_rule(Ctxt::in, FillRule::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-   cairo_set_fill_rule(Ctxt->mcairo_raw_context, FillRule);
+    cairo_set_fill_rule(Ctxt->mcairo_raw_context, FillRule);
 ").
 
 :- pragma foreign_proc("C",
     get_fill_rule(Ctxt::in, FillRule::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-   FillRule = cairo_get_fill_rule(Ctxt->mcairo_raw_context);
+    FillRule = cairo_get_fill_rule(Ctxt->mcairo_raw_context);
 ").
 
 :- pragma foreign_proc("C",
     set_line_cap(Ctxt::in, LineCap::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-   cairo_set_line_cap(Ctxt->mcairo_raw_context, LineCap);
+    cairo_set_line_cap(Ctxt->mcairo_raw_context, LineCap);
 ").
 
 :- pragma foreign_proc("C",
     get_line_cap(Ctxt::in, LineCap::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-   LineCap = cairo_get_line_cap(Ctxt->mcairo_raw_context);
+    LineCap = cairo_get_line_cap(Ctxt->mcairo_raw_context);
 ").
 
 :- pragma foreign_proc("C",
     copy_page(Ctxt::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-   cairo_copy_page(Ctxt->mcairo_raw_context);
+    cairo_copy_page(Ctxt->mcairo_raw_context);
 ").
 
 :- pragma foreign_proc("C",
     show_page(Ctxt::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-   cairo_show_page(Ctxt->mcairo_raw_context);
+    cairo_show_page(Ctxt->mcairo_raw_context);
 ").
 
 :- pragma foreign_proc("C",
     set_antialias(Ctxt::in, AA::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-   cairo_set_antialias(Ctxt->mcairo_raw_context, (cairo_antialias_t)AA);
+    cairo_set_antialias(Ctxt->mcairo_raw_context, (cairo_antialias_t)AA);
 ").
 
 :- pragma foreign_proc("C",
     get_antialias(Ctxt::in, AA::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-   AA = cairo_get_antialias(Ctxt->mcairo_raw_context);
+    AA = cairo_get_antialias(Ctxt->mcairo_raw_context);
 ").
 
 set_dash(Context, Dashes, OffSet, !IO) :-
@@ -1078,7 +1078,7 @@ set_dash(Context, Dashes, OffSet, !IO) :-
         Dashes = MR_list_tail(Dashes);
         i++;
     }
-    
+
     cairo_set_dash(Ctxt->mcairo_raw_context, dashes, (int)NumDashes, OffSet);
 
     if (cairo_status(Ctxt->mcairo_raw_context) == CAIRO_STATUS_INVALID_DASH) {
@@ -1254,7 +1254,7 @@ set_dash(Context, Dashes, OffSet, !IO) :-
 "
     cairo_mask_surface(Ctxt->mcairo_raw_context,
         ((MCAIRO_surface *)Surface)->mcairo_raw_surface,
-        X, Y);  
+        X, Y);
 ").
 
 :- pragma foreign_proc("C",

@@ -10,7 +10,7 @@
 %
 % This module contains predicates that perform various generic matrix
 % operations on cairo transformation matrices.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module cairo.matrix.
@@ -25,7 +25,7 @@
     %     <y_new> = YX * <x> + YY * <y> +Y0
     %
 :- pred init(float::in, float::in, float::in, float::in,
-	float::in, float::in, matrix::out, io::di, io::uo) is det.
+    float::in, float::in, matrix::out, io::di, io::uo) is det.
 
     % matrix.init_identity(Matrix, !IO):
     % Matrix is the identity transformation.
@@ -113,59 +113,59 @@
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-	init(Xx::in, Yx::in, Xy::in, Yy::in, X0::in, Y0::in,
-	    Matrix::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury],
+    init(Xx::in, Yx::in, Xy::in, Yy::in, X0::in, Y0::in,
+        Matrix::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
 "
-	cairo_matrix_t	*new_matrix;
-	
-	new_matrix = MR_GC_NEW(cairo_matrix_t);
-	cairo_matrix_init(new_matrix, Xx, Yx, Xy, Yy, X0, Y0);
-	Matrix = new_matrix;
+    cairo_matrix_t  *new_matrix;
+
+    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    cairo_matrix_init(new_matrix, Xx, Yx, Xy, Yy, X0, Y0);
+    Matrix = new_matrix;
 ").
 
 :- pragma foreign_proc("C",
-	init_identity(Matrix::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury],
+    init_identity(Matrix::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
 "
-	cairo_matrix_t	*new_matrix;
-	
-	new_matrix = MR_GC_NEW(cairo_matrix_t);
-	cairo_matrix_init_identity(new_matrix);
-	Matrix = new_matrix;
+    cairo_matrix_t  *new_matrix;
+
+    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    cairo_matrix_init_identity(new_matrix);
+    Matrix = new_matrix;
 ").
 
 :- pragma foreign_proc("C",
-	init_translate(Tx::in, Ty::in, Matrix::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury],
+    init_translate(Tx::in, Ty::in, Matrix::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
 "
-	cairo_matrix_t	*new_matrix;
-	
-	new_matrix = MR_GC_NEW(cairo_matrix_t);
-	cairo_matrix_init_translate(new_matrix, Tx, Ty);
-	Matrix = new_matrix;
+    cairo_matrix_t  *new_matrix;
+
+    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    cairo_matrix_init_translate(new_matrix, Tx, Ty);
+    Matrix = new_matrix;
 ").
 
 :- pragma foreign_proc("C",
-	init_scale(Sx::in, Sy::in, Matrix::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury],
+    init_scale(Sx::in, Sy::in, Matrix::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
 "
-	cairo_matrix_t	*new_matrix;
-	
-	new_matrix = MR_GC_NEW(cairo_matrix_t);
-	cairo_matrix_init_scale(new_matrix, Sx, Sy);
-	Matrix = new_matrix;
+    cairo_matrix_t  *new_matrix;
+
+    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    cairo_matrix_init_scale(new_matrix, Sx, Sy);
+    Matrix = new_matrix;
 ").
 
 :- pragma foreign_proc("C",
-	init_rotate(Radians::in, Matrix::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury],
+    init_rotate(Radians::in, Matrix::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
 "
-	cairo_matrix_t	*new_matrix;
-	
-	new_matrix = MR_GC_NEW(cairo_matrix_t);
-	cairo_matrix_init_rotate(new_matrix, Radians);
-	Matrix = new_matrix;
+    cairo_matrix_t  *new_matrix;
+
+    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    cairo_matrix_init_rotate(new_matrix, Radians);
+    Matrix = new_matrix;
 ").
 
 :- pragma foreign_proc("C",
@@ -180,7 +180,7 @@
     [promise_pure, will_not_call_mercury],
 "
    cairo_matrix_scale(Matrix, Sx, Sy);
-"). 
+").
 
 :- pragma foreign_proc("C",
    rotate(Matrix::in, Radians::in, _IO0::di, _IO::uo),
@@ -193,7 +193,7 @@ invert(Matrix, !IO) :-
     invert(Matrix, IsValid, !IO),
     (
         IsValid = yes
-    ; 
+    ;
         IsValid = no,
         throw(cairo.error("invert/3", status_invalid_matrix))
     ).
@@ -239,10 +239,10 @@ invert(Matrix, !IO) :-
 
     dx = Dx0;
     dy = Dy0;
-    
+
     cairo_matrix_transform_distance(Matrix, &dx, &dy);
     Dx = dx;
-    Dy = dy; 
+    Dy = dy;
 ").
 
 :- pragma foreign_proc("C",
@@ -258,7 +258,7 @@ invert(Matrix, !IO) :-
 
     cairo_matrix_transform_point(Matrix, &x, &y);
     X = x;
-    Y = y; 
+    Y = y;
 ").
 
 %---------------------------------------------------------------------------%

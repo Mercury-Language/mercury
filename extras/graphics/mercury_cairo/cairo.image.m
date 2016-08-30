@@ -9,7 +9,7 @@
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
 %
 % This sub-module provides image surface, which allow rendering to memory
-% buffers.  
+% buffers.
 %
 %---------------------------------------------------------------------------%
 
@@ -59,7 +59,7 @@
 :- pragma foreign_decl("C", "#include \"cairo.mh\"").
 
 :- pragma foreign_type("C", image_surface, "MCAIRO_surface *",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 
 :- instance surface(image_surface) where [].
 
@@ -81,13 +81,13 @@ create_surface(Format, Width, Height, Surface, !IO) :-
 
 :- pragma foreign_proc("C",
     create_surface_2(Fmt::in, W::in, H::in, Status::out, Surface::out,
-        _IO0::di, _IO::uo), 
+        _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    cairo_surface_t		*raw_surface;
+    cairo_surface_t     *raw_surface;
 
     raw_surface = cairo_image_surface_create((cairo_format_t)Fmt,
-		(int)W, (int)H);
+        (int)W, (int)H);
     Status = cairo_surface_status(raw_surface);
 
     if (Status == CAIRO_STATUS_SUCCESS) {

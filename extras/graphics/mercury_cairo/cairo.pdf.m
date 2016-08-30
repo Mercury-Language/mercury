@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
-% 
+%
 % This sub-module contains support for rendering PDF documents.
 %
 %---------------------------------------------------------------------------%
@@ -30,13 +30,13 @@
 
     % pdf.create_surface(FileName, Width, Height, Surface, !IO):
     % Surface is a PDF surface of the specified Width and Height in points
-    % to be written to FileName. 
+    % to be written to FileName.
     % Throws an unsupported_surface_error/0 exception if PDF surfaces are
     % not supported by this implementation.  Throws a cairo.error/0 exception
     % if any other error occurs.
     %
 :- pred create_surface(string::in, float::in, float::in, pdf_surface::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % pdf.set_size(Surface, Width, Height, !IO):
     % Change the size of a PDF surface for the current (and subsequent) pages.
@@ -60,7 +60,7 @@
 ").
 
 :- pragma foreign_type("C", pdf_surface, "MCAIRO_surface *",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 
 :- instance surface(pdf_surface) where [].
 
@@ -75,10 +75,10 @@
 #else
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
-"). 
+").
 
 %---------------------------------------------------------------------------%
-% 
+%
 % PDF surface creation
 %
 
@@ -100,13 +100,13 @@ create_surface(FileName, Width, Height, Surface, !IO) :-
     bool::out, cairo.status::out, pdf_surface::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	create_surface_2(FileName::in, W::in, H::in,
+    create_surface_2(FileName::in, W::in, H::in,
         Supported::out, Status::out, Surface::out, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
 #if defined(CAIRO_HAS_PDF_SURFACE)
 
-    cairo_surface_t		*raw_surface;
+    cairo_surface_t     *raw_surface;
 
     Supported = MR_YES;
     raw_surface = cairo_pdf_surface_create(FileName, W, H);

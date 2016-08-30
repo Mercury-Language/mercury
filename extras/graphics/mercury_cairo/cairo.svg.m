@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
-% 
+%
 % This module provides SVG surfaces, which allow rendering to SVG documents.
 %
 %---------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 :- type svg_surface.
 
 :- instance surface(svg_surface).
-    
+
     % The version number of the SVG specification that a generated SVG file
     % will conform to.
     %
@@ -42,7 +42,7 @@
     % to be written to FileName.
     %
 :- pred create_surface(string::in, int::in, int::in, svg_surface::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 % restrict_to_version
 % get_versions
@@ -69,7 +69,7 @@
 ").
 
 :- pragma foreign_type("C", svg_surface, "MCAIRO_surface *",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 
 :- instance surface(svg_surface) where [].
 
@@ -89,7 +89,7 @@
 #else
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
-"). 
+").
 
 %---------------------------------------------------------------------------%
 %
@@ -120,7 +120,7 @@ create_surface(FileName, Width, Height, Surface, !IO) :-
 "
 #if defined(CAIRO_HAS_SVG_SURFACE)
 
-    cairo_surface_t		*raw_surface;
+    cairo_surface_t     *raw_surface;
 
     Supported = MR_YES;
     raw_surface = cairo_svg_surface_create(FileName, (int)W, (int)H);

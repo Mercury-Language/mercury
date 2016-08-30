@@ -19,7 +19,7 @@
     % Region is a new empty region.
     %
 :- pred create(region::out, io::di, io::uo) is det.
-    
+
     % region.create_rectangle(Rectangle, Region, !IO):
     % Region is a new region containing Rectangle.
     %
@@ -97,12 +97,12 @@
     % Translate Region by (Dx, Dy).
     %
 :- pred translate(region::in, int::in, int::in, io::di, io::uo) is det.
-    
+
     % region.intersect(Dst, Other, !IO):
     % Update Dst to be the intersection of Dst and Other.
     %
 :- pred intersect(region::in, region::in, io::di, io::uo) is det.
-    
+
     % region.intersect_rectangle(Region, Rectangle, !IO):
     % Update Region to be the intersection of Region and Rectangle.
     %
@@ -112,7 +112,7 @@
     % Update Dst to be the result of subtracting Other from Dst.
     %
 :- pred subtract(region::in, region::in, io::di, io::uo) is det.
-    
+
     % region.subtract_rectangle(Region, Rectangle, !IO):
     % Update Region to be the result of subtracting Rectangle from Region.
     %
@@ -122,12 +122,12 @@
     % Update Dst to be the union of Dst and Other.
     %
 :- pred union(region::in, region::in, io::di, io::uo) is det.
-    
+
     % region.union_rectangle(Region, Rectangle, !IO):
     % Update Region to be the union of Region and Rectangle.
     %
 :- pred union_rectangle(region::in, rectangle::in, io::di, io::uo) is det.
-    
+
     % region.xor(Dst, Other, !IO):
     % Update Dst to be the exclusive difference of Dst and Other.
     %
@@ -155,7 +155,7 @@
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_region_t  *raw_region;
-    
+
     raw_region = cairo_region_create();
     Region = MR_GC_NEW(MCAIRO_region);
     Region->mcairo_raw_region = raw_region;
@@ -202,7 +202,7 @@ create_rectangle(Rectangle, Region, !IO) :-
 get_extents(Region, Rectangle, !IO) :-
     get_extents_2(Region, X, Y, Width, Height, !IO),
     Rectangle = rectangle(X, Y, Width, Height).
-    
+
 :- pred get_extents_2(region::in, int::out, int::out,
     int::out, int::out, io::di, io::uo) is det.
 
@@ -217,7 +217,7 @@ get_extents(Region, Rectangle, !IO) :-
     X = r.x;
     Y = r.y;
     W = r.width;
-    H = r.height;    
+    H = r.height;
 ").
 
 :- pragma foreign_proc("C",
@@ -239,7 +239,7 @@ get_rectangle(Region, N, Rectangle, !IO) :-
         H::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    cairo_rectangle_int_t     r; 
+    cairo_rectangle_int_t     r;
 
     cairo_region_get_rectangle(Region->mcairo_raw_region,
         N, &r);
@@ -334,7 +334,7 @@ intersect_rectangle(Region, Rectangle, !IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_rectangle_int_t   rectangle;
-    
+
     rectangle.x = X;
     rectangle.y = Y;
     rectangle.width = W;
@@ -356,7 +356,7 @@ subtract_rectangle(Region, Rectangle, !IO) :-
     subtract_rectangle_2(Region, X, Y, Width, Height, !IO).
 
 :- pred subtract_rectangle_2(region::in, int::in, int::in, int::in, int::in,
-     io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     subtract_rectangle_2(Region::in, X::in, Y::in, W::in, H::in,
@@ -364,7 +364,7 @@ subtract_rectangle(Region, Rectangle, !IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_rectangle_int_t   rectangle;
-    
+
     rectangle.x = X;
     rectangle.y = Y;
     rectangle.width = W;
@@ -394,7 +394,7 @@ union_rectangle(Region, Rectangle, !IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_rectangle_int_t   rectangle;
-    
+
     rectangle.x = X;
     rectangle.y = Y;
     rectangle.width = W;
@@ -416,7 +416,7 @@ xor_rectangle(Region, Rectangle, !IO) :-
     xor_rectangle_2(Region, X, Y, Width, Height, !IO).
 
 :- pred xor_rectangle_2(region::in, int::in, int::in, int::in, int::in,
-     io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     xor_rectangle_2(Region::in, X::in, Y::in, W::in, H::in,
@@ -424,7 +424,7 @@ xor_rectangle(Region, Rectangle, !IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_rectangle_int_t   rectangle;
-    
+
     rectangle.x = X;
     rectangle.y = Y;
     rectangle.width = W;

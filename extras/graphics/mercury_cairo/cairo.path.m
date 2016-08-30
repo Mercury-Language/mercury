@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
 %
 % This sub-module contains predicates for creating and manipulating path
@@ -79,7 +79,7 @@
     % 2 * pi until it is greater than Angle1.
     %
 :- pred arc(context(T)::in, float::in, float::in,
-	float::in, float::in, float::in, io::di, io::uo) is det.
+    float::in, float::in, float::in, io::di, io::uo) is det.
 
     % path.arc_negative(Context, Xc, Yc, R, Angle1, Angle2, !IO):
     % Add a circular arc of radius R to the current path.
@@ -89,7 +89,7 @@
     % 2 * pi until it is greater than Angle1.
     %
 :- pred arc_negative(context(T)::in, float::in, float::in,
-	float::in, float::in, float::in, io::di, io::uo) is det.
+    float::in, float::in, float::in, io::di, io::uo) is det.
 
     % path.curve_to(Context, X1, Y1, X2, Y2, X3, Y3, !IO):
     % Adds a cubic Bezier spline to the path from the current point to position
@@ -97,7 +97,7 @@
     % control points. After this call the current point will be (x3, y3).
     %
 :- pred curve_to(context(T)::in, float::in, float::in,
-	float::in, float::in, float::in, float::in, io::di, io::uo) is det.
+    float::in, float::in, float::in, float::in, io::di, io::uo) is det.
 
     % path.line_to(Context, X, Y, !IO):
     % Adds a line to the path from the current point to position (X, Y) in
@@ -117,7 +117,7 @@
     % position (X, Y) in user-space coordinates.
     %
 :- pred rectangle(context(T)::in, float::in, float::in, float::in, float::in,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % path.text_path(Context, Text, !IO):
     % Adds closed paths for Text to the current path.
@@ -135,7 +135,7 @@
     % Throws a cairo.error/0 exception if there is no current point.
     %
 :- pred rel_curve_to(context(T)::in, float::in, float::in,
-	float::in, float::in, float::in, float::in, io::di, io::uo) is det.
+    float::in, float::in, float::in, float::in, io::di, io::uo) is det.
 
     % path.rel_line_to(Context, Dx, Dy, !IO):
     % Relative-coordinate version of path.line_to/5.
@@ -156,13 +156,13 @@
     % Computes a bounding box in user-space coordinates covering the points
     % on the current path. If the current path is empty, returns an empty
     % rectangle ((0,0), (0,0)). Stroke parameters, fill rule, surface
-    % dimensions and clipping are not taken into account. 
+    % dimensions and clipping are not taken into account.
     %
     % (X1, Y1) is the top-left of the box.
     % (X2, Y2) is the bottom-right of the box.
     %
 :- pred path_extents(context(T)::in, float::out, float::out,
-	float::out, float::out, io::di, io::uo) is det.
+    float::out, float::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -175,8 +175,8 @@
     copy_path(Ctxt::in, Path::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    cairo_path_t	*raw_path;	
-    
+    cairo_path_t    *raw_path;
+
     raw_path = cairo_copy_path(Ctxt->mcairo_raw_context);
     Path = MR_GC_NEW(MCAIRO_path);
     Path->mcairo_raw_path = raw_path;
@@ -187,8 +187,8 @@
     copy_path_flat(Ctxt::in, Path::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    cairo_path_t	*raw_path;	
-    
+    cairo_path_t    *raw_path;
+
     raw_path = cairo_copy_path_flat(Ctxt->mcairo_raw_context);
     Path = MR_GC_NEW(MCAIRO_path);
     Path->mcairo_raw_path = raw_path;
@@ -200,16 +200,16 @@
     append_path(Ctxt::in, Path::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-   cairo_append_path(Ctxt->mcairo_raw_context,
+    cairo_append_path(Ctxt->mcairo_raw_context,
        Path->mcairo_raw_path);
-").   
+").
 
 :- pragma foreign_proc("C",
     has_current_point(Ctxt::in, Result::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
     if (cairo_has_current_point(Ctxt->mcairo_raw_context)) {
-	Result = MR_YES;
+        Result = MR_YES;
     } else {
         Result = MR_NO;
     }
@@ -223,22 +223,22 @@
 ").
 
 :- pragma foreign_proc("C",
-	new_path(Ctxt::in, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury],
+    new_path(Ctxt::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
 "
    cairo_new_path(Ctxt->mcairo_raw_context);
 ").
 
 :- pragma foreign_proc("C",
-	new_sub_path(Ctxt::in, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury],
+    new_sub_path(Ctxt::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
 "
    cairo_new_sub_path(Ctxt->mcairo_raw_context);
 ").
 
 :- pragma foreign_proc("C",
-	close_path(Ctxt::in, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury],
+    close_path(Ctxt::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
 "
    cairo_close_path(Ctxt->mcairo_raw_context);
 ").
@@ -282,8 +282,8 @@
 ").
 
 :- pragma foreign_proc("C",
-	rectangle(Ctxt::in, X::in, Y::in, W::in, H::in, _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    rectangle(Ctxt::in, X::in, Y::in, W::in, H::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
    cairo_rectangle(Ctxt->mcairo_raw_context, X, Y, W, H);
 ").
@@ -319,7 +319,7 @@ rel_curve_to(Ctxt, Dx1, Dy1, Dx2, Dy2, Dx3, Dy3, !IO) :-
     ).
 
 :- pred rel_curve_to_2(context(T)::in, float::in, float::in,
-	float::in, float::in, float::in, float::in, bool::out,
+    float::in, float::in, float::in, float::in, bool::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -357,7 +357,7 @@ rel_line_to(Ctxt, Dx, Dy, !IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_status_t  status;
-    
+
     cairo_rel_line_to(Ctxt->mcairo_raw_context, Dx, Dy);
     status = cairo_status(Ctxt->mcairo_raw_context);
     if (status == CAIRO_STATUS_NO_CURRENT_POINT) {
@@ -384,7 +384,7 @@ rel_move_to(Ctxt, Dx, Dy, !IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_status_t  status;
-    
+
     cairo_rel_move_to(Ctxt->mcairo_raw_context, Dx, Dy);
     status = cairo_status(Ctxt->mcairo_raw_context);
     if (status == CAIRO_STATUS_NO_CURRENT_POINT) {

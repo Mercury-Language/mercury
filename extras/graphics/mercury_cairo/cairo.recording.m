@@ -58,15 +58,15 @@
 :- pragma foreign_decl("C", "#include \"cairo.mh\"").
 
 :- pragma foreign_type("C", recording_surface, "MCAIRO_surface *",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 
 :- instance surface(recording_surface) where [].
 
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-   have_recording_surface,
-   [promise_pure, will_not_call_mercury],
+    have_recording_surface,
+    [promise_pure, will_not_call_mercury],
 "
 #if defined(CAIRO_HAS_RECORDING_SURFACE)
     SUCCESS_INDICATOR = MR_TRUE;
@@ -118,7 +118,7 @@ create_surface(Content, MaybeExtents, Surface, !IO) :-
 "
 #if defined(CAIRO_HAS_RECORDING_SURFACE)
 
-    cairo_surface_t		*raw_surface;
+    cairo_surface_t     *raw_surface;
 
     Supported = MR_YES;
     if (HaveExtents) {
@@ -147,9 +147,9 @@ create_surface(Content, MaybeExtents, Surface, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-	ink_extents(Surface::in, X::out, Y::out, W::out, H::out,
+    ink_extents(Surface::in, X::out, Y::out, W::out, H::out,
         _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
 #if defined(CAIRO_HAS_RECORDING_SURFACE)
     double  x, y, w, h;
@@ -184,7 +184,7 @@ get_extents(Surface, MaybeExtents, !IO) :-
 :- pragma foreign_proc("C",
     get_extents_2(Surface::in, Ok::out, X::out, Y::out, W::out, H::out,
         _IO0::di, _IO::uo),
-	[promise_pure, will_not_call_mercury, tabled_for_io],
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_rectangle_t   rect;
 
