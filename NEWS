@@ -279,6 +279,7 @@ Changes to the Mercury standard library:
    - fold2_maybe/6
    - maybe_default/2
    - pred_to_maybe/1
+   - func_to_maybe/1
 
 * The following predicates and functions have been added to the calendar
   module:
@@ -392,6 +393,11 @@ Changes to the Mercury standard library:
     values of the stream.writer typeclass, and changed its interface
     to group the prettyprinter parameters together in a value of the type
     that was designed for this purpose.
+
+* We have deprecated the following functions from the std_util module:
+
+  - maybe_pred/3
+  - maybe_func/2
 
 Changes to the Mercury compiler:
 

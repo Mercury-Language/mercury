@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2006, 2010-2011 The University of Melbourne.
+% Copyright (C) 2016 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -173,8 +174,11 @@
     %
     % Make a maybe value from a semidet predicate.
     %
-:- func pred_to_maybe(pred(X)) = maybe(X).
+:- func pred_to_maybe(pred(T)) = maybe(T).
 :- mode pred_to_maybe(pred(out) is semidet) = out is det.
+
+:- func func_to_maybe((func) = T) = maybe(T).
+:- mode func_to_maybe((func) = out is semidet) = out is det.
 
     % Return the value from within the maybe or a default value if there is
     % none.
@@ -223,6 +227,9 @@ pred_to_maybe(Pred) = Result :-
     else
         Result = no
     ).
+
+func_to_maybe(PF) =
+    ( if Y = apply(PF) then yes(Y) else no ).
 
 maybe_default(_, yes(X)) = X.
 maybe_default(D, no) = D.

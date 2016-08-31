@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2006, 2008 The University of Melbourne.
+% Copyright (C) 2016 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -53,9 +54,13 @@
     % X succeeds, Y is bound to `yes(Z)' where Z is the output of the
     % call, or to `no' if the call fails.
     %
+    % Use maybe.pred_to_maybe instead.
+:- pragma obsolete(maybe_pred/3).
 :- pred maybe_pred(pred(T1, T2), T1, maybe(T2)).
 :- mode maybe_pred(pred(in, out) is semidet, in, out) is det.
 
+    % Use maybe.pred_to_maybe instead.
+:- pragma obsolete(maybe_func/2).
 :- func maybe_func(func(T1) = T2, T1) = maybe(T2).
 :- mode maybe_func(func(in) = out is semidet, in) = out is det.
 
