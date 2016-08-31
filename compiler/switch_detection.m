@@ -299,8 +299,8 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
                     set_of_var.to_sorted_list(NonLocals, VarsToTry)
                 )
             ),
-            detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, VarsToTry,
-                GoalExpr, !LocalInfo)
+            detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0,
+                MaybeRequiredVar, VarsToTry, GoalExpr, !LocalInfo)
         )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
@@ -744,7 +744,7 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
     % in which the resulting switch arms cover all the function symbols
     % in the type of the switched-on variable that are allowed by the instmap
     % at entry to the switch.
-    % 
+    %
 :- type candidate_switch_rank
     --->    some_leftover_can_fail(
                 % Some of the disjuncts will have to remain outside the switch,
@@ -786,7 +786,7 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
             % to be covered by a case.
             %
             % I (zs) don't know of any strong argument for deciding
-            % the relative order of no_leftover_twoplus_cases_infinite_can_fail 
+            % the relative order of no_leftover_twoplus_cases_infinite_can_fail
             % and no_leftover_one_case either way. The current order replicates
             % the relative order between these two cases that was effectively
             % imposed by old code.
@@ -799,7 +799,7 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
             % one disjunct. There are at least two cases, and at least one
             % is reachable (the rest may be unreachable).
 
-    ;       all_disjuncts_are_unreachable.
+    ;       all_disjuncts_are_unreachable
             % We can convert the entire disjunction to just `fail'.
             % This is possible only in the very rare case when all disjuncts
             % unify the switch variable with a function symbol that the switch
@@ -807,14 +807,28 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
             % it gives us the resulting goal the tightest possible determinism
             % we can hope for, failure.
 
+    ;       no_leftover_twoplus_cases_explicitly_selected.
+            % If the disjunction is what the programmer would consider
+            % to be a switch on the variable that they explicitly said
+            % that they expect the disjunction to switch on, i.e. if
+            % all disjunct unify the specified variable with a function
+            % symbol and there are at least two cases, then follow the
+            % programmer's lead. The programmer may prefer an incomplete
+            % switch on the specified variable to a complete switch on
+            % on another variable. An example from the compiler: when
+            % handling special options in options.m, we would prefer
+            % the option handler to switch on the option, not on the
+            % kind of data (none, bool, int, string, maybe_string)
+            % given to it.
+
 :- pred detect_switches_in_disj(hlds_goal_info::in, list(hlds_goal)::in,
-    instmap::in, list(prog_var)::in, hlds_goal_expr::out,
+    instmap::in, maybe(prog_var)::in, list(prog_var)::in, hlds_goal_expr::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, AllVars, GoalExpr,
-        !LocalInfo) :-
-    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0, AllVars,
-        cord.init, CandidatesCord, !LocalInfo),
+detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0,
+        MaybeRequiredVar, AllVars, GoalExpr, !LocalInfo) :-
+    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
+        MaybeRequiredVar, AllVars, cord.init, CandidatesCord, !LocalInfo),
     Candidates = cord.to_list(CandidatesCord),
     (
         Candidates = [],
@@ -853,6 +867,7 @@ detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, AllVars, GoalExpr,
             ; BestRank = no_leftover_twoplus_cases_infinite_can_fail
             ; BestRank = no_leftover_twoplus_cases_finite_cannot_fail
             ; BestRank = all_disjuncts_are_unreachable
+            ; BestRank = no_leftover_twoplus_cases_explicitly_selected
             ),
             cases_to_switch(BestCandidate, InstMap0, SwitchGoalExpr,
                 !LocalInfo),
@@ -862,8 +877,8 @@ detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, AllVars, GoalExpr,
                 GoalExpr = SwitchGoalExpr
             ;
                 LeftDisjuncts0 = [_ | _],
-                detect_switches_in_disj(GoalInfo, LeftDisjuncts0,  InstMap0,
-                    AllVars, LeftGoal, !LocalInfo),
+                detect_switches_in_disj(GoalInfo, LeftDisjuncts0, InstMap0,
+                    MaybeRequiredVar, AllVars, LeftGoal, !LocalInfo),
                 goal_to_disj_list(hlds_goal(LeftGoal, GoalInfo),
                     LeftDisjuncts),
                 SwitchGoal = hlds_goal(SwitchGoalExpr, GoalInfo),
@@ -879,14 +894,14 @@ detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, AllVars, GoalExpr,
     % if the variable is bound to a different functor.
     %
 :- pred detect_switch_candidates_in_disj(hlds_goal_info::in,
-    list(hlds_goal)::in, instmap::in, list(prog_var)::in,
+    list(hlds_goal)::in, instmap::in, maybe(prog_var)::in, list(prog_var)::in,
     cord(candidate_switch)::in, cord(candidate_switch)::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
 detect_switch_candidates_in_disj(_GoalInfo, _Disjuncts0, _InstMap0,
-        [], !Candidates, !LocalInfo).
+        _MaybeRequiredVar, [], !Candidates, !LocalInfo).
 detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        [Var | Vars], !Candidates, !LocalInfo) :-
+        MaybeRequiredVar, [Var | Vars], !Candidates, !LocalInfo) :-
     % Can we do at least a partial switch on this variable?
     ModuleInfo = !.LocalInfo ^ lsdi_module_info,
     instmap_lookup_var(InstMap0, Var, VarInst0),
@@ -896,22 +911,22 @@ detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
 
         VarTypes = !.LocalInfo ^ lsdi_vartypes,
         lookup_var_type(VarTypes, Var, VarType),
-        is_candidate_switch(ModuleInfo, Var, VarType, VarInst0,
-            Cases, Left, Candidate)
+        is_candidate_switch(ModuleInfo, MaybeRequiredVar,
+            Var, VarType, VarInst0, Cases, Left, Candidate)
     then
         !:Candidates = cord.snoc(!.Candidates, Candidate)
     else
         true
     ),
     detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        Vars, !Candidates, !LocalInfo).
+        MaybeRequiredVar, Vars, !Candidates, !LocalInfo).
 
-:- pred is_candidate_switch(module_info::in, prog_var::in,
+:- pred is_candidate_switch(module_info::in, maybe(prog_var)::in, prog_var::in,
     mer_type::in, mer_inst::in, list(case)::in, list(hlds_goal)::in,
     candidate_switch::out) is semidet.
 
-is_candidate_switch(ModuleInfo, Var, VarType, VarInst0, Cases0, LeftOver,
-        Candidate) :-
+is_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType, VarInst0,
+        Cases0, LeftOver, Candidate) :-
     (
         % If every disjunct unifies Var with a function symbol, then
         % it is candidate switch on Var even if all disjuncts unify Var
@@ -939,9 +954,9 @@ is_candidate_switch(ModuleInfo, Var, VarType, VarInst0, Cases0, LeftOver,
         % the number of candidates and thus the time taken by switch detection.
         Cases0 = [_, _ | _]
     ),
-    can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
-        CanFail, CasesMissing, Cases, UnreachableCaseGoals),
     require_det (
+        can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
+            CanFail, CasesMissing, Cases, UnreachableCaseGoals),
         (
             LeftOver = [],
             (
@@ -957,15 +972,22 @@ is_candidate_switch(ModuleInfo, Var, VarType, VarInst0, Cases0, LeftOver,
                 else
                     % FirstCase is one case, and whichever of LaterCases and
                     % UnreachableCaseGoals is nonempty is the second case.
-                    (
-                        CasesMissing = some_cases_missing,
-                        Rank = no_leftover_twoplus_cases_finite_can_fail
-                    ;
-                        CasesMissing = no_cases_missing,
-                        Rank = no_leftover_twoplus_cases_finite_cannot_fail
-                    ;
-                        CasesMissing = unbounded_cases,
-                        Rank = no_leftover_twoplus_cases_infinite_can_fail
+                    ( if
+                        MaybeRequiredVar = yes(RequiredVar),
+                        RequiredVar = Var
+                    then
+                        Rank = no_leftover_twoplus_cases_explicitly_selected
+                    else
+                        (
+                            CasesMissing = some_cases_missing,
+                            Rank = no_leftover_twoplus_cases_finite_can_fail
+                        ;
+                            CasesMissing = no_cases_missing,
+                            Rank = no_leftover_twoplus_cases_finite_cannot_fail
+                        ;
+                            CasesMissing = unbounded_cases,
+                            Rank = no_leftover_twoplus_cases_infinite_can_fail
+                        )
                     )
                 )
             )
