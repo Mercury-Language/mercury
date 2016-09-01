@@ -284,23 +284,8 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
             GoalExpr = disj([])
         ;
             Disjuncts0 = [_ | _],
-            NonLocals = goal_info_get_nonlocals(GoalInfo),
-            (
-                MaybeRequiredVar = no,
-                set_of_var.to_sorted_list(NonLocals, VarsToTry)
-            ;
-                MaybeRequiredVar = yes(RequiredVar),
-                ( if
-                    set_of_var.remove(RequiredVar, NonLocals, NonRequiredVars)
-                then
-                    set_of_var.to_sorted_list(NonRequiredVars, VarsToTryTail),
-                    VarsToTry = [RequiredVar | VarsToTryTail]
-                else
-                    set_of_var.to_sorted_list(NonLocals, VarsToTry)
-                )
-            ),
             detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0,
-                MaybeRequiredVar, VarsToTry, GoalExpr, !LocalInfo)
+                MaybeRequiredVar, GoalExpr, !LocalInfo)
         )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
@@ -822,13 +807,47 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
             % given to it.
 
 :- pred detect_switches_in_disj(hlds_goal_info::in, list(hlds_goal)::in,
-    instmap::in, maybe(prog_var)::in, list(prog_var)::in, hlds_goal_expr::out,
+    instmap::in, maybe(prog_var)::in, hlds_goal_expr::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, AllVars, GoalExpr, !LocalInfo) :-
+detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, MaybeRequiredVar,
+        GoalExpr, !LocalInfo) :-
+    % The initial version of switch detection, which we used for a *long* time,
+    % looked at nonlocal variables in variable number order and stopped looking
+    % when it found a viable candidate switch.
+    %
+    % This could lead to an suboptimal outcome for two separate reasons.
+    %
+    % - First, when the user specifies which variable the switch should be on
+    %   (via a require_switch_* scope), the committed-to variable is
+    %   not necessarily the specified variable.
+    %
+    % - Second, switching on a variable later in the order can lead to a
+    %   tighter determinism (because it leads to a cannot_fail switch, when
+    %   the switch on the earlier, committed-to variable is can_fail).
+    %
+    % We fixed the first problem by putting RequiredVar at the start of
+    % VarsToTry in cases where MaybeRequiredVar is yes(RequiredVar), and
+    % we fixed the second by evaluating all candidate switches, without
+    % stopping when we found a viable one. The second fix obsoletes the first;
+    % if we look at all candidates and select the one with the best rank,
+    % then for correctness, it *doesn't matter* in what order we look at
+    % the nonlocals.
+    %
+    % It might matter for performance. When MaybeRequiredVar is
+    % yes(RequiredVar), we *could* arrange to look at RequiredVar first,
+    % and if it does yield a candidate switch with the best possible rank,
+    % stop looking at the other variables. However, this would require
+    % detect_switch_candidates_in_disj testing that condition after finding
+    % each candidate switch. Since require_switch_* scopes are relatively rare,
+    % the cost of the test in the common case where MaybeRequiredVar is "no"
+    % would probably cost us more overall than we could save in cases where
+    % MaybeRequiredVar is "yes".
+
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    set_of_var.to_sorted_list(NonLocals, VarsToTry),
     detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, AllVars, cord.init, CandidatesCord, !LocalInfo),
+        MaybeRequiredVar, VarsToTry, cord.init, CandidatesCord, !LocalInfo),
     Candidates = cord.to_list(CandidatesCord),
     (
         Candidates = [],
@@ -878,7 +897,7 @@ detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0,
             ;
                 LeftDisjuncts0 = [_ | _],
                 detect_switches_in_disj(GoalInfo, LeftDisjuncts0, InstMap0,
-                    MaybeRequiredVar, AllVars, LeftGoal, !LocalInfo),
+                    MaybeRequiredVar, LeftGoal, !LocalInfo),
                 goal_to_disj_list(hlds_goal(LeftGoal, GoalInfo),
                     LeftDisjuncts),
                 SwitchGoal = hlds_goal(SwitchGoalExpr, GoalInfo),
