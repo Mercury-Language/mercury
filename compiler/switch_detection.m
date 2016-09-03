@@ -1052,7 +1052,8 @@ can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
             % cons_ids is a subset of the set of cons_ids of the type, checking
             % whether the cardinalities of the two sets match is *equivalent*
             % to checking whether they are the same set.
-            switch_covers_n_cases(NumFunctors, Cases, CanFail, CasesMissing)
+            does_switch_cover_n_cases(NumFunctors, Cases,
+                CanFail, CasesMissing)
         else
             % switch_type_num_functors fails only for types on which
             % you cannot have a complete switch, e.g. integers and strings.
@@ -1255,8 +1256,8 @@ find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
         _Result0, Result, _, unit) :-
     ( if
         Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-        UnifyInfo0 = GoalExpr0 ^ unify_kind,
-        UnifyInfo0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _)
+        GoalExpr0 = unify(_, _, _, Unification0, _),
+        Unification0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _)
     then
         Result = yes(Functor),
         ( if
@@ -1272,13 +1273,13 @@ find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
         else
             % The deconstruction unification now becomes deterministic, since
             % the test will get carried out in the switch.
-            UnifyInfo = UnifyInfo0 ^ deconstruct_can_fail := cannot_fail,
-            GoalExpr = GoalExpr0 ^ unify_kind := UnifyInfo,
+            Unification = Unification0 ^ deconstruct_can_fail := cannot_fail,
+            GoalExpr = GoalExpr0 ^ unify_kind := Unification,
             Goal = hlds_goal(GoalExpr, GoalInfo),
             Goals = [Goal]
         )
     else
-        unexpected($module, $pred, "condition failed")
+        unexpected($module, $pred, "goal is not a deconstruct unification")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1502,10 +1503,10 @@ delete_covered_functors([Case | Cases], !UncoveredConsIds) :-
 
     % Check whether a switch handles the given number of cons_ids.
     %
-:- pred switch_covers_n_cases(int::in, list(case)::in,
+:- pred does_switch_cover_n_cases(int::in, list(case)::in,
     can_fail::out, cases_missing::out) is det.
 
-switch_covers_n_cases(NumFunctors, Cases, SwitchCanFail, CasesMissing) :-
+does_switch_cover_n_cases(NumFunctors, Cases, SwitchCanFail, CasesMissing) :-
     NumCoveredConsIds = count_covered_cons_ids(Cases),
     ( if NumCoveredConsIds = NumFunctors then
         SwitchCanFail = cannot_fail,
