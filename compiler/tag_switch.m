@@ -198,17 +198,18 @@
 generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, !MaybeEnd, Code, !CI, CLD0) :-
     % We get registers for holding the primary and (if needed) the secondary
-    % tag. The tags needed only by the switch, and no other code gets control
-    % between producing the tag values and all their uses, so we can release
-    % the registers for use by the code of the various cases.
-    %
-    % We forgo using the primary tag register if the primary tag is needed
-    % only once, or if the "register" we get is likely to be slower than
-    % recomputing the tag from scratch.
+    % tag. The tags are needed only by the switch, and no other code gets
+    % control between producing the tag values and all their uses, so
+    % we can immediately release the registers for use by the code of
+    % the various cases.
     %
     % We need to get and release the registers before we generate the code
     % of the switch arms, since the set of free registers will in general be
     % different before and after that action.
+    %
+    % We forgo using the primary tag register if the primary tag is needed
+    % only once, or if the "register" we get is likely to be slower than
+    % recomputing the tag from scratch.
     some [!CLD] (
         !:CLD = CLD0,
         acquire_reg(reg_r, PtagReg, !CLD),
@@ -266,8 +267,8 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         PtagRval = unop(tag, VarRval)
     ),
 
-    % We generate EndCode (and if needed, FailCode) here because the last
-    % case within a primary tag may not be the last case overall.
+    % We generate EndCode (and if needed, FailCode) here because
+    % the last case within a primary tag may not be the last case overall.
     EndCode = singleton(
         llds_instr(label(EndLabel), "end of tag switch")
     ),
@@ -282,8 +283,8 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         FailLabelCode = singleton(
             llds_instr(label(FailLabel), "switch has failed")
         ),
-        % We must generate the failure code in the context in which none of the
-        % switch arms have been executed yet.
+        % We must generate the failure code in the context in which
+        % none of the switch arms have been executed yet.
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
             generate_failure(FailureCode, !CI, !.CLD)

@@ -164,8 +164,8 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
             "switch (using dense jump table)")
     ),
 
-    % If there is no case for any index value in range, generate the failure
-    % code we execute for such cases.
+    % If any index value in range has no goal, then generate the failure code
+    % we will have to execute in such cases.
     (
         MaybeFailLabel = no,
         FailCode = empty

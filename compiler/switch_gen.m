@@ -357,7 +357,7 @@ order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
     mer_type::in, code_model::in, can_fail::in, code_info::in) is det.
 
 order_cases(Cases0, Cases, VarType, CodeModel, CanFail, CI) :-
-    % We do ordering here based on five considerations.
+    % We do ordering here based on four considerations.
     %
     % - We try to put tests against reserved addresses first, so later cases
     %   can assume those tests have already been done.
@@ -379,7 +379,7 @@ order_cases(Cases0, Cases, VarType, CodeModel, CanFail, CI) :-
     % predicate of the next consideration to decide ties. The predicates for
     % the four considerations are
     %
-    % - order_cases,
+    % - order_cases (this predicate),
     % - order_cannot_succeed_cases,
     % - order_recursive_cases,
     % - order_tag_test_cost
