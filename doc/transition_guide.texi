@@ -519,15 +519,21 @@ generate_and_use_solutions(In1, In2, !Acc) :-
 @node Commits
 @chapter Cuts and indexing
 
-The cut operator is not part of the Mercury language.
-In addition, the conditional operator @samp{-> ;}
-does not do a hard cut across the condition
---- only a soft cut which prunes away either the `then' goal or the `else' goal.
-If there are multiple solutions to the condition,
-they will all be found on backtracking.
+The Prolog cut operator is not part of the Mercury language.
 
-Prolog programs that use cuts and a `catch-all' clause should be
-transformed to use if-then-else.
+Mercury allows if-then-elses to be written
+not just as @samp{C -> T ; E}, but also as @samp{if C then T else E}.
+In Mercury, an if-then-else prunes away
+either the `else' goal (if the condition succeeded)
+or the `then' goal (if the condition failed),
+but if there are multiple solutions to the condition,
+they will all be found on backtracking,
+and the `then' goal will be executed for each of those solutions.
+By contrast, an if-then-else in Prolog
+prunes away all solutions of the condition except the first.
+
+Prolog programs that use cuts and a `catch-all' clause
+should be transformed to use if-then-else in Mercury.
 
 For example
 
@@ -647,32 +653,40 @@ the Mercury library uses the pair of lists proposed by Richard O'Keefe).
 @node Determinism
 @chapter Determinism
 
-The Mercury language requires that the determinism of all predicates
-exported by a module be declared. The determinism of predicates that
-are local to a module may either be declared or inferred. By default,
-the compiler issues a warning message where such declarations are
-omitted, but this warning can be disabled using the
-@samp{--no-warn-missing-det-decls} option if you want to use
-determinism inference.
+The Mercury language requires the determinism of all predicates
+exported by a module to be declared.
+The determinism of predicates that are local to a module
+may be declared but don't have to be;
+if they are not declared, they will be inferred.
+By default, the compiler issues a warning message
+where such declarations are omitted,
+but if you want to use determinism inference,
+you can disable this warning
+using the @samp{--no-warn-missing-det-decls} option.
 
-Determinism checking and inference is an undecidable problem in the
-general case, so it is possible
-to write programs that are deterministic, and have the compiler
-fail to prove the fact. The most important aspect of this problem
+Determinism checking and inference
+is an undecidable problem in the general case,
+so it is possible to write programs that are deterministic,
+and have the compiler fail to prove the fact.
+The most important aspect of this problem
 is that the Mercury compiler only detects the clauses of a predicate
-(or the arms of a disjunction, in the general case) to be mutually
-exclusive (and hence deterministic) if they are distinguished by the
-unification of a variable (possibly renamed) with distinct functors
-in the different clauses (or disjuncts), so long as the unifications
-take place before the first call in the clause (or disjunct).
-In these cases, the Mercury compiler generates a @emph{switch} (see
-the earlier section on indexing).
-If a switch has a branch for every functor on the type of the switching
-variable, then the switch cannot fail (though one or more of its arms
-may do so). 
+(or the arms of a disjunction, in the general case) to be mutually exclusive,
+allowing the execution of at most one disjunct at runtime,
+if the clauses or disjuncts
+each unify the same variable (or a copy of that variable)
+with distinct functors,
+with these unifications all taking place
+before the first call in the clause or disjunct.
+For such disjunctions, the Mercury compiler generates a @emph{switch}
+(see the earlier section on indexing).
+If a switch has a branch for every functor
+in the type of the switched-on variable,
+then the switch guarantees that exactly one of its arms will be executed.
+If all the arms are deterministic goals,
+then the switch itself is deterministic.
 
-The Mercury compiler does not do any range checking of integers, so
-code such as:
+The Mercury compiler does not do any range checking of integers,
+so code such as:
 
 @example
 factorial(0, 1).
@@ -684,20 +698,25 @@ factorial(N, F) :-
 @end example
 
 @noindent
-would be inferred ``nondeterministic''. The compiler would infer that
-the two clauses are not mutually exclusive because it does not know
-about the semantics of @samp{>/2}, and it would infer that
-the predicate as a whole could fail because the call to @samp{>/2}
-can fail.
+would be inferred to be ``nondeterministic''.
+The compiler would infer that the two clauses are not mutually exclusive,
+because it does not know about the semantics of @code{>/2},
+and it would infer that the predicate as a whole could fail
+because (a) the unification of the first argument with @code{0} can fail,
+so the first clause is not guaranteed to generate a solution,
+and (b) the call to @code{>/2} can fail,
+and so the second clause is not guaranteed to generate a solution either.
 
-The general solution to such problems is to use an if-then-else:
+The general solution to such problems
+is to use a chain of one or more if-then-elses.
 
 @example
-:- pred factorial(int, int).
-:- mode factorial(in, out) is det.
+:- pred factorial(int::in, int::out) is det.
 
 factorial(N, F) :-
-    ( N =< 0 ->
+    ( N < 0 ->
+        unexpected($pred, "negative N")
+    ; N = 0 ->
         F = 1
     ;
         N1 is N - 1,
@@ -706,20 +725,29 @@ factorial(N, F) :-
     ).
 @end example
 
+The @code{unexpected} predicate is defined
+in the @code{require} module of the Mercury standard library.
+Calls to it throw an exception,
+and unless that exception is caught, it aborts the program.
+The terms @code{$pred} is automatically replaced by the compiler
+with the (module-qualified) name of the predicate in which it appears.
+
 @node All-solutions
 @chapter All-solutions predicates.
 
-Prolog's various different all-solutions predicates (@samp{findall/3}, @samp{bagof/3},
+Prolog's various different all-solutions predicates
+(@samp{findall/3}, @samp{bagof/3},
 and @samp{setof/3}) all have semantic problems.
-Mercury has a different set of all-solutions predicates (@samp{solutions/2},
-@samp{solutions_set/2}, and @samp{unsorted_solutions/2} --- all defined in the library
-module @samp{solutions}) that
-address the problems of the Prolog versions.
-To avoid the variable scoping problems of the Prolog
-versions, rather than taking both a goal to execute and an aliased
-term holding the resulting value to collect, Mercury's all-solutions
-predicates take
-as input a single higher-order predicate term.  The Mercury equivalent to
+Mercury has a different set of all-solutions predicates
+(@samp{solutions/2}, @samp{solutions_set/2}, and @samp{unsorted_solutions/2},
+all defined in the library module @samp{solutions})
+that address the problems of the Prolog versions.
+To avoid the variable scoping problems of the Prolog versions,
+rather than taking both a goal to execute
+and an aliased term holding the resulting value to collect,
+Mercury's all-solutions predicates take as input
+a single higher-order predicate term.
+The Mercury equivalent to
 
 @example
 intersect(List1, List2, Intersection) :-
@@ -747,12 +775,13 @@ member_of_both(List1, List2, X) :-
 @end example
 
 @noindent
-and in fact that's exactly how the Mercury compiler implements lambda
-expressions.
+and in fact that is exactly how the Mercury compiler
+implements lambda expressions.
 
-The current implementation of @samp{solutions/2} is a ``zero-copy'' implementation,
-so the cost of @samp{solutions/2} is proportional to the number of solutions, but
-independent of the size of the solutions.  (This may change in
-future implementations.)
+The current implementation of @samp{solutions/2}
+is a ``zero-copy'' implementation,
+so the cost of @samp{solutions/2} is
+independent of the @emph{size} of the solutions,
+though it is proportional to the @emph{number} of solutions.
 
 @bye
