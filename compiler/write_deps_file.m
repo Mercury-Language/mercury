@@ -79,18 +79,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Generate the list of .NET DLLs which could be referred to by this module
-    % (including the module itself).
-    %
-    % If we are compiling a module within the standard library we should
-    % reference the runtime DLLs and all other library DLLs. If we are
-    % outside the library we should just reference mercury.dll (which will
-    % contain all the DLLs).
-    %
-:- func referenced_dlls(module_name, set(module_name)) = set(module_name).
-
-%-----------------------------------------------------------------------------%
-
     % For each dependency, search intermod_directories for a .Suffix
     % file or a .m file, filtering out those for which the search fails.
     % If --use-opt-files is set, only look for `.opt' files,
@@ -2227,30 +2215,6 @@ maybe_output_module_order(Globals, Module, DepsOrdering, !IO) :-
 write_module_scc(Stream, SCC0, !IO) :-
     set.to_sorted_list(SCC0, SCC),
     io.write_list(Stream, SCC, "\n", prog_out.write_sym_name, !IO).
-
-%-----------------------------------------------------------------------------%
-
-referenced_dlls(Module, DepModules0) = Modules :-
-    set.insert(Module, DepModules0, DepModules),
-
-    % If we are not compiling a module in the mercury std library, then
-    % replace all the std library dlls with one reference to mercury.dll.
-    ( if mercury_std_library_module_name(Module) then
-        % In the standard library we need to add the runtime dlls.
-        AddedModules =
-            [unqualified("mercury_dotnet"), unqualified("mercury_il")],
-        set.insert_list(AddedModules, DepModules, Modules)
-    else
-        F = ( func(M) =
-                ( if mercury_std_library_module_name(M) then
-                    unqualified("mercury")
-                else
-                    % A sub module is located in the top level assembly.
-                    unqualified(outermost_qualifier(M))
-                )
-            ),
-        Modules = set.map(F, DepModules)
-    ).
 
 %-----------------------------------------------------------------------------%
 

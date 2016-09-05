@@ -238,7 +238,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 
@@ -316,6 +315,38 @@ compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
         " -out:", DLLFileName, " ", CSharpFileName], Command),
     invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
+
+    % Generate the list of .NET DLLs which could be referred to by this module
+    % (including the module itself).
+    %
+    % If we are compiling a module within the standard library we should
+    % reference the runtime DLLs and all other library DLLs. If we are
+    % outside the library we should just reference mercury.dll (which will
+    % contain all the DLLs).
+    %
+:- func referenced_dlls(module_name, set(module_name)) = set(module_name).
+
+referenced_dlls(Module, DepModules0) = Modules :-
+    set.insert(Module, DepModules0, DepModules),
+
+    % If we are not compiling a module in the mercury std library, then
+    % replace all the std library dlls with one reference to mercury.dll.
+    ( if mercury_std_library_module_name(Module) then
+        % In the standard library we need to add the runtime dlls.
+        AddedModules =
+            [unqualified("mercury_dotnet"), unqualified("mercury_il")],
+        set.insert_list(AddedModules, DepModules, Modules)
+    else
+        F = ( func(M) =
+                ( if mercury_std_library_module_name(M) then
+                    unqualified("mercury")
+                else
+                    % A sub module is located in the top level assembly.
+                    unqualified(outermost_qualifier(M))
+                )
+            ),
+        Modules = set.map(F, DepModules)
+    ).
 
 %-----------------------------------------------------------------------------%
 
