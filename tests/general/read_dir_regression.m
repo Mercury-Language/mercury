@@ -21,10 +21,10 @@ main(!IO) :-
 	; LineRes = eof,
 	    write_string("eof\n", !IO)
 	; LineRes = error(Error),
-	    format(".: %s\n", [s(error_message(Error))], !IO)
+	    format("read failed: %s\n", [s(error_message(Error))], !IO)
 	),
 	close_input(File, !IO)
     ; FileRes = error(Error),
-	format(".: %s\n", [s(error_message(Error))], !IO)
+	format("open failed: %s\n", [s(error_message(Error))], !IO)
     ).
 

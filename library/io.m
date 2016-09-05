@@ -5088,68 +5088,80 @@ read_binary(Result, !IO) :-
 
 open_input(FileName, Result, !IO) :-
     do_open_text(FileName, "r", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = -1 then
-        make_err_msg("can't open input file: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    else
+    ( if Result0 = 0 then
         Result = ok(input_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, input, text, file(FileName)), !IO)
+    else if Result0 = -2 then
+        Result = error(io_error("can't open directory as file"))
+    else
+        make_err_msg("can't open input file: ", Msg, !IO),
+        Result = error(io_error(Msg))
     ).
 
 open_output(FileName, Result, !IO) :-
     do_open_text(FileName, "w", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = -1 then
-        make_err_msg("can't open output file: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    else
+    ( if Result0 = 0 then
         Result = ok(output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, output, text, file(FileName)), !IO)
+    else if Result0 = -2 then
+        Result = error(io_error("can't open directory as file"))
+    else
+        make_err_msg("can't open output file: ", Msg, !IO),
+        Result = error(io_error(Msg))
     ).
 
 open_append(FileName, Result, !IO) :-
     do_open_text(FileName, "a", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = -1 then
-        make_err_msg("can't append to file: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    else
+    ( if Result0 = 0 then
         Result = ok(output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, append, text, file(FileName)), !IO)
+    else if Result0 = -2 then
+        Result = error(io_error("can't open directory as file"))
+    else
+        make_err_msg("can't append to file: ", Msg, !IO),
+        Result = error(io_error(Msg))
     ).
 
 open_binary_input(FileName, Result, !IO) :-
     do_open_binary(FileName, "rb", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = -1 then
-        make_err_msg("can't open input file: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    else
+    ( if Result0 = 0 then
         Result = ok(binary_input_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, input, binary, file(FileName)), !IO)
+    else if Result0 = -2 then
+        Result = error(io_error("can't open directory as file"))
+    else
+        make_err_msg("can't open input file: ", Msg, !IO),
+        Result = error(io_error(Msg))
     ).
 
 open_binary_output(FileName, Result, !IO) :-
     do_open_binary(FileName, "wb", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = -1 then
-        make_err_msg("can't open output file: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    else
+    ( if Result0 = 0 then
         Result = ok(binary_output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, output, binary, file(FileName)), !IO)
+    else if Result0 = -2 then
+        Result = error(io_error("can't open directory as file"))
+    else
+        make_err_msg("can't open output file: ", Msg, !IO),
+        Result = error(io_error(Msg))
     ).
 
 open_binary_append(FileName, Result, !IO) :-
     do_open_binary(FileName, "ab", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = -1 then
-        make_err_msg("can't append to file: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    else
+    ( if Result0 = 0 then
         Result = ok(binary_output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, append, binary, file(FileName)), !IO)
+    else if Result0 = -2 then
+        Result = error(io_error("can't open directory as file"))
+    else
+        make_err_msg("can't append to file: ", Msg, !IO),
+        Result = error(io_error(Msg))
     ).
 
 %---------------------------------------------------------------------------%
@@ -5907,7 +5919,7 @@ MercuryFilePtr  mercury_current_binary_input(void);
 MercuryFilePtr  mercury_current_binary_output(void);
 int             mercury_next_stream_id(void);
 MercuryFilePtr  mercury_open(const char *filename, const char *openmode,
-                    MR_AllocSiteInfoPtr alloc_id);
+                    MR_bool *is_dir, MR_AllocSiteInfoPtr alloc_id);
 void            mercury_io_error(MercuryFilePtr mf, const char *format, ...);
 void            mercury_output_error(MercuryFilePtr mf, int errnum);
 void            mercury_print_string(MercuryFilePtr mf, const char *s);
@@ -7157,10 +7169,13 @@ mercury_set_current_binary_output(Stream) ->
 
 MercuryFilePtr
 mercury_open(const char *filename, const char *openmode,
-    MR_AllocSiteInfoPtr alloc_id)
+    MR_bool *is_dir, MR_AllocSiteInfoPtr alloc_id)
 {
     MercuryFilePtr  mf;
     FILE            *f;
+#ifndef MR_WIN32
+    struct stat     stat_info;
+#endif
 
 #ifdef MR_WIN32
     f = _wfopen(ML_utf8_to_wide(filename), ML_utf8_to_wide(openmode));
@@ -7168,9 +7183,28 @@ mercury_open(const char *filename, const char *openmode,
     f = fopen(filename, openmode);
 #endif
 
+    *is_dir = MR_FALSE;
     if (f == NULL) {
         return NULL;
     }
+#if defined(MR_HAVE_FSTAT) && \
+        (defined(MR_HAVE_FILENO) || defined(fileno)) && defined(S_ISDIR)
+    /*
+    ** AFAIK this is only useful on Linux and FreeBSD.  So if we don't have
+    ** fstat or fileno then fall back to just opening the file without this
+    ** check.
+    */
+    if (0 != fstat(fileno(f), &stat_info)) {
+        fclose(f);
+        return NULL;
+    }
+    if (S_ISDIR(stat_info.st_mode)) {
+        *is_dir = MR_TRUE;
+        fclose(f);
+        return NULL;
+    }
+#endif
+
     MR_incr_hp_type_msg(mf, MercuryFile, alloc_id, ""MercuryFile"");
     MR_mercuryfile_init(f, 1, mf);
     return mf;
@@ -9593,9 +9627,16 @@ set_binary_output_stream(binary_output_stream(NewStream),
     %
     % Attempts to open a file in the specified mode.
     % The Mode is a string suitable for passing to fopen().
-    % Result is 0 for success, -1 for failure.
+    % Result is
+    %   0 -- success,
+    %  -1 -- general failure,
+    %  -2 -- failed because the file is a directory (C backends on some OSs)
     % StreamId is a unique integer identifying the open.
     % Both StreamId and Stream are valid only if Result == 0.
+    %
+    % The -2 result is separate because some OSs (Linux and FreeBSD) will
+    % willingly open a directory, and FreeBSD will allow you to read from it.
+    % This could cause confusion so we use fstat to detect the problem.
     %
 :- pred do_open_binary(string::in, string::in, int::out, int::out,
     stream::out, io::di, io::uo) is det.
@@ -9609,12 +9650,14 @@ set_binary_output_stream(binary_output_stream(NewStream),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    Stream = mercury_open(FileName, Mode, MR_ALLOC_ID);
+    MR_bool is_dir;
+
+    Stream = mercury_open(FileName, Mode, &is_dir, MR_ALLOC_ID);
     if (Stream != NULL) {
         ResultCode = 0;
         StreamId = mercury_next_stream_id();
     } else {
-        ResultCode = -1;
+        ResultCode = (MR_TRUE == is_dir) ? -2 : -1;
         StreamId = -1;
     }
 ").
@@ -9625,12 +9668,14 @@ set_binary_output_stream(binary_output_stream(NewStream),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    Stream = mercury_open(FileName, Mode, MR_ALLOC_ID);
+    MR_bool is_dir;
+
+    Stream = mercury_open(FileName, Mode, &is_dir, MR_ALLOC_ID);
     if (Stream != NULL) {
         ResultCode = 0;
         StreamId = mercury_next_stream_id();
     } else {
-        ResultCode = -1;
+        ResultCode = (MR_TRUE == is_dir) ? -2 : -1;
         StreamId = -1;
     }
 ").
