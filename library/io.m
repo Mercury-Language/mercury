@@ -7173,7 +7173,8 @@ mercury_open(const char *filename, const char *openmode,
 {
     MercuryFilePtr  mf;
     FILE            *f;
-#ifndef MR_WIN32
+#if defined(MR_HAVE_FSTAT) && \
+        (defined(MR_HAVE_FILENO) || defined(fileno)) && defined(S_ISDIR)
     struct stat     stat_info;
 #endif
 
