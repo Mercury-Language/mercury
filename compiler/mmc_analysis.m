@@ -123,7 +123,7 @@ mmc_module_name_to_read_file_name(Globals, ModuleName, Ext, MaybeFileName,
         !IO) :-
     module_name_to_search_file_name(Globals, ModuleName, Ext, FileName0, !IO),
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
-    search_for_file(do_not_open_file, Dirs, FileName0, MaybeFileName, !IO).
+    search_for_file(Dirs, FileName0, MaybeFileName, !IO).
 
 :- pred mmc_module_name_to_write_file_name(globals::in, module_name::in,
     string::in, string::out, io::di, io::uo) is det.

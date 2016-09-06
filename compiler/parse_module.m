@@ -110,34 +110,34 @@
     list(error_spec)::out, io::di, io::uo) is det.
 
     % actually_read_module_src(Globals, DefaultModuleName,
-    %     OpenFile, FileData, ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-    %     ParseTree, Specs, Errors, !IO):
+    %     MaybeFileNameAndStream, ReadModuleAndTimestamps,
+    %     MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO):
     %
-    % Read a Mercury source program from the file opened by OpenFile (whose
-    % return value is returned in FileData). Return the parse tree of that
-    % module in ParseTree (which may be a dummy if the file couldn't be
-    % opened), and an indication of the errors found in Specs and Errors.
+    % Read a Mercury source program from FileNameAndStream, if it exists.
+    % Close the stream when the reading is done. Return the parse tree
+    % of that module in ParseTree (which may be a dummy if the file
+    % couldn't be opened), and an indication of the errors found
+    % in Specs and Errors.
     %
     % For the meaning of ReadModuleAndTimestamps and MaybeModuleTimestampRes,
     % read the comments on read_module_src in read_modules.m.
     % XXX ITEM_LIST Move actually_read_module_{src,int,opt} to read_modules.m.
     %
 :- pred actually_read_module_src(globals::in, module_name::in,
-    open_file_pred(FileInfo)::in(open_file_pred), maybe(FileInfo)::out,
+    maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     parse_tree_src::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
     % actually_read_module_int(IntFileKind, Globals, DefaultModuleName,
-    %     OpenFile, FileData, ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-    %     ParseTree, Specs, Errors, !IO):
+    %     MaybeFileNameAndStream, ReadModuleAndTimestamps,
+    %     MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO):
     %
     % Analogous to actually_read_module_src, but opens the IntFileKind
     % interface file for DefaultModuleName.
     %
 :- pred actually_read_module_int(int_file_kind::in, globals::in,
-    module_name::in, open_file_pred(FileInfo)::in(open_file_pred),
-    maybe(FileInfo)::out,
+    module_name::in, maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     parse_tree_int::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
@@ -231,9 +231,9 @@ peek_at_file(DefaultModuleName, SourceFileName0, ModuleName, Specs, !IO) :-
 %---------------------------------------------------------------------------%
 
 actually_read_module_src(Globals, DefaultModuleName,
-        OpenFile, FileData, ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        ParseTree, Specs, Errors, !IO) :-
-    do_actually_read_module(Globals, DefaultModuleName, OpenFile, FileData,
+        MaybeFileNameAndStream, ReadModuleAndTimestamps,
+        MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO) :-
+    do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_src, read_parse_tree_src,
         ParseTree, Specs, Errors, !IO).
@@ -241,9 +241,9 @@ actually_read_module_src(Globals, DefaultModuleName,
 %---------------------%
 
 actually_read_module_int(IntFileKind, Globals, DefaultModuleName,
-        OpenFile, FileData, ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        ParseTree, Specs, Errors, !IO) :-
-    do_actually_read_module(Globals, DefaultModuleName, OpenFile, FileData,
+        MaybeFileNameAndStream, ReadModuleAndTimestamps,
+        MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO) :-
+    do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
         read_parse_tree_int(IntFileKind),
@@ -254,8 +254,8 @@ actually_read_module_int(IntFileKind, Globals, DefaultModuleName,
 actually_read_module_opt(OptFileKind, Globals, FileName, DefaultModuleName,
         ParseTreeOpt, Specs, Errors, !IO) :-
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
-    OpenFile = search_for_file(open_file, Dirs, FileName),
-    do_actually_read_module(Globals, DefaultModuleName, OpenFile, _,
+    search_for_file_and_stream(Dirs, FileName, MaybeFileNameAndStream, !IO),
+    do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
         always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(OptFileKind),
         read_parse_tree_opt(OptFileKind),
@@ -332,7 +332,7 @@ make_dummy_parse_tree_int(IntFileKind, ModuleName, ParseTree) :-
 
 make_dummy_parse_tree_opt(OptFileKind, ModuleName, ParseTree) :-
     ParseTree = parse_tree_opt(ModuleName, OptFileKind, term.context_init,
-    [], []).
+        [], []).
 
 %---------------------------------------------------------------------------%
 
@@ -343,27 +343,24 @@ make_dummy_parse_tree_opt(OptFileKind, ModuleName, ParseTree) :-
     % read_parse_tree_src, read_parse_tree_int and read_parse_tree_src.
     %
 :- pred do_actually_read_module(globals::in, module_name::in,
-    open_file_pred(FD)::in(open_file_pred), maybe(FD)::out,
-    read_module_and_timestamps::in,
-    maybe(io.res(timestamp))::out,
+    maybe_error(path_name_and_stream)::in,
+    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     make_dummy_parse_tree(PT)::in(make_dummy_parse_tree),
     read_parse_tree(PT)::in(read_parse_tree), PT::out,
     list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
 
-do_actually_read_module(Globals, DefaultModuleName, OpenFile, MaybeFileData,
+do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MakeDummyParseTree, ReadParseTree, ParseTree, Specs, Errors, !IO) :-
-    io.input_stream(OldInputStream, !IO),
-    OpenFile(OpenResult, !IO),
     (
-        OpenResult = ok(FileData),
-        MaybeFileData = yes(FileData),
+        MaybeFileNameAndStream =
+            ok(path_name_and_stream(_FilePathName, FileStream)),
         (
             ( ReadModuleAndTimestamps = always_read_module(do_return_timestamp)
             ; ReadModuleAndTimestamps = dont_read_module_if_match(_)
             ),
-            io.input_stream_name(InputStreamName, !IO),
-            io.file_modification_time(InputStreamName, TimestampResult, !IO),
+            io.input_stream_name(FileStream, FileStreamName, !IO),
+            io.file_modification_time(FileStreamName, TimestampResult, !IO),
             (
                 TimestampResult = ok(Timestamp),
                 MaybeModuleTimestampRes =
@@ -390,14 +387,14 @@ do_actually_read_module(Globals, DefaultModuleName, OpenFile, MaybeFileData,
             Specs = [],
             set.init(Errors)
         else
+            io.set_input_stream(FileStream, OldInputStream, !IO),
             ReadParseTree(Globals, DefaultModuleName, ParseTree,
-                Specs, Errors, !IO)
-        ),
-        io.set_input_stream(OldInputStream, ModuleInputStream, !IO),
-        io.close_input(ModuleInputStream, !IO)
+                Specs, Errors, !IO),
+            io.set_input_stream(OldInputStream, _, !IO),
+            io.close_input(FileStream, !IO)
+        )
     ;
-        OpenResult = error(ErrorMsg),
-        MaybeFileData = no,
+        MaybeFileNameAndStream = error(ErrorMsg),
         MakeDummyParseTree(DefaultModuleName, ParseTree),
         MaybeModuleTimestampRes = no,
 

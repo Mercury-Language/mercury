@@ -1185,13 +1185,13 @@ find_erlang_library_path(Globals, MercuryLibDirs, LibName, LibPath, !IO) :-
     module_name_to_lib_file_name(NoSubdirsGlobals, "lib", LibModuleName,
         ".beams", do_not_create_dirs, LibFileName, !IO),
 
-    search_for_file_returning_dir(do_not_open_file, MercuryLibDirs,
-        LibFileName, SearchResult, !IO),
+    search_for_file_returning_dir(MercuryLibDirs, LibFileName, MaybeDirName,
+        !IO),
     (
-        SearchResult = ok(DirName),
+        MaybeDirName = ok(DirName),
         LibPath = DirName / LibFileName
     ;
-        SearchResult = error(Error),
+        MaybeDirName = error(Error),
         LibPath = "",
         write_error_pieces_maybe_with_context(Globals, no, 0, [words(Error)],
             !IO)

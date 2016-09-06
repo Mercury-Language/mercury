@@ -260,19 +260,31 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
             Dirs = SearchDirs,
             FileToFind = OptionsFile0
         ),
-        io.input_stream(OldInputStream, !IO),
-        search_for_file_returning_dir(open_file, Dirs, FileToFind, MaybeDir,
-            !IO),
+        search_for_file_returning_dir_and_stream(Dirs, FileToFind,
+            MaybeDirAndStream, !IO),
         (
-            MaybeDir = ok(FoundDir),
+            MaybeDirAndStream =
+                ok(path_name_and_stream(FoundDir, FoundStream)),
             debug_make_msg(Globals,
                 write_reading_options_file(FoundDir/FileToFind), !IO),
 
+            % XXX Instead of setting and unsetting the input stream,
+            % we should simply pass FoundStream to read_options_lines.
+            % However, when I (zs) tried that, I quickly found that
+            % the call tree of read_options_lines includes many predicates
+            % for which it is not at all clear whether they *intend*
+            % to read from a current standard input that originates as
+            % FoundStream, or they just *happen* to do so.
+            %
+            % XXX The changeover would also be simpler if there was an easy way
+            % to detect calls that read from the current input stream.
+
+            io.set_input_stream(FoundStream, OldInputStream, !IO),
             read_options_lines(Globals, FoundDir, !Variables, !IO),
-            io.set_input_stream(OldInputStream, OptionsStream, !IO),
-            io.close_input(OptionsStream, !IO)
+            io.set_input_stream(OldInputStream, _FoundStream, !IO),
+            io.close_input(FoundStream, !IO)
         ;
-            MaybeDir = error(_),
+            MaybeDirAndStream = error(_),
             (
                 ErrorIfNotExist = error,
                 ( if Dirs = [SingleDir] then

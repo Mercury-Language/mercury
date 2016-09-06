@@ -452,13 +452,13 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
                 module_info_get_name(!.HLDS, ModuleName),
                 module_name_to_search_file_name(Globals, ModuleName, ".opt",
                     OptName, !IO),
-                search_for_file_returning_dir(do_not_open_file, IntermodDirs,
-                    OptName, Found, !IO),
+                search_for_file_returning_dir(IntermodDirs, OptName, MaybeDir,
+                    !IO),
                 (
-                    Found = ok(_),
+                    MaybeDir = ok(_),
                     UpdateStatus = yes
                 ;
-                    Found = error(_),
+                    MaybeDir = error(_),
                     UpdateStatus = no
                 )
             ;

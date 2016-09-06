@@ -2241,17 +2241,15 @@ get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, [Dep | Deps],
         !:OptDeps, !:TransOptDeps, !IO),
     (
         BuildOptFiles = yes,
-        % ZZZ document io.seen effect
         search_for_module_source(Globals, IntermodDirs, IntermodDirs,
-            Dep, Result1, !IO),
+            Dep, MaybeFileName, !IO),
         (
-            Result1 = ok(_),
+            MaybeFileName = ok(_),
             !:OptDeps = [Dep | !.OptDeps],
             !:TransOptDeps = [Dep | !.TransOptDeps],
-            io.seen(!IO),
             Found = yes
         ;
-            Result1 = error(_),
+            MaybeFileName = error(_),
             Found = no
         )
     ;
@@ -2262,23 +2260,22 @@ get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, [Dep | Deps],
         Found = no,
         module_name_to_file_name(Globals, Dep, ".opt",
             do_not_create_dirs, OptName, !IO),
-        search_for_file_returning_dir(do_not_open_file, IntermodDirs,
-            OptName, Result2, !IO),
+        search_for_file_returning_dir(IntermodDirs, OptName, MaybeOptDir, !IO),
         (
-            Result2 = ok(_),
+            MaybeOptDir = ok(_),
             !:OptDeps = [Dep | !.OptDeps]
         ;
-            Result2 = error(_)
+            MaybeOptDir = error(_)
         ),
         module_name_to_file_name(Globals, Dep, ".trans_opt",
             do_not_create_dirs, TransOptName, !IO),
-        search_for_file_returning_dir(do_not_open_file, IntermodDirs,
-            TransOptName, Result3, !IO),
+        search_for_file_returning_dir(IntermodDirs, TransOptName,
+            MaybeTransOptDir, !IO),
         (
-            Result3 = ok(_),
+            MaybeTransOptDir = ok(_),
             !:TransOptDeps = [Dep | !.TransOptDeps]
         ;
-            Result3 = error(_)
+            MaybeTransOptDir = error(_)
         )
     ;
         Found = yes
@@ -2296,8 +2293,7 @@ get_opt_deps(Globals, BuildOptFiles, IntermodDirs, Suffix, [Dep | Deps],
         (
             Result1 = ok(_),
             !:OptDeps = [Dep | !.OptDeps],
-            Found = yes,
-            io.seen(!IO)
+            Found = yes
         ;
             Result1 = error(_),
             Found = no
@@ -2309,12 +2305,12 @@ get_opt_deps(Globals, BuildOptFiles, IntermodDirs, Suffix, [Dep | Deps],
     (
         Found = no,
         module_name_to_search_file_name(Globals, Dep, Suffix, OptName, !IO),
-        search_for_file(do_not_open_file, IntermodDirs, OptName, Result2, !IO),
+        search_for_file(IntermodDirs, OptName, MaybeOptDir, !IO),
         (
-            Result2 = ok(_),
+            MaybeOptDir = ok(_),
             !:OptDeps = [Dep | !.OptDeps]
         ;
-            Result2 = error(_)
+            MaybeOptDir = error(_)
         )
     ;
         Found = yes

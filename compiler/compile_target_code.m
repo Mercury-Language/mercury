@@ -2776,13 +2776,13 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         module_name_to_lib_file_name(NoSubDirGlobals, "lib", LibModuleName,
             LibExt, do_not_create_dirs, LibFileName, !IO),
 
-        search_for_file_returning_dir(do_not_open_file, MercuryLibDirs,
-            LibFileName, SearchResult, !IO),
+        search_for_file_returning_dir(MercuryLibDirs,
+            LibFileName, MaybeDirName, !IO),
         (
-            SearchResult = ok(DirName),
+            MaybeDirName = ok(DirName),
             LinkerOpt = DirName/LibFileName
         ;
-            SearchResult = error(Error),
+            MaybeDirName = error(Error),
             LinkerOpt = "",
             write_error_pieces_maybe_with_context(Globals, no, 0,
                 [words(Error)], !IO),

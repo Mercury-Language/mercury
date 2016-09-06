@@ -494,14 +494,14 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         !Info, !IO) :-
     module_name_to_search_file_name(Globals, ModuleName,
         make_module_dep_file_extension, ModuleDepFile, !IO),
-    io.input_stream(OldInputStream, !IO),
-    search_for_file_returning_dir(open_file, SearchDirs, ModuleDepFile,
-        SearchResult, !IO),
+    search_for_file_returning_dir_and_stream(SearchDirs, ModuleDepFile,
+        MaybeDirAndStream, !IO),
     (
-        SearchResult = ok(ModuleDir),
+        MaybeDirAndStream = ok(path_name_and_stream(ModuleDir, DepStream)),
+        io.set_input_stream(DepStream, OldInputStream, !IO),
         parser.read_term(TermResult, !IO),
-        io.set_input_stream(OldInputStream, ModuleDepStream, !IO),
-        io.close_input(ModuleDepStream, !IO),
+        io.set_input_stream(OldInputStream, _DepStream, !IO),
+        io.close_input(DepStream, !IO),
         (
             TermResult = term(_, Term),
             read_module_dependencies_3(Globals, SearchDirs, ModuleName,
@@ -523,7 +523,7 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
                 ModuleName, !Info, !IO)
         )
     ;
-        SearchResult = error(Msg),
+        MaybeDirAndStream = error(Msg),
         debug_make_msg(Globals,
             read_module_dependencies_remake_msg(RebuildModuleDeps,
                 ModuleDepFile, Msg),

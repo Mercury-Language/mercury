@@ -2136,12 +2136,11 @@ check_library_is_installed(Globals, Dirs, Grade, LibName, !Succeeded, !IO) :-
     % whether its .init file exists. This will work because all libraries
     % have a grade dependent .init file.
     InitFileName = LibName ++ ".init",
-    search_for_file_returning_dir(do_not_open_file, Dirs, InitFileName,
-        SearchResult, !IO),
+    search_for_file_returning_dir(Dirs, InitFileName, MaybeDirName, !IO),
     (
-        SearchResult = ok(_)
+        MaybeDirName = ok(_)
     ;
-        SearchResult = error(_),
+        MaybeDirName = error(_),
         io.stderr_stream(Stderr, !IO),
         io.progname_base("mercury_compile", ProgName, !IO),
         io.format(Stderr,

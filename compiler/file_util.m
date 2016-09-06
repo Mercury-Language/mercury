@@ -4,14 +4,14 @@
 % Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: file_util.m.
 %
 % Utility predicates for operating on files that do not require any access
 % to the parse_tree package or anything above it.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module libs.file_util.
 :- interface.
@@ -24,58 +24,72 @@
 :- import_module maybe.
 :- import_module time.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type file_name == string.
 :- type dir_name == string.
 
-    % Open a source or interface file, returning `ok(FileInfo)' on success
-    % (where FileInfo is information about the file such as the file name
-    % or the directory in which it was found), or `error(Message)' on failure.
-:- type open_file_pred(FileInfo) == pred(maybe_error(FileInfo), io, io).
-:- inst open_file_pred == (pred(out, di, uo) is det).
+:- type path_name_and_stream
+    --->    path_name_and_stream(string, io.text_input_stream).
+            % The string may be a file name or a dir name.
 
-:- type maybe_open_file
-    --->    open_file
-    ;       do_not_open_file.
+%---------------------%
 
-    % search_for_file(MaybeOpen, Dirs, FileName, FoundFileName, !IO):
+    % search_for_file(Dirs, FileName, MaybeFilePathName, !IO):
     %
-    % Search Dirs for FileName, returning the path name of the file that was
-    % found. If requested, the found file will be left open as the current
-    % input stream.
-    %
-    % XXX It would be better to ALWAYS leave the current input stream as is,
-    % and instead return the stream together with the file name if requested.
+    % Search Dirs for FileName. If found, return the path name of the file.
     %
     % NB. Consider using search_for_file_returning_dir, which does not
-    % canonicalise the path so is more efficient.
+    % canonicalise the path, and is therefore more efficient.
     %
-:- pred search_for_file(maybe_open_file::in, list(dir_name)::in, file_name::in,
+:- pred search_for_file(list(dir_name)::in, file_name::in,
     maybe_error(file_name)::out, io::di, io::uo) is det.
 
-    % search_for_file_returning_dir(MaybeOpen, Dirs, FileName, FoundDirName,
+    % search_for_file_and_stream(Dirs, FileName, MaybeFilePathNameAndStream,
     %   !IO):
     %
-    % Search Dirs for FileName, returning the name of the directory in
-    % which the file was found. If requested, the found file will be left
-    % open as the current input stream.
+    % Search Dirs for FileName. If found, return the path name of the file
+    % and an open input stream reading from that file. Closing that stream
+    % is the caller's responsibility.
     %
-    % XXX It would be better to ALWAYS leave the current input stream as is,
-    % and instead return the stream together with the file name if requested.
+    % NB. Consider using search_for_file_returning_dir_and_stream,
+    % which does not canonicalise the path, and is therefore more efficient.
     %
-:- pred search_for_file_returning_dir(maybe_open_file::in, list(dir_name)::in,
-    file_name::in, maybe_error(dir_name)::out, io::di, io::uo) is det.
+:- pred search_for_file_and_stream(list(dir_name)::in, file_name::in,
+    maybe_error(path_name_and_stream)::out, io::di, io::uo) is det.
 
-    % search_for_file_mod_time(Dirs, FileName, FoundModTime, !IO)
+%---------------------%
+
+    % search_for_file_returning_dir(Dirs, FileName, MaybeDirName !IO):
     %
-    % Search Dirs for FileName, returning the last modification time of the
-    % file that was found. Does NOT open the file for reading.
+    % Search Dirs for FileName. If found, return the name of the directory
+    % in which the file was found.
+    %
+:- pred search_for_file_returning_dir(list(dir_name)::in, file_name::in,
+    maybe_error(dir_name)::out, io::di, io::uo) is det.
+
+    % search_for_file_returning_dir_and_stream(Dirs, FileName,
+    %   MaybeDirNameAndStream !IO):
+    %
+    % Search Dirs for FileName. If found, return the name of the directory
+    % in which the file was found, and an open input stream reading
+    % from that file. Closing that stream is the caller's responsibility.
+    %
+:- pred search_for_file_returning_dir_and_stream(list(dir_name)::in,
+    file_name::in, maybe_error(path_name_and_stream)::out,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+    % search_for_file_mod_time(Dirs, FileName, MaybeModTime, !IO)
+    %
+    % Search Dirs for FileName. If found, return the last modification time
+    % of the file that was found. Do NOT open the file for reading.
     %
 :- pred search_for_file_mod_time(list(dir_name)::in, file_name::in,
     maybe_error(time_t)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Write to a given filename, giving appropriate status messages
     % and error messages if the file cannot be opened.
@@ -97,7 +111,7 @@
     %
 :- pred write_include_file_contents(string::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % get_install_name_option(FileName, Option, !IO):
     %
@@ -107,7 +121,7 @@
     %
 :- pred get_install_name_option(globals::in, string::in, string::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
 :- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.
@@ -117,7 +131,7 @@
 :- pred report_error_to_stream(io.output_stream::in, string::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % make_install_file_command(Globals, FileName, InstallDir) = Command:
     % Command is the command required to install file FileName in directory
@@ -131,12 +145,12 @@
     %
 :- func make_install_dir_command(globals, string, string) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % open_temp_output(Dir, Prefix, Suffix, Result, !IO)
+    % open_temp_output(Dir, Prefix, Suffix, Result, !IO):
     %
-    % Create a temporary file and open it for writing.  If successful Result
-    % returns the file's name and output stream.  On error any temporary
+    % Create a temporary file and open it for writing. If successful, Result
+    % returns the file's name and output stream. On error, any temporary
     % file will be removed.
     %
 :- pred open_temp_output(string::in, string::in, string::in,
@@ -145,18 +159,18 @@
 :- pred open_temp_output(maybe_error({string, text_output_stream})::out,
     io::di, io::uo) is det.
 
-    % open_temp_input(Result, WritePred, !IO)
+    % open_temp_input(Result, WritePred, !IO):
     %
-    % Create a temporary file and call WritePred which will write data to
-    % it.  If successful Result returns the file's name and a freshly opened
-    % input stream.  On error any temporary file will be removed.
+    % Create a temporary file and call WritePred which will write data to it.
+    % If successful Result returns the file's name and a freshly opened
+    % input stream. On error any temporary file will be removed.
     %
 :- pred open_temp_input(maybe_error({string, text_input_stream})::out,
     pred(string, maybe_error, io, io)::in(pred(in, out, di, uo) is det),
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -171,91 +185,136 @@
 :- type include_file_error
     --->    include_file_error(string, string).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-search_for_file(MaybeOpen, Dirs, FileName, Result, !IO) :-
-    search_for_file_returning_dir(MaybeOpen, Dirs, FileName, Result0, !IO),
+search_for_file(Dirs, FileName, MaybeFilePathName, !IO) :-
+    search_for_file_and_stream(Dirs, FileName, MaybeFilePathNameAndStream,
+        !IO),
     (
-        Result0 = ok(Dir),
-        ( if dir.this_directory(Dir) then
-            PathName = FileName
-        else
-            PathName = dir.make_path_name(Dir, FileName)
-        ),
-        Result = ok(PathName)
+        MaybeFilePathNameAndStream =
+            ok(path_name_and_stream(FilePathName, Stream)),
+        io.close_input(Stream, !IO),
+        MaybeFilePathName = ok(FilePathName)
     ;
-        Result0 = error(Message),
-        Result = error(Message)
+        MaybeFilePathNameAndStream = error(Msg),
+        MaybeFilePathName = error(Msg)
     ).
 
-search_for_file_returning_dir(MaybeOpen, Dirs, FileName, Result, !IO) :-
-    do_search_for_file(check_file_return_dir(MaybeOpen), Dirs, FileName,
-        MaybeDir, !IO),
-    (
-        MaybeDir = yes(Dir),
-        Result = ok(Dir)
-    ;
-        MaybeDir = no,
-        Msg = "cannot find `" ++ FileName ++ "' in directories " ++
-            string.join_list(", ", Dirs),
-        Result = error(Msg)
-    ).
+search_for_file_and_stream(Dirs, FileName, MaybeFilePathNameAndStream, !IO) :-
+    search_for_file_and_stream_loop(Dirs, Dirs, FileName,
+        MaybeFilePathNameAndStream, !IO).
 
-:- pred check_file_return_dir(maybe_open_file::in, dir_name::in, file_name::in,
-    io.res(dir_name)::out, io::di, io::uo) is det.
-
-check_file_return_dir(MaybeOpen, Dir, FileName, Result, !IO) :-
-    make_path_name_noncanon(Dir, FileName, PathName),
-    io.open_input(PathName, OpenResult, !IO),
-    (
-        OpenResult = ok(Stream),
-        (
-            MaybeOpen = open_file,
-            io.set_input_stream(Stream, _, !IO)
-        ;
-            MaybeOpen = do_not_open_file,
-            io.close_input(Stream, !IO)
-        ),
-        Result = ok(Dir)
-    ;
-        OpenResult = error(Error),
-        Result = error(Error)
-    ).
-
-search_for_file_mod_time(Dirs, FileName, Result, !IO) :-
-    do_search_for_file(check_file_mod_time, Dirs, FileName, MaybeTime, !IO),
-    (
-        MaybeTime = yes(Time),
-        Result = ok(Time)
-    ;
-        MaybeTime = no,
-        Msg = "cannot find `" ++ FileName ++ "' in directories " ++
-            string.join_list(", ", Dirs),
-        Result = error(Msg)
-    ).
-
-:- pred check_file_mod_time(dir_name::in, file_name::in, io.res(time_t)::out,
+:- pred search_for_file_and_stream_loop(list(dir_name)::in,
+    list(dir_name)::in, file_name::in, maybe_error(path_name_and_stream)::out,
     io::di, io::uo) is det.
 
-check_file_mod_time(Dir, FileName, Result, !IO) :-
-    make_path_name_noncanon(Dir, FileName, PathName),
-    io.file_modification_time(PathName, Result, !IO).
-
-:- pred do_search_for_file(
-    pred(dir_name, file_name, io.res(T), io, io)
-        ::in(pred(in, in, out, di, uo) is det),
-    list(dir_name)::in, file_name::in, maybe(T)::out, io::di, io::uo) is det.
-
-do_search_for_file(_P, [], _FileName, no, !IO).
-do_search_for_file(P, [Dir | Dirs], FileName, Result, !IO) :-
-    P(Dir, FileName, Result0, !IO),
+search_for_file_and_stream_loop(AllDirs, Dirs, FileName,
+        MaybeFilePathNameAndStream, !IO) :-
     (
-        Result0 = ok(TimeT),
-        Result = yes(TimeT)
+        Dirs = [],
+        Msg = cannot_find_in_dirs_msg(FileName, AllDirs),
+        MaybeFilePathNameAndStream = error(Msg)
     ;
-        Result0 = error(_),
-        do_search_for_file(P, Dirs, FileName, Result, !IO)
+        Dirs = [HeadDir | TailDirs],
+        make_path_name_noncanon(HeadDir, FileName, HeadFilePathNameNC),
+        io.open_input(HeadFilePathNameNC, MaybeHeadStream, !IO),
+        (
+            MaybeHeadStream = ok(HeadStream),
+            % HeadFilePathName should be a canonical version of
+            % HeadFilePathNameNC.
+            ( if dir.this_directory(HeadDir) then
+                HeadFilePathName = FileName
+            else
+                HeadFilePathName = dir.make_path_name(HeadDir, FileName)
+            ),
+            MaybeFilePathNameAndStream =
+                ok(path_name_and_stream(HeadFilePathName, HeadStream))
+        ;
+            MaybeHeadStream = error(_),
+            search_for_file_and_stream_loop(AllDirs, TailDirs,
+                FileName, MaybeFilePathNameAndStream, !IO)
+        )
     ).
+
+%---------------------%
+
+search_for_file_returning_dir(Dirs, FileName, MaybeDirPathName, !IO) :-
+    search_for_file_returning_dir_and_stream(Dirs, FileName,
+        MaybeDirPathNameAndStream, !IO),
+    (
+        MaybeDirPathNameAndStream =
+            ok(path_name_and_stream(DirPathName, Stream)),
+        io.close_input(Stream, !IO),
+        MaybeDirPathName = ok(DirPathName)
+    ;
+        MaybeDirPathNameAndStream = error(Msg),
+        MaybeDirPathName = error(Msg)
+    ).
+
+search_for_file_returning_dir_and_stream(Dirs, FileName,
+        MaybeDirPathNameAndStream, !IO) :-
+    search_for_file_returning_dir_and_stream_loop(Dirs, Dirs, FileName,
+        MaybeDirPathNameAndStream, !IO).
+
+:- pred search_for_file_returning_dir_and_stream_loop(list(dir_name)::in,
+    list(dir_name)::in, file_name::in, maybe_error(path_name_and_stream)::out,
+    io::di, io::uo) is det.
+
+search_for_file_returning_dir_and_stream_loop(AllDirs, Dirs, FileName,
+        MaybeDirNameAndStream, !IO) :-
+    (
+        Dirs = [],
+        Msg = cannot_find_in_dirs_msg(FileName, AllDirs),
+        MaybeDirNameAndStream = error(Msg)
+    ;
+        Dirs = [HeadDir | TailDirs],
+        make_path_name_noncanon(HeadDir, FileName, HeadFilePathNameNC),
+        io.open_input(HeadFilePathNameNC, MaybeHeadStream, !IO),
+        (
+            MaybeHeadStream = ok(HeadStream),
+            MaybeDirNameAndStream =
+                ok(path_name_and_stream(HeadDir, HeadStream))
+        ;
+            MaybeHeadStream = error(_),
+            search_for_file_returning_dir_and_stream_loop(AllDirs, TailDirs,
+                FileName, MaybeDirNameAndStream, !IO)
+        )
+    ).
+
+%---------------------%
+
+search_for_file_mod_time(Dirs, FileName, Result, !IO) :-
+    search_for_file_mod_time_loop(Dirs, Dirs, FileName, Result, !IO).
+
+:- pred search_for_file_mod_time_loop(list(dir_name)::in, list(dir_name)::in,
+    file_name::in, maybe_error(time_t)::out, io::di, io::uo) is det.
+
+search_for_file_mod_time_loop(AllDirs, Dirs, FileName, MaybeModTime, !IO) :-
+    (
+        Dirs = [],
+        Msg = cannot_find_in_dirs_msg(FileName, AllDirs),
+        MaybeModTime = error(Msg)
+    ;
+        Dirs = [HeadDir | TailDirs],
+        make_path_name_noncanon(HeadDir, FileName, HeadFilePathNameNC),
+        io.file_modification_time(HeadFilePathNameNC, MaybeHeadModTime, !IO),
+        (
+            MaybeHeadModTime = ok(HeadModTime),
+            MaybeModTime = ok(HeadModTime)
+        ;
+            MaybeHeadModTime = error(_),
+            search_for_file_mod_time_loop(AllDirs, TailDirs, FileName,
+                MaybeModTime, !IO)
+        )
+    ).
+
+%---------------------%
+
+:- func cannot_find_in_dirs_msg(file_name, list(dir_name)) = string.
+
+cannot_find_in_dirs_msg(FileName, Dirs) =
+    "cannot find `" ++ FileName ++ "' in directories " ++
+        string.join_list(", ", Dirs).
 
 :- pred make_path_name_noncanon(dir_name::in, file_name::in, file_name::out)
     is det.
@@ -270,11 +329,12 @@ make_path_name_noncanon(Dir, FileName, PathName) :-
         PathName = string.append_list([Dir, Sep, FileName])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 output_to_file(Globals, FileName, Action, Succeeded, !IO) :-
-    NewAction = (pred(0::out, di, uo) is det --> Action),
-    output_to_file_return_result(Globals, FileName, NewAction, Result, !IO),
+    ActionReturnDummy = (pred(0::out, di, uo) is det --> Action),
+    output_to_file_return_result(Globals, FileName, ActionReturnDummy,
+        Result, !IO),
     (
         Result = yes(_),
         Succeeded = yes
@@ -326,7 +386,7 @@ output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
         Result = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 write_include_file_contents(FileName, !IO) :-
     FollowSymLinks = yes,
@@ -390,7 +450,7 @@ copy_stream(OutputStream, InputStream, Res, !IO) :-
 possibly_regular_file(regular_file).
 possibly_regular_file(unknown).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Changes to the following predicate may require similar changes to
 % make.program_target.install_library_grade_files/9.
@@ -410,7 +470,7 @@ get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
     InstallNameOpt = InstallNameFlag ++
         quote_arg(InstallNamePath) / OutputFileName.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_report_stats(yes, !IO) :-
     io.report_stats(!IO).
@@ -436,7 +496,7 @@ report_error_to_stream(Stream, ErrorMessage, !IO) :-
     report_error(ErrorMessage, !IO),
     io.set_output_stream(OldStream, _, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_install_file_command(Globals, FileName, InstallDir) = Command :-
     globals.get_file_install_cmd(Globals, FileInstallCmd),
@@ -461,7 +521,7 @@ make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
     Command = string.join_list("   ", list.map(quote_arg,
         [InstallCmd, InstallCmdDirOpt, SourceDirName, InstallDir])).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 open_temp_output(Dir, Prefix, Suffix, Result, !IO) :-
     make_temp_file(Dir, Prefix, Suffix, TempFileResult, !IO),
@@ -477,13 +537,13 @@ open_temp_output(Result, !IO) :-
 open_temp_output_2(TempFileResult, Result, !IO) :-
     (
         TempFileResult = ok(TempFileName),
-        open_output(TempFileName, OpenResult, !IO),
+        io.open_output(TempFileName, OpenResult, !IO),
         (
             OpenResult = ok(Stream),
             Result = ok({TempFileName, Stream})
         ;
             OpenResult = error(Error),
-            remove_file(TempFileName, _, !IO),
+            io.remove_file(TempFileName, _, !IO),
             Result = error(format(
                 "could not open temporary file `%s': %s",
                 [s(TempFileName), s(error_message(Error))]))
@@ -495,13 +555,13 @@ open_temp_output_2(TempFileResult, Result, !IO) :-
     ).
 
 open_temp_input(Result, Pred, !IO) :-
-    make_temp_file(TempFileResult, !IO),
+    io.make_temp_file(TempFileResult, !IO),
     (
         TempFileResult = ok(TempFileName),
         Pred(TempFileName, PredResult, !IO),
         (
             PredResult = ok,
-            open_input(TempFileName, OpenResult, !IO),
+            io.open_input(TempFileName, OpenResult, !IO),
             (
                 OpenResult = ok(Stream),
                 Result = ok({TempFileName, Stream})
@@ -513,7 +573,7 @@ open_temp_input(Result, Pred, !IO) :-
             )
         ;
             PredResult = error(ErrorMessage),
-            remove_file(TempFileName, _, !IO),
+            io.remove_file(TempFileName, _, !IO),
             Result = error(ErrorMessage)
         )
     ;
@@ -522,6 +582,6 @@ open_temp_input(Result, Pred, !IO) :-
             [s(error_message(Error))]))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module libs.file_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
