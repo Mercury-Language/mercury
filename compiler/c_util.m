@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: c_util.m.
 % Main author: fjh.
@@ -13,7 +13,7 @@
 % emitting C code.  Some of these routines are also useful with other languages
 % whose syntax is similar to C.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module backend_libs.c_util.
 :- interface.
@@ -28,7 +28,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Line numbering.
 %
@@ -39,46 +39,56 @@
     --->    dont_set_line_numbers
     ;       set_line_numbers.
 
-    % maybe_set_line_num(MaybeSetLineNumbers, FileName, LineNum, !IO):
+    % maybe_set_line_num(Stream, MaybeSetLineNumbers, FileName, LineNum, !IO):
     %
     % If MaybeSetLineNumbers = set_line_numbers, emit a #line directive
-    % to set the specified filename and linenumber, so that C compiler
-    % error messages will refer to the correct location in the original
-    % source file location.
+    % to Stream to set the specified filename and linenumber, so that
+    % any error messages from the C compiler will refer to the correct location
+    % in the original source file location.
     %
-:- pred maybe_set_line_num(maybe_set_line_numbers::in, string::in, int::in,
-    io::di, io::uo) is det.
+:- pred maybe_set_line_num(io.text_output_stream::in,
+    maybe_set_line_numbers::in, string::in, int::in, io::di, io::uo) is det.
+:- pred maybe_set_line_num_cur_stream(maybe_set_line_numbers::in,
+    string::in, int::in, io::di, io::uo) is det.
 
-    % always_set_line_num(FileName, LineNum, !IO):
+    % always_set_line_num(Stream, FileName, LineNum, !IO):
     %
     % As maybe_set_line_num, but always generate a #line directive.
     %
-:- pred always_set_line_num(string::in, int::in, io::di, io::uo) is det.
+:- pred always_set_line_num(io.text_output_stream::in, string::in, int::in,
+    io::di, io::uo) is det.
+:- pred always_set_line_num_cur_stream(string::in, int::in,
+    io::di, io::uo) is det.
 
-    % maybe_reset_line_num(MaybeSetLineNumbers, MaybeFileName, !IO):
+    % maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO):
     %
     % If MaybeSetLineNumbers = set_line_numbers, emit a #line directive
-    % to cancel the effect of any previous #line directives, so that
-    % C compiler error messages will refer to the appropriate location
+    % to Stream to cancel the effect of any previous #line directives,
+    % so that C compiler error messages will refer to the appropriate location
     % in the generated .c file.
     %
-    % If MaybeFileName = no, then use the actual name of the file we are
-    % writing and thus as the name of the file we are getting back to.
+    % If MaybeFileName = no, then use the actual name of the file that Stream
+    % is writing to as the name of the file we are getting back to.
     % If MaybeFileName = yes(FileName), then use FileName for this purpose,
-    % regardless of whether it is the name of the file we are writing to.
+    % regardless of whether it is the name of the file that Streams writes to.
     % When we write to modname.suffix.tmp with the intention of later
     % moving it to modname.suffix, we want the #line directive to refer to
     % modname.suffix, not modname.suffix.tmp. This can be done by passing
     % yes("modname.suffix") as MaybeFileName.
     %
-:- pred maybe_reset_line_num(maybe_set_line_numbers::in, maybe(string)::in,
-    io::di, io::uo) is det.
+:- pred maybe_reset_line_num(io.text_output_stream::in,
+    maybe_set_line_numbers::in, maybe(string)::in, io::di, io::uo) is det.
+:- pred maybe_reset_line_num_cur_stream(maybe_set_line_numbers::in,
+    maybe(string)::in, io::di, io::uo) is det.
 
     % As maybe_reset_line_num, but always generate a #line directive.
     %
-:- pred always_reset_line_num(maybe(string)::in, io::di, io::uo) is det.
+:- pred always_reset_line_num(io.text_output_stream::in,
+    maybe(string)::in, io::di, io::uo) is det.
+:- pred always_reset_line_num_cur_stream(maybe(string)::in,
+    io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % String and character handling.
 %
@@ -94,34 +104,56 @@
     % This doesn't actually print out the enclosing double quotes --
     % that is the caller's responsibility.
     %
-:- pred output_quoted_string(string::in, io::di, io::uo) is det.
+:- pred output_quoted_string(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+:- pred output_quoted_string_cur_stream(string::in,
+    io::di, io::uo) is det.
 
     % As above, but for the specified language.
     %
-:- pred output_quoted_string_lang(literal_language, string, io, io).
-:- mode output_quoted_string_lang(in(bound(literal_c)), in, di, uo) is det.
-:- mode output_quoted_string_lang(in(bound(literal_java)), in, di, uo) is det.
-:- mode output_quoted_string_lang(in(bound(literal_csharp)), in, di, uo)
+:- pred output_quoted_string_lang(io.text_output_stream, literal_language,
+    string, io, io).
+:- mode output_quoted_string_lang(in, in(bound(literal_c)), in, di, uo) is det.
+:- mode output_quoted_string_lang(in, in(bound(literal_java)), in, di, uo)
     is det.
-:- mode output_quoted_string_lang(in, in, di, uo) is det.
+:- mode output_quoted_string_lang(in, in(bound(literal_csharp)), in, di, uo)
+    is det.
+:- mode output_quoted_string_lang(in, in, in, di, uo) is det.
+
+:- pred output_quoted_string_lang_cur_stream(literal_language, string, io, io).
+:- mode output_quoted_string_lang_cur_stream(in(bound(literal_c)), in, di, uo)
+    is det.
+:- mode output_quoted_string_lang_cur_stream(in(bound(literal_java)), in,
+    di, uo) is det.
+:- mode output_quoted_string_lang_cur_stream(in(bound(literal_csharp)), in,
+    di, uo) is det.
+:- mode output_quoted_string_lang_cur_stream(in, in, di, uo) is det.
 
     % output_quoted_multi_string is like list.foldl(output_quoted_string)
     % except that a null character will be written between each string
     % in the list.
     %
 :- type multi_string == list(string).
-:- pred output_quoted_multi_string(multi_string::in, io::di, io::uo) is det.
+:- pred output_quoted_multi_string(io.text_output_stream::in,
+    multi_string::in, io::di, io::uo) is det.
+:- pred output_quoted_multi_string_cur_stream(multi_string::in,
+    io::di, io::uo) is det.
 
     % As above, but for the specified language.
     %
-:- pred output_quoted_multi_string_lang(literal_language::in,
+:- pred output_quoted_multi_string_lang(io.text_output_stream::in,
+    literal_language::in, multi_string::in, io::di, io::uo) is det.
+:- pred output_quoted_multi_string_lang_cur_stream(literal_language::in,
     multi_string::in, io::di, io::uo) is det.
 
     % Print out a char suitably escaped for use as a C char literal.
     % This doesn't actually print out the enclosing single quotes --
     % that is the caller's responsibility.
     %
-:- pred output_quoted_char(char::in, io::di, io::uo) is det.
+:- pred output_quoted_char(io.text_output_stream::in, char::in,
+    io::di, io::uo) is det.
+:- pred output_quoted_char_cur_stream(char::in,
+    io::di, io::uo) is det.
 
     % Convert a string to a form that is suitably escaped for use as a
     % C string literal. This doesn't actually add the enclosing double quotes
@@ -135,16 +167,18 @@
     %
 :- func quote_char(char) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Integer literals.
 %
 
     % Write out an int as a C expression.
     %
-:- pred output_int_expr(int::in, io::di, io::uo) is det.
+:- pred output_int_expr(io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
+:- pred output_int_expr_cur_stream(int::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Float literals.
 %
@@ -154,12 +188,14 @@
     %
 :- func make_float_literal(float) = string.
 
-    % As above, but write the string to the current output stream
+    % As above, but write the string to the specified output stream
     % rather than returning it.
     %
-:- pred output_float_literal(float::in, io::di, io::uo) is det.
+:- pred output_float_literal(io.text_output_stream::in, float::in,
+    io::di, io::uo) is det.
+:- pred output_float_literal_cur_stream(float::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Operators.
 %
@@ -190,7 +226,7 @@
 :- pred binop_category_string(binary_op::in, binop_category::out, string::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % output_c_file_intro_and_grade(SourceFileName, Version, Fullarch, !IO):
     %
@@ -203,7 +239,7 @@
 :- pred output_c_file_intro_and_grade(globals::in, string::in, string::in,
     string::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Output #pragma pack directives to change the packing alignment value
     % for MSVC. See MR_Float_Aligned in mercury_float.h.
@@ -212,7 +248,7 @@
 
 :- pred output_pragma_pack_pop(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Utility predicates for working with C code.
 %
@@ -220,8 +256,8 @@
     %
 :- pred is_valid_c_identifier(string::in) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -231,7 +267,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Line numbering.
 %
@@ -246,45 +282,65 @@ lookup_line_numbers(Globals, Option) = MaybeSetLineNumbers :-
         MaybeSetLineNumbers = set_line_numbers
     ).
 
-maybe_set_line_num(MaybeSetLineNumbers, File, Line, !IO) :-
+%---------------------%
+
+maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO) :-
     (
         MaybeSetLineNumbers = set_line_numbers,
-        always_set_line_num(File, Line, !IO)
+        always_set_line_num(Stream, File, Line, !IO)
     ;
         MaybeSetLineNumbers = dont_set_line_numbers
     ).
 
-always_set_line_num(File, Line, !IO) :-
+maybe_set_line_num_cur_stream(MaybeSetLineNumbers, File, Line, !IO) :-
+    io.output_stream(Stream, !IO),
+    maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO).
+
+%---------------------%
+
+always_set_line_num(Stream, File, Line, !IO) :-
     ( if
         Line > 0,
         File \= ""
     then
-        io.write_string("#line ", !IO),
-        io.write_int(Line, !IO),
-        io.write_string(" """, !IO),
+        io.write_string(Stream, "#line ", !IO),
+        io.write_int(Stream, Line, !IO),
+        io.write_string(Stream, " """, !IO),
         can_print_directly(File, CanPrint, !IO),
         (
             CanPrint = yes,
-            io.write_string(File, !IO)
+            io.write_string(Stream, File, !IO)
         ;
             CanPrint = no,
-            output_quoted_string(File, !IO)
+            output_quoted_string(Stream, File, !IO)
         ),
-        io.write_string("""\n", !IO)
+        io.write_string(Stream, """\n", !IO)
     else
         % XXX What is the point of this call?
-        always_reset_line_num(no, !IO)
+        always_reset_line_num(Stream, no, !IO)
     ).
 
-maybe_reset_line_num(MaybeSetLineNumbers, MaybeFileName, !IO) :-
+always_set_line_num_cur_stream(File, Line, !IO) :-
+    io.output_stream(Stream, !IO),
+    always_set_line_num(Stream, File, Line, !IO).
+
+%---------------------%
+
+maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO) :-
     (
         MaybeSetLineNumbers = set_line_numbers,
-        always_reset_line_num(MaybeFileName, !IO)
+        always_reset_line_num(Stream, MaybeFileName, !IO)
     ;
         MaybeSetLineNumbers = dont_set_line_numbers
     ).
 
-always_reset_line_num(MaybeFileName, !IO) :-
+maybe_reset_line_num_cur_stream(MaybeSetLineNumbers, MaybeFileName, !IO) :-
+    io.output_stream(Stream, !IO),
+    maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO).
+
+%---------------------%
+
+always_reset_line_num(Stream, MaybeFileName, !IO) :-
     % We want to generate another #line directive to reset the C compiler's
     % idea of what it is processing back to the file we are generating.
     io.get_output_line_number(Line, !IO),
@@ -292,27 +348,33 @@ always_reset_line_num(MaybeFileName, !IO) :-
         MaybeFileName = yes(FileName)
     ;
         MaybeFileName = no,
-        io.output_stream_name(FileName, !IO)
+        io.output_stream_name(Stream, FileName, !IO)
     ),
     ( if
         Line > 0,
         FileName \= ""
     then
-        io.write_string("#line ", !IO),
-        io.write_int(Line + 1, !IO),
-        io.write_string(" """, !IO),
+        io.write_string(Stream, "#line ", !IO),
+        io.write_int(Stream, Line + 1, !IO),
+        io.write_string(Stream, " """, !IO),
         can_print_directly(FileName, CanPrint, !IO),
         (
             CanPrint = yes,
-            io.write_string(FileName, !IO)
+            io.write_string(Stream, FileName, !IO)
         ;
             CanPrint = no,
-            output_quoted_string(FileName, !IO)
+            output_quoted_string(Stream, FileName, !IO)
         ),
-        io.write_string("""\n", !IO)
+        io.write_string(Stream, """\n", !IO)
     else
         true
     ).
+
+always_reset_line_num_cur_stream(MaybeFileName, !IO) :-
+    io.output_stream(Stream, !IO),
+    always_reset_line_num(Stream, MaybeFileName, !IO).
+
+%---------------------%
 
     % Decide whether the given string can be printed directly, using
     % io.write_string, rather than output_quoted_string. The latter can take
@@ -357,70 +419,109 @@ can_print_directly(_, no, !IO).
     }
 }").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % String and character handling.
 %
 
-output_quoted_string(S, !IO) :-
-    output_quoted_string_lang(literal_c, S, !IO).
+output_quoted_string(Stream, Str, !IO) :-
+    output_quoted_string_lang(Stream, literal_c, Str, !IO).
 
-:- pragma inline(output_quoted_string_lang/4).
+output_quoted_string_cur_stream(Str, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_quoted_string(Stream, Str, !IO).
 
-output_quoted_string_lang(Lang, S, !IO) :-
+%---------------------%
+
+:- pragma inline(output_quoted_string_lang/5).
+
+output_quoted_string_lang(Stream, Lang, Str, !IO) :-
     (
         Lang = literal_c,
-        % Avoid a limitation in the MSVC compiler where string literals can be
-        % no longer than 2048 chars. However if you output the string in
-        % chunks, eg "part a" "part b" it will accept a string longer than 2048
-        % chars, go figure!
-        string.split_by_codepoint(S, 160, Left, Right),
-        do_output_quoted_string(Lang, Left, 0, !IO),
+        % Avoid a limitation in the MSVC compiler, which requires
+        % string literals to be no longer than 2048 chars. However,
+        % it will accept a string longer than 2048 chars if we output
+        % the string in chunks, as in e.g. "part a" "part b". Go figure!
+        string.split_by_codepoint(Str, 160, Left, Right),
+        do_output_quoted_string_lang(Stream, Lang, Left, 0, !IO),
         ( if Right = "" then
             true
         else
             io.write_string("\" \"", !IO),
-            output_quoted_string_lang(Lang, Right, !IO)
+            output_quoted_string_lang(Stream, Lang, Right, !IO)
         )
     ;
         ( Lang = literal_java
         ; Lang = literal_csharp
         ),
-        do_output_quoted_string(Lang, S, 0, !IO)
+        do_output_quoted_string_lang(Stream, Lang, Str, 0, !IO)
     ).
 
-output_quoted_multi_string(Ss, !IO) :-
-    output_quoted_multi_string_lang(literal_c, Ss, !IO).
+:- pred do_output_quoted_string_lang(io.text_output_stream::in,
+    literal_language::in, string::in, int::in, io::di, io::uo) is det.
 
-output_quoted_multi_string_lang(_Lang, [], !IO).
-output_quoted_multi_string_lang(Lang, [S | Ss], !IO) :-
-    output_quoted_string_lang(Lang, S, !IO),
-    output_quoted_char_lang(Lang, char.det_from_int(0), !IO),
-    output_quoted_multi_string_lang(Lang, Ss, !IO).
-
-:- pred do_output_quoted_string(literal_language::in, string::in,
-    int::in, io::di, io::uo) is det.
-
-do_output_quoted_string(Lang, S, Cur, !IO) :-
-    ( if string.unsafe_index_next(S, Cur, Next, Char) then
-        output_quoted_char_lang(Lang, Char, !IO),
-        do_output_quoted_string(Lang, S, Next, !IO)
+do_output_quoted_string_lang(Stream, Lang, Str, Cur, !IO) :-
+    ( if string.unsafe_index_next(Str, Cur, Next, Char) then
+        output_quoted_char_lang(Stream, Lang, Char, !IO),
+        do_output_quoted_string_lang(Stream, Lang, Str, Next, !IO)
     else
         true
     ).
 
-output_quoted_char(Char, !IO) :-
-    output_quoted_char_lang(literal_c, Char, !IO).
+output_quoted_string_lang_cur_stream(Lang, S, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_quoted_string_lang(Stream, Lang, S, !IO).
 
-:- pred output_quoted_char_lang(literal_language, char, io, io).
-:- mode output_quoted_char_lang(in(bound(literal_c)), in, di, uo) is det.
-:- mode output_quoted_char_lang(in(bound(literal_java)), in, di, uo) is det.
-:- mode output_quoted_char_lang(in(bound(literal_csharp)), in, di, uo) is det.
-:- mode output_quoted_char_lang(in, in, di, uo) is det.
+%---------------------%
 
-output_quoted_char_lang(Lang, Char, !IO) :-
+output_quoted_multi_string(Stream, Strs, !IO) :-
+    output_quoted_multi_string_lang(Stream, literal_c, Strs, !IO).
+
+output_quoted_multi_string_cur_stream(Str, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_quoted_multi_string(Stream, Str, !IO).
+
+%---------------------%
+
+output_quoted_multi_string_lang(_Stream, _Lang, [], !IO).
+output_quoted_multi_string_lang(Stream, Lang, [Str | Strs], !IO) :-
+    output_quoted_string_lang(Stream, Lang, Str, !IO),
+    output_quoted_char_lang(Stream, Lang, char.det_from_int(0), !IO),
+    output_quoted_multi_string_lang(Stream, Lang, Strs, !IO).
+
+output_quoted_multi_string_lang_cur_stream(Lang, S, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_quoted_multi_string_lang(Stream, Lang, S, !IO).
+
+%---------------------%
+
+output_quoted_char(Stream, Char, !IO) :-
+    output_quoted_char_lang(Stream, literal_c, Char, !IO).
+
+:- pred output_quoted_char_lang(io.text_output_stream, literal_language, char,
+    io, io).
+:- mode output_quoted_char_lang(in, in(bound(literal_c)), in, di, uo) is det.
+:- mode output_quoted_char_lang(in, in(bound(literal_java)), in, di, uo)
+    is det.
+:- mode output_quoted_char_lang(in, in(bound(literal_csharp)), in, di, uo)
+    is det.
+:- mode output_quoted_char_lang(in, in, in, di, uo) is det.
+
+output_quoted_char_lang(Stream, Lang, Char, !IO) :-
     EscapedCharStr = quote_char_lang(Lang, Char),
-    io.write_string(EscapedCharStr, !IO).
+    io.write_string(Stream, EscapedCharStr, !IO).
+
+output_quoted_char_cur_stream(Char, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_quoted_char(Stream, Char, !IO).
+
+%---------------------%
+
+quote_string(String) = QuotedString :-
+    string.foldl(quote_one_char_c, String, [], RevQuotedChars),
+    string.from_rev_char_list(RevQuotedChars, QuotedString).
+
+%---------------------%
 
 quote_char(Char) = quote_char_lang(literal_c, Char).
 
@@ -433,10 +534,6 @@ quote_char(Char) = quote_char_lang(literal_c, Char).
 quote_char_lang(Lang, Char) = QuotedCharStr :-
     quote_one_char(Lang, Char, [], RevQuotedCharStr),
     string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
-
-quote_string(String) = QuotedString :-
-    string.foldl(quote_one_char_c, String, [], RevQuotedChars),
-    string.from_rev_char_list(RevQuotedChars, QuotedString).
 
 :- pred quote_one_char(literal_language, char, list(char), list(char)).
 :- mode quote_one_char(in(bound(literal_c)), in, in, out) is det.
@@ -600,12 +697,12 @@ unicode_escape_any_char(Char, EscapeCodeChars) :-
     string.format("\\u%04x", [i(Int)], HexString),
     string.to_char_list(HexString, EscapeCodeChars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Integer literals.
 %
 
-output_int_expr(N, !IO) :-
+output_int_expr(Stream, N, !IO) :-
     % We need to cast to (MR_Integer) to ensure things like 1 << 32 work
     % when `MR_Integer' is 64 bits but `int' is 32 bits.
     %
@@ -628,33 +725,38 @@ output_int_expr(N, !IO) :-
         % Write integers in the most readable way as long as the absolute value
         % does not exceed LONG_MAX, otherwise it may be typed `unsigned long'.
         % This is the minimum magnitude of LONG_MAX in C.
-        io.write_string("(MR_Integer) ", !IO),
-        io.write_int(N, !IO)
+        io.write_string(Stream, "(MR_Integer) ", !IO),
+        io.write_int(Stream, N, !IO)
     else
         ( if integer.to_string(integer(N)) = "-2147483648" then
-            % Write -2^31 without using an integer constant that overflows a
-            % 32-bit signed `long' in two's complement representation.
-            io.write_string("(-(MR_Integer) 2147483647 - 1)", !IO)
+            % Write -2^31 without using an integer constant that overflows
+            % a 32-bit signed `long' in two's complement representation.
+            io.write_string(Stream, "(-(MR_Integer) 2147483647 - 1)", !IO)
         else if integer.to_string(integer(N)) = "-9223372036854775808" then
-            % Write -2^63 without using an integer constant that overflows a
-            % 64-bit signed `long' in two's complement representation.
-            io.write_string("(-(MR_Integer) 9223372036854775807 - 1)", !IO)
+            % Write -2^63 without using an integer constant that overflows
+            % a 64-bit signed `long' in two's complement representation.
+            io.write_string(Stream, "(-(MR_Integer) 9223372036854775807 - 1)",
+                !IO)
         else if int.min_int(N) then
             % Avoid negating min_int as it would overflow in two's complement
             % representation. In practice, one of the preceding two cases
             % would have been taken.
-            io.write_string("(-(MR_Integer) ", !IO),
-            io.write_int(-(N + 1), !IO),
-            io.write_string("- 1)", !IO)
+            io.write_string(Stream, "(-(MR_Integer) ", !IO),
+            io.write_int(Stream, -(N + 1), !IO),
+            io.write_string(Stream, "- 1)", !IO)
         else
             % Write other negative values as negation of an MR_Integer value.
-            io.write_string("(-(MR_Integer) ", !IO),
-            io.write_int(-N, !IO),
-            io.write_string(")", !IO)
+            io.write_string(Stream, "(-(MR_Integer) ", !IO),
+            io.write_int(Stream, -N, !IO),
+            io.write_string(Stream, ")", !IO)
         )
     ).
 
-%-----------------------------------------------------------------------------%
+output_int_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_int_expr(Stream, N, !IO).
+
+%---------------------------------------------------------------------------%
 %
 % Floating point literals.
 %
@@ -668,10 +770,14 @@ make_float_literal(Float) = string.format("%#.17g", [f(Float)]).
     % needed to be able to convert IEEE double-precision floating point values
     % to strings and back again without losing precision.
 
-output_float_literal(Float, !IO) :-
-    io.write_string(make_float_literal(Float), !IO).
+output_float_literal(Stream, Float, !IO) :-
+    io.write_string(Stream, make_float_literal(Float), !IO).
 
-%-----------------------------------------------------------------------------%
+output_float_literal_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_float_literal(Stream, N, !IO).
+
+%---------------------------------------------------------------------------%
 %
 % Operators.
 %
@@ -755,7 +861,7 @@ binop_category_string(float_word_bits, float_macro_binop,
 binop_category_string(float_from_dword, float_macro_binop,
     "MR_float_from_dword").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 output_c_file_intro_and_grade(Globals, SourceFileName, Version, Fullarch,
         !IO) :-
@@ -794,7 +900,7 @@ output_c_file_intro_and_grade(Globals, SourceFileName, Version, Fullarch,
 convert_bool_to_string(no) = "no".
 convert_bool_to_string(yes) = "yes".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We could hide these blocks behind macros using the __pragma keyword
     % introduced in MSVC 9 (2008):
@@ -812,13 +918,13 @@ output_pragma_pack_pop(!IO) :-
     io.write_string("#pragma pack(pop)\n", !IO),
     io.write_string("#endif\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_valid_c_identifier(S) :-
     string.index(S, 0, Start),
     char.is_alpha_or_underscore(Start),
     string.is_all_alnum_or_underscore(S).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module backend_libs.c_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

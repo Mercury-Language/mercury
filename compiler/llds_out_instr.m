@@ -600,7 +600,7 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
             (
                 MaybeFailCont = yes(FailCont),
                 io.write_string("\tMR_mkframe(""", !IO),
-                c_util.output_quoted_string(Msg, !IO),
+                c_util.output_quoted_string_cur_stream(Msg, !IO),
                 io.write_string(""", ", !IO),
                 io.write_int(Num, !IO),
                 io.write_string(",\n\t\t", !IO),
@@ -609,7 +609,7 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
             ;
                 MaybeFailCont = no,
                 io.write_string("\tMR_mkframe_no_redoip(""", !IO),
-                c_util.output_quoted_string(Msg, !IO),
+                c_util.output_quoted_string_cur_stream(Msg, !IO),
                 io.write_string(""", ", !IO),
                 io.write_int(Num, !IO),
                 io.write_string(");\n", !IO)

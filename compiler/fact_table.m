@@ -320,7 +320,7 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
                     ProcTable, ModuleInfo, NumFacts, FactArgInfos,
                     WriteHashTables, WriteDataAfterSorting, OutputStream,
                     C_HeaderCode1, PrimaryProcID, !IO),
-                write_fact_table_numfacts(PredName, NumFacts, OutputStream,
+                write_fact_table_numfacts(OutputStream, PredName, NumFacts,
                     C_HeaderCode3, !IO),
                 string.append_list([C_HeaderCode0, C_HeaderCode1,
                     C_HeaderCode2, C_HeaderCode3], C_HeaderCode)
@@ -1315,7 +1315,7 @@ write_fact_data(VeryVerbose, FactNum, FactTableSize, Args,
         true
     ),
     io.write_string(OutputStream, "\t{", !IO),
-    write_fact_args(Args, OutputStream, !IO),
+    write_fact_args(OutputStream, Args, !IO),
     io.write_string(OutputStream, " },\n", !IO).
 
     % Write out the declaration of a new data array followed by " = {\n".
@@ -1334,18 +1334,16 @@ write_new_data_array(OutputStream, StructName, FactNum, !IO) :-
 write_closing_brace(OutputStream, !IO) :-
     io.write_string(OutputStream, "};\n\n", !IO).
 
-:- pred write_fact_args(list(fact_arg)::in, io.output_stream::in,
+:- pred write_fact_args(io.output_stream::in, list(fact_arg)::in,
     io::di, io::uo) is det.
 
-write_fact_args([], _, !IO).
-write_fact_args([Arg | Args], OutputStream, !IO) :-
+write_fact_args(_, [], !IO).
+write_fact_args(OutputStream, [Arg | Args], !IO) :-
     (
         Arg = term.string(String),
-        io.set_output_stream(OutputStream, OldStream, !IO),
-        io.write_string("""", !IO),
-        c_util.output_quoted_string(String, !IO),
-        io.write_string(""", ", !IO),
-        io.set_output_stream(OldStream, _, !IO)
+        io.write_string(OutputStream, """", !IO),
+        c_util.output_quoted_string(OutputStream, String, !IO),
+        io.write_string(OutputStream, """, ", !IO)
     ;
         Arg = term.integer(Int),
         io.write_int(OutputStream, Int, !IO),
@@ -1369,7 +1367,7 @@ write_fact_args([Arg | Args], OutputStream, !IO) :-
         Arg = term.implementation_defined(_),
         unexpected($module, $pred, "implementation-defined literal")
     ),
-    write_fact_args(Args, OutputStream, !IO).
+    write_fact_args(OutputStream, Args, !IO).
 
     % If a data table has been created in a separate file, append it to the
     % end of the main output file and then delete it.
@@ -1587,7 +1585,7 @@ build_hash_table(FactNum, InputArgNum, HashTableName, StructName,
     calculate_hash_table_size(Globals, Len, HashSize),
     hash_table_init(HashSize, HashTable0),
     hash_table_from_list(HashList, HashSize, HashTable0, HashTable),
-    write_hash_table(HashTableName, TableNum, HashTable, OutputStream, !IO).
+    write_hash_table(OutputStream, HashTableName, TableNum, HashTable, !IO).
 
 :- pred build_hash_table_2(int::in, int::in, string::in, string::in, int::in,
     list(mer_mode)::in, module_info::in, list(fact_arg_info)::in, bool::in,
@@ -1651,7 +1649,7 @@ build_hash_table_lower_levels(Globals, FactNum, InputArgNum, HashTableName,
     calculate_hash_table_size(Globals, Len, HashSize),
     hash_table_init(HashSize, HashTable0),
     hash_table_from_list(HashList, HashSize, HashTable0, HashTable),
-    write_hash_table(HashTableName, TableNum0, HashTable, OutputStream, !IO).
+    write_hash_table(OutputStream, HashTableName, TableNum0, HashTable, !IO).
 
 :- pred build_hash_table_lower_levels_2(globals::in, int::in, int::in,
     string::in, int::in, int::out, bool::in, io.output_stream::in,
@@ -2167,20 +2165,20 @@ hash_table_set(Index, Value, HashTable0, HashTable) :-
 %--------------------------------------------------------------------------%
 
     % Write out the C code for a hash table.
-:- pred write_hash_table(string::in, int::in, hash_table::in,
-    io.output_stream::in, io::di, io::uo) is det.
+    %
+:- pred write_hash_table(io.output_stream::in, string::in, int::in,
+    hash_table::in, io::di, io::uo) is det.
 
-write_hash_table(BaseName, TableNum, HashTable, OutputStream, !IO) :-
+write_hash_table(OutputStream, BaseName, TableNum, HashTable, !IO) :-
     get_hash_table_type(HashTable, TableType),
     string.format("struct MR_fact_table_hash_entry_%c %s%d_data[]",
         [c(TableType), s(BaseName), i(TableNum)], HashTableDataName),
-    io.set_output_stream(OutputStream, OldOutputStream, !IO),
-    io.write_strings([HashTableDataName, " = {\n"], !IO),
+    io.write_strings(OutputStream, [HashTableDataName, " = {\n"], !IO),
     HashTable = hash_table(Size, _),
     MaxIndex = Size - 1,
-    write_hash_table_2(HashTable, 0, MaxIndex, !IO),
-    io.write_string("};\n\n", !IO),
-    io.format("
+    write_hash_table_loop(OutputStream, HashTable, 0, MaxIndex, !IO),
+    io.write_string(OutputStream, "};\n\n", !IO),
+    io.format(OutputStream, "
 
 struct MR_fact_table_hash_table_%c %s%d = {
     %d,
@@ -2188,46 +2186,54 @@ struct MR_fact_table_hash_table_%c %s%d = {
 };
 ",
         [c(TableType), s(BaseName), i(TableNum), i(Size),
-        s(BaseName), i(TableNum)], !IO),
-    io.set_output_stream(OldOutputStream, _, !IO).
+        s(BaseName), i(TableNum)], !IO).
 
-:- pred write_hash_table_2(hash_table::in, int::in, int::in, io::di, io::uo)
-    is det.
+:- pred write_hash_table_loop(io.text_output_stream::in, hash_table::in,
+    int::in, int::in, io::di, io::uo) is det.
 
-write_hash_table_2(HashTable, CurrIndex, MaxIndex, !IO) :-
+write_hash_table_loop(Stream, HashTable, CurrIndex, MaxIndex, !IO) :-
     ( if CurrIndex > MaxIndex then
         true
     else
-        io.write_string("\t{ ", !IO),
+        io.write_string(Stream, "\t{ ", !IO),
         ( if hash_table_search(HashTable, CurrIndex, HashEntry) then
             HashEntry = hash_entry(Key, Index, Next),
-            ( if Key = term.string(String) then
-                io.write_string("""", !IO),
-                c_util.output_quoted_string(String, !IO),
-                io.write_string("""", !IO)
-            else if Key = term.integer(Int) then
-                io.write_int(Int, !IO)
-            else if Key = term.float(Float) then
-                io.write_float(Float, !IO)
-            else
-                unexpected($module, $pred, "unsupported type")
+            (
+                Key = term.string(String),
+                io.write_string(Stream, """", !IO),
+                c_util.output_quoted_string(Stream, String, !IO),
+                io.write_string(Stream, """", !IO)
+            ;
+                Key = term.integer(Int),
+                io.write_int(Stream, Int, !IO)
+            ;
+                Key = term.float(Float),
+                io.write_float(Stream, Float, !IO)
+            ;
+                ( Key = term.atom(_)
+                ; Key = term.big_integer(_, _)
+                ; Key = term.implementation_defined(_)
+                ),
+                unexpected($pred, "unsupported type")
             ),
             (
                 Index = fact(I),
-                io.format(", MR_FACT_TABLE_MAKE_TAGGED_INDEX(%d, 1), ",
+                io.format(Stream,
+                    ", MR_FACT_TABLE_MAKE_TAGGED_INDEX(%d, 1), ",
                     [i(I)], !IO)
             ;
                 Index = hash_table(I, H),
-                io.format(", MR_FACT_TABLE_MAKE_TAGGED_POINTER(&%s%d, 2), ",
+                io.format(Stream,
+                    ", MR_FACT_TABLE_MAKE_TAGGED_POINTER(&%s%d, 2), ",
                     [s(H), i(I)], !IO)
             ),
-            io.write_int(Next, !IO)
+            io.write_int(Stream, Next, !IO)
         else
-            io.write_string(
+            io.write_string(Stream,
                 "0, MR_FACT_TABLE_MAKE_TAGGED_POINTER(NULL, 0), -1 ", !IO)
         ),
-        io.write_string("},\n", !IO),
-        write_hash_table_2(HashTable, CurrIndex + 1, MaxIndex, !IO)
+        io.write_string(Stream, "},\n", !IO),
+        write_hash_table_loop(Stream, HashTable, CurrIndex + 1, MaxIndex, !IO)
     ).
 
     % Return 's' for string, 'i' for int, 'f' for float, 'a' for atom.
@@ -2269,7 +2275,7 @@ get_hash_table_type_2(Map, Index, TableType) :-
     % Write out the array of pointers to the fact table arrays.
     %
 :- pred write_fact_table_pointer_array(int::in, int::in, string::in,
-    io.output_stream::in, string::out, io::di, io::uo) is det.
+    io.text_output_stream::in, string::out, io::di, io::uo) is det.
 
 write_fact_table_pointer_array(NumFacts, FactTableSize,
         StructName, OutputStream, C_HeaderCode, !IO) :-
@@ -2282,7 +2288,7 @@ write_fact_table_pointer_array(NumFacts, FactTableSize,
     io.write_string(OutputStream, "};\n", !IO).
 
 :- pred write_fact_table_pointer_array_2(int::in, int::in, int::in, string::in,
-    io.output_stream::in, io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 write_fact_table_pointer_array_2(CurrFact, NumFacts, FactTableSize,
         StructName, OutputStream, !IO) :-
@@ -2296,10 +2302,10 @@ write_fact_table_pointer_array_2(CurrFact, NumFacts, FactTableSize,
             StructName, OutputStream, !IO)
     ).
 
-:- pred write_fact_table_numfacts(sym_name::in, int::in, io.output_stream::in,
-    string::out, io::di, io::uo) is det.
+:- pred write_fact_table_numfacts(io.text_output_stream::in,
+    sym_name::in, int::in, string::out, io::di, io::uo) is det.
 
-write_fact_table_numfacts(PredName, NumFacts, OutputStream, C_HeaderCode,
+write_fact_table_numfacts(OutputStream, PredName, NumFacts, C_HeaderCode,
         !IO) :-
     io.set_output_stream(OutputStream, OldOutputStream, !IO),
     % Write out the size of the fact table.

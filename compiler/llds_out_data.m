@@ -1173,7 +1173,7 @@ output_rval_const(Info, Const, !IO) :-
         io.write_string("MR_FALSE", !IO)
     ;
         Const = llconst_int(N),
-        c_util.output_int_expr(N, !IO)
+        c_util.output_int_expr_cur_stream(N, !IO)
     ;
         Const = llconst_foreign(Value, Type),
         io.write_char('(', !IO),
@@ -1185,18 +1185,18 @@ output_rval_const(Info, Const, !IO) :-
         % The cast to (MR_Float) here lets the C compiler do arithmetic in
         % `float' rather than `double' if `MR_Float' is `float' not `double'.
         output_llds_type_cast(lt_float, !IO),
-        c_util.output_float_literal(FloatVal, !IO)
+        c_util.output_float_literal_cur_stream(FloatVal, !IO)
     ;
         Const = llconst_string(String),
         io.write_string("MR_string_const(""", !IO),
-        c_util.output_quoted_string(String, !IO),
+        c_util.output_quoted_string_cur_stream(String, !IO),
         io.write_string(""", ", !IO),
         io.write_int(string.count_utf8_code_units(String), !IO),
         io.write_string(")", !IO)
     ;
         Const = llconst_multi_string(Strings),
         io.write_string("MR_string_const(""", !IO),
-        c_util.output_quoted_multi_string(Strings, !IO),
+        c_util.output_quoted_multi_string_cur_stream(Strings, !IO),
         io.write_string(""", ", !IO),
 
         % The "+1" is for the NULL character.

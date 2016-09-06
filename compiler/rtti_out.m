@@ -226,9 +226,10 @@ output_type_class_decl_defn(Info, TCDecl, !DeclSet, !IO) :-
     list.length(MethodIds, NumMethodIds),
     output_generic_rtti_data_defn_start(Info, TCIdRttiId, !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
-    c_util.output_quoted_string(sym_name_to_string(ModuleSymName), !IO),
+    c_util.output_quoted_string_cur_stream(sym_name_to_string(ModuleSymName),
+        !IO),
     io.write_string(""",\n\t""", !IO),
-    c_util.output_quoted_string(ClassName, !IO),
+    c_util.output_quoted_string_cur_stream(ClassName, !IO),
     io.write_string(""",\n\t", !IO),
     io.write_int(Arity, !IO),
     io.write_string(",\n\t", !IO),
@@ -288,7 +289,7 @@ output_type_class_decl_defn(Info, TCDecl, !DeclSet, !IO) :-
 
 output_type_class_id_tvar_name(TVarName, !IO) :-
     io.write_string("\t""", !IO),
-    c_util.output_quoted_string(TVarName, !IO),
+    c_util.output_quoted_string_cur_stream(TVarName, !IO),
     io.write_string(""",\n", !IO).
 
 :- pred output_type_class_id_method_id(tc_method_id::in,
@@ -297,7 +298,7 @@ output_type_class_id_tvar_name(TVarName, !IO) :-
 output_type_class_id_method_id(MethodId, !IO) :-
     MethodId = tc_method_id(MethodName, MethodArity, PredOrFunc),
     io.write_string("\t{ """, !IO),
-    c_util.output_quoted_string(MethodName, !IO),
+    c_util.output_quoted_string_cur_stream(MethodName, !IO),
     io.write_string(""", ", !IO),
     io.write_int(MethodArity, !IO),
     io.write_string(", ", !IO),
@@ -645,9 +646,9 @@ output_type_ctor_data_defn(Info, TypeCtorData, !DeclSet, !IO) :-
     io.write_string(",\n\t", !IO),
     output_static_code_addr(CompareCodeAddr, !IO),
     io.write_string(",\n\t""", !IO),
-    c_util.output_quoted_string(sym_name_to_string(Module), !IO),
+    c_util.output_quoted_string_cur_stream(sym_name_to_string(Module), !IO),
     io.write_string(""",\n\t""", !IO),
-    c_util.output_quoted_string(TypeName, !IO),
+    c_util.output_quoted_string_cur_stream(TypeName, !IO),
     io.write_string(""",\n\t", !IO),
     (
         MaybeFunctorsName = yes(FunctorsName),
@@ -811,7 +812,7 @@ output_enum_functor_defn(Info, RttiTypeCtor, EnumFunctor, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_enum_functor_desc(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
-    c_util.output_quoted_string(FunctorName, !IO),
+    c_util.output_quoted_string_cur_stream(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
     io.write_int(Ordinal, !IO),
     io.write_string("\n};\n", !IO).
@@ -828,7 +829,7 @@ output_foreign_enum_functor_defn(Info, RttiTypeCtor, ForeignEnumFunctor,
         type_ctor_foreign_enum_functor_desc(FunctorOrdinal)),
     output_generic_rtti_data_defn_start(Info, RttiId, !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
-    c_util.output_quoted_string(FunctorName, !IO),
+    c_util.output_quoted_string_cur_stream(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
     io.write_int(FunctorOrdinal, !IO),
     io.write_string(",\n\t", !IO),
@@ -849,7 +850,7 @@ output_notag_functor_defn(Info, RttiTypeCtor, NotagFunctor, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_notag_functor_desc),
         !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
-    c_util.output_quoted_string(FunctorName, !IO),
+    c_util.output_quoted_string_cur_stream(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
     (
         ArgType = plain(ArgTypeInfo),
@@ -912,7 +913,7 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_du_functor_desc(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
-    c_util.output_quoted_string(FunctorName, !IO),
+    c_util.output_quoted_string_cur_stream(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
     io.write_int(OrigArity, !IO),
     io.write_string(",\n\t", !IO),
@@ -1009,7 +1010,7 @@ output_res_functor_defn(Info, RttiTypeCtor, ResFunctor, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_res_functor_desc(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
-    c_util.output_quoted_string(FunctorName, !IO),
+    c_util.output_quoted_string_cur_stream(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
     io.write_int(Ordinal, !IO),
     io.write_string(",\n\t", !IO),
@@ -1547,7 +1548,7 @@ output_rtti_data_decl_chunk(Info, Group, RttiIds, !DeclSet, !IO) :-
 
     io.write_string(LinkageStr, !IO),
     io.write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
-    c_util.output_quoted_string(CType, !IO),
+    c_util.output_quoted_string_cur_stream(CType, !IO),
     io.nl(!IO),
 
     output_rtti_data_decl_chunk_entries(IsArray, RttiIds, !DeclSet, !IO).
@@ -1623,7 +1624,7 @@ output_rtti_id_storage_type_name(Info, RttiId, BeingDefined, !DeclSet, !IO) :-
     io.write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
 
     rtti_id_c_type(RttiId, CType, IsArray),
-    c_util.output_quoted_string(CType, !IO),
+    c_util.output_quoted_string_cur_stream(CType, !IO),
     io.write_string(" ", !IO),
     output_rtti_id(RttiId, !IO),
     (
@@ -1952,7 +1953,7 @@ output_maybe_quoted_string(MaybeName, !IO) :-
     (
         MaybeName = yes(Name),
         io.write_string("""", !IO),
-        c_util.output_quoted_string(Name, !IO),
+        c_util.output_quoted_string_cur_stream(Name, !IO),
         io.write_string("""", !IO)
     ;
         MaybeName = no,

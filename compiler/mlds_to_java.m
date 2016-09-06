@@ -449,7 +449,7 @@ output_java_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
         make_include_file_path(SourceFileName, IncludeFile, IncludePath),
         output_context(Info ^ joi_foreign_line_numbers, marker_begin_block,
             context(IncludePath, 1), !IO),
-        write_include_file_contents(IncludePath, !IO),
+        write_include_file_contents_cur_stream(IncludePath, !IO),
         io.nl(!IO),
         % We don't have the true end context readily available.
         output_context(Info ^ joi_foreign_line_numbers, marker_end_block,
@@ -5224,16 +5224,18 @@ output_rval_const(Info, Const, !IO) :-
         io.write_string(Value, !IO)
     ;
         Const = mlconst_float(FloatVal),
-        c_util.output_float_literal(FloatVal, !IO)
+        c_util.output_float_literal_cur_stream(FloatVal, !IO)
     ;
         Const = mlconst_string(String),
         io.write_string("""", !IO),
-        c_util.output_quoted_string_lang(literal_java, String, !IO),
+        c_util.output_quoted_string_lang_cur_stream(literal_java,
+            String, !IO),
         io.write_string("""", !IO)
     ;
         Const = mlconst_multi_string(String),
         io.write_string("""", !IO),
-        c_util.output_quoted_multi_string_lang(literal_java, String, !IO),
+        c_util.output_quoted_multi_string_lang_cur_stream(literal_java,
+            String, !IO),
         io.write_string("""", !IO)
     ;
         Const = mlconst_named_const(NamedConst),

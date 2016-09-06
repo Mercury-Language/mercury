@@ -1049,7 +1049,7 @@ mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude, Context, !IO) :-
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         c_output_file_line(Opts ^ m2co_foreign_line_numbers,
             IncludePath, 1, !IO),
-        write_include_file_contents(IncludePath, !IO)
+        write_include_file_contents_cur_stream(IncludePath, !IO)
     ).
 
 :- pred mlds_output_pragma_export_defn(mlds_to_c_opts::in,
@@ -1793,11 +1793,11 @@ mlds_output_alloc_site_defn(_Opts, Indent, MLDS_ModuleName,
     io.write_string("{ ", !IO),
     mlds_output_fully_qualified_name(QualProcLabel, !IO),
     io.write_string(", """, !IO),
-    c_util.output_quoted_string(FileName, !IO),
+    c_util.output_quoted_string_cur_stream(FileName, !IO),
     io.write_string(""", ", !IO),
     io.write_int(LineNumber, !IO),
     io.write_string(", """, !IO),
-    c_util.output_quoted_string(Type, !IO),
+    c_util.output_quoted_string_cur_stream(Type, !IO),
     io.write_string(""", ", !IO),
     io.write_int(Size, !IO),
     io.write_string("},\n", !IO).
@@ -4649,7 +4649,7 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         ( Const = mlconst_int(N)
         ; Const = mlconst_enum(N, _)
         ),
-        c_util.output_int_expr(N, !IO)
+        c_util.output_int_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_char(C),
         io.write_string("(MR_Char) ", !IO),
@@ -4666,19 +4666,19 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         % The cast to (MR_Float) here lets the C compiler do arithmetic in
         % `float' rather than `double' if `MR_Float' is `float' not `double'.
         io.write_string("(MR_Float) ", !IO),
-        c_util.output_float_literal(FloatVal, !IO)
+        c_util.output_float_literal_cur_stream(FloatVal, !IO)
     ;
         Const = mlconst_string(String),
         % The cast avoids the following gcc warning
         % "assignment discards qualifiers from pointer target type".
         io.write_string("(MR_String) ", !IO),
         io.write_string("""", !IO),
-        c_util.output_quoted_string(String, !IO),
+        c_util.output_quoted_string_cur_stream(String, !IO),
         io.write_string("""", !IO)
     ;
         Const = mlconst_multi_string(String),
         io.write_string("""", !IO),
-        c_util.output_quoted_multi_string(String, !IO),
+        c_util.output_quoted_multi_string_cur_stream(String, !IO),
         io.write_string("""", !IO)
     ;
         Const = mlconst_named_const(NamedConst),
@@ -4824,7 +4824,7 @@ c_output_context(OutputLineNumbers, Context, !IO) :-
         ProgContext = mlds_get_prog_context(Context),
         term.context_file(ProgContext, FileName),
         term.context_line(ProgContext, LineNumber),
-        c_util.always_set_line_num(FileName, LineNumber, !IO)
+        c_util.always_set_line_num_cur_stream(FileName, LineNumber, !IO)
     ;
         OutputLineNumbers = no
     ).
@@ -4835,7 +4835,7 @@ c_output_context(OutputLineNumbers, Context, !IO) :-
 c_output_file_line(OutputLineNumbers, FileName, LineNumber, !IO) :-
     (
         OutputLineNumbers = yes,
-        c_util.always_set_line_num(FileName, LineNumber, !IO)
+        c_util.always_set_line_num_cur_stream(FileName, LineNumber, !IO)
     ;
         OutputLineNumbers = no
     ).
@@ -4845,7 +4845,7 @@ c_output_file_line(OutputLineNumbers, FileName, LineNumber, !IO) :-
 c_reset_context(OutputLineNumbers, !IO) :-
     (
         OutputLineNumbers = yes,
-        c_util.always_reset_line_num(no, !IO)
+        c_util.always_reset_line_num_cur_stream(no, !IO)
     ;
         OutputLineNumbers = no
     ).

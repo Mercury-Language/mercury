@@ -966,7 +966,7 @@ output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
         SourceFileName = Info ^ lout_source_file_name,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         output_set_line_num(ForeignLineNumbers, context(IncludePath, 1), !IO),
-        write_include_file_contents(IncludePath, !IO)
+        write_include_file_contents_cur_stream(IncludePath, !IO)
     ),
     io.nl(!IO),
     output_reset_line_num(ForeignLineNumbers, !IO).

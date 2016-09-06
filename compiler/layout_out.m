@@ -3121,7 +3121,7 @@ output_module_string_table_chars(CurIndex, Count, String, !IO) :-
             Int =< 0x7f
         then
             io.write_char('''', !IO),
-            c_util.output_quoted_char(Char, !IO),
+            c_util.output_quoted_char_cur_stream(Char, !IO),
             io.write_char('''', !IO),
             io.write_string(", ", !IO)
         else if
@@ -3139,7 +3139,7 @@ output_module_string_table_chars(CurIndex, Count, String, !IO) :-
         )
     else
         io.write_char('''', !IO),
-        c_util.output_quoted_char(char.det_from_int(0), !IO),
+        c_util.output_quoted_char_cur_stream(char.det_from_int(0), !IO),
         io.write_char('''', !IO)
     ).
 
@@ -3458,7 +3458,7 @@ output_layout_name_in_vector(Prefix, Name, !IO) :-
 
 quote_and_write_string(String, !IO) :-
     io.write_string("""", !IO),
-    c_util.output_quoted_string(String, !IO),
+    c_util.output_quoted_string_cur_stream(String, !IO),
     io.write_string("""", !IO).
 
 output_pred_or_func(PredOrFunc, !IO) :-

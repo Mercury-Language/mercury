@@ -157,7 +157,7 @@ output_set_line_num(OutputLineNumbers, Context, !IO) :-
         OutputLineNumbers = yes,
         term.context_file(Context, File),
         term.context_line(Context, Line),
-        c_util.always_set_line_num(File, Line, !IO)
+        c_util.always_set_line_num_cur_stream(File, Line, !IO)
     ;
         OutputLineNumbers = no
     ).
@@ -165,7 +165,7 @@ output_set_line_num(OutputLineNumbers, Context, !IO) :-
 output_reset_line_num(OutputLineNumbers, !IO) :-
     (
         OutputLineNumbers = yes,
-        c_util.always_reset_line_num(no, !IO)
+        c_util.always_reset_line_num_cur_stream(no, !IO)
     ;
         OutputLineNumbers= no
     ).

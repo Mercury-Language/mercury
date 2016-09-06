@@ -105,11 +105,14 @@
     pred(T, io, io)::in(pred(out, di, uo) is det),
     maybe(T)::out, io::di, io::uo) is det.
 
-    % Write the contents of the given file into the current output stream.
+    % Write the contents of the given file to the specified output stream.
     % Throws include_file_error exceptions for errors relating to the
     % include file.
     %
-:- pred write_include_file_contents(string::in, io::di, io::uo) is det.
+:- pred write_include_file_contents(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+:- pred write_include_file_contents_cur_stream(string::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -388,14 +391,13 @@ output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-write_include_file_contents(FileName, !IO) :-
+write_include_file_contents(OutputStream, FileName, !IO) :-
     FollowSymLinks = yes,
     io.file_type(FollowSymLinks, FileName, MaybeType, !IO),
     (
         MaybeType = ok(Type),
         ( if possibly_regular_file(Type) then
-            io.output_stream(OutputStream, !IO),
-            write_include_file_contents_2(OutputStream, FileName, !IO)
+            copy_file_to_stream(FileName, OutputStream, !IO)
         else
             throw(include_file_error(FileName, "Not a regular file"))
         )
@@ -406,15 +408,19 @@ write_include_file_contents(FileName, !IO) :-
         throw(include_file_error(FileName, Msg))
     ).
 
-:- pred write_include_file_contents_2(io.output_stream::in, string::in,
+write_include_file_contents_cur_stream(FileName, !IO) :-
+    io.output_stream(OutputStream, !IO),
+    write_include_file_contents(OutputStream, FileName, !IO).
+
+:- pred copy_file_to_stream(string::in, io.output_stream::in,
     io::di, io::uo) is det.
 
-write_include_file_contents_2(OutputStream, FileName, !IO) :-
+copy_file_to_stream(FileName, OutputStream, !IO) :-
     io.open_input(FileName, OpenRes, !IO),
     (
         OpenRes = ok(InputStream),
         promise_equivalent_solutions [TryResult, !:IO] (
-            try_io(copy_stream(OutputStream, InputStream), TryResult, !IO)
+            try_io(copy_stream(InputStream, OutputStream), TryResult, !IO)
         ),
         io.close_input(InputStream, !IO),
         (
@@ -431,10 +437,10 @@ write_include_file_contents_2(OutputStream, FileName, !IO) :-
         throw(include_file_error(FileName, io.error_message(Error)))
     ).
 
-:- pred copy_stream(io.output_stream::in,
-    io.input_stream::in, io.res::out, io::di, io::uo) is det.
+:- pred copy_stream(io.input_stream::in, io.output_stream::in,
+    io.res::out, io::di, io::uo) is det.
 
-copy_stream(OutputStream, InputStream, Res, !IO) :-
+copy_stream(InputStream, OutputStream, Res, !IO) :-
     io.read_file_as_string(InputStream, ReadRes, !IO),
     (
         ReadRes = ok(InputContents),

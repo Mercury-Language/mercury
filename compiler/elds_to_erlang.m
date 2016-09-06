@@ -443,7 +443,7 @@ output_foreign_literal_or_include(SourceFileName, LiteralOrInclude, Context,
         LiteralOrInclude = floi_include_file(IncludeFileName),
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         output_file_directive(context(IncludePath, 1), !IO),
-        write_include_file_contents(IncludePath, !IO)
+        write_include_file_contents_cur_stream(IncludePath, !IO)
     ),
     io.nl(!IO),
     reset_file_directive(!IO).

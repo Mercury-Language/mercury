@@ -716,11 +716,10 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     io.open_output(FileName ++ ".tmp", Result, !IO),
     (
         Result = ok(FileStream),
-        io.set_output_stream(FileStream, OutputStream, !IO),
         module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
             SourceFileName, !IO),
         library.version(Version, Fullarch),
-        io.write_strings([
+        io.write_strings(FileStream, [
             "/*\n",
             "** Automatically generated from `", SourceFileName, "'\n",
             "** by the Mercury compiler,\n",
@@ -731,7 +730,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         MangledModuleName = sym_name_mangle(ModuleName),
         string.to_upper(MangledModuleName, UppercaseModuleName),
         GuardMacroName = UppercaseModuleName ++ "_MH",
-        io.write_strings([
+        io.write_strings(FileStream, [
             "#ifndef ", GuardMacroName, "\n",
             "#define ", GuardMacroName, "\n",
             "\n",
@@ -769,30 +768,30 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         else
             MaybeSetLineNumbers = lookup_line_numbers(Globals,
                 line_numbers_for_c_headers),
-            io.write_strings([
+            io.write_strings(FileStream, [
                 "#ifndef ", decl_guard(ModuleName), "\n",
                 "#define ", decl_guard(ModuleName), "\n"], !IO),
             module_info_get_type_table(ModuleInfo, TypeTable),
             list.foldl(
-                output_exported_c_enum(MaybeSetLineNumbers, MaybeThisFileName,
-                    TypeTable),
+                output_exported_c_enum(FileStream, MaybeSetLineNumbers,
+                    MaybeThisFileName, TypeTable),
                 CExportedEnums, !IO),
             list.foldl(
-                output_foreign_decl(MaybeSetLineNumbers, MaybeThisFileName,
-                    SourceFileName, yes(foreign_decl_is_exported)),
+                output_foreign_decl(FileStream, MaybeSetLineNumbers,
+                    MaybeThisFileName, SourceFileName,
+                    yes(foreign_decl_is_exported)),
                 CForeignDeclCodes, !IO),
-            io.write_string("\n#endif\n", !IO)
+            io.write_string(FileStream, "\n#endif\n", !IO)
         ),
 
-        write_export_decls(CExportDecls, !IO),
-        io.write_strings([
+        write_export_decls(FileStream, CExportDecls, !IO),
+        io.write_strings(FileStream, [
             "\n",
             "#ifdef __cplusplus\n",
             "}\n",
             "#endif\n",
             "\n",
             "#endif /* ", GuardMacroName, " */\n"], !IO),
-        io.set_output_stream(OutputStream, _, !IO),
         io.close_output(FileStream, !IO),
         % rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
         update_interface(Globals, FileName, !IO)
@@ -807,21 +806,21 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred write_export_decls(list(foreign_export_decl)::in, io::di, io::uo)
-    is det.
+:- pred write_export_decls(io.text_output_stream::in,
+    list(foreign_export_decl)::in, io::di, io::uo) is det.
 
-write_export_decls([], !IO).
-write_export_decls([ExportDecl | ExportDecls], !IO) :-
+write_export_decls(_Stream, [], !IO).
+write_export_decls(Stream, [ExportDecl | ExportDecls], !IO) :-
     ExportDecl = foreign_export_decl(Lang, CRetType, CFunction, ArgDecls),
     (
         Lang = lang_c,
         % Output the function header.
-        io.write_string(CRetType, !IO),
-        io.write_string(" ", !IO),
-        io.write_string(CFunction, !IO),
-        io.write_string("(", !IO),
-        io.write_string(ArgDecls, !IO),
-        io.write_string(");\n", !IO)
+        io.write_string(Stream, CRetType, !IO),
+        io.write_string(Stream, " ", !IO),
+        io.write_string(Stream, CFunction, !IO),
+        io.write_string(Stream, "(", !IO),
+        io.write_string(Stream, ArgDecls, !IO),
+        io.write_string(Stream, ");\n", !IO)
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java
@@ -829,14 +828,15 @@ write_export_decls([ExportDecl | ExportDecls], !IO) :-
         ),
         sorry($module, $pred, "foreign languages other than C unimplemented")
     ),
-    write_export_decls(ExportDecls, !IO).
+    write_export_decls(Stream, ExportDecls, !IO).
 
-:- pred output_foreign_decl(maybe_set_line_numbers::in, maybe(string)::in,
-    string::in, maybe(foreign_decl_is_local)::in, foreign_decl_code::in,
+:- pred output_foreign_decl(io.text_output_stream::in,
+    maybe_set_line_numbers::in, maybe(string)::in, string::in,
+    maybe(foreign_decl_is_local)::in, foreign_decl_code::in,
     io::di, io::uo) is det.
 
-output_foreign_decl(MaybeSetLineNumbers, MaybeThisFileName, SourceFileName,
-        MaybeDesiredIsLocal, DeclCode, !IO) :-
+output_foreign_decl(Stream, MaybeSetLineNumbers, MaybeThisFileName,
+        SourceFileName, MaybeDesiredIsLocal, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     expect(unify(Lang, lang_c), $module, $pred, "Lang != lang_c"),
     ( if
@@ -847,32 +847,35 @@ output_foreign_decl(MaybeSetLineNumbers, MaybeThisFileName, SourceFileName,
             DesiredIsLocal = IsLocal
         )
     then
-        output_foreign_literal_or_include(MaybeSetLineNumbers,
+        output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
             MaybeThisFileName, SourceFileName, LiteralOrInclude, Context, !IO)
     else
         true
     ).
 
-:- pred output_foreign_literal_or_include(maybe_set_line_numbers::in,
-    maybe(string)::in, string::in, foreign_literal_or_include::in,
-    prog_context::in, io::di, io::uo) is det.
+:- pred output_foreign_literal_or_include(io.text_output_stream::in,
+    maybe_set_line_numbers::in, maybe(string)::in, string::in,
+    foreign_literal_or_include::in, prog_context::in, io::di, io::uo) is det.
 
-output_foreign_literal_or_include(MaybeSetLineNumbers, MaybeThisFileName,
-        SourceFileName, LiteralOrInclude, Context, !IO) :-
+output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
+        MaybeThisFileName, SourceFileName, LiteralOrInclude, Context, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
         term.context_file(Context, File),
         term.context_line(Context, Line),
-        c_util.maybe_set_line_num(MaybeSetLineNumbers, File, Line, !IO),
-        io.write_string(Code, !IO)
+        c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line,
+            !IO),
+        io.write_string(Stream, Code, !IO)
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-        c_util.maybe_set_line_num(MaybeSetLineNumbers, IncludePath, 1, !IO),
-        write_include_file_contents(IncludePath, !IO)
+        c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, IncludePath, 1,
+            !IO),
+        write_include_file_contents(Stream, IncludePath, !IO)
     ),
-    io.nl(!IO),
-    c_util.maybe_reset_line_num(MaybeSetLineNumbers, MaybeThisFileName, !IO).
+    io.nl(Stream, !IO),
+    c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeThisFileName,
+        !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -888,10 +891,11 @@ exported_enum_is_for_c(ExportedEnumInfo) :-
     ExportedEnumInfo = exported_enum_info(Lang, _, _, _),
     Lang = lang_c.
 
-:- pred output_exported_c_enum(maybe_set_line_numbers::in, maybe(string)::in,
+:- pred output_exported_c_enum(io.text_output_stream::in,
+    maybe_set_line_numbers::in, maybe(string)::in,
     type_table::in, exported_enum_info::in, io::di, io::uo) is det.
 
-output_exported_c_enum(MaybeSetLineNumbers, MaybeThisFileName,
+output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
         TypeTable, ExportedEnumInfo, !IO) :-
     ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor,
         NameMapping),
@@ -925,12 +929,13 @@ output_exported_c_enum(MaybeSetLineNumbers, MaybeThisFileName,
             ForeignNamesAndTags = cord.list(ForeignNamesAndTagsCord),
             term.context_file(Context, File),
             term.context_line(Context, Line),
-            c_util.maybe_set_line_num(MaybeSetLineNumbers, File, Line, !IO),
-            io.write_list(ForeignNamesAndTags, "\n",
+            c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line,
+                !IO),
+            io.write_list(Stream, ForeignNamesAndTags, "\n",
                 output_exported_enum_constname_tag, !IO),
-            io.nl(!IO),
-            c_util.maybe_reset_line_num(MaybeSetLineNumbers, MaybeThisFileName,
-                !IO)
+            io.nl(Stream, !IO),
+            c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers,
+                MaybeThisFileName, !IO)
         )
     ).
 

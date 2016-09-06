@@ -1166,12 +1166,13 @@ unop_debug(hash_string6,        "hash_string6").
 :- pred debug_cstring(string::in, io::di, io::uo) is det.
 
 debug_cstring(Str, !IO) :-
-    io.write_char('"', !IO),
-    c_util.output_quoted_string(Str, !IO),
-    io.write_char('"', !IO),
+    io.output_stream(Stream, !IO),
+    io.write_char(Stream, '"', !IO),
+    c_util.output_quoted_string(Stream, Str, !IO),
+    io.write_char(Stream, '"', !IO),
     % XXX: We need the trailing space in case something follows
     % the string as a bytecode argument. This is not very elegant.
-    io.write_char(' ', !IO).
+    io.write_char(Stream, ' ', !IO).
 
 :- pred debug_string(string::in, io::di, io::uo) is det.
 

@@ -127,7 +127,7 @@ output_init_complexity_proc_list([Info | Infos], !IO) :-
     io.write_string("\tMR_init_complexity_proc(", !IO),
     io.write_int(ProcNum, !IO),
     io.write_string(", """, !IO),
-    c_util.output_quoted_string(FullProcName, !IO),
+    c_util.output_quoted_string_cur_stream(FullProcName, !IO),
     io.write_string(""", ", !IO),
     list.filter(complexity_arg_is_profiled, ArgInfos, ProfiledArgInfos),
     io.write_int(list.length(ProfiledArgInfos), !IO),
@@ -336,7 +336,7 @@ output_table_steps([], !IO).
 output_table_steps([StepDesc | StepDescs], !IO) :-
     StepDesc = table_step_desc(VarName, Step),
     io.write_string("{ """, !IO),
-    c_util.output_quoted_string(VarName, !IO),
+    c_util.output_quoted_string_cur_stream(VarName, !IO),
     io.write_string(""", ", !IO),
     table_trie_step_to_c(Step, StepType, MaybeEnumRange),
     io.write_string(StepType, !IO),
