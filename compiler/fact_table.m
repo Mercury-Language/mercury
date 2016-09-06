@@ -10,38 +10,38 @@
 % File: fact_table.m.
 % Main author: dmo.
 %
-% This module handles compilation of fact tables contained in external
-% files that have been declared with a `pragma fact_table' declaration.
+% This module handles compilation of fact tables contained in external files
+% that have been declared with a `pragma fact_table' declaration.
 %
 % The facts are processed one by one. Each fact is read in and type and mode
 % checked. If there are no modes with input arguments, the data is written
-% out to arrays of C structures as each fact is processed.  If there are input
+% out to arrays of C structures as each fact is processed. If there are input
 % modes, the input arguments for each mode are written out to a temporary
-% sort file -- one sort file per input mode.  The output arguments are also
-% included in the sort file for the primary input mode.  (At the moment,
+% sort file -- one sort file per input mode. The output arguments are also
+% included in the sort file for the primary input mode. (At the moment,
 % the primary input mode is the one with the lowest ProcID number, however
 % this may change in the future to select the mode that is likely to give
 % the biggest increase in efficiency by being the primary mode).
 %
 % After all the facts have been read, the sort files are sorted by the Unix
-% `sort' program.  They are then scanned for duplicate input keys to infer
+% `sort' program. They are then scanned for duplicate input keys to infer
 % the determinisms of each mode.
 %
 % The sort files are then read back in one by one and hash tables are created
-% for each input mode.  While the sort file for the primary input mode is
+% for each input mode. While the sort file for the primary input mode is
 % being read, the output arguments are also read back in and output as C
-% arrays in another temporary file.  (This file is concatenated to the end
+% arrays in another temporary file. (This file is concatenated to the end
 % of the fact table C file after all the hash tables have been created.)
 % This means that the output data for identical keys in the primary input
 % mode will be grouped together allowing the code that accesses this mode
 % to be just pick the next item in the data array when backtracking.
 %
-% The inferred determinism for each mode is added to the proc_info.  If a
-% determinism has been declared for the procedure it will be tested against
+% The inferred determinism for each mode is added to the proc_info. If a
+% determinism has been declared for the procedure, it will be tested against
 % the inferred determinism later on in det_report.m.
 %
 % XXX All combinations of `in' and `out' arguments are now supported for all
-% determinisms.  Only the builtin `string', `int' and `float' types are
+% determinisms. Only the builtin `string', `int' and `float' types are
 % supported at the moment.
 %
 % XXX Cross compilation is not supported for fact tables that are indexed on
@@ -126,6 +126,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
+:- import_module cord.
 :- import_module float.
 :- import_module int.
 :- import_module library.
@@ -164,7 +165,7 @@
     % as a C array.
 :- type hash_table
     --->    hash_table(
-                int,            % Size of hash table.
+                int,                    % Size of hash table.
                 map(int, hash_entry)
             ).
 
@@ -223,26 +224,29 @@ fact_table_size(Globals, FactTableSize) :-
 fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
         ModuleInfo, C_HeaderCode, PrimaryProcID, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
-    see_input_handle_error(Globals, yes(Context), FileName, SeeResult, !IO),
+    io.see(FileName, SeeResult, !IO),
     (
         SeeResult = ok,
         module_info_get_name(ModuleInfo, ModuleName),
         fact_table_file_name(Globals, ModuleName, FileName, ".c",
             do_create_dirs, OutputFileName, !IO),
-        open_output_handle_error(Globals, yes(Context), OutputFileName,
-            OpenResult, !IO),
+        io.open_output(OutputFileName, OpenResult, !IO),
         (
             OpenResult = ok(OutputStream),
             fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo,
                 Context, ModuleInfo, C_HeaderCode, PrimaryProcID,
                 OutputFileName, OutputStream, !IO)
         ;
-            OpenResult = error(_),
+            OpenResult = error(Error),
+            print_file_open_error(Globals, yes(Context), FileName, "output",
+                Error, !IO),
             C_HeaderCode = "",
             PrimaryProcID = invalid_proc_id
         )
     ;
-        SeeResult = error(_),
+        SeeResult = error(Error),
+        print_file_open_error(Globals, yes(Context), FileName, "input",
+            Error, !IO),
         C_HeaderCode = "",
         PrimaryProcID = invalid_proc_id
     ).
@@ -324,8 +328,8 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
                 DataFileNameResult = error(Error),
                 ErrorReport = no - [
                     words("Could not create temporary file:"),
-                    quote(error_message(Error))],
-                print_error_reports(Globals, [ErrorReport], !IO),
+                    quote(error_message(Error)), nl],
+                print_error_report(Globals, ErrorReport, !IO),
                 C_HeaderCode = C_HeaderCode0,
                 PrimaryProcID = invalid_proc_id,
                 DataFileName = ""
@@ -478,8 +482,8 @@ check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms, Context,
         % written out later on after being sorted on the first input mode.
         ( if
             MaybeOutput = yes(OutputStream - StructName),
-            TermToArg =
-                (pred(Term::in, FactArg::out) is semidet :-
+            TermToArg = (
+                pred(Term::in, FactArg::out) is semidet :-
                     Term = term.functor(FactArg, _, _)
             ),
             list.map(TermToArg, Terms, FactArgs)
@@ -831,7 +835,7 @@ infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
             MaybeAllInProc, WriteHashTables, WriteDataTable, !Errors),
 
         % If there is an all_in procedure, it needs to be put on the end of
-        % the list so a sort file is created for it.  This is required when
+        % the list so a sort file is created for it. This is required when
         % building the hash table, not for determinism inference.
         (
             MaybeAllInProc = yes(ProcID),
@@ -1046,7 +1050,7 @@ write_sort_file_lines([proc_stream(ProcID, Stream) | ProcStreams], ProcTable,
     % by "\t", newlines are replaced by "\n" and backslashes by "\\".
     % This ensures that each possible set of arguments maps to a unique key
     % and guarantees that duplicate keys will be adjacent after sorting
-    % with the sort program.  The tilde ('~') character is used in the
+    % with the sort program. The tilde ('~') character is used in the
     % sort file to separate the sort key from the data.
     %
 :- pred make_sort_file_key(assoc_list(mer_mode, prog_term)::in,
@@ -1086,53 +1090,61 @@ make_fact_data_string([fact_arg_info(_, _, IsOutput) - Term | InfoTerms]) =
 
 :- func make_key_part(const) = string.
 
-make_key_part(term.atom(_)) = _ :-
-    unexpected($module, $pred, "enumerated types are not supported yet.").
-make_key_part(term.integer(I)) =
-    % convert int to base 36 to reduce the size of the I/O.
-    string.int_to_base_string(I, 36).
-make_key_part(term.big_integer(Base, Integer)) = String :-
-    ( if source_integer_to_int(Base, Integer, I) then
-        % convert int to base 36 to reduce the size of the I/O.
-        String = string.int_to_base_string(I, 36)
-    else
-        unexpected($module, $pred, "integer too big")
+make_key_part(Const) = Key :-
+    (
+        Const = term.atom(_),
+        unexpected($module, $pred, "enumerated types are not supported yet.")
+    ;
+        Const = term.integer(I),
+        % Print the integer in base 36 to reduce the amount of I/O we do.
+        Key = string.int_to_base_string(I, 36)
+    ;
+        Const = term.big_integer(Base, Integer),
+        ( if source_integer_to_int(Base, Integer, I) then
+            % As above.
+            Key = string.int_to_base_string(I, 36)
+        else
+            unexpected($module, $pred, "integer too big")
+        )
+    ;
+        Const = term.float(F),
+        Key = string.float_to_string(F)
+    ;
+        Const = term.string(Str),
+        string.to_char_list(Str, Chars),
+        key_from_chars(Chars, EscapedChars),
+        string.from_char_list(EscapedChars, Key)
+    ;
+        Const = term.implementation_defined(_),
+        unexpected($module, $pred, "implementation-defined literal")
     ).
-make_key_part(term.float(F)) =
-    string.float_to_string(F).
-make_key_part(term.string(S)) = K :-
-    string.to_char_list(S, Cs0),
-    Cs = key_from_chars(Cs0),
-    string.from_char_list(Cs, K).
-make_key_part(term.implementation_defined(_)) = _ :-
-    unexpected($module, $pred, "implementation-defined literal").
 
-    % Escape all backslashes with a backslash and replace all
-    % newlines with "\n", colons with "\c" and tildes with "\t".
+    % Escape all backslashes with a backslash, and replace all newlines
+    % with "\n", colons with "\c" and tildes with "\t".
     %
-:- func key_from_chars(list(char)) = list(char).
+:- pred key_from_chars(list(char)::in, list(char)::out) is det.
 
-key_from_chars(Cs) = ECs :-
-    key_from_chars_2(Cs, [], ECs0),
-    list.reverse(ECs0, ECs).
+key_from_chars(Chars, EscapedChars) :-
+    key_from_chars_loop(Chars, cord.init, EscapedCharsCord),
+    EscapedChars = cord.to_list(EscapedCharsCord).
 
-:- pred key_from_chars_2(list(char)::in, list(char)::in, list(char)::out)
+:- pred key_from_chars_loop(list(char)::in, cord(char)::in, cord(char)::out)
     is det.
 
-key_from_chars_2([], ECs, ECs).
-key_from_chars_2([C | Cs], ECs0, ECs) :-
-    ( if C = ('\\') then
-        ECs1 = ['\\', '\\' | ECs0]
-    else if C = (':') then
-        ECs1 = ['c', '\\' | ECs0]
-    else if C = ('~') then
-        ECs1 = ['t', '\\' | ECs0]
-    else if C = ('\n') then
-        ECs1 = ['n', '\\' | ECs0]
+key_from_chars_loop([], !EscapedCharsCord).
+key_from_chars_loop([Char | Chars], !EscapedCharsCord) :-
+    ( if Char = ('\\') then
+        !:EscapedCharsCord = !.EscapedCharsCord ++ cord.from_list(['\\', '\\'])
+    else if Char = ('\n') then
+        !:EscapedCharsCord = !.EscapedCharsCord ++ cord.from_list(['\\', 'n'])
+    else if Char = (':') then
+        !:EscapedCharsCord = !.EscapedCharsCord ++ cord.from_list(['\\', 'c'])
+    else if Char = ('~') then
+        !:EscapedCharsCord = !.EscapedCharsCord ++ cord.from_list(['\\', 't'])
     else
-        ECs1 = [C | ECs0]
+        !:EscapedCharsCord = cord.snoc(!.EscapedCharsCord, Char)
     ),
-    key_from_chars_2(Cs, ECs1, ECs).
+    key_from_chars_loop(Chars, !EscapedCharsCord).
 
 %---------------------------------------------------------------------------%
 
@@ -1182,10 +1194,8 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
             % Duplicate keys => procedure is nondet.
             proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
             ( if
-                (
-                    MaybeDet = yes(detism_cc_multi)
-                ;
-                    MaybeDet = yes(detism_cc_non)
+                ( MaybeDet = yes(detism_cc_multi)
+                ; MaybeDet = yes(detism_cc_non)
                 )
             then
                 Determinism = detism_cc_non
@@ -1237,8 +1247,8 @@ write_fact_table_arrays(ProcFiles0, DataFileName, StructName, ProcTable,
             WriteHashTables = yes,
             (
                 % If there we need to build secondary hash tables (i.e. if
-                % there's >1 input mode) we need to create a ``FactMap'' while
-                % writing out the primary table.
+                % there is >1 input mode) we need to create a ``FactMap''
+                % while writing out the primary table.
                 ProcFiles1 = [_ | _],
                 CreateFactMap = yes
             ;
@@ -1382,7 +1392,7 @@ maybe_append_data_table(Globals, yes, OutputFileName, DataFileName, !IO) :-
         ( if ExitStatus = 0 then
             true
         else
-            Msg = "An error occurred while concatenating" ++
+            Msg = "An error occurred while concatenating " ++
                 "fact table output files.",
             write_error_pieces_plain(Globals, [words(Msg)], !IO),
             io.set_exit_status(1, !IO)
@@ -1407,38 +1417,37 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
         NumFacts, CreateFactMap, Result, FactMap, C_HeaderCode, !IO) :-
     map.init(FactMap0),
     module_info_get_globals(ModuleInfo, Globals),
-    see_input_handle_error(Globals, no, FileName, Result0, !IO),
+    io.see(FileName, SeeResult, !IO),
     (
-        Result0 = ok,
+        SeeResult = ok,
         (
             WriteDataTable  = yes,
-            open_output_handle_error(Globals, no, DataFileName, Result1, !IO),
+            io.open_output(DataFileName, OpenResult, !IO),
             (
-                Result1 = ok(DataStream),
+                OpenResult = ok(DataStream),
                 MaybeDataStream = yes(DataStream),
                 % output opening brace for first fact array
-                write_new_data_array(DataStream, StructName, 0, !IO),
-                Result2 = ok
+                write_new_data_array(DataStream, StructName, 0, !IO)
             ;
-                Result1 = error(_),
-                MaybeDataStream = no,
-                Result2 = error
+                OpenResult = error(Error),
+                print_file_open_error(Globals, no, DataFileName, "output",
+                    Error, !IO),
+                MaybeDataStream = no
             )
         ;
             WriteDataTable = no,
-            MaybeDataStream = no,
-            Result2 = ok
+            MaybeDataStream = no
         ),
         (
-            Result2 = ok,
+            MaybeDataStream = yes(_),
             proc_id_to_int(ProcID, ProcInt),
             string.format("%s_hash_table_%d_",
                 [s(StructName), i(ProcInt)], HashTableName),
-            string.format("extern struct MR_fact_table_hash_table_i %s0;\n",
-                [s(HashTableName)], C_HeaderCode0),
             % Note: the type declared here is not necessarily correct.
             % The type is declared just to stop the C compiler emitting
             % warnings.
+            string.format("extern struct MR_fact_table_hash_table_i %s0;\n",
+                [s(HashTableName)], C_HeaderCode0),
             map.lookup(ProcTable, ProcID, ProcInfo),
             proc_info_get_argmodes(ProcInfo, ArgModes),
             read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo,
@@ -1455,7 +1464,7 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
                 FactMap = FactMap0
             )
         ;
-            Result2 = error,
+            MaybeDataStream = no,
             Result = error,
             FactMap = FactMap0,
             C_HeaderCode0 = ""
@@ -1476,7 +1485,8 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
         io.seen(!IO),
         delete_temporary_file(Globals, FileName, !IO)
     ;
-        Result0 = error(_),
+        SeeResult = error(Error),
+        print_file_open_error(Globals, no, FileName, "input", Error, !IO),
         Result = error,
         FactMap = FactMap0,
         C_HeaderCode = ""
@@ -1494,18 +1504,17 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
         ProcTable, ModuleInfo, OutputStream, FactMap, FactArgInfos,
         !C_HeaderCode, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
-    see_input_handle_error(Globals, no, FileName, SeeResult, !IO),
+    io.see(FileName, SeeResult, !IO),
     (
         SeeResult = ok,
         proc_id_to_int(ProcID, ProcInt),
         string.format("%s_hash_table_%d_",
             [s(StructName), i(ProcInt)], HashTableName),
+        % Note: the type declared here is not necessarily correct.
+        % The type is declared just to stop the C compiler emitting warnings.
         string.format(
             "extern struct MR_fact_table_hash_table_i %s0;\n",
             [s(HashTableName)], New_C_HeaderCode),
-            % Note: the type declared here is not necessarily correct.
-            % The type is declared just to stop the C compiler emitting
-            % warnings.
         string.append(New_C_HeaderCode, !C_HeaderCode),
         map.lookup(ProcTable, ProcID, ProcInfo),
         proc_info_get_argmodes(ProcInfo, ArgModes),
@@ -1526,7 +1535,8 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
             io.seen(!IO)
         )
     ;
-        SeeResult = error(_)
+        SeeResult = error(Error),
+        print_file_open_error(Globals, no, FileName, "input", Error, !IO)
     ).
 
 :- pred read_sort_file_line(list(fact_arg_info)::in, list(mer_mode)::in,
@@ -1849,8 +1859,7 @@ split_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, Line0,
     ).
 
     % Split up a string containing a sort file key into a list of strings
-    % containing the key arguments.  Arguments in the key are separated
-    % by `:'.
+    % containing the key arguments. Arguments in the key are separated by `:'.
     %
 :- pred split_key_to_arg_strings(string::in, list(string)::out) is det.
 
@@ -2367,7 +2376,7 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
     else
         % There is a determinism error in this procedure which will be
         % reported later on when the inferred determinism is compared
-        % to the declared determinism.  So all we need to do here is
+        % to the declared determinism. So all we need to do here is
         % return some C code that does nothing.
 
         % List the variables in the C code to stop the compiler giving
@@ -2750,7 +2759,7 @@ generate_hash_string_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 
     % Generate code to lookup the key in the hash table.
     % KeyType should be 's', 'i' or 'f' for string, int or float,
-    % respectively.  CompareTemplate should be a template for testing for
+    % respectively. CompareTemplate should be a template for testing for
     % equality for the type given, e.g. "%s == %s" for ints,
     % "strcmp(%s, %s) == 0" for strings.
     %
@@ -3335,55 +3344,9 @@ delete_temporary_file(Globals, FileName, !IO) :-
         io.progname_base("mercury_compile", ProgName, !IO),
         string.format("%s: error deleting file `%s:",
             [s(ProgName), s(FileName)], Msg),
-        write_error_pieces_plain(Globals, [words(Msg), nl, words(ErrorMsg)],
-            !IO),
+        Pieces = [words(Msg), nl, words(ErrorMsg), nl],
+        write_error_pieces_plain(Globals, Pieces, !IO),
         io.set_exit_status(1, !IO)
-    ).
-
-:- pred open_output_handle_error(globals::in, maybe(context)::in, string::in,
-    io.res(io.output_stream)::out, io::di, io::uo) is det.
-
-open_output_handle_error(Globals, MaybeContext, FileName, Result, !IO) :-
-    io.open_output(FileName, Result, !IO),
-    (
-        Result = ok(_)
-    ;
-        Result = error(ErrorCode),
-        io.error_message(ErrorCode, ErrorMsg),
-        string.format("Error opening file `%s' for output:",
-            [s(FileName)], Msg),
-        write_error_msg(Globals, MaybeContext, Msg, ErrorMsg, !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
-:- pred see_input_handle_error(globals::in, maybe(context)::in, string::in,
-    io.res::out, io::di, io::uo) is det.
-
-see_input_handle_error(Globals, MaybeContext, FileName, Result, !IO) :-
-    io.see(FileName, Result, !IO),
-    (
-        Result = ok
-    ;
-        Result = error(ErrorCode),
-        io.error_message(ErrorCode, ErrorMsg),
-        string.format("Error opening file `%s' for input:",
-            [s(FileName)], Msg),
-        write_error_msg(Globals, MaybeContext, Msg, ErrorMsg, !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
-:- pred write_error_msg(globals::in, maybe(context)::in,
-    string::in, string::in, io::di, io::uo) is det.
-
-write_error_msg(Globals, MaybeContext, Msg, ErrorMsg, !IO) :-
-    (
-        MaybeContext = yes(Context),
-        write_error_pieces(Globals, Context, 0,
-            [words(Msg), nl, words(ErrorMsg)], !IO)
-    ;
-        MaybeContext = no,
-        write_error_pieces_plain(Globals, [words(Msg), nl, words(ErrorMsg)],
-            !IO)
     ).
 
 :- pred write_call_system_error_msg(globals::in, string::in, io.error::in,
@@ -3409,14 +3372,14 @@ write_call_system_error_msg(Globals, Cmd, ErrorCode, !IO) :-
 :- pred add_error_report(context::in, list(format_component)::in,
     error_reports::in, error_reports::out) is det.
 
-add_error_report(Context, Components, !Errors) :-
-    !:Errors = [yes(Context) - Components | !.Errors].
+add_error_report(Context, Pieces, !Errors) :-
+    !:Errors = [yes(Context) - Pieces | !.Errors].
 
 :- pred add_error_report(list(format_component)::in,
     error_reports::in, error_reports::out) is det.
 
-add_error_report(Components, !Errors) :-
-    !:Errors = [no - Components | !.Errors].
+add_error_report(Pieces, !Errors) :-
+    !:Errors = [no - Pieces | !.Errors].
 
 :- pred print_error_reports(globals::in, error_reports::in, io::di, io::uo)
     is det.
@@ -3428,15 +3391,25 @@ print_error_reports(Globals, RevErrors, !IO) :-
 :- pred print_error_report(globals::in, error_report::in, io::di, io::uo)
     is det.
 
-print_error_report(Globals, MaybeContext - Components, !IO) :-
+print_error_report(Globals, MaybeContext - Pieces, !IO) :-
     (
         MaybeContext = yes(Context),
-        write_error_pieces(Globals, Context, 0, Components, !IO)
+        write_error_pieces(Globals, Context, 0, Pieces, !IO)
     ;
         MaybeContext = no,
-        write_error_pieces_plain(Globals, Components, !IO)
+        write_error_pieces_plain(Globals, Pieces, !IO)
     ),
     io.set_exit_status(1, !IO).
+
+:- pred print_file_open_error(globals::in, maybe(context)::in, string::in,
+    string::in, io.error::in, io::di, io::uo) is det.
+
+print_file_open_error(Globals, MaybeContext, FileName, InOrOut, Error, !IO) :-
+    io.error_message(Error, ErrorMsg),
+    string.format("Error opening file `%s' for %s:",
+        [s(FileName), s(InOrOut)], Msg),
+    Pieces = [words(Msg), nl, words(ErrorMsg), nl],
+    print_error_report(Globals, MaybeContext - Pieces, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.fact_table.
