@@ -353,7 +353,7 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
         IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
     ;
         Lang = lang_erlang,
-        sorry($module, $pred, "foreign_export_enum for target language")
+        sorry($module, $pred, "foreign_export_enum for Erlang")
     ),
     (
         IsValidForeignName = yes,
