@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2003, 2006-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014 The Mercury Team.
+% Copyright (C) 2014, 2016 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -36,9 +36,17 @@
     %
 :- pred init(mvar(T)::out, io::di, io::uo) is det.
 
+    % Create an mvar with the given initial value.
+    %
+:- pred init(T::in, mvar(T)::out, io::di, io::uo) is det.
+
     % Create an empty mvar.
     %
 :- impure func impure_init = (mvar(T)::uo) is det.
+
+    % Create an mvar with the given initial value.
+    %
+:- impure func impure_init(T) = mvar(T).
 
     % Create an empty mvar.
     %
@@ -47,32 +55,38 @@
 :- impure func init = (mvar(T)::uo) is det.
 :- pragma obsolete(init/0).
 
-    % Take the contents of the mvar out leaving the mvar empty.
+    % Take the contents of the mvar out, leaving the mvar empty.
     % If the mvar is empty, block until some thread fills the mvar.
     %
 :- pred take(mvar(T)::in, T::out, io::di, io::uo) is det.
 
-    % Take the contents of the mvar out leaving the mvar empty.
+    % Take the contents of the mvar out, leaving the mvar empty.
     % Returns immediately with no if the mvar was empty, or yes(X) if
     % the mvar contained X.
     %
 :- pred try_take(mvar(T)::in, maybe(T)::out, io::di, io::uo) is det.
 
     % Place the value of type T into an empty mvar.
-    % If the mvar is full block until it becomes empty.
+    % If the mvar is full then block until it becomes empty.
     %
 :- pred put(mvar(T)::in, T::in, io::di, io::uo) is det.
 
     % Place the value of type T into an empty mvar, returning yes on success.
-    % If the mvar is full, return no immediately without blocking.
+    % If the mvar is full then return no immediately without blocking.
     %
 :- pred try_put(mvar(T)::in, T::in, bool::out, io::di, io::uo) is det.
 
-    % Read the contents of mvar, without taking it out.
-    % If the mvar is empty, block until it is full.
-    % This is equivalent to mvar.take followed by mvar.put.
+    % Read the contents of mvar without taking it out.
+    % If the mvar is empty then block until it is full.
+    % This is similar to mvar.take followed by mvar.put, but atomic.
     %
 :- pred read(mvar(T)::in, T::out, io::di, io::uo) is det.
+
+    % Try to read the contents of mvar without taking it out.
+    % Returns immediately with no if the mvar was empty, or yes(X) if
+    % the mvar contained X.
+    %
+:- pred try_read(mvar(T)::in, maybe(T)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -98,10 +112,20 @@ init(Mvar, !IO) :-
         impure Mvar = impure_init
     ).
 
+init(Value, Mvar, !IO) :-
+    promise_pure (
+        impure Mvar = impure_init(Value)
+    ).
+
 impure_init = mvar(Full, Empty, Ref) :-
     impure semaphore.impure_init(0, Full),
-    impure semaphore.impure_init(1, Empty),   % Initially a mvar starts empty.
+    impure semaphore.impure_init(1, Empty),     % initially empty
     impure new_mutvar0(Ref).
+
+impure_init(Value) = mvar(Full, Empty, Ref) :-
+    impure semaphore.impure_init(1, Full),      % initially full
+    impure semaphore.impure_init(0, Empty),
+    impure new_mutvar(Value, Ref).
 
 init = Mvar :-
     impure Mvar = impure_init.
@@ -165,6 +189,22 @@ read(mvar(Full, _Empty, Ref), Data, !IO) :-
         semaphore.wait(Full, !IO),
         impure get_mutvar(Ref, Data),
         semaphore.signal(Full, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+try_read(mvar(Full, _Empty, Ref), MaybeData, !IO) :-
+    promise_pure (
+        semaphore.try_wait(Full, Success, !IO),
+        (
+            Success = yes,
+            impure get_mutvar(Ref, Data),
+            semaphore.signal(Full, !IO),
+            MaybeData = yes(Data)
+        ;
+            Success = no,
+            MaybeData = no
+        )
     ).
 
 %---------------------------------------------------------------------------%

@@ -177,6 +177,13 @@ Changes to the Mercury standard library:
 * We have added thread.num_processors/3 which returns the number of
   processors available for parallel work.
 
+* The following predicates and functions have been added to the thread.mvar
+  module:
+
+    - mvar.init/1
+    - mvar.impure_init/1
+    - mvar.try_read/4
+
 + We have deprecated the impure init/1 function in thread.semaphore.
 
 * In C grades, the math module now provides the fused multiply-add operation
