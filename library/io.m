@@ -5088,78 +5088,96 @@ read_binary(Result, !IO) :-
 
 open_input(FileName, Result, !IO) :-
     do_open_text(FileName, "r", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = 0 then
+    (
+        Result0 = ok,
         Result = ok(input_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, input, text, file(FileName)), !IO)
-    else if Result0 = -2 then
+    ;
+        Result0 = failed_isdir,
         Result = error(io_error("can't open directory as file"))
-    else
+    ;
+        Result0 = failed_general,
         make_err_msg("can't open input file: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
 open_output(FileName, Result, !IO) :-
     do_open_text(FileName, "w", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = 0 then
+    (
+        Result0 = ok,
         Result = ok(output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, output, text, file(FileName)), !IO)
-    else if Result0 = -2 then
+    ;
+        Result0 = failed_isdir,
         Result = error(io_error("can't open directory as file"))
-    else
+    ;
+        Result0 = failed_general,
         make_err_msg("can't open output file: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
 open_append(FileName, Result, !IO) :-
     do_open_text(FileName, "a", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = 0 then
+    (
+        Result0 = ok,
         Result = ok(output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, append, text, file(FileName)), !IO)
-    else if Result0 = -2 then
+    ;
+        Result0 = failed_isdir,
         Result = error(io_error("can't open directory as file"))
-    else
+    ;
+        Result0 = failed_general,
         make_err_msg("can't append to file: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
 open_binary_input(FileName, Result, !IO) :-
     do_open_binary(FileName, "rb", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = 0 then
+    (
+        Result0 = ok,
         Result = ok(binary_input_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, input, binary, file(FileName)), !IO)
-    else if Result0 = -2 then
+    ;
+        Result0 = failed_isdir,
         Result = error(io_error("can't open directory as file"))
-    else
+    ;
+        Result0 = failed_general,
         make_err_msg("can't open input file: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
 open_binary_output(FileName, Result, !IO) :-
     do_open_binary(FileName, "wb", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = 0 then
+    (
+        Result0 = ok,
         Result = ok(binary_output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, output, binary, file(FileName)), !IO)
-    else if Result0 = -2 then
+    ;
+        Result0 = failed_isdir,
         Result = error(io_error("can't open directory as file"))
-    else
+    ;
+        Result0 = failed_general,
         make_err_msg("can't open output file: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
 open_binary_append(FileName, Result, !IO) :-
     do_open_binary(FileName, "ab", Result0, OpenCount, NewStream, !IO),
-    ( if Result0 = 0 then
+    (
+        Result0 = ok,
         Result = ok(binary_output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, append, binary, file(FileName)), !IO)
-    else if Result0 = -2 then
+    ;
+        Result0 = failed_isdir,
         Result = error(io_error("can't open directory as file"))
-    else
+    ;
+        Result0 = failed_general,
         make_err_msg("can't append to file: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
@@ -7191,9 +7209,9 @@ mercury_open(const char *filename, const char *openmode,
 #if defined(MR_HAVE_FSTAT) && \
         (defined(MR_HAVE_FILENO) || defined(fileno)) && defined(S_ISDIR)
     /*
-    ** AFAIK this is only useful on Linux and FreeBSD.  So if we don't have
-    ** fstat or fileno then fall back to just opening the file without this
-    ** check.
+    ** If fileno or fstat arn't available it's okay to open the file without
+    ** this check.  AFAIK if these arn't available then the OS probably won't
+    ** let us open a directory as a file anyway.
     */
     if (0 != fstat(fileno(f), &stat_info)) {
         fclose(f);
@@ -9623,30 +9641,42 @@ set_binary_output_stream(binary_output_stream(NewStream),
 
 % Stream open/close predicates.
 
-    % io.do_open_binary(File, Mode, ResultCode, StreamId, Stream, !IO):
-    % io.do_open_text(File, Mode, ResultCode, StreamId, Stream, !IO):
+:- type open_result
+    --->    ok
+    ;       failed_general
+
+            % The failed_isdir result is separate because some OSs (Linux and
+            % FreeBSD) will willingly open a directory, and FreeBSD will allow
+            % you to read from it.  This could cause confusion so we use fstat
+            % to detect the problem.
+            %
+    ;       failed_isdir.
+
+:- pragma foreign_export_enum("C", open_result/0,
+    [prefix("ML_OR_"), uppercase]).
+:- pragma foreign_export_enum("Java", open_result/0,
+    [prefix("ML_OR_"), uppercase]).
+:- pragma foreign_export_enum("C#", open_result/0,
+    [prefix("ML_OR_"), uppercase]).
+
+    % io.do_open_binary(File, Mode, Result, StreamId, Stream, !IO):
+    % io.do_open_text(File, Mode, Result, StreamId, Stream, !IO):
     %
     % Attempts to open a file in the specified mode.
-    % The Mode is a string suitable for passing to fopen().
-    % Result is
-    %   0 -- success,
-    %  -1 -- general failure,
-    %  -2 -- failed because the file is a directory (C backends on some OSs)
+    % The Mode is a string suitable for pssing to fopen().
+    % Result describes the result of the operation.
     % StreamId is a unique integer identifying the open.
-    % Both StreamId and Stream are valid only if Result == 0.
+    % Both StreamId and Stream are valid only if Result = ok.
+    % make_err_msg should be called iff Result = failed_general.
     %
-    % The -2 result is separate because some OSs (Linux and FreeBSD) will
-    % willingly open a directory, and FreeBSD will allow you to read from it.
-    % This could cause confusion so we use fstat to detect the problem.
-    %
-:- pred do_open_binary(string::in, string::in, int::out, int::out,
+:- pred do_open_binary(string::in, string::in, open_result::out, int::out,
     stream::out, io::di, io::uo) is det.
 
-:- pred do_open_text(string::in, string::in, int::out, int::out,
+:- pred do_open_text(string::in, string::in, open_result::out, int::out,
     stream::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_open_text(FileName::in, Mode::in, ResultCode::out,
+    do_open_text(FileName::in, Mode::in, Result::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -9655,16 +9685,17 @@ set_binary_output_stream(binary_output_stream(NewStream),
 
     Stream = mercury_open(FileName, Mode, &is_dir, MR_ALLOC_ID);
     if (Stream != NULL) {
-        ResultCode = 0;
+        Result = ML_OR_OK;
         StreamId = mercury_next_stream_id();
     } else {
-        ResultCode = (MR_TRUE == is_dir) ? -2 : -1;
+        Result = (MR_TRUE == is_dir) ?
+            ML_OR_FAILED_ISDIR : ML_OR_FAILED_GENERAL;
         StreamId = -1;
     }
 ").
 
 :- pragma foreign_proc("C",
-    do_open_binary(FileName::in, Mode::in, ResultCode::out,
+    do_open_binary(FileName::in, Mode::in, Result::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -9673,16 +9704,17 @@ set_binary_output_stream(binary_output_stream(NewStream),
 
     Stream = mercury_open(FileName, Mode, &is_dir, MR_ALLOC_ID);
     if (Stream != NULL) {
-        ResultCode = 0;
+        Result = ML_OR_OK;
         StreamId = mercury_next_stream_id();
     } else {
-        ResultCode = (MR_TRUE == is_dir) ? -2 : -1;
+        Result = (MR_TRUE == is_dir) ?
+            ML_OR_FAILED_ISDIR : ML_OR_FAILED_GENERAL;
         StreamId = -1;
     }
 ").
 
 :- pragma foreign_proc("C#",
-    do_open_text(FileName::in, Mode::in, ResultCode::out,
+    do_open_text(FileName::in, Mode::in, Result::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -9690,16 +9722,16 @@ set_binary_output_stream(binary_output_stream(NewStream),
         io.ML_default_line_ending);
     Stream = mf;
     if (mf != null) {
-        ResultCode = 0;
+        Result = ML_OR_OK;
         StreamId = mf.id;
     } else {
-        ResultCode = -1;
+        Result = ML_OR_FAILED_GENERAL;
         StreamId = -1;
     }
 ").
 
 :- pragma foreign_proc("C#",
-    do_open_binary(FileName::in, Mode::in, ResultCode::out,
+    do_open_binary(FileName::in, Mode::in, Result::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -9707,16 +9739,16 @@ set_binary_output_stream(binary_output_stream(NewStream),
         io.ML_line_ending_kind.ML_raw_binary);
     Stream = mf;
     if (mf != null) {
-        ResultCode = 0;
+        Result = ML_OR_OK;
         StreamId = mf.id;
     } else {
-        ResultCode = -1;
+        Result = ML_OR_FAILED_GENERAL;
         StreamId = -1;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    do_open_text(FileName::in, Mode::in, ResultCode::out,
+    do_open_text(FileName::in, Mode::in, Result::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -9737,17 +9769,17 @@ set_binary_output_stream(binary_output_stream(NewStream),
             throw new Error(""unreachable"");
         }
         StreamId = Stream.id;
-        ResultCode = 0;
+        Result = ML_OR_OK;
     } catch (java.lang.Exception e) {
         io.MR_io_exception.set(e);
         Stream = null;
         StreamId = -1;
-        ResultCode = -1;
+        Result = ML_OR_FAILED_GENERAL;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    do_open_binary(FileName::in, Mode::in, ResultCode::out,
+    do_open_binary(FileName::in, Mode::in, Result::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
@@ -9772,17 +9804,17 @@ set_binary_output_stream(binary_output_stream(NewStream),
                 break;
         }
         StreamId = Stream.id;
-        ResultCode = 0;
+        Result = ML_OR_OK;
     } catch (java.lang.Exception e) {
         io.MR_io_exception.set(e);
         Stream = null;
         StreamId = -1;
-        ResultCode = -1;
+        Result = ML_OR_FAILED_GENERAL;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    do_open_text(FileName::in, Mode::in, ResultCode::out,
+    do_open_text(FileName::in, Mode::in, Result::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -9793,17 +9825,17 @@ set_binary_output_stream(binary_output_stream(NewStream),
     case mercury__io:mercury_open_stream(FileNameStr, ModeStr) of
         {ok, Stream} ->
             {'ML_stream', StreamId, _Pid} = Stream,
-            ResultCode = 0;
+            Result = {ok};
         {error, Reason} ->
             put('MR_io_exception', Reason),
             StreamId = -1,
             Stream = null,
-            ResultCode = -1
+            Result = {failed_general}
     end
 ").
 
 :- pragma foreign_proc("Erlang",
-    do_open_binary(FileName::in, Mode::in, ResultCode::out,
+    do_open_binary(FileName::in, Mode::in, Result::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -9814,12 +9846,12 @@ set_binary_output_stream(binary_output_stream(NewStream),
     case mercury__io:mercury_open_stream(FileNameStr, ModeStr) of
         {ok, Stream} ->
             {'ML_stream', StreamId, _Pid} = Stream,
-            ResultCode = 0;
+            Result = {ok};
         {error, Reason} ->
             put('MR_io_exception', Reason),
             StreamId = -1,
             Stream = null,
-            ResultCode = -1
+            Result = {failed_general}
     end
 ").
 
