@@ -8675,6 +8675,8 @@ For example:
 
 @menu
 * Using pragma foreign_type for Erlang :: Declaring Erlang types in Mercury
+* Using pragma foreign_export_enum for Erlang :: Using Mercury enumerations in
+                                               Erlang
 * Using pragma foreign_proc for Erlang :: Calling Erlang code from Mercury
 * Using pragma foreign_export for Erlang :: Calling Mercury from Erlang code
 * Using pragma foreign_decl for Erlang :: Including Erlang declarations in Mercury
@@ -8694,6 +8696,15 @@ An Erlang @samp{pragma foreign_type} declaration has the form:
 The effect of this declaration is that Mercury values of type
 @var{MercuryTypeName} will be passed to and from Erlang foreign_procs
 as having some representation unknown to Mercury.
+
+@node Using pragma foreign_export_enum for Erlang
+@subsubsection Using pragma foreign_export_enum for Erlang
+
+Values of Mercury enumeration types may be referred to from Erlang code using
+the convention for discriminated union types described in
+@ref{Erlang data passing conventions}.
+As such, @samp{pragma foreign_export_enum} declarations are neither required or
+supported for Erlang.
 
 @node Using pragma foreign_proc for Erlang
 @subsubsection Using pragma foreign_proc for Erlang
