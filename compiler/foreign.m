@@ -49,22 +49,26 @@
     %
 :- func non_foreign_type(mer_type) = exported_type.
 
-    % Does the foreign_type_body contain a definition usable
-    % when compiling to the given target.
-    %
-:- pred have_foreign_type_for_backend(compilation_target::in,
-    foreign_type_body::in, bool::out) is det.
-
     % Given an arbitrary mercury type, get the exported_type representation
     % of that type on the current backend.
     %
 :- func to_exported_type(module_info, mer_type) = exported_type.
 
-    % Does the implementation of the given foreign type body on
-    % the current backend use a user-defined comparison predicate.
+    % Given the exported_type representation for a type, determine
+    % whether or not it is a foreign type, and if yes, return the foreign
+    % type's assertions.
     %
-:- pred foreign_type_body_has_user_defined_eq_comp_pred(module_info::in,
-    foreign_type_body::in, unify_compare::out) is semidet.
+:- func is_foreign_type(exported_type) = maybe(foreign_type_assertions).
+
+    % Given a representation of a type, determine the string which corresponds
+    % to that type in the specified foreign language, for use with
+    % foreign language interfacing (`pragma export' or `pragma foreign_proc').
+    %
+:- func exported_type_to_string(foreign_language, exported_type) = string.
+:- func mercury_exported_type_to_string(module_info, foreign_language,
+    mer_type) = string.
+
+%-----------------------------------------------------------------------------%
 
     % Find the current target backend from the module_info, and given
     % a foreign_type_body, return the name of the foreign language type
@@ -75,20 +79,19 @@
     foreign_type_body::in, sym_name::out, maybe(unify_compare)::out,
     foreign_type_assertions::out) is det.
 
-    % Given the exported_type representation for a type, determine
-    % whether or not it is a foreign type, and if yes, return the foreign
-    % type's assertions.
+    % Does the foreign_type_body contain a definition usable
+    % when compiling to the given target.
     %
-:- func is_foreign_type(exported_type) = maybe(foreign_type_assertions).
+:- pred have_foreign_type_for_backend(compilation_target::in,
+    foreign_type_body::in, bool::out) is det.
 
-    % Given a representation of a type, determine the string which
-    % corresponds to that type in the specified foreign language,
-    % for use with foreign language interfacing (`pragma export' or
-    % `pragma foreign_proc').
+    % Does the implementation of the given foreign type body on
+    % the current backend use a user-defined comparison predicate.
     %
-:- func exported_type_to_string(foreign_language, exported_type) = string.
-:- func mercury_exported_type_to_string(module_info, foreign_language,
-    mer_type) = string.
+:- pred foreign_type_body_has_user_defined_eq_comp_pred(module_info::in,
+    foreign_type_body::in, unify_compare::out) is semidet.
+
+%-----------------------------------------------------------------------------%
 
     % Filter the decls for the given foreign language.
     % The first return value is the list of matches, the second is
@@ -113,6 +116,8 @@
     list(pragma_exported_proc)::out, list(pragma_exported_proc)::out)
     is det.
 
+%-----------------------------------------------------------------------------%
+
     % Given some foreign code, generate some suitable proxy code for
     % calling the code via one of the given languages.
     % This might mean, for example, generating a call to a
@@ -130,6 +135,8 @@
     module_info::in, module_info::out,
     pragma_foreign_proc_attributes::in, pragma_foreign_proc_attributes::out,
     pragma_foreign_proc_impl::in, pragma_foreign_proc_impl::out) is det.
+
+%-----------------------------------------------------------------------------%
 
     % The name of the #define which can be used to guard declarations with
     % to prevent entities being declared twice.
@@ -149,124 +156,6 @@
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
-
-filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
-    IsWanted = (pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-
-        WantedLang = Lang),
-    list.filter(IsWanted, Decls0, LangDecls, NotLangDecls).
-
-filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
-    IsWanted = (pred(foreign_body_code(Lang, _, _)::in) is semidet :-
-        WantedLang = Lang),
-    list.filter(IsWanted, Bodys0, LangBodys, NotLangBodys).
-
-filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
-    IsWanted = (pred(pragma_exported_proc(Lang, _, _, _, _)::in) is semidet :-
-        WantedLang = Lang),
-    list.filter(IsWanted, Exports0, LangExports, NotLangExports).
-
-extrude_pragma_implementation([], _PragmaVars, _PredName, _PredOrFunc,
-        _Context, !ModuleInfo, !NewAttributes, !Impl) :-
-    unexpected($module, $pred, "no suitable target languages available").
-
-extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
-        _PredName, _PredOrFunc, _Context, !ModuleInfo, !Attributes, !Impl) :-
-    % We just use the first target language for now, it might be nice
-    % to try a few others if the backend supports multiple ones.
-    ForeignLanguage = get_foreign_language(!.Attributes),
-
-    % If the foreign language is available as a target language,
-    % we don't need to do anything.
-    ( if list.member(ForeignLanguage, [TargetLang | TargetLangs]) then
-        true
-    else
-        set_foreign_language(TargetLang, !Attributes),
-        extrude_pragma_implementation_2(TargetLang, ForeignLanguage,
-            !ModuleInfo, !Impl)
-    ).
-
-:- pred extrude_pragma_implementation_2(
-    foreign_language::in, foreign_language::in,
-    module_info::in, module_info::out,
-    pragma_foreign_proc_impl::in, pragma_foreign_proc_impl::out) is det.
-
-extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
-        !ModuleInfo, !Impl) :-
-    % This isn't finished yet, and we probably won't implement it for C
-    % calling MC++.  For C calling normal C++ we would generate a proxy
-    % function in C++ (implemented in a piece of C++ body code) with C
-    % linkage, and import that function.  The backend would spit the C++
-    % body code into a separate file.
-    (
-        TargetLanguage = lang_c,
-        (
-            ForeignLanguage = lang_c
-        ;
-            ( ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_java
-            ; ForeignLanguage = lang_erlang
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ;
-        TargetLanguage = lang_csharp,
-        (
-            ForeignLanguage = lang_csharp
-        ;
-            ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_java
-            ; ForeignLanguage = lang_erlang
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ;
-        TargetLanguage = lang_java,
-        (
-            ForeignLanguage = lang_java
-        ;
-            ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_erlang
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ;
-        TargetLanguage = lang_erlang,
-        (
-            ForeignLanguage = lang_erlang
-        ;
-            ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_java
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ).
-
-:- pred unimplemented_combination(foreign_language::in, foreign_language::in)
-    is erroneous.
-
-unimplemented_combination(Lang1, Lang2) :-
-    sorry($module, $pred, "unimplemented: calling "
-        ++ foreign_language_string(Lang2) ++ " foreign code from "
-        ++ foreign_language_string(Lang1)).
-
-%-----------------------------------------------------------------------------%
-
-have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-
-    (
-        Target = target_c,
-        Have = ( if ForeignTypeBody ^ c = yes(_) then yes else no )
-    ;
-        Target = target_java,
-        Have = ( if ForeignTypeBody ^ java = yes(_) then yes else no )
-    ;
-        Target = target_csharp,
-        Have = ( if ForeignTypeBody ^ csharp = yes(_) then yes else no )
-    ;
-        Target = target_erlang,
-        Have = ( if ForeignTypeBody ^ erlang = yes(_) then yes else no )
-    ).
 
 :- type exported_type
     --->    exported_type_foreign(sym_name, foreign_type_assertions)
@@ -302,73 +191,8 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
         ExportType = exported_type_mercury(Type)
     ).
 
-foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body,
-        UserEqComp) :-
-    foreign_type_body_to_exported_type(ModuleInfo, Body, _,
-        MaybeUserEqComp, _),
-    MaybeUserEqComp = yes(UserEqComp).
-
-foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
-        MaybeUserEqComp, Assertions) :-
-    % The body of this function is very similar to the function
-    % foreign_type_to_mlds_type in mlds.m.
-    % Any changes here may require changes there as well.
-
-    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
-        MaybeCSharp, MaybeErlang),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    (
-        Target = target_c,
-        (
-            MaybeC = yes(Data),
-            Data = foreign_type_lang_data(c_type(NameStr), MaybeUserEqComp,
-                Assertions),
-            Name = unqualified(NameStr)
-        ;
-            MaybeC = no,
-            unexpected($module, $pred, "no C type")
-        )
-    ;
-        Target = target_csharp,
-        (
-            MaybeCSharp = yes(Data),
-            Data = foreign_type_lang_data(csharp_type(NameStr),
-                MaybeUserEqComp, Assertions),
-            Name = unqualified(NameStr)
-        ;
-            MaybeCSharp = no,
-            unexpected($module, $pred, "no C# type")
-        )
-    ;
-        Target = target_java,
-        (
-            MaybeJava = yes(Data),
-            Data = foreign_type_lang_data(java_type(NameStr), MaybeUserEqComp,
-                Assertions),
-            Name = unqualified(NameStr)
-        ;
-            MaybeJava = no,
-            unexpected($module, $pred, "no Java type")
-        )
-    ;
-        Target = target_erlang,
-        (
-            MaybeErlang = yes(Data),
-            Data = foreign_type_lang_data(erlang_type, MaybeUserEqComp,
-                Assertions),
-            Name = unqualified("")
-        ;
-            MaybeErlang = no,
-            unexpected($module, $pred, "no Erlang type")
-        )
-    ).
-
 is_foreign_type(exported_type_foreign(_, Assertions)) = yes(Assertions).
 is_foreign_type(exported_type_mercury(_)) = no.
-
-mercury_exported_type_to_string(ModuleInfo, Lang, Type) =
-    exported_type_to_string(Lang, to_exported_type(ModuleInfo, Type)).
 
 exported_type_to_string(Lang, ExportedType) = Result :-
     (
@@ -497,6 +321,192 @@ exported_type_to_string(Lang, ExportedType) = Result :-
             sorry($module, $pred, "erlang")
         )
     ).
+
+mercury_exported_type_to_string(ModuleInfo, Lang, Type) =
+    exported_type_to_string(Lang, to_exported_type(ModuleInfo, Type)).
+
+%-----------------------------------------------------------------------------%
+
+foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
+        MaybeUserEqComp, Assertions) :-
+    % The body of this function is very similar to the function
+    % foreign_type_to_mlds_type in mlds.m.
+    % Any changes here may require changes there as well.
+
+    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
+        MaybeCSharp, MaybeErlang),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        (
+            MaybeC = yes(Data),
+            Data = foreign_type_lang_data(c_type(NameStr), MaybeUserEqComp,
+                Assertions),
+            Name = unqualified(NameStr)
+        ;
+            MaybeC = no,
+            unexpected($module, $pred, "no C type")
+        )
+    ;
+        Target = target_csharp,
+        (
+            MaybeCSharp = yes(Data),
+            Data = foreign_type_lang_data(csharp_type(NameStr),
+                MaybeUserEqComp, Assertions),
+            Name = unqualified(NameStr)
+        ;
+            MaybeCSharp = no,
+            unexpected($module, $pred, "no C# type")
+        )
+    ;
+        Target = target_java,
+        (
+            MaybeJava = yes(Data),
+            Data = foreign_type_lang_data(java_type(NameStr), MaybeUserEqComp,
+                Assertions),
+            Name = unqualified(NameStr)
+        ;
+            MaybeJava = no,
+            unexpected($module, $pred, "no Java type")
+        )
+    ;
+        Target = target_erlang,
+        (
+            MaybeErlang = yes(Data),
+            Data = foreign_type_lang_data(erlang_type, MaybeUserEqComp,
+                Assertions),
+            Name = unqualified("")
+        ;
+            MaybeErlang = no,
+            unexpected($module, $pred, "no Erlang type")
+        )
+    ).
+
+have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-
+    (
+        Target = target_c,
+        Have = ( if ForeignTypeBody ^ c = yes(_) then yes else no )
+    ;
+        Target = target_java,
+        Have = ( if ForeignTypeBody ^ java = yes(_) then yes else no )
+    ;
+        Target = target_csharp,
+        Have = ( if ForeignTypeBody ^ csharp = yes(_) then yes else no )
+    ;
+        Target = target_erlang,
+        Have = ( if ForeignTypeBody ^ erlang = yes(_) then yes else no )
+    ).
+
+foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body,
+        UserEqComp) :-
+    foreign_type_body_to_exported_type(ModuleInfo, Body, _,
+        MaybeUserEqComp, _),
+    MaybeUserEqComp = yes(UserEqComp).
+
+%-----------------------------------------------------------------------------%
+
+filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
+    IsWanted = (pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-
+        WantedLang = Lang),
+    list.filter(IsWanted, Decls0, LangDecls, NotLangDecls).
+
+filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
+    IsWanted = (pred(foreign_body_code(Lang, _, _)::in) is semidet :-
+        WantedLang = Lang),
+    list.filter(IsWanted, Bodys0, LangBodys, NotLangBodys).
+
+filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
+    IsWanted = (pred(pragma_exported_proc(Lang, _, _, _, _)::in) is semidet :-
+        WantedLang = Lang),
+    list.filter(IsWanted, Exports0, LangExports, NotLangExports).
+
+%-----------------------------------------------------------------------------%
+
+extrude_pragma_implementation([], _PragmaVars, _PredName, _PredOrFunc,
+        _Context, !ModuleInfo, !NewAttributes, !Impl) :-
+    unexpected($module, $pred, "no suitable target languages available").
+extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
+        _PredName, _PredOrFunc, _Context, !ModuleInfo, !Attributes, !Impl) :-
+    % We just use the first target language for now, it might be nice
+    % to try a few others if the backend supports multiple ones.
+    ForeignLanguage = get_foreign_language(!.Attributes),
+
+    % If the foreign language is available as a target language,
+    % we don't need to do anything.
+    ( if list.member(ForeignLanguage, [TargetLang | TargetLangs]) then
+        true
+    else
+        set_foreign_language(TargetLang, !Attributes),
+        extrude_pragma_implementation_2(TargetLang, ForeignLanguage,
+            !ModuleInfo, !Impl)
+    ).
+
+:- pred extrude_pragma_implementation_2(
+    foreign_language::in, foreign_language::in,
+    module_info::in, module_info::out,
+    pragma_foreign_proc_impl::in, pragma_foreign_proc_impl::out) is det.
+
+extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
+        !ModuleInfo, !Impl) :-
+    % This isn't finished yet, and we probably won't implement it for C
+    % calling MC++.  For C calling normal C++ we would generate a proxy
+    % function in C++ (implemented in a piece of C++ body code) with C
+    % linkage, and import that function.  The backend would spit the C++
+    % body code into a separate file.
+    (
+        TargetLanguage = lang_c,
+        (
+            ForeignLanguage = lang_c
+        ;
+            ( ForeignLanguage = lang_csharp
+            ; ForeignLanguage = lang_java
+            ; ForeignLanguage = lang_erlang
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ;
+        TargetLanguage = lang_csharp,
+        (
+            ForeignLanguage = lang_csharp
+        ;
+            ( ForeignLanguage = lang_c
+            ; ForeignLanguage = lang_java
+            ; ForeignLanguage = lang_erlang
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ;
+        TargetLanguage = lang_java,
+        (
+            ForeignLanguage = lang_java
+        ;
+            ( ForeignLanguage = lang_c
+            ; ForeignLanguage = lang_csharp
+            ; ForeignLanguage = lang_erlang
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ;
+        TargetLanguage = lang_erlang,
+        (
+            ForeignLanguage = lang_erlang
+        ;
+            ( ForeignLanguage = lang_c
+            ; ForeignLanguage = lang_csharp
+            ; ForeignLanguage = lang_java
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ).
+
+:- pred unimplemented_combination(foreign_language::in, foreign_language::in)
+    is erroneous.
+
+unimplemented_combination(Lang1, Lang2) :-
+    sorry($module, $pred, "unimplemented: calling "
+        ++ foreign_language_string(Lang2) ++ " foreign code from "
+        ++ foreign_language_string(Lang1)).
 
 %-----------------------------------------------------------------------------%
 
