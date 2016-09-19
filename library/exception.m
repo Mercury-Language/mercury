@@ -616,8 +616,8 @@ unsafe_call_transaction_goal(Goal, STM0, {Result, STM}) :-
 
 %---------------------------------------------------------------------------%
 
-magic_exception_result(succeeded({})).
-magic_exception_result(succeeded({})).  % force cc_multi
+magic_exception_result(_) :-
+    throw("magic_exception_result: should never be called").
 
 unreachable :-
     throw("unreachable code reached").
