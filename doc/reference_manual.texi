@@ -8125,6 +8125,11 @@ These @samp{type_info} arguments can be obtained using the Mercury
 
 To use the C declarations produced see @ref{Using pragma foreign_decl for C}.
 
+Throwing an exception across the C interface is not supported.
+That is, if a Mercury procedure that is exported to C using
+@samp{pragma foreign_export} throws an exception which is not caught within
+that procedure, then you will get undefined behaviour.
+
 @node Using pragma foreign_decl for C
 @subsubsection Using pragma foreign_decl for C
 
