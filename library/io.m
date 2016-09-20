@@ -4879,13 +4879,6 @@ write_many(Stream, [f(F) | Rest], !IO) :-
 % Various different versions of io.print
 %
 
-:- pragma foreign_export("C", io.print(in, di, uo),
-    "ML_io_print_to_cur_stream").
-:- pragma foreign_export("C#", io.print(in, di, uo),
-    "ML_io_print_to_cur_stream").
-:- pragma foreign_export("Java", io.print(in, di, uo),
-    "ML_io_print_to_cur_stream").
-
 print(Term, !IO) :-
     output_stream(Stream, !IO),
     stream.string_writer.print(Stream, canonicalize, Term, !IO).
@@ -4902,9 +4895,10 @@ print_cc(Term, !IO) :-
 
 :- pred io.print_to_stream(io.stream::in, T::in, io::di, io::uo) is det.
 
+    % XXX Only use this for debugging. Strictly speaking, io.print may throw an
+    % exception which is not allowed across the C interface.
+    %
 :- pragma foreign_export("C", io.print_to_stream(in, in, di, uo),
-    "ML_io_print_to_stream").
-:- pragma foreign_export("Java", io.print_to_stream(in, in, di, uo),
     "ML_io_print_to_stream").
 
 print_to_stream(Stream, Term, !IO) :-
@@ -5857,28 +5851,6 @@ error_message(io_error(Error), Error).
 get_op_table(ops.init_mercury_op_table, !IO).
 
 set_op_table(_OpTable, !IO).
-
-%---------------------------------------------------------------------------%
-
-% For use by the debugger:
-
-:- pred get_io_input_stream_type(type_desc::out, io::di, io::uo) is det.
-
-:- pragma foreign_export("C", get_io_input_stream_type(out, di, uo),
-    "ML_io_input_stream_type").
-
-get_io_input_stream_type(Type, !IO) :-
-    stdin_stream(Stream, !IO),
-    Type = type_of(Stream).
-
-:- pred get_io_output_stream_type(type_desc::out, io::di, io::uo) is det.
-
-:- pragma foreign_export("C", get_io_output_stream_type(out, di, uo),
-    "ML_io_output_stream_type").
-
-get_io_output_stream_type(Type, !IO) :-
-    stdout_stream(Stream, !IO),
-    Type = type_of(Stream).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

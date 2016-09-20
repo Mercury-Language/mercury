@@ -79,7 +79,6 @@ extern void         (*MR_library_finalizer)(void);
 extern void         (*MR_io_stderr_stream)(MercuryFilePtr *);
 extern void         (*MR_io_stdout_stream)(MercuryFilePtr *);
 extern void         (*MR_io_stdin_stream)(MercuryFilePtr *);
-extern void         (*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
 extern void         (*MR_io_print_to_stream)(MR_Word, MercuryFilePtr, MR_Word);
 
 extern void         (*MR_address_of_mercury_init_io)(void);

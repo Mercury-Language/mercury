@@ -468,7 +468,6 @@ static const char mercury_funcs2[] =
     "   MR_io_stdin_stream = ML_io_stdin_stream;\n"
     "   MR_io_stdout_stream = ML_io_stdout_stream;\n"
     "   MR_io_stderr_stream = ML_io_stderr_stream;\n"
-    "   MR_io_print_to_cur_stream = ML_io_print_to_cur_stream;\n"
     "   MR_io_print_to_stream = ML_io_print_to_stream;\n"
     "#if MR_TRACE_ENABLED\n"
     "   MR_exec_trace_func_ptr = MR_trace_real;\n"

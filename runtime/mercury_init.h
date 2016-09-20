@@ -116,7 +116,6 @@ extern  void    ML_io_stdout_stream(MercuryFilePtr *);
 extern  void    ML_io_stdin_stream(MercuryFilePtr *);
 
 extern  void    ML_io_print_to_stream(MR_Word, MercuryFilePtr, MR_Word);
-extern  void    ML_io_print_to_cur_stream(MR_Word, MR_Word);
 
 // in library/private_builtin.m
 extern  const MR_TypeCtorInfo       ML_type_ctor_info_for_univ;

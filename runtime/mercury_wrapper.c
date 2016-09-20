@@ -456,7 +456,6 @@ void        (*MR_library_finalizer)(void);
 void        (*MR_io_stderr_stream)(MercuryFilePtr *);
 void        (*MR_io_stdout_stream)(MercuryFilePtr *);
 void        (*MR_io_stdin_stream)(MercuryFilePtr *);
-void        (*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
 void        (*MR_io_print_to_stream)(MR_Word, MercuryFilePtr, MR_Word);
 
 void        (*MR_DI_output_current_ptr)(MR_Integer, MR_Integer, MR_Integer,
