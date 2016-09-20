@@ -616,8 +616,15 @@ unsafe_call_transaction_goal(Goal, STM0, {Result, STM}) :-
 
 %---------------------------------------------------------------------------%
 
-magic_exception_result(_) :-
-    throw("magic_exception_result: should never be called").
+magic_exception_result(Res) :-
+    ( if semidet_true then
+        throw("magic_exception_result: should never be called")
+    else
+        % Avoid determinism warning.
+        ( Res = succeeded({})
+        ; Res = succeeded({})
+        )
+    ).
 
 unreachable :-
     throw("unreachable code reached").
