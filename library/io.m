@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2012, 2016 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
+% Copyright (C) 2013-2016 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -209,9 +210,10 @@
     % Un-reads a character (code point) from the current input stream.
     % You can put back as many characters as you like.
     % You can even put back something that you didn't actually read.
-    % Note: `putback_char' uses the C library function ungetc().
-    % On some systems only one byte of pushback is guaranteed.
-    % `putback_char' will throw an io.error exception if ungetc() fails.
+    %
+    % Note: On some systems only one byte of pushback is guaranteed.
+    % `putback_char' will throw an io.error exception if the pushback buffer
+    % is full.
     %
 :- pred putback_char(char::in, io::di, io::uo) is det.
 
@@ -976,9 +978,10 @@
     % You can put back as many bytes as you like.
     % You can even put back something that you didn't actually read.
     % The byte is taken from the bottom 8 bits of an integer.
-    % Note: `putback_byte' uses the C library function ungetc().
-    % On some systems only one byte of pushback is guaranteed.
-    % `putback_byte' will throw an error exception if ungetc() fails.
+    %
+    % Note: On some systems only one byte of pushback is guaranteed.
+    % `putback_byte' will throw an io.error exception if the pushback buffer
+    % is full.
     %
     % Pushing back a byte decrements the file position by one, except when
     % the file position is already zero, in which case the new file position
@@ -990,9 +993,10 @@
     % You can put back as many bytes as you like.
     % You can even put back something that you didn't actually read.
     % The byte is returned in the bottom 8 bits of an integer.
-    % Note: `putback_byte' uses the C library function ungetc().
-    % On some systems only one byte of pushback is guaranteed.
-    % `putback_byte' will throw an io.error exception if ungetc() fails.
+    %
+    % Note: On some systems only one byte of pushback is guaranteed.
+    % `putback_byte' will throw an io.error exception if the pushback buffer
+    % is full.
     %
     % Pushing back a byte decrements the file position by one, except when
     % the file position is already zero, in which case the new file position
@@ -1646,7 +1650,11 @@
 %
 
     % A system-dependent error indication.
-    % For C, this is the value of errno.
+    % For C, this is 0 for success or the value of errno.
+    % For Java, this is null for success or an exception object.
+    % For C#, this is null for success or an exception object.
+    % For Erlang, this is `ok' for success or `{error, Reason}'.
+    %
 :- type system_error.
 :- pragma foreign_type(c, system_error, "MR_Integer").
 :- pragma foreign_type("C#", system_error, "System.Exception").
@@ -2217,7 +2225,6 @@ read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
 :- pred do_read_bitmap(stream::in, byte_index::in, num_bytes::in,
     bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::in, num_bytes::out,
     io::di, io::uo) is det.
-:- pragma promise_pure(do_read_bitmap/9).
 
     % Default implementation for C# and Java.
 do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
@@ -2741,11 +2748,13 @@ input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+% :- pragma obsolete(input_clear_err/3).
 :- pred input_clear_err(io.input_stream::in, io::di, io::uo) is det.
 
 input_clear_err(input_stream(Stream), !IO) :-
     clear_err(Stream, !IO).
 
+% :- pragma obsolete(output_clear_err/3).
 :- pred output_clear_err(output_stream::in, io::di, io::uo) is det.
 
 output_clear_err(output_stream(Stream), !IO) :-
@@ -2851,12 +2860,14 @@ check_err(Stream, Res, !IO) :-
     RetStr = <<>>
 ").
 
+% :- pragma obsolete(make_err_msg/4).
 :- pred make_err_msg(string::in, string::out, io::di, io::uo) is det.
 
 make_err_msg(Msg0, Msg, !IO) :-
     get_system_error(Error, !IO),
     make_err_msg(Error, Msg0, Msg, !IO).
 
+% :- pragma obsolete(get_system_error/3).
 :- pred get_system_error(system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -2930,10 +2941,10 @@ make_err_msg(Msg0, Msg, !IO) :-
     [will_not_call_mercury, promise_pure],
 "
     case Error of
-        undefined ->
-            Msg = Msg0;
-        Reason ->
-            Msg = list_to_binary([Msg0, file:format_error(Reason)])
+        {error, Reason} ->
+            Msg = list_to_binary([Msg0, file:format_error(Reason)]);
+        _ ->
+            Msg = Msg0
     end
 ").
 
@@ -3014,12 +3025,6 @@ input_stream_file_size(input_stream(Stream), Size, !IO) :-
     io::di, io::uo) is det.
 
 binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
-    stream_file_size(Stream, Size, !IO).
-
-:- pred output_stream_file_size(io.output_stream::in, int::out,
-    io::di, io::uo) is det.
-
-output_stream_file_size(output_stream(Stream), Size, !IO) :-
     stream_file_size(Stream, Size, !IO).
 
     % stream_file_size(Stream, Size):
@@ -3512,6 +3517,7 @@ file_type_semaphore = semaphore.
 file_type_shared_memory = shared_memory.
 file_type_unknown = unknown.
 
+    % XXX use pragma foreign_export_enum
 :- pragma foreign_export("C", file_type_character_device = out,
     "ML_file_type_character_device").
 :- pragma foreign_export("C#", file_type_character_device = out,
@@ -4126,7 +4132,7 @@ compare_file_id(Result, FileId1, FileId2) :-
     compare_file_id_2(_Res::out, _FileId1::in, _FileId2::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    io.throw_io_error(""File IDs are not supported by Java."");
+    throw new RuntimeException(""File IDs are not supported by Java."");
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -5528,7 +5534,7 @@ maybe_delete_stream_info(Stream, !IO) :-
 
 :- pragma foreign_proc("C",
     may_delete_stream_info(MayDelete::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
     MayDelete = !MR_debug_ever_enabled;
@@ -5910,11 +5916,8 @@ MercuryFilePtr  mercury_current_binary_output(void);
 int             mercury_next_stream_id(void);
 MercuryFilePtr  mercury_open(const char *filename, const char *openmode,
                     MR_bool *is_dir, MR_AllocSiteInfoPtr alloc_id);
-void            mercury_io_error(MercuryFilePtr mf, const char *format, ...);
-void            mercury_output_error(MercuryFilePtr mf, int errnum);
-void            mercury_print_string(MercuryFilePtr mf, const char *s);
 int             mercury_get_byte(MercuryFilePtr mf);
-void            mercury_close(MercuryFilePtr mf);
+int             mercury_close(MercuryFilePtr mf);
 int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 
 #ifdef MR_WIN32
@@ -6211,14 +6214,6 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             }
         }
 
-        public void put_or_throw(char c) {
-            try {
-                put(c);
-            } catch (java.io.IOException e) {
-                io.throw_io_error(e.getMessage());
-            }
-        }
-
         public void write(java.lang.String s)
             throws java.io.IOException
         {
@@ -6237,26 +6232,10 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             }
         }
 
-        public void write_or_throw(java.lang.String s) {
-            try {
-                write(s);
-            } catch (java.io.IOException e) {
-                io.throw_io_error(e.getMessage());
-            }
-        }
-
         public void flush()
             throws java.io.IOException
         {
             output.flush();
-        }
-
-        public void flush_or_throw() {
-            try {
-                flush();
-            } catch (java.io.IOException e) {
-                io.throw_io_error(e.getMessage());
-            }
         }
 
         @Override
@@ -6350,7 +6329,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             if (pushback.empty()) {
                 c = binary_input.read();
             } else {
-                c = pushback.pop();
+                c = pushback.pop() & 0xff; // make unsigned
             }
             return c;
         }
@@ -6399,14 +6378,6 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             binary_output.write(b);
         }
 
-        public void put_or_throw(byte b) {
-            try {
-                put(b);
-            } catch (java.io.IOException e) {
-                io.throw_io_error(e.getMessage());
-            }
-        }
-
         // Obsolete.
         public void write(java.lang.String s)
             throws java.io.IOException
@@ -6417,26 +6388,16 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             }
         }
 
-        public void write_or_throw(java.lang.String s) {
-            try {
-                write(s);
-            } catch (java.io.IOException e) {
-                io.throw_io_error(e.getMessage());
-            }
+        public void write(byte[] bs, int start, int length)
+            throws java.io.IOException
+        {
+            binary_output.write(bs, start, length);
         }
 
         public void flush()
             throws java.io.IOException
         {
             binary_output.flush();
-        }
-
-        public void flush_or_throw() {
-            try {
-                flush();
-            } catch (java.io.IOException e) {
-                io.throw_io_error(e.getMessage());
-            }
         }
 
         @Override
@@ -6768,6 +6729,7 @@ public static ThreadLocal<Exception> MR_io_exception =
     mercury_write_string/2,
     mercury_write_char/2,
     mercury_write_int/2,
+    mercury_write_binary/2,
     mercury_sync/1,
     mercury_get_line_number/1,
     mercury_set_line_number/2,
@@ -6831,9 +6793,8 @@ mercury_stdio_file_server(IoDevice) ->
 mercury_file_server(IoDevice, LineNr0, PutBack0) ->
     receive
         {From, close} ->
-            From ! {self(), close_ack},
-            file:close(IoDevice)
-            % XXX check error?
+            Result = file:close(IoDevice),
+            From ! {self(), close_ack, Result}
     ;
         {From, read_char} ->
             case PutBack0 of
@@ -6902,15 +6863,21 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
             io:put_chars(IoDevice, integer_to_list(Val)),
             mercury_file_server(IoDevice, LineNr0, PutBack0)
     ;
+        {From, write_binary, Binary} ->
+            From ! {self(), write_binary_ack},
+            % XXX return error code
+            io:put_chars(IoDevice, Binary),
+            mercury_file_server(IoDevice, LineNr0, PutBack0)
+    ;
         {From, sync} ->
             % XXX file:sync seems to hang if run on a pid, e.g. standard I/O
             if
                 is_pid(IoDevice) ->
-                    void;
+                    Result = ok;
                 true ->
-                    file:sync(IoDevice)
+                    Result = file:sync(IoDevice)
             end,
-            From ! {self(), sync_ack},
+            From ! {self(), sync_ack, Result},
             mercury_file_server(IoDevice, LineNr0, PutBack0)
     ;
         {From, get_line_number} ->
@@ -6955,7 +6922,7 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
                 _ ->
                     Size = -1
             end,
-            From ! {self(), get_file_size, Size},
+            From ! {self(), get_file_size_ack, Size},
             mercury_file_server(IoDevice, LineNr0, PutBack0)
     ;
         Other ->
@@ -6991,6 +6958,8 @@ count_nls_2(Bin, I, N) ->
 
 % Client side.
 
+    % Returns {ok, Stream} | {error, Reason}
+    %
 mercury_open_stream(FileName, Mode) ->
     ParentPid = self(),
     Pid = spawn(fun() ->
@@ -7002,14 +6971,18 @@ mercury_open_stream(FileName, Mode) ->
             Result
     end.
 
+    % Returns ok | {error, Reason}
+    %
 mercury_close_stream(Stream) ->
     {'ML_stream', _Id, Pid} = Stream,
     Pid ! {self(), close},
     receive
-        {Pid, close_ack} ->
-            void
+        {Pid, close_ack, Result} ->
+            Result
     end.
 
+    % Returns char, or -1 on eof, or -2 on error.
+    %
 mercury_getc(Stream) ->
     {'ML_stream', _Id, Pid} = Stream,
     Pid ! {self(), read_char},
@@ -7026,6 +6999,8 @@ mercury_getc(Stream) ->
             end
     end.
 
+    % Returns {ok, Binary} | {error, Partial, Reason}
+    %
 mercury_read_string_to_eof(Stream) ->
     {'ML_stream', _Id, Pid} = Stream,
     Pid ! {self(), read_string_to_eof},
@@ -7073,12 +7048,22 @@ mercury_write_int(Stream, Value) ->
             void
     end.
 
+mercury_write_binary(Stream, Binary) ->
+    {'ML_stream', _Id, Pid} = Stream,
+    Pid ! {self(), write_binary, Binary},
+    receive
+        {Pid, write_binary_ack} ->
+            void
+    end.
+
+    % Returns ok | {error, Reason}
+    %
 mercury_sync(Stream) ->
     {'ML_stream', _Id, Pid} = Stream,
     Pid ! {self(), sync},
     receive
-        {Pid, sync_ack} ->
-            void
+        {Pid, sync_ack, Result} ->
+            Result
     end.
 
 mercury_get_line_number(Stream) ->
@@ -7097,46 +7082,34 @@ mercury_set_line_number(Stream, LineNum) ->
             void
     end.
 
+    % Returns {ok, NewPosition} | {error, Reason}
+    %
 mercury_get_pos(Stream) ->
     {'ML_stream', _Id, Pid} = Stream,
     Pid ! {self(), get_pos},
     receive
         {Pid, get_pos_ack, Result} ->
-            case Result of
-                {ok, NewPosition} ->
-                    NewPosition;
-                {error, Reason} ->
-                    put('MR_io_exception', Reason),
-                    -1
-            end
+            Result
     end.
 
+    % Returns {ok, NewPosition} | {error, Reason}
+    %
 mercury_set_pos(Stream, Loc) ->
     {'ML_stream', _Id, Pid} = Stream,
     Pid ! {self(), set_pos, Loc},
     receive
         {Pid, set_pos_ack, Result} ->
-            case Result of
-                {ok, NewPosition} ->
-                    NewPosition;
-                {error, Reason} ->
-                    put('MR_io_exception', Reason),
-                    -1
-            end
+            Result
     end.
 
+    % Returns Size or -1
+    %
 mercury_get_file_size(Stream) ->
     {'ML_stream', _Id, Pid} = Stream,
     Pid ! {self(), get_file_size},
     receive
         {Pid, get_file_size_ack, Result} ->
-            case Result of
-                {ok, Size} ->
-                    Size;
-                {error, Reason} ->
-                    put('MR_io_exception', Reason),
-                    -1
-            end
+            Result
     end.
 
 mercury_set_current_text_input(Stream) ->
@@ -7257,81 +7230,6 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
         // they will be filled in later if they are needed.
         return mercury_file_init(new System.IO.BufferedStream(stream),
             null, null, line_ending);
-    }
-}
-
-").
-
-:- pred throw_io_error(string::in) is erroneous.
-:- pragma foreign_export("C", throw_io_error(in), "ML_throw_io_error").
-:- pragma foreign_export("Java", throw_io_error(in), "ML_throw_io_error").
-
-throw_io_error(Message) :-
-    throw(io_error(Message)).
-
-:- pragma foreign_code("Java", "
-
-    public static void throw_io_error(String msg) {
-        if (msg == null) {
-            io.ML_throw_io_error(""null"");
-        } else {
-            io.ML_throw_io_error(msg);
-        }
-    }
-").
-
-:- pragma foreign_code("C", "
-
-void
-mercury_io_error(MercuryFilePtr mf, const char *format, ...)
-{
-    va_list     args;
-    char        message[5000];
-    MR_String   message_as_mercury_string;
-
-    /* the `mf' parameter is currently not used */
-
-    /* format the error message using vsprintf() */
-    va_start(args, format);
-    vsprintf(message, format, args);
-    va_end(args);
-
-    /* copy the error message to a Mercury string */
-    MR_restore_registers(); /* for MR_hp */
-    MR_make_aligned_string_copy(message_as_mercury_string, message);
-    MR_save_registers(); /* for MR_hp */
-
-    /* call some Mercury code to throw the exception */
-    ML_throw_io_error(message_as_mercury_string);
-}
-
-").
-
-:- pragma foreign_code("C", "
-
-void
-mercury_output_error(MercuryFilePtr mf, int errnum)
-{
-    char errbuf[MR_STRERROR_BUF_SIZE];
-
-    mercury_io_error(mf, ""error writing to output file: %s"",
-        MR_strerror(errnum, errbuf, sizeof(errbuf)));
-}
-
-").
-
-:- pragma foreign_code("C", "
-
-void
-mercury_print_string(MercuryFilePtr mf, const char *s)
-{
-    if (ML_fprintf(mf, ""%s"", s) < 0) {
-        mercury_output_error(mf, errno);
-    }
-    while (*s) {
-        if (*s++ == '\\n') {
-            MR_line_number(*mf)++;
-        }
     }
 }
 
@@ -7477,27 +7375,12 @@ mercury_getc(MR_MercuryFileStruct mf)
     }
     return c;
 }
-
-public static void
-mercury_ungetc(MR_MercuryFileStruct mf, int code)
-{
-    if (mf.putback != -1) {
-        runtime.Errors.SORRY(
-            ""mercury_ungetc: max one character of putback"");
-    }
-    mf.putback = code;
-    if (code == '\\n') {
-        mf.line_number--;
-    }
-}
 ").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_code("C", "
-
-#ifdef MR_NEW_MERCURYFILE_STRUCT
 
 #include <errno.h>
 
@@ -7507,6 +7390,8 @@ mercury_ungetc(MR_MercuryFileStruct mf, int code)
   /* ANSI/ISO C guarantees that EDOM will exist */
   #define MR_CLOSED_FILE_ERROR  EDOM
 #endif
+
+#ifdef MR_NEW_MERCURYFILE_STRUCT
 
 static int
 ME_closed_stream_close(MR_StreamInfo *info)
@@ -7589,11 +7474,9 @@ static const MercuryFile MR_closed_stream = {
 
 #endif /* MR_NEW_MERCURYFILE_STRUCT */
 
-void
+int
 mercury_close(MercuryFilePtr mf)
 {
-    char errbuf[MR_STRERROR_BUF_SIZE];
-
     /*
     ** On some systems attempting to close a file stream that has been
     ** previously closed will lead to a segmentation fault. We check
@@ -7601,12 +7484,12 @@ mercury_close(MercuryFilePtr mf)
     ** can give the user some idea about what has happened.
     */
     if (MR_file(*mf) == NULL) {
-        mercury_io_error(mf, ""error closing file: invalid file stream"");
+        errno = MR_CLOSED_FILE_ERROR;
+        return EOF;
     }
 
     if (MR_CLOSE(*mf) < 0) {
-        mercury_io_error(mf, ""error closing file: %s"",
-            MR_strerror(errno, errbuf, sizeof(errbuf)));
+        return EOF;
     }
 
 #ifdef MR_NEW_MERCURYFILE_STRUCT
@@ -7670,6 +7553,8 @@ mercury_close(MercuryFilePtr mf)
         MR_GC_free(mf);
     }
 #endif /* !MR_CONSERVATIVE_GC */
+
+    return 0;
 }
 
 ").
@@ -7764,6 +7649,82 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
 ").
 
 %---------------------------------------------------------------------------%
+
+:- pred throw_on_error(system_error::in, string::in, io::di, io::uo) is det.
+
+throw_on_error(Error, Prefix, !IO) :-
+    ( if is_error(Error, Prefix, Message) then
+        throw(io_error(Message))
+    else
+        true
+    ).
+
+:- pred throw_on_output_error(system_error::in, io::di, io::uo) is det.
+
+throw_on_output_error(Error, !IO) :-
+    throw_on_error(Error, "error writing to output file: ", !IO).
+
+:- pred throw_on_close_error(system_error::in, io::di, io::uo) is det.
+
+throw_on_close_error(Error, !IO) :-
+    throw_on_error(Error, "error closing file: ", !IO).
+
+:- pred is_error(system_error::in, string::in, string::out) is semidet.
+
+:- pragma foreign_proc("C",
+    is_error(Error::in, Prefix::in, Message::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Error != 0) {
+        SUCCESS_INDICATOR = MR_TRUE;
+        ML_maybe_make_err_msg(MR_TRUE, Error, Prefix, MR_ALLOC_ID, Message);
+    } else {
+        SUCCESS_INDICATOR = MR_FALSE;
+        Message = MR_make_string_const("""");
+    }
+").
+
+:- pragma foreign_proc("C#",
+    is_error(Error::in, Prefix::in, Message::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Error != null) {
+        SUCCESS_INDICATOR = true;
+        Message = Prefix + Error.Message;
+    } else {
+        SUCCESS_INDICATOR = false;
+        Message = """";
+    }
+").
+
+:- pragma foreign_proc("Java",
+    is_error(Error::in, Prefix::in, Message::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Error != null) {
+        SUCCESS_INDICATOR = true;
+        Message = Prefix + Error.getMessage(); // null is okay
+    } else {
+        SUCCESS_INDICATOR = false;
+        Message = """";
+    }
+").
+
+:- pragma foreign_proc("Erlang",
+    is_error(Error::in, Prefix::in, Message::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    case Error of
+        ok ->
+            SUCCESS_INDICATOR = false,
+            Message = <<>>;
+        {error, Reason} ->
+            SUCCESS_INDICATOR = true,
+            Message = list_to_binary([Prefix, file:format_error(Reason)])
+    end
+").
+
+%---------------------------------------------------------------------------%
 %
 % Input predicates
 %
@@ -7771,6 +7732,7 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
 read_char_code(input_stream(Stream), CharCode, !IO) :-
     read_char_code_2(Stream, CharCode, !IO).
 
+    % XXX return system_error
 :- pred read_char_code_2(stream::in, int::out, io::di, io::uo)
     is det.
 
@@ -7839,6 +7801,7 @@ read_char_code(input_stream(Stream), CharCode, !IO) :-
 read_byte_val(input_stream(Stream), ByteVal, !IO) :-
     read_byte_val_2(Stream, ByteVal, !IO).
 
+    % XXX return system_error
 :- pred read_byte_val_2(stream::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     read_byte_val_2(Stream::in, ByteVal::out, _IO0::di, _IO::uo),
@@ -7859,21 +7822,29 @@ read_byte_val(input_stream(Stream), ByteVal, !IO) :-
 ").
 
 putback_char(input_stream(Stream), Character, !IO) :-
-    putback_char_2(Stream, Character, !IO).
+    putback_char_2(Stream, Character, Ok, !IO),
+    (
+        Ok = yes
+    ;
+        Ok = no,
+        throw(io_error("failed to put back character"))
+    ).
 
-:- pred putback_char_2(stream::in, char::in, io::di, io::uo) is det.
+:- pred putback_char_2(stream::in, char::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    putback_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, terminates,
+    putback_char_2(Stream::in, Character::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing, may_not_duplicate],
 "
     MercuryFilePtr mf = Stream;
-    if (Character == '\\n') {
-        MR_line_number(*mf)--;
-    }
+    Ok = MR_TRUE;
     if (Character <= 0x7f) {
         if (MR_UNGETCH(*mf, Character) == EOF) {
-            mercury_io_error(mf, ""io.putback_char: ungetc failed"");
+            Ok = MR_FALSE;
+        } else {
+            if (Character == '\\n') {
+                MR_line_number(*mf)--;
+            }
         }
     } else {
         /* This requires multiple pushback in the underlying C library. */
@@ -7882,24 +7853,33 @@ putback_char(input_stream(Stream), Character, !IO) :-
         len = MR_utf8_encode(buf, Character);
         for (; len > 0; len--) {
             if (MR_UNGETCH(*mf, buf[len - 1]) == EOF) {
-                mercury_io_error(mf, ""io.putback_char: ungetc failed"");
+                Ok = MR_FALSE;
+                break;
             }
         }
     }
 ").
 
 putback_byte(binary_input_stream(Stream), Character, !IO) :-
-    putback_byte_2(Stream, Character, !IO).
+    putback_byte_2(Stream, Character, Ok, !IO),
+    (
+        Ok = yes
+    ;
+        Ok = no,
+        throw(io_error("failed to put back byte"))
+    ).
 
-:- pred putback_byte_2(stream::in, int::in, io::di, io::uo) is det.
+:- pred putback_byte_2(stream::in, int::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    putback_byte_2(Stream::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, terminates,
+    putback_byte_2(Stream::in, Character::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr mf = Stream;
     if (MR_UNGETCH(*mf, Character) == EOF) {
-        mercury_io_error(mf, ""io.putback_byte: ungetc failed"");
+        Ok = MR_FALSE;
+    } else {
+        Ok = MR_TRUE;
     }
 ").
 
@@ -7925,24 +7905,33 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, terminates],
-"{
+    putback_char_2(File::in, Character::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
     io.MR_MercuryFileStruct mf = File;
-    io.mercury_ungetc(mf, Character);
-}").
+    if (mf.putback == -1) {
+        mf.putback = Character;
+        if (Character == '\\n') {
+            mf.line_number--;
+        }
+        Ok = mr_bool.YES;
+    } else {
+        Ok = mr_bool.NO;
+    }
+").
 
 :- pragma foreign_proc("C#",
-    putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, terminates],
-"{
+    putback_byte_2(File::in, Byte::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
     io.MR_MercuryFileStruct mf = File;
-    if (mf.putback != -1) {
-        runtime.Errors.SORRY(
-            ""io.putback_byte: max one character of putback"");
+    if (mf.putback == -1) {
+        mf.putback = Byte;
+        Ok = mr_bool.YES;
+    } else {
+        Ok = mr_bool.NO;
     }
-    mf.putback = Byte;
-}").
+").
 
 :- pragma foreign_proc("Java",
     read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
@@ -7969,17 +7958,19 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, terminates, tabled_for_io],
+    putback_char_2(File::in, Character::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     ((io.MR_TextInputFile) File).ungetc(Character);
+    Ok = bool.YES;
 ").
 
 :- pragma foreign_proc("Java",
-    putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, terminates, tabled_for_io],
+    putback_byte_2(File::in, Byte::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     ((io.MR_BinaryInputFile) File).ungetc((byte) Byte);
+    Ok = bool.YES;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -7999,17 +7990,19 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, terminates],
+    putback_char_2(File::in, Character::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    mercury__io:mercury_putback(File, Character)
+    mercury__io:mercury_putback(File, Character),
+    Ok = {yes}
 ").
 
 :- pragma foreign_proc("Erlang",
-    putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, terminates],
+    putback_byte_2(File::in, Byte::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    mercury__io:mercury_putback(File, Byte)
+    mercury__io:mercury_putback(File, Byte),
+    Ok = {yes}
 ").
 
 %---------------------------------------------------------------------------%
@@ -8017,79 +8010,25 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 % Output predicates (with output to mercury_current_text_output)
 %
 
-:- pragma foreign_proc("C",
-    write_string(Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness, no_sharing],
-"
-    mercury_print_string(mercury_current_text_output(), Message);
-").
+write_string(Message, !IO) :-
+    output_stream(Stream, !IO),
+    write_string(Stream, Message, !IO).
 
-:- pragma foreign_proc("C",
-    write_char(Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness, no_sharing],
-"
-    MercuryFilePtr out = mercury_current_text_output();
-    char    buf[5];
-    size_t  len;
-    size_t  i;
-    if (Character <= 0x7f) {
-        if (MR_PUTCH(*out, Character) < 0) {
-            mercury_output_error(out, errno);
-        }
-        if (Character == '\\n') {
-            MR_line_number(*out)++;
-        }
-    } else {
-        len = MR_utf8_encode(buf, Character);
-        for (i = 0; i < len; i++) {
-            if (MR_PUTCH(*out, buf[i]) < 0) {
-                mercury_output_error(out, errno);
-                break;
-            }
-        }
-    }
-").
+write_char(Character, !IO) :-
+    output_stream(Stream, !IO),
+    write_char(Stream, Character, !IO).
 
-:- pragma foreign_proc("C",
-    write_int(Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness, no_sharing],
-"
-    MercuryFilePtr out = mercury_current_text_output();
-    if (ML_fprintf(out, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", Val) < 0) {
-        mercury_output_error(out, errno);
-    }
-").
+write_int(Val, !IO) :-
+    output_stream(Stream, !IO),
+    write_int(Stream, Val, !IO).
 
-:- pragma foreign_proc("C",
-    write_float(Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness, no_sharing],
-"
-    char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
-    MercuryFilePtr out;
+write_float(Val, !IO) :-
+    output_stream(Stream, !IO),
+    write_float(Stream, Val, !IO).
 
-    MR_sprintf_float(buf, Val);
-    out = mercury_current_text_output();
-    if (ML_fprintf(out, ""%s"", buf) < 0) {
-        mercury_output_error(out, errno);
-    }
-").
-
-:- pragma foreign_proc("C",
-    write_byte(Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness, no_sharing],
-"
-    /* call putc with a strictly non-negative byte-sized integer */
-    if (MR_PUTCH(*mercury_current_binary_output(),
-        (int) ((unsigned char) Byte)) < 0)
-    {
-        mercury_output_error(mercury_current_text_output(), errno);
-    }
-").
+write_byte(Byte, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_byte(Stream, Byte, !IO).
 
 write_bitmap(Bitmap, !IO) :-
     binary_output_stream(Stream, !IO),
@@ -8099,206 +8038,13 @@ write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     binary_output_stream(Stream, !IO),
     write_bitmap(Stream, Bitmap, Start, NumBytes, !IO).
 
-:- pragma foreign_proc("C",
-    flush_output(_IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness, no_sharing],
-"
-    MercuryFilePtr out = mercury_current_text_output();
-    if (MR_FLUSH(*out) < 0) {
-        mercury_output_error(out, errno);
-    }
-").
+flush_output(!IO) :-
+    output_stream(Stream, !IO),
+    flush_output(Stream, !IO).
 
-:- pragma foreign_proc("C",
-    flush_binary_output(_IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness, no_sharing],
-"
-    MercuryFilePtr out = mercury_current_binary_output();
-    if (MR_FLUSH(*out) < 0) {
-        mercury_output_error(out, errno);
-    }
-").
-
-:- pragma foreign_proc("C#",
-    write_string(Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_print_string(io.mercury_current_text_output, Message);
-").
-
-:- pragma foreign_proc("C#",
-    write_char(Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates,
-        may_not_duplicate],
-"
-    /* See mercury_output_string() for comments */
-    if (io.mercury_current_text_output.writer == null) {
-        io.mercury_current_text_output.writer =
-            new System.IO.StreamWriter(io.mercury_current_text_output.stream,
-                text_encoding);
-    }
-    System.IO.TextWriter w = io.mercury_current_text_output.writer;
-    if (Character == '\\n') {
-        switch (io.mercury_current_text_output.line_ending) {
-        case io.ML_line_ending_kind.ML_raw_binary:
-        case io.ML_line_ending_kind.ML_Unix_line_ending:
-            mercury_write_codepoint(w, Character);
-            break;
-        case io.ML_line_ending_kind.ML_OS_line_ending:
-            w.WriteLine("""");
-            break;
-        }
-        io.mercury_current_text_output.line_number++;
-    } else {
-        mercury_write_codepoint(w, Character);
-    }
-").
-
-:- pragma foreign_proc("C#",
-    write_int(Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_print_string(io.mercury_current_text_output, Val.ToString());
-").
-
-:- pragma foreign_proc("C#",
-    write_byte(Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_current_binary_output.stream.WriteByte(
-        System.Convert.ToByte(Byte));
-").
-
-:- pragma foreign_proc("C#",
-    flush_output(_IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_current_text_output.stream.Flush();
-").
-
-:- pragma foreign_proc("C#",
-    flush_binary_output(_IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_current_binary_output.stream.Flush();
-").
-
-:- pragma foreign_proc("Java",
-    write_string(Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_current_text_output.get().write_or_throw(Message);
-").
-:- pragma foreign_proc("Java",
-    write_char(Chr::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.MR_TextOutputFile stream = io.mercury_current_text_output.get();
-    char[] buf = java.lang.Character.toChars(Chr);
-    for (char c : buf) {
-        stream.put_or_throw(c);
-    }
-").
-:- pragma foreign_proc("Java",
-    write_int(Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_current_text_output.get().write_or_throw(Integer.toString(Val));
-").
-:- pragma foreign_proc("Java",
-    write_float(Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.MR_TextOutputFile stream = io.mercury_current_text_output.get();
-
-    if (Double.isNaN(Val)) {
-        stream.write_or_throw(""nan"");
-    } else if (Double.isInfinite(Val)) {
-        if (Val < 0.0) {
-            stream.write_or_throw(""-infinity"");
-        } else {
-            stream.write_or_throw(""infinity"");
-        }
-    } else {
-        stream.write_or_throw(Double.toString(Val));
-    }
-").
-
-:- pragma foreign_proc("Java",
-    write_byte(Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_current_binary_output.get().put_or_throw((byte) Byte);
-").
-
-:- pragma foreign_proc("Java",
-    flush_output(_IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_current_text_output.get().flush_or_throw();
-").
-
-:- pragma foreign_proc("Java",
-    flush_binary_output(_IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_current_binary_output.get().flush_or_throw();
-").
-
-:- pragma foreign_proc("Erlang",
-    write_string(Message::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
-"
-    Stream = ?ML_get_current_text_output,
-    mercury__io:mercury_write_string(Stream, Message)
-").
-:- pragma foreign_proc("Erlang",
-    write_char(Character::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
-"
-    Stream = ?ML_get_current_text_output,
-    mercury__io:mercury_write_char(Stream, Character)
-").
-:- pragma foreign_proc("Erlang",
-    write_int(Val::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
-"
-    Stream = ?ML_get_current_text_output,
-    mercury__io:mercury_write_int(Stream, Val)
-").
-
-:- pragma foreign_proc("Erlang",
-    write_byte(Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    Stream = ?ML_get_current_binary_output,
-    mercury__io:mercury_write_char(Stream, Byte)
-").
-
-:- pragma foreign_proc("Erlang",
-    flush_output(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
-"
-    Stream = ?ML_get_current_text_output,
-    mercury__io:mercury_sync(Stream)
-").
-:- pragma foreign_proc("Erlang",
-    flush_binary_output(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
-"
-    Stream = ?ML_get_current_binary_output,
-    mercury__io:mercury_sync(Stream)
-").
-
-write_float(Float, !IO) :-
-    write_string(string.float_to_string(Float), !IO).
+flush_binary_output(!IO) :-
+    binary_output_stream(Stream, !IO),
+    flush_binary_output(Stream, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -8313,50 +8059,62 @@ whence_to_int(end, 2).
 
 seek_binary_input(binary_input_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
-    seek_binary_2(Stream, Flag, Offset, !IO).
+    seek_binary_2(Stream, Flag, Offset, Error, !IO),
+    throw_on_error(Error, "error seeking in file: ", !IO).
 
 seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
-    seek_binary_2(Stream, Flag, Offset, !IO).
+    seek_binary_2(Stream, Flag, Offset, Error, !IO),
+    throw_on_error(Error, "error seeking in file: ", !IO).
 
-:- pred seek_binary_2(stream::in, int::in, int::in,
+:- pred seek_binary_2(stream::in, int::in, int::in, system_error::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
+    seek_binary_2(Stream::in, Flag::in, Off::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
     static const int seek_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END };
 
-    /* XXX should check for failure */
-    /* XXX should also check if the stream is seekable */
+    /* XXX check if the stream is seekable */
     if (MR_IS_FILE_STREAM(*Stream)) {
-        fseek(MR_file(*Stream), Off, seek_flags[Flag]);
+        if (fseek(MR_file(*Stream), Off, seek_flags[Flag]) < 0) {
+            Error = errno;
+        } else {
+            Error = 0;
+        }
     } else {
-        mercury_io_error(Stream, ""io.seek_binary_2: unseekable stream"");
+        Error = EINVAL;
     }
 ").
 
 binary_input_stream_offset(binary_input_stream(Stream), Offset, !IO) :-
-    binary_stream_offset_2(Stream, Offset, !IO).
+    binary_stream_offset_2(Stream, Offset, Error, !IO),
+    throw_on_error(Error, "error getting file offset: ", !IO).
 
 binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
-    binary_stream_offset_2(Stream, Offset, !IO).
+    binary_stream_offset_2(Stream, Offset, Error, !IO),
+    throw_on_error(Error, "error getting file offset: ", !IO).
 
-:- pred binary_stream_offset_2(stream::in, int::out, io::di, io::uo) is det.
+:- pred binary_stream_offset_2(stream::in, int::out, system_error::out,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
+    binary_stream_offset_2(Stream::in, Offset::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    /* XXX should check for failure */
     /* XXX should check if the stream is tellable */
     if (MR_IS_FILE_STREAM(*Stream)) {
         Offset = ftell(MR_file(*Stream));
+        if (Offset < 0) {
+            Error = errno;
+        } else {
+            Error = 0;
+        }
     } else {
-        mercury_io_error(Stream,
-            ""io.primitive_binary_stream_offset: untellable stream"");
+        Error = EINVAL;
     }
 ").
 
@@ -8366,31 +8124,45 @@ binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
 %
 
 write_string(output_stream(Stream), Message, !IO) :-
-    write_string_2(Stream, Message, !IO).
+    write_string_2(Stream, Message, Error, !IO),
+    throw_on_output_error(Error, !IO).
 
-:- pred write_string_2(stream::in, string::in, io::di, io::uo) is det.
+:- pred write_string_2(stream::in, string::in, system_error::out,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    write_string_2(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    mercury_print_string(Stream, Message);
+    const char *s = Message;
+    if (ML_fprintf(Stream, ""%s"", s) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+        while (*s) {
+            if (*s++ == '\\n') {
+                MR_line_number(*Stream)++;
+            }
+        }
+    }
 ").
 
 write_char(output_stream(Stream), Character, !IO) :-
-    write_char_2(Stream, Character, !IO).
+    write_char_2(Stream, Character, Error, !IO),
+    throw_on_output_error(Error, !IO).
 
-:- pred write_char_2(stream::in, char::in, io::di, io::uo) is det.
+:- pred write_char_2(stream::in, char::in, system_error::out, io::di, io::uo)
+    is det.
 :- pragma foreign_proc("C",
-    write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    write_char_2(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
+    Error = 0;
     if (Character <= 0x7f) {
         if (MR_PUTCH(*Stream, Character) < 0) {
-            mercury_output_error(Stream, errno);
-        }
-        if (Character == '\\n') {
+            Error = errno;
+        } else if (Character == '\\n') {
             MR_line_number(*Stream)++;
         }
     } else {
@@ -8400,7 +8172,7 @@ write_char(output_stream(Stream), Character, !IO) :-
         len = MR_utf8_encode(buf, Character);
         for (i = 0; i < len; i++) {
             if (MR_PUTCH(*Stream, buf[i]) < 0) {
-                mercury_output_error(Stream, errno);
+                Error = errno;
                 break;
             }
         }
@@ -8408,279 +8180,405 @@ write_char(output_stream(Stream), Character, !IO) :-
 ").
 
 write_int(output_stream(Stream), Val, !IO) :-
-    write_int_2(Stream, Val, !IO).
+    write_int_2(Stream, Val, Error, !IO),
+    throw_on_output_error(Error, !IO).
 
-:- pred write_int_2(stream::in, int::in, io::di, io::uo) is det.
+:- pred write_int_2(stream::in, int::in, system_error::out, io::di, io::uo)
+    is det.
 :- pragma foreign_proc("C",
-    write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    write_int_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
     if (ML_fprintf(Stream, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", Val) < 0) {
-        mercury_output_error(Stream, errno);
+        Error = errno;
+    } else {
+        Error = 0;
     }
 ").
 
 write_float(output_stream(Stream), Val, !IO) :-
-    write_float_2(Stream, Val, !IO).
+    write_float_2(Stream, Val, Error, !IO),
+    throw_on_output_error(Error, !IO).
 
-:- pred write_float_2(stream::in, float::in, io::di, io::uo) is det.
+:- pred write_float_2(stream::in, float::in, system_error::out, io::di, io::uo)
+    is det.
 :- pragma foreign_proc("C",
-    write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    write_float_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
     char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
     MR_sprintf_float(buf, Val);
     if (ML_fprintf(Stream, ""%s"", buf) < 0) {
-        mercury_output_error(Stream, errno);
+        Error = errno;
+    } else {
+        Error = 0;
     }
 ").
 
 write_byte(binary_output_stream(Stream), Byte, !IO) :-
-    io.write_byte_2(Stream, Byte, !IO).
+    write_byte_2(Stream, Byte, Error, !IO),
+    throw_on_output_error(Error, !IO).
 
-:- pred io.write_byte_2(stream::in, int::in, io::di, io::uo) is det.
+:- pred write_byte_2(stream::in, int::in, system_error::out, io::di, io::uo)
+    is det.
 :- pragma foreign_proc("C",
-    write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    write_byte_2(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
     /* call putc with a strictly non-negative byte-sized integer */
     if (MR_PUTCH(*Stream, (int) ((unsigned char) Byte)) < 0) {
-        mercury_output_error(Stream, errno);
+        Error = errno;
+    } else {
+        Error = 0;
     }
 ").
 
 write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
     ( if NumBytes = Bitmap ^ num_bytes then
-        do_write_bitmap(Stream, Bitmap, 0, NumBytes, !IO)
+        do_write_bitmap(Stream, Bitmap, 0, NumBytes, Error, !IO),
+        throw_on_output_error(Error, !IO)
     else
         error("io.write_bitmap: bitmap contains partial final byte")
     ).
 
 write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
-    ( if
+    ( if NumBytes = 0 then
+        true
+    else if
+        NumBytes > 0,
         byte_in_range(Bitmap, Start),
         byte_in_range(Bitmap, Start + NumBytes - 1)
     then
-        do_write_bitmap(Stream, Bitmap, Start, NumBytes, !IO)
+        do_write_bitmap(Stream, Bitmap, Start, NumBytes, Error, !IO),
+        throw_on_output_error(Error, !IO)
     else
         bitmap.throw_bounds_error(Bitmap, "io.write_bitmap",
             Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
 
-:- pred do_write_bitmap(stream, bitmap, int, int, io, io).
-%:- mode do_write_bitmap(in, bitmap_ui, in, in, di, uo) is det.
-:- mode do_write_bitmap(in, in, in, in, di, uo) is det.
-:- pragma promise_pure(do_write_bitmap/6).
-
-    % Default implementation for C# and Java.
-do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
-    ( if Length > 0 then
-        write_byte(binary_output_stream(Stream),
-            Bitmap ^ unsafe_byte(Start), !IO),
-        do_write_bitmap(Stream, Bitmap, Start + 1, Length - 1, !IO)
-    else
-        true
-    ).
+:- pred do_write_bitmap(stream, bitmap, int, int, system_error, io, io).
+%:- mode do_write_bitmap(in, bitmap_ui, in, in, out, di, uo) is det.
+:- mode do_write_bitmap(in, in, in, in, out, di, uo) is det.
 
 :- pragma foreign_proc("C",
-    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in,
+    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in, Error::out,
         _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         no_sharing],
 "
     MR_Integer bytes_written =
         (MR_Integer)MR_WRITE(*Stream, Bitmap->elements + Start, Length);
     if (bytes_written != Length) {
-        mercury_io_error(Stream, \"Error writing bitmap.\");
+        Error = errno;
+    } else {
+        Error = 0;
     }
 ").
 
-flush_output(output_stream(Stream), !IO) :-
-    flush_output_2(Stream, !IO).
+:- pragma foreign_proc("C#",
+    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        no_sharing],
+"
+    try {
+        Stream.stream.Write(Bitmap.elements, Start, Length);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
 
-:- pred flush_output_2(stream::in, io::di, io::uo) is det.
+:- pragma foreign_proc("Java",
+    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        no_sharing],
+"
+    try {
+        ((MR_BinaryOutputFile) Stream).write(Bitmap.elements, Start, Length);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Erlang",
+    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        no_sharing],
+"
+    {Binary, _NumBits} = Bitmap,
+    <<_:Start/binary, Mid:Length/binary, _/binary>> = Binary,
+    mercury__io:mercury_write_binary(Stream, Mid),
+    % mercury_write_binary does not return errors yet.
+    Error = ok
+").
+
+flush_output(output_stream(Stream), !IO) :-
+    flush_output_2(Stream, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred flush_output_2(stream::in, system_error::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    flush_output_2(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    flush_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
     if (MR_FLUSH(*Stream) < 0) {
-        mercury_output_error(Stream, errno);
+        Error = errno;
+    } else {
+        Error = 0;
     }
 ").
 
 flush_binary_output(binary_output_stream(Stream), !IO) :-
-    flush_binary_output_2(Stream, !IO).
+    flush_binary_output_2(Stream, Error, !IO),
+    throw_on_output_error(Error, !IO).
 
-:- pred flush_binary_output_2(stream::in, io::di, io::uo) is det.
+:- pred flush_binary_output_2(stream::in, system_error::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
     if (MR_FLUSH(*Stream) < 0) {
-        mercury_output_error(Stream, errno);
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+% C# missing seek_binary_2
+% C# missing binary_stream_offset_2
+
+:- pragma foreign_proc("C#",
+    write_string_2(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        io.mercury_print_string(Stream, Message);
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("C#",
-    write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_print_string(Stream, Message);
-").
-
-:- pragma foreign_proc("C#",
-    write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates,
+    write_char_2(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
     io.MR_MercuryFileStruct stream = Stream;
-    /* See mercury_output_string() for comments */
-    if (stream.writer == null) {
-        stream.writer = new System.IO.StreamWriter(stream.stream,
-            text_encoding);
-    }
-    System.IO.TextWriter w = stream.writer;
-    if (Character == '\\n') {
-        switch (stream.line_ending) {
-        case io.ML_line_ending_kind.ML_raw_binary:
-        case io.ML_line_ending_kind.ML_Unix_line_ending:
-            mercury_write_codepoint(w, Character);
-            break;
-        case io.ML_line_ending_kind.ML_OS_line_ending:
-            w.WriteLine("""");
-            break;
+    try {
+        // See mercury_print_string().
+        if (stream.writer == null) {
+            stream.writer = new System.IO.StreamWriter(stream.stream,
+                text_encoding);
         }
-        stream.line_number++;
-    } else {
-        mercury_write_codepoint(w, Character);
+        System.IO.TextWriter w = stream.writer;
+        if (Character == '\\n') {
+            switch (stream.line_ending) {
+            case io.ML_line_ending_kind.ML_raw_binary:
+            case io.ML_line_ending_kind.ML_Unix_line_ending:
+                mercury_write_codepoint(w, Character);
+                break;
+            case io.ML_line_ending_kind.ML_OS_line_ending:
+                w.WriteLine("""");
+                break;
+            }
+            stream.line_number++;
+        } else {
+            mercury_write_codepoint(w, Character);
+        }
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("C#",
-    write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"{
-    io.mercury_print_string(Stream, Val.ToString());
-}").
+    write_int_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        io.mercury_print_string(Stream, Val.ToString());
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
 
 :- pragma foreign_proc("C#",
-    write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"{
-    Stream.stream.WriteByte(System.Convert.ToByte(Byte));
-}").
+    write_byte_2(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        Stream.stream.WriteByte(System.Convert.ToByte(Byte));
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
 
 :- pragma foreign_proc("C#",
-    flush_output_2(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"{
-    Stream.stream.Flush();
-}").
+    flush_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        Stream.stream.Flush();
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
 
 :- pragma foreign_proc("C#",
-    flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"{
-    Stream.stream.Flush();
-}").
+    flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        Stream.stream.Flush();
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
 
 :- pragma foreign_proc("Java",
-    seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates],
+    seek_binary_2(Stream::in, Flag::in, Off::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
         ((io.MR_BinaryFile) Stream).seek_binary(Flag, Off);
+        Error = null;
     } catch (java.io.IOException e) {
-        io.throw_io_error(e.getMessage());
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates],
+    binary_stream_offset_2(Stream::in, Offset::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
         Offset = ((io.MR_BinaryFile) Stream).getOffset();
+        Error = null;
     } catch (java.io.IOException e) {
         Offset = -1;
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
+    write_string_2(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    ((io.MR_TextOutputFile) Stream).write_or_throw(Message);
-").
-
-:- pragma foreign_proc("Java",
-    write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    char[] buf = java.lang.Character.toChars(Character);
-    for (char c : buf) {
-        ((io.MR_TextOutputFile) Stream).put_or_throw(c);
+    try {
+        ((io.MR_TextOutputFile) Stream).write(Message);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    write_char_2(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    ((io.MR_TextOutputFile) Stream).write_or_throw(String.valueOf(Val));
+    try {
+        char[] buf = java.lang.Character.toChars(Character);
+        for (char c : buf) {
+            ((io.MR_TextOutputFile) Stream).put(c);
+        }
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
 ").
 
 :- pragma foreign_proc("Java",
-    write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    write_int_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    write_float_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     io.MR_TextOutputFile stream = (io.MR_TextOutputFile) Stream;
 
-    if (Double.isNaN(Val)) {
-        stream.write_or_throw(""nan"");
-    } else if (Double.isInfinite(Val)) {
-        if (Val < 0.0) {
-            stream.write_or_throw(""-infinity"");
+    try {
+        if (Double.isNaN(Val)) {
+            stream.write(""nan"");
+        } else if (Double.isInfinite(Val)) {
+            if (Val < 0.0) {
+                stream.write(""-infinity"");
+            } else {
+                stream.write(""infinity"");
+            }
         } else {
-            stream.write_or_throw(""infinity"");
+            stream.write(Double.toString(Val));
         }
-    } else {
-        stream.write_or_throw(Double.toString(Val));
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
+    write_byte_2(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    ((io.MR_BinaryOutputFile) Stream).put_or_throw((byte) Byte);
+    try {
+        ((io.MR_BinaryOutputFile) Stream).put((byte) Byte);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
 ").
 
 :- pragma foreign_proc("Java",
-    flush_output_2(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
+    flush_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    ((io.MR_TextOutputFile) Stream).flush_or_throw();
+    try {
+        ((io.MR_TextOutputFile) Stream).flush();
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
 ").
 
 :- pragma foreign_proc("Java",
-    flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
+    flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    ((io.MR_BinaryOutputFile) Stream).flush_or_throw();
+    try {
+        ((io.MR_BinaryOutputFile) Stream).flush();
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
 ").
 
 :- pragma foreign_proc("Erlang",
-    seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates],
+    seek_binary_2(Stream::in, Flag::in, Off::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     % Constants from whence_to_int.
     case Flag of
@@ -8688,66 +8586,80 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
         1 -> Loc = {cur, Off};
         2 -> Loc = {eof, Off}
     end,
-    mercury__io:mercury_set_pos(Stream, Loc)
-    % XXX what to do on error?
+    case mercury__io:mercury_set_pos(Stream, Loc) of
+        {ok, _NewPosition} ->
+            Error = ok;
+        {error, Reason} ->
+            Error = {error, Reason}
+    end
 ").
 
 :- pragma foreign_proc("Erlang",
-    binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates],
+    binary_stream_offset_2(Stream::in, Offset::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    Offset = mercury__io:mercury_get_pos(Stream)
+    case mercury__io:mercury_get_pos(Stream) of
+        {ok, Offset} ->
+            Error = ok;
+        {error, Reason} ->
+            Offset = -1,
+            Error = {error, Reason}
+    end
 ").
 
 :- pragma foreign_proc("Erlang",
-    write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
+    write_char_2(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    mercury__io:mercury_write_char(Stream, Character)
+    mercury__io:mercury_write_char(Stream, Character),
+    % mercury_write_char does not return errors yet.
+    Error = ok
 ").
 
 :- pragma foreign_proc("Erlang",
-    write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    write_int_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    mercury__io:mercury_write_int(Stream, Val)
+    mercury__io:mercury_write_int(Stream, Val),
+    % mercury_write_int does not return errors yet.
+    Error = ok
 ").
 
 :- pragma foreign_proc("Erlang",
-    write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
+    write_string_2(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    mercury__io:mercury_write_string(Stream, Message)
+    mercury__io:mercury_write_string(Stream, Message),
+    % mercury_write_string does not return errors yet.
+    Error = ok
 ").
 
 :- pragma foreign_proc("Erlang",
-    write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
+    write_byte_2(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    mercury__io:mercury_write_char(Stream, Byte)
+    mercury__io:mercury_write_char(Stream, Byte),
+    % mercury_write_char does not return errors yet.
+    Error = ok
 ").
 
 :- pragma foreign_proc("Erlang",
-    flush_output_2(Stream::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
+    flush_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    mercury__io:mercury_sync(Stream)
+    Error = mercury__io:mercury_sync(Stream)
 ").
 
 :- pragma foreign_proc("Erlang",
-    flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        terminates],
+    flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    mercury__io:mercury_sync(Stream)
+    Error = mercury__io:mercury_sync(Stream)
 ").
 
-write_float_2(Stream, Float, !IO) :-
-    write_string_2(Stream, string.float_to_string(Float), !IO).
+write_float_2(Stream, Float, Error, !IO) :-
+    write_string_2(Stream, string.float_to_string(Float), Error, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -9736,9 +9648,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
             Stream = new MR_TextOutputFile(
                 new java.io.FileOutputStream(FileName, true));
         } else {
-            io.throw_io_error(""io.do_open_text: "" +
-                ""Invalid open mode"" + "" \\"""" + Mode + ""\\"""");
-            throw new Error(""unreachable"");
+            throw new RuntimeException(""Invalid file opening mode: "" + Mode);
         }
         StreamId = Stream.id;
         Result = ML_OR_OK;
@@ -9771,9 +9681,8 @@ set_binary_output_stream(binary_output_stream(NewStream),
                     new java.io.FileOutputStream(FileName, true));
                 break;
             default:
-                io.throw_io_error(""Invalid file opening mode: "" + Mode);
-                Stream = null;
-                break;
+                throw new RuntimeException(""Invalid file opening mode: "" +
+                    Mode);
         }
         StreamId = Stream.id;
         Result = ML_OR_OK;
@@ -9829,55 +9738,68 @@ set_binary_output_stream(binary_output_stream(NewStream),
 
 close_input(input_stream(Stream), !IO) :-
     maybe_delete_stream_info(Stream, !IO),
-    close_stream(Stream, !IO).
+    close_stream(Stream, Error, !IO),
+    throw_on_close_error(Error, !IO).
 
 close_output(output_stream(Stream), !IO) :-
     maybe_delete_stream_info(Stream, !IO),
-    close_stream(Stream, !IO).
+    close_stream(Stream, Error, !IO),
+    throw_on_close_error(Error, !IO).
 
 close_binary_input(binary_input_stream(Stream), !IO) :-
     maybe_delete_stream_info(Stream, !IO),
-    close_stream(Stream, !IO).
+    close_stream(Stream, Error, !IO),
+    throw_on_close_error(Error, !IO).
 
 close_binary_output(binary_output_stream(Stream), !IO) :-
     maybe_delete_stream_info(Stream, !IO),
-    close_stream(Stream, !IO).
+    close_stream(Stream, Error, !IO),
+    throw_on_close_error(Error, !IO).
 
-:- pred close_stream(stream::in, io::di, io::uo) is det.
+:- pred close_stream(stream::in, system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    close_stream(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    mercury_close(Stream);
+    if (mercury_close(Stream) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
 ").
 
 :- pragma foreign_proc("C#",
-    close_stream(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    io.mercury_close(Stream);
+    try {
+        io.mercury_close(Stream);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
 ").
 
 :- pragma foreign_proc("Java",
-    close_stream(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
     try {
         Stream.close();
+        Error = null;
     } catch (java.io.IOException e) {
-        io.throw_io_error(e.getMessage());
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    close_stream(Stream::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates],
+    close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    mercury__io:mercury_close_stream(Stream)
+    Error = mercury__io:mercury_close_stream(Stream)
 ").
 
 % Miscellaneous predicates.
@@ -11176,6 +11098,7 @@ remove_file(FileName, Result, !IO) :-
         Result = error(io_error(ResString))
     ).
 
+    % XXX return system_error instead
 :- pred remove_file_2(string::in, int::out, string::out, io::di, io::uo)
     is det.
 
@@ -11318,6 +11241,7 @@ rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
         Result = error(io_error(ResString))
     ).
 
+    % XXX return system_error instead
 :- pred rename_file_2(string::in, string::in, int::out, string::out,
     io::di, io::uo) is det.
 
@@ -11443,6 +11367,7 @@ make_symlink(FileName, LinkFileName, Result, !IO) :-
             "io.make_symlink not supported on this platform"))
     ).
 
+    % XXX return system_error instead
 :- pred make_symlink_2(string::in, string::in, int::out, io::di, io::uo)
     is det.
 
@@ -11490,6 +11415,7 @@ read_symlink(FileName, Result, !IO) :-
             "io.read_symlink not supported on this platform"))
     ).
 
+    % XXX return system_error only
 :- pred read_symlink_2(string::in, string::out, int::out,
     system_error::out, io::di, io::uo) is det.
 
