@@ -224,7 +224,6 @@ static size_t           attrib_count_table_used;
 static MR_VarSizeCount  *runtime_count_tree;
 static MR_VarSizeCount  *unknown_count_tree;
 static int              snapshot_counter;
-static const char       *snapshot_label;
 static FILE             *snapshot_file;
 
 static void     add_attrib_count_entry(MR_AttribCount *table,
@@ -232,10 +231,12 @@ static void     add_attrib_count_entry(MR_AttribCount *table,
                     const MR_AllocSiteInfo *alloc_site);
 static void     rehash_attrib_count_table(void);
 static unsigned hash_addr(MR_Word key);
-static void     reachable_object_callback(GC_word *p, size_t words);
+static void * GC_CALLBACK enumerate_reachable_objects_locked(void *data);
+static GC_CALLBACK void
+                reachable_object_callback(void *p, size_t bytes, void *data);
 static MR_bool  increment_attrib_count(MR_Word addr, size_t num_words);
 static void     increment_var_size_count(MR_VarSizeCount **node, size_t words);
-static void     stop_collect_callback(void);
+static void     finish_reachable_report(const char *label);
 static void     write_attrib_counts(FILE *fp, MR_AttribCount *table,
                     size_t table_size);
 static void     write_var_size_counts(FILE *fp, const char *prefix,
@@ -366,13 +367,6 @@ void
 MR_report_memory_attribution(const char *label)
 {
 #ifdef MR_BOEHM_GC
-    void *old_reachable_cb = GC_mercury_callback_reachable_object;
-    void *old_stop_cb = GC_mercury_callback_stop_collect;
-
-    GC_mercury_callback_reachable_object = reachable_object_callback;
-    GC_mercury_callback_stop_collect = stop_collect_callback;
-    snapshot_label = label;
-
   #ifndef MR_HIGHLEVEL_CODE
     // Clear out the stacks and registers before garbage collecting.
     MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp + 1);
@@ -383,18 +377,24 @@ MR_report_memory_attribution(const char *label)
 
     GC_gcollect();
 
-    GC_mercury_callback_reachable_object = old_reachable_cb;
-    GC_mercury_callback_stop_collect = old_stop_cb;
-    snapshot_label = NULL;
+    GC_call_with_alloc_lock(enumerate_reachable_objects_locked, NULL);
+    finish_reachable_report(label);
 #endif
 }
 
-static void
-reachable_object_callback(GC_word *p, size_t words)
+static void * GC_CALLBACK enumerate_reachable_objects_locked(void *data)
+{
+    GC_enumerate_reachable_objects_inner(reachable_object_callback, NULL);
+    return NULL;
+}
+
+static GC_CALLBACK void
+reachable_object_callback(void *p, size_t bytes, void *data)
 {
     MR_Word addr;
+    size_t words = bytes/MR_BYTES_PER_WORD;
 
-    addr = (MR_Word) p[0];
+    addr = ((MR_Word*)p)[0];
 
     if ((void *) addr == MR_ALLOC_SITE_RUNTIME) {
         increment_var_size_count(&runtime_count_tree, words);
@@ -456,23 +456,21 @@ increment_var_size_count(MR_VarSizeCount **node, size_t words)
 }
 
 static void
-stop_collect_callback(void)
+finish_reachable_report(const char *label)
 {
     if (snapshot_file == NULL) {
         snapshot_file = MR_checked_fopen(SNAPSHOTS_FILENAME, "create", "w");
     }
 
     snapshot_counter++;
-    fprintf(snapshot_file, "start [%d] %s\n",
-        snapshot_counter, snapshot_label);
+    fprintf(snapshot_file, "start [%d] %s\n", snapshot_counter, label);
 
     write_attrib_counts(snapshot_file, attrib_count_table,
         attrib_count_table_size);
     write_var_size_counts(snapshot_file, "runtime", runtime_count_tree);
     write_var_size_counts(snapshot_file, "unknown", unknown_count_tree);
 
-    fprintf(snapshot_file, "end [%d] %s\n",
-        snapshot_counter, snapshot_label);
+    fprintf(snapshot_file, "end [%d] %s\n", snapshot_counter, label);
 }
 
 static void

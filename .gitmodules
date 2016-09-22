@@ -1,5 +1,5 @@
 [submodule "boehm_gc"]
 	path = boehm_gc
 	url = ../bdwgc.git
-	branch = release-7_4-mercury
+	branch = release-7_6-mercury
 	update = checkout
