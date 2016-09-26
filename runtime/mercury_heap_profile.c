@@ -364,7 +364,7 @@ hash_addr(MR_Word key)
 }
 
 void
-MR_report_memory_attribution(const char *label)
+MR_report_memory_attribution(const char *label, MR_bool run_collect)
 {
 #ifdef MR_BOEHM_GC
   #ifndef MR_HIGHLEVEL_CODE
@@ -375,7 +375,9 @@ MR_report_memory_attribution(const char *label)
     MR_clear_regs_for_GC();
   #endif
 
-    GC_gcollect();
+    if (run_collect) {
+        GC_gcollect();
+    }
 
     GC_call_with_alloc_lock(enumerate_reachable_objects_locked, NULL);
     finish_reachable_report(label);

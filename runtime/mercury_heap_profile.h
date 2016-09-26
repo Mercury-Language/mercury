@@ -113,7 +113,8 @@ extern void     MR_prof_turn_off_heap_profiling(void);
 extern void     MR_register_alloc_sites(const MR_AllocSiteInfo *alloc_sites,
                     int size);
 
-extern void     MR_report_memory_attribution(MR_ConstString label);
+extern void     MR_report_memory_attribution(MR_ConstString label,
+                    MR_bool run_collect);
 
 extern void     MR_finish_prof_snapshots_file(void);
 

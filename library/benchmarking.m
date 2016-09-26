@@ -19,6 +19,7 @@
 :- module benchmarking.
 :- interface.
 
+:- import_module bool.
 :- import_module io.
 :- import_module maybe.
 
@@ -42,14 +43,21 @@
     %
 :- impure pred report_full_memory_stats is det.
 
-    % report_memory_attribution(Label, !IO) is a procedure intended for use in
-    % profiling the memory usage by a program. In `memprof.gc' grades it has
-    % the side-effect of forcing a garbage collection and reporting a summary
-    % of the objects on the heap to a data file. See ``Using mprof -s for
-    % profiling memory retention'' in the Mercury User's Guide. The label is
-    % for your reference.
+    % report_memory_attribution(Label, Collect, !IO) is a procedure intended
+    % for use in profiling the memory usage by a program.  It is supported in
+    % `memprof.gc' grades only, in other grades it is a no-op.  It reports a
+    % summary of the objects on the heap to a data file. See ``Using mprof -s
+    % for profiling memory retention'' in the Mercury User's Guide. The label
+    % is for your reference.  If Collect is yes it has the effect of forcing a
+    % garbage collection before building the report.
     %
-    % On other grades this procedure does nothing.
+:- pred report_memory_attribution(string::in, bool::in, io::di, io::uo) is det.
+
+:- impure pred report_memory_attribution(string::in, bool::in) is det.
+
+    % report_memory_attribution(Label, !IO) is the same as
+    % report_memory_attribution/4 above, except that it always forces a
+    % collection (in 'memprof.gc' grades).
     %
 :- pred report_memory_attribution(string::in, io::di, io::uo) is det.
 
@@ -222,18 +230,28 @@ extern void ML_report_full_memory_stats(void);
 ").
 
 :- pragma foreign_proc("C",
-    report_memory_attribution(Label::in),
+    report_memory_attribution(Label::in, RunCollect::in),
     [will_not_call_mercury],
 "
+    MR_bool mr_run_collect = RunCollect == MR_YES ? MR_TRUE : MR_FALSE;
+
 #ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
-    MR_report_memory_attribution(Label);
+    MR_report_memory_attribution(Label, mr_run_collect);
 #else
     (void) Label;
 #endif
 ").
 
-report_memory_attribution(_) :-
+report_memory_attribution(_, _) :-
     impure impure_true.
+
+report_memory_attribution(Label) :-
+    impure report_memory_attribution(Label, yes).
+
+:- pragma promise_pure(report_memory_attribution/4).
+
+report_memory_attribution(Label, Collect, !IO) :-
+    impure report_memory_attribution(Label, Collect).
 
 :- pragma promise_pure(report_memory_attribution/3).
 
