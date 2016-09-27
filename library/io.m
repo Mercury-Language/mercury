@@ -1966,24 +1966,35 @@ using System.Security.Principal;
 
 :- func get_stream_id(stream) = stream_id.
 
-    % This inter-language stuff is tricky.
-    % We communicate via ints rather than via io.result_codes because
-    % we don't want the C/Java/etc code to depend on how Mercury stores
-    % its discriminated union data types.
+    % We communicate results from foreign_procs as separate simple arguments
+    % so the C/Java/etc code does not depend on how Mercury stores its
+    % discriminated union data types. It also avoids memory allocation in
+    % inner loops.
 
-    % Reads a character (code point) from specified stream, and returns the
-    % numerical value for that character (as from char.to_int). This may
+:- type result_code
+    --->    ok
+    ;       eof
+    ;       error.
+
+:- pragma foreign_export_enum("C", result_code/0,
+    [prefix("ML_RESULT_CODE_"), uppercase]).
+:- pragma foreign_export_enum("C#", result_code/0,
+    [prefix("ML_RESULT_CODE_"), uppercase]).
+:- pragma foreign_export_enum("Java", result_code/0,
+    [prefix("ML_RESULT_CODE_"), uppercase]).
+
+    % Reads a character (code point) from specified stream. This may
     % involve converting external character encodings into Mercury's internal
     % character representation and (for text streams) converting OS line
     % indicators, e.g. CR-LF for Windows, to '\n' characters.
-    % Returns -1 if at EOF, -2 if an error occurs.
     %
-:- pred read_char_code(input_stream::in, int::out, io::di, io::uo) is det.
+:- pred read_char_code(input_stream::in, result_code::out, char::out,
+    system_error::out, io::di, io::uo) is det.
 
     % Reads a byte from specified stream.
-    % Returns -1 if at EOF, -2 if an error occurs.
     %
-:- pred read_byte_val(input_stream::in, int::out, io::di, io::uo) is det.
+:- pred read_byte_val(input_stream::in, result_code::out, int::out,
+    system_error::out, io::di, io::uo) is det.
 
     % call_system_code(Command, Status, Success, Message, !IO):
     %
@@ -2129,36 +2140,33 @@ read_char(Result, !IO) :-
     read_char(Stream, Result, !IO).
 
 read_char(Stream, Result, !IO) :-
-    read_char_code(Stream, Code, !IO),
-    ( if
-        Code >= 0,
-        char.to_int(Char, Code)
-    then
+    read_char_code(Stream, Result0, Char, Error, !IO),
+    (
+        Result0 = ok,
         Result = ok(Char)
-    else if Code = -1 then
+    ;
+        Result0 = eof,
         Result = eof
-    else
-        io.make_err_msg("read failed: ", Msg, !IO),
+    ;
+        Result0 = error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
 :- pragma inline(read_char_unboxed/5).
 
 read_char_unboxed(Stream, Result, Char, !IO) :-
-    read_char_code(Stream, Code, !IO),
-    ( if
-        Code >= 0,
-        char.to_int(Char0, Code)
-    then
-        Result = ok,
-        Char = Char0
-    else if Code = -1 then
-        Result = eof,
-        Char = char.det_from_int(0)
-    else
-        make_err_msg("read failed: ", Msg, !IO),
-        Result = error(io_error(Msg)),
-        Char = char.det_from_int(0)
+    read_char_code(Stream, Result0, Char, Error, !IO),
+    (
+        Result0 = ok,
+        Result = ok
+    ;
+        Result0 = eof,
+        Result = eof
+    ;
+        Result0 = error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
     ).
 
 % We want to inline these, to allow deforestation.
@@ -2170,13 +2178,16 @@ read_byte(Result, !IO) :-
     read_byte(Stream, Result, !IO).
 
 read_byte(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), Code, !IO),
-    ( if Code >= 0 then
-        Result = ok(Code)
-    else if Code = -1 then
+    read_byte_val(input_stream(Stream), Result0, Byte, Error, !IO),
+    (
+        Result0 = ok,
+        Result = ok(Byte)
+    ;
+        Result0 = eof,
         Result = eof
-    else
-        make_err_msg("read failed: ", Msg, !IO),
+    ;
+        Result0 = error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -2204,12 +2215,11 @@ read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
         byte_in_range(!.Bitmap, Start + NumBytes - 1)
     then
         do_read_bitmap(Stream, Start, NumBytes,
-            !Bitmap, 0, BytesRead, !IO),
-        ferror(Stream, ErrInt, ErrMsg, !IO),
-        ( if ErrInt = 0 then
-            Result = ok
+            !Bitmap, 0, BytesRead, Error, !IO),
+        ( if is_error(Error, "read failed: ", Message) then
+            Result = error(io_error(Message))
         else
-            Result = error(io_error(ErrMsg))
+            Result = ok
         )
     else if
         NumBytes = 0,
@@ -2224,35 +2234,95 @@ read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
 
 :- pred do_read_bitmap(stream::in, byte_index::in, num_bytes::in,
     bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::in, num_bytes::out,
-    io::di, io::uo) is det.
+    system_error::out, io::di, io::uo) is det.
 
-    % Default implementation for C# and Java.
-do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
+    % Default implementation for Erlang.
+do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, Error, !IO) :-
     ( if NumBytes > 0 then
-        read_byte(binary_input_stream(Stream), ByteResult, !IO),
+        read_byte_val(input_stream(Stream), Result0, Byte, Error0, !IO),
         (
-            ByteResult = ok(Byte),
+            Result0 = ok,
             !:Bitmap = !.Bitmap ^ unsafe_byte(Start) := Byte,
             !:BytesRead = !.BytesRead + 1,
             do_read_bitmap(Stream, Start + 1, NumBytes - 1,
-                !Bitmap, !BytesRead, !IO)
+                !Bitmap, !BytesRead, Error, !IO)
         ;
-            ByteResult = eof
+            Result0 = eof,
+            Error = Error0
         ;
-            ByteResult = error(_)
+            Result0 = error,
+            Error = Error0
         )
     else
-        true
+        Error = no_error
     ).
+
 :- pragma foreign_proc("C",
     do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
         Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
-        _IO0::di, _IO::uo),
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    Bitmap = Bitmap0,
-    BytesRead = BytesRead0 +
-                    MR_READ(*Stream, Bitmap->elements + StartByte, NumBytes);
+    size_t nread;
+
+    Bitmap = Bitmap0;
+    nread = MR_READ(*Stream, Bitmap->elements + StartByte, NumBytes);
+    BytesRead = BytesRead0 + nread;
+    if (nread < NumBytes && MR_FERROR(*Stream)) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
+        Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
+        Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    io.MR_MercuryFileStruct mf = Stream;
+
+    Bitmap = Bitmap0;
+    BytesRead = BytesRead0;
+
+    if (mf.putback != -1) {
+        Bitmap.elements[StartByte] = (byte) mf.putback;
+        BytesRead++;
+        StartByte++;
+        NumBytes--;
+        mf.putback = -1;
+    }
+
+    try {
+        BytesRead += mf.stream.Read(Bitmap.elements, StartByte, NumBytes);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
+        Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
+        Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    MR_BinaryInputFile mf = (MR_BinaryInputFile) Stream;
+    Bitmap = Bitmap0;
+    BytesRead = BytesRead0;
+
+    final int nread = mf.read_pushback(Bitmap.elements, StartByte, NumBytes);
+    BytesRead += nread;
+    StartByte += nread;
+    NumBytes -= nread;
+
+    try {
+        BytesRead += mf.read_non_pushback(Bitmap.elements, StartByte, NumBytes);
+        Error = null;
+    } catch (java.lang.Exception e) {
+        Error = e;
+    }
 ").
 
 read_binary_file_as_bitmap(Result, !IO) :-
@@ -2378,43 +2448,41 @@ read_line(Result, !IO) :-
     read_line(Stream, Result, !IO).
 
 read_line(Stream, Result, !IO) :-
-    read_char_code(Stream, Code, !IO),
-    ( if
-        Code >= 0,
-        char.to_int(Char, Code)
-    then
-        ( if Char = '\n' then
-            Result = ok([Char])
-        else
-            read_line_2(Stream, Result0, !IO),
-            Result = ok([Char | Result0])
-        )
-    else if Code = -1 then
+    read_line_2(Stream, Result0, Chars, Error, !IO),
+    (
+        Result0 = ok,
+        Result = ok(Chars)
+    ;
+        Result0 = eof,
         Result = eof
-    else
-        make_err_msg("read failed: ", Msg, !IO),
+    ;
+        Result0 = error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
-:- pred read_line_2(input_stream::in, list(char)::out,
-    io::di, io::uo) is det.
+:- pred read_line_2(input_stream::in, result_code::out, list(char)::out,
+    system_error::out, io::di, io::uo) is det.
 
-read_line_2(Stream, Result, !IO) :-
-    read_char_code(Stream, Code, !IO),
-    ( if
-        Code >= 0,
-        char.to_int(Char, Code)
-    then
+read_line_2(Stream, Result, Chars, Error, !IO) :-
+    read_char_code(Stream, Result0, Char, Error0, !IO),
+    (
+        Result0 = ok,
         ( if Char = '\n' then
-            Result = [Char]
+            Result = ok,
+            Chars = [Char],
+            Error = Error0
         else
-            read_line_2(Stream, Chars, !IO),
-            Result = [Char | Chars]
+            read_line_2(Stream, Result, CharsTail, Error, !IO),
+            Chars = [Char | CharsTail] % lcmc
         )
-    else if Code = -1 then
-        Result = []
-    else
-        Result = []
+    ;
+        ( Result0 = eof
+        ; Result0 = error
+        ),
+        Result = Result0,
+        Chars = [],
+        Error = Error0
     ).
 
 read_line_as_string(Result, !IO) :-
@@ -2422,26 +2490,40 @@ read_line_as_string(Result, !IO) :-
     read_line_as_string(Stream, Result, !IO).
 
 read_line_as_string(input_stream(Stream), Result, !IO) :-
-    read_line_as_string_2(Stream, yes, Res, String, !IO),
-    ( if Res < 0 then
-        ( if Res = -1 then
-            Result = eof
-        else if Res = -2 then
-            Result = error(io_error("null character in input"))
-        else
-            make_err_msg("read failed: ", Msg, !IO),
-            Result = error(io_error(Msg))
-        )
-    else
+    read_line_as_string_2(Stream, yes, Res, String, Error, !IO),
+    (
+        Res = ok,
         Result = ok(String)
+    ;
+        Res = eof,
+        Result = eof
+    ;
+        Res = null_char,
+        Result = error(io_error("null character in input"))
+    ;
+        Res = error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
     ).
 
-:- pred read_line_as_string_2(io.stream::in, bool::in, int::out,
-    string::out, io::di, io::uo) is det.
+:- type read_line_as_string_result
+    --->    ok
+    ;       eof
+    ;       null_char
+    ;       error.
+
+:- pragma foreign_export_enum("C", read_line_as_string_result/0,
+    [prefix("ML_READ_LINE_AS_STRING_"), uppercase]).
+:- pragma foreign_export_enum("Java", read_line_as_string_result/0,
+    [prefix("ML_READ_LINE_AS_STRING_"), uppercase]).
+
+:- pred read_line_as_string_2(io.stream::in, bool::in,
+    read_line_as_string_result::out, string::out, system_error::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     read_line_as_string_2(Stream::in, _FirstCall::in, Res::out,
-        RetString::out, _IO0::di, _IO::uo),
+        RetString::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -2455,21 +2537,23 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
     size_t i;
     int char_code = '\\0';
 
-    Res = 0;
+    Res = ML_READ_LINE_AS_STRING_OK;
+    Error = 0;
     for (i = 0; char_code != '\\n'; ) {
         char_code = mercury_get_byte(Stream);
         if (char_code == EOF) {
             if (i == 0) {
                 if (MR_FERROR(*Stream)) {
-                    Res = -2;
+                    Res = ML_READ_LINE_AS_STRING_ERROR;
+                    Error = errno;
                 } else {
-                    Res = -1;
+                    Res = ML_READ_LINE_AS_STRING_EOF;
                 }
             }
             break;
         }
         if (char_code == 0) {
-            Res = -2;
+            Res = ML_READ_LINE_AS_STRING_NULL_CHAR;
             break;
         }
         read_buffer[i++] = (char) char_code;
@@ -2487,7 +2571,7 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
             }
         }
     }
-    if (Res == 0) {
+    if (Res == ML_READ_LINE_AS_STRING_OK) {
         MR_Word ret_string_word;
         MR_offset_incr_hp_atomic_msg(ret_string_word,
             0, ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(char)),
@@ -2496,10 +2580,6 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
         MR_memcpy(RetString, read_buffer, i * sizeof(char));
         RetString[i] = '\\0';
     } else {
-        /*
-        ** We can't just return NULL here, because otherwise mdb will break
-        ** when it tries to print the string.
-        */
         RetString = MR_make_string_const("""");
     }
     if (read_buffer != initial_read_buffer) {
@@ -2508,52 +2588,60 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.read_line_as_string_2(Stream::in, _FirstCall::in, Res::out,
-        RetString::out, _IO0::di, _IO::uo),
+    read_line_as_string_2(Stream::in, _FirstCall::in, Res::out,
+        RetString::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, may_not_duplicate],
 "
     try {
         RetString = ((io.MR_TextInputFile) Stream).read_line();
-        Res = (RetString != null) ? 0 : -1;
+        if (RetString != null) {
+            Res = ML_READ_LINE_AS_STRING_OK;
+        } else {
+            Res = ML_READ_LINE_AS_STRING_EOF;
+        }
+        Error = null;
     } catch (java.io.IOException e) {
-        io.MR_io_exception.set(e);
-        Res = -3;
+        Res = ML_READ_LINE_AS_STRING_ERROR;
         RetString = """";
+        Error = e;
     }
 ").
 
-read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
+read_line_as_string_2(Stream, FirstCall, Res, String, Error, !IO) :-
     % XXX This is terribly inefficient, a better approach would be to
     % use a buffer like what is done for io.read_file_as_string.
-    read_char(input_stream(Stream), Result, !IO),
+    read_char_code(input_stream(Stream), ReadChar, Char, Error0, !IO),
     (
-        Result = ok(Char),
+        ReadChar = ok,
         ( if Char = '\n' then
-            Res = 0,
-            String = "\n"
+            Res = ok,
+            String = "\n",
+            Error = Error0
         else if char.to_int(Char, 0) then
-            Res = -2,
-            String = ""
+            Res = null_char,
+            String = "",
+            Error = Error0
         else
-            read_line_as_string_2(Stream, no, Res, String0, !IO),
+            read_line_as_string_2(Stream, no, Res, String0, Error, !IO),
             string.first_char(String, Char, String0)
         )
     ;
-        Result = eof,
+        ReadChar = eof,
         (
             FirstCall = yes,
-            String = "",
-            Res = -1
+            Res = eof
         ;
             FirstCall = no,
-            String = "",
-            Res = 0
-        )
-    ;
-        Result = error(_),
+            Res = ok
+        ),
         String = "",
-        Res = -3
+        Error = Error0
+    ;
+        ReadChar = error,
+        Res = error,
+        String = "",
+        Error = Error0
     ).
 
 read_file(Result, !IO) :-
@@ -2585,39 +2673,58 @@ read_file_as_string(Result, !IO) :-
     input_stream(Stream, !IO),
     read_file_as_string(Stream, Result, !IO).
 
+read_file_as_string(input_stream(Stream), Result, !IO) :-
+    read_file_as_string_2(Stream, String, Error, NullCharError, !IO),
+    ( if is_error(Error, "read failed: ", Message) then
+        Result = error(String, io_error(Message))
+    else
+        (
+            NullCharError = yes,
+            Result = error("", io_error("null character in input"))
+        ;
+            NullCharError = no,
+            Result = ok(String)
+        )
+    ).
+
+:- pred read_file_as_string_2(stream::in, string::out, system_error::out,
+    bool::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc("Java",
-    read_file_as_string(InputStream::in, Result::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    read_file_as_string_2(Stream::in, String::out, Error::out,
+        NullCharError::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    io.MR_TextInputFile File;
-    StringBuilder sb;
-
-    File = (io.MR_TextInputFile) InputStream.F1;
-    sb = new StringBuilder();
-
+    StringBuilder sb = new StringBuilder();
     try {
-        File.read_file(sb);
-        Result = ML_make_io_maybe_partial_res_1_ok_string(sb.toString());
+        ((io.MR_TextInputFile) Stream).read_file(sb);
+        Error = null;
     } catch (java.io.IOException e) {
-        Result = ML_make_io_maybe_partial_res_1_error_string(sb.toString(),
-            e, ""io.read_file_as_string failed: "");
+        Error = e;
     }
+    String = sb.toString();
+    NullCharError = bool.NO;
 ").
 
 :- pragma foreign_proc("Erlang",
-    read_file_as_string(InputStream::in, Result::out, _IO0::di, _IO::uo),
+    read_file_as_string_2(Stream::in, String::out, Error::out,
+        NullCharError::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    {input_stream, Stream} = InputStream,
-    Result = mercury__io:mercury_read_string_to_eof(Stream)
+    case mercury__io:mercury_read_string_to_eof(Stream) of
+        {ok, String} ->
+            Error = ok;
+        {error, String, Reason} ->
+            Error = {error, Reason}
+    end,
+    NullCharError = {no}
 ").
 
-read_file_as_string(Stream, Result, !IO) :-
+read_file_as_string_2(Stream, String, Error, NullCharError, !IO) :-
     % Check if the stream is a regular file; if so, allocate a buffer
     % according to the size of the file. Otherwise, just use a default buffer
     % size of 4k minus a bit (to give malloc some room).
-    input_stream_file_size(Stream, FileSize, !IO),
+    input_stream_file_size(input_stream(Stream), FileSize, !IO),
     ( if FileSize >= 0 then
         BufferSize0 = FileSize + 1
     else
@@ -2627,43 +2734,36 @@ read_file_as_string(Stream, Result, !IO) :-
 
     % Read the file into the buffer (resizing it as we go if necessary),
     % convert the buffer into a string, and see if anything went wrong.
-    input_clear_err(Stream, !IO),
     Pos0 = 0,
-    read_file_as_string_2(Stream, Buffer0, Buffer, Pos0, Pos,
-        BufferSize0, BufferSize, !IO),
+    read_file_as_string_loop(input_stream(Stream), Buffer0, Buffer, Pos0, Pos,
+        BufferSize0, BufferSize, Error, !IO),
     require(Pos < BufferSize, "io.read_file_as_string: overflow"),
-    ( if buffer_to_string(Buffer, Pos, String) then
-        input_check_err(Stream, Result0, !IO),
-        (
-            Result0 = ok,
-            Result = ok(String)
-        ;
-            Result0 = error(Error),
-            Result = error(String, Error)
-        )
+    ( if buffer_to_string(Buffer, Pos, StringPrime) then
+        String = StringPrime,
+        NullCharError = no
     else
-        Result = error("", io_error("null character in input"))
+        String = "",
+        NullCharError = yes
     ).
 
-:- pred read_file_as_string_2(input_stream::in, buffer::buffer_di,
-    buffer::buffer_uo, int::in, int::out, int::in, int::out, io::di, io::uo)
-    is det.
+:- pred read_file_as_string_loop(input_stream::in, buffer::buffer_di,
+    buffer::buffer_uo, int::in, int::out, int::in, int::out, system_error::out,
+    io::di, io::uo) is det.
 
-read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO) :-
-    Pos0 = !.Pos,
+read_file_as_string_loop(Stream, !Buffer, !Pos, !Size, Error, !IO) :-
     Size0 = !.Size,
     Stream = input_stream(RealStream),
-    read_into_buffer(RealStream, !Buffer, !Pos, !.Size, !IO),
-    ( if !.Pos =< Pos0 then
-        % End-of-file or error.
-        true
+    read_into_buffer(RealStream, !Buffer, !Pos, Size0, Error0, !IO),
+    ( if !.Pos < Size0 then
+        % Buffer not full: end-of-file or error.
+        Error = Error0
     else if !.Pos = Size0 then
         % Full buffer.
         !:Size = Size0 * 2,
         resize_buffer(Size0, !.Size, !Buffer),
-        read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
+        read_file_as_string_loop(Stream, !Buffer, !Pos, !Size, Error, !IO)
     else
-        read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
+        error("io.read_file_as_string: buffer overflow")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2748,168 +2848,6 @@ input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-% :- pragma obsolete(input_clear_err/3).
-:- pred input_clear_err(io.input_stream::in, io::di, io::uo) is det.
-
-input_clear_err(input_stream(Stream), !IO) :-
-    clear_err(Stream, !IO).
-
-% :- pragma obsolete(output_clear_err/3).
-:- pred output_clear_err(output_stream::in, io::di, io::uo) is det.
-
-output_clear_err(output_stream(Stream), !IO) :-
-    clear_err(Stream, !IO).
-
-    % Same as ANSI C's clearerr().
-    %
-:- pred clear_err(stream::in, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    clear_err(Stream::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (MR_IS_FILE_STREAM(*Stream)) {
-        clearerr(MR_file(*Stream));
-    } else {
-        /* Not a file stream so do nothing */
-    }
-").
-
-:- pragma foreign_proc("C#",
-    clear_err(_Stream::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    // XXX no error flag to reset as in .NET an error is thrown
-    // directly as an exception (we should create an error indicator
-    // in MF_Mercury_file for compatibility)
-}").
-
-:- pragma foreign_proc("Java",
-    clear_err(_Stream::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    // XXX as for .NET above
-").
-
-:- pragma foreign_proc("Erlang",
-    clear_err(_Stream::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX as for .NET above
-    void
-").
-
-:- pred io.input_check_err(io.input_stream::in, io.res::out, io::di, io::uo)
-    is det.
-
-input_check_err(input_stream(Stream), Result, !IO) :-
-    check_err(Stream, Result, !IO).
-
-:- pred check_err(stream::in, io.res::out, io::di, io::uo) is det.
-
-check_err(Stream, Res, !IO) :-
-    ferror(Stream, Int, Msg, !IO),
-    ( if Int = 0 then
-        Res = ok
-    else
-        Res = error(io_error(Msg))
-    ).
-
-    % Similar to ANSI C's ferror().
-    %
-:- pred ferror(stream::in, int::out, string::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    ferror(Stream::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (MR_IS_FILE_STREAM(*Stream)) {
-        RetVal = ferror(MR_file(*Stream));
-    } else {
-        RetVal = -1;
-    }
-
-    ML_maybe_make_err_msg(RetVal != 0, errno, ""read failed: "",
-        MR_ALLOC_ID, RetStr);
-").
-
-:- pragma foreign_proc("C#",
-    ferror(_Stream::in, RetVal::out, _RetStr::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    // XXX see clearerr
-    RetVal = 0;
-}").
-
-:- pragma foreign_proc("Java",
-    ferror(_Stream::in, RetVal::out, _RetStr::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"{
-    // XXX see clearerr
-    RetVal = 0;
-}").
-
-:- pragma foreign_proc("Erlang",
-    ferror(_Stream::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX see clearerr
-    RetVal = 0,
-    RetStr = <<>>
-").
-
-% :- pragma obsolete(make_err_msg/4).
-:- pred make_err_msg(string::in, string::out, io::di, io::uo) is det.
-
-make_err_msg(Msg0, Msg, !IO) :-
-    get_system_error(Error, !IO),
-    make_err_msg(Error, Msg0, Msg, !IO).
-
-% :- pragma obsolete(get_system_error/3).
-:- pred get_system_error(system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    get_system_error(Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"{
-    /*
-    ** XXX If the Mercury context that called the failing C function is now
-    ** running on a different OS thread, this errno won't be the one
-    ** we are looking for. Or, if a different Mercury context was run on
-    ** the same thread in the meantime, the errno could have been clobbered.
-    */
-    Error = errno;
-}").
-
-:- pragma foreign_proc("C#",
-    get_system_error(Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
-    Error = io.MR_io_exception;
-}").
-
-:- pragma foreign_proc("Java",
-    get_system_error(Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    Error = io.MR_io_exception.get();
-").
-
-:- pragma foreign_proc("Erlang",
-    get_system_error(Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    Error = get('MR_io_exception')
-").
-
-:- pragma foreign_export("C", make_err_msg(in, in, out, di, uo),
-    "ML_make_err_msg").
-:- pragma foreign_export("C#", make_err_msg(in, in, out, di, uo),
-    "ML_make_err_msg").
-
 :- pragma foreign_proc("C",
     make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
@@ -2985,11 +2923,6 @@ have_dotnet :-
 "
     SUCCESS_INDICATOR = true;
 ").
-
-:- pragma foreign_export("C", make_win32_err_msg(in, in, out, di, uo),
-    "ML_make_win32_err_msg").
-:- pragma foreign_export("C#", make_win32_err_msg(in, in, out, di, uo),
-    "ML_make_win32_err_msg").
 
 make_win32_err_msg(_, _, "", !IO) :-
     ( if semidet_succeed then
@@ -4255,16 +4188,16 @@ have_file_ids :- semidet_fail.
 
 %---------------------------------------------------------------------------%
 
-% A `buffer' is just an array of Chars.
-% Buffer sizes are measured in Chars.
+% A `buffer' is an array of chars.
+% For C backends, it is a C array of C chars.
+% For other backends, it is a Mercury array of Mercury chars.
 
 :- type buffer.
 :- pragma foreign_type(c, buffer, "char *", [can_pass_as_mercury_type]).
 
-    % XXX It would be better to use a char_array (e.g. defined as char[] in
-    % C#) type rather than array(char). This is because on the Java and IL
-    % backends indexing into an array whose element type is known
-    % statically requires less overhead.
+    % XXX It would be better to use a char_array type rather than array(char).
+    % This is because on the Java and IL backends indexing into an array whose
+    % element type is known statically requires less overhead.
 :- type buffer ---> buffer(array(char)).
 
     % XXX Extend the workaround for no `ui' modes in array.m.
@@ -4346,7 +4279,7 @@ resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
 
     /* Check that the string doesn't contain null characters. */
     if (strlen(Str) != Len) {
-        SUCCESS_INDICATOR= MR_FALSE;
+        SUCCESS_INDICATOR = MR_FALSE;
     } else {
         SUCCESS_INDICATOR = MR_TRUE;
     }
@@ -4357,46 +4290,58 @@ buffer_to_string(buffer(Array), Len, String) :-
     string.semidet_from_char_list(List, String).
 
 :- pred read_into_buffer(stream::in, buffer::buffer_di, buffer::buffer_uo,
-    int::in, int::out, int::in, io::di, io::uo) is det.
+    int::in, int::out, int::in, system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     read_into_buffer(Stream::in, Buffer0::buffer_di, Buffer::buffer_uo,
-        Pos0::in, Pos::out, Size::in, _IO0::di, _IO::uo),
+        Pos0::in, Pos::out, Size::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
-    int items_read;
+    size_t bytes_to_read;
+    size_t bytes_read;
 
     MR_CHECK_EXPR_TYPE(Buffer0, char *);
     MR_CHECK_EXPR_TYPE(Buffer, char *);
 
-    items_read = MR_READ(*Stream, Buffer0 + Pos0, Size - Pos0);
+    bytes_to_read = Size - Pos0;
+    bytes_read = MR_READ(*Stream, Buffer0 + Pos0, bytes_to_read);
 
     Buffer = Buffer0;
-    Pos = Pos0 + items_read;
+    Pos = Pos0 + bytes_read;
+
+    if (bytes_read < bytes_to_read && MR_FERROR(*Stream)) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
 ").
 
-read_into_buffer(Stream, buffer(Array0), buffer(Array), !Pos, Size, !IO) :-
-    read_into_array(Stream, Array0, Array, !Pos, Size, !IO).
+read_into_buffer(Stream, buffer(Array0), buffer(Array), Pos0, Pos, Size,
+        Error, !IO) :-
+    read_into_array(input_stream(Stream), Array0, Array, Pos0, Pos, Size,
+        Error, !IO).
 
-:- pred read_into_array(stream::in,
+:- pred read_into_array(input_stream::in,
     array(char)::array_di, array(char)::array_uo, int::in, int::out,
-    int::in, io::di, io::uo) is det.
+    int::in, system_error::out, io::di, io::uo) is det.
 
-read_into_array(Stream, !Array, !Pos, Size, !IO) :-
+read_into_array(Stream, !Array, !Pos, Size, Error, !IO) :-
     ( if !.Pos >= Size then
-        true
+        Error = no_error
     else
-        io.read_char(input_stream(Stream), CharResult, !IO),
+        read_char_code(Stream, Result, Char, Error0, !IO),
         (
-            CharResult = ok(Char),
+            Result = ok,
             array.set(!.Pos, Char, !Array),
             !:Pos = !.Pos + 1,
-            io.read_into_array(Stream, !Array, !Pos, Size, !IO)
+            read_into_array(Stream, !Array, !Pos, Size, Error, !IO)
         ;
-            CharResult = error(_)
+            Result = eof,
+            Error = Error0
         ;
-            CharResult = eof
+            Result = error,
+            Error = Error0
         )
     ).
 
@@ -4809,6 +4754,7 @@ process_read_term(ReadResult, LineNumber, Result) :-
     ).
 
 read(Stream, Result, !IO) :-
+    % XXX implicit-stream predicate should call explicit-stream predicate
     set_input_stream(Stream, OrigStream, !IO),
     read(Result, !IO),
     set_input_stream(OrigStream, _Stream, !IO).
@@ -5029,11 +4975,13 @@ write_array(Stream, Array, Separator, OutputPred, !IO) :-
 %---------------------------------------------------------------------------%
 
 write_binary(Stream, Term, !IO) :-
+    % XXX implicit-stream predicate should call explicit-stream predicate
     set_binary_output_stream(Stream, OrigStream, !IO),
     write_binary(Term, !IO),
     set_binary_output_stream(OrigStream, _Stream, !IO).
 
 read_binary(Stream, Result, !IO) :-
+    % XXX implicit-stream predicate should call explicit-stream predicate
     set_binary_input_stream(Stream, OrigStream, !IO),
     read_binary(Result, !IO),
     set_binary_input_stream(OrigStream, _Stream, !IO).
@@ -5087,99 +5035,63 @@ read_binary(Result, !IO) :-
 %
 
 open_input(FileName, Result, !IO) :-
-    do_open_text(FileName, "r", Result0, OpenCount, NewStream, !IO),
-    (
-        Result0 = ok,
+    do_open_text(FileName, "r", OpenCount, NewStream, Error, !IO),
+    ( if is_error(Error, "can't open input file: ", Message) then
+        Result = error(io_error(Message))
+    else
         Result = ok(input_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, input, text, file(FileName)), !IO)
-    ;
-        Result0 = failed_isdir,
-        Result = error(io_error("can't open directory as file"))
-    ;
-        Result0 = failed_general,
-        make_err_msg("can't open input file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 open_output(FileName, Result, !IO) :-
-    do_open_text(FileName, "w", Result0, OpenCount, NewStream, !IO),
-    (
-        Result0 = ok,
+    do_open_text(FileName, "w", OpenCount, NewStream, Error, !IO),
+    ( if is_error(Error, "can't open output file: ", Message) then
+        Result = error(io_error(Message))
+    else
         Result = ok(output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, output, text, file(FileName)), !IO)
-    ;
-        Result0 = failed_isdir,
-        Result = error(io_error("can't open directory as file"))
-    ;
-        Result0 = failed_general,
-        make_err_msg("can't open output file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 open_append(FileName, Result, !IO) :-
-    do_open_text(FileName, "a", Result0, OpenCount, NewStream, !IO),
-    (
-        Result0 = ok,
+    do_open_text(FileName, "a", OpenCount, NewStream, Error, !IO),
+    ( if is_error(Error, "can't append to file: ", Message) then
+        Result = error(io_error(Message))
+    else
         Result = ok(output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, append, text, file(FileName)), !IO)
-    ;
-        Result0 = failed_isdir,
-        Result = error(io_error("can't open directory as file"))
-    ;
-        Result0 = failed_general,
-        make_err_msg("can't append to file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 open_binary_input(FileName, Result, !IO) :-
-    do_open_binary(FileName, "rb", Result0, OpenCount, NewStream, !IO),
-    (
-        Result0 = ok,
+    do_open_binary(FileName, "rb", OpenCount, NewStream, Error, !IO),
+    ( if is_error(Error, "can't open input file: ", Message) then
+        Result = error(io_error(Message))
+    else
         Result = ok(binary_input_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, input, binary, file(FileName)), !IO)
-    ;
-        Result0 = failed_isdir,
-        Result = error(io_error("can't open directory as file"))
-    ;
-        Result0 = failed_general,
-        make_err_msg("can't open input file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 open_binary_output(FileName, Result, !IO) :-
-    do_open_binary(FileName, "wb", Result0, OpenCount, NewStream, !IO),
-    (
-        Result0 = ok,
+    do_open_binary(FileName, "wb", OpenCount, NewStream, Error, !IO),
+    ( if is_error(Error, "can't open output file: ", Message) then
+        Result = error(io_error(Message))
+    else
         Result = ok(binary_output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, output, binary, file(FileName)), !IO)
-    ;
-        Result0 = failed_isdir,
-        Result = error(io_error("can't open directory as file"))
-    ;
-        Result0 = failed_general,
-        make_err_msg("can't open output file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 open_binary_append(FileName, Result, !IO) :-
-    do_open_binary(FileName, "ab", Result0, OpenCount, NewStream, !IO),
-    (
-        Result0 = ok,
+    do_open_binary(FileName, "ab", OpenCount, NewStream, Error, !IO),
+    ( if is_error(Error, "can't append to file: ", Message) then
+        Result = error(io_error(Message))
+    else
         Result = ok(binary_output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, append, binary, file(FileName)), !IO)
-    ;
-        Result0 = failed_isdir,
-        Result = error(io_error("can't open directory as file"))
-    ;
-        Result0 = failed_general,
-        make_err_msg("can't append to file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 %---------------------------------------------------------------------------%
@@ -5915,7 +5827,7 @@ MercuryFilePtr  mercury_current_binary_input(void);
 MercuryFilePtr  mercury_current_binary_output(void);
 int             mercury_next_stream_id(void);
 MercuryFilePtr  mercury_open(const char *filename, const char *openmode,
-                    MR_bool *is_dir, MR_AllocSiteInfoPtr alloc_id);
+                    MR_AllocSiteInfoPtr alloc_id);
 int             mercury_get_byte(MercuryFilePtr mf);
 int             mercury_close(MercuryFilePtr mf);
 int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
@@ -6338,6 +6250,27 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             pushback.push(b);
         }
 
+        public int read_pushback(byte[] b, int start, int len)
+        {
+            final int end = start + len;
+            int cur = start;
+            while (cur < end && !pushback.empty()) {
+                b[cur] = pushback.pop();
+                cur++;
+            }
+            return cur - start;
+        }
+
+        public int read_non_pushback(byte[] b, int start, int len)
+            throws java.io.IOException
+        {
+            int n = binary_input.read(b, start, len);
+            if (n < 0) {
+                return 0;
+            }
+            return n;
+        }
+
         @Override
         public int getOffset()
             throws java.io.IOException
@@ -6639,9 +6572,6 @@ public static MR_MercuryFileStruct mercury_current_binary_input =
 public static MR_MercuryFileStruct mercury_current_binary_output =
     mercury_stdout_binary;
 
-// XXX not thread-safe!
-public static System.Exception MR_io_exception;
-
 ").
 
 :- pragma foreign_code("Java",
@@ -6709,9 +6639,6 @@ public static ThreadLocal<MR_BinaryOutputFile> mercury_current_binary_output =
             return mercury_stdout_binary;
         }
     };
-
-public static ThreadLocal<Exception> MR_io_exception =
-    new ThreadLocal<Exception>();
 ").
 
 :- pragma foreign_decl("Erlang", local, "
@@ -6766,6 +6693,7 @@ public static ThreadLocal<Exception> MR_io_exception =
     % ensure that two operations from the same process are done in order.
     %
 mercury_start_file_server(ParentPid, FileName, Mode) ->
+    % XXX This is wrong for binary streams.
     Encoding = {encoding, utf8},
     case Mode of
         [$r | _] ->
@@ -6787,6 +6715,7 @@ mercury_start_file_server(ParentPid, FileName, Mode) ->
     end.
 
 mercury_stdio_file_server(IoDevice) ->
+    % XXX This is wrong for binary streams.
     io:setopts(IoDevice, [binary, {encoding, utf8}]),
     mercury_file_server(IoDevice, 1, []).
 
@@ -6981,22 +6910,14 @@ mercury_close_stream(Stream) ->
             Result
     end.
 
-    % Returns char, or -1 on eof, or -2 on error.
+    % Returns <integer> | eof | {error, Reason}
     %
 mercury_getc(Stream) ->
     {'ML_stream', _Id, Pid} = Stream,
     Pid ! {self(), read_char},
     receive
-        {Pid, read_char_ack, Ret} ->
-            case Ret of
-                C when is_integer(C) ->
-                    C;
-                eof ->
-                    -1;
-                {error, Reason} ->
-                    put('MR_io_exception', Reason),
-                    -2
-            end
+        {Pid, read_char_ack, Result} ->
+            Result
     end.
 
     % Returns {ok, Binary} | {error, Partial, Reason}
@@ -7005,14 +6926,8 @@ mercury_read_string_to_eof(Stream) ->
     {'ML_stream', _Id, Pid} = Stream,
     Pid ! {self(), read_string_to_eof},
     receive
-        {Pid, read_string_to_eof_ack, Ret} ->
-            case Ret of
-                {error, _Partial, Reason} ->
-                    put('MR_io_exception', Reason);
-                _ ->
-                    void
-            end,
-            Ret
+        {Pid, read_string_to_eof_ack, Result} ->
+            Result
     end.
 
 mercury_putback(Stream, Character) ->
@@ -7124,15 +7039,13 @@ mercury_set_current_binary_input(Stream) ->
 mercury_set_current_binary_output(Stream) ->
     put('ML_io_current_binary_output', Stream).
 
-% We also use the key 'MR_io_exception' in the process dictionary.
-
 ").
 
 :- pragma foreign_code("C", "
 
 MercuryFilePtr
 mercury_open(const char *filename, const char *openmode,
-    MR_bool *is_dir, MR_AllocSiteInfoPtr alloc_id)
+    MR_AllocSiteInfoPtr alloc_id)
 {
     MercuryFilePtr  mf;
     FILE            *f;
@@ -7147,7 +7060,6 @@ mercury_open(const char *filename, const char *openmode,
     f = fopen(filename, openmode);
 #endif
 
-    *is_dir = MR_FALSE;
     if (f == NULL) {
         return NULL;
     }
@@ -7163,8 +7075,8 @@ mercury_open(const char *filename, const char *openmode,
         return NULL;
     }
     if (S_ISDIR(stat_info.st_mode)) {
-        *is_dir = MR_TRUE;
         fclose(f);
+        errno = EISDIR;
         return NULL;
     }
 #endif
@@ -7187,50 +7099,41 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
     System.IO.FileShare     share;
     System.IO.Stream        stream = null;
 
-    try {
-        if (openmode == ""r"" || openmode == ""rb"") {
-            // Like '<' in Bourne shell.
-            // Read a file. The file must exist already.
-            mode   = System.IO.FileMode.Open;
-            access = System.IO.FileAccess.Read;
-        } else if (openmode == ""w"" || openmode == ""wb"") {
-            // Like '>' in Bourne shell.
-            // Overwrite an existing file, or create a new file.
-            mode   = System.IO.FileMode.Create;
-            access = System.IO.FileAccess.Write;
-        } else if (openmode == ""a"" || openmode == ""ab"") {
-            // Like '>>' in Bourne shell.
-            // Append to an existing file, or create a new file.
-            mode   = System.IO.FileMode.Append;
-            access = System.IO.FileAccess.Write;
-        } else {
-            runtime.Errors.SORRY(System.String.Concat(
-                ""foreign code for this function, open mode:"",
-                openmode));
-            // Needed to convince the C# compiler that mode and
-            // access are always initialized.
-            throw new System.Exception();
-        }
-
-        // For Unix compatibility, we allow files
-        // to be read or written by multiple processes
-        // simultaneously. XXX Is this a good idea?
-        share = System.IO.FileShare.ReadWrite;
-
-        stream = System.IO.File.Open(filename, mode, access, share);
-
-    } catch (System.Exception e) {
-        MR_io_exception = e;
-    }
-
-    if (stream == null) {
-        return null;
+    if (openmode == ""r"" || openmode == ""rb"") {
+        // Like '<' in Bourne shell.
+        // Read a file. The file must exist already.
+        mode   = System.IO.FileMode.Open;
+        access = System.IO.FileAccess.Read;
+    } else if (openmode == ""w"" || openmode == ""wb"") {
+        // Like '>' in Bourne shell.
+        // Overwrite an existing file, or create a new file.
+        mode   = System.IO.FileMode.Create;
+        access = System.IO.FileAccess.Write;
+    } else if (openmode == ""a"" || openmode == ""ab"") {
+        // Like '>>' in Bourne shell.
+        // Append to an existing file, or create a new file.
+        mode   = System.IO.FileMode.Append;
+        access = System.IO.FileAccess.Write;
     } else {
-        // We initialize the `reader' and `writer' fields to null;
-        // they will be filled in later if they are needed.
-        return mercury_file_init(new System.IO.BufferedStream(stream),
-            null, null, line_ending);
+        runtime.Errors.SORRY(System.String.Concat(
+            ""foreign code for this function, open mode:"",
+            openmode));
+        // Needed to convince the C# compiler that mode and
+        // access are always initialized.
+        throw new System.Exception();
     }
+
+    // For Unix compatibility, we allow files
+    // to be read or written by multiple processes
+    // simultaneously. XXX Is this a good idea?
+    share = System.IO.FileShare.ReadWrite;
+
+    stream = System.IO.File.Open(filename, mode, access, share);
+
+    // We initialize the `reader' and `writer' fields to null;
+    // they will be filled in later if they are needed.
+    return mercury_file_init(new System.IO.BufferedStream(stream),
+        null, null, line_ending);
 }
 
 ").
@@ -7299,7 +7202,8 @@ mercury_get_byte(MercuryFilePtr mf)
 
 // Read in a character. This means reading in one or more bytes,
 // converting the bytes from the system's default encoding to Unicode,
-// and possibly converting CR-LF to newline. Returns -1 on error or EOF.
+// and possibly converting CR-LF to newline. Returns -1 on EOF, and
+// throws an exception on error.
 
 private static readonly string NewLine = System.Environment.NewLine;
 
@@ -7724,20 +7628,50 @@ throw_on_close_error(Error, !IO) :-
     end
 ").
 
+:- func no_error = system_error.
+
+:- pragma foreign_proc("C",
+    no_error = (Error::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Error = 0;
+").
+
+:- pragma foreign_proc("C#",
+    no_error = (Error::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Error = null;
+").
+
+:- pragma foreign_proc("Java",
+    no_error = (Error::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Error = null;
+").
+
+:- pragma foreign_proc("Erlang",
+    no_error = (Error::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Error = ok
+").
+
 %---------------------------------------------------------------------------%
 %
 % Input predicates
 %
 
-read_char_code(input_stream(Stream), CharCode, !IO) :-
-    read_char_code_2(Stream, CharCode, !IO).
+read_char_code(input_stream(Stream), Result, Char, Error, !IO) :-
+    read_char_code_2(Stream, Result, Char, Error, !IO).
 
-    % XXX return system_error
-:- pred read_char_code_2(stream::in, int::out, io::di, io::uo)
-    is det.
+:- pred read_char_code_2(stream::in, result_code::out, char::out,
+    system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    read_char_code_2(Stream::in, CharCode::out, _IO0::di, _IO::uo),
+    read_char_code_2(Stream::in, Result::out, Char::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing, may_not_duplicate],
 "
@@ -7750,13 +7684,18 @@ read_char_code(input_stream(Stream), CharCode, !IO) :-
     c = mercury_get_byte(Stream);
     uc = c;
     if (uc <= 0x7f) {
-        CharCode = uc;
+        Result = ML_RESULT_CODE_OK;
+        Char = uc;
+        Error = 0;
     } else if (c == EOF) {
         if (MR_FERROR(*Stream)) {
-            CharCode = -2;
+            Result = ML_RESULT_CODE_ERROR;
+            Error = errno;
         } else {
-            CharCode = -1;
+            Result = ML_RESULT_CODE_EOF;
+            Error = 0;
         }
+        Char = 0;
     } else {
         if ((uc & 0xE0) == 0xC0) {
             nbytes = 2;
@@ -7773,51 +7712,61 @@ read_char_code(input_stream(Stream), CharCode, !IO) :-
                 c = mercury_get_byte(Stream);
                 uc = c;
                 if (c == EOF) {
-                    /*
-                    ** If the byte sequence ends early then it is invalid.
-                    ** The next read attempt will determine if this is EOF or
-                    ** an IO error.
-                    */
-                    errno = EILSEQ;
-                    CharCode = -2;
+                    /* Illegal byte sequence whether EOF or I/O error. */
+                    Result = ML_RESULT_CODE_ERROR;
+                    Error = MR_FERROR(*Stream) ? errno : EILSEQ;
+                    Char = 0;
+                    break;
                 }
                 buf[i] = uc;
             }
-            buf[i] = '\\0';
-            CharCode = MR_utf8_get(buf, 0);
-            if (CharCode < 0) {
-                /* Invalid byte sequence. */
-                errno = EILSEQ;
-                CharCode = -2;
+            if (i == nbytes) {
+                buf[i] = '\\0';
+                c = MR_utf8_get(buf, 0);
+                if (c < 0) {
+                    Result = ML_RESULT_CODE_ERROR;
+                    Error = EILSEQ;
+                    Char = 0;
+                } else {
+                    Result = ML_RESULT_CODE_OK;
+                    Char = c;
+                    Error = 0;
+                }
             }
         } else {
-            /* Invalid byte sequence. */
-            errno = EILSEQ;
-            CharCode = -2;
+            /* Invalid lead byte. */
+            Result = ML_RESULT_CODE_ERROR;
+            Error = EILSEQ;
+            Char = 0;
         }
     }
 ").
 
-read_byte_val(input_stream(Stream), ByteVal, !IO) :-
-    read_byte_val_2(Stream, ByteVal, !IO).
+read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
+    read_byte_val_2(Stream, Result, ByteVal, Error, !IO).
 
-    % XXX return system_error
-:- pred read_byte_val_2(stream::in, int::out, io::di, io::uo) is det.
+:- pred read_byte_val_2(stream::in, result_code::out, int::out,
+    system_error::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    read_byte_val_2(Stream::in, ByteVal::out, _IO0::di, _IO::uo),
+    read_byte_val_2(Stream::in, Result::out, ByteVal::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
-    int c = mercury_get_byte(Stream);
-
-    if (c == EOF) {
+    int b = mercury_get_byte(Stream);
+    if (b == EOF) {
         if (MR_FERROR(*Stream)) {
-            ByteVal = -2;
+            Result = ML_RESULT_CODE_ERROR;
+            Error = errno;
         } else {
-            ByteVal = -1;
+            Result = ML_RESULT_CODE_EOF;
+            Error = 0;
         }
+        ByteVal = 0;
     } else {
-        ByteVal = c;
+        Result = ML_RESULT_CODE_OK;
+        ByteVal = b;
+        Error = 0;
     }
 ").
 
@@ -7884,23 +7833,55 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
+    read_char_code_2(File::in, Result::out, Char::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     io.MR_MercuryFileStruct mf = File;
-    CharCode = io.mercury_getc(mf);
+    try {
+        int c = io.mercury_getc(mf);
+        if (c == -1) {
+            Result = io.ML_RESULT_CODE_EOF;
+            Char = 0;
+        } else {
+            Result = io.ML_RESULT_CODE_OK;
+            Char = c;
+        }
+        Error = null;
+    } catch (System.Exception e) {
+        Result = io.ML_RESULT_CODE_ERROR;
+        Char = 0;
+        Error = e;
+    }
 ").
 
 :- pragma foreign_proc("C#",
-    read_byte_val_2(File::in, ByteVal::out, _IO0::di, _IO::uo),
+    read_byte_val_2(File::in, Result::out, ByteVal::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     io.MR_MercuryFileStruct mf = File;
     if (mf.putback != -1) {
+        Result = io.ML_RESULT_CODE_OK;
         ByteVal = mf.putback;
+        Error = null;
         mf.putback = -1;
     } else {
-        ByteVal = mf.stream.ReadByte();
+        try {
+            int b = mf.stream.ReadByte();
+            if (b == -1) {
+                Result = io.ML_RESULT_CODE_EOF;
+                ByteVal = 0;
+            } else {
+                Result = io.ML_RESULT_CODE_OK;
+                ByteVal = b;
+            }
+            Error = null;
+        } catch (System.Exception e) {
+            Result = io.ML_RESULT_CODE_ERROR;
+            ByteVal = 0;
+            Error = e;
+        }
     }
 ").
 
@@ -7934,26 +7915,46 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
+    read_char_code_2(File::in, Result::out, CharCode::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        CharCode = ((io.MR_TextInputFile) File).read_char();
+        int c = ((io.MR_TextInputFile) File).read_char();
+        if (c == -1) {
+            Result = io.ML_RESULT_CODE_EOF;
+            CharCode = 0;
+        } else {
+            Result = io.ML_RESULT_CODE_OK;
+            CharCode = c;
+        }
+        Error = null;
     } catch (java.io.IOException e) {
-        io.MR_io_exception.set(e);
-        CharCode = -2;
+        Result = io.ML_RESULT_CODE_ERROR;
+        CharCode = 0;
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    read_byte_val_2(File::in, ByteVal::out, _IO0::di, _IO::uo),
+    read_byte_val_2(File::in, Result::out, ByteVal::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        ByteVal = ((io.MR_BinaryInputFile) File).read_byte();
+        int b = ((io.MR_BinaryInputFile) File).read_byte();
+        if (b == -1) {
+            Result = io.ML_RESULT_CODE_EOF;
+            ByteVal = 0;
+        } else {
+            Result = io.ML_RESULT_CODE_OK;
+            ByteVal = b;
+        }
+        Error = null;
     } catch (java.io.IOException e) {
-        io.MR_io_exception.set(e);
-        ByteVal = -2;
+        Result = io.ML_RESULT_CODE_ERROR;
+        ByteVal = 0;
+        Error = e;
     }
 ").
 
@@ -7974,19 +7975,47 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    read_char_code_2(Stream::in, CharCode::out, _IO0::di, _IO::uo),
+    read_char_code_2(Stream::in, Result::out, Char::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    CharCode = mercury__io:mercury_getc(Stream)
+    case mercury__io:mercury_getc(Stream) of
+        C when is_integer(C) ->
+            Result = {ok},
+            Char = C,
+            Error = ok;
+        eof ->
+            Result = {eof},
+            Char = 0,
+            Error = ok;
+        {error, Reason} ->
+            Result = {error},
+            Char = 0,
+            Error = {error, Reason}
+    end
 ").
 
 :- pragma foreign_proc("Erlang",
-    read_byte_val_2(Stream::in, ByteVal::out, _IO0::di, _IO::uo),
+    read_byte_val_2(Stream::in, Result::out, ByteVal::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    ByteVal = mercury__io:mercury_getc(Stream)
+    case mercury__io:mercury_getc(Stream) of
+        B when is_integer(B) ->
+            Result = {ok},
+            ByteVal = B,
+            Error = ok;
+        eof ->
+            Result = {eof},
+            ByteVal = 0,
+            Error = ok;
+        {error, Reason} ->
+            Result = {error},
+            ByteVal = 0,
+            Error = {error, Reason}
+    end
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -9525,144 +9554,121 @@ set_binary_output_stream(binary_output_stream(NewStream),
 
 % Stream open/close predicates.
 
-:- type open_result
-    --->    ok
-    ;       failed_general
-
-            % The failed_isdir result is separate because some OSs (Linux and
-            % FreeBSD) will willingly open a directory, and FreeBSD will allow
-            % you to read from it.  This could cause confusion so we use fstat
-            % to detect the problem.
-            %
-    ;       failed_isdir.
-
-:- pragma foreign_export_enum("C", open_result/0,
-    [prefix("ML_OR_"), uppercase]).
-:- pragma foreign_export_enum("Java", open_result/0,
-    [prefix("ML_OR_"), uppercase]).
-:- pragma foreign_export_enum("C#", open_result/0,
-    [prefix("ML_OR_"), uppercase]).
-
-    % io.do_open_binary(File, Mode, Result, StreamId, Stream, !IO):
-    % io.do_open_text(File, Mode, Result, StreamId, Stream, !IO):
+    % do_open_binary(File, Mode, StreamId, Stream, Error, !IO):
+    % do_open_text(File, Mode, StreamId, Stream, Error, !IO):
     %
     % Attempts to open a file in the specified mode.
-    % The Mode is a string suitable for pssing to fopen().
-    % Result describes the result of the operation.
+    % The Mode is a string suitable for passing to fopen().
     % StreamId is a unique integer identifying the open.
-    % Both StreamId and Stream are valid only if Result = ok.
-    % make_err_msg should be called iff Result = failed_general.
+    % StreamId and Stream are valid only if Error indicates an error occurred.
     %
-:- pred do_open_binary(string::in, string::in, open_result::out, int::out,
-    stream::out, io::di, io::uo) is det.
+:- pred do_open_binary(string::in, string::in, int::out, stream::out,
+    system_error::out, io::di, io::uo) is det.
 
-:- pred do_open_text(string::in, string::in, open_result::out, int::out,
-    stream::out, io::di, io::uo) is det.
+:- pred do_open_text(string::in, string::in, int::out, stream::out,
+    system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_open_text(FileName::in, Mode::in, Result::out,
-        StreamId::out, Stream::out, _IO0::di, _IO::uo),
+    do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    MR_bool is_dir;
-
-    Stream = mercury_open(FileName, Mode, &is_dir, MR_ALLOC_ID);
+    Stream = mercury_open(FileName, Mode, MR_ALLOC_ID);
     if (Stream != NULL) {
-        Result = ML_OR_OK;
         StreamId = mercury_next_stream_id();
+        Error = 0;
     } else {
-        Result = (MR_TRUE == is_dir) ?
-            ML_OR_FAILED_ISDIR : ML_OR_FAILED_GENERAL;
         StreamId = -1;
+        Error = errno;
     }
 ").
 
 :- pragma foreign_proc("C",
-    do_open_binary(FileName::in, Mode::in, Result::out,
-        StreamId::out, Stream::out, _IO0::di, _IO::uo),
+    do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    MR_bool is_dir;
-
-    Stream = mercury_open(FileName, Mode, &is_dir, MR_ALLOC_ID);
+    Stream = mercury_open(FileName, Mode, MR_ALLOC_ID);
     if (Stream != NULL) {
-        Result = ML_OR_OK;
         StreamId = mercury_next_stream_id();
+        Error = 0;
     } else {
-        Result = (MR_TRUE == is_dir) ?
-            ML_OR_FAILED_ISDIR : ML_OR_FAILED_GENERAL;
         StreamId = -1;
+        Error = errno;
     }
 ").
 
 :- pragma foreign_proc("C#",
-    do_open_text(FileName::in, Mode::in, Result::out,
-        StreamId::out, Stream::out, _IO0::di, _IO::uo),
+    do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    io.MR_MercuryFileStruct mf = io.mercury_open(FileName, Mode,
-        io.ML_default_line_ending);
-    Stream = mf;
-    if (mf != null) {
-        Result = ML_OR_OK;
-        StreamId = mf.id;
-    } else {
-        Result = ML_OR_FAILED_GENERAL;
+    try {
+        Stream = io.mercury_open(FileName, Mode, io.ML_default_line_ending);
+        StreamId = Stream.id;
+        Error = null;
+    } catch (System.Exception e) {
         StreamId = -1;
+        Stream = null;
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("C#",
-    do_open_binary(FileName::in, Mode::in, Result::out,
-        StreamId::out, Stream::out, _IO0::di, _IO::uo),
+    do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    io.MR_MercuryFileStruct mf = io.mercury_open(FileName, Mode,
-        io.ML_line_ending_kind.ML_raw_binary);
-    Stream = mf;
-    if (mf != null) {
-        Result = ML_OR_OK;
-        StreamId = mf.id;
-    } else {
-        Result = ML_OR_FAILED_GENERAL;
+    try {
+        Stream = io.mercury_open(FileName, Mode,
+            io.ML_line_ending_kind.ML_raw_binary);
+        StreamId = Stream.id;
+        Error = null;
+    } catch (System.Exception e) {
         StreamId = -1;
+        Stream = null;
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    do_open_text(FileName::in, Mode::in, Result::out,
-        StreamId::out, Stream::out, _IO0::di, _IO::uo),
+    do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
     try {
-        if (Mode.charAt(0) == 'r') {
-            Stream = new MR_TextInputFile(
-                new java.io.FileInputStream(FileName));
-        } else if (Mode.charAt(0) == 'w') {
-            Stream = new MR_TextOutputFile(
-                new java.io.FileOutputStream(FileName));
-        } else if (Mode.charAt(0) == 'a') {
-            Stream = new MR_TextOutputFile(
-                new java.io.FileOutputStream(FileName, true));
-        } else {
-            throw new RuntimeException(""Invalid file opening mode: "" + Mode);
+        switch (Mode.charAt(0)) {
+            case 'r':
+                Stream = new MR_TextInputFile(
+                    new java.io.FileInputStream(FileName));
+                break;
+            case 'w':
+                Stream = new MR_TextOutputFile(
+                    new java.io.FileOutputStream(FileName));
+                break;
+            case 'a':
+                Stream = new MR_TextOutputFile(
+                    new java.io.FileOutputStream(FileName, true));
+                break;
+            default:
+                throw new RuntimeException(""Invalid file opening mode: "" +
+                    Mode);
         }
         StreamId = Stream.id;
-        Result = ML_OR_OK;
+        Error = null;
     } catch (java.lang.Exception e) {
-        io.MR_io_exception.set(e);
         Stream = null;
         StreamId = -1;
-        Result = ML_OR_FAILED_GENERAL;
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    do_open_binary(FileName::in, Mode::in, Result::out,
-        StreamId::out, Stream::out, _IO0::di, _IO::uo),
+    do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
@@ -9685,54 +9691,49 @@ set_binary_output_stream(binary_output_stream(NewStream),
                     Mode);
         }
         StreamId = Stream.id;
-        Result = ML_OR_OK;
+        Error = null;
     } catch (java.lang.Exception e) {
-        io.MR_io_exception.set(e);
         Stream = null;
         StreamId = -1;
-        Result = ML_OR_FAILED_GENERAL;
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    do_open_text(FileName::in, Mode::in, Result::out,
-        StreamId::out, Stream::out, _IO0::di, _IO::uo),
+    do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     FileNameStr = binary_to_list(FileName),
     ModeStr = binary_to_list(Mode),
-
-    % Text and binary streams are exactly the same so far.
+    % XXX This should probably pass encoding 'utf8'.
     case mercury__io:mercury_open_stream(FileNameStr, ModeStr) of
         {ok, Stream} ->
             {'ML_stream', StreamId, _Pid} = Stream,
-            Result = {ok};
+            Error = ok;
         {error, Reason} ->
-            put('MR_io_exception', Reason),
             StreamId = -1,
             Stream = null,
-            Result = {failed_general}
+            Error = {error, Reason}
     end
 ").
 
 :- pragma foreign_proc("Erlang",
-    do_open_binary(FileName::in, Mode::in, Result::out,
-        StreamId::out, Stream::out, _IO0::di, _IO::uo),
+    do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     FileNameStr = binary_to_list(FileName),
     ModeStr = binary_to_list(Mode),
-
-    % Text and binary streams are exactly the same so far.
+    % XXX This should probably pass encoding 'latin1'.
     case mercury__io:mercury_open_stream(FileNameStr, ModeStr) of
         {ok, Stream} ->
             {'ML_stream', StreamId, _Pid} = Stream,
-            Result = {ok};
+            Error = ok;
         {error, Reason} ->
-            put('MR_io_exception', Reason),
             StreamId = -1,
             Stream = null,
-            Result = {failed_general}
+            Error = {error, Reason}
     end
 ").
 
@@ -11091,90 +11092,82 @@ system_temp_dir("", 0, !IO).
 ").
 
 remove_file(FileName, Result, !IO) :-
-    remove_file_2(FileName, Res, ResString, !IO),
-    ( if Res = 0 then
-        Result = ok
+    remove_file_2(FileName, Error, !IO),
+    ( if is_error(Error, "remove failed: ", Message) then
+        Result = error(io_error(Message))
     else
-        Result = error(io_error(ResString))
+        Result = ok
     ).
 
-    % XXX return system_error instead
-:- pred remove_file_2(string::in, int::out, string::out, io::di, io::uo)
-    is det.
+:- pred remove_file_2(string::in, system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    remove_file_2(FileName::in, RetVal::out, RetStr::out,
-        _IO0::di, _IO::uo),
+    remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
+    int rc;
 #ifdef MR_WIN32
-    RetVal = _wremove(ML_utf8_to_wide(FileName));
+    rc = _wremove(ML_utf8_to_wide(FileName));
 #else
-    RetVal = remove(FileName);
+    rc = remove(FileName);
 #endif
-    ML_maybe_make_err_msg(RetVal != 0, errno, ""remove failed: "",
-        MR_ALLOC_ID, RetStr);
+    if (rc == 0) {
+        Error = 0;
+    } else {
+        Error = errno;
+    }
 ").
 
 :- pragma foreign_proc("C#",
-    remove_file_2(FileName::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
+    remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
+"
     try {
         if (System.IO.File.Exists(FileName)) {
             System.IO.File.Delete(FileName);
-            RetVal = 0;
-            RetStr = """";
+            Error = null;
         } else {
-            RetVal = -1;
-            RetStr = ""remove failed: No such file or directory"";
+            Error = new System.IO.FileNotFoundException();
         }
     }
     catch (System.Exception e) {
-        RetVal = -1;
-        RetStr = e.Message;
+        Error = e;
     }
-}").
+").
 
 :- pragma foreign_proc("Java",
-    remove_file_2(FileName::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
+    remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
+    // Java 7 java.nio.file.Files.delete() provides more detailed information
+    // about failure to delete.
+
     try {
         java.io.File file = new java.io.File(FileName);
 
         if (file.delete()) {
-            RetVal = 0;
-            RetStr = """";
+            Error = null;
         } else {
-            RetVal = -1;
-            RetStr = ""remove_file failed"";
+            Error = new java.io.IOException(""remove_file failed"");
         }
     } catch (java.lang.Exception e) {
-        RetVal = -1;
-        RetStr = e.getMessage();
-        if (RetStr == null) {
-            RetStr = ""null"";
-        }
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    remove_file_2(FileName::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
+    remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
     FileNameStr = binary_to_list(FileName),
     case file:delete(FileNameStr) of
         ok ->
-            RetVal = 0,
-            RetStr = <<>>;
+            Error = ok;
         {error, Reason} ->
-            RetVal = -1,
-            ReasonStr = file:format_error(Reason),
-            RetStr = list_to_binary([""remove failed: "", ReasonStr])
+            Error = {error, Reason}
     end
 ").
 
@@ -11233,100 +11226,93 @@ remove_directory_entry(DirName, FileName, _FileType, Continue, _, Res, !IO) :-
         Continue = no
     ).
 
-rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
-    rename_file_2(OldFileName, NewFileName, Res, ResString, IO0, IO),
-    ( if Res = 0 then
-        Result = ok
+rename_file(OldFileName, NewFileName, Result, !IO) :-
+    rename_file_2(OldFileName, NewFileName, Error, !IO),
+    ( if is_error(Error, "rename failed: ", Message) then
+        Result = error(io_error(Message))
     else
-        Result = error(io_error(ResString))
+        Result = ok
     ).
 
-    % XXX return system_error instead
-:- pred rename_file_2(string::in, string::in, int::out, string::out,
+:- pred rename_file_2(string::in, string::in, system_error::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
-        RetStr::out, _IO0::di, _IO::uo),
+    rename_file_2(OldFileName::in, NewFileName::in, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
+    int rc;
 #ifdef MR_WIN32
-    RetVal = _wrename(ML_utf8_to_wide(OldFileName),
+    rc = _wrename(ML_utf8_to_wide(OldFileName),
         ML_utf8_to_wide(NewFileName));
 #else
-    RetVal = rename(OldFileName, NewFileName);
+    rc = rename(OldFileName, NewFileName);
 #endif
-    ML_maybe_make_err_msg(RetVal != 0, errno, ""rename failed: "",
-        MR_ALLOC_ID, RetStr);
+    if (rc == 0) {
+        Error = 0;
+    } else {
+        Error = errno;
+    }
 ").
 
 :- pragma foreign_proc("C#",
-    rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
-        RetStr::out, _IO0::di, _IO::uo),
+    rename_file_2(OldFileName::in, NewFileName::in, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
+"
     try {
         if (System.IO.File.Exists(OldFileName)) {
             System.IO.File.Move(OldFileName, NewFileName);
-            RetVal = 0;
-            RetStr = """";
+            Error = null;
         } else {
-            RetVal = -1;
-            RetStr = ""rename failed: No such file or directory"";
+            Error = new System.IO.FileNotFoundException();
         }
     }
     catch (System.Exception e) {
-        RetVal = -1;
-        RetStr = e.Message;
+        Error = e;
     }
-}").
+").
 
 :- pragma foreign_proc("Java",
-    rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
-        RetStr::out, _IO0::di, _IO::uo),
+    rename_file_2(OldFileName::in, NewFileName::in, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
+    // Java 7 java.nio.file.Files.move may provide more detailed information
+    // about failure to rename.
+
     try {
         java.io.File file = new java.io.File(OldFileName);
 
         if (file.exists()) {
             if (file.renameTo(new java.io.File(NewFileName))) {
-                RetVal = 0;
-                RetStr = """";
+                Error = null;
             } else {
-                RetVal = -1;
-                RetStr = ""rename_file failed"";
+                Error = new java.io.IOException(""rename_file failed"");
             }
         } else {
-            RetVal = -1;
-            RetStr = ""rename failed: No such file or directory"";
+            Error = new java.io.IOException(""No such file or directory"");
         }
     } catch (java.lang.Exception e) {
-        RetVal = -1;
-        RetStr = e.getMessage();
-        if (RetStr == null) {
-            RetStr = ""null"";
-        }
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
-        RetStr::out, _IO0::di, _IO::uo),
+    rename_file_2(OldFileName::in, NewFileName::in, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     OldFileNameStr = binary_to_list(OldFileName),
     NewFileNameStr = binary_to_list(NewFileName),
     case file:rename(OldFileNameStr, NewFileNameStr) of
         ok ->
-            RetVal = 0,
-            RetStr = <<>>;
+            Error = ok;
         {error, Reason} ->
-            RetVal = -1,
-            ReasonStr = file:format_error(Reason),
-            RetStr = list_to_binary([""rename_file failed: "", ReasonStr])
+            Error = {error, Reason}
     end
 ").
 
@@ -11355,10 +11341,9 @@ have_symlinks :- semidet_fail.
 
 make_symlink(FileName, LinkFileName, Result, !IO) :-
     ( if io.have_symlinks then
-        io.make_symlink_2(FileName, LinkFileName, Status, !IO),
-        ( if Status = 0 then
-            io.make_err_msg("io.make_symlink failed: ", Msg, !IO),
-            Result = error(make_io_error(Msg))
+        io.make_symlink_2(FileName, LinkFileName, Error, !IO),
+        ( if is_error(Error, "io.make_symlink failed: ", Message) then
+            Result = error(make_io_error(Message))
         else
             Result = ok
         )
@@ -11367,25 +11352,28 @@ make_symlink(FileName, LinkFileName, Result, !IO) :-
             "io.make_symlink not supported on this platform"))
     ).
 
-    % XXX return system_error instead
-:- pred make_symlink_2(string::in, string::in, int::out, io::di, io::uo)
-    is det.
+:- pred make_symlink_2(string::in, string::in, system_error::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    make_symlink_2(FileName::in, LinkFileName::in, Status::out,
+    make_symlink_2(FileName::in, LinkFileName::in, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_HAVE_SYMLINK
-    Status = (symlink(FileName, LinkFileName) == 0);
+    if (symlink(FileName, LinkFileName) == 0) {
+        Error = 0;
+    } else {
+        Error = errno;
+    }
 #else
-    Status = 0;
+    Error = ENOSYS;
 #endif
 ").
 
 :- pragma foreign_proc("Erlang",
-    make_symlink_2(FileName::in, LinkFileName::in, Status::out,
+    make_symlink_2(FileName::in, LinkFileName::in, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
@@ -11394,19 +11382,17 @@ make_symlink(FileName, LinkFileName, Result, !IO) :-
     LinkFileNameStr = binary_to_list(LinkFileName),
     case file:make_symlink(FileNameStr, LinkFileNameStr) of
         ok ->
-            Status = 1;
+            Error = ok;
         {error, Reason} ->
-            put('MR_io_exception', Reason),
-            Status = 0
+            Error = {error, Reason}
     end
 ").
 
 read_symlink(FileName, Result, !IO) :-
     ( if have_symlinks then
-        read_symlink_2(FileName, TargetFileName, Status, Error, !IO),
-        ( if Status = 0 then
-            make_err_msg(Error, "io.read_symlink failed: ", Msg, !IO),
-            Result = error(make_io_error(Msg))
+        read_symlink_2(FileName, TargetFileName, Error, !IO),
+        ( if is_error(Error, "io.read_symlink failed: ", Message) then
+            Result = error(make_io_error(Message))
         else
             Result = ok(TargetFileName)
         )
@@ -11415,13 +11401,12 @@ read_symlink(FileName, Result, !IO) :-
             "io.read_symlink not supported on this platform"))
     ).
 
-    % XXX return system_error only
-:- pred read_symlink_2(string::in, string::out, int::out,
-    system_error::out, io::di, io::uo) is det.
+:- pred read_symlink_2(string::in, string::out, system_error::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    read_symlink_2(FileName::in, TargetFileName::out, Status::out,
-        Error::out, _IO0::di, _IO::uo),
+    read_symlink_2(FileName::in, TargetFileName::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -11441,82 +11426,74 @@ read_symlink(FileName, Result, !IO) :-
         do {
             buffer_size2 *= 2;
             buffer2 = MR_RESIZE_ARRAY(buffer2, char, buffer_size2);
-            num_chars = readlink(FileName, buffer2, PATH_MAX);
+            num_chars = readlink(FileName, buffer2, buffer_size2);
         } while (num_chars == buffer_size2);
 
+        /* Invariant: num_chars < buffer_size2 */
+
         if (num_chars == -1) {
-            Error = errno;
             TargetFileName = MR_make_string_const("""");
-            Status = 0;
+            Error = errno;
         } else {
             buffer2[num_chars] = '\\0';
             MR_make_aligned_string_copy_msg(TargetFileName, buffer2,
                 MR_ALLOC_ID);
-            Status = 1;
+            Error = 0;
         }
         MR_free(buffer2);
     } else if (num_chars == -1) {
         TargetFileName = MR_make_string_const("""");
         Error = errno;
-        Status = 0;
     } else {
         buffer[num_chars] = '\\0';
         MR_make_aligned_string_copy_msg(TargetFileName, buffer, MR_ALLOC_ID);
-        Status = 1;
+        Error = 0;
     }
 #else /* !MR_HAVE_READLINK */
-    /*
-    ** We can't just return NULL here, because otherwise mdb will break
-    ** when it tries to print the string.
-    */
     TargetFileName = MR_make_string_const("""");
-    Status = 0;
+    Error = ENOSYS;
 #endif
 ").
 
 :- pragma foreign_proc("Erlang",
-    read_symlink_2(FileName::in, TargetFileName::out, Status::out,
-        Error::out, _IO0::di, _IO::uo),
+    read_symlink_2(FileName::in, TargetFileName::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
     case file:read_link(binary_to_list(FileName)) of
         {ok, TargetFileNameStr} ->
             TargetFileName = list_to_binary(TargetFileNameStr),
-            Status = 1,
-            Error = <<>>;
+            Error = ok;
         {error, Reason} ->
-            Status = 0,
             TargetFileName = <<>>,
-            Error = list_to_binary(file:format_error(Reason))
+            Error = {error, Reason}
     end
 ").
 
 % Since io.have_symlinks will fail for Java, these procedures should never be
 % called:
+% XXX Java 7 has createSymbolicLink, readSymbolicLink
 
 :- pragma foreign_proc("Java",
-    make_symlink_2(_FileName::in, _LinkFileName::in, _Status::out,
+    make_symlink_2(_FileName::in, _LinkFileName::in, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    if (true) {
-        throw new java.lang.RuntimeException(
-            ""io.make_symlink_2 not implemented"");
-    }
+    Error = new java.lang.UnsupportedOperationException(
+        ""io.make_symlink_2 not implemented"");
 ").
 
 :- pragma foreign_proc("Java",
-    read_symlink_2(_FileName::in, _TargetFileName::out, _Status::out,
-        _Error::out, _IO0::di, _IO::uo),
+    read_symlink_2(_FileName::in, TargetFileName::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    if (true) {
-        throw new java.lang.RuntimeException(
-            ""io.read_symlink_2 not implemented"");
-    }
+    TargetFileName = """";
+    Error = new java.lang.UnsupportedOperationException(
+        ""io.read_symlink_2 not implemented"");
 ").
 
 %---------------------------------------------------------------------------%
