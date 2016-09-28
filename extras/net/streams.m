@@ -13,6 +13,7 @@
 % Provide a streams interface for sockets.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- module net.streams.
 :- interface.
 
@@ -111,12 +112,12 @@ get_byte(socket_stream(Socket), Result, !IO) :-
     read(Socket, 1, ReadResult, !IO),
     (
         ReadResult = ok(Bitmap),
-        ( num_bytes(Bitmap) = 1 ->
+        ( if num_bytes(Bitmap) = 1 then
             Byte = Bitmap ^ byte(0),
             Result = ok(byte(Byte))
-        ; num_bytes(Bitmap) = 0 ->
+        else if num_bytes(Bitmap) = 0 then
             Result = eof
-        ;
+        else
             unexpected($file, $pred,
                 "Read returned unexpected number of bytes")
         )
@@ -157,13 +158,13 @@ get_chars_until_nl(Stream, Chars0, Result, !IO) :-
     (
         ResByte = ok(byte(Byte)),
         ( char.from_int(Byte, Char) ->
-            (
+            ( if
                 ( Char = '\n'
                 ; Char = '\r'
                 )
-            ->
+            then
                 Result = ok(Chars0)
-            ;
+            else
                 Chars1 = [Char | Chars0],
                 get_chars_until_nl(Stream, Chars1, Result, !IO)
             )

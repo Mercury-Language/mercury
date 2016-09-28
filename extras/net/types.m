@@ -14,8 +14,8 @@
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-:- module net.types.
 
+:- module net.types.
 :- interface.
 
 :- import_module int.
@@ -188,6 +188,7 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module bool.
@@ -310,11 +311,11 @@ to_string(Addr) = String :-
     --->    some [A] (univ_address(A) => addr(A)).
 
 exist_from_string(String, Addr) :-
-    ( in_addr_from_string(String, AddrPrime) ->
+    ( if in_addr_from_string(String, AddrPrime) then
         UAddr = 'new univ_address'(AddrPrime)
-    ; in6_addr_from_string(String, AddrPrime) ->
+    else if in6_addr_from_string(String, AddrPrime) then
         UAddr = 'new univ_address'(AddrPrime)
-    ;
+    else
         false
     ),
     univ_address(Addr) = UAddr.
@@ -423,7 +424,7 @@ in_addr_to_string(Addr) = String :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Addr = MR_GC_NEW(struct in6_addr);
-    memcpy(Addr, &in6addr_any, sizeof(in6addr_any));
+    MR_memcpy(Addr, &in6addr_any, sizeof(in6addr_any));
 ").
 
 :- pragma foreign_proc("C",
@@ -431,7 +432,7 @@ in_addr_to_string(Addr) = String :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Addr = MR_GC_NEW(struct in6_addr);
-    memcpy(Addr, &in6addr_loopback, sizeof(in6addr_loopback));
+    MR_memcpy(Addr, &in6addr_loopback, sizeof(in6addr_loopback));
 ").
 
 %-----------------------------------------------------------------------------%
@@ -584,11 +585,11 @@ sockaddr_get_addr_port(SockAddr, Addr, Port) :-
 %-----------------------------------------------------------------------------%
 
 sockaddr_get_addr(SockAddr, Addr) :-
-    ( ipv4_sockaddr(AddrPrime, _, SockAddr) ->
+    ( if ipv4_sockaddr(AddrPrime, _, SockAddr) then
         UAddr = 'new univ_address'(AddrPrime)
-    ; ipv6_sockaddr(AddrPrime, _, SockAddr) ->
+    else if ipv6_sockaddr(AddrPrime, _, SockAddr) then
         UAddr = 'new univ_address'(AddrPrime)
-    ;
+    else
         false
     ),
     univ_address(Addr) = UAddr.
@@ -596,11 +597,11 @@ sockaddr_get_addr(SockAddr, Addr) :-
 %-----------------------------------------------------------------------------%
 
 sockaddr_get_port(Sockaddr, Port) :-
-    ( ipv4_sockaddr(_, PortPrime, Sockaddr) ->
+    ( if ipv4_sockaddr(_, PortPrime, Sockaddr) then
         Port = PortPrime
-    ; ipv6_sockaddr(_, PortPrime, Sockaddr) ->
+    else if ipv6_sockaddr(_, PortPrime, Sockaddr) then
         Port = PortPrime
-    ;
+    else
         false
     ).
 

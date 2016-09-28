@@ -32,14 +32,14 @@
 
 %-----------------------------------------------------------------------------%
 
-    % socket(Domain, Type, Protocol, Result, !IO),
+    % socket(Domain, Type, Protocol, Result, !IO):
     %
     % Create a new socket.
     %
 :- pred socket(family::in, socktype::in, protocol_num::in,
     maybe_error(socket)::out, io::di, io::uo) is det.
 
-    % socket(Domain, Type, Result, !IO),
+    % socket(Domain, Type, Result, !IO):
     %
     % Create a new socket, use this variant to have the sockets library
     % detect the correct protocol (usually the only protocol).
@@ -47,17 +47,17 @@
 :- pred socket(family::in, socktype::in,
     maybe_error(socket)::out, io::di, io::uo) is det.
 
-    % connect(Socket, Addr, Addrlen, Result, !IO),
+    % connect(Socket, Addr, Addrlen, Result, !IO):
     %
 :- pred connect(socket::in, sockaddr::in, maybe_error::out,
     io::di, io::uo) is det.
 
-    % bind(Socket, Addr, Result, !IO),
+    % bind(Socket, Addr, Result, !IO):
     %
 :- pred bind(socket::in, sockaddr::in, maybe_error::out,
     io::di, io::uo) is det.
 
-    % listen(Socket, Backlog, Result, !IO),
+    % listen(Socket, Backlog, Result, !IO):
     %
 :- pred listen(socket::in, int::in, maybe_error::out, io::di, io::uo)
     is det.
@@ -68,17 +68,17 @@
                 ar_address      :: sockaddr
             ).
 
-    % accept(Socket, Addr, Result, !IO),
+    % accept(Socket, Addr, Result, !IO):
     %
     % Accept will block until a connection to our socket is made.
     %
 :- pred accept(socket::in, maybe_error(accept_result)::out,
     io::di, io::uo) is det.
 
-    % close(Socket, Result, !IO),
+    % close(Socket, Result, !IO):
     %
     % This closes the socket with lingering enabled.  The call will not
-    % return until all the queued data has been sent or he timeout expires
+    % return until all the queued data has been sent or the timeout expires
     % (2 seconds).
     %
 :- pred close(socket::in, maybe_error::out, io::di, io::uo) is det.
@@ -370,12 +370,12 @@ close(Socket, Result, !IO) :-
 
 read(Socket, Len0, Result, !IO) :-
     read(Socket, Len0, Bitmap0, BytesRead, Errno, !IO),
-    ( BytesRead > 0 ->
+    ( if BytesRead > 0 then
         Bitmap = shrink_without_copying(Bitmap0, BytesRead*8),
         Result = ok(Bitmap)
-    ; BytesRead = 0 ->
+    else if BytesRead = 0 then
         Result = eof
-    ;
+    else
         Result = error(strerror(Errno))
     ).
 
@@ -403,21 +403,21 @@ write(Socket, Bitmap, Result, !IO) :-
     io::di, io::uo) is det.
 
 write(Socket, Bitmap, Offset, Result, !IO) :-
-    ( LenPrime = num_bytes(Bitmap) - Offset ->
+    ( if LenPrime = num_bytes(Bitmap) - Offset then
         Len = LenPrime
-    ;
+    else
         unexpected($file, $pred,
             "Bitmap must have an integral number of bytes")
     ),
     write_c(Socket, Bitmap, Offset, Len, BytesWritten, Errno, !IO),
-    ( BytesWritten = Len ->
+    ( if BytesWritten = Len then
         Result = ok
-    ; BytesWritten = -1 ->
+    else if BytesWritten = -1 then
         Result = error(strerror(Errno))
-    ; BytesWritten < Len ->
+    else if BytesWritten < Len then
         % Not all the bytes were written.  Try again.
         write(Socket, Bitmap, Offset + BytesWritten, Result, !IO)
-    ;
+    else
         unexpected($file, $pred, "BytesWritten > Len")
     ).
 

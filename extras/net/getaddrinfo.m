@@ -14,8 +14,8 @@
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-:- module net.getaddrinfo.
 
+:- module net.getaddrinfo.
 :- interface.
 
 :- import_module int.
@@ -143,12 +143,12 @@
 getaddrinfo(NodeAndOrService, Flags0, MaybeFamily0, MaybeSocktype0,
         MaybeProtocol0, Result) :-
     make_node_and_service_c_strings(NodeAndOrService, Node, Service),
-    (
+    ( if
         nas_service_is_numeric(NodeAndOrService),
         flag_numericservice(NumericServiceFlag)
-    ->
+    then
         Flags = Flags0 \/ NumericServiceFlag
-    ;
+    else
         Flags = Flags0
     ),
     map_maybe((pred(A::in, B::out) is det :-
@@ -164,13 +164,13 @@ getaddrinfo(NodeAndOrService, Flags0, MaybeFamily0, MaybeSocktype0,
     promise_pure (
         getaddrinfo_c(Node, Service, Flags, Family, Socktype, Protocol,
             AddrInfoList0, Result0),
-        ( Result0 = gai_ok ->
+        ( if Result0 = gai_ok then
             addrinfo_c_to_addrinfos(AddrInfoList0, AddrInfoList),
             impure free_addrinfo_c(AddrInfoList0),
             Result = ok(AddrInfoList)
-        ; Result0 = gai_not_found ->
+        else if Result0 = gai_not_found then
             Result = ok([])
-        ;
+        else
             Result = error(gai_strerror(Result0))
         )
     ).
@@ -241,32 +241,32 @@ service_is_numeric(numeric_service(_)).
 
 addrinfo_c_to_addrinfos(AddrInfoC, AddrInfoList) :-
     read_addrinfo(AddrInfoC, FamilyInt, SocktypeInt, ProtocolNum, Sockaddr),
-    ( read_addrinfo_name(AddrInfoC, Name) ->
+    ( if read_addrinfo_name(AddrInfoC, Name) then
         MaybeName = yes(Name)
-    ;
+    else
         MaybeName = no
     ),
-    (
+    ( if
         family_int(FamilyPrime, FamilyInt)
-    ->
+    then
         Family = FamilyPrime
-    ;
+    else
         unexpected($file, $pred,
             "getaddrinfo returned '0' for family")
     ),
-    (
+    ( if
         socktype_int(SocktypePrime, SocktypeInt)
-    ->
+    then
         MaybeSocktype = yes(SocktypePrime)
-    ;
+    else
         MaybeSocktype = no
     ),
     AddrInfo = addrinfo(Family, MaybeSocktype, ProtocolNum, Sockaddr,
         MaybeName),
-    ( next_addrinfo_c(AddrInfoC, NextAddrInfoC) ->
+    ( if next_addrinfo_c(AddrInfoC, NextAddrInfoC) then
         addrinfo_c_to_addrinfos(NextAddrInfoC, AddrInfoList0),
         AddrInfoList = [AddrInfo | AddrInfoList0]
-    ;
+    else
         AddrInfoList = [AddrInfo]
     ).
 

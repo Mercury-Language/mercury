@@ -54,7 +54,7 @@
     is det.
 
 :- func socket_fd(tcp) = int.
-    
+
     % Sending data to a broken pipe will cause the SIGPIPE signal to be
     % sent to the process.  If SIGPIPE is ignored or blocked then send()
     % fails with EPIPE.  This predicate causes SIGPIPE signals to be

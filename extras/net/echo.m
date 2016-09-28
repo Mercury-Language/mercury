@@ -16,8 +16,8 @@
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-:- module echo.
 
+:- module echo.
 :- interface.
 
 :- import_module io.
@@ -26,6 +26,7 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module list.
@@ -38,6 +39,8 @@
 :- import_module net.sockets.
 :- import_module net.streams.
 :- import_module net.types.
+
+%-----------------------------------------------------------------------------%
 
 main(!IO) :-
     socket(fam_inet, sock_stream, ResSocket, !IO),
@@ -113,5 +116,3 @@ run_connection(Stream, AddrStr, !IO) :-
         io.format(io.stderr_stream, "%s; %s\n",
             [s(AddrStr), s(error_message(Error))], !IO)
     ).
-
-

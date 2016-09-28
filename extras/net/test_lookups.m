@@ -1,11 +1,16 @@
+%---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 
 :- module test_lookups.
-
 :- interface.
 
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -16,6 +21,8 @@
 :- import_module net.
 :- import_module net.netdb.
 :- import_module net.types.
+
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     TCPS = "tcp",
@@ -62,9 +69,9 @@ write_lookup_result(lookup_result(Family, Socktype, ProtoNum, SockAddr),
             s(SockStr)],
         !IO),
     ProtoName = string(ProtoNum),
-    ( sockaddr_get_addr_port(SockAddr, Addr, Port) ->
+    ( if sockaddr_get_addr_port(SockAddr, Addr, Port) then
         SockStr = format("%s:%d", [s(to_string(Addr)), i(Port)])
-    ;
+    else
         SockStr = "unknown"
     ).
 
