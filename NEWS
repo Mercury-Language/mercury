@@ -433,7 +433,7 @@ Changes to the Mercury compiler:
 * Class files generated for executables in the Java grade are now automatically
   packaged up into Java archives (JARs).
 
-* The -generate-module-order and --imports-graph options no longer imply
+* The --generate-module-order and --imports-graph options no longer imply
   --generate-dependencies.
 
 * The compiler does not set the runtime search path when
@@ -447,6 +447,9 @@ Changes to the Mercury compiler:
   using `try' goals. This fixes a serious issue as `try' goals are not
   properly written to .opt files, so when read back would not actually
   catch any exceptions.
+
+* We have upgraded to the bundled Boehm GC to 7.6.0 and libatomic_ops to
+  7.4.4.
 
 Change to the Mercury debugger:
 
@@ -465,9 +468,6 @@ Changes to the extras distribution:
 
 * We have added support for Unicode and other enhancements to the lex and
   regex libraries.  Thanks to Sebastian Godelet.
-
-We have upgraded to the bundled Boehm GC to 7.6.0 and libatomic_ops to
-7.4.4.
 
 
 NEWS for Mercury 14.01.2
