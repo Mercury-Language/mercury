@@ -7,9 +7,17 @@ compiler will generate Erlang source code that can be compiled into
 bytecode or native code suitable for running in the Erlang runtime
 system.
 
-The port is incomplete.  Large parts of the Mercury standard library
-are not yet implemented.  Some RTTI related features are incompletely
-or incorrectly implemented.
+WARNING
+
+The Erlang backend is incomplete, and will not see any more work in
+the future.
+
+Large parts of the Mercury standard library are not yet implemented.
+Some RTTI related features are incompletely or incorrectly implemented.
+Binary stream I/O and Unicode support are known to be broken after
+changes in Erlang/OTP since the original port.
+
+-----------------------------------------------------------------------------
 
 PREREQUISITES
 
@@ -26,10 +34,6 @@ In order to try this system you will need
         - Users of Debian or Ubuntu who are using the Erlang that is
           packaged for those systems also need have the erlang-dev
           package installed.
-
-WARNING
-
-Please note that the Erlang backend is still an experimental feature.
 
 -----------------------------------------------------------------------------
 
