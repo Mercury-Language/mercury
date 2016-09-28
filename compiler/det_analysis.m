@@ -558,16 +558,12 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
         FinalInternalSolns = at_most_many
     else if
         % Conjunctions that cannot produce solutions may nevertheless contain
-        % nondet and multidet goals. If this happens, the conjunction is put
+        % nondet and multidet goals. If this happens, we put the conjunction
         % inside a scope goal to appease the code generator.
 
         GoalExpr1 = conj(plain_conj, ConjGoals),
         Solns = at_most_zero,
-        some [ConjGoalInfo] (
-            list.member(hlds_goal(_, ConjGoalInfo), ConjGoals),
-            ConjGoalDetism = goal_info_get_determinism(ConjGoalInfo),
-            determinism_components(ConjGoalDetism, _, at_most_many)
-        )
+        some_goal_is_at_most_many(ConjGoals)
     then
         FinalInternalSolns = at_most_many
     else
@@ -606,6 +602,19 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
 promise_eqv_solutions_kind_prunes(equivalent_solutions) = yes.
 promise_eqv_solutions_kind_prunes(equivalent_solution_sets) = no.
 promise_eqv_solutions_kind_prunes(equivalent_solution_sets_arbitrary) = yes.
+
+:- pred some_goal_is_at_most_many(list(hlds_goal)::in) is semidet.
+
+some_goal_is_at_most_many([ConjGoal | ConjGoals]) :-
+    ( if
+        ConjGoal = hlds_goal(_, ConjGoalInfo),
+        ConjGoalDetism = goal_info_get_determinism(ConjGoalInfo),
+        determinism_components(ConjGoalDetism, _, at_most_many)
+    then
+        true
+    else
+        some_goal_is_at_most_many(ConjGoals)
+    ).
 
 %-----------------------------------------------------------------------------%
 
