@@ -779,7 +779,6 @@ then
             cp $root/boehm_gc/gc.mak .
             cp $root/boehm_gc/gc_cpp.cc .
             cp $root/boehm_gc/gc_cpp.cpp .
-            cp $root/boehm_gc/build_atomic_ops.sh* .
             cp -r $root/boehm_gc/cord .
             cp -r $root/boehm_gc/libatomic_ops .
             cp -r $root/boehm_gc/extra .
