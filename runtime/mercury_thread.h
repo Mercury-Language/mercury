@@ -38,7 +38,10 @@
 
   extern void   MR_sem_init(MercurySem *sem, unsigned int);
   extern int    MR_sem_wait(MercurySem *sem, const char *from);
+  extern int    MR_sem_timed_wait(MercurySem *sem, const struct timespec *abstime,
+                    const char *from);
   extern int    MR_sem_post(MercurySem *sem, const char *from);
+  extern void   MR_sem_destroy(MercurySem *sem);
 
   #if defined(MR_PTHREADS_WIN32)
     extern MercuryThread MR_null_thread(void);
@@ -117,6 +120,22 @@
         :                                                               \
             sem_wait((sem))                                             \
         )
+
+#if defined(MR_MAC_OSX)
+    #define MR_SEM_TIMED_WAIT(sem, abstime, from)                       \
+        ( MR_debug_threads ?                                            \
+            MR_sem_timed_wait((sem), (abstime), (from))                 \
+        :                                                               \
+            MR_fatal_error("sem_timedwait not supported on Mac OS X")   \
+        )
+#else
+    #define MR_SEM_TIMED_WAIT(sem, abstime, from)                       \
+        ( MR_debug_threads ?                                            \
+            MR_sem_timed_wait((sem), (abstime), (from))                 \
+        :                                                               \
+            sem_timedwait((sem))                                        \
+        )
+#endif
 
     #define MR_SEM_POST(sem, from)                                      \
         ( MR_debug_threads ?                                            \

@@ -440,6 +440,29 @@ MR_sem_wait(MercurySem *sem, const char *from)
 }
 
 int
+MR_sem_timed_wait(MercurySem *sem, const struct timespec *abstime,
+        const char *from)
+{
+    int err;
+
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d timed wait on sem: %p (%s)\n",
+            MR_SELF_THREAD_ID, sem, from);
+    fflush(stderr);
+#if defined(MR_MAC_OSX)
+    MR_fatal_error("sem_timedwait not supported on Mac OS X");
+#else
+    err = sem_timedwait(sem, abstime);
+#endif
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d timed wait returned %d\n",
+        MR_SELF_THREAD_ID, err);
+    fflush(stderr);
+
+    return err;
+}
+
+int
 MR_sem_post(MercurySem *sem, const char *from)
 {
     int err;
@@ -455,6 +478,15 @@ MR_sem_post(MercurySem *sem, const char *from)
     fflush(stderr);
 
     return err;
+}
+
+void
+MR_sem_destroy(MercurySem *sem)
+{
+   if (sem_destroy(sem) == -1) {
+        MR_perror("cannot destroy semaphore");
+        exit(EXIT_FAILURE);
+    }
 }
 
 // For pthreads-win32 MR_null_thread() is defined as follows. For other

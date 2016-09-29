@@ -540,7 +540,7 @@ INIT mercury_sys_init_thread_modules
 
     ML_incr_thread_barrier_count();
 
-    sem_init(&args.sem, 0, 0);
+    MR_sem_init(&args.sem, 0);
     args.goal = goal;
     args.thread_local_mutables =
         MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
@@ -556,7 +556,7 @@ INIT mercury_sys_init_thread_modules
         MR_SEM_WAIT(&args.sem, ""ML_create_exclusive_thread"");
     }
 
-    sem_destroy(&args.sem);
+    MR_sem_destroy(&args.sem);
 
     if (args.thread_started) {
         *thread_id = args.thread_id;

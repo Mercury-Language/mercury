@@ -755,7 +755,7 @@ MR_finalize_context_stuff(void)
     pthread_mutex_destroy(&MR_runqueue_lock);
     pthread_mutex_destroy(&free_context_list_lock);
   #ifdef MR_LL_PARALLEL_CONJ
-    sem_destroy(&shutdown_ws_semaphore);
+    MR_sem_destroy(&shutdown_ws_semaphore);
   #endif
 #endif
 
@@ -2272,9 +2272,10 @@ retry_sleep:
         }
         ts.tv_sec = tv.tv_sec;
         ts.tv_nsec = tv.tv_usec * 1000;
-        result = sem_timedwait(&(esync->d.es_sleep_semaphore), &ts);
+        result = MR_SEM_TIMED_WAIT(&(esync->d.es_sleep_semaphore), &ts,
+            "MR_do_sleep");
 #else
-        result = sem_wait(&(esync->d.es_sleep_semaphore));
+        result = MR_SEM_WAIT(&(esync->d.es_sleep_semaphore), "MR_do_sleep");
 #endif
 
         if (result != 0) {
