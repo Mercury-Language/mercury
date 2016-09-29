@@ -7060,10 +7060,6 @@ mercury_open(const char *filename, const char *openmode,
 {
     MercuryFilePtr  mf;
     FILE            *f;
-#if defined(MR_HAVE_FSTAT) && \
-        (defined(MR_HAVE_FILENO) || defined(fileno)) && defined(S_ISDIR)
-    struct stat     stat_info;
-#endif
 
 #ifdef MR_WIN32
     f = _wfopen(ML_utf8_to_wide(filename), ML_utf8_to_wide(openmode));
@@ -7074,21 +7070,29 @@ mercury_open(const char *filename, const char *openmode,
     if (f == NULL) {
         return NULL;
     }
-#if defined(MR_HAVE_FSTAT) && \
-        (defined(MR_HAVE_FILENO) || defined(fileno)) && defined(S_ISDIR)
+
     /*
-    ** If fileno or fstat arn't available it's okay to open the file without
-    ** this check.  AFAIK if these arn't available then the OS probably won't
+    ** Check if the opened file is actually a directory.
+    ** If fileno or fstat are not available then we assume the OS would not
     ** let us open a directory as a file anyway.
     */
-    if (0 != fstat(fileno(f), &stat_info)) {
-        fclose(f);
-        return NULL;
-    }
-    if (S_ISDIR(stat_info.st_mode)) {
-        fclose(f);
-        errno = EISDIR;
-        return NULL;
+#if defined(MR_HAVE_FSTAT) && \
+        (defined(MR_HAVE_FILENO) || defined(fileno)) && defined(S_ISDIR)
+    {
+        struct stat stat_info;
+        int         stat_errno;
+
+        if (0 != fstat(fileno(f), &stat_info)) {
+            stat_errno = errno;
+            fclose(f);
+            errno = stat_errno;
+            return NULL;
+        }
+        if (S_ISDIR(stat_info.st_mode)) {
+            fclose(f);
+            errno = EISDIR;
+            return NULL;
+        }
     }
 #endif
 
