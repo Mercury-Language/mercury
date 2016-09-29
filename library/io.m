@@ -4897,11 +4897,11 @@ write_line(X, !IO) :-
 
 write_line(Stream, X, !IO) :-
     io.write(Stream, X, !IO),
-    io.nl(!IO).
+    io.nl(Stream, !IO).
 
 write_line(Stream, NonCanon, X, !IO) :-
     io.write(Stream, NonCanon, X, !IO),
-    io.nl(!IO).
+    io.nl(Stream, !IO).
 
 write_line_cc(X, !IO) :-
     io.write_cc(X, !IO),
