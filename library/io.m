@@ -558,7 +558,7 @@
 
     % write_list(List, Separator, OutputPred, !IO):
     % Applies OutputPred to each element of List, printing Separator
-    % between each element. Outputs to the current output stream.
+    % to the current output stream between each element.
     %
 :- pred write_list(list(T), string, pred(T, io, io), io, io).
 :- mode write_list(in, in, pred(in, di, uo) is det, di, uo) is det.
@@ -566,8 +566,10 @@
     is cc_multi.
 
     % write_list(Stream, List, Separator, OutputPred, !IO):
-    % applies OutputPred to each element of List, printing Separator
-    % between each element. Outputs to Stream.
+    % Sets the current output stream to Stream, then applies OutputPred to
+    % each element of List, printing Separator between each element.
+    % The original output stream is restored whether returning normally
+    % or if an exception is thrown.
     %
 :- pred write_list(text_output_stream, list(T), string,
     pred(T, io, io), io, io).
@@ -577,7 +579,7 @@
 
     % write_array(Array, Separator, OutputPred, !IO):
     % Applies OutputPred to each element of Array, printing Separator
-    % between each element. Outputs to the current output stream.
+    % to the current output stream between each element.
     %
 :- pred write_array(array(T), string, pred(T, io, io), io, io).
 :- mode write_array(in, in, pred(in, di, uo) is det, di, uo) is det.
@@ -587,8 +589,10 @@
 % is cc_multi.
 
     % write_array(Stream, Array, Separator, OutputPred, !IO):
-    % Applies OutputPred to each element of Array, printing Separator
-    % between each element. Outputs to Stream.
+    % Sets the current output stream to Stream, then applies OutputPred to
+    % each element of Array, printing Separator between each element.
+    % The original output stream is restored whether returning normally
+    % or if an exception is thrown.
     %
 :- pred write_array(text_output_stream, array(T), string, pred(T, io, io),
     io, io).
@@ -4754,10 +4758,9 @@ process_read_term(ReadResult, LineNumber, Result) :-
     ).
 
 read(Stream, Result, !IO) :-
-    % XXX implicit-stream predicate should call explicit-stream predicate
-    set_input_stream(Stream, OrigStream, !IO),
-    read(Result, !IO),
-    set_input_stream(OrigStream, _Stream, !IO).
+    % The term parser does not accept an explicit stream argument (yet)
+    % so we must change the current input stream.
+    with_input_stream(Stream, read, Result, !IO).
 
 ignore_whitespace(Result, !IO) :-
     input_stream(Stream, !IO),
@@ -4935,9 +4938,9 @@ write_list_lag(Head, Tail, Separator, OutputPred, !IO) :-
     ).
 
 write_list(Stream, List, Separator, OutputPred, !IO) :-
-    set_output_stream(Stream, OrigStream, !IO),
-    write_list(List, Separator, OutputPred, !IO),
-    set_output_stream(OrigStream, _Stream, !IO).
+    % OutputPred expects the current output stream to be Stream.
+    with_output_stream(Stream,
+        write_list(List, Separator, OutputPred), !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -4968,30 +4971,21 @@ do_write_array(Array, Separator, OutputPred, I, Hi, !IO) :-
     ).
 
 write_array(Stream, Array, Separator, OutputPred, !IO) :-
-    set_output_stream(Stream, OrigStream, !IO),
-    write_array(Array, Separator, OutputPred, !IO),
-    set_output_stream(OrigStream, _, !IO).
+    % OutputPred expects the current output stream to be Stream.
+    with_output_stream(Stream,
+        write_array(Array, Separator, OutputPred), !IO).
 
 %---------------------------------------------------------------------------%
 
-write_binary(Stream, Term, !IO) :-
-    % XXX implicit-stream predicate should call explicit-stream predicate
-    set_binary_output_stream(Stream, OrigStream, !IO),
-    write_binary(Term, !IO),
-    set_binary_output_stream(OrigStream, _Stream, !IO).
-
-read_binary(Stream, Result, !IO) :-
-    % XXX implicit-stream predicate should call explicit-stream predicate
-    set_binary_input_stream(Stream, OrigStream, !IO),
-    read_binary(Result, !IO),
-    set_binary_input_stream(OrigStream, _Stream, !IO).
-
 write_binary(Term, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary(Stream, Term, !IO).
+
+write_binary(binary_output_stream(Stream), Term, !IO) :-
     % A quick-and-dirty implementation... not very space-efficient
     % (not really binary!)
     % XXX This will not work for the Java back-end. See the comment at the
     % top of the MR_MercuryFileStruct class definition.
-    binary_output_stream(binary_output_stream(Stream), !IO),
     io.write(output_stream(Stream), Term, !IO),
     io.write_string(output_stream(Stream), ".\n", !IO).
 
@@ -5001,12 +4995,29 @@ read_binary(Result, !IO) :-
     % XXX This will not work for the Java back-end. See the comment at the
     % top of the MR_MercuryFileStruct class definition.
     binary_input_stream(binary_input_stream(Stream), !IO),
-    read(input_stream(Stream), ReadResult, !IO),
+    with_input_stream(input_stream(Stream),
+        read_binary_from_current_input_stream, Result, !IO).
+
+read_binary(binary_input_stream(Stream), Result, !IO) :-
+    % We would prefer not to change the current input stream but the
+    % quick-and-dirty implementation of read_binary uses io.read,
+    % and io.read internally reads from the current text input stream.
+    % XXX This will not work for the Java back-end. See the comment at the
+    % top of the MR_MercuryFileStruct class definition.
+    with_input_stream(input_stream(Stream),
+        read_binary_from_current_input_stream, Result, !IO).
+
+:- pred read_binary_from_current_input_stream(io.result(T)::out,
+    io::di, io::uo)
+    is det.
+
+read_binary_from_current_input_stream(Result, !IO) :-
+    read(ReadResult, !IO),
     (
         ReadResult = ok(T),
         % We've read the newline and the trailing full stop.
         % Now skip the newline after the full stop.
-        read_char(input_stream(Stream), NewLineRes, !IO),
+        read_char(NewLineRes, !IO),
         (
             NewLineRes = error(Error),
             Result = error(Error)
@@ -9551,6 +9562,52 @@ set_binary_output_stream(binary_output_stream(NewStream),
     OutStream = ?ML_get_current_binary_output,
     mercury__io:mercury_set_current_binary_output(NewStream)
 ").
+
+% Predicates to temporariliy change the input/output stream.
+
+:- pred with_input_stream(input_stream, pred(T, io, io), T, io, io).
+:- mode with_input_stream(in, pred(out, di, uo) is det, out, di, uo) is det.
+:- mode with_input_stream(in, pred(out, di, uo) is cc_multi, out, di, uo)
+    is cc_multi.
+
+with_input_stream(Stream, Pred, Result, !IO) :-
+    set_input_stream(Stream, OrigStream, !IO),
+    finally(Pred, Result,
+        restore_input_stream(Pred, OrigStream), _CleanupRes, !IO).
+
+:- pred with_output_stream(output_stream, pred(io, io), io, io).
+:- mode with_output_stream(in, pred(di, uo) is det, di, uo) is det.
+:- mode with_output_stream(in, pred(di, uo) is cc_multi, di, uo) is cc_multi.
+
+with_output_stream(Stream, Pred, !IO) :-
+    set_output_stream(Stream, OrigStream, !IO),
+    finally(call_pred_no_result(Pred), _Result,
+        restore_output_stream(Pred, OrigStream), _CleanupRes, !IO).
+
+:- pred call_pred_no_result(pred(io, io), {}, io, io).
+:- mode call_pred_no_result(pred(di, uo) is det, out, di, uo) is det.
+:- mode call_pred_no_result(pred(di, uo) is cc_multi, out, di, uo)
+    is cc_multi.
+
+call_pred_no_result(Pred, {}, !IO) :-
+    Pred(!IO).
+
+:- pred restore_input_stream(pred(T, io, io), input_stream, io.res, io, io).
+:- mode restore_input_stream(pred(out, di, uo) is det, in, out, di, uo)
+    is det.
+:- mode restore_input_stream(pred(out, di, uo) is cc_multi, in, out, di, uo)
+    is cc_multi.
+
+restore_input_stream(_DummyPred, Stream, ok, !IO) :-
+    set_input_stream(Stream, _OldStream, !IO).
+
+:- pred restore_output_stream(pred(io, io), output_stream, io.res, io, io).
+:- mode restore_output_stream(pred(di, uo) is det, in, out, di, uo) is det.
+:- mode restore_output_stream(pred(di, uo) is cc_multi, in, out, di, uo)
+    is cc_multi.
+
+restore_output_stream(_DummyPred, Stream, ok, !IO) :-
+    set_output_stream(Stream, _OldStream, !IO).
 
 % Stream open/close predicates.
 

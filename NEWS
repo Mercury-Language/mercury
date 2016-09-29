@@ -158,6 +158,16 @@ Changes to the Mercury standard library:
 * We have removed the io.poly_type equivalence type from the io module.
   string.poly_type should be used directly.
 
+* We have made these predicates exception safe: the current input or output
+  stream is restored to the original stream if an exception is thrown during
+  their execution:
+
+    - io.read/4
+    - io.write_list/6
+    - io.write_array/6
+    - io.read_binary/4
+    - io.write_binary/4
+
 * We have added a module for discrete interval encoding trees, which are a
   highly efficient set implementation for fat sets.  This module is a
   contribution from Yes Logic Pty. Ltd.
