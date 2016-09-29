@@ -124,9 +124,9 @@ dir__path_name_is_root_directory("foo/bar") failed
 "C:"/"foo" = "C:/foo".
 "C:\"/"foo" = "C:\foo".
 "C:"/"C:" = "C:/C:".
-"C:"/"C:\foo" threw exception: software_error("dir./: second argument is absolute")
-"."/"/foo" threw exception: software_error("dir./: second argument is absolute")
-"."/"\foo" threw exception: software_error("dir./: second argument is absolute")
+"C:"/"C:\foo" threw exception: software_error("function `dir./\'/2: Unexpected: second argument is absolute")
+"."/"/foo" threw exception: software_error("function `dir./\'/2: Unexpected: second argument is absolute")
+"."/"\foo" threw exception: software_error("function `dir./\'/2: Unexpected: second argument is absolute")
 "foo"/"bar/baz" = "foo/bar/baz".
 "foo/"/"bar/baz" = "foo/bar/baz".
 checking whether `unwritable' is readable...ok
@@ -161,5 +161,5 @@ Files in test_dir (recursive, not following symlinks):
 test_dir/d1, test_dir/d1/bar, test_dir/d1/baz, test_dir/d1/foo, test_dir/d1/parent, test_dir/d2, test_dir/d2/d2, test_dir/d3, test_dir/quark, test_dir/queeg
 dir__recursive_foldl2 (symlinks) succeeded
 Files in test_dir (recursive, following symlinks:
-test_dir/d1, test_dir/d1/bar, test_dir/d1/baz, test_dir/d1/foo, test_dir/d1/parent, test_dir/d2, test_dir/d2/d2, test_dir/d3, test_dir/quark, test_dir/queeg
+test_dir/d1, test_dir/d1/bar, test_dir/d1/baz, test_dir/d1/foo, test_dir/d1/parent, test_dir/d2, test_dir/d2/d2, test_dir/d3, test_dir/d3/bar, test_dir/d3/baz, test_dir/d3/foo, test_dir/d3/parent, test_dir/quark, test_dir/queeg
 dir.recursive_foldl2(list_files, "dir_test.m", ...) failed as expected.
