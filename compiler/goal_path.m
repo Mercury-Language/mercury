@@ -226,14 +226,14 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter,
             !GoalNumCounter, !ContainingGoalList, SubGoal0, SubGoal),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = if_then_else(A, Cond0, Then0, Else0),
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         fill_goal_id_slots(SlotInfo, containing_goal(GoalId, step_ite_cond),
             !GoalNumCounter, !ContainingGoalList, Cond0, Cond),
         fill_goal_id_slots(SlotInfo, containing_goal(GoalId, step_ite_then),
             !GoalNumCounter, !ContainingGoalList, Then0, Then),
         fill_goal_id_slots(SlotInfo, containing_goal(GoalId, step_ite_else),
             !GoalNumCounter, !ContainingGoalList, Else0, Else),
-        GoalExpr = if_then_else(A, Cond, Then, Else)
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
