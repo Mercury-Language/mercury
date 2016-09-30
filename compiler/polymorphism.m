@@ -560,9 +560,9 @@ polymorphism_process_pred_msg(PredId, !SafeToContinue, !Specs, !ModuleInfo) :-
 
 polymorphism_process_generated_pred(PredId, !ModuleInfo) :-
     polymorphism_process_pred(PredId, SafeToContinue, [], Specs, !ModuleInfo),
-    expect(unify(Specs, []), $module, $pred,
+    expect(unify(Specs, []), $pred,
         "generated pred has errors"),
-    expect(unify(SafeToContinue, safe_to_continue), $module, $pred,
+    expect(unify(SafeToContinue, safe_to_continue), $pred,
         "generated pred has errors"),
     fixup_pred_polymorphism(PredId, !ModuleInfo).
 
@@ -1067,9 +1067,9 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     list(hlds_goal)::out) is det.
 
 assign_var_list([], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 assign_var_list([_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 assign_var_list([], [], []).
 assign_var_list([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
     assign_var(Var1, Var2, Goal),
@@ -1305,13 +1305,13 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 SubGoalExpr = conj(plain_conj, Conjuncts),
                 SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo)
             else
-                unexpected($module, $pred, "malformed try goal")
+                unexpected($pred, "malformed try goal")
             ),
             set_cache_maps_snapshot("after try", InitialSnapshot, !Info),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -1329,8 +1329,7 @@ polymorphism_process_from_ground_term_initial(TermVar, GoalInfo0, SubGoal0,
     ( if SubGoalExpr0 = conj(plain_conj, SubGoals0Prime) then
         SubGoals0 = SubGoals0Prime
     else
-        unexpected($module, $pred,
-            "from_ground_term_initial goal is not plain conj")
+        unexpected($pred, "from_ground_term_initial goal is not plain conj")
     ),
     polymorphism_process_fgti_goals(SubGoals0, [], RevMarkedSubGoals,
         fgt_invariants_kept, InvariantsStatus, !Info),
@@ -1369,7 +1368,7 @@ polymorphism_process_fgti_goals([Goal0 | Goals0], !RevMarkedGoals,
         ConsId = ConsIdPrime,
         YVars = YVarsPrime
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "from_ground_term_initial conjunct is not functor unify")
     ),
     polymorphism_process_unify_functor(XVar, ConsId, YVars, Mode,
@@ -1385,11 +1384,11 @@ polymorphism_process_fgti_goals([Goal0 | Goals0], !RevMarkedGoals,
             MaxVarAfter = varset.max_var(VarSetAfter),
             poly_info_get_num_reuses(!.Info, NumReusesAfter),
 
-            expect(unify(MaxVarBefore, MaxVarAfter), $module, $pred,
+            expect(unify(MaxVarBefore, MaxVarAfter), $pred,
                 "MaxVarBefore != MaxVarAfter"),
-            expect(unify(NumReusesBefore, NumReusesAfter), $module, $pred,
+            expect(unify(NumReusesBefore, NumReusesAfter), $pred,
                 "NumReusesBefore != NumReusesAfter"),
-            expect(unify(Goal0, Goal), $module, $pred,
+            expect(unify(Goal0, Goal), $pred,
                 "Goal0 != Goal")
         ),
         MarkedGoal = fgt_kept_goal(Goal0, XVar, YVars)
@@ -1588,7 +1587,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
                     GoalInfo0, GoalInfo1)
             ;
                 ProcIds = [],
-                unexpected($module, $pred, "no modes")
+                unexpected($pred, "no modes")
             )
         else
             ProcId = ProcId0,
@@ -1751,7 +1750,7 @@ fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, MaybeRHS) :-
             LambdaGoal),
         Context = goal_info_get_context(LastGoalInfo0)
     else
-        unexpected($module, $pred, "unmatched lambda goal")
+        unexpected($pred, "unmatched lambda goal")
     ),
 
     % Work out the modes of the introduced lambda variables and the determinism
@@ -2024,7 +2023,6 @@ foreign_proc_does_not_use_variable(Impl, VarName) :-
     % XXX This test used to be turned off with the semidet_fail, as it caused
     % the compiler to abort when compiling declarative_execution.m in stage2,
     % but this is no longer the case.
-    % semidet_fail,
     not foreign_proc_uses_variable(Impl, VarName).
 
 :- func underscore_and_tvar_name(tvarset, tvar) = string.
@@ -2202,7 +2200,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         then
             ActualExistQVars = ActualExistQVars0
         else
-            unexpected($module, $pred, "existq_tvar bound")
+            unexpected($pred, "existq_tvar bound")
         ),
         Context = goal_info_get_context(GoalInfo0),
         make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
@@ -2287,7 +2285,7 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
         OrigPredArgTypes = OrigPredArgTypes0,
         CalleeExtraHeadVars = CalleeExtraHeadVars0
     else
-        unexpected($module, $pred, "extra args not found")
+        unexpected($pred, "extra args not found")
     ),
 
     % Work out the bindings of type variables in the call.
@@ -2308,12 +2306,11 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
             VarInfo = type_info_var(TypeInfoType)
         ;
             VarInfo = typeclass_info_var(_),
-            unexpected($module, $pred,
+            unexpected($pred,
                 "unsupported: constraints on initialisation preds")
         ;
             VarInfo = non_rtti_var,
-            unexpected($module, $pred,
-                "missing rtti_var_info for initialisation pred")
+            unexpected($pred, "missing rtti_var_info for initialisation pred")
         )
     ),
     list.map(GetTypeInfoTypes, CalleeExtraHeadVars, PredTypeInfoTypes),
@@ -2592,14 +2589,14 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         SuperClassIndex = SuperClassIndexPrime
     else
         % We shouldn't have got this far if the constraints were not satisfied.
-        unexpected($module, $pred, "constraint not in constraint list")
+        unexpected($pred, "constraint not in constraint list")
     ),
 
     (
         SubClassMCA = yes(SubClassConstArg),
         (
             SubClassConstArg = csa_constant(_, _),
-            unexpected($module, $pred, "typeclass infos need a cell")
+            unexpected($pred, "typeclass infos need a cell")
         ;
             SubClassConstArg = csa_const_struct(SubClassConstNum),
             poly_info_get_const_struct_db(!.Info, ConstStructDb),
@@ -2625,8 +2622,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
                     TypeClassInfoVar, Goals, !Info),
                 MaybeTCIConstArg = yes(SelectedArg)
             else
-                unexpected($module, $pred,
-                    "unexpected typeclass info structure")
+                unexpected($pred, "unexpected typeclass info structure")
             )
         ),
 
@@ -2950,7 +2946,7 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
         then
             ( if map.search(ClassNameMap1, ConstraintArgTypes, OldEntry1) then
                 OldEntry1 = typeclass_info_map_entry(BaseConsId1, ArgsMap1),
-                expect(unify(BaseConsId1, BaseConsId), $module, $pred,
+                expect(unify(BaseConsId1, BaseConsId), $pred,
                     "BaseConsId1 != BaseConsId"),
                 map.det_insert(ArgCOVAs, TypeClassInfoVarMCA,
                     ArgsMap1, ArgsMap),
@@ -3577,7 +3573,7 @@ get_special_proc_det(Type, SpecialPredId, ModuleInfo, PredName,
         PredId = PredIdPrime,
         ProcId = ProcIdPrime
     else
-        unexpected($module, $pred, "get_special_proc failed")
+        unexpected($pred, "get_special_proc failed")
     ).
 
 :- func get_category_name(type_ctor_category) = maybe(string).
@@ -3610,10 +3606,10 @@ get_category_name(CtorCat) = MaybeName :-
         MaybeName = no
     ;
         CtorCat = ctor_cat_variable,
-        unexpected($module, $pred, "variable type")
+        unexpected($pred, "variable type")
     ;
         CtorCat = ctor_cat_void,
-        unexpected($module, $pred, "void_type")
+        unexpected($pred, "void_type")
     ).
 
 init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
@@ -3966,30 +3962,30 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
 
     % Work out which type variables we haven't seen before, or which we
     % assumed earlier would be produced in a type_info (this can happen for
-    % code which needs mode reordering and which calls existentially
-    % quantified predicates or deconstructs existentially quantified
-    % terms).
+    % code which needs mode reordering and which calls existentially quantified
+    % predicates or deconstructs existentially quantified terms).
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    NewTVarAndIndex = (pred(TVarAndIndex::out) is nondet :-
-        list.member(Type - Index, IndexedClassTypes),
-        type_vars(Type, TypeVars),
-        list.member(TypeVar, TypeVars),
-        ( if
-            rtti_search_type_info_locn(RttiVarMaps0, TypeVar, TypeInfoLocn)
-        then
-            TypeInfoLocn = type_info(_)
-        else
-            true
+    NewTVarAndIndex =
+        ( pred(TVarAndIndex::out) is nondet :-
+            list.member(Type - Index, IndexedClassTypes),
+            type_vars(Type, TypeVars),
+            list.member(TypeVar, TypeVars),
+            ( if
+                rtti_search_type_info_locn(RttiVarMaps0, TypeVar, TypeInfoLocn)
+            then
+                TypeInfoLocn = type_info(_)
+            else
+                true
+            ),
+            TVarAndIndex = TypeVar - Index
         ),
-        TVarAndIndex = TypeVar - Index
-    ),
     solutions(NewTVarAndIndex, NewClassTypeVars),
 
     % Make an entry in the TypeInfo locations map for each new type variable.
     % The type variable can be found at the previously calculated offset
     % with the new typeclass_info.
     MakeEntry =
-        (pred(IndexedTypeVar::in, R0::in, R::out) is det :-
+        ( pred(IndexedTypeVar::in, R0::in, R::out) is det :-
             IndexedTypeVar = TheTypeVar - Index,
             Location = typeclass_info(ExtraHeadVar, Index),
             rtti_set_type_info_locn(TheTypeVar, Location, R0, R)
@@ -4118,8 +4114,8 @@ expand_class_method_bodies_in_defn(ClassDefn, !ModuleInfo) :-
 :- pred expand_class_method_body(hlds_class_proc::in, int::in, int::out,
     module_info::in, module_info::out) is det.
 
-expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
-        !ModuleInfo) :-
+expand_class_method_body(ClassProc, !ProcNum, !ModuleInfo) :-
+    ClassProc = hlds_class_proc(PredId, ProcId), 
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
@@ -4137,7 +4133,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
         ( if ClassContext = constraints([Head | _], _) then
             InstanceConstraint = Head
         else
-            unexpected($module, $pred, "class method is not constrained")
+            unexpected($pred, "class method is not constrained")
         ),
 
         proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
@@ -4151,19 +4147,20 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
             MaybeDetism0 = yes(Detism)
         ;
             MaybeDetism0 = no,
-            % Omitting the determinism for a method is not allowed. But make_hlds
-            % will have already detected and reported the error. So here we can
-            % just pick some value at random; hopefully something that won't cause
-            % flow-on errors. We also mark the predicate as invalid, also to avoid
-            % flow-on errors.
+            % Omitting the determinism for a method is not allowed.
+            % But make_hlds will have already detected and reported the error.
+            % So here we can just pick some value at random; hopefully
+            % something that won't cause flow-on errors. We also mark
+            % the predicate as invalid, also to avoid flow-on errors.
             Detism = detism_non,
             module_info_make_pred_id_invalid(PredId, !ModuleInfo)
         ),
 
-        % Work out which argument corresponds to the constraint which is introduced
-        % because this is a class method, then delete it from the list of args to
-        % the class_method_call. That variable becomes the "dictionary" variable
-        % for the class_method_call. (cf. the closure for a higher order call).
+        % Work out which argument corresponds to the constraint which is
+        % introduced because this is a class method, then delete it
+        % from the list of args to the class_method_call. That variable becomes
+        % the "dictionary" variable for the class_method_call.
+        % (cf. the closure for a higher order call).
         ( if
             list.index1_of_first_occurrence(HeadVars0, TypeClassInfoVar, N),
             delete_nth(HeadVars0, N, HeadVarsPrime),
@@ -4172,7 +4169,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
             HeadVars = HeadVarsPrime,
             Modes = ModesPrime
         else
-            unexpected($module, $pred, "typeclass_info var not found")
+            unexpected($pred, "typeclass_info var not found")
         ),
 
         InstanceConstraint = constraint(ClassName, InstanceArgs),
@@ -4955,12 +4952,11 @@ get_var_maps_snapshot(Name, VarMaps, !Info) :-
                 ;
                     SelectedPred = yes,
                     IndentStr = string.duplicate_char(' ', Level * 4),
-                    io.write_string(IndentStr, !IO),
-                    io.format("get_var_maps_snapshot %d %s\n",
-                        [i(SnapshotNum), s(Name)], !IO),
-                    io.write_string(IndentStr, !IO),
                     NumVars = varset.num_allocated(VarSet),
-                    io.format("num_allocated vars: %d\n\n", [i(NumVars)], !IO)
+                    io.format("%sget_var_maps_snapshot %d %s\n",
+                        [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
+                    io.format("%snum_allocated vars: %d\n\n",
+                        [s(IndentStr), i(NumVars)], !IO)
                 )
             )
         )
