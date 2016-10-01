@@ -73,8 +73,9 @@
     #define MR_TIMED_WAIT(cond, mtx, abstime, from)                         \
         pthread_cond_timedwait((cond), (mtx), (abstime))
 
-    #define MR_SEM_POST(sem, from)  sem_post((sem))
     #define MR_SEM_WAIT(sem, from)  sem_wait((sem))
+    #define MR_SEM_POST(sem, from)  sem_post((sem))
+    #define MR_SEM_TIMED_WAIT(sem, from) sem_timedwait((sem))
   #else
     #define MR_LOCK(lck, from)                                          \
                 ( MR_debug_threads ?                                    \
