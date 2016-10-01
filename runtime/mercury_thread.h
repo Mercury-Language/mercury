@@ -70,12 +70,13 @@
     #define MR_SIGNAL(cnd, from)    pthread_cond_signal((cnd))
     #define MR_BROADCAST(cnd, from) pthread_cond_broadcast((cnd))
     #define MR_WAIT(cnd, mtx, from) pthread_cond_wait((cnd), (mtx))
-    #define MR_TIMED_WAIT(cond, mtx, abstime, from)                         \
+    #define MR_TIMED_WAIT(cond, mtx, abstime, from)                     \
         pthread_cond_timedwait((cond), (mtx), (abstime))
 
     #define MR_SEM_WAIT(sem, from)  sem_wait((sem))
     #define MR_SEM_POST(sem, from)  sem_post((sem))
-    #define MR_SEM_TIMED_WAIT(sem, from) sem_timedwait((sem))
+    #define MR_SEM_TIMED_WAIT(sem, abstime, from)                       \
+        sem_timedwait((sem), (abstime))
   #else
     #define MR_LOCK(lck, from)                                          \
                 ( MR_debug_threads ?                                    \
@@ -134,7 +135,7 @@
         ( MR_debug_threads ?                                            \
             MR_sem_timed_wait((sem), (abstime), (from))                 \
         :                                                               \
-            sem_timedwait((sem))                                        \
+            sem_timedwait((sem), (abstime))                             \
         )
 #endif
 
