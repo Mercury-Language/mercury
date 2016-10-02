@@ -83,16 +83,16 @@
 new(Stream, !IO) :-
     queue.init(Queue),
     store.new_mutvar(Queue, QueueRef, !IO),
-    semaphore.new(Lock, !IO),
+    semaphore.init(Lock, !IO),
     semaphore.signal(Lock, !IO),
-    semaphore.new(Semaphore, !IO),
+    semaphore.init(Semaphore, !IO),
     Stream = concurrent_stream(Lock, QueueRef, Semaphore).
 
 put(Stream, Thing, !IO) :-
     Stream = concurrent_stream(Lock, QueueRef, Semaphore),
     wait(Lock, !IO),
     store.get_mutvar(QueueRef, Queue0, !IO),
-    queue.put(Queue0, ok(Thing), Queue),
+    queue.put(ok(Thing), Queue0, Queue),
     store.set_mutvar(QueueRef, Queue, !IO),
     signal(Lock, !IO),
     signal(Semaphore, !IO).
@@ -101,7 +101,7 @@ end(Stream, !IO) :-
     Stream = concurrent_stream(Lock, QueueRef, Semaphore),
     semaphore.wait(Lock, !IO),
     store.get_mutvar(QueueRef, Queue0, !IO),
-    queue.put(Queue0, end, Queue),
+    queue.put(end, Queue0, Queue),
     store.set_mutvar(QueueRef, Queue, !IO),
     semaphore.signal(Lock, !IO),
     semaphore.signal(Semaphore, !IO).
@@ -110,7 +110,7 @@ error(Stream, Msg, !IO) :-
     Stream = concurrent_stream(Lock, QueueRef, Semaphore),
     semaphore.wait(Lock, !IO),
     store.get_mutvar(QueueRef, Queue0, !IO),
-    queue.put(Queue0, error(Msg), Queue),
+    queue.put(error(Msg), Queue0, Queue),
     store.set_mutvar(QueueRef, Queue, !IO),
     semaphore.signal(Lock, !IO),
     semaphore.signal(Semaphore, !IO).
@@ -120,10 +120,10 @@ get(Stream, Thing, !IO) :-
     semaphore.wait(Semaphore, !IO),
     semaphore.wait(Lock, !IO),
     store.get_mutvar(QueueRef, Queue0, !IO),
-    ( queue.get(Queue0, Thing0, Queue) ->
+    ( if queue.get(Thing0, Queue0, Queue) then
         Thing = Thing0,
         store.set_mutvar(QueueRef, Queue, !IO)
-    ;
+    else
         error("concurrent_stream.get/4: queue and semaphore out of sync")
     ),
     semaphore.signal(Lock, !IO).

@@ -130,7 +130,7 @@ print_messages(Stream, !IO) :-
         io.write_string(".\n", !IO),
         print_messages(Stream, !IO)
     ;
-        Res0 = end 
+        Res0 = end
     ;
         Res0 = error(Msg),
         io.write_string(Msg, !IO),

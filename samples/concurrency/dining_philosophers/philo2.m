@@ -70,17 +70,17 @@ philosopher(Who, ForkGlob, !IO) :-
     rand_sleep(5, !IO),
     mvar.take(ForkGlob, Forks0, !IO),
     io.format("%s is attempting to eat.\n", [s(Name)], !IO),
-    ( forks(Who, Forks0, Forks1) ->
+    ( if forks(Who, Forks0, Forks1) then
         mvar.put(ForkGlob, Forks1, !IO),
         io.format("%s is eating.\n", [s(Name)], !IO),
         rand_sleep(10, !IO),
         mvar.take(ForkGlob, Forks2, !IO),
-        ( forks(Who, Forks3, Forks2) ->
+        ( if forks(Who, Forks3, Forks2) then
             mvar.put(ForkGlob, Forks3, !IO)
-        ;
+        else
             error("all forked up")
         )
-    ;
+    else
         % Our 2 forks were not available
         mvar.put(ForkGlob, Forks0, !IO)
     ),

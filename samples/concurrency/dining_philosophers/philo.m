@@ -70,20 +70,20 @@ philosopher(Who, Lock, !IO) :-
     name(Who, Name),
     io.format("%s is thinking.\n", [s(Name)], !IO),
     semaphore.wait(Lock, !IO),
-    get_fork_global(Forks0, !IO), 
-    ( forks(Who, Forks0, Forks1) ->
+    get_fork_global(Forks0, !IO),
+    ( if forks(Who, Forks0, Forks1) then
         set_fork_global(Forks1, !IO),
         semaphore.signal(Lock, !IO),
         io.format("%s is eating.\n", [s(Name)], !IO),
         semaphore.wait(Lock, !IO),
         get_fork_global(Forks2, !IO),
-        ( forks(Who, Forks3, Forks2) ->
+        ( if forks(Who, Forks3, Forks2) then
             set_fork_global(Forks3, !IO),
             semaphore.signal(Lock, !IO)
-        ;
+        else
             error("all forked up")
         )
-    ;
+    else
         % Our 2 forks were not available
         signal(Lock, !IO)
     ),

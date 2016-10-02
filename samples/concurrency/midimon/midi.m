@@ -101,7 +101,7 @@
 %-----------------------------------------------------------------------------%
 
 :- type hex
-    --->    x0 
+    --->    x0
     ;       x1
     ;       x2
     ;       x3
@@ -322,7 +322,7 @@ byte1a(x8, _LSN, _Status, _Ins, Outs, !IO) :-
     error(Outs, "unexpected status byte", !IO).
 byte1a(x9, _LSN, _Status, _Ins, Outs, !IO) :-
     error(Outs, "unexpected status byte", !IO).
-byte1a(xA, _LSN, _Status, _Ins, Outs, !IO) :- 
+byte1a(xA, _LSN, _Status, _Ins, Outs, !IO) :-
     error(Outs, "unexpected status byte", !IO).
 byte1a(xB, _LSN, _Status, _Ins, Outs, !IO) :-
     error(Outs, "unexpected status byte", !IO).
@@ -509,7 +509,7 @@ byte2b(status(two(Kind), Chan), Byte1, Byte2, Ins, Outs, !IO) :-
         Msg = kp(Chan, Byte1, Byte2)
     ;
         Kind = cc,
-        ( 
+        ( if
             (
                 Byte1 =  122,
                 OnOrOff = ( Byte2 = 0 -> off ; on ),
@@ -530,9 +530,9 @@ byte2b(status(two(Kind), Chan), Byte1, Byte2, Ins, Outs, !IO) :-
                 Byte1 = 127,
                 Msg0 = mm(Chan, poly)
             )
-        ->
+        then
             Msg = Msg0
-        ;
+        else
             Msg = cc(Chan, Byte1, Byte2)
         )
     ;
@@ -562,14 +562,14 @@ sysex1(Bytes0, Status, Ins, Outs, !IO) :-
         error(Outs, Err, !IO)
     ;
         Res0 = ok(Byte),
-        ( Byte >= 0, Byte =< 127 ->
+        ( if Byte >= 0, Byte =< 127 then
             sysex1([Byte|Bytes0], Status, Ins, Outs, !IO)
-        ;
+        else
             list.reverse(Bytes0, Bytes),
             put(Outs, sys(sysex(Bytes)), !IO),
-            ( Byte = 0xF7 ->
+            ( if Byte = 0xF7 then
                 byte0(Status, Ins, Outs, !IO)
-            ;
+            else
                 byte2hex(Byte, MSN, LSN),
                 byte0a(MSN, LSN, Status, Ins, Outs, !IO)
             )
@@ -750,19 +750,19 @@ write_midi(rt(reset), Status, Ins, Outs, !IO) :-
     io::di, io::uo) is det.
 
 write_one(Status0, Status1, Byte1, Ins, Outs, !IO) :-
-    ( Status0 = Status1 ->
+    ( if Status0 = Status1 then
         Status = Status0
-    ;
+    else
         Status = Status1,
-        ( status(Status, Byte) ->
+        ( if status(Status, Byte) then
             put(Outs, Byte, !IO)
-        ;
+        else
             error(Outs, "invalid channel", !IO)
         )
     ),
-    ( Byte1 >= 0, Byte1 =< 127 ->
+    ( if Byte1 >= 0, Byte1 =< 127 then
         put(Outs, Byte1, !IO)
-    ;
+    else
         error(Outs, "invalid data byte", !IO)
     ),
     write_midi(Status, Ins, Outs, !IO).
@@ -772,24 +772,24 @@ write_one(Status0, Status1, Byte1, Ins, Outs, !IO) :-
     concurrent_stream(byte)::in, io::di, io::uo) is det.
 
 write_two(Status0, Status1, Byte1, Byte2, Ins, Outs, !IO) :-
-    ( Status0 = Status1 ->
+    ( if Status0 = Status1 then
         Status = Status0
-    ;
+    else
         Status = Status1,
-        ( status(Status, Byte) ->
+        ( if status(Status, Byte) then
             put(Outs, Byte, !IO)
-        ;
+        else
             error(Outs, "invalid channel", !IO)
         )
     ),
-    ( Byte1 >= 0, Byte1 =< 127 ->
+    ( if Byte1 >= 0, Byte1 =< 127 then
         put(Outs, Byte1, !IO)
-    ;
+    else
         error(Outs, "invalid data byte", !IO)
     ),
-    ( Byte2 >= 0, Byte2 =< 127 ->
+    ( if Byte2 >= 0, Byte2 =< 127 then
         put(Outs, Byte2, !IO)
-    ;
+    else
         error(Outs, "invalid data byte", !IO)
     ),
     write_midi(Status, Ins, Outs, !IO).
@@ -816,13 +816,13 @@ status(status(Kind, Chan), Byte) :-
 :- pred byte2hex(int::in, hex::out, hex::out) is det.
 
 byte2hex(Byte, MSN, LSN) :-
-    (
+    ( if
         nibble2hex(Byte /\ 0xF, LSN0),
         nibble2hex((Byte >> 4) /\ 0xF, MSN0)
-    ->
+    then
         LSN = LSN0,
         MSN = MSN0
-    ;
+    else
         error("byte2hex: conversion failed!")
     ).
 
