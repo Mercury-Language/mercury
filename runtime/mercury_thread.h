@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-1998, 2000, 2003, 2005-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014 The Mercury team.
+// Copyright (C) 2014-2016 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -14,7 +14,12 @@
 
   #include <signal.h>   // for sigset_t on the SPARC
   #include <pthread.h>
-  #include <semaphore.h> // POSIX semaphores
+
+  #if defined(MR_USE_LIBDISPATCH)
+      #include <dispatch/dispatch.h>
+  #else
+      #include <semaphore.h> // POSIX semaphores
+  #endif
 
   #define MR_MUTEX_ATTR       NULL
   #define MR_COND_ATTR        NULL
@@ -25,7 +30,11 @@
   typedef pthread_mutex_t   MercuryLock;
   typedef pthread_cond_t    MercuryCond;
 
-  typedef sem_t             MercurySem;
+  #if defined(MR_USE_LIBDISPATCH)
+    typedef dispatch_semaphore_t MercurySem;
+  #else
+    typedef sem_t             MercurySem;
+  #endif
 
   extern int    MR_mutex_lock(MercuryLock *lock, const char *from);
   extern int    MR_mutex_unlock(MercuryLock *lock, const char *from);
@@ -60,9 +69,10 @@
   extern MR_bool    MR_debug_threads;
 
   #ifndef MR_DEBUG_THREADS
-    // The following macros should be used once the use of locking
-    // in the generated code is considered stable, since the alternative
-    // versions do the same thing, but with debugging support.
+
+    // The following macros should be used once the use of locking in the
+    // generated code is considered stable, since the alternative versions do
+    // the same thing, but with debugging support enabled.
 
     #define MR_LOCK(lck, from)      pthread_mutex_lock((lck))
     #define MR_UNLOCK(lck, from)    pthread_mutex_unlock((lck))
@@ -73,11 +83,21 @@
     #define MR_TIMED_WAIT(cond, mtx, abstime, from)                     \
         pthread_cond_timedwait((cond), (mtx), (abstime))
 
-    #define MR_SEM_WAIT(sem, from)  sem_wait((sem))
-    #define MR_SEM_POST(sem, from)  sem_post((sem))
-    #define MR_SEM_TIMED_WAIT(sem, abstime, from)                       \
+    #if defined(MR_USE_LIBDISPATCH)
+      #define MR_SEM_WAIT(sem, from)                                    \
+        dispatch_semaphore_wait(*(sem), DISPATCH_TIME_FOREVER)
+      #define MR_SEM_POST(sem, from)  dispatch_semaphore_signal(*(sem))
+      #define MR_SEM_TIMED_WAIT(sem, abstime, from)                     \
+        dispatch_semaphore_wait(*(sem), dispatch_walltime((abstime))
+    #else
+      #define MR_SEM_WAIT(sem, from)  sem_wait((sem))
+      #define MR_SEM_POST(sem, from)  sem_post((sem))
+      #define MR_SEM_TIMED_WAIT(sem, abstime, from)                     \
         sem_timedwait((sem), (abstime))
-  #else
+    #endif // !MR_USE_LIBDISPATCH
+
+  #else // MR_DEBUG_THREADS
+
     #define MR_LOCK(lck, from)                                          \
                 ( MR_debug_threads ?                                    \
                     MR_mutex_lock((lck), (from))                        \
@@ -116,37 +136,55 @@
             pthread_cond_timedwait((cond), (mtx), (abstime))            \
         )
 
-    #define MR_SEM_WAIT(sem, from)                                      \
-        ( MR_debug_threads ?                                            \
-            MR_sem_wait((sem), (from))                                  \
-        :                                                               \
-            sem_wait((sem))                                             \
-        )
+    #if defined(MR_USE_LIBDISPATCH)
 
-#if defined(MR_MAC_OSX)
-    #define MR_SEM_TIMED_WAIT(sem, abstime, from)                       \
-        ( MR_debug_threads ?                                            \
-            MR_sem_timed_wait((sem), (abstime), (from))                 \
-        :                                                               \
-            MR_fatal_error("sem_timedwait not supported on Mac OS X")   \
-        )
-#else
-    #define MR_SEM_TIMED_WAIT(sem, abstime, from)                       \
-        ( MR_debug_threads ?                                            \
-            MR_sem_timed_wait((sem), (abstime), (from))                 \
-        :                                                               \
-            sem_timedwait((sem), (abstime))                             \
-        )
-#endif
+      #define MR_SEM_WAIT(sem, from)                                      \
+          ( MR_debug_threads ?                                            \
+              MR_sem_wait((sem), (from))                                  \
+          :                                                               \
+              dispatch_semaphore_wait(*(sem), DISPATCH_TIME_FOREVER)      \
+          )
 
-    #define MR_SEM_POST(sem, from)                                      \
-        ( MR_debug_threads ?                                            \
-            MR_sem_post((sem), (from))                                  \
-        :                                                               \
-            sem_post((sem))                                             \
-        )
+      #define MR_SEM_TIMED_WAIT(sem, abstime, from)                       \
+          ( MR_debug_threads ?                                            \
+              MR_sem_timed_wait((sem), (abstime), (from))                 \
+          :                                                               \
+              dispatch_semaphore_wait(*(sem), dispatch_walltime((abstime), 0)) \
+          )
 
-  #endif
+      #define MR_SEM_POST(sem, from)                                      \
+          ( MR_debug_threads ?                                            \
+              MR_sem_post((sem), (from))                                  \
+          :                                                               \
+              dispatch_semaphore_signal(*(sem))                           \
+          )
+
+    #else // !MR_USE_LIBDISPATCH
+
+      #define MR_SEM_WAIT(sem, from)                                      \
+          ( MR_debug_threads ?                                            \
+              MR_sem_wait((sem), (from))                                  \
+          :                                                               \
+              sem_wait((sem))                                             \
+          )
+
+      #define MR_SEM_TIMED_WAIT(sem, abstime, from)                       \
+          ( MR_debug_threads ?                                            \
+              MR_sem_timed_wait((sem), (abstime), (from))                 \
+          :                                                               \
+              sem_timedwait((sem), (abstime))                             \
+          )
+
+      #define MR_SEM_POST(sem, from)                                      \
+          ( MR_debug_threads ?                                            \
+              MR_sem_post((sem), (from))                                  \
+          :                                                               \
+              sem_post((sem))                                             \
+          )
+
+    #endif // !MR_USE_LIBDISPATCH
+
+  #endif // MR_DEBUG_THREADS
 
   // The following two macros are used to protect pragma foreign_proc
   // predicates which are not thread-safe.

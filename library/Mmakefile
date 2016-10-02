@@ -418,6 +418,18 @@ $(os_subdir)par_builtin.pic_o \
 	../runtime/mercury_par_builtin.h \
 	../runtime/mercury_thread.h
 
+$(os_subdir)thread.$O \
+$(os_subdir)thread.pic_o \
+	: ../runtime/mercury_context.h \
+	../runtime/mercury_par_builtin.h \
+	../runtime/mercury_thread.h
+
+$(os_subdir)thread.semaphore.$O \
+$(os_subdir)thread.semaphore.pic_o \
+	: ../runtime/mercury_context.h \
+	../runtime/mercury_par_builtin.h \
+	../runtime/mercury_thread.h
+
 # robdd.m #includes both ../robdd/bryant.h and ../robdd/bryant.c
 # in foreign_decl and foreign_code respectively. They in turn
 # depend on ../robdd/robdd_conf.h.

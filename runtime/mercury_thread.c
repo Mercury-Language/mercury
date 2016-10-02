@@ -415,10 +415,20 @@ MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
 void
 MR_sem_init(MercurySem *sem, unsigned int value)
 {
+#if defined(MR_USE_LIBDISPATCH)
+    *sem = dispatch_semaphore_create(value);
+    if (*sem == NULL) {
+        MR_perror("cannot initialize semaphore");
+        exit(EXIT_FAILURE);
+    }
+#else // !MR_USE_LIBDISPATCH
+    // XXX we should check errno and say *why* we could not initialize
+    // the semaphore.
     if (sem_init(sem, 0, value) == -1) {
         MR_perror("cannot initialize semaphore");
         exit(EXIT_FAILURE);
     }
+#endif
 }
 
 int
@@ -430,7 +440,11 @@ MR_sem_wait(MercurySem *sem, const char *from)
         "%" MR_INTEGER_LENGTH_MODIFIER "d waiting on sem: %p (%s)\n",
         MR_SELF_THREAD_ID, sem, from);
     fflush(stderr);
+#if defined(MR_USE_LIBDISPATCH)
+    err = dispatch_semaphore_wait(*sem, DISPATCH_TIME_FOREVER);
+#else
     err = sem_wait(sem);
+#endif
     fprintf(stderr,
         "%" MR_INTEGER_LENGTH_MODIFIER "d wait returned %d\n",
         MR_SELF_THREAD_ID, err);
@@ -449,8 +463,8 @@ MR_sem_timed_wait(MercurySem *sem, const struct timespec *abstime,
         "%" MR_INTEGER_LENGTH_MODIFIER "d timed wait on sem: %p (%s)\n",
             MR_SELF_THREAD_ID, sem, from);
     fflush(stderr);
-#if defined(MR_MAC_OSX)
-    MR_fatal_error("sem_timedwait not supported on Mac OS X");
+#if defined(MR_USE_LIBDISPATCH)
+    err = dispatch_semaphore_wait(*sem, dispatch_walltime(abstime, 0));
 #else
     err = sem_timedwait(sem, abstime);
 #endif
@@ -471,7 +485,11 @@ MR_sem_post(MercurySem *sem, const char *from)
         "%" MR_INTEGER_LENGTH_MODIFIER "d posting to sem: %p (%s)\n",
         MR_SELF_THREAD_ID, sem, from);
     fflush(stderr);
+#if defined(MR_USE_LIBDISPATCH)
+    err = dispatch_semaphore_signal(*sem);
+#else
     err = sem_post(sem);
+#endif
     fprintf(stderr,
         "%" MR_INTEGER_LENGTH_MODIFIER "d post returned %d\n",
         MR_SELF_THREAD_ID, err);
@@ -483,10 +501,14 @@ MR_sem_post(MercurySem *sem, const char *from)
 void
 MR_sem_destroy(MercurySem *sem)
 {
+#if defined(MR_USE_LIBDISPATCH)
+   dispatch_release(*sem);
+#else
    if (sem_destroy(sem) == -1) {
         MR_perror("cannot destroy semaphore");
         exit(EXIT_FAILURE);
     }
+#endif
 }
 
 // For pthreads-win32 MR_null_thread() is defined as follows. For other

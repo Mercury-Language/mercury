@@ -51,8 +51,15 @@
 
 // Mac OS X specific.
 
+// MR_USE_LIBDISPATCH is defined if we should use libdispatch to provide
+// concurrency operations.  Currently, we only do this on OS X.  In the
+// future, we may do so for other OSs (e.g. FreeBSD).
+
 #if defined(__APPLE__) && defined(__MACH__)
   #define MR_MAC_OSX
+  #if defined(MR_HAVE_DISPATCH_DISPATCH_H)
+     #define MR_USE_LIBDISPATCH
+  #endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////

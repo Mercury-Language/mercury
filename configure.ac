@@ -1346,7 +1346,7 @@ MERCURY_CHECK_FOR_HEADERS( \
         sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
         sys/resource.h sys/stropts.h windows.h dirent.h getopt.h malloc.h \
         semaphore.h pthread.h time.h spawn.h fenv.h sys/mman.h sys/sem.h \
-        sched.h utmpx.h)
+        sched.h utmpx.h dispatch/dispatch.h)
 
 if test "$MR_HAVE_GETOPT_H" = 1; then
     GETOPT_H_AVAILABLE=yes
