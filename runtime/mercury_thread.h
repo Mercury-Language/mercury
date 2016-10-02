@@ -88,7 +88,7 @@
         dispatch_semaphore_wait(*(sem), DISPATCH_TIME_FOREVER)
       #define MR_SEM_POST(sem, from)  dispatch_semaphore_signal(*(sem))
       #define MR_SEM_TIMED_WAIT(sem, abstime, from)                     \
-        dispatch_semaphore_wait(*(sem), dispatch_walltime((abstime))
+        dispatch_semaphore_wait(*(sem), dispatch_walltime((abstime), 0)
     #else
       #define MR_SEM_WAIT(sem, from)  sem_wait((sem))
       #define MR_SEM_POST(sem, from)  sem_post((sem))
