@@ -232,7 +232,6 @@
 :- implementation.
 
 :- import_module libs.compute_grade.
-:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module parse_tree.error_util.
@@ -1377,12 +1376,7 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
 
 make_init_obj_file(Globals, ErrorStream, ModuleName, ModuleNames, Result,
         !IO) :-
-    globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_make(opmm_must_rebuild) then
-        MustCompile = yes
-    else
-        MustCompile = no
-    ),
+    globals.lookup_bool_option(Globals, rebuild, MustCompile),
     do_make_init_obj_file(Globals, ErrorStream, MustCompile, ModuleName,
         ModuleNames, Result, !IO).
 
@@ -1440,13 +1434,7 @@ do_make_init_obj_file(Globals, ErrorStream, MustCompile, ModuleName,
 
 make_erlang_program_init_file(Globals, ErrorStream, ModuleName, ModuleNames,
         Result, !IO) :-
-    globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_make(opmm_must_rebuild) then
-        MustCompile = yes
-    else
-        MustCompile = no
-    ),
-
+    globals.lookup_bool_option(Globals, rebuild, MustCompile),
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
     grade_directory_component(Globals, GradeDir),

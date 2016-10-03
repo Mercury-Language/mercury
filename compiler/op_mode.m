@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2015-2016 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,17 +30,11 @@
     % with each type and subtype corresponding to one decision point.
     %
 :- type op_mode
-    --->    opm_top_make(op_mode_make)
+    --->    opm_top_make
     ;       opm_top_generate_source_file_mapping
     ;       opm_top_generate_standalone_interface(string)
     ;       opm_top_query(op_mode_query)
     ;       opm_top_args(op_mode_args).
-
-%---------------------%
-
-:- type op_mode_make
-    --->    opmm_need_not_rebuild
-    ;       opmm_must_rebuild.
 
 %---------------------%
 
@@ -110,7 +104,15 @@
 :- pred decide_op_mode(option_table::in, op_mode::out, list(op_mode)::out)
     is det.
 
-:- func op_mode_to_option_string(op_mode) = string.
+    % Return the option string that would cause the selection of the specified
+    % op_mode, for use in error messages about the simultaneous specification
+    % of options that call for incompatible op_modes.
+    %
+    % We can select the opm_top_make op_mode in response to two options:
+    % --make and --rebuild. To let us return the right one, we also take
+    % the value of the globals.
+    % 
+:- func op_mode_to_option_string(option_table, op_mode) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -133,6 +135,7 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
         set.init(!:OpModeSet),
         list.foldl(gather_bool_op_mode(OptionTable), bool_op_modes,
             !OpModeSet),
+
         map.lookup(OptionTable, generate_standalone_interface,
             GenStandaloneOption),
         ( if GenStandaloneOption = maybe_string(MaybeBaseName) then
@@ -144,7 +147,7 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
                     !OpModeSet)
             )
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 "generate_standalone_interface is not maybe_string")
         ),
 
@@ -154,8 +157,7 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
             InvokedByMMCMake),
         (
             InvokedByMMCMake = yes,
-            set.delete(opm_top_make(opmm_need_not_rebuild), !OpModeSet),
-            set.delete(opm_top_make(opmm_must_rebuild), !OpModeSet)
+            set.delete(opm_top_make, !OpModeSet)
         ;
             InvokedByMMCMake = no
         ),
@@ -177,20 +179,11 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
                 % the values of the other options that specify other op modes
                 % to "yes", presumably to control what the code in the make
                 % package does. (XXX We shouldn't, but that is another issue.)
-                % If this is the case, then this module should just hand off
-                % control to the make package, and let it take things
-                % from there.
-                %
-                % --make may be specified with or without --rebuild.
-                % "With" takes precedence.
-                set.member(opm_top_make(opmm_must_rebuild), !.OpModeSet)
+                % In such cases, we just hand off control to the make package,
+                % and let it take things from there.
+                set.member(opm_top_make, !.OpModeSet)
             then
-                OpMode = opm_top_make(opmm_must_rebuild),
-                OtherOpModes = []
-            else if
-                set.member(opm_top_make(opmm_need_not_rebuild), !.OpModeSet)
-            then
-                OpMode = opm_top_make(opmm_need_not_rebuild),
+                OpMode = opm_top_make,
                 OtherOpModes = []
             else if
                 % The second reason is that Mercury.options file may specify
@@ -226,7 +219,7 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
 
 may_be_together_with_check_only(OpMode) = MayBeTogether :-
     (
-        ( OpMode = opm_top_make(_)
+        ( OpMode = opm_top_make
         ; OpMode = opm_top_generate_source_file_mapping
         ; OpMode = opm_top_generate_standalone_interface(_)
         ; OpMode = opm_top_query(_)
@@ -275,16 +268,21 @@ gather_bool_op_mode(OptionTable, Option - OpMode, !OpModeSet) :-
             BoolValue = no
         )
     else
-        unexpected($module, $pred, "not a boolean")
+        unexpected($pred, "not a boolean")
     ).
 
 :- func bool_op_modes = assoc_list(option, op_mode).
 
 bool_op_modes = [
     only_opmode_make -
-        opm_top_make(opmm_need_not_rebuild),
-    only_opmode_rebuild -
-        opm_top_make(opmm_must_rebuild),
+        opm_top_make,
+    % Although --rebuild on the command line implies --make, once the effect
+    % of --make is suppressed by the compiler's internally-generated
+    % --invoked-by-mmc-make, the value of --rebuild still affects the actions
+    % of the other op_modes. This is why the compiler's internal name
+    % of the --rebuild option is not only_opmode_rebuild.
+    rebuild -
+        opm_top_make,
 
     only_opmode_generate_source_file_mapping -
         opm_top_generate_source_file_mapping,
@@ -358,15 +356,20 @@ bool_op_modes = [
 
 %---------------------------------------------------------------------------%
 
-op_mode_to_option_string(MOP) = Str :-
+op_mode_to_option_string(OptionTable, MOP) = Str :-
     (
-        MOP = opm_top_make(MOPM),
-        (
-            MOPM = opmm_need_not_rebuild,
-            Str = "--make"
-        ;
-            MOPM = opmm_must_rebuild,
-            Str = "--rebuild"
+        MOP = opm_top_make,
+        map.lookup(OptionTable, rebuild, RebuildOption),
+        ( if RebuildOption = bool(Rebuild) then
+            (
+                Rebuild = no,
+                Str = "--make"
+            ;
+                Rebuild = yes,
+                Str = "--rebuild"
+            )
+        else
+            unexpected($pred, "rebuild option is not bool")
         )
     ;
         MOP = opm_top_generate_source_file_mapping,
@@ -472,8 +475,7 @@ op_mode_to_option_string(MOP) = Str :-
                     % We only set this module of operation if none of the
                     % others is specified by options, so this op should
                     % NEVER conflict with any others.
-                    unexpected($module, $pred,
-                        "opmcg_target_object_and_executable")
+                    unexpected($pred, "opmcg_target_object_and_executable")
                 )
             )
         )

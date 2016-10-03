@@ -195,7 +195,7 @@ convert_option_table_result_to_globals(MaybeOptionTable0, !:Specs, Globals,
             OtherOpModes = []
         ;
             OtherOpModes = [_ | _],
-            OpModeStrs = list.map(op_mode_to_option_string,
+            OpModeStrs = list.map(op_mode_to_option_string(OptionTable),
                 [OpMode | OtherOpModes]),
             OpModePieces = [words("Error: only one of the following options"),
                 words("may be given:")] ++
@@ -987,7 +987,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
         InvokedByMMCMake),
     ( if
-        ( OpMode = opm_top_make(_)
+        ( OpMode = opm_top_make
         ; InvokedByMMCMake = yes
         )
     then
@@ -1002,7 +1002,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         generate_mmc_make_module_dependencies, bool(no), !Globals),
 
     % --libgrade-install-check only works with --make.
-    ( if OpMode = opm_top_make(_) then
+    ( if OpMode = opm_top_make then
         true
     else
         globals.set_option(libgrade_install_check, bool(no), !Globals)
@@ -1015,7 +1015,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         TransOpt = yes,
         ( if
             ( InvokedByMMCMake = yes
-            ; OpMode = opm_top_make(_)
+            ; OpMode = opm_top_make
             )
         then
             TransOptMakeSpec =

@@ -949,7 +949,7 @@
 
     % Build system options
     ;       only_opmode_make
-    ;       only_opmode_rebuild
+    ;       rebuild
     ;       keep_going
     ;       jobs
     ;       track_flags
@@ -1840,7 +1840,7 @@ option_defaults_2(link_option, [
 option_defaults_2(build_system_option, [
     % Build System Options
     only_opmode_make                    -   bool(no),
-    only_opmode_rebuild                 -   bool(no),
+    rebuild                             -   bool(no),
     keep_going                          -   bool(no),
     jobs                                -   int(1),
     track_flags                         -   bool(no),
@@ -1930,7 +1930,7 @@ short_option('o', output_file_name).
 short_option('O', opt_level).
 short_option('p', profiling).
 short_option('P', only_opmode_convert_to_mercury).
-short_option('r', only_opmode_rebuild).
+short_option('r', rebuild).
 short_option('R', runtime_link_library_directories).
 short_option('s', grade).
 short_option('S', statistics).
@@ -2808,7 +2808,7 @@ long_option("java-archive-command", java_archive_command).
 % build system options
 long_option("make",                 only_opmode_make).
 long_option("keep-going",           keep_going).
-long_option("rebuild",              only_opmode_rebuild).
+long_option("rebuild",              rebuild).
 long_option("jobs",                 jobs).
 long_option("track-flags",          track_flags).
 long_option("track-options",        track_flags).

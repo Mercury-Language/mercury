@@ -66,14 +66,14 @@
 
 :- type dependency_file
     --->    dep_target(target_file)
-                        % A target which could be made.
-    ;       dep_file(file_name, maybe(option)).
-                        % An ordinary file which `mmc --make' does not know
-                        % how to rebuild. The option gives a list of
-                        % directories in which to search.
+            % A target which could be made.
 
-    % Return a closure which will find the dependencies for
-    % a target type given a module name.
+    ;       dep_file(file_name, maybe(option)).
+            % An ordinary file which `mmc --make' does not know how to rebuild.
+            % The option gives a list of directories in which to search.
+
+    % Return a closure which will find the dependencies for a target type
+    % given a module name.
     %
 :- func target_dependencies(globals::in, module_target_type::in) =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
@@ -186,7 +186,6 @@
 
 :- implementation.
 
-:- import_module libs.op_mode.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data_foreign.
 
@@ -1329,13 +1328,15 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
                 debug_make_msg(Globals, WriteMissingDeps, !IO)
             )
         else
-            globals.get_op_mode(Globals, OpMode),
-            ( if OpMode = opm_top_make(opmm_must_rebuild) then
-                % With `--rebuild', a target is always considered to be
+            globals.lookup_bool_option(Globals, rebuild, Rebuild),
+            (
+                Rebuild = yes,
+                % With `--rebuild', we always consider the target to be
                 % out-of-date, regardless of the timestamps of its
                 % dependencies.
                 DepsResult = deps_out_of_date
-            else
+            ;
+                Rebuild = no,
                 ( if newer_timestamp(DepTimestamps, Timestamp) then
                     debug_newer_dependencies(Globals, TargetFileName,
                         MaybeTimestamp, DepFiles, DepTimestamps, !IO),

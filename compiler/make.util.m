@@ -344,7 +344,6 @@
 
 :- import_module analysis.
 :- import_module libs.handle_options.
-:- import_module libs.op_mode.
 :- import_module libs.process_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_foreign.
@@ -436,8 +435,7 @@ foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Globals,
             Success0 = yes,
             % Disable the `--rebuild' option during the sequential pass
             % otherwise all the targets will be built a second time.
-            globals.set_op_mode(opm_top_make(opmm_need_not_rebuild),
-                Globals, NoRebuildGlobals),
+            globals.set_option(rebuild, bool(no), Globals, NoRebuildGlobals),
             foldl2_maybe_stop_at_error(KeepGoing, MakeTarget, NoRebuildGlobals,
                 Targets, Success, !Info, !IO)
         ;

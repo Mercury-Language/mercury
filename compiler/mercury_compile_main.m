@@ -518,7 +518,7 @@ main_after_setup(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
 do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
         OptionArgs, Args, !IO) :-
     (
-        OpMode = opm_top_make(_),
+        OpMode = opm_top_make,
         make_process_compiler_args(Globals, DetectedGradeFlags,
             OptionVariables, OptionArgs, Args, !IO)
     ;
