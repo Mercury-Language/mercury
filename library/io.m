@@ -3032,20 +3032,22 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
     Size = mercury__io:mercury_get_file_size(Stream)
 ").
 
+%---------------------------------------------------------------------------%
+
 file_modification_time(File, Result, !IO) :-
-    file_modification_time_2(File, Status, Msg, Time, !IO),
-    ( if Status = 1 then
-        Result = ok(Time)
+    file_modification_time_2(File, Time, Error, !IO),
+    ( if is_error(Error, "can't get file modification time: ", Message) then
+        Result = error(io_error(Message))
     else
-        Result = error(io_error(Msg))
+        Result = ok(Time)
     ).
 
-:- pred io.file_modification_time_2(string::in, int::out, string::out,
-    time_t::out, io::di, io::uo) is det.
+:- pred file_modification_time_2(string::in, time_t::out, system_error::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    file_modification_time_2(FileName::in, Status::out, Msg::out,
-        Time::out, _IO0::di, _IO::uo),
+    file_modification_time_2(FileName::in, Time::out, Error::out,
+        _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -3059,146 +3061,109 @@ file_modification_time(File, Result, !IO) :-
   #endif
 
     if (stat_result == 0) {
+        /* XXX avoid ML_construct_time_t by returning time_t_rep? */
         Time = ML_construct_time_t(s.st_mtime);
-        Msg = MR_string_const("""", 0);
-        Status = 1;
+        Error = 0;
     } else {
-        ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            MR_ALLOC_ID, Msg);
-        Status = 0;
-        Time = 0;   /* Dummy value -- will not be used. */
+        Error = errno;
+        Time = 0;
     }
 #else
-    Status = 0;
-    Msg = MR_make_string_const(
-        ""io.file_modification_time not available on this platform"");
+    Error = ENOSYS;
+    Time = 0;
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-    file_modification_time_2(FileName::in, Status::out, Msg::out,
-        Time::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
+    file_modification_time_2(FileName::in, Time::out, Error::out,
+        _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
     try {
         if (System.IO.File.Exists(FileName)) {
             System.DateTime t = System.IO.File.GetLastWriteTime(FileName);
             Time = time.ML_construct_time_t(t);
-            Msg = """";
-            Status = 1;
+            Error = null;
         } else {
-            Msg = ""File not found"";
+            Error = new System.IO.FileNotFoundException();
             Time = null;
-            Status = 0;
         }
-
     } catch (System.Exception e) {
-        Msg = ""GetLastWriteTime() failed: "" + e.Message;
+        Error = e;
         Time = null;
-        Status = 0;
     }
-}").
+").
 
 :- pragma foreign_proc("Java",
-    file_modification_time_2(FileName::in, Status::out, Msg::out,
-        Time::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+    file_modification_time_2(FileName::in, Time::out, Error::out,
+        _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    java.util.Date date = new java.util.Date();
     try {
-        long time = (new java.io.File(FileName)).lastModified();
-        if (time == 0) {
-            throw new java.lang.Exception(""File not found or I/O error"");
+        long modtime = (new java.io.File(FileName)).lastModified();
+        if (modtime == 0) {
+            Error = new java.io.FileNotFoundException(
+                ""File not found or I/O error"");
+            Time = null;
+        } else {
+            Time = time.ML_construct_time_t(new java.util.Date(modtime));
+            Error = null;
         }
-        date.setTime(time);
-        Msg = """";
-        Status = 1;
     } catch (java.lang.Exception e) {
-        Msg = ""lastModified() failed: "" + e.getMessage();
-        Status = 0;
+        Error = e;
+        Time = null;
     }
-    Time = time.ML_construct_time_t(date);
 ").
 
 :- pragma foreign_proc("Erlang",
-    file_modification_time_2(FileName::in, Status::out, Msg::out,
-        Time::out, _IO0::di, _IO::uo),
+    file_modification_time_2(FileName::in, Time::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     FileNameStr = binary_to_list(FileName),
     case filelib:last_modified(FileNameStr) of
         {YMD, HMS} ->
-            Status = 1,
-            Msg = <<>>,
             % time_t in Erlang is in UTC.
-            Time = {time_t, erlang:localtime_to_universaltime({YMD, HMS})};
-        _ ->
-            Status = 0,
-            Msg = <<""filelib:last_modified failed"">>,
-            Time = -1
+            Time = {time_t, erlang:localtime_to_universaltime({YMD, HMS})},
+            Error = ok;
+        0 ->
+            Error = {error, enoent},
+            Time = {time_t, erlang:localtime()}
     end
 ").
 
 %---------------------------------------------------------------------------%
 
-file_type(FollowSymLinks, FileName, MaybeType, !IO) :-
-    ( if file_type_implemented then
-        (
-            FollowSymLinks = yes,
-            FollowSymLinksInt = 1
-        ;
-            FollowSymLinks = no,
-            FollowSymLinksInt = 0
-        ),
-        io.file_type_2(FollowSymLinksInt, FileName, MaybeType, !IO)
+:- pragma foreign_export_enum("C", file_type/0,
+    [prefix("ML_FILE_TYPE_"), uppercase]).
+:- pragma foreign_export_enum("C#", file_type/0,
+    [prefix("ML_FILE_TYPE_"), uppercase]).
+:- pragma foreign_export_enum("Java", file_type/0,
+    [prefix("ML_FILE_TYPE_"), uppercase]).
+
+file_type(FollowSymLinks, FileName, Result, !IO) :-
+    (
+        FollowSymLinks = yes,
+        FollowSymLinksInt = 1
+    ;
+        FollowSymLinks = no,
+        FollowSymLinksInt = 0
+    ),
+    file_type_2(FollowSymLinksInt, FileName, FileType, Error,  !IO),
+    ( if is_error(Error, "can't find file type: ", Message) then
+        Result = error(io_error(Message))
     else
-        MaybeType = error(io.make_io_error(
-            "Sorry, io.file_type not implemented on this platform"))
+        Result = ok(FileType)
     ).
 
-:- pred file_type_implemented is semidet.
-
-file_type_implemented :-
-    semidet_fail.
-
-:- pragma foreign_proc("C",
-    file_type_implemented,
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-#ifdef MR_HAVE_STAT
-    SUCCESS_INDICATOR = MR_TRUE;
-#else
-    SUCCESS_INDICATOR = MR_FALSE;
-#endif
-").
-:- pragma foreign_proc("C#",
-    file_type_implemented,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true;
-").
-:- pragma foreign_proc("Java",
-    file_type_implemented,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true;
-").
-:- pragma foreign_proc("Erlang",
-    file_type_implemented,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true
-").
-
-:- pred file_type_2(int::in, string::in, io.res(io.file_type)::out,
+:- pred file_type_2(int::in, string::in, file_type::out, system_error::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    file_type_2(FollowSymLinks::in, FileName::in, Result::out,
+    file_type_2(FollowSymLinks::in, FileName::in, FileType::out, Error::out,
         _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_HAVE_STAT
@@ -3221,119 +3186,122 @@ file_type_implemented :-
   #endif
 
     if (stat_result == 0) {
-        MR_Word type;
-
-        #if defined(S_ISREG)
-            if (S_ISREG(s.st_mode)) {
-                type = ML_file_type_regular();
-            } else
-        #elif defined(S_IFMT) && defined(S_IFREG)
-            if ((s.st_mode & S_IFMT) == S_IFREG) {
-                type = ML_file_type_regular();
-            } else
-        #endif
-
-        #if defined(S_ISDIR)
-            if (S_ISDIR(s.st_mode)) {
-                type = ML_file_type_directory();
-            } else
-        #elif defined(S_IFMT) && defined(S_IFDIR)
-            if ((s.st_mode & S_IFMT) == S_IFDIR) {
-                type = ML_file_type_directory();
-            } else
-        #endif
-
-        #if defined(S_ISBLK)
-            if (S_ISBLK(s.st_mode)) {
-                type = ML_file_type_block_device();
-            } else
-        #elif defined(S_IFMT) && defined(S_IFBLK)
-            if ((s.st_mode & S_IFMT) == S_IFBLK) {
-                type = ML_file_type_block_device();
-            } else
-        #endif
-
-        #if defined(S_ISCHR)
-            if (S_ISCHR(s.st_mode)) {
-                type = ML_file_type_character_device();
-            } else
-        #elif defined(S_IFMT) && defined(S_IFCHR)
-            if ((s.st_mode & S_IFMT) == S_IFCHR) {
-                type = ML_file_type_character_device();
-            } else
-        #endif
-
-        #if defined(S_ISFIFO)
-            if (S_ISFIFO(s.st_mode)) {
-                type = ML_file_type_fifo();
-            } else
-        #elif defined(S_IFMT) && defined(S_IFIFO)
-            if ((s.st_mode & S_IFMT) == S_IFIFO) {
-                type = ML_file_type_fifo();
-            } else
-        #endif
-
-        #if defined(S_ISLNK)
-            if (S_ISLNK(s.st_mode)) {
-                type = ML_file_type_symbolic_link();
-            } else
-        #elif defined(S_IFMT) && defined(S_IFLNK)
-            if ((s.st_mode & S_IFMT) == S_IFLNK) {
-                type = ML_file_type_symbolic_link();
-            } else
-        #endif
-
-        #if defined(S_ISSOCK)
-            if (S_ISSOCK(s.st_mode)) {
-                type = ML_file_type_socket();
-            } else
-        #elif defined(S_IFMT) && defined(S_IFSOCK)
-            if ((s.st_mode & S_IFMT) == S_IFSOCK) {
-                type = ML_file_type_socket();
-            } else
-        #endif
+        /* Do we still need the non-POSIX S_IFMT style? */
+        if
+            #if defined(S_ISREG)
+                (S_ISREG(s.st_mode))
+            #elif defined(S_IFMT) && defined(S_IFREG)
+                ((s.st_mode & S_IFMT) == S_IFREG)
+            #else
+                (0)
+            #endif
+        {
+            FileType = ML_FILE_TYPE_REGULAR_FILE;
+        }
+        else if
+            #if defined(S_ISDIR)
+                (S_ISDIR(s.st_mode))
+            #elif defined(S_IFMT) && defined(S_IFDIR)
+                ((s.st_mode & S_IFMT) == S_IFDIR)
+            #else
+                (0)
+            #endif
+        {
+            FileType = ML_FILE_TYPE_DIRECTORY;
+        }
+        else if
+            #if defined(S_ISBLK)
+                (S_ISBLK(s.st_mode))
+            #elif defined(S_IFMT) && defined(S_IFBLK)
+                ((s.st_mode & S_IFMT) == S_IFBLK)
+            #else
+                (0)
+            #endif
+        {
+            FileType = ML_FILE_TYPE_BLOCK_DEVICE;
+        }
+        else if
+            #if defined(S_ISCHR)
+                (S_ISCHR(s.st_mode))
+            #elif defined(S_IFMT) && defined(S_IFCHR)
+                ((s.st_mode & S_IFMT) == S_IFCHR)
+            #else
+                (0)
+            #endif
+        {
+            FileType = ML_FILE_TYPE_CHARACTER_DEVICE;
+        }
+        else if
+            #if defined(S_ISFIFO)
+                (S_ISFIFO(s.st_mode))
+            #elif defined(S_IFMT) && defined(S_IFIFO)
+                ((s.st_mode & S_IFMT) == S_IFIFO)
+            #else
+                (0)
+            #endif
+        {
+            FileType = ML_FILE_TYPE_NAMED_PIPE;
+        }
+        else if
+            #if defined(S_ISLNK)
+                (S_ISLNK(s.st_mode))
+            #elif defined(S_IFMT) && defined(S_IFLNK)
+                ((s.st_mode & S_IFMT) == S_IFLNK)
+            #else
+                (0)
+            #endif
+        {
+            FileType = ML_FILE_TYPE_SYMBOLIC_LINK;
+        }
+        else if
+            #if defined(S_ISSOCK)
+                (S_ISSOCK(s.st_mode))
+            #elif defined(S_IFMT) && defined(S_IFSOCK)
+                ((s.st_mode & S_IFMT) == S_IFSOCK)
+            #else
+                (0)
+            #endif
+        {
+            FileType = ML_FILE_TYPE_SOCKET;
+        } else {
 
         #ifdef S_TYPEISMQ
             if (S_TYPEISMQ(&s)) {
-                type = ML_file_type_message_queue();
+                FileType = ML_FILE_TYPE_MESSAGE_QUEUE;
             } else
         #endif
 
         #ifdef S_TYPEISSEM
             if (S_TYPEISSEM(&s)) {
-                type = ML_file_type_semaphore();
+                FileType = ML_FILE_TYPE_SEMAPHORE;
             } else
         #endif
 
         #ifdef S_TYPEISSHM
             if (S_TYPEISSHM(&s)) {
-                type = ML_file_type_shared_memory();
+                FileType = ML_FILE_TYPE_SHARED_MEMORY;
             } else
         #endif
 
             {
-                type = ML_file_type_unknown();
+                FileType = ML_FILE_TYPE_UNKNOWN;
             }
-
-        Result = ML_make_io_res_1_ok_file_type(type);
+        }
+        Error = 0;
     } else {
-        /*
-        ** We can't just call ML_make_err_msg here because
-        ** it uses `hp' and this procedure can call Mercury.
-        */
-        ML_make_io_res_1_error_file_type(errno,
-            MR_make_string_const(""io.file_type failed: ""), &Result);
+        FileType = ML_FILE_TYPE_UNKNOWN;
+        Error = errno;
     }
 #else
-    MR_fatal_error(
-        ""Sorry, io.file_type not implemented on this platform"") }
+    FileType = ML_FILE_TYPE_UNKNOWN;
+    Error = ENOSYS;
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-    file_type_2(_FollowSymLinks::in, FileName::in, Result::out,
+    file_type_2(_FollowSymLinks::in, FileName::in, FileType::out, Error::out,
         _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
         System.IO.FileAttributes attrs =
@@ -3341,49 +3309,52 @@ file_type_implemented :-
         if ((attrs & System.IO.FileAttributes.Directory) ==
             System.IO.FileAttributes.Directory)
         {
-            Result = io.ML_make_io_res_1_ok_file_type(
-                io.ML_file_type_directory());
+            FileType = io.ML_FILE_TYPE_DIRECTORY;
         }
         else if ((attrs & System.IO.FileAttributes.Device) ==
             System.IO.FileAttributes.Device)
         {
             // XXX It may be a block device, but .NET doesn't
             // distinguish between character and block devices.
-            Result = io.ML_make_io_res_1_ok_file_type(
-                io.ML_file_type_character_device());
+            FileType = io.ML_FILE_TYPE_CHARACTER_DEVICE;
         }
         else
         {
-            Result = io.ML_make_io_res_1_ok_file_type(
-                io.ML_file_type_regular());
+            FileType = io.ML_FILE_TYPE_REGULAR_FILE;
         }
+        Error = null;
     } catch (System.Exception e) {
-        Result = io.ML_make_io_res_1_error_file_type(e,
-            ""can't find file type: "");
+        FileType = ML_FILE_TYPE_UNKNOWN;
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    file_type_2(_FollowSymLinks::in, FileName::in,
-        Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    file_type_2(_FollowSymLinks::in, FileName::in, FileType::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    java.io.File file = new java.io.File(FileName);
-
     // The Java implementation can distinguish between regular files and
     // directories, and for everything else it just returns unknown.
 
-    if (file.isFile()) {
-        Result = new io.Res_1.Ok_1(ML_file_type_regular());
-    } else if (file.isDirectory()) {
-        Result = new io.Res_1.Ok_1(ML_file_type_directory());
-    } else if (file.exists()) {
-        Result = new io.Res_1.Ok_1(ML_file_type_unknown());
-    } else {
-        Result = io.ML_make_io_res_1_error_file_type(
-            new java.lang.Exception(""No such file or directory""),
-            ""io.file_type failed: "");
+    FileType = io.ML_FILE_TYPE_UNKNOWN;
+    Error = null;
+
+    try {
+        java.io.File file = new java.io.File(FileName);
+        if (file.isFile()) {
+            FileType = io.ML_FILE_TYPE_REGULAR_FILE;
+        } else if (file.isDirectory()) {
+            FileType = io.ML_FILE_TYPE_DIRECTORY;
+        } else if (file.exists()) {
+            FileType = io.ML_FILE_TYPE_UNKNOWN;
+        } else {
+            Error = new java.io.FileNotFoundException(
+                ""File not found or I/O error"");
+        }
+    } catch (java.lang.Exception e) {
+        Error = e;
     }
 ").
 
@@ -3392,9 +3363,9 @@ file_type_implemented :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    file_type_2(FollowSymLinks::in, FileName::in,
-        Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    file_type_2(FollowSymLinks::in, FileName::in, FileType::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
     FileNameStr = binary_to_list(FileName),
@@ -3409,112 +3380,22 @@ file_type_implemented :-
                 device ->
                     % XXX It may be a block device, but Erlang doesn't
                     % distinguish between character and block devices.
-                    Result = mercury__io:'ML_make_io_res_1_ok_file_type'(
-                        mercury__io:'ML_file_type_character_device'());
+                    FileType = {character_device};
                 directory ->
-                    Result = mercury__io:'ML_make_io_res_1_ok_file_type'(
-                        mercury__io:'ML_file_type_directory'());
+                    FileType = {directory};
                 regular ->
-                    Result = mercury__io:'ML_make_io_res_1_ok_file_type'(
-                        mercury__io:'ML_file_type_regular'());
+                    FileType = {regular_file};
                 symlink ->
-                    Result = mercury__io:'ML_make_io_res_1_ok_file_type'(
-                        mercury__io:'ML_file_type_symbolic_link'());
+                    FileType = {symbolic_link};
                 other ->
-                    Result = mercury__io:'ML_make_io_res_1_ok_file_type'(
-                        mercury__io:'ML_file_type_unknown'())
-            end;
+                    FileType = {unknown}
+            end,
+            Error = ok;
         {error, Reason} ->
-            Result = mercury__io:'ML_make_io_res_1_error_file_type'(Reason,
-                ""io.file_type failed: "")
+            FileType = {unknown},
+            Error = {error, Reason}
     end
 ").
-
-:- func file_type_character_device = file_type.
-:- func file_type_block_device = file_type.
-:- func file_type_fifo = file_type.
-:- func file_type_directory = file_type.
-:- func file_type_socket = file_type.
-:- func file_type_symbolic_link = file_type.
-:- func file_type_regular = file_type.
-:- func file_type_message_queue = file_type.
-:- func file_type_semaphore = file_type.
-:- func file_type_shared_memory = file_type.
-:- func file_type_unknown = file_type.
-
-file_type_character_device = character_device.
-file_type_block_device = block_device.
-file_type_fifo = named_pipe.
-file_type_directory = directory.
-file_type_socket = socket.
-file_type_symbolic_link = symbolic_link.
-file_type_regular = regular_file.
-file_type_message_queue = message_queue.
-file_type_semaphore = semaphore.
-file_type_shared_memory = shared_memory.
-file_type_unknown = unknown.
-
-    % XXX use pragma foreign_export_enum
-:- pragma foreign_export("C", file_type_character_device = out,
-    "ML_file_type_character_device").
-:- pragma foreign_export("C#", file_type_character_device = out,
-    "ML_file_type_character_device").
-:- pragma foreign_export("Erlang", file_type_character_device = out,
-    "ML_file_type_character_device").
-:- pragma foreign_export("C", file_type_block_device = out,
-    "ML_file_type_block_device").
-:- pragma foreign_export("C#", file_type_block_device = out,
-    "ML_file_type_block_device").
-:- pragma foreign_export("C", file_type_fifo = out,
-    "ML_file_type_fifo").
-:- pragma foreign_export("C#", file_type_fifo = out,
-    "ML_file_type_fifo").
-:- pragma foreign_export("C", file_type_directory = out,
-    "ML_file_type_directory").
-:- pragma foreign_export("C#", file_type_directory = out,
-    "ML_file_type_directory").
-:- pragma foreign_export("Java", file_type_directory = out,
-    "ML_file_type_directory").
-:- pragma foreign_export("Erlang", file_type_directory = out,
-    "ML_file_type_directory").
-:- pragma foreign_export("C", file_type_socket = out,
-    "ML_file_type_socket").
-:- pragma foreign_export("C#", file_type_socket = out,
-    "ML_file_type_socket").
-:- pragma foreign_export("C", file_type_symbolic_link = out,
-    "ML_file_type_symbolic_link").
-:- pragma foreign_export("C#", file_type_symbolic_link = out,
-    "ML_file_type_symbolic_link").
-:- pragma foreign_export("Erlang", file_type_symbolic_link = out,
-    "ML_file_type_symbolic_link").
-:- pragma foreign_export("C", file_type_regular = out,
-    "ML_file_type_regular").
-:- pragma foreign_export("C#", file_type_regular = out,
-    "ML_file_type_regular").
-:- pragma foreign_export("Java", file_type_regular = out,
-    "ML_file_type_regular").
-:- pragma foreign_export("Erlang", file_type_regular = out,
-    "ML_file_type_regular").
-:- pragma foreign_export("C", file_type_message_queue = out,
-    "ML_file_type_message_queue").
-:- pragma foreign_export("C#", file_type_message_queue = out,
-    "ML_file_type_message_queue").
-:- pragma foreign_export("C", file_type_semaphore = out,
-    "ML_file_type_semaphore").
-:- pragma foreign_export("C#", file_type_semaphore = out,
-    "ML_file_type_semaphore").
-:- pragma foreign_export("C", file_type_shared_memory = out,
-    "ML_file_type_shared_memory").
-:- pragma foreign_export("C#", file_type_shared_memory = out,
-    "ML_file_type_shared_memory").
-:- pragma foreign_export("C", file_type_unknown = out,
-    "ML_file_type_unknown").
-:- pragma foreign_export("C#", file_type_unknown = out,
-    "ML_file_type_unknown").
-:- pragma foreign_export("Java", file_type_unknown = out,
-    "ML_file_type_unknown").
-:- pragma foreign_export("Erlang", file_type_unknown = out,
-    "ML_file_type_unknown").
 
 %---------------------------------------------------------------------------%
 
@@ -3522,24 +3403,50 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     ( if have_dotnet then
         check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO)
     else
-        check_file_accessibility_2(FileName, AccessTypes, Result, !IO)
+        CheckRead = pred_to_bool(contains(AccessTypes, read)),
+        CheckWrite = pred_to_bool(contains(AccessTypes, write)),
+        CheckExecute = pred_to_bool(contains(AccessTypes, execute)),
+        check_file_accessibility_2(FileName, CheckRead, CheckWrite,
+            CheckExecute, Error, !IO),
+        ( if is_error(Error, "file not accessible: ", Message) then
+            Result = error(io_error(Message))
+        else
+            Result = ok
+        )
     ).
 
-:- pred check_file_accessibility_2(string::in, list(access_type)::in,
-    io.res::out, io::di, io::uo) is det.
+:- pred check_file_accessibility_2(string::in, bool::in, bool::in, bool::in,
+    system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
-        _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    check_file_accessibility_2(FileName::in, CheckRead::in,
+        CheckWrite::in, CheckExecute::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
 #if defined(MR_HAVE_ACCESS)
   #ifdef F_OK
-    int mode = F_OK;
+    const int MODE_EXISTS = F_OK;
   #else
-    int mode = 0;
+    const int MODE_EXISTS = 0;
   #endif
+  #ifdef X_OK
+    const int MODE_EXECUTE = X_OK;
+  #else
+    const int MODE_EXECUTE = 1;
+  #endif
+  #ifdef W_OK
+    const int MODE_WRITE = W_OK;
+  #else
+    const int MODE_WRITE = 2;
+  #endif
+  #ifdef R_OK
+    const int MODE_READ = R_OK;
+  #else
+    const int MODE_READ = 4;
+  #endif
+
+    int mode = MODE_EXISTS;
     int access_result;
 
   #if !defined(MR_WIN32) || defined(MR_CYGWIN)
@@ -3547,27 +3454,15 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     ** Earlier versions of MSVCRT ignored flags it doesn't support,
     ** later versions return an error (e.g. on Vista).
     */
-    if (ML_access_types_includes_execute(AccessTypes)) {
-      #ifdef X_OK
-        mode |= X_OK;
-      #else
-        mode |= 1;
-      #endif
+    if (CheckExecute) {
+        mode |= MODE_EXECUTE;
     }
   #endif
-    if (ML_access_types_includes_write(AccessTypes)) {
-  #ifdef W_OK
-        mode |= W_OK;
-  #else
-        mode |= 2;
-  #endif
+    if (CheckWrite) {
+        mode |= MODE_WRITE;
     }
-    if (ML_access_types_includes_read(AccessTypes)) {
-  #ifdef R_OK
-        mode |= R_OK;
-  #else
-        mode |= 4;
-  #endif
+    if (CheckRead) {
+        mode |= MODE_READ;
     }
 
   #ifdef MR_WIN32
@@ -3577,36 +3472,34 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
   #endif
 
     if (access_result == 0) {
-        Result = ML_make_io_res_0_ok();
+        Error = 0;
     } else {
-        ML_make_io_res_0_error(errno,
-            MR_make_string_const(""file not accessible: ""), &Result);
+        Error = errno;
     }
 #else /* !MR_HAVE_ACCESS */
-    Result = ML_make_io_res_0_error_msg(
-        ""io.check_file_accessibility not supported on this platform"");
+    Error = ENOSYS;
 #endif
 ").
 
 :- pragma foreign_proc("Java",
-    check_file_accessibility_2(FileName::in, AccessTypes::in,
-        Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    check_file_accessibility_2(FileName::in, CheckRead::in, CheckWrite::in,
+        CheckExecute::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
     java.io.File file = new java.io.File(FileName);
     try {
         boolean ok = true;
 
-        if (ML_access_types_includes_read(AccessTypes)) {
+        if (CheckRead == bool.YES) {
             ok = file.canRead();
         }
 
-        if (ok && ML_access_types_includes_write(AccessTypes)) {
+        if (ok && CheckWrite == bool.YES) {
             ok = file.canWrite();
         }
 
-        if (ok && ML_access_types_includes_execute(AccessTypes)) {
+        if (ok && CheckExecute == bool.YES) {
             // File.canExecute() was added in Java 1.6 but we only require
             // Java 1.5.
             try {
@@ -3626,42 +3519,38 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
         }
 
         if (ok) {
-            Result = ML_make_io_res_0_ok();
+            Error = null;
         } else {
-            Result = ML_make_io_res_0_error_msg(
-                ""file not accessible: Permission denied"");
+            Error = new java.io.FileNotFoundException(""Permission denied"");
         }
     }
-    catch (java.lang.SecurityException e) {
-        Result = ML_make_io_res_0_error_msg(e.toString());
+    catch (java.lang.Exception e) {
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
-        _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    check_file_accessibility_2(FileName::in, CheckRead::in, CheckWrite::in,
+        _CheckExecute::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, may_not_duplicate],
 "
     FileNameStr = binary_to_list(FileName),
     case file:read_file_info(FileNameStr) of
         {ok, FileInfo} ->
             Access = FileInfo#file_info.access,
-            case mercury__io:'ML_access_types_includes_read'(AccessTypes) of
-                {} ->
+            case CheckRead of
+                {yes} ->
                     Ok0 = lists:member(Access, [read, read_write]);
-                fail ->
+                {no} ->
                     Ok0 = true
             end,
             case Ok0 of
                 true ->
-                    case
-                        mercury__io:'ML_access_types_includes_write'(
-                            AccessTypes)
-                    of
-                        {} ->
+                    case CheckWrite of
+                        {yes} ->
                             Ok = lists:member(Access, [write, read_write]);
-                        fail ->
+                        {no} ->
                             Ok = true
                     end;
                 false ->
@@ -3670,18 +3559,18 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
             % XXX test execute access somehow
             case Ok of
                 true ->
-                    Result = mercury__io:'ML_make_io_res_0_ok'();
+                    Error = ok;
                 false ->
-                    Result = mercury__io:'ML_make_io_res_0_error'(eacces,
-                        <<""file not accessible: "">>)
+                    Error = {error, eacces}
             end
     ;
         {error, Reason} ->
-            Result = mercury__io:'ML_make_io_res_0_error'(Reason,
-                <<""file not accessible: "">>)
+            Error = {error, Reason}
     end
 ").
 
+    % XXX why not write this as check_file_accessibility_2?
+    %
 :- pred check_file_accessibility_dotnet(string::in, list(access_type)::in,
     io.res::out, io::di, io::uo) is det.
 
@@ -3689,10 +3578,9 @@ check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
     % The .NET CLI doesn't provide an equivalent of access(), so we have to
     % try to open the file to see if it is accessible.
 
-    CheckRead0 = pred_to_bool(access_types_includes_read(AccessTypes)),
-    CheckWrite = pred_to_bool(access_types_includes_write(AccessTypes)),
-
-    CheckExec = pred_to_bool(access_types_includes_execute(AccessTypes)),
+    CheckRead0 = pred_to_bool(contains(AccessTypes, read)),
+    CheckWrite = pred_to_bool(contains(AccessTypes, write)),
+    CheckExec = pred_to_bool(contains(AccessTypes, execute)),
     % We need to be able to read a file to execute it.
     CheckRead = bool.or(CheckRead0, CheckExec),
 
@@ -3701,7 +3589,12 @@ check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
         FileTypeRes = ok(FileType),
         ( if FileType = directory then
             check_directory_accessibility_dotnet(FileName,
-                to_int(CheckRead), to_int(CheckWrite), Result, !IO)
+                CheckRead, CheckWrite, Error, !IO),
+            ( if is_error(Error, "file not accessible: ", Message) then
+                Result = error(io_error(Message))
+            else
+                Result = ok
+            )
         else
             (
                 CheckRead = yes,
@@ -3741,7 +3634,12 @@ check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
                 % directory.
                 CheckExec = yes
             then
-                have_dotnet_exec_permission(Result, !IO)
+                have_dotnet_exec_permission(Error, !IO),
+                ( if is_error(Error, "file not accessible: ", Message) then
+                    Result = error(io_error(Message))
+                else
+                    Result = ok
+                )
             else
                 Result = CheckWriteRes
             )
@@ -3751,62 +3649,60 @@ check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
         Result = error(FileTypeError)
     ).
 
-:- pred have_dotnet_exec_permission(io.res::out, io::di, io::uo) is det.
+:- pred have_dotnet_exec_permission(system_error::out, io::di, io::uo) is det.
 
-have_dotnet_exec_permission(Res, !IO) :-
+have_dotnet_exec_permission(Error, !IO) :-
     % Avoid determinism warnings.
     ( if semidet_succeed then
         error("io.have_dotnet_exec_permission invoked " ++
             "for non-.NET CLI backend")
     else
         % Never reached.
-        Res = ok
+        Error = no_error
     ).
 
 :- pragma foreign_proc("C#",
-    have_dotnet_exec_permission(Result::out, _IO0::di, _IO::uo),
-    [promise_pure, may_call_mercury, thread_safe, terminates],
-"{
+    have_dotnet_exec_permission(Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
     try {
-        // We need unrestricted permissions to execute
-        // unmanaged code.
+        // We need unrestricted permissions to execute unmanaged code.
         (new System.Security.Permissions.SecurityPermission(
             System.Security.Permissions.SecurityPermissionFlag.
             AllFlags)).Demand();
-        Result = io.ML_make_io_res_0_ok();
+        Error = null;
     } catch (System.Exception e) {
-        Result = io.ML_make_io_res_0_error(e,
-            ""execute permission check failed: "");
+        Error = e;
     }
+").
 
-}").
+:- pred check_directory_accessibility_dotnet(string::in, bool::in, bool::in,
+    system_error::out, io::di, io::uo) is det.
 
-:- pred check_directory_accessibility_dotnet(string::in, int::in, int::in,
-    io.res::out, io::di, io::uo) is det.
-
-check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
+check_directory_accessibility_dotnet(_, _, _, Error, !IO) :-
     % Avoid determinism warnings.
     ( if semidet_succeed then
         error("io.check_directory_accessibility_dotnet called " ++
             "for non-.NET CLI backend")
     else
         % Never reached.
-        Res = ok
+        Error = no_error
     ).
 
 :- pragma foreign_proc("C#",
     check_directory_accessibility_dotnet(FileName::in, CheckRead::in,
-        CheckWrite::in, Result::out, _IO0::di, _IO::uo),
-    [promise_pure, may_call_mercury, tabled_for_io, thread_safe, terminates],
-"{
+        CheckWrite::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
     try {
-        if (CheckRead != 0) {
+        Error = null;
+        if (CheckRead == mr_bool.YES) {
             // XXX This is less efficient than I would like.
             // Unfortunately the .NET CLI has no function
             // corresponding to access() or opendir().
             System.IO.Directory.GetFileSystemEntries(FileName);
         }
-        if (CheckWrite != 0) {
+        if (CheckWrite == mr_bool.YES) {
             // This will fail if the .NET CLI security regime
             // we're operating under doesn't allow writing
             // to the file. Even if this succeeds, the file
@@ -3825,120 +3721,15 @@ check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
             if ((attrs & System.IO.FileAttributes.ReadOnly) ==
                 System.IO.FileAttributes.ReadOnly)
             {
-                throw (new System.Exception(""file is read-only""));
+                Error = new System.Exception(""file is read-only"");
             }
         }
-        Result = io.ML_make_io_res_0_ok();
     } catch (System.Exception e) {
-        Result = io.ML_make_io_res_0_error(e, ""permission check failed: "");
+        Error = e;
     }
-}").
+").
 
-:- pred access_types_includes_read(list(access_type)::in) is semidet.
-:- pragma foreign_export("C", access_types_includes_read(in),
-    "ML_access_types_includes_read").
-:- pragma foreign_export("C#", access_types_includes_read(in),
-    "ML_access_types_includes_read").
-:- pragma foreign_export("Java", access_types_includes_read(in),
-    "ML_access_types_includes_read").
-:- pragma foreign_export("Erlang", access_types_includes_read(in),
-    "ML_access_types_includes_read").
-
-access_types_includes_read(Access) :-
-    list.member(read, Access).
-
-:- pred access_types_includes_write(list(access_type)::in) is semidet.
-:- pragma foreign_export("C", access_types_includes_write(in),
-    "ML_access_types_includes_write").
-:- pragma foreign_export("C#", access_types_includes_write(in),
-    "ML_access_types_includes_write").
-:- pragma foreign_export("Java", access_types_includes_write(in),
-    "ML_access_types_includes_write").
-:- pragma foreign_export("Erlang", access_types_includes_write(in),
-    "ML_access_types_includes_write").
-
-access_types_includes_write(Access) :-
-    list.member(write, Access).
-
-:- pred access_types_includes_execute(list(access_type)::in) is semidet.
-:- pragma foreign_export("C", access_types_includes_execute(in),
-    "ML_access_types_includes_execute").
-:- pragma foreign_export("C#", access_types_includes_execute(in),
-    "ML_access_types_includes_execute").
-:- pragma foreign_export("Java", access_types_includes_execute(in),
-    "ML_access_types_includes_execute").
-:- pragma foreign_export("Erlang", access_types_includes_execute(in),
-    "ML_access_types_includes_execute").
-
-access_types_includes_execute(Access) :-
-    list.member(execute, Access).
-
-:- func make_io_res_0_ok = io.res.
-:- pragma foreign_export("C", (make_io_res_0_ok = out),
-    "ML_make_io_res_0_ok").
-:- pragma foreign_export("C#", (make_io_res_0_ok = out),
-    "ML_make_io_res_0_ok").
-:- pragma foreign_export("Java", (make_io_res_0_ok = out),
-    "ML_make_io_res_0_ok").
-:- pragma foreign_export("Erlang", (make_io_res_0_ok = out),
-    "ML_make_io_res_0_ok").
-
-make_io_res_0_ok = ok.
-
-:- pred make_io_res_0_error(io.system_error::in, string::in, io.res::out,
-    io::di, io::uo) is det.
-:- pragma foreign_export("C", make_io_res_0_error(in, in, out, di, uo),
-    "ML_make_io_res_0_error").
-:- pragma foreign_export("C#", make_io_res_0_error(in, in, out, di, uo),
-    "ML_make_io_res_0_error").
-:- pragma foreign_export("Java", make_io_res_0_error(in, in, out, di, uo),
-    "ML_make_io_res_0_error").
-:- pragma foreign_export("Erlang", make_io_res_0_error(in, in, out, di, uo),
-    "ML_make_io_res_0_error").
-
-make_io_res_0_error(Error, Msg0, error(make_io_error(Msg)), !IO) :-
-    io.make_err_msg(Error, Msg0, Msg, !IO).
-
-:- func make_io_res_0_error_msg(string) = io.res.
-:- pragma foreign_export("C", (make_io_res_0_error_msg(in) = out),
-    "ML_make_io_res_0_error_msg").
-:- pragma foreign_export("C#", (make_io_res_0_error_msg(in) = out),
-    "ML_make_io_res_0_error_msg").
-:- pragma foreign_export("Java", (make_io_res_0_error_msg(in) = out),
-    "ML_make_io_res_0_error_msg").
-
-make_io_res_0_error_msg(Msg) = error(make_io_error(Msg)).
-
-:- func make_io_res_1_ok_file_type(file_type) = io.res(file_type).
-:- pragma foreign_export("C", (make_io_res_1_ok_file_type(in) = out),
-    "ML_make_io_res_1_ok_file_type").
-:- pragma foreign_export("C#", (make_io_res_1_ok_file_type(in) = out),
-    "ML_make_io_res_1_ok_file_type").
-:- pragma foreign_export("Java", (make_io_res_1_ok_file_type(in) = out),
-    "ML_make_io_res_1_ok_file_type").
-:- pragma foreign_export("Erlang", (make_io_res_1_ok_file_type(in) = out),
-    "ML_make_io_res_1_ok_file_type").
-
-make_io_res_1_ok_file_type(FileType) = ok(FileType).
-
-:- pred make_io_res_1_error_file_type(io.system_error::in,
-    string::in, io.res(file_type)::out, io::di, io::uo) is det.
-:- pragma foreign_export("C",
-    make_io_res_1_error_file_type(in, in, out, di, uo),
-    "ML_make_io_res_1_error_file_type").
-:- pragma foreign_export("C#",
-    make_io_res_1_error_file_type(in, in, out, di, uo),
-    "ML_make_io_res_1_error_file_type").
-:- pragma foreign_export("Java",
-    make_io_res_1_error_file_type(in, in, out, di, uo),
-    "ML_make_io_res_1_error_file_type").
-:- pragma foreign_export("Erlang",
-    make_io_res_1_error_file_type(in, in, out, di, uo),
-    "ML_make_io_res_1_error_file_type").
-
-make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg)), !IO) :-
-    io.make_err_msg(Error, Msg0, Msg, !IO).
-
+    % XXX only for dir.m
 :- func make_io_res_1_ok_string(string) = io.res(string).
 :- pragma foreign_export("C", (make_io_res_1_ok_string(in) = out),
     "ML_make_io_res_1_ok_string").
@@ -3951,6 +3742,7 @@ make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg)), !IO) :-
 
 make_io_res_1_ok_string(String) = ok(String).
 
+    % XXX only for dir.m
 :- pred make_io_res_1_error_string(io.system_error::in,
     string::in, io.res(string)::out, io::di, io::uo) is det.
 :- pragma foreign_export("C",
@@ -3968,25 +3760,6 @@ make_io_res_1_ok_string(String) = ok(String).
 
 make_io_res_1_error_string(Error, Msg0, error(make_io_error(Msg)), !IO) :-
     io.make_err_msg(Error, Msg0, Msg, !IO).
-
-:- func make_io_maybe_partial_res_1_ok_string(string)
-    = io.maybe_partial_res(string).
-:- pragma foreign_export("Java",
-    (make_io_maybe_partial_res_1_ok_string(in) = out),
-    "ML_make_io_maybe_partial_res_1_ok_string").
-
-make_io_maybe_partial_res_1_ok_string(String) = ok(String).
-
-:- pred make_io_maybe_partial_res_1_error_string(string::in,
-    io.system_error::in, string::in, io.maybe_partial_res(string)::out,
-    io::di, io::uo) is det.
-:- pragma foreign_export("Java",
-    make_io_maybe_partial_res_1_error_string(in, in, in, out, di, uo),
-    "ML_make_io_maybe_partial_res_1_error_string").
-
-make_io_maybe_partial_res_1_error_string(Partial, Error, Msg0, Res, !IO) :-
-    io.make_err_msg(Error, Msg0, Msg, !IO),
-    Res = error(Partial, make_io_error(Msg)).
 
 %---------------------------------------------------------------------------%
 

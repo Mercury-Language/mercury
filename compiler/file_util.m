@@ -403,7 +403,7 @@ write_include_file_contents(OutputStream, FileName, !IO) :-
         )
     ;
         MaybeType = error(Error),
-        Msg = string.remove_prefix_if_present("io.file_type failed: ",
+        Msg = string.remove_prefix_if_present("can't find file type: ",
             io.error_message(Error)),
         throw(include_file_error(FileName, Msg))
     ).
