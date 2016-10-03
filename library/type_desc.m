@@ -314,21 +314,6 @@ type_info_desc_same_representation :-
     semidet_true.
 
 %---------------------------------------------------------------------------%
-
-    % We need to call the rtti_implementation module -- so that we get the
-    % dependencies right it's easiest to do it from Mercury.
-
-:- pragma foreign_export("C", call_rtti_compare_type_infos(out, in, in),
-    "ML_call_rtti_compare_type_infos").
-
-:- pred call_rtti_compare_type_infos(comparison_result::out,
-    rtti_implementation.type_info::in, rtti_implementation.type_info::in)
-    is det.
-
-call_rtti_compare_type_infos(Res, T1, T2) :-
-    rtti_implementation.compare_type_infos(Res, T1, T2).
-
-%---------------------------------------------------------------------------%
 %
 % Code for type manipulation
 %

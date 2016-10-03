@@ -1443,12 +1443,6 @@ call_handler(Handler, Exception, Result) :-
     "ML_call_goal_det").
 :- pragma foreign_export("Java", call_goal(pred(out) is det, out),
     "ML_call_goal_det").
-:- pragma foreign_export("C", call_goal(pred(out) is semidet, out),
-    "ML_call_goal_semidet").
-:- pragma foreign_export("C#", call_goal(pred(out) is semidet, out),
-    "ML_call_goal_semidet").
-:- pragma foreign_export("Java", call_goal(pred(out) is semidet, out),
-    "ML_call_goal_semidet").
 
 % This causes problems because the LLDS back-end does not let you export
 % code with determinism `nondet'. Instead for C backends we hand-code it...
