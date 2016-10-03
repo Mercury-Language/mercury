@@ -816,8 +816,9 @@ time.gmtime(time_t(Time)) = TM :-
         Min::out, Sec::out, YD::out, WD::out, N::out),
     [will_not_call_mercury, promise_pure],
 "
-    {{Yr0, Mnt, MD}, {Hrs, Min, Sec}} = Time,
+    {{Yr0, Mnt0, MD}, {Hrs, Min, Sec}} = Time,
     Yr = Yr0 - 1900,
+    Mnt = Mnt0 - 1,
 
     DayNumber = calendar:date_to_gregorian_days(Yr, Mnt, MD),
     Jan1_Number = calendar:date_to_gregorian_days(Yr, 1, 1),
