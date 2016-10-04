@@ -1667,6 +1667,7 @@
 
     % A system-dependent error indication.
     % For C, this is 0 for success or the value of errno.
+    % (In a few cases, we pass a Win32 error as a system_error.)
     % For Java, this is null for success or an exception object.
     % For C#, this is null for success or an exception object.
     % For Erlang, this is `ok' for success or `{error, Reason}'.
@@ -1685,34 +1686,28 @@
     %
 :- pred is_error(system_error::in, string::in, io.error::out) is semidet.
 
+    % is_maybe_win32_error(Error, MessagePrefix, IOError):
+    % Same as is_error except that `Error' is a Win32 error value on Windows.
+    %
+:- pred is_maybe_win32_error(system_error::in, string::in, io.error::out)
+    is semidet.
+
     % make_err_msg(Error, MessagePrefix, Message):
     % `Message' is an error message obtained by looking up the
     % message for the given errno value and prepending
     % `MessagePrefix'.
     %
-:- pred make_err_msg(system_error::in, string::in, string::out,
-    io::di, io::uo) is det.
-
-    % make_win32_err_msg(Error, MessagePrefix, Message):
-    %
-    % `Message' is an error message obtained by looking up the
-    % error message for the given Win32 error number and prepending
-    % `MessagePrefix'.
-    % This will abort if called on a system which does not support
-    % the Win32 API.
-    %
-:- pred make_win32_err_msg(system_error::in,
-    string::in, string::out, io::di, io::uo) is det.
+:- pred make_err_msg(system_error::in, string::in, string::out) is det.
 
     % make_maybe_win32_err_msg(Error, MessagePrefix, Message):
     %
-    % `Message' is an error message obtained by looking up the
-    % last Win32 error message and prepending `MessagePrefix'.
-    % On non-Win32 systems, the message corresponding to the
-    % current value of errno will be used.
+    % `Message' is an error message obtained by looking up the error message
+    % for `Error' and prepending `MessagePrefix'.
+    % On Win32 systems, `Error' is obtained by calling GetLastError.
+    % On other systems `Error' is obtained by reading errno.
     %
-:- pred make_maybe_win32_err_msg(system_error::in,
-    string::in, string::out, io::di, io::uo) is det.
+:- pred make_maybe_win32_err_msg(system_error::in, string::in, string::out)
+    is det.
 
     % Return a unique identifier for the given file (after following
     % symlinks in FileName).
@@ -2161,7 +2156,7 @@ read_char(Stream, Result, !IO) :-
         Result = eof
     ;
         Result0 = error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
+        make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
 
@@ -2177,7 +2172,7 @@ read_char_unboxed(Stream, Result, Char, !IO) :-
         Result = eof
     ;
         Result0 = error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
+        make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
 
@@ -2199,7 +2194,7 @@ read_byte(binary_input_stream(Stream), Result, !IO) :-
         Result = eof
     ;
         Result0 = error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
+        make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
 
@@ -2469,7 +2464,7 @@ read_line(Stream, Result, !IO) :-
         Result = eof
     ;
         Result0 = error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
+        make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
 
@@ -2514,7 +2509,7 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
         Result = error(io_error("null character in input"))
     ;
         Res = error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
+        make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
 
@@ -3637,38 +3632,6 @@ check_directory_accessibility_dotnet(_, _, _, Error, !IO) :-
     }
 ").
 
-    % XXX only for dir.m
-:- func make_io_res_1_ok_string(string) = io.res(string).
-:- pragma foreign_export("C", (make_io_res_1_ok_string(in) = out),
-    "ML_make_io_res_1_ok_string").
-:- pragma foreign_export("C#", (make_io_res_1_ok_string(in) = out),
-    "ML_make_io_res_1_ok_string").
-:- pragma foreign_export("Java", (make_io_res_1_ok_string(in) = out),
-    "ML_make_io_res_1_ok_string").
-:- pragma foreign_export("Erlang", (make_io_res_1_ok_string(in) = out),
-    "ML_make_io_res_1_ok_string").
-
-make_io_res_1_ok_string(String) = ok(String).
-
-    % XXX only for dir.m
-:- pred make_io_res_1_error_string(io.system_error::in,
-    string::in, io.res(string)::out, io::di, io::uo) is det.
-:- pragma foreign_export("C",
-    make_io_res_1_error_string(in, in, out, di, uo),
-    "ML_make_io_res_1_error_string").
-:- pragma foreign_export("C#",
-    make_io_res_1_error_string(in, in, out, di, uo),
-    "ML_make_io_res_1_error_string").
-:- pragma foreign_export("Java",
-    make_io_res_1_error_string(in, in, out, di, uo),
-    "ML_make_io_res_1_error_string").
-:- pragma foreign_export("Erlang",
-    make_io_res_1_error_string(in, in, out, di, uo),
-    "ML_make_io_res_1_error_string").
-
-make_io_res_1_error_string(Error, Msg0, error(make_io_error(Msg)), !IO) :-
-    io.make_err_msg(Error, Msg0, Msg, !IO).
-
 %---------------------------------------------------------------------------%
 
 :- type file_id ---> file_id.
@@ -3805,8 +3768,7 @@ file_id(FileName, Result, !IO) :-
         Msg = MR_string_const("""", 0);
         Status = 1;
     } else {
-        ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            MR_ALLOC_ID, Msg);
+        ML_make_err_msg(errno, ""stat() failed: "", MR_ALLOC_ID, Msg);
         Status = 0;
     }
 #else
@@ -7302,9 +7264,8 @@ have_dotnet :-
 #include <errno.h>
 
 /*
-** ML_maybe_make_err_msg(was_error, errnum, msg, alloc_id, error_msg):
-** if `was_error' is true, then append `msg' and a message for errnum
-** to give `error_msg'; otherwise, set `error_msg' to "".
+** ML_make_err_msg(errnum, msg, alloc_id, error_msg):
+** Append `msg' and a message for errnum to give `error_msg'.
 **
 ** WARNING: this must only be called when the `hp' register is valid.
 ** That means it must only be called from procedures declared
@@ -7315,37 +7276,23 @@ have_dotnet :-
 ** invalidated by the function call.
 */
 
-#define ML_maybe_make_err_msg(was_error, errnum, msg, alloc_id, error_msg) \\
-    do {                                                                   \\
-        char    errbuf[MR_STRERROR_BUF_SIZE];                              \\
-        const char *errno_msg;                                             \\
-        size_t  total_len;                                                 \\
-        MR_Word tmp;                                                       \\
-                                                                           \\
-        if (was_error) {                                                   \\
-            errno_msg = MR_strerror(errnum, errbuf, sizeof(errbuf));       \\
-            total_len = strlen(msg) + strlen(errno_msg);                   \\
-            MR_offset_incr_hp_atomic_msg(tmp, 0,                           \\
-                (total_len + sizeof(MR_Word)) / sizeof(MR_Word),           \\
-                (alloc_id), ""string.string/0"");                          \\
-            (error_msg) = (char *) tmp;                                    \\
-            strcpy((error_msg), msg);                                      \\
-            strcat((error_msg), errno_msg);                                \\
-        } else {                                                           \\
-            /*                                                             \\
-            ** We can't just return NULL here, because otherwise mdb       \\
-            ** will break when it tries to print the string.               \\
-            */                                                             \\
-            (error_msg) = MR_make_string_const("""");                      \\
-        }                                                                  \\
+#define ML_make_err_msg(errnum, msg, alloc_id, error_msg)                   \\
+    do {                                                                    \\
+        char    errbuf[MR_STRERROR_BUF_SIZE];                               \\
+        const char *errno_msg;                                              \\
+        size_t  total_len;                                                  \\
+                                                                            \\
+        errno_msg = MR_strerror(errnum, errbuf, sizeof(errbuf));            \\
+        total_len = strlen(msg) + strlen(errno_msg);                        \\
+        MR_allocate_aligned_string_msg((error_msg), total_len, (alloc_id)); \\
+        strcpy((error_msg), msg);                                           \\
+        strcat((error_msg), errno_msg);                                     \\
     } while(0)
 
 /*
-** ML_maybe_make_win32_err_msg(was_error, error, msg, alloc_id, error_msg):
-** if `was_error' is true, then append `msg' and the string
-** returned by the Win32 API function FormatMessage() for the
-** last error to give `error_msg'; otherwise, set `error_msg' to "".
-** Aborts if MR_WIN32 is not defined.
+** ML_make_win32_err_msg(error, msg, alloc_id, error_msg):
+** Append `msg' and the string returned by the Win32 API function
+** FormatMessage() for the last error to give `error_msg'.
 **
 ** WARNING: this must only be called when the `hp' register is valid.
 ** That means it must only be called from procedures declared
@@ -7357,16 +7304,13 @@ have_dotnet :-
 */
 #ifdef MR_WIN32
 
-#define ML_maybe_make_win32_err_msg(was_error, error, msg, alloc_id,        \\
-        error_msg)                                                          \\
+#define ML_make_win32_err_msg(error, msg, alloc_id, error_msg)              \\
     do {                                                                    \\
         size_t total_len;                                                   \\
-        MR_Word tmp;                                                        \\
+        LPVOID  err_buf;                                                    \\
+        MR_bool free_err_buf = MR_TRUE;                                     \\
                                                                             \\
-        if (was_error) {                                                    \\
-            LPVOID  err_buf;                                                \\
-            MR_bool free_err_buf = MR_TRUE;                                 \\
-            if (!FormatMessage(                                             \\
+        if (!FormatMessage(                                                 \\
                 FORMAT_MESSAGE_ALLOCATE_BUFFER                              \\
                 | FORMAT_MESSAGE_FROM_SYSTEM                                \\
                 | FORMAT_MESSAGE_IGNORE_INSERTS,                            \\
@@ -7376,38 +7320,20 @@ have_dotnet :-
                 (LPTSTR) &err_buf,                                          \\
                 0,                                                          \\
                 NULL))                                                      \\
-            {                                                               \\
-                free_err_buf = MR_FALSE;                                    \\
-                err_buf = (LPVOID) ""could not retrieve error message"";    \\
-            }                                                               \\
-            total_len = strlen(msg) + strlen((char *)err_buf);              \\
-            MR_incr_hp_atomic_msg(tmp,                                      \\
-                (total_len + sizeof(MR_Word)) / sizeof(MR_Word),            \\
-                (alloc_id), ""string.string/0"");                           \\
-            (error_msg) = (char *) tmp;                                     \\
-            strcpy((error_msg), msg);                                       \\
-            strcat((error_msg), (char *)err_buf);                           \\
-            if (free_err_buf) {                                             \\
-                LocalFree(err_buf);                                         \\
-            }                                                               \\
-        } else {                                                            \\
-            /*                                                              \\
-            ** We can't just return NULL here, because otherwise mdb        \\
-            ** will break when it tries to print the string.                \\
-            */                                                              \\
-            (error_msg) = MR_make_string_const("""");                       \\
+        {                                                                   \\
+            free_err_buf = MR_FALSE;                                        \\
+            err_buf = (LPVOID) ""could not retrieve error message"";        \\
+        }                                                                   \\
+        total_len = strlen(msg) + strlen((char *)err_buf);                  \\
+        MR_allocate_aligned_string_msg((error_msg), total_len, (alloc_id)); \\
+        strcpy((error_msg), msg);                                           \\
+        strcat((error_msg), (char *)err_buf);                               \\
+        if (free_err_buf) {                                                 \\
+            LocalFree(err_buf);                                             \\
         }                                                                   \\
     } while(0)
 
-#else /* !MR_WIN32 */
-
-#define ML_maybe_make_win32_err_msg(was_error, error, msg, alloc_id,        \\
-        error_msg)                                                          \\
-    MR_fatal_error(                                                         \\
-        ""ML_maybe_make_win32_err_msg called on non-Windows platform"")
-
 #endif /* !MR_WIN32 */
-
 ").
 
 :- func no_error = system_error.
@@ -7440,84 +7366,69 @@ have_dotnet :-
     Error = ok
 ").
 
-is_error(Error, Prefix, io_error(Message)) :-
-    is_error_2(Error, Prefix, Message).
-
-:- pred is_error_2(system_error::in, string::in, string::out) is semidet.
+:- pred is_success(system_error::in) is semidet.
 
 :- pragma foreign_proc("C",
-    is_error_2(Error::in, Prefix::in, Message::out),
+    is_success(Error::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Error != 0) {
-        SUCCESS_INDICATOR = MR_TRUE;
-        ML_maybe_make_err_msg(MR_TRUE, Error, Prefix, MR_ALLOC_ID, Message);
-    } else {
-        SUCCESS_INDICATOR = MR_FALSE;
-        Message = MR_make_string_const("""");
-    }
+    /* This works for errno and Win32 error values (ERROR_SUCCESS == 0). */
+    SUCCESS_INDICATOR = (Error == 0) ? MR_TRUE : MR_FALSE;
 ").
 
 :- pragma foreign_proc("C#",
-    is_error_2(Error::in, Prefix::in, Message::out),
+    is_success(Error::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Error != null) {
-        SUCCESS_INDICATOR = true;
-        Message = Prefix + Error.Message;
-    } else {
-        SUCCESS_INDICATOR = false;
-        Message = """";
-    }
+    SUCCESS_INDICATOR = (Error == null);
 ").
 
 :- pragma foreign_proc("Java",
-    is_error_2(Error::in, Prefix::in, Message::out),
+    is_success(Error::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Error != null) {
-        SUCCESS_INDICATOR = true;
-        Message = Prefix + Error.getMessage(); // null is okay
-    } else {
-        SUCCESS_INDICATOR = false;
-        Message = """";
-    }
+    SUCCESS_INDICATOR = (Error == null);
 ").
 
 :- pragma foreign_proc("Erlang",
-    is_error_2(Error::in, Prefix::in, Message::out),
+    is_success(Error::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    case Error of
-        ok ->
-            SUCCESS_INDICATOR = false,
-            Message = <<>>;
-        {error, Reason} ->
-            SUCCESS_INDICATOR = true,
-            Message = list_to_binary([Prefix, file:format_error(Reason)])
-    end
+    SUCCESS_INDICATOR = (Error =:= ok)
 ").
 
-    % XXX these should require the io.state any more
-    %
+is_error(Error, Prefix, io_error(Message)) :-
+    ( if is_success(Error) then
+        fail
+    else
+        make_err_msg(Error, Prefix, Message)
+    ).
+
+is_maybe_win32_error(Error, Prefix, io_error(Message)) :-
+    ( if is_success(Error) then
+        fail
+    else
+        make_maybe_win32_err_msg(Error, Prefix, Message)
+    ).
+
 :- pragma foreign_proc("C",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+    make_err_msg(Error::in, Msg0::in, Msg::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_ALLOC_ID, Msg);
+    ML_make_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
 ").
 
 :- pragma foreign_proc("C#",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    make_err_msg(Error::in, Msg0::in, Msg::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "{
     Msg = System.String.Concat(Msg0, Error.Message);
 }").
 
 :- pragma foreign_proc("Java",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    make_err_msg(Error::in, Msg0::in, Msg::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Error.getMessage() != null) {
         Msg = Msg0 + Error.getMessage();
@@ -7527,8 +7438,8 @@ is_error(Error, Prefix, io_error(Message)) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    make_err_msg(Error::in, Msg0::in, Msg::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Error of
         {error, Reason} ->
@@ -7538,27 +7449,35 @@ is_error(Error, Prefix, io_error(Message)) :-
     end
 ").
 
-make_win32_err_msg(_, _, "", !IO) :-
+make_maybe_win32_err_msg(Error, Msg0, Msg) :-
+    ( if have_win32 then
+        make_win32_err_msg(Error, Msg0, Msg)
+    else
+        make_err_msg(Error, Msg0, Msg)
+    ).
+
+:- pred make_win32_err_msg(system_error::in, string::in, string::out) is det.
+
+make_win32_err_msg(_, _, "") :-
     ( if semidet_succeed then
         error("io.make_win32_err_msg called for non Win32 back-end")
     else
         true
     ).
 
+    % Is FormatMessage thread-safe?
+    %
 :- pragma foreign_proc("C",
-    make_win32_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
+    make_win32_err_msg(Error::in, Msg0::in, Msg::out),
+    [will_not_call_mercury, promise_pure, does_not_affect_liveness,
+        no_sharing],
 "
-    ML_maybe_make_win32_err_msg(MR_TRUE, Error, Msg0, MR_ALLOC_ID, Msg);
+#ifdef MR_WIN32
+    ML_make_win32_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
+#else
+    MR_fatal_error(""io.make_win32_err_msg called on non-Windows platform"");
+#endif
 ").
-
-make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
-    ( if have_win32 then
-        make_win32_err_msg(Error, Msg0, Msg, !IO)
-    else
-        make_err_msg(Error, Msg0, Msg, !IO)
-    ).
 
 :- pred throw_on_error(system_error::in, string::in, io::di, io::uo) is det.
 
@@ -9901,8 +9820,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
     if (err != 0) {
         /* Spawn failed. */
         Success = MR_NO;
-        ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error invoking system command: "",
+        ML_make_err_msg(errno, ""error invoking system command: "",
             MR_ALLOC_ID, Msg);
     } else {
         /* Wait for the spawned process to exit. */
@@ -9911,8 +9829,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
         } while (err == -1 && MR_is_eintr(errno));
         if (err == -1) {
             Success = MR_NO;
-            ML_maybe_make_err_msg(MR_TRUE, errno,
-                ""error invoking system command: "",
+            ML_make_err_msg(errno, ""error invoking system command: "",
                 MR_ALLOC_ID, Msg);
         } else {
             Status = st;
@@ -9930,8 +9847,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 
     if (Status == -1) {
         Success = MR_NO;
-        ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error invoking system command: "",
+        ML_make_err_msg(errno, ""error invoking system command: "",
             MR_ALLOC_ID, Msg);
     } else {
         Success = MR_YES;
@@ -10527,18 +10443,21 @@ import java.util.Random;
         Dir, Sep, Prefix, Suffix);
     fd = mkstemp(FileName);
     if (fd == -1) {
-        ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error opening temporary file: "", MR_ALLOC_ID,
+        ML_make_err_msg(errno, ""error opening temporary file: "", MR_ALLOC_ID,
             ErrorMessage);
         Okay = MR_NO;
     } else {
         do {
             err = close(fd);
         } while (err == -1 && MR_is_eintr(errno));
-        ML_maybe_make_err_msg(err, errno,
-            ""error closing temporary file: "", MR_ALLOC_ID,
-            ErrorMessage);
-        Okay = err == 0 ? MR_YES : MR_NO;
+        if (err == 0) {
+            ErrorMessage = MR_make_string_const("""");
+            Okay = MR_YES;
+        } else {
+            ML_make_err_msg(errno, ""error closing temporary file: "",
+                MR_ALLOC_ID, ErrorMessage);
+            Okay = MR_NO;
+        }
     }
 #else
     /*
@@ -10583,18 +10502,21 @@ import java.util.Random;
     } while (fd == -1 && errno == EEXIST &&
         num_tries < ML_MAX_TEMPNAME_TRIES);
     if (fd == -1) {
-        ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error opening temporary file: "", MR_ALLOC_ID,
+        ML_make_err_msg(errno, ""error opening temporary file: "", MR_ALLOC_ID,
             ErrorMessage);
         Okay = MR_NO;
     }  else {
         do {
             err = close(fd);
         } while (err == -1 && MR_is_eintr(errno));
-        ML_maybe_make_err_msg(err, errno,
-            ""error closing temporary file: "", MR_ALLOC_ID,
-            ErrorMessage);
-        Okay = err == 0 ? MR_YES : MR_NO;
+        if (err == 0) {
+            ErrorMessage = MR_make_string_const("""");
+            Okay = MR_YES;
+        } else {
+            ML_make_err_msg(errno, ""error closing temporary file: "",
+                MR_ALLOC_ID, ErrorMessage);
+            Okay = MR_NO;
+        }
     }
 #endif
 ").
@@ -10741,9 +10663,8 @@ import java.util.Random;
         Dir, Sep, Prefix, Suffix);
     DirName = mkdtemp(DirName);
     if (DirName == NULL) {
-        ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error creating temporary directory: "", MR_ALLOC_ID,
-            ErrorMessage);
+        ML_make_err_msg(errno, ""error creating temporary directory: "",
+            MR_ALLOC_ID, ErrorMessage);
         Okay = MR_NO;
     } else {
         ErrorMessage = MR_make_string_const("""");

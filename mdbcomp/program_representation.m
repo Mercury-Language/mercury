@@ -984,7 +984,7 @@ maybe_search_var_name(VarNameTable, VarRep, MaybeString) :-
 read_file_as_bytecode(FileName, Result, !IO) :-
     read_file_as_bytecode_2(FileName, ByteCode, Size, Error, !IO),
     ( if Size < 0 then
-        io.make_err_msg(Error, "opening " ++ FileName ++ ": ", Msg, !IO),
+        io.make_err_msg(Error, "opening " ++ FileName ++ ": ", Msg),
         Result = error(io.make_io_error(Msg))
     else
         Result = ok(bytecode(ByteCode, Size))

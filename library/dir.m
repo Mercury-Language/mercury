@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995,1997,1999-2000,2002-2012 The University of Melbourne.
+% Copyright (C) 2016 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -323,11 +324,6 @@ ends_with_directory_separator(String, End, PrevIndex) :-
     dir.is_directory_separator(Char).
 
 use_windows_paths :- dir.directory_separator = ('\\').
-
-:- pragma foreign_export("C", (dir.this_directory = out),
-    "ML_dir_this_directory").
-:- pragma foreign_export("C#", (dir.this_directory = out),
-    "ML_dir_this_directory").
 
 this_directory = ".".
 
@@ -784,8 +780,6 @@ make_path_name(DirName, FileName) = DirName/FileName.
 
 :- pragma foreign_export("C", dir.make_path_name(in, in) = out,
     "ML_make_path_name").
-:- pragma foreign_export("C#", dir.make_path_name(in, in) = out,
-    "ML_make_path_name").
 
 DirName0/FileName0 = PathName :-
     DirName = string.from_char_list(canonicalize_path_chars(
@@ -853,50 +847,48 @@ relative_path_name_from_components(Components) = PathName :-
 
 %---------------------------------------------------------------------------%
 
+current_directory(Res, !IO) :-
+    current_directory_2(CurDir, Error, !IO),
+    ( if is_error(Error, "dir.current_directory failed: ", IOError) then
+        Res = error(IOError)
+    else
+        Res = ok(CurDir)
+    ).
+
+:- pred current_directory_2(string::out, io.system_error::out, io::di, io::uo)
+    is det.
+
 :- pragma foreign_proc("C",
-    dir.current_directory(Res::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    current_directory_2(CurDir::out, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    /*
-    ** Marked thread_safe because ML_make_io_res_1_error_string will acquire
-    ** the global lock.
-    */
-
 #ifdef MR_WIN32
     wchar_t     *wbuf;
     MR_String   str;
 
     wbuf = _wgetcwd(NULL, 1);
     if (wbuf != NULL) {
-        str = ML_wide_to_utf8(wbuf, MR_ALLOC_ID);
-        Res = ML_make_io_res_1_ok_string(str);
+        CurDir = ML_wide_to_utf8(wbuf, MR_ALLOC_ID);
+        Error = 0;
         free(wbuf);
     } else {
-        ML_make_io_res_1_error_string(errno,
-            MR_make_string_const(""dir.current_directory failed: ""),
-            &Res);
+        CurDir = MR_make_string_const("""");
+        Error = errno;
     }
 #else
     size_t      size = 256;
-    MR_Word     ptr;
-    char        *buf;
-    MR_String   str;
 
     while (1) {
-        MR_offset_incr_hp_atomic_msg(ptr, 0,
-            (size + sizeof(MR_Word) - 1) / sizeof(MR_Word),
-            MR_ALLOC_ID, ""string.string/0"");
-        buf = (char *) ptr;
-        if (getcwd(buf, size)) {
-            MR_make_aligned_string(str, buf);
-            Res = ML_make_io_res_1_ok_string(str);
+        /* `size' includes the NUL terminator. */
+        MR_allocate_aligned_string_msg(CurDir, size - 1, MR_ALLOC_ID);
+        if (getcwd(CurDir, size)) {
+            Error = 0;
             break;
         }
         if (errno != ERANGE) {
-            ML_make_io_res_1_error_string(errno,
-                MR_make_string_const(""dir.current_directory failed: ""),
-                &Res);
+            CurDir = MR_make_string_const("""");
+            Error = errno;
             break;
         }
         /* Buffer too small. Resize and try again. */
@@ -906,379 +898,388 @@ relative_path_name_from_components(Components) = PathName :-
 ").
 
 :- pragma foreign_proc("C#",
-    dir.current_directory(Res::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    current_directory_2(CurDir::out, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
     try {
-        string dir = System.IO.Directory.GetCurrentDirectory();
-        Res = io.ML_make_io_res_1_ok_string(dir);
+        CurDir = System.IO.Directory.GetCurrentDirectory();
+        Error = null;
     } catch (System.Exception e) {
-        Res = io.ML_make_io_res_1_error_string(e,
-            ""dir.current_directory failed: "");
+        CurDir = """";
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    dir.current_directory(Res::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    current_directory_2(CurDir::out, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    java.io.File dir = new java.io.File(""."");
     try {
-        Res = io.ML_make_io_res_1_ok_string(dir.getCanonicalPath());
-    } catch (Exception e) {
-        Res = io.ML_make_io_res_1_error_string(e,
-            ""dir.current_directory failed: "");
+        java.io.File dir = new java.io.File(""."");
+        CurDir = dir.getCanonicalPath();
+        Error = null;
+    } catch (java.lang.Exception e) {
+        CurDir = """";
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    dir.current_directory(Res::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    current_directory_2(CurDir::out, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     case file:get_cwd() of
         {ok, Cwd} ->
-            Res = mercury__io:'ML_make_io_res_1_ok_string'(
-                list_to_binary(Cwd));
+            CurDir = list_to_binary(Cwd),
+            Error = ok;
         {error, Reason} ->
-            Res = mercury__io:'ML_make_io_res_1_error_string'(Reason,
-                ""dir.current_directory failed: "")
+            CurDir = <<>>,
+            Error = {error, Reason}
     end
 ").
 
 %---------------------------------------------------------------------------%
 
 make_directory(PathName, Result, !IO) :-
-    ( if can_implement_make_directory then
+    ( if have_make_directory_including_parents then
+        make_directory_including_parents(PathName, Result, !IO)
+    else
         DirName = dir.dirname(PathName),
         ( if PathName = DirName then
             % We've been asked to make a root directory -- the mkdir will fail.
-            dir.make_single_directory_2(0, PathName, Result, !IO)
+            make_directory_or_check_exists(PathName, Result, !IO)
         else if DirName = dir.this_directory then
             % Just go ahead and attempt to make the directory -- if the
             % current directory is not accessible, the mkdir will fail.
-            dir.make_single_directory_2(0, PathName, Result, !IO)
+            make_directory_or_check_exists(PathName, Result, !IO)
         else
-            io.check_file_accessibility(DirName, [],
-                ParentAccessResult, !IO),
+            io.check_file_accessibility(DirName, [], ParentAccessResult, !IO),
             (
                 ParentAccessResult = ok,
-                dir.make_single_directory_2(0, PathName, Result, !IO)
+                make_directory_or_check_exists(PathName, Result, !IO)
             ;
                 ParentAccessResult = error(_),
-                dir.make_directory(DirName, ParentResult, !IO),
+                make_directory(DirName, ParentResult, !IO),
                 (
                     ParentResult = ok,
-                    dir.make_single_directory_2(0, PathName, Result, !IO)
+                    make_directory_or_check_exists(PathName, Result, !IO)
                 ;
                     ParentResult = error(_),
                     Result = ParentResult
                 )
             )
         )
-    else
-        Result = error(make_io_error(
-            "dir.make_directory not implemented on this platform"))
     ).
 
-% The .NET CLI library function System.IO.Directory.CreateDirectory()
-% creates the entire path in one call.
+:- pred make_directory_or_check_exists(string::in, io.res::out, io::di, io::uo)
+    is det.
+
+make_directory_or_check_exists(DirName, Res, !IO) :-
+    make_single_directory_2(DirName, Res0, MaybeWin32Error, !IO),
+    (
+        Res0 = ok,
+        Res = ok
+    ;
+        Res0 = name_exists,
+        io.file_type(yes, DirName, TypeRes, !IO),
+        ( if TypeRes = ok(directory) then
+            check_dir_accessibility(DirName, Res, !IO)
+        else
+            make_maybe_win32_err_msg(MaybeWin32Error,
+                "cannot create directory: ", Message),
+            Res = error(make_io_error(Message))
+        )
+    ;
+        Res0 = dir_exists,
+        check_dir_accessibility(DirName, Res, !IO)
+    ;
+        Res0 = error,
+        make_maybe_win32_err_msg(MaybeWin32Error,
+            "cannot create directory: ", Message),
+        Res = error(make_io_error(Message))
+    ).
+
+:- pred check_dir_accessibility(string::in, io.res::out, io::di, io::uo)
+    is det.
+
+check_dir_accessibility(DirName, Res, !IO) :-
+    % Check whether we can read and write the directory.
+    io.check_file_accessibility(DirName, [read, write, execute], Res, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred have_make_directory_including_parents is semidet.
+
+have_make_directory_including_parents :-
+    semidet_fail.
+
 :- pragma foreign_proc("C#",
-    dir.make_directory(DirName::in, Res::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
-"{
+    have_make_directory_including_parents,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = true;
+").
+:- pragma foreign_proc("Java",
+    have_make_directory_including_parents,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = true;
+").
+
+:- pred make_directory_including_parents(string::in, io.res::out,
+    io::di, io::uo) is det.
+
+make_directory_including_parents(DirName, Res, !IO) :-
+    make_directory_including_parents_2(DirName, Error, CheckAccess, !IO),
+    ( if is_error(Error, "cannot make directory: ", IOError) then
+        Res = error(IOError)
+    else
+        (
+            CheckAccess = yes,
+            check_dir_accessibility(DirName, Res, !IO)
+        ;
+            CheckAccess = no,
+            Res = ok
+        )
+    ).
+
+:- pred make_directory_including_parents_2(string::in, io.system_error::out,
+    bool::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    make_directory_including_parents_2(_DirName::in, Error::out,
+        CheckAccess::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    Error = ENOSYS;
+    CheckAccess = MR_NO;
+").
+
+:- pragma foreign_proc("C#",
+    make_directory_including_parents_2(DirName::in, Error::out,
+        CheckAccess::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
     try {
-        // CreateDirectory doesn't fail if a file with the same
-        // name as the directory being created already exists.
+        // System.IO.Directory.CreateDirectory() creates all directories and
+        // subdirectories in the specified path unless they already exist.
+
+        // CreateDirectory() doesn't fail if a file with the same name as the
+        // directory being created already exists.
         if (System.IO.File.Exists(DirName)) {
-            Res = dir.ML_make_mkdir_res_error(
-                new System.Exception(""a file with that name already exists""));
+            Error =
+                new System.Exception(""a file with that name already exists"");
+            CheckAccess = mr_bool.NO;
         } else if (System.IO.Directory.Exists(DirName)) {
-            Res = dir.ML_check_dir_accessibility(DirName);
+            Error = null;
+            CheckAccess = mr_bool.YES;
         } else {
             System.IO.Directory.CreateDirectory(DirName);
-            Res = dir.ML_make_mkdir_res_ok();
+            Error = null;
+            CheckAccess = mr_bool.NO;
         }
     } catch (System.Exception e) {
-        Res = dir.ML_make_mkdir_res_error(e);
+        Error = e;
+        CheckAccess = mr_bool.NO;
     }
-}").
+").
 
-% Java has a similar library function java.io.File.mkdirs()
 :- pragma foreign_proc("Java",
-    dir.make_directory(DirName::in, Res::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        may_not_duplicate],
+    make_directory_including_parents_2(DirName::in, Error::out,
+        CheckAccess::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
         java.io.File dir = new java.io.File(DirName);
         if (dir.isFile()) {
-            throw new java.lang.RuntimeException(
+            Error = new java.lang.RuntimeException(
                 ""a file with that name already exists"");
-        }
-        if (dir.isDirectory()) {
-            Res = ML_check_dir_accessibility(DirName);
+            CheckAccess = bool.NO;
+        } else if (dir.isDirectory()) {
+            Error = null;
+            CheckAccess = bool.YES;
+        } else if (dir.mkdirs()) {
+            Error = null;
+            CheckAccess = bool.NO;
         } else {
-            if (!dir.mkdirs()) {
-                throw new java.lang.RuntimeException(
-                    ""make_directory failed"");
-            }
-            Res = make_mkdir_res_ok_0_f_0();
+            Error = new java.lang.RuntimeException(""make_directory failed"");
+            CheckAccess = bool.NO;
         }
     } catch (java.lang.Exception e) {
-        Res = ML_make_mkdir_res_error(e);
+        Error = e;
+        CheckAccess = bool.NO;
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    dir.make_directory(DirName::in, Res::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
-"
-    DirNameStr = binary_to_list(DirName),
-    % filelib:ensure_dir makes all the parent directories.
-    case filelib:ensure_dir(DirNameStr) of
-        ok ->
-            ErrorIfExists = 0,
-            Res = mercury__dir:'ML_make_single_directory_2'(ErrorIfExists,
-                DirName);   % not DirNameStr
-        {error, Reason} ->
-            Res = mercury__dir:'ML_make_mkdir_res_error'(Reason)
-    end
-").
-
-:- pred can_implement_make_directory is semidet.
-
-can_implement_make_directory :-
-    semidet_fail.
-
-:- pragma foreign_proc("C",
-    can_implement_make_directory,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-#if defined(MR_WIN32)
-    SUCCESS_INDICATOR = MR_TRUE;
-#elif defined(MR_HAVE_MKDIR)
-    SUCCESS_INDICATOR = MR_TRUE;
-#else
-    SUCCESS_INDICATOR = MR_FALSE;
-#endif
-").
-:- pragma foreign_proc("C#",
-    can_implement_make_directory,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true;
-"
-).
-:- pragma foreign_proc("Java",
-    can_implement_make_directory,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true;
-"
-).
-:- pragma foreign_proc("Erlang",
-    can_implement_make_directory,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true
-").
+%---------------------------------------------------------------------------%
 
 make_single_directory(DirName, Result, !IO) :-
-    dir.make_single_directory_2(1, DirName, Result, !IO).
+    make_single_directory_2(DirName, Status, MaybeWin32Error, !IO),
+    (
+        Status = ok,
+        Result = ok
+    ;
+        ( Status = name_exists
+        ; Status = dir_exists
+        ; Status = error
+        ),
+        make_maybe_win32_err_msg(MaybeWin32Error, "cannot create directory: ",
+            Message),
+        Result = error(make_io_error(Message))
+    ).
 
-:- pragma foreign_export("Erlang",
-    dir.make_single_directory_2(in, in, out, di, uo),
-    "ML_make_single_directory_2").
+:- type make_single_directory_status
+    --->    ok
+    ;       name_exists     % may or may not be directory
+    ;       dir_exists
+    ;       error.
 
-:- pred dir.make_single_directory_2(int::in, string::in, io.res::out,
-    io::di, io::uo) is det.
+:- pragma foreign_export_enum("C", make_single_directory_status/0,
+    [prefix("ML_MAKE_SINGLE_DIRECTORY_"), uppercase]).
+:- pragma foreign_export_enum("C#", make_single_directory_status/0,
+    [prefix("ML_MAKE_SINGLE_DIRECTORY_"), uppercase]).
+:- pragma foreign_export_enum("Java", make_single_directory_status/0,
+    [prefix("ML_MAKE_SINGLE_DIRECTORY_"), uppercase]).
+
+:- pred make_single_directory_2(string::in, make_single_directory_status::out,
+    io.system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
-        Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates, will_not_modify_trail, does_not_affect_liveness,
-        may_not_duplicate],
+    make_single_directory_2(DirName::in, Status::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        will_not_modify_trail, does_not_affect_liveness, may_not_duplicate],
 "
 #if defined(MR_WIN32)
     if (CreateDirectoryW(ML_utf8_to_wide(DirName), NULL)) {
-        Result = ML_make_mkdir_res_ok();
+        Status = ML_MAKE_SINGLE_DIRECTORY_OK;
+        Error = 0;
     } else {
-        int error;
-
-        error = GetLastError();
-        if (!ErrorIfExists && error == ERROR_ALREADY_EXISTS) {
-            ML_make_mkdir_res_exists(error, DirName, &Result);
+        Error = GetLastError();
+        if (Error == ERROR_ALREADY_EXISTS) {
+            Status = ML_MAKE_SINGLE_DIRECTORY_NAME_EXISTS;
         } else {
-            ML_make_mkdir_res_error(error, &Result);
+            Status = ML_MAKE_SINGLE_DIRECTORY_ERROR;
         }
     }
 #elif defined(MR_HAVE_MKDIR)
     if (mkdir(DirName, 0777) == 0) {
-        Result = ML_make_mkdir_res_ok();
-  #ifdef EEXIST
-    } else if (!ErrorIfExists && errno == EEXIST) {
-        ML_make_mkdir_res_exists(errno, DirName, &Result);
-  #endif /* EEXIST */
+        Status = ML_MAKE_SINGLE_DIRECTORY_OK;
+        Error = 0;
     } else {
-        ML_make_mkdir_res_error(errno, &Result);
+        Status = ML_MAKE_SINGLE_DIRECTORY_ERROR;
+        Error = errno;
+      #ifdef EEXIST
+        if (Error == EEXIST) {
+            Status = ML_MAKE_SINGLE_DIRECTORY_NAME_EXISTS;
+        }
+      #endif /* EEXIST */
     }
 #else /* !MR_WIN32 && !MR_HAVE_MKDIR */
-    MR_fatal_error(
-        ""dir.make_single_directory_2 called but not supported"");
+    Status = ML_MAKE_SINGLE_DIRECTORY_ERROR;
+    Error = ENOSYS;
 #endif
 ").
-:- pragma foreign_proc("C#",
-    dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
-        Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
-"{
-    try {
-    // CreateDirectory doesn't fail if a file with the same
-    // name as the directory being created already exists.
-    if (System.IO.File.Exists(DirName)) {
-        Result = dir.ML_make_mkdir_res_error(
-            new System.Exception(
-                ""a file with that name already exists""));
-    } else {
-        System.IO.DirectoryInfo info =
-            new System.IO.DirectoryInfo(DirName);
-        System.IO.DirectoryInfo parent_info = info.Parent;
 
-        if (parent_info == null) {
-            Result = dir.ML_make_mkdir_res_error(
-                new System.Exception(""can't create root directory""));
-        } else if (!info.Parent.Exists) {
-            Result = dir.ML_make_mkdir_res_error(
-                new System.Exception(""parent directory does not exist""));
-        } else if (ErrorIfExists == 1 && info.Exists) {
-            Result = dir.ML_make_mkdir_res_error(
-                new System.Exception(""directory already exists""));
+:- pragma foreign_proc("C#",
+    make_single_directory_2(DirName::in, Status::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        // DirectoryInfo.Create doesn't fail if a file with the same name as
+        // the directory being created already exists.
+        if (System.IO.File.Exists(DirName)) {
+            Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
+            Error = new System.Exception(
+                ""a file with that name already exists"");
         } else {
-            info.Create();
-            Result = dir.ML_make_mkdir_res_ok();
+            System.IO.DirectoryInfo info =
+                new System.IO.DirectoryInfo(DirName);
+            System.IO.DirectoryInfo parent_info = info.Parent;
+
+            // Not sure why we need these first two tests.
+            if (parent_info == null) {
+                Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
+                Error = new System.Exception(""can't create root directory"");
+            } else if (!info.Parent.Exists) {
+                Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
+                Error =
+                    new System.Exception(""parent directory does not exist"");
+            } else if (info.Exists) {
+                // DirectoryInfo.Create does nothing if the directory already
+                // exists, so we check explicitly. There is a race here.
+                Status = dir.ML_MAKE_SINGLE_DIRECTORY_DIR_EXISTS;
+                Error = new System.Exception(""directory already exists"");
+            } else {
+                info.Create();
+                Status = dir.ML_MAKE_SINGLE_DIRECTORY_OK;
+                Error = null;
+            }
         }
-    }
     } catch (System.Exception e) {
-        Result = dir.ML_make_mkdir_res_error(e);
+        Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
+        Error = e;
     }
-}").
+").
 
 :- pragma foreign_proc("Java",
-    dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
-        Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+    make_single_directory_2(DirName::in, Status::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
     try {
         java.io.File newDir = new java.io.File(DirName);
         java.io.File parent = newDir.getParentFile();
 
+        // Are these first two checks just to produce better error messages?
         if (parent == null) {
-            Result = ML_make_mkdir_res_error(
-                new java.io.IOException(""can't create root directory""));
+            Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
+            Error = new java.io.IOException(""can't create root directory"");
         } else if (!parent.exists()) {
-            Result = ML_make_mkdir_res_error(
-                new java.io.IOException(""parent directory does not exist""));
-        } else if (ErrorIfExists == 1 && newDir.exists()) {
-            Result = ML_make_mkdir_res_error(
-                new java.io.IOException(""directory already exists""));
+            Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
+            Error =
+                new java.io.IOException(""parent directory does not exist"");
+        } else if (newDir.isDirectory()) {
+            Status = dir.ML_MAKE_SINGLE_DIRECTORY_DIR_EXISTS;
+            Error = new java.io.IOException(""directory already exists"");
         } else {
-            if (!newDir.mkdir()) {
-                throw new java.lang.RuntimeException(
-                    ""make_single_directory failed"");
+            if (newDir.mkdir()) {
+                Status = dir.ML_MAKE_SINGLE_DIRECTORY_OK;
+                Error = null;
+            } else {
+                Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
+                Error = new java.io.IOException(""mkdir failed"");
             }
-            Result = ML_make_mkdir_res_ok();
         }
     } catch (java.lang.Exception e) {
-        Result = ML_make_mkdir_res_error(e);
+        Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
-        Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    make_single_directory_2(DirName::in, Status::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     DirNameStr = binary_to_list(DirName),
     case file:make_dir(DirNameStr) of
         ok ->
-            Result = mercury__dir:'ML_make_mkdir_res_ok'();
-        {error, eexist} when ErrorIfExists =:= 0 ->
-            Result = mercury__dir:'ML_make_mkdir_res_exists'(eexist,
-                DirName);   % not DirNameStr
+            Status = {ok},
+            Error = ok;
+        {error, eexist} ->
+            Status = {name_exists},
+            Error = {error, eexist};
         {error, Reason} ->
-            Result = mercury__dir:'ML_make_mkdir_res_error'(Reason)
+            Status = {error},
+            Error = {error, Reason}
     end
 ").
-
-:- func dir.make_mkdir_res_ok = io.res.
-:- pragma foreign_export("C", (dir.make_mkdir_res_ok = out),
-    "ML_make_mkdir_res_ok").
-:- pragma foreign_export("C#", (dir.make_mkdir_res_ok = out),
-    "ML_make_mkdir_res_ok").
-:- pragma foreign_export("Java", (dir.make_mkdir_res_ok = out),
-    "ML_make_mkdir_res_ok").
-:- pragma foreign_export("Erlang", (dir.make_mkdir_res_ok = out),
-    "ML_make_mkdir_res_ok").
-
-make_mkdir_res_ok = ok.
-
-:- pred dir.make_mkdir_res_error(io.system_error::in, io.res::out,
-    io::di, io::uo) is det.
-:- pragma foreign_export("C", dir.make_mkdir_res_error(in, out, di, uo),
-    "ML_make_mkdir_res_error").
-:- pragma foreign_export("C#", dir.make_mkdir_res_error(in, out, di, uo),
-    "ML_make_mkdir_res_error").
-:- pragma foreign_export("Java", dir.make_mkdir_res_error(in, out, di, uo),
-    "ML_make_mkdir_res_error").
-:- pragma foreign_export("Erlang", dir.make_mkdir_res_error(in, out, di, uo),
-    "ML_make_mkdir_res_error").
-
-make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
-    io.make_maybe_win32_err_msg(Error, "dir.make_directory failed: ",
-        Msg, !IO).
-
-:- pred dir.make_mkdir_res_exists(io.system_error::in,
-    string::in, io.res::out, io::di, io::uo) is det.
-:- pragma foreign_export("C",
-    dir.make_mkdir_res_exists(in, in, out, di, uo),
-    "ML_make_mkdir_res_exists").
-:- pragma foreign_export("C#",
-    dir.make_mkdir_res_exists(in, in, out, di, uo),
-    "ML_make_mkdir_res_exists").
-:- pragma foreign_export("Java",
-    dir.make_mkdir_res_exists(in, in, out, di, uo),
-    "ML_make_mkdir_res_exists").
-:- pragma foreign_export("Erlang",
-    dir.make_mkdir_res_exists(in, in, out, di, uo),
-    "ML_make_mkdir_res_exists").
-
-make_mkdir_res_exists(Error, DirName, Res, !IO) :-
-    io.file_type(yes, DirName, TypeResult, !IO),
-    ( if TypeResult = ok(directory) then
-        dir.check_dir_accessibility(DirName, Res, !IO)
-    else
-        dir.make_mkdir_res_error(Error, Res, !IO)
-    ).
-
-:- pred dir.check_dir_accessibility(string::in, io.res::out, io::di, io::uo)
-    is det.
-:- pragma foreign_export("C", dir.check_dir_accessibility(in, out, di, uo),
-    "ML_check_dir_accessibility").
-:- pragma foreign_export("C#", dir.check_dir_accessibility(in, out, di, uo),
-    "ML_check_dir_accessibility").
-:- pragma foreign_export("Java", dir.check_dir_accessibility(in, out, di, uo),
-    "ML_check_dir_accessibility").
-:- pragma foreign_export("Erlang", dir.check_dir_accessibility(in, out, di, uo),
-    "ML_check_dir_accessibility").
-
-check_dir_accessibility(DirName, Res, !IO) :-
-    % Check whether we can read and write the directory.
-    io.check_file_accessibility(DirName, [read, write, execute], Res, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1609,8 +1610,9 @@ can_implement_dir_foldl :-
     SUCCESS_INDICATOR = true
 ").
 
-    % Win32 doesn't allow us to open a directory without
-    % returning the first item.
+    % Win32 doesn't allow us to open a directory without returning the first
+    % item. That ought to be abstracted away by dir.stream as it complicates
+    % all other platforms.
     %
 :- pred dir.open(string::in, io.result({dir.stream, string})::out,
     io::di, io::uo) is det.
@@ -1815,10 +1817,6 @@ make_win32_dir_open_result_ok(Dir, FirstFile0, Result, !IO) :-
 :- func make_dir_open_result_eof = io.result({dir.stream, string}).
 :- pragma foreign_export("C", (make_dir_open_result_eof = out),
     "ML_make_dir_open_result_eof").
-:- pragma foreign_export("C#", (make_dir_open_result_eof = out),
-    "ML_make_dir_open_result_eof").
-:- pragma foreign_export("Java", (make_dir_open_result_eof = out),
-    "ML_make_dir_open_result_eof").
 
 make_dir_open_result_eof = eof.
 
@@ -1834,99 +1832,107 @@ make_dir_open_result_eof = eof.
     "ML_make_dir_open_result_error").
 
 make_dir_open_result_error(Error, error(io.make_io_error(Msg)), !IO) :-
-    io.make_err_msg(Error, "dir.foldl2: opening directory failed: ", Msg, !IO).
+    io.make_err_msg(Error, "dir.foldl2: opening directory failed: ", Msg).
 
 :- pred dir.close(dir.stream::in, io.res::out, io::di, io::uo) is det.
 
 close(Dir, Res, !IO) :-
-    dir.close_2(Dir, Status, Error, !IO),
-    ( if Status = 0 then
-        io.make_maybe_win32_err_msg(Error,
-            "dir.foldl2: closing directory failed: ", Msg, !IO),
-        Res = error(io.make_io_error(Msg))
+    dir.close_2(Dir, MaybeWin32Error, !IO),
+    ( if
+        is_maybe_win32_error(MaybeWin32Error,
+            "dir.foldl2: closing directory failed: ", IOError)
+    then
+        Res = error(IOError)
     else
         Res = ok
     ).
 
-:- pred dir.close_2(dir.stream::in, int::out, io.system_error::out,
-    io::di, io::uo) is det.
+:- pred dir.close_2(dir.stream::in, io.system_error::out, io::di, io::uo)
+    is det.
 
 :- pragma foreign_proc("C",
-    dir.close_2(Dir::in, Status::out, Error::out, _IO0::di, _IO::uo),
+    dir.close_2(Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         will_not_modify_trail, does_not_affect_liveness],
 "
 #if defined(MR_WIN32)
-    Status = FindClose(Dir);
-    Error = GetLastError();
+    if (FindClose(Dir)) {
+        Error = 0;
+    } else {
+        Error = GetLastError();
+    }
 #elif defined(MR_HAVE_CLOSEDIR)
-    Status = (closedir(Dir) == 0);
-    Error = errno;
+    if (closedir(Dir) == 0) {
+        Error = 0;
+    } else {
+        Error = errno;
+    }
 #else
-    MR_fatal_error(""dir.open called but not supported"");
+    Error = ENOSYS;
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-    dir.close_2(_Dir::in, Status::out, Error::out, _IO0::di, _IO::uo),
+    dir.close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
+"
     /* Nothing to do. */
     Error = null;
-    Status = 1;
-}").
+").
 
 :- pragma foreign_proc("Java",
-    dir.close_2(_Dir::in, Status::out, Error::out, _IO0::di, _IO::uo),
+    dir.close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
+"
     /* Nothing to do. */
     Error = null;
-    Status = 1;
-}").
+").
 
 :- pragma foreign_proc("Erlang",
-    dir.close_2(_Dir::in, Status::out, Error::out, _IO0::di, _IO::uo),
+    dir.close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     % Nothing to do.
-    Error = null,
-    Status = 1
+    Error = ok
 ").
 
 :- pred dir.read_entry(dir.stream::in, io.result({dir.stream, string})::out,
     io::di, io::uo) is det.
 
 read_entry(Dir0, Res, !IO) :-
-    dir.read_entry_2(Dir0, Dir, Status, Error, FileName, !IO),
+    dir.read_entry_2(Dir0, Dir, MaybeWin32Error, HaveFileName, FileName, !IO),
     ( if
-        Status = 0
+        is_maybe_win32_error(MaybeWin32Error,
+            "dir.foldl2: reading directory entry failed: ", IOError)
     then
-        io.make_maybe_win32_err_msg(Error,
-            "dir.foldl2: reading directory entry failed: ", Msg, !IO),
-        Res = error(io.make_io_error(Msg))
-    else if
-        Status = -1
-    then
-        Res = eof
-    else if
-        ( FileName = dir.this_directory
-        ; FileName = dir.parent_directory
-        )
-    then
-        dir.read_entry(Dir0, Res, !IO)
+        Res = error(IOError)
     else
-        Res = ok({Dir, FileName})
+        (
+            HaveFileName = no,
+            Res = eof
+        ;
+            HaveFileName = yes,
+            ( if
+                ( FileName = dir.this_directory
+                ; FileName = dir.parent_directory
+                )
+            then
+                dir.read_entry(Dir, Res, !IO)
+            else
+                Res = ok({Dir, FileName})
+            )
+        )
     ).
 
-    % dir.read_entry_2(!Dir, Status, Error, FileName, !IO).
-    % Status is -1 for EOF, 0 for error, 1 for success.
+    % read_entry_2(Dir0, Dir, MaybeWin32Error, HaveFileName, FileName, !IO):
+    % If there is no error and HaveFileName = no, then we have reached the
+    % end-of-stream.
     %
-:- pred dir.read_entry_2(dir.stream::in, dir.stream::out, int::out,
-    io.system_error::out, string::out, io::di, io::uo) is det.
+:- pred read_entry_2(dir.stream::in, dir.stream::out, io.system_error::out,
+    bool::out, string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    dir.read_entry_2(Dir0::in, Dir::out, Status::out, Error::out,
+    dir.read_entry_2(Dir0::in, Dir::out, Error::out, HaveFileName::out,
         FileName::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         will_not_modify_trail, does_not_affect_liveness],
@@ -1936,38 +1942,44 @@ read_entry(Dir0, Res, !IO) :-
 
     Dir = Dir0;
     if (FindNextFileW(Dir, &file_data)) {
-        Status = 1;
+        Error = 0;
+        HaveFileName = MR_YES;
         FileName = ML_wide_to_utf8(file_data.cFileName, MR_ALLOC_ID);
     } else {
         Error = GetLastError();
-        Status = (Error == ERROR_NO_MORE_FILES ? -1 : 0);
-        FileName = NULL;
+        if (Error == ERROR_NO_MORE_FILES) {
+            Error = 0;
+        }
+        HaveFileName = MR_NO;
+        FileName = MR_make_string_const("""");
     }
 
 #elif defined(MR_HAVE_READDIR) && defined(MR_HAVE_CLOSEDIR)
     struct dirent *dir_entry;
 
     Dir = Dir0;
-    errno = 0;
+    errno = 0;          /* to detect end-of-stream */
     dir_entry = readdir(Dir);
     if (dir_entry == NULL) {
-        Error = errno;
-        FileName = NULL;
-        Status = (Error == 0 ? -1 : 0);
+        Error = errno;  /* remains zero at end-of-stream */
+        HaveFileName = MR_NO;
+        FileName = MR_make_string_const("""");
     } else {
+        Error = 0;
+        HaveFileName = MR_YES;
         MR_make_aligned_string_copy_msg(FileName, dir_entry->d_name,
             MR_ALLOC_ID);
-        Error = 0;
-        Status = 1;
     }
 
 #else /* !MR_WIN32 && !(MR_HAVE_READDIR etc.) */
-    MR_fatal_error(""dir.read_entry_2 called but not supported"");
+    Error = ENOSYS;
+    HaveFileName = MR_NO;
+    FileName = MR_make_string_const("""");
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-    dir.read_entry_2(Dir0::in, Dir::out, Status::out, Error::out,
+    dir.read_entry_2(Dir0::in, Dir::out, Error::out, HaveFileName::out,
         FileName::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
@@ -1976,51 +1988,57 @@ read_entry(Dir0, Res, !IO) :-
         if (Dir.MoveNext()) {
             // The .NET CLI returns path names qualified with
             // the directory name passed to dir.open.
+            HaveFileName = mr_bool.YES;
             FileName = System.IO.Path.GetFileName((string) Dir.Current);
-            Status = 1;
         } else {
-            FileName = null;
-            Status = -1;
+            HaveFileName = mr_bool.NO;
+            FileName = """";
         }
         Error = null;
     } catch (System.Exception e) {
         Error = e;
-        FileName = null;
-        Status = 0;
+        HaveFileName = mr_bool.NO;
+        FileName = """";
     }
 }").
 
 :- pragma foreign_proc("Java",
-    dir.read_entry_2(Dir0::in, Dir::out, Status::out, Error::out,
+    dir.read_entry_2(Dir0::in, Dir::out, Error::out, HaveFileName::out,
         FileName::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     Dir = Dir0;
-    if (Dir.hasNext()) {
-        FileName = (java.lang.String) Dir.next();
-        Status = 1;
-    } else {
-        FileName = null;
-        Status = -1;
+    try {
+        if (Dir.hasNext()) {
+            HaveFileName = bool.YES;
+            FileName = (java.lang.String) Dir.next();
+        } else {
+            HaveFileName = bool.NO;
+            FileName = """";
+        }
+        Error = null;
+    } catch (java.lang.Exception e) {
+        Error = e;
+        HaveFileName = bool.NO;
+        FileName = """";
     }
-    Error = null;
 ").
 
 :- pragma foreign_proc("Erlang",
-    dir.read_entry_2(Dir0::in, Dir::out, Status::out, Error::out,
+    dir.read_entry_2(Dir0::in, Dir::out, Error::out, HaveFileName::out,
         FileName::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     case Dir0 of
         [] ->
-            FileName = null,
-            Status = -1,
+            HaveFileName = {no},
+            FileName = <<>>,
             Dir = [];
         [FileNameStr | Dir] ->
-            FileName = list_to_binary(FileNameStr),
-            Status = 1
+            HaveFileName = {yes},
+            FileName = list_to_binary(FileNameStr)
     end,
-    Error = null
+    Error = ok
 ").
 
 %---------------------------------------------------------------------------%
