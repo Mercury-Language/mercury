@@ -209,8 +209,7 @@
 :- pred foldl2(foldl_pred(T)::in(foldl_pred), string::in,
     T::in, io.maybe_partial_res(T)::out, io::di, io::uo) is det.
 
-    % recursive_foldl2(P, DirName, FollowSymLinks,
-    %   InitialData, Result, !IO).
+    % recursive_foldl2(P, DirName, FollowSymLinks, InitialData, Result, !IO).
     %
     % As above, but recursively process subdirectories.
     % Subdirectories are processed depth-first, processing the directory itself
@@ -778,9 +777,6 @@ dotnet_path_name_is_absolute_2(_) :-
 
 make_path_name(DirName, FileName) = DirName/FileName.
 
-:- pragma foreign_export("C", dir.make_path_name(in, in) = out,
-    "ML_make_path_name").
-
 DirName0/FileName0 = PathName :-
     DirName = string.from_char_list(canonicalize_path_chars(
         string.to_char_list(DirName0))),
@@ -1283,16 +1279,29 @@ make_single_directory(DirName, Result, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-foldl2(P, DirName, T, Res, !IO) :-
+foldl2(P, DirName, Data0, Res, !IO) :-
     dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], no,
-        no, _, T, Res, !IO).
+        no, _, Res0, Data0, Data, !IO),
+    (
+        Res0 = ok,
+        Res = ok(Data)
+    ;
+        Res0 = error(Error),
+        Res = error(Data, Error)
+    ).
 
-recursive_foldl2(P, DirName, FollowLinks, T, Res, !IO) :-
+recursive_foldl2(P, DirName, FollowLinks, Data0, Res, !IO) :-
     dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], yes,
-        FollowLinks, _, T, Res, !IO).
+        FollowLinks, _, Res0, Data0, Data, !IO),
+    (
+        Res0 = ok,
+        Res = ok(Data)
+    ;
+        Res0 = error(Error),
+        Res = error(Data, Error)
+    ).
 
-    %
-    % Under windows you cannot list the files of a directory if the directory
+    % Under Windows, you cannot list the files of a directory if the directory
     % name contains a trailing slash, except when the trailing slash indicates
     % the root directory.
     %
@@ -1309,195 +1318,165 @@ fixup_dirname(Dir0) = Dir :-
         Dir = string.from_char_list(remove_trailing_dir_separator(DirChars))
     ).
 
-:- pred dir.foldl2_process_dir(bool::in,
-    dir.foldl_pred(T)::in(dir.foldl_pred), string::in,
-    list(file_id)::in, bool::in, bool::in, bool::out, T::in,
-    io.maybe_partial_res(T)::out, io::di, io::uo) is det.
-
-:- pred dir.foldl2_process_dir2(dir.stream::in, dir.stream::out, bool::in,
-    dir.foldl_pred(T)::in(dir.foldl_pred), string::in,
-    list(file_id)::in, string::in, bool::in, bool::in, T::in,
-    {io.maybe_partial_res(T), bool}::out, io::di, io::uo) is det.
-
-foldl2_process_dir2(!Dir, SymLinkParent, P, DirName, ParentIds, FirstEntry,
-        Recursive, FollowLinks, T0, {Res, Cont}, !IO) :-
-    dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName,
-        ok(FirstEntry), ParentIds, Recursive, FollowLinks, Cont,
-        T0, Res, !IO).
+:- pred dir.foldl2_process_dir(bool::in, dir.foldl_pred(T)::in(dir.foldl_pred),
+    string::in, list(file_id)::in, bool::in, bool::in, bool::out, io.res::out,
+    T::in, T::out, io::di, io::uo) is det.
 
 foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
-        FollowLinks, Continue, T0, Result, !IO) :-
-    ( if can_implement_dir_foldl then
-        ( if
-            Recursive = yes,
-            FollowLinks = yes
-        then
-            check_for_symlink_loop(SymLinkParent, DirName,
-                LoopRes, ParentIds0, ParentIds, !IO)
-        else
-            ParentIds = ParentIds0,
-            LoopRes = ok(no)
-        ),
-        (
-            LoopRes = ok(no),
-            dir.open(DirName, OpenResult, !IO),
-            (
-                OpenResult = ok({Dir0, FirstEntry}),
-
-                % We need to close the directory if an
-                % exception is thrown to avoid resource leaks.
-                ProcessDir =
-                    (pred({DirRes1, Continue1, Dir1}::out,
-                            IO0::di, IO::uo) is det :-
-                        dir.foldl2_process_dir2(Dir0, Dir1, SymLinkParent,
-                            P, DirName, ParentIds, FirstEntry, Recursive,
-                            FollowLinks, T0, {DirRes1, Continue1}, IO0, IO)
-                    ),
-                promise_equivalent_solutions [!:IO, ExcpResult] (
-                    exception.try_io(ProcessDir, ExcpResult, !IO)
-                ),
-                (
-                    ExcpResult = succeeded({DirRes, Continue, Dir}),
-                    dir.close(Dir, CleanupRes, !IO),
-                    (
-                        DirRes = ok(T),
-                        (
-                            CleanupRes = ok,
-                            Result = ok(T)
-                        ;
-                            CleanupRes = error(Error),
-                            Result = error(T, Error)
-                        )
-                    ;
-                        DirRes = error(_, _),
-                        Result = DirRes
-                    )
-                ;
-                    ExcpResult = exception(_),
-                    % We are relying on the fact that in the C, C# and Java
-                    % backends Dir0 = Dir, and in the Erlang backend dir.close
-                    % does nothing.
-                    dir.close(Dir0, _, !IO),
-                    rethrow(ExcpResult)
-                )
-            ;
-                OpenResult = eof,
-                Continue = yes,
-                Result = ok(T0)
-            ;
-                OpenResult = error(Error),
-                Continue = no,
-                Result = error(T0, Error)
-            )
-        ;
-            LoopRes = ok(yes),
-
-            Continue = yes,
-            Result = ok(T0)
-        ;
-            LoopRes = error(Error),
-
-            Continue = no,
-            Result = error(T0, Error)
-        )
+        FollowLinks, Continue, Result, !Data, !IO) :-
+    ( if
+        Recursive = yes,
+        FollowLinks = yes
+    then
+        check_for_symlink_loop(SymLinkParent, DirName, LoopRes,
+            ParentIds0, ParentIds, !IO)
     else
-        Continue = no,
-        Result = error(T0, make_io_error("dir.foldl2 " ++
-            "not implemented on this platform"))
-    ).
-
-:- pred dir.foldl2_process_entries(dir.stream::in, dir.stream::out, bool::in,
-    dir.foldl_pred(T)::in(dir.foldl_pred), string::in,
-    io.result(string)::in, list(file_id)::in, bool::in,
-    bool::in, bool::out, T::in, io.maybe_partial_res(T)::out,
-    io::di, io::uo) is det.
-
-foldl2_process_entries(!Dir, _, _, _, error(Error), _, _, _, no,
-        T0, error(T0, Error), !IO).
-foldl2_process_entries(!Dir, _, _, _, eof, _, _, _, yes, T0, ok(T0), !IO).
-foldl2_process_entries(!Dir, SymLinkParent, P, DirName, ok(FileName),
-        ParentIds, Recursive, FollowLinks, Continue, T0, Res, !IO) :-
-    PathName = DirName/FileName,
-    io.file_type(no, PathName, FileTypeRes, !IO),
+        ParentIds = ParentIds0,
+        LoopRes = ok(no)
+    ),
     (
-        FileTypeRes = ok(Type),
-        P(DirName, FileName, Type, Continue1, T0, T1, !IO),
+        LoopRes = ok(no),
+        dir.open(DirName, OpenResult, !IO),
         (
-            Continue1 = yes,
-            ( if
-                Recursive = yes,
-                Type = directory
-            then
-                dir.foldl2_process_dir(SymLinkParent, P, PathName, ParentIds,
-                    Recursive, FollowLinks, Continue2, T1, Res1, !IO)
-            else if
-                Recursive = yes,
-                Type = symbolic_link,
-                FollowLinks = yes
-            then
-                io.file_type(yes, PathName, TargetTypeRes, !IO),
-                (
-                    TargetTypeRes = ok(TargetType),
-                    (
-                        TargetType = directory,
-                        dir.foldl2_process_dir(yes, P, PathName, ParentIds,
-                            Recursive, FollowLinks, Continue2, T1, Res1, !IO)
-                    ;
-
-                        ( TargetType = regular_file
-                        ; TargetType = symbolic_link
-                        ; TargetType = named_pipe
-                        ; TargetType = socket
-                        ; TargetType = character_device
-                        ; TargetType = block_device
-                        ; TargetType = message_queue
-                        ; TargetType = semaphore
-                        ; TargetType = shared_memory
-                        ; TargetType = unknown
-                        ),
-                        Continue2 = yes,
-                        Res1 = ok(T1)
-                    )
-                ;
-                    TargetTypeRes = error(TargetTypeError),
-                    Continue2 = no,
-                    Res1 = error(T1, TargetTypeError)
-                )
-            else
-                Continue2 = yes,
-                Res1 = ok(T1)
+            OpenResult = ok(Dir),
+            promise_equivalent_solutions [!:IO, TryResult] (
+                try_io(
+                    foldl2_process_dir_aux(Dir, SymLinkParent, P, DirName,
+                        ParentIds, Recursive, FollowLinks, !.Data),
+                    TryResult, !IO)
             ),
-            ( if
-                Continue2 = yes,
-                Res1 = ok(T)
-            then
-                dir.read_entry(!.Dir, EntryResult0, !IO),
+            dir.close(Dir, CloseRes, !IO),
+            (
+                TryResult = succeeded({Continue, Result1, !:Data}),
                 (
-                    EntryResult0 = ok({!:Dir, FileName1}),
-                    EntryResult = ok(FileName1)
+                    Result1 = ok,
+                    Result = CloseRes
                 ;
-                    EntryResult0 = eof,
-                    EntryResult = eof
-                ;
-                    EntryResult0 = error(Error),
-                    EntryResult = error(Error)
-                ),
-                dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName,
-                    EntryResult, ParentIds, Recursive, FollowLinks, Continue,
-                    T, Res, !IO)
-            else
-                Continue = no,
-                Res = Res1
+                    Result1 = error(Error),
+                    Result = error(Error)
+                )
+            ;
+                TryResult = exception(_),
+                rethrow(TryResult)
             )
         ;
-            Continue1 = no,
-            Res = ok(T1),
-            Continue = no
+            OpenResult = eof,
+            Continue = yes,
+            Result = ok
+        ;
+            OpenResult = error(Error),
+            Continue = no,
+            Result = error(Error)
         )
     ;
-        FileTypeRes = error(Error),
+        LoopRes = ok(yes),
+        Continue = yes,
+        Result = ok
+    ;
+        LoopRes = error(Error),
         Continue = no,
-        Res = error(T0, Error)
+        Result = error(Error)
+    ).
+
+:- pred dir.foldl2_process_dir_aux(dir.stream::in, bool::in,
+    dir.foldl_pred(T)::in(dir.foldl_pred), string::in, list(file_id)::in,
+    bool::in, bool::in, T::in, {bool, io.res, T}::out, io::di, io::uo) is det.
+
+foldl2_process_dir_aux(Dir, SymLinkParent, P, DirName, ParentIds,
+        Recursive, FollowLinks, !.Data, {Continue, Res, !:Data}, !IO) :-
+    foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName, ParentIds,
+        Recursive, FollowLinks, Continue, Res, !Data, !IO).
+
+:- pred foldl2_process_dir_entries(dir.stream::in, bool::in,
+    dir.foldl_pred(T)::in(dir.foldl_pred), string::in, list(file_id)::in,
+    bool::in, bool::in, bool::out, io.res::out, T::in, T::out,
+    io::di, io::uo) is det.
+
+foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName, ParentIds,
+        Recursive, FollowLinks, Continue, Res, !Data, !IO) :-
+    dir.read_entry(Dir, ReadRes, !IO),
+    (
+        ReadRes = ok(FileName),
+        PathName = make_path_name(DirName, FileName),
+        io.file_type(no, PathName, FileTypeRes, !IO),
+        (
+            FileTypeRes = ok(FileType),
+            P(DirName, FileName, FileType, Continue0, !Data, !IO),
+            (
+                Continue0 = yes,
+                ( if
+                    Recursive = yes,
+                    FileType = directory
+                then
+                    % XXX SymLinkParent?
+                    foldl2_process_dir(SymLinkParent, P, PathName, ParentIds,
+                        Recursive, FollowLinks, Continue1, Res1, !Data, !IO)
+                else if
+                    Recursive = yes,
+                    FileType = symbolic_link,
+                    FollowLinks = yes
+                then
+                    io.file_type(yes, PathName, TargetTypeRes, !IO),
+                    (
+                        TargetTypeRes = ok(TargetType),
+                        (
+                            TargetType = directory,
+                            foldl2_process_dir(yes, P, PathName, ParentIds,
+                                Recursive, FollowLinks, Continue1, Res1,
+                                !Data, !IO)
+                        ;
+                            ( TargetType = regular_file
+                            ; TargetType = symbolic_link
+                            ; TargetType = named_pipe
+                            ; TargetType = socket
+                            ; TargetType = character_device
+                            ; TargetType = block_device
+                            ; TargetType = message_queue
+                            ; TargetType = semaphore
+                            ; TargetType = shared_memory
+                            ; TargetType = unknown
+                            ),
+                            Continue1 = yes,
+                            Res1 = ok
+                        )
+                    ;
+                        TargetTypeRes = error(TargetTypeError),
+                        Continue1 = no,
+                        Res1 = error(TargetTypeError)
+                    )
+                else
+                    Continue1 = yes,
+                    Res1 = ok
+                ),
+                ( if
+                    Continue1 = yes,
+                    Res1 = ok
+                then
+                    foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName,
+                        ParentIds, Recursive, FollowLinks, Continue, Res,
+                        !Data, !IO)
+                else
+                    Continue = no,
+                    Res = Res1
+                )
+            ;
+                Continue0 = no,
+                Continue = no,
+                Res = ok
+            )
+        ;
+            FileTypeRes = error(Error),
+            Continue = no,
+            Res = error(Error)
+        )
+    ;
+        ReadRes = eof,
+        Continue = yes,
+        Res = ok
+    ;
+        ReadRes = error(Error),
+        Continue = no,
+        Res = error(Error)
     ).
 
     % Check whether we've seen this directory before in this branch of the
@@ -1530,8 +1509,7 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
         LoopRes = ok(no)
     ).
 
-% MS-Windows doesn't provide the POSIX directory functions.
-:- pragma foreign_decl("C", "
+:- pragma foreign_decl("C", local, "
 
 #include ""mercury_string.h""
 #include ""mercury_types.h""
@@ -1554,11 +1532,15 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 #endif
 
 #if defined(MR_WIN32)
-  typedef   HANDLE      ML_DIR_STREAM;
+    struct ML_DIR_STREAM {
+        HANDLE      handle;         /* may be INVALID_HANDLE_VALUE */
+        MR_String   pending_entry;  /* initially populated, then NULL */
+    };
+    typedef struct ML_DIR_STREAM *ML_DIR_STREAM;
 #elif defined(MR_HAVE_READDIR)
-  typedef   DIR *       ML_DIR_STREAM;
+    typedef DIR *ML_DIR_STREAM;
 #else
-  typedef   MR_Integer  ML_DIR_STREAM;
+    typedef MR_Integer ML_DIR_STREAM;
 #endif
 ").
 
@@ -1572,172 +1554,152 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 :- pragma foreign_type("Java", dir.stream, "java.util.Iterator").
 :- pragma foreign_type("Erlang", dir.stream, "").
 
-:- pred can_implement_dir_foldl is semidet.
-
-can_implement_dir_foldl :-
-    semidet_fail.
-
-:- pragma foreign_proc("C",
-    can_implement_dir_foldl,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-#if defined(MR_HAVE_OPENDIR) && defined(MR_HAVE_READDIR) && \\
-        defined(MR_HAVE_CLOSEDIR)
-    SUCCESS_INDICATOR = MR_TRUE;
-#elif defined(MR_WIN32)
-    SUCCESS_INDICATOR = MR_TRUE;
-#else
-    SUCCESS_INDICATOR = MR_FALSE;
-#endif
-").
-:- pragma foreign_proc("C#",
-    can_implement_dir_foldl,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true;
-").
-:- pragma foreign_proc("Java",
-    can_implement_dir_foldl,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true;
-").
-:- pragma foreign_proc("Erlang",
-    can_implement_dir_foldl,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true
-").
-
-    % Win32 doesn't allow us to open a directory without returning the first
-    % item. That ought to be abstracted away by dir.stream as it complicates
-    % all other platforms.
-    %
-:- pred dir.open(string::in, io.result({dir.stream, string})::out,
-    io::di, io::uo) is det.
+:- pred dir.open(string::in, io.result(dir.stream)::out, io::di, io::uo)
+    is det.
 
 open(DirName, Res, !IO) :-
-    ( if can_implement_dir_foldl then
-        dir.open_2(DirName, Res, !IO)
+    ( if have_win32 then
+        check_dir_readable(DirName, Res0, !IO),
+        (
+            Res0 = ok,
+            DirPattern = make_path_name(DirName, "*"),
+            dir.open_2(DirName, DirPattern, Res, !IO)
+        ;
+            Res0 = error(Error),
+            Res = error(Error)
+        )
     else
-        Res = error(io.make_io_error("dir.foldl2 not implemented " ++
-            "on this platform"))
+        DirPattern = "", % unused
+        dir.open_2(DirName, DirPattern, Res, !IO)
     ).
 
-:- pred dir.open_2(string::in, io.result({dir.stream, string})::out,
+:- pred dir.open_2(string::in, string::in, io.result(dir.stream)::out,
     io::di, io::uo) is det.
 
+dir.open_2(DirName, DirPattern, Res, !IO) :-
+    dir.open_3(DirName, DirPattern, Dir, MaybeWin32Error, !IO),
+    ( if
+        is_maybe_win32_error(MaybeWin32Error, "cannot open directory: ",
+            IOError)
+    then
+        Res = error(IOError)
+    else
+        Res = ok(Dir)
+    ).
+
+:- pred dir.open_3(string::in, string::in, dir.stream::out,
+    io.system_error::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
-    dir.open_2(DirName::in, Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates, will_not_modify_trail, does_not_affect_liveness],
+    dir.open_3(DirName::in, DirPattern::in, Dir::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        will_not_modify_trail, does_not_affect_liveness, may_not_duplicate],
 "
 #if defined(MR_WIN32)
     WIN32_FIND_DATAW    file_data;
-    ML_DIR_STREAM       Dir;
-    LPTSTR              FirstFileName;
-    char                *dir_pattern;
-    MR_Integer          is_readable;
-    char                *filename;
 
-    ML_check_dir_readable(DirName, &is_readable, &Result);
-    if (is_readable) {
-        dir_pattern = ML_make_path_name(DirName, MR_make_string_const(""*""));
-        Dir = FindFirstFileW(ML_utf8_to_wide(dir_pattern), &file_data);
-        if (Dir == INVALID_HANDLE_VALUE) {
-            int error = GetLastError();
-            if (error == ERROR_NO_MORE_FILES) {
-                Result = ML_make_dir_open_result_eof();
-            } else {
-                ML_make_dir_open_result_error(error, &Result);
-            }
-        } else {
-            filename = ML_wide_to_utf8(file_data.cFileName, MR_ALLOC_ID);
-            ML_make_win32_dir_open_result_ok(Dir, filename, &Result);
+    Dir = MR_GC_NEW_ATTRIB(struct ML_DIR_STREAM, MR_ALLOC_ID);
+
+    Dir->handle = FindFirstFileW(ML_utf8_to_wide(DirPattern), &file_data);
+    if (Dir->handle == INVALID_HANDLE_VALUE) {
+        Error = GetLastError();
+        if (Error == ERROR_NO_MORE_FILES) {
+            Error = 0;
         }
+        Dir->pending_entry = NULL;
+    } else {
+        Error = 0;
+        Dir->pending_entry = ML_wide_to_utf8(file_data.cFileName, MR_ALLOC_ID);
     }
 
 #elif defined(MR_HAVE_OPENDIR) && defined(MR_HAVE_READDIR) && \\
         defined(MR_HAVE_CLOSEDIR)
-    ML_DIR_STREAM Dir;
 
     Dir = opendir(DirName);
     if (Dir == NULL) {
-        ML_make_dir_open_result_error(errno, &Result);
+        Error = errno;
     } else {
-        ML_dir_read_first_entry(Dir, &Result);
+        Error = 0;
     }
 
 #else /* !MR_WIN32 && !(MR_HAVE_OPENDIR etc.) */
-    MR_fatal_error(""dir.open called but not supported"");
+    Dir = NULL;
+    Error = ENOSYS;
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-    dir.open_2(DirName::in, Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
-"{
-    try {
-        System.Collections.IEnumerator Dir =
-            System.IO.Directory.GetFileSystemEntries(DirName).GetEnumerator();
-        Result = dir.ML_dir_read_first_entry(Dir);
-    } catch (System.Exception e) {
-        Result = dir.ML_make_dir_open_result_error(e);
-    }
-}").
-
-:- pragma foreign_proc("Java",
-    dir.open_2(DirName::in, Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    dir.open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_modify_trail, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        java.lang.String[] fileList = (new java.io.File(DirName)).list();
-        java.util.List list = java.util.Arrays.asList(fileList);
+        Dir =
+            System.IO.Directory.GetFileSystemEntries(DirName).GetEnumerator();
+        Error = null;
+    } catch (System.Exception e) {
+        Dir = null;
+        Error = e;
+    }
+").
 
-        Result = ML_dir_read_first_entry(list.iterator());
+:- pragma foreign_proc("Java",
+    dir.open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        java.io.File file = new java.io.File(DirName);
+        if (file.isDirectory()) {
+            String[] list = file.list();
+            if (list != null) {
+                Dir = java.util.Arrays.asList(list).iterator();
+                Error = null;
+            } else {
+                Dir = null;
+                // Probably permission problem.
+                Error = new java.io.IOException(""Error getting file list"");
+            }
+        } else if (!file.exists()) {
+            Dir = null;
+            Error = new java.io.IOException(""No such file or directory"");
+        } else {
+            Dir = null;
+            Error = new java.io.IOException(""Not a directory"");
+        }
     } catch (java.lang.Exception e) {
-        Result = ML_make_dir_open_result_error(e);
+        Dir = null;
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    dir.open_2(DirName::in, Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    dir.open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     DirNameStr = binary_to_list(DirName),
     case file:list_dir(DirNameStr) of
-        {ok, FileNames0} ->
-            FileNames = lists:sort(FileNames0),
-            Result = mercury__dir:'ML_dir_read_first_entry'(FileNames);
+        {ok, FileNames} ->
+            Dir = ets:new(mutvar, [set, private]),
+            ets:insert(Dir, {value, lists:sort(FileNames)}),
+            Error = ok;
         {error, Reason} ->
-            Result = mercury__dir:'ML_make_dir_open_result_error'(Reason)
+            Dir = null,
+            Error = {error, Reason}
     end
 ").
 
-:- pred dir.check_dir_readable(string::in, int::out,
-    io.result({dir.stream, string})::out, io::di, io::uo) is det.
-:- pragma foreign_export("C", dir.check_dir_readable(in, out, out, di, uo),
-    "ML_check_dir_readable").
+:- pred dir.check_dir_readable(string::in, io.res::out, io::di, io::uo) is det.
 
-check_dir_readable(DirName, IsReadable, Result, !IO) :-
+check_dir_readable(DirName, Res, !IO) :-
     io.file_type(yes, DirName, FileTypeRes, !IO),
     (
         FileTypeRes = ok(FileType),
         (
             FileType = directory,
-            io.check_file_accessibility(DirName, [read, execute],
-                AccessResult, !IO),
-            (
-                AccessResult = ok,
-                IsReadable = 1,
-                % This will not be used.
-                Result = error(make_io_error("no error"))
-            ;
-                AccessResult = error(Msg),
-                IsReadable = 0,
-                Result = error(Msg)
-            )
+            io.check_file_accessibility(DirName, [read, execute], Res, !IO)
         ;
             ( FileType = regular_file
             ; FileType = symbolic_link
@@ -1750,89 +1712,13 @@ check_dir_readable(DirName, IsReadable, Result, !IO) :-
             ; FileType = shared_memory
             ; FileType = unknown
             ),
-            IsReadable = 0,
-            Result = error(make_io_error(
+            Res = error(make_io_error(
                 "dir.foldl2: pathname is not a directory"))
         )
     ;
-        FileTypeRes = error(Msg),
-        IsReadable = 0,
-        Result = error(Msg)
+        FileTypeRes = error(Error),
+        Res = error(Error)
     ).
-
-:- pred dir.read_first_entry(dir.stream::in,
-    io.result({dir.stream, string})::out, io::di, io::uo) is det.
-:- pragma foreign_export("C", dir.read_first_entry(in, out, di, uo),
-    "ML_dir_read_first_entry").
-:- pragma foreign_export("C#", dir.read_first_entry(in, out, di, uo),
-    "ML_dir_read_first_entry").
-:- pragma foreign_export("Java", dir.read_first_entry(in, out, di, uo),
-    "ML_dir_read_first_entry").
-:- pragma foreign_export("Erlang", dir.read_first_entry(in, out, di, uo),
-    "ML_dir_read_first_entry").
-
-read_first_entry(Dir, Result, !IO) :-
-    dir.read_entry(Dir, Result, !IO),
-    (
-        Result = ok(_)
-    ;
-        ( Result = eof
-        ; Result = error(_)
-        ),
-        % Close the directory stream immediately to avoid resource leaks.
-        dir.close(Dir, _, !IO)
-    ).
-
-:- pred make_win32_dir_open_result_ok(dir.stream::in, string::in,
-    io.result({dir.stream, string})::out, io::di, io::uo) is det.
-:- pragma foreign_export("C",
-    make_win32_dir_open_result_ok(in, in, out, di, uo),
-    "ML_make_win32_dir_open_result_ok").
-
-make_win32_dir_open_result_ok(Dir, FirstFile0, Result, !IO) :-
-    ( if
-        ( FirstFile0 = dir.this_directory
-        ; FirstFile0 = dir.parent_directory
-        )
-    then
-        dir.read_entry(Dir, ReadResult, !IO),
-        (
-            ReadResult = ok(_),
-            Result = ReadResult
-        ;
-            ReadResult = eof,
-            dir.close(Dir, CloseRes, !IO),
-            ( CloseRes = ok, Result = eof
-            ; CloseRes = error(Error), Result = error(Error)
-            )
-        ;
-            ReadResult = error(Error),
-            dir.close(Dir, _, !IO),
-            Result = error(Error)
-        )
-    else
-        Result = ok({Dir, FirstFile0})
-    ).
-
-:- func make_dir_open_result_eof = io.result({dir.stream, string}).
-:- pragma foreign_export("C", (make_dir_open_result_eof = out),
-    "ML_make_dir_open_result_eof").
-
-make_dir_open_result_eof = eof.
-
-:- pred make_dir_open_result_error(io.system_error::in,
-    io.result({dir.stream, string})::out, io::di, io::uo) is det.
-:- pragma foreign_export("C", make_dir_open_result_error(in, out, di, uo),
-    "ML_make_dir_open_result_error").
-:- pragma foreign_export("C#", make_dir_open_result_error(in, out, di, uo),
-    "ML_make_dir_open_result_error").
-:- pragma foreign_export("Java", make_dir_open_result_error(in, out, di, uo),
-    "ML_make_dir_open_result_error").
-:- pragma foreign_export("Erlang", make_dir_open_result_error(in, out, di, uo),
-    "ML_make_dir_open_result_error").
-
-make_dir_open_result_error(Error, error(io.make_io_error(Msg)), !IO) :-
-    io.make_err_msg(Error, "dir.foldl2: opening directory failed: ", Msg).
 
 :- pred dir.close(dir.stream::in, io.res::out, io::di, io::uo) is det.
 
@@ -1853,10 +1739,13 @@ close(Dir, Res, !IO) :-
 :- pragma foreign_proc("C",
     dir.close_2(Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        will_not_modify_trail, does_not_affect_liveness],
+        will_not_modify_trail, does_not_affect_liveness, may_not_duplicate],
 "
 #if defined(MR_WIN32)
-    if (FindClose(Dir)) {
+    if (Dir->handle == INVALID_HANDLE_VALUE) {
+        Error = 0;
+    } else if (FindClose(Dir->handle)) {
+        Dir->handle = INVALID_HANDLE_VALUE;
         Error = 0;
     } else {
         Error = GetLastError();
@@ -1889,18 +1778,18 @@ close(Dir, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    dir.close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
+    dir.close_2(Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    % Nothing to do.
+    ets:delete(Dir, value),
     Error = ok
 ").
 
-:- pred dir.read_entry(dir.stream::in, io.result({dir.stream, string})::out,
-    io::di, io::uo) is det.
+:- pred dir.read_entry(dir.stream::in, io.result(string)::out, io::di, io::uo)
+    is det.
 
-read_entry(Dir0, Res, !IO) :-
-    dir.read_entry_2(Dir0, Dir, MaybeWin32Error, HaveFileName, FileName, !IO),
+read_entry(Dir, Res, !IO) :-
+    dir.read_entry_2(Dir, MaybeWin32Error, HaveFileName, FileName, !IO),
     ( if
         is_maybe_win32_error(MaybeWin32Error,
             "dir.foldl2: reading directory entry failed: ", IOError)
@@ -1919,29 +1808,39 @@ read_entry(Dir0, Res, !IO) :-
             then
                 dir.read_entry(Dir, Res, !IO)
             else
-                Res = ok({Dir, FileName})
+                Res = ok(FileName)
             )
         )
     ).
 
-    % read_entry_2(Dir0, Dir, MaybeWin32Error, HaveFileName, FileName, !IO):
+    % read_entry_2(Dir, MaybeWin32Error, HaveFileName, FileName, !IO):
     % If there is no error and HaveFileName = no, then we have reached the
     % end-of-stream.
     %
-:- pred read_entry_2(dir.stream::in, dir.stream::out, io.system_error::out,
-    bool::out, string::out, io::di, io::uo) is det.
+:- pred read_entry_2(dir.stream::in, io.system_error::out, bool::out,
+    string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    dir.read_entry_2(Dir0::in, Dir::out, Error::out, HaveFileName::out,
-        FileName::out, _IO0::di, _IO::uo),
+    dir.read_entry_2(Dir::in, Error::out, HaveFileName::out, FileName::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        will_not_modify_trail, does_not_affect_liveness],
+        will_not_modify_trail, does_not_affect_liveness, may_not_duplicate],
 "
 #if defined(MR_WIN32)
     WIN32_FIND_DATAW file_data;
 
-    Dir = Dir0;
-    if (FindNextFileW(Dir, &file_data)) {
+    if (Dir->handle == INVALID_HANDLE_VALUE) {
+        /* Directory was empty when opened. */
+        Error = 0;
+        HaveFileName = MR_NO;
+        FileName = MR_make_string_const("""");
+    } else if (Dir->pending_entry != NULL) {
+        /* FindFirstFileW already returned the first entry. */
+        Error = 0;
+        HaveFileName = MR_YES;
+        FileName = Dir->pending_entry;
+        Dir->pending_entry = NULL;
+    } else if (FindNextFileW(Dir->handle, &file_data)) {
         Error = 0;
         HaveFileName = MR_YES;
         FileName = ML_wide_to_utf8(file_data.cFileName, MR_ALLOC_ID);
@@ -1957,7 +1856,6 @@ read_entry(Dir0, Res, !IO) :-
 #elif defined(MR_HAVE_READDIR) && defined(MR_HAVE_CLOSEDIR)
     struct dirent *dir_entry;
 
-    Dir = Dir0;
     errno = 0;          /* to detect end-of-stream */
     dir_entry = readdir(Dir);
     if (dir_entry == NULL) {
@@ -1979,11 +1877,10 @@ read_entry(Dir0, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    dir.read_entry_2(Dir0::in, Dir::out, Error::out, HaveFileName::out,
-        FileName::out, _IO0::di, _IO::uo),
+    dir.read_entry_2(Dir::in, Error::out, HaveFileName::out, FileName::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
-    Dir = Dir0;
+"
     try {
         if (Dir.MoveNext()) {
             // The .NET CLI returns path names qualified with
@@ -2000,14 +1897,13 @@ read_entry(Dir0, Res, !IO) :-
         HaveFileName = mr_bool.NO;
         FileName = """";
     }
-}").
+").
 
 :- pragma foreign_proc("Java",
-    dir.read_entry_2(Dir0::in, Dir::out, Error::out, HaveFileName::out,
-        FileName::out, _IO0::di, _IO::uo),
+    dir.read_entry_2(Dir::in, Error::out, HaveFileName::out, FileName::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    Dir = Dir0;
     try {
         if (Dir.hasNext()) {
             HaveFileName = bool.YES;
@@ -2025,18 +1921,19 @@ read_entry(Dir0, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    dir.read_entry_2(Dir0::in, Dir::out, Error::out, HaveFileName::out,
+    dir.read_entry_2(Dir::in, Error::out, HaveFileName::out,
         FileName::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    case Dir0 of
+    [{value, FileNames0}] = ets:lookup(Dir, value),
+    case FileNames0 of
         [] ->
             HaveFileName = {no},
-            FileName = <<>>,
-            Dir = [];
-        [FileNameStr | Dir] ->
+            FileName = <<>>;
+        [Head | Tail] ->
             HaveFileName = {yes},
-            FileName = list_to_binary(FileNameStr)
+            FileName = list_to_binary(Head),
+            ets:insert(Dir, {value, Tail})
     end,
     Error = ok
 ").
