@@ -8430,7 +8430,7 @@ Don't reclaim heap on backtracking in semidet code.
 Combines the effect of the two options above.
 
 @sp 1
-@item max-jump-table-size @var{n}
+@item --max-jump-table-size @var{n}
 @findex --max-jump-table-size @var{n}
 The maximum number of entries a jump table can have.
 The special value 0 indicates the table size is unlimited.
@@ -8438,7 +8438,7 @@ This option can be useful to avoid exceeding fixed limits
 imposed by some C compilers.
 
 @c @sp 1
-@c @item "--compare-specialization @var{n}
+@c @item --compare-specialization @var{n}
 @c @findex --compare-specialization @var{n}
 @c Generate quadratic instead of linear compare predicates for types
 @c with up to n function symbols. Higher values of n lead to faster
