@@ -2906,211 +2906,275 @@ long_option("par-loop-control-preserve-tail-recursion",
 
 %-----------------------------------------------------------------------------%
 
-special_handler(grade, string(Grade), OptionTable0, Result) :-
-    ( if convert_grade_option(Grade, OptionTable0, OptionTable) then
-        Result = ok(OptionTable)
-    else
-        Result = error("invalid grade `" ++ Grade ++ "'")
-    ).
-special_handler(compile_to_c, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("c"), !OptionTable),
-    map.set(only_opmode_target_code_only, bool(yes), !OptionTable).
-special_handler(java, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("java"), !OptionTable).
-special_handler(java_only, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("java"), !OptionTable),
-    map.set(only_opmode_target_code_only, bool(yes), !OptionTable).
-special_handler(csharp, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("csharp"), !OptionTable).
-special_handler(csharp_only, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("csharp"), !OptionTable),
-    map.set(only_opmode_target_code_only, bool(yes), !OptionTable).
-special_handler(erlang, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("erlang"), !OptionTable).
-special_handler(erlang_only, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("erlang"), !OptionTable),
-    map.set(only_opmode_target_code_only, bool(yes), !OptionTable).
-special_handler(profiling, bool(Value), !.OptionTable, ok(!:OptionTable)) :-
-    map.set(profile_time, bool(Value), !OptionTable),
-    map.set(profile_calls, bool(Value), !OptionTable),
-    map.set(profile_memory, bool(no), !OptionTable),
-    map.set(profile_deep, bool(no), !OptionTable).
-special_handler(time_profiling, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(profile_time, bool(yes), !OptionTable),
-    map.set(profile_calls, bool(yes), !OptionTable),
-    map.set(profile_memory, bool(no), !OptionTable),
-    map.set(profile_deep, bool(no), !OptionTable).
-special_handler(memory_profiling, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(profile_time, bool(no), !OptionTable),
-    map.set(profile_calls, bool(yes), !OptionTable),
-    map.set(profile_memory, bool(yes), !OptionTable),
-    map.set(profile_deep, bool(no), !OptionTable).
-special_handler(deep_profiling, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(profile_time, bool(no), !OptionTable),
-    map.set(profile_calls, bool(no), !OptionTable),
-    map.set(profile_memory, bool(no), !OptionTable),
-    map.set(profile_deep, bool(yes), !OptionTable).
-special_handler(inlining, bool(Value), !.OptionTable, ok(!:OptionTable)) :-
-    map.set(inline_simple, bool(Value), !OptionTable),
-    map.set(inline_builtins, bool(Value), !OptionTable),
-    map.set(inline_single_use, bool(Value), !OptionTable),
+special_handler(Option, SpecialData, !.OptionTable, Result) :-
+    require_switch_arms_semidet [Option]
     (
-        Value = yes,
-        map.set(inline_compound_threshold, int(10), !OptionTable)
+        (
+            Option = grade,
+            SpecialData = string(Grade),
+            ( if convert_grade_option(Grade, !OptionTable) then
+                Result = ok(!.OptionTable)
+            else
+                Result = error("invalid grade `" ++ Grade ++ "'")
+            )
+        ;
+            Option = linkage_special,
+            SpecialData = string(Flag),
+            ( if ( Flag = "shared" ; Flag = "static" ) then
+                map.det_update(mercury_linkage, string(Flag), !OptionTable),
+                map.det_update(linkage, string(Flag), !OptionTable),
+                Result = ok(!.OptionTable)
+            else
+                Result = error("argument of `--linkage' should be " ++
+                    "either ""shared"" or ""static"".")
+            )
+        ;
+            Option = mercury_linkage_special,
+            SpecialData = string(Flag),
+            ( if ( Flag = "shared" ; Flag = "static" ) then
+                map.det_update(mercury_linkage, string(Flag), !OptionTable),
+                Result = ok(!.OptionTable)
+            else
+                Result = error("argument of `--mercury-linkage' should be " ++
+                    "either ""shared"" or ""static"".")
+            )
+        )
     ;
-        Value = no,
-        map.set(inline_compound_threshold, int(0), !OptionTable)
+        (
+            Option = compile_to_c,
+            SpecialData = none,
+            map.set(target, string("c"), !OptionTable),
+            map.set(only_opmode_target_code_only, bool(yes), !OptionTable)
+        ;
+            Option = java,
+            SpecialData = none,
+            map.set(target, string("java"), !OptionTable)
+        ;
+            Option = java_only,
+            SpecialData = none,
+            map.set(target, string("java"), !OptionTable),
+            map.set(only_opmode_target_code_only, bool(yes), !OptionTable)
+        ;
+            Option = csharp,
+            SpecialData = none,
+            map.set(target, string("csharp"), !OptionTable)
+        ;
+            Option = csharp_only,
+            SpecialData = none,
+            map.set(target, string("csharp"), !OptionTable),
+            map.set(only_opmode_target_code_only, bool(yes), !OptionTable)
+        ;
+            Option = erlang,
+            SpecialData = none,
+            map.set(target, string("erlang"), !OptionTable)
+        ;
+            Option = erlang_only,
+            SpecialData = none,
+            map.set(target, string("erlang"), !OptionTable),
+            map.set(only_opmode_target_code_only, bool(yes), !OptionTable)
+        ;
+            Option = profiling,
+            SpecialData = bool(Profile),
+            map.set(profile_time, bool(Profile), !OptionTable),
+            map.set(profile_calls, bool(Profile), !OptionTable),
+            map.set(profile_memory, bool(no), !OptionTable),
+            map.set(profile_deep, bool(no), !OptionTable)
+        ;
+            Option = time_profiling,
+            SpecialData = none,
+            map.set(profile_time, bool(yes), !OptionTable),
+            map.set(profile_calls, bool(yes), !OptionTable),
+            map.set(profile_memory, bool(no), !OptionTable),
+            map.set(profile_deep, bool(no), !OptionTable)
+        ;
+            Option = memory_profiling,
+            SpecialData = none,
+            map.set(profile_time, bool(no), !OptionTable),
+            map.set(profile_calls, bool(yes), !OptionTable),
+            map.set(profile_memory, bool(yes), !OptionTable),
+            map.set(profile_deep, bool(no), !OptionTable)
+        ;
+            Option = deep_profiling,
+            SpecialData = none,
+            map.set(profile_time, bool(no), !OptionTable),
+            map.set(profile_calls, bool(no), !OptionTable),
+            map.set(profile_memory, bool(no), !OptionTable),
+            map.set(profile_deep, bool(yes), !OptionTable)
+        ;
+            Option = inlining,
+            SpecialData = bool(Inline),
+            map.set(inline_simple, bool(Inline), !OptionTable),
+            map.set(inline_builtins, bool(Inline), !OptionTable),
+            map.set(inline_single_use, bool(Inline), !OptionTable),
+            (
+                Inline = yes,
+                map.set(inline_compound_threshold, int(10), !OptionTable)
+            ;
+                Inline = no,
+                map.set(inline_compound_threshold, int(0), !OptionTable)
+            )
+        ;
+            Option = everything_in_one_c_function,
+            SpecialData = none,
+            map.set(procs_per_c_function, int(0), !OptionTable)
+        ;
+            Option = reclaim_heap_on_failure,
+            SpecialData = bool(Reclaim),
+            map.set(reclaim_heap_on_semidet_failure, bool(Reclaim),
+                !OptionTable),
+            map.set(reclaim_heap_on_nondet_failure, bool(Reclaim),
+                !OptionTable)
+        ;
+            Option = strict_sequential,
+            SpecialData = none,
+            override_options([
+                    reorder_conj - bool(no),
+                    reorder_disj - bool(no),
+                    fully_strict - bool(yes)
+                ], !OptionTable)
+        ;
+            Option = inhibit_warnings,
+            SpecialData = bool(Inhibit),
+            bool.not(Inhibit, Enable),
+            override_options([
+                    inhibit_accumulator_warnings    -   bool(Inhibit),
+                    warn_singleton_vars             -   bool(Enable),
+                    warn_overlapping_scopes         -   bool(Enable),
+                    warn_det_decls_too_lax          -   bool(Enable),
+                    warn_inferred_erroneous         -   bool(Enable),
+                    warn_nothing_exported           -   bool(Enable),
+                    warn_interface_imports          -   bool(Enable),
+                    warn_missing_opt_files          -   bool(Enable),
+                    warn_missing_trans_opt_files    -   bool(Enable),
+                    warn_missing_trans_opt_deps     -   bool(Enable),
+                    warn_unification_cannot_succeed -   bool(Enable),
+                    warn_simple_code                -   bool(Enable),
+                    warn_missing_module_name        -   bool(Enable),
+                    warn_wrong_module_name          -   bool(Enable),
+                    warn_smart_recompilation        -   bool(Enable),
+                    warn_undefined_options_variables -  bool(Enable),
+                    warn_target_code                -   bool(Enable),
+                    warn_up_to_date                 -   bool(Enable),
+                    warn_stubs                      -   bool(Enable),
+                    warn_dead_procs                 -   bool(Enable),
+                    warn_dead_preds                 -   bool(Enable),
+                    warn_table_with_inline          -   bool(Enable),
+                    warn_non_term_special_preds     -   bool(Enable),
+                    warn_insts_without_matching_type -  bool(Enable)
+                ], !OptionTable)
+        ;
+            Option = infer_all,
+            SpecialData = bool(Infer),
+            override_options([
+                    infer_types                     -   bool(Infer),
+                    infer_modes                     -   bool(Infer),
+                    infer_det                       -   bool(Infer)
+                ], !OptionTable)
+        ;
+            Option = opt_space,
+            SpecialData = none,
+            opt_space(OptionSettingsList),
+            override_options(OptionSettingsList, !OptionTable)
+        ;
+            Option = opt_level,
+            SpecialData = int(SpecifiedLevel),
+            ( if SpecifiedLevel > 6 then
+                EffectiveLevel = 6
+            else if SpecifiedLevel < -1 then
+                EffectiveLevel = -1
+            else
+                EffectiveLevel = SpecifiedLevel
+            ),
+            map.set(opt_level_number, int(EffectiveLevel), !OptionTable),
+            set_opt_level(EffectiveLevel, !OptionTable)
+        ;
+            Option = optimize_saved_vars,
+            SpecialData = bool(Optimize),
+            map.set(optimize_saved_vars_const, bool(Optimize), !OptionTable),
+            map.set(optimize_saved_vars_cell, bool(Optimize), !OptionTable)
+        ;
+            Option = mercury_library_directory_special,
+            SpecialData = string(Dir),
+            option_table_add_mercury_library_directory(Dir, !OptionTable)
+        ;
+            Option = search_library_files_directory_special,
+            SpecialData = string(Dir),
+            option_table_add_search_library_files_directory(Dir, !OptionTable)
+        ;
+            Option = mercury_library_special,
+            SpecialData = string(Lib),
+            list.foldl(append_to_accumulating_option, [
+                    link_libraries                  - Lib,
+                    mercury_libraries               - Lib,
+                    init_files                      - (Lib ++ ".init")
+                ], !OptionTable)
+        ;
+            Option = mercury_standard_library_directory_special,
+            SpecialData = maybe_string(StdLibDir),
+            MaybeStdLibDir = maybe_string(StdLibDir),
+            map.set(mercury_standard_library_directory, MaybeStdLibDir,
+                !OptionTable),
+            map.set(mercury_configuration_directory, MaybeStdLibDir,
+                !OptionTable)
+        ;
+            Option = mercury_configuration_directory_special,
+            SpecialData = string(ConfDir),
+            map.set(mercury_configuration_directory,
+                maybe_string(yes(ConfDir)), !OptionTable)
+        ;
+            Option = quoted_cflag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(cflags, Flag, !OptionTable)
+        ;
+            Option = quoted_gcc_flag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(gcc_flags, Flag, !OptionTable)
+        ;
+            Option = quoted_clang_flag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(clang_flags, Flag, !OptionTable)
+        ;
+            Option = quoted_msvc_flag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(msvc_flags, Flag, !OptionTable)
+        ;
+            Option = quoted_java_flag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(java_flags, Flag, !OptionTable)
+        ;
+            Option = quoted_csharp_flag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(csharp_flags, Flag, !OptionTable)
+        ;
+            Option = quoted_erlang_flag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(erlang_flags, Flag, !OptionTable)
+        ;
+            Option = quoted_ld_flag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(ld_flags, Flag, !OptionTable)
+        ;
+            Option = quoted_ld_libflag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(ld_libflags, Flag, !OptionTable)
+        ;
+            Option = env_type,
+            SpecialData = string(EnvTypeStr),
+            override_options([
+                    host_env_type   - string(EnvTypeStr),
+                    system_env_type - string(EnvTypeStr),
+                    target_env_type - string(EnvTypeStr)
+                ], !OptionTable)
+        ;
+            Option = inform_inferred,
+            SpecialData = bool(Inform),
+            override_options([
+                    inform_inferred_types -   bool(Inform),
+                    inform_inferred_modes -   bool(Inform)
+                ], !OptionTable)
+        ),
+        Result = ok(!.OptionTable)
     ).
-special_handler(everything_in_one_c_function, none, !.OptionTable,
-        ok(!:OptionTable)) :-
-    map.set(procs_per_c_function, int(0), !OptionTable).
-special_handler(reclaim_heap_on_failure, bool(Value), !.OptionTable,
-            ok(!:OptionTable)) :-
-    map.set(reclaim_heap_on_semidet_failure, bool(Value), !OptionTable),
-    map.set(reclaim_heap_on_nondet_failure, bool(Value), !OptionTable).
-special_handler(strict_sequential, none, !.OptionTable, ok(!:OptionTable)) :-
-    override_options([
-            reorder_conj - bool(no),
-            reorder_disj - bool(no),
-            fully_strict - bool(yes)
-        ], !OptionTable).
-special_handler(inhibit_warnings, bool(Inhibit), !.OptionTable,
-        ok(!:OptionTable)) :-
-    bool.not(Inhibit, Enable),
-    override_options([
-            inhibit_accumulator_warnings    -   bool(Inhibit),
-            warn_singleton_vars             -   bool(Enable),
-            warn_overlapping_scopes         -   bool(Enable),
-            warn_det_decls_too_lax          -   bool(Enable),
-            warn_inferred_erroneous         -   bool(Enable),
-            warn_nothing_exported           -   bool(Enable),
-            warn_interface_imports          -   bool(Enable),
-            warn_missing_opt_files          -   bool(Enable),
-            warn_missing_trans_opt_files    -   bool(Enable),
-            warn_missing_trans_opt_deps     -   bool(Enable),
-            warn_unification_cannot_succeed -   bool(Enable),
-            warn_simple_code                -   bool(Enable),
-            warn_missing_module_name        -   bool(Enable),
-            warn_wrong_module_name          -   bool(Enable),
-            warn_smart_recompilation        -   bool(Enable),
-            warn_undefined_options_variables -  bool(Enable),
-            warn_target_code                -   bool(Enable),
-            warn_up_to_date                 -   bool(Enable),
-            warn_stubs                      -   bool(Enable),
-            warn_dead_procs                 -   bool(Enable),
-            warn_dead_preds                 -   bool(Enable),
-            warn_table_with_inline          -   bool(Enable),
-            warn_non_term_special_preds     -   bool(Enable),
-            warn_insts_without_matching_type -  bool(Enable)
-        ], !OptionTable).
-special_handler(infer_all, bool(Infer), !.OptionTable, ok(!:OptionTable)) :-
-    override_options([
-            infer_types                     -   bool(Infer),
-            infer_modes                     -   bool(Infer),
-            infer_det                       -   bool(Infer)
-        ], !OptionTable).
-special_handler(opt_space, none, !.OptionTable, ok(!:OptionTable)) :-
-    opt_space(OptionSettingsList),
-    override_options(OptionSettingsList, !OptionTable).
-special_handler(opt_level, int(N0), !.OptionTable, ok(!:OptionTable)) :-
-    ( if N0 > 6 then
-        N = 6
-    else if N0 < -1 then
-        N = -1
-    else
-        N = N0
-    ),
-    map.set(opt_level_number, int(N), !OptionTable),
-    set_opt_level(N, !OptionTable).
-special_handler(optimize_saved_vars, bool(Optimize),
-        !.OptionTable, ok(!:OptionTable)) :-
-    map.set(optimize_saved_vars_const, bool(Optimize), !OptionTable),
-    map.set(optimize_saved_vars_cell, bool(Optimize), !OptionTable).
-special_handler(mercury_library_directory_special, string(Dir),
-        !.OptionTable, ok(!:OptionTable)) :-
-    option_table_add_mercury_library_directory(Dir, !OptionTable).
-special_handler(search_library_files_directory_special, string(Dir),
-        !.OptionTable, ok(!:OptionTable)) :-
-    option_table_add_search_library_files_directory(Dir, !OptionTable).
-special_handler(mercury_library_special, string(Lib),
-        OptionTable0, ok(OptionTable)) :-
-    list.foldl(append_to_accumulating_option, [
-        link_libraries                  - Lib,
-        mercury_libraries               - Lib,
-        init_files                      - (Lib ++ ".init")
-    ], OptionTable0, OptionTable).
-special_handler(mercury_standard_library_directory_special,
-        maybe_string(MaybeStdLibDir), OptionTable0, ok(OptionTable)) :-
-    OptionTable =
-        map.set(map.set(OptionTable0,
-        mercury_standard_library_directory, maybe_string(MaybeStdLibDir)),
-        mercury_configuration_directory, maybe_string(MaybeStdLibDir)).
-special_handler(mercury_configuration_directory_special,
-        string(ConfDir), OptionTable0, ok(OptionTable)) :-
-    OptionTable = map.set(OptionTable0, mercury_configuration_directory,
-        maybe_string(yes(ConfDir))).
-special_handler(quoted_cflag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(cflags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_gcc_flag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(gcc_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_clang_flag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(clang_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_msvc_flag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(msvc_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_java_flag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(java_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_csharp_flag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(csharp_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_erlang_flag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(erlang_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_ld_flag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(ld_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_ld_libflag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(ld_libflags, Flag, OptionTable0, OptionTable).
-special_handler(linkage_special, string(Flag), OptionTable0, Result) :-
-    ( if ( Flag = "shared" ; Flag = "static" ) then
-        map.det_update(mercury_linkage, string(Flag),
-            OptionTable0, OptionTable1),
-        map.det_update(linkage, string(Flag), OptionTable1, OptionTable),
-        Result = ok(OptionTable)
-    else
-        Result = error("argument of `--linkage' should be either " ++
-            """shared"" or ""static"".")
-    ).
-special_handler(mercury_linkage_special, string(Flag),
-            OptionTable0, Result) :-
-    ( if ( Flag = "shared" ; Flag = "static" ) then
-        map.det_update(mercury_linkage, string(Flag),
-            OptionTable0, OptionTable),
-        Result = ok(OptionTable)
-    else
-        Result = error("argument of `--mercury-linkage' should be either " ++
-            """shared"" or ""static"".")
-    ).
-
-special_handler(env_type, string(EnvTypeStr), !.OptionTable,
-        ok(!:OptionTable)) :-
-    override_options([
-            host_env_type   - string(EnvTypeStr),
-            system_env_type - string(EnvTypeStr),
-            target_env_type - string(EnvTypeStr)
-        ], !OptionTable).
-
-special_handler(inform_inferred, bool(Inform), !.OptionTable,
-        ok(!:OptionTable)) :-
-    override_options([
-            inform_inferred_types -   bool(Inform),
-            inform_inferred_modes -   bool(Inform)
-        ], !OptionTable).
 
 %-----------------------------------------------------------------------------%
 

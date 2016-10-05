@@ -489,6 +489,43 @@ then
 
         :- pred ext(int::out) is det.
         :- pragma external_pred(ext/1).
+
+        :- type psv_t
+            --->    psv_t1
+            ;       psv_t2
+            ;       psv_t3
+            ;       psv_t4
+            ;       psv_t5
+            ;       psv_t6
+            ;       psv_t7
+            ;       psv_t8.
+
+        :- type psv_u
+            --->    psv_u1
+            ;       psv_u2.
+
+        :- pred preferred_switch_var(psv_t::in, psv_u::in, int::out)
+            is semidet.
+
+        preferred_switch_var(T, U, N) :-
+            require_switch_arms_semidet [[T]]
+            (
+                T = psv_t1,
+                U = psv_u1,
+                N = 11
+            ;
+                T = psv_t2,
+                U = psv_u2,
+                N = 22
+            ;
+                T = psv_t3,
+                U = psv_u1,
+                N = 31
+            ;
+                T = psv_t4,
+                U = psv_u2,
+                N = 42
+            ).
 EOF
 
     # When this script has been invoked with --prefix=..., these variables
