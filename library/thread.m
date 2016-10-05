@@ -654,7 +654,7 @@ call_back_to_mercury(Goal, ThreadId, !IO) :-
     MR_thread_barrier_count--;
   #ifdef MR_HIGHLEVEL_CODE
     if (MR_thread_barrier_count == 0) {
-        MR_SIGNAL(&MR_thread_barrier_cond, ""ML_decr_thread_barrier_count"");
+        MR_COND_SIGNAL(&MR_thread_barrier_cond, ""ML_decr_thread_barrier_count"");
     }
   #else
     if (MR_thread_barrier_count == 0) {

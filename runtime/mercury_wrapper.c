@@ -2755,7 +2755,7 @@ MR_do_interpreter(void)
     assert(MR_thread_equal(pthread_self(), MR_primordial_thread));
     MR_LOCK(&MR_thread_barrier_lock, "MR_do_interpreter");
     while (MR_thread_barrier_count > 0) {
-        while (MR_WAIT(&MR_thread_barrier_cond, &MR_thread_barrier_lock,
+        while (MR_COND_WAIT(&MR_thread_barrier_cond, &MR_thread_barrier_lock,
                 "MR_do_interpreter") != 0)
             ;
     }

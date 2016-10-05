@@ -77,10 +77,10 @@
     #define MR_LOCK(lck, from)      pthread_mutex_lock((lck))
     #define MR_UNLOCK(lck, from)    pthread_mutex_unlock((lck))
 
-    #define MR_SIGNAL(cnd, from)    pthread_cond_signal((cnd))
-    #define MR_BROADCAST(cnd, from) pthread_cond_broadcast((cnd))
-    #define MR_WAIT(cnd, mtx, from) pthread_cond_wait((cnd), (mtx))
-    #define MR_TIMED_WAIT(cond, mtx, abstime, from)                     \
+    #define MR_COND_SIGNAL(cnd, from)    pthread_cond_signal((cnd))
+    #define MR_COND_BROADCAST(cnd, from) pthread_cond_broadcast((cnd))
+    #define MR_COND_WAIT(cnd, mtx, from) pthread_cond_wait((cnd), (mtx))
+    #define MR_COND_TIMED_WAIT(cond, mtx, abstime, from)                     \
         pthread_cond_timedwait((cond), (mtx), (abstime))
 
     #if defined(MR_USE_LIBDISPATCH)
@@ -111,25 +111,25 @@
                     pthread_mutex_unlock((lck))                         \
                 )
 
-    #define MR_SIGNAL(cnd, from)                                        \
+    #define MR_COND_SIGNAL(cnd, from)                                   \
                 ( MR_debug_threads ?                                    \
                     MR_cond_signal((cnd), (from))                       \
                 :                                                       \
                     pthread_cond_signal((cnd))                          \
                 )
-    #define MR_BROADCAST(cnd, from)                                     \
+    #define MR_COND_BROADCAST(cnd, from)                                \
                 ( MR_debug_threads ?                                    \
                     MR_cond_broadcast((cnd), (from))                    \
                 :                                                       \
                     pthread_cond_broadcast((cnd))                       \
                 )
-    #define MR_WAIT(cnd, mtx, from)                                     \
+    #define MR_COND_WAIT(cnd, mtx, from)                                \
                 ( MR_debug_threads ?                                    \
                     MR_cond_wait((cnd), (mtx), (from))                  \
                 :                                                       \
                     pthread_cond_wait((cnd), (mtx))                     \
                 )
-    #define MR_TIMED_WAIT(cond, mtx, abstime, from)                     \
+    #define MR_COND_TIMED_WAIT(cond, mtx, abstime, from)                \
         ( MR_debug_threads ?                                            \
             MR_cond_timed_wait((cond), (mtx), (abstime), (from))        \
         :                                                               \
@@ -238,9 +238,9 @@
   #define MR_LOCK(nothing, from)        do { } while (0)
   #define MR_UNLOCK(nothing, from)      do { } while (0)
 
-  #define MR_SIGNAL(nothing, from)      do { } while (0)
-  #define MR_BROADCAST(nothing, from)   do { } while (0)
-  #define MR_WAIT(no, thing, from)      (0)
+  #define MR_COND_SIGNAL(nothing, from)    do { } while (0)
+  #define MR_COND_BROADCAST(nothing, from) do { } while (0)
+  #define MR_COND_WAIT(no, thing, from)    (0)
 
   #define MR_OBTAIN_GLOBAL_LOCK(where)  do { } while (0)
   #define MR_RELEASE_GLOBAL_LOCK(where) do { } while (0)

@@ -254,7 +254,7 @@ ML_finalize_semaphore(void *obj, void *cd)
 
     sem = (ML_Semaphore *) Semaphore;
 
-    MR_LOCK(&(sem->lock), ""semaphore__signal"");
+    MR_LOCK(&(sem->lock), ""semaphore.signal"");
 
 #ifndef MR_HIGHLEVEL_CODE
     if (sem->count >= 0 && sem->suspended_head != NULL) {
@@ -265,7 +265,7 @@ ML_finalize_semaphore(void *obj, void *cd)
             sem->suspended_tail = ctxt->MR_ctxt_next;
             assert(sem->suspended_tail == NULL);
         }
-        MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
+        MR_UNLOCK(&(sem->lock), ""semaphore.signal"");
         MR_schedule_context(ctxt);
 
         /* yield() */
@@ -288,7 +288,7 @@ ML_finalize_semaphore(void *obj, void *cd)
       #endif
     } else {
         sem->count++;
-        MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
+        MR_UNLOCK(&(sem->lock), ""semaphore.signal"");
 
         /* yield() */
         MR_save_context(MR_ENGINE(MR_eng_this_context));
@@ -310,8 +310,8 @@ ML_finalize_semaphore(void *obj, void *cd)
     }
 #else
     sem->count++;
-    MR_SIGNAL(&(sem->cond), ""semaphore.signal"");
-    MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
+    MR_COND_SIGNAL(&(sem->cond), ""semaphore.signal"");
+    MR_UNLOCK(&(sem->lock), ""semaphore.signal"");
 #endif
 ").
 
@@ -353,12 +353,12 @@ ML_finalize_semaphore(void *obj, void *cd)
 
     sem = (ML_Semaphore *) Semaphore;
 
-    MR_LOCK(&(sem->lock), ""semaphore__wait"");
+    MR_LOCK(&(sem->lock), ""semaphore.wait"");
 
 #ifndef MR_HIGHLEVEL_CODE
     if (sem->count > 0) {
         sem->count--;
-        MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
+        MR_UNLOCK(&(sem->lock), ""semaphore.wait"");
     } else {
         MR_save_context(MR_ENGINE(MR_eng_this_context));
 
@@ -377,7 +377,7 @@ ML_finalize_semaphore(void *obj, void *cd)
             sem->suspended_head = ctxt;
             sem->suspended_tail = ctxt;
         }
-        MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
+        MR_UNLOCK(&(sem->lock), ""semaphore.wait"");
 
         /* Make the current engine do something else. */
         MR_ENGINE(MR_eng_this_context) = NULL;
@@ -394,14 +394,14 @@ ML_finalize_semaphore(void *obj, void *cd)
         ** return prematurely with the error code EINTR in glibc 2.3.2
         ** if the thread is sent a signal.
         */
-        while (MR_WAIT(&(sem->cond), &(sem->lock), ""semaphore.wait"") != 0) {
+        while (MR_COND_WAIT(&(sem->cond), &(sem->lock), ""semaphore.wait"") != 0) {
             /* do nothing */
         }
     }
 
     sem->count--;
 
-    MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
+    MR_UNLOCK(&(sem->lock), ""semaphore.wait"");
 #endif
 ").
 
