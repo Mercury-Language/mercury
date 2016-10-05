@@ -123,10 +123,10 @@ dir__path_name_is_root_directory("foo/bar") failed
 
 "C:"/"foo" = "C:foo".
 "C:\"/"foo" = "C:\foo".
-"C:"/"C:" threw exception: software_error("dir./: second argument is a current drive relative path")
-"C:"/"C:\foo" threw exception: software_error("dir./: second argument is absolute")
-"."/"/foo" threw exception: software_error("dir./: second argument is absolute")
-"."/"\foo" threw exception: software_error("dir./: second argument is absolute")
+"C:"/"C:" threw exception: software_error("function `dir./\'/2: Unexpected: second argument is a current drive relative path")
+"C:"/"C:\foo" threw exception: software_error("function `dir./\'/2: Unexpected: second argument is absolute")
+"."/"/foo" threw exception: software_error("function `dir./\'/2: Unexpected: second argument is absolute")
+"."/"\foo" threw exception: software_error("function `dir./\'/2: Unexpected: second argument is absolute")
 "foo"/"bar/baz" = "foo\bar\baz".
 "foo/"/"bar/baz" = "foo\bar\baz".
 checking whether `unwritable' is readable...ok
