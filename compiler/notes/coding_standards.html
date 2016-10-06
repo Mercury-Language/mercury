@@ -67,12 +67,12 @@ or anything else that might cause anyone's existing code to break.
 <p>
 
 Any new compiler modules or other major design changes
-should be documented in `compiler/notes/compiler_design.html'.
+should be documented in <code>compiler/notes/compiler_design.html</code>.
 
 <p>
 
 Any feature which is incompletely implemented
-should be mentioned in `compiler/notes/work_in_progress.html'.
+should be mentioned in <code>compiler/notes/work_in_progress.html</code>.
 
 <h2> Naming </h2>
 
@@ -98,7 +98,8 @@ and foo is the name of the field.
 
 <p>
 
-Your code should make as much reuse of existing code as possible.
+Your code should reuse existing code as much possible,
+generalizing if needed.
 "cut-and-paste" style reuse is highly discouraged.
 
 <p>
@@ -173,13 +174,24 @@ or should contain MR_strerror(errno, errbuf, sizeof(errbuf)).
 If it was a function manipulating some file,
 the error message should include the filename.
 
+<h2> Input / output </h2>
+
+All new code in the compiler that reads from a stream or writes to a stream
+should explicitly pass the stream being accessed
+to the predicates that do the reading or writing.
+Do not depend on the library's record
+of what the current input and output streams are;
+do not read from the current input stream,
+or write to the current output stream.
+
 <h2> Layout </h2>
 
 <p>
 
 Each module should be indented consistently,
 with 4 spaces per level of indentation.
-The indentation should be consistently done, using only with spaces.
+The indentation should be done using only spaces;
+there should be no tabs.
 The only exception should be Makefiles,
 which should use one tab per level of indentation.
 
@@ -230,8 +242,8 @@ rather than having a separate mode declaration.
 
 <p>
 If-then-elses should always be parenthesized,
-except that an if-then-else that occurs as the else
-part of another if-then-else doesn't need to be parenthesized.
+except when an if-then-else that occurs as the else part
+of another if-then-else doesn't need to be parenthesized.
 We prefer the
 <code>( if <i>C</i> then <i>T</i> else <i>E</i> )</code> syntax
 over the
@@ -323,12 +335,12 @@ Predicates and functions implemented via foreign code should be formatted
 like this:
 
 <pre>
-:- pragma foreign_proc("C",
+    :- pragma foreign_proc("C",
         int.to_float(IntVal::in, FloatVal::out),
         [will_not_call_mercury, promise_pure],
-"
+    "
         FloatVal = IntVal;
-").
+    ").
 </pre>
 
 The predicate name and arguments should be on a line on their own,
@@ -351,11 +363,22 @@ Type definitions should be formatted in one of the following styles:
 
 	:- type foo
 		--->	bar(
-                    int,		% comment explaining field
-                    float		% comment explaining field
+                    int,		% short comment explaining field
+                    float		% short comment explaining field
                 )
         ;	    baz
         ;	    quux.
+
+	:- type complicated
+		--->	complicated_f(
+                    % long comment explaining first field
+                    f1_arg_name     :: int,
+
+                    % long comment explaining second and third fields
+                    % this is ok if they are related to each other
+                    f2_arg_name     :: float,
+                    f3_arg_name     :: float
+                ).
 </pre>
 
 <p>
@@ -366,10 +389,9 @@ blank lines should be used to show the separation into sections.
 Comments should precede the code to which they apply, rather than following it.
 
 <pre>
-	%
 	% This is a block comment; it applies to the code in the next
-	% section (up to the next blank line).
-	%
+	% section (up to the next blank line, or the next block comment).
+
 	blah,
 	blah,
 	blahblah,
@@ -542,7 +564,11 @@ you should run a bootstrap check (using the `bootcheck' script)
 before committing.
 If the change means that old versions of the compiler
 will not be able to compile the new version of the compiler,
-you must notify all the other Mercury developers.
+you must notify all the other Mercury developers,
+giving them a heads up that they should install a sufficiently-recent
+compiler on their own machines,
+and then wait until there is at least one sufficiently-recent ROTD
+is available for download.
 
 <p>
 
