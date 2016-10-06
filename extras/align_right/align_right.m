@@ -141,7 +141,7 @@ option_desc = [
     "The value of the -p option specifies the string whose presence",
     "at the ends of on two or more consecutive lines asks the program",
     "to right-align the ends of those lines by adding padding before them.",
-    "The default is a single blackslash, to help align the ends of C macros.",
+    "The default is a single backslash, to help align the ends of C macros.",
     "",
     "The value of the -h option specifies the highest column number",
     "that the program will push the end of the pattern string to.",
