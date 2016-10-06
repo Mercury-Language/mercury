@@ -3749,14 +3749,9 @@ file_id(FileName, Result, !IO) :-
         does_not_affect_liveness, no_sharing],
 "
     /* Win32 returns junk in the st_ino field of `struct stat'. */
-#if defined(MR_HAVE_STAT) && !defined(MR_BROKEN_STAT_ST_INO)
-  #ifdef MR_WIN32
-    struct _stat s;
-    int stat_result = _wstat(ML_utf8_to_wide(FileName), &s);
-  #else
+#if defined(MR_HAVE_STAT) && !defined(MR_WIN32)
     struct stat s;
     int stat_result = stat(FileName, &s);
-  #endif
 
     if (stat_result == 0) {
         FileId.device = s.st_dev;
