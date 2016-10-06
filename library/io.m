@@ -1340,12 +1340,15 @@
 :- pragma obsolete(make_temp/3).
 :- pred make_temp(string::out, io::di, io::uo) is det.
 
-    % make_temp(Dir, Prefix, Suffix, Result, !IO) creates an empty file whose
-    % name is different to the name of any existing file. The file will reside
-    % in the directory specified by Dir and will have a prefix using up to
-    % the first 5 characters of Prefix. If successful, Result returns the name
-    % of the file.  It is the responsibility of the caller to delete the file
-    % when it is no longer required.
+    % make_temp_file(Dir, Prefix, Suffix, Result, !IO) creates an empty file
+    % whose name is different to the name of any existing file. The file will
+    % reside in the directory specified by Dir and will have a prefix using up
+    % to the first 5 characters of Prefix. If successful, Result returns the
+    % name of the file. It is the responsibility of the caller to delete the
+    % file when it is no longer required.
+    %
+    % The C backend has the following limitations:
+    %   - Suffix may be ignored.
     %
     % The C# backend has the following limitations:
     %   - Dir is ignored.
@@ -1383,6 +1386,9 @@
     % characters of Prefix and a Suffix.  Result returns the name of the
     % new directory. It is the responsibility of the program to delete the
     % directory when it is no longer needed.
+    %
+    % The C backend has the following limitations:
+    %   - Suffix is ignored.
     %
     % The C# backend has the following limitations:
     %   - Prefix is ignored.
@@ -10439,8 +10445,12 @@ import java.util.Random;
 #ifdef MR_HAVE_MKSTEMP
     int err, fd;
 
-    FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX%s"",
-        Dir, Sep, Prefix, Suffix);
+    /*
+    ** We cannot append Suffix because the last six chars in the argument
+    ** to mkstemp() must be XXXXXX.
+    */
+    FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
+        Dir, Sep, Prefix);
     fd = mkstemp(FileName);
     if (fd == -1) {
         ML_make_err_msg(errno, ""error opening temporary file: "", MR_ALLOC_ID,
@@ -10659,8 +10669,12 @@ import java.util.Random;
 #ifdef MR_HAVE_MKDTEMP
     int err;
 
-    DirName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX%s"",
-        Dir, Sep, Prefix, Suffix);
+    /*
+    ** We cannot append Suffix because the last six chars in the argument
+    ** to mkdtemp() must be XXXXXX.
+    */
+    DirName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
+        Dir, Sep, Prefix);
     DirName = mkdtemp(DirName);
     if (DirName == NULL) {
         ML_make_err_msg(errno, ""error creating temporary directory: "",
