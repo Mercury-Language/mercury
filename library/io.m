@@ -1727,10 +1727,6 @@
 :- type file_id.
 :- pred file_id(string::in, io.res(file_id)::out, io::di, io::uo) is det.
 
-    % Succeeds if file_id is implemented on this platform.
-    %
-:- pred have_file_ids is semidet.
-
 %
 % For use by term_io.m:
 %
@@ -2009,13 +2005,12 @@ using System.Security.Principal;
 :- pred read_byte_val(input_stream::in, result_code::out, int::out,
     system_error::out, io::di, io::uo) is det.
 
-    % call_system_code(Command, Status, Success, Message, !IO):
+    % call_system_code(Command, Status, Error, !IO):
     %
     % Invokes the operating system shell with the specified Command.
-    % On success Success = yes and Status is valid. On failure Success = no and
-    % Message will contain the error message.
+    % Status is valid when Error indicates success.
     %
-:- pred call_system_code(string::in, int::out, bool::out, string::out,
+:- pred call_system_code(string::in, int::out, system_error::out,
     io::di, io::uo) is det.
 
     % getenv(Var, Value):
@@ -3738,28 +3733,23 @@ compare_file_id(Result, FileId1, FileId2) :-
 ").
 
 file_id(FileName, Result, !IO) :-
-    ( if have_file_ids then
-        io.file_id_2(FileName, Status, Msg, FileId, !IO),
-        ( if Status = 1 then
-            Result = ok(FileId)
-        else
-            Result = error(io_error(Msg))
-        )
+    io.file_id_2(FileName, FileId, Error, !IO),
+    ( if is_error(Error, "cannot get file id: ", IOError) then
+        Result = error(IOError)
     else
-        Result = error(make_io_error("io.file_id not implemented " ++
-            "on this platform"))
+        Result = ok(FileId)
     ).
 
-:- pred file_id_2(string::in, int::out, string::out, file_id::out,
-    io::di, io::uo) is det.
+:- pred file_id_2(string::in, file_id::out, system_error::out, io::di, io::uo)
+    is det.
 
 :- pragma foreign_proc("C",
-    file_id_2(FileName::in, Status::out, Msg::out,
-        FileId::out, _IO0::di, _IO::uo),
+    file_id_2(FileName::in, FileId::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-#ifdef MR_HAVE_STAT
+    /* Win32 returns junk in the st_ino field of `struct stat'. */
+#if defined(MR_HAVE_STAT) && !defined(MR_BROKEN_STAT_ST_INO)
   #ifdef MR_WIN32
     struct _stat s;
     int stat_result = _wstat(ML_utf8_to_wide(FileName), &s);
@@ -3771,33 +3761,33 @@ file_id(FileName, Result, !IO) :-
     if (stat_result == 0) {
         FileId.device = s.st_dev;
         FileId.inode = s.st_ino;
-        Msg = MR_string_const("""", 0);
-        Status = 1;
+        Error = 0;
     } else {
-        ML_make_err_msg(errno, ""stat() failed: "", MR_ALLOC_ID, Msg);
-        Status = 0;
+        Error = errno;
     }
 #else
-    MR_fatal_error(""io.file_id_2 called but not supported"");
+    Error = ENOSYS;
 #endif
 ").
 
-:- pragma foreign_proc("Java",
-    file_id_2(_FileName::in, _Status::out, _Msg::out,
-        _FileId::out, _IO0::di, _IO::uo),
+:- pragma foreign_proc("C#",
+    file_id_2(_FileName::in, _FileId::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    // This function should never be called, since have_file_ids will
-    // fail for Java.
-    if (true) { // otherwise Java complains about unreachable stmts.
-        throw new RuntimeException(
-            ""io.file_id_2 called but not supported"");
-    }
+    Error = new System.NotSupportedException(
+        ""io.file_id not supported on this platform"");
+").
+
+:- pragma foreign_proc("Java",
+    file_id_2(_FileName::in, _FileId::out, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    Error = new java.lang.UnsupportedOperationException(
+        ""io.file_id not supported on this platform"");
 ").
 
 :- pragma foreign_proc("Erlang",
-    file_id_2(FileName::in, Status::out, Msg::out,
-        FileId::out, _IO0::di, _IO::uo),
+    file_id_2(FileName::in, FileId::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
@@ -3807,36 +3797,11 @@ file_id(FileName, Result, !IO) :-
             MajorDevice = FileInfo#file_info.major_device,
             Inode = FileInfo#file_info.inode,
             FileId = {MajorDevice, Inode},
-            Msg = <<>>,
-            Status = 1;
+            Error = ok;
         {error, Reason} ->
             FileId = null,
-            Msg = list_to_binary(file:format_error(Reason)),
-            Status = 0
+            Error = {error, Reason}
     end
-").
-
-% Can we retrieve inode numbers on this system.
-have_file_ids :- semidet_fail.
-:- pragma foreign_proc("C",
-    have_file_ids,
-    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-#if defined(MR_BROKEN_STAT_ST_INO) || !defined(MR_HAVE_STAT)
-    /* Win32 returns junk in the st_ino field of `struct stat'. */
-    SUCCESS_INDICATOR = MR_FALSE;
-#else
-    SUCCESS_INDICATOR = MR_TRUE;
-#endif
-").
-
-:- pragma foreign_proc("Erlang",
-    have_file_ids,
-    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    SUCCESS_INDICATOR = true
 ").
 
 %---------------------------------------------------------------------------%
@@ -5399,14 +5364,14 @@ call_system(Command, Result, !IO) :-
     ).
 
 call_system_return_signal(Command, Result, !IO) :-
-    call_system_code(Command, Code, Success, Msg, !IO),
-    (
-        Success = no,
-        Result = error(io_error(Msg))
-    ;
-        Success = yes,
-        Result = decode_system_command_exit_code(Code)
+    call_system_code(Command, Status, Error, !IO),
+    ( if is_error(Error, "error invoking system command: ", IOError) then
+        Result = error(IOError)
+    else
+        Result = decode_system_command_exit_code(Status)
     ).
+
+%---------------------------------------------------------------------------%
 
 :- type io.error
     --->    io_error(string).       % This is subject to change.
@@ -7428,9 +7393,9 @@ is_maybe_win32_error(Error, Prefix, io_error(Message)) :-
 :- pragma foreign_proc("C#",
     make_err_msg(Error::in, Msg0::in, Msg::out),
     [will_not_call_mercury, promise_pure, thread_safe],
-"{
+"
     Msg = System.String.Concat(Msg0, Error.Message);
-}").
+").
 
 :- pragma foreign_proc("Java",
     make_err_msg(Error::in, Msg0::in, Msg::out),
@@ -9699,6 +9664,12 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 %
 % Miscellaneous predicates
 %
+% XXX Grouping by language is more confusing than helpful.
+%
+
+    % Fallback implementation.
+progname(DefaultProgName, ProgName, !IO) :-
+    ProgName = DefaultProgName.
 
 :- pragma foreign_proc("C",
     progname(DefaultProgname::in, PrognameOut::out, _IO0::di, _IO::uo),
@@ -9784,8 +9755,7 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    call_system_code(Command::in, Status::out, Success::out, Msg::out,
-        _IO0::di, _IO::uo),
+    call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -9825,21 +9795,17 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 
     if (err != 0) {
         /* Spawn failed. */
-        Success = MR_NO;
-        ML_make_err_msg(errno, ""error invoking system command: "",
-            MR_ALLOC_ID, Msg);
+        Error = errno;
     } else {
         /* Wait for the spawned process to exit. */
         do {
             err = waitpid(pid, &st, 0);
         } while (err == -1 && MR_is_eintr(errno));
         if (err == -1) {
-            Success = MR_NO;
-            ML_make_err_msg(errno, ""error invoking system command: "",
-                MR_ALLOC_ID, Msg);
+            Error = errno;
         } else {
             Status = st;
-            Success = MR_YES;
+            Error = 0;
         }
     }
 
@@ -9852,51 +9818,13 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
   #endif
 
     if (Status == -1) {
-        Success = MR_NO;
-        ML_make_err_msg(errno, ""error invoking system command: "",
-            MR_ALLOC_ID, Msg);
+        Error = errno;
     } else {
-        Success = MR_YES;
+        Error = 0;
     }
 
 #endif  /* !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON */
 ").
-
-:- pragma foreign_proc("Erlang",
-    call_system_code(Command::in, Status::out, Success::out, Msg::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
-"
-    % XXX this is bad
-    % 1. the command cannot receive input
-    % 2. output doesn't come out until process finishes
-    % 3. the error code is returned in an inefficient way
-    % 4. standard output and standard error are always tied together
-    %
-    CommandStr = binary_to_list(Command),
-    OutputCode = os:cmd(CommandStr ++ ""; echo -n $?""),
-    case string:rchr(OutputCode, $\\n) of
-        0 ->
-            Code = OutputCode;
-        NL ->
-            {Output, [$\\n, Code]} = lists:split(NL - 1, OutputCode),
-            io:put_chars(Output)
-    end,
-    {Status, []} = string:to_integer(Code),
-    case Status =:= 0 of
-        true ->
-            Msg = <<>>,
-            Success = yes;
-        false ->
-            Msg = <<""error invoking system command"">>,
-            Success = no
-    end
-").
-
-progname(DefaultProgName::in, ProgName::out, IO::di, IO::uo) :-
-    % This is a fall-back for back-ends which don't support the C interface.
-    ProgName = DefaultProgName.
 
 decode_system_command_exit_code(Code0) = Status :-
     decode_system_command_exit_code(Code0, Exited, ExitCode, Signalled,
@@ -9950,6 +9878,8 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
     #endif
 ").
 
+%---------------------%
+
 :- pragma foreign_proc("C#",
     command_line_arguments(Args::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
@@ -9978,8 +9908,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 :- pragma foreign_proc("C#",
-    call_system_code(Command::in, Status::out, Success::out, Msg::out,
-        _IO0::di, _IO::uo),
+    call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     try {
@@ -9995,12 +9924,6 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
             arguments = """";
         }
 
-        // debugging...
-        // System.Console.Out.WriteLine(
-        //  ""[command = "" + command + ""]"");
-        // System.Console.Out.WriteLine(
-        //  ""[arguments = "" + arguments + ""]"");
-
         System.Diagnostics.Process process = new System.Diagnostics.Process();
         // Never interpret the command as a document to open with whatever
         // application is registered for that document type. This also
@@ -10011,22 +9934,15 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
         process.Start();
         process.WaitForExit();
         Status = process.ExitCode;
-        Msg = """";
-        Success = mr_bool.YES;
-
-        // debugging...
-        // System.Console.Out.WriteLine(""[exitcode = "" + Status + ""]"");
-
+        Error = null;
     }
     catch (System.Exception e) {
-        Success = mr_bool.NO;
         Status = 1;
-        Msg = e.Message;
-
-        // debugging...
-        // System.Console.Out.WriteLine(""[message = "" + Msg + ""]"");
+        Error = e;
     }
 ").
+
+%---------------------%
 
 :- pragma foreign_proc("Java",
     progname(_Default::in, PrognameOut::out, _IO0::di, _IO::uo),
@@ -10034,6 +9950,18 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
         may_not_duplicate],
 "
     PrognameOut = jmercury.runtime.JavaInternal.progname;
+").
+
+:- pragma foreign_proc("Java",
+    command_line_arguments(Args::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    String[] arg_vector = jmercury.runtime.JavaInternal.args;
+    Args = list.empty_list();
+    // arg_vector does not include the executable name.
+    for (int i = arg_vector.length - 1; i >= 0; --i) {
+        Args = list.cons(arg_vector[i], Args);
+    }
 ").
 
 :- pragma foreign_proc("Java",
@@ -10052,75 +9980,8 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
     jmercury.runtime.JavaInternal.exit_status = ExitStatus;
 ").
 
-:- pragma foreign_proc("Erlang",
-    command_line_arguments(Args::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    ArgStrings = init:get_plain_arguments(),
-    Args = lists:map(fun list_to_binary/1, ArgStrings)
-").
-
-:- pragma foreign_proc("Erlang",
-    get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    'ML_erlang_global_server' ! {get_exit_status, self()},
-    receive
-        {get_exit_status_ack, ExitStatus} ->
-            void
-    end
-").
-
-:- pragma foreign_proc("Erlang",
-    set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    'ML_erlang_global_server' ! {set_exit_status, ExitStatus}
-").
-
-command_line_arguments(Args, IO, IO) :-
-    build_command_line_args(0, Args).
-
-:- pred build_command_line_args(int::in, list(string)::out) is det.
-
-build_command_line_args(ArgNumber, Args) :-
-    ( if command_line_argument(ArgNumber, Arg) then
-        Args = [Arg | MoreArgs],
-        build_command_line_args(ArgNumber + 1, MoreArgs)
-    else
-        Args = []
-    ).
-
-:- pred command_line_argument(int::in, string::out) is semidet.
-
-command_line_argument(_, "") :-
-    % XXX This predicate is currently only used by the Java implementation,
-    % but to prevent compilation warnings for (eg) the C implementation,
-    % some definition needs to be present.
-    ( if semidet_succeed then
-        error("unexpected call to command_line_argument")
-    else
-        semidet_fail
-    ).
-
 :- pragma foreign_proc("Java",
-    command_line_argument(ArgNum::in, Arg::out),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
-"
-    String[] arg_vector = jmercury.runtime.JavaInternal.args;
-
-    if (ArgNum < arg_vector.length && ArgNum >= 0) {
-        Arg = arg_vector[ArgNum];
-        SUCCESS_INDICATOR = true;
-    } else {
-        Arg = null;
-        SUCCESS_INDICATOR = false;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    call_system_code(Command::in, Status::out, Success::out, Msg::out,
-        _IO0::di, _IO::uo),
+    call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
     boolean has_sh;
@@ -10158,9 +10019,8 @@ command_line_argument(_, "") :-
         stdout.start();
         stderr.start();
 
-        Status  = process.waitFor();
-        Success = bool.YES;
-        Msg     = null;
+        Status = process.waitFor();
+        Error = null;
 
         // The stdin StreamPipe is killed off after the Process is finished
         // so as not to waste CPU cycles with a pointless thread.
@@ -10181,12 +10041,62 @@ command_line_argument(_, "") :-
         }
     } catch (java.lang.Exception e) {
         Status  = 1;
-        Success = bool.NO;
-        Msg = e.getMessage();
-        if (Msg == null) {
-            Msg = ""null"";
-        }
+        Error = e;
     }
+").
+
+%---------------------%
+
+:- pragma foreign_proc("Erlang",
+    command_line_arguments(Args::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    ArgStrings = init:get_plain_arguments(),
+    Args = lists:map(fun list_to_binary/1, ArgStrings)
+").
+
+:- pragma foreign_proc("Erlang",
+    get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    'ML_erlang_global_server' ! {get_exit_status, self()},
+    receive
+        {get_exit_status_ack, ExitStatus} ->
+            void
+    end
+").
+
+:- pragma foreign_proc("Erlang",
+    set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    'ML_erlang_global_server' ! {set_exit_status, ExitStatus}
+").
+
+:- pragma foreign_proc("Erlang",
+    call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness],
+"
+    % XXX this is just a hack
+    % 0. assumes unix shell
+    % 1. the command cannot receive input
+    % 2. output doesn't come out until process finishes
+    % 3. the error code is returned in an inefficient way
+    % 4. standard output and standard error are always tied together
+    % 5. the command should be bracketed/sanitised
+    %
+    CommandStr = binary_to_list(Command),
+    OutputAndCode = os:cmd(CommandStr ++ ""; printf '\\n%d' $?""),
+    case string:rchr(OutputAndCode, $\\n) of
+        0 ->
+            Code = OutputAndCode;
+        NL ->
+            {Output, [$\\n | Code]} = lists:split(NL - 1, OutputAndCode),
+            io:put_chars(Output)
+    end,
+    {Status, []} = string:to_integer(Code),
+    Error = ok
 ").
 
 %---------------------------------------------------------------------------%
@@ -10339,13 +10249,11 @@ make_temp(Name, !IO) :-
 
 make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
     do_make_temp(Dir, Prefix, Suffix, char_to_string(dir.directory_separator),
-        Name, Okay, Message, !IO),
-    (
-        Okay = yes,
+        Name, Error, !IO),
+    ( if is_error(Error, "error creating temporary file: ", IOError) then
+        Result = error(IOError)
+    else
         Result = ok(Name)
-    ;
-        Okay = no,
-        Result = error(make_io_error(Message))
     ).
 
 make_temp(Dir, Prefix, Name, !IO) :-
@@ -10363,17 +10271,14 @@ make_temp_directory(Result, !IO) :-
 
 make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
     do_make_temp_directory(Dir, Prefix, Suffix,
-        char_to_string(dir.directory_separator), DirName, Okay, Message, !IO),
-    (
-        Okay = yes,
+        char_to_string(dir.directory_separator), DirName, Error, !IO),
+    ( if is_error(Error, "error creating temporary directory: ", IOError) then
+        Result = error(IOError)
+    else
         Result = ok(DirName)
-    ;
-        Okay = no,
-        Result = error(make_io_error(Message))
     ).
 
 %---------------------------------------------------------------------------%
-
 
 :- pragma foreign_decl("Java", local,
 "
@@ -10411,8 +10316,8 @@ import java.util.Random;
     }
 ").
 
-:- pred do_make_temp(string::in, string::in, string::in,
-    string::in, string::out, bool::out, string::out, io::di, io::uo) is det.
+:- pred do_make_temp(string::in, string::in, string::in, string::in,
+    string::out, system_error::out, io::di, io::uo) is det.
 
 % XXX The code for io.make_temp assumes POSIX. It uses the functions open(),
 % close(), and getpid() and the macros EEXIST, O_WRONLY, O_CREAT, and O_EXCL.
@@ -10438,9 +10343,10 @@ import java.util.Random;
 
 :- pragma foreign_proc("C",
     do_make_temp(Dir::in, Prefix::in, Suffix::in, Sep::in, FileName::out,
-        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
+        Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure,
+        not_thread_safe, % due to ML_io_tempnam_counter
+        tabled_for_io, does_not_affect_liveness],
 "
 #ifdef MR_HAVE_MKSTEMP
     int err, fd;
@@ -10453,20 +10359,15 @@ import java.util.Random;
         Dir, Sep, Prefix);
     fd = mkstemp(FileName);
     if (fd == -1) {
-        ML_make_err_msg(errno, ""error opening temporary file: "", MR_ALLOC_ID,
-            ErrorMessage);
-        Okay = MR_NO;
+        Error = errno;
     } else {
         do {
             err = close(fd);
         } while (err == -1 && MR_is_eintr(errno));
         if (err == 0) {
-            ErrorMessage = MR_make_string_const("""");
-            Okay = MR_YES;
+            Error = 0;
         } else {
-            ML_make_err_msg(errno, ""error closing temporary file: "",
-                MR_ALLOC_ID, ErrorMessage);
-            Okay = MR_NO;
+            Error = errno;
         }
     }
 #else
@@ -10512,20 +10413,15 @@ import java.util.Random;
     } while (fd == -1 && errno == EEXIST &&
         num_tries < ML_MAX_TEMPNAME_TRIES);
     if (fd == -1) {
-        ML_make_err_msg(errno, ""error opening temporary file: "", MR_ALLOC_ID,
-            ErrorMessage);
-        Okay = MR_NO;
+        Error = errno;
     }  else {
         do {
             err = close(fd);
         } while (err == -1 && MR_is_eintr(errno));
         if (err == 0) {
-            ErrorMessage = MR_make_string_const("""");
-            Okay = MR_YES;
+            Error = 0;
         } else {
-            ML_make_err_msg(errno, ""error closing temporary file: "",
-                MR_ALLOC_ID, ErrorMessage);
-            Okay = MR_NO;
+            Error = errno;
         }
     }
 #endif
@@ -10533,25 +10429,21 @@ import java.util.Random;
 
 :- pragma foreign_proc("C#",
     do_make_temp(_Dir::in, _Prefix::in, _Suffix::in, _Sep::in, FileName::out,
-        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
+"
     try {
         FileName = System.IO.Path.GetTempFileName();
-        Okay = mr_bool.YES;
-        ErrorMessage = """";
-    }
-    catch (System.Exception e)
-    {
+        Error = null;
+    } catch (System.Exception e) {
         FileName = """";
-        Okay = mr_bool.NO;
-        ErrorMessage = e.Message;
+        Error = e;
     }
-}").
+").
 
 :- pragma foreign_proc("Java",
     do_make_temp(Dir::in, Prefix::in, Suffix::in, _Sep::in, FileName::out,
-        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
@@ -10567,23 +10459,20 @@ import java.util.Random;
         new_file = new File(new File(Dir), makeTempName(Prefix, Suffix));
         if (new_file.createNewFile()) {
             FileName = new_file.getAbsolutePath();
-            Okay = bool.YES;
-            ErrorMessage = """";
+            Error = null;
         } else {
             FileName = """";
-            Okay = bool.NO;
-            ErrorMessage = ""Could not create file"";
+            Error = new java.io.IOException(""Could not create file"");
         }
     } catch (IOException e) {
         FileName = """";
-        Okay = bool.NO;
-        ErrorMessage = e.toString();
+        Error = e;
     }
 ").
 
 :- pragma foreign_proc("Erlang",
     do_make_temp(Dir::in, Prefix::in, Suffix::in, Sep::in, FileName::out,
-        Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+        Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
@@ -10612,33 +10501,32 @@ import java.util.Random;
 
     case
         mercury__io:'ML_do_make_temp_2'(DirStr, PrefixStr, SuffixStr, SepStr,
-            MaxTries, Seed)
+            MaxTries, Seed, eio)
     of
         {ok, FileName0} ->
             FileName = list_to_binary(FileName0),
-            Okay = {yes},
-            ErrorMessage = <<>>;
+            Error = ok;
         {error, Reason} ->
             FileName = <<>>,
-            Okay = {no},
-            ErrorMessage = list_to_binary(Reason)
+            Error = {error, Reason}
     end
 ").
 
 :- pragma foreign_decl("Erlang", local, "
-    -export(['ML_do_make_temp_2'/6]).
+    -export(['ML_do_make_temp_2'/7]).
 ").
 :- pragma foreign_code("Erlang", "
-    'ML_do_make_temp_2'(_, _, _, _, 0, _) ->
-        {error, ""error opening temporary file""};
-    'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep, Tries, Seed0) ->
+    'ML_do_make_temp_2'(_Dir, _Prefix, _Suffix, _Sep, 0, _Seed, LastError) ->
+        {error, LastError};
+    'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep, Tries, Seed0, LastError) ->
         {R1, Seed1} = random:uniform_s(16#1000, Seed0),
         {R2, Seed}  = random:uniform_s(16#1000, Seed1),
         FileName = lists:flatten(io_lib:format(""~s~s~s~3.16.0B.~3.16.0B~s"",
             [Dir, Sep, Prefix, R1, R2, Suffix])),
         case filelib:is_file(FileName) of
             true ->
-                'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep, Tries - 1, Seed);
+                'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep, Tries - 1, Seed,
+                    eexist);
             false ->
                 case file:open(FileName, [write, {encoding, utf8}]) of
                     {ok, IoDevice} ->
@@ -10646,11 +10534,11 @@ import java.util.Random;
                             ok ->
                                 {ok, FileName};
                             {error, Reason} ->
-                                {error, file:format_error(Reason)}
+                                {error, Reason}
                         end;
-                    {error, _} ->
+                    {error, Reason} ->
                         'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep,
-                            Tries - 1, Seed)
+                            Tries - 1, Seed, Reason)
                 end
         end.
 ").
@@ -10658,12 +10546,12 @@ import java.util.Random;
 %-----------------------------------------------------------------------%
 
 :- pred do_make_temp_directory(string::in, string::in, string::in, string::in,
-    string::out, bool::out, string::out, io::di, io::uo) is det.
+    string::out, system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     do_make_temp_directory(Dir::in, Prefix::in, Suffix::in, Sep::in,
-        DirName::out, Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+        DirName::out, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness],
 "
 #ifdef MR_HAVE_MKDTEMP
@@ -10677,24 +10565,19 @@ import java.util.Random;
         Dir, Sep, Prefix);
     DirName = mkdtemp(DirName);
     if (DirName == NULL) {
-        ML_make_err_msg(errno, ""error creating temporary directory: "",
-            MR_ALLOC_ID, ErrorMessage);
-        Okay = MR_NO;
+        Error = errno;
     } else {
-        ErrorMessage = MR_make_string_const("""");
-        Okay = MR_YES;
+        Error = 0;
     }
 #else
-    Okay = MR_NO;
-    ErrorMessage =
-        MR_make_string_const(""Your system does not have mkdtemp"");
+    Error = ENOSYS;
     DirName = MR_make_string_const("""");
 #endif /* HAVE_MKDTEMP */
 ").
 
 :- pragma foreign_proc("C#",
     do_make_temp_directory(Dir::in, _Prefix::in, _Suffix::in, _Sep::in,
-        DirName::out, Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+        DirName::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
     try
@@ -10722,8 +10605,7 @@ import java.util.Random;
                     )
                 );
                 Directory.CreateDirectory(DirName, security);
-                ErrorMessage = string.Empty;
-                Okay = mr_bool.YES;
+                Error = null;
                 break;
 
 #if __MonoCS__
@@ -10732,38 +10614,34 @@ import java.util.Random;
                 int errorNo = ML_sys_mkdir(DirName, 0x7 << 6);
                 if (errorNo == 0)
                 {
-                    ErrorMessage = string.Empty;
-                    Okay = mr_bool.YES;
+                    Error = null;
                 }
                 else
                 {
-                    ErrorMessage = string.Format(
+                    Error = new System.Exception(string.Format(
                         ""Creating directory {0} failed with: {1:X}"",
-                            DirName, errorNo);
-                    Okay = mr_bool.NO;
+                        DirName, errorNo));
                 }
                 break;
 #endif
 
             default:
-                Okay = mr_bool.NO;
-                ErrorMessage =
+                Error = new System.Exception(
                     ""Changing folder permissions is not supported for: "" +
-                    Environment.OSVersion;
+                    Environment.OSVersion);
                 break;
         }
     }
     catch (System.Exception e)
     {
         DirName = string.Empty;
-        Okay = mr_bool.NO;
-        ErrorMessage = e.Message;
+        Error = e;
     }
 }").
 
 :- pragma foreign_proc("Java",
     do_make_temp_directory(Dir::in, Prefix::in, Suffix::in, _Sep::in,
-        DirName::out, Okay::out, ErrorMessage::out, _IO0::di, _IO::uo),
+        DirName::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
@@ -10778,12 +10656,10 @@ import java.util.Random;
     new_dir = new File(new File(Dir), makeTempName(Prefix, Suffix));
     if (new_dir.mkdir()) {
         DirName = new_dir.getAbsolutePath();
-        Okay = bool.YES;
-        ErrorMessage = """";
+        Error = null;
     } else {
         DirName = """";
-        Okay = bool.NO;
-        ErrorMessage = ""Coudln't create directory"";
+        Error = new java.io.IOException(""Couldn't create directory"");
     }
 ").
 
