@@ -9392,6 +9392,7 @@ with_output_stream(Stream, Pred, !IO) :-
 call_pred_no_result(Pred, {}, !IO) :-
     Pred(!IO).
 
+:- pragma no_determinism_warning(restore_input_stream/5).
 :- pred restore_input_stream(pred(T, io, io), input_stream, io.res, io, io).
 :- mode restore_input_stream(pred(out, di, uo) is det, in, out, di, uo)
     is det.
@@ -9401,6 +9402,7 @@ call_pred_no_result(Pred, {}, !IO) :-
 restore_input_stream(_DummyPred, Stream, ok, !IO) :-
     set_input_stream(Stream, _OldStream, !IO).
 
+:- pragma no_determinism_warning(restore_output_stream/5).
 :- pred restore_output_stream(pred(io, io), output_stream, io.res, io, io).
 :- mode restore_output_stream(pred(di, uo) is det, in, out, di, uo) is det.
 :- mode restore_output_stream(pred(di, uo) is cc_multi, in, out, di, uo)
