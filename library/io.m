@@ -50,6 +50,7 @@
 %
 % Exported types.
 %
+
     % The state of the universe.
     %
 :- type io.state.
@@ -1834,7 +1835,6 @@
 
 :- implementation.
 
-:- import_module array.
 :- import_module benchmarking.
 :- import_module dir.
 :- import_module enum.
@@ -2136,7 +2136,7 @@ insert_std_stream_names(!IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Input predicates
+% Input predicates.
 %
 
 % We want to inline these, to allow deforestation.
@@ -4394,8 +4394,9 @@ ignore_whitespace(Stream, Result, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-
+%
 % Output predicates.
+%
 
 nl(!IO) :-
     write_char('\n', !IO).
@@ -4440,7 +4441,7 @@ write_many(Stream, [f(F) | Rest], !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Various different versions of io.print
+% Various different versions of io.print.
 %
 
 print(Term, !IO) :-
@@ -4486,7 +4487,7 @@ print_line_cc(Term, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Various different versions of io.write
+% Various different versions of io.write.
 %
 
 write(X, !IO) :-
@@ -4715,8 +4716,9 @@ open_binary_append(FileName, Result, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-
+%
 % Declarative versions of Prolog's see/1 and seen/0.
+%
 
 see(File, Result, !IO) :-
     open_input(File, Result0, !IO),
@@ -4753,8 +4755,9 @@ seen_binary(!IO) :-
     close_binary_input(OldStream, !IO).
 
 %---------------------------------------------------------------------------%
-
+%
 % Declarative versions of Prolog's tell/1 and told/0.
+%
 
 told(!IO) :-
     stdout_stream(Stdout, !IO),
@@ -4791,7 +4794,7 @@ tell_binary(File, Result, !IO) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Stream name predicates
+% Stream name predicates.
 %
 
 input_stream_name(Name, !IO) :-
@@ -5077,7 +5080,7 @@ may_delete_stream_info(1, !IO).
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Global state predicates
+% Global state predicates.
 %
 
 get_globals(Globals, !IO) :-
@@ -5275,8 +5278,9 @@ progname_base(DefaultName, PrognameBase, !IO) :-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
+%
 % Environment interface predicates
+%
 
 :- pragma promise_pure(get_environment_var/4).
 
@@ -5316,8 +5320,9 @@ set_environment_var(Var, Value, IO0, IO) :-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
+%
 % Statistics reporting predicates.
+%
 
 report_stats(!IO) :-
     report_stats("standard", !IO).
@@ -5340,7 +5345,7 @@ report_stats(Selector, !IO) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Miscellaneous predicates
+% Miscellaneous predicates.
 %
 
 call_system(Command, Result, !IO) :-
@@ -7466,7 +7471,7 @@ throw_on_close_error(Error, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Input predicates
+% Input predicates.
 %
 
 read_char_code(input_stream(Stream), Result, Char, Error, !IO) :-
@@ -7842,7 +7847,7 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Output predicates (with output to mercury_current_text_output)
+% Output predicates (with output to mercury_current_text_output).
 %
 
 write_string(Message, !IO) :-
@@ -7883,7 +7888,7 @@ flush_binary_output(!IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Moving about binary streams
+% Moving about binary streams.
 %
 
 :- pred whence_to_int(io.whence::in, int::out) is det.
@@ -7955,7 +7960,7 @@ binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Output predicates (with output to the specified stream)
+% Output predicates (with output to the specified stream).
 %
 
 write_string(output_stream(Stream), Message, !IO) :-
@@ -8498,7 +8503,7 @@ write_float_2(Stream, Float, Error, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Stream predicates
+% Stream predicates.
 %
 
 :- pragma foreign_export("C", stdin_stream_2(out, di, uo),
@@ -10095,8 +10100,9 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 ").
 
 %---------------------------------------------------------------------------%
-
+%
 % io.getenv and io.setenv.
+%
 
 :- pragma foreign_decl("C", "
 #include <stdlib.h> /* for getenv() and setenv() */
@@ -11168,7 +11174,7 @@ read_symlink(FileName, Result, !IO) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Instances of the stream typeclass
+% Instances of the stream typeclass.
 %
 
 :- instance stream.error(error) where [
@@ -11177,7 +11183,7 @@ read_symlink(FileName, Result, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Text input streams
+% Text input streams.
 %
 
 :- instance stream.stream(input_stream, io) where [
@@ -11247,7 +11253,7 @@ result_to_stream_result(error(Error)) = error(Error).
 
 %---------------------------------------------------------------------------%
 %
-% Text output streams
+% Text output streams.
 %
 
 :- instance stream.stream(output_stream, io) where [
@@ -11296,7 +11302,7 @@ result_to_stream_result(error(Error)) = error(Error).
 
 %---------------------------------------------------------------------------%
 %
-% Binary input streams
+% Binary input streams.
 %
 
 :- instance stream.stream(binary_input_stream, io)
@@ -11356,7 +11362,7 @@ res_to_stream_res(error(E)) = error(E).
 
 %---------------------------------------------------------------------------%
 %
-% Binary output streams
+% Binary output streams.
 %
 
 :- instance stream.stream(binary_output_stream, io)
