@@ -77,11 +77,14 @@
     --->    token_cons(token, token_context, token_list)
     ;       token_nil.
 
-    % Read a list of tokens from the current input stream.
+    % Read a list of tokens either from the current input stream
+    % or from the specified input stream.
     % Keep reading until we encounter either an `end' token
     % (i.e. a full stop followed by whitespace) or the end-of-file.
     %
 :- pred get_token_list(token_list::out, io::di, io::uo) is det.
+:- pred get_token_list(io.text_input_stream::in, token_list::out,
+    io::di, io::uo) is det.
 
     % The type `offset' represents a (zero-based) offset into a string.
     %
@@ -254,6 +257,10 @@ token_to_string(Token, String) :-
     ).
 
 get_token_list(Tokens, !IO) :-
+    io.input_stream(Stream, !IO),
+    get_token_list(Stream, Tokens, !IO).
+
+get_token_list(Stream, Tokens, !IO) :-
     % We build the tokens up as lists of characters in reverse order.
     % When we get to the end of each token, we call `rev_char_list_to_string/2'
     % to convert that representation into a string.
@@ -262,7 +269,6 @@ get_token_list(Tokens, !IO) :-
     %   foo --> bar . baz
     % mean that we are parsing a `foo', and we've already scanned past
     % the `bar', so now we need to match with a `baz'.
-    io.input_stream(Stream, !IO),
     get_token(Stream, Token, Context, !IO),
     get_token_list_2(Stream, Token, Context, Tokens, !IO).
 

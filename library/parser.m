@@ -45,36 +45,48 @@
 
 %---------------------------------------------------------------------------%
 
-    % read_term(Result):
+    % read_term(Result, !IO):
+    % read_term(Stream, Result, !IO):
     %
-    % Reads a Mercury term from the current input stream.
+    % Reads a Mercury term from the current input stream or from Stream.
     %
 :- pred read_term(read_term(T)::out, io::di, io::uo) is det.
+:- pred read_term(io.text_input_stream::in, read_term(T)::out,
+    io::di, io::uo) is det.
 
-    % read_term_with_op_table(Result):
+    % read_term_with_op_table(Ops, Result, !IO):
+    % read_term_with_op_table(Stream, Ops, Result, !IO):
     %
-    % Reads a term from the current input stream, using the given op_table
-    % to interpret the operators.
+    % Reads a term from the current input stream or from Stream,
+    % using the given op_table to interpret the operators.
     %
-:- pred read_term_with_op_table(Ops::in, read_term(T)::out, io::di, io::uo)
-    is det <= op_table(Ops).
+:- pred read_term_with_op_table(Ops::in,
+    read_term(T)::out, io::di, io::uo) is det <= op_table(Ops).
+:- pred read_term_with_op_table(io.text_input_stream::in, Ops::in,
+    read_term(T)::out, io::di, io::uo) is det <= op_table(Ops).
 
     % read_term_filename(FileName, Result, !IO):
+    % read_term_filename(Stream, FileName, Result, !IO):
     %
-    % Reads a term from the current input stream. The string is the filename
-    % to use for the current input stream; this is used in constructing the
-    % term.contexts in the read term. This interface is used to support
-    % the `:- pragma source_file' directive.
+    % Reads a term from the current input stream or from Stream.
+    % The string is the filename to use for the stream; this is used
+    % in constructing the term.contexts in the read term.
+    % This interface is used to support the `:- pragma source_file' directive.
     %
-:- pred read_term_filename(string::in, read_term(T)::out, io::di, io::uo)
-    is det.
+:- pred read_term_filename(string::in,
+    read_term(T)::out, io::di, io::uo) is det.
+:- pred read_term_filename(io.text_input_stream::in, string::in,
+    read_term(T)::out, io::di, io::uo) is det.
 
     % read_term_filename_with_op_table(Ops, FileName, Result, !IO):
+    % read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO):
     %
     % As above but using the given op_table.
     %
-:- pred read_term_filename_with_op_table(Ops::in, string::in,
-    read_term(T)::out, io::di, io::uo) is det <= op_table(Ops).
+:- pred read_term_filename_with_op_table(Ops::in,
+    string::in, read_term(T)::out, io::di, io::uo) is det <= op_table(Ops).
+:- pred read_term_filename_with_op_table(io.text_input_stream::in, Ops::in,
+    string::in, read_term(T)::out, io::di, io::uo) is det <= op_table(Ops).
 
 %---------------------------------------------------------------------------%
 
@@ -153,21 +165,39 @@
 %---------------------------------------------------------------------------%
 
 read_term(Result, !IO) :-
-    io.input_stream_name(FileName, !IO),
-    read_term_filename_with_op_table(ops.init_mercury_op_table, FileName,
-        Result, !IO).
+    io.input_stream(Stream, !IO),
+    read_term(Stream, Result, !IO).
+
+read_term(Stream, Result, !IO) :-
+    io.input_stream_name(Stream, FileName, !IO),
+    read_term_filename_with_op_table(Stream, ops.init_mercury_op_table,
+        FileName, Result, !IO).
 
 read_term_with_op_table(Ops, Result, !IO) :-
-    io.input_stream_name(FileName, !IO),
-    read_term_filename_with_op_table(Ops, FileName, Result, !IO).
+    io.input_stream(Stream, !IO),
+    read_term_with_op_table(Stream, Ops, Result, !IO).
+
+read_term_with_op_table(Stream, Ops, Result, !IO) :-
+    io.input_stream_name(Stream, FileName, !IO),
+    read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO).
 
 read_term_filename(FileName, Result, !IO) :-
-    read_term_filename_with_op_table(ops.init_mercury_op_table, FileName,
-        Result, !IO).
+    io.input_stream(Stream, !IO),
+    read_term_filename(Stream, FileName, Result, !IO).
+
+read_term_filename(Stream, FileName, Result, !IO) :-
+    read_term_filename_with_op_table(Stream, ops.init_mercury_op_table,
+        FileName, Result, !IO).
 
 read_term_filename_with_op_table(Ops, FileName, Result, !IO) :-
-    lexer.get_token_list(Tokens, !IO),
+    io.input_stream(Stream, !IO),
+    read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO).
+
+read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO) :-
+    lexer.get_token_list(Stream, Tokens, !IO),
     parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
+
+%---------------------%
 
 read_term_from_string(FileName, String, EndPos, Result) :-
     read_term_from_string_with_op_table(ops.init_mercury_op_table, FileName,

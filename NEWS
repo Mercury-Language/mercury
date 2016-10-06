@@ -168,6 +168,9 @@ Changes to the Mercury standard library:
     - io.read_binary/4
     - io.write_binary/4
 
+* We have added predicates to the lexer and parser modules that read from
+  an explicitly specified input stream, not from the current input stream.
+
 * We have added a module for discrete interval encoding trees, which are a
   highly efficient set implementation for fat sets.  This module is a
   contribution from Yes Logic Pty. Ltd.
