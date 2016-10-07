@@ -56,7 +56,6 @@ cp boehm_gc/include/private/*.[ch] ${installdir}/boehm_gc/include/private
 cp boehm_gc/*.[chsS] ${installdir}/boehm_gc/
 cp boehm_gc/tools/*.[ch] ${installdir}/boehm_gc/tools
 cp boehm_gc/tools/*.sh ${installdir}/boehm_gc/tools
-cp boehm_gc/build_atomic_ops.sh* ${installdir}/boehm_gc
 cp -Rp boehm_gc/libatomic_ops ${installdir}/boehm_gc
 rm -fr ${installdir}/boehm_gc/libatomic_ops/src/*.o
 rm -fr ${installdir}/boehm_gc/libatomic_ops/src/*.a
