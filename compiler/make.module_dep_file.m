@@ -498,9 +498,7 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         MaybeDirAndStream, !IO),
     (
         MaybeDirAndStream = ok(path_name_and_stream(ModuleDir, DepStream)),
-        io.set_input_stream(DepStream, OldInputStream, !IO),
-        parser.read_term(TermResult, !IO),
-        io.set_input_stream(OldInputStream, _DepStream, !IO),
+        parser.read_term(DepStream, TermResult, !IO),
         io.close_input(DepStream, !IO),
         (
             TermResult = term(_, Term),

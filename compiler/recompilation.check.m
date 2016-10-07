@@ -126,11 +126,10 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
         do_not_create_dirs, UsageFileName, !IO),
     io.open_input(UsageFileName, MaybeVersionStream, !IO),
     (
-        MaybeVersionStream = ok(VersionStream0),
-        io.set_input_stream(VersionStream0, OldInputStream, !IO),
-
+        MaybeVersionStream = ok(VersionStream),
         promise_equivalent_solutions [Result, !:IO] (
-            should_recompile_3_try(Globals, IsSubModule, FindTimestampFiles,
+            should_recompile_3_try(VersionStream, Globals, IsSubModule,
+                FindTimestampFiles,
             !.Info, Result, !IO)
         ),
         (
@@ -163,7 +162,6 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
                     list.reverse(Reasons)),
                 !IO)
         ),
-        io.set_input_stream(OldInputStream, VersionStream, !IO),
         io.close_input(VersionStream, !IO),
 
         ModulesToRecompile = !.Info ^ rci_modules_to_recompile,
@@ -207,31 +205,34 @@ write_not_found_reasons_message(Globals, UsageFileName, ModuleName, !IO) :-
         [words("file"), quote(UsageFileName), words("not found."), nl]),
     write_recompile_reason(Globals, ModuleName, Reason, !IO).
 
-:- pred should_recompile_3_try(globals::in, bool::in,
+:- pred should_recompile_3_try(io.text_input_stream::in, globals::in, bool::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     recompilation_check_info::in,
     exception_result(recompilation_check_info)::out,
     io::di, io::uo) is cc_multi.
 
-should_recompile_3_try(Globals, IsSubModule, FindTargetFiles, Info,
-        Result, !IO) :-
-    try_io(should_recompile_3(Globals, IsSubModule, FindTargetFiles, Info),
+should_recompile_3_try(VersionStream, Globals, IsSubModule, FindTargetFiles,
+        Info, Result, !IO) :-
+    try_io(
+        should_recompile_3(VersionStream, Globals, IsSubModule,
+            FindTargetFiles, Info),
         Result, !IO).
 
-:- pred should_recompile_3(globals::in, bool::in,
+:- pred should_recompile_3(io.text_input_stream::in, globals::in, bool::in,
     find_target_file_names::in(find_target_file_names),
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
+should_recompile_3(VersionStream, Globals, IsSubModule, FindTargetFiles,
+        !Info, !IO) :-
     % WARNING: any exceptions thrown before the sub_modules field is set
     % in the recompilation_check_info must set the modules_to_recompile field
     % to `all', or else the nested submodules will not be checked
     % and necessary recompilations may be missed.
 
     % Check that the format of the usage file is the current format.
-    read_term_check_for_error_or_eof(!.Info, "usage file version number",
-        VersionNumberTerm, !IO),
+    read_term_check_for_error_or_eof(VersionStream, !.Info,
+        "usage file version number", VersionNumberTerm, !IO),
     ( if
         % XXX ITEM_LIST This term should be more self-descriptive.
         % Instead of the current "2,1.", it should be something like
@@ -256,7 +257,7 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
     ),
 
     % Find the timestamp of the module the last time it was compiled.
-    read_term_check_for_error_or_eof(!.Info, "module timestamp",
+    read_term_check_for_error_or_eof(VersionStream, !.Info, "module timestamp",
         TimestampTerm, !IO),
     parse_module_timestamp(!.Info, TimestampTerm, _, ModuleTimestamp),
     ModuleTimestamp = module_timestamp(_, RecordedTimestamp, _),
@@ -304,8 +305,8 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
     ),
 
     % Find out whether this module has any inline submodules.
-    read_term_check_for_error_or_eof(!.Info, "inline sub-modules",
-        SubModulesTerm, !IO),
+    read_term_check_for_error_or_eof(VersionStream, !.Info,
+        "inline sub-modules", SubModulesTerm, !IO),
     ( if
         SubModulesTerm = term.functor(term.atom("sub_modules"),
             SubModuleTerms, _),
@@ -324,11 +325,12 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
         TargetFiles, !Info, !IO),
 
     % Read in the used items, used for checking for ambiguities with new items.
-    read_term_check_for_error_or_eof(!.Info, "used items", UsedItemsTerm, !IO),
+    read_term_check_for_error_or_eof(VersionStream, !.Info, "used items",
+        UsedItemsTerm, !IO),
     parse_used_items(!.Info, UsedItemsTerm, UsedItems),
     !Info ^ rci_used_items := UsedItems,
 
-    read_term_check_for_error_or_eof(!.Info, "used classes",
+    read_term_check_for_error_or_eof(VersionStream, !.Info, "used classes",
         UsedClassesTerm, !IO),
     ( if
         UsedClassesTerm = term.functor(term.atom("used_classes"),
@@ -341,7 +343,7 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
             "error in used_typeclasses term"),
         throw_syntax_error(Reason3, !.Info)
     ),
-    check_imported_modules(Globals, !Info, !IO).
+    check_imported_modules(VersionStream, Globals, !Info, !IO).
 
 :- pred require_recompilation_if_not_up_to_date(timestamp::in, file_name::in,
     recompilation_check_info::in, recompilation_check_info::out,
@@ -638,23 +640,23 @@ parse_resolved_item_arity_matches(Info, ParseMatches, Term,
     % compilation has changed, and if so whether the items have changed
     % in a way which should cause a recompilation.
     %
-:- pred check_imported_modules(globals::in,
+:- pred check_imported_modules(io.text_input_stream::in, globals::in,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-check_imported_modules(Globals, !Info, !IO) :-
-    parser.read_term(TermResult, !IO),
+check_imported_modules(VersionStream, Globals, !Info, !IO) :-
+    parser.read_term(VersionStream, TermResult, !IO),
     (
         TermResult = term(_, Term),
         ( if Term = term.functor(term.atom("done"), [], _) then
             true
         else
             check_imported_module(Globals, Term, !Info, !IO),
-            check_imported_modules(Globals, !Info, !IO)
+            check_imported_modules(VersionStream, Globals, !Info, !IO)
         )
     ;
         TermResult = error(Message, Line),
-        io.input_stream_name(FileName, !IO),
+        io.input_stream_name(VersionStream, FileName, !IO),
         Reason = recompile_for_syntax_error(term.context(FileName, Line),
             Message),
         throw_syntax_error(Reason, !.Info)
@@ -663,8 +665,8 @@ check_imported_modules(Globals, !Info, !IO) :-
         % There should always be an item `done.' at the end of the list
         % of modules to check. This is used to make sure that the writing
         % of the `.used' file was not interrupted.
-        io.input_stream_name(FileName, !IO),
-        io.get_line_number(Line, !IO),
+        io.input_stream_name(VersionStream, FileName, !IO),
+        io.get_line_number(VersionStream, Line, !IO),
         Reason = recompile_for_syntax_error(term.context(FileName, Line),
             "unexpected end of file"),
         throw_syntax_error(Reason, !.Info)
@@ -1618,23 +1620,24 @@ describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_term_check_for_error_or_eof(recompilation_check_info::in,
-    string::in, term::out, io::di, io::uo) is det.
+:- pred read_term_check_for_error_or_eof(io.text_input_stream::in,
+    recompilation_check_info::in, string::in, term::out,
+    io::di, io::uo) is det.
 
-read_term_check_for_error_or_eof(Info, Item, Term, !IO) :-
-    parser.read_term(TermResult, !IO),
+read_term_check_for_error_or_eof(VersionStream, Info, Item, Term, !IO) :-
+    parser.read_term(VersionStream, TermResult, !IO),
     (
         TermResult = term(_, Term)
     ;
         TermResult = error(Message, Line),
-        io.input_stream_name(FileName, !IO),
+        io.input_stream_name(VersionStream, FileName, !IO),
         Reason = recompile_for_syntax_error(term.context(FileName, Line),
             Message),
         throw_syntax_error(Reason, Info)
     ;
         TermResult = eof,
-        io.input_stream_name(FileName, !IO),
-        io.get_line_number(Line, !IO),
+        io.input_stream_name(VersionStream, FileName, !IO),
+        io.get_line_number(VersionStream, Line, !IO),
         Reason = recompile_for_syntax_error(term.context(FileName, Line),
             "unexpected end of file, expected " ++ Item ++ "."),
         throw_syntax_error(Reason, Info)

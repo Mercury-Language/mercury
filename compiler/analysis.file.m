@@ -201,8 +201,8 @@ read_module_overall_status(Compiler, Globals, ModuleName, ModuleStatus, !IO) :-
         read_module_overall_status_2(FileName, ModuleStatus0, !IO)
     ;
         MaybeFileName = error(_),
-        % Missing file means optimal.  We don't install `.analysis_status'
-        % files when installing libraries, for example.
+        % Missing file means optimal. We don't install `.analysis_status' files
+        % when installing libraries, for example.
         ModuleStatus0 = optimal
     ),
     (
@@ -259,17 +259,17 @@ read_module_overall_status_2(FileName, ModuleStatus, !IO) :-
 %-----------------------------------------------------------------------------%
 
 read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
-    % If the module's overall status is `invalid' then at least one of its
-    % results is invalid.  However, we can't just discard the results as we
-    % want to know which results change after we reanalyse the module.
+    % If the module's overall status is `invalid', then at least one of its
+    % results is invalid. However, we can't just discard the results,
+    % as we want to know which results change after we reanalyse the module.
     Compiler = Info ^ compiler,
     module_name_to_read_file_name(Compiler, Globals, ModuleName,
         analysis_registry_suffix, MaybeAnalysisFileName, !IO),
     (
         MaybeAnalysisFileName = ok(AnalysisFileName),
 
-        % If analysis file caching is enabled, and the cache file exists and is
-        % up-to-date, then read from the cache instead.
+        % If analysis file caching is enabled, and the cache file exists
+        % and is up-to-date, then read from the cache instead.
         globals.lookup_string_option(Globals, analysis_file_cache_dir,
             CacheDir),
         ( if CacheDir = "" then
@@ -328,14 +328,12 @@ read_module_analysis_results_2(Compiler, AnalysisFileName, ModuleResults,
             io.write_string(AnalysisFileName, !IO),
             io.nl(!IO)
         ), !IO),
-        io.set_input_stream(Stream, OldStream, !IO),
 
-        check_analysis_file_version_number(!IO),
+        check_analysis_file_version_number(Stream, !IO),
         promise_equivalent_solutions [Results, !:IO] (
-            try_io(read_analysis_file_2(parse_result_entry(Compiler),
+            try_io(read_analysis_file_2(Stream, parse_result_entry(Compiler),
                 ModuleResults0), Results, !IO)
         ),
-        io.set_input_stream(OldStream, _, !IO),
         io.close_input(Stream, !IO),
         (
             Results = succeeded(ModuleResults)
@@ -568,17 +566,15 @@ read_analysis_file(AnalysisFileName, ParseEntry, ModuleResults0, ModuleResults,
             io.write_string(AnalysisFileName, !IO),
             io.nl(!IO)
         ), !IO),
-        io.set_input_stream(Stream, OldStream, !IO),
 
         promise_equivalent_solutions [Result, !:IO] (
             try_io(
-                (pred(Results1::out, !.IO::di, !:IO::uo) is det :-
-                    check_analysis_file_version_number(!IO),
-                    read_analysis_file_2(ParseEntry, ModuleResults0, Results1,
-                        !IO)
+                ( pred(Results1::out, !.IO::di, !:IO::uo) is det :-
+                    check_analysis_file_version_number(Stream, !IO),
+                    read_analysis_file_2(Stream, ParseEntry,
+                        ModuleResults0, Results1, !IO)
                 ), Result, !IO)
         ),
-        io.set_input_stream(OldStream, _, !IO),
         io.close_input(Stream, !IO),
         (
             Result = succeeded(ModuleResults)
@@ -596,10 +592,11 @@ read_analysis_file(AnalysisFileName, ParseEntry, ModuleResults0, ModuleResults,
         ModuleResults = ModuleResults0
     ).
 
-:- pred check_analysis_file_version_number(io::di, io::uo) is det.
+:- pred check_analysis_file_version_number(io.text_input_stream::in,
+    io::di, io::uo) is det.
 
-check_analysis_file_version_number(!IO) :-
-    parser.read_term(TermResult : read_term, !IO),
+check_analysis_file_version_number(Stream, !IO) :-
+    parser.read_term(Stream, TermResult : read_term, !IO),
     ( if
         TermResult = term(_, term.functor(term.integer(version_number), [], _))
     then
@@ -609,15 +606,15 @@ check_analysis_file_version_number(!IO) :-
         throw(invalid_analysis_file(Msg))
     ).
 
-:- pred read_analysis_file_2(parse_entry(T)::in(parse_entry), T::in, T::out,
-    io::di, io::uo) is det.
+:- pred read_analysis_file_2(io.text_input_stream::in,
+    parse_entry(T)::in(parse_entry), T::in, T::out, io::di, io::uo) is det.
 
-read_analysis_file_2(ParseEntry, Results0, Results, !IO) :-
-    parser.read_term(TermResult, !IO),
+read_analysis_file_2(Stream, ParseEntry, Results0, Results, !IO) :-
+    parser.read_term(Stream, TermResult : read_term, !IO),
     (
-        TermResult = term(_, Term) : read_term,
+        TermResult = term(_, Term),
         ParseEntry(Term, Results0, Results1),
-        read_analysis_file_2(ParseEntry, Results1, Results, !IO)
+        read_analysis_file_2(Stream, ParseEntry, Results1, Results, !IO)
     ;
         TermResult = eof,
         Results = Results0
@@ -719,12 +716,10 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
     io.open_input(AnalysisFileName, InputResult, !IO),
     (
         InputResult = ok(InputStream),
-        % Request file already exists.  Check it has the right version
-        % number, then append the new requests to the end.
+        % Request file already exists. Check it has the right version number,
+        % then append the new requests to the end.
 
-        io.set_input_stream(InputStream, OldInputStream, !IO),
-        parser.read_term(VersionResult : read_term, !IO),
-        io.set_input_stream(OldInputStream, _, !IO),
+        parser.read_term(InputStream, VersionResult : read_term, !IO),
         io.close_input(InputStream, !IO),
         ( if
             VersionResult = term(_, term.functor(
@@ -921,11 +916,11 @@ empty_request_file(Info, Globals, ModuleName, !IO) :-
 % Analysis file caching.
 %
 % An analysis cache file stores a binary representation of the parsed
-% information in the corresponding .analysis file.  In some cases, the binary
-% format can be faster to read than the usual representation.  The textual
-% analysis files are portable, more stable (doesn't depend on compiler
-% internals) and easier to debug, hence the reason we don't just use the
-% binary files exclusively.
+% information in the corresponding .analysis file. In some cases,
+% the binary format can be faster to read than the usual representation.
+% The textual analysis files are portable, they more stable (they don't depend
+% on compiler internals) and are easier to debug, which is why we don't
+% use binary files exclusively.
 %
 
 :- func make_cache_filename(string, string) = string.
@@ -944,8 +939,8 @@ dir_sep(Char) :-
     module_analysis_map(some_analysis_result)::in, io::di, io::uo) is det.
 
 write_analysis_cache_file(CacheFileName, ModuleResults, !IO) :-
-    % Write to a temporary file first and only move it into place once it is
-    % complete.
+    % Write to a temporary file first, and only move it into place
+    % once it is complete.
     TmpFileName = CacheFileName ++ ".tmp",
     io.tell_binary(TmpFileName, TellRes, !IO),
     (

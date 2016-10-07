@@ -246,8 +246,7 @@ find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
 find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
     io.open_input(FileName, OpenRes, !IO),
     (
-        OpenRes = ok(InputStream),
-        io.set_input_stream(InputStream, OldInputStream, !IO),
+        OpenRes = ok(FileStream),
         ( if string.remove_suffix(FileName, ".m", PartialFileName0) then
             PartialFileName = PartialFileName0
         else
@@ -259,14 +258,14 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
             BaseName = ""
         ),
         file_name_to_module_name(BaseName, DefaultModuleName),
-        peek_at_file(DefaultModuleName, FileName, ModuleName, Specs, !IO),
+        peek_at_file(FileStream, DefaultModuleName, FileName, ModuleName,
+            Specs, !IO),
+        io.close_input(FileStream, !IO),
         MaybeModuleName = yes(ModuleName),
         % XXX We don't check whether ModuleName was actually read
         % from the named file; it could just be DefaultModuleName.
         % XXX _NumErrors
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
-        io.set_input_stream(OldInputStream, _, !IO),
-        io.close_input(InputStream, !IO)
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ;
         OpenRes = error(Error),
         ErrorMsg = io.error_message(Error),
