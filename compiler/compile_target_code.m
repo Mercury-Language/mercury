@@ -1992,13 +1992,16 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
             RestrictedCommandLine = yes,
             globals.lookup_string_option(Globals, library_extension, LibExt),
             io.get_temp_directory(TempDir, !IO),
-            io.make_temp_file(TempDir, "", LibExt, TmpArchiveResult, !IO),
+            io.make_temp_file(TempDir, "mtmp", LibExt, TmpArchiveResult, !IO),
             (
                 TmpArchiveResult = ok(TmpArchive),
                 % Only include actual object files in the temporary archive,
                 % not other files such as other archives.
                 filter_object_files(Globals, ObjectsList,
                     ProperObjectFiles, NonObjectFiles),
+                % Delete the currently empty output file first, otherwise ar
+                % will fail to recognise its file format.
+                remove_file(TmpArchive, _, !IO),
                 create_archive(Globals, ErrorStream, TmpArchive, yes,
                     ProperObjectFiles, ArchiveSucceeded, !IO),
                 MaybeDeleteTmpArchive = yes(TmpArchive),
