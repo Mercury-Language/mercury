@@ -1690,7 +1690,7 @@ then
                 if test -d "$root/${tests_prefix}/tests/$specified_test_dir"
                 then
                     cd $root/${tests_prefix}tests/$specified_test_dir
-                    mmake $target_opt $jfactor $test_grade_opt \
+                    mmake $mmake_opts $target_opt $jfactor $test_grade_opt \
                         SPECIFIED_TESTS="$specified_test_base" runtests_local
                     if test "$?" -ne "0"
                     then
@@ -1710,7 +1710,7 @@ then
             for testdir in $testdirs
             do
                 cd $root/${tests_prefix}tests/$testdir
-                mmake $target_opt $jfactor $test_grade_opt \
+                mmake $mmake_opts $target_opt $jfactor $test_grade_opt \
                     $test_log_opt runtests
                 if test "$?" -ne 0
                 then
@@ -1782,11 +1782,11 @@ then
         if test -f $testdir/Mmakefile -a ! -f $testdir/NOBOOTTEST
         then
             (cd $testdir;
-            mmake realclean $jfactor;
-            mmake depend    $jfactor &&
-            mmake           $jfactor &&
-            mmake check     $jfactor &&
-            mmake realclean $jfactor ) ||
+            mmake $mmake_opts $jfactor realclean;
+            mmake $mmake_opts $jfactor depend &&
+            mmake $mmake_opts $jfactor &&
+            mmake $mmake_opts $jfactor check &&
+            mmake $mmake_opts $jfactor realclean ) ||
             extras_status=1
         fi
     done
