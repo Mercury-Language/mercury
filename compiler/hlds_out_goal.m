@@ -876,7 +876,8 @@ write_goal_unify(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
     % XXX Fake the inst varset.
     varset.init(InstVarSet),
     write_unify_rhs_2(Info, ModuleInfo, VarSet, InstVarSet, TypeQual,
-        VarNamePrint, Indent, Follow, VarType, RHS, !IO),
+        VarNamePrint, Indent, VarType, RHS, !IO),
+    io.write_string(Follow, !IO),
     ( if
         ( string.contains_char(DumpOptions, 'u')
         ; string.contains_char(DumpOptions, 'p')
@@ -903,25 +904,14 @@ write_goal_unify(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
 
 write_unify_rhs(Info, ModuleInfo, VarSet, InstVarSet, VarNamePrint,
         Indent, RHS, !IO) :-
-    write_unify_rhs_3(Info, ModuleInfo, VarSet, InstVarSet, no_varset_vartypes,
+    write_unify_rhs_2(Info, ModuleInfo, VarSet, InstVarSet, no_varset_vartypes,
         VarNamePrint, Indent, no, RHS, !IO).
 
 :- pred write_unify_rhs_2(hlds_out_info::in, module_info::in,
     prog_varset::in, inst_varset::in, maybe_vartypes::in, var_name_print::in,
-    int::in, string::in, maybe(mer_type)::in, unify_rhs::in,
-    io::di, io::uo) is det.
-
-write_unify_rhs_2(Info, ModuleInfo, VarSet, InstVarSet, TypeQual,
-        VarNamePrint, Indent, Follow, MaybeType, RHS, !IO) :-
-    write_unify_rhs_3(Info, ModuleInfo, VarSet, InstVarSet, TypeQual,
-        VarNamePrint, Indent, MaybeType, RHS, !IO),
-    io.write_string(Follow, !IO).
-
-:- pred write_unify_rhs_3(hlds_out_info::in, module_info::in,
-    prog_varset::in, inst_varset::in, maybe_vartypes::in, var_name_print::in,
     int::in, maybe(mer_type)::in, unify_rhs::in, io::di, io::uo) is det.
 
-write_unify_rhs_3(Info, ModuleInfo, VarSet, InstVarSet, TypeQual, VarNamePrint,
+write_unify_rhs_2(Info, ModuleInfo, VarSet, InstVarSet, TypeQual, VarNamePrint,
         Indent, MaybeType, RHS, !IO) :-
     (
         RHS = rhs_var(Var),
@@ -1322,7 +1312,8 @@ write_goal_plain_call(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
             % XXX Fake the inst varset.
             varset.init(InstVarSet),
             write_unify_rhs_2(Info, ModuleInfo, VarSet, InstVarSet, TypeQual,
-                VarNamePrint, Indent, Follow, VarType, RHS, !IO)
+                VarNamePrint, Indent, VarType, RHS, !IO),
+            io.write_string(Follow, !IO)
         ;
             MaybeUnifyContext = no
         )
