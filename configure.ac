@@ -3181,8 +3181,7 @@ case "$host" in
                 CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
                 BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS $WIN32_GC_THREADLIB"
                 ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-                # Parallel marking on Windows seems unreliable.
-                # ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
                 ;;
         esac
         # avoid_sbrk?
@@ -3215,8 +3214,7 @@ case "$host" in
                     THREAD_LIBS=
                 fi
                 ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-                # Parallel marking on Windows seems unreliable.
-                # ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
                 ;;
         esac
         ;;
@@ -3226,8 +3224,7 @@ case "$host" in
         BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS $WIN32_GC_THREADLIB"
         THREAD_LIBS="-lpthread"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-        # Parallel marking on Windows seems unreliable.
-        # ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
     *apple*darwin*)
