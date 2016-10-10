@@ -88,6 +88,9 @@ Changes that may break compatibility:
 * We have deleted the builtin modes `no' and `oo': their uses should be
   replaced with `oa' and `ia' respectively.
 
+* The minimum version of the Java platform required by Mercury's Java
+  backend is now Java SE 6.
+
 Changes to the Mercury language:
 
 * We have added a new kind of scope to the language: determinism checks

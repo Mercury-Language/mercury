@@ -2,24 +2,22 @@
 
 INTRODUCTION
 
-This release of Mercury contains a port to Java,
-in particular to Sun Microsystems' Java 2 Platform, Standard Edition (J2SE).
-The Mercury compiler will generate Java source code that can be compiled into
-Java bytecode suitable for running in the J2SE runtime system.
+The Mercury compiler can generate Java source code that can be compiled into
+Java bytecode suitable for running the Java SE runtime system.  The port is
+mostly complete, but some parts of the Mercury standard library are not yet
+implemented (for a full list see the FAQ below).
 
-The port is mostly complete, but some parts of the Mercury standard
-library are not yet implemented (for a full list see the FAQ below).
-
-The port is currently targeted at J2SE version 1.5 or higher.
+The port requires Java SE 6 or higher -- older versions of Java are *not*
+supported.
 
 PREREQUISITES
 
 In order to try this system you will need 
 
-	- The J2SE SDK, which can be downloaded for free from
-		<http://java.sun.com/downloads/index.html>
+    * The J2SE SDK, which can be downloaded for free from
+      <http://www.oracle.com/technetwork/indexes/downloads/index.html>
 
-	  OR any other compatible Java implementation.
+    * OR any other compatible Java implementation, such as OpenJDK.
 
 -----------------------------------------------------------------------------
 
