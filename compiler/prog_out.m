@@ -30,6 +30,8 @@
     % line number) in a form suitable for the beginning of an error message.
     %
 :- pred write_context(prog_context::in, io::di, io::uo) is det.
+:- pred write_context(io.text_output_stream::in, prog_context::in,
+    io::di, io::uo) is det.
 
     % Write to a string the information in term context (at the moment,
     % just the line number) in a form suitable for the beginning of an
@@ -169,8 +171,12 @@
 %-----------------------------------------------------------------------------%
 
 write_context(Context, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_context(Stream, Context, !IO).
+
+write_context(Stream, Context, !IO) :-
     context_to_string(Context, ContextMessage),
-    io.write_string(ContextMessage, !IO).
+    io.write_string(Stream, ContextMessage, !IO).
 
 context_to_string(Context, ContextMessage) :-
     term.context_file(Context, FileName),

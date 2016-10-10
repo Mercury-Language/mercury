@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: error_util.m.
 % Main author: zs.
@@ -31,7 +31,7 @@
 % a string to printed exactly as it is, or it may specify a string
 % containing a list of words, which may be broken at white space.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.error_util.
 :- interface.
@@ -49,7 +49,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Every distinct problem should generate a single error specification. This
 % specification should state the severity of the problem (so that we can update
@@ -205,7 +205,7 @@
     pred print_anything(T::in, io::di, io::uo) is det
 ].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the worst of two actual severities.
     %
@@ -234,11 +234,11 @@
     %
 :- func contains_errors_and_or_warnings(globals, list(error_spec)) = bool.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred sort_error_msgs(list(error_msg)::in, list(error_msg)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The error_spec_accumulator type can be used to accumulate errors for
 % multiple modes of a predicate. accumulate_error_specs_for_proc will
@@ -255,15 +255,20 @@
 :- func error_spec_accumulator_to_list(error_spec_accumulator) =
     list(error_spec).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_write_out_errors_no_module(bool::in, globals::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred maybe_write_out_errors_no_module(io.text_output_stream::in,
+    bool::in, globals::in,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % write_error_spec(Spec, Globals, !NumWarnings, !NumErrors, !IO):
+    % write_error_spec(Stream, Spec, Globals, !NumWarnings, !NumErrors, !IO):
     % write_error_specs(Specs, Globals, !NumWarnings, !NumErrors, !IO):
+    % write_error_specs(Stream, Specs, Globals, !NumWarnings, !NumErrors, !IO):
     %
     % Write out the error message(s) specified by Spec or Specs, minus the
     % parts whose conditions are false. Increment !NumWarnings by the number
@@ -280,12 +285,16 @@
     % will not be changed. This will happen even if the severity means
     % that something should have been printed out.
     %
-:- pred write_error_spec(error_spec::in, globals::in, int::in, int::out,
-    int::in, int::out, io::di, io::uo) is det.
-:- pred write_error_specs(list(error_spec)::in, globals::in, int::in, int::out,
-    int::in, int::out, io::di, io::uo) is det.
+:- pred write_error_spec(error_spec::in,
+    globals::in, int::in, int::out, int::in, int::out, io::di, io::uo) is det.
+:- pred write_error_spec(io.text_output_stream::in, error_spec::in,
+    globals::in, int::in, int::out, int::in, int::out, io::di, io::uo) is det.
+:- pred write_error_specs(list(error_spec)::in,
+    globals::in, int::in, int::out, int::in, int::out, io::di, io::uo) is det.
+:- pred write_error_specs(io.text_output_stream::in, list(error_spec)::in,
+    globals::in, int::in, int::out, int::in, int::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type format_component
     --->    invis_order_default_start(int)
@@ -461,7 +470,7 @@
     %
 :- func is_or_are(list(T)) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % XXX The predicates below should not be called in new code. New code should
 % create error specifications, and then call write_error_spec to print them.
@@ -471,6 +480,8 @@
     %
 :- pred write_error_pieces_plain(globals::in, list(format_component)::in,
     io::di, io::uo) is det.
+:- pred write_error_pieces_plain(io.text_output_stream::in, globals::in,
+    list(format_component)::in, io::di, io::uo) is det.
 
     % write_error_plain_with_progname(ProgName, Msg):
     %
@@ -479,6 +490,8 @@
     %
 :- pred write_error_plain_with_progname(string::in, string::in,
     io::di, io::uo) is det.
+:- pred write_error_plain_with_progname(io.text_output_stream::in,
+    string::in, string::in, io::di, io::uo) is det.
 
     % write_error_pieces(Globals, Context, Indent, Components):
     %
@@ -487,14 +500,20 @@
     %
 :- pred write_error_pieces(globals::in, prog_context::in, int::in,
     list(format_component)::in, io::di, io::uo) is det.
+:- pred write_error_pieces(io.text_output_stream::in, globals::in,
+    prog_context::in, int::in,
+    list(format_component)::in, io::di, io::uo) is det.
 
 :- pred write_error_pieces_maybe_with_context(globals::in,
-    maybe(prog_context)::in, int::in, list(format_component)::in,
-    io::di, io::uo) is det.
+    maybe(prog_context)::in, int::in,
+    list(format_component)::in, io::di, io::uo) is det.
+:- pred write_error_pieces_maybe_with_context(io.text_output_stream::in,
+    globals::in, maybe(prog_context)::in, int::in,
+    list(format_component)::in, io::di, io::uo) is det.
 
 :- func error_pieces_to_string(list(format_component)) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func describe_sym_name(sym_name) = string.
 
@@ -514,18 +533,22 @@
     % Report a warning, and set the exit status to error if the
     % --halt-at-warn option is set.
     %
-:- pred report_warning(globals::in, prog_context::in, int::in,
-    list(format_component)::in, io::di, io::uo) is det.
+:- pred report_warning(globals::in,
+    prog_context::in, int::in, list(format_component)::in,
+    io::di, io::uo) is det.
+:- pred report_warning(io.text_output_stream::in, globals::in,
+    prog_context::in, int::in, list(format_component)::in,
+    io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % Report why the file is not able to be opened,
-    % and set the exit status to be 1.
+    % Report why the file is not able to be opened to stderr_stream,
+    % and set the exit status to 1.
     %
 :- pred unable_to_open_file(string::in, io.error::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -544,7 +567,7 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 worst_severity(actual_severity_error, actual_severity_error) =
     actual_severity_error.
@@ -651,7 +674,7 @@ contains_errors_and_or_warnings(Globals, Specs) = ErrorsOrWarnings :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 sort_error_msgs(Msgs0, Msgs) :-
     list.sort_and_remove_dups(compare_error_msgs, Msgs0, Msgs).
@@ -701,7 +724,7 @@ project_msg_context(Msg) = MaybeContext :-
         MaybeContext = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type error_spec_accumulator == maybe(pair(set(error_spec))).
 
@@ -752,7 +775,7 @@ get_maybe_mode_report_control(phase_auto_parallelism) = no.
 get_maybe_mode_report_control(phase_interface_gen) = no.
 get_maybe_mode_report_control(phase_code_gen) = no.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred sort_error_specs(globals::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -881,9 +904,13 @@ compare_error_specs(SpecA, SpecB, Result) :-
         Result = ContextResult
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO) :-
+    io.output_stream(Stream, !IO),
+    maybe_write_out_errors_no_module(Stream, Verbose, Globals, !Specs, !IO).
+
+maybe_write_out_errors_no_module(Stream, Verbose, Globals, !Specs, !IO) :-
     % maybe_write_out_errors in hlds_error_util.m is a HLDS version
     % of this predicate. The documentation is in that file.
     (
@@ -891,12 +918,12 @@ maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO) :-
     ;
         Verbose = yes,
         % XXX _NumErrors
-        write_error_specs(!.Specs, Globals,
+        write_error_specs(Stream, !.Specs, Globals,
             0, _NumWarnings, 0, _NumErrors, !IO),
         !:Specs = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % We keep a record of the set of already-printed verbose_once components
 % only during the invocation of a single call to write_error_specs, or
@@ -911,23 +938,35 @@ maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO) :-
 % of write_error_specs, in practice it won't happen.
 
 write_error_spec(Spec, Globals, !NumWarnings, !NumErrors, !IO) :-
-    do_write_error_spec(Globals, Spec, !NumWarnings, !NumErrors,
+    io.output_stream(Stream, !IO),
+    write_error_spec(Stream, Spec, Globals, !NumWarnings, !NumErrors, !IO).
+
+write_error_spec(Stream, Spec, Globals, !NumWarnings, !NumErrors, !IO) :-
+    do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
         set.init, _, !IO).
 
+%---------------------%
+
 write_error_specs(Specs0, Globals, !NumWarnings, !NumErrors, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_error_specs(Stream, Specs0, Globals, !NumWarnings, !NumErrors, !IO).
+
+write_error_specs(Stream, Specs0, Globals, !NumWarnings, !NumErrors, !IO) :-
     sort_error_specs(Globals, Specs0, Specs),
-    list.foldl4(do_write_error_spec(Globals), Specs,
+    list.foldl4(do_write_error_spec(Stream, Globals), Specs,
         !NumWarnings, !NumErrors, set.init, _, !IO).
 
-:- pred do_write_error_spec(globals::in, error_spec::in,
-    int::in, int::out, int::in, int::out,
+%---------------------%
+
+:- pred do_write_error_spec(io.text_output_stream::in, globals::in,
+    error_spec::in, int::in, int::out, int::in, int::out,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-do_write_error_spec(Globals, Spec, !NumWarnings, !NumErrors,
+do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
         !AlreadyPrintedVerbose, !IO) :-
     Spec = error_spec(Severity, _, Msgs),
-    do_write_error_msgs(Msgs, Globals, treat_as_first,
+    do_write_error_msgs(Stream, Msgs, Globals, treat_as_first,
         have_not_printed_anything, PrintedSome, !AlreadyPrintedVerbose, !IO),
     MaybeActual = actual_error_severity(Globals, Severity),
     (
@@ -971,15 +1010,15 @@ do_write_error_spec(Globals, Spec, !NumWarnings, !NumErrors,
 
 :- type already_printed_verbose == set(list(format_component)).
 
-:- pred do_write_error_msgs(list(error_msg)::in, globals::in,
-    maybe_treat_as_first::in,
+:- pred do_write_error_msgs(io.text_output_stream::in,
+    list(error_msg)::in, globals::in, maybe_treat_as_first::in,
     maybe_printed_something::in, maybe_printed_something::out,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-do_write_error_msgs([], _Globals, _First, !PrintedSome,
+do_write_error_msgs(_Stream, [], _Globals, _First, !PrintedSome,
         !AlreadyPrintedVerbose, !IO).
-do_write_error_msgs([Msg | Msgs], Globals, !.First, !PrintedSome,
+do_write_error_msgs(Stream, [Msg | Msgs], Globals, !.First, !PrintedSome,
         !AlreadyPrintedVerbose, !IO) :-
     (
         Msg = simple_msg(SimpleContext, Components),
@@ -998,25 +1037,25 @@ do_write_error_msgs([Msg | Msgs], Globals, !.First, !PrintedSome,
         % Leave !:First as it is, even if it is treat_as_first.
     ),
     Indent = ExtraIndentLevel * indent_increment,
-    write_msg_components(Components, MaybeContext, Indent, Globals,
+    write_msg_components(Stream, Components, MaybeContext, Indent, Globals,
         !First, !PrintedSome, !AlreadyPrintedVerbose, !IO),
-    do_write_error_msgs(Msgs, Globals, !.First, !PrintedSome,
+    do_write_error_msgs(Stream, Msgs, Globals, !.First, !PrintedSome,
         !AlreadyPrintedVerbose, !IO).
 
-:- pred write_msg_components(list(error_msg_component)::in,
-    maybe(prog_context)::in, int::in, globals::in,
-    maybe_treat_as_first::in, maybe_treat_as_first::out,
+:- pred write_msg_components(io.text_output_stream::in,
+    list(error_msg_component)::in, maybe(prog_context)::in,
+    int::in, globals::in, maybe_treat_as_first::in, maybe_treat_as_first::out,
     maybe_printed_something::in, maybe_printed_something::out,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-write_msg_components([], _, _, _, !First, !PrintedSome,
+write_msg_components(_Stream, [], _, _, _, !First, !PrintedSome,
         !AlreadyPrintedVerbose, !IO).
-write_msg_components([Component | Components], MaybeContext, Indent, Globals,
-        !First, !PrintedSome, !AlreadyPrintedVerbose, !IO) :-
+write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
+        Globals, !First, !PrintedSome, !AlreadyPrintedVerbose, !IO) :-
     (
         Component = always(ComponentPieces),
-        do_write_error_pieces(!.First, MaybeContext, Indent, Globals,
+        do_write_error_pieces(Stream, !.First, MaybeContext, Indent, Globals,
             ComponentPieces, !IO),
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
@@ -1024,8 +1063,9 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         Component = option_is_set(Option, RequiredValue, EmbeddedComponents),
         globals.lookup_bool_option(Globals, Option, OptionValue),
         ( if OptionValue = RequiredValue then
-            write_msg_components(EmbeddedComponents, MaybeContext, Indent,
-                Globals, !First, !PrintedSome, !AlreadyPrintedVerbose, !IO)
+            write_msg_components(Stream, EmbeddedComponents, MaybeContext,
+                Indent, Globals, !First, !PrintedSome,
+                !AlreadyPrintedVerbose, !IO)
         else
             true
         )
@@ -1036,8 +1076,8 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
             VerboseErrors = yes,
             (
                 AlwaysOrOnce = verbose_always,
-                do_write_error_pieces(!.First, MaybeContext, Indent,
-                    Globals, ComponentPieces, !IO),
+                do_write_error_pieces(Stream, !.First, MaybeContext,
+                    Indent, Globals, ComponentPieces, !IO),
                 !:First = do_not_treat_as_first,
                 !:PrintedSome = printed_something
             ;
@@ -1047,8 +1087,8 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
                 then
                     true
                 else
-                    do_write_error_pieces(!.First, MaybeContext, Indent,
-                        Globals, ComponentPieces, !IO),
+                    do_write_error_pieces(Stream, !.First, MaybeContext,
+                        Indent, Globals, ComponentPieces, !IO),
                     !:First = do_not_treat_as_first,
                     !:PrintedSome = printed_something,
                     set.insert(ComponentPieces, !AlreadyPrintedVerbose)
@@ -1063,12 +1103,12 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
         (
             VerboseErrors = yes,
-            do_write_error_pieces(!.First, MaybeContext, Indent, Globals,
-                VerbosePieces, !IO)
+            do_write_error_pieces(Stream, !.First, MaybeContext,
+                Indent, Globals, VerbosePieces, !IO)
         ;
             VerboseErrors = no,
-            do_write_error_pieces(!.First, MaybeContext, Indent, Globals,
-                NonVerbosePieces, !IO),
+            do_write_error_pieces(Stream, !.First, MaybeContext,
+                Indent, Globals, NonVerbosePieces, !IO),
             globals.io_set_extra_error_info(yes, !IO)
         ),
         !:First = do_not_treat_as_first,
@@ -1079,10 +1119,10 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
     ),
-    write_msg_components(Components, MaybeContext, Indent, Globals,
+    write_msg_components(Stream, Components, MaybeContext, Indent, Globals,
         !First, !PrintedSome, !AlreadyPrintedVerbose, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type maybe_first_in_msg
     --->    first_in_msg
@@ -1159,16 +1199,28 @@ is_or_are([]) = "" :-
 is_or_are([_]) = "is".
 is_or_are([_, _ | _]) = "are".
 
+%---------------------------------------------------------------------------%
+
 write_error_pieces_plain(Globals, Components, !IO) :-
-    do_write_error_pieces(treat_as_first, no, 0,
+    io.output_stream(Stream, !IO),
+    write_error_pieces_plain(Stream, Globals, Components, !IO).
+
+write_error_pieces_plain(Stream, Globals, Components, !IO) :-
+    do_write_error_pieces(Stream, treat_as_first, no, 0,
         Globals, Components, !IO).
 
+%---------------------%
+
 write_error_plain_with_progname(ProgName, Msg, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_error_plain_with_progname(Stream, ProgName, Msg, !IO).
+
+write_error_plain_with_progname(Stream, ProgName, Msg, !IO) :-
     MaxWidth = 79,
     LinesInMsg = string.split_at_char('\n', Msg),
     convert_lines_in_msg_to_pieces(LinesInMsg, LinesInMsgPieces),
     Components = [fixed(ProgName ++ ":") | LinesInMsgPieces],
-    do_write_error_pieces_params(treat_as_first, no, 0,
+    do_write_error_pieces_params(Stream, treat_as_first, no, 0,
         yes(MaxWidth), map.init, Components, !IO).
 
 :- pred convert_lines_in_msg_to_pieces(list(string)::in,
@@ -1179,33 +1231,49 @@ convert_lines_in_msg_to_pieces([Line | Lines], Pieces) :-
     convert_lines_in_msg_to_pieces(Lines, TailPieces),
     Pieces = [words(Line), nl | TailPieces].
 
+%---------------------------------------------------------------------------%
+
 write_error_pieces(Globals, Context, Indent, Components, !IO) :-
-    do_write_error_pieces(treat_as_first, yes(Context), Indent,
+    io.output_stream(Stream, !IO),
+    write_error_pieces(Stream, Globals, Context, Indent, Components, !IO).
+
+write_error_pieces(Stream, Globals, Context, Indent, Components, !IO) :-
+    do_write_error_pieces(Stream, treat_as_first, yes(Context), Indent,
         Globals, Components, !IO).
 
-write_error_pieces_maybe_with_context(Globals, MaybeContext, Indent,
+%---------------------%
+
+write_error_pieces_maybe_with_context(Globals, MaybeContext,
+        Indent, Components, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext,
+        Indent, Components, !IO).
+
+write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
         Components, !IO) :-
-    do_write_error_pieces(treat_as_first, MaybeContext, Indent,
+    do_write_error_pieces(Stream, treat_as_first, MaybeContext, Indent,
         Globals, Components, !IO).
 
-:- pred do_write_error_pieces(maybe_treat_as_first::in,
-    maybe(prog_context)::in, int::in, globals::in,
+%---------------------------------------------------------------------------%
+
+:- pred do_write_error_pieces(io.text_output_stream::in,
+    maybe_treat_as_first::in, maybe(prog_context)::in, int::in, globals::in,
     list(format_component)::in, io::di, io::uo) is det.
 
-do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent, Globals,
-        Components, !IO) :-
+do_write_error_pieces(Stream, TreatAsFirst, MaybeContext, FixedIndent,
+        Globals, Components, !IO) :-
     globals.lookup_maybe_int_option(Globals, max_error_line_width,
         MaybeMaxWidth),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
-    do_write_error_pieces_params(TreatAsFirst, MaybeContext, FixedIndent,
-        MaybeMaxWidth, LimitErrorContextsMap, Components, !IO).
+    do_write_error_pieces_params(Stream, TreatAsFirst, MaybeContext,
+        FixedIndent, MaybeMaxWidth, LimitErrorContextsMap, Components, !IO).
 
-:- pred do_write_error_pieces_params(maybe_treat_as_first::in,
-    maybe(prog_context)::in, int::in, maybe(int)::in,
-    limit_error_contexts_map::in,
+:- pred do_write_error_pieces_params(io.text_output_stream::in,
+    maybe_treat_as_first::in, maybe(prog_context)::in,
+    int::in, maybe(int)::in, limit_error_contexts_map::in,
     list(format_component)::in, io::di, io::uo) is det.
 
-do_write_error_pieces_params(TreatAsFirst, MaybeContext, FixedIndent,
+do_write_error_pieces_params(Stream, TreatAsFirst, MaybeContext, FixedIndent,
         MaybeMaxWidth, LimitErrorContextsMap, Components, !IO) :-
     % The fixed characters at the start of the line are:
     % filename
@@ -1263,7 +1331,7 @@ do_write_error_pieces_params(TreatAsFirst, MaybeContext, FixedIndent,
         ),
         divide_paragraphs_into_lines(TreatAsFirst, FirstIndent, Paragraphs,
             MaybeRemain, Lines),
-        write_lines(Lines, MaybeContext, FixedIndent, !IO)
+        write_lines(Stream, Lines, MaybeContext, FixedIndent, !IO)
     ).
 
 :- func line_number_is_in_a_range(list(line_number_range), int) = bool.
@@ -1294,40 +1362,43 @@ line_number_is_in_a_range([Range | Ranges], LineNumber) = IsInARange :-
 
 indent_increment = 2.
 
-:- pred write_lines(list(error_line)::in, maybe(prog_context)::in, int::in,
-    io::di, io::uo) is det.
+:- pred write_lines(io.text_output_stream::in, list(error_line)::in,
+    maybe(prog_context)::in, int::in, io::di, io::uo) is det.
 
-write_lines([], _, _, !IO).
-write_lines([Line | Lines], MaybeContext, FixedIndent, !IO) :-
+write_lines(_Stream, [], _, _, !IO).
+write_lines(Stream, [Line | Lines], MaybeContext, FixedIndent, !IO) :-
     (
         MaybeContext = yes(Context),
-        prog_out.write_context(Context, !IO)
+        prog_out.write_context(Stream, Context, !IO)
     ;
         MaybeContext = no
     ),
     Line = error_line(LineIndent, LineWords),
     Indent = FixedIndent + LineIndent * indent_increment,
     string.pad_left("", ' ', Indent, IndentStr),
-    io.write_string(IndentStr, !IO),
-    error_util.write_line(LineWords, !IO),
-    write_lines(Lines, MaybeContext, FixedIndent, !IO).
+    io.write_string(Stream, IndentStr, !IO),
+    error_util.write_line(Stream, LineWords, !IO),
+    write_lines(Stream, Lines, MaybeContext, FixedIndent, !IO).
 
-:- pred write_line(list(string)::in, io::di, io::uo) is det.
+% ZZZ rename to avoid ambiguity
+:- pred write_line(io.text_output_stream::in, list(string)::in,
+    io::di, io::uo) is det.
 
-write_line([], !IO) :-
-    io.write_char('\n', !IO).
-write_line([Word | Words], !IO) :-
-    io.write_string(Word, !IO),
-    write_line_rest(Words, !IO),
-    io.write_char('\n', !IO).
+write_line(Stream, [], !IO) :-
+    io.write_char(Stream, '\n', !IO).
+write_line(Stream, [Word | Words], !IO) :-
+    io.write_string(Stream, Word, !IO),
+    write_line_rest(Stream, Words, !IO),
+    io.write_char(Stream, '\n', !IO).
 
-:- pred write_line_rest(list(string)::in, io::di, io::uo) is det.
+:- pred write_line_rest(io.text_output_stream::in, list(string)::in,
+    io::di, io::uo) is det.
 
-write_line_rest([], !IO).
-write_line_rest([Word | Words], !IO) :-
-    io.write_char(' ', !IO),
-    io.write_string(Word, !IO),
-    write_line_rest(Words, !IO).
+write_line_rest(_Stream, [], !IO).
+write_line_rest(Stream, [Word | Words], !IO) :-
+    io.write_char(Stream, ' ', !IO),
+    io.write_string(Stream, Word, !IO),
+    write_line_rest(Stream, Words, !IO).
 
 error_pieces_to_string(Components) =
     error_pieces_to_string_2(first_in_msg, Components).
@@ -1472,7 +1543,7 @@ join_string_and_tail(Word, Components, TailStr) = Str :-
         Str = Word ++ " " ++ TailStr
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type paragraph
     --->    paragraph(
@@ -1747,7 +1818,7 @@ find_word_end(String, Cur, WordEnd) :-
         WordEnd = Cur
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type error_line
     --->    error_line(
@@ -1854,7 +1925,7 @@ get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
         RestWords = [Word | Words]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 describe_sym_name_and_arity(sym_name_arity(SymName, Arity)) =
     string.append_list(["`", sym_name_to_string(SymName), "/",
@@ -1881,13 +1952,17 @@ capitalize(Str0) = Str :-
         Str = Str0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_warning(Globals, Context, Indent, Components, !IO) :-
-    record_warning(Globals, !IO),
-    write_error_pieces(Globals, Context, Indent, Components, !IO).
+    io.output_stream(Stream, !IO),
+    report_warning(Stream, Globals, Context, Indent, Components, !IO).
 
-%-----------------------------------------------------------------------------%
+report_warning(Stream, Globals, Context, Indent, Components, !IO) :-
+    record_warning(Globals, !IO),
+    write_error_pieces(Stream, Globals, Context, Indent, Components, !IO).
+
+%---------------------------------------------------------------------------%
 
 unable_to_open_file(FileName, IOErr, !IO) :-
     io.stderr_stream(StdErr, !IO),
@@ -1899,6 +1974,6 @@ unable_to_open_file(FileName, IOErr, !IO) :-
 
     io.set_exit_status(1, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.error_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
