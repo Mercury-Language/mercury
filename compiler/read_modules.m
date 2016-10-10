@@ -257,7 +257,7 @@ read_module_src(Globals, Descr, IgnoreErrors, Search, ModuleName, FileName,
     actually_read_module_src(Globals, ModuleName, MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeTimestampRes, ParseTreeSrc0,
         ModuleSpecs, Errors, !IO),
-    ParseTreeSrc0 = parse_tree_src(ActualModuleName, ActualModuleNameContext,
+    ParseTreeSrc0 = parse_tree_src(_ActualModuleName, ActualModuleNameContext,
         ComponentsCord),
     % If ModuleName = ActualModuleName, this obviously does the right thing.
     % If ModuleName != ActualModuleName, then we must include ModuleName
@@ -269,7 +269,6 @@ read_module_src(Globals, Descr, IgnoreErrors, Search, ModuleName, FileName,
         ComponentsCord),
     IsEmpty = (if cord.is_empty(ComponentsCord) then yes else no),
     read_module_end(Globals, IgnoreErrors, VeryVerbose,
-        ModuleName, ActualModuleName, ActualModuleNameContext,
         MaybeFileNameAndStream, FileName0, FileName,
         MaybeTimestampRes, MaybeTimestamp,
         IsEmpty, ModuleSpecs, Specs, Errors, !IO).
@@ -284,8 +283,8 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
     actually_read_module_int(IntFileKind, Globals, ModuleName,
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
         ParseTreeInt, ModuleSpecs, Errors, !IO),
-    ParseTreeInt = parse_tree_int(ActualModuleName, _IntFileKind,
-        ActualModuleNameContext, _MaybeVersionNumbers,
+    ParseTreeInt = parse_tree_int(_ActualModuleName, _IntFileKind,
+        _ActualModuleNameContext, _MaybeVersionNumbers,
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImplItems),
     ( if
         IntIncls = [],
@@ -300,7 +299,6 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
         IsEmpty = no
     ),
     read_module_end(Globals, IgnoreErrors, VeryVerbose,
-        ModuleName, ActualModuleName, ActualModuleNameContext,
         MaybeFileNameAndStream, FileName0, FileName,
         MaybeTimestampRes, MaybeTimestamp,
         IsEmpty, ModuleSpecs, Specs, Errors, !IO).
@@ -374,14 +372,12 @@ read_module_begin(Globals, Descr, Search, ModuleName, FileKind,
     ).
 
 :- pred read_module_end(globals::in, maybe_ignore_errors::in, bool::in,
-    module_name::in, module_name::in, term.context::in,
     maybe_error(path_name_and_stream)::in, file_name::in, file_name::out,
     maybe(io.res(timestamp))::in, maybe(timestamp)::out, bool::in,
     list(error_spec)::in, list(error_spec)::out, read_module_errors::in,
     io::di, io::uo) is det.
 
 read_module_end(Globals, IgnoreErrors, VeryVerbose,
-        ModuleName, ActualModuleName, ActualModuleNameContext,
         MaybeFileNameAndStream, FileName0, FileName,
         MaybeTimestampRes, MaybeTimestamp, IsEmpty,
         ModuleSpecs, Specs, Errors, !IO) :-
@@ -391,8 +387,6 @@ read_module_end(Globals, IgnoreErrors, VeryVerbose,
         MaybeFileNameAndStream = error(_),
         FileName = FileName0
     ),
-    check_module_has_expected_name(require_module_decl, FileName,
-        ModuleName, ActualModuleName, yes(ActualModuleNameContext), NameSpecs),
     check_timestamp(Globals, FileName0, MaybeTimestampRes, MaybeTimestamp,
         !IO),
     (
@@ -408,13 +402,12 @@ read_module_end(Globals, IgnoreErrors, VeryVerbose,
             Specs = []
         else
             maybe_write_string(VeryVerbose, "done.\n", !IO),
-            Specs = NameSpecs ++ ModuleSpecs
+            Specs = ModuleSpecs
         )
     ;
         IgnoreErrors = do_not_ignore_errors,
-        ModuleNameSpecs = NameSpecs ++ ModuleSpecs,
         handle_any_read_module_errors(Globals, VeryVerbose, Errors,
-            ModuleNameSpecs, Specs, !IO)
+            ModuleSpecs, Specs, !IO)
     ).
 
 :- pred handle_any_read_module_errors(globals::in, bool::in,

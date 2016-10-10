@@ -775,6 +775,10 @@ sort_error_specs(Globals, !Specs) :-
     %   always(...))" in the other. But if warn_wrong_module_name is yes,
     %   this difference has no effect either.
     %
+    % (The parser should no longer generate duplicate error messages
+    % for bad module names, but we still keep this workaround in place,
+    % since the cost of doing so is trivial.)
+    %
     list.filter_map(remove_conditionals_in_spec(Globals), !Specs),
     list.sort_and_remove_dups(compare_error_specs, !Specs).
 
