@@ -102,7 +102,17 @@
     % directory. Return in FileName the actual source file name found
     % (excluding the directory part). If the actual module name
     % (as determined by the `:- module' declaration) does not match
-    % the specified module name, then report an error message.
+    % the specified module name, then report an error message,
+    % but record the *expected* module name in the parse tree,
+    % not the one we actually found. This is because most parts
+    % of the compiler (including deps_map.m and make.module_dep_file.m)
+    % rely on the invariant which says that if Errors does not contain
+    % any fatal errors, then the returned ParseTreeSrc contains the
+    % module with the expected name. Invocations of the compiler
+    % that don't specify --make or request dependency map don't really
+    % care which module name we return here; they will work either way,
+    % the only difference being whether the names of the files they generate
+    % are based on the expected or the actual module name.
     %
     % N.B. This reads a module given the MODULE name. If you want to read
     % a module given the FILE name, use `read_module_src_from_file'.
@@ -245,9 +255,17 @@ read_module_src(Globals, Descr, IgnoreErrors, Search, ModuleName, FileName,
     search_for_module_source_and_stream(Globals, SearchDirs,
         InterfaceSearchDirs, ModuleName, MaybeFileNameAndStream, !IO),
     actually_read_module_src(Globals, ModuleName, MaybeFileNameAndStream,
-        ReadModuleAndTimestamps, MaybeTimestampRes, ParseTreeSrc,
+        ReadModuleAndTimestamps, MaybeTimestampRes, ParseTreeSrc0,
         ModuleSpecs, Errors, !IO),
-    ParseTreeSrc = parse_tree_src(ActualModuleName, ActualModuleNameContext,
+    ParseTreeSrc0 = parse_tree_src(ActualModuleName, ActualModuleNameContext,
+        ComponentsCord),
+    % If ModuleName = ActualModuleName, this obviously does the right thing.
+    % If ModuleName != ActualModuleName, then we must include ModuleName
+    % in ParseTreeSrc (see the comment above), and including recording
+    % ActualModuleNameContext as its context shouldn't mislead anyone
+    % who reads the error spec about the unexpected module name,
+    % which should be in Specs.
+    ParseTreeSrc = parse_tree_src(ModuleName, ActualModuleNameContext,
         ComponentsCord),
     IsEmpty = (if cord.is_empty(ComponentsCord) then yes else no),
     read_module_end(Globals, IgnoreErrors, VeryVerbose,
