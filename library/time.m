@@ -909,71 +909,31 @@ time.mktime(TM) = time_t(Time) :-
         Yr + 1900, Mnt, MD, Hrs, Min, Sec);
 
     Time = gc.getTime();
+    java.util.TimeZone tz = gc.getTimeZone();
 
-    // Correct for DST:  This is only an issue when it is possible for the
-    // same 'time' to occur twice due to daylight savings ending.
+    // Correct for DST:  This is only an issue when it is possible for the same
+    // 'time' to occur twice due to daylight savings ending.
     // (In Melbourne, 2:00am-2:59am occur twice when leaving DST)
 
-    // If the time we constructed is not in daylight savings time, but
-    // it should be, we need to subtract the DSTSavings.
+    // If the time we constructed is not in daylight savings time, but it
+    // should be, we need to subtract the DSTSavings.
     if (N == 1 && gc.getTimeZone().inDaylightTime(Time) == false) {
-        Time.setTime(Time.getTime() - getDSTSavings(gc.getTimeZone()));
-        if (gc.getTimeZone().inDaylightTime(Time) == false) {
+        Time.setTime(Time.getTime() - tz.getDSTSavings());
+        if (tz.inDaylightTime(Time) == false) {
             throw new RuntimeException(
                 ""time.mktime: failed to correct for DST"");
         }
     }
 
-    // If the time we constructed is in daylight savings time, but
-    // should not be, we need to add the DSTSavings.
-    if (N == 0 && gc.getTimeZone().inDaylightTime(Time) == true) {
-        Time.setTime(Time.getTime() + getDSTSavings(gc.getTimeZone()));
-        if (gc.getTimeZone().inDaylightTime(Time) == true) {
+    // If the time we constructed is in daylight savings time, but should not
+    // be, we need to add the DSTSavings.
+    if (N == 0 && tz.inDaylightTime(Time) == true) {
+        Time.setTime(Time.getTime() + tz.getDSTSavings());
+        if (tz.inDaylightTime(Time) == true) {
             throw new RuntimeException(
                 ""time.mktime: failed to correct for DST"");
         }
     }
-").
-
-:- pragma foreign_code("Java",
-"
-/*
-** getDSTSavings():
-**
-** This method uses reflection to retrieve and call the getDSTSavings()
-** method for a given TimeZone object.
-**
-** The reason we do this is that for Java versions < 1.4, the
-** TimeZone.getDSTSavings() method did not exist, but the
-** SimpleTimeZone.getDSTSavings() method did, and the concrete instance of
-** TimeZone used by GregorianCalender (which is what we use in this
-** module) is a SimpleTimeZone.
-** However, we can't just cast the TimeZone instance to SimpleTimeZone,
-** because for Java versions >= 1.4, GregorianCalender no longer uses a
-** SimpleTimeZone. So in this case, what we really want is
-** TimeZone.getDSTSavings(), but we can't just put that or the code won't
-** compile for Java versions < 1.4.
-**
-** Thus, the solution is to invoke the getDSTSavings() method using
-** reflection, which will cover both cases.
-*/
-public static int
-getDSTSavings(java.util.TimeZone tz) {
-    try {
-        // Simulate
-        //  return tz.getDSTSavings()
-        // using reflection.
-
-        return ((java.lang.Integer) (tz.getClass().
-            getMethod(""getDSTSavings"").
-            invoke(tz))).intValue();
-    }
-    catch (java.lang.Exception e) {
-        throw new java.lang.RuntimeException(
-            ""time.c_mktime: Failed to locate "" +
-            ""getDSTSavings() method."");
-    }
-}
 ").
 
 :- func maybe_dst_to_int(maybe(dst)) = int.
