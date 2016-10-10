@@ -856,6 +856,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             io.set_output_stream(ErrorStream, _, !IO),
             split_into_compilation_units_perform_checks(ParseTreeSrc,
                 RawCompUnits, Specs0, Specs),
+            % XXX Why do want ignore all previously reported errors?
             io.set_exit_status(0, !IO),
             write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
@@ -868,10 +869,13 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                     ModuleName, set.list_to_set(SubModuleNames), [], Errors),
                 RawCompUnits, ModuleAndImportList),
             list.foldl(
-                (pred(ModuleAndImports::in, Info0::in, Info::out) is det :-
+                ( pred(ModuleAndImports::in, Info0::in, Info::out) is det :-
                     SubModuleName = ModuleAndImports ^ mai_module_name,
-                    Info = Info0 ^ module_dependencies ^ elem(SubModuleName)
-                        := yes(ModuleAndImports)
+                    ModuleDeps0 = Info0 ^ module_dependencies,
+                    % XXX Could this be map.det_insert?
+                    map.set(SubModuleName, yes(ModuleAndImports),
+                        ModuleDeps0, ModuleDeps),
+                    Info = Info0 ^ module_dependencies := ModuleDeps
                 ), ModuleAndImportList, !Info),
 
             % If there were no errors, write out the `.int3' file
@@ -896,9 +900,10 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             ),
 
             build_with_check_for_interrupt(VeryVerbose,
-                (pred(yes::out, MakeInfo::in, MakeInfo::out, di, uo) is det -->
+                ( pred(yes::out, MakeInfo::in, MakeInfo::out,
+                        IO0::di, IO::uo) is det :-
                     list.foldl(do_write_module_dep_file(Globals),
-                        ModuleAndImportList)
+                        ModuleAndImportList, IO0, IO)
                 ),
                 cleanup_module_dep_files(Globals, SubModuleNames), _,
                 !Info, !IO),
