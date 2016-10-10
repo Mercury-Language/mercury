@@ -650,7 +650,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                         [always(PrevPieces)])]),
                 Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
                     [Msg, PrevMsg]),
-                simplify_info_add_error_spec(Spec, !Info)
+                simplify_info_add_message(Spec, !Info)
             else
                 true
             ),

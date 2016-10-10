@@ -1,17 +1,17 @@
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014-2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: simplify_goal_call.m.
 %
 % This module handles simplification of plain calls, generic calls and
 % calls to foreign code.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.simplify.simplify_goal_call.
 :- interface.
@@ -49,7 +49,7 @@
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -91,7 +91,7 @@
 :- import_module string.
 :- import_module varset.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext, InstMap0, Common0, Common, !Info) :-
@@ -99,6 +99,8 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
 
+    maybe_generate_warning_for_no_stream_predicate(PredId, PredInfo,
+        GoalInfo0, !Info),
     maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         GoalInfo0, !Info),
     maybe_generate_warning_for_infinite_loop_call(PredId, ProcId,
@@ -298,10 +300,121 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
 make_arg_always_boxed(!Arg) :-
     !Arg ^ arg_box_policy := bp_always_boxed.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates that generate warnings, if appropriate.
 %
+
+    % Generate warnings for calls to predicates that could have explicitly
+    % specified a stream, but didn't.
+    %
+:- pred maybe_generate_warning_for_no_stream_predicate(pred_id::in,
+    pred_info::in, hlds_goal_info::in,
+    simplify_info::in, simplify_info::out) is det.
+
+maybe_generate_warning_for_no_stream_predicate(PredId, PredInfo, GoalInfo,
+        !Info) :-
+    simplify_info_get_module_info(!.Info, ModuleInfo),
+    ( if simplify_do_warn_no_stream_calls(!.Info) then
+        pred_info_get_module_name(PredInfo, ModuleName),
+        pred_info_get_name(PredInfo, PredName),
+        pred_info_is_pred_or_func(PredInfo) = PredOrFunc,
+        ( if
+            % We want to warn about calls to predicates, ...
+            PredOrFunc = pf_predicate,
+
+            % ... which do I/O and thus have two I/O state arguments, ...
+            pred_info_get_arg_types(PredInfo, ArgTypes),
+            IOStateTypeSymName = qualified(mercury_io_module, "state"),
+            IOStateType = defined_type(IOStateTypeSymName, [], kind_star),
+            list.filter(unify(IOStateType), ArgTypes, IOStateArgTypes),
+            IOStateArgTypes = [_, _],
+
+            % ... where the callee predicate has a twin that has
+            % one extra initial argument that is a stream.
+            module_info_get_predicate_table(ModuleInfo, PredTable),
+            PredSymName = qualified(ModuleName, PredName),
+            list.length(ArgTypes, Arity),
+            predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
+                PredOrFunc, PredSymName, Arity + 1, PredIds),
+            list.filter(one_extra_stream_arg(ModuleInfo, ArgTypes), PredIds,
+                OneExtraStreamArgPredIds),
+            OneExtraStreamArgPredIds = [_ | _]
+        then
+            GoalContext = goal_info_get_context(GoalInfo),
+            PredPieces = describe_one_pred_name(ModuleInfo,
+                should_module_qualify, PredId),
+            Pieces = [words("The call to")] ++ PredPieces ++
+                [words("could have an additional argument"),
+                words("explicitly specifying a stream."), nl],
+            Msg = simple_msg(GoalContext,
+                [option_is_set(warn_no_stream_calls, yes, [always(Pieces)])]),
+            Severity = severity_conditional(warn_no_stream_calls, yes,
+                severity_informational, no),
+            Spec = error_spec(Severity,
+                phase_simplify(report_in_any_mode), [Msg]),
+            simplify_info_add_message(Spec, !Info)
+        else if
+            % We want to warn about calls to predicates that update
+            % the current input or output stream.
+            ModuleName = mercury_io_module,
+            PredOrFunc = pf_predicate,
+            (
+                ( PredName = "see"
+                ; PredName = "seen"
+                ; PredName = "set_input_stream"
+                ),
+                Dir = "input"
+            ;
+                ( PredName = "tell"
+                ; PredName = "told"
+                ; PredName = "set_output_stream"
+                ),
+                Dir = "output"
+            )
+        then
+            GoalContext = goal_info_get_context(GoalInfo),
+            PredPieces = describe_one_pred_name(ModuleInfo,
+                should_module_qualify, PredId),
+            Pieces = [words("The call to")] ++ PredPieces ++
+                [words("could be made redundant by explicitly passing"),
+                words("the"), words(Dir), words("stream it specifies"),
+                words("to later I/O operations."), nl],
+            Msg = simple_msg(GoalContext,
+                [option_is_set(warn_no_stream_calls, yes, [always(Pieces)])]),
+            Severity = severity_conditional(warn_no_stream_calls, yes,
+                severity_informational, no),
+            Spec = error_spec(Severity,
+                phase_simplify(report_in_any_mode), [Msg]),
+            simplify_info_add_message(Spec, !Info)
+        else
+            true
+        )
+    else
+        true
+    ).
+
+:- pred one_extra_stream_arg(module_info::in, list(mer_type)::in, pred_id::in)
+    is semidet.
+
+one_extra_stream_arg(ModuleInfo, OrigArgTypes, PredId) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    ArgTypes = [HeadArgType | TailArgTypes],
+
+    % Is the first argument a stream type? (We could list all the stream
+    % types defined in library/io.m here, but it is probably more robust
+    % to assume that all types in io.m whose names end in "stream" qualify.
+    % We don't think we will ever give any non-stream type such a name.)
+    HeadArgType = defined_type(HeadArgTypeSymName, [], kind_star),
+    HeadArgTypeSymName = qualified(mercury_io_module, HeadArgTypeName),
+    string.suffix(HeadArgTypeName, "stream"),
+
+    % Do the later arguments have the same types as the argument types
+    % in the original call?
+    TailArgTypes = OrigArgTypes.
+
+%---------------------%
 
     % Generate warnings for calls to predicates that have been marked with
     % `pragma obsolete' declarations.
@@ -312,7 +425,6 @@ make_arg_always_boxed(!Arg) :-
 
 maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         GoalInfo, !Info) :-
-    simplify_info_get_module_info(!.Info, ModuleInfo),
     ( if
         simplify_do_warn_obsolete(!.Info),
         pred_info_get_markers(PredInfo, Markers),
@@ -320,34 +432,35 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
 
         % Don't warn about directly recursive calls to obsolete predicates.
         % That would cause spurious warnings, particularly with builtin
-        % predicates, or preds defined using foreign_procs.
+        % predicates, or predicates defined using foreign_procs.
         simplify_info_get_pred_proc_id(!.Info, ThisPredId, _),
         PredId \= ThisPredId,
 
         % Don't warn about calls to obsolete predicates from other predicates
         % that also have a `pragma obsolete' declaration. Doing so
         % would also just result in spurious warnings.
+        simplify_info_get_module_info(!.Info, ModuleInfo),
         module_info_pred_info(ModuleInfo, ThisPredId, ThisPredInfo),
         pred_info_get_markers(ThisPredInfo, ThisPredMarkers),
         not check_marker(ThisPredMarkers, marker_obsolete)
     then
-        % XXX warn_obsolete isn't really a simple code warning.
-        % We should add a separate warning type for this.
         GoalContext = goal_info_get_context(GoalInfo),
         PredPieces = describe_one_pred_name(ModuleInfo,
             should_module_qualify, PredId),
         Pieces = [words("Warning: call to obsolete")] ++
             PredPieces ++ [suffix("."), nl],
         Msg = simple_msg(GoalContext,
-            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-        Severity = severity_conditional(warn_simple_code, yes,
+            [option_is_set(warn_obsolete, yes, [always(Pieces)])]),
+        Severity = severity_conditional(warn_obsolete, yes,
             severity_warning, no),
         Spec = error_spec(Severity,
             phase_simplify(report_in_any_mode), [Msg]),
-        simplify_info_add_simple_code_spec(Spec, !Info)
+        simplify_info_add_message(Spec, !Info)
     else
         true
     ).
+
+%---------------------%
 
     % Generate warnings for recursive calls that look like they represent
     % infinite loops, because every input argument in the call is either
@@ -362,8 +475,6 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
 
 maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
         PredInfo, ProcInfo, GoalInfo, NestedContext, Common, !Info) :-
-    % Check for recursive calls with the same input arguments,
-    % and warn about them (since they will lead to infinite loops).
     ( if
         simplify_do_warn_simple_code(!.Info),
 
@@ -377,7 +488,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
         % it is not infinite recursion.)
         IsBuiltin \= inline_builtin,
 
-        % Don't warn if we're inside a lambda goal, because the recursive call
+        % Don't warn if we are inside a lambda goal, because the recursive call
         % may not be executed.
         NestedContext ^ snc_num_enclosing_lambdas = 0,
 
@@ -439,7 +550,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
             severity_warning, no),
         Spec = error_spec(Severity,
             phase_simplify(report_in_any_mode), [Msg]),
-        simplify_info_add_simple_code_spec(Spec, !Info)
+        simplify_info_add_message(Spec, !Info)
     else
         true
     ).
@@ -464,7 +575,7 @@ input_args_are_equiv([Arg | Args], [HeadVar | HeadVars], [Mode | Modes],
     ),
     input_args_are_equiv(Args, HeadVars, Modes, CommonInfo, ModuleInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates that improve the code, if they can.
 %

@@ -31,6 +31,9 @@
     ;       simptask_warn_duplicate_calls
             % --warn-duplicate-calls
 
+    ;       simptask_warn_no_stream_calls
+            % --warn-no-stream-calls
+
     ;       simptask_format_calls
             % Invoke format_call.m.
 
@@ -82,6 +85,7 @@
     --->    simplify_tasks(
                 do_warn_simple_code         :: bool,
                 do_warn_duplicate_calls     :: bool,
+                do_warn_no_stream_calls     :: bool,
                 do_format_calls             :: bool,
                 do_warn_obsolete            :: bool,
                 do_mark_code_model_changes  :: bool,
@@ -112,12 +116,13 @@
 
 simplify_tasks_to_list(SimplifyTasks) = List :-
     SimplifyTasks = simplify_tasks(WarnSimpleCode, WarnDupCalls,
-        DoFormatCalls, WarnObsolete, MarkCodeModelChanges,
+        WarnNoStreamCalls, DoFormatCalls, WarnObsolete, MarkCodeModelChanges,
         AfterFrontEnd, ExcessAssign, ElimRemovableScopes, OptDuplicateCalls,
         ConstantProp, CommonStruct, ExtraCommonStruct, RemoveParConjunctions),
     List =
         ( WarnSimpleCode = yes -> [simptask_warn_simple_code] ; [] ) ++
         ( WarnDupCalls = yes -> [simptask_warn_duplicate_calls] ; [] ) ++
+        ( WarnNoStreamCalls = yes -> [simptask_warn_no_stream_calls] ; [] ) ++
         ( DoFormatCalls = yes -> [simptask_format_calls] ; [] ) ++
         ( WarnObsolete = yes -> [simptask_warn_obsolete] ; [] ) ++
         ( MarkCodeModelChanges = yes ->
@@ -136,6 +141,7 @@ list_to_simplify_tasks(List) =
     simplify_tasks(
         ( list.member(simptask_warn_simple_code, List) -> yes ; no ),
         ( list.member(simptask_warn_duplicate_calls, List) -> yes ; no ),
+        ( list.member(simptask_warn_no_stream_calls, List) -> yes ; no ),
         ( list.member(simptask_format_calls, List) -> yes ; no ),
         ( list.member(simptask_warn_obsolete, List) -> yes ; no ),
         ( list.member(simptask_mark_code_model_changes, List) -> yes ; no ),
@@ -152,6 +158,8 @@ list_to_simplify_tasks(List) =
 find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
     globals.lookup_bool_option(Globals, warn_simple_code, WarnSimple),
     globals.lookup_bool_option(Globals, warn_duplicate_calls, WarnDupCalls),
+    globals.lookup_bool_option(Globals, warn_no_stream_calls,
+        WarnNoStreamCalls),
     globals.lookup_bool_option(Globals, warn_known_bad_format_calls,
         WarnKnownBadFormat),
     globals.lookup_bool_option(Globals, warn_unknown_format_calls,
@@ -186,6 +194,7 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
     SimplifyTasks = simplify_tasks(
         ( if WarnSimple = yes, WarnThisPass = yes then yes else no),
         ( if WarnDupCalls = yes, WarnThisPass = yes then yes else no),
+        ( if WarnNoStreamCalls = yes, WarnThisPass = yes then yes else no),
         DoFormatCalls,
         ( if WarnObsolete = yes, WarnThisPass = yes then yes else no),
         MarkCodeModelChanges,

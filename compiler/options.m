@@ -119,6 +119,7 @@
     ;       warn_unification_cannot_succeed
     ;       warn_simple_code
     ;       warn_duplicate_calls
+    ;       warn_no_stream_calls
     ;       warn_missing_module_name
     ;       warn_wrong_module_name
     ;       warn_smart_recompilation
@@ -1097,6 +1098,7 @@ option_defaults_2(warning_option, [
     warn_unification_cannot_succeed     -   bool(yes),
     warn_simple_code                    -   bool(yes),
     warn_duplicate_calls                -   bool(no),
+    warn_no_stream_calls                -   bool(no),
     warn_missing_module_name            -   bool(yes),
     warn_wrong_module_name              -   bool(yes),
     warn_smart_recompilation            -   bool(yes),
@@ -1969,6 +1971,7 @@ long_option("warn-unification-cannot-succeed",
                                         warn_unification_cannot_succeed).
 long_option("warn-simple-code",         warn_simple_code).
 long_option("warn-duplicate-calls",     warn_duplicate_calls).
+long_option("warn-no-stream-calls",     warn_no_stream_calls).
 long_option("warn-missing-module-name", warn_missing_module_name).
 long_option("warn-wrong-module-name",   warn_wrong_module_name).
 long_option("warn-smart-recompilation", warn_smart_recompilation).
@@ -3598,6 +3601,9 @@ options_help_warning -->
         "--warn-duplicate-calls",
         "\tWarn about multiple calls to a predicate with the",
         "\tsame input arguments.",
+        "--warn-no-stream-calls",
+        "\tWarn about calls to I/O predicates that could take explicit",
+        "\tstream arguments, but do not do so.",
         "--no-warn-missing-module-name",
         "\tDisable warnings for modules that do not start with",
         "\ta `:- module' declaration.",

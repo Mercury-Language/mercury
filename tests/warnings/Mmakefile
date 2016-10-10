@@ -34,6 +34,7 @@ ERRORCHECK_PROGS = \
 	non_stratification \
 	pragma_source_file \
 	purity_warnings \
+	save \
 	simple_code \
 	singleton_test \
 	spurious_obsolete \
@@ -49,8 +50,8 @@ ERRORCHECK_PROGS = \
 	warn_non_contiguous_foreign \
 	warn_non_contiguous_foreign_group \
 	warn_self_import \
-	warn_succ_ind \
-	warn_stubs
+	warn_stubs \
+	warn_succ_ind
 
 # We don't yet pass (or even have a .exp file for) this test.
 #	trace_goal_dupl_defn

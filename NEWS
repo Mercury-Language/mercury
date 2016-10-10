@@ -430,6 +430,17 @@ Changes to the Mercury compiler:
   the compiler to generate a warning for an unused procedure only if
   none of the procedures of a predicate or function is used.
 
+* We have added a new option --warn-no-stream-calls, which asks the compiler
+  to generate a warning for every call to a predicate p/n if there is also
+  a predicate p/(n+1) which differs from p/n only in that it has additional
+  argument at the front of its argument list that specifies an I/O stream.
+  This is intended to generate warnings for calls to predicates such as
+  io.write_string/3, which writes to the current output stream, to encourage
+  programmers to call io.write_string/4 instead. If the option is given,
+  the compiler will also generate warnings for calls to predicates such as
+  io.see, io.seen, io.tell and io.told, which set the current input or output
+  streams respectively.
+
 * We have fixed a long-standing bug causing crashes in deep profiling
   grades, related to unify/compare for tuples.  (Bug #3)
 

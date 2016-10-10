@@ -1,0 +1,23 @@
+save.m:026: The call to predicate `io.write_string'/3 could have an additional
+save.m:026:   argument explicitly specifying a stream.
+save.m:028: The call to predicate `io.see'/4 could be made redundant by
+save.m:028:   explicitly passing the input stream it specifies to later I/O
+save.m:028:   operations.
+save.m:031: The call to predicate `io.read_file_as_string'/3 could have an
+save.m:031:   additional argument explicitly specifying a stream.
+save.m:034: The call to predicate `io.write_string'/3 could have an additional
+save.m:034:   argument explicitly specifying a stream.
+save.m:038: The call to predicate `io.write_string'/3 could have an additional
+save.m:038:   argument explicitly specifying a stream.
+save.m:043: The call to predicate `io.write_string'/3 could have an additional
+save.m:043:   argument explicitly specifying a stream.
+save.m:106: The call to predicate `io.write_string'/3 could have an additional
+save.m:106:   argument explicitly specifying a stream.
+save.m:109: The call to predicate `io.write_string'/3 could have an additional
+save.m:109:   argument explicitly specifying a stream.
+save.m:111: The call to predicate `io.write_string'/3 could have an additional
+save.m:111:   argument explicitly specifying a stream.
+save.m:118: The call to predicate `io.write_int'/3 could have an additional
+save.m:118:   argument explicitly specifying a stream.
+save.m:123: The call to predicate `io.write_string'/3 could have an additional
+save.m:123:   argument explicitly specifying a stream.

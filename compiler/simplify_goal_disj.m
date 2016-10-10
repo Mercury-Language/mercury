@@ -207,7 +207,7 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
         Msg = simple_msg(Context, [always(Pieces)]),
         Severity = severity_warning,
         Spec = error_spec(Severity, phase_simplify(report_in_any_mode), [Msg]),
-        simplify_info_add_simple_code_spec(Spec, !Info)
+        simplify_info_add_message(Spec, !Info)
     ).
 
     % Check whether a variable suffers from the problem of bug 311.
@@ -287,7 +287,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
                 severity_warning, no),
             Spec = error_spec(Severity,
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
-            simplify_info_add_simple_code_spec(Spec, !Info)
+            simplify_info_add_message(Spec, !Info)
         else
             true
         ),

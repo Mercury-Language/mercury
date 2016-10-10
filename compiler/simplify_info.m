@@ -63,6 +63,10 @@
                 snc_proc_is_model_non       :: maybe(innermost_proc)
             ).
 
+:- type maybe_allow_messages
+    --->    do_not_allow_messages
+    ;       allow_messages.
+
 %----------------------------------------------------------------------------%
 
 :- type simplify_info.
@@ -88,10 +92,7 @@
 :- pred simplify_info_add_elim_vars(list(prog_var)::in,
     simplify_info::in, simplify_info::out) is det.
 
-:- pred simplify_info_add_error_spec(error_spec::in,
-    simplify_info::in, simplify_info::out) is det.
-
-:- pred simplify_info_add_simple_code_spec(error_spec::in,
+:- pred simplify_info_add_message(error_spec::in,
     simplify_info::in, simplify_info::out) is det.
 
 :- pred simplify_info_incr_cost_delta(int::in,
@@ -121,6 +122,8 @@
     inst_varset::out) is det.
 :- pred simplify_info_get_elim_vars(simplify_info::in,
     list(list(prog_var))::out) is det.
+:- pred simplify_info_get_allow_messages(simplify_info::in,
+    maybe_allow_messages::out) is det.
 :- pred simplify_info_get_error_specs(simplify_info::in, list(error_spec)::out)
     is det.
 :- pred simplify_info_get_should_requantify(simplify_info::in, bool::out)
@@ -150,6 +153,8 @@
 
 :- pred simplify_info_set_elim_vars(list(list(prog_var))::in,
     simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_allow_messages(maybe_allow_messages::in,
+    simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_error_specs(list(error_spec)::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_should_requantify(
@@ -171,6 +176,7 @@
 
 :- pred simplify_do_warn_simple_code(simplify_info::in) is semidet.
 :- pred simplify_do_warn_duplicate_calls(simplify_info::in) is semidet.
+:- pred simplify_do_warn_no_stream_calls(simplify_info::in) is semidet.
 :- pred simplify_do_format_calls(simplify_info::in) is semidet.
 :- pred simplify_do_warn_obsolete(simplify_info::in) is semidet.
 :- pred simplify_do_mark_code_model_changes(simplify_info::in) is semidet.
@@ -244,6 +250,13 @@
                 % The relative order of the lists is unknown.
                 ssimp_elim_vars             :: list(list(prog_var)),
 
+                % The default value of this field is allow_messages,
+                % but it is set to do_not_allow_messages during the second pass
+                % of simplification. See the comment in simplify_proc.m
+                % next to the call to simplify_info_set_allow_messages
+                % for the reason why.
+                ssimp_allow_messages        :: maybe_allow_messages,
+
                 ssimp_error_specs           :: list(error_spec),
 
                 % Does the goal need requantification?
@@ -279,6 +292,7 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     ElimVars = [],
+    AllowMsgs = allow_messages,
     Specs = [],
     ShouldRequantity = no,
     ShouldRerunDet = no,
@@ -286,8 +300,8 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     HasParallelConj = has_no_parallel_conj,
     HasUserEvent = has_no_user_event,
     set.init(TraceGoalProcs),
-    SubInfo = simplify_sub_info(PredId, ProcId, InstVarSet,
-        ElimVars, Specs, ShouldRequantity, ShouldRerunDet, CostDelta,
+    SubInfo = simplify_sub_info(PredId, ProcId, InstVarSet, ElimVars,
+        AllowMsgs, Specs, ShouldRequantity, ShouldRerunDet, CostDelta,
         HasParallelConj, no, HasUserEvent, TraceGoalProcs),
     Info = simplify_info(SimplifyTasks, ModuleInfo, VarSet, VarTypes,
         RttiVarMaps, FullyStrict, SubInfo).
@@ -311,16 +325,15 @@ simplify_info_add_elim_vars(ElimVars, !Info) :-
     ElimVarsLists = [ElimVars | ElimVarsLists0],
     simplify_info_set_elim_vars(ElimVarsLists, !Info).
 
-simplify_info_add_error_spec(Spec, !Info) :-
-    simplify_info_get_error_specs(!.Info, Specs0),
-    Specs = [Spec | Specs0],
-    simplify_info_set_error_specs(Specs, !Info).
-
-simplify_info_add_simple_code_spec(Spec, !Info) :-
-    ( if simplify_do_warn_simple_code(!.Info) then
-        simplify_info_add_error_spec(Spec, !Info)
-    else
-        true
+simplify_info_add_message(Spec, !Info) :-
+    simplify_info_get_allow_messages(!.Info, AllowMsgs),
+    (
+        AllowMsgs = do_not_allow_messages
+    ;
+        AllowMsgs = allow_messages,
+        simplify_info_get_error_specs(!.Info, Specs0),
+        Specs = [Spec | Specs0],
+        simplify_info_set_error_specs(Specs, !Info)
     ).
 
 simplify_info_incr_cost_delta(Incr, !Info) :-
@@ -363,6 +376,8 @@ simplify_info_get_inst_varset(Info, IVS) :-
     IVS = Info ^ simp_sub_info ^ ssimp_inst_varset.
 simplify_info_get_elim_vars(Info, EV) :-
     EV = Info ^ simp_sub_info ^ ssimp_elim_vars.
+simplify_info_get_allow_messages(Info, AM) :-
+    AM = Info ^ simp_sub_info ^ ssimp_allow_messages.
 simplify_info_get_error_specs(Info, Specs) :-
     Specs = Info ^ simp_sub_info ^ ssimp_error_specs.
 simplify_info_get_should_requantify(Info, RQ) :-
@@ -393,6 +408,8 @@ simplify_info_set_rtti_varmaps(RVM, !Info) :-
 
 simplify_info_set_elim_vars(EV, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_elim_vars := EV.
+simplify_info_set_allow_messages(AW, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_allow_messages := AW.
 simplify_info_set_error_specs(Specs, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_error_specs := Specs.
 simplify_info_set_should_requantify(!Info) :-
@@ -418,6 +435,9 @@ simplify_do_warn_simple_code(Info) :-
 simplify_do_warn_duplicate_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_warn_duplicate_calls = yes.
+simplify_do_warn_no_stream_calls(Info) :-
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_warn_no_stream_calls = yes.
 simplify_do_format_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_format_calls = yes.

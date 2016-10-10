@@ -6547,6 +6547,13 @@ Warn about multiple calls to a predicate with the same
 input arguments.
 
 @sp 1
+@item --warn-no-stream-calls
+@findex --no-warn-no-stream-calls
+@findex --warn-no-stream-calls
+Warn about calls to I/O predicates that could take explicit
+stream arguments, but do not do so.
+
+@sp 1
 @item --no-warn-missing-module-name
 @findex --no-warn-missing-module-name
 @findex --warn-missing-module-name

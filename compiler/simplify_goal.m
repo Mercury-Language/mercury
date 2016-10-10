@@ -163,7 +163,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
                 severity_warning, no),
             Spec = error_spec(Severity,
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
-            simplify_info_add_simple_code_spec(Spec, !Info)
+            simplify_info_add_message(Spec, !Info)
         else
             true
         ),
