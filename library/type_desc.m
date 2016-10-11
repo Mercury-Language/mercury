@@ -835,12 +835,24 @@ make_type_ctor_desc_with_arity(_, _, _) :-
 
 %---------------------------------------------------------------------------%
 
+:- pragma promise_equivalent_clauses(make_type/2).
+
+make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
+    ( if erlang_rtti_implementation.is_erlang_backend then
+        erlang_rtti_implementation.make_type_desc(TypeCtorDesc, ArgTypes,
+            TypeDesc)
+    else
+        private_builtin.sorry("make_type(in, in) = out")
+    ).
+
+make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
+    private_builtin.sorry("make_type(out, out) = in").
+
 % This is the forwards mode of make_type/2: given a type constructor and
 % a list of argument types, check that the length of the argument types
 % matches the arity of the type constructor, and if so, use the type
 % constructor to construct a new type with the specified arguments.
 
-:- pragma promise_equivalent_clauses(make_type/2).
 :- pragma foreign_proc("C",
     make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
@@ -929,19 +941,8 @@ make_type_ctor_desc_with_arity(_, _, _) :-
     }
 }").
 
-make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.make_type_desc(TypeCtorDesc, ArgTypes,
-            TypeDesc)
-    else
-        private_builtin.sorry("make_type(in, in) = out")
-    ).
-
-    /*
-    ** This is the reverse mode of make_type: given a type,
-    ** split it up into a type constructor and a list of
-    ** arguments.
-    */
+% This is the reverse mode of make_type: given a type,
+% split it up into a type constructor and a list of arguments.
 
 :- pragma foreign_proc("C",
     make_type(TypeCtorDesc::out, ArgTypes::out) = (TypeDesc::in),
@@ -959,8 +960,7 @@ make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
     MR_restore_transient_registers();
 }").
 
-make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
-    private_builtin.sorry("make_type(out, out) = in").
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
