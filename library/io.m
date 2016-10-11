@@ -3311,22 +3311,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
         }
 
         if (ok && CheckExecute == bool.YES) {
-            // File.canExecute() was added in Java 1.6 but we only require
-            // Java 1.5.
-            try {
-                java.lang.reflect.Method canExecute =
-                    file.getClass().getMethod(""canExecute"");
-                ok = (Boolean) canExecute.invoke(file);
-            }
-            catch (java.lang.NoSuchMethodException e) {
-                // Assume the file is executable.
-            }
-            catch (java.lang.IllegalAccessException e) {
-                // Assume the file is executable.
-            }
-            catch (java.lang.reflect.InvocationTargetException e) {
-                ok = false;
-            }
+            ok = file.canExecute();
         }
 
         if (ok) {
