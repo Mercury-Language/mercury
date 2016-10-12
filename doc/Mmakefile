@@ -33,8 +33,8 @@ TEXINFO_INFO_FILES = mercury_ref.info mercury_user_guide.info \
 # The following variables specify which programs should be used to
 # to format the documentation.
 
-TEXI2HTML=$(MAKEINFO) --html --number-sections --no-split
-TEXI2HTML_SPLIT=$(MAKEINFO) --html --number-sections
+TEXI2HTML="$(MAKEINFO)" --html --number-sections --no-split
+TEXI2HTML_SPLIT="$(MAKEINFO)" --html --number-sections
 
 ifeq ("$(MAKEINFO)","")
 	HTML=warn_no_html
@@ -77,16 +77,16 @@ endif
 .SUFFIXES: .in .texi_pp .texi .dvi .dvi_log .ps .pdf .pdf_log .text
 
 %.dvi: %.texi_pp
-	-$(TEXI2DVI) $< < /dev/null > $*.dvi_log
+	-"$(TEXI2DVI)" $< < /dev/null > $*.dvi_log
 
 %.ps: %.dvi
-	$(DVIPS) -f < $< > $@
+	"$(DVIPS)" -f < $< > $@
 
 %.pdf: %.texi_pp %.dvi
-	$(PDFTEX) $< < /dev/null > $*.pdf_log
+	"$(PDFTEX)" $< < /dev/null > $*.pdf_log
 
 %.text: %.texi_pp
-	$(MAKEINFO) --no-headers -o $@ $<
+	"$(MAKEINFO)" --no-headers -o $@ $<
 
 M_ENV = \
 	MERCURY_PROFILER=../profiler/mercury_profile \
@@ -186,15 +186,15 @@ help: $(MANPAGE_PROGS:%=%.help)
 #-----------------------------------------------------------------------------#
 
 mercury_user_guide.info: user_guide.texi_pp
-	$(MAKEINFO) $<
+	"$(MAKEINFO)" $<
 mercury_ref.info: reference_manual.texi_pp
-	$(MAKEINFO) $<
+	"$(MAKEINFO)" $<
 mercury_trans_guide.info: transition_guide.texi_pp
-	$(MAKEINFO) $<
+	"$(MAKEINFO)" $<
 mercury_faq.info: faq.texi_pp
-	$(MAKEINFO) $<
+	"$(MAKEINFO)" $<
 mercury_library.info: library.texi_pp
-	$(MAKEINFO) $<
+	"$(MAKEINFO)" $<
 
 mercury_user_guide.html: user_guide.texi_pp
 	$(TEXI2HTML) $<
