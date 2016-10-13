@@ -1487,7 +1487,7 @@ divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
         OutNodes = [Node | OutNodesTail]
     else
         divide_nodes_by_set(DivideByNodes, Nodes, InNodesTail, OutNodesTail),
-        divide_bits_by_set(DivideByBits, 0, Bits, bits_per_int,
+        divide_bits_by_set(DivideByBits, bits_per_int, 0, Bits,
             0, In, 0, Out),
         ( if In = 0 then
             InNodes = InNodesTail
@@ -1501,16 +1501,31 @@ divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
         )
     ).
 
-    % Do a binary search for the 1 bits in an int.
+    % divide_bits_by_set(DivideByBits, Size, Offset, Bits, !In, !Out):
     %
+    % The least-significant Size bits of Bits were originally at offsets
+    % Offset .. Offset+Size-1 in a word that represents one node of Set.
+    %
+    % For each 1 bit in this word in its original position,
+    % - if the corresponding bit in DivideByBits is 1, set that bit in !In;
+    % - if the corresponding bit in DivideByBits is 0, set that bit in !Out.
+    % For each 0 bit in this word in its original position,
+    % - do nothing, since the corresponding element is not in Set.
+    %
+    % By doing a binary search for the 1 bits in the original word in Set,
+    % we hope to avoid having to individually test every bit of the word.
+    % However, if most bits in the original word in Set are 1, then our
+    % approach may well be slower than a simple iteration through all the bits
+    % in that word would be.
+    % 
 :- pred divide_bits_by_set(int::in,
     int::in, int::in, int::in, int::in, int::out, int::in, int::out) is det.
 
-divide_bits_by_set(DivideByBits, OffsetInWord, Bits, Size, !In, !Out) :-
+divide_bits_by_set(DivideByBits, Size, Offset, Bits, !In, !Out) :-
     ( if Bits = 0 then
         true
     else if Size = 1 then
-        OffsetBit = unchecked_left_shift(1, OffsetInWord),
+        OffsetBit = unchecked_left_shift(1, Offset),
         ( if DivideByBits /\ OffsetBit = 0 then
             !:Out = !.Out \/ OffsetBit
         else
@@ -1518,6 +1533,8 @@ divide_bits_by_set(DivideByBits, OffsetInWord, Bits, Size, !In, !Out) :-
         )
     else
         HalfSize = unchecked_right_shift(Size, 1),
+        % XXX We could pass around Mask as a parameter, updating it
+        % on each recursive call. That may be cheaper than what we do now.
         Mask = mask(HalfSize),
 
         % Extract the low-order half of the bits.
@@ -1526,10 +1543,10 @@ divide_bits_by_set(DivideByBits, OffsetInWord, Bits, Size, !In, !Out) :-
         % Extract the high-order half of the bits.
         HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
 
-        divide_bits_by_set(DivideByBits, OffsetInWord, LowBits, HalfSize,
+        divide_bits_by_set(DivideByBits, HalfSize, Offset, LowBits,
             !In, !Out),
-        divide_bits_by_set(DivideByBits, OffsetInWord + HalfSize, HighBits,
-            HalfSize, !In, !Out)
+        divide_bits_by_set(DivideByBits, HalfSize, Offset + HalfSize, HighBits,
+            !In, !Out)
     ).
 
 %---------------------------------------------------------------------------%
