@@ -27,6 +27,7 @@ CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
 CFLAGS_FOR_NO_STRICT_ALIASING="@CFLAGS_FOR_NO_STRICT_ALIASING@"
 CFLAGS_FOR_ANSI="@CFLAGS_FOR_ANSI@"
+CFLAGS_FOR_SANITIZERS="@CFLAGS_FOR_SANITIZERS@"
 AS="@AS@"
 BYTES_PER_WORD="@BYTES_PER_WORD@"
 MKTEMP=@MKTEMP@
@@ -501,6 +502,9 @@ case $non_local_gotos in
     false)      ;;
 esac
 
+# if sanitizers were enabled at configure time, add CFLAGS_FOR_SANITIZERS
+SANITIZER_OPTS="$CFLAGS_FOR_SANITIZERS"
+
 #
 # Special case hacks for particular architectures
 # Any code here needs to be duplicated in ../configure.in.
@@ -646,6 +650,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $RECORD_TERM_SIZE_OPTS\
     $MINIMAL_MODEL_OPTS\
     $PREGEN_SPF_OPTS\
+    $SANITIZER_OPTS\
     $SPLIT_OPTS\
     $THREAD_OPTS\
     $THREADSCOPE_OPTS\

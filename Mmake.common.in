@@ -96,6 +96,10 @@ ifeq "$(findstring .par,$(GRADE))$(findstring .gc,$(GRADE))" ".par.gc"
 ERROR_UNDEFINED	= $(ALLOW_UNDEFINED)
 endif
 
+# Specify any options required when linking if AddressSanitizer and other
+# sanitizers are enabled.
+LDFLAGS_FOR_SANITIZERS = @LDFLAGS_FOR_SANITIZERS@
+
 # The following variables specify how to pass options to the $(CC) or
 # $(LINK_SHARED_OBJ) command to specify directories to be searched at
 # runtime for shared libraries.

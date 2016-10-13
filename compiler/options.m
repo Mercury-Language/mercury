@@ -828,6 +828,7 @@
     ;       cflags_for_gotos
     ;       cflags_for_threads
     ;       cflags_for_debug
+    ;       cflags_for_sanitizers
     ;       cflags_for_pic
     ;       c_flag_to_name_object_file
     ;       object_file_extension
@@ -931,6 +932,7 @@
     ;       shlib_linker_link_lib_suffix
     ;       linker_debug_flags
     ;       shlib_linker_debug_flags
+    ;       linker_sanitizer_flags
     ;       linker_trace_flags
     ;       shlib_linker_trace_flags
     ;       linker_path_flag
@@ -1702,6 +1704,7 @@ option_defaults_2(target_code_compilation_option, [
                                         % The `mmc' script will override the
                                         % default with values determined at
                                         % configuration time.
+    cflags_for_sanitizers               -   string(""),
     cflags_for_optimization             -   string("-O"),
     cflags_for_ansi                     -   string(""),
     cflags_for_regs                     -   string(""),
@@ -1814,8 +1817,9 @@ option_defaults_2(link_option, [
     linker_opt_separator                -   string(""),
     linker_debug_flags                  -   string("-g"),
     shlib_linker_debug_flags            -   string("-g"),
-    linker_trace_flags                  -   string("-g"),
-    shlib_linker_trace_flags            -   string("-g"),
+    linker_sanitizer_flags              -   string(""),
+    linker_trace_flags                  -   string(""),
+    shlib_linker_trace_flags            -   string(""),
     linker_thread_flags                 -   string(""),
     shlib_linker_thread_flags           -   string(""),
     linker_static_flags                 -   string("-static"),
@@ -2679,6 +2683,7 @@ long_option("cflags-for-regs",      cflags_for_regs).
 long_option("cflags-for-gotos",     cflags_for_gotos).
 long_option("cflags-for-threads",   cflags_for_threads).
 long_option("cflags-for-debug",     cflags_for_debug).
+long_option("cflags-for-sanitizers", cflags_for_sanitizers).
 long_option("cflags-for-pic",       cflags_for_pic).
 long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
 long_option("object-file-extension",    object_file_extension).
@@ -2783,6 +2788,7 @@ long_option("readline-libs",        readline_libs).
 long_option("linker-opt-separator", linker_opt_separator).
 long_option("linker-debug-flags",   linker_debug_flags).
 long_option("shlib-linker-debug-flags", shlib_linker_debug_flags).
+long_option("linker-sanitizer-flags", linker_sanitizer_flags).
 long_option("linker-trace-flags",   linker_trace_flags).
 long_option("shlib-linker-trace-flags", shlib_linker_trace_flags).
 long_option("linker-thread-flags",  linker_thread_flags).
@@ -5500,7 +5506,8 @@ options_help_target_code_compilation -->
         % The --cflags-for-regs, --cflags-for-gotos,
         % --cflags-for-threads, --cflags-for-pic,
         % --cflags-for-warnings, --cflags-for-ansi,
-        % --cflags-for-optimization, --c-flag-to-name-object-file,
+        % --cflags-for-optimization, --cflags-for-sanitizers,
+        % --c-flag-to-name-object-file,
         % --object-file-extension and --pic-object-file-extension
         % options are reserved for use by the `mmc' script;
         % they are deliberately not documented.
@@ -5717,6 +5724,7 @@ options_help_link -->
         % --hwloc-libs, --hwloc-static-libs,
         % --linker-opt-separator,
         % --linker-debug-flags, --shlib-linker-debug-flags,
+        % --linker-sanitizer-flags,
         % --linker-trace-flags, --shlib-linker-trace-flags,
         % --linker-thread-flags, --shlib-linker-thread-flags,
         % --linker-static-flags, --linker-strip-flag,

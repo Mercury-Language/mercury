@@ -68,6 +68,7 @@ DEFAULT_MCFLAGS=\
 		--cflags-for-warnings "@CFLAGS_FOR_WARNINGS@" \
 		--cflags-for-threads "@CFLAGS_FOR_THREADS@" \
 		--cflags-for-debug "@CFLAGS_FOR_DEBUG@" \
+		--cflags-for-sanitizers "@CFLAGS_FOR_SANITIZERS@" \
 		--cflags-for-regs "@CFLAGS_FOR_REGS@" \
 		--cflags-for-gotos "@CFLAGS_FOR_GOTOS@" \
 		--cflags-for-pic "@CFLAGS_FOR_PIC@" \
@@ -104,6 +105,7 @@ DEFAULT_MCFLAGS=\
 		--linker-strip-flag "@LD_STRIP_FLAG@" \
 		--linker-debug-flags "@LDFLAGS_FOR_DEBUG@" \
 		--shlib-linker-debug-flags "@LD_LIBFLAGS_FOR_DEBUG@" \
+		--linker-sanitizer-flags "@LDFLAGS_FOR_SANITIZERS@" \
 		--linker-link-lib-flag "@LINK_LIB@" \
 		--linker-link-lib-suffix "@LINK_LIB_SUFFIX@" \
 		--shlib-linker-link-lib-flag "@LINK_LIB@" \

@@ -4759,6 +4759,33 @@ if test "$USE_DLLS" = "yes"; then
 fi
 
 #-----------------------------------------------------------------------------#
+#
+# Sanitizers
+#
+
+AC_ARG_ENABLE([sanitizers],
+    AC_HELP_STRING([--enable-sanitizers],
+        [enable AddressSanitizer and UndefinedBehaviorSanitizer]),
+    [ac_sanitizers="$enableval"], [ac_sanitizers=no])
+
+case "$C_COMPILER_TYPE" in
+    gcc*)
+        if test "$ac_sanitizers" = yes
+        then
+            CFLAGS_FOR_SANITIZERS="-fsanitize=address,undefined"
+            LDFLAGS_FOR_SANITIZERS="-fsanitize=address,undefined -pthread"
+        fi
+        ;;
+    *)
+        CFLAGS_FOR_SANITIZERS=
+        LDFLAGS_FOR_SANITIZERS=
+        ;;
+esac
+
+AC_SUBST(CFLAGS_FOR_SANITIZERS)
+AC_SUBST(LDFLAGS_FOR_SANITIZERS)
+
+#-----------------------------------------------------------------------------#
 
 if test "$BOOTSTRAP_MC" = ""; then
     BOOTSTRAP_MC=mmc

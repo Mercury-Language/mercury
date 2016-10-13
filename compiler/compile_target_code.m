@@ -447,6 +447,8 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         Target_Debug = no,
         Target_DebugOpt = ""
     ),
+    globals.lookup_string_option(Globals, cflags_for_sanitizers,
+        SanitizerOpts),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
         UseTrail = yes,
@@ -573,6 +575,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
         CFLAGS_FOR_THREADS, " ", CFLAGS_FOR_PIC, " ",
         Target_DebugOpt,
+        SanitizerOpts, " ",
         TypeLayoutOpt,
         InlineAllocOpt,
         AnsiOpt, " ",
@@ -1882,6 +1885,9 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         DebugOpts = ""
     ),
 
+    globals.lookup_string_option(Globals, linker_sanitizer_flags,
+        SanitizerOpts),
+
     % Should the executable be statically linked?
     globals.lookup_string_option(Globals, linkage, Linkage),
     ( if
@@ -2046,6 +2052,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
                     FrameworkDirectories, " ",
                     InstallNameOpt, " ",
                     DebugOpts, " ",
+                    SanitizerOpts, " ",
                     Frameworks, " ",
                     ResCmdLinkOpts, " ",
                     LDFlags, " ",
