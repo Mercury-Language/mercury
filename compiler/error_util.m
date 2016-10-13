@@ -51,13 +51,16 @@
 
 %---------------------------------------------------------------------------%
 
-% Every distinct problem should generate a single error specification. This
-% specification should state the severity of the problem (so that we can update
-% the exit status of the compiler accordingly), which phase of the compiler
-% found the problem (since later phases may wish to suppress some problem
-% reports if some specific earlier phases found problems, e.g. when a missing
-% clause could be caused by a syntax error), and a specification of what to
-% print.
+% Every distinct problem should generate a single error specification.
+% This specification should state
+%
+% - the severity of the problem (so that we can update the exit status
+%   of the compiler accordingly),
+% - which phase of the compiler found the problem (since later phases
+%   may wish to suppress some problem reports if some specific earlier phases
+%   found problems, e.g. when a missing clause could be caused
+%   by a syntax error), and
+% - a specification of what to print.
 %
 % In most cases, the "what to print" will be a single message for a single
 % context. However, we may want to print messages for several contexts.
@@ -71,6 +74,18 @@
                 error_phase             :: error_phase,
                 error_msgs              :: list(error_msg)
             ).
+
+%---------------------------------------------------------------------------%
+
+% Many operations in the compiler may either succeed or fail.
+% When they succeed, they return some result(s); when they don't,
+% they return one or more errors.
+
+:- type maybe_error_specs(T)
+    --->    ok_no_spec(T)
+    ;       error_specs(error_spec, list(error_spec)).
+
+%---------------------------------------------------------------------------%
 
 :- type error_severity
     --->    severity_error
