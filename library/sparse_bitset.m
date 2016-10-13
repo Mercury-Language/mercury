@@ -1487,7 +1487,7 @@ divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
         OutNodes = [Node | OutNodesTail]
     else
         divide_nodes_by_set(DivideByNodes, Nodes, InNodesTail, OutNodesTail),
-        divide_bits_by_set(DivideByBits, Offset, Bits, bits_per_int,
+        divide_bits_by_set(DivideByBits, 0, Bits, bits_per_int,
             0, In, 0, Out),
         ( if In = 0 then
             InNodes = InNodesTail
@@ -1506,11 +1506,11 @@ divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
 :- pred divide_bits_by_set(int::in,
     int::in, int::in, int::in, int::in, int::out, int::in, int::out) is det.
 
-divide_bits_by_set(DivideByBits, Offset, Bits, Size, !In, !Out) :-
+divide_bits_by_set(DivideByBits, OffsetInWord, Bits, Size, !In, !Out) :-
     ( if Bits = 0 then
         true
     else if Size = 1 then
-        OffsetBit = unchecked_left_shift(1, Offset),
+        OffsetBit = unchecked_left_shift(1, OffsetInWord),
         ( if DivideByBits /\ OffsetBit = 0 then
             !:Out = !.Out \/ OffsetBit
         else
@@ -1526,10 +1526,10 @@ divide_bits_by_set(DivideByBits, Offset, Bits, Size, !In, !Out) :-
         % Extract the high-order half of the bits.
         HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
 
-        divide_bits_by_set(DivideByBits, Offset, LowBits, HalfSize,
+        divide_bits_by_set(DivideByBits, OffsetInWord, LowBits, HalfSize,
             !In, !Out),
-        divide_bits_by_set(DivideByBits, Offset + HalfSize, HighBits, HalfSize,
-            !In, !Out)
+        divide_bits_by_set(DivideByBits, OffsetInWord + HalfSize, HighBits,
+            HalfSize, !In, !Out)
     ).
 
 %---------------------------------------------------------------------------%
