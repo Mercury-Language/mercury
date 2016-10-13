@@ -483,7 +483,7 @@
 :- pred divide(pred(T)::in(pred(in) is semidet), set(T)::in,
     set(T)::out, set(T)::out) is det.
 
-    % set_divide_by_set(DivideBySet, Set, InPart, OutPart):
+    % divide_by_set(DivideBySet, Set, InPart, OutPart):
     % InPart consists of those elements of Set which are also in DivideBySet;
     % OutPart consists of those elements of which are not in DivideBySet.
     %
