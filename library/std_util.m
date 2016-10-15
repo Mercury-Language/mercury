@@ -49,23 +49,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % maybe_pred(Pred, X, Y) takes a closure Pred which transforms an
-    % input semideterministically. If calling the closure with the input
-    % X succeeds, Y is bound to `yes(Z)' where Z is the output of the
-    % call, or to `no' if the call fails.
-    %
-    % Use maybe.pred_to_maybe instead.
-:- pragma obsolete(maybe_pred/3).
-:- pred maybe_pred(pred(T1, T2), T1, maybe(T2)).
-:- mode maybe_pred(pred(in, out) is semidet, in, out) is det.
-
-    % Use maybe.pred_to_maybe instead.
-:- pragma obsolete(maybe_func/2).
-:- func maybe_func(func(T1) = T2, T1) = maybe(T2).
-:- mode maybe_func(func(in) = out is semidet, in) = out is det.
-
-%---------------------------------------------------------------------------%
-
     % isnt(Pred, X) <=> not Pred(X)
     %
     % This is useful in higher order programming, e.g.
@@ -82,6 +65,23 @@
 :- pred negate((pred)::in((pred) is semidet)) is semidet.
 
 %---------------------------------------------------------------------------%
+
+    % maybe_pred(Pred, X, Y) takes a closure Pred which transforms an
+    % input semideterministically. If calling the closure with the input
+    % X succeeds, Y is bound to `yes(Z)' where Z is the output of the
+    % call, or to `no' if the call fails.
+    %
+    % Use maybe.pred_to_maybe instead.
+:- pragma obsolete(maybe_pred/3).
+:- pred maybe_pred(pred(T1, T2), T1, maybe(T2)).
+:- mode maybe_pred(pred(in, out) is semidet, in, out) is det.
+
+    % Use maybe.pred_to_maybe instead.
+:- pragma obsolete(maybe_func/2).
+:- func maybe_func(func(T1) = T2, T1) = maybe(T2).
+:- mode maybe_func(func(in) = out is semidet, in) = out is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -89,12 +89,6 @@
 :- import_module int.
 
 %---------------------------------------------------------------------------%
-
-maybe_pred(Pred, X, Y) :-
-    Y = ( if Pred(X, Z) then yes(Z) else no ).
-
-maybe_func(PF, X) =
-    ( if Y = PF(X) then yes(Y) else no ).
 
 compose(F, G, X) =
     F(G(X)).
@@ -105,13 +99,19 @@ converse(F, X, Y) =
 pow(F, N, X) =
     ( if N = 0 then X else pow(F, N - 1, F(X)) ).
 
+id(X) = X.
+
 isnt(P, X) :-
     not P(X).
 
 negate(P) :-
     not P.
 
-id(X) = X.
+maybe_pred(Pred, X, Y) :-
+    Y = ( if Pred(X, Z) then yes(Z) else no ).
+
+maybe_func(PF, X) =
+    ( if Y = PF(X) then yes(Y) else no ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

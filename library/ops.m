@@ -281,12 +281,19 @@ ops.lookup_mercury_op_infos(_OpTable, Name, Info, OtherInfos) :-
     % Left associative, lower priority than everything except record syntax.
 ops.lookup_mercury_operator_term(_OpTable, 120, y, x).
 
+%---------------------------------------------------------------------------%
+
+:- pragma inline(adjust_priority_for_assoc/3).
+
+adjust_priority_for_assoc(Priority, y, Priority).
+adjust_priority_for_assoc(Priority, x, Priority - 1).
+
 ops.mercury_max_priority(_Table) = 1200.
 
 :- func ops.mercury_arg_priority(mercury_op_table) = ops.priority.
 
-    % This needs to be less than the priority of the ','/2 operator.
 ops.mercury_arg_priority(_Table) = 999.
+    % This needs to be less than the priority of the ','/2 operator.
 
 :- pred ops.op_table(string::in, op_info::out, list(op_info)::out) is semidet.
 
@@ -479,12 +486,5 @@ ops.op_table(Op, Info, OtherInfos) :-
         Info = op_info(prefix(x), 950),
         OtherInfos = []
     ).
-
-%---------------------------------------------------------------------------%
-
-:- pragma inline(adjust_priority_for_assoc/3).
-
-adjust_priority_for_assoc(Priority, y, Priority).
-adjust_priority_for_assoc(Priority, x, Priority - 1).
 
 %---------------------------------------------------------------------------%

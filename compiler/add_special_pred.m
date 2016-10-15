@@ -378,13 +378,15 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         Origin, PredStatus, CurUserDecl, goal_type_none, Markers, ArgTypes,
         TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
         ClausesInfo0, VarNameRemap, PredInfo0),
-    ArgLives = no,
+    ItemNumber = -1,
     varset.init(InstVarSet),
+    ArgLives = no,
     % Should not be any inst vars here so it is ok to use a fresh inst_varset.
     % Before the simplification pass, HasParallelConj is not meaningful.
     HasParallelConj = has_no_parallel_conj,
-    do_add_new_proc(InstVarSet, Arity, ArgModes, yes(ArgModes), ArgLives,
-        detism_decl_implicit, yes(Det), Context, address_is_not_taken,
+    do_add_new_proc(Context, ItemNumber, Arity,
+        InstVarSet, ArgModes, yes(ArgModes), ArgLives,
+        detism_decl_implicit, yes(Det), address_is_not_taken,
         HasParallelConj, PredInfo0, PredInfo, _ProcId),
 
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),

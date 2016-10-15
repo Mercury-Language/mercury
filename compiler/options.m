@@ -113,6 +113,9 @@
     ;       warn_missing_opt_files
     ;       warn_missing_trans_opt_files
     ;       warn_missing_trans_opt_deps
+    ;       warn_inconsistent_pred_order_clauses
+    ;       warn_inconsistent_pred_order_foreign_procs
+    ;       warn_non_contiguous_decls
     ;       warn_non_contiguous_clauses
     ;       warn_non_contiguous_foreign_procs
     ;       warn_non_stratification
@@ -1091,6 +1094,9 @@ option_defaults_2(warning_option, [
     warn_unused_args                    -   bool(no),
     warn_interface_imports              -   bool(yes),
     warn_interface_imports_in_parents   -   bool(no),
+    warn_inconsistent_pred_order_clauses        -   bool(no),
+    warn_inconsistent_pred_order_foreign_procs  -   bool(no),
+    warn_non_contiguous_decls           -   bool(yes),
     warn_non_contiguous_clauses         -   bool(no),   % XXX should be yes
     warn_non_contiguous_foreign_procs   -   bool(no),
     warn_non_stratification             -   bool(no),
@@ -1964,6 +1970,13 @@ long_option("warn-unused-args",         warn_unused_args).
 long_option("warn-interface-imports",   warn_interface_imports).
 long_option("warn-interface-imports-in-parents",
                                         warn_interface_imports_in_parents).
+long_option("warn-inconsistent-pred-order",
+                    warn_inconsistent_pred_order_clauses).
+long_option("warn-inconsistent-pred-order-clauses",
+                    warn_inconsistent_pred_order_clauses).
+long_option("warn-inconsistent-pred-order-foreign-procs",
+                    warn_inconsistent_pred_order_foreign_procs).
+long_option("warn-non-contiguous-decls",    warn_non_contiguous_decls).
 long_option("warn-non-contiguous-clauses",  warn_non_contiguous_clauses).
 long_option("warn-non-contiguous-foreign-procs",
                                         warn_non_contiguous_foreign_procs).
@@ -3588,6 +3601,22 @@ options_help_warning -->
         "\tto allow `.trans_opt' files to be read when creating other",
         "\t`.trans_opt' files has been lost. The information can be",
         "\trecreated by running `mmake <mainmodule>.depend'",
+        "--warn-inconsistent-pred-order-clauses",
+        "\tGenerate a warning if the order of the definitions does not match",
+        "\tthe order of the declarations for either the exported predicates",
+        "\tand functions of the module, or for the nonexported predicates",
+        "\tand functions of the module. Applies for definitions by",
+        "\tMercury clauses.",
+        "--warn-inconsistent-pred-order-foreign-procs",
+        "\tGenerate a warning if the order of the definitions does not match",
+        "\tthe order of the declarations for either the exported predicates",
+        "\tand functions of the module, or for the nonexported predicates",
+        "\tand functions of the module. Applies for definitions by either",
+        "\tMercury clauses or foreign_proc pragmas.",
+        "--no-warn-non-contiguous-decl",
+        "\tDo not generate a warning if the mode declarations of a",
+        "\tpredicate or function don't all immediately follow its",
+        "\tpredicate or function declaration.",
         "--no-warn-non-contiguous-clauses",
         "\tDo not generate a warning if the clauses of a predicate or",
         "\tfunction are not contiguous.",

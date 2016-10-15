@@ -171,11 +171,11 @@
 error(Message) :-
     throw(software_error(Message)).
 
-error(Pred, Message) :-
-    error(Pred ++ ": " ++ Message).
-
 func_error(Message) = _ :-
     error(Message).
+
+error(Pred, Message) :-
+    error(Pred ++ ": " ++ Message).
 
 func_error(Pred, Message) = _ :-
     error(Pred, Message).
@@ -184,13 +184,13 @@ func_error(Pred, Message) = _ :-
 
 sorry(Module, What) = _ :-
     sorry(Module, What).
-sorry(Module, Proc, What) = _ :-
-    sorry(Module, Proc, What).
-
 sorry(Module, What) :-
     string.format("%s: Sorry, not implemented: %s",
         [s(Module), s(What)], ErrorMessage),
     error(ErrorMessage).
+
+sorry(Module, Proc, What) = _ :-
+    sorry(Module, Proc, What).
 sorry(Module, Proc, What) :-
     string.format("%s: %s: Sorry, not implemented: %s",
         [s(Module), s(Proc), s(What)], ErrorMessage),
@@ -198,12 +198,12 @@ sorry(Module, Proc, What) :-
 
 unexpected(Module, What) = _ :-
     unexpected(Module, What).
-unexpected(Module, Proc, What) = _ :-
-    unexpected(Module, Proc, What).
-
 unexpected(Module, What) :-
     string.format("%s: Unexpected: %s", [s(Module), s(What)], ErrorMessage),
     error(ErrorMessage).
+
+unexpected(Module, Proc, What) = _ :-
+    unexpected(Module, Proc, What).
 unexpected(Module, Proc, What) :-
     string.format("%s: %s: Unexpected: %s", [s(Module), s(Proc), s(What)],
         ErrorMessage),

@@ -664,6 +664,9 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
 
 %---------------------------------------------------------------------------%
 
+is_infinite(F) :-
+   is_inf(F).
+
 is_nan_or_infinite(Float) :-
     is_nan_or_inf(Float).
 
@@ -698,9 +701,6 @@ is_nan_or_inf(Float) :-
     % XXX NYI
     SUCCESS_INDICATOR = false
 ").
-
-is_infinite(F) :-
-   is_inf(F).
 
 :- pragma foreign_proc("C",
     is_inf(Flt::in),

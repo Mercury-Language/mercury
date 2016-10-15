@@ -26,11 +26,13 @@ ERRORCHECK_PROGS = \
 	double_underscore \
 	duplicate_call \
 	duplicate_const \
+	inconsistent_pred_order \
 	inf_recursion_lambda \
 	inference_test \
 	infinite_recursion \
 	inst_with_no_type \
 	missing_if \
+	non_contiguous_decls \
 	non_stratification \
 	pragma_source_file \
 	purity_warnings \

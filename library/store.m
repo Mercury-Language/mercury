@@ -36,7 +36,7 @@
 %---------------------------------------------------------------------------%
 
     % Stores and keys are indexed by a type S of typeclass store(S) that
-    % is used to distinguish between different stores.  By using an
+    % is used to distinguish between different stores. By using an
     % existential type declaration for `init'/1 (see below), we use the
     % type system to ensure at compile time that you never attempt to use
     % a key from one store to access a different store.
@@ -148,8 +148,7 @@
 
     % ref_functor(Ref, Functor, Arity):
     %
-    % Given a reference to a term, return the functor and arity
-    % of that term.
+    % Given a reference to a term, return the functor and arity of that term.
     %
 :- pred ref_functor(generic_ref(T, S)::in, string::out, int::out,
     S::di, S::uo) is det <= store(S).
@@ -285,28 +284,28 @@ store_compare(_, _, _) :-
 init(S) :-
     store.do_init(S).
 
-:- some [S] pred store.do_init(store(S)::uo) is det.
+:- some [S] pred do_init(store(S)::uo) is det.
 
 :- pragma foreign_proc("C",
-    store.do_init(_S0::uo),
+    do_init(_S0::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     TypeInfo_for_S = 0;
 ").
 :- pragma foreign_proc("C#",
-    store.do_init(_S0::uo),
+    do_init(_S0::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     TypeInfo_for_S = null;
 ").
 :- pragma foreign_proc("Java",
-    store.do_init(_S0::uo),
+    do_init(_S0::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     TypeInfo_for_S = null;
 ").
 :- pragma foreign_proc("Erlang",
-    store.do_init(_S0::uo),
+    do_init(_S0::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     TypeInfo_for_S = 'XXX'
@@ -434,7 +433,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
     get_mutvar(Mutvar, Value, !S),
     new_mutvar(Value, Copy, !S).
 
-:- pred store.unsafe_new_uninitialized_mutvar(generic_mutvar(T, S)::out,
+:- pred unsafe_new_uninitialized_mutvar(generic_mutvar(T, S)::out,
     S::di, S::uo) is det <= store(S).
 
 :- pragma foreign_proc("C",
@@ -628,6 +627,10 @@ new_cyclic_mutvar(Func, MutVar, !Store) :-
     S = S0
 ").
 
+ref_functor(Ref, Functor, Arity, !Store) :-
+    unsafe_ref_value(Ref, Val, !Store),
+    functor(Val, canonicalize, Functor, Arity).
+
 copy_ref_value(Ref, Val) -->
     % XXX Need to deep-copy non-atomic types.
     unsafe_ref_value(Ref, Val).
@@ -636,8 +639,8 @@ copy_ref_value(Ref, Val) -->
     % making a copy; it is unsafe because the store could later be modified,
     % changing the returned value.
     %
-:- pred store.unsafe_ref_value(generic_ref(T, S)::in, T::uo,
-    S::di, S::uo) is det <= store(S).
+:- pred unsafe_ref_value(generic_ref(T, S)::in, T::uo, S::di, S::uo) is det
+    <= store(S).
 
 :- pragma foreign_proc("C",
     unsafe_ref_value(Ref::in, Val::uo, S0::di, S::uo),
@@ -668,10 +671,6 @@ copy_ref_value(Ref, Val) -->
     [{value, Val}] = ets:lookup(Ref, value),
     S = S0
 ").
-
-ref_functor(Ref, Functor, Arity, !Store) :-
-    unsafe_ref_value(Ref, Val, !Store),
-    functor(Val, canonicalize, Functor, Arity).
 
 :- pragma foreign_decl("C",
 "
@@ -784,7 +783,7 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     } else if (arg_ref == &Val) {
         /*
         ** For no_tag types, the argument may have the same address as the
-        ** term.  Since the term (Val) is currently on the C stack, we can't
+        ** term. Since the term (Val) is currently on the C stack, we can't
         ** return a pointer to it; so if that is the case, then we need
         ** to copy it to the heap before returning.
         */

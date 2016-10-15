@@ -33,10 +33,24 @@
 
 :- instance enum(bool).
 
+    % not(A) = yes iff A = no.
+    %
+:- func not(bool) = bool.
+:- pred not(bool::in, bool::out) is det.
+
     % or(A, B) = yes iff A = yes, or B = yes, or both.
     %
 :- func or(bool, bool) = bool.
 :- pred or(bool::in, bool::in, bool::out) is det.
+
+    % xor(A, B) = yes iff A = yes, or B = yes, but not both.
+    %
+:- func xor(bool, bool) = bool.
+
+    % and(A, B) = yes iff A = yes and B = yes.
+    %
+:- func and(bool, bool) = bool.
+:- pred and(bool::in, bool::in, bool::out) is det.
 
     % or_list(As) = yes iff there exists an element of As equal to yes.
     % (Note that or_list([]) = no.)
@@ -44,25 +58,11 @@
 :- func or_list(list(bool)) = bool.
 :- pred or_list(list(bool)::in, bool::out) is det.
 
-    % and(A, B) = yes iff A = yes and B = yes.
-    %
-:- func and(bool, bool) = bool.
-:- pred and(bool::in, bool::in, bool::out) is det.
-
     % and_list(As) = yes iff every element of As is equal to yes.
     % (Note that and_list([]) = yes.)
     %
 :- func and_list(list(bool)) = bool.
 :- pred and_list(list(bool)::in, bool::out) is det.
-
-    % not(A) = yes iff A = no.
-    %
-:- func not(bool) = bool.
-:- pred not(bool::in, bool::out) is det.
-
-    % xor(A, B) = yes iff A = yes, or B = yes, but not both.
-    %
-:- func xor(bool, bool) = bool.
 
     % pred_to_bool(P) = (if P then yes else no).
     %
@@ -101,12 +101,33 @@
 bool_to_int(no) = 0.
 bool_to_int(yes) = 1.
 
-bool.or(X, Y) = Result :- bool.or(X, Y, Result).
+%---------------------------------------------------------------------------%
+
+bool.not(X) = Result :-
+    bool.not(X, Result).
+
+bool.not(no, yes).
+bool.not(yes, no).
+
+bool.or(X, Y) = Result :-
+    bool.or(X, Y, Result).
 
 bool.or(yes, _, yes).
 bool.or(no, Bool, Bool).
 
-bool.or_list(List) = Result :- bool.or_list(List, Result).
+bool.xor(no,  no)  = no.
+bool.xor(no,  yes) = yes.
+bool.xor(yes, no)  = yes.
+bool.xor(yes, yes) = no.
+
+bool.and(X, Y) = Result :-
+    bool.and(X, Y, Result).
+
+bool.and(no, _, no).
+bool.and(yes, Bool, Bool).
+
+bool.or_list(List) = Result :-
+    bool.or_list(List, Result).
 
 bool.or_list([], no).
 bool.or_list([Bool | Bools], Result) :-
@@ -118,12 +139,8 @@ bool.or_list([Bool | Bools], Result) :-
         bool.or_list(Bools, Result)
     ).
 
-bool.and(X, Y) = Result :- bool.and(X, Y, Result).
-
-bool.and(no, _, no).
-bool.and(yes, Bool, Bool).
-
-bool.and_list(List) = Result :- bool.and_list(List, Result).
+bool.and_list(List) = Result :-
+    bool.and_list(List, Result).
 
 bool.and_list([], yes).
 bool.and_list([Bool | Bools], Result) :-
@@ -135,16 +152,6 @@ bool.and_list([Bool | Bools], Result) :-
         bool.and_list(Bools, Result)
     ).
 
-bool.not(X) = Result :- bool.not(X, Result).
-
-bool.not(no, yes).
-bool.not(yes, no).
-
 pred_to_bool(P) = (if P then yes else no).
-
-bool.xor(no,  no)  = no.
-bool.xor(no,  yes) = yes.
-bool.xor(yes, no)  = yes.
-bool.xor(yes, yes) = no.
 
 %---------------------------------------------------------------------------%

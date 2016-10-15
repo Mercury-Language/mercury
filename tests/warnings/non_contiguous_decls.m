@@ -2,20 +2,10 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% This program solves the N-queens problem. Given an N-by-N chessboard,
-% this problem asks us to find positions for N queens on the board such
-% that they do not attack each other. This means that no two queens can be
-%
-% - in the same row
-% - in the same column
-% - on the same diagnonal.
-%
-% We print the result as a list of integers. Each integer corresponds to one
-% of the board's N columns, and it gives the number of the row occupied by
-% the queen in that column. (Given the constraints of the problem, every column
-% must be occupied by exactly one queen.)
+% This is a copy of tests/benchmarks/queens.m, with the mode declarations
+% of some predicates intentionally misplaced.
 
-:- module queens.
+:- module non_contiguous_decls.
 
 :- interface.
 
@@ -43,11 +33,13 @@ main(!IO) :-
 
 data([1, 2, 3, 4, 5, 6, 7, 8]).
 
-:- pred queen(list(int)::in, list(int)::out) is nondet.
+:- pred queen(list(int), list(int)).
 
 queen(Data, Perm) :-
     qperm(Data, Perm),
     safe(Perm).
+
+:- mode queen(in, out) is nondet.
 
 :- pred qperm(list(int)::in, list(int)::out) is nondet.
 

@@ -66,6 +66,19 @@
 :- func from_lists(list(list(T))) = array2d(T).
 :- mode from_lists(in) = array2d_uo is det.
 
+    % bounds(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), M, N)
+    %
+:- pred bounds(array2d(T), int, int).
+%:- mode bounds(array2d_ui, out, out) is det.
+:- mode bounds(in,       out, out) is det.
+
+    % in_bounds(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), I, J)
+    % succeeds iff 0 =< I < M, 0 =< J < N.
+    %
+:- pred in_bounds(array2d(T), int, int).
+%:- mode in_bounds(array2d_ui, in,  in ) is semidet.
+:- mode in_bounds(in,       in,  in ) is semidet.
+
     % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) ^ elem(I, J) = X
     % where X is the J+1th element of the I+1th row (that is, indices
     % start from zero.)
@@ -107,19 +120,6 @@
     %
 :- pred unsafe_set(int, int, T,  array2d(T), array2d(T)).
 :- mode unsafe_set(in,  in,  in, array2d_di, array2d_uo) is det.
-
-    % bounds(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), M, N)
-    %
-:- pred bounds(array2d(T), int, int).
-%:- mode bounds(array2d_ui, out, out) is det.
-:- mode bounds(in,       out, out) is det.
-
-    % in_bounds(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), I, J)
-    % succeeds iff 0 =< I < M, 0 =< J < N.
-    %
-:- pred in_bounds(array2d(T), int, int).
-%:- mode in_bounds(array2d_ui, in,  in ) is semidet.
-:- mode in_bounds(in,       in,  in ) is semidet.
 
     % lists(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN])) =
     %     [[X11, ..., X1N], ..., [XM1, ..., XMN]]

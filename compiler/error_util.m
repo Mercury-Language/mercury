@@ -136,6 +136,7 @@
     ;       phase_detism_check
     ;       phase_oisu_check
     ;       phase_simplify(mode_report_control)
+    ;       phase_style
     ;       phase_dead_code
     ;       phase_termination_analysis
     ;       phase_accumulator_intro
@@ -783,6 +784,7 @@ get_maybe_mode_report_control(phase_purity_check) = no.
 get_maybe_mode_report_control(phase_detism_check) = no.
 get_maybe_mode_report_control(phase_oisu_check) = no.
 get_maybe_mode_report_control(phase_simplify(Control)) = yes(Control).
+get_maybe_mode_report_control(phase_style) = no.
 get_maybe_mode_report_control(phase_dead_code) = no.
 get_maybe_mode_report_control(phase_termination_analysis) = no.
 get_maybe_mode_report_control(phase_accumulator_intro) = no.

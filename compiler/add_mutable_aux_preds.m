@@ -614,15 +614,18 @@ add_mutable_aux_pred_decl(ModuleName, MutableName, Kind, PredName,
         ArgTypesAndModes, Purity, PredStatus, NeedQual, Context,
         !ModuleInfo, !Specs) :-
     PredOrigin = origin_mutable(ModuleName, MutableName, Kind),
+    ItemNumber = -1,
+    MaybeItemMercuryStatus = maybe.no,
     TypeVarSet = varset.init,
     InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
     marker_list_to_markers([marker_mutable_access_pred], Markers),
-    module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
-        pf_predicate, PredName, ArgTypesAndModes, yes(detism_det),
-        Purity, Constraints, Markers, Context, PredStatus, no, NeedQual, _,
-        !ModuleInfo, !Specs).
+    module_add_pred_or_func(PredOrigin, Context, ItemNumber,
+        MaybeItemMercuryStatus, PredStatus, NeedQual,
+        pf_predicate, PredName, TypeVarSet, InstVarSet, ExistQVars,
+        ArgTypesAndModes, Constraints, yes(detism_det),
+        Purity, Markers, _, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -634,6 +637,8 @@ add_mutable_aux_pred_decl(ModuleName, MutableName, Kind, PredName,
 add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, MutableName,
         Kind, PredStatus, NeedQual, !ModuleInfo, !Specs) :-
     PredOrigin = origin_mutable(ModuleName, MutableName, Kind),
+    ItemNumber = -1,
+    MaybeItemMercuryStatus = maybe.no,
     ItemPredDecl = item_pred_decl_info(PredName, PredOrFunc, TypesAndModes,
         WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
         ExistQVars, Purity, Constraints, Context, _SeqNum),
@@ -651,9 +656,10 @@ add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, MutableName,
     expect(unify(Constraints, constraints([], [])), $module, $pred,
         "Constraints != constraints([], [])"),
     marker_list_to_markers([marker_mutable_access_pred], Markers),
-    module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
-        PredOrFunc, PredName, TypesAndModes, MaybeDetism, Purity, Constraints,
-        Markers, Context, PredStatus, no, NeedQual, _, !ModuleInfo, !Specs).
+    module_add_pred_or_func(PredOrigin, Context, ItemNumber,
+        MaybeItemMercuryStatus, PredStatus, NeedQual, PredOrFunc, PredName,
+        TypeVarSet, InstVarSet, ExistQVars, TypesAndModes, Constraints,
+        MaybeDetism, Purity, Markers, _, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

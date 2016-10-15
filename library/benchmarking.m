@@ -44,15 +44,14 @@
 :- impure pred report_full_memory_stats is det.
 
     % report_memory_attribution(Label, Collect, !IO) is a procedure intended
-    % for use in profiling the memory usage by a program.  It is supported in
-    % `memprof.gc' grades only, in other grades it is a no-op.  It reports a
+    % for use in profiling the memory usage by a program. It is supported in
+    % `memprof.gc' grades only, in other grades it is a no-op. It reports a
     % summary of the objects on the heap to a data file. See ``Using mprof -s
     % for profiling memory retention'' in the Mercury User's Guide. The label
-    % is for your reference.  If Collect is yes it has the effect of forcing a
+    % is for your reference. If Collect is yes it has the effect of forcing a
     % garbage collection before building the report.
     %
 :- pred report_memory_attribution(string::in, bool::in, io::di, io::uo) is det.
-
 :- impure pred report_memory_attribution(string::in, bool::in) is det.
 
     % report_memory_attribution(Label, !IO) is the same as
@@ -60,7 +59,6 @@
     % collection (in 'memprof.gc' grades).
     %
 :- pred report_memory_attribution(string::in, io::di, io::uo) is det.
-
 :- impure pred report_memory_attribution(string::in) is det.
 
     % benchmark_det(Pred, In, Out, Repeats, Time) is for benchmarking the det
@@ -229,6 +227,13 @@ extern void ML_report_full_memory_stats(void);
     'ML_report_stats'()
 ").
 
+%---------------------------------------------------------------------------%
+
+report_memory_attribution(Label, Collect, !IO) :-
+    promise_pure (
+        impure report_memory_attribution(Label, Collect)
+    ).
+
 :- pragma foreign_proc("C",
     report_memory_attribution(Label::in, RunCollect::in),
     [will_not_call_mercury],
@@ -245,18 +250,13 @@ extern void ML_report_full_memory_stats(void);
 report_memory_attribution(_, _) :-
     impure impure_true.
 
+report_memory_attribution(Label, !IO) :-
+    promise_pure (
+        impure report_memory_attribution(Label)
+    ).
+
 report_memory_attribution(Label) :-
     impure report_memory_attribution(Label, yes).
-
-:- pragma promise_pure(report_memory_attribution/4).
-
-report_memory_attribution(Label, Collect, !IO) :-
-    impure report_memory_attribution(Label, Collect).
-
-:- pragma promise_pure(report_memory_attribution/3).
-
-report_memory_attribution(Label, !IO) :-
-    impure report_memory_attribution(Label).
 
 %---------------------------------------------------------------------------%
 

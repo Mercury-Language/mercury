@@ -93,9 +93,22 @@
 :- type univ
     --->    some [T] univ_cons(T).
 
-univ_to_type(Univ, X) :- type_to_univ(X, Univ).
+:- pragma promise_equivalent_clauses(type_to_univ/2).
 
-univ(X) = Univ :- type_to_univ(X, Univ).
+type_to_univ(T::di, Univ::uo) :-
+    Univ0 = 'new univ_cons'(T),
+    unsafe_promise_unique(Univ0, Univ).
+type_to_univ(T::in, Univ::out) :-
+    Univ = 'new univ_cons'(T).
+type_to_univ(T::out, Univ::in) :-
+    Univ = univ_cons(T0),
+    private_builtin.typed_unify(T0, T).
+
+univ_to_type(Univ, X) :-
+    type_to_univ(X, Univ).
+
+univ(X) = Univ :-
+    type_to_univ(X, Univ).
 
 det_univ_to_type(Univ, X) :-
     ( if type_to_univ(X0, Univ) then
@@ -109,20 +122,9 @@ det_univ_to_type(Univ, X) :-
         error(ErrorString)
     ).
 
-univ_value(univ_cons(X)) = X.
-
-:- pragma promise_equivalent_clauses(type_to_univ/2).
-
-type_to_univ(T::di, Univ::uo) :-
-    Univ0 = 'new univ_cons'(T),
-    unsafe_promise_unique(Univ0, Univ).
-type_to_univ(T::in, Univ::out) :-
-    Univ = 'new univ_cons'(T).
-type_to_univ(T::out, Univ::in) :-
-    Univ = univ_cons(T0),
-    private_builtin.typed_unify(T0, T).
-
 univ_type(Univ) = type_of(univ_value(Univ)).
+
+univ_value(univ_cons(X)) = X.
 
 :- pred construct_univ(T::in, univ::out) is det.
 :- pragma foreign_export("C", construct_univ(in, out), "ML_construct_univ").

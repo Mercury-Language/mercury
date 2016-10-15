@@ -52,6 +52,13 @@
 :- impure func init(int::in) = (semaphore::uo) is det.
 :- pragma obsolete(init/1).
 
+    % signal(Sem, !IO) increments the counter associated with `Sem'
+    % and if the resulting counter has a value greater than 0, it wakes
+    % one or more threads that are waiting on this semaphore (if
+    % any).
+    %
+:- pred signal(semaphore::in, io::di, io::uo) is det.
+
     % wait(Sem, !IO) blocks until the counter associated with `Sem'
     % becomes greater than 0, whereupon it wakes, decrements the
     % counter and returns.
@@ -64,15 +71,9 @@
     %
 :- pred try_wait(semaphore::in, bool::out, io::di, io::uo) is det.
 
-    % signal(Sem, !IO) increments the counter associated with `Sem'
-    % and if the resulting counter has a value greater than 0, it wakes
-    % one or more threads that are waiting on this semaphore (if
-    % any).
-    %
-:- pred signal(semaphore::in, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 :- implementation.
 
 init(Count, Semaphore, !IO) :-

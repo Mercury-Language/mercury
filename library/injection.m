@@ -231,14 +231,14 @@
     % Apply delete_key to a list of keys.
     %
 :- func delete_keys(injection(K, V), list(K)) = injection(K, V).
-:- pred delete_keys(list(K)::in, injection(K, V)::in,
-    injection(K, V)::out) is det.
+:- pred delete_keys(list(K)::in,
+    injection(K, V)::in, injection(K, V)::out) is det.
 
     % Apply delete_value to a list of values.
     %
 :- func delete_values(injection(K, V), list(V)) = injection(K, V).
-:- pred delete_values(list(V)::in, injection(K, V)::in,
-    injection(K, V)::out) is det.
+:- pred delete_values(list(V)::in,
+    injection(K, V)::in, injection(K, V)::out) is det.
 
     % Merge the contents of the two injections.  Both sets of keys must
     % be disjoint, and both sets of values must be disjoint.
@@ -541,17 +541,17 @@ delete_value(injection(!.F, !.R), V) = injection(!:F, !:R) :-
 
 delete_value(V, I, injection.delete_value(I, V)).
 
-delete_keys(Ks, !I) :-
-    list.foldl(injection.delete_key, Ks, !I).
-
 delete_keys(I0, Ks) = I :-
     injection.delete_keys(Ks, I0, I).
 
-delete_values(Vs, !I) :-
-    list.foldl(injection.delete_value, Vs, !I).
+delete_keys(Ks, !I) :-
+    list.foldl(injection.delete_key, Ks, !I).
 
 delete_values(I0, Vs) = I :-
     injection.delete_values(Vs, I0, I).
+
+delete_values(Vs, !I) :-
+    list.foldl(injection.delete_value, Vs, !I).
 
 merge(injection(FA, RA), injection(FB, RB)) = injection(F, R) :-
     map.merge(FA, FB, F),

@@ -1339,10 +1339,10 @@ insert(K, V, Tin, Tout) :-
         )
     ).
 
-:- pred tree234.insert2(tree234(K, V), K, V, tree234(K, V)).
-% :- mode tree234.insert2(di_two, di, di, uo) is semidet.
-% :- mode tree234.insert2(sdi_two, in, in, uo_tree234) is semidet.
-:- mode tree234.insert2(in_two, in, in, out) is semidet.
+:- pred insert2(tree234(K, V), K, V, tree234(K, V)).
+% :- mode insert2(di_two, di, di, uo) is semidet.
+% :- mode insert2(sdi_two, in, in, uo_tree234) is semidet.
+:- mode insert2(in_two, in, in, out) is semidet.
 
 insert2(two(K0, V0, T0, T1), K, V, Tout) :-
     ( if
@@ -1430,10 +1430,10 @@ insert2(two(K0, V0, T0, T1), K, V, Tout) :-
         )
     ).
 
-:- pred tree234.insert3(tree234(K, V), K, V, tree234(K, V)).
-% :- mode tree234.insert3(di_three, di, di, uo) is semidet.
-% :- mode tree234.insert3(sdi_three, in, in, uo_tree234) is semidet.
-:- mode tree234.insert3(in_three, in, in, out) is semidet.
+:- pred insert3(tree234(K, V), K, V, tree234(K, V)).
+% :- mode insert3(di_three, di, di, uo) is semidet.
+% :- mode insert3(sdi_three, in, in, uo_tree234) is semidet.
+:- mode insert3(in_three, in, in, out) is semidet.
 
 insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
     ( if
@@ -1621,8 +1621,8 @@ search_insert(K, V, MaybeOldV, Tin, Tout) :-
         )
     ).
 
-:- pred tree234.search_insert2(tree234(K, V), K, V, maybe(V), tree234(K, V)).
-:- mode tree234.search_insert2(in_two, in, in, out, out) is det.
+:- pred search_insert2(tree234(K, V), K, V, maybe(V), tree234(K, V)).
+:- mode search_insert2(in_two, in, in, out, out) is det.
 
 search_insert2(Tin, K, V, MaybeOldV, Tout) :-
     Tin = two(K0, V0, T0, T1),
@@ -1757,8 +1757,8 @@ search_insert2(Tin, K, V, MaybeOldV, Tout) :-
         )
     ).
 
-:- pred tree234.search_insert3(tree234(K, V), K, V, maybe(V), tree234(K, V)).
-:- mode tree234.search_insert3(in_three, in, in, out, out) is det.
+:- pred search_insert3(tree234(K, V), K, V, maybe(V), tree234(K, V)).
+:- mode search_insert3(in_three, in, in, out, out) is det.
 
 search_insert3(Tin, K, V, MaybeOldV, Tout) :-
     Tin = three(K0, V0, K1, V1, T0, T1, T2),
@@ -2096,11 +2096,11 @@ set(K, V, Tin, Tout) :-
         )
     ).
 
-:- pred tree234.set2(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234.set2(di_two, di, di, uo) is det.
-% :- mode tree234.set2(sdi_two, in, in, uo_tree234) is det.
-:- mode tree234.set2(in_two, in, in, out) is det.
-:- pragma type_spec(tree234.set2(in_two, in, in, out), K = var(_)).
+:- pred set2(tree234(K, V), K, V, tree234(K, V)).
+:- mode set2(di_two, di, di, uo) is det.
+% :- mode set2(sdi_two, in, in, uo_tree234) is det.
+:- mode set2(in_two, in, in, out) is det.
+:- pragma type_spec(set2(in_two, in, in, out), K = var(_)).
 
 set2(two(K0, V0, T0, T1), K, V, Tout) :-
     ( if
@@ -2188,11 +2188,11 @@ set2(two(K0, V0, T0, T1), K, V, Tout) :-
         )
     ).
 
-:- pred tree234.set3(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234.set3(di_three, di, di, uo) is det.
-% :- mode tree234.set3(sdi_three, in, in, uo_tree234) is det.
-:- mode tree234.set3(in_three, in, in, out) is det.
-:- pragma type_spec(tree234.set3(in_three, in, in, out), K = var(_)).
+:- pred set3(tree234(K, V), K, V, tree234(K, V)).
+:- mode set3(di_three, di, di, uo) is det.
+% :- mode set3(sdi_three, in, in, uo_tree234) is det.
+:- mode set3(in_three, in, in, out) is det.
+:- pragma type_spec(set3(in_three, in, in, out), K = var(_)).
 
 set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
     ( if
@@ -2433,10 +2433,10 @@ transform_value(P, K, Tin, Tout) :-
 % Utilities used by the insertion predicates.
 %
 
-:- pred tree234.split_four(tree234(K, V), K, V, tree234(K, V), tree234(K, V)).
-:- mode tree234.split_four(di_four, uo, uo, uo_two, uo_two) is det.
-% :- mode tree234.split_four(sdi_four, out, out, suo_two, suo_two) is det.
-:- mode tree234.split_four(in_four, out, out, out_two, out_two) is det.
+:- pred split_four(tree234(K, V), K, V, tree234(K, V), tree234(K, V)).
+:- mode split_four(di_four, uo, uo, uo_two, uo_two) is det.
+% :- mode split_four(sdi_four, out, out, suo_two, suo_two) is det.
+:- mode split_four(in_four, out, out, out_two, out_two) is det.
 
 split_four(Tin, MidK, MidV, Sub0, Sub1) :-
     Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
@@ -2457,9 +2457,9 @@ delete(K, Tin, Tout) :-
     % When deleting an item from a tree, the height of the tree may be
     % reduced by one. The last argument says whether this has occurred.
     %
-:- pred tree234.delete_2(tree234(K, V), K, tree234(K, V), bool).
-%:- mode tree234.delete_2(di, in, uo, out) is det.
-:- mode tree234.delete_2(in, in, out, out) is det.
+:- pred delete_2(tree234(K, V), K, tree234(K, V), bool).
+%:- mode delete_2(di, in, uo, out) is det.
+:- mode delete_2(in, in, out, out) is det.
 
 delete_2(Tin, K, Tout, RH) :-
     (
@@ -2710,9 +2710,9 @@ remove(K, V, Tin, Tout) :-
     % We use the same algorithm as tree234.delete.
     tree234.remove_2(Tin, K, V, Tout, _).
 
-:- pred tree234.remove_2(tree234(K, V), K, V, tree234(K, V), bool).
-%:- mode tree234.remove_2(di, in, uo, uo, out) is semidet.
-:- mode tree234.remove_2(in, in, out, out, out) is semidet.
+:- pred remove_2(tree234(K, V), K, V, tree234(K, V), bool).
+%:- mode remove_2(di, in, uo, uo, out) is semidet.
+:- mode remove_2(in, in, out, out, out) is semidet.
 
 remove_2(Tin, K, V, Tout, RH) :-
     (
@@ -2969,9 +2969,9 @@ remove_2(Tin, K, V, Tout, RH) :-
 remove_smallest(K, V, Tin, Tout) :-
     tree234.remove_smallest_2(Tin, K, V, Tout, _).
 
-:- pred tree234.remove_smallest_2(tree234(K, V), K, V, tree234(K, V), bool).
-%:- mode tree234.remove_smallest_2(di, uo, uo, uo, out) is semidet.
-:- mode tree234.remove_smallest_2(in, out, out, out, out) is semidet.
+:- pred remove_smallest_2(tree234(K, V), K, V, tree234(K, V), bool).
+%:- mode remove_smallest_2(di, uo, uo, uo, out) is semidet.
+:- mode remove_smallest_2(in, out, out, out, out) is semidet.
 
 remove_smallest_2(Tin, K, V, Tout, RH) :-
     (
@@ -3362,8 +3362,8 @@ keys(T) = Ks :-
 keys(Tree, Keys) :-
     tree234.keys_acc(Tree, [], Keys).
 
-:- pred tree234.keys_acc(tree234(K, V), list(K), list(K)).
-:- mode tree234.keys_acc(in, in, out) is det.
+:- pred keys_acc(tree234(K, V), list(K), list(K)).
+:- mode keys_acc(in, in, out) is det.
 
 keys_acc(empty, List, List).
 keys_acc(two(K0, _V0, T0, T1), L0, L) :-
@@ -3387,8 +3387,8 @@ values(T) = Vs :-
 values(Tree, Values) :-
     tree234.values_acc(Tree, [], Values).
 
-:- pred tree234.values_acc(tree234(K, V), list(V), list(V)).
-:- mode tree234.values_acc(in, in, out) is det.
+:- pred values_acc(tree234(K, V), list(V), list(V)).
+:- mode values_acc(in, in, out) is det.
 
 values_acc(empty, List, List).
 values_acc(two(_K0, V0, T0, T1), L0, L) :-
@@ -3409,7 +3409,7 @@ values_acc(four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3), L0, L) :-
 keys_and_values(Tree, Keys, Values) :-
     tree234.keys_and_values_acc(Tree, [], Keys, [], Values).
 
-:- pred tree234.keys_and_values_acc(tree234(K, V)::in,
+:- pred keys_and_values_acc(tree234(K, V)::in,
     list(K)::in, list(K)::out, list(V)::in, list(V)::out) is det.
 
 keys_and_values_acc(empty, !Keys, !Values).
@@ -3471,7 +3471,7 @@ tree234_to_assoc_list(T) = AL :-
 tree234_to_assoc_list(Tree, AssocList) :-
     tree234.tree234_to_assoc_list_acc(Tree, [], AssocList).
 
-:- pred tree234.tree234_to_assoc_list_acc(tree234(K, V)::in,
+:- pred tree234_to_assoc_list_acc(tree234(K, V)::in,
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
 
 tree234_to_assoc_list_acc(empty, L, L).
@@ -3497,7 +3497,7 @@ assoc_list_to_tree234(AL) = T :-
 assoc_list_to_tree234(AssocList, Tree) :-
     tree234.assoc_list_to_tree234_acc(AssocList, empty, Tree).
 
-:- pred tree234.assoc_list_to_tree234_acc(assoc_list(K, V)::in,
+:- pred assoc_list_to_tree234_acc(assoc_list(K, V)::in,
     tree234(K, V)::in, tree234(K, V)::out) is det.
 
 assoc_list_to_tree234_acc([], Tree, Tree).

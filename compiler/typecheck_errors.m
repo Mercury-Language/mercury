@@ -487,10 +487,10 @@ report_non_contiguous_clause_contexts(PredPieces, GapNumber,
     % start and the end of the clause, but we don't.
     FirstPieces = [words("Gap") | GapPieces] ++
         [words("in clauses of") | PredPieces] ++
-        [words("starts after this clause.")],
+        [words("starts after this clause."), nl],
     SecondPieces = [words("Gap") | GapPieces] ++
         [words("in clauses of") | PredPieces] ++
-        [words("ends with this clause.")],
+        [words("ends with this clause."), nl],
     FirstMsg = simple_msg(FirstUpperContext, [always(FirstPieces)]),
     SecondMsg = simple_msg(SecondLowerContext, [always(SecondPieces)]),
     (

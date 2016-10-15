@@ -1675,18 +1675,18 @@ non_exit_port_code_ac(_, _) :-
 non_exit_port_code_sr(_, _, _) :-
     impure private_builtin.imp,
     private_builtin.sorry("non_exit_port_code_sr").
-non_fail_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_fail_port_code_ac").
-non_fail_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_fail_port_code_sr").
 non_redo_port_code_ac(_, _) :-
     impure private_builtin.imp,
     private_builtin.sorry("non_redo_port_code_ac").
 non_redo_port_code_sr(_, _) :-
     impure private_builtin.imp,
     private_builtin.sorry("non_redo_port_code_sr").
+non_fail_port_code_ac(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_fail_port_code_ac").
+non_fail_port_code_sr(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_fail_port_code_sr").
 save_and_zero_activation_info_ac(_, _) :-
     impure private_builtin.imp,
     private_builtin.sorry("save_and_zero_activation_info_ac").

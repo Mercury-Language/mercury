@@ -244,8 +244,18 @@
     % We want to know whether the clauses of each predicate (which may include
     % pragma foreign_procs) are contiguous in the source code or not.
     %
-    % To this end, we record the item numbers of all the clauses of the
-
+    % To this end, we record the item numbers of
+    %
+    % - all the clauses of the predicate, and
+    % - all the clauses and foreign_procs of the predicate.
+    %
+    % We store each set of numbers as a sorted list of item number regions,
+    % with every item number between the lower and upper item numbers in
+    % a region belonging to the predicate. Besides making it trivial to see
+    % whether a predicate's clauses (or clauses and foreign_procs) are
+    % contiguous or not, this compression also allows us to handle predicates
+    % with large numbers of clauses in a small amount of memory,
+    %
 :- type clause_item_numbers.
 
 :- type clause_item_number_region
@@ -259,6 +269,9 @@
 :- type clause_item_number_types
     --->    only_clauses
     ;       clauses_and_foreign_procs.
+
+:- pred clause_item_number_regions(clause_item_numbers::in,
+    clause_item_number_types::in, list(clause_item_number_region)::out) is det.
 
 :- pred clauses_are_non_contiguous(clause_item_numbers::in,
     clause_item_number_types::in,
@@ -303,6 +316,21 @@
 
 init_clause_item_numbers_user = user_clauses([], []).
 init_clause_item_numbers_comp_gen = comp_gen_clauses.
+
+clause_item_number_regions(ClauseItemNumbers, Type, Regions) :-
+    (
+        ClauseItemNumbers = comp_gen_clauses,
+        Regions = []
+    ;
+        ClauseItemNumbers = user_clauses(MercuryRegions, BothRegions),
+        (
+            Type = only_clauses,
+            Regions = MercuryRegions
+        ;
+            Type = clauses_and_foreign_procs,
+            Regions = BothRegions
+        )
+    ).
 
 clauses_are_non_contiguous(ClauseItemNumbers, Type, FirstRegion, SecondRegion,
         LaterRegions) :-
@@ -390,7 +418,7 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
         else
             add_clause_item_number_regions(ItemNum, Context,
                 LaterRegions0, LaterRegions1),
-            % See if need to merge FirstRegion0 with the first region
+            % See if we need to merge FirstRegion0 with the first region
             % of LaterRegions1.
             (
                 LaterRegions1 = [],

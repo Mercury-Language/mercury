@@ -198,7 +198,7 @@
     % to the compiler, the compiler will get its revenge!)
     %
     % NOTE: This function is deprecated and will be removed in a future
-    %       release.  Use a `promise_equivalent_solutions' goal instead.
+    % release. Use a `promise_equivalent_solutions' goal instead.
     %
 :- pragma obsolete(promise_only_solution/1).
 :- func promise_only_solution(pred(T)) = T.
@@ -222,7 +222,7 @@
     % lie to the compiler, the compiler will get its revenge!)
     %
     % NOTE: This predicate is deprecated and will be removed in a future
-    %       release.  Use a `promise_equivalent_solutions' goal instead.
+    % release. Use a `promise_equivalent_solutions' goal instead.
     %
 :- pragma obsolete(promise_only_solution_io/4).
 :- pred promise_only_solution_io(
@@ -467,14 +467,6 @@
 
 false :-
     fail.
-
-%---------------------------------------------------------------------------%
-
-% NOTE: dynamic_cast/2 is handled specially compiler/const_prop.m.
-% Any changes here may need to be reflected here.
-
-dynamic_cast(X, Y) :-
-    private_builtin.typed_unify(X, Y).
 
 %---------------------------------------------------------------------------%
 
@@ -1381,6 +1373,14 @@ impure_true :-
 
 semipure_true :-
     semipure private_builtin.semip.
+
+%---------------------------------------------------------------------------%
+
+% NOTE: dynamic_cast/2 is handled specially compiler/const_prop.m.
+% Any changes here may need to be reflected here.
+
+dynamic_cast(X, Y) :-
+    private_builtin.typed_unify(X, Y).
 
 %---------------------------------------------------------------------------%
 

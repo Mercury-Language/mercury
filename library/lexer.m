@@ -161,101 +161,6 @@
 % `lexer_state' struct which contains both the posn and the String and Len
 % arguments).
 
-%---------------------------------------------------------------------------%
-
-token_to_string(Token, String) :-
-    (
-        Token = name(Name),
-        string.append_list(["token '", Name, "'"], String)
-    ;
-        Token = variable(Var),
-        string.append_list(["variable `", Var, "'"], String)
-    ;
-        Token = integer(Int),
-        string.int_to_string(Int, IntString),
-        string.append_list(["integer `", IntString, "'"], String)
-    ;
-        Token = big_integer(Base, Integer),
-        (
-            Base = base_2,
-            BaseInt = 2,
-            Prefix = "0b"
-        ;
-            Base = base_8,
-            BaseInt = 8,
-            Prefix = "0o"
-        ;
-            Base = base_10,
-            BaseInt = 10,
-            Prefix = ""
-        ;
-            Base = base_16,
-            BaseInt = 16,
-            Prefix = "0x"
-        ),
-        IntString = integer.to_base_string(Integer, BaseInt),
-        string.append_list(["integer `", Prefix, IntString, "'"], String)
-    ;
-        Token = float(Float),
-        string.float_to_string(Float, FloatString),
-        string.append_list(["float `", FloatString, "'"], String)
-    ;
-        Token = string(TokenString),
-        string.append_list(["string """, TokenString, """"], String)
-    ;
-        Token = implementation_defined(Name),
-        string.append_list(["implementation-defined `$", Name, "'"], String)
-    ;
-        Token = open,
-        String = "token ` ('"
-    ;
-        Token = open_ct,
-        String = "token `('"
-    ;
-        Token = close,
-        String = "token `)'"
-    ;
-        Token = open_list,
-        String = "token `['"
-    ;
-        Token = close_list,
-        String = "token `]'"
-    ;
-        Token = open_curly,
-        String = "token `{'"
-    ;
-        Token = close_curly,
-        String = "token `}'"
-    ;
-        Token = ht_sep,
-        String = "token `|'"
-    ;
-        Token = comma,
-        String = "token `,'"
-    ;
-        Token = end,
-        String = "token `. '"
-    ;
-        Token = eof,
-        String = "end-of-file"
-    ;
-        Token = junk(JunkChar),
-        char.to_int(JunkChar, Code),
-        string.int_to_base_string(Code, 16, Hex),
-        string.append_list(["illegal character <<0x", Hex, ">>"], String)
-    ;
-        Token = io_error(IO_Error),
-        io.error_message(IO_Error, IO_ErrorMessage),
-        string.append("I/O error: ", IO_ErrorMessage, String)
-    ;
-        Token = error(Message),
-        string.append_list(["illegal token (", Message, ")"], String)
-    ;
-        Token = integer_dot(Int),
-        string.int_to_string(Int, IntString),
-        string.append_list(["integer `", IntString, "'."], String)
-    ).
-
 get_token_list(Tokens, !IO) :-
     io.input_stream(Stream, !IO),
     get_token_list(Stream, Tokens, !IO).
@@ -315,10 +220,6 @@ get_token_list_2(Stream, Token0, Context0, Tokens, !IO) :-
         Tokens = token_cons(Token0, Context0, Tokens1)
     ).
 
-string_get_token_list(String, Tokens, !Posn) :-
-    string.length(String, Len),
-    string_get_token_list_max(String, Len, Tokens, !Posn).
-
 string_get_token_list_max(String, Len, Tokens, !Posn) :-
     string_get_token(String, Len, Token, Context, !Posn),
     (
@@ -353,6 +254,10 @@ string_get_token_list_max(String, Len, Tokens, !Posn) :-
         Tokens = token_cons(Token, Context, Tokens1),
         string_get_token_list_max(String, Len, Tokens1, !Posn)
     ).
+
+string_get_token_list(String, Tokens, !Posn) :-
+    string.length(String, Len),
+    string_get_token_list_max(String, Len, Tokens, !Posn).
 
 %---------------------------------------------------------------------------%
 %
@@ -2662,5 +2567,100 @@ rev_char_list_to_string(RevChars, String) :-
 
 null_character_error =
     error("null character is illegal in strings and names").
+
+%---------------------------------------------------------------------------%
+
+token_to_string(Token, String) :-
+    (
+        Token = name(Name),
+        string.append_list(["token '", Name, "'"], String)
+    ;
+        Token = variable(Var),
+        string.append_list(["variable `", Var, "'"], String)
+    ;
+        Token = integer(Int),
+        string.int_to_string(Int, IntString),
+        string.append_list(["integer `", IntString, "'"], String)
+    ;
+        Token = big_integer(Base, Integer),
+        (
+            Base = base_2,
+            BaseInt = 2,
+            Prefix = "0b"
+        ;
+            Base = base_8,
+            BaseInt = 8,
+            Prefix = "0o"
+        ;
+            Base = base_10,
+            BaseInt = 10,
+            Prefix = ""
+        ;
+            Base = base_16,
+            BaseInt = 16,
+            Prefix = "0x"
+        ),
+        IntString = integer.to_base_string(Integer, BaseInt),
+        string.append_list(["integer `", Prefix, IntString, "'"], String)
+    ;
+        Token = float(Float),
+        string.float_to_string(Float, FloatString),
+        string.append_list(["float `", FloatString, "'"], String)
+    ;
+        Token = string(TokenString),
+        string.append_list(["string """, TokenString, """"], String)
+    ;
+        Token = implementation_defined(Name),
+        string.append_list(["implementation-defined `$", Name, "'"], String)
+    ;
+        Token = open,
+        String = "token ` ('"
+    ;
+        Token = open_ct,
+        String = "token `('"
+    ;
+        Token = close,
+        String = "token `)'"
+    ;
+        Token = open_list,
+        String = "token `['"
+    ;
+        Token = close_list,
+        String = "token `]'"
+    ;
+        Token = open_curly,
+        String = "token `{'"
+    ;
+        Token = close_curly,
+        String = "token `}'"
+    ;
+        Token = ht_sep,
+        String = "token `|'"
+    ;
+        Token = comma,
+        String = "token `,'"
+    ;
+        Token = end,
+        String = "token `. '"
+    ;
+        Token = eof,
+        String = "end-of-file"
+    ;
+        Token = junk(JunkChar),
+        char.to_int(JunkChar, Code),
+        string.int_to_base_string(Code, 16, Hex),
+        string.append_list(["illegal character <<0x", Hex, ">>"], String)
+    ;
+        Token = io_error(IO_Error),
+        io.error_message(IO_Error, IO_ErrorMessage),
+        string.append("I/O error: ", IO_ErrorMessage, String)
+    ;
+        Token = error(Message),
+        string.append_list(["illegal token (", Message, ")"], String)
+    ;
+        Token = integer_dot(Int),
+        string.int_to_string(Int, IntString),
+        string.append_list(["integer `", IntString, "'."], String)
+    ).
 
 %---------------------------------------------------------------------------%

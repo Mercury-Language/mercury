@@ -125,14 +125,6 @@
 
 %---------------------------------------------------------------------------%
 
-equal_values(X, Y) :-
-    force(X) = force(Y).
-
-compare_values(R, X, Y) :-
-    compare(R, force(X), force(Y)).
-
-%---------------------------------------------------------------------------%
-
 val(X) = lazy(Mutvar) :-
     promise_pure (
         impure new_mutvar(value(X), Mutvar)
@@ -171,5 +163,13 @@ read_if_val(Lazy, Value) :-
     ),
     impure get_mutvar(Mutvar, State),
     State = value(Value).
+
+%---------------------------------------------------------------------------%
+
+equal_values(X, Y) :-
+    force(X) = force(Y).
+
+compare_values(R, X, Y) :-
+    compare(R, force(X), force(Y)).
 
 %---------------------------------------------------------------------------%

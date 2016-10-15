@@ -10,15 +10,15 @@
 % Author: Ralph Becket <rafe@cs.mu.oz.au>
 % Stability: low.
 %
-% (See the header comments in version_array.m for an explanation of version
-% types.)
+% See the header comments in version_array.m for an explanation of version
+% types.
 %
 % A version_store is similar to, albeit slightly slower than, an ordinary
 % store, but does not depend upon uniqueness.
 %
 % Note that, unlike ordinary stores, liveness of data is via the version store
-% rather than the mutvars.  This means that dead data (i.e.  whose mutvar is
-% out of scope) in a version_store may not be garbage collected.
+% rather than the mutvars. This means that dead data (i.e. data whose mutvar
+% is out of scope) in a version_store may not be garbage collected.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -32,10 +32,10 @@
 
 :- type mutvar(T, S).
 
-    % Construct a new version store.  This is distinguished from other
-    % version stores by its existentially quantified type.  This means
-    % the compiler can automatically detect any attempt to use a
-    % mutvar with the wrong version store.
+    % Construct a new version store. This is distinguished from other
+    % version stores by its existentially quantified type. This means
+    % the compiler can automatically detect any attempt to use a mutvar
+    % with the wrong version store.
     %
 :- some [S] func init = version_store(S).
 
@@ -46,7 +46,7 @@
     version_store(S)::in, version_store(S)::out) is det.
 
     % new_cyclic_mutvar(F, Mutvar, VS0, VS) adds a new mutvar with value
-    % reference F(Mutvar) to the version store.  This can be used to
+    % reference F(Mutvar) to the version store. This can be used to
     % construct cyclic terms.
     %
 :- pred new_cyclic_mutvar((func(mutvar(T, S)) = T)::in, mutvar(T, S)::out,
@@ -84,8 +84,8 @@
 :- pred set_mutvar(mutvar(T, S)::in, T::in,
     version_store(S)::in, version_store(S)::out) is det.
 
-    % unsafe_rewind(VS) produces a version of VS for which all accesses are
-    % O(1).  Invoking this predicate renders undefined VS and all later
+    % unsafe_rewind(VS) produces a version of VS for which all accesses
+    % are O(1). Invoking this predicate renders undefined VS and all later
     % versions undefined that were derived by performing individual updates.
     % Only use this when you are absolutely certain there are no live
     % references to VS or later versions of VS.
@@ -109,7 +109,7 @@
 %---------------------------------------------------------------------------%
 
     % Index 0 of the version_store contains the counter used to assign
-    % new version store mutvars.  A mutvar is just an index into the
+    % new version store mutvars. A mutvar is just an index into the
     % version_store.
     %
 :- type version_store(S)        ---> version_store(version_array(univ)).
@@ -119,11 +119,9 @@
 %---------------------------------------------------------------------------%
 
 init = version_store(VA) `with_type` version_store(some_version_store_type) :-
-
-        % 256 is just a magic number.  The version_store is resized by
-        % doubling if necessary when adding a new mutvar.  Index 0 of
-        % the version_store holds a counter for allocating new mutvars.
-        %
+    % 256 is just a magic number. The version_store is resized by doubling
+    % if necessary when adding a new mutvar. Index 0 of the version_store
+    % holds a counter for allocating new mutvars.
     VA = version_array.init(256, univ(counter.init(1) `with_type` counter)).
 
 %---------------------------------------------------------------------------%
@@ -138,8 +136,11 @@ new_cyclic_mutvar(F, Mutvar, VS0, VS) :-
     counter.allocate(I, Counter0, Counter),
     Mutvar = mutvar(I),
     Size0 = size(VS0),
-    VS1 = ( if I >= Size0 then resize(VS0, Size0 + Size0)
-                          else VS0 ),
+    ( if I >= Size0 then
+        VS1 = resize(VS0, Size0 + Size0)
+    else
+        VS1 = VS0
+    ),
     VS  = (( VS1 ^ elem(mutvar(0)) := Counter   )
                  ^ elem(Mutvar   ) := F(Mutvar) ).
 

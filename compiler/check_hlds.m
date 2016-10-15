@@ -94,11 +94,14 @@
 % Warnings about simple code.
 :- include_module simplify.
 
-% Warnings about insts with no matching types
+% Warnings about insts with no matching types.
 :- include_module inst_check.
 
 % Warnings about unused imports.
 :- include_module unused_imports.
+
+% Warnings about bad programming style.
+:- include_module style_checks.
 
 % Output XML representation useful for documentation of module.
 :- include_module xml_documentation.

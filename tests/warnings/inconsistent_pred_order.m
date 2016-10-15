@@ -2,20 +2,10 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% This program solves the N-queens problem. Given an N-by-N chessboard,
-% this problem asks us to find positions for N queens on the board such
-% that they do not attack each other. This means that no two queens can be
-%
-% - in the same row
-% - in the same column
-% - on the same diagnonal.
-%
-% We print the result as a list of integers. Each integer corresponds to one
-% of the board's N columns, and it gives the number of the row occupied by
-% the queen in that column. (Given the constraints of the problem, every column
-% must be occupied by exactly one queen.)
+% This is a copy of tests/benchmarks/queens.m, with some inconsistencies
+% in the order of the predicate declarations vs definitions.
 
-:- module queens.
+:- module inconsistent_pred_order.
 
 :- interface.
 
@@ -57,20 +47,18 @@ qperm([H | T], Perm) :-
     qperm(Rest, RestPerm),
     Perm = [Element | RestPerm].
 
+:- pred safe(list(int)::in) is semidet.
+
 :- pred qdelete(list(int)::in, int::out, list(int)::out) is nondet.
 
 qdelete([H | T], H, T).
 qdelete([H | T], E, [H | NT]) :-
     qdelete(T, E, NT).
 
-:- pred safe(list(int)::in) is semidet.
-
 safe([]).
 safe([H | T]) :-
     nodiag(H, 1, T),
     safe(T).
-
-:- pred nodiag(int::in, int::in, list(int)::in) is semidet.
 
 nodiag(_, _, []).
 nodiag(TestRow, !.Diff, [Row | Rows]) :-
@@ -85,6 +73,8 @@ nodiag(TestRow, !.Diff, [Row | Rows]) :-
     nodiag(TestRow, !.Diff, Rows).
 
 :- pred print_list(list(int)::in, io::di, io::uo) is det.
+
+:- pred nodiag(int::in, int::in, list(int)::in) is semidet.
 
 print_list(Xs, !IO) :-
     (

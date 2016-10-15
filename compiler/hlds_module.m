@@ -274,6 +274,8 @@
     cord(pragma_exported_proc)::out) is det.
 
 :- pred module_info_get_name(module_info::in, module_name::out) is det.
+:- pred module_info_get_name_context(module_info::in,
+    prog_context::out) is det.
 :- pred module_info_get_dump_hlds_base_file_name(module_info::in,
     string::out) is det.
 :- pred module_info_get_partial_qualifier_info(module_info::in,
@@ -619,15 +621,14 @@
     %
     % Note that a field may be rarely read or written for two main reasons.
     %
-    % - One reason is that the compiler simply does not need
-    %   to read or write the field very often. This may be
-    %   e.g. because it is used only when processing a language
-    %   construct that is rare, or because its uses are
-    %   concentrated in a few pieces of code that read it
+    % - One reason is that the compiler simply does not need to read or write
+    %   the field very often. This may be e.g. because it is used only
+    %   when processing a language construct that is rare, or because
+    %   its uses are concentrated in a few pieces of code that read it
     %   only when they start and write it only when they finish.
     %
-    % - Another reason is that it is used only when a compiler
-    %   option is given, and it is rarely given.
+    % - Another reason is that it is used only when a compiler option
+    %   is given, and it is rarely given.
 
     % Please keep the order of the fields in module_info, module_sub_info
     % and module_rare_info in sync with the order of the both the
@@ -681,6 +682,7 @@
 :- type module_rare_info
     --->    module_rare_info(
                 mri_module_name                 :: module_name,
+                mri_module_name_context         :: prog_context,
                 mri_dump_base_file_name         :: string,
 
                 mri_partial_qualifier_info      :: partial_qualifier_info,
@@ -802,7 +804,7 @@
 
 module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         MaybeRecompInfo, ModuleInfo) :-
-    AugCompUnit = aug_compilation_unit(ModuleName, _ModuleNameContext,
+    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         _MaybeVersionNumbers, SrcItemBlocks,
         DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
@@ -911,6 +913,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
 
     ModuleRareInfo = module_rare_info(
         ModuleName,
+        ModuleNameContext,
         DumpBaseFileName,
         QualifierInfo,
         MaybeRecompInfo,
@@ -1067,6 +1070,8 @@ module_info_get_pragma_exported_procs(MI, X) :-
 
 module_info_get_name(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_module_name.
+module_info_get_name_context(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_module_name_context.
 module_info_get_dump_hlds_base_file_name(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_dump_base_file_name.
 module_info_get_partial_qualifier_info(MI, X) :-

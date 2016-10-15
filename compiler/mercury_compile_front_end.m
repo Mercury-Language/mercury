@@ -77,8 +77,8 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.check_typeclass.
 :- import_module check_hlds.check_for_missing_type_defns.
+:- import_module check_hlds.check_typeclass.
 :- import_module check_hlds.cse_detection.
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.implementation_defined_literals.
@@ -94,12 +94,14 @@
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module check_hlds.stratify.
+:- import_module check_hlds.style_checks.
 :- import_module check_hlds.switch_detection.
 :- import_module check_hlds.try_expand.
 :- import_module check_hlds.type_constraints.
 :- import_module check_hlds.typecheck.
 :- import_module check_hlds.unique_modes.
 :- import_module check_hlds.unused_imports.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.
@@ -539,6 +541,8 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
             maybe_simplify(yes, simplify_pass_frontend, Verbose, Stats,
                 !HLDS, !Specs, !IO),
             maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
+
+            maybe_generate_style_warnings(Verbose, Stats, !HLDS, !Specs, !IO),
 
             maybe_proc_statistics(Verbose, Stats, "AfterFrontEnd",
                 !HLDS, !Specs, !IO),
@@ -1049,6 +1053,67 @@ simplify_pred(SimplifyTasks0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
     trace [io(!IO)] (
         maybe_report_stats(Statistics, !IO)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_generate_style_warnings(bool::in, bool::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+maybe_generate_style_warnings(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+
+    globals.lookup_bool_option(Globals, warn_non_contiguous_decls,
+        NonContiguousDecls),
+    globals.lookup_bool_option(Globals, warn_inconsistent_pred_order_clauses,
+        InconsistentPredOrderClauses),
+    globals.lookup_bool_option(Globals,
+        warn_inconsistent_pred_order_foreign_procs,
+        InconsistentPredOrderForeignProcs),
+    (
+        InconsistentPredOrderForeignProcs = no,
+        InconsistentPredOrderClauses = no,
+        InconsistentPredOrder = no
+    ;
+        InconsistentPredOrderForeignProcs = no,
+        InconsistentPredOrderClauses = yes,
+        InconsistentPredOrder = yes(only_clauses)
+    ;
+        InconsistentPredOrderForeignProcs = yes,
+        InconsistentPredOrder = yes(clauses_and_foreign_procs)
+    ),
+    (
+        NonContiguousDecls = no,
+        InconsistentPredOrder = no,
+        MaybeTask = no
+    ;
+        NonContiguousDecls = no,
+        InconsistentPredOrder = yes(DefnKinds),
+        MaybeTask = yes(inconsistent_pred_order_only(DefnKinds))
+    ;
+        NonContiguousDecls = yes,
+        InconsistentPredOrder = no,
+        MaybeTask = yes(non_contiguous_decls_only)
+    ;
+        NonContiguousDecls = yes,
+        InconsistentPredOrder = yes(DefnKinds),
+        MaybeTask =
+            yes(non_contiguous_decls_and_inconsistent_pred_order(DefnKinds))
+    ),
+    (
+        MaybeTask = yes(Task),
+        maybe_write_string(Verbose,
+            "% Generating style warnings...\n", !IO),
+        generate_style_warnings(!.HLDS, Task, StyleSpecs, !IO),
+        !:Specs = StyleSpecs ++ !.Specs,
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        MaybeTask = no
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- pred maybe_proc_statistics(bool::in, bool::in, string::in,
     module_info::in, module_info::out,

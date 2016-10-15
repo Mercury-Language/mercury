@@ -266,16 +266,17 @@ module_add_class_interface(ClassName, ClassParamVars, TypeClassStatus,
         PredOrFuncMethods),
     some [!PPIds] (
         add_class_pred_or_func_methods(ClassName, ClassParamVars,
-            TypeClassStatus, MaybeItemMercuryStatus, NeedQual,
+            MaybeItemMercuryStatus, TypeClassStatus, NeedQual,
             PredOrFuncMethods, !:PPIds, !ModuleInfo, !Specs),
 
         % Add the pred_or_func_mode decls. Since we have already added the
         % predicate/function method decls, there should already be an entry in
         % the predicate table corresponding to the mode item we are about to
         % add. If not, report an error.
+        ItemNumber = -1,
         list.foldl3(
             add_class_pred_or_func_mode_method(ClassName, ClassParamVars,
-                TypeClassStatus, MaybeItemMercuryStatus, NeedQual),
+                ItemNumber, MaybeItemMercuryStatus, TypeClassStatus, NeedQual),
             ModeMethods, !PPIds, !ModuleInfo, !Specs),
         check_method_modes(Methods, !.PPIds, PredProcIds, !ModuleInfo, !Specs)
     ).
@@ -286,7 +287,7 @@ is_class_method_mode_item(Method) :-
     Method = method_pred_or_func_mode(_, _, _, _, _, _, _).
 
 :- pred add_class_pred_or_func_mode_method(sym_name::in, list(tvar)::in,
-    typeclass_status::in, maybe(item_mercury_status)::in,
+    int::in, maybe(item_mercury_status)::in, typeclass_status::in,
     need_qualifier::in, class_method::in,
     list(maybe(pair(pred_id, proc_id)))::in,
     list(maybe(pair(pred_id, proc_id)))::out,
@@ -294,7 +295,7 @@ is_class_method_mode_item(Method) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_class_pred_or_func_mode_method(ClassName, ClassParamVars,
-        TypeClassStatus, MaybeItemMercuryStatus, NeedQual, Method,
+        ItemNumber, MaybeItemMercuryStatus, TypeClassStatus, NeedQual, Method,
         !PredProcIds, !ModuleInfo, !Specs) :-
     (
         Method = method_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _),
@@ -328,8 +329,8 @@ add_class_pred_or_func_mode_method(ClassName, ClassParamVars,
             pred_info_get_markers(PredInfo, PredMarkers),
             ( if check_marker(PredMarkers, marker_class_method) then
                 module_add_class_method(ClassName, ClassParamVars,
-                    TypeClassStatus, MaybeItemMercuryStatus, NeedQual,
-                    Method, PredProcId, !ModuleInfo, !Specs),
+                    ItemNumber, MaybeItemMercuryStatus, TypeClassStatus,
+                    NeedQual, Method, PredProcId, !ModuleInfo, !Specs),
                 list.cons(PredProcId, !PredProcIds)
             else
                 % XXX It may also be worth reporting that although there
@@ -346,31 +347,32 @@ add_class_pred_or_func_mode_method(ClassName, ClassParamVars,
     ).
 
 :- pred add_class_pred_or_func_methods(sym_name::in, list(tvar)::in,
-    typeclass_status::in, maybe(item_mercury_status)::in, need_qualifier::in,
+    maybe(item_mercury_status)::in, typeclass_status::in, need_qualifier::in,
     list(class_method)::in, list(maybe(pair(pred_id, proc_id)))::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_class_pred_or_func_methods(_, _, _, _, _, [], [], !ModuleInfo, !Specs).
 add_class_pred_or_func_methods(ClassName, ClassParamVars,
-        TypeClassStatus, MaybeItemMercuryStatus, NeedQual, [Method | Methods],
+        MaybeItemMercuryStatus, TypeClassStatus, NeedQual, [Method | Methods],
         [MaybePredProcId | MaybePredProcIds], !ModuleInfo, !Specs) :-
+    ItemNumber = -1,
     module_add_class_method(ClassName, ClassParamVars,
-        TypeClassStatus, MaybeItemMercuryStatus, NeedQual, Method,
+        ItemNumber, MaybeItemMercuryStatus, TypeClassStatus, NeedQual, Method,
         MaybePredProcId, !ModuleInfo, !Specs),
     add_class_pred_or_func_methods(ClassName, ClassParamVars,
-        TypeClassStatus, MaybeItemMercuryStatus, NeedQual, Methods,
+        MaybeItemMercuryStatus, TypeClassStatus, NeedQual, Methods,
         MaybePredProcIds, !ModuleInfo, !Specs).
 
 :- pred module_add_class_method(sym_name::in, list(tvar)::in,
-    typeclass_status::in, maybe(item_mercury_status)::in, need_qualifier::in,
-    class_method::in, maybe(pair(pred_id, proc_id))::out,
+    int::in, maybe(item_mercury_status)::in, typeclass_status::in,
+    need_qualifier::in, class_method::in, maybe(pair(pred_id, proc_id))::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_class_method(ClassName, ClassParamVars, TypeClassStatus,
-        MaybeItemMercuryStatus, NeedQual, Method, MaybePredIdProcId,
-        !ModuleInfo, !Specs) :-
+module_add_class_method(ClassName, ClassParamVars,
+        ItemNumber, MaybeItemMercuryStatus, TypeClassStatus, NeedQual, Method,
+        MaybePredIdProcId, !ModuleInfo, !Specs) :-
     % XXX STATUS
     TypeClassStatus = typeclass_status(OldImportStatus),
     PredStatus = pred_status(OldImportStatus),
@@ -395,18 +397,20 @@ module_add_class_method(ClassName, ClassParamVars, TypeClassStatus,
         Constraints = constraints(UnivConstraints, ExistConstraints),
         init_markers(Markers0),
         add_marker(marker_class_method, Markers0, Markers),
-        module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
-            PredOrFunc, PredName, TypesAndModes, MaybeDetism, Purity,
-            Constraints, Markers, Context, PredStatus, MaybeItemMercuryStatus,
-            NeedQual, MaybePredIdProcId, !ModuleInfo, !Specs)
+        module_add_pred_or_func(Origin, Context, ItemNumber,
+            MaybeItemMercuryStatus, PredStatus, NeedQual,
+            PredOrFunc, PredName, TypeVarSet, InstVarSet, ExistQVars,
+            TypesAndModes, Constraints, MaybeDetism, Purity, Markers,
+            MaybePredIdProcId, !ModuleInfo, !Specs)
     ;
         Method = method_pred_or_func_mode(PredName, MaybePredOrFunc, Modes,
             _WithInst, MaybeDet, VarSet, Context),
         (
             MaybePredOrFunc = yes(PredOrFunc),
-            module_add_mode(VarSet, PredName, Modes, MaybeDet, PredStatus,
-                MaybeItemMercuryStatus, Context, PredOrFunc, is_a_class_method,
-                PredIdProcId, !ModuleInfo, !Specs),
+            module_add_mode(Context, ItemNumber,
+                MaybeItemMercuryStatus, PredStatus,
+                PredOrFunc, PredName, VarSet, Modes, MaybeDet,
+                is_a_class_method, PredIdProcId, !ModuleInfo, !Specs),
             MaybePredIdProcId = yes(PredIdProcId)
         ;
             MaybePredOrFunc = no,

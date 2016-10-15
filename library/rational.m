@@ -25,6 +25,14 @@
 
 :- type rational.
 
+:- func numer(rational) = integer.
+
+:- func denom(rational) = integer.
+
+:- func zero = rational.
+
+:- func one = rational.
+
 :- pred '<'(rational::in, rational::in) is semidet.
 
 :- pred '>'(rational::in, rational::in) is semidet.
@@ -55,17 +63,9 @@
 
 :- func rational / rational = rational.
 
-:- func numer(rational) = integer.
-
-:- func denom(rational) = integer.
-
-:- func abs(rational) = rational.
-
 :- func reciprocal(rational) = rational.
 
-:- func one = rational.
-
-:- func zero = rational.
+:- func abs(rational) = rational.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -74,24 +74,33 @@
 
 :- import_module require.
 
-    % The normal form of a rational number has the following
-    % properties:
-    %   - numerator and denominator have no common factors.
-    %   - denominator is positive.
-    %   - denominator is not zero.
-    %   - if numerator is zero, then denominator is one.
+    % The normal form of a rational number has the following properties:
+    %
+    % - numerator and denominator have no common factors.
+    % - denominator is positive.
+    % - denominator is not zero.
+    % - if numerator is zero, then denominator is one.
     %
     % These invariants must be preserved by any rational number
-    % constructed using this module since the equality predicate
+    % constructed using this module, since the equality predicate
     % on rationals is simply Mercury's default unification
     % predicate =/2. If the invariants were not maintained,
     % we would have pathologies like r(-1,2) \= r(1,-2).
     %
-    % The rational_norm/2 function generates rationals in this
-    % normal form.
+    % The rational_norm/2 function generates rationals in this normal form.
     %
 :- type rational
     --->    r(integer, integer).
+
+%---------------------------------------------------------------------------%
+
+numer(r(Num, _)) = Num.
+
+denom(r(_, Den)) = Den.
+
+zero = r(integer.zero, integer.one).
+
+one = r(integer.one, integer.one).
 
 '<'(R1, R2) :-
     Cmp = cmp(R1, R2),
@@ -122,10 +131,6 @@ from_integers(Num, Den) = rational_norm(Num, Den).
 % rational.float(r(Num, Den)) =
 %   float:'/'(integer.float(Num), integer.float(Den)).
 
-one = r(integer.one, integer.one).
-
-zero = r(integer.zero, integer.one).
-
 '+'(Rat) = Rat.
 
 '-'(r(Num, Den)) = r(-Num, Den).
@@ -153,10 +158,6 @@ reciprocal(r(Num, Den)) =
     else
         r(signum(Num) * Den, integer.abs(Num))
     ).
-
-numer(r(Num, _)) = Num.
-
-denom(r(_, Den)) = Den.
 
 abs(r(Num, Den)) = r(integer.abs(Num), Den).
 

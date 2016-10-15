@@ -132,9 +132,10 @@
     found_invalid_type::out, found_invalid_inst_or_mode::out,
     module_info::out, list(error_spec)::out) is det.
 
-:- pred add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
+:- pred add_new_proc(prog_context::in, int::in, arity::in,
+    inst_varset::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
-    detism_decl::in, maybe(determinism)::in, prog_context::in,
+    detism_decl::in, maybe(determinism)::in,
     is_address_taken::in, has_parallel_conj::in,
     pred_info::in, pred_info::out, proc_id::out) is det.
 
@@ -226,11 +227,13 @@ parse_tree_to_hlds(AugCompilationUnit, Globals, DumpBaseFileName,
         MQInfo0, TypeEqvMap, UsedModules, QualInfo,
         FoundInvalidType, FoundInvalidMode, ModuleInfo, Specs).
 
-add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
-        MaybeArgLives, DetismDecl, MaybeDet, Context, IsAddressTaken,
+add_new_proc(Context, ItemNumber, Arity,
+        InstVarSet, ArgModes, MaybeDeclaredArgModes,
+        MaybeArgLives, DetismDecl, MaybeDet, IsAddressTaken,
         HasParallelConj, PredInfo0, PredInfo, ModeId) :-
-    do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
-        MaybeArgLives, DetismDecl, MaybeDet, Context, IsAddressTaken,
+    do_add_new_proc(Context, ItemNumber, Arity,
+        InstVarSet, ArgModes, MaybeDeclaredArgModes,
+        MaybeArgLives, DetismDecl, MaybeDet, IsAddressTaken,
         HasParallelConj, PredInfo0, PredInfo, ModeId).
 
 add_special_pred_for_real(SpecialPredId, TVarSet,

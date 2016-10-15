@@ -113,6 +113,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         % for this function. (N.B. functions which can fail must be
         % explicitly declared as semidet.)
 
+        ItemNumber = -1,
         PredArity = pred_info_orig_arity(PredInfo0),
         FuncArity = PredArity - 1,
         in_mode(InMode),
@@ -127,9 +128,10 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         % No inst_vars in default func mode.
         % Before the simplification pass, HasParallelConj is not meaningful.
         HasParallelConj = has_no_parallel_conj,
-        add_new_proc(InstVarSet, PredArity, PredArgModes, yes(PredArgModes),
+        add_new_proc(Context, ItemNumber, PredArity,
+            InstVarSet, PredArgModes, yes(PredArgModes),
             MaybePredArgLives, detism_decl_implicit, yes(Determinism),
-            Context, address_is_not_taken, HasParallelConj,
+            address_is_not_taken, HasParallelConj,
             PredInfo0, PredInfo, ProcId),
         MaybeProcId = yes(ProcId)
     else

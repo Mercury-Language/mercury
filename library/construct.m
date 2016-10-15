@@ -142,13 +142,6 @@
 
 ").
 
-det_num_functors(TypeInfo) =
-    ( if N = num_functors(TypeInfo) then
-        N
-    else
-        unexpected($module, $pred, "type does not have functors")
-    ).
-
 :- pragma foreign_proc("C",
     num_functors(TypeInfo::in) = (Functors::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -165,6 +158,13 @@ num_functors(TypeDesc) = NumFunctors :-
     else
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_info_num_functors(TypeInfo, NumFunctors)
+    ).
+
+det_num_functors(TypeInfo) =
+    ( if N = num_functors(TypeInfo) then
+        N
+    else
+        unexpected($module, $pred, "type does not have functors")
     ).
 
 get_functor(TypeDesc, FunctorNumber, FunctorName, Arity, PseudoTypeInfoList) :-

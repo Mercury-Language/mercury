@@ -237,6 +237,24 @@ builtin_compare_float(R, F1, F2) :-
         R = (=)
     ).
 
+:- pragma no_inline(builtin_unify_pred/2).
+builtin_unify_pred(_X, _Y) :-
+    ( if semidet_succeed then
+        error("attempted higher-order unification")
+    else
+        % The following is never executed.
+        semidet_succeed
+    ).
+
+:- pragma no_inline(builtin_compare_pred/3).
+builtin_compare_pred(Result, _X, _Y) :-
+    ( if semidet_succeed then
+        error("attempted higher-order comparison")
+    else
+        % The following is never executed.
+        Result = (<)
+    ).
+
 builtin_unify_tuple(_, _) :-
     ( if semidet_succeed then
         % The generic unification function in the runtime
@@ -255,24 +273,6 @@ builtin_compare_tuple(Res, _, _) :-
     else
         % The following is never executed.
         Res = (<)
-    ).
-
-:- pragma no_inline(builtin_unify_pred/2).
-builtin_unify_pred(_X, _Y) :-
-    ( if semidet_succeed then
-        error("attempted higher-order unification")
-    else
-        % The following is never executed.
-        semidet_succeed
-    ).
-
-:- pragma no_inline(builtin_compare_pred/3).
-builtin_compare_pred(Result, _X, _Y) :-
-    ( if semidet_succeed then
-        error("attempted higher-order comparison")
-    else
-        % The following is never executed.
-        Result = (<)
     ).
 
 :- pragma no_inline(builtin_compare_non_canonical_type/3).
@@ -1576,12 +1576,12 @@ nonvar(_::ui) :- true.
 nonvar(_::in) :- true.
 nonvar(_::unused) :- fail.
 
+no_clauses(PredName) :-
+    error("no clauses for " ++ PredName).
+
 sorry(PredName) :-
     error("sorry, " ++ PredName ++ " not implemented\n" ++
         "for this target language (or compiler back-end).").
-
-no_clauses(PredName) :-
-    error("no clauses for " ++ PredName).
 
 :- pragma foreign_proc("C",
     imp,

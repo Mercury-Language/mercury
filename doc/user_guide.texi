@@ -6514,6 +6514,33 @@ Warn about @samp{.opt} files that cannot be opened.
 Warn about @samp{.trans_opt} files that cannot be opened.
 
 @sp 1
+@item --warn-inconsistent-pred-order
+@itemx --warn-inconsistent-pred-order-clauses
+@findex --warn-inconsistent-pred-order
+@findex --warn-inconsistent-pred-order-clauses
+Generate a warning if the order of the definitions does not match
+the order of the declarations for either the exported predicates
+and functions of the module, or for the nonexported predicates
+and functions of the module. Applies for definitions by
+Mercury clauses.
+
+@sp 1
+@item --warn-inconsistent-pred-order-foreign-procs
+@findex --warn-inconsistent-pred-order-foreign-procs
+Generate a warning if the order of the definitions does not match
+the order of the declarations for either the exported predicates
+and functions of the module, or for the nonexported predicates
+and functions of the module. Applies for definitions by either
+Mercury clauses or foreign_proc pragmas.
+
+@sp 1
+@item --no-warn-non-contiguous-decl
+@findex --no-warn-non-contiguous-decl
+Do not generate a warning if the mode declarations of a
+predicate or function don't all immediately follow its
+predicate or function declaration.
+
+@sp 1
 @item --no-warn-non-contiguous-clauses
 @findex --no-warn-non-contiguous-clauses
 Do not generate a warning if the clauses of a predicate or function

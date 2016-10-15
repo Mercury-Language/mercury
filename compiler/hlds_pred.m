@@ -538,7 +538,8 @@
 :- type cur_user_decl_info
     --->    cur_user_decl_info(
                 decl_section,
-                maybe_predmode_decl
+                maybe_predmode_decl,
+                int                         % The item number.
             ).
 
     % pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
@@ -1222,6 +1223,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     ),
 
     Context = goal_info_get_context(GoalInfo),
+    ItemNumber = -1,
     Detism = goal_info_get_determinism(GoalInfo),
     compute_arg_types_modes(ArgVars, VarTypes0, InstMap0, InstMap,
         ArgTypes, ArgModes),
@@ -1245,10 +1247,10 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     ),
 
     MaybeDeclaredDetism = no,
-    proc_info_create_with_declared_detism(Context, VarSet, VarTypes, ArgVars,
-        InstVarSet, ArgModes, detism_decl_none, MaybeDeclaredDetism,
-        Detism, Goal0, RttiVarMaps, IsAddressTaken, HasParallelConj,
-        VarNameRemap, ProcInfo0),
+    proc_info_create_with_declared_detism(Context, ItemNumber,
+        VarSet, VarTypes, ArgVars, InstVarSet, ArgModes,
+        detism_decl_none, MaybeDeclaredDetism, Detism, Goal0,
+        RttiVarMaps, IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo0),
     proc_info_set_maybe_termination_info(TermInfo, ProcInfo0, ProcInfo),
 
     set.init(Assertions),
@@ -2114,12 +2116,13 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     ;       detism_decl_none.
             % The determinism of the procedure is not declared.
 
-:- pred proc_info_init(prog_context::in, arity::in, list(mer_type)::in,
-    maybe(list(mer_mode))::in, list(mer_mode)::in, maybe(list(is_live))::in,
-    detism_decl::in, maybe(determinism)::in, is_address_taken::in,
-    has_parallel_conj::in, map(prog_var, string)::in, proc_info::out) is det.
+:- pred proc_info_init(prog_context::in, int::in, arity::in,
+    list(mer_type)::in, maybe(list(mer_mode))::in, list(mer_mode)::in,
+    maybe(list(is_live))::in, detism_decl::in, maybe(determinism)::in,
+    is_address_taken::in, has_parallel_conj::in, map(prog_var, string)::in,
+    proc_info::out) is det.
 
-:- pred proc_info_create(prog_context::in,
+:- pred proc_info_create(prog_context::in, int::in,
     prog_varset::in, vartypes::in, list(prog_var)::in,
     inst_varset::in, list(mer_mode)::in,
     detism_decl::in, determinism::in, hlds_goal::in,
@@ -2215,6 +2218,7 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     list(mode_error_info)::out) is det.
 
 :- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
+:- pred proc_info_get_item_number(proc_info::in, int::out) is det.
 :- pred proc_info_get_can_process(proc_info::in, can_process::out) is det.
 :- pred proc_info_get_detism_decl(proc_info::in, detism_decl::out) is det.
 :- pred proc_info_get_maybe_untuple_info(proc_info::in,
@@ -2566,6 +2570,10 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
                 % first clause if there was no mode declaration.
                 psi_proc_context                :: prog_context,
 
+                % The item number of the mode declaration, if there was one,
+                % and a negative number otherwise.
+                psi_item_number                 :: int,
+
                 % Set to cannot_process if we must not process this procedure
                 % just yet. This is used to delay mode checking etc. for
                 % complicated modes of unification predicates until the end
@@ -2868,9 +2876,9 @@ table_step_stats_kind(Step) = KindStr :-
         KindStr = "MR_TABLE_STATS_DETAIL_NONE"
     ).
 
-proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
-        DetismDecl, MaybeDeclaredDetism, IsAddressTaken, HasParallelConj,
-        VarNameRemap, ProcInfo) :-
+proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
+        MaybeArgLives, DetismDecl, MaybeDeclaredDetism, IsAddressTaken,
+        HasParallelConj, VarNameRemap, ProcInfo) :-
     % When this predicate is invoked during the construction of the HLDS,
     % some parts of the procedure aren't known yet. In that case, we can
     % simply initialize them to any old garbage which we will later throw away.
@@ -2891,6 +2899,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     % as the fields themselves.
 
     % argument MainContext
+    % argument ItemNumber
     CanProcess = can_process_now,
     % argument DetismDecl
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
@@ -2925,6 +2934,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
 
     ProcSubInfo = proc_sub_info(
         MainContext,
+        ItemNumber,
         CanProcess,
         DetismDecl,
         MaybeUntupleInfo,
@@ -2992,24 +3002,25 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         ModeErrors,
         ProcSubInfo).
 
-proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
-        DetismDecl, Detism, Goal, RttiVarMaps, IsAddressTaken, HasParallelConj,
-        VarNameRemap, ProcInfo) :-
-    proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
-        InstVarSet, HeadModes, DetismDecl, yes(Detism), Detism, Goal,
-        RttiVarMaps, IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo).
+proc_info_create(Context, ItemNumber, VarSet, VarTypes, HeadVars,
+        InstVarSet, HeadModes, DetismDecl, Detism, Goal, RttiVarMaps,
+        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
+    proc_info_create_with_declared_detism(Context, ItemNumber,
+        VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
+        DetismDecl, yes(Detism), Detism, Goal, RttiVarMaps, IsAddressTaken,
+        HasParallelConj, VarNameRemap, ProcInfo).
 
-:- pred proc_info_create_with_declared_detism(prog_context::in,
+:- pred proc_info_create_with_declared_detism(prog_context::in, int::in,
     prog_varset::in, vartypes::in, list(prog_var)::in,
     inst_varset::in, list(mer_mode)::in,
     detism_decl::in, maybe(determinism)::in, determinism::in, hlds_goal::in,
     rtti_varmaps::in, is_address_taken::in, has_parallel_conj::in,
     map(prog_var, string)::in, proc_info::out) is det.
 
-proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
-        InstVarSet, Modes, DetismDecl, MaybeDeclaredDetism, Detism,
-        Goal, RttiVarMaps, IsAddressTaken, HasParallelConj, VarNameRemap,
-        ProcInfo) :-
+proc_info_create_with_declared_detism(MainContext, ItemNumber,
+        VarSet, VarTypes, HeadVars, InstVarSet, Modes,
+        DetismDecl, MaybeDeclaredDetism, Detism, Goal, RttiVarMaps,
+        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
     % See the comment at the top of  proc_info_init; it applies here as well.
 
     % Please use a variable for every field of the proc_info and proc_sub_info,
@@ -3017,6 +3028,7 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     % as the fields themselves.
 
     % argument MainContext
+    % argument ItemNumber
     CanProcess = can_process_now,
     % argument DetismDecl
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
@@ -3051,6 +3063,7 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
 
     ProcSubInfo = proc_sub_info(
         MainContext,
+        ItemNumber,
         CanProcess,
         DetismDecl,
         MaybeUntupleInfo,
@@ -3151,6 +3164,8 @@ proc_info_get_mode_errors(PI, X) :-
 
 proc_info_get_context(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_context.
+proc_info_get_item_number(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_item_number.
 proc_info_get_can_process(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_can_process.
 proc_info_get_detism_decl(PI, X) :-

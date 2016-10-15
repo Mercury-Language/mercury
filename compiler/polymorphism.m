@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012, 2014 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: polymorphism.m.
 % Main authors: fjh and zs.
@@ -24,7 +24,7 @@
 % definitely parts of this code (marked with XXXs below) that could
 % do with a rewrite to make it more consistent and hence more maintainable.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Transformation of polymorphic code:
 %
@@ -34,7 +34,7 @@
 % predicate variables for each of the builtin polymorphic operations
 % (currently unify/2, compare/3).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Representation of type information:
 %
@@ -52,7 +52,7 @@
 %
 %   (but see note below for how variable arity types differ)
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Optimization of common case (zero arity types):
 %
@@ -65,7 +65,7 @@
 % the cell is a new type_info structure, with the first field being the
 % pointer to the type_ctor_info structure.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Variable arity types:
 %
@@ -79,7 +79,7 @@
 %   word 1      <arity of predicate>
 %   word 2+     <the type_infos for the type params, if any>
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sharing type_ctor_info structures:
 %
@@ -96,7 +96,7 @@
 %
 % We use option 2.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Example of transformation:
 %
@@ -127,8 +127,8 @@
 % Note that type_ctor_infos are actually generated as references to a
 % single shared type_ctor_info.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Transformation of code using existentially quantified types:
 %
@@ -171,8 +171,8 @@
 %
 %   then the remainder of the arguments as above.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.polymorphism.
 :- interface.
@@ -195,14 +195,14 @@
 :- import_module maybe.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Run the polymorphism pass over the whole HLDS.
     %
 :- pred polymorphism_process_module(module_info::in, module_info::out,
     maybe_safe_to_continue::out, list(error_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Run the polymorphism pass over a single pred. This is used to transform
     % clauses introduced by unify_proc.m for complicated unification predicates
@@ -218,7 +218,7 @@
 :- pred polymorphism_process_generated_pred(pred_id::in,
     module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Add the type_info variables for a complicated unification to
     % the appropriate fields in the unification and the goal_info.
@@ -229,7 +229,7 @@
     unification::in, unification::out, hlds_goal_info::in, hlds_goal_info::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a list of types, create a list of variables to hold the type_info
     % for those types, and create a list of goals to initialize those type_info
@@ -245,7 +245,7 @@
 :- pred polymorphism_make_type_info_var(mer_type::in, term.context::in,
     prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type int_or_var
     --->    iov_int(int)
@@ -382,8 +382,8 @@
     prog_var::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -429,7 +429,7 @@
 :- import_module string.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This whole section just traverses the module structure.
 % We do two passes, the first to fix up the clauses_info and proc_infos
@@ -1107,7 +1107,7 @@ get_improved_exists_head_constraints(ConstraintMap,  ExistConstraints,
         ActualExistConstraints = ExistConstraints
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred polymorphism_process_goal(hlds_goal::in, hlds_goal::out,
     poly_info::in, poly_info::out) is det.
@@ -1317,7 +1317,7 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred polymorphism_process_from_ground_term_initial(prog_var::in,
     hlds_goal_info::in, hlds_goal::in, hlds_goal_expr::out,
@@ -1331,7 +1331,8 @@ polymorphism_process_from_ground_term_initial(TermVar, GoalInfo0, SubGoal0,
     else
         unexpected($pred, "from_ground_term_initial goal is not plain conj")
     ),
-    polymorphism_process_fgti_goals(SubGoals0, [], RevMarkedSubGoals,
+    polymorphism_process_fgti_goals(SubGoals0,
+        [], ConstructOrderMarkedSubGoals,
         fgt_invariants_kept, InvariantsStatus, !Info),
     (
         InvariantsStatus = fgt_invariants_kept,
@@ -1340,7 +1341,7 @@ polymorphism_process_from_ground_term_initial(TermVar, GoalInfo0, SubGoal0,
     ;
         InvariantsStatus = fgt_invariants_broken,
         introduce_partial_fgt_scopes(GoalInfo0, SubGoalInfo0,
-            RevMarkedSubGoals, deconstruct_top_down, SubGoal),
+            ConstructOrderMarkedSubGoals, deconstruct_top_down, SubGoal),
         % Delete the scope wrapper around SubGoal0.
         SubGoal = hlds_goal(GoalExpr, _)
     ).
@@ -1350,8 +1351,9 @@ polymorphism_process_from_ground_term_initial(TermVar, GoalInfo0, SubGoal0,
     fgt_invariants_status::in, fgt_invariants_status::out,
     poly_info::in, poly_info::out) is det.
 
-polymorphism_process_fgti_goals([], !RevMarkedGoals, !InvariantsStatus, !Info).
-polymorphism_process_fgti_goals([Goal0 | Goals0], !RevMarkedGoals,
+polymorphism_process_fgti_goals([], !ConstructOrderMarkedGoals,
+        !InvariantsStatus, !Info).
+polymorphism_process_fgti_goals([Goal0 | Goals0], !ConstructOrderMarkedGoals,
         !InvariantsStatus, !Info) :-
     % This is used only if polymorphism_fgt_sanity_tests is enabled.
     OldInfo = !.Info,
@@ -1397,11 +1399,11 @@ polymorphism_process_fgti_goals([Goal0 | Goals0], !RevMarkedGoals,
         MarkedGoal = fgt_broken_goal(Goal, XVar, YVars),
         !:InvariantsStatus = fgt_invariants_broken
     ),
-    !:RevMarkedGoals = [MarkedGoal | !.RevMarkedGoals],
-    polymorphism_process_fgti_goals(Goals0, !RevMarkedGoals,
+    !:ConstructOrderMarkedGoals = [MarkedGoal | !.ConstructOrderMarkedGoals],
+    polymorphism_process_fgti_goals(Goals0, !ConstructOrderMarkedGoals,
         !InvariantsStatus, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred polymorphism_process_unify(prog_var::in, unify_rhs::in,
     unify_mode::in, unification::in, unify_context::in, hlds_goal_info::in,
@@ -1807,7 +1809,7 @@ create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
     add_var_type(Var, Type, !VarTypes),
     create_fresh_vars(Types, Vars, !VarSet, !VarTypes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Compute the extra arguments that we need to add to a unification with
     % an existentially quantified data constructor.
@@ -1889,7 +1891,7 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
     ExtraGoals = ExtraTypeInfoGoals ++ ExtraTypeClassGoals,
     ExtraVars = ExtraTypeInfoVars ++ ExtraTypeClassVars.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred polymorphism_process_foreign_proc(pred_info::in,
     hlds_goal_expr::in(bound(call_foreign_proc(ground,ground,ground,ground,
@@ -2078,7 +2080,7 @@ polymorphism_process_cases([Case0 | Cases0], [Case | Cases], InitialSnapshot,
     Case = case(MainConsId, OtherConsIds, Goal),
     polymorphism_process_cases(Cases0, Cases, InitialSnapshot, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX document me
     %
@@ -2247,7 +2249,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Add the type_info variables for a new call goal. This predicate assumes
     % that process_module has already been run so the called pred has already
@@ -2334,7 +2336,7 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
     CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
     conj_list_to_goal(ExtraGoals ++ [CallGoal], GoalInfo, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % If the pred we are processing is a polymorphic predicate, or contains
     % polymorphically-typed goals, we may need to fix up the quantification
@@ -2412,7 +2414,7 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given the list of constraints for a called predicate, create a list of
     % variables to hold the typeclass_info for those constraints, and create
@@ -3156,7 +3158,7 @@ make_typeclass_infos_for_superclasses([Constraint | Constraints], ExistQVars,
         TypeClassInfoVarsMCAs, TailGoals, !Info),
     Goals = HeadGoals ++ TailGoals.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Produce the typeclass_infos for the existential class constraints
     % for a call or deconstruction unification.
@@ -3884,7 +3886,7 @@ get_poly_const(IntConst, IntVar, Goals, !Info) :-
         Goals = [Goal]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Usually when we call make_typeclass_info_head_var, we want to record
     % the type_info_locn for each constrained type var so that later goals

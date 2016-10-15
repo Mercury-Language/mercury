@@ -50,9 +50,9 @@
 :- type counter
     --->    counter(int).
 
-init(N) = counter(N).
-
 init(N, counter.init(N)).
+
+init(N) = counter(N).
 
 allocate(N, counter(N), counter(N + 1)).
 

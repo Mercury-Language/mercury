@@ -23,62 +23,77 @@
 
 :- type stack(T).
 
-    % `init(Stack)' is true iff `Stack' is an empty stack.
+    % init = Stack:
+    % init(Stack):
     %
-:- pred init(stack(T)::out) is det.
+    % True iff Stack is an empty stack.
+    %
 :- func init = stack(T).
+:- pred init(stack(T)::out) is det.
 
-    % `is_empty(Stack)' is true iff `Stack' is an empty stack.
+    % is_empty(Stack):
+    %
+    % True iff Stack is an empty stack.
     %
 :- pred is_empty(stack(T)::in) is semidet.
 
-    % `is_full(Stack)' is intended to be true iff `Stack'
-    % is a stack whose capacity is exhausted.  This implementation
-    % allows arbitrary-sized stacks, so is_full always fails.
+    % is_full(Stack):
+    %
+    % This is intended to be true iff Stack is a stack whose capacity
+    % is exhausted. This implementation allows arbitrary-sized stacks,
+    % so is_full always fails.
     %
 :- pred is_full(stack(T)::in) is semidet.
 
-    % `push(Elem, Stack0, Stack)' is true iff `Stack' is
-    % the stack which results from pushing `Elem' onto the top
-    % of `Stack0'.
+    % push(Stack0, Elem) = Stack:
+    % push(Elem, Stack0, Stack):
     %
-:- pred push(T::in, stack(T)::in, stack(T)::out) is det.
+    % True iff Stack is the stack which results from pushing Elem
+    % onto the top of Stack0.
+    %
 :- func push(stack(T), T) = stack(T).
+:- pred push(T::in, stack(T)::in, stack(T)::out) is det.
 
-    % `push_list(Elems, Stack0, Stack)' is true iff `Stack'
-    % is the stack which results from pushing the elements of the
-    % list `Elems' onto the top of `Stack0'.
+    % push_list(Stack0, Elems) = Stack:
+    % push_list(Elems, Stack0, Stack):
     %
-:- pred push_list(list(T)::in, stack(T)::in, stack(T)::out) is det.
+    % True iff Stack is the stack which results from pushing the elements of
+    % the list Elems onto the top of Stack0.
+    %
 :- func push_list(stack(T), list(T)) = stack(T).
+:- pred push_list(list(T)::in, stack(T)::in, stack(T)::out) is det.
 
-    % `top(Stack, Elem)' is true iff `Stack' is a non-empty
-    % stack whose top element is `Elem'.
+    % top(Stack, Elem):
+    %
+    % True iff Stack is a non-empty stack whose top element is Elem.
     %
 :- pred top(stack(T)::in, T::out) is semidet.
 
-    % `det_top' is like `top' except that it will
-    % call error/1 rather than failing if given an empty stack.
+    % det_top is like top except that it will call error/1 rather than
+    % failing if given an empty stack.
     %
-:- pred det_top(stack(T)::in, T::out) is det.
 :- func det_top(stack(T)) = T.
+:- pred det_top(stack(T)::in, T::out) is det.
 
-    % `pop(Elem, Stack0, Stack)' is true iff `Stack0' is
-    % a non-empty stack whose top element is `Elem', and `Stack'
-    % the stack which results from popping `Elem' off `Stack0'.
+    % pop(Elem, Stack0, Stack):
+    %
+    % True iff Stack0 is a non-empty stack whose top element is Elem,
+    % and Stack the stack which results from popping Elem off Stack0.
     %
 :- pred pop(T::out, stack(T)::in, stack(T)::out) is semidet.
 
-    % `det_pop' is like `pop' except that it will
-    % call error/1 rather than failing if given an empty stack.
+    % det_pop is like pop except that it will call error/1 rather than
+    % failing if given an empty stack.
     %
 :- pred det_pop(T::out, stack(T)::in, stack(T)::out) is det.
 
-    % `depth(Stack, Depth)' is true iff `Stack' is a stack
-    % containing `Depth' elements.
+    % depth(Stack) = Depth:
+    % depth(Stack, Depth):
     %
-:- pred depth(stack(T)::in, int::out) is det.
+    % True iff Stack is a stack containing Depth elements.
+    %
 :- func depth(stack(T)) = int.
+:- pred depth(stack(T)::in, int::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -127,7 +142,7 @@ det_top(Stack, Elem) :-
         Stack = stack([Elem | _])
     ;
         Stack = stack([]),
-        error("stack.det_top: top of empty stack")
+        unexpected($pred, "top of empty stack")
     ).
 
 pop(Elem, !Stack) :-
@@ -140,7 +155,7 @@ det_pop( Elem, !Stack) :-
         !:Stack = stack(Elems)
     ;
         !.Stack = stack([]),
-        error("stack.det_pop: pop from empty stack")
+        unexpected($pred, "pop from empty stack")
     ).
 
 depth(Stack) = Depth :-

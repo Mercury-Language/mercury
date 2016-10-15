@@ -237,15 +237,15 @@ delete_all(Elem ,queue(On0, Off0), queue(On, Off)) :-
         Off = Off1
     ).
 
-put_on_front(Elem, queue(On, Off), queue(On, [Elem | Off])).
-
 put_on_front(!.Queue, Elem) = !:Queue :-
     queue.put_on_front(Elem, !Queue).
 
-put_list_on_front(Elems, queue(On, Off), queue(On, Elems ++ Off)).
+put_on_front(Elem, queue(On, Off), queue(On, [Elem | Off])).
 
 put_list_on_front(!.Queue, Elems) = !:Queue :-
     queue.put_list_on_front(Elems, !Queue).
+
+put_list_on_front(Elems, queue(On, Off), queue(On, Elems ++ Off)).
 
 get_from_back(Elem, queue(On0, Off0), queue(On, Off)) :-
     (

@@ -644,6 +644,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         goal_update_non_loop_control_paths(Info, RecParConjIds, _, !Body),
 
         % Now create the new proc_info structure.
+        ItemNumber = -1,
         HeadVars = [LCVar | HeadVars0],
         ArgTypes = [loop_control_var_type | ArgTypes0],
         Ground = ground(shared, none_or_default_func),
@@ -653,9 +654,10 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         proc_info_get_inst_varset(OldProcInfo, InstVarSet),
         proc_info_get_rtti_varmaps(OldProcInfo, RttiVarMaps),
         proc_info_get_inferred_determinism(OldProcInfo, Detism),
-        proc_info_create(Context, !.VarSet, !.VarTypes, HeadVars, InstVarSet,
-            ArgModes, detism_decl_none, Detism, !.Body, RttiVarMaps,
-            address_is_not_taken, has_parallel_conj, map.init, ProcInfo),
+        proc_info_create(Context, ItemNumber, !.VarSet, !.VarTypes, HeadVars,
+            InstVarSet, ArgModes, detism_decl_none, Detism, !.Body,
+            RttiVarMaps, address_is_not_taken, has_parallel_conj, map.init,
+            ProcInfo),
 
         % Update the other structures.
         pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !PredInfo),

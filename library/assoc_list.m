@@ -125,9 +125,9 @@
     % L is the result of merging the elements of L1 and L2, in ascending order.
     % L1 and L2 must be sorted on the keys.
     %
+:- func merge(assoc_list(K, V), assoc_list(K, V)) = assoc_list(K, V).
 :- pred merge(assoc_list(K, V)::in, assoc_list(K, V)::in,
     assoc_list(K, V)::out) is det.
-:- func merge(assoc_list(K, V), assoc_list(K, V)) = assoc_list(K, V).
 
     % foldl_keys(Pred, List, Start End) calls Pred
     % with each key in List (working left-to-right) and an accumulator
@@ -301,35 +301,35 @@ remove([K - V | KVs], Key, Value, Filtered) :-
 svremove(Key, Value, !AL) :-
     assoc_list.remove(!.AL, Key, Value, !:AL).
 
-map_keys_only(_P, [], []).
-map_keys_only(P, [K0 - V | KVs0], [K - V | KVs]) :-
-    P(K0, K),
-    assoc_list.map_keys_only(P, KVs0, KVs).
-
 map_keys_only(_F, []) = [].
 map_keys_only(F, [K0 - V | KVs0]) = [K - V | KVs] :-
     K = F(K0),
     KVs = assoc_list.map_keys_only(F, KVs0).
 
-map_values_only(_P, [], []).
-map_values_only(P, [K - V0 | KVs0], [K - V | KVs]) :-
-    P(V0, V),
-    assoc_list.map_values_only(P, KVs0, KVs).
+map_keys_only(_P, [], []).
+map_keys_only(P, [K0 - V | KVs0], [K - V | KVs]) :-
+    P(K0, K),
+    assoc_list.map_keys_only(P, KVs0, KVs).
 
 map_values_only(_F, []) = [].
 map_values_only(F, [K - V0 | KVs0]) = [K - V | KVs] :-
     V = F(V0),
     KVs = assoc_list.map_values_only(F, KVs0).
 
-map_values(_P, [], []).
-map_values(P, [K - V0 | KVs0], [K - V | KVs]) :-
-    P(K, V0, V),
-    assoc_list.map_values(P, KVs0, KVs).
+map_values_only(_P, [], []).
+map_values_only(P, [K - V0 | KVs0], [K - V | KVs]) :-
+    P(V0, V),
+    assoc_list.map_values_only(P, KVs0, KVs).
 
 map_values(_F, []) = [].
 map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-
     V = F(K, V0),
     KVs = assoc_list.map_values(F, KVs0).
+
+map_values(_P, [], []).
+map_values(P, [K - V0 | KVs0], [K - V | KVs]) :-
+    P(K, V0, V),
+    assoc_list.map_values(P, KVs0, KVs).
 
 filter(_, [],  []).
 filter(P, [HK - HV | T], True) :-

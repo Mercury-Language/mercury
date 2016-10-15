@@ -634,9 +634,11 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
             % then the one we are creating here may have them as well.
             % If it does not, then the value in the proc_info of the lambda
             % predicate will be an overconservative estimate.
-            proc_info_create(LambdaContext, LambdaVarSet, LambdaVarTypes,
-                AllArgVars, InstVarSet, AllArgModes, detism_decl_explicit,
-                Detism, LambdaGoal, LambdaRttiVarMaps, address_is_taken,
+            ItemNumber = -1,
+            proc_info_create(LambdaContext, ItemNumber,
+                LambdaVarSet, LambdaVarTypes, AllArgVars,
+                InstVarSet, AllArgModes, detism_decl_explicit, Detism,
+                LambdaGoal, LambdaRttiVarMaps, address_is_taken,
                 HasParallelConj, VarNameRemap, !:ProcInfo),
 
             % The debugger ignores unnamed variables.

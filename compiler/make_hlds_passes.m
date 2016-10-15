@@ -613,7 +613,7 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
         WithType, WithInst, MaybeDetism, Origin, TypeVarSet, InstVarSet,
-        ExistQVars, Purity, ClassContext, Context, _SeqNum),
+        ExistQVars, Purity, ClassContext, Context, SeqNum),
     % Any WithType and WithInst annotations should have been expanded
     % and the type and/or inst put into TypesAndModes by equiv_type.m.
     expect(unify(WithType, no), $module, $pred, "WithType != no"),
@@ -649,10 +649,11 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         % XXX ITEM_LIST Fix this lie.
         PredOrigin = origin_user(PredSymName),
-        module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
-            PredOrFunc, PredSymName, TypesAndModes, MaybeDetism, Purity,
-            ClassContext, Markers, Context, PredStatus, yes(ItemMercuryStatus),
-            NeedQual, _, !ModuleInfo, !Specs)
+        module_add_pred_or_func(PredOrigin, Context, SeqNum,
+            yes(ItemMercuryStatus), PredStatus, NeedQual,
+            PredOrFunc, PredSymName, TypeVarSet, InstVarSet, ExistQVars,
+            TypesAndModes, ClassContext, MaybeDetism, Purity, Markers, _,
+            !ModuleInfo, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -664,7 +665,7 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
 add_mode_decl(StatusItem, !ModuleInfo, !Specs) :-
     StatusItem = ims_item(ItemMercuryStatus, ItemModeDecl),
     ItemModeDecl = item_mode_decl_info(PredSymName, MaybePredOrFunc, Modes,
-        _WithInst, MaybeDet, VarSet, Context, _SeqNum),
+        _WithInst, MaybeDet, VarSet, Context, SeqNum),
 
     PredName = unqualify_name(PredSymName),
     ( if PredName = "" then
@@ -677,8 +678,9 @@ add_mode_decl(StatusItem, !ModuleInfo, !Specs) :-
         (
             MaybePredOrFunc = yes(PredOrFunc),
             item_mercury_status_to_pred_status(ItemMercuryStatus, ModeStatus),
-            module_add_mode(VarSet, PredSymName, Modes, MaybeDet,
-                ModeStatus, yes(ItemMercuryStatus), Context, PredOrFunc,
+            module_add_mode(Context, SeqNum,
+                yes(ItemMercuryStatus), ModeStatus,
+                PredOrFunc, PredSymName, VarSet, Modes, MaybeDet,
                 is_not_a_class_method, _, !ModuleInfo, !Specs)
         ;
             MaybePredOrFunc = no,

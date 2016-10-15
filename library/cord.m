@@ -50,6 +50,19 @@
     %
 :- func empty = cord(T).
 
+    % Succeed iff the given cord is empty.
+    %
+:- pred is_empty(cord(T)::in) is semidet.
+
+    % list(singleton(X)) = [X]
+    %
+:- func singleton(T) = cord(T).
+
+    % list(from_list(Xs)) = Xs
+    % An O(1) operation.
+    %
+:- func from_list(list(T)) = cord(T).
+
     % The list of data in a cord:
     %
     %   list(empty        ) = []
@@ -70,19 +83,6 @@
     % A synonym for rev_list/1.
     %
 :- func to_rev_list(cord(T)) = list(T).
-
-    % Succeed iff the given cord is empty.
-    %
-:- pred is_empty(cord(T)::in) is semidet.
-
-    % list(singleton(X)) = [X]
-    %
-:- func singleton(T) = cord(T).
-
-    % list(from_list(Xs)) = Xs
-    % An O(1) operation.
-    %
-:- func from_list(list(T)) = cord(T).
 
     % Cord = condense(CordOfCords):
     %
@@ -258,8 +258,6 @@ init = empty_cord.
 
 empty = empty_cord.
 
-%---------------------------------------------------------------------------%
-
 is_empty(empty_cord).
 
 %---------------------------------------------------------------------------%
@@ -279,18 +277,8 @@ from_list(Xs) = C :-
 
 %---------------------------------------------------------------------------%
 
-condense(empty_cord) = empty_cord.
-condense(nonempty_cord(C0)) = condense_2(C0).
-
-:- func condense_2(cord_node(cord(T))) = cord(T).
-
-condense_2(unit_node(C)) = C.
-condense_2(list_node(C, L)) = C ++ cord_list_to_cord(L).
-condense_2(branch_node(Left0, Right0)) = Left ++ Right :-
-    Left = condense_2(Left0),
-    Right = condense_2(Right0).
-
-%---------------------------------------------------------------------------%
+to_list(C) =
+    list(C).
 
 list(empty_cord) = [].
 list(nonempty_cord(N)) = list_2([N], []).
@@ -314,8 +302,8 @@ list_2([N | Ns], L0) = L :-
         L = list_2([B, A | Ns], L0)
     ).
 
-to_list(C) =
-    list(C).
+to_rev_list(C) =
+    rev_list(C).
 
 rev_list(empty_cord) = [].
 rev_list(nonempty_cord(N)) = rev_list_2([N], []).
@@ -349,8 +337,18 @@ list_reverse_2([], L) = L.
 list_reverse_2([X | Xs], L0) =
     list_reverse_2(Xs, [X | L0]).
 
-to_rev_list(C) =
-    rev_list(C).
+%---------------------------------------------------------------------------%
+
+condense(empty_cord) = empty_cord.
+condense(nonempty_cord(C0)) = condense_2(C0).
+
+:- func condense_2(cord_node(cord(T))) = cord(T).
+
+condense_2(unit_node(C)) = C.
+condense_2(list_node(C, L)) = C ++ cord_list_to_cord(L).
+condense_2(branch_node(Left0, Right0)) = Left ++ Right :-
+    Left = condense_2(Left0),
+    Right = condense_2(Right0).
 
 %---------------------------------------------------------------------------%
 

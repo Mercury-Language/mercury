@@ -1533,8 +1533,9 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
 
     lookup_var_types(VarTypes, Accs, AccTypes),
 
-    proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
-        HeadModes, detism_decl_none, Detism, Goal, RttiVarMaps,
+    ItemNumber = -1,
+    proc_info_create(Context, ItemNumber, VarSet, VarTypes, HeadVars,
+        InstVarSet, HeadModes, detism_decl_none, Detism, Goal, RttiVarMaps,
         IsAddressTaken, HasParallelConj, VarNameRemap, AccProcInfo).
 
 %-----------------------------------------------------------------------------%
