@@ -47,16 +47,12 @@
 
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.status.
-:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 
-:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
-:- import_module require.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
