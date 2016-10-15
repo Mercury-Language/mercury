@@ -1033,6 +1033,9 @@ calls_are_fully_qualified(Markers) =
                 % The original arity of the pred, i.e. its arity *not* counting
                 % any type_info and/or typeclass_info arguments inserted
                 % automatically by the compiler.
+                %
+                % For functions, the original arity *includes* the return
+                % value, so that e.g. the original arity of int.+ would be 3.
 /*  3 */        pi_orig_arity           :: arity,
 
                 % Is this "predicate" really a predicate or a function?
