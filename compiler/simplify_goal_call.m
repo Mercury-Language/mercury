@@ -99,7 +99,7 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
 
-    maybe_generate_warning_for_no_stream_predicate(PredId, PredInfo,
+    maybe_generate_warning_for_implicit_stream_predicate(PredId, PredInfo,
         GoalInfo0, !Info),
     maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         GoalInfo0, !Info),
@@ -308,14 +308,14 @@ make_arg_always_boxed(!Arg) :-
     % Generate warnings for calls to predicates that could have explicitly
     % specified a stream, but didn't.
     %
-:- pred maybe_generate_warning_for_no_stream_predicate(pred_id::in,
+:- pred maybe_generate_warning_for_implicit_stream_predicate(pred_id::in,
     pred_info::in, hlds_goal_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-maybe_generate_warning_for_no_stream_predicate(PredId, PredInfo, GoalInfo,
-        !Info) :-
+maybe_generate_warning_for_implicit_stream_predicate(PredId, PredInfo,
+        GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
-    ( if simplify_do_warn_no_stream_calls(!.Info) then
+    ( if simplify_do_warn_implicit_stream_calls(!.Info) then
         pred_info_get_module_name(PredInfo, ModuleName),
         pred_info_get_name(PredInfo, PredName),
         pred_info_is_pred_or_func(PredInfo) = PredOrFunc,
@@ -348,8 +348,9 @@ maybe_generate_warning_for_no_stream_predicate(PredId, PredInfo, GoalInfo,
                 [words("could have an additional argument"),
                 words("explicitly specifying a stream."), nl],
             Msg = simple_msg(GoalContext,
-                [option_is_set(warn_no_stream_calls, yes, [always(Pieces)])]),
-            Severity = severity_conditional(warn_no_stream_calls, yes,
+                [option_is_set(warn_implicit_stream_calls, yes,
+                    [always(Pieces)])]),
+            Severity = severity_conditional(warn_implicit_stream_calls, yes,
                 severity_informational, no),
             Spec = error_spec(Severity,
                 phase_simplify(report_in_any_mode), [Msg]),
@@ -381,8 +382,9 @@ maybe_generate_warning_for_no_stream_predicate(PredId, PredInfo, GoalInfo,
                 words("the"), words(Dir), words("stream it specifies"),
                 words("to later I/O operations."), nl],
             Msg = simple_msg(GoalContext,
-                [option_is_set(warn_no_stream_calls, yes, [always(Pieces)])]),
-            Severity = severity_conditional(warn_no_stream_calls, yes,
+                [option_is_set(warn_implicit_stream_calls, yes,
+                    [always(Pieces)])]),
+            Severity = severity_conditional(warn_implicit_stream_calls, yes,
                 severity_informational, no),
             Spec = error_spec(Severity,
                 phase_simplify(report_in_any_mode), [Msg]),

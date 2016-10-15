@@ -22,6 +22,8 @@ include $(MERCURY_DIR)/Mmake.common
 MANPAGE_PROGS = c2init mmc mgnuc ml mmake mdb mprof \
 		mprof_merge_runs mtags mercury_config
 
+mmc.1: ../compiler/options.m
+
 # This variable specifies the (top-level) TexInfo files.
 # The mapping of these names to `.info' file names is not regular,
 # so we also need to specify the names of the `.info' files.

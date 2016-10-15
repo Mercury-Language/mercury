@@ -176,7 +176,7 @@
 
 :- pred simplify_do_warn_simple_code(simplify_info::in) is semidet.
 :- pred simplify_do_warn_duplicate_calls(simplify_info::in) is semidet.
-:- pred simplify_do_warn_no_stream_calls(simplify_info::in) is semidet.
+:- pred simplify_do_warn_implicit_stream_calls(simplify_info::in) is semidet.
 :- pred simplify_do_format_calls(simplify_info::in) is semidet.
 :- pred simplify_do_warn_obsolete(simplify_info::in) is semidet.
 :- pred simplify_do_mark_code_model_changes(simplify_info::in) is semidet.
@@ -435,9 +435,9 @@ simplify_do_warn_simple_code(Info) :-
 simplify_do_warn_duplicate_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_warn_duplicate_calls = yes.
-simplify_do_warn_no_stream_calls(Info) :-
+simplify_do_warn_implicit_stream_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_warn_no_stream_calls = yes.
+    SimplifyTasks ^ do_warn_implicit_stream_calls = yes.
 simplify_do_format_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_format_calls = yes.

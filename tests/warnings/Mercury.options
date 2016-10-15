@@ -27,7 +27,7 @@ MCFLAGS-unused_args_analysis2   = \
 MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
 MCFLAGS-inference_test		= --infer-all
-MCFLAGS-save			= --warn-no-stream-calls
+MCFLAGS-save			= --warn-implicit-stream-calls
 
 # the infinite loop warning in simple_code.m doesn't show up unless
 # the common-struct optimization is enabled (because proving that

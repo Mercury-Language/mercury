@@ -6393,6 +6393,10 @@ e.g.@: @samp{--no-verbose}.
 @findex --inhibit-warnings
 Disable all warning messages.
 
+@item --inhibit-style-warnings
+@findex --inhibit-style-warnings
+Disable all warning messages about programming style.
+
 @sp 1
 @item --halt-at-warn
 @findex --halt-at-warn
@@ -6574,9 +6578,9 @@ Warn about multiple calls to a predicate with the same
 input arguments.
 
 @sp 1
-@item --warn-no-stream-calls
-@findex --no-warn-no-stream-calls
-@findex --warn-no-stream-calls
+@item --warn-implicit-stream-calls
+@findex --no-warn-implicit-stream-calls
+@findex --warn-implicit-stream-calls
 Warn about calls to I/O predicates that could take explicit
 stream arguments, but do not do so.
 

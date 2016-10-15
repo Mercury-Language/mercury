@@ -430,16 +430,39 @@ Changes to the Mercury compiler:
   the compiler to generate a warning for an unused procedure only if
   none of the procedures of a predicate or function is used.
 
-* We have added a new option --warn-no-stream-calls, which asks the compiler
-  to generate a warning for every call to a predicate p/n if there is also
-  a predicate p/(n+1) which differs from p/n only in that it has additional
-  argument at the front of its argument list that specifies an I/O stream.
-  This is intended to generate warnings for calls to predicates such as
-  io.write_string/3, which writes to the current output stream, to encourage
-  programmers to call io.write_string/4 instead. If the option is given,
-  the compiler will also generate warnings for calls to predicates such as
-  io.see, io.seen, io.tell and io.told, which set the current input or output
-  streams respectively.
+* We have added a new option --warn-implicit-stream-calls, which asks
+  the compiler to generate a warning for every call to a predicate p/n
+  if there is also a predicate p/(n+1) which differs from p/n only in that
+  it has additional argument at the front of its argument list that specifies
+  an I/O stream. This is intended to generate warnings for calls to predicates
+  such as io.write_string/3, which writes to the current output stream,
+  to encourage programmers to call io.write_string/4 instead. If the option
+  is given, the compiler will also generate warnings for calls to predicates
+  such as io.see, io.seen, io.tell and io.told, which set the current input
+  or output streams respectively.
+
+* We have added a new option --warn-non-contiguous-decls, which asks
+  the compiler to generate a warning if the mode declaration(s) of a
+  predicate or function don't immediately follow its ":- pred" or ":- func"
+  declaration. This is option is turned on by default.
+
+* We have added the new options --warn-inconsistent-pred-order-clauses
+  and --warn-inconsistent-pred-order-foreign-procs. Both of these ask the
+  compiler to generate a warning if, among either (a) the set of exported
+  predicates and functions of the module, or (b) the set of nonexported
+  predicates and functions of the module, the order of their definitions
+  does not match the order of their declarations. The first option
+  applies only to predicates and functions defined by Mercury clauses;
+  the second applies to predicates and functions defined by either
+  Mercury clauses or foreign procedures.
+  
+  The option --warn-inconsistent-pred-order is a shorter synonym for
+  --warn-inconsistent-pred-order-clauses.
+
+* We have added a new option --inhibit-style-warnings, which tells
+  the compiler not to generate any warnings that are purely about
+  programming style, and do not point out code that is reasonably likely
+  to be wrong.
 
 * We have fixed a long-standing bug causing crashes in deep profiling
   grades, related to unify/compare for tuples.  (Bug #3)

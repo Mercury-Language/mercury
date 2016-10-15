@@ -1,22 +1,63 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: options.m.
 % Main author: fjh.
 %
-% This defines the stuff necessary so that getopt_io.m can parse the
-% command-line options.
+% This modules defines the set of options accepted by the Mercury compiler.
+% The definition takes the form of the types and predicates that getopt_io.m
+% needs to parse command-line options.
 %
-% IMPORTANT NOTE: any changes to the options should be reflected in both the
-% help message produced below, and in the Mercury User's Guide
-% (../doc/user_guide.texi).
+% IMPORTANT NOTE: any changes to the options should be reflected in
+% at least four places, and maybe more, in this module, with the order
+% of options being the same in each of these places:
 %
-%-----------------------------------------------------------------------------%
+% - Every option must of course must appear in the definition of
+%   the type "option" itself.
+%
+% - Every option should have its default value defined in a clause of
+%   the option_defaults_2 predicate. Which clause depends on what category
+%   the option falls into (warning, optimization, etc).
+%
+%   For optimization options that should be set automatically at a specific
+%   optimization level, there should also be an entry in opt_level.
+%
+%   For optimization options that should be set automatically if --opt-space
+%   is given, there should also be an entry in opt_space.
+%
+%   For warning options, there should be an entry in the section of the
+%   special_handler predicate that handles inhibit_warnings, and if the
+%   option is a style warning option, in the second that handles
+%   inhibit_style_warnings.
+%
+% - Every option should have a clause in the long_options predicate
+%   that converts the user-visible name of the option into its internal
+%   representation as a value in the options type. For options whose names
+%   include words that whose spelling differs in American vs British english,
+%   there should normally be one entry for each spelling. In the rare case
+%   that the option is used very frequently, there may also be an entry
+%   for the option in the short_option predicate.
+%   
+% - Every option should have a description in one of the options_help_x
+%   predicates, with the right predicate again depending on what category
+%   of options the option belongs to.
+%
+% Each option should also be documented in the Mercury User's Guide,
+% which is in ../doc/user_guide.texi.
+%
+% Normally, the documentation in the users' guide is a copy of the help
+% message, but it may also have additional detail.
+%
+% For options that should not be visible to users, there should still be
+% a help message and an entry in the users' guide, for use by developers,
+% but these should be commented out.
+%
+%---------------------------------------------------------------------------%
 
 :- module libs.options.
 :- interface.
@@ -26,7 +67,7 @@
 :- import_module io.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred short_option(char::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
@@ -98,6 +139,7 @@
 
     % Warning options
     --->    inhibit_warnings
+    ;       inhibit_style_warnings
     ;       inhibit_accumulator_warnings
     ;       halt_at_warn
     ;       halt_at_syntax_errors
@@ -122,7 +164,7 @@
     ;       warn_unification_cannot_succeed
     ;       warn_simple_code
     ;       warn_duplicate_calls
-    ;       warn_no_stream_calls
+    ;       warn_implicit_stream_calls
     ;       warn_missing_module_name
     ;       warn_wrong_module_name
     ;       warn_smart_recompilation
@@ -1029,8 +1071,8 @@
     ;       par_loop_control
     ;       par_loop_control_preserve_tail_recursion.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -1047,7 +1089,7 @@
 :- import_module require.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type option_category
     --->    warning_option
@@ -1076,6 +1118,7 @@ option_defaults(Option, Default) :-
 option_defaults_2(warning_option, [
     % Warning Options
     inhibit_warnings                    -   bool_special,
+    inhibit_style_warnings              -   bool_special,
     inhibit_accumulator_warnings        -   bool(no),
     halt_at_warn                        -   bool(no),
     halt_at_syntax_errors               -   bool(no),
@@ -1084,7 +1127,9 @@ option_defaults_2(warning_option, [
     % IMPORTANT NOTE:
     % if you add any new warning options, or if you change the default
     % for an existing warning option to `yes', then you will need to modify
-    % the handling of inhibit_warnings.
+    % the handling of inhibit_warnings in special_handler, and if the change
+    % affects a style warning, you will need to modify the handling of
+    % inhibit_style_warnings as well.
 
     warn_singleton_vars                 -   bool(yes),
     warn_overlapping_scopes             -   bool(yes),
@@ -1106,7 +1151,7 @@ option_defaults_2(warning_option, [
     warn_unification_cannot_succeed     -   bool(yes),
     warn_simple_code                    -   bool(yes),
     warn_duplicate_calls                -   bool(no),
-    warn_no_stream_calls                -   bool(no),
+    warn_implicit_stream_calls          -   bool(no),
     warn_missing_module_name            -   bool(yes),
     warn_wrong_module_name              -   bool(yes),
     warn_smart_recompilation            -   bool(yes),
@@ -1956,6 +2001,7 @@ short_option('?', help).
 
 % warning options
 long_option("inhibit-warnings",         inhibit_warnings).
+long_option("inhibit-style-warnings",   inhibit_style_warnings).
 long_option("inhibit-accumulator-warnings", inhibit_accumulator_warnings).
 long_option("halt-at-warn",             halt_at_warn).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
@@ -1988,7 +2034,7 @@ long_option("warn-unification-cannot-succeed",
                                         warn_unification_cannot_succeed).
 long_option("warn-simple-code",         warn_simple_code).
 long_option("warn-duplicate-calls",     warn_duplicate_calls).
-long_option("warn-no-stream-calls",     warn_no_stream_calls).
+long_option("warn-implicit-stream-calls",   warn_implicit_stream_calls).
 long_option("warn-missing-module-name", warn_missing_module_name).
 long_option("warn-wrong-module-name",   warn_wrong_module_name).
 long_option("warn-smart-recompilation", warn_smart_recompilation).
@@ -2926,7 +2972,7 @@ long_option("par-loop-control",     par_loop_control).
 long_option("par-loop-control-preserve-tail-recursion",
                                     par_loop_control_preserve_tail_recursion).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 special_handler(Option, SpecialData, !.OptionTable, Result) :-
     require_switch_arms_semidet [Option]
@@ -3065,16 +3111,27 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                     warn_det_decls_too_lax          -   bool(Enable),
                     warn_inferred_erroneous         -   bool(Enable),
                     warn_nothing_exported           -   bool(Enable),
+                    warn_unused_args                -   bool(Enable),
                     warn_interface_imports          -   bool(Enable),
+                    warn_interface_imports_in_parents - bool(Enable),
                     warn_missing_opt_files          -   bool(Enable),
                     warn_missing_trans_opt_files    -   bool(Enable),
                     warn_missing_trans_opt_deps     -   bool(Enable),
+                    warn_inconsistent_pred_order_clauses - bool(Enable),
+                    warn_inconsistent_pred_order_foreign_procs - bool(Enable),
+                    warn_non_contiguous_decls       -   bool(Enable),
+                    warn_non_contiguous_clauses     -   bool(Enable),
+                    warn_non_contiguous_foreign_procs - bool(Enable),
+                    warn_non_stratification         -   bool(Enable),
                     warn_unification_cannot_succeed -   bool(Enable),
                     warn_simple_code                -   bool(Enable),
+                    warn_duplicate_calls            -   bool(Enable),
+                    warn_implicit_stream_calls            -   bool(Enable),
                     warn_missing_module_name        -   bool(Enable),
                     warn_wrong_module_name          -   bool(Enable),
                     warn_smart_recompilation        -   bool(Enable),
                     warn_undefined_options_variables -  bool(Enable),
+                    warn_non_tail_recursion         -   bool(Enable),
                     warn_target_code                -   bool(Enable),
                     warn_up_to_date                 -   bool(Enable),
                     warn_stubs                      -   bool(Enable),
@@ -3082,7 +3139,37 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                     warn_dead_preds                 -   bool(Enable),
                     warn_table_with_inline          -   bool(Enable),
                     warn_non_term_special_preds     -   bool(Enable),
-                    warn_insts_without_matching_type -  bool(Enable)
+                    warn_known_bad_format_calls     -   bool(Enable),
+                    warn_unknown_format_calls       -   bool(Enable),
+                    warn_insts_without_matching_type -  bool(Enable),
+                    inform_ite_instead_of_switch    -   bool(Enable),
+                    warn_suspicious_foreign_procs   -   bool(Enable),
+                    warn_state_var_shadowing        -   bool(Enable),
+                    inform_inferred_types           -   bool(Enable),
+                    inform_inferred_modes           -   bool(Enable)
+                ], !OptionTable)
+        ;
+            Option = inhibit_style_warnings,
+            SpecialData = bool(Inhibit),
+            bool.not(Inhibit, Enable),
+            override_options([
+                    warn_inconsistent_pred_order_clauses - bool(Enable),
+                    warn_inconsistent_pred_order_foreign_procs - bool(Enable),
+                    warn_non_contiguous_decls       -   bool(Enable),
+                    warn_non_contiguous_clauses     -   bool(Enable),
+                    warn_non_contiguous_foreign_procs - bool(Enable),
+                    warn_simple_code                -   bool(Enable),
+                    warn_duplicate_calls            -   bool(Enable),
+                    warn_implicit_stream_calls      -   bool(Enable),
+                    warn_non_tail_recursion         -   bool(Enable),
+                    warn_dead_procs                 -   bool(Enable),
+                    warn_dead_preds                 -   bool(Enable),
+                    warn_known_bad_format_calls     -   bool(Enable),
+                    warn_unknown_format_calls       -   bool(Enable),
+                    warn_insts_without_matching_type -  bool(Enable),
+                    inform_ite_instead_of_switch    -   bool(Enable),
+                    warn_suspicious_foreign_procs   -   bool(Enable),
+                    warn_state_var_shadowing        -   bool(Enable)
                 ], !OptionTable)
         ;
             Option = infer_all,
@@ -3198,7 +3285,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
         Result = ok(!.OptionTable)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 option_table_add_mercury_library_directory(Dir, !OptionTable) :-
     % The init_file_directories and link_library_directories for Mercury
@@ -3261,7 +3348,7 @@ override_options([Option - Value | Settings], !OptionTable) :-
     map.set(Option, Value, !OptionTable),
     override_options(Settings, !OptionTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred opt_space(list(pair(option, option_data))::out) is det.
 
@@ -3278,7 +3365,7 @@ opt_space([
     loop_invariants             -   bool(no)
 ]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred opt_level(int::in, option_table::in,
     list(pair(option, option_data))::out) is semidet.
@@ -3426,7 +3513,7 @@ opt_level(6, _, [
 %   optimize_constructor_last_call:
 %       Not a speedup in general.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred handle_quoted_flag(option::in, string::in,
     option_table::in, option_table::out) is det.
@@ -3499,7 +3586,7 @@ quote_char_unix('"').
 quote_char_unix('`').
 quote_char_unix('$').
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 inconsequential_options(InconsequentialOptions) :-
     option_defaults_2(warning_option, WarningOptions),
@@ -3513,7 +3600,7 @@ inconsequential_options(InconsequentialOptions) :-
     Keys = WarningKeys ++ VerbosityKeys ++ InternalUseKeys ++ BuildSystemKeys,
     InconsequentialOptions = set.from_list(Keys).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 options_help -->
     io.write_string("\t-?, -h, --help\n"),
@@ -3546,6 +3633,8 @@ options_help_warning -->
     write_tabbed_lines([
         "-w, --inhibit-warnings",
         "\tDisable all warning messages.",
+        "--inhibit-style-warnings",
+        "\tDisable all warning messages about programming style.",
         "--halt-at-warn",
         "\tThis option causes the compiler to treat all ",
         "\twarnings as if they were errors. This means that",
@@ -3636,7 +3725,7 @@ options_help_warning -->
         "--warn-duplicate-calls",
         "\tWarn about multiple calls to a predicate with the",
         "\tsame input arguments.",
-        "--warn-no-stream-calls",
+        "--warn-implicit-stream-calls",
         "\tWarn about calls to I/O predicates that could take explicit",
         "\tstream arguments, but do not do so.",
         "--no-warn-missing-module-name",
@@ -6002,6 +6091,6 @@ write_tabbed_lines([Str | Strs], !IO) :-
     io.write_char('\n', !IO),
     write_tabbed_lines(Strs, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module libs.options.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
