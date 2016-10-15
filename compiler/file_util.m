@@ -530,11 +530,12 @@ make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
 %---------------------------------------------------------------------------%
 
 open_temp_output(Dir, Prefix, Suffix, Result, !IO) :-
-    make_temp_file(Dir, Prefix, Suffix, TempFileResult, !IO),
+    % XXX Both open_temp_output and io.make_temp_file are ambiguous.
+    io.make_temp_file(Dir, Prefix, Suffix, TempFileResult, !IO),
     open_temp_output_2(TempFileResult, Result, !IO).
 
 open_temp_output(Result, !IO) :-
-    make_temp_file(TempFileResult, !IO),
+    io.make_temp_file(TempFileResult, !IO),
     open_temp_output_2(TempFileResult, Result, !IO).
 
 :- pred open_temp_output_2(io.res(string)::in,
