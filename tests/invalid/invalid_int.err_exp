@@ -1,10 +1,10 @@
 invalid_int.m:017: Error: the integer literal
-invalid_int.m:017:   `0b100000000000000000000000000000000'
-invalid_int.m:017:   is too big to be represented on this machine.
+invalid_int.m:017:   `0b100000000000000000000000000000000' is too big to be
+invalid_int.m:017:   represented on this machine.
 invalid_int.m:018: Error: the integer literal
-invalid_int.m:018:   `0b1111111111111111111111111111111111111111111111111111111111111111'.
+invalid_int.m:018:   `0b1111111111111111111111111111111111111111111111111111111111111111'
 invalid_int.m:018:   is too big to be represented on this machine.
-invalid_int.m:019: Error: the integer literal 
+invalid_int.m:019: Error: the integer literal
 invalid_int.m:019:   `0b10000000000000000000000000000000000000000000000000000000000000000'
 invalid_int.m:019:   is too big to be represented on this machine.
 invalid_int.m:022: Error: the integer literal `0o40000000000' is too big to be
@@ -16,7 +16,7 @@ invalid_int.m:024:   big to be represented on this machine.
 invalid_int.m:027: Error: the integer literal `0x100000000' is too big to be
 invalid_int.m:027:   represented on this machine.
 invalid_int.m:028: Error: the integer literal `0x110000000' is too big to be
-invalid_int.m:029:   represented on this machine.
+invalid_int.m:028:   represented on this machine.
 invalid_int.m:029: Error: the integer literal `0xFFFFFFFFFFFFFFFF' is too big
 invalid_int.m:029:   to be represented on this machine.
 invalid_int.m:030: Error: the integer literal `0x10000000000000000' is too big
