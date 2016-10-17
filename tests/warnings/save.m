@@ -35,7 +35,7 @@ main(!IO) :-
         ;
             ReadRes = error(_PartialFileContents, ReadError),
             io.error_message(ReadError, ReadMsg),
-            io.write_string("Read error: " ++ ReadMsg ++ "\n", !IO)
+            io.format("Read error: %s\n", [s(ReadMsg)], !IO)
         )
     ;
         SeeRes = error(SeeError),

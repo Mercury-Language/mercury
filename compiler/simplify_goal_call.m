@@ -20,7 +20,13 @@
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
+
+:- import_module maybe.
 
     % Handle simplifications of plain calls.
     %
@@ -51,6 +57,19 @@
 
 %---------------------------------------------------------------------------%
 
+    % Generate a warning for calls to predicates that could have explicitly
+    % specified a stream, but didn't.
+    %
+    % This is exported for format_call.m, which checks calls to io.format
+    % that this module does not see (because format_call.m transforms them
+    % into something else).
+    %
+:- pred maybe_generate_warning_for_implicit_stream_predicate(module_info::in,
+    pred_id::in, pred_info::in, hlds_goal_info::in,
+    maybe(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.inst_test.
@@ -58,8 +77,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
-:- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
@@ -71,9 +88,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
@@ -85,7 +100,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -99,8 +113,18 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
 
-    maybe_generate_warning_for_implicit_stream_predicate(PredId, PredInfo,
-        GoalInfo0, !Info),
+    ( if simplify_do_warn_implicit_stream_calls(!.Info) then
+        maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
+            PredId, PredInfo, GoalInfo0, MaybeImplicitStreamSpec),
+        (
+            MaybeImplicitStreamSpec = no
+        ;
+            MaybeImplicitStreamSpec = yes(ImplicitStreamSpec),
+            simplify_info_add_message(ImplicitStreamSpec, !Info)
+        )
+    else
+        true
+    ),
     maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         GoalInfo0, !Info),
     maybe_generate_warning_for_infinite_loop_call(PredId, ProcId,
@@ -305,95 +329,87 @@ make_arg_always_boxed(!Arg) :-
 % Predicates that generate warnings, if appropriate.
 %
 
-    % Generate warnings for calls to predicates that could have explicitly
-    % specified a stream, but didn't.
-    %
-:- pred maybe_generate_warning_for_implicit_stream_predicate(pred_id::in,
-    pred_info::in, hlds_goal_info::in,
-    simplify_info::in, simplify_info::out) is det.
+maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
+        PredId, PredInfo, GoalInfo, MaybeSpec) :-
+    pred_info_get_module_name(PredInfo, ModuleName),
+    pred_info_get_name(PredInfo, PredName),
+    pred_info_is_pred_or_func(PredInfo) = PredOrFunc,
+    ( if
+        goal_info_has_feature(GoalInfo, feature_do_not_warn_implicit_stream)
+    then
+        MaybeSpec = no
+    else if
+        % We want to warn about calls to predicates, ...
+        PredOrFunc = pf_predicate,
 
-maybe_generate_warning_for_implicit_stream_predicate(PredId, PredInfo,
-        GoalInfo, !Info) :-
-    simplify_info_get_module_info(!.Info, ModuleInfo),
-    ( if simplify_do_warn_implicit_stream_calls(!.Info) then
-        pred_info_get_module_name(PredInfo, ModuleName),
-        pred_info_get_name(PredInfo, PredName),
-        pred_info_is_pred_or_func(PredInfo) = PredOrFunc,
-        ( if
-            % We want to warn about calls to predicates, ...
-            PredOrFunc = pf_predicate,
+        % ... which do I/O and thus have two I/O state arguments, ...
+        pred_info_get_arg_types(PredInfo, ArgTypes),
+        IOStateTypeSymName = qualified(mercury_io_module, "state"),
+        IOStateType = defined_type(IOStateTypeSymName, [], kind_star),
+        list.filter(unify(IOStateType), ArgTypes, IOStateArgTypes),
+        IOStateArgTypes = [_, _],
 
-            % ... which do I/O and thus have two I/O state arguments, ...
-            pred_info_get_arg_types(PredInfo, ArgTypes),
-            IOStateTypeSymName = qualified(mercury_io_module, "state"),
-            IOStateType = defined_type(IOStateTypeSymName, [], kind_star),
-            list.filter(unify(IOStateType), ArgTypes, IOStateArgTypes),
-            IOStateArgTypes = [_, _],
-
-            % ... where the callee predicate has a twin that has
-            % one extra initial argument that is a stream.
-            module_info_get_predicate_table(ModuleInfo, PredTable),
-            PredSymName = qualified(ModuleName, PredName),
-            list.length(ArgTypes, Arity),
-            predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-                PredOrFunc, PredSymName, Arity + 1, PredIds),
-            list.filter(one_extra_stream_arg(ModuleInfo, ArgTypes), PredIds,
-                OneExtraStreamArgPredIds),
-            OneExtraStreamArgPredIds = [_ | _]
-        then
-            GoalContext = goal_info_get_context(GoalInfo),
-            PredPieces = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId),
-            Pieces = [words("The call to")] ++ PredPieces ++
-                [words("could have an additional argument"),
-                words("explicitly specifying a stream."), nl],
-            Msg = simple_msg(GoalContext,
-                [option_is_set(warn_implicit_stream_calls, yes,
-                    [always(Pieces)])]),
-            Severity = severity_conditional(warn_implicit_stream_calls, yes,
-                severity_informational, no),
-            Spec = error_spec(Severity,
-                phase_simplify(report_in_any_mode), [Msg]),
-            simplify_info_add_message(Spec, !Info)
-        else if
-            % We want to warn about calls to predicates that update
-            % the current input or output stream.
-            ModuleName = mercury_io_module,
-            PredOrFunc = pf_predicate,
-            (
-                ( PredName = "see"
-                ; PredName = "seen"
-                ; PredName = "set_input_stream"
-                ),
-                Dir = "input"
-            ;
-                ( PredName = "tell"
-                ; PredName = "told"
-                ; PredName = "set_output_stream"
-                ),
-                Dir = "output"
-            )
-        then
-            GoalContext = goal_info_get_context(GoalInfo),
-            PredPieces = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId),
-            Pieces = [words("The call to")] ++ PredPieces ++
-                [words("could be made redundant by explicitly passing"),
-                words("the"), words(Dir), words("stream it specifies"),
-                words("to later I/O operations."), nl],
-            Msg = simple_msg(GoalContext,
-                [option_is_set(warn_implicit_stream_calls, yes,
-                    [always(Pieces)])]),
-            Severity = severity_conditional(warn_implicit_stream_calls, yes,
-                severity_informational, no),
-            Spec = error_spec(Severity,
-                phase_simplify(report_in_any_mode), [Msg]),
-            simplify_info_add_message(Spec, !Info)
-        else
-            true
+        % ... where the callee predicate has a twin that has
+        % one extra initial argument that is a stream.
+        module_info_get_predicate_table(ModuleInfo, PredTable),
+        PredSymName = qualified(ModuleName, PredName),
+        list.length(ArgTypes, Arity),
+        predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
+            PredOrFunc, PredSymName, Arity + 1, PredIds),
+        list.filter(one_extra_stream_arg(ModuleInfo, ArgTypes), PredIds,
+            OneExtraStreamArgPredIds),
+        OneExtraStreamArgPredIds = [_ | _]
+    then
+        GoalContext = goal_info_get_context(GoalInfo),
+        PredPieces = describe_one_pred_name(ModuleInfo,
+            should_module_qualify, PredId),
+        Pieces = [words("The call to")] ++ PredPieces ++
+            [words("could have an additional argument"),
+            words("explicitly specifying a stream."), nl],
+        Msg = simple_msg(GoalContext,
+            [option_is_set(warn_implicit_stream_calls, yes,
+                [always(Pieces)])]),
+        Severity = severity_conditional(warn_implicit_stream_calls, yes,
+            severity_informational, no),
+        Spec = error_spec(Severity,
+            phase_simplify(report_in_any_mode), [Msg]),
+        MaybeSpec = yes(Spec)
+    else if
+        % We want to warn about calls to predicates that update
+        % the current input or output stream.
+        ModuleName = mercury_io_module,
+        PredOrFunc = pf_predicate,
+        (
+            ( PredName = "see"
+            ; PredName = "seen"
+            ; PredName = "set_input_stream"
+            ),
+            Dir = "input"
+        ;
+            ( PredName = "tell"
+            ; PredName = "told"
+            ; PredName = "set_output_stream"
+            ),
+            Dir = "output"
         )
+    then
+        GoalContext = goal_info_get_context(GoalInfo),
+        PredPieces = describe_one_pred_name(ModuleInfo,
+            should_module_qualify, PredId),
+        Pieces = [words("The call to")] ++ PredPieces ++
+            [words("could be made redundant by explicitly passing"),
+            words("the"), words(Dir), words("stream it specifies"),
+            words("to later I/O operations."), nl],
+        Msg = simple_msg(GoalContext,
+            [option_is_set(warn_implicit_stream_calls, yes,
+                [always(Pieces)])]),
+        Severity = severity_conditional(warn_implicit_stream_calls, yes,
+            severity_informational, no),
+        Spec = error_spec(Severity,
+            phase_simplify(report_in_any_mode), [Msg]),
+        MaybeSpec = yes(Spec)
     else
-        true
+        MaybeSpec = no
     ).
 
 :- pred one_extra_stream_arg(module_info::in, list(mer_type)::in, pred_id::in)

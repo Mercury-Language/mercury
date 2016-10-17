@@ -232,8 +232,15 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         check_marker(Markers0, marker_has_format_call),
         SimplifyTasks ^ do_format_calls = yes
     then
-        simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, ProcId,
-            FormatSpecs, !ProcInfo)
+        (
+            SimplifyTasks ^ do_warn_implicit_stream_calls = no,
+            ImplicitStreamWarnings = do_not_generate_implicit_stream_warnings
+        ;
+            SimplifyTasks ^ do_warn_implicit_stream_calls = yes,
+            ImplicitStreamWarnings = generate_implicit_stream_warnings
+        ),
+        simplify_proc_analyze_and_format_calls(!ModuleInfo,
+            ImplicitStreamWarnings, PredId, ProcId, FormatSpecs, !ProcInfo)
     else
         % Either there are no format calls to check, or we don't want to
         % optimize them and would ignore the added messages anyway.
@@ -377,16 +384,17 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
     ).
 
 :- pred simplify_proc_analyze_and_format_calls(
-    module_info::in, module_info::out, pred_id::in, proc_id::in,
+    module_info::in, module_info::out,
+    maybe_generate_implicit_stream_warnings::in, pred_id::in, proc_id::in,
     list(error_spec)::out, proc_info::in, proc_info::out) is det.
 
-simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, ProcId,
-        FormatSpecs, !ProcInfo) :-
+simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
+        PredId, ProcId, FormatSpecs, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    analyze_and_optimize_format_calls(!.ModuleInfo, Goal0, MaybeGoal,
-        FormatSpecs, VarSet0, VarSet, VarTypes0, VarTypes),
+    analyze_and_optimize_format_calls(!.ModuleInfo, ImplicitStreamWarnings,
+        Goal0, MaybeGoal, FormatSpecs, VarSet0, VarSet, VarTypes0, VarTypes),
     (
         MaybeGoal = yes(Goal),
         proc_info_set_goal(Goal, !ProcInfo),

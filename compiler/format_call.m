@@ -133,10 +133,15 @@
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_generate_implicit_stream_warnings
+    --->    do_not_generate_implicit_stream_warnings
+    ;       generate_implicit_stream_warnings.
+
 :- pred is_format_call(module_name::in, string::in, list(prog_var)::in)
     is semidet.
 
 :- pred analyze_and_optimize_format_calls(module_info::in,
+    maybe_generate_implicit_stream_warnings::in,
     hlds_goal::in, maybe(hlds_goal)::out, list(error_spec)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
@@ -148,6 +153,7 @@
 :- include_module parse_string_format.
 
 :- import_module check_hlds.simplify.format_call.parse_string_format.
+:- import_module check_hlds.simplify.simplify_goal_call.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_out.
@@ -184,9 +190,11 @@
 :- type format_call_site
     --->    format_call_site(
                 fcs_goal_id                 :: goal_id,
+                fcs_goal_info               :: hlds_goal_info,
                 fcs_string_var              :: prog_var,
                 fcs_values_var              :: prog_var,
                 fcs_call_kind               :: format_call_kind,
+                fcs_called_pred_id          :: pred_id,
                 fcs_called_pred_module      :: module_name,
                 fcs_called_pred_name        :: string,
                 fcs_called_pred_arity       :: arity,
@@ -372,8 +380,8 @@ is_format_call_kind_and_vars(ModuleName, Name, Args, GoalInfo,
 
 %---------------------------------------------------------------------------%
 
-analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
-        !VarSet, !VarTypes) :-
+analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
+        Goal0, MaybeGoal, Specs, !VarSet, !VarTypes) :-
     map.init(ConjMaps0),
     counter.init(0, Counter0),
     fill_goal_id_slots_in_proc_body(ModuleInfo, !.VarTypes, _, Goal0, Goal1),
@@ -400,13 +408,13 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
         OptFormatCalls = yes,
         ExecTrace = no
     then
-        ShouldOptFormatCalls = yes
+        ShouldOptFormatCalls = opt_format_calls
     else
-        ShouldOptFormatCalls = no
+        ShouldOptFormatCalls = do_not_opt_format_calls
     ),
     list.foldl4(
-        check_format_call_site(ModuleInfo, ShouldOptFormatCalls,
-            ConjMaps, PredMap),
+        check_format_call_site(ModuleInfo, GenImplicitStreamWarnings,
+            ShouldOptFormatCalls, ConjMaps, PredMap),
         FormatCallSites, map.init, GoalIdMap, [], Specs, !VarSet, !VarTypes),
     ( if map.is_empty(GoalIdMap) then
         % We have not found anything to improve in Goal1.
@@ -431,16 +439,37 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
         MaybeGoal = yes(Goal)
     ).
 
-:- pred check_format_call_site(module_info::in, bool::in, conj_maps::in,
-    conj_pred_map::in, format_call_site::in,
+:- type maybe_opt_format_calls
+    --->    do_not_opt_format_calls
+    ;       opt_format_calls.
+
+:- pred check_format_call_site(module_info::in,
+    maybe_generate_implicit_stream_warnings::in, maybe_opt_format_calls::in,
+    conj_maps::in, conj_pred_map::in, format_call_site::in,
     fc_goal_id_map::in, fc_goal_id_map::out,
     list(error_spec)::in, list(error_spec)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-check_format_call_site(ModuleInfo, ShouldOptFormatCalls, ConjMaps, PredMap,
-        FormatCallSite, !GoalIdMap, !Specs, !VarSet, !VarTypes) :-
-    FormatCallSite = format_call_site(GoalId, StringVar, ValuesVar, CallKind,
-        ModuleName, Name, Arity, Context, CurId),
+check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
+        ConjMaps, PredMap, FormatCallSite, !GoalIdMap, !Specs,
+        !VarSet, !VarTypes) :-
+    FormatCallSite = format_call_site(GoalId, GoalInfo, StringVar, ValuesVar,
+        CallKind, PredId, ModuleName, Name, Arity, Context, CurId),
+    (
+        ImplicitStreamWarnings = do_not_generate_implicit_stream_warnings
+    ;
+        ImplicitStreamWarnings = generate_implicit_stream_warnings,
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
+            PredId, PredInfo, GoalInfo, MaybeImplicitStreamSpec),
+        (
+            MaybeImplicitStreamSpec = no
+        ;
+            MaybeImplicitStreamSpec = yes(ImplicitStreamSpec),
+            !:Specs = [ImplicitStreamSpec | !.Specs]
+        )
+    ),
+
     SymName = qualified(ModuleName, Name),
     module_info_get_globals(ModuleInfo, Globals),
 
@@ -538,9 +567,9 @@ check_format_call_site(ModuleInfo, ShouldOptFormatCalls, ConjMaps, PredMap,
         ;
             MaybeSpecs = ok(Specs),
             (
-                ShouldOptFormatCalls = no
+                OptFormatCalls = do_not_opt_format_calls
             ;
-                ShouldOptFormatCalls = yes,
+                OptFormatCalls = opt_format_calls,
                 ToDeleteVars =
                     FormatStringToDeleteVars ++ PolyTypeToDeleteVars,
                 create_replacement_goal(ModuleInfo, GoalId, CallKind,
@@ -819,8 +848,9 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             Arity = pred_info_orig_arity(PredInfo),
             GoalId = goal_info_get_goal_id(GoalInfo),
             Context = goal_info_get_context(GoalInfo),
-            FormatCallSite = format_call_site(GoalId, StringVar, ValuesVar,
-                Kind, ModuleName, Name, Arity, Context, CurId),
+            FormatCallSite = format_call_site(GoalId, GoalInfo,
+                StringVar, ValuesVar, Kind, PredId,
+                ModuleName, Name, Arity, Context, CurId),
             !:FormatCallSites = [FormatCallSite | !.FormatCallSites],
             set_of_var.insert_list([StringVar, ValuesVar], !RelevantVars)
         else if
@@ -1137,10 +1167,6 @@ add_to_fc_eqv_map(ConjId, Var, EqvVar, !ConjMaps) :-
 
 :- type fc_goal_id_map == map(goal_id, fc_opt_goal_info).
 
-:- pred test_var(prog_var::in) is det.
-
-test_var(_).
-
     % Traverse the goal, looking for call sites in !.GoalIdMap. If we
     % find them, we replace them with the corresponding goal.
     %
@@ -1193,7 +1219,6 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         ( if
             Unification = construct(LHSVar, _ConsId, _RHSVars, _ArgModes,
                 _How, _Unique, _SubInfo),
-            test_var(LHSVar),
             not set_of_var.member(!.NeededVars, LHSVar),
             % If this succeeds, then the backward traversal cannot encounter
             % any more producers of LHSVar.
@@ -1585,8 +1610,12 @@ replace_string_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
     % output stream in each of those calls to io.write_string/3. Factoring out
     % this hidden repetition could be worthwhile, but if it is, then
     % it should also be worth doing for code explicitly written by the user,
-    % so this is not the place to worry about it. Instead, it should be done
+    % so this is not the place to worry about it; instead, it could be done
     % by a later optimization pass.
+    %
+    % Passing streams explicitly makes the code more robust against changes
+    % anyway, which is another reason why the --warn-implicit-stream-calls
+    % option encourages programmers to do that.
     %
 :- pred create_io_format_replacement(module_info::in,
     list(compiler_format_spec)::in, prog_context::in,
@@ -1683,7 +1712,8 @@ replace_one_io_format(ModuleInfo, Spec, MaybeStreamVar,
     ),
     make_di_uo_instmap_delta(IOInVar, IOOutVar, InstMapDelta),
     generate_simple_call(mercury_io_module, "write_string",
-        pf_predicate, only_mode, detism_det, purity_pure, ArgVars, [],
+        pf_predicate, only_mode, detism_det, purity_pure, ArgVars,
+        [feature_do_not_warn_implicit_stream],
         InstMapDelta, ModuleInfo, SpecContext, CallGoal),
     Goals = SpecGoals ++ [CallGoal].
 
@@ -1720,7 +1750,8 @@ create_stream_string_writer_format_replacement(ModuleInfo, Specs, Context,
         StateInVar, StateOutVar],
     make_di_uo_instmap_delta(StateInVar, StateOutVar, InstMapDelta),
     generate_simple_call(mercury_stream_module, "put",
-        pf_predicate, only_mode, detism_det, purity_pure, ArgVars, [],
+        pf_predicate, only_mode, detism_det, purity_pure, ArgVars,
+        [feature_do_not_warn_implicit_stream],
         InstMapDelta, ModuleInfo, Context, CallGoal),
     Goals = StringFormatGoals ++ [CallGoal],
 

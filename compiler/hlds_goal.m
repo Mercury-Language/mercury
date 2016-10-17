@@ -1440,11 +1440,20 @@
             % This goal is a goal inside an atomic scope, for which the calls
             % to convert inner and outer variables have been inserted.
 
-    ;       feature_do_not_tailcall.
+    ;       feature_do_not_tailcall
             % This goal is a call that should not be executed as a tail call.
             % Currently this is only used by the loop control optimization
             % since a spawned off task may need to use the parent's stack frame
             % even after the parent makes a tail call.
+
+    ;       feature_do_not_warn_implicit_stream.
+            % Even if this call is to a predicate that operates on an implicit
+            % stream, do not generate a warning about that. This feature
+            % should be set on calls that are constructed by the compiler
+            % - to calls which may possibly be subject to that warning, and
+            % - for which the code from which this call has been constructed
+            %   has already had generated for it all the warnings of this type
+            %   that it deserved.
 
 %-----------------------------------------------------------------------------%
 %

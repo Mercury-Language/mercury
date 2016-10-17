@@ -7,7 +7,7 @@ save.m:031: The call to predicate `io.read_file_as_string'/3 could have an
 save.m:031:   additional argument explicitly specifying a stream.
 save.m:034: The call to predicate `io.write_string'/3 could have an additional
 save.m:034:   argument explicitly specifying a stream.
-save.m:038: The call to predicate `io.write_string'/3 could have an additional
+save.m:038: The call to predicate `io.format'/4 could have an additional
 save.m:038:   argument explicitly specifying a stream.
 save.m:043: The call to predicate `io.write_string'/3 could have an additional
 save.m:043:   argument explicitly specifying a stream.
