@@ -23,7 +23,7 @@ main_target: $(MAIN_TARGET)
 		.dep .depend .dv .doit .ugly \
 		.date0 .date .date3 .optdate .trans_opt_date \
 		.c .$O .pic_o \
-		.s .pic_s \
+		.i .s .pic_s \
 		.java .class \
 		.dll .exe .cpp .cs \
 		.c_date .java_date .s_date .pic_s_date
