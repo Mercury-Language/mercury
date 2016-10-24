@@ -474,6 +474,9 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
             BuiltinType = builtin_type_int,
             mq_info_set_module_used(InInt, unqualified("int"), !Info)
         ;
+            BuiltinType = builtin_type_uint,
+            mq_info_set_module_used(InInt, unqualified("uint"), !Info)
+        ;
             BuiltinType = builtin_type_float,
             mq_info_set_module_used(InInt, unqualified("float"), !Info)
         ;
@@ -533,6 +536,7 @@ qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
 :- pred is_builtin_atomic_type(type_ctor::in) is semidet.
 
 is_builtin_atomic_type(type_ctor(unqualified("int"), 0)).
+is_builtin_atomic_type(type_ctor(unqualified("uint"), 0)).
 is_builtin_atomic_type(type_ctor(unqualified("float"), 0)).
 is_builtin_atomic_type(type_ctor(unqualified("string"), 0)).
 is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
@@ -716,6 +720,7 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
         ( ConsId = tuple_cons(_)
         ; ConsId = closure_cons(_, _)
         ; ConsId = int_const(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

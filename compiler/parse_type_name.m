@@ -642,6 +642,9 @@ is_known_type_name_args(Name, Args, KnownType) :-
             Name = "int",
             BuiltinType = builtin_type_int
         ;
+            Name = "uint",
+            BuiltinType = builtin_type_uint
+        ;
             Name = "float",
             BuiltinType = builtin_type_float
         ;

@@ -69,7 +69,7 @@
 // This number should be kept in sync with type_ctor_info_rtti_version in
 // compiler/type_ctor_info.m.
 
-#define MR_RTTI_VERSION                     MR_RTTI_VERSION__FUNCTOR_SUBTYPE
+#define MR_RTTI_VERSION                     MR_RTTI_VERSION__UINT
 #define MR_RTTI_VERSION__INITIAL            2
 #define MR_RTTI_VERSION__USEREQ             3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT       4
@@ -85,6 +85,7 @@
 #define MR_RTTI_VERSION__DIRECT_ARG         14
 #define MR_RTTI_VERSION__ARG_WIDTHS         15
 #define MR_RTTI_VERSION__FUNCTOR_SUBTYPE    16
+#define MR_RTTI_VERSION__UINT               17
 
 // Check that the RTTI version is in a sensible range.
 // The lower bound should be the lowest currently supported version number.
@@ -564,6 +565,7 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_EQUIV),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FUNC),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_INT),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UINT),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_CHAR),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FLOAT),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STRING),
@@ -633,6 +635,7 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "EQUIV",                                                            \
     "FUNC",                                                             \
     "INT",                                                              \
+    "UINT",                                                             \
     "CHAR",                                                             \
     "FLOAT",                                                            \
     "STRING",                                                           \
@@ -1409,6 +1412,9 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
   #define MR_INT_CTOR_ADDR                                                \
       (MR_Word *) &mercury__builtin__builtin__type_ctor_info_int_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0)
+  #define MR_UINT_CTOR_ADDR                                               \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_uint_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint, 0)
   #define MR_FLOAT_CTOR_ADDR                                              \
       (MR_Word *) &mercury__builtin__builtin__type_ctor_info_float_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)
@@ -1436,6 +1442,9 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
   #define MR_INT_CTOR_ADDR                                                \
       (MR_Word *) &mercury_data_builtin__type_ctor_info_int_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0)
+  #define MR_UINT_CTOR_ADDR                                               \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_uint_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint, 0)
   #define MR_FLOAT_CTOR_ADDR                                              \
       (MR_Word *) &mercury_data_builtin__type_ctor_info_float_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)

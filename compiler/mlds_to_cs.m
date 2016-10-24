@@ -658,6 +658,7 @@ method_ptrs_in_rval(Rval, !CodeAddrs) :-
             ( RvalConst = mlconst_true
             ; RvalConst = mlconst_false
             ; RvalConst = mlconst_int(_)
+            ; RvalConst = mlconst_uint(_)
             ; RvalConst = mlconst_char(_)
             ; RvalConst = mlconst_enum(_, _)
             ; RvalConst = mlconst_foreign(_, _, _)
@@ -1417,6 +1418,7 @@ add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph) :-
         ( RvalConst = mlconst_true
         ; RvalConst = mlconst_false
         ; RvalConst = mlconst_int(_)
+        ; RvalConst = mlconst_uint(_)
         ; RvalConst = mlconst_enum(_, _)
         ; RvalConst = mlconst_char(_)
         ; RvalConst = mlconst_float(_)
@@ -1505,6 +1507,9 @@ get_type_initializer(Info, Type) = Initializer :-
             ),
             Initializer = "0"
         ;
+            CtorCat = ctor_cat_builtin(cat_builtin_uint),
+            Initializer = "0U"
+        ;
             CtorCat = ctor_cat_builtin(cat_builtin_char),
             Initializer = "'\\u0000'"
         ;
@@ -1529,6 +1534,9 @@ get_type_initializer(Info, Type) = Initializer :-
         ; Type = mlds_native_float_type
         ),
         Initializer = "0"
+    ;
+        Type = mlds_native_uint_type,
+        Initializer = "0U"
     ;
         Type = mlds_native_char_type,
         Initializer = "'\\u0000'"
@@ -2263,6 +2271,10 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         String = "int",
         ArrayDims = []
     ;
+        MLDS_Type = mlds_native_uint_type,
+        String = "uint",
+        ArrayDims = []
+    ;
         MLDS_Type = mlds_native_float_type,
         String = "double",
         ArrayDims = []
@@ -2376,6 +2388,10 @@ mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_int),
         String = "int",
+        ArrayDims = []
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        String = "uint",
         ArrayDims = []
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_string),
@@ -3668,6 +3684,15 @@ output_binop(Info, Op, X, Y, !IO) :-
         ; Op = int_le
         ; Op = int_ge
         ; Op = unsigned_le
+        ; Op = uint_eq
+        ; Op = uint_ne
+        ; Op = uint_lt
+        ; Op = uint_gt
+        ; Op = uint_le
+        ; Op = uint_ge
+        ; Op = uint_add
+        ; Op = uint_sub
+        ; Op = uint_mul
         ; Op = float_plus
         ; Op = float_minus
         ; Op = float_times
@@ -3715,6 +3740,16 @@ output_binary_op(Op, !IO) :-
         ; Op = int_le, OpStr = "<="
         ; Op = int_ge, OpStr = ">="
 
+        ; Op = uint_eq, OpStr = "=="
+        ; Op = uint_ne, OpStr = "!="
+        ; Op = uint_lt, OpStr = "<"
+        ; Op = uint_gt, OpStr = ">"
+        ; Op = uint_le, OpStr = "<="
+        ; Op = uint_ge, OpStr = ">="
+
+        ; Op = uint_add, OpStr = "+"
+        ; Op = uint_sub, OpStr = "-"
+        ; Op = uint_mul, OpStr = "*"
 
         ; Op = float_eq, OpStr = "=="
         ; Op = float_ne, OpStr = "!="
@@ -3764,6 +3799,9 @@ output_rval_const(Info, Const, !IO) :-
     ;
         Const = mlconst_int(N),
         output_int_const(N, !IO)
+    ;
+        Const = mlconst_uint(U),
+        output_int_const(U, !IO)    % XXX UINT.
     ;
         Const = mlconst_char(N),
         io.write_string("( ", !IO),

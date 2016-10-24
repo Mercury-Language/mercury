@@ -2427,6 +2427,9 @@ type_to_string(TVarSet, Type, Name) :-
         Type = builtin_type(builtin_type_int),
         Name = "int"
     ;
+        Type = builtin_type(builtin_type_uint),
+        Name = "uint"
+    ;
         Type = builtin_type(builtin_type_float),
         Name = "float"
     ;

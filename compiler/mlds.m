@@ -782,6 +782,7 @@
 
     ;       mlds_native_bool_type
     ;       mlds_native_int_type
+    ;       mlds_native_uint_type
     ;       mlds_native_float_type
     ;       mlds_native_char_type
             % MLDS native builtin types.
@@ -1678,6 +1679,7 @@
     --->    mlconst_true
     ;       mlconst_false
     ;       mlconst_int(int)
+    ;       mlconst_uint(int)   % XXX UINT.
     ;       mlconst_enum(int, mlds_type)
     ;       mlconst_char(int)
     ;       mlconst_float(float)

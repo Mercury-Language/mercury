@@ -166,6 +166,7 @@
     ;       etcr_array
     ;       etcr_eqv
     ;       etcr_int
+    ;       etcr_uint
     ;       etcr_float
     ;       etcr_char
     ;       etcr_string
@@ -824,6 +825,12 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
+        TypeCtorRep = etcr_uint,
+        Functor = "<<uint>>",
+        FunctorNumber = 0,
+        Arity = 0,
+        Arguments = []
+    ;
         TypeCtorRep = etcr_float,
         det_dynamic_cast(Term, Float),
         Functor = float_to_string(Float),
@@ -1184,6 +1191,7 @@ num_functors(TypeInfo, MaybeNumFunctors) :-
     ;
         ( TypeCtorRep = etcr_array
         ; TypeCtorRep = etcr_int
+        ; TypeCtorRep = etcr_uint
         ; TypeCtorRep = etcr_float
         ; TypeCtorRep = etcr_char
         ; TypeCtorRep = etcr_string
@@ -1301,6 +1309,7 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
     ;
         ( TypeCtorRep = etcr_array
         ; TypeCtorRep = etcr_int
+        ; TypeCtorRep = etcr_uint
         ; TypeCtorRep = etcr_float
         ; TypeCtorRep = etcr_char
         ; TypeCtorRep = etcr_string

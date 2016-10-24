@@ -671,6 +671,9 @@ generate_builtin_unify(CtorCat, X, Y, Context, Clause, !Info) :-
         CtorCat = ctor_cat_builtin(cat_builtin_int),
         Name = "builtin_unify_int"
     ;
+        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        Name = "builtin_unify_uint"
+    ;
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         Name = "builtin_unify_character"
     ;
@@ -994,6 +997,9 @@ generate_builtin_compare(CtorCat, Res, X, Y, Context, Clause, !Info) :-
     (
         CtorCat = ctor_cat_builtin(cat_builtin_int),
         Name = "builtin_compare_int"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        Name = "builtin_compare_uint"
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         Name = "builtin_compare_character"

@@ -2235,6 +2235,10 @@ cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) :-
         BuiltinTypeName = "int",
         BuiltinType = builtin_type_int
     ;
+        ConsId = uint_const(_),
+        BuiltinTypeName = "uint",
+        BuiltinType = builtin_type_uint
+    ;
         ConsId = float_const(_),
         BuiltinTypeName = "float",
         BuiltinType = builtin_type_float
@@ -2768,6 +2772,7 @@ type_assign_unify_type(X, Y, TypeAssign0, TypeAssign) :-
 :- pred builtin_atomic_type(cons_id::in, string::out) is semidet.
 
 builtin_atomic_type(int_const(_), "int").
+builtin_atomic_type(uint_const(_), "uint").
 builtin_atomic_type(float_const(_), "float").
 builtin_atomic_type(char_const(_), "character").
 builtin_atomic_type(string_const(_), "string").

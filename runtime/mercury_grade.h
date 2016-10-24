@@ -76,7 +76,7 @@
 // breaks binary backwards compatibility only in debugging, deep profiling
 // and low-level C parallel grades respectively.
 
-#define MR_GRADE_PART_0 v18_
+#define MR_GRADE_PART_0 v19_
 #define MR_GRADE_EXEC_TRACE_VERSION_NO  12
 #define MR_GRADE_DEEP_PROF_VERSION_NO   4
 #define MR_GRADE_LLC_PAR_VERSION_NO 1

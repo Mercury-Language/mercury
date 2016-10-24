@@ -217,6 +217,8 @@
     ;       general_string_compare_binop
     ;       string_compare_binop
     ;       unsigned_compare_binop
+    ;       uint_compare_binop
+    ;       uint_arith_binop
     ;       float_compare_binop
     ;       float_arith_binop
     ;       int_or_bool_binary_infix_binop
@@ -817,6 +819,17 @@ binop_category_string(str_lt, string_compare_binop, "<").
 binop_category_string(str_gt, string_compare_binop, ">").
 
 binop_category_string(unsigned_le, unsigned_compare_binop, "<=").
+
+binop_category_string(uint_eq, uint_compare_binop, "==").
+binop_category_string(uint_ne, uint_compare_binop, "!=").
+binop_category_string(uint_le, uint_compare_binop, "<=").
+binop_category_string(uint_ge, uint_compare_binop, ">=").
+binop_category_string(uint_lt, uint_compare_binop, "<").
+binop_category_string(uint_gt, uint_compare_binop, ">").
+
+binop_category_string(uint_add, uint_arith_binop, "+").
+binop_category_string(uint_sub, uint_arith_binop, "-").
+binop_category_string(uint_mul, uint_arith_binop, "*").
 
 binop_category_string(float_plus, float_arith_binop, "+").
 binop_category_string(float_minus, float_arith_binop, "-").

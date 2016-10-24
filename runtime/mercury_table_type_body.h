@@ -302,6 +302,11 @@
             table = table_next;
             return table;
 
+        case MR_TYPECTOR_REP_UINT:
+            MR_TABLE_UINT(STATS, DEBUG, BACK, table_next, table, data);
+            table = table_next;
+            return table;
+
         case MR_TYPECTOR_REP_CHAR:
             MR_TABLE_CHAR(STATS, DEBUG, BACK, table_next, table, data);
             table = table_next;

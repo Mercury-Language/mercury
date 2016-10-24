@@ -25,6 +25,7 @@
 %
 
 :- func int_type = mer_type.
+:- func uint_type = mer_type.
 :- func float_type = mer_type.
 :- func string_type = mer_type.
 :- func char_type = mer_type.
@@ -58,6 +59,7 @@
 %
 
 :- func int_type_ctor = type_ctor.
+:- func uint_type_ctor = type_ctor.
 :- func float_type_ctor = type_ctor.
 :- func char_type_ctor = type_ctor.
 :- func string_type_ctor = type_ctor.
@@ -111,6 +113,8 @@
 %-----------------------------------------------------------------------------%
 
 int_type = builtin_type(builtin_type_int).
+
+uint_type = builtin_type(builtin_type_uint).
 
 float_type = builtin_type(builtin_type_float).
 
@@ -212,6 +216,8 @@ future_type(ValueType) = defined_type(Name, [ValueType], kind_star) :-
 
 int_type_ctor = type_ctor(Name, 0) :-
     Name = unqualified("int").
+uint_type_ctor = type_ctor(Name, 0) :-
+    Name = unqualified("uint").
 float_type_ctor = type_ctor(Name, 0) :-
     Name = unqualified("float").
 char_type_ctor = type_ctor(Name, 0) :-

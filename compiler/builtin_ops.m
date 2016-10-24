@@ -81,19 +81,31 @@
             % or equivalent code on backends which support this, and code
             % equivalent to "strcmp(SA, SB) == 0" on backends which don't.
 
-    ;       int_lt  % signed integer comparions
+    ;       int_lt  % signed integer comparisons
     ;       int_gt
     ;       int_le
     ;       int_ge
-    ;       unsigned_le % unsigned integer comparison
+
+    ;       unsigned_le % unsigned integer comparison (for signed values)
             % Note that the arguments to `unsigned_le' are just ordinary
             % (signed) Mercury ints, but it does the comparison as
             % if they were first cast to an unsigned type, so e.g.
             % binary(unsigned_le, int_const(1), int_const(-1)) returns true,
             % since (MR_Unsigned) 1 <= (MR_Unsigned) -1.
 
-    ;       float_plus
-    ;       float_minus
+    ;       uint_eq
+    ;       uint_ne
+    ;       uint_lt
+    ;       uint_gt
+    ;       uint_le
+    ;       uint_ge
+
+    ;       uint_add
+    ;       uint_sub
+    ;       uint_mul
+
+    ;       float_plus      %  XXX the integer versions use different names.
+    ;       float_minus     %  E.g add instead of plus etc.
     ;       float_times
     ;       float_divide
     ;       float_eq
@@ -163,6 +175,7 @@
 :- type simple_expr(T)
     --->    leaf(T)
     ;       int_const(int)
+    ;       uint_const(int)     % XXX until uint is recognised.
     ;       float_const(float)
     ;       unary(unary_op, simple_expr(T))
     ;       binary(binary_op, simple_expr(T), simple_expr(T)).
@@ -366,6 +379,32 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ; PredName = "<", CompareOp = int_lt
             ; PredName = ">=", CompareOp = int_ge
             ; PredName = "=<", CompareOp = int_le
+            ),
+            ProcNum = 0, Args = [X, Y],
+            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
+        )
+    ;
+        ModuleName = "uint",
+        (
+            PredName = "+",
+            Args = [X, Y, Z],
+            ProcNum = 0,
+            Code = assign(Z, binary(uint_add, leaf(X), leaf(Y)))
+        ;
+            PredName = "-",
+            Args = [X, Y, Z],
+            ProcNum = 0,
+            Code = assign(Z, binary(uint_sub, leaf(X), leaf(Y)))
+        ;
+            PredName = "*",
+            Args = [X, Y, Z],
+            ProcNum = 0,
+            Code = assign(Z, binary(uint_mul, leaf(X), leaf(Y)))
+        ;
+            ( PredName = ">", CompareOp = uint_gt
+            ; PredName = "<", CompareOp = uint_lt
+            ; PredName = ">=", CompareOp = uint_ge
+            ; PredName = "=<", CompareOp = uint_le
             ),
             ProcNum = 0, Args = [X, Y],
             Code = test(binary(CompareOp, leaf(X), leaf(Y)))

@@ -860,6 +860,7 @@ rval_contains_var(Rval, DataName) = ContainsVar :-
             ( Const = mlconst_true
             ; Const = mlconst_false
             ; Const = mlconst_int(_)
+            ; Const = mlconst_uint(_)
             ; Const = mlconst_enum(_, _)
             ; Const = mlconst_char(_)
             ; Const = mlconst_float(_)

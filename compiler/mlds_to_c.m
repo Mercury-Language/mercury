@@ -1146,6 +1146,9 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
             MLDS_Type = mlds_native_int_type,
             io.write_string("MR_Integer", !IO)
         ;
+            MLDS_Type = mlds_native_uint_type,
+            io.write_string("MR_Unsigned", !IO)
+        ;
             MLDS_Type = mlds_native_float_type,
             io.write_string("MR_Float", !IO)
         ;
@@ -2780,6 +2783,9 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
         MLDS_Type = mlds_native_int_type,
         io.write_string("MR_Integer", !IO)
     ;
+        MLDS_Type = mlds_native_uint_type,
+        io.write_string("MR_Unsigned", !IO)
+    ;
         MLDS_Type = mlds_native_float_type,
         io.write_string("MR_Float", !IO)
     ;
@@ -2903,6 +2909,9 @@ mlds_output_mercury_type_prefix(Opts, Type, CtorCat, !IO) :-
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_int),
         io.write_string("MR_Integer", !IO)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        io.write_string("MR_Unsigned", !IO)
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_string),
         io.write_string("MR_String", !IO)
@@ -3039,6 +3048,7 @@ mlds_output_type_suffix(Opts, MLDS_Type, ArraySize, !IO) :-
         ( MLDS_Type = mercury_type(_, _, _)
         ; MLDS_Type = mlds_mercury_array_type(_)
         ; MLDS_Type = mlds_native_int_type
+        ; MLDS_Type = mlds_native_uint_type
         ; MLDS_Type = mlds_native_float_type
         ; MLDS_Type = mlds_native_bool_type
         ; MLDS_Type = mlds_native_char_type
@@ -4007,6 +4017,7 @@ type_needs_forwarding_pointer_space(mlds_cont_type(_)) = no.
 type_needs_forwarding_pointer_space(mlds_commit_type) = no.
 type_needs_forwarding_pointer_space(mlds_native_bool_type) = no.
 type_needs_forwarding_pointer_space(mlds_native_int_type) = no.
+type_needs_forwarding_pointer_space(mlds_native_uint_type) = no.
 type_needs_forwarding_pointer_space(mlds_native_float_type) = no.
 type_needs_forwarding_pointer_space(mlds_native_char_type) = no.
 type_needs_forwarding_pointer_space(mlds_foreign_type(_)) = no.
@@ -4590,6 +4601,24 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_rval_as_op_arg(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
+        ( Op = uint_eq, OpStr = "=="
+        ; Op = uint_ne, OpStr = "!="
+        ; Op = uint_lt, OpStr = "<"
+        ; Op = uint_gt, OpStr = ">"
+        ; Op = uint_le, OpStr = "<="
+        ; Op = uint_ge, OpStr = ">="
+        ; Op = uint_add, OpStr = "+"
+        ; Op = uint_sub, OpStr = "-"
+        ; Op = uint_mul, OpStr = "*"
+        ),
+        io.write_string("(", !IO),
+        mlds_output_rval_as_op_arg(Opts, X, !IO),
+        io.write_string(" ", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string(" ", !IO),
+        mlds_output_rval_as_op_arg(Opts, Y, !IO),
+        io.write_string(")", !IO)
+    ;
         Op = str_cmp,
         io.write_string("MR_strcmp(", !IO),
         mlds_output_rval_as_op_arg(Opts, X, !IO),
@@ -4650,6 +4679,9 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         ; Const = mlconst_enum(N, _)
         ),
         c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = mlconst_uint(U),
+        c_util.output_int_expr_cur_stream(U, !IO)   % XXX UINT.
     ;
         Const = mlconst_char(C),
         io.write_string("(MR_Char) ", !IO),

@@ -653,7 +653,9 @@ convert_type_to_mercury(Rval, Type, TargetArgLoc, ConvertedRval) :-
             % is signed.
             ConvertedRval = "(MR_UnsignedChar) " ++ Rval
         ;
-            BuiltinType = builtin_type_int,
+            ( BuiltinType = builtin_type_int
+            ; BuiltinType = builtin_type_uint
+            ),
             ConvertedRval = Rval
         )
     ;
@@ -684,6 +686,7 @@ convert_type_from_mercury(SourceArgLoc, Rval, Type, ConvertedRval) :-
             )
         ;
             ( BuiltinType = builtin_type_int
+            ; BuiltinType = builtin_type_uint
             ; BuiltinType = builtin_type_char
             ),
             ConvertedRval = Rval
@@ -976,6 +979,7 @@ foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
         Tag    = ee_tag_rep_string(ForeignTag)
     ;
         ( TagVal = string_tag(_)
+        ; TagVal = uint_tag(_)
         ; TagVal = float_tag(_)
         ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)

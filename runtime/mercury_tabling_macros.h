@@ -71,6 +71,12 @@
 #define MR_RAW_TABLE_INT_STATS(stats, table, value)                         \
     MR_int_hash_lookup_or_add_stats((stats), (table), (value));
 
+#define MR_RAW_TABLE_UINT(table, value)                                      \
+    MR_word_hash_lookup_or_add((table), (value));
+
+#define MR_RAW_TABLE_UINT_STATS(stats, table, value)                         \
+    MR_word_hash_lookup_or_add_stats((stats), (table), (value));
+
 #define MR_RAW_TABLE_CHAR(table, value)                                     \
     MR_int_hash_lookup_or_add((table), (value));
 
@@ -213,6 +219,19 @@
         }                                                                   \
         if (MR_tabledebug) {                                                \
             printf("TABLE %p: int %ld => %p\n",                             \
+                (t0), (long) (value), (t));                                 \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_UINT(stats, debug, back, t, t0, value)                     \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_UINT_STATS((stats), (t0), (value));          \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_UINT((t0), (value));                         \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: uint %ud => %p\n",                            \
                 (t0), (long) (value), (t));                                 \
         }                                                                   \
     } while (0)

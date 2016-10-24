@@ -106,6 +106,7 @@
             % XXX We should have a pred_or_func field as well.
 
     ;       int_const(int)
+    ;       uint_const(int) % XXX until uint is bootstrapped.
     ;       float_const(float)
     ;       char_const(char)
     ;       string_const(string)
@@ -222,6 +223,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
         ; ConsId = tuple_cons(_)
         ; ConsId = closure_cons(_, _)
         ; ConsId = int_const(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)
@@ -482,6 +484,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- type builtin_type
     --->    builtin_type_int
+    ;       builtin_type_uint
     ;       builtin_type_float
     ;       builtin_type_string
     ;       builtin_type_char.

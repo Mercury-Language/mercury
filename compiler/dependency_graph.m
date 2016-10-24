@@ -492,6 +492,7 @@ add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph) :-
         ( ConsId = cons(_, _, _)
         ; ConsId = tuple_cons(_)
         ; ConsId = int_const(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

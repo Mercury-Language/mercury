@@ -436,6 +436,9 @@ standardize_rval_const(Const, StdConst, DupProcMap) :-
         Const = llconst_int(_),
         StdConst = Const
     ;
+        Const = llconst_uint(_),
+        StdConst = Const
+    ;
         Const = llconst_foreign(_, _),
         StdConst = Const
     ;

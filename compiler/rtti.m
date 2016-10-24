@@ -433,6 +433,7 @@
     %
 :- type builtin_ctor
     --->    builtin_ctor_int
+    ;       builtin_ctor_uint
     ;       builtin_ctor_float
     ;       builtin_ctor_char
     ;       builtin_ctor_string
@@ -1723,6 +1724,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
 :- pred builtin_ctor_rep_to_string(builtin_ctor::in, string::out) is det.
 
 builtin_ctor_rep_to_string(builtin_ctor_int, "MR_TYPECTOR_REP_INT").
+builtin_ctor_rep_to_string(builtin_ctor_uint, "MR_TYPECTOR_REP_UINT").
 builtin_ctor_rep_to_string(builtin_ctor_string, "MR_TYPECTOR_REP_STRING").
 builtin_ctor_rep_to_string(builtin_ctor_float, "MR_TYPECTOR_REP_FLOAT").
 builtin_ctor_rep_to_string(builtin_ctor_char, "MR_TYPECTOR_REP_CHAR").
@@ -2354,6 +2356,7 @@ tabling_id_has_array_type(Id) = IsArray :-
 
 table_trie_step_to_c(table_trie_step_dummy, "MR_TABLE_STEP_DUMMY", no).
 table_trie_step_to_c(table_trie_step_int, "MR_TABLE_STEP_INT", no).
+table_trie_step_to_c(table_trie_step_uint, "MR_TABLE_STEP_UINT", no).
 table_trie_step_to_c(table_trie_step_char, "MR_TABLE_STEP_CHAR", no).
 table_trie_step_to_c(table_trie_step_string, "MR_TABLE_STEP_STRING", no).
 table_trie_step_to_c(table_trie_step_float, "MR_TABLE_STEP_FLOAT", no).

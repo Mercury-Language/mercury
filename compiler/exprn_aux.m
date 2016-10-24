@@ -110,6 +110,7 @@ const_is_constant(Const, ExprnOpts, IsConst) :-
         ( Const = llconst_true
         ; Const = llconst_false
         ; Const = llconst_int(_)
+        ; Const = llconst_uint(_)
         ; Const = llconst_foreign(_, _)
         ; Const = llconst_string(_)
         ; Const = llconst_multi_string(_)

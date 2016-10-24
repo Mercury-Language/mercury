@@ -597,6 +597,8 @@ cons_table_optimize(!ConsTable) :-
             % the specified integer value. This is used for enumerations and
             % character constants as well as for int constants.
 
+    ;       uint_tag(int)
+
     ;       foreign_tag(foreign_language, string)
             % This means the constant is represented by the string which is
             % embedded directly in the target language. This is used for
@@ -779,6 +781,7 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         % it would probably be OK to return `yes(0)'.
         % But it's safe to be conservative...
         ( Tag = int_tag(_)
+        ; Tag = uint_tag(_)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
         ; Tag = foreign_tag(_, _)
@@ -815,6 +818,7 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
 get_secondary_tag(Tag) = MaybeSecondaryTag :-
     (
         ( Tag = int_tag(_)
+        ; Tag = uint_tag(_)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
         ; Tag = foreign_tag(_, _)

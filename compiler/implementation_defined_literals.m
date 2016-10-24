@@ -103,6 +103,7 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
                 ; ConsId = tuple_cons(_)
                 ; ConsId = closure_cons(_, _)
                 ; ConsId = int_const(_)
+                ; ConsId = uint_const(_)
                 ; ConsId = float_const(_)
                 ; ConsId = char_const(_)
                 ; ConsId = string_const(_)

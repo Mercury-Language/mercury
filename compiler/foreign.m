@@ -231,6 +231,9 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                     BuiltinType = builtin_type_int,
                     Result = "MR_Integer"
                 ;
+                    BuiltinType = builtin_type_uint,
+                    Result = "MR_Unsigned"
+                ;
                     BuiltinType = builtin_type_float,
                     Result = "MR_Float"
                 ;
@@ -266,6 +269,9 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                     BuiltinType = builtin_type_int,
                     Result = "int"
                 ;
+                    BuiltinType = builtin_type_uint,
+                    Result = "uint"
+                ;
                     BuiltinType = builtin_type_float,
                     Result = "double"
                 ;
@@ -293,6 +299,9 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                 Type = builtin_type(BuiltinType),
                 (
                     BuiltinType = builtin_type_int,
+                    Result = "int"
+                ;
+                    BuiltinType = builtin_type_uint,
                     Result = "int"
                 ;
                     BuiltinType = builtin_type_float,

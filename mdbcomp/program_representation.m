@@ -96,6 +96,7 @@
 
 :- type builtin_type_rep
     --->    builtin_type_int_rep
+    ;       builtin_type_uint_rep
     ;       builtin_type_float_rep
     ;       builtin_type_string_rep
     ;       builtin_type_char_rep.
@@ -1256,27 +1257,30 @@ read_encoded_type(ByteCode, StringTable, TypeTable, TypeRep, !Pos) :-
         TypeRep = builtin_type_rep(builtin_type_int_rep)
     ;
         Selector = 6,
-        TypeRep = builtin_type_rep(builtin_type_float_rep)
+        TypeRep = builtin_type_rep(builtin_type_uint_rep)
     ;
         Selector = 7,
-        TypeRep = builtin_type_rep(builtin_type_string_rep)
+        TypeRep = builtin_type_rep(builtin_type_float_rep)
     ;
         Selector = 8,
-        TypeRep = builtin_type_rep(builtin_type_char_rep)
+        TypeRep = builtin_type_rep(builtin_type_string_rep)
     ;
         Selector = 9,
-        read_num(ByteCode, NumArgs, !Pos),
-        read_n_items(read_num(ByteCode), NumArgs, TypeNumArgs, !Pos),
-        list.map(map.lookup(TypeTable), TypeNumArgs, TypeRepArgs),
-        TypeRep = tuple_type_rep(TypeRepArgs)
+        TypeRep = builtin_type_rep(builtin_type_char_rep)
     ;
         Selector = 10,
         read_num(ByteCode, NumArgs, !Pos),
         read_n_items(read_num(ByteCode), NumArgs, TypeNumArgs, !Pos),
         list.map(map.lookup(TypeTable), TypeNumArgs, TypeRepArgs),
-        TypeRep = higher_order_type_rep(TypeRepArgs, no)
+        TypeRep = tuple_type_rep(TypeRepArgs)
     ;
         Selector = 11,
+        read_num(ByteCode, NumArgs, !Pos),
+        read_n_items(read_num(ByteCode), NumArgs, TypeNumArgs, !Pos),
+        list.map(map.lookup(TypeTable), TypeNumArgs, TypeRepArgs),
+        TypeRep = higher_order_type_rep(TypeRepArgs, no)
+    ;
+        Selector = 12,
         read_num(ByteCode, NumArgs, !Pos),
         read_n_items(read_num(ByteCode), NumArgs, TypeNumArgs, !Pos),
         list.map(map.lookup(TypeTable), TypeNumArgs, TypeRepArgs),
@@ -1284,7 +1288,7 @@ read_encoded_type(ByteCode, StringTable, TypeTable, TypeRep, !Pos) :-
         map.lookup(TypeTable, TypeNumReturn, TypeRepReturn),
         TypeRep = higher_order_type_rep(TypeRepArgs, yes(TypeRepReturn))
     ;
-        Selector = 12,
+        Selector = 13,
         read_num(ByteCode, VarNum, !Pos),
         TypeRep = type_var_rep(VarNum)
     ).

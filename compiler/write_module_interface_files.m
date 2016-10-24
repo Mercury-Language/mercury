@@ -1197,6 +1197,7 @@ type_to_type_ctor_set(Type, !TypeCtors) :-
             true
         else if
             ( SymName = unqualified("int")
+            ; SymName = unqualified("uint")
             ; SymName = unqualified("float")
             ; SymName = unqualified("string")
             ; SymName = unqualified("character")

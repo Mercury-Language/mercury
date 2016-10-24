@@ -1221,6 +1221,9 @@ table_trie_step_desc(TVarSet, Step) = Str :-
         Step = table_trie_step_int,
         Str = "int"
     ;
+        Step = table_trie_step_uint,
+        Str = "uint"
+    ;
         Step = table_trie_step_char,
         Str = "char"
     ;

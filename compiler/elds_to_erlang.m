@@ -778,6 +778,10 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
         io.write_int(Int, !IO),
         space(!IO)
     ;
+        Term = elds_uint(UInt),
+        io.write_int(UInt, !IO),    % XXX UINT.
+        space(!IO)
+    ;
         Term = elds_float(Float),
         output_float(Float, !IO),
         space(!IO)

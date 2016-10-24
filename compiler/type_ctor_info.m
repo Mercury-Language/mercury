@@ -435,6 +435,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
 % builtin_type_ctors_with_no_hlds_type_defn; any changes here may need
 % to be done there as well.
 builtin_type_ctor("builtin", "int", 0, builtin_ctor_int).
+builtin_type_ctor("builtin", "uint", 0, builtin_ctor_uint).
 builtin_type_ctor("builtin", "string", 0, builtin_ctor_string).
 builtin_type_ctor("builtin", "float", 0, builtin_ctor_float).
 builtin_type_ctor("builtin", "character", 0, builtin_ctor_char).
@@ -488,7 +489,7 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
     %
 :- func type_ctor_info_rtti_version = int.
 
-type_ctor_info_rtti_version = 16.
+type_ctor_info_rtti_version = 17.
 
 %---------------------------------------------------------------------------%
 
@@ -651,6 +652,7 @@ make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
         ( ConsTag = string_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = int_tag(_)
+        ; ConsTag = uint_tag(_)
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
@@ -832,6 +834,7 @@ get_maybe_reserved_rep(ConsTag, ConsRep) :-
         ( ConsTag = no_tag
         ; ConsTag = string_tag(_)
         ; ConsTag = int_tag(_)
+        ; ConsTag = uint_tag(_)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = closure_tag(_, _, _)

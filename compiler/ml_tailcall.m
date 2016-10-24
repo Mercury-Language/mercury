@@ -888,6 +888,7 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
         ( Const = mlconst_true
         ; Const = mlconst_false
         ; Const = mlconst_int(_)
+        ; Const = mlconst_uint(_)
         ; Const = mlconst_enum(_, _)
         ; Const = mlconst_char(_)
         ; Const = mlconst_foreign(_, _, _)

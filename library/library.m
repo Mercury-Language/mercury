@@ -147,6 +147,7 @@
 :- import_module tree234.
 :- import_module tree_bitset.
 :- import_module type_desc.
+:- import_module uint.
 :- import_module unit.
 :- import_module univ.
 :- import_module varset.
@@ -334,6 +335,7 @@ mercury_std_library_module("thread.semaphore").
 mercury_std_library_module("tree234").
 mercury_std_library_module("tree_bitset").
 mercury_std_library_module("type_desc").
+mercury_std_library_module("uint").
 mercury_std_library_module("unit").
 mercury_std_library_module("univ").
 mercury_std_library_module("varset").

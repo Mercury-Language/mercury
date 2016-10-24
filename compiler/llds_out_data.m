@@ -1010,6 +1010,24 @@ output_rval(Info, Rval, !IO) :-
                 io.write_string(")", !IO)
             )
         ;
+            ( Op = uint_eq, OpStr = "=="
+            ; Op = uint_ne, OpStr = "!="
+            ; Op = uint_lt, OpStr = "<"
+            ; Op = uint_gt, OpStr = ">"
+            ; Op = uint_le, OpStr = "<="
+            ; Op = uint_ge, OpStr = ">="
+            ; Op = uint_add, OpStr = "+"
+            ; Op = uint_sub, OpStr = "-"
+            ; Op = uint_mul, OpStr = "*"
+            ),
+            io.write_string("(", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_unsigned, !IO),
+            io.write_string(" ", !IO),
+            io.write_string(OpStr, !IO),
+            io.write_string(" ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_unsigned, !IO),
+            io.write_string(")", !IO)
+        ;
             Op = str_cmp,
             io.write_string("MR_strcmp(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_data_ptr, !IO),
@@ -1175,6 +1193,9 @@ output_rval_const(Info, Const, !IO) :-
         Const = llconst_int(N),
         c_util.output_int_expr_cur_stream(N, !IO)
     ;
+        Const = llconst_uint(N),     % XXX UINT.
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
         Const = llconst_foreign(Value, Type),
         io.write_char('(', !IO),
         output_llds_type_cast(Type, !IO),
@@ -1266,6 +1287,8 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
             ModuleStr = "builtin",
             ( if Name = "int" then
                 Macro = "MR_INT_CTOR_ADDR"
+            else if Name = "uint" then
+                Macro = "MR_UINT_CTOR_ADDR"
             else if Name = "float" then
                 Macro = "MR_FLOAT_CTOR_ADDR"
             else if Name = "string" then

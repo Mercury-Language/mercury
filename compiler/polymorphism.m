@@ -3585,6 +3585,9 @@ get_category_name(CtorCat) = MaybeName :-
         CtorCat = ctor_cat_builtin(cat_builtin_int),
         MaybeName = yes("int")
     ;
+        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        MaybeName = yes("uint")
+    ;
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         MaybeName = yes("character")
     ;

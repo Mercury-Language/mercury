@@ -39,6 +39,7 @@
 #undef VOID
 
 MR_DEFINE_TYPE_CTOR_INFO(builtin, int, 0, INT);
+MR_DEFINE_TYPE_CTOR_INFO(builtin, uint, 0, UINT);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, character, 0, CHAR);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, string, 0, STRING);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, float, 0, FLOAT);
@@ -102,6 +103,12 @@ MR_DEFINE_TYPE_CTOR_INFO(type_desc, type_desc, 0, TYPEDESC);
 
 MR_bool MR_CALL
 mercury__builtin____Unify____int_0_0(MR_Integer x, MR_Integer y)
+{
+    return x == y;
+}
+
+MR_bool MR_CALL
+mercury__builtin____Unify____uint_0_0(MR_Unsigned x, MR_Unsigned y)
 {
     return x == y;
 }
@@ -242,6 +249,15 @@ mercury__private_builtin____Unify____base_typeclass_info_0_0(
 void MR_CALL
 mercury__builtin____Compare____int_0_0(
     MR_Comparison_Result *result, MR_Integer x, MR_Integer y)
+{
+    *result = (x > y ? MR_COMPARE_GREATER :
+          x == y ? MR_COMPARE_EQUAL :
+          MR_COMPARE_LESS);
+}
+
+void MR_CALL
+mercury__builtin____Compare____uint_0_0(
+    MR_Comparison_Result *result, MR_Unsigned x, MR_Unsigned y)
 {
     *result = (x > y ? MR_COMPARE_GREATER :
           x == y ? MR_COMPARE_EQUAL :
@@ -404,6 +420,13 @@ mercury__builtin__do_unify__int_0_0(MR_Box x, MR_Box y)
 }
 
 MR_bool MR_CALL
+mercury__builtin__do_unify__uint_0_0(MR_Box x, MR_Box y)
+{
+    return mercury__builtin____Unify____uint_0_0(
+        (MR_Unsigned) x, (MR_Unsigned) y);
+}
+
+MR_bool MR_CALL
 mercury__builtin__do_unify__string_0_0(MR_Box x, MR_Box y)
 {
     return mercury__builtin____Unify____string_0_0(
@@ -542,6 +565,14 @@ mercury__builtin__do_compare__int_0_0(
 {
     mercury__builtin____Compare____int_0_0(result,
         (MR_Integer) x, (MR_Integer) y);
+}
+
+void MR_CALL
+mercury__builtin__do_compare__uint_0_0(
+    MR_Comparison_Result *result, MR_Box x, MR_Box y)
+{
+    mercury__builtin____Compare____uint_0_0(result,
+        (MR_Unsigned) x, (MR_Unsigned) y);
 }
 
 void MR_CALL
@@ -729,6 +760,7 @@ MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mercury_builtin_types;
   #endif // MR_DEEP_PROFILING
 
 MR_UNIFY_COMPARE_REP_DECLS(builtin, int, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, uint, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, string, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, float, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, character, 0)
@@ -758,6 +790,7 @@ MR_UNIFY_COMPARE_REP_DECLS(builtin, user_by_rtti, 0);
 MR_UNIFY_COMPARE_REP_DECLS(builtin, dummy, 0);
 
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, int, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, uint, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, string, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, float, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, character, 0)
@@ -830,6 +863,7 @@ MR_UNIFY_COMPARE_REP_DEFNS(builtin, dummy, 0)
 // mercury_sys_init_mercury_builtin_types_write_out_proc_statics() below.
 
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, int, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, uint, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, string, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, float, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, character, 0);
@@ -862,6 +896,7 @@ MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, dummy, 0);
 
 MR_BEGIN_MODULE(mercury_builtin_types)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, int, 0)
+    MR_UNIFY_COMPARE_REP_LABELS(builtin, uint, 0)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, string, 0)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, float, 0)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, character, 0)
@@ -901,6 +936,27 @@ MR_BEGIN_CODE
                             ((MR_Integer) MR_r1 == (MR_Integer) MR_r2 ? \
                                 MR_COMPARE_EQUAL :                      \
                             (MR_Integer) MR_r1 < (MR_Integer) MR_r2 ?   \
+                                MR_COMPARE_LESS :                       \
+                            MR_COMPARE_GREATER);
+
+#include "mercury_hand_unify_compare_body.h"
+
+#undef  module
+#undef  type
+#undef  arity
+#undef  unify_code
+#undef  compare_code
+
+////////////////////////////////////////////////////////////////////////////
+
+#define module          builtin
+#define type            uint
+#define arity           0
+#define unify_code      MR_r1 = ((MR_Unsigned) MR_r1 == (MR_Unsigned) MR_r2);
+#define compare_code    MR_r1 =                                         \
+                            ((MR_Unsigned) MR_r1 == (MR_Unsigned) MR_r2 ? \
+                                MR_COMPARE_EQUAL :                      \
+                            (MR_Unsigned) MR_r1 < (MR_Unsigned) MR_r2 ?   \
                                 MR_COMPARE_LESS :                       \
                             MR_COMPARE_GREATER);
 
@@ -1546,6 +1602,7 @@ mercury_sys_init_mercury_builtin_types_init(void)
     // library/builtin.m.)
 
     MR_init_entry(mercury__builtin____Unify____int_0_0);
+    MR_init_entry(mercury__builtin____Unify____uint_0_0);
     MR_init_entry(mercury__builtin____Unify____string_0_0);
     MR_init_entry(mercury__builtin____Unify____float_0_0);
     MR_init_entry(mercury__builtin____Unify____character_0_0);
@@ -1555,6 +1612,7 @@ mercury_sys_init_mercury_builtin_types_init(void)
     MR_init_entry(mercury__builtin____Unify____tuple_0_0);
 
     MR_init_entry(mercury__builtin____Compare____int_0_0);
+    MR_init_entry(mercury__builtin____Compare____uint_0_0);
     MR_init_entry(mercury__builtin____Compare____float_0_0);
     MR_init_entry(mercury__builtin____Compare____string_0_0);
     MR_init_entry(mercury__builtin____Compare____character_0_0);
@@ -1570,6 +1628,7 @@ mercury_sys_init_mercury_builtin_types_init(void)
 #endif  // MR_HIGHLEVEL_CODE
 
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, int, 0);
+    MR_INIT_TYPE_CTOR_INFO_MNA(builtin, uint, 0);
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, string, 0);
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, float, 0);
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, character, 0);
@@ -1603,6 +1662,7 @@ void
 mercury_sys_init_mercury_builtin_types_init_type_tables(void)
 {
     MR_REGISTER_TYPE_CTOR_INFO(builtin, int, 0);
+    MR_REGISTER_TYPE_CTOR_INFO(builtin, uint, 0);
     MR_REGISTER_TYPE_CTOR_INFO(builtin, string, 0);
     MR_REGISTER_TYPE_CTOR_INFO(builtin, float, 0);
     MR_REGISTER_TYPE_CTOR_INFO(builtin, character, 0);
@@ -1638,6 +1698,7 @@ mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *deep_fp,
     FILE *procrep_fp)
 {
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, int, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, uint, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, string, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, float, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, character, 0);

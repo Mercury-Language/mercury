@@ -141,6 +141,7 @@
     ;       tcr_equiv
     ;       tcr_func
     ;       tcr_int
+    ;       tcr_uint
     ;       tcr_char
     ;       tcr_float
     ;       tcr_string
@@ -1671,6 +1672,11 @@ is_exist_pseudo_type_info(_, _) :-
                 throw new System.Exception(
                     ""cannot construct int with construct.construct"");
 
+            case runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT:
+                /* uints don't have functor ordinals. */
+                throw new System.Exception(
+                    ""cannot construct uint with construct.construct"");
+
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_FLOAT:
                 /* floats don't have functor ordinals. */
                 throw new System.Exception(
@@ -2055,6 +2061,11 @@ is_exist_pseudo_type_info(_, _) :-
                 /* ints don't have functor ordinals. */
                 throw new Error(
                     ""cannot construct int with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_UINT:
+                /* ints don't have functor ordinals. */
+                throw new Error(
+                    ""cannot construct uint with construct.construct"");
 
             case private_builtin.MR_TYPECTOR_REP_FLOAT:
                 /* floats don't have functor ordinals. */
@@ -2625,6 +2636,12 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
+        TypeCtorRep = tcr_uint,
+        Functor = "<<uint>>",
+        Ordinal = -1,
+        Arity = 0,
+        Arguments = []
+    ;
         TypeCtorRep = tcr_char,
         det_dynamic_cast(Term, Char),
         Functor = string.from_char_list(['\'', Char, '\'']),
@@ -2890,6 +2907,7 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
         ; TypeCtorRep = tcr_equiv
         ; TypeCtorRep = tcr_func
         ; TypeCtorRep = tcr_int
+        ; TypeCtorRep = tcr_uint
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string

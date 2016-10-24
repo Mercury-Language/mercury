@@ -458,6 +458,7 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
         case MR_TYPECTOR_REP_FUNC:
         case MR_TYPECTOR_REP_PRED:
         case MR_TYPECTOR_REP_INT:
+        case MR_TYPECTOR_REP_UINT:
         case MR_TYPECTOR_REP_FLOAT:
         case MR_TYPECTOR_REP_CHAR:
         case MR_TYPECTOR_REP_STRING:
@@ -891,6 +892,12 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
             /* ints don't have functor ordinals. */
             MR_fatal_error(
                 ""cannot construct int with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_UINT:
+            /* uints don't have functor ordinals. */
+            MR_fatal_error(
+                ""cannot construct uint with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_FLOAT:

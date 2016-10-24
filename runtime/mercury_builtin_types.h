@@ -24,6 +24,8 @@
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
     MR_TYPE_CTOR_INFO_NAME(builtin, int, 0));
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+    MR_TYPE_CTOR_INFO_NAME(builtin, uint, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
     MR_TYPE_CTOR_INFO_NAME(builtin, string, 0));
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
     MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));
@@ -67,6 +69,8 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 
 MR_bool MR_CALL mercury__builtin____Unify____int_0_0(MR_Integer x,
                     MR_Integer y);
+MR_bool MR_CALL mercury__builtin____Unify____uint_0_0(MR_Unsigned x,
+                    MR_Unsigned y);
 MR_bool MR_CALL mercury__builtin____Unify____string_0_0(MR_String x,
                     MR_String y);
 MR_bool MR_CALL mercury__builtin____Unify____float_0_0(MR_Float x, MR_Float y);
@@ -100,6 +104,8 @@ MR_bool MR_CALL mercury__private_builtin____Unify____base_typeclass_info_0_0(
 
 void MR_CALL    mercury__builtin____Compare____int_0_0(
                     MR_Comparison_Result *result, MR_Integer x, MR_Integer y);
+void MR_CALL    mercury__builtin____Compare____uint_0_0(
+                    MR_Comparison_Result *result, MR_Unsigned x, MR_Unsigned y);
 void MR_CALL    mercury__builtin____Compare____string_0_0(
                     MR_Comparison_Result *result, MR_String x, MR_String y);
 void MR_CALL    mercury__builtin____Compare____float_0_0(

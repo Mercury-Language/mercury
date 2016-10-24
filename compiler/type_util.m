@@ -753,6 +753,9 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
             TypeName = "character",
             TypeCategoryPrime = ctor_cat_builtin(cat_builtin_char)
         ;
+            TypeName = "uint",
+            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_uint)
+        ;
             TypeName = "int",
             TypeCategoryPrime = ctor_cat_builtin(cat_builtin_int)
         ;
@@ -875,6 +878,7 @@ type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
     TypeCategory = classify_type(ModuleInfo, Type),
     (
         ( TypeCategory = ctor_cat_builtin(cat_builtin_int)
+        ; TypeCategory = ctor_cat_builtin(cat_builtin_uint)
         ; TypeCategory = ctor_cat_builtin(cat_builtin_char)
         ; TypeCategory = ctor_cat_enum(_)
         ; TypeCategory = ctor_cat_builtin_dummy

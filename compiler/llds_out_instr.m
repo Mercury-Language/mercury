@@ -2093,6 +2093,11 @@ output_foreign_proc_output(Info, Output, !IO) :-
                     output_lval_as_word(Info, Lval, !IO),
                     io.write_string(" = ", !IO),
                     io.write_string(VarName, !IO)
+                ;
+                    BuiltinType = builtin_type_uint,
+                    output_lval_as_word(Info, Lval, !IO),
+                    io.write_string(" = ", !IO),
+                    io.write_string(VarName, !IO)
                 )
             else
                 output_lval_as_word(Info, Lval, !IO),

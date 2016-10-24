@@ -914,6 +914,7 @@ is_interesting_cons_id(Params, ConsId) = IsInteresting :-
     (
         ( ConsId = cons(_, _, _)
         ; ConsId = tuple_cons(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

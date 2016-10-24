@@ -229,6 +229,7 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
         MightContainPointers = yes
     ;
         ( Type = mlds_native_int_type
+        ; Type = mlds_native_uint_type
         ; Type = mlds_native_float_type
         ; Type = mlds_native_bool_type
         ; Type = mlds_native_char_type
@@ -250,6 +251,7 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
 ml_type_category_might_contain_pointers(CtorCat) = MayContainPointers :-
     (
         ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
         ; CtorCat = ctor_cat_builtin(cat_builtin_char)
         ; CtorCat = ctor_cat_builtin(cat_builtin_float)
         ; CtorCat = ctor_cat_builtin_dummy

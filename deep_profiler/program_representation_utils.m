@@ -301,6 +301,9 @@ type_rep_to_strings(TypeRep, Cord) :-
             BuiltinTypeRep = builtin_type_int_rep,
             TypeNameStr = "int"
         ;
+            BuiltinTypeRep = builtin_type_uint_rep,
+            TypeNameStr = "uint"
+        ;
             BuiltinTypeRep = builtin_type_float_rep,
             TypeNameStr = "float"
         ;

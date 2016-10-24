@@ -404,6 +404,7 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
     ;
         % Constants.
         ( Tag = int_tag(_)
+        ; Tag = uint_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
@@ -453,6 +454,9 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         else
             Rval = ml_const(mlconst_enum(Int, MLDS_VarType))
         )
+    ;
+        Tag = uint_tag(UInt),
+        Rval = ml_const(mlconst_uint(UInt))
     ;
         Tag = float_tag(Float),
         Rval = ml_const(mlconst_float(Float))
@@ -1484,6 +1488,7 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
     (
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
+        ; Tag = uint_tag(_UInt)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
         ; Tag = shared_local_tag(_Bits1, _Num1)
@@ -1588,6 +1593,7 @@ ml_tag_offset_and_argnum(Tag, TagBits, Offset, ArgNum) :-
     ;
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
+        ; Tag = uint_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
         ; Tag = closure_tag(_, _, _)
@@ -2213,6 +2219,9 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         ),
         TagTestRval = ml_binop(eq, Rval, ConstRval)
     ;
+        Tag = uint_tag(UInt),
+        TagTestRval = ml_binop(eq, Rval, ml_const(mlconst_uint(UInt))) % XXX is that right?
+    ;
         Tag = foreign_tag(ForeignLang, ForeignVal),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal, MLDS_Type)),
@@ -2510,6 +2519,9 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             else
                 ConstRval = ml_const(mlconst_enum(Int, MLDS_Type))
             )
+        ;
+            ConsTag = uint_tag(UInt),
+            ConstRval = ml_const(mlconst_uint(UInt))
         ;
             ConsTag = float_tag(Float),
             ConstRval = ml_const(mlconst_float(Float))
@@ -2904,6 +2916,7 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
     ;
         % These tags don't build heap cells.
         ( ConsTag = int_tag(_)
+        ; ConsTag = uint_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = string_tag(_)
         ; ConsTag = reserved_address_tag(_)
@@ -3080,6 +3093,9 @@ ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
         else
             Rval = ml_const(mlconst_enum(Int, MLDS_Type))
         )
+    ;
+        ConsTag = uint_tag(UInt),
+        Rval = ml_const(mlconst_uint(UInt))
     ;
         ConsTag = float_tag(Float),
         Rval = ml_const(mlconst_float(Float))

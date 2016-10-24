@@ -330,19 +330,22 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
             BuiltinType = builtin_type_int,
             Selector = 5
         ;
-            BuiltinType = builtin_type_float,
+            BuiltinType = builtin_type_uint,
             Selector = 6
         ;
-            BuiltinType = builtin_type_string,
+            BuiltinType = builtin_type_float,
             Selector = 7
         ;
-            BuiltinType = builtin_type_char,
+            BuiltinType = builtin_type_string,
             Selector = 8
+        ;
+            BuiltinType = builtin_type_char,
+            Selector = 9
         ),
         TypeBytesCord = cord.singleton(Selector)
     ;
         Type = tuple_type(ArgTypes, _Kind),
-        Selector = 9,
+        Selector = 10,
         list.map_foldl2(lookup_type_in_table, ArgTypes, ArgTypeCodes,
             !StringTable, !TypeTable),
         encode_arg_type_codes(ArgTypeCodes, ArgTypeBytesCord),
@@ -355,10 +358,10 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
         encode_arg_type_codes(ArgTypeCodes, ArgTypeBytesCord),
         (
             PorF = pf_predicate,
-            Selector = 10
+            Selector = 11
         ;
             PorF = pf_function,
-            Selector = 11
+            Selector = 12
         ),
         TypeBytesCord = cord.singleton(Selector) ++ ArgTypeBytesCord
     ;
@@ -369,7 +372,7 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
         unexpected($module, $pred, "kinded_type")
     ;
         Type = type_variable(TVar, _Kind),
-        Selector = 12,
+        Selector = 13,
         var_to_int(TVar, TVarNum),
         encode_num_det(TVarNum, TVarNumBytes),
         TypeBytesCord = cord.singleton(Selector) ++

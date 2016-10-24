@@ -15,7 +15,7 @@ public class TypeCtorRep implements java.io.Serializable {
 	// should generate references to these constants instead of those in
 	// private_builtin.
 	public static final int MR_TYPECTOR_REP_EQUIV		= 6;
-	public static final int MR_TYPECTOR_REP_EQUIV_GROUND	= 29;
+	public static final int MR_TYPECTOR_REP_EQUIV_GROUND	= 30;
 
 	// Instance variable for TypeCtorRep objects.
 	

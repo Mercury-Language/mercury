@@ -507,6 +507,7 @@ type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
     (
         ( CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
         ; CtorCat = ctor_cat_builtin(cat_builtin_char)
         ),
         SwitchCat = atomic_switch
@@ -537,6 +538,7 @@ type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
 estimate_switch_tag_test_cost(Tag) = Cost :-
     (
         ( Tag = int_tag(_)
+        ; Tag = uint_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = reserved_address_tag(_)
         ; Tag = shared_local_tag(_, _)
@@ -560,6 +562,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         Tag = float_tag(_),
         % You need to follow a pointer and then compare 64 bits
         % (two words on 32 bit machines, which are still the most common).
+        % XXX they're not that common anymore.
         Cost = 3
     ;
         Tag = shared_remote_tag(_, _),
@@ -1226,6 +1229,7 @@ get_ptag_counts_loop([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
+        ; Tag = uint_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -1330,6 +1334,7 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
+        ; Tag = uint_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)

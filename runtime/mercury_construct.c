@@ -159,6 +159,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
         return MR_TRUE;
 
     case MR_TYPECTOR_REP_INT:
+    case MR_TYPECTOR_REP_UINT:
     case MR_TYPECTOR_REP_CHAR:
     case MR_TYPECTOR_REP_FLOAT:
     case MR_TYPECTOR_REP_STRING:
@@ -315,6 +316,7 @@ MR_get_num_functors(MR_TypeInfo type_info)
                     MR_type_ctor_layout(type_ctor_info).MR_layout_equiv));
 
         case MR_TYPECTOR_REP_INT:
+        case MR_TYPECTOR_REP_UINT:
         case MR_TYPECTOR_REP_CHAR:
         case MR_TYPECTOR_REP_FLOAT:
         case MR_TYPECTOR_REP_STRING:

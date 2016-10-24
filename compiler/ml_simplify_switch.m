@@ -124,6 +124,7 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
 is_integral_type(MLDSType) = IsIntegral :-
     (
         ( MLDSType = mlds_native_int_type
+        ; MLDSType = mlds_native_uint_type
         ; MLDSType = mlds_native_char_type
         ),
         IsIntegral = yes
@@ -152,6 +153,7 @@ is_integral_type(MLDSType) = IsIntegral :-
         MLDSType = mercury_type(_, CtorCat, _),
         (
             ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+            ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
             ; CtorCat = ctor_cat_builtin(cat_builtin_char)
             ; CtorCat = ctor_cat_enum(cat_enum_mercury)
             ),

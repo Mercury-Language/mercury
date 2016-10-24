@@ -915,6 +915,7 @@ method_ptrs_in_rval(Rval, !CodeAddrs) :-
             ( RvalConst = mlconst_true
             ; RvalConst = mlconst_false
             ; RvalConst = mlconst_int(_)
+            ; RvalConst = mlconst_uint(_)
             ; RvalConst = mlconst_char(_)
             ; RvalConst = mlconst_enum(_, _)
             ; RvalConst = mlconst_foreign(_, _, _)
@@ -1487,6 +1488,7 @@ rename_class_names_type(Renaming, !Type) :-
         ; !.Type = mlds_commit_type
         ; !.Type = mlds_native_bool_type
         ; !.Type = mlds_native_int_type
+        ; !.Type = mlds_native_uint_type
         ; !.Type = mlds_native_float_type
         ; !.Type = mlds_native_char_type
         ; !.Type = mlds_foreign_type(_)
@@ -1792,6 +1794,7 @@ rename_class_names_rval_const(Renaming, !Const) :-
         ( !.Const = mlconst_true
         ; !.Const = mlconst_false
         ; !.Const = mlconst_int(_)
+        ; !.Const = mlconst_uint(_)
         ; !.Const = mlconst_char(_)
         ; !.Const = mlconst_enum(_, _)
         ; !.Const = mlconst_float(_)
@@ -2653,6 +2656,7 @@ add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph) :-
         ( RvalConst = mlconst_true
         ; RvalConst = mlconst_false
         ; RvalConst = mlconst_int(_)
+        ; RvalConst = mlconst_uint(_)
         ; RvalConst = mlconst_enum(_, _)
         ; RvalConst = mlconst_char(_)
         ; RvalConst = mlconst_float(_)
@@ -2737,6 +2741,7 @@ get_java_type_initializer(Type) = Initializer :-
         Type = mercury_type(_, CtorCat, _),
         (
             ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+            ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
             ; CtorCat = ctor_cat_builtin(cat_builtin_float)
             ),
             Initializer = "0"
@@ -2758,6 +2763,7 @@ get_java_type_initializer(Type) = Initializer :-
         )
     ;
         ( Type = mlds_native_int_type
+        ; Type = mlds_native_uint_type
         ; Type = mlds_native_float_type
         ),
         Initializer = "0"
@@ -3436,6 +3442,10 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         String = "int",
         ArrayDims = []
     ;
+        MLDS_Type = mlds_native_uint_type,
+        String = "int", % Java lacks unsigned integers.
+        ArrayDims = []
+    ;
         MLDS_Type = mlds_native_float_type,
         String = "double",
         ArrayDims = []
@@ -3548,6 +3558,10 @@ mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_int),
         String = "int",
+        ArrayDims = []
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        String = "int",     % Java has no unsigned types.
         ArrayDims = []
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_string),
@@ -5110,6 +5124,33 @@ output_binop(Info, Op, X, Y, !IO) :-
             output_rval(Info, Y, !IO),
             io.write_string(")", !IO)
         )
+    ;
+        ( Op = uint_eq
+        ; Op = uint_ne
+        ; Op = uint_add
+        ; Op = uint_sub
+        ; Op = uint_mul
+        ),
+        io.write_string("(", !IO),
+        output_rval(Info, X, !IO),
+        io.write_string(" ", !IO),
+        output_binary_op(Op, !IO),
+        io.write_string(" ", !IO),
+        output_rval(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        ( Op = uint_lt
+        ; Op = uint_gt
+        ; Op = uint_le
+        ; Op = uint_ge
+        ),
+        io.write_string("(((", !IO),
+        output_rval(Info, X, !IO),
+        io.write_string(") & 0xffffffffL) ", !IO),
+        output_binary_op(Op, !IO),
+        io.write_string(" ((", !IO),
+        output_rval(Info, Y, !IO),
+        io.write_string(") & 0xffffffffL))", !IO)
     ).
 
     % Output an Rval and if the Rval is an enumeration object append the string
@@ -5157,6 +5198,18 @@ output_binary_op(Op, !IO) :-
         ; Op = int_le, OpStr = "<="
         ; Op = int_ge, OpStr = ">="
 
+        ; Op = uint_eq, OpStr = "=="
+        ; Op = uint_ne, OpStr = "!="
+        % NOTE: unsigned comparisons require special handling
+        % in Java.  See output_binop/6 above.
+        ; Op = uint_lt, OpStr = "<"
+        ; Op = uint_gt, OpStr = ">"
+        ; Op = uint_le, OpStr = "<="
+        ; Op = uint_ge, OpStr = ">="
+
+        ; Op = uint_add, OpStr = "+"
+        ; Op = uint_sub, OpStr = "-"
+        ; Op = uint_mul, OpStr = "*"
 
         ; Op = float_eq, OpStr = "=="
         ; Op = float_ne, OpStr = "!="
@@ -5206,6 +5259,9 @@ output_rval_const(Info, Const, !IO) :-
     ;
         Const = mlconst_int(N),
         output_int_const(N, !IO)
+    ;
+        Const = mlconst_uint(U),
+        output_int_const(U, !IO)    % XXX UINT.
     ;
         Const = mlconst_char(N),
         io.write_string("(", !IO),

@@ -632,6 +632,7 @@ cons_id_arity(ConsId) = Arity :-
         Arity = cons_id_arity(SubConsId)
     ;
         ( ConsId = int_const(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)
@@ -656,6 +657,7 @@ cons_id_arity(ConsId) = Arity :-
 cons_id_maybe_arity(cons(_, Arity, _)) = yes(Arity).
 cons_id_maybe_arity(tuple_cons(Arity)) = yes(Arity).
 cons_id_maybe_arity(int_const(_)) = yes(0).
+cons_id_maybe_arity(uint_const(_)) = yes(0).
 cons_id_maybe_arity(float_const(_)) = yes(0).
 cons_id_maybe_arity(char_const(_)) = yes(0).
 cons_id_maybe_arity(string_const(_)) = yes(0).

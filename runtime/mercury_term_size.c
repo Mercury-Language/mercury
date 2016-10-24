@@ -245,8 +245,19 @@ try_again:
         case MR_TYPECTOR_REP_INT:
 #ifdef MR_DEBUG_TERM_SIZES
             if (MR_heapdebug && MR_lld_print_enabled) {
-                printf("MR_term_size: int %p %ld\n",
-                    (void *) term, (long) term);
+                printf(
+                    "MR_term_size: int %p %" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                    (void *) term, (MR_Integer) term);
+            }
+#endif
+            return 0;
+
+        case MR_TYPECTOR_REP_UINT:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf(
+                    "MR_term_size: uint %p %" MR_INTEGER_LENGTH_MODIFIER "u\n",
+                    (void *) term, (MR_Unsigned) term);
             }
 #endif
             return 0;

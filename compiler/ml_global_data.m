@@ -589,6 +589,15 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = int_le
         ; Op = int_ge
         ; Op = unsigned_le
+        ; Op = uint_eq
+        ; Op = uint_ne
+        ; Op = uint_lt
+        ; Op = uint_gt
+        ; Op = uint_le
+        ; Op = uint_ge
+        ; Op = uint_add
+        ; Op = uint_sub
+        ; Op = uint_mul
         ; Op = float_eq
         ; Op = float_ne
         ; Op = float_lt
@@ -792,6 +801,7 @@ cons_id_to_alloc_site_string(ConsId) = TypeStr :-
         TypeStr = "ground_term_const"
     ;
         ( ConsId = int_const(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

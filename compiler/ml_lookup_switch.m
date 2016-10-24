@@ -824,6 +824,9 @@ ml_default_value_for_type(MLDS_Type) = DefaultRval :-
         MLDS_Type = mlds_native_int_type,
         DefaultRval = ml_const(mlconst_int(0))
     ;
+        MLDS_Type = mlds_native_uint_type,
+        DefaultRval = ml_const(mlconst_uint(0))
+    ;
         MLDS_Type = mlds_native_char_type,
         DefaultRval = ml_const(mlconst_char(0))
     ;

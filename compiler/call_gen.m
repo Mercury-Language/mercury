@@ -746,6 +746,7 @@ generate_assign_builtin(Var, AssignExpr, Code, !CLD) :-
 
 convert_simple_expr(leaf(Var)) = var(Var).
 convert_simple_expr(int_const(Int)) = const(llconst_int(Int)).
+convert_simple_expr(uint_const(UInt)) = const(llconst_uint(UInt)).
 convert_simple_expr(float_const(Float)) = const(llconst_float(Float)).
 convert_simple_expr(unary(UnOp, Expr)) =
     unop(UnOp, convert_simple_expr(Expr)).

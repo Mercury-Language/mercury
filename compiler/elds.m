@@ -214,6 +214,7 @@
 :- type elds_term
     --->    elds_char(char)
     ;       elds_int(int)
+    ;       elds_uint(int)  % XXX UINT.
     ;       elds_float(float)
 
     ;       elds_binary(string)

@@ -799,6 +799,7 @@ cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
         ( ConsId = tuple_cons(_)
         ; ConsId = closure_cons(_, _)
         ; ConsId = int_const(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)
@@ -830,6 +831,7 @@ mer_type_used_modules(Visibility, Type, !UsedModules) :-
         Type = builtin_type(BuiltinType),
         (
             ( BuiltinType = builtin_type_int
+            ; BuiltinType = builtin_type_uint
             ; BuiltinType = builtin_type_float
             ; BuiltinType = builtin_type_string
             )

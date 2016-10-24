@@ -1408,6 +1408,7 @@ ml_must_box_field_type(ModuleInfo, Type, Width) :-
 ml_must_box_field_type_category(CtorCat, UnboxedFloat, Width) = MustBox :-
     (
         ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
         ; CtorCat = ctor_cat_builtin(cat_builtin_string)
         ; CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_higher_order

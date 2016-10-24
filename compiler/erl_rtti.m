@@ -608,6 +608,8 @@ erlang_type_ctor_rep(erlang_eqv(_)) =
     elds_term(make_enum_alternative("etcr_eqv")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int)) =
     elds_term(make_enum_alternative("etcr_int")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_uint)) =
+    elds_term(make_enum_alternative("etcr_uint")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_float)) =
     elds_term(make_enum_alternative("etcr_float")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_char)) =

@@ -310,7 +310,8 @@ ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
         ConstValue = ml_const(mlconst_foreign(ForeignLang, ForeignTagValue,
             MLDS_Type))
     ;
-        ( TagVal = string_tag(_)
+        ( TagVal = uint_tag(_)
+        ; TagVal = string_tag(_)
         ; TagVal = float_tag(_)
         ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)
@@ -864,6 +865,7 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         ( Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
+        ; Tag = uint_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -1234,6 +1236,7 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
     ;
         ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)
+        ; TagVal = uint_tag(_)
         ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)
         ; TagVal = base_typeclass_info_tag(_, _, _)

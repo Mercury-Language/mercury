@@ -420,6 +420,9 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ConsTag = int_tag(Int),
         TestRval = binop(eq, Rval, const(llconst_int(Int)))
     ;
+        ConsTag = uint_tag(UInt),
+        TestRval = binop(uint_eq, Rval, const(llconst_uint(UInt)))
+    ;
         ConsTag = foreign_tag(ForeignLang, ForeignVal),
         expect(unify(ForeignLang, lang_c), $module, $pred,
             "foreign tag for language other than C"),
@@ -549,6 +552,10 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
     ;
         ConsTag = int_tag(Int),
         assign_const_to_var(LHSVar, const(llconst_int(Int)), !.CI, !CLD),
+        Code = empty
+    ;
+        ConsTag = uint_tag(UInt),
+        assign_const_to_var(LHSVar, const(llconst_uint(UInt)), !.CI, !CLD),
         Code = empty
     ;
         ConsTag = foreign_tag(Lang, Val),
@@ -1296,6 +1303,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
     (
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
+        ; Tag = uint_tag(_UInt)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
         ; Tag = closure_tag(_, _, _)
@@ -1798,6 +1806,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
     ;
         ( ConsTag = string_tag(_)
         ; ConsTag = int_tag(_)
+        ; ConsTag = uint_tag(_)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = shared_local_tag(_, _)
@@ -1855,6 +1864,10 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
             ConsTag = int_tag(Int),
             Const = llconst_int(Int),
             Type = lt_integer
+        ;
+            ConsTag = uint_tag(UInt),
+            Const = llconst_uint(UInt),
+            Type = lt_unsigned
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $module, $pred,
@@ -2032,6 +2045,10 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
             ConsTag = int_tag(Int),
             Const = llconst_int(Int),
             Type = lt_integer
+        ;
+            ConsTag = uint_tag(UInt),
+            Const = llconst_uint(UInt),
+            Type = lt_unsigned
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $module, $pred,

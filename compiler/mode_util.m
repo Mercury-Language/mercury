@@ -1893,6 +1893,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         % Note that before the change that introduced the char_const functor,
         % we used to handle character constants as user-defined cons_ids.
         ( ConsId = int_const(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

@@ -1076,6 +1076,15 @@ binop_code(float_from_dword,        41).
 binop_code(pointer_equal_conservative, 42).
 binop_code(offset_str_eq(_),        43).
 binop_code(string_unsafe_index_code_unit, 44).
+binop_code(uint_eq,                 45).
+binop_code(uint_ne,                 46).
+binop_code(uint_lt,                 47).
+binop_code(uint_gt,                 48).
+binop_code(uint_le,                 49).
+binop_code(uint_ge,                 50).
+binop_code(uint_add,                51).
+binop_code(uint_sub,                52).
+binop_code(uint_mul,                53).
 
 :- pred binop_debug(binary_op::in, string::out) is det.
 
@@ -1124,6 +1133,15 @@ binop_debug(float_from_dword,       "float_from_dword").
 binop_debug(pointer_equal_conservative, "pointer_equal_conservative").
 binop_debug(offset_str_eq(_),       "offset_str_eq").
 binop_debug(string_unsafe_index_code_unit, "string_unsafe_index_code_unit").
+binop_debug(uint_eq,                "uint_eq").
+binop_debug(uint_ne,                "uint_ne").
+binop_debug(uint_lt,                "uint_lt").
+binop_debug(uint_gt,                "uint_gt").
+binop_debug(uint_le,                "uint_le").
+binop_debug(uint_ge,                "uint_ge").
+binop_debug(uint_add,               "uint_add").
+binop_debug(uint_sub,               "uint_sub").
+binop_debug(uint_mul,               "uint_mul").
 
 :- pred unop_code(unary_op::in, int::out) is det.
 

@@ -580,6 +580,9 @@ gen_unify(Unification, ByteInfo, Code) :-
             TypeCategory = ctor_cat_builtin(cat_builtin_int),
             TestId = int_test
         ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_uint),
+            sorry($module, $pred, "uint")
+        ;
             TypeCategory = ctor_cat_builtin(cat_builtin_char),
             TestId = char_test
         ;
@@ -765,6 +768,9 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ConsId = int_const(IntVal),
         ByteConsId = byte_int_const(IntVal)
     ;
+        ConsId = uint_const(_),
+        unexpected($file, $pred, "uint")
+    ;
         ConsId = float_const(FloatVal),
         ByteConsId = byte_float_const(FloatVal)
     ;
@@ -827,6 +833,8 @@ map_cons_tag(string_tag(_), _) :-
     unexpected($module, $pred, "string_tag cons tag " ++
         "for non-string_constant cons id").
 map_cons_tag(int_tag(IntVal), byte_enum_tag(IntVal)).
+map_cons_tag(uint_tag(_), _) :-
+    sorry($module, $pred, "bytecode with uints").
 map_cons_tag(foreign_tag(_, _), _) :-
     sorry($module, $pred, "bytecode with foreign tags").
 map_cons_tag(float_tag(_), _) :-

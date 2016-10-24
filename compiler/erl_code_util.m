@@ -650,6 +650,7 @@ erl_rename_vars_in_terms(Subn, Terms0, Terms) :-
 erl_rename_vars_in_term(Subn, Term0, Term) :-
     (
         ( Term0 = elds_int(_)
+        ; Term0 = elds_uint(_)
         ; Term0 = elds_float(_)
         ; Term0 = elds_binary(_)
         ; Term0 = elds_list_of_ints(_)
@@ -814,6 +815,7 @@ erl_vars_in_terms(Terms, !Set) :-
 erl_vars_in_term(Term, !Set) :-
     (
         ( Term = elds_int(_)
+        ; Term = elds_uint(_)
         ; Term = elds_float(_)
         ; Term = elds_binary(_)
         ; Term = elds_list_of_ints(_)
@@ -952,6 +954,7 @@ erl_terms_size(Terms) = sum(list.map(erl_term_size, Terms)).
 erl_term_size(Term) = Size :-
     (
         ( Term = elds_int(_)
+        ; Term = elds_uint(_)
         ; Term = elds_float(_)
         ; Term = elds_binary(_)
         ; Term = elds_list_of_ints(_)

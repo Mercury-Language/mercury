@@ -407,6 +407,7 @@ try_again:
         goto try_again;
 
     case MR_TYPECTOR_REP_INT:  // fallthru
+    case MR_TYPECTOR_REP_UINT: // fallthru
     case MR_TYPECTOR_REP_CHAR:
         return data;
 

@@ -441,6 +441,9 @@ dump_const(MaybeProcLabel, Const) = Str :-
         Const = llconst_int(I),
         Str = int_to_string(I)
     ;
+        Const = llconst_uint(U),
+        Str = int_to_string(U)      % XXX UINT.
+    ;
         Const = llconst_foreign(F, _),
         Str = F
     ;
@@ -852,6 +855,15 @@ dump_binop(str_ge) = "str>=".
 dump_binop(str_lt) = "str<".
 dump_binop(str_gt) = "str>".
 dump_binop(unsigned_le) = "unsigned<=".
+dump_binop(uint_eq) = "uint==".
+dump_binop(uint_ne) = "uint!=".
+dump_binop(uint_lt) = "uint<".
+dump_binop(uint_gt) = "uint>".
+dump_binop(uint_le) = "uint<=".
+dump_binop(uint_ge) = "uint>=".
+dump_binop(uint_add) = "uint+".
+dump_binop(uint_sub) = "uint-".
+dump_binop(uint_mul) = "uint*".
 dump_binop(float_plus) = "fl+".
 dump_binop(float_minus) = "fl-".
 dump_binop(float_times) = "fl*".

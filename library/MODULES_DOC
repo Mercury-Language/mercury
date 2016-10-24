@@ -86,6 +86,7 @@ time.m
 tree234.m
 tree_bitset.m
 type_desc.m
+uint.m
 unit.m
 univ.m
 varset.m

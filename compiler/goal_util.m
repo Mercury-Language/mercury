@@ -1192,6 +1192,7 @@ cons_id_proc_refs_acc(ConsId, !ReferredToProcs) :-
         ( ConsId = cons(_, _, _)
         ; ConsId = tuple_cons(_)
         ; ConsId = int_const(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

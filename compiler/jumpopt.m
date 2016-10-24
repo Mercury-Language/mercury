@@ -1156,6 +1156,7 @@ short_circuit_labels_const(InstrMap, RvalConst0, RvalConst) :-
         ( RvalConst0 = llconst_true
         ; RvalConst0 = llconst_false
         ; RvalConst0 = llconst_int(_I)
+        ; RvalConst0 = llconst_uint(_U)
         ; RvalConst0 = llconst_foreign(_V, _T)
         ; RvalConst0 = llconst_float(_F)
         ; RvalConst0 = llconst_string(_S)

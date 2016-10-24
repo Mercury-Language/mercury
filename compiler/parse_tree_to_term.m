@@ -649,6 +649,11 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         term.context_init(Context),
         Term = term.functor(term.integer(Int), [], Context)
     ;
+        ConsId = uint_const(_UInt),
+        term.context_init(Context),
+        % XXX UINT.
+        Term = term.functor(term.string("<<uint>>"), [], Context)
+    ;
         ConsId = float_const(Float),
         term.context_init(Context),
         Term = term.functor(term.float(Float), [], Context)

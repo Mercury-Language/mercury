@@ -2461,6 +2461,7 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
     (
         ( CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_builtin(cat_builtin_int)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
         ; CtorCat = ctor_cat_builtin(cat_builtin_char)
         ; CtorCat = ctor_cat_void
         ),
@@ -2552,6 +2553,10 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
                 CatString = "int",
                 Step = table_trie_step_int
             ;
+                CtorCat = ctor_cat_builtin(cat_builtin_uint),
+                CatString = "uint",
+                Step = table_trie_step_uint
+            ;
                 CtorCat = ctor_cat_builtin(cat_builtin_char),
                 CatString = "char",
                 Step = table_trie_step_char
@@ -2608,6 +2613,9 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
         ;
             CtorCat = ctor_cat_builtin(cat_builtin_int),
             unexpected($module, $pred, "tabling ints by addr")
+        ;
+            CtorCat = ctor_cat_builtin(cat_builtin_uint),
+            unexpected($module, $pred, "tabling uints by addr")
         ;
             CtorCat = ctor_cat_builtin(cat_builtin_char),
             unexpected($module, $pred, "tabling chars by addr")
@@ -3628,6 +3636,9 @@ type_save_category(CtorCat, Name) :-
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_int),
         Name = "int"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        Name = "uint"
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_float),
         Name = "float"

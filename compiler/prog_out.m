@@ -339,6 +339,9 @@ cons_id_and_arity_to_string_maybe_quoted(QuoteCons, ConsId) = String :-
         ConsId = int_const(Int),
         string.int_to_string(Int, String)
     ;
+        ConsId = uint_const(UInt),  % XXX UINT.
+        string.int_to_string(UInt, String)
+    ;
         ConsId = float_const(Float),
         String = float_to_string(Float)
     ;
@@ -428,6 +431,7 @@ type_name_to_string(type_ctor(Name, _Arity)) =
     sym_name_to_escaped_string(Name).
 
 builtin_type_to_string(builtin_type_int, "int").
+builtin_type_to_string(builtin_type_uint, "uint").
 builtin_type_to_string(builtin_type_float, "float").
 builtin_type_to_string(builtin_type_string, "string").
 builtin_type_to_string(builtin_type_char, "character").

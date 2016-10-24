@@ -65,6 +65,7 @@
     --->    cons(ground, ground, ground)
     ;       tuple_cons(ground)
     ;       int_const(ground)
+    ;       uint_const(ground)
     ;       float_const(ground)
     ;       char_const(ground)
     ;       string_const(ground).
@@ -278,6 +279,9 @@ cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info) :-
         ConsId = int_const(Int),
         Term = elds_int(Int)
     ;
+        ConsId = uint_const(UInt),
+        Term = elds_uint(UInt)
+    ;
         ConsId = float_const(Float),
         Term = elds_float(Float)
     ;
@@ -293,6 +297,7 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         ( ConsId = cons(_, _, _)
         ; ConsId = tuple_cons(_)
         ; ConsId = int_const(_)
+        ; ConsId = uint_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

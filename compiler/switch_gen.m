@@ -456,6 +456,7 @@ is_reserved_addr_tag(ConsTag) = IsReservedAddr :-
         IsReservedAddr = is_reserved_addr_tag(SubConsTag)
     ;
         ( ConsTag = int_tag(_)
+        ; ConsTag = uint_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = string_tag(_)
         ; ConsTag = foreign_tag(_, _)

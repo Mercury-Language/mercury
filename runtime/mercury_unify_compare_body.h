@@ -630,6 +630,20 @@ start_label:
             return_unify_answer(builtin, int, 0,
                 (MR_Integer) x == (MR_Integer) y);
 #endif
+        case MR_TYPECTOR_REP_UINT:
+
+#ifdef  select_compare_code
+            if ((MR_Unsigned) x == (MR_Unsigned) y) {
+                return_compare_answer(builtin, uint, 0, MR_COMPARE_EQUAL);
+            } else if ((MR_Unsigned) x < (MR_Unsigned) y) {
+                return_compare_answer(builtin, uint, 0, MR_COMPARE_LESS);
+            } else {
+                return_compare_answer(builtin, uint, 0, MR_COMPARE_GREATER);
+            }
+#else
+            return_unify_answer(builtin, uint, 0,
+                (MR_Unsigned) x == (MR_Unsigned) y);
+#endif
 
         case MR_TYPECTOR_REP_DUMMY:
             // Since dummy types contain only value, all unifies succeed and

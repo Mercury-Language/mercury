@@ -456,6 +456,7 @@ mer_type_to_xml(TVarset, defined_type(TypeName, Args, _)) = Xml :-
     XmlArgs = xml_list("type_args", mer_type_to_xml(TVarset), Args),
     Xml = elem("type", [Ref], [XmlName, XmlArgs]).
 mer_type_to_xml(_, builtin_type(builtin_type_int)) = elem("int", [], []).
+mer_type_to_xml(_, builtin_type(builtin_type_uint)) = elem("uint", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_float)) = elem("float", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_string)) = elem("string", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_char)) =
@@ -685,6 +686,8 @@ cons_id_to_xml(cons(Name, Arity, _)) =
 cons_id_to_xml(tuple_cons(Arity)) =
     elem("cons", [], [name_to_xml(unqualified("{}")), arity_to_xml(Arity)]).
 cons_id_to_xml(int_const(I)) = tagged_int("int", I).
+cons_id_to_xml(uint_const(_)) = _ :-
+    unexpected($file, $pred, "NYI uint").
 cons_id_to_xml(float_const(F)) = tagged_float("float", F).
 cons_id_to_xml(char_const(C)) = tagged_char("char", C).
 cons_id_to_xml(string_const(S)) = tagged_string("string", S).

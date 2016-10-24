@@ -1202,6 +1202,7 @@
     --->    llconst_true
     ;       llconst_false
     ;       llconst_int(int)
+    ;       llconst_uint(int)   % XXX UINT.
     ;       llconst_foreign(string, llds_type)
             % A constant in the target language.
             % It may be a #defined constant in C which is why
@@ -1669,6 +1670,7 @@ rval_type(mem_addr(_), lt_data_ptr).
 const_type(llconst_true, lt_bool).
 const_type(llconst_false, lt_bool).
 const_type(llconst_int(_), lt_integer).
+const_type(llconst_uint(_), lt_unsigned).
 const_type(llconst_foreign(_, Type), Type).
 const_type(llconst_float(_), lt_float).
 const_type(llconst_string(_), lt_string).
@@ -1751,6 +1753,15 @@ binop_return_type(body, lt_word).
 binop_return_type(compound_eq, lt_bool).
 binop_return_type(compound_lt, lt_bool).
 binop_return_type(pointer_equal_conservative, lt_bool).
+binop_return_type(uint_eq, lt_bool).
+binop_return_type(uint_ne, lt_bool).
+binop_return_type(uint_lt, lt_bool).
+binop_return_type(uint_gt, lt_bool).
+binop_return_type(uint_le, lt_bool).
+binop_return_type(uint_ge, lt_bool).
+binop_return_type(uint_add, lt_unsigned).
+binop_return_type(uint_sub, lt_unsigned).
+binop_return_type(uint_mul, lt_unsigned).
 
 register_type(reg_r, lt_word).
 register_type(reg_f, lt_float).

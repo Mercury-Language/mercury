@@ -445,6 +445,9 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
         SimpleExpr = int_const(Int),
         Expr = elds_term(elds_int(Int))
     ;
+        SimpleExpr = uint_const(UInt),
+        Expr = elds_term(elds_uint(UInt))
+    ;
         SimpleExpr = float_const(Float),
         Expr = elds_term(elds_float(Float))
     ;
@@ -549,6 +552,15 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = float_ge,              EldsBinOp = elds.(>=)
         ; StdBinOp = compound_eq,           EldsBinOp = elds.(=:=)
         ; StdBinOp = compound_lt,           EldsBinOp = elds.(<)
+        ; StdBinOp = uint_eq,               EldsBinOp = elds.(=:=)
+        ; StdBinOp = uint_ne,               EldsBinOp = elds.(=/=)
+        ; StdBinOp = uint_lt,               EldsBinOp = elds.(<)
+        ; StdBinOp = uint_gt,               EldsBinOp = elds.(>)
+        ; StdBinOp = uint_le,               EldsBinOp = elds.(=<)
+        ; StdBinOp = uint_ge,               EldsBinOp = elds.(>=)
+        ; StdBinOp = uint_add,              EldsBinOp = elds.add
+        ; StdBinOp = uint_sub,              EldsBinOp = elds.sub
+        ; StdBinOp = uint_mul,              EldsBinOp = elds.mul
         )
     ).
 
