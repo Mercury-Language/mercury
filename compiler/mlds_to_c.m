@@ -4610,6 +4610,11 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         ; Op = uint_add, OpStr = "+"
         ; Op = uint_sub, OpStr = "-"
         ; Op = uint_mul, OpStr = "*"
+        ; Op = uint_div, OpStr = "/"
+        ; Op = uint_mod, OpStr = "%"
+        ; Op = uint_bitwise_and, OpStr = "&"
+        ; Op = uint_bitwise_or, OpStr = "|"
+        ; Op = uint_bitwise_xor, OpStr = "^"
         ),
         io.write_string("(", !IO),
         mlds_output_rval_as_op_arg(Opts, X, !IO),

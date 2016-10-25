@@ -494,8 +494,9 @@ std_unop_to_elds(StdUnOp, EldsUnOp) :-
         ),
         fail
     ;
-        ( StdUnOp = bitwise_complement, EldsUnOp = elds.bnot
-        ; StdUnOp = logical_not,        EldsUnOp = elds.logical_not
+        ( StdUnOp = bitwise_complement,      EldsUnOp = elds.bnot
+        ; StdUnOp = uint_bitwise_complement, EldsUnOp = elds.bnot
+        ; StdUnOp = logical_not,             EldsUnOp = elds.logical_not
         )
     ).
 
@@ -561,6 +562,11 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = uint_add,              EldsBinOp = elds.add
         ; StdBinOp = uint_sub,              EldsBinOp = elds.sub
         ; StdBinOp = uint_mul,              EldsBinOp = elds.mul
+        ; StdBinOp = uint_div,              EldsBinOp = elds.int_div
+        ; StdBinOp = uint_mod,              EldsBinOp = elds.(rem)
+        ; StdBinOp = uint_bitwise_and,      EldsBinOp = elds.band
+        ; StdBinOp = uint_bitwise_or,       EldsBinOp = elds.bor
+        ; StdBinOp = uint_bitwise_xor,      EldsBinOp = elds.bxor
         )
     ).
 

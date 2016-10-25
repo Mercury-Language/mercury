@@ -3609,6 +3609,7 @@ output_std_unop(Info, UnaryOp, Expr, !IO) :-
         ; UnaryOp = hash_string4, UnaryOpStr = "mercury.String.hash4_1_f_0"
         ; UnaryOp = hash_string5, UnaryOpStr = "mercury.String.hash5_1_f_0"
         ; UnaryOp = hash_string6, UnaryOpStr = "mercury.String.hash6_1_f_0"
+        ; UnaryOp = uint_bitwise_complement, UnaryOpStr = "~"
         ),
         io.write_string(UnaryOpStr, !IO),
         io.write_string("(", !IO),
@@ -3693,6 +3694,11 @@ output_binop(Info, Op, X, Y, !IO) :-
         ; Op = uint_add
         ; Op = uint_sub
         ; Op = uint_mul
+        ; Op = uint_div
+        ; Op = uint_mod
+        ; Op = uint_bitwise_and
+        ; Op = uint_bitwise_or
+        ; Op = uint_bitwise_xor
         ; Op = float_plus
         ; Op = float_minus
         ; Op = float_times
@@ -3750,6 +3756,11 @@ output_binary_op(Op, !IO) :-
         ; Op = uint_add, OpStr = "+"
         ; Op = uint_sub, OpStr = "-"
         ; Op = uint_mul, OpStr = "*"
+        ; Op = uint_div, OpStr = "/"
+        ; Op = uint_mod, OpStr = "%"
+        ; Op = uint_bitwise_and, OpStr = "&"
+        ; Op = uint_bitwise_or, OpStr = "|"
+        ; Op = uint_bitwise_xor, OpStr = "^"
 
         ; Op = float_eq, OpStr = "=="
         ; Op = float_ne, OpStr = "!="

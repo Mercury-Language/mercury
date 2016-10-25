@@ -2220,7 +2220,7 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         TagTestRval = ml_binop(eq, Rval, ConstRval)
     ;
         Tag = uint_tag(UInt),
-        TagTestRval = ml_binop(eq, Rval, ml_const(mlconst_uint(UInt))) % XXX is that right?
+        TagTestRval = ml_binop(uint_eq, Rval, ml_const(mlconst_uint(UInt)))
     ;
         Tag = foreign_tag(ForeignLang, ForeignVal),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),

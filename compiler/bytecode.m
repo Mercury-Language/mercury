@@ -1085,6 +1085,11 @@ binop_code(uint_ge,                 50).
 binop_code(uint_add,                51).
 binop_code(uint_sub,                52).
 binop_code(uint_mul,                53).
+binop_code(uint_div,                54).
+binop_code(uint_mod,                55).
+binop_code(uint_bitwise_and,        56).
+binop_code(uint_bitwise_or,         57).
+binop_code(uint_bitwise_xor,        58).
 
 :- pred binop_debug(binary_op::in, string::out) is det.
 
@@ -1142,6 +1147,11 @@ binop_debug(uint_ge,                "uint_ge").
 binop_debug(uint_add,               "uint_add").
 binop_debug(uint_sub,               "uint_sub").
 binop_debug(uint_mul,               "uint_mul").
+binop_debug(uint_div,               "uint_div").
+binop_debug(uint_mod,               "uint_mod").
+binop_debug(uint_bitwise_and,       "uint_bitwise_and").
+binop_debug(uint_bitwise_or,        "uint_bitwise_or").
+binop_debug(uint_bitwise_xor,       "uint_bitwise_xor").
 
 :- pred unop_code(unary_op::in, int::out) is det.
 
@@ -1159,6 +1169,7 @@ unop_code(hash_string3,        10).
 unop_code(hash_string4,        11).
 unop_code(hash_string5,        12).
 unop_code(hash_string6,        13).
+unop_code(uint_bitwise_complement, 14).
 
 :- pred unop_debug(unary_op::in, string::out) is det.
 
@@ -1176,6 +1187,7 @@ unop_debug(hash_string3,        "hash_string3").
 unop_debug(hash_string4,        "hash_string4").
 unop_debug(hash_string5,        "hash_string5").
 unop_debug(hash_string6,        "hash_string6").
+unop_debug(uint_bitwise_complement, "uint_bitwise_complement").
 
 %---------------------------------------------------------------------------%
 

@@ -231,8 +231,8 @@
             (t) = MR_RAW_TABLE_UINT((t0), (value));                         \
         }                                                                   \
         if (MR_tabledebug) {                                                \
-            printf("TABLE %p: uint %ud => %p\n",                            \
-                (t0), (long) (value), (t));                                 \
+            printf("TABLE %p: uint %u => %p\n",                             \
+                (t0), (unsigned long) (value), (t));                        \
         }                                                                   \
     } while (0)
 

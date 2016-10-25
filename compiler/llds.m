@@ -1692,6 +1692,7 @@ unop_return_type(hash_string3, lt_integer).
 unop_return_type(hash_string4, lt_integer).
 unop_return_type(hash_string5, lt_integer).
 unop_return_type(hash_string6, lt_integer).
+unop_return_type(uint_bitwise_complement, lt_unsigned).
 
 unop_arg_type(mktag, lt_word).
 unop_arg_type(tag, lt_word).
@@ -1707,6 +1708,7 @@ unop_arg_type(hash_string3, lt_string).
 unop_arg_type(hash_string4, lt_string).
 unop_arg_type(hash_string5, lt_string).
 unop_arg_type(hash_string6, lt_string).
+unop_arg_type(uint_bitwise_complement, lt_unsigned).
 
 binop_return_type(int_add, lt_integer).
 binop_return_type(int_sub, lt_integer).
@@ -1762,6 +1764,11 @@ binop_return_type(uint_ge, lt_bool).
 binop_return_type(uint_add, lt_unsigned).
 binop_return_type(uint_sub, lt_unsigned).
 binop_return_type(uint_mul, lt_unsigned).
+binop_return_type(uint_div, lt_unsigned).
+binop_return_type(uint_mod, lt_unsigned).
+binop_return_type(uint_bitwise_and, lt_unsigned).
+binop_return_type(uint_bitwise_or, lt_unsigned).
+binop_return_type(uint_bitwise_xor, lt_unsigned).
 
 register_type(reg_r, lt_word).
 register_type(reg_f, lt_float).

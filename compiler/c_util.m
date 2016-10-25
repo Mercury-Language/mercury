@@ -218,7 +218,7 @@
     ;       string_compare_binop
     ;       unsigned_compare_binop
     ;       uint_compare_binop
-    ;       uint_arith_binop
+    ;       uint_binary_infix_binop
     ;       float_compare_binop
     ;       float_arith_binop
     ;       int_or_bool_binary_infix_binop
@@ -792,6 +792,7 @@ unary_prefix_op(mkbody,             "MR_mkbody").
 unary_prefix_op(unmkbody,           "MR_unmkbody").
 unary_prefix_op(bitwise_complement, "~").
 unary_prefix_op(logical_not,        "!").
+unary_prefix_op(uint_bitwise_complement, "~").
 unary_prefix_op(hash_string,        "MR_hash_string").
 unary_prefix_op(hash_string2,       "MR_hash_string2").
 unary_prefix_op(hash_string3,       "MR_hash_string3").
@@ -827,9 +828,14 @@ binop_category_string(uint_ge, uint_compare_binop, ">=").
 binop_category_string(uint_lt, uint_compare_binop, "<").
 binop_category_string(uint_gt, uint_compare_binop, ">").
 
-binop_category_string(uint_add, uint_arith_binop, "+").
-binop_category_string(uint_sub, uint_arith_binop, "-").
-binop_category_string(uint_mul, uint_arith_binop, "*").
+binop_category_string(uint_add, uint_binary_infix_binop, "+").
+binop_category_string(uint_sub, uint_binary_infix_binop, "-").
+binop_category_string(uint_mul, uint_binary_infix_binop, "*").
+binop_category_string(uint_div, uint_binary_infix_binop, "/").
+binop_category_string(uint_mod, uint_binary_infix_binop, "%").
+binop_category_string(uint_bitwise_and, uint_binary_infix_binop, "&").
+binop_category_string(uint_bitwise_or, uint_binary_infix_binop, "|").
+binop_category_string(uint_bitwise_xor, uint_binary_infix_binop, "^").
 
 binop_category_string(float_plus, float_arith_binop, "+").
 binop_category_string(float_minus, float_arith_binop, "-").

@@ -598,6 +598,11 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = uint_add
         ; Op = uint_sub
         ; Op = uint_mul
+        ; Op = uint_div
+        ; Op = uint_mod
+        ; Op = uint_bitwise_and
+        ; Op = uint_bitwise_or
+        ; Op = uint_bitwise_xor
         ; Op = float_eq
         ; Op = float_ne
         ; Op = float_lt

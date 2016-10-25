@@ -37,6 +37,7 @@
     ;       unmkbody
     ;       bitwise_complement
     ;       logical_not
+    ;       uint_bitwise_complement
     ;       hash_string
     ;       hash_string2
     ;       hash_string3
@@ -103,6 +104,12 @@
     ;       uint_add
     ;       uint_sub
     ;       uint_mul
+    ;       uint_div
+    ;       uint_mod
+
+    ;       uint_bitwise_and
+    ;       uint_bitwise_or
+    ;       uint_bitwise_xor
 
     ;       float_plus      %  XXX the integer versions use different names.
     ;       float_minus     %  E.g add instead of plus etc.
@@ -386,20 +393,23 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
     ;
         ModuleName = "uint",
         (
-            PredName = "+",
-            Args = [X, Y, Z],
+            PredName = "\\",
             ProcNum = 0,
-            Code = assign(Z, binary(uint_add, leaf(X), leaf(Y)))
-        ;
-            PredName = "-",
-            Args = [X, Y, Z],
+            Args = [X, Y],
+            Code = assign(Y, unary(uint_bitwise_complement, leaf(X)))
+    ;
+            ( PredName = "+", ArithOp = uint_add
+            ; PredName = "-", ArithOp = uint_sub
+            ; PredName = "*", ArithOp = uint_mul
+            ; PredName = "unchecked_quotient", ArithOp = uint_div
+            ; PredName = "unchecked_rem", ArithOp = uint_mod
+            ; PredName = "/\\", ArithOp = uint_bitwise_and
+            ; PredName = "\\/", ArithOp = uint_bitwise_or
+            ; PredName = "xor", ArithOp = uint_bitwise_xor
+            ),
             ProcNum = 0,
-            Code = assign(Z, binary(uint_sub, leaf(X), leaf(Y)))
-        ;
-            PredName = "*",
             Args = [X, Y, Z],
-            ProcNum = 0,
-            Code = assign(Z, binary(uint_mul, leaf(X), leaf(Y)))
+            Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))
         ;
             ( PredName = ">", CompareOp = uint_gt
             ; PredName = "<", CompareOp = uint_lt

@@ -842,6 +842,7 @@ dump_unop(hash_string3) = "hash_string3".
 dump_unop(hash_string4) = "hash_string4".
 dump_unop(hash_string5) = "hash_string5".
 dump_unop(hash_string6) = "hash_string6".
+dump_unop(uint_bitwise_complement) = "uint_bitwise_complement".
 
 dump_binop(array_index(_)) = "array_index".
 dump_binop(string_unsafe_index_code_unit) = "string_unsafe_index_code_unit".
@@ -864,6 +865,11 @@ dump_binop(uint_ge) = "uint>=".
 dump_binop(uint_add) = "uint+".
 dump_binop(uint_sub) = "uint-".
 dump_binop(uint_mul) = "uint*".
+dump_binop(uint_div) = "uint/".
+dump_binop(uint_mod) = "uint%".
+dump_binop(uint_bitwise_and) = "uint&".
+dump_binop(uint_bitwise_or) = "uint|".
+dump_binop(uint_bitwise_xor) = "uint^".
 dump_binop(float_plus) = "fl+".
 dump_binop(float_minus) = "fl-".
 dump_binop(float_times) = "fl*".
