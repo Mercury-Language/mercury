@@ -870,7 +870,7 @@ cons_id_rep(cons(SymName, _, _)) =
     prog_rep.sym_base_name_to_string(SymName).
 cons_id_rep(tuple_cons(_)) = "{}".
 cons_id_rep(int_const(Int)) = string.int_to_string(Int).
-cons_id_rep(uint_const(UInt)) = string.int_to_string(UInt). % XXX UINT.
+cons_id_rep(uint_const(UInt)) = string.uint_to_string(UInt).
 cons_id_rep(float_const(Float)) = string.float_to_string(Float).
 cons_id_rep(char_const(Char)) = string.char_to_string(Char).
 cons_id_rep(string_const(String)) = """" ++ String ++ """".

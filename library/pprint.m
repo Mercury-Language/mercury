@@ -186,6 +186,7 @@
 :- instance doc(doc).
 :- instance doc(string).
 :- instance doc(int).
+:- instance doc(uint).
 :- instance doc(float).
 :- instance doc(char).
 
@@ -412,11 +413,12 @@ doc(X) = doc(int.max_int, X).
 
 %---------------------------------------------------------------------------%
 
-:- instance doc(doc)       where [ doc(_, Doc)    = Doc            ].
-:- instance doc(string)    where [ doc(_, String) = text(String)   ].
-:- instance doc(int)       where [ doc(_, Int)    = poly(i(Int))   ].
-:- instance doc(float)     where [ doc(_, Float)  = poly(f(Float)) ].
-:- instance doc(char)      where [ doc(_, Char)   = poly(c(Char))  ].
+:- instance doc(doc)     where [ doc(_, Doc)    = Doc            ].
+:- instance doc(string)  where [ doc(_, String) = text(String)   ].
+:- instance doc(uint)    where [ doc(_, UInt) = text(uint_to_string(UInt))].
+:- instance doc(int)     where [ doc(_, Int)    = poly(i(Int))   ].
+:- instance doc(float)   where [ doc(_, Float)  = poly(f(Float)) ].
+:- instance doc(char)    where [ doc(_, Char)   = poly(c(Char))  ].
 
 %---------------------------------------------------------------------------%
 

@@ -302,6 +302,7 @@
 :- import_module string.
 :- import_module term_io.
 :- import_module tree234.               % For tree234_to_doc.
+:- import_module uint.                  % For uint_to_doc.
 :- import_module version_array.         % For version_array_to_doc.
 
 %---------------------------------------------------------------------------%
@@ -1114,6 +1115,7 @@ initial_formatter_map = !:Formatters :-
     set_formatter("builtin", "character", 0, fmt_char,    !Formatters),
     set_formatter("builtin", "float",     0, fmt_float,   !Formatters),
     set_formatter("builtin", "int",       0, fmt_int,     !Formatters),
+    set_formatter("builtin", "uint",      0, fmt_uint,    !Formatters),
     set_formatter("builtin", "string",    0, fmt_string,  !Formatters),
     set_formatter("array",   "array",     1, fmt_array,   !Formatters),
     set_formatter("list",    "list",      1, fmt_list,    !Formatters),
@@ -1137,6 +1139,11 @@ fmt_float(Univ, _ArgDescs) =
 
 fmt_int(Univ, _ArgDescs) =
     ( if Univ = univ(X) then int_to_doc(X) else str("?int?") ).
+
+:- func fmt_uint(univ, list(type_desc)) = doc.
+
+fmt_uint(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then uint_to_doc(X) else str("?uint?") ).
 
 :- func fmt_string(univ, list(type_desc)) = doc.
 

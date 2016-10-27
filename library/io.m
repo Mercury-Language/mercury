@@ -498,6 +498,12 @@
 :- pred write_int(int::in, io::di, io::uo) is det.
 :- pred write_int(io.text_output_stream::in, int::in, io::di, io::uo) is det.
 
+    % Writes an unsigned integer to the current output stream
+    % or to the specified output stream.
+    %
+:- pred write_uint(uint::in, io::di, io::uo) is det.
+:- pred write_uint(io.text_output_stream::in, uint::in, io::di, io::uo) is det.
+
     % Writes a floating point number to the current output stream
     % or to the specified output stream.
     %
@@ -1517,6 +1523,7 @@
 :- instance stream.writer(text_output_stream, char,   io).
 :- instance stream.writer(text_output_stream, float,  io).
 :- instance stream.writer(text_output_stream, int,    io).
+:- instance stream.writer(text_output_stream, uint,   io).
 :- instance stream.writer(text_output_stream, string, io).
 :- instance stream.writer(text_output_stream, univ,   io).
 :- instance stream.line_oriented(text_output_stream, io).
@@ -7757,6 +7764,10 @@ write_int(Val, !IO) :-
     output_stream(Stream, !IO),
     write_int(Stream, Val, !IO).
 
+write_uint(Val, !IO) :-
+    output_stream(Stream, !IO),
+    write_uint(Stream, Val, !IO).
+
 write_float(Val, !IO) :-
     output_stream(Stream, !IO),
     write_float(Stream, Val, !IO).
@@ -7927,6 +7938,24 @@ write_int(output_stream(Stream), Val, !IO) :-
         does_not_affect_liveness, no_sharing],
 "
     if (ML_fprintf(Stream, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", Val) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+write_uint(output_stream(Stream), Val, !IO) :-
+    write_uint_2(Stream, Val, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred write_uint_2(stream::in, uint::in, system_error::out, io::di, io::uo)
+    is det.
+:- pragma foreign_proc("C",
+    write_uint_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    if (ML_fprintf(Stream, ""%"" MR_INTEGER_LENGTH_MODIFIER ""u"", Val) < 0) {
         Error = errno;
     } else {
         Error = 0;
@@ -8151,6 +8180,18 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
+    write_uint_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        io.mercury_print_string(Stream, Val.ToString());
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
     write_byte_2(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
@@ -8246,6 +8287,19 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 "
     try {
         ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    write_uint_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        ((io.MR_TextOutputFile) Stream).write(
+            java.lang.Long.toString(Val & 0xffffffffL));
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -8356,6 +8410,15 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 
 :- pragma foreign_proc("Erlang",
     write_int_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    mercury__io:mercury_write_int(Stream, Val),
+    % mercury_write_int does not return errors yet.
+    Error = ok
+").
+
+:- pragma foreign_proc("Erlang",
+    write_uint_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     mercury__io:mercury_write_int(Stream, Val),
@@ -11180,6 +11243,12 @@ result_to_stream_result(error(Error)) = error(Error).
     where
 [
     pred(put/4) is write_int
+].
+
+:- instance stream.writer(output_stream, uint, io)
+    where
+[
+    pred(put/4) is write_uint
 ].
 
 :- instance stream.writer(output_stream, string, io)

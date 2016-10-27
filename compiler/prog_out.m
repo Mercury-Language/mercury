@@ -339,8 +339,8 @@ cons_id_and_arity_to_string_maybe_quoted(QuoteCons, ConsId) = String :-
         ConsId = int_const(Int),
         string.int_to_string(Int, String)
     ;
-        ConsId = uint_const(UInt),  % XXX UINT.
-        string.int_to_string(UInt, String)
+        ConsId = uint_const(UInt),
+        String = uint_to_string(UInt)
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)

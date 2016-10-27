@@ -1234,6 +1234,11 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_lookup_insert_int(ml_trie_node::in, int::in,
     ml_trie_node::out) is det.
 
+    % Lookup or insert an unsigned integer in the given table.
+    %
+:- impure pred table_lookup_insert_uint(ml_trie_node::in, uint::in,
+    ml_trie_node::out) is det.
+
     % Lookup or insert an integer in the given table.
     %
 :- impure pred table_lookup_insert_start_int(ml_trie_node::in, int::in,
@@ -1306,6 +1311,12 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_save_int_answer(ml_answer_block::in, int::in, int::in)
     is det.
 
+    % Save an unsigned integer answer in the given answer block at the given
+    % offset.
+    %
+:- impure pred table_save_uint_answer(ml_answer_block::in, int::in, uint::in)
+    is det.
+
     % Save a character answer in the given answer block at the given
     % offset.
     %
@@ -1340,6 +1351,12 @@ pretend_to_generate_value(Bogus) :-
     %
 :- semipure pred table_restore_int_answer(ml_answer_block::in, int::in,
     int::out) is det.
+
+    % Restore an unsigned integer answer from the given answer block at
+    % the given offset.
+    %
+:- semipure pred table_restore_uint_answer(ml_answer_block::in, int::in,
+    uint::out) is det.
 
     % Restore a character answer from the given answer block at the
     % given offset.
@@ -1402,6 +1419,13 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_int(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_uint(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_uint(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
@@ -1507,6 +1531,13 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
 :- pragma foreign_proc("C",
+    table_save_uint_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_save_uint_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
     table_save_char_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
@@ -1547,6 +1578,13 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_int_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_restore_uint_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_restore_uint_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
@@ -1599,6 +1637,12 @@ table_lookup_insert_int(_, _, _) :-
     % matching foreign_proc version.
     impure private_builtin.imp,
     private_builtin.sorry("table_lookup_insert_int").
+
+table_lookup_insert_uint(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint").
 
 table_lookup_insert_start_int(_, _, _, _) :-
     % This version is only used for back-ends for which there is no
@@ -1659,6 +1703,12 @@ table_save_int_answer(_, _, _) :-
     % matching foreign_proc version.
     impure private_builtin.imp,
     private_builtin.sorry("table_save_int_answer").
+
+table_save_uint_answer(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint_answer").
 
 table_save_char_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no

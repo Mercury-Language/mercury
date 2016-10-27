@@ -138,6 +138,7 @@
 :- import_module int.
 :- import_module pair.
 :- import_module require.
+:- import_module uint.
 
 %-----------------------------------------------------------------------------%
 
@@ -825,7 +826,8 @@ ml_default_value_for_type(MLDS_Type) = DefaultRval :-
         DefaultRval = ml_const(mlconst_int(0))
     ;
         MLDS_Type = mlds_native_uint_type,
-        DefaultRval = ml_const(mlconst_uint(0))
+        % XXX UINT - replace the cast when we have uint literals.
+        DefaultRval = ml_const(mlconst_uint(cast_from_int(0)))
     ;
         MLDS_Type = mlds_native_char_type,
         DefaultRval = ml_const(mlconst_char(0))

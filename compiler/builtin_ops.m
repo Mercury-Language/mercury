@@ -182,7 +182,7 @@
 :- type simple_expr(T)
     --->    leaf(T)
     ;       int_const(int)
-    ;       uint_const(int)     % XXX until uint is recognised.
+    ;       uint_const(uint)
     ;       float_const(float)
     ;       unary(unary_op, simple_expr(T))
     ;       binary(binary_op, simple_expr(T), simple_expr(T)).

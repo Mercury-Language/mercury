@@ -673,9 +673,11 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
         Str = functor_to_string(VarSet, VarNamePrint,
             term.integer(Int), ArgVars)
     ;
-        ConsId = uint_const(UInt), % XXX UINT.
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(UInt), ArgVars)
+        ConsId = uint_const(UInt),
+        Str = uint_to_string(UInt)
+        % XXX UINT - need to extend term module to handle uints.
+        %Str = functor_to_string(VarSet, VarNamePrint,
+        %    term.integer(UInt), ArgVars)
     ;
         ConsId = float_const(Float),
         Str = functor_to_string(VarSet, VarNamePrint,
@@ -832,7 +834,7 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
         string.int_to_string(Int, String)
     ;
         ConsId = uint_const(UInt),
-        string.int_to_string(UInt, String)  % XXX UINT.
+        String = uint_to_string(UInt)
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)

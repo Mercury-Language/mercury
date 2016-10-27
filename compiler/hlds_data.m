@@ -597,7 +597,7 @@ cons_table_optimize(!ConsTable) :-
             % the specified integer value. This is used for enumerations and
             % character constants as well as for int constants.
 
-    ;       uint_tag(int)       % XXX UINT
+    ;       uint_tag(uint)
             % This means the constant is represented just as a word containing
             % the specified unsigned integer value. This is used for uint
             % constants.

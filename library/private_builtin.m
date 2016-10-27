@@ -48,8 +48,8 @@
 :- pred builtin_unify_int(int::in, int::in) is semidet.
 :- pred builtin_compare_int(comparison_result::uo, int::in, int::in) is det.
 
-:- pred builtin_unify_uint(T::in, T::in) is semidet.
-:- pred builtin_compare_uint(comparison_result::uo, T::in, T::in) is det.
+:- pred builtin_unify_uint(uint::in, uint::in) is semidet.
+:- pred builtin_compare_uint(comparison_result::uo, uint::in, uint::in) is det.
 
 :- pred builtin_unify_character(character::in, character::in) is semidet.
 :- pred builtin_compare_character(comparison_result::uo, character::in,
@@ -136,6 +136,7 @@
 :- import_module char.
 :- import_module float.
 :- import_module int.
+:- import_module uint.
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
@@ -152,6 +153,7 @@ public static object dummy_var;
 ").
 
 :- pragma inline(builtin_compare_int/3).
+:- pragma inline(builtin_compare_uint/3).
 :- pragma inline(builtin_compare_character/3).
 :- pragma inline(builtin_compare_string/3).
 :- pragma inline(builtin_compare_float/3).
@@ -167,18 +169,15 @@ builtin_compare_int(R, X, Y) :-
         R = (>)
     ).
 
-builtin_unify_uint(_, _) :-
-    ( if semidet_succeed then
-        sorry("unify for uint")
-    else
-        semidet_succeed
-    ).
+builtin_unify_uint(X, X).
 
-builtin_compare_uint(Result, _, _) :-
-    ( if semidet_succeed then
-        sorry("compare for uint")
+builtin_compare_uint(R, X, Y) :-
+    ( if X < Y then
+        R = (<)
+    else if X = Y then
+        R = (=)
     else
-        Result = (=)
+        R = (>)
     ).
 
 builtin_unify_character(C, C).

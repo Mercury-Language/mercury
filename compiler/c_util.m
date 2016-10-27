@@ -178,6 +178,12 @@
     io::di, io::uo) is det.
 :- pred output_int_expr_cur_stream(int::in, io::di, io::uo) is det.
 
+    % Write out a uint as a C expression.
+    %
+:- pred output_uint_expr(io.text_output_stream::in, uint::in,
+    io::di, io::uo) is det.
+:- pred output_uint_expr_cur_stream(uint::in, io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %
 % Float literals.
@@ -757,6 +763,19 @@ output_int_expr(Stream, N, !IO) :-
 output_int_expr_cur_stream(N, !IO) :-
     io.output_stream(Stream, !IO),
     output_int_expr(Stream, N, !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Unsigned integer literals.
+%
+
+output_uint_expr(Stream, N, !IO) :-
+    io.write_uint(Stream, N, !IO),
+    io.write_string(Stream, "U", !IO).
+
+output_uint_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_uint_expr(Stream, N, !IO).
 
 %---------------------------------------------------------------------------%
 %

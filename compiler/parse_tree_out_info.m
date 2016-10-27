@@ -106,6 +106,7 @@
     pred add_strings(list(string)::in, U::di, U::uo) is det,
     pred add_char(char::in, U::di, U::uo) is det,
     pred add_int(int::in, U::di, U::uo) is det,
+    pred add_uint(uint::in, U::di, U::uo) is det,
     pred add_float(float::in, U::di, U::uo) is det,
     pred add_purity_prefix(purity::in, U::di, U::uo) is det,
     pred add_quoted_atom(string::in, U::di, U::uo) is det,
@@ -190,6 +191,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_strings/3) is io.write_strings,
     pred(add_char/3) is io.write_char,
     pred(add_int/3) is io.write_int,
+    pred(add_uint/3) is io.write_uint, % XXX UINT - literal syntax.
     pred(add_float/3) is io.write_float,
     pred(add_purity_prefix/3) is prog_out.write_purity_prefix,
     pred(add_quoted_atom/3) is term_io.quote_atom,
@@ -207,6 +209,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_strings/3) is output_strings,
     pred(add_char/3) is output_char,
     pred(add_int/3) is output_int,
+    pred(add_uint/3) is output_uint,
     pred(add_float/3) is output_float,
     pred(add_purity_prefix/3) is output_purity_prefix,
     pred(add_quoted_atom/3) is output_quoted_atom,
@@ -256,6 +259,13 @@ output_char(C, Str0, Str) :-
 
 output_int(I, Str0, Str) :-
     string.int_to_string(I, S),
+    string.append(Str0, S, Str).
+
+:- pred output_uint(uint::in, string::di, string::uo) is det.
+
+output_uint(U, Str0, Str) :-
+    % XXX UINT - literal syntax.
+    S = uint_to_string(U),
     string.append(Str0, S, Str).
 
 :- pred output_float(float::in, string::di, string::uo) is det.

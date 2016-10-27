@@ -29,6 +29,9 @@
 :- pred put_int(Stream::in, int::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
+:- pred put_uint(Stream::in, uint::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
 :- pred put_float(Stream::in, float::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
@@ -173,6 +176,7 @@
 :- pragma type_spec(write_univ/5,
             (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_int/4, (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_uint/4, (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_float/4, (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_char/4, (Stream = io.output_stream, State = io.state)).
 
@@ -205,6 +209,22 @@ put_int(Stream, Int, !State) :-
         )
     else
         put(Stream, string.int_to_string(Int), !State)
+    ).
+
+put_uint(Stream, UInt, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_uint(IOStream, UInt, unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error("stream.string_writer.put_uint: unexpected type error")
+        )
+    else
+        put(Stream, string.uint_to_string(UInt), !State)
     ).
 
 put_float(Stream, Float, !State) :-
@@ -365,6 +385,10 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
         term_io.quote_char(Stream, Char, !State)
     else if univ_to_type(Univ, Int) then
         put_int(Stream, Int, !State)
+    else if univ_to_type(Univ, UInt) then
+        % XXX UINT -- write should emit an unsigned literal
+        %             print should just emit a decimal
+        put_uint(Stream, UInt, !State)
     else if univ_to_type(Univ, Float) then
         put_float(Stream, Float, !State)
     else if univ_to_type(Univ, Bitmap) then

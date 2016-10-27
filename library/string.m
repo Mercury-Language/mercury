@@ -1232,6 +1232,8 @@
 :- func int_to_base_string_group(int, int, int, string) = string.
 :- mode int_to_base_string_group(in, in, in, in) = uo is det.
 
+:- func uint_to_string(uint::in) = (string::uo) is det.
+
     % Convert a float to a string.
     % In the current implementation, the resulting float will be in the form
     % that it was printed using the format string "%#.<prec>g".
@@ -5721,6 +5723,36 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
             append(Str1, DigitString, Str)
         )
     ).
+
+%---------------------%
+
+:- pragma foreign_proc("C",
+    uint_to_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    char buffer[21];
+    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""u"", U);
+    MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
+    strcpy(Str, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    uint_to_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = U.ToString();
+").
+
+:- pragma foreign_proc("Java",
+    uint_to_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = java.lang.Long.toString(U & 0xffffffffL);
+").
+
+uint_to_string(_) = _ :-
+    sorry($module, "string.uint_to_string/1").
 
 %---------------------%
 

@@ -4686,7 +4686,7 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         c_util.output_int_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_uint(U),
-        c_util.output_int_expr_cur_stream(U, !IO)   % XXX UINT.
+        c_util.output_uint_expr_cur_stream(U, !IO)
     ;
         Const = mlconst_char(C),
         io.write_string("(MR_Char) ", !IO),

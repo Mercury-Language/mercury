@@ -620,11 +620,11 @@ X >> Y = Z :-
     ).
 
 :- pragma inline(even/1).
-even(X):-
+even(X) :-
     (X /\ 1) = 0.
 
 :- pragma inline(odd/1).
-odd(X):-
+odd(X) :-
     (X /\ 1) \= 0.
 
 abs(Num) = Abs :-

@@ -1679,7 +1679,7 @@
     --->    mlconst_true
     ;       mlconst_false
     ;       mlconst_int(int)
-    ;       mlconst_uint(int)   % XXX UINT.
+    ;       mlconst_uint(uint)
     ;       mlconst_enum(int, mlds_type)
     ;       mlconst_char(int)
     ;       mlconst_float(float)

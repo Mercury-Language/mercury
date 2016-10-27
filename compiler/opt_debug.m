@@ -442,7 +442,7 @@ dump_const(MaybeProcLabel, Const) = Str :-
         Str = int_to_string(I)
     ;
         Const = llconst_uint(U),
-        Str = int_to_string(U)      % XXX UINT.
+        Str = uint_to_string(U)
     ;
         Const = llconst_foreign(F, _),
         Str = F

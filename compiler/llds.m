@@ -1202,7 +1202,7 @@
     --->    llconst_true
     ;       llconst_false
     ;       llconst_int(int)
-    ;       llconst_uint(int)   % XXX UINT.
+    ;       llconst_uint(uint)
     ;       llconst_foreign(string, llds_type)
             % A constant in the target language.
             % It may be a #defined constant in C which is why

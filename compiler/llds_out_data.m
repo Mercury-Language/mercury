@@ -1198,8 +1198,8 @@ output_rval_const(Info, Const, !IO) :-
         Const = llconst_int(N),
         c_util.output_int_expr_cur_stream(N, !IO)
     ;
-        Const = llconst_uint(N),     % XXX UINT.
-        c_util.output_int_expr_cur_stream(N, !IO)
+        Const = llconst_uint(N),
+        c_util.output_uint_expr_cur_stream(N, !IO)
     ;
         Const = llconst_foreign(Value, Type),
         io.write_char('(', !IO),

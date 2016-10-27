@@ -127,6 +127,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -5159,13 +5160,13 @@ output_binop(Info, Op, X, Y, !IO) :-
         ( Op = uint_div
         ; Op = uint_mod
         ),
-        io.write_string("((int)((", !IO),
+        io.write_string("((int)(((", !IO),
         output_rval(Info, X, !IO),
         io.write_string(") & 0xffffffffL) ", !IO),
         output_binary_op(Op, !IO),
         io.write_string(" ((", !IO),
         output_rval(Info, Y, !IO),
-        io.write_string(") & 0xffffffffL))", !IO)
+        io.write_string(") & 0xffffffffL)))", !IO)
     ).
 
     % Output an Rval and if the Rval is an enumeration object append the string
@@ -5285,7 +5286,9 @@ output_rval_const(Info, Const, !IO) :-
         output_int_const(N, !IO)
     ;
         Const = mlconst_uint(U),
-        output_int_const(U, !IO)    % XXX UINT.
+        % Java does not have unsigned integer literals.
+        % XXX perhaps we should output this in hexadecimal?
+        output_int_const(uint.cast_to_int(U), !IO)
     ;
         Const = mlconst_char(N),
         io.write_string("(", !IO),

@@ -106,7 +106,7 @@
             % XXX We should have a pred_or_func field as well.
 
     ;       int_const(int)
-    ;       uint_const(int) % XXX until uint is bootstrapped.
+    ;       uint_const(uint)
     ;       float_const(float)
     ;       char_const(char)
     ;       string_const(string)

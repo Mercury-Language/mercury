@@ -3812,7 +3812,7 @@ output_rval_const(Info, Const, !IO) :-
         output_int_const(N, !IO)
     ;
         Const = mlconst_uint(U),
-        output_int_const(U, !IO)    % XXX UINT.
+        output_uint_const(U, !IO)
     ;
         Const = mlconst_char(N),
         io.write_string("( ", !IO),
@@ -3880,6 +3880,12 @@ output_int_const(N, !IO) :-
     else
         io.write_int(N, !IO)
     ).
+
+:- pred output_uint_const(uint::in, io::di, io::uo) is det.
+
+output_uint_const(U, !IO) :-
+    io.write_uint(U, !IO),
+    io.write_string("U", !IO).
 
 :- pred output_vector_common_row_rval(csharp_out_info::in,
     mlds_vector_common::in, mlds_rval::in, io::di, io::uo) is det.
