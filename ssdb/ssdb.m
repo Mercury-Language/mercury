@@ -133,7 +133,7 @@
 :- pred pause_debugging(debugging_paused::out, io::di, io::uo) is det.
 :- pred resume_debugging(debugging_paused::in, io::di, io::uo) is det.
 
-    % Enable the debugger in the calling thread.  You may want to start the
+    % Enable the debugger in the calling thread. You may want to start the
     % program with debugging initialised but disabled by default, by setting
     % the environment variable SSDB=0.
     %
@@ -172,8 +172,8 @@
 %-----------------------------------------------------------------------------%
 
     % Note: debugger_off must be first because io.init_state/2 is called
-    % before the `do_nothing' mutable is initialised.  At that time `do_nothing'
-    % will have a value of zero.  By putting debugger_off first, it will
+    % before the `do_nothing' mutable is initialised. At that time `do_nothing'
+    % will have a value of zero. By putting debugger_off first, it will
     % be represented by zero so the SSDB port code will correctly do nothing
     % until after the library is initialised.
     %
@@ -350,7 +350,7 @@ init_list_params = list_params(new_list_path, 2).
     [untrailed, attach_to_io_state]).
 
     % This is thread-local to allow debugging of the initial thread in
-    % multi-threaded programs.  As thread-local mutables inherit their values
+    % multi-threaded programs. As thread-local mutables inherit their values
     % from the parent thread, the user must temporarily disable debugging while
     % the child thread is created, using `pause_debugging'.
     %
@@ -364,11 +364,11 @@ init_list_params = list_params(new_list_path, 2).
 init_debugger_state(!IO) :-
     io.get_environment_var("SSDB", MaybeEnv, !IO),
     io.get_environment_var("SSDB_TTY", MaybeTTY, !IO),
-    (
+    ( if
         ( MaybeEnv = yes(_)
         ; MaybeTTY = yes(_)
         )
-    ->
+    then
         (
             MaybeTTY = yes(FileName),
             io.open_input(FileName, InputRes, !IO),
@@ -391,14 +391,14 @@ init_debugger_state(!IO) :-
         install_sigint_handler(!IO),
         install_exception_hooks(!IO),
         add_source_commands(!IO),
-        ( MaybeEnv = yes("0") ->
+        ( if MaybeEnv = yes("0") then
             % Sometimes it is necessary to start the program with debugging
             % disabled, then enable it later from within the program.
             set_debugger_state(debugger_off, !IO)
-        ;
+        else
             set_debugger_state(debugger_on, !IO)
         )
-    ;
+    else
         set_debugger_state(debugger_off, !IO)
     ).
 
@@ -815,17 +815,17 @@ search_nondet_stack_frame(ProcId, Depth, StackFrame, !IO) :-
 
 search_nondet_stack_frame_2(ProcId, Depth, N, StackDepth, MaybeStackFrame,
         !IO) :-
-    ( N >= StackDepth ->
+    ( if N >= StackDepth then
         MaybeStackFrame = no
-    ;
+    else
         nondet_stack_index(N, Frame, !IO),
-        (
+        ( if
             Frame ^ sf_proc_id ^ module_name = ProcId ^ module_name,
             Frame ^ sf_proc_id ^ proc_name = ProcId ^ proc_name,
             Frame ^ sf_depth = Depth
-        ->
+        then
             MaybeStackFrame = yes(Frame)
-        ;
+        else
             search_nondet_stack_frame_2(ProcId, Depth, N + 1, StackDepth,
                 MaybeStackFrame, !IO)
         )
@@ -1021,7 +1021,8 @@ stack_pop(!IO) :-
         set_shadow_stack_depth(Depth - 1, !IO)
     ).
 
-:- pred top_of_stack_tracing_level(ssdb_tracing_level::out, io::di, io::uo) is det.
+:- pred top_of_stack_tracing_level(ssdb_tracing_level::out, io::di, io::uo)
+    is det.
 
 top_of_stack_tracing_level(Level, !IO) :-
     get_shadow_stack(Stack, !IO),
@@ -1091,9 +1092,9 @@ nondet_stack_pop(!IO) :-
 
 rollback_stack(TargetCSN, !IO) :-
     stack_top(StackFrame, !IO),
-    ( StackFrame ^ sf_csn =< TargetCSN ->
+    ( if StackFrame ^ sf_csn =< TargetCSN then
         set_cur_ssdb_csn(StackFrame ^ sf_csn, !IO)
-    ;
+    else
         stack_pop(!IO),
         rollback_stack(TargetCSN, !IO)
     ).
@@ -1106,13 +1107,13 @@ rollback_stack(TargetCSN, !IO) :-
 
 rollback_nondet_stack(TargetCSN, !IO) :-
     nondet_stack_depth(StackDepth, !IO),
-    ( StackDepth = 0 ->
+    ( if StackDepth = 0 then
         true
-    ;
+    else
         nondet_stack_index(0, StackFrame, !IO),
-        ( StackFrame ^ sf_csn =< TargetCSN ->
+        ( if StackFrame ^ sf_csn =< TargetCSN then
             true
-        ;
+        else
             nondet_stack_pop(!IO),
             rollback_nondet_stack(TargetCSN, !IO)
         )
@@ -1150,23 +1151,23 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             ; Event = ssdb_fail
             ; Event = ssdb_fail_nondet
             ),
-            ( StopCSN = CSN ->
+            ( if StopCSN = CSN then
                 ShouldStopAtEvent0 = yes,
                 AutoRetry = AutoRetry0,
                 (
                     AutoRetry = do_retry,
                     % NOTE: The event number and CSN used to be reset at the
-                    % time the user entered the `retry' command.  That is
+                    % time the user entered the `retry' command. That is
                     % incorrect as we may need to perform forward execution
                     % before reaching the final port of the target CSN to
-                    % retry.  During forward execution the counters are
+                    % retry. During forward execution the counters are
                     % incremented as usual, so the debugger state is corrupted.
                     stack_top(Frame, !IO),
                     reset_counters_for_retry(Frame, !IO)
                 ;
                     AutoRetry = do_not_retry
                 )
-            ;
+            else
                 ShouldStopAtEvent0 = no,
                 AutoRetry = do_not_retry
             )
@@ -1175,9 +1176,9 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             % Stop immediately, unless there is an exception handler which will
             % catch the exception before we reach the final port of StopCSN.
             get_shadow_stack(Stack, !IO),
-            ( exception_handler_exists(StopCSN, Stack) ->
+            ( if exception_handler_exists(StopCSN, Stack) then
                 ShouldStopAtEvent0 = no
-            ;
+            else
                 ShouldStopAtEvent0 = yes
             ),
             AutoRetry = do_not_retry
@@ -1193,31 +1194,31 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
         NextStop = ns_final_port_nondet(StopCSN, AutoRetry0),
         (
             Event = ssdb_fail_nondet,
-            ( StopCSN = CSN ->
+            ( if StopCSN = CSN then
                 ShouldStopAtEvent0 = yes,
                 AutoRetry = AutoRetry0,
                 (
                     AutoRetry = do_retry,
                     nondet_stack_index(0, Frame, !IO),
-                    ( Frame ^ sf_csn = CSN ->
+                    ( if Frame ^ sf_csn = CSN then
                         % See note above.
                         reset_counters_for_retry(Frame, !IO)
-                    ;
+                    else
                         error("ssdb: nondet stack frame has unexpected CSN")
                     )
                 ;
                     AutoRetry = do_not_retry
                 )
-            ;
+            else
                 ShouldStopAtEvent0 = no,
                 AutoRetry = do_not_retry
             )
         ;
             Event = ssdb_excp,
             get_shadow_stack(Stack, !IO),
-            ( exception_handler_exists(StopCSN, Stack) ->
+            ( if exception_handler_exists(StopCSN, Stack) then
                 ShouldStopAtEvent0 = no
-            ;
+            else
                 ShouldStopAtEvent0 = yes
             ),
             AutoRetry = do_not_retry
@@ -1274,13 +1275,13 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
     ),
 
     current_and_parent_frame_tracing_levels(CurrentLevel, ParentLevel, !IO),
-    (
+    ( if
         ShouldStopAtEvent0 = yes,
         CurrentLevel = shallow,
         ParentLevel = shallow
-    ->
+    then
         ShouldStopAtEvent = no
-    ;
+    else
         ShouldStopAtEvent = ShouldStopAtEvent0
     ).
 
@@ -1307,7 +1308,7 @@ current_and_parent_frame_tracing_levels(CurrentLevel, ParentLevel, !IO) :-
 :- pred is_same_int(int::in, int::in, bool::out) is det.
 
 is_same_int(IntA, IntB, IsSame) :-
-    IsSame = (IntA = IntB -> yes ; no).
+    IsSame = (if IntA = IntB then yes else no).
 
     % update_next_stop(EventNum, CSN, WhatNext, Retry).
     %
@@ -1345,12 +1346,12 @@ update_next_stop(EventNum, CSN, WhatNext, Retry, !IO) :-
         Retry = do_not_retry
     ;
         WhatNext = wn_retry(RetryCSN),
-        ( RetryCSN = CSN ->
+        ( if RetryCSN = CSN then
             NextStop = ns_step,
             Retry = do_retry,
             stack_top(Frame, !IO),
             reset_counters_for_retry(Frame, !IO)
-        ;
+        else
             NextStop = ns_final_port(RetryCSN, do_retry),
             Retry = do_not_retry
         )
@@ -1360,10 +1361,10 @@ update_next_stop(EventNum, CSN, WhatNext, Retry, !IO) :-
          Retry = do_not_retry
     ;
         WhatNext = wn_goto(EventNumToGo),
-        ( EventNum = EventNumToGo ->
+        ( if EventNum = EventNumToGo then
             NextStop = ns_step,
             Retry = do_not_retry
-        ;
+        else
             NextStop = ns_goto(EventNumToGo),
             Retry = do_not_retry
         )
@@ -1550,9 +1551,9 @@ read_and_execute_cmd_2(N, Event, Depth, WhatNext, !IO) :-
 
         % Some errors are transient, ie unknown key press, but if we get more
         % than 10 errors in a row it's probably not a transient error so quit
-        ( N > 10 ->
+        ( if N > 10 then
             execute_cmd(ssdb_quit, ["-y"], no, Event, Depth, WhatNext, !IO)
-        ;
+        else
             read_and_execute_cmd_2(N + 1, Event, Depth, WhatNext, !IO)
         )
     ).
@@ -1564,27 +1565,27 @@ expand_alias_and_execute(Words, Interacting, Event, Depth, WhatNext, !IO) :-
     get_aliases(Aliases, !IO),
     (
         Words = [],
-        ( map.search(Aliases, "EMPTY", [AliasWord | AliasWords]) ->
+        ( if map.search(Aliases, "EMPTY", [AliasWord | AliasWords]) then
             execute_cmd_string(AliasWord, AliasWords, Interacting,
                 Event, Depth, WhatNext, !IO)
-        ;
+        else
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Words = [FirstWord | LaterWords],
-        (
+        ( if
             nonnegative_int(FirstWord, _),
             map.search(Aliases, "NUMBER", [AliasWord | AliasWords])
-        ->
+        then
             % Include the number itself as an argument.
             execute_cmd_string(AliasWord, AliasWords ++ Words, Interacting,
                 Event, Depth, WhatNext, !IO)
-        ;
+        else if
             map.search(Aliases, FirstWord, [AliasWord | AliasWords])
-        ->
+        then
             execute_cmd_string(AliasWord, AliasWords ++ LaterWords,
                 Interacting, Event, Depth, WhatNext, !IO)
-        ;
+        else
             execute_cmd_string(FirstWord, LaterWords, Interacting,
                 Event, Depth, WhatNext, !IO)
         )
@@ -1595,9 +1596,9 @@ expand_alias_and_execute(Words, Interacting, Event, Depth, WhatNext, !IO) :-
 
 execute_cmd_string(CmdWord, ArgWords, Interacting, Event, Depth, WhatNext, !IO)
         :-
-    ( ssdb_cmd_name(CmdWord, Cmd) ->
+    ( if ssdb_cmd_name(CmdWord, Cmd) then
         execute_cmd(Cmd, ArgWords, Interacting, Event, Depth, WhatNext, !IO)
-    ;
+    else
         io.format("Unknown command `%s' (try \"help\").\n", [s(CmdWord)], !IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
@@ -1736,14 +1737,14 @@ execute_ssdb_step(Args, Event, Depth, WhatNext, !IO) :-
         WhatNext = wn_step
     ;
         Args = [_ | _],
-        (
+        ( if
             Args = [NStr],
             string.to_int(NStr, N),
             N > 0
-        ->
+        then
             get_cur_ssdb_event_number(EventNumber, !IO),
             WhatNext = wn_goto(EventNumber + N)
-        ;
+        else
             print_expect_integer(!IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
@@ -1755,14 +1756,14 @@ execute_ssdb_step(Args, Event, Depth, WhatNext, !IO) :-
 execute_ssdb_next(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
-        (
+        ( if
             ( Event = ssdb_call
             ; Event = ssdb_call_nondet
             ; Event = ssdb_redo_nondet
             )
-        ->
+        then
             WhatNext = wn_next
-        ;
+        else
             io.write_string("The `next' command can be executed "
                 ++ "only at a call or redo port.\n", !IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
@@ -1783,16 +1784,16 @@ execute_ssdb_goto(Args, Event, Depth, WhatNext, !IO) :-
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Args = [Arg],
-        ( nonnegative_int(Arg, Num) ->
+        ( if nonnegative_int(Arg, Num) then
             get_cur_ssdb_event_number(CurEventNum, !IO),
-            ( Num > CurEventNum ->
+            ( if Num > CurEventNum then
                 WhatNext = wn_goto(Num)
-            ;
+            else
                 io.write_string("The debugger cannot go to a past event.\n",
                     !IO),
                 read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
-        ;
+        else
             print_invalid_argument(!IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
@@ -1821,34 +1822,34 @@ execute_ssdb_continue(Args, Event, Depth, WhatNext, !IO) :-
 execute_ssdb_finish(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
-        (
+        ( if
             ( Event = ssdb_call
             ; Event = ssdb_call_nondet
             ; Event = ssdb_redo_nondet
             )
-        ->
+        then
             stack_top(StackFrame, !IO),
             CSN = StackFrame ^  sf_csn,
             WhatNext = wn_finish(CSN)
-        ;
+        else
             io.write_string("The `finish' command can be executed "
                 ++ "only at a call or redo port.\n", !IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [Arg],
-        ( nonnegative_int(Arg, Num) ->
+        ( if nonnegative_int(Arg, Num) then
             stack_depth(CurDepth, !IO),
-            ( Num < CurDepth ->
+            ( if Num < CurDepth then
                 stack_index(Num, StackFrame, !IO),
                 CSN = StackFrame ^ sf_csn,
                 WhatNext = wn_finish(CSN)
-            ;
+            else
                 io.format("The depth must be between 0 and %i.\n",
                     [i(CurDepth - 1)], !IO),
                 read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
-        ;
+        else
             print_invalid_argument(!IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
@@ -1912,16 +1913,16 @@ execute_ssdb_retry(Args, Event, Depth, WhatNext, !IO) :-
         execute_ssdb_retry_2(0, Event, Depth, WhatNext, !IO)
     ;
         Args = [Arg],
-        ( nonnegative_int(Arg, Num) ->
+        ( if nonnegative_int(Arg, Num) then
             stack_depth(CurDepth, !IO),
-            ( Num < CurDepth ->
+            ( if Num < CurDepth then
                 execute_ssdb_retry_2(Num, Event, Depth, WhatNext, !IO)
-            ;
+            else
                 io.format("The depth must be between 0 and %i.\n",
                     [i(CurDepth - 1)], !IO),
                 read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
-        ;
+        else
             print_invalid_argument(!IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
@@ -1973,13 +1974,13 @@ nondet_stack_contains_csn(CSN, Contains, !IO) :-
     io::di, io::uo) is det.
 
 nondet_stack_contains_csn_2(CSN, Depth, Contains, !IO) :-
-    ( Depth < 0 ->
+    ( if Depth < 0 then
         Contains = no
-    ;
+    else
         nondet_stack_index(Depth, StackFrame, !IO),
-        ( CSN = StackFrame ^ sf_csn ->
+        ( if CSN = StackFrame ^ sf_csn then
             Contains = yes
-        ;
+        else
             nondet_stack_contains_csn_2(CSN, Depth - 1, Contains, !IO)
         )
     ).
@@ -1994,13 +1995,13 @@ execute_ssdb_stack(Args, Depth, !IO) :-
         print_stack_trace(0, Depth, int.max_int, !IO)
     ;
         Args = [_ | _],
-        (
+        ( if
             Args = [NStr],
             string.to_int(NStr, N),
             N > 0
-        ->
+        then
             print_stack_trace(0, Depth, N, !IO)
-        ;
+        else
             print_expect_integer(!IO)
         )
     ).
@@ -2012,10 +2013,10 @@ execute_ssdb_print(!.Args, Depth, !IO) :-
     (
         Res = ok(MaybeFormat),
         stack_index(Depth, StackFrame, !IO),
-        ( !.Args = [] ->
+        ( if !.Args = [] then
             Term = goal_to_synthetic_term(StackFrame),
             print_browser_term(MaybeFormat, print, Term, !IO)
-        ; !.Args = ["*"] ->
+        else if !.Args = ["*"] then
             ListVarValue = StackFrame ^ sf_list_var_value,
             (
                 ListVarValue = [],
@@ -2024,10 +2025,10 @@ execute_ssdb_print(!.Args, Depth, !IO) :-
                 ListVarValue = [_ | _],
                 print_vars(MaybeFormat, print_all, ListVarValue, !IO)
             )
-        ; !.Args = [Arg] ->
+        else if !.Args = [Arg] then
             ListVarValue = StackFrame ^ sf_list_var_value,
             print_var_with_name(MaybeFormat, ListVarValue, Arg, !IO)
-        ;
+        else
             print_too_many_arguments(!IO)
         )
     ;
@@ -2067,19 +2068,19 @@ make_arg_univs([], _, []).
 make_arg_univs([Var | Vars], Pos, ArgUnivs) :-
     (
         Var = unbound_head_var(_, VarPos),
-        ( VarPos = Pos ->
+        ( if VarPos = Pos then
             make_arg_univs(Vars, Pos + 1, ArgUnivs0)
-        ;
+        else
             make_arg_univs(Vars, Pos, ArgUnivs0)
         ),
         type_to_univ('_' : mdb.browse.unbound, Univ),
         ArgUnivs = [Univ | ArgUnivs0]
     ;
         Var = bound_head_var(_, VarPos, Value),
-        ( VarPos = Pos ->
+        ( if VarPos = Pos then
             make_arg_univs(Vars, Pos + 1, ArgUnivs0),
             type_to_univ(Value, Univ)
-        ;
+        else
             make_arg_univs(Vars, Pos, ArgUnivs0),
             type_to_univ('_' : mdb.browse.unbound, Univ)
         ),
@@ -2139,9 +2140,9 @@ execute_ssdb_up_down(Args, Direction, !Depth, !IO) :-
         change_depth(!.Depth + Direction, !Depth, !IO)
     ;
         Args = [Arg],
-        ( nonnegative_int(Arg, N) ->
+        ( if nonnegative_int(Arg, N) then
             change_depth(!.Depth + N * Direction, !Depth, !IO)
-        ;
+        else
             print_expect_integer(!IO)
         )
     ;
@@ -2158,9 +2159,9 @@ execute_ssdb_level(Args, !Depth, !IO) :-
         print_expect_argument(!IO)
     ;
         Args = [Arg],
-        ( nonnegative_int(Arg, N) ->
+        ( if nonnegative_int(Arg, N) then
             change_depth(N, !Depth, !IO)
-        ;
+        else
             print_expect_integer(!IO)
         )
     ;
@@ -2172,11 +2173,11 @@ execute_ssdb_level(Args, !Depth, !IO) :-
 
 change_depth(ChangedDepth, !Depth, !IO) :-
     stack_depth(StackDepth, !IO),
-    ( ChangedDepth < 0 ->
+    ( if ChangedDepth < 0 then
         io.write_string("ssdb: that stack frame does not exist.\n", !IO)
-    ; ChangedDepth >= StackDepth ->
+    else if ChangedDepth >= StackDepth then
         io.write_string("ssdb: not that many ancestors.\n", !IO)
-    ;
+    else
         print_depth_change(ChangedDepth, !IO),
         !:Depth = ChangedDepth
     ).
@@ -2203,16 +2204,16 @@ execute_ssdb_format(!.Args, !IO) :-
     process_options(format_options, !Args, Config0, Res),
     (
         Res = ok(format_config(P, B, A, F, Pr, V, NPr)),
-        (
+        ( if
             !.Args = [Word],
             is_portray_format(Word, Format)
-        ->
+        then
             get_browser_state(State0, !IO),
             FromBrowser = no,
             set_browser_param(FromBrowser, P, B, A, F, Pr, V, NPr,
                 setting_format(Format), State0, State),
             set_browser_state(State, !IO)
-        ;
+        else
             io.write_string("ssdb: cannot set to unknown format.\n", !IO)
         )
     ;
@@ -2229,13 +2230,13 @@ execute_ssdb_format_param(!.Args, !IO) :-
     process_options(format_param_options, !Args, Config0, Res),
     (
         Res = ok(format_config(P, B, A, F, Pr, V, NPr)),
-        ( format_param_setting(!.Args, Setting) ->
+        ( if format_param_setting(!.Args, Setting) then
             get_browser_state(State0, !IO),
             FromBrowser = no,
             set_browser_param(FromBrowser, P, B, A, F, Pr, V, NPr, Setting,
                 State0, State),
             set_browser_state(State, !IO)
-        ;
+        else
             io.write_string("ssdb: invalid format parameter.\n", !IO)
         )
     ;
@@ -2357,15 +2358,15 @@ execute_ssdb_alias(Args, Interacting, !IO) :-
         map.foldl(print_alias, Aliases0, !IO)
     ;
         Args = [Name],
-        ( map.search(Aliases0, Name, Command) ->
+        ( if map.search(Aliases0, Name, Command) then
             print_alias(Name, Command, !IO)
-        ;
+        else
             io.write_string("There is no such alias.\n", !IO)
         )
     ;
         Args = [Name | Words],
         Words = [Command | _],
-        ( ssdb_cmd_name(Command, _) ->
+        ( if ssdb_cmd_name(Command, _) then
             map.set(Name, Words, Aliases0, Aliases),
             set_aliases(Aliases, !IO),
             (
@@ -2374,7 +2375,7 @@ execute_ssdb_alias(Args, Interacting, !IO) :-
             ;
                 Interacting = no
             )
-        ;
+        else
             io.format("`%s' is not a valid command.\n", [s(Command)], !IO)
         )
     ).
@@ -2383,9 +2384,9 @@ execute_ssdb_alias(Args, Interacting, !IO) :-
     is det.
 
 execute_ssdb_unalias(Args, Interacting, !IO) :-
-    ( Args = [Name] ->
+    ( if Args = [Name] then
         get_aliases(Aliases0, !IO),
-        ( map.remove(Name, _, Aliases0, Aliases) ->
+        ( if map.remove(Name, _, Aliases0, Aliases) then
             set_aliases(Aliases, !IO),
             (
                 Interacting = yes,
@@ -2393,11 +2394,11 @@ execute_ssdb_unalias(Args, Interacting, !IO) :-
             ;
                 Interacting = no
             )
-        ;
+        else
             io.format("Alias `%s' cannot be removed, " ++
                 "since it does not exist.\n", [s(Name)], !IO)
         )
-    ;
+    else
         print_expect_argument(!IO)
     ).
 
@@ -2421,9 +2422,9 @@ execute_ssdb_list(Args, Depth, !IO) :-
         execute_ssdb_list_2(ContextLines, Depth, !IO)
     ;
         Args = [Arg],
-        ( nonnegative_int(Arg, ContextLines) ->
+        ( if nonnegative_int(Arg, ContextLines) then
             execute_ssdb_list_2(ContextLines, Depth, !IO)
-        ;
+        else
             print_expect_integer(!IO)
         )
     ;
@@ -2437,9 +2438,9 @@ execute_ssdb_list_2(ContextLines, Depth, !IO) :-
     stack_index(Depth, StackFrame, !IO),
     FileName = StackFrame ^ sf_call_site_file,
     MarkLine = StackFrame ^ sf_call_site_line,
-    ( FileName = "" ->
+    ( if FileName = "" then
         io.write_string("ssdb: sorry, call site is unknown.\n", !IO)
-    ;
+    else
         FirstLine = int.max(0, MarkLine - ContextLines),
         LastLine = MarkLine + ContextLines,
         io.output_stream(StdOut, !IO),
@@ -2517,11 +2518,11 @@ execute_ssdb_list_context_lines(Args, !IO) :-
             [i(Lines)], !IO)
     ;
         Args = [Arg],
-        ( nonnegative_int(Arg, N) ->
+        ( if nonnegative_int(Arg, N) then
             get_list_params(Params0, !IO),
             Params = Params0 ^ list_context_lines := N,
             set_list_params(Params, !IO)
-        ;
+        else
             print_expect_integer(!IO)
         )
     ;
@@ -2539,13 +2540,13 @@ execute_ssdb_break(Args, !IO) :-
         print_expect_argument(!IO)
     ;
         Args = [Arg],
-        ( Arg = "info" ->
+        ( if Arg = "info" then
             get_breakpoints_map(BreakPoints, !IO),
             print_breakpoints(BreakPoints, !IO)
-        ; split_module_pred_name(Arg, ModuleName, PredName) ->
+        else if split_module_pred_name(Arg, ModuleName, PredName) then
             ProcId = ssdb_proc_id(ModuleName, PredName),
             add_breakpoint(ProcId, !IO)
-        ;
+        else
             io.write_string("ssdb: invalid argument.\n", !IO)
         )
     ;
@@ -2577,11 +2578,11 @@ execute_ssdb_enable(Args, !IO) :-
         print_expect_argument(!IO)
     ;
         Args = [Arg],
-        ( Arg = "*" ->
+        ( if Arg = "*" then
             modify_breakpoint_states(bp_state_enabled, !IO)
-        ; nonnegative_int(Arg, Num) ->
+        else if nonnegative_int(Arg, Num) then
             modify_breakpoint_state(Num, bp_state_enabled, !IO)
-        ;
+        else
             print_invalid_argument(!IO)
         )
     ;
@@ -2597,11 +2598,11 @@ execute_ssdb_disable(Args, !IO) :-
         print_expect_argument(!IO)
     ;
         Args = [Arg],
-        ( Arg = "*" ->
+        ( if Arg = "*" then
             modify_breakpoint_states(bp_state_disabled, !IO)
-        ; nonnegative_int(Arg, Num) ->
+        else if nonnegative_int(Arg, Num) then
             modify_breakpoint_state(Num, bp_state_disabled, !IO)
-        ;
+        else
             print_invalid_argument(!IO)
         )
     ;
@@ -2617,14 +2618,14 @@ execute_ssdb_delete(Args, !IO) :-
         print_expect_argument(!IO)
     ;
         Args = [Arg],
-        ( Arg = "*" ->
+        ( if Arg = "*" then
             get_breakpoints_map(BreakPoints, !IO),
             print_breakpoints(BreakPoints, !IO),
             set_breakpoints_map(map.init, !IO),
             set_breakpoints_filter(new_breakpoints_filter, !IO)
-        ; nonnegative_int(Arg, Num) ->
+        else if nonnegative_int(Arg, Num) then
             delete_breakpoint(Num, !IO)
-        ;
+        else
             print_invalid_argument(!IO)
         )
     ;
@@ -2637,7 +2638,7 @@ execute_ssdb_delete(Args, !IO) :-
 :- pred execute_ssdb_source(list(string)::in, io::di, io::uo) is det.
 
 execute_ssdb_source(Args, !IO) :-
-    ( Args = [FileName] ->
+    ( if Args = [FileName] then
         io.open_input(FileName, OpenRes, !IO),
         (
             OpenRes = ok(Stream),
@@ -2653,7 +2654,7 @@ execute_ssdb_source(Args, !IO) :-
             io.write_string(ErrorStream, io.error_message(Error), !IO),
             io.nl(ErrorStream, !IO)
         )
-    ;
+    else
         io.write_string("ssdb: `source' command expects filename argument.\n",
             !IO)
     ).
@@ -2670,9 +2671,9 @@ read_command_lines(Stream, !RevLines, !IO) :-
             Words = []
         ;
             Words = [First | _],
-            ( string.prefix(First, "#") ->
+            ( if string.prefix(First, "#") then
                 true
-            ;
+            else
                 !:RevLines = [Line | !.RevLines]
             )
         ),
@@ -2700,13 +2701,13 @@ execute_ssdb_quit(Args, Interacting, !IO) :-
         io.read_line_as_string(Result, !IO),
         (
             Result = ok(String),
-            (
+            ( if
                 ( string.prefix(String, "y")
                 ; string.prefix(String, "Y")
                 )
-            ->
+            then
                 exit_process(!IO)
-            ;
+            else
                 true
             )
         ;
@@ -2722,9 +2723,9 @@ execute_ssdb_quit(Args, Interacting, !IO) :-
         % Don't quit.
     ;
         Args = [_ | _],
-        ( Args = ["-y"] ->
+        ( if Args = ["-y"] then
             exit_process(!IO)
-        ;
+        else
             io.write_string("ssdb: invalid argument.\n", !IO)
         )
     ).
@@ -2738,9 +2739,9 @@ execute_ssdb_quit(Args, Interacting, !IO) :-
 
 add_breakpoint(ProcId, !IO) :-
     get_breakpoints_map(BreakPoints0, !IO),
-    ( map.contains(BreakPoints0, ProcId) ->
+    ( if map.contains(BreakPoints0, ProcId) then
         io.write_string("The breakpoint already exists.\n", !IO)
-    ;
+    else
         get_free_breakpoint_number(BreakPoints0, Number),
         NewBreakPoint = breakpoint(Number, ProcId, bp_state_enabled),
         map.det_insert(ProcId, NewBreakPoint, BreakPoints0, BreakPoints),
@@ -2767,9 +2768,9 @@ get_free_breakpoint_number(BreakPointsMap, Number) :-
 
 first_unseen([], N, N).
 first_unseen([H | T], N0, N) :-
-    ( H = N0 ->
+    ( if H = N0 then
         first_unseen(T, N0 + 1, N)
-    ;
+    else
         N = N0
     ).
 
@@ -2794,14 +2795,14 @@ modify_breakpoint_states(State, !IO) :-
 
 modify_breakpoint_state(Num, State, !IO) :-
     get_breakpoints_map(BreakPoints0, !IO),
-    ( find_breakpoint(BreakPoints0, Num, Key, BreakPoint0) ->
+    ( if find_breakpoint(BreakPoints0, Num, Key, BreakPoint0) then
         BreakPoint = BreakPoint0 ^ bp_state := State,
         map.det_update(Key, BreakPoint, BreakPoints0, BreakPoints),
         set_breakpoints_map(BreakPoints, !IO),
         generate_breakpoints_filter(BreakPoints, Filter),
         set_breakpoints_filter(Filter, !IO),
         print_breakpoint(BreakPoint, !IO)
-    ;
+    else
         io.format("ssdb: break point #%d does not exist.\n", [i(Num)], !IO)
     ).
 
@@ -2813,13 +2814,13 @@ modify_breakpoint_state(Num, State, !IO) :-
 
 delete_breakpoint(Num, !IO) :-
     get_breakpoints_map(BreakPoints0, !IO),
-    ( find_breakpoint(BreakPoints0, Num, ProcId, BreakPoint) ->
+    ( if find_breakpoint(BreakPoints0, Num, ProcId, BreakPoint) then
         map.delete(ProcId, BreakPoints0, BreakPoints),
         set_breakpoints_map(BreakPoints, !IO),
         generate_breakpoints_filter(BreakPoints, Filter),
         set_breakpoints_filter(Filter, !IO),
         print_breakpoint(BreakPoint, !IO)
-    ;
+    else
         io.format("ssdb: break point #%d does not exist.\n", [i(Num)], !IO)
     ).
 
@@ -2837,7 +2838,7 @@ find_breakpoint(BreakPoints, Num, Key, BreakPoint) :-
         BreakPoint ^ bp_number = Num
     ).
 
-% At every event we will check if we have reached a breakpoint.  To minimise
+% At every event we will check if we have reached a breakpoint. To minimise
 % the cost of these checks we use a simple Bloom filter, where, for each
 % breakpoint which is enabled, bits k1 and k2 of the bitmap are set:
 %
@@ -2845,7 +2846,7 @@ find_breakpoint(BreakPoints, Num, Key, BreakPoint) :-
 %   k2 = hash(ModuleName) mod N,
 %   N = bitmap size
 %
-% This is very quick to check.  Obviously, false positives are possible but
+% This is very quick to check. Obviously, false positives are possible but
 % the relatively slow map lookups will usually be avoided.
 
 :- func new_breakpoints_filter = (bitmap::bitmap_uo) is det.
@@ -2887,20 +2888,20 @@ set_breakpoints_filter_bits(BreakPoint, !Bitmap) :-
 check_breakpoint(ProcId, Hit, !IO) :-
     get_breakpoints_filter(Filter, !IO),
     ProcId = ssdb_proc_id(ModuleName, ProcName),
-    (
+    ( if
         Filter ^ unsafe_bit(breakpoints_filter_hash(ProcName)) = yes,
         Filter ^ unsafe_bit(breakpoints_filter_hash(ModuleName)) = yes
-    ->
+    then
         get_breakpoints_map(BreakPoints, !IO),
-        (
+        ( if
             map.search(BreakPoints, ProcId, BreakPoint),
             BreakPoint ^ bp_state = bp_state_enabled
-        ->
+        then
             Hit = yes
-        ;
+        else
             Hit = no
         )
-    ;
+    else
         Hit = no
     ).
 
@@ -3001,30 +3002,30 @@ print_frame_info(StackFrame, StackDepth, !IO) :-
 
 print_stack_trace(CurLevel, StarDepth, RemainingLines, !IO) :-
     stack_depth(StackDepth, !IO),
-    (
+    ( if
         RemainingLines = 0,
         CurLevel < StackDepth - 1
-    ->
+    then
         io.write_string("<more stack frames snipped>\n", !IO)
-    ;
+    else if
         CurLevel < StackDepth
-    ->
+    then
         get_shadow_stack(Stack0, !IO),
         list.det_drop(CurLevel, Stack0, Stack),
         CurFrame = list.det_head(Stack),
         compress_stack_frames(CurFrame, Stack, 0, SkippedFrames),
         NextLevel = CurLevel + SkippedFrames,
-        (
+        ( if
             StarDepth >= CurLevel,
             StarDepth < NextLevel
-        ->
+        then
             Star = ('*')
-        ;
+        else
             Star = (' ')
         ),
         print_stack_frame(Star, CurLevel, CurFrame, SkippedFrames, !IO),
         print_stack_trace(NextLevel, StarDepth, RemainingLines - 1, !IO)
-    ;
+    else
         true
     ).
 
@@ -3037,9 +3038,9 @@ compress_stack_frames(RefFrame, Stack, Count0, Count) :-
         Count = Count0
     ;
         Stack = [Frame | Frames],
-        ( RefFrame ^ sf_proc_id = Frame ^ sf_proc_id ->
+        ( if RefFrame ^ sf_proc_id = Frame ^ sf_proc_id then
             compress_stack_frames(RefFrame, Frames, Count0 + 1, Count)
-        ;
+        else
             Count = Count0
         )
     ).
@@ -3053,10 +3054,10 @@ print_stack_frame(Star, Level, Frame, SkippedFrames, !IO) :-
     SiteFile = Frame ^ sf_call_site_file,
     SiteLine = Frame ^ sf_call_site_line,
     io.format("%c%4d ", [c(Star), i(Level)], !IO),
-    ( SkippedFrames > 1 ->
+    ( if SkippedFrames > 1 then
         io.format("%4d*", [i(SkippedFrames)], !IO),
         Etc = " and others"
-    ;
+    else
         io.write_string("     ", !IO),
         Etc = ""
     ),
@@ -3077,12 +3078,12 @@ print_vars(MaybeFormat, CallerType, Vars, !IO) :-
     string::in, io::di, io::uo) is det.
 
 print_var_with_name(MaybeFormat, VarDescs, VarName, !IO) :-
-    (
+    ( if
         string.to_int(VarName, VarNum),
         VarNum > 0
-    ->
+    then
         print_var_with_number(MaybeFormat, VarDescs, VarNum, !IO)
-    ;
+    else
         % Since we don't have tab completion, make it easier for the user by
         % matching prefixes instead of the entire name.
         P = (pred(VarDesc::in) is semidet :-
@@ -3102,9 +3103,9 @@ print_var_with_name(MaybeFormat, VarDescs, VarName, !IO) :-
     int::in, io::di, io::uo) is det.
 
 print_var_with_number(MaybeFormat, VarDescs, VarNum, !IO) :-
-    ( list.index1(VarDescs, VarNum, VarDesc) ->
+    ( if list.index1(VarDescs, VarNum, VarDesc) then
         print_var(MaybeFormat, print, VarDesc, !IO)
-    ;
+    else
         io.write_string("ssdb: there aren't that many variables.\n", !IO)
     ).
 
@@ -3118,9 +3119,9 @@ print_var(MaybeFormat, CallerType, VarValue, !IO) :-
         io.write_string("_\n", !IO)
     ;
         VarValue = bound_head_var(Name, Pos, T),
-        ( Pos >= 0 ->
+        ( if Pos >= 0 then
             Prefix = string.format("\t%s (arg %d)\t", [s(Name), i(Pos + 1)])
-        ;
+        else
             Prefix = string.format("\t%s\t", [s(Name)])
         ),
         safe_write(MaybeFormat, CallerType, Prefix, T, !IO)
@@ -3135,11 +3136,11 @@ print_var(MaybeFormat, CallerType, VarValue, !IO) :-
 print_var_prelude(Name, Pos, !IO) :-
     io.write_char('\t', !IO),
     io.write_string(Name, !IO),
-    ( Pos >= 0 ->
+    ( if Pos >= 0 then
         io.write_string(" (arg ", !IO),
         io.write_int(Pos + 1, !IO),
         io.write_string(")\t", !IO)
-    ;
+    else
         io.write_string("\t", !IO)
     ).
 
@@ -3147,11 +3148,11 @@ print_var_prelude(Name, Pos, !IO) :-
     string::in, T::in, io::di, io::uo) is det.
 
 safe_write(MaybeFormat, CallerType, Prefix, T, !IO) :-
-    ( safe_to_write(T) ->
+    ( if safe_to_write(T) then
         io.write_string(Prefix, !IO),
         type_to_univ(T, Univ),
         print_browser_term(MaybeFormat, CallerType, plain_term(Univ), !IO)
-    ;
+    else
         io.write_string(Prefix, !IO),
         io.write_string("(unsafe)\n", !IO)
     ).
@@ -3203,11 +3204,11 @@ get_var_name(bound_other_var(Name, _)) = Name.
 :- pred browse_var(list(var_value)::in, string::in, io::di, io::uo) is det.
 
 browse_var(ListVarValue, VarName, !IO) :-
-    (
+    ( if
         string.to_int(VarName, VarNum),
         VarNum > 0
-    ->
-        ( list.index1(ListVarValue, VarNum, VarValue) ->
+    then
+        ( if list.index1(ListVarValue, VarNum, VarValue) then
             (
                 VarValue = bound_head_var(_, _, Value),
                 type_to_univ(Value, Univ),
@@ -3220,15 +3221,15 @@ browse_var(ListVarValue, VarName, !IO) :-
                 VarValue = unbound_head_var(_, _),
                 io.write_string("ssdb: the variable is unbound.\n", !IO)
             )
-        ;
+        else
             io.write_string("ssdb: there aren't that many variables.\n", !IO)
         )
-    ;
+    else if
         list_var_value_to_assoc_list(ListVarValue, VarDescs),
         assoc_list.search(VarDescs, VarName, Univ)
-    ->
+    then
         browse_term(plain_term(Univ), !IO)
-    ;
+    else
         io.write_string("ssdb: there is no such variable.\n", !IO)
     ).
 
@@ -3281,9 +3282,9 @@ print_vars_list([Var | Vars], VarNum, !IO) :-
     ; Var = bound_other_var(Name, _), Pos = -1
     ),
     io.write_string(Name, !IO),
-    ( Pos >= 0 ->
+    ( if Pos >= 0 then
         io.format(" (arg %d)\n", [i(Pos + 1)], !IO)
-    ;
+    else
         io.nl(!IO)
     ),
     print_vars_list(Vars, VarNum + 1, !IO).
@@ -3295,9 +3296,9 @@ print_vars_list([Var | Vars], VarNum, !IO) :-
 :- pred print_breakpoints(breakpoints_map::in, io::di, io::uo) is det.
 
 print_breakpoints(BreakPoints, !IO) :-
-    ( map.is_empty(BreakPoints) ->
+    ( if map.is_empty(BreakPoints) then
         io.write_string("There are no break points.\n", !IO)
-    ;
+    else
         % This relies on the integer id being the first field.
         list.sort(map.values(BreakPoints), SortedBreakPoints),
         list.foldl(print_breakpoint, SortedBreakPoints, !IO)
@@ -3376,19 +3377,19 @@ process_options(Handler, Args0, Args, Data0, Res) :-
         Res = ok(Data0)
     ;
         Args0 = [First | Rest],
-        ( string.prefix(First, "--") ->
-            ( Handler(First, Data0, Data1) ->
+        ( if string.prefix(First, "--") then
+            ( if Handler(First, Data0, Data1) then
                 process_options(Handler, Rest, Args, Data1, Res)
-            ;
+            else
                 Message = "unrecognised option `" ++ First ++ "'",
                 Res = error(io.make_io_error(Message)),
                 Args = Args0
             )
-        ;
+        else if
             string.prefix(First, "-"),
             string.to_char_list(First, [_ | FirstChars]),
             FirstChars = [_ | _]
-        ->
+        then
             process_short_options(Handler, FirstChars, Data0, Res1),
             (
                 Res1 = ok(Data1),
@@ -3398,7 +3399,7 @@ process_options(Handler, Args0, Args, Data0, Res) :-
                 Res = Res1,
                 Args = Args0
             )
-        ;
+        else
             process_options(Handler, Rest, Rest1, Data0, Res),
             Args = [First | Rest1]
         )
@@ -3415,9 +3416,9 @@ process_short_options(Handler, Chars, Data0, Res) :-
     ;
         Chars = [C | Cs],
         Option = string.from_char_list(['-', C]),
-        ( Handler(Option, Data0, Data1) ->
+        ( if Handler(Option, Data0, Data1) then
             process_short_options(Handler, Cs, Data1, Res)
-        ;
+        else
             Message = "unrecognised option `" ++ Option ++ "'",
             Res = error(io.make_io_error(Message))
         )
