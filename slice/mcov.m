@@ -56,9 +56,11 @@ main(!IO) :-
     getopt_io.process_options(OptionOps, Args0, Args, GetoptResult, !IO),
     (
         GetoptResult = ok(OptionTable),
-        ( if lookup_bool_option(OptionTable, help, yes)
-        then long_usage(!IO)
-        else do_coverage_testing(OptionTable, Args, !IO)
+        ( if lookup_bool_option(OptionTable, help, yes) then
+            io.stdout_stream(StdOutStream, !IO),
+            long_usage(StdOutStream, !IO)
+        else
+            do_coverage_testing(OptionTable, Args, !IO)
         )
     ;
         GetoptResult = error(GetoptErrorMsg),
@@ -71,12 +73,13 @@ main(!IO) :-
     io::di, io::uo) is det.
 
 do_coverage_testing(OptionTable, Args, !IO) :-
+    io.stdout_stream(StdOutStream, !IO),
+    io.stderr_stream(StdErrStream, !IO),
     (
         Args = [_ | _],
         lookup_bool_option(OptionTable, verbose, Verbose),
         read_and_union_trace_counts(Verbose, Args, _NumTests, FileTypes,
             TraceCounts, MaybeReadError, !IO),
-        io.stderr_stream(StdErr, !IO),
         (
             MaybeReadError = yes(ReadErrorMsg),
             write_error_message(ReadErrorMsg, !IO)
@@ -87,12 +90,12 @@ do_coverage_testing(OptionTable, Args, !IO) :-
                 BaseType = base_count_file_type(Kind, _Program),
                 (
                     Kind = user_nonzero,
-                    io.write_string(StdErr, kind_warning, !IO)
+                    io.write_string(StdErrStream, kind_warning, !IO)
                 ;
                     Kind = user_all
                 )
             else
-                io.write_string(StdErr, consistency_warning, !IO)
+                io.write_string(StdErrStream, consistency_warning, !IO)
             ),
             lookup_accumulating_option(OptionTable, modules, Modules),
             (
@@ -106,18 +109,19 @@ do_coverage_testing(OptionTable, Args, !IO) :-
             ),
             lookup_string_option(OptionTable, output_filename, OutputFile),
             ( if OutputFile = "" then
-                write_coverage_test(OptionTable, RestrictToModules,
-                    TraceCounts, !IO)
+                write_coverage_test(StdOutStream, OptionTable,
+                    RestrictToModules, TraceCounts, !IO)
             else
-                io.tell(OutputFile, OpenRes, !IO),
+                io.open_output(OutputFile, OpenRes, !IO),
                 (
-                    OpenRes = ok,
-                    write_coverage_test(OptionTable, RestrictToModules,
-                        TraceCounts, !IO)
+                    OpenRes = ok(FileStream),
+                    write_coverage_test(FileStream, OptionTable,
+                        RestrictToModules, TraceCounts, !IO),
+                    io.close_output(FileStream, !IO)
                 ;
                     OpenRes = error(OpenError),
                     io.error_message(OpenError, OpenErrorMsg),
-                    io.format(StdErr, "Error opening file `%s': %s\n",
+                    io.format(StdErrStream, "Error opening file `%s': %s\n",
                         [s(OutputFile), s(OpenErrorMsg)], !IO),
                     io.set_exit_status(1, !IO)
                 )
@@ -125,7 +129,7 @@ do_coverage_testing(OptionTable, Args, !IO) :-
         )
     ;
         Args = [],
-        short_usage(!IO)
+        short_usage(StdOutStream, !IO)
     ).
 
 :- func kind_warning = string.
@@ -168,10 +172,12 @@ consistency_warning =
             % Only print coverage data for the user-specified set of modules
             % given by the argument.
 
-:- pred write_coverage_test(option_table(option)::in, module_restriction::in,
+:- pred write_coverage_test(io.text_output_stream::in,
+    option_table(option)::in, module_restriction::in,
     trace_counts::in, io::di, io::uo) is det.
 
-write_coverage_test(OptionTable, RestrictToModules, TraceCountMap, !IO) :-
+write_coverage_test(OutStream, OptionTable, RestrictToModules, TraceCountMap,
+        !IO) :-
     map.to_assoc_list(TraceCountMap, TraceCounts0),
     (
         RestrictToModules = module_restriction_default,
@@ -180,7 +186,8 @@ write_coverage_test(OptionTable, RestrictToModules, TraceCountMap, !IO) :-
         (
             IgnoreStdlib = yes,
             IgnoreMdbcomp = yes,
-            list.negated_filter(in_stdlib_or_mdbcomp_module, TraceCounts0, TraceCounts)
+            list.negated_filter(in_stdlib_or_mdbcomp_module,
+                TraceCounts0, TraceCounts)
         ;
             IgnoreStdlib = yes,
             IgnoreMdbcomp = no,
@@ -203,14 +210,14 @@ write_coverage_test(OptionTable, RestrictToModules, TraceCountMap, !IO) :-
         Detailed = no,
         collect_zero_count_local_procs(TraceCounts, ZeroCountProcs),
         list.sort(ZeroCountProcs, SortedZeroCountProcs),
-        io.write_string("Unexecuted procedures:\n\n", !IO),
-        list.foldl(write_proc_info, SortedZeroCountProcs, !IO)
+        io.write_string(OutStream, "Unexecuted procedures:\n\n", !IO),
+        list.foldl(write_proc_info(OutStream), SortedZeroCountProcs, !IO)
     ;
         Detailed = yes,
         collect_zero_count_local_labels(TraceCounts, [], ZeroCountLabels),
         list.sort(ZeroCountLabels, SortedZeroCountLabels),
-        io.write_string("Unexecuted labels:\n\n", !IO),
-        list.foldl(write_label_info, SortedZeroCountLabels, !IO)
+        io.write_string(OutStream, "Unexecuted labels:\n\n", !IO),
+        list.foldl(write_label_info(OutStream), SortedZeroCountLabels, !IO)
     ).
 
 :- pred in_module_set(set(module_name)::in, pair(proc_label_in_context, T)::in)
@@ -352,32 +359,36 @@ is_local_proc(ProcLabel) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_proc_info(proc_info::in, io::di, io::uo) is det.
+:- pred write_proc_info(io.text_output_stream::in, proc_info::in,
+    io::di, io::uo) is det.
 
-write_proc_info(ProcInfo, !IO) :-
+write_proc_info(OutStream, ProcInfo, !IO) :-
     ProcInfo = proc_info(FileName, LineNumber, ProcLabel),
-    write_context(FileName, LineNumber, !IO),
-    write_proc_label_for_user(ProcLabel, !IO),
-    io.nl(!IO).
+    write_context(OutStream, FileName, LineNumber, !IO),
+    write_proc_label_for_user(OutStream, ProcLabel, !IO),
+    io.nl(OutStream, !IO).
 
-:- pred write_label_info(label_info::in, io::di, io::uo) is det.
+:- pred write_label_info(io.text_output_stream::in, label_info::in,
+    io::di, io::uo) is det.
 
-write_label_info(LabelInfo, !IO) :-
+write_label_info(OutStream, LabelInfo, !IO) :-
     LabelInfo = label_info(FileName, LineNumber, ProcLabel, PathPort),
-    write_context(FileName, LineNumber, !IO),
-    write_proc_label_for_user(ProcLabel, !IO),
-    io.write_char(' ', !IO),
-    write_path_port_for_user(PathPort, !IO),
-    io.nl(!IO).
+    write_context(OutStream, FileName, LineNumber, !IO),
+    write_proc_label_for_user(OutStream, ProcLabel, !IO),
+    io.write_char(OutStream, ' ', !IO),
+    write_path_port_for_user(OutStream, PathPort, !IO),
+    io.nl(OutStream, !IO).
 
-:- pred write_context(string::in, int::in, io::di, io::uo) is det.
+:- pred write_context(io.text_output_stream::in, string::in, int::in,
+    io::di, io::uo) is det.
 
-write_context(FileName, LineNumber, !IO) :-
-    io.format("%s:%d: ", [s(FileName), i(LineNumber)], !IO).
+write_context(OutStream, FileName, LineNumber, !IO) :-
+    io.format(OutStream, "%s:%d: ", [s(FileName), i(LineNumber)], !IO).
 
-:- pred write_proc_label_for_user(proc_label::in, io::di, io::uo) is det.
+:- pred write_proc_label_for_user(io.text_output_stream::in, proc_label::in,
+    io::di, io::uo) is det.
 
-write_proc_label_for_user(ProcLabel, !IO) :-
+write_proc_label_for_user(OutStream, ProcLabel, !IO) :-
     (
         ProcLabel = ordinary_proc_label(_DefModuleSym, PredOrFunc,
             _DeclModuleSym, Name, Arity, Mode),
@@ -389,7 +400,7 @@ write_proc_label_for_user(ProcLabel, !IO) :-
             PredOrFuncStr = "func"
         ),
         QuotedName = term_io.quoted_atom(Name),
-        io.format("%s %s/%d-%d",
+        io.format(OutStream, "%s %s/%d-%d",
             [s(PredOrFuncStr), s(QuotedName), i(Arity), i(Mode)], !IO)
     ;
         % We don't record trace counts in special preds.
@@ -397,25 +408,27 @@ write_proc_label_for_user(ProcLabel, !IO) :-
         unexpected($file, $pred, "special_pred")
     ).
 
-:- pred write_path_port_for_user(path_port::in, io::di, io::uo) is det.
+:- pred write_path_port_for_user(io.text_output_stream::in, path_port::in,
+    io::di, io::uo) is det.
 
-write_path_port_for_user(port_only(Port), !IO) :-
+write_path_port_for_user(OutStream, port_only(Port), !IO) :-
     string_to_trace_port(PortStr, Port),
-    io.write_string(PortStr, !IO).
-write_path_port_for_user(path_only(Path), !IO) :-
-    io.write_strings(["<", rev_goal_path_to_string(Path), ">"], !IO).
-write_path_port_for_user(port_and_path(Port, Path), !IO) :-
+    io.write_string(OutStream, PortStr, !IO).
+write_path_port_for_user(OutStream, path_only(Path), !IO) :-
+    io.write_strings(OutStream, ["<", rev_goal_path_to_string(Path), ">"], !IO).
+write_path_port_for_user(OutStream, port_and_path(Port, Path), !IO) :-
     string_to_trace_port(PortStr, Port),
-    io.write_strings([PortStr, " <", rev_goal_path_to_string(Path), ">"], !IO).
+    io.write_strings(OutStream,
+        [PortStr, " <", rev_goal_path_to_string(Path), ">"], !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred short_usage(io::di, io::uo) is det.
+:- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
-short_usage(!IO) :-
+short_usage(OutStream, !IO) :-
     io.progname_base("mcov", ProgName, !IO),
     library.version(Version, FullArch),
-    io.write_strings([
+    io.write_strings(OutStream, [
         "Mercury Coverage Testing Tool, version ", Version,
             ", on ", FullArch, ".\n",
         "Copyright (C) 2006-2007, 2010-2012 The University of Melbourne\n",
@@ -424,23 +437,24 @@ short_usage(!IO) :-
         "Use `", ProgName, " --help' for more information.\n"
     ], !IO).
 
-:- pred long_usage(io::di, io::uo) is det.
+:- pred long_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
-long_usage(!IO) :-
+long_usage(OutStream, !IO) :-
     library.version(Version, FullArch),
-    io.format(
+    io.format(OutStream,
         "Name: mcov -- Mercury Coverage Testing Tool, version %s, on %s\n",
         [s(Version), s(FullArch)], !IO),
-    io.write_string("Copyright: Copyright (C) 2006-2007, 2010-2012 " ++
+    io.write_string(OutStream,
+        "Copyright: Copyright (C) 2006-2007, 2010-2012 " ++
         "The University of Melbourne\n", !IO),
-    io.write_string("           Copyright (C) 2015-2016 " ++
-        "The Mercury team\n", !IO),
-    io.write_string("Usage: mcov [<options>] <arguments>\n", !IO),
-    io.write_string("Arguments:\n", !IO),
-    io.write_string("\tArguments are assumed to Mercury trace count files.\n",
-        !IO),
-    io.write_string("Options:\n", !IO),
-    write_tabbed_lines([
+    io.write_string(OutStream,
+        "           Copyright (C) 2015-2016 The Mercury team\n", !IO),
+    io.write_string(OutStream, "Usage: mcov [<options>] <arguments>\n", !IO),
+    io.write_string(OutStream, "Arguments:\n", !IO),
+    io.write_string(OutStream,
+        "\tArguments are assumed to Mercury trace count files.\n", !IO),
+    io.write_string(OutStream, "Options:\n", !IO),
+    write_tabbed_lines(OutStream, [
         "-?, -h, --help",
         "\tPrint help about using mcov (on the standard output) and exit",
         "\twithout doing any further processing.",
@@ -467,12 +481,13 @@ long_usage(!IO) :-
         %"\treports.".
     ], !IO).
 
-:- pred write_tabbed_lines(list(string)::in, io::di, io::uo) is det.
+:- pred write_tabbed_lines(io.text_output_stream::in, list(string)::in,
+    io::di, io::uo) is det.
 
-write_tabbed_lines([], !IO).
-write_tabbed_lines([Str | Strs], !IO) :-
-    io.format("\t%s\n", [s(Str)], !IO),
-    write_tabbed_lines(Strs, !IO).
+write_tabbed_lines(_OutStream, [], !IO).
+write_tabbed_lines(OutStream, [Str | Strs], !IO) :-
+    io.format(OutStream, "\t%s\n", [s(Str)], !IO),
+    write_tabbed_lines(OutStream, Strs, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -40,6 +40,8 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
+    io.stdout_stream(StdOutStream, !IO),
+    io.stderr_stream(StdErrStream, !IO),
     unlimit_stack(!IO),
     io.command_line_arguments(Args0, !IO),
     OptionOps = option_ops_multi(short_option, long_option, option_default),
@@ -54,11 +56,10 @@ main(!IO) :-
             lookup_bool_option(OptionTable, verbose, Verbose),
             read_and_union_trace_counts(Verbose, Args, NumTests, Kinds,
                 TraceCounts, MaybeReadError, !IO),
-            stderr_stream(StdErr, !IO),
             (
                 MaybeReadError = yes(ReadErrorMsg),
-                io.write_string(StdErr, ReadErrorMsg, !IO),
-                io.nl(StdErr, !IO)
+                io.write_string(StdErrStream, ReadErrorMsg, !IO),
+                io.nl(StdErrStream, !IO)
             ;
                 MaybeReadError = no,
                 Type = union_file(NumTests, set.to_sorted_list(Kinds)),
@@ -68,25 +69,25 @@ main(!IO) :-
                     WriteResult = ok
                 ;
                     WriteResult = error(WriteErrorMsg),
-                    io.write_string(StdErr, "Error writing to " ++
-                        "file `" ++ OutputFile ++ "'" ++ ": " ++
-                        string(WriteErrorMsg), !IO),
-                    io.nl(StdErr, !IO)
+                    io.write_string(StdErrStream,
+                        "Error writing to file `" ++ OutputFile ++ "'" ++
+                        ": " ++ string(WriteErrorMsg), !IO),
+                    io.nl(StdErrStream, !IO)
                 )
             )
         else
-            usage(!IO)
+            usage(StdOutStream, !IO)
         )
     ;
         GetoptResult = error(GetoptErrorMsg),
-        io.write_string(GetoptErrorMsg, !IO),
-        io.nl(!IO)
+        io.write_string(StdOutStream, GetoptErrorMsg, !IO),
+        io.nl(StdOutStream, !IO)
     ).
 
-:- pred usage(io::di, io::uo) is det.
+:- pred usage(io.text_output_stream::in, io::di, io::uo) is det.
 
-usage(!IO) :-
-    io.write_strings([
+usage(OutStream, !IO) :-
+    io.write_strings(OutStream, [
         "Usage: mtc_union [-v] -o output_file file1 file2 ...\n",
         "The -v or --verbose option causes each trace count file name\n",
         "to be printed as it is added to the union.\n",

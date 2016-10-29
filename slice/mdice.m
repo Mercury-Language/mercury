@@ -37,6 +37,7 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
+    io.stdout_stream(StdOutStream, !IO),
     unlimit_stack(!IO),
     io.command_line_arguments(Args0, !IO),
     OptionOps = option_ops_multi(short_option, long_option, option_default),
@@ -45,10 +46,10 @@ main(!IO) :-
         GetoptResult = ok(OptionTable),
         (
             Args = [],
-            usage(!IO)
+            usage(StdOutStream, !IO)
         ;
             Args = [_],
-            usage(!IO)
+            usage(StdOutStream, !IO)
         ;
             Args = [PassFileName, FailFileName],
             lookup_string_option(OptionTable, sort, SortStr),
@@ -76,26 +77,26 @@ main(!IO) :-
                 MaybeMaxPredColumn, MaybeMaxPathColumn, MaybeMaxFileColumn,
                 Module, DiceStr, Problem, !IO),
             ( if Problem = "" then
-                io.write_string(DiceStr, !IO)
+                io.write_string(StdOutStream, DiceStr, !IO)
             else
-                io.write_string(Problem, !IO),
-                io.nl(!IO),
+                io.write_string(StdOutStream, Problem, !IO),
+                io.nl(StdOutStream, !IO),
                 io.set_exit_status(1, !IO)
             )
         ;
             Args = [_, _, _ | _],
-            usage(!IO)
+            usage(StdOutStream, !IO)
         )
     ;
         GetoptResult = error(GetoptErrorMsg),
-        io.write_string(GetoptErrorMsg, !IO),
-        io.nl(!IO)
+        io.write_string(StdOutStream, GetoptErrorMsg, !IO),
+        io.nl(StdOutStream, !IO)
     ).
 
-:- pred usage(io::di, io::uo) is det.
+:- pred usage(io.text_output_stream::in, io::di, io::uo) is det.
 
-usage(!IO) :-
-    io.write_string(
+usage(OutStream, !IO) :-
+    io.write_string(OutStream,
         "Usage: mdice [-s sortspec] [-m module] [-l N] [-n N] [-p N] [-f N] "
         ++ "passfile failfile\n",
         !IO).

@@ -37,6 +37,8 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
+    io.stdout_stream(StdOutStream, !IO),
+    io.stderr_stream(StdErrStream, !IO),
     unlimit_stack(!IO),
     io.command_line_arguments(Args0, !IO),
     OptionOps = option_ops_multi(short_option, long_option, option_default),
@@ -48,22 +50,21 @@ main(!IO) :-
             Args = [Arg1, Arg2],
             OutputFile \= ""
         then
-            stderr_stream(StdErr, !IO),
             read_trace_counts_source(Arg1, MaybeTraceCounts1, !IO),
             (
                 MaybeTraceCounts1 = list_ok(_, _)
             ;
                 MaybeTraceCounts1 = list_error_message(Msg1),
-                io.write_string(StdErr, Msg1, !IO),
-                io.nl(StdErr, !IO)
+                io.write_string(StdErrStream, Msg1, !IO),
+                io.nl(StdErrStream, !IO)
             ),
             read_trace_counts_source(Arg2, MaybeTraceCounts2, !IO),
             (
                 MaybeTraceCounts2 = list_ok(_, _)
             ;
                 MaybeTraceCounts2 = list_error_message(Msg2),
-                io.write_string(StdErr, Msg2, !IO),
-                io.nl(StdErr, !IO)
+                io.write_string(StdErrStream, Msg2, !IO),
+                io.nl(StdErrStream, !IO)
             ),
             ( if
                 MaybeTraceCounts1 = list_ok(Type1, TraceCounts1),
@@ -76,28 +77,28 @@ main(!IO) :-
                     WriteResult = ok
                 ;
                     WriteResult = error(WriteErrorMsg),
-                    io.write_string(StdErr, "Error writing to " ++
+                    io.write_string(StdErrStream, "Error writing to " ++
                         "file `" ++ OutputFile ++ "'" ++ ": " ++
                         string(WriteErrorMsg), !IO),
-                    io.nl(StdErr, !IO)
+                    io.nl(StdErrStream, !IO)
                 )
             else
                 % The error message has already been printed above.
                 true
             )
         else
-            usage(!IO)
+            usage(StdOutStream, !IO)
         )
     ;
         GetoptResult = error(GetoptErrorMsg),
-        io.write_string(GetoptErrorMsg, !IO),
-        io.nl(!IO)
+        io.write_string(StdOutStream, GetoptErrorMsg, !IO),
+        io.nl(StdOutStream, !IO)
     ).
 
-:- pred usage(io::di, io::uo) is det.
+:- pred usage(io.text_output_stream::in, io::di, io::uo) is det.
 
-usage(!IO) :-
-    io.write_string(
+usage(OutStream, !IO) :-
+    io.write_string(OutStream,
         "Usage: mtc_diff -o outputfile tracecountfile1 tracecountfile2\n",
         !IO).
 
