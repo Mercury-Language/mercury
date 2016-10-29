@@ -1202,7 +1202,7 @@ MR_trace_return_bindings(MR_Word *names_ptr, MR_Word *values_ptr)
                         details->MR_value_var.MR_var_fullname);
                     MR_new_univ_on_hp(value, details->MR_value_type,
                         details->MR_value_value);
-                    names = MR_string_list_cons(name, names);
+                    names = MR_string_list_cons((MR_Word) name, names);
                     values = MR_univ_list_cons(value, values);
                 }
             }
