@@ -456,6 +456,7 @@
 :- mode write_line(in, in, in, di, uo) is cc_multi.
 
 :- pred write_cc(T::in, io::di, io::uo) is cc_multi.
+:- pred write_cc(io.text_output_stream::in, T::in, io::di, io::uo) is cc_multi.
 
     % write_line calls write and then writes a newline character.
     %
@@ -2287,12 +2288,12 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
 read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
     some [!BM] (
         !:BM = bitmap.init(BufferSize * bits_per_byte),
-        read_bitmap(0, BufferSize, !BM, NumBytesRead, ReadRes, !IO),
+        read_bitmap(Stream, 0, BufferSize, !BM, NumBytesRead, ReadRes, !IO),
         (
             ReadRes = ok,
             ( if NumBytesRead < BufferSize then
                 !:BM = bitmap.shrink_without_copying(!.BM,
-                        NumBytesRead * bits_per_byte),
+                    NumBytesRead * bits_per_byte),
                 !:BMs = [!.BM | !.BMs],
                 Res = ok
             else
@@ -4362,8 +4363,8 @@ print_to_stream(Stream, Term, !IO) :-
     io.print(output_stream(Stream), canonicalize, Term, !IO).
 
 print_line(Term, !IO) :-
-    io.print(Term, !IO),
-    nl(!IO).
+    io.output_stream(Stream, !IO),
+    print_line(Stream, Term, !IO).
 
 print_line(Stream, Term, !IO) :-
     io.print(Stream, Term, !IO),
@@ -4394,6 +4395,9 @@ write(Stream, NonCanon, X, !IO) :-
 
 write_cc(X, !IO) :-
     output_stream(Stream, !IO),
+    io.write_cc(Stream, X, !IO).
+
+write_cc(Stream, X, !IO) :-
     stream.string_writer.write(Stream, include_details_cc, X, !IO).
 
 write_line(X, !IO) :-
@@ -4510,8 +4514,7 @@ read_binary(binary_input_stream(Stream), Result, !IO) :-
         read_binary_from_current_input_stream, Result, !IO).
 
 :- pred read_binary_from_current_input_stream(io.result(T)::out,
-    io::di, io::uo)
-    is det.
+    io::di, io::uo) is det.
 
 read_binary_from_current_input_stream(Result, !IO) :-
     read(ReadResult, !IO),
@@ -4613,10 +4616,10 @@ open_binary_append(FileName, Result, !IO) :-
 %
 
 see(File, Result, !IO) :-
-    open_input(File, Result0, !IO),
+    io.open_input(File, Result0, !IO),
     (
         Result0 = ok(Stream),
-        set_input_stream(Stream, _, !IO),
+        io.set_input_stream(Stream, _, !IO),
         Result = ok
     ;
         Result0 = error(Error),
@@ -4624,17 +4627,17 @@ see(File, Result, !IO) :-
     ).
 
 seen(!IO) :-
-    stdin_stream(Stdin, !IO),
-    set_input_stream(Stdin, OldStream, !IO),
-    close_input(OldStream, !IO).
+    io.stdin_stream(Stdin, !IO),
+    io.set_input_stream(Stdin, OldStream, !IO),
+    io.close_input(OldStream, !IO).
 
 % Plus binary IO versions.
 
 see_binary(File, Result, !IO) :-
-    open_binary_input(File, Result0, !IO),
+    io.open_binary_input(File, Result0, !IO),
     (
         Result0 = ok(Stream),
-        set_binary_input_stream(Stream, _, !IO),
+        io.set_binary_input_stream(Stream, _, !IO),
         Result = ok
     ;
         Result0 = error(Error),
@@ -4642,9 +4645,9 @@ see_binary(File, Result, !IO) :-
     ).
 
 seen_binary(!IO) :-
-    stdin_binary_stream(Stdin, !IO),
-    set_binary_input_stream(Stdin, OldStream, !IO),
-    close_binary_input(OldStream, !IO).
+    io.stdin_binary_stream(Stdin, !IO),
+    io.set_binary_input_stream(Stdin, OldStream, !IO),
+    io.close_binary_input(OldStream, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -4652,15 +4655,15 @@ seen_binary(!IO) :-
 %
 
 told(!IO) :-
-    stdout_stream(Stdout, !IO),
-    set_output_stream(Stdout, OldStream, !IO),
-    close_output(OldStream, !IO).
+    io.stdout_stream(Stdout, !IO),
+    io.set_output_stream(Stdout, OldStream, !IO),
+    io.close_output(OldStream, !IO).
 
 tell(File, Result, !IO) :-
-    open_output(File, Result0, !IO),
+    io.open_output(File, Result0, !IO),
     (
         Result0 = ok(Stream),
-        set_output_stream(Stream, _, !IO),
+        io.set_output_stream(Stream, _, !IO),
         Result = ok
     ;
         Result0 = error(Msg),
@@ -4668,15 +4671,15 @@ tell(File, Result, !IO) :-
     ).
 
 told_binary(!IO) :-
-    stdout_binary_stream(Stdout, !IO),
-    set_binary_output_stream(Stdout, OldStream, !IO),
-    close_binary_output(OldStream, !IO).
+    io.stdout_binary_stream(Stdout, !IO),
+    io.set_binary_output_stream(Stdout, OldStream, !IO),
+    io.close_binary_output(OldStream, !IO).
 
 tell_binary(File, Result, !IO) :-
-    open_binary_output(File, Result0, !IO),
+    io.open_binary_output(File, Result0, !IO),
     (
         Result0 = ok(Stream),
-        set_binary_output_stream(Stream, _, !IO),
+        io.set_binary_output_stream(Stream, _, !IO),
         Result = ok
     ;
         Result0 = error(Msg),
@@ -9257,7 +9260,8 @@ set_binary_output_stream(binary_output_stream(NewStream),
     mercury__io:mercury_set_current_binary_output(NewStream)
 ").
 
-% Predicates to temporariliy change the input/output stream.
+% Predicates to temporarily change the input/output stream.
+% XXX We should not need these if we passed streams explicitly everywhere.
 
 :- pred with_input_stream(input_stream, pred(T, io, io), T, io, io).
 :- mode with_input_stream(in, pred(out, di, uo) is det, out, di, uo) is det.

@@ -476,10 +476,11 @@ mercury_sys_init_backjumps_write_out_proc_statics(FILE *deep_fp,
 :- pred report_invalid_backjump(int::in, io::di, io::uo) is det.
 
 report_invalid_backjump(Id, !IO) :-
-    io.flush_output(!IO),
-    io.stderr_stream(StdErr, !IO),
-    io.format(StdErr, "Uncaught Mercury backjump (%d)\n", [i(Id)], !IO),
-    io.flush_output(StdErr, !IO).
+    io.output_stream(CurOutStream, !IO),
+    io.flush_output(CurOutStream, !IO),
+    io.stderr_stream(StdErrStream, !IO),
+    io.format(StdErrStream, "Uncaught Mercury backjump (%d)\n", [i(Id)], !IO),
+    io.flush_output(StdErrStream, !IO).
 
 %---------------------------------------------------------------------------%
 

@@ -137,7 +137,7 @@
 :- import_module ops.
 
 %
-% For use by term_io.m
+% For use by term_io.m.
 %
 
 :- pred maybe_write_paren(Stream::in, char::in, ops.priority::in,
@@ -145,10 +145,10 @@
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 :- pragma type_spec(maybe_write_paren/6,
-            (Stream = io.output_stream, State = io.state)).
+    (Stream = io.output_stream, State = io.state)).
 
 %
-% For use by browser/browse.m
+% For use by browser/browse.m.
 %
 
 % Predicates for writing out univs.

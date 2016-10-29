@@ -816,7 +816,9 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
             ),
 
             trace [io(!IO), compile_time(flag("from_sorted_list"))] (
-                io.format("splitting %d into three: %d, %d, %d\n",
+                io.output_stream(SplitStream, !IO),
+                io.format(SplitStream,
+                    "splitting %d into three: %d, %d, %d\n",
                     [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
             ),
 
@@ -837,9 +839,10 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
             do_from_sorted_list(SubLen3, !List, Level, AllThrees, SubTree3),
             Tree = three(E1, E2, SubTree1, SubTree2, SubTree3),
             trace [io(!IO), compile_time(flag("from_sorted_list"))] (
-                io.format("tree for %d\n", [i(Len)], !IO),
-                io.write(Tree, !IO),
-                io.nl(!IO)
+                io.output_stream(TreeStream, !IO),
+                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
+                io.write(TreeStream, Tree, !IO),
+                io.nl(TreeStream, !IO)
             )
         else
             BaseSubLen = (Len) / 2,
@@ -860,7 +863,9 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
             ),
 
             trace [io(!IO), compile_time(flag("from_sorted_list"))] (
-                io.format("splitting %d into two: %d, %d\n",
+                io.output_stream(SplitStream, !IO),
+                io.format(SplitStream,
+                    "splitting %d into two: %d, %d\n",
                     [i(Len), i(SubLen1), i(SubLen2)], !IO)
             ),
 
@@ -874,9 +879,10 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
             do_from_sorted_list(SubLen2, !List, Level, AllThrees, SubTree2),
             Tree = two(E1, SubTree1, SubTree2),
             trace [io(!IO), compile_time(flag("from_sorted_list"))] (
-                io.format("tree for %d\n", [i(Len)], !IO),
-                io.write(Tree, !IO),
-                io.nl(!IO)
+                io.output_stream(TreeStream, !IO),
+                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
+                io.write(TreeStream, Tree, !IO),
+                io.nl(TreeStream, !IO)
             )
         )
     ).
@@ -959,7 +965,9 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
             ),
 
             trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
-                io.format("splitting %d into three: %d, %d, %d\n",
+                io.output_stream(SplitStream, !IO),
+                io.format(SplitStream,
+                    "splitting %d into three: %d, %d, %d\n",
                     [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
             ),
 
@@ -983,9 +991,10 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 SubTree1),
             Tree = three(E1, E2, SubTree1, SubTree2, SubTree3),
             trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
-                io.format("tree for %d\n", [i(Len)], !IO),
-                io.write(Tree, !IO),
-                io.nl(!IO)
+                io.output_stream(TreeStream, !IO),
+                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
+                io.write(TreeStream, Tree, !IO),
+                io.nl(TreeStream, !IO)
             )
         else
             BaseSubLen = (Len) / 2,
@@ -1006,7 +1015,9 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
             ),
 
             trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
-                io.format("splitting %d into two: %d, %d\n",
+                io.output_stream(SplitStream, !IO),
+                io.format(SplitStream,
+                    "splitting %d into two: %d, %d\n",
                     [i(Len), i(SubLen1), i(SubLen2)], !IO)
             ),
 
@@ -1022,9 +1033,10 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 SubTree1),
             Tree = two(E1, SubTree1, SubTree2),
             trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
-                io.format("tree for %d\n", [i(Len)], !IO),
-                io.write(Tree, !IO),
-                io.nl(!IO)
+                io.output_stream(TreeStream, !IO),
+                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
+                io.write(TreeStream, Tree, !IO),
+                io.nl(TreeStream, !IO)
             )
         )
     ).

@@ -11,7 +11,7 @@
 % Stability: low
 %
 % This module provides a family of typeclasses for defining streams
-% in Mercury.  It also provides some generic predicates that operate
+% in Mercury. It also provides some generic predicates that operate
 % on instances of these typeclasses.
 %
 %---------------------------------------------------------------------------%
@@ -83,10 +83,10 @@
     %
 :- typeclass stream(Stream, State) <= (Stream -> State) where
 [
-        % Returns a descriptive name for the stream.
-        % Intended for use in error messages.
-        %
-        pred name(Stream::in, name::out, State::di, State::uo) is det
+    % Returns a descriptive name for the stream.
+    % Intended for use in error messages.
+    %
+    pred name(Stream::in, name::out, State::di, State::uo) is det
 ].
 
 %---------------------------------------------------------------------------%
@@ -111,7 +111,7 @@
     % or the end of the stream or an error is detected.
     %
     % If a call to get/4 returns `eof', all further calls to get/4 or
-    % bulk_get/9 for that stream return `eof'.  If a call to get/4
+    % bulk_get/9 for that stream return `eof'. If a call to get/4
     % returns `error(...)', all further calls to get/4 or bulk_get/4 for
     % that stream return an error, although not necessarily the same one.
     %
@@ -124,7 +124,7 @@
 
     % A bulk_reader stream is a subclass of specific input stream that can
     % be used to read multiple items of data of a specific type from that
-    % input stream into a specified container.  For example, binary input
+    % input stream into a specified container. For example, binary input
     % streams may be able to efficiently read bytes into a bitmap.
     % A single input stream can support multiple bulk_reader subclasses.
     %
@@ -143,7 +143,7 @@
     % NumItemsRead is less than NumItems, and Result is `ok'.
     %
     % If an error is detected, bulk_get/9 puts as many items as it can into
-    % !Store.  NumItemsRead is less than NumItems, and Result is `error(Err)'.
+    % !Store. NumItemsRead is less than NumItems, and Result is `error(Err)'.
     %
     % Blocks until NumItems items are available or the end of the stream
     % is reached or an error is detected.
@@ -152,9 +152,9 @@
     % starting at Index will not fit in !Store.
     %
     % If a call to bulk_get/4 returns less than NumItems items, all further
-    % calls to get/4 or bulk_get/4 for that stream return no items.  If a
-    % call to bulk_get/9 returns `error(...)', all further calls to get/4
-    % or bulk_get/9 for that stream return an error, although not necessarily
+    % calls to get/4 or bulk_get/4 for that stream return no items. If a call
+    % to bulk_get/9 returns `error(...)', all further calls to get/4 or
+    % bulk_get/9 for that stream return an error, although not necessarily
     % the same one.
     %
     pred bulk_get(Stream::in, Index::in, int::in,
@@ -163,7 +163,7 @@
 ].
 
     % XXX These should be di and uo, but with the current state of the mode
-    % system an unsafe_promise_unique call would be required at each call
+    % system, an unsafe_promise_unique call would be required at each call
     % to bulk_get.
 :- mode bulk_get_di == in.
 :- mode bulk_get_uo == out.
@@ -175,14 +175,13 @@
 
     % An output stream is a destination for data.
     % Note that unlike input streams, output streams do not include
-    % an explicit error type.  They should handle errors by throwing
-    % exceptions.
+    % an explicit error type. They should handle errors by throwing exceptions.
     %
 :- typeclass output(Stream, State)
     <= stream(Stream, State) where
 [
-    % For buffered output streams completely write out any data in the
-    % buffer.  For unbuffered streams this operation is a no-op.
+    % For buffered output streams, completely write out any data in the buffer.
+    % For unbuffered streams, this operation is a no-op.
     %
     pred flush(Stream::in, State::di, State::uo) is det
 ].
@@ -206,13 +205,13 @@
 % Duplex streams.
 %
 
-    % A duplex stream is a stream that can act as both a source
-    % and destination of data, i.e. it is a both an input and
-    % an output stream.
+    % A duplex stream is a stream that can act as both a source and
+    % destination of data, i.e. it is a both an input and an output stream.
     %
 :- typeclass duplex(Stream, State)
-    <= (input(Stream, State), output(Stream, State))
-        where [].
+    <= (input(Stream, State), output(Stream, State)) where
+[
+].
 
 %---------------------------------------------------------------------------%
 %
@@ -220,7 +219,7 @@
 %
 
     % A putback stream is an input stream that allows data to be pushed back
-    % onto the stream.  As with reader subclasses it is possible to define
+    % onto the stream. As with reader subclasses it is possible to define
     % multiple putback subclasses for a single input stream.
     %
 :- typeclass putback(Stream, Unit, State, Error)
@@ -232,11 +231,13 @@
     pred unget(Stream::in, Unit::in, State::di, State::uo) is det
 ].
 
-    % As above but guarantees that an unlimited number of units may be pushed
+    % As above, but guarantees that an unlimited number of units may be pushed
     % back onto the stream.
     %
 :- typeclass unbounded_putback(Stream, Unit, State, Error)
-    <= putback(Stream, Unit, State, Error) where [].
+    <= putback(Stream, Unit, State, Error) where
+[
+].
 
 %---------------------------------------------------------------------------%
 %
@@ -259,8 +260,7 @@
     % Seek to an offset relative to whence on the specified stream.
     % The offset is measured in bytes.
     %
-    pred seek(Stream::in, whence::in, int::in, State::di, State::uo)
-        is det
+    pred seek(Stream::in, whence::in, int::in, State::di, State::uo) is det
 ].
 
 %---------------------------------------------------------------------------%

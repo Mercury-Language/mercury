@@ -385,8 +385,9 @@ get_tournament_view(Winner) = TournamentView :-
     ),
     trace [compile_time(flag("debug_psqueue")), io(!IO)] (
         TournamentStr = dump_tournament(0, TournamentView),
-        io.write_string(TournamentStr, !IO),
-        io.nl(!IO)
+        io.output_stream(OutStream, !IO),
+        io.write_string(OutStream, TournamentStr, !IO),
+        io.nl(OutStream, !IO)
     ).
 
     % Play a tournament to combine two priority search queues, PSQA and PSQB.

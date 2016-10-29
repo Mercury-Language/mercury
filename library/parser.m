@@ -166,63 +166,63 @@
 
 read_term(Result, !IO) :-
     io.input_stream(Stream, !IO),
-    read_term(Stream, Result, !IO).
+    parser.read_term(Stream, Result, !IO).
 
 read_term(Stream, Result, !IO) :-
     io.input_stream_name(Stream, FileName, !IO),
-    read_term_filename_with_op_table(Stream, ops.init_mercury_op_table,
+    parser.read_term_filename_with_op_table(Stream, ops.init_mercury_op_table,
         FileName, Result, !IO).
 
 read_term_with_op_table(Ops, Result, !IO) :-
     io.input_stream(Stream, !IO),
-    read_term_with_op_table(Stream, Ops, Result, !IO).
+    parser.read_term_with_op_table(Stream, Ops, Result, !IO).
 
 read_term_with_op_table(Stream, Ops, Result, !IO) :-
     io.input_stream_name(Stream, FileName, !IO),
-    read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO).
+    parser.read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO).
 
 read_term_filename(FileName, Result, !IO) :-
     io.input_stream(Stream, !IO),
-    read_term_filename(Stream, FileName, Result, !IO).
+    parser.read_term_filename(Stream, FileName, Result, !IO).
 
 read_term_filename(Stream, FileName, Result, !IO) :-
-    read_term_filename_with_op_table(Stream, ops.init_mercury_op_table,
+    parser.read_term_filename_with_op_table(Stream, ops.init_mercury_op_table,
         FileName, Result, !IO).
 
 read_term_filename_with_op_table(Ops, FileName, Result, !IO) :-
     io.input_stream(Stream, !IO),
-    read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO).
+    parser.read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO).
 
 read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO) :-
     lexer.get_token_list(Stream, Tokens, !IO),
-    parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
+    parser.parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
 
 %---------------------%
 
 read_term_from_string(FileName, String, EndPos, Result) :-
-    read_term_from_string_with_op_table(ops.init_mercury_op_table, FileName,
-        String, EndPos, Result).
+    parser.read_term_from_string_with_op_table(ops.init_mercury_op_table,
+        FileName, String, EndPos, Result).
 
 read_term_from_string_with_op_table(Ops, FileName, String, EndPos, Result) :-
     string.length(String, Len),
     StartPos = posn(1, 0, 0),
-    read_term_from_substring_with_op_table(Ops, FileName, String, Len,
+    parser.read_term_from_substring_with_op_table(Ops, FileName, String, Len,
         StartPos, EndPos, Result).
 
 read_term_from_substring(FileName, String, Len, StartPos, EndPos, Result) :-
-    read_term_from_substring_with_op_table(ops.init_mercury_op_table,
+    parser.read_term_from_substring_with_op_table(ops.init_mercury_op_table,
         FileName, String, Len, StartPos, EndPos, Result).
 
 read_term_from_substring_with_op_table(Ops, FileName, String, Len,
         StartPos, EndPos, Result) :-
     lexer.string_get_token_list_max(String, Len, Tokens, StartPos, EndPos),
-    parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
+    parser.parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
 
 %---------------------------------------------------------------------------%
 
 parse_tokens(FileName, Tokens, Result) :-
-    parse_tokens_with_op_table(ops.init_mercury_op_table, FileName, Tokens,
-        Result).
+    parser.parse_tokens_with_op_table(ops.init_mercury_op_table,
+        FileName, Tokens, Result).
 
 parse_tokens_with_op_table(Ops, FileName, Tokens, Result) :-
     (

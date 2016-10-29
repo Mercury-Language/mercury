@@ -941,10 +941,10 @@ process_option(file_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
     (
         MaybeArg = yes(FileName),
-        io.see(FileName, SeeRes, !IO),
+        io.open_input(FileName, OpenRes, !IO),
         (
-            SeeRes = ok,
-            io.read_file_as_string(ReadRes, !IO),
+            OpenRes = ok(FileStream),
+            io.read_file_as_string(FileStream, ReadRes, !IO),
             (
                 ReadRes = ok(Contents),
                 Words = string.words(Contents),
@@ -965,9 +965,9 @@ process_option(file_special, Option, Flag, MaybeArg, OptionOps,
                 Error = option_error(Flag, Option, Reason),
                 Result = error(Error)
             ),
-            io.seen(!IO)
+            io.close_input(FileStream, !IO)
         ;
-            SeeRes = error(IO_Error),
+            OpenRes = error(IO_Error),
             Reason = file_special_cannot_open(FileName, IO_Error),
             Error = option_error(Flag, Option, Reason),
             Result = error(Error)

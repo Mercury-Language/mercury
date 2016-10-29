@@ -2630,12 +2630,13 @@ report_uncaught_exception(Exception, !IO) :-
     io::di, io::uo) is det.
 
 report_uncaught_exception_2(Exception, unit, !IO) :-
-    io.flush_output(!IO),
-    io.stderr_stream(StdErr, !IO),
-    io.write_string(StdErr, "Uncaught Mercury exception:\n", !IO),
-    io.write_string(StdErr, exception_to_string(Exception), !IO),
-    io.nl(StdErr, !IO),
-    io.flush_output(StdErr, !IO).
+    io.output_stream(CurOutStream, !IO),
+    io.flush_output(CurOutStream, !IO),
+    io.stderr_stream(StdErrStream, !IO),
+    io.write_string(StdErrStream, "Uncaught Mercury exception:\n", !IO),
+    io.write_string(StdErrStream, exception_to_string(Exception), !IO),
+    io.nl(StdErrStream, !IO),
+    io.flush_output(StdErrStream, !IO).
 
 :- func exception_to_string(univ) = string.
 
