@@ -610,7 +610,7 @@ write_one_stat(Stream, SectionName, StatName, StatNum, !IO) :-
     io.write_string(Stream, " ", !IO),
     io.write_int(Stream, StatNum, !IO),
     io.nl(Stream, !IO),
-    io.flush_output(!IO).
+    io.flush_output(Stream, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_item_stats.
