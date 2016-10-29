@@ -42,7 +42,9 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    filter_lines(Result, map.init, _, !IO),
+    io.input_stream(InStream, !IO),
+    io.output_stream(OutStream, !IO),
+    filter_lines(InStream, OutStream, Result, map.init, !IO),
     (
         Result = ok
     ;
@@ -60,16 +62,17 @@ main(!IO) :-
     ;       error(string)
     ;       warning(string).
 
-:- pred filter_lines(filter_result::out,
-    line_info_cache::in, line_info_cache::out, io::di, io::uo) is det.
+:- pred filter_lines(io.text_input_stream::in, io.text_output_stream::in,
+    filter_result::out,
+    line_info_cache::in, io::di, io::uo) is det.
 
-filter_lines(Result, !Cache, !IO) :-
-    io.read_line_as_string(IOResult, !IO),
+filter_lines(InStream, OutStream, Result, !.Cache, !IO) :-
+    io.read_line_as_string(InStream, IOResult, !IO),
     (
         IOResult = ok(Line0),
         filter_line(Result0, Line0, Line, !Cache, !IO),
-        io.write_string(Line, !IO),
-        filter_lines(ResultLines, !Cache, !IO),
+        io.write_string(OutStream, Line, !IO),
+        filter_lines(InStream, OutStream, ResultLines, !.Cache, !IO),
         (
             Result0 = ok,
             Result = ResultLines
@@ -92,7 +95,7 @@ filter_lines(Result, !Cache, !IO) :-
         Result = ok
     ;
         IOResult = error(Error),
-        ErrorStr = format("stdin: %s\n", [s(error_message(Error))]),
+        string.format("stdin: %s\n", [s(io.error_message(Error))], ErrorStr),
         Result = error(ErrorStr)
     ).
 
@@ -100,15 +103,15 @@ filter_lines(Result, !Cache, !IO) :-
     line_info_cache::in, line_info_cache::out, io::di, io::uo) is det.
 
 filter_line(Result, !Line, !Cache, !IO) :-
-    (
+    ( if
         PartsA = split_at_separator(char.is_whitespace, !.Line),
         PartsA = [PartAA | OtherPartsA],
         PartsAA = split_at_char(':', PartAA),
         PartsAA = [Filename, LineStr, Empty],
         string.to_int(LineStr, LineNo),
         Empty = ""
-    ->
-        ( map.search(!.Cache, Filename, MaybeLineInfo) ->
+    then
+        ( if map.search(!.Cache, Filename, MaybeLineInfo) then
             (
                 MaybeLineInfo = yes(LineInfo),
                 translate_and_outpot_line(LineInfo, Filename, LineNo,
@@ -120,7 +123,7 @@ filter_line(Result, !Line, !Cache, !IO) :-
                 % map.search failed.
                 Result = ok
             )
-        ;
+        else
             maybe_get_line_info(Filename, MaybeLineInfoErr, !IO),
             (
                 MaybeLineInfoErr = ok(LineInfo),
@@ -134,7 +137,7 @@ filter_line(Result, !Line, !Cache, !IO) :-
                 Result = error(Error)
             )
         )
-    ;
+    else
         Result = ok
     ).
 
@@ -144,8 +147,8 @@ filter_line(Result, !Line, !Cache, !IO) :-
 translate_and_outpot_line(LineInfo, Filename, LineNo, RestParts, OutLine) :-
     line_info_translate(LineInfo, Filename, LineNo, MerFileName, MerLineNo),
     Rest = string.join_list(" ", RestParts),
-    OutLine = string.format("%s:%d: %s\n",
-        [s(MerFileName), i(MerLineNo), s(Rest)]).
+    string.format("%s:%d: %s\n", [s(MerFileName), i(MerLineNo), s(Rest)],
+        OutLine).
 
 %-----------------------------------------------------------------------------%
 
@@ -177,18 +180,14 @@ translate_and_outpot_line(LineInfo, Filename, LineNo, RestParts, OutLine) :-
 line_info_translate([], Name, Line, Name, Line).
 line_info_translate([Info | Infos], Name0, Line0, Name, Line) :-
     Info = line_info(Start, End, Delta, File),
-    (
-        Line0 < Start
-    ->
+    ( if Line0 < Start then
         % No translation.
         Name = Name0,
         Line = Line0
-    ;
-        Line0 < End
-    ->
+    else if Line0 < End then
         Line = Line0 + Delta,
         Name = File
-    ;
+    else
         line_info_translate(Infos, Name0, Line0, Name, Line)
     ).
 
@@ -209,12 +208,12 @@ error_type_string(lie_duplicate_beginning) =
 maybe_get_line_info(Filename, MaybeInfo, !IO) :-
     io.open_input(Filename, Res, !IO),
     (
-        Res = ok(Stream),
-        read_line_marks(Stream, 1, [], MaybeMarksRev, !IO),
-        io.close_input(Stream, !IO),
+        Res = ok(FileStream),
+        read_line_marks(FileStream, 1, [], MaybeMarksRev, !IO),
+        io.close_input(FileStream, !IO),
         (
             MaybeMarksRev = ok(MarksRev),
-            reverse(MarksRev, Marks),
+            list.reverse(MarksRev, Marks),
             create_line_info(Marks, Filename, [], MaybeInfo0),
             (
                 MaybeInfo0 = ok(Infos),
@@ -222,9 +221,10 @@ maybe_get_line_info(Filename, MaybeInfo, !IO) :-
             ;
                 MaybeInfo0 = error(LineInfoError),
                 LineInfoError = line_info_error(ErrFilename, ErrLine, Error),
-                StringError = format(
+                string.format(
                     "%s:%d: Error understanding line number declration: %s",
-                    [s(ErrFilename), i(ErrLine), s(error_type_string(Error))]),
+                    [s(ErrFilename), i(ErrLine), s(error_type_string(Error))],
+                    StringError),
                 MaybeInfo = error(StringError)
             )
         ;
@@ -260,7 +260,7 @@ read_line_marks(Stream, JavaLineNo, Marks0, MaybeMarks, !IO) :-
         % The format string in mlds_to_java specifically uses spaces
         % rather than any other whitespace.
         Parts = string.split_at_char(' ', strip(Line)),
-        (
+        ( if
             Parts = ["//", Marker, PathLine],
             (
                 Marker = "MER_FOREIGN_BEGIN",
@@ -272,10 +272,10 @@ read_line_marks(Stream, JavaLineNo, Marks0, MaybeMarks, !IO) :-
             PartsB = string.split_at_char(':', PathLine),
             PartsB = [MerFile, MerLineNoStr],
             string.to_int(MerLineNoStr, MerLineNo)
-        ->
+        then
             Mark = line_mark(Type, MerFile, JavaLineNo, MerLineNo),
             Marks = [Mark | Marks0]
-        ;
+        else
             Marks = Marks0
         ),
         read_line_marks(Stream, JavaLineNo+1, Marks, MaybeMarks, !IO)
@@ -292,7 +292,7 @@ read_line_marks(Stream, JavaLineNo, Marks0, MaybeMarks, !IO) :-
     is det.
 
 create_line_info([], _JavaFile, Infos, ok(InfosRev)) :-
-    reverse(Infos, InfosRev).
+    list.reverse(Infos, InfosRev).
 create_line_info([Mark | Marks0], JavaFile, Infos0, MaybeInfos) :-
     Mark = line_mark(Type, MerFile, JavaLineNo, MerLineNo),
     (
