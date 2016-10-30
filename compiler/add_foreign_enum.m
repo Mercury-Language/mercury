@@ -57,6 +57,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
         TypeArity = 0,
         ( TypeName = unqualified("character")
         ; TypeName = unqualified("float")
+        ; TypeName = unqualified("uint")
         ; TypeName = unqualified("int")
         ; TypeName = unqualified("string")
         )
@@ -380,6 +381,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
         ( TypeName = unqualified("character")
         ; TypeName = unqualified("float")
         ; TypeName = unqualified("int")
+        ; TypeName = unqualified("uint")
         ; TypeName = unqualified("string")
         )
     then

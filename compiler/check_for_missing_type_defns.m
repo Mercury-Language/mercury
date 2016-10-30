@@ -62,9 +62,9 @@ check_for_missing_type_defns_in_type(TypeCtor, TypeDefn, !Specs) :-
         get_type_defn_body(TypeDefn, TypeBody),
         TypeBody = hlds_abstract_type(_)
     then
-        % We expect the builtin types character, float, int and string to have
-        % abstract declarations with no definitions. The following types from
-        % the type_desc module also only have abstract declarations:
+        % We expect the builtin types character, float, int, uint and string to
+        % have abstract declarations with no definitions. The following types
+        % from the type_desc module also only have abstract declarations:
         %
         %   - type_desc/0
         %   - pseudo_type_desc/0
