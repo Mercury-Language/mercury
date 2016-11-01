@@ -406,6 +406,8 @@ then
         :- type bear ---> brown ; black ; teddy.
         :- pragma foreign_export_enum("Java", bear/0).
 
+        :- type my_uint ---> my_uint(uint).
+
         :- pred p(t::out) is det.
 
         p(b).
