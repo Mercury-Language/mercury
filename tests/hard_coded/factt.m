@@ -6,31 +6,34 @@
 :- interface.
 
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
-:- pred example(int::in, int::out, int::out) is semidet.
+:- import_module list.
+:- import_module string.
 
+:- pred example(int::in, int::out, int::out) is semidet.
 :- pragma fact_table(example/3, "factt_examples").
 
-:- pred show_examples(int::in, io__state::di, io__state::uo) is det.
+%---------------------------------------------------------------------------%
 
-main -->
-    show_examples(1).
+main(!IO) :-
+    show_examples(1, !IO).
 
-show_examples(Num) -->
-    ( {example(Num, Result1, Result2)} ->
-        print(Num), print(" "),
-        print(Result2), print(" "),
-        print(Result1), nl
-    ;
-        print("Example call failed."), nl
-    ),
-    {Num1 = Num + 1},
-    ( {Num1 < 51} ->
-        show_examples(Num1)
-    ;
-        print("Finished"), nl
+:- pred show_examples(int::in, io::di, io::uo) is det.
+
+show_examples(Cur, !IO) :-
+    ( if Cur > 50 then
+        true
+    else
+        ( if example(Cur, A, B) then
+            io.format("%2d %2d %2d\n", [i(Cur), i(A), i(B)], !IO)
+        else
+            io.format("%2d  -  -\n", [i(Cur)], !IO)
+        ),
+        show_examples(Cur + 1, !IO)
     ).
