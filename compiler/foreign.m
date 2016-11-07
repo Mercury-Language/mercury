@@ -64,9 +64,12 @@
     % to that type in the specified foreign language, for use with
     % foreign language interfacing (`pragma export' or `pragma foreign_proc').
     %
-:- func exported_type_to_string(foreign_language, exported_type) = string.
 :- func mercury_exported_type_to_string(module_info, foreign_language,
     mer_type) = string.
+:- func exported_type_to_string(foreign_language, exported_type) = string.
+:- func exported_builtin_type_to_c_string(builtin_type) = string.
+:- func exported_builtin_type_to_csharp_string(builtin_type) = string.
+:- func exported_builtin_type_to_java_string(builtin_type) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -194,6 +197,9 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 is_foreign_type(exported_type_foreign(_, Assertions)) = yes(Assertions).
 is_foreign_type(exported_type_mercury(_)) = no.
 
+mercury_exported_type_to_string(ModuleInfo, Lang, Type) =
+    exported_type_to_string(Lang, to_exported_type(ModuleInfo, Type)).
+
 exported_type_to_string(Lang, ExportedType) = Result :-
     (
         ExportedType = exported_type_foreign(ForeignType, _),
@@ -227,22 +233,7 @@ exported_type_to_string(Lang, ExportedType) = Result :-
             % on whether --high-level-code is set.
             (
                 Type = builtin_type(BuiltinType),
-                (
-                    BuiltinType = builtin_type_int,
-                    Result = "MR_Integer"
-                ;
-                    BuiltinType = builtin_type_uint,
-                    Result = "MR_Unsigned"
-                ;
-                    BuiltinType = builtin_type_float,
-                    Result = "MR_Float"
-                ;
-                    BuiltinType = builtin_type_string,
-                    Result = "MR_String"
-                ;
-                    BuiltinType = builtin_type_char,
-                    Result = "MR_Char"
-                )
+                Result = exported_builtin_type_to_c_string(BuiltinType)
             ;
                 Type = tuple_type(_, _),
                 Result = "MR_Tuple"
@@ -265,22 +256,7 @@ exported_type_to_string(Lang, ExportedType) = Result :-
             Lang = lang_csharp,
             (
                 Type = builtin_type(BuiltinType),
-                (
-                    BuiltinType = builtin_type_int,
-                    Result = "int"
-                ;
-                    BuiltinType = builtin_type_uint,
-                    Result = "uint"
-                ;
-                    BuiltinType = builtin_type_float,
-                    Result = "double"
-                ;
-                    BuiltinType = builtin_type_string,
-                    Result = "string"
-                ;
-                    BuiltinType = builtin_type_char,
-                    Result = "char"
-                )
+                Result = exported_builtin_type_to_csharp_string(BuiltinType)
             ;
                 ( Type = tuple_type(_, _)
                 ; Type = defined_type(_, _, _)
@@ -297,22 +273,7 @@ exported_type_to_string(Lang, ExportedType) = Result :-
             Lang = lang_java,
             (
                 Type = builtin_type(BuiltinType),
-                (
-                    BuiltinType = builtin_type_int,
-                    Result = "int"
-                ;
-                    BuiltinType = builtin_type_uint,
-                    Result = "int"
-                ;
-                    BuiltinType = builtin_type_float,
-                    Result = "double"
-                ;
-                    BuiltinType = builtin_type_string,
-                    Result = "java.lang.String"
-                ;
-                    BuiltinType = builtin_type_char,
-                    Result = "char"
-                )
+                Result = exported_builtin_type_to_java_string(BuiltinType)
             ;
                 ( Type = tuple_type(_, _)
                 ; Type = defined_type(_, _, _)
@@ -331,8 +292,59 @@ exported_type_to_string(Lang, ExportedType) = Result :-
         )
     ).
 
-mercury_exported_type_to_string(ModuleInfo, Lang, Type) =
-    exported_type_to_string(Lang, to_exported_type(ModuleInfo, Type)).
+exported_builtin_type_to_c_string(BuiltinType) = CTypeName :-
+    (
+        BuiltinType = builtin_type_int,
+        CTypeName = "MR_Integer"
+    ;
+        BuiltinType = builtin_type_uint,
+        CTypeName = "MR_Unsigned"
+    ;
+        BuiltinType = builtin_type_float,
+        CTypeName = "MR_Float"
+    ;
+        BuiltinType = builtin_type_string,
+        CTypeName = "MR_String"
+    ;
+        BuiltinType = builtin_type_char,
+        CTypeName = "MR_Char"
+    ).
+
+exported_builtin_type_to_csharp_string(BuiltinType) = CsharpTypeName :-
+    (
+        BuiltinType = builtin_type_int,
+        CsharpTypeName = "int"
+    ;
+        BuiltinType = builtin_type_uint,
+        CsharpTypeName = "uint"
+    ;
+        BuiltinType = builtin_type_float,
+        CsharpTypeName = "double"
+    ;
+        BuiltinType = builtin_type_string,
+        CsharpTypeName = "string"
+    ;
+        BuiltinType = builtin_type_char,
+        CsharpTypeName = "char"
+    ).
+
+exported_builtin_type_to_java_string(BuiltinType) = JavaTypeName :-
+    (
+        BuiltinType = builtin_type_int,
+        JavaTypeName = "int"
+    ;
+        BuiltinType = builtin_type_uint,
+        JavaTypeName = "int"
+    ;
+        BuiltinType = builtin_type_float,
+        JavaTypeName = "double"
+    ;
+        BuiltinType = builtin_type_string,
+        JavaTypeName = "java.lang.String"
+    ;
+        BuiltinType = builtin_type_char,
+        JavaTypeName = "char"
+    ).
 
 %-----------------------------------------------------------------------------%
 
