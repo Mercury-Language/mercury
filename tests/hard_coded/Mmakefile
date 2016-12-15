@@ -498,6 +498,8 @@ ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 	C_ONLY_PROGS = \
 		factt \
 		factt_sort_test \
+		fact_table_test_1 \
+		fact_table_test_2 \
 		foreign_type_assertion \
 		pragma_export \
 		runtime_opt \

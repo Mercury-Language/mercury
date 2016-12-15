@@ -1,0 +1,7 @@
+table_a( 1,  0,  1).
+table_a( 4,  2, -2).
+table_a( 7,  5,  1).
+table_a(10,  8, -2).
+table_a(13, 12,  3).
+table_a(16, 17, -4).
+table_a(19, 23,  3).
