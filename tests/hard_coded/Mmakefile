@@ -498,8 +498,6 @@ ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 	C_ONLY_PROGS = \
 		factt \
 		factt_sort_test \
-		fact_table_test_1 \
-		fact_table_test_2 \
 		foreign_type_assertion \
 		pragma_export \
 		runtime_opt \
@@ -646,9 +644,9 @@ endif
 # because comparison of closures gives "Sorry, not implemented" when
 # MR_HIGHLEVEL_CODE is set. Likewise for closure_arg_comparison.
 #
-# factt_non does not work in the MLDS grades because the code for nondet
-# fact tables assumes that we're using the LLDS back-end. Also, fact tables
-# and deep profiling do not (yet) mix.
+# factt_non and fact_table_test_? do not work in the MLDS grades because
+# the code for nondet fact tables assumes that we are using the LLDS back-end.
+# Also, fact tables and deep profiling do not (yet) mix.
 #
 # type_tables does not work in the MLDS grades because the test itself
 # is a quick hack that assumes the use of the LLDS backend; it should
@@ -658,7 +656,9 @@ endif
 ifeq "$(filter hl% csharp% java% erlang%,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
 		BACKEND_PROGS_2 = \
-			factt_non
+			factt_non \
+			fact_table_test_1 \
+			fact_table_test_2
 	else
 		BACKEND_PROGS_2 =
 	endif
@@ -805,7 +805,7 @@ trace_goal_env_2.out:	trace_goal_env_2
 # We also need to pipe the output through sed to avoid hard-coding
 # dependencies on particular line numbers in the standard library source code.
 # We filter lines matching "at mercury" in order to avoid the stack trace
-# caused by the uncaught exception in the C# grade (on Mono).  Ditto for lines
+# caused by the uncaught exception in the C# grade (on Mono). Ditto for lines
 # containing "jmercury" in the Java grade.
 no_fully_strict.out: no_fully_strict
 	if ./no_fully_strict > $@.tmp 2>&1; then \
