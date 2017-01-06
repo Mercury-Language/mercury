@@ -8,10 +8,10 @@
 #define MERCURY_REGS_H
 
 #include "mercury_conf.h"
-// NOTE: we need to include mercury_conf_param.h separately here since some
-// of the tests in the configure script need MR_GNUC to be defined and
-// mercury_conf.h might will not exist until *after* we have run the configure
-// script has been run.
+// NOTE: we need to include mercury_conf_param.h separately here since
+// some of the tests in the configure script need MR_GNUC to be defined,
+// and mercury_conf.h might not exist until *after* the configure script
+// has been run.
 
 #include "mercury_conf_param.h"
 #include "mercury_types.h"
