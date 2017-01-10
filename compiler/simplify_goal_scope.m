@@ -177,7 +177,8 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         Goal1 = hlds_goal(GoalExpr1, _GoalInfo1),
         ( if GoalExpr1 = scope(FinalReason, FinalSubGoal) then
             (
-                ( FinalReason = promise_purity(_)
+                ( FinalReason = disable_warnings(_, _)
+                ; FinalReason = promise_purity(_)
                 ; FinalReason = from_ground_term(_, _)
                 ; FinalReason = barrier(removable)
                 ),

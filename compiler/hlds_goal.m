@@ -451,6 +451,10 @@
             % existentially quantified. The compiler may do whatever
             % preserves this fact.
 
+    ;       disable_warnings(goal_warning, list(goal_warning))
+            % Do not generate any of the listed (one or more) warnings
+            % for any goal inside this scope.
+
     ;       promise_solutions(list(prog_var), promise_solutions_kind)
             % Even though the code inside the scope may have multiple
             % solutions, the creator of the scope (which may be the user
@@ -2541,7 +2545,8 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             rename_var(Must, Subn, LCSVar0, LCSVar),
             Reason = loop_control(LCVar, LCSVar, UseParentStack)
         ;
-            ( Reason0 = promise_purity(_Purity)
+            ( Reason0 = disable_warnings(_HeadWarnings, _TailWarnings)
+            ; Reason0 = promise_purity(_Purity)
             ; Reason0 = require_detism(_Detism)
             ; Reason0 = commit(_ForcePruning)
             ; Reason0 = barrier(_Removable)
@@ -2777,7 +2782,8 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
             rename_var(need_not_rename, Subn, LCSVar0, LCSVar),
             Reason = loop_control(LCVar, LCSVar, UseParentStack)
         ;
-            ( Reason0 = promise_purity(_Purity)
+            ( Reason0 = disable_warnings(_HeadWarnings, _TailWarnings)
+            ; Reason0 = promise_purity(_Purity)
             ; Reason0 = require_detism(_Detism)
             ; Reason0 = commit(_ForcePruning)
             ; Reason0 = barrier(_Removable)

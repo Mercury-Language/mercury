@@ -1,4 +1,4 @@
-%
+% vim: ft=mercury ts=4 sw=4 et
 % Require tail recursion pragma tests with --warn-non-tail-recursive
 :- module require_tailrec_2.
 
@@ -91,4 +91,3 @@ partition(Pivot, [H | T], Left0, Left, Right0, Right) :-
     else
         partition(Pivot, T, Left0, Left, [H | Right0], Right)
     ).
-

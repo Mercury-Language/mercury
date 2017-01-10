@@ -79,7 +79,9 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
+:- import_module bag.
 :- import_module char.
+:- import_module int.
 :- import_module maybe.
 :- import_module pair.
 :- import_module solutions.
@@ -143,6 +145,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
     %
     %   impure/1, semipure/1
     %   promise_pure/1, promise_semipure/1, promise_impure/1
+    %   disable_warnings/2
     %   not/1, \+/1
     %   some/2, all/2
     %   ,/2
@@ -181,7 +184,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
     % the code handling them here and in parse_non_call_dcg_goal is often
     % very similar. These goal types are all compound, and they tend to differ
     % only in whether they call parse_goal or parse_dcg_goal to handle their
-    % subgoals. However, factor out the commonalities would nevertheless
+    % subgoals. However, factoring out the commonalities would nevertheless
     % not be a good idea, for two reasons. Both relate to the fact that
     % the common code would have to make a runtime decision between
     % calling parse_goal and parse_dcg_goal on terms representing subgoals,
@@ -243,6 +246,59 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         else
             Spec = should_have_one_goal_prefix(ContextPieces, Context,
                 Functor),
+            MaybeGoal = error1([Spec])
+        )
+    ;
+        ( Functor = "disable_warning"
+        ; Functor = "disable_warnings"
+        ),
+        ( if Args = [WarningsTerm, SubGoalTerm] then
+            varset.coerce(!.VarSet, GenericVarSet),
+            parse_warnings(GenericVarSet, WarningsTerm, Functor,
+                ContextPieces, 1, MaybeWarnings),
+            parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
+            ( if
+                MaybeWarnings = ok1(Warnings),
+                MaybeSubGoal = ok1(SubGoal)
+            then
+                WarningsContext = get_term_context(WarningsTerm),
+                % XXX Should we generate a warning if the name of a warning
+                % to disable is listed more than once?
+                bag.insert_list(Warnings, bag.init, WarningsBag),
+                bag.to_assoc_list(WarningsBag, WarningsCounts),
+                generate_warnings_for_duplicate_warnings(WarningsContext,
+                    ContextPieces, WarningsCounts,
+                    NonDuplicateWarnings, DuplicateSpecs),
+                (
+                    DuplicateSpecs = [],
+                    (
+                        NonDuplicateWarnings = [HeadWarning | TailWarnings],
+                        Goal = disable_warnings_expr(Context,
+                            HeadWarning, TailWarnings, SubGoal),
+                        MaybeGoal = ok1(Goal)
+                    ;
+                        NonDuplicateWarnings = [],
+                        Pieces = cord.list(ContextPieces) ++
+                            [lower_case_next_if_not_first, words("Error:"),
+                            words("a"), fixed(Functor), words("scope"),
+                            words("must list at least one warning."), nl],
+                        Spec = error_spec(severity_error,
+                            phase_term_to_parse_tree,
+                            [simple_msg(WarningsContext, [always(Pieces)])]),
+                        MaybeGoal = error1([Spec])
+                    )
+                ;
+                    DuplicateSpecs = [_ | _],
+                    MaybeGoal = error1(DuplicateSpecs)
+                )
+            else
+                Specs = get_any_errors1(MaybeWarnings) ++
+                    get_any_errors1(MaybeSubGoal),
+                MaybeGoal = error1(Specs)
+            )
+        else
+            Spec = should_have_one_x_one_goal_prefix(ContextPieces, Context,
+                "a list of warnings to disable", Functor),
             MaybeGoal = error1([Spec])
         )
     ;
@@ -1082,6 +1138,7 @@ apply_purity_marker_to_maybe_goal(GoalTerm, Purity, MaybeGoal0, MaybeGoal) :-
             ; Goal0 = require_detism_expr(_, _, _)
             ; Goal0 = require_complete_switch_expr(_, _, _)
             ; Goal0 = require_switch_arms_detism_expr(_, _, _, _)
+            ; Goal0 = disable_warnings_expr(_, _, _, _)
             ; Goal0 = trace_expr(_, _, _, _, _, _)
             ; Goal0 = atomic_expr(_, _, _, _, _, _)
             ; Goal0 = try_expr(_, _, _, _, _, _, _)
@@ -1260,6 +1317,105 @@ parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
         Specs = get_any_errors1(MaybeVars) ++
             get_any_errors1(MaybeGoal),
         MaybeVarsAndGoal = error3(Specs)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred parse_warnings(varset::in, term::in, string::in,
+    cord(format_component)::in, int::in, maybe1(list(goal_warning))::out)
+    is det.
+
+parse_warnings(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
+        MaybeWarnings) :-
+    ( if Term = term.functor(term.atom("[]"), [], _) then
+        MaybeWarnings = ok1([])
+    else if Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) then
+        parse_warning(VarSet, HeadTerm, ScopeFunctor, ContextPieces,
+            WarningNum, MaybeHeadWarning),
+        parse_warnings(VarSet, TailTerm, ScopeFunctor, ContextPieces,
+            WarningNum + 1, MaybeTailWarnings),
+        ( if
+            MaybeHeadWarning = ok1(HeadWarning),
+            MaybeTailWarnings = ok1(TailWarnings)
+        then
+            MaybeWarnings = ok1([HeadWarning | TailWarnings])
+        else
+            Specs = get_any_errors1(MaybeHeadWarning) ++
+                get_any_errors1(MaybeTailWarnings),
+            MaybeWarnings = error1(Specs)
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first, words("Error:"),
+            words("the"), quote(ScopeFunctor), words("keyword should be"),
+            words("followed by a list of warnings to disable."),
+            words("The term"), quote(TermStr), words("is not a list."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        MaybeWarnings = error1([Spec])
+    ).
+
+:- pred parse_warning(varset::in, term::in, string::in,
+    cord(format_component)::in, int::in, maybe1(goal_warning)::out) is det.
+
+parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
+        MaybeWarning) :-
+    ( if 
+        Term = term.functor(term.atom(WarningFunctor), [], _),
+        (
+            WarningFunctor = "non_tail_recursive_calls",
+            Warning = goal_warning_non_tail_recursive_calls
+        ;
+            WarningFunctor = "singleton_vars",
+            Warning = goal_warning_singleton_vars
+        )
+    then
+        MaybeWarning = ok1(Warning)
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first, words("Error:"),
+            words("the"), nth_fixed(WarningNum), words("argument of the"),
+            quote(ScopeFunctor), words("keyword should be"),
+            words("the name of a warning to disable."),
+            words("The term"), quote(TermStr),
+            words("is not the name of a warning."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        MaybeWarning = error1([Spec])
+    ).
+
+:- pred generate_warnings_for_duplicate_warnings(prog_context::in,
+    cord(format_component)::in, assoc_list(goal_warning, int)::in,
+    list(goal_warning)::out, list(error_spec)::out) is det.
+
+generate_warnings_for_duplicate_warnings(_, _, [], [], []).
+generate_warnings_for_duplicate_warnings(Context, ContextPieces,
+        [WarningCount | WarningsCounts], NonDupWarnings, DupSpecs) :-
+    generate_warnings_for_duplicate_warnings(Context, ContextPieces,
+        WarningsCounts, TailNonDupWarnings, TailDupSpecs),
+    WarningCount = Warning - Count,
+    ( if Count > 1 then
+        WarningStr = goal_warning_to_string(Warning),
+        ( if Count > 2 then
+            MoreThanOnce = "more than once"
+        else
+            MoreThanOnce = ""
+        ),
+        Pieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first, words("Error:"),
+            words("the warning"), fixed(WarningStr),
+            words("is duplicated"), words(MoreThanOnce),
+            words("in the list of warnings to disable."), nl],
+        Spec = error_spec(severity_warning, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+
+        NonDupWarnings = TailNonDupWarnings,
+        DupSpecs = [Spec | TailDupSpecs]
+    else
+        NonDupWarnings = [Warning | TailNonDupWarnings],
+        DupSpecs = TailDupSpecs
     ).
 
 %---------------------------------------------------------------------------%

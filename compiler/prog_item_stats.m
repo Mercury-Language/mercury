@@ -105,6 +105,7 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
                 goal_num_req_detism                 :: int,
                 goal_num_req_compl_switch           :: int,
                 goal_num_req_arm_detism             :: int,
+                goal_num_disable_warnings           :: int,
                 goal_num_trace                      :: int,
                 goal_num_atomic                     :: int,
                 goal_num_try                        :: int,
@@ -137,7 +138,7 @@ init_item_stats =
 
 init_goal_stats =
     goal_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0).
+        0, 0, 0, 0, 0, 0, 0).
 
 %-----------------------------------------------------------------------------%
 
@@ -438,6 +439,11 @@ gather_stats_in_goal(Goal, !GoalStats) :-
             !.GoalStats ^ goal_num_req_arm_detism + 1,
         gather_stats_in_goal(SubGoal, !GoalStats)
     ;
+        Goal = disable_warnings_expr(_, _, _, SubGoal),
+        !GoalStats ^ goal_num_disable_warnings :=
+            !.GoalStats ^ goal_num_disable_warnings + 1,
+        gather_stats_in_goal(SubGoal, !GoalStats)
+    ;
         Goal = trace_expr(_, _, _, _, _, SubGoal),
         !GoalStats ^ goal_num_trace := !.GoalStats ^ goal_num_trace + 1,
         gather_stats_in_goal(SubGoal, !GoalStats)
@@ -563,7 +569,7 @@ write_goal_stats(Stream, SectionName, GoalStats, !IO) :-
     GoalStats = goal_stats(Conj, ParConj, True, Disj, Fail,
         Some, All, SomeStateVars, AllStateVars,
         PromisePurity, PromiseEqvSolns, PromiseEqvSolnSets, PromiseArbitrary,
-        ReqDetism, ReqComplSwitch, ReqSwitchArmDetism,
+        ReqDetism, ReqComplSwitch, ReqSwitchArmDetism, DisableWarnings,
         Trace, Atomic, Try, Implies, Equivalent, Not, IfThenElse,
         Event, Call, Unify),
     write_one_stat(Stream, SectionName, "goal_conj", Conj, !IO),
@@ -589,6 +595,8 @@ write_goal_stats(Stream, SectionName, GoalStats, !IO) :-
         ReqComplSwitch, !IO),
     write_one_stat(Stream, SectionName, "goal_req_arm_detism",
         ReqSwitchArmDetism, !IO),
+    write_one_stat(Stream, SectionName, "goal_disable_warnings",
+        DisableWarnings, !IO),
     write_one_stat(Stream, SectionName, "goal_trace", Trace, !IO),
     write_one_stat(Stream, SectionName, "goal_atomic", Atomic, !IO),
     write_one_stat(Stream, SectionName, "goal_try", Try, !IO),

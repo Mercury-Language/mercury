@@ -239,6 +239,20 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
             ),
             warn_singletons_in_goal(SubGoal, SubQuantVars, !Info)
         ;
+            Reason = disable_warnings(HeadWarning, TailWarnings),
+            ( if
+                ( HeadWarning = goal_warning_singleton_vars
+                ; list.member(goal_warning_singleton_vars, TailWarnings)
+                )
+            then
+                % Since we don't want to generate any singleton variable
+                % warnings inside this scope, there is no point in examining
+                % the goals inside this scope.
+                true
+            else
+                warn_singletons_in_goal(SubGoal, QuantVars, !Info)
+            )
+        ;
             ( Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = require_complete_switch(_)

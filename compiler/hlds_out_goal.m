@@ -1864,6 +1864,11 @@ write_goal_scope(!.Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         mercury_output_vars(VarSet, VarNamePrint, Vars, !IO),
         io.write_string("] (\n", !IO)
     ;
+        Reason = disable_warnings(HeadWarning, TailWarnings),
+        io.write_string("disable_warnings [", !IO),
+        write_goal_warnings(HeadWarning, TailWarnings, !IO),
+        io.write_string("] (\n", !IO)
+    ;
         Reason = promise_purity(Purity),
         (
             Purity = purity_pure,

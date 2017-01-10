@@ -621,7 +621,8 @@ goal_vars_acc(Goal, !Set) :-
             set_of_var.insert(LCVar, !Set),
             set_of_var.insert(LCSVar, !Set)
         ;
-            ( Reason = promise_purity(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)

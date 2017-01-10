@@ -321,6 +321,7 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
             ( Reason = from_ground_term(_, from_ground_term_initial)
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
+            ; Reason = disable_warnings(_, _)
             ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)

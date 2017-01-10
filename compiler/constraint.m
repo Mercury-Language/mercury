@@ -165,6 +165,17 @@ propagate_conj_sub_goal_2(Constraints, Goal0, FinalGoals, !Info) :-
     ;
         GoalExpr = scope(Reason, SubGoal0),
         (
+            Reason = disable_warnings(_, _),
+            % NOTE: This assumes that compiler passes that generate the
+            % warnings that could be disabled by this scope have all been run
+            % BEFORE program transformations such as constraint propagation.
+            % If they haven't been, then the transformations can hide warnings
+            % about code by moving them into these scopes, or can caused them
+            % to be generated when the user does not want them by moving
+            % the warned-about code out of such scopes.
+            propagate_goal(Constraints, SubGoal0, SubGoal, !Info),
+            FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo)]
+        ;
             ( Reason = exist_quant(_)
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)

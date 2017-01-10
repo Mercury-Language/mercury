@@ -596,6 +596,7 @@ gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds) :-
         ; Goal = require_complete_switch_expr(_, _SwitchVar, SubGoal)
         ; Goal = require_switch_arms_detism_expr(_, _SwitchVar, _Detism,
             SubGoal)
+        ; Goal = disable_warnings_expr(_, _HeadWarning, _TailWarnings, SubGoal)
         ),
         gather_implicit_import_needs_in_goal(SubGoal, !ImplicitImportNeeds)
     ;

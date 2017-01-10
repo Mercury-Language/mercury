@@ -565,7 +565,8 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
             unexpected($module, $pred, "from_ground_term_initial")
         )
     ;
-        ( Reason = exist_quant(_)
+        ( Reason = disable_warnings(_, _)
+        ; Reason = exist_quant(_)
         ; Reason = promise_solutions(_, _)
         ; Reason = promise_purity(_)
         ; Reason = require_detism(_)

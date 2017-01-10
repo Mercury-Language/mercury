@@ -657,7 +657,8 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
             Reason = require_switch_arms_detism(_, _),
             unexpected($module, $pred, "require_complete_switch")
         ;
-            ( Reason = exist_quant(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = exist_quant(_)
             ; Reason = promise_purity(_)
             ; Reason = barrier(_)
             ; Reason = from_ground_term(_, _)

@@ -381,6 +381,7 @@ collect_used_modules_in_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
         ; Goal = require_complete_switch_expr(_, _, SubGoal)
         ; Goal = require_switch_arms_detism_expr(_, _, _, SubGoal)
         ; Goal = trace_expr(_, _, _, _, _, SubGoal)
+        ; Goal = disable_warnings_expr(_, _, _, SubGoal)
         ),
         collect_used_modules_in_promise_goal(SubGoal,
             !UsedModuleNames, !FoundUnqual)

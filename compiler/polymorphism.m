@@ -1227,7 +1227,8 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                     !Info),
                 GoalExpr = scope(Reason0, SubGoal)
             ;
-                ( Reason0 = promise_purity(_)
+                ( Reason0 = disable_warnings(_, _)
+                ; Reason0 = promise_purity(_)
                 ; Reason0 = require_detism(_)
                 ; Reason0 = require_complete_switch(_)
                 ; Reason0 = require_switch_arms_detism(_, _)

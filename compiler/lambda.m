@@ -805,13 +805,11 @@ find_used_vars_in_goal(Goal, !VarUses) :-
                 true
             )
         ;
-            Unif = deconstruct(_, _, _, _, _, _)
-        ;
-            Unif = assign(_, _)
-        ;
-            Unif = simple_test(_, _)
-        ;
-            Unif = complicated_unify(_, _, _)
+            ( Unif = deconstruct(_, _, _, _, _, _)
+            ; Unif = assign(_, _)
+            ; Unif = simple_test(_, _)
+            ; Unif = complicated_unify(_, _, _)
+            )
         ),
         (
             RHS = rhs_var(RHSVar),
@@ -868,7 +866,8 @@ find_used_vars_in_goal(Goal, !VarUses) :-
             mark_var_as_used(LCVar, !VarUses),
             mark_var_as_used(LCSVar, !VarUses)
         ;
-            ( Reason = promise_purity(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = barrier(_)
             ; Reason = commit(_)
             ; Reason = trace_goal(_, _, _, _, _)

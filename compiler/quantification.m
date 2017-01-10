@@ -728,7 +728,8 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
             GoalExpr = scope(Reason0, SubGoal)
         )
     ;
-        ( Reason0 = promise_purity(_)
+        ( Reason0 = disable_warnings(_, _)
+        ; Reason0 = promise_purity(_)
         ; Reason0 = promise_solutions(_, _)
         ; Reason0 = require_detism(_)
         ; Reason0 = require_complete_switch(_)
@@ -799,7 +800,8 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
             rename_var_list(need_not_rename, RenameMap, TraceVars0, TraceVars),
             Reason = trace_goal(Comp, Run, IO, Mut, TraceVars)
         ;
-            ( Reason0 = promise_purity(_)
+            ( Reason0 = disable_warnings(_, _)
+            ; Reason0 = promise_purity(_)
             ; Reason0 = promise_solutions(_, _)
             ; Reason0 = require_detism(_)
             ; Reason0 = require_complete_switch(_)
@@ -1871,7 +1873,8 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
         Set0 = !.Set,
         LambdaSet0 = !.LambdaSet,
         (
-            ( Reason = promise_purity(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
@@ -2046,7 +2049,8 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
         Set0 = !.Set,
         LambdaSet0 = !.LambdaSet,
         (
-            ( Reason = promise_purity(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
@@ -2206,7 +2210,8 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
         GoalExpr = scope(Reason, SubGoal),
         Set0 = !.Set,
         (
-            ( Reason = promise_purity(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)

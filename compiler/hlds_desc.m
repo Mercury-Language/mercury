@@ -128,6 +128,9 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
     ;
         GoalExpr = scope(Reason, _),
         (
+            Reason = disable_warnings(_, _),
+            Desc = "disable warnings"
+        ;
             Reason = exist_quant(_),
             Desc = "scope exist quant"
         ;

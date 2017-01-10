@@ -343,6 +343,12 @@ rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
             Vars, StateVars,
             DotSVars, ColonSVars, SubGoal)
     ;
+        Goal0 = disable_warnings_expr(Context, HeadWarnings, TailWarnings,
+            SubGoal0),
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = disable_warnings_expr(Context, HeadWarnings, TailWarnings,
+            SubGoal)
+    ;
         Goal0 = require_detism_expr(Context, Detism, SubGoal0),
         rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
         Goal = require_detism_expr(Context, Detism, SubGoal)

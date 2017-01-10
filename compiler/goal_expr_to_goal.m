@@ -185,6 +185,16 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         goal_info_init(Context, GoalInfo),
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ;
+        Goal = disable_warnings_expr(Context, HeadWarnings, TailWarnings,
+            SubGoal),
+        transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
+            HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
+            !ModuleInfo, !QualInfo, !Specs),
+        GoalExpr = scope(disable_warnings(HeadWarnings, TailWarnings),
+            HLDSSubGoal),
+        goal_info_init(Context, GoalInfo),
+        HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
+    ;
         Goal = require_complete_switch_expr(Context, PODVar0, SubGoal),
         rename_and_maybe_expand_dot_var(Context, need_not_rename, Renaming,
             PODVar0, Var, !SVarState, !VarSet, !Specs),

@@ -927,7 +927,8 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 )
             )
         ;
-            ( Reason0 = promise_solutions(_, _)
+            ( Reason0 = disable_warnings(_, _)
+            ; Reason0 = promise_solutions(_, _)
             ; Reason0 = require_detism(_)
             ; Reason0 = require_complete_switch(_)
             ; Reason0 = require_switch_arms_detism(_, _)

@@ -10,6 +10,7 @@ require_tailrec_2.m:063: In mode number 1 of predicate `qsortapp_5'/2:
 require_tailrec_2.m:063:   warning: recursive call is not tail recursive.
 require_tailrec_2.m:072: In mode number 1 of predicate `qsortapp_6'/2:
 require_tailrec_2.m:072:   warning: recursive call is not tail recursive.
-require_tailrec_2.m:079: In: `:- pragma require_tail_recursion' for function
+require_tailrec_2.m:079: In `:- pragma require_tail_recursion' for function
 require_tailrec_2.m:079:   `cons'/2:
-require_tailrec_2.m:079:   warning: code is not recursive.
+require_tailrec_2.m:079:   warning: the code defining this function contains no
+require_tailrec_2.m:079:   recursive calls at all, tail-recursive or otherwise.

@@ -526,6 +526,8 @@ when                            xfx               900
 all                             fxy               950
 arbitrary                       fxy               950
 atomic                          fxy               950
+disable_warning                 fxy               950
+disable_warnings                fxy               950
 promise_equivalent_solutions    fxy               950
 promise_equivalent_solution_sets fxy              950
 promise_exclusive               fy                950
@@ -994,6 +996,40 @@ For example, it is ok to have a det switch arm
 in a @code{require_switch_arms_semidet} scope,
 even though it would not be ok
 to have a det goal in a @code{require_semidet} scope.
+
+@item @code{disable_warnings [@var{Warning}] @var{Goal}}
+@itemx @code{disable_warning [@var{Warning}] @var{Goal}}
+The Mercury compiler can generate warnings
+about several kinds of constructs that whose legal Mercury semantics
+is likely to differ from the semantics intended by the programmer.
+While such warnings are useful most of the time,
+they are a distraction in cases where the programmer's intention
+@emph{does} match the legal semantics.
+Programmers can disable all warnings of a particular kind for an entire module
+by compiling that module with the appropriate compiler option,
+but in many cases this is not a good idea,
+since some of the warnings it disables may @emph{not} have been mistaken.
+This is what these goals are for.
+The goal @code{disable_warnings [@var{Warning}] @var{Goal}}
+is equivalent to @code{@var{Goal}} in all respects, with one exception:
+the Mercury compiler will not generate warnings of any of the categories
+whose names appear in @code{[@var{Warning}]}.
+
+At the moment, the Mercury compiler supports the disabling of
+the following warning category:
+@table @asis
+@item @code{singleton_vars}
+Disable the generation of singleton variable warnings.
+@c @item @code{non_tail_recursive_calls}
+@c Disable the generation of warnings about recursive calls
+@c that are not @emph{tail}-recursive calls.
+@end table
+
+The keyword starting this scope may be written
+either as @code{disable_warnings} or as @code{disable_warning}.
+This is intended to make the code read more naturally
+regardless of whether the list contains the name of
+more than one disabled warning category.
 
 @item @code{trace @var{Params} @var{Goal}}
 A trace goal, typically used for debugging or logging.

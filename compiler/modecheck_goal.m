@@ -498,6 +498,7 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
             ( Reason = from_ground_term(_, from_ground_term_initial)
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
+            ; Reason = disable_warnings(_, _)
             ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
@@ -577,6 +578,7 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
             ( Reason = from_ground_term(_, from_ground_term_initial)
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
+            ; Reason = disable_warnings(_, _)
             ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
@@ -755,7 +757,8 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         mode_checkpoint(exit, "trace scope", !ModeInfo)
     ;
         (
-            ( Reason = exist_quant(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
@@ -871,7 +874,7 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     % into
     %
     %   conj(plain_conj,
-    %       scope(TermVar,
+    %       scope(CloneVar,
     %           conj(plain_conj,
     %               X1 = ...
     %               X2 = ...

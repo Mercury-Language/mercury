@@ -1,4 +1,4 @@
-%
+% vim: ft=mercury ts=4 sw=4 et
 % Require tail recursion pragma tests with --no-warn-non-tail-recursive
 :- module require_tailrec_1.
 
@@ -33,7 +33,7 @@ qsortapp_2([], []).
 qsortapp_2([Pivot | T], List) :-
     partition(Pivot, T, [], Left0, [], Right0),
     qsortapp_2(Left0, Left),
-    qsortapp_2(Right0, Right),
+    disable_warnings [non_tail_recursive_calls] qsortapp_2(Right0, Right),
     append(Left, [Pivot | Right], List).
 
 :- pragma require_tail_recursion(qsortapp_3/2, [warn]).
@@ -91,4 +91,3 @@ partition(Pivot, [H | T], Left0, Left, Right0, Right) :-
     else
         partition(Pivot, T, Left0, Left, [H | Right0], Right)
     ).
-

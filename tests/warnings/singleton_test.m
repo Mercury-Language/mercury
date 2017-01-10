@@ -25,9 +25,9 @@
     is det.
 
 :- implementation.
-% :- import_module int.
 
 my_append([], L, L) :-
+    disable_warning [singleton_vars] L = L1,
     L = L2.
 my_append([H | T], L, [H | NT]) :-
     my_append(T, L, NT).

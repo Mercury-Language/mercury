@@ -1389,7 +1389,8 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             ensure_vars_have_a_type(VarVectorKind, Context, Vars,
                 !TypeAssignSet, !Info)
         ;
-            ( Reason = promise_purity(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
             ; Reason = require_switch_arms_detism(_, _)

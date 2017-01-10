@@ -1213,6 +1213,12 @@ best_purity(purity_impure, purity_impure) = purity_impure.
 
 :- pred valid_trace_grade_name(string::out) is multi.
 
+    % Values of this type are part of the representation
+    % of the disable_warnings scope.
+:- type goal_warning
+    --->    goal_warning_singleton_vars
+    ;       goal_warning_non_tail_recursive_calls.
+
 :- implementation.
 
 % If you update this, you also need to update the corresponding section

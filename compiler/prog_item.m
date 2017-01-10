@@ -1253,6 +1253,14 @@
                 determinism,
                 goal
             )
+    ;       disable_warnings_expr(
+                % Disable the given one or more warnings
+                % in the goal inside the scope.
+                prog_context,
+                goal_warning,
+                list(goal_warning),
+                goal
+            )
     ;       trace_expr(
                 texpr_context       :: prog_context,
                 texpr_compiletime   :: maybe(trace_expr(trace_compiletime)),
@@ -1776,6 +1784,7 @@ goal_get_context(Goal) = Context :-
     ; Goal = require_detism_expr(Context, _, _)
     ; Goal = require_complete_switch_expr(Context, _, _)
     ; Goal = require_switch_arms_detism_expr(Context, _, _, _)
+    ; Goal = disable_warnings_expr(Context, _, _, _)
     ; Goal = trace_expr(Context, _, _, _, _, _)
     ; Goal = atomic_expr(Context, _, _, _, _, _)
     ; Goal = try_expr(Context, _, _, _, _, _, _)

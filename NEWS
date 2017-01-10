@@ -114,6 +114,16 @@ Changes to the Mercury language:
   the compiler now generates an error if the goal inside the scope
   is not a switch on the named variable.
 
+* We have added a new kind of scope to the language for disabling warnings
+  within the scope. A goal such as
+
+      disable_warnings [singleton_vars] (
+        Goal
+      )
+
+  is equivalent to Goal, with the exception that the compiler will not generate
+  warnings about singleton variables inside Goal.
+
 * We have added an extension to include external files
   in pragma foreign_decl and pragma foreign_code declarations.
 

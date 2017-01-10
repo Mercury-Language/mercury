@@ -124,6 +124,11 @@ ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
     % whether a recursive call has been seen (backwards) along this
     % execution path.  This is used to avoid creating warnings for further
     % recursive calls.
+    % XXX We should NOT create warnings for non-tail-recursive recursive calls
+    % in this module, because the MLDS has no information about the location
+    % of any disable_warnings scope in the HLDS. The mark_tail_calls.m module
+    % also generates the same warnings, but it does not suffer from this
+    % problem because it operates on the HLDS.
     %
     % The algorithm must track this rather than stop walking through the
     % function body as it may encounter a return statement and therefore
@@ -288,10 +293,13 @@ mark_tailcalls_in_function_body(TCallInfo, AtTail, Warnings, Body0, Body) :-
                     SimpleCallId = simple_call_id(PredOrFunc,
                         unqualified(Name), Arity),
                     Pieces =
-                        [words("In:"), pragma_decl("require_tail_recursion"),
+                        [words("In"), pragma_decl("require_tail_recursion"),
                         words("for"), simple_call(SimpleCallId),
                         suffix(":"), nl,
-                        words("warning: code is not recursive."), nl],
+                        words("warning: the code defining this"),
+                        p_or_f(PredOrFunc),
+                        words("contains no recursive calls at all,"),
+                        words("tail-recursive or otherwise."), nl],
                     Msg = simple_msg(Context, [always(Pieces)]),
                     NonRecursiveSpec = error_spec(severity_warning,
                         phase_code_gen, [Msg]),
@@ -339,8 +347,8 @@ mark_tailcalls_in_statements(TCallInfo, FoundRecCall, FirstWarnings ++
     FoundRecCall = found_recursive_call_combine(FoundRecCallFirst,
         FoundRecCallRest).
 
-:- pred mark_tailcalls_in_statement(tailcall_info::in, found_recursive_call::out,
-    list(error_spec)::out,
+:- pred mark_tailcalls_in_statement(tailcall_info::in,
+    found_recursive_call::out, list(error_spec)::out,
     at_tail::in, at_tail::out, statement::in, statement::out) is det.
 
 mark_tailcalls_in_statement(TCallInfo, FoundRecCall, Warnings, !AtTail,
@@ -351,7 +359,8 @@ mark_tailcalls_in_statement(TCallInfo, FoundRecCall, Warnings, !AtTail,
     !:Statement = statement(Stmt, Context).
 
 :- pred mark_tailcalls_in_stmt(tailcall_info::in, mlds_context::in,
-    found_recursive_call::out, list(error_spec)::out, at_tail::in, at_tail::out,
+    found_recursive_call::out, list(error_spec)::out,
+    at_tail::in, at_tail::out,
     mlds_stmt::in, mlds_stmt::out) is det.
 
 mark_tailcalls_in_stmt(TCallInfo, Context, FoundRecCall, Warnings,
@@ -516,8 +525,7 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, FoundRecCall, Warnings,
             check_rval(Func, Locals) = will_not_yield_dangling_stack_ref
         then
             % Mark this call as a tail call.
-            Stmt = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals,
-                tail_call),
+            Stmt = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, tail_call),
             Warnings = [],
             AtTailBefore = not_at_tail_seen_reccall
         else
@@ -956,8 +964,6 @@ locals_member(Name, LocalsList) :-
         list.member(Param, Params),
         Param = mlds_argument(Name, _, _)
     ).
-
-%-----------------------------------------------------------------------------%
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_tailcall.

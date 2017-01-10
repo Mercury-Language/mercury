@@ -154,6 +154,8 @@
 
 :- func can_fail_to_string(can_fail) = string.
 
+:- func goal_warning_to_string(goal_warning) = string.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -557,6 +559,15 @@ determinism_to_string(detism_failure) = "failure".
 
 can_fail_to_string(can_fail) = "can_fail".
 can_fail_to_string(cannot_fail) = "cannot_fail".
+
+goal_warning_to_string(Warning) = Str :-
+    (
+        Warning = goal_warning_non_tail_recursive_calls,
+        Str = "non_tail_recursive_calls"
+    ;
+        Warning = goal_warning_singleton_vars,
+        Str = "singleton_vars"
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_out.

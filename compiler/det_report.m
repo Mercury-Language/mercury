@@ -1165,7 +1165,8 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
                 "Loop control scope with strange determinism")
         )
     ;
-        ( Reason = exist_quant(_)
+        ( Reason = disable_warnings(_, _)
+        ; Reason = exist_quant(_)
         ; Reason = commit(_)
         ; Reason = barrier(_)
         ; Reason = promise_purity(_)

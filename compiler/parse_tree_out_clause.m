@@ -21,6 +21,7 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module io.
+:- import_module list.
 
 %---------------------------------------------------------------------------%
 
@@ -33,6 +34,9 @@
 %---------------------------------------------------------------------------%
 
 :- pred mercury_output_goal(prog_varset::in, int::in, goal::in,
+    io::di, io::uo) is det.
+
+:- pred write_goal_warnings(goal_warning::in, list(goal_warning)::in,
     io::di, io::uo) is det.
 
 :- pred mercury_output_trace_expr(pred(T, io, io)::in(pred(in, di, uo) is det),
@@ -58,7 +62,6 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module maybe.
 :- import_module term.
 :- import_module term_io.
@@ -330,6 +333,16 @@ mercury_output_goal(VarSet, Indent, Goal, !IO) :-
         mercury_output_newline(Indent, !IO),
         io.write_string(")", !IO)
     ;
+        Goal = disable_warnings_expr(_, HeadWarning, TailWarnings, SubGoal),
+        io.write_string("disable_warnings [", !IO),
+        write_goal_warnings(HeadWarning, TailWarnings, !IO),
+        io.write_string("] (", !IO),
+        Indent1 = Indent + 1,
+        mercury_output_newline(Indent1, !IO),
+        mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
+        mercury_output_newline(Indent, !IO),
+        io.write_string(")", !IO)
+    ;
         Goal = atomic_expr(_, Outer, Inner, _, MainGoal, OrElseGoals),
         io.write_string("atomic [outer(", !IO),
         (
@@ -545,6 +558,7 @@ mercury_output_connected_goal(VarSet, Indent, Goal, !IO) :-
         ; Goal = require_detism_expr(_, _, _)
         ; Goal = require_complete_switch_expr(_, _, _)
         ; Goal = require_switch_arms_detism_expr(_, _, _, _)
+        ; Goal = disable_warnings_expr(_, _, _, _)
         ; Goal = conj_expr(_, _, _)
         ; Goal = atomic_expr(_, _, _, _, _, _)
         ; Goal = trace_expr(_, _, _, _, _, _)
@@ -760,6 +774,18 @@ mercury_output_state_vars_using_prefix(VarSet, VarNamePrint, BangPrefix,
             BangPrefix, SVars, !IO)
     ;
         SVars = []
+    ).
+
+%---------------------------------------------------------------------------%
+
+write_goal_warnings(HeadWarning, TailWarnings, !IO) :-
+    io.write_string(goal_warning_to_string(HeadWarning), !IO),
+    (
+        TailWarnings = []
+    ;
+        TailWarnings = [HeadTailWarning | TailTailWarnings],
+        io.write_string(", ", !IO),
+        write_goal_warnings(HeadTailWarning, TailTailWarnings, !IO)
     ).
 
 %---------------------------------------------------------------------------%

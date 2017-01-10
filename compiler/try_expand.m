@@ -380,7 +380,8 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
             % There can be no try goals inside this scope.
             Goal = Goal0
         ;
-            ( Reason = exist_quant(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
             ; Reason = require_detism(_)

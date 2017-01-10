@@ -446,6 +446,8 @@ ops.op_table(Op, Info, OtherInfos) :-
         OtherInfos = []
     ;
         ( Op = "arbitrary"
+        ; Op = "disable_warning"
+        ; Op = "disable_warnings"
         ; Op = "promise_equivalent_solutions"
         ; Op = "promise_equivalent_solution_sets"
         ; Op = "require_complete_switch"

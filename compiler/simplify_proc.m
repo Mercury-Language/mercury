@@ -702,7 +702,8 @@ goal_contains_trace(Goal0, Goal, ContainsTrace) :-
                 goal_contains_trace(SubGoal0, SubGoal, ContainsTrace)
             )
         ;
-            ( Reason = exist_quant(_)
+            ( Reason = disable_warnings(_, _)
+            ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
