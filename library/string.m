@@ -1385,7 +1385,8 @@
     % underscores between the other characters.  Leading and trailing
     % underscores are allowed.
     %
-:- pred base_string_to_int_underscore(int::in, string::in, int::out) is semidet.
+:- pred base_string_to_int_underscore(int::in, string::in, int::out)
+    is semidet.
 
 :- implementation.
 
@@ -5491,16 +5492,20 @@ base_string_to_int_underscore(Base, String, Int) :-
     End = count_code_units(String),
     ( if Char = ('-') then
         End > 1,
-        foldl_between(base_negative_accumulator_underscore(Base), String, 1, End, 0, Int)
+        foldl_between(base_negative_accumulator_underscore(Base), String,
+            1, End, 0, Int)
     else if Char = ('+') then
         End > 1,
-        foldl_between(base_accumulator_underscore(Base), String, 1, End, 0, Int)
+        foldl_between(base_accumulator_underscore(Base), String,
+            1, End, 0, Int)
     else
-        foldl_between(base_accumulator_underscore(Base), String, 0, End, 0, Int)
+        foldl_between(base_accumulator_underscore(Base), String,
+            0, End, 0, Int)
     ).
 
 :- func base_accumulator_underscore(int) = pred(char, int, int).
-:- mode base_accumulator_underscore(in) = out(pred(in, in, out) is semidet) is det.
+:- mode base_accumulator_underscore(in) = out(pred(in, in, out) is semidet)
+    is det.
 
 base_accumulator_underscore(Base) = Pred :-
     % Avoid allocating a closure for the common bases. A more general, but
@@ -5520,7 +5525,8 @@ base_accumulator_underscore(Base) = Pred :-
         Pred = accumulate_int_underscore(Base)
     ).
 
-:- pred accumulate_int_underscore(int::in, char::in, int::in, int::out) is semidet.
+:- pred accumulate_int_underscore(int::in, char::in, int::in, int::out)
+    is semidet.
 
 accumulate_int_underscore(Base, Char, N0, N) :-
     ( if
@@ -5539,8 +5545,8 @@ accumulate_int_underscore(Base, Char, N0, N) :-
     ).
 
 :- func base_negative_accumulator_underscore(int) = pred(char, int, int).
-:- mode base_negative_accumulator_underscore(in) = out(pred(in, in, out) is semidet)
-    is det.
+:- mode base_negative_accumulator_underscore(in) =
+    out(pred(in, in, out) is semidet) is det.
 
 base_negative_accumulator_underscore(Base) = Pred :-
     % Avoid allocating a closure for the common bases.

@@ -2011,7 +2011,8 @@ string_get_zero(String, Len, Posn0, Token, Context, !Posn) :-
             string_get_hex(String, Len, Posn0, Token, Context, !Posn)
         else if Char = ('.') then
             LastDigit = last_digit_is_not_underscore,
-            string_get_int_dot(String, LastDigit, Len, Posn0, Token, Context, !Posn)
+            string_get_int_dot(String, LastDigit, Len, Posn0, Token, Context,
+                !Posn)
         else if ( Char = 'e' ; Char = 'E' ) then
             string_get_float_exponent(String, Len, Posn0, Token, Context,
                 !Posn)
@@ -2145,12 +2146,12 @@ string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_binary_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
-            string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context,
-                !Posn)
+            string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
+                Context, !Posn)
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context,
-                !Posn)
+            string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
+                Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             (
@@ -2489,8 +2490,8 @@ string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
         else if Char = ('.') then
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                string_get_int_dot(String, !.LastDigit, Len, Posn0, Token, Context,
-                    !Posn)
+                string_get_int_dot(String, !.LastDigit, Len, Posn0, Token,
+                    Context, !Posn)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated decimal constant"),
@@ -2655,7 +2656,8 @@ get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 rev_char_list_to_float(!.RevChars, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("fractional part of float terminated by underscore")
+                Token =
+                    error("fractional part of float terminated by underscore")
             )
         )
     ).
@@ -2686,7 +2688,8 @@ string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token, Context,
                 conv_to_float(FloatString, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("fractional part of float terminated by underscore")
+                Token =
+                    error("fractional part of float terminated by underscore")
             ),
             string_get_context(Posn0, Context, !Posn)
         )

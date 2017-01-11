@@ -179,7 +179,8 @@ read_term_with_op_table(Ops, Result, !IO) :-
 
 read_term_with_op_table(Stream, Ops, Result, !IO) :-
     io.input_stream_name(Stream, FileName, !IO),
-    parser.read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO).
+    parser.read_term_filename_with_op_table(Stream, Ops,
+        FileName, Result, !IO).
 
 read_term_filename(FileName, Result, !IO) :-
     io.input_stream(Stream, !IO),
@@ -191,7 +192,8 @@ read_term_filename(Stream, FileName, Result, !IO) :-
 
 read_term_filename_with_op_table(Ops, FileName, Result, !IO) :-
     io.input_stream(Stream, !IO),
-    parser.read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO).
+    parser.read_term_filename_with_op_table(Stream, Ops,
+        FileName, Result, !IO).
 
 read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO) :-
     lexer.get_token_list(Stream, Tokens, !IO),

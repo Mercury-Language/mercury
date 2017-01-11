@@ -711,7 +711,8 @@ try_deletion3(K0, T0, K1, T1, K2, T2, K, V, Depth, DK, DT, DI) :-
 
 :- pred try_deletion4(K::in, rtree_2(K, V)::in, K::in, rtree_2(K, V)::in,
     K::in, rtree_2(K, V)::in, K::in, rtree_2(K, V)::in, K::in, V::in, int::in,
-    K::out, rtree_2(K, V)::out, delete_info(K, V)::out) is semidet <= region(K).
+    K::out, rtree_2(K, V)::out, delete_info(K, V)::out) is semidet
+    <= region(K).
 
 try_deletion4(K0, T0, K1, T1, K2, T2, K3, T3, K, V, D, DK, DT, DI) :-
     contains(K, K0),
@@ -1196,7 +1197,8 @@ search_first_2_four_choices(E0, E1, E2, E3, T0, T1, T2, T3, P, C, L, V, E) :-
     pred(in, out) is semidet, pred(in, out) is semidet, in, out, out)
     is semidet.
 
-search_first_2_try_first_from_four(E1, E2, E3, T0, T1, T2, T3, P, C, L, V, E) :-
+search_first_2_try_first_from_four(E1, E2, E3, T0, T1, T2, T3,
+        P, C, L, V, E) :-
     ( if search_first_2(T0, P, C, L, V0, E0) then
         search_first_2_find_better_solution_three(V0, E0, E1, E2, E3, T1, T2,
             T3, P, C, V, E)
@@ -1465,7 +1467,8 @@ map_values_2(_, leaf(_), _) :-
 map_values_2(P, two(K0, T0, K1, T1), two(K0, U0, K1, U1)) :-
     map_values_key_2(P, K0, T0, U0),
     map_values_key_2(P, K1, T1, U1).
-map_values_2(P, three(K0, T0, K1, T1, K2, T2), three(K0, U0, K1, U1, K2, U2)) :-
+map_values_2(P, three(K0, T0, K1, T1, K2, T2),
+        three(K0, U0, K1, U1, K2, U2)) :-
     map_values_key_2(P, K0, T0, U0),
     map_values_key_2(P, K1, T1, U1),
     map_values_key_2(P, K2, T2, U2).

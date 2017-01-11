@@ -642,8 +642,8 @@
     % stream. For file streams, this is the filename. For stdin,
     % this is the string "<standard input>".
     %
-:- pred input_stream_name(io.text_input_stream::in, string::out, io::di, io::uo)
-    is det.
+:- pred input_stream_name(io.text_input_stream::in, string::out,
+    io::di, io::uo) is det.
 
     % Return the line number of the current input stream. Lines are normally
     % numbered starting at 1, but this can be overridden by calling
@@ -709,8 +709,8 @@
     % Changes the current output stream to the stream specified.
     % Returns the previous stream.
     %
-:- pred set_output_stream(io.text_output_stream::in, io.text_output_stream::out,
-    io::di, io::uo) is det.
+:- pred set_output_stream(io.text_output_stream::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
 
     % Retrieves the standard output stream.
     %

@@ -51,12 +51,12 @@
 
     % unsafe_init(HashPred, N, MaxOccupancy)
     %
-    % Like init/3, but the constructed hash table is backed by a non-thread safe
-    % version array. It is unsafe to concurrently access or update the hash
-    % table from different threads, or any two hash tables which were produced
-    % from operations on the same original hash table.
-    % However, if the hash table or its descendents will not be used in such a
-    % manner, a non-thread safe hash table can be much faster than a thread
+    % Like init/3, but the constructed hash table is backed by a
+    % non-thread-safe version array. It is unsafe to concurrently access
+    % or update the hash table from different threads, or any two hash tables
+    % which were produced from operations on the same original hash table.
+    % However, if the hash table or its descendants will not be used in such a
+    % manner, a non-thread-safe hash table can be much faster than a thread
     % safe one.
     %
 :- func unsafe_init(hash_pred(K)::in(hash_pred), int::in, float::in) =
@@ -71,7 +71,8 @@
     % unsafe_init_default(HashFn)
     %
     % Like init_default/3 but the constructed hash table is backed by a
-    % non-thread safe version array. See the description of unsafe_init/3 above.
+    % non-thread-safe version array. See the description of unsafe_init/3
+    % above.
     %
 :- func unsafe_init_default(hash_pred(K)::in(hash_pred)) =
    (version_hash_table(K, V)::out) is det.
@@ -111,8 +112,7 @@
     %
 :- func set(version_hash_table(K, V), K, V) = version_hash_table(K, V).
 :- pred set(K::in, V::in,
-            version_hash_table(K, V)::in, version_hash_table(K, V)::out)
-                is det.
+    version_hash_table(K, V)::in, version_hash_table(K, V)::out) is det.
 
     % Field update for hash tables.
     % `HT ^ elem(K) := V' is equivalent to `set(HT, K, V)'.

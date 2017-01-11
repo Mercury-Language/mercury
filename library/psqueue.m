@@ -121,13 +121,15 @@
     % Remove the element with the given key from a priority queue.
     % Fail if it is not in the queue.
     %
-:- pred remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is semidet.
+:- pred remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out)
+    is semidet.
 :- pragma type_spec(remove/4, P = int).
 
     % Remove the element with the given key from a priority queue.
     % Throw an exception if it is not in the queue.
     %
-:- pred det_remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.
+:- pred det_remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out)
+    is det.
 :- pragma type_spec(det_remove/4, P = int).
 
     % Adjust the priority of the specified element; the new priority will be

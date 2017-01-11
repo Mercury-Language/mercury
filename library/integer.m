@@ -1548,8 +1548,8 @@ from_base_string_underscore(Base, String, Integer) :-
             0, Len, integer.zero, Integer)
     ).
 
-:- pred accumulate_integer_underscore(int::in, char::in, integer::in, integer::out)
-    is semidet.
+:- pred accumulate_integer_underscore(int::in, char::in,
+    integer::in, integer::out) is semidet.
 
 accumulate_integer_underscore(Base, Char, !N) :-
     ( if char.base_digit_to_int(Base, Char, Digit0) then

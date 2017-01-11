@@ -169,16 +169,22 @@
 :- mode write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write_univ(in, in, in, di, uo) is cc_multi.
 
-:- pragma type_spec(write/4, (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(write/5, (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(write/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(write/5,
+            (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(write_univ/4,
             (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(write_univ/5,
             (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_int/4, (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_uint/4, (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_float/4, (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_char/4, (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_int/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_uint/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_float/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_char/4,
+            (Stream = io.output_stream, State = io.state)).
 
 %---------------------------------------------------------------------------%
 
@@ -217,7 +223,8 @@ put_uint(Stream, UInt, !State) :-
         dynamic_cast(!.State, IOState0),
         dynamic_cast(Stream, IOStream)
     then
-        io.write_uint(IOStream, UInt, unsafe_promise_unique(IOState0), IOState),
+        io.write_uint(IOStream, UInt,
+            unsafe_promise_unique(IOState0), IOState),
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
