@@ -493,16 +493,15 @@ mark_tailcalls_in_stmt(TCallInfo, Context, AtTailAfter0, AtTailBefore,
 
 mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
         Stmt0, Stmt, !InBodyInfo) :-
-    Stmt0 = ml_stmt_call(Sig, Func, Obj, Args, CallReturnLvals, CallKind0),
+    Stmt0 = ml_stmt_call(Sig, FuncRval, Obj, Args, CallReturnLvals, CallKind0),
     ModuleName = TCallInfo ^ tci_module_name,
     FunctionName = TCallInfo ^ tci_function_name,
     QualName = qual(ModuleName, module_qual, FunctionName),
-    Locals = TCallInfo ^ tci_locals,
 
     % Check if we can mark this call as a tail call.
     ( if
         CallKind0 = ordinary_call,
-        Func = ml_const(mlconst_code_addr(CodeAddr)),
+        FuncRval = ml_const(mlconst_code_addr(CodeAddr)),
         call_is_recursive(QualName, Stmt0)
     then
         !InBodyInfo ^ tibi_found := found_recursive_call,
@@ -517,17 +516,18 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
 
             % The call must not take the address of any local variables
             % or nested functions.
-            may_maybe_rval_yield_dangling_staf_ref(Obj, Locals) =
+            Locals = TCallInfo ^ tci_locals,
+            may_maybe_rval_yield_dangling_stack_ref(Obj, Locals) =
                 will_not_yield_dangling_stack_ref,
-            may_rvals_yield_dangling_staf_ref(Args, Locals) =
+            may_rvals_yield_dangling_stack_ref(Args, Locals) =
                 will_not_yield_dangling_stack_ref,
 
             % The call must not be to a function nested within this function.
-            may_rval_yield_dangling_staf_ref(Func, Locals) =
+            may_rval_yield_dangling_stack_ref(FuncRval, Locals) =
                 will_not_yield_dangling_stack_ref
         then
             % Mark this call as a tail call.
-            Stmt = ml_stmt_call(Sig, Func, Obj, Args, CallReturnLvals,
+            Stmt = ml_stmt_call(Sig, FuncRval, Obj, Args, CallReturnLvals,
                 tail_call),
             AtTailBefore = not_at_tail_seen_reccall
         else
@@ -739,32 +739,32 @@ lval_is_local(Lval) = IsLocal :-
     --->    may_yield_dangling_stack_ref
     ;       will_not_yield_dangling_stack_ref.
 
-% may_rvals_yield_dangling_staf_ref:
-% may_maybe_rval_yield_dangling_staf_ref:
-% may_rval_yield_dangling_staf_ref:
+% may_rvals_yield_dangling_stack_ref:
+% may_maybe_rval_yield_dangling_stack_ref:
+% may_rval_yield_dangling_stack_ref:
 %   Find out if the specified rval(s) might evaluate to the addresses of
 %   local variables (or fields of local variables) or nested functions.
 
-:- func may_rvals_yield_dangling_staf_ref(list(mlds_rval), locals) =
+:- func may_rvals_yield_dangling_stack_ref(list(mlds_rval), locals) =
     may_yield_dangling_stack_ref.
 
-may_rvals_yield_dangling_staf_ref([], _) = will_not_yield_dangling_stack_ref.
-may_rvals_yield_dangling_staf_ref([Rval | Rvals], Locals)
+may_rvals_yield_dangling_stack_ref([], _) = will_not_yield_dangling_stack_ref.
+may_rvals_yield_dangling_stack_ref([Rval | Rvals], Locals)
         = MayYieldDanglingStackRef :-
-    MayYieldDanglingStackRef0 = may_rval_yield_dangling_staf_ref(Rval, Locals),
+    MayYieldDanglingStackRef0 = may_rval_yield_dangling_stack_ref(Rval, Locals),
     (
         MayYieldDanglingStackRef0 = may_yield_dangling_stack_ref,
         MayYieldDanglingStackRef = may_yield_dangling_stack_ref
     ;
         MayYieldDanglingStackRef0 = will_not_yield_dangling_stack_ref,
         MayYieldDanglingStackRef =
-            may_rvals_yield_dangling_staf_ref(Rvals, Locals)
+            may_rvals_yield_dangling_stack_ref(Rvals, Locals)
     ).
 
-:- func may_maybe_rval_yield_dangling_staf_ref(maybe(mlds_rval), locals)
+:- func may_maybe_rval_yield_dangling_stack_ref(maybe(mlds_rval), locals)
     = may_yield_dangling_stack_ref.
 
-may_maybe_rval_yield_dangling_staf_ref(MaybeRval, Locals)
+may_maybe_rval_yield_dangling_stack_ref(MaybeRval, Locals)
         = MayYieldDanglingStackRef :-
     (
         MaybeRval = no,
@@ -772,13 +772,13 @@ may_maybe_rval_yield_dangling_staf_ref(MaybeRval, Locals)
     ;
         MaybeRval = yes(Rval),
         MayYieldDanglingStackRef =
-            may_rval_yield_dangling_staf_ref(Rval, Locals)
+            may_rval_yield_dangling_stack_ref(Rval, Locals)
     ).
 
-:- func may_rval_yield_dangling_staf_ref(mlds_rval, locals)
+:- func may_rval_yield_dangling_stack_ref(mlds_rval, locals)
     = may_yield_dangling_stack_ref.
 
-may_rval_yield_dangling_staf_ref(Rval, Locals) = MayYieldDanglingStackRef :-
+may_rval_yield_dangling_stack_ref(Rval, Locals) = MayYieldDanglingStackRef :-
     (
         Rval = ml_lval(_Lval),
         % Passing the _value_ of an lval is fine.
@@ -786,36 +786,36 @@ may_rval_yield_dangling_staf_ref(Rval, Locals) = MayYieldDanglingStackRef :-
     ;
         Rval = ml_mkword(_Tag, SubRval),
         MayYieldDanglingStackRef =
-            may_rval_yield_dangling_staf_ref(SubRval, Locals)
+            may_rval_yield_dangling_stack_ref(SubRval, Locals)
     ;
         Rval = ml_const(Const),
         MayYieldDanglingStackRef = check_const(Const, Locals)
     ;
         Rval = ml_unop(_Op, SubRval),
         MayYieldDanglingStackRef =
-            may_rval_yield_dangling_staf_ref(SubRval, Locals)
+            may_rval_yield_dangling_stack_ref(SubRval, Locals)
     ;
         Rval = ml_binop(_Op, SubRvalA, SubRvalB),
         MayYieldDanglingStackRefA =
-            may_rval_yield_dangling_staf_ref(SubRvalA, Locals),
+            may_rval_yield_dangling_stack_ref(SubRvalA, Locals),
         (
             MayYieldDanglingStackRefA = may_yield_dangling_stack_ref,
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
         ;
             MayYieldDanglingStackRefA = will_not_yield_dangling_stack_ref,
             MayYieldDanglingStackRef =
-                may_rval_yield_dangling_staf_ref(SubRvalB, Locals)
+                may_rval_yield_dangling_stack_ref(SubRvalB, Locals)
         )
     ;
         Rval = ml_mem_addr(Lval),
         % Passing the address of an lval is a problem,
         % if that lval names a local variable.
         MayYieldDanglingStackRef =
-            may_lval_yield_dangling_staf_ref(Lval, Locals)
+            may_lval_yield_dangling_stack_ref(Lval, Locals)
     ;
         Rval = ml_vector_common_row(_VectorCommon, RowRval),
         MayYieldDanglingStackRef =
-            may_rval_yield_dangling_staf_ref(RowRval, Locals)
+            may_rval_yield_dangling_stack_ref(RowRval, Locals)
     ;
         ( Rval = ml_scalar_common(_)
         ; Rval = ml_self(_)
@@ -826,10 +826,10 @@ may_rval_yield_dangling_staf_ref(Rval, Locals) = MayYieldDanglingStackRef :-
     % Find out if the specified lval might be a local variable
     % (or a field of a local variable).
     %
-:- func may_lval_yield_dangling_staf_ref(mlds_lval, locals)
+:- func may_lval_yield_dangling_stack_ref(mlds_lval, locals)
     = may_yield_dangling_stack_ref.
 
-may_lval_yield_dangling_staf_ref(Lval, Locals) = MayYieldDanglingStackRef :-
+may_lval_yield_dangling_stack_ref(Lval, Locals) = MayYieldDanglingStackRef :-
     (
         Lval = ml_var(Var0, _),
         ( if var_is_local(Var0, Locals) then
@@ -840,7 +840,7 @@ may_lval_yield_dangling_staf_ref(Lval, Locals) = MayYieldDanglingStackRef :-
     ;
         Lval = ml_field(_MaybeTag, Rval, _FieldId, _, _),
         MayYieldDanglingStackRef =
-            may_rval_yield_dangling_staf_ref(Rval, Locals)
+            may_rval_yield_dangling_stack_ref(Rval, Locals)
     ;
         ( Lval = ml_mem_ref(_, _)
         ; Lval = ml_global_var_ref(_)
