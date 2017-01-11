@@ -382,6 +382,10 @@ unsafe_get_float_between(Str, Start, End, FloatStr) :-
         FloatStr = FloatStr0
     ).
 
+:- pred is_underscore(char::in) is semidet.
+
+is_underscore('_').
+
 :- pred string_set_line_number(int::in, posn::in, posn::out) is det.
 
 string_set_line_number(LineNumber, Posn0, Posn) :-
