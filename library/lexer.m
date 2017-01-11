@@ -322,6 +322,66 @@ grab_string(String, Posn0, SubString, Posn, Posn) :-
     Posn = posn(_, _, Offset),
     string.unsafe_between(String, Offset0, Offset, SubString).
 
+    % As above, but the string is known to represent a float literal.
+    % Filter out any underscore characters from the returned string.
+    % We have to do this since the underlying mechanisms we currently use for
+    % converting strings into floats (sscanf in C, parseDouble in Java etc)
+    % cannot handle underscores in their input.
+    %
+:- pred grab_float_string(string::in, posn::in, string::out,
+    posn::in, posn::out) is det.
+
+grab_float_string(String, Posn0, FloatString, Posn, Posn) :-
+    Posn0 = posn(_, _, Offset0),
+    Posn = posn(_, _, Offset),
+    unsafe_get_float_between(String, Offset0, Offset, FloatString).
+
+:- pred unsafe_get_float_between(string::in, int::in, int::in,
+    string::uo) is det.
+:- pragma foreign_proc("C",
+    unsafe_get_float_between(Str::in, Start::in, End::in, FloatStr::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    int src;
+    int dst = 0;
+
+    MR_allocate_aligned_string_msg(FloatStr, End - Start, MR_ALLOC_ID);
+    for (src = Start; src < End; src++) {
+        if (Str[src] != '_') {
+            FloatStr[dst] = Str[src];
+            dst++;
+        }
+    }
+    FloatStr[dst] = '\\0';
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_float_between(Str::in, Start::in, End::in, SubString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SubString = Str.Substring(Start, End - Start).Replace(\"_\", \"\");
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_float_between(Str::in, Start::in, End::in, FloatStr::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatStr = Str.substring(Start, End).replace(\"_\", \"\");
+").
+
+    % For use by the Erlang backend.
+    %
+unsafe_get_float_between(Str, Start, End, FloatStr) :-
+    string.unsafe_between(Str, Start, End, FloatStr0),
+    ( if string.contains_char(FloatStr0, '_') then
+        string.to_char_list(FloatStr0, Digits0),
+        list.negated_filter(is_underscore, Digits0, Digits),
+        string.from_char_list(Digits, FloatStr)
+    else
+        FloatStr = FloatStr0
+    ).
+
 :- pred string_set_line_number(int::in, posn::in, posn::out) is det.
 
 string_set_line_number(LineNumber, Posn0, Posn) :-
@@ -627,7 +687,7 @@ execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
     ;
         Action = action_nonzero_digit,
         get_context(Stream, Context, !IO),
-        get_number(Stream, [Char], Token, !IO)
+        get_number(Stream, last_digit_is_not_underscore, [Char], Token, !IO)
     ;
         Action = action_special_token,
         get_context(Stream, Context, !IO),
@@ -702,7 +762,9 @@ execute_string_get_token_action(String, Len, Posn0, Char, Action,
         string_get_zero(String, Len, Posn0, Token, Context, !Posn)
     ;
         Action = action_nonzero_digit,
-        string_get_number(String, Len, Posn0, Token, Context, !Posn)
+        LastDigit = last_digit_is_not_underscore,
+        string_get_number(String, LastDigit, Len, Posn0, Token, Context,
+            !Posn)
     ;
         Action = action_special_token,
         string_get_context(Posn0, Context, !Posn),
@@ -779,7 +841,7 @@ handle_special_token(Char, ScannedPastWhiteSpace, Token) :-
             Token = SpecialToken
         )
     else
-        error("lexer.m, handle_special_token: unknown special token")
+        error("lexer.m: handle_special_token: unknown special token")
     ).
 
 :- pred special_token(char::in, token::out) is semidet.
@@ -1893,7 +1955,8 @@ get_zero(Stream, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_digit(Char) then
-            get_number(Stream, [Char], Token, !IO)
+            LastDigit = last_digit_is_not_underscore,
+            get_number(Stream, LastDigit, [Char], Token, !IO)
         else if Char = '''' then
             get_char_code(Stream, Token, !IO)
         else if Char = 'b' then
@@ -1903,7 +1966,8 @@ get_zero(Stream, Token, !IO) :-
         else if Char = 'x' then
             get_hex(Stream, Token, !IO)
         else if Char = ('.') then
-            get_int_dot(Stream, ['0'], Token, !IO)
+            LastDigit = last_digit_is_not_underscore,
+            get_int_dot(Stream, LastDigit, ['0'], Token, !IO)
         else if ( Char = 'e' ; Char = 'E' ) then
             get_float_exponent(Stream, [Char, '0'], Token, !IO)
         else
@@ -1912,13 +1976,27 @@ get_zero(Stream, Token, !IO) :-
         )
     ).
 
+    % This type records whether the last "digit" seen by the
+    % lexer as it process a numeric token was an underscore or not.
+    % This is needed to detect invalid uses of underscores in numeric
+    % literals.
+    % Note that there may be other intervening characters in the
+    % token between the last digit and the current one (e.g. the
+    % decimal point or beginning of an exponent a float literal.)
+    %
+:- type last_digit_is_underscore
+    --->    last_digit_is_underscore
+    ;       last_digit_is_not_underscore.
+
 :- pred string_get_zero(string::in, int::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_zero(String, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
-            string_get_number(String, Len, Posn0, Token, Context, !Posn)
+            LastDigit = last_digit_is_not_underscore,
+            string_get_number(String, LastDigit, Len, Posn0, Token, Context,
+                !Posn)
         else if Char = '''' then
             string_get_char_code(String, Len, Posn0, Token, Context, !Posn)
         else if Char = 'b' then
@@ -1928,7 +2006,8 @@ string_get_zero(String, Len, Posn0, Token, Context, !Posn) :-
         else if Char = 'x' then
             string_get_hex(String, Len, Posn0, Token, Context, !Posn)
         else if Char = ('.') then
-            string_get_int_dot(String, Len, Posn0, Token, Context, !Posn)
+            LastDigit = last_digit_is_not_underscore,
+            string_get_int_dot(String, LastDigit, Len, Posn0, Token, Context, !Posn)
         else if ( Char = 'e' ; Char = 'E' ) then
             string_get_float_exponent(String, Len, Posn0, Token, Context,
                 !Posn)
@@ -1984,7 +2063,10 @@ get_binary(Stream, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_binary_digit(Char) then
-            get_binary_2(Stream, [Char], Token, !IO)
+            LastDigit = last_digit_is_not_underscore,
+            get_binary_2(Stream, LastDigit, [Char], Token, !IO)
+        else if Char = '_' then
+            get_binary(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = error("unterminated binary constant")
@@ -1998,7 +2080,11 @@ string_get_binary(String, Len, Posn0, Token, Context, !Posn) :-
     Posn1 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_binary_digit(Char) then
-            string_get_binary_2(String, Len, Posn1, Token, Context, !Posn)
+            LastDigit = last_digit_is_not_underscore,
+            string_get_binary_2(String, LastDigit, Len, Posn1, Token, Context,
+                !Posn)
+        else if Char = '_' then
+            string_get_binary(String, Len, Posn1, Token, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             Token = error("unterminated binary constant"),
@@ -2009,44 +2095,79 @@ string_get_binary(String, Len, Posn0, Token, Context, !Posn) :-
         string_get_context(Posn0, Context, !Posn)
     ).
 
-:- pred get_binary_2(io.input_stream::in, list(char)::in, token::out,
-    io::di, io::uo) is det.
+:- pred get_binary_2(io.input_stream::in, last_digit_is_underscore::in,
+    list(char)::in, token::out, io::di, io::uo) is det.
 
-get_binary_2(Stream, !.RevChars, Token, !IO) :-
+get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(!.RevChars, base_2, Token)
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            rev_char_list_to_int(!.RevChars, base_2, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated binary constant")
+        )
     ;
         Result = ok,
         ( if char.is_binary_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_binary_2(Stream, !.RevChars, Token, !IO)
+            !:LastDigit = last_digit_is_not_underscore,
+            get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(!.RevChars, base_2, Token)
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                rev_char_list_to_int(!.RevChars, base_2, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated binary constant")
+            )
         )
     ).
 
-:- pred string_get_binary_2(string::in, int::in, posn::in, token::out,
-    string_token_context::out, posn::in, posn::out) is det.
+:- pred string_get_binary_2(string::in, last_digit_is_underscore::in,
+    int::in, posn::in, token::out, string_token_context::out,
+    posn::in, posn::out) is det.
 
-string_get_binary_2(String, Len, Posn1, Token, Context, !Posn) :-
+string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_binary_digit(Char) then
-            string_get_binary_2(String, Len, Posn1, Token, Context, !Posn)
+            !:LastDigit = last_digit_is_not_underscore,
+            string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context,
+                !Posn)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context,
+                !Posn)
         else
             string_ungetchar(String, !Posn),
-            grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, base_2, Token),
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                grab_string(String, Posn1, BinaryString, !Posn),
+                conv_string_to_int(BinaryString, base_2, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated binary constant")
+            ),
             string_get_context(Posn1, Context, !Posn)
         )
     else
-        grab_string(String, Posn1, BinaryString, !Posn),
-        conv_string_to_int(BinaryString, base_2, Token),
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            grab_string(String, Posn1, BinaryString, !Posn),
+            conv_string_to_int(BinaryString, base_2, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated binary constant")
+        ),
         string_get_context(Posn1, Context, !Posn)
     ).
 
@@ -2063,7 +2184,10 @@ get_octal(Stream, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_octal_digit(Char) then
-            get_octal_2(Stream, [Char], Token, !IO)
+            LastDigit = last_digit_is_not_underscore,
+            get_octal_2(Stream, LastDigit, [Char], Token, !IO)
+        else if Char = '_' then
+            get_octal(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = error("unterminated octal constant")
@@ -2071,14 +2195,17 @@ get_octal(Stream, Token, !IO) :-
     ).
 
 :- pred string_get_octal(string::in, int::in, posn::in, token::out,
-    string_token_context::out,
-    posn::in, posn::out) is det.
+    string_token_context::out, posn::in, posn::out) is det.
 
 string_get_octal(String, Len, Posn0, Token, Context, !Posn) :-
     Posn1 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_octal_digit(Char) then
-            string_get_octal_2(String, Len, Posn1, Token, Context, !Posn)
+            LastDigit = last_digit_is_not_underscore,
+            string_get_octal_2(String, LastDigit, Len, Posn1, Token, Context,
+                !Posn)
+        else if Char = '_' then
+            string_get_octal(String, Len, Posn0, Token, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             Token = error("unterminated octal constant"),
@@ -2089,44 +2216,79 @@ string_get_octal(String, Len, Posn0, Token, Context, !Posn) :-
         string_get_context(Posn0, Context, !Posn)
     ).
 
-:- pred get_octal_2(io.input_stream::in, list(char)::in, token::out,
-    io::di, io::uo) is det.
+:- pred get_octal_2(io.input_stream::in, last_digit_is_underscore::in,
+    list(char)::in, token::out, io::di, io::uo) is det.
 
-get_octal_2(Stream, !.RevChars, Token, !IO) :-
+get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(!.RevChars, base_8, Token)
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            rev_char_list_to_int(!.RevChars, base_8, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated octal constant")
+        )
     ;
         Result = ok,
         ( if char.is_octal_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_octal_2(Stream, !.RevChars, Token, !IO)
+            !:LastDigit = last_digit_is_not_underscore,
+            get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(!.RevChars, base_8, Token)
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                rev_char_list_to_int(!.RevChars, base_8, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated octal constant")
+            )
         )
     ).
 
-:- pred string_get_octal_2(string::in, int::in, posn::in, token::out,
-    string_token_context::out, posn::in, posn::out) is det.
+:- pred string_get_octal_2(string::in, last_digit_is_underscore::in,
+    int::in, posn::in, token::out, string_token_context::out,
+    posn::in, posn::out) is det.
 
-string_get_octal_2(String, Len, Posn1, Token, Context, !Posn) :-
+string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_octal_digit(Char) then
-            string_get_octal_2(String, Len, Posn1, Token, Context, !Posn)
+            !:LastDigit = last_digit_is_not_underscore,
+            string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context,
+                !Posn)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context,
+                !Posn)
         else
             string_ungetchar(String, !Posn),
-            grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, base_8, Token),
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                grab_string(String, Posn1, BinaryString, !Posn),
+                conv_string_to_int(BinaryString, base_8, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated octal constant")
+            ),
             string_get_context(Posn1, Context, !Posn)
         )
     else
-        grab_string(String, Posn1, BinaryString, !Posn),
-        conv_string_to_int(BinaryString, base_8, Token),
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            grab_string(String, Posn1, BinaryString, !Posn),
+            conv_string_to_int(BinaryString, base_8, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated octal constant")
+        ),
         string_get_context(Posn1, Context, !Posn)
     ).
 
@@ -2143,7 +2305,10 @@ get_hex(Stream, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_hex_digit(Char) then
-            get_hex_2(Stream, [Char], Token, !IO)
+            LastDigit = last_digit_is_not_underscore,
+            get_hex_2(Stream, LastDigit, [Char], Token, !IO)
+        else if Char = '_' then
+            get_hex(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = error("unterminated hex constant")
@@ -2151,14 +2316,17 @@ get_hex(Stream, Token, !IO) :-
     ).
 
 :- pred string_get_hex(string::in, int::in, posn::in, token::out,
-    string_token_context::out,
-    posn::in, posn::out) is det.
+    string_token_context::out, posn::in, posn::out) is det.
 
 string_get_hex(String, Len, Posn0, Token, Context, !Posn) :-
     Posn1 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
-            string_get_hex_2(String, Len, Posn1, Token, Context, !Posn)
+            LastDigit = last_digit_is_not_underscore,
+            string_get_hex_2(String, LastDigit, Len, Posn1, Token, Context,
+                !Posn)
+        else if Char = '_' then
+            string_get_hex(String, Len, Posn0, Token, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             Token = error("unterminated hex constant"),
@@ -2169,102 +2337,199 @@ string_get_hex(String, Len, Posn0, Token, Context, !Posn) :-
         string_get_context(Posn0, Context, !Posn)
     ).
 
-:- pred get_hex_2(io.input_stream::in, list(char)::in, token::out,
-    io::di, io::uo) is det.
+:- pred get_hex_2(io.input_stream::in, last_digit_is_underscore::in,
+    list(char)::in, token::out, io::di, io::uo) is det.
 
-get_hex_2(Stream, !.RevChars, Token, !IO) :-
+get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(!.RevChars, base_16, Token)
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            rev_char_list_to_int(!.RevChars, base_16, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated hex constant")
+        )
     ;
         Result = ok,
         ( if char.is_hex_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_hex_2(Stream, !.RevChars, Token, !IO)
+            !:LastDigit = last_digit_is_not_underscore,
+            get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(!.RevChars, base_16, Token)
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                rev_char_list_to_int(!.RevChars, base_16, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated hex constant")
+            )
         )
     ).
 
-:- pred string_get_hex_2(string::in, int::in, posn::in, token::out,
-    string_token_context::out, posn::in, posn::out) is det.
+:- pred string_get_hex_2(string::in, last_digit_is_underscore::in,
+    int::in, posn::in, token::out, string_token_context::out,
+    posn::in, posn::out) is det.
 
-string_get_hex_2(String, Len, Posn1, Token, Context, !Posn) :-
+string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
-            string_get_hex_2(String, Len, Posn1, Token, Context, !Posn)
+            !:LastDigit = last_digit_is_not_underscore,
+            string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context,
+                !Posn)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context,
+                !Posn)
         else
-            string_ungetchar(String, !Posn),
-            grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, base_16, Token),
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                string_ungetchar(String, !Posn),
+                grab_string(String, Posn1, BinaryString, !Posn),
+                conv_string_to_int(BinaryString, base_16, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated hex constant")
+            ),
             string_get_context(Posn1, Context, !Posn)
         )
     else
-        grab_string(String, Posn1, BinaryString, !Posn),
-        conv_string_to_int(BinaryString, base_16, Token),
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            grab_string(String, Posn1, BinaryString, !Posn),
+            conv_string_to_int(BinaryString, base_16, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated hex constant")
+        ),
         string_get_context(Posn1, Context, !Posn)
     ).
 
-:- pred get_number(io.input_stream::in, list(char)::in, token::out,
-    io::di, io::uo) is det.
+:- pred get_number(io.input_stream::in, last_digit_is_underscore::in,
+    list(char)::in, token::out, io::di, io::uo) is det.
 
-get_number(Stream, !.RevChars, Token, !IO) :-
+get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(!.RevChars, base_10, Token)
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            rev_char_list_to_int(!.RevChars, base_10, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated decimal constant")
+        )
     ;
         Result = ok,
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_number(Stream, !.RevChars, Token, !IO)
+            !:LastDigit = last_digit_is_not_underscore,
+            get_number(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            get_number(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = ('.') then
-            get_int_dot(Stream, !.RevChars, Token, !IO)
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated decimal constant")
+            )
         else if ( Char = 'e' ; Char = 'E' ) then
-            !:RevChars = [Char | !.RevChars],
-            get_float_exponent(Stream, !.RevChars, Token, !IO)
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                !:RevChars = [Char | !.RevChars],
+                get_float_exponent(Stream, !.RevChars, Token, !IO)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("underscore before exponent")
+            )
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(!.RevChars, base_10, Token)
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                rev_char_list_to_int(!.RevChars, base_10, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated decimal constant")
+            )
         )
     ).
 
-:- pred string_get_number(string::in, int::in, posn::in, token::out,
-    string_token_context::out, posn::in, posn::out) is det.
+:- pred string_get_number(string::in, last_digit_is_underscore::in,
+    int::in, posn::in, token::out, string_token_context::out,
+    posn::in, posn::out) is det.
 
-string_get_number(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
-            string_get_number(String, Len, Posn0, Token, Context, !Posn)
-        else if Char = ('.') then
-            string_get_int_dot(String, Len, Posn0, Token, Context, !Posn)
-        else if ( Char = 'e' ; Char = 'E' ) then
-            string_get_float_exponent(String, Len, Posn0, Token, Context,
+            !:LastDigit = last_digit_is_not_underscore,
+            string_get_number(String, !.LastDigit, Len, Posn0, Token, Context,
                 !Posn)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            string_get_number(String, !.LastDigit, Len, Posn0, Token, Context,
+                !Posn)
+        else if Char = ('.') then
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                string_get_int_dot(String, !.LastDigit, Len, Posn0, Token, Context,
+                    !Posn)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated decimal constant"),
+                string_get_context(Posn0, Context, !Posn)
+            )
+        else if ( Char = 'e' ; Char = 'E' ) then
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                string_get_float_exponent(String, Len, Posn0, Token, Context,
+                    !Posn)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("underscore before exponent"),
+                string_get_context(Posn0, Context, !Posn)
+            )
         else
             string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, NumberString, !Posn),
-            conv_string_to_int(NumberString, base_10, Token),
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                grab_string(String, Posn0, NumberString, !Posn),
+                conv_string_to_int(NumberString, base_10, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated decimal constant")
+            ),
             string_get_context(Posn0, Context, !Posn)
         )
     else
-        grab_string(String, Posn0, NumberString, !Posn),
-        conv_string_to_int(NumberString, base_10, Token),
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            grab_string(String, Posn0, NumberString, !Posn),
+            conv_string_to_int(NumberString, base_10, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated decimal constant")
+        ),
         string_get_context(Posn0, Context, !Posn)
     ).
 
-:- pred get_int_dot(io.input_stream::in, list(char)::in, token::out,
-    io::di, io::uo) is det.
+:- pred get_int_dot(io.input_stream::in, last_digit_is_underscore::in,
+    list(char)::in, token::out, io::di, io::uo) is det.
 
-get_int_dot(Stream, !.RevChars, Token, !IO) :-
+get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     % XXX The float literal syntax doesn't match ISO Prolog.
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
@@ -2273,96 +2538,163 @@ get_int_dot(Stream, !.RevChars, Token, !IO) :-
     ;
         Result = eof,
         io.putback_char(Stream, '.', !IO),
-        rev_char_list_to_int(!.RevChars, base_10, Token)
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            rev_char_list_to_int(!.RevChars, base_10, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated decimal constant")
+        )
     ;
         Result = ok,
         ( if char.is_digit(Char) then
             !:RevChars = [Char, '.' | !.RevChars],
-            get_float_decimals(Stream, !.RevChars, Token, !IO)
+            !:LastDigit = last_digit_is_not_underscore,
+            get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = '_' then
+            Token = error("underscore following decimal point")
         else
             io.putback_char(Stream, Char, !IO),
             % We can't putback the ".", because io.putback_char only
             % guarantees one character of pushback. So instead, we return
             % an `integer_dot' token; the main loop of get_token_list_2 will
             % handle this appropriately.
-            rev_char_list_to_int(!.RevChars, base_10, Token0),
-            ( if Token0 = integer(Int) then
-                Token = integer_dot(Int)
-            else
-                Token = Token0
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                rev_char_list_to_int(!.RevChars, base_10, Token0),
+                ( if Token0 = integer(Int) then
+                    Token = integer_dot(Int)
+                else
+                    Token = Token0
+                )
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated decimal constant")
             )
         )
     ).
 
-:- pred string_get_int_dot(string::in, int::in, posn::in, token::out,
-    string_token_context::out, posn::in, posn::out) is det.
+:- pred string_get_int_dot(string::in, last_digit_is_underscore::in, int::in,
+    posn::in, token::out, string_token_context::out,
+    posn::in, posn::out) is det.
 
-string_get_int_dot(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_int_dot(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
-            string_get_float_decimals(String, Len, Posn0, Token, Context,
-                !Posn)
+            !:LastDigit = last_digit_is_not_underscore,
+            string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token,
+                Context, !Posn)
+        else if Char = '_' then
+            Token = error("underscore following decimal point"),
+            string_get_context(Posn0, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, NumberString, !Posn),
-            conv_string_to_int(NumberString, base_10, Token),
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                grab_string(String, Posn0, NumberString, !Posn),
+                conv_string_to_int(NumberString, base_10, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated decimal constant")
+            ),
             string_get_context(Posn0, Context, !Posn)
         )
     else
         string_ungetchar(String, !Posn),
-        grab_string(String, Posn0, NumberString, !Posn),
-        conv_string_to_int(NumberString, base_10, Token),
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            grab_string(String, Posn0, NumberString, !Posn),
+            conv_string_to_int(NumberString, base_10, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated decimal constant")
+        ),
         string_get_context(Posn0, Context, !Posn)
     ).
 
     % We have read past the decimal point, so now get the decimals.
     %
-:- pred get_float_decimals(io.input_stream::in, list(char)::in, token::out,
-    io::di, io::uo) is det.
+:- pred get_float_decimals(io.input_stream::in, last_digit_is_underscore::in,
+    list(char)::in, token::out, io::di, io::uo) is det.
 
-get_float_decimals(Stream, !.RevChars, Token, !IO) :-
+get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_float(!.RevChars, Token)
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            rev_char_list_to_float(!.RevChars, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("fractional part of float terminated by underscore")
+        )
     ;
         Result = ok,
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_float_decimals(Stream, !.RevChars, Token, !IO)
+            !:LastDigit = last_digit_is_not_underscore,
+            get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = '_' then
+            !:LastDigit=  last_digit_is_underscore,
+            get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if ( Char = 'e' ; Char = 'E' ) then
             !:RevChars = [Char | !.RevChars],
             get_float_exponent(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_float(!.RevChars, Token)
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                rev_char_list_to_float(!.RevChars, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("fractional part of float terminated by underscore")
+            )
         )
     ).
 
-:- pred string_get_float_decimals(string::in, int::in, posn::in,
-    token::out, string_token_context::out, posn::in, posn::out) is det.
+:- pred string_get_float_decimals(string::in, last_digit_is_underscore::in,
+    int::in, posn::in, token::out, string_token_context::out,
+    posn::in, posn::out) is det.
 
-string_get_float_decimals(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token, Context,
+        !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
-            string_get_float_decimals(String, Len, Posn0, Token, Context,
-                !Posn)
+            !:LastDigit = last_digit_is_not_underscore,
+            string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token,
+                Context, !Posn)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token,
+                Context, !Posn)
         else if ( Char = 'e' ; Char = 'E' ) then
             string_get_float_exponent(String, Len, Posn0, Token, Context,
                 !Posn)
         else
             string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, FloatString, !Posn),
-            conv_to_float(FloatString, Token),
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                grab_float_string(String, Posn0, FloatString, !Posn),
+                conv_to_float(FloatString, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("fractional part of float terminated by underscore")
+            ),
             string_get_context(Posn0, Context, !Posn)
         )
     else
-        grab_string(String, Posn0, FloatString, !Posn),
-        conv_to_float(FloatString, Token),
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            grab_float_string(String, Posn0, FloatString, !Posn),
+            conv_to_float(FloatString, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("fractional part of float terminated by underscore")
+        ),
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -2384,7 +2716,8 @@ get_float_exponent(Stream, !.RevChars, Token, !IO) :-
             get_float_exponent_2(Stream, !.RevChars, Token, !IO)
         else if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_float_exponent_3(Stream, !.RevChars, Token, !IO)
+            LastDigit = last_digit_is_not_underscore,
+            get_float_exponent_3(Stream, LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = error("unterminated exponent in float token")
@@ -2400,15 +2733,16 @@ string_get_float_exponent(String, Len, Posn0, Token, Context, !Posn) :-
             string_get_float_exponent_2(String, Len, Posn0, Token, Context,
                 !Posn)
         else if char.is_digit(Char) then
-            string_get_float_exponent_3(String, Len, Posn0, Token, Context,
-                !Posn)
+            LastDigit = last_digit_is_not_underscore,
+            string_get_float_exponent_3(String, LastDigit, Len, Posn0, Token,
+                Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             Token = error("unterminated exponent in float token"),
             string_get_context(Posn0, Context, !Posn)
         )
     else
-        grab_string(String, Posn0, FloatString, !Posn),
+        grab_float_string(String, Posn0, FloatString, !Posn),
         conv_to_float(FloatString, Token),
         string_get_context(Posn0, Context, !Posn)
     ).
@@ -2432,7 +2766,8 @@ get_float_exponent_2(Stream, !.RevChars, Token, !IO) :-
         Result = ok,
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_float_exponent_3(Stream, !.RevChars, Token, !IO)
+            LastDigit = last_digit_is_not_underscore,
+            get_float_exponent_3(Stream, LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = error("unterminated exponent in float token")
@@ -2449,8 +2784,9 @@ get_float_exponent_2(Stream, !.RevChars, Token, !IO) :-
 string_get_float_exponent_2(String, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
-            string_get_float_exponent_3(String, Len, Posn0, Token, Context,
-                !Posn)
+            LastDigit = last_digit_is_not_underscore,
+            string_get_float_exponent_3(String, LastDigit, Len, Posn0, Token,
+                Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             Token = error("unterminated exponent in float token"),
@@ -2464,45 +2800,80 @@ string_get_float_exponent_2(String, Len, Posn0, Token, Context, !Posn) :-
     % We have read past the first digit of the exponent -
     % now get the remaining digits.
     %
-:- pred get_float_exponent_3(io.input_stream::in, list(char)::in, token::out,
-    io::di, io::uo) is det.
+:- pred get_float_exponent_3(io.input_stream::in, last_digit_is_underscore::in,
+    list(char)::in, token::out, io::di, io::uo) is det.
 
-get_float_exponent_3(Stream, !.RevChars, Token, !IO) :-
+get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_float(!.RevChars, Token)
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            rev_char_list_to_float(!.RevChars, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated exponent in float token")
+        )
     ;
         Result = ok,
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_float_exponent_3(Stream, !.RevChars, Token, !IO)
+            !:LastDigit = last_digit_is_not_underscore,
+            get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_float(!.RevChars, Token)
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                rev_char_list_to_float(!.RevChars, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated exponent in float token")
+            )
         )
     ).
 
-:- pred string_get_float_exponent_3(string::in, int::in, posn::in,
-    token::out, string_token_context::out, posn::in, posn::out) is det.
+:- pred string_get_float_exponent_3(string::in, last_digit_is_underscore::in,
+    int::in, posn::in, token::out, string_token_context::out,
+    posn::in, posn::out) is det.
 
-string_get_float_exponent_3(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token, Context,
+        !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
-            string_get_float_exponent_3(String, Len, Posn0, Token, Context,
-                !Posn)
+            !:LastDigit = last_digit_is_not_underscore,
+            string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token,
+                Context, !Posn)
+        else if Char = '_' then
+            !:LastDigit = last_digit_is_underscore,
+            string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token,
+                Context, !Posn)
         else
             string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, FloatString, !Posn),
-            conv_to_float(FloatString, Token),
+            (
+                !.LastDigit = last_digit_is_not_underscore,
+                grab_float_string(String, Posn0, FloatString, !Posn),
+                conv_to_float(FloatString, Token)
+            ;
+                !.LastDigit = last_digit_is_underscore,
+                Token = error("unterminated exponent in float token")
+            ),
             string_get_context(Posn0, Context, !Posn)
         )
     else
-        grab_string(String, Posn0, FloatString, !Posn),
-        conv_to_float(FloatString, Token),
+        grab_float_string(String, Posn0, FloatString, !Posn),
+        (
+            !.LastDigit = last_digit_is_not_underscore,
+            conv_to_float(FloatString, Token)
+        ;
+            !.LastDigit = last_digit_is_underscore,
+            Token = error("unterminated exponent in float token")
+        ),
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -2525,9 +2896,9 @@ rev_char_list_to_int(RevChars, Base, Token) :-
 
 conv_string_to_int(String, Base, Token) :-
     BaseInt = integer_base_int(Base),
-    ( if string.base_string_to_int(BaseInt, String, Int) then
+    ( if string.base_string_to_int_underscore(BaseInt, String, Int) then
         Token = integer(Int)
-    else if integer.from_base_string(BaseInt, String, Integer) then
+    else if integer.from_base_string_underscore(BaseInt, String, Integer) then
         Token = big_integer(Base, Integer)
     else
         Token = error("invalid character in int")

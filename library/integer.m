@@ -234,6 +234,17 @@
 
 %---------------------------------------------------------------------------%
 
+:- interface.
+
+    % Exported for use by lexer.m.
+    %
+:- pred from_base_string_underscore(int::in, string::in, integer::out)
+    is semidet.
+
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
 % Possible improvements:
 %
 % 1) allow negative digits (-base+1 .. base-1) in lists of digits
@@ -1516,6 +1527,38 @@ det_from_base_string(Base, String) = Integer :-
         Integer = IntegerPrime
     else
         unexpected($module, $pred, "conversion failed")
+    ).
+
+%---------------------------------------------------------------------------%
+
+from_base_string_underscore(Base, String, Integer) :-
+    string.index(String, 0, Char),
+    Len = string.length(String),
+    ( if Char = ('-') then
+        Len > 1,
+        string.foldl_between(accumulate_integer_underscore(Base), String,
+            1, Len, integer.zero, PosInteger),
+        Integer = -PosInteger
+    else if Char = ('+') then
+        Len > 1,
+        string.foldl_between(accumulate_integer_underscore(Base), String,
+            1, Len, integer.zero, Integer)
+    else
+        string.foldl_between(accumulate_integer_underscore(Base), String,
+            0, Len, integer.zero, Integer)
+    ).
+
+:- pred accumulate_integer_underscore(int::in, char::in, integer::in, integer::out)
+    is semidet.
+
+accumulate_integer_underscore(Base, Char, !N) :-
+    ( if char.base_digit_to_int(Base, Char, Digit0) then
+        Digit = integer(Digit0),
+        !:N = (integer(Base) * !.N) + Digit
+    else if Char = '_' then
+        true
+    else
+        false
     ).
 
 %---------------------------------------------------------------------------%

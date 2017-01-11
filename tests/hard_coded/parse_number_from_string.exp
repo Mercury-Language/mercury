@@ -1,0 +1,105 @@
+Valid decimal literals:
+read_term("0.") = functor(integer(0), [], context("", 1))
+read_term("-0.") = functor(integer(0), [], context("", 1))
+read_term("10.") = functor(integer(10), [], context("", 1))
+read_term("-10.") = functor(integer(-10), [], context("", 1))
+read_term("1_0.") = functor(integer(10), [], context("", 1))
+read_term("-1_0.") = functor(integer(-10), [], context("", 1))
+read_term("1_000_000_000_000_000_000_000.") = functor(big_integer(base_10, i(5, [13877, 12907, 7261, 14976, 0])), [], context("", 1))
+read_term("-1_000_000_000_000_000_000_000.") = functor(atom("-"), [functor(big_integer(base_10, i(5, [13877, 12907, 7261, 14976, 0])), [], context("", 1))], context("", 1))
+
+Invalid decimal literals:
+read_term("123_.") = Syntax error: unterminated decimal constant
+read_term("-123_.") = Syntax error: unterminated decimal constant
+read_term("-_123") = Syntax error: operator or `.' expected
+
+Valid binary literals:
+read_term("0b0.") = functor(integer(0), [], context("", 1))
+read_term("-0b0.") = functor(integer(0), [], context("", 1))
+read_term("0b_1.") = functor(integer(1), [], context("", 1))
+read_term("-0b_1.") = functor(integer(-1), [], context("", 1))
+read_term("0b_1000_100.") = functor(integer(68), [], context("", 1))
+read_term("-0b_1000_100.") = functor(integer(-68), [], context("", 1))
+
+Invalid binary literals:
+read_term("0b.") = Syntax error: unterminated binary constant
+read_term("-0b.") = Syntax error: unterminated binary constant
+read_term("0b_.") = Syntax error: unterminated binary constant
+read_term("-0b_.") = Syntax error: unterminated binary constant
+read_term("0b11_.") = Syntax error: unterminated binary constant
+read_term("-0b11_.") = Syntax error: unterminated binary constant
+
+Valid octal literals:
+read_term("0o77.") = functor(integer(63), [], context("", 1))
+read_term("-0o77.") = functor(integer(-63), [], context("", 1))
+read_term("0o_77.") = functor(integer(63), [], context("", 1))
+read_term("-0o_77.") = functor(integer(-63), [], context("", 1))
+read_term("0o_7_7.") = functor(integer(63), [], context("", 1))
+read_term("-0o_7_7.") = functor(integer(-63), [], context("", 1))
+read_term("0o_7__7___7.") = functor(integer(511), [], context("", 1))
+read_term("-0o_7__7___7.") = functor(integer(-511), [], context("", 1))
+
+Invalid octal literals:
+read_term("0o.") = Syntax error: unterminated octal constant
+read_term("-0o") = Syntax error: unterminated octal constant
+read_term("0o_.") = Syntax error: unterminated octal constant
+read_term("-0o_.") = Syntax error: unterminated octal constant
+read_term("0o77_.") = Syntax error: unterminated octal constant
+read_term("-0o77_.") = Syntax error: unterminated octal constant
+
+Valid hexadecimal literals:
+read_term("0xff.") = functor(integer(255), [], context("", 1))
+read_term("-0xff.") = functor(integer(-255), [], context("", 1))
+read_term("0x_ff.") = functor(integer(255), [], context("", 1))
+read_term("-0x_ff.") = functor(integer(-255), [], context("", 1))
+read_term("0xf_f.") = functor(integer(255), [], context("", 1))
+read_term("-0xf_f.") = functor(integer(-255), [], context("", 1))
+read_term("0x_f_f__f.") = functor(integer(4095), [], context("", 1))
+read_term("-0x_f_f__f.") = functor(integer(-4095), [], context("", 1))
+read_term("0xfffffffffffffffffffffffff.") = functor(big_integer(base_16, i(8, [3, 16383, 16383, 16383, 16383, 16383, 16383, 16383])), [], context("", 1))
+read_term("-0xfffffffffffffffffffffffff.") = functor(atom("-"), [functor(big_integer(base_16, i(8, [3, 16383, 16383, 16383, 16383, 16383, 16383, 16383])), [], context("", 1))], context("", 1))
+
+Invalid hexadecimal literals:
+read_term("0x.") = Syntax error: unterminated hex constant
+read_term("-0x.") = Syntax error: unterminated hex constant
+read_term("0x_.") = Syntax error: unterminated hex constant
+read_term("-0x_.") = Syntax error: unterminated hex constant
+read_term("0xff_.") = Syntax error: unterminated hex constant
+read_term("-0xff_.") = Syntax error: unterminated hex constant
+
+Valid float literals:
+read_term("0.123.") = functor(float(0.123), [], context("", 1))
+read_term("-0.123.") = functor(float(-0.123), [], context("", 1))
+read_term("0.1_2__3.") = functor(float(0.123), [], context("", 1))
+read_term("-0.1_2__3.") = functor(float(-0.123), [], context("", 1))
+read_term("1.123.") = functor(float(1.123), [], context("", 1))
+read_term("-1.123.") = functor(float(-1.123), [], context("", 1))
+read_term("1_2.123.") = functor(float(12.123), [], context("", 1))
+read_term("-1_2.123.") = functor(float(-12.123), [], context("", 1))
+read_term("1__2.1_2__3.") = functor(float(12.123), [], context("", 1))
+read_term("-1__2.1_2__3.") = functor(float(-12.123), [], context("", 1))
+read_term("1_2_3e1_1.") = functor(float(12300000000000.0), [], context("", 1))
+read_term("1_2_3E1_1.") = functor(float(12300000000000.0), [], context("", 1))
+read_term("1_2e+1_1.") = functor(float(1200000000000.0), [], context("", 1))
+read_term("1_2E+1_1.") = functor(float(1200000000000.0), [], context("", 1))
+read_term("1_2e-1_1.") = functor(float(1.2e-10), [], context("", 1))
+read_term("1_2E-1_1.") = functor(float(1.2e-10), [], context("", 1))
+
+Invalid float literals:
+read_term("1_2_3.1_2_3_.") = Syntax error: fractional part of float terminated by underscore
+read_term("1_2_3e1_2_3_.") = Syntax error: unterminated exponent in float token
+read_term("123_._123.") = Syntax error: unterminated decimal constant
+read_term("123._123.") = Syntax error: underscore following decimal point
+read_term("123_.123.") = Syntax error: unterminated decimal constant
+read_term("123_e12.") = Syntax error: underscore before exponent
+read_term("123_E12.") = Syntax error: underscore before exponent
+read_term("123e_12.") = Syntax error: unterminated exponent in float token
+read_term("123E_12.") = Syntax error: unterminated exponent in float token
+read_term("123e12_.") = Syntax error: unterminated exponent in float token
+read_term("123E12_.") = Syntax error: unterminated exponent in float token
+read_term("12_e11.") = Syntax error: underscore before exponent
+read_term("12_E11.") = Syntax error: underscore before exponent
+read_term("123.12e-_12.") = Syntax error: unterminated exponent in float token
+read_term("123.12e+_12.") = Syntax error: unterminated exponent in float token
+read_term("123.12e12_.") = Syntax error: unterminated exponent in float token
+read_term("123.12E12_.") = Syntax error: unterminated exponent in float token

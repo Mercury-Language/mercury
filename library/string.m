@@ -1377,6 +1377,16 @@
 :- interface.
 :- include_module format.
 :- include_module parse_util.
+
+    % Exported for use by lexer.m (XXX perhaps it ought to be defined in
+    % that module instead?)
+    %
+    % Like base_string_to_int/3, but allow for an arbitrary number of
+    % underscores between the other characters.  Leading and trailing
+    % underscores are allowed.
+    %
+:- pred base_string_to_int_underscore(int::in, string::in, int::out) is semidet.
+
 :- implementation.
 
 :- include_module parse_runtime.
@@ -5473,6 +5483,97 @@ accumulate_negative_int(Base, Char, N0, N) :-
     % Fail on overflow.
     % XXX depends on undefined behaviour
     N =< N0.
+
+%---------------------%
+
+base_string_to_int_underscore(Base, String, Int) :-
+    index(String, 0, Char),
+    End = count_code_units(String),
+    ( if Char = ('-') then
+        End > 1,
+        foldl_between(base_negative_accumulator_underscore(Base), String, 1, End, 0, Int)
+    else if Char = ('+') then
+        End > 1,
+        foldl_between(base_accumulator_underscore(Base), String, 1, End, 0, Int)
+    else
+        foldl_between(base_accumulator_underscore(Base), String, 0, End, 0, Int)
+    ).
+
+:- func base_accumulator_underscore(int) = pred(char, int, int).
+:- mode base_accumulator_underscore(in) = out(pred(in, in, out) is semidet) is det.
+
+base_accumulator_underscore(Base) = Pred :-
+    % Avoid allocating a closure for the common bases. A more general, but
+    % finicky, way to avoid the allocation is to inline foldl_between so that
+    % the higher-order calls in base_string_to_int can be specialised.
+    % The redundant closures will also need to be deleted by unused argument
+    % elimination.
+    ( if Base = 10 then
+        Pred = accumulate_int_underscore(10)
+    else if Base = 16 then
+        Pred = accumulate_int_underscore(16)
+    else if Base = 8 then
+        Pred = accumulate_int_underscore(8)
+    else if Base = 2 then
+        Pred = accumulate_int_underscore(2)
+    else
+        Pred = accumulate_int_underscore(Base)
+    ).
+
+:- pred accumulate_int_underscore(int::in, char::in, int::in, int::out) is semidet.
+
+accumulate_int_underscore(Base, Char, N0, N) :-
+    ( if
+        char.base_digit_to_int(Base, Char, M)
+    then
+        N = (Base * N0) + M,
+        % Fail on overflow.
+        % XXX depends on undefined behaviour
+        N0 =< N
+    else if
+        Char = '_'
+    then
+        N = N0
+    else
+        false
+    ).
+
+:- func base_negative_accumulator_underscore(int) = pred(char, int, int).
+:- mode base_negative_accumulator_underscore(in) = out(pred(in, in, out) is semidet)
+    is det.
+
+base_negative_accumulator_underscore(Base) = Pred :-
+    % Avoid allocating a closure for the common bases.
+    ( if Base = 10 then
+        Pred = accumulate_negative_int_underscore(10)
+    else if Base = 16 then
+        Pred = accumulate_negative_int_underscore(16)
+    else if Base = 8 then
+        Pred = accumulate_negative_int_underscore(8)
+    else if Base = 2 then
+        Pred = accumulate_negative_int_underscore(2)
+    else
+        Pred = accumulate_negative_int_underscore(Base)
+    ).
+
+:- pred accumulate_negative_int_underscore(int::in, char::in,
+    int::in, int::out) is semidet.
+
+accumulate_negative_int_underscore(Base, Char, N0, N) :-
+    ( if
+        char.base_digit_to_int(Base, Char, M)
+    then
+        N = (Base * N0) - M,
+        % Fail on overflow.
+        % XXX depends on undefined behaviour
+        N =< N0
+    else if
+        Char = '_'
+    then
+        N = N0
+    else
+        false
+    ).
 
 %---------------------%
 
