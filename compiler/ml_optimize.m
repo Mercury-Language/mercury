@@ -424,17 +424,27 @@ optimize_func(OptInfo, Body0, Body) :-
 optimize_func_stmt(OptInfo, Statement0, Statement) :-
     Statement0 = statement(Stmt0, Context),
 
-    % Tailcall optimization -- if we do a self tailcall, we can turn it
-    % into a loop.
     Globals = OptInfo ^ oi_globals,
     ( if
         globals.lookup_bool_option(Globals, optimize_tailcalls, yes),
-        stmt_contains_statement(Stmt0, Call),
-        Call = statement(CallStmt, _),
+        % Does Stmt0 contain a call that we will turn into a tail call?
+        %
+        % We *could* avoid the non-deterministic enumeration of all the
+        % statements nested inside Stmt0 by (a) optimizing Stmt0 first,
+        % and (b) recording whether we *did* turn a call into a tail call.
+        % However, at the moment the optimize_in_* predicates don't return
+        % any outputs, so making them return this flag would have a
+        % nontrivial cost. At the moment, the nondet enumeration here
+        % is not expensive enough to warrant testing whether using the flag
+        % would be faster.
         ModuleName = OptInfo ^ oi_module_name,
         EntityName = OptInfo ^ oi_entity_name,
-        can_optimize_tailcall(qual(ModuleName, module_qual, EntityName),
-            CallStmt)
+        QualName = qual(ModuleName, module_qual, EntityName),
+        some [Call] (
+            stmt_contains_statement(Stmt0, Call),
+            Call = statement(CallStmt, _),
+            can_optimize_tailcall(QualName, CallStmt)
+        )
     then
         Comment = ml_stmt_atomic(comment("tailcall optimized into a loop")),
         CommentStmt = statement(Comment, Context),
@@ -447,12 +457,14 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
         (
             SupportsBreakContinue = yes,
             % Wrap a while loop around the function body:
+            %
             %   while (true) {
             %       /* tailcall optimized into a loop */
             %       <function body goes here>
             %       break;
             %   }
-            % Any tail calls in the function body will have been replaced
+            %
+            % Any tail calls in the function body will be replaced
             % with `continue' statements.
             Stmt = ml_stmt_while(may_loop_zero_times, ml_const(mlconst_true),
                 statement(ml_stmt_block([],
@@ -462,17 +474,19 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
                 Context))
         ;
             SupportsBreakContinue = no,
-            % Add a loop_top label at the start of the function
-            % body:
+            % Add a loop_top label at the start of the function body:
+            %
             %   {
             %   loop_top:
             %       /* tailcall optimized into a loop */
             %       <function body goes here>
             %   }
-            % Any tail calls in the function body will have
-            % been replaced with `goto loop_top' statements.
+            %
+            % Any tail calls in the function body will be replaced
+            % with `goto loop_top' statements.
             Label = ml_stmt_label(tailcall_loop_label_name),
-            Stmt = ml_stmt_block([], [CommentStmt,
+            Stmt = ml_stmt_block([],
+                [CommentStmt,
                 statement(Label, Context),
                 statement(Stmt0, Context)])
         )
