@@ -121,28 +121,40 @@ ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
 
 %-----------------------------------------------------------------------------%
 
-    % The algorithm works by walking backwards through each function in the
-    % MLDS.  It tracks (via at_tail) whether the current position in the
-    % function's body is a tail position.
-
-    % The `at_tail' type indicates whether or not a statement is at a tail
-    % position, i.e. is followed by a return statement or the end of the
-    % function, and if so, specifies the return values (if any) in the return
-    % statement.
+    % We identify tail calls in the body of a function by walking backwards
+    % through that body in the MLDS, tracking (via at_tail) whether a given
+    % position in the body (either just before or just after a statement)
+    % is in a tail position or not. The distinction between at_tail and
+    % not_at_tail* records this.
     %
-    % If a subgoal is not at a tail position, then this type also tracks
-    % whether a recursive call has been seen (backwards) along this
-    % execution path.  This is used to avoid creating warnings for further
-    % recursive calls.
-    % XXX We should NOT create warnings for non-tail-recursive recursive calls
-    % in this module, because the MLDS has no information about the location
-    % of any disable_warnings scope in the HLDS. The mark_tail_calls.m module
-    % also generates the same warnings, but it does not suffer from this
-    % problem because it operates on the HLDS.
+    % The `at_tail' functor indicates that the current statement is at a tail
+    % position, i.e. it is followed by a return statement or the end of the
+    % function. Its argument specifies the (possibly empty) vector of values
+    % being returned.
     %
-    % The algorithm must track this rather than stop walking through the
-    % function body as it may encounter a return statement and therefore
-    % find more tailcalls.
+    % The `not_at_tail_seen_reccall' and `not_at_tail_have_not_seen_reccall'
+    % functors indicate that the current statement is not at a tail position.
+    % Which one reflects the current position depends on whether we have
+    % already seen a recursive call in our backwards traversal. We use
+    % this distinction to avoid creating warnings for recursive calls that are
+    % obviously followed by the other, later recursive calls (like the first
+    % recursive call in the double-recursive clause of quicksort).
+    %
+    % The reason why we need this distinction, and cannot just stop walking
+    % backward through the function body when we find a recursive call
+    % is code like this:
+    %
+    %   if (...) {
+    %     ...
+    %     recursive call 1
+    %     return
+    %   }
+    %   ...
+    %   recursive call 2
+    %   return
+    %
+    % For such code, we *want* to continue our backwards traversal past
+    % recursive call 2, so we can find recursive call 1.
     %
 :- type at_tail
     --->        at_tail(list(mlds_rval))
@@ -305,7 +317,7 @@ mark_tailcalls_in_function_body(TCallInfo, AtTail, Body0, Body, !Specs) :-
                     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
                     pred_info_get_name(PredInfo, Name),
                     pred_info_get_orig_arity(PredInfo, Arity),
-                    SymName = unqualified(Name), 
+                    SymName = unqualified(Name),
                     SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
                     add_message_for_no_tail_or_nontail_recursive_calls(
                         SimpleCallId, Context, !Specs)
@@ -481,7 +493,7 @@ mark_tailcalls_in_stmt(TCallInfo, Context, AtTailAfter0, AtTailBefore,
 
 mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
         Stmt0, Stmt, !InBodyInfo) :-
-    Stmt0 = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
+    Stmt0 = ml_stmt_call(Sig, Func, Obj, Args, CallReturnLvals, CallKind0),
     ModuleName = TCallInfo ^ tci_module_name,
     FunctionName = TCallInfo ^ tci_function_name,
     QualName = qual(ModuleName, module_qual, FunctionName),
@@ -496,22 +508,27 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
         !InBodyInfo ^ tibi_found := found_recursive_call,
         ( if
             % We must be in a tail position.
-            AtTailAfter = at_tail(ReturnRvals),
+            AtTailAfter = at_tail(ReturnStmtRvals),
 
             % The values returned in this call must match those returned
             % by the `return' statement that follows.
-            match_return_vals(ReturnRvals, ReturnLvals),
+            call_returns_same_local_lvals_as_return_stmt(ReturnStmtRvals,
+                CallReturnLvals),
 
             % The call must not take the address of any local variables
             % or nested functions.
-            check_maybe_rval(Obj, Locals) = will_not_yield_dangling_stack_ref,
-            check_rvals(Args, Locals) = will_not_yield_dangling_stack_ref,
+            may_maybe_rval_yield_dangling_staf_ref(Obj, Locals) =
+                will_not_yield_dangling_stack_ref,
+            may_rvals_yield_dangling_staf_ref(Args, Locals) =
+                will_not_yield_dangling_stack_ref,
 
             % The call must not be to a function nested within this function.
-            check_rval(Func, Locals) = will_not_yield_dangling_stack_ref
+            may_rval_yield_dangling_staf_ref(Func, Locals) =
+                will_not_yield_dangling_stack_ref
         then
             % Mark this call as a tail call.
-            Stmt = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, tail_call),
+            Stmt = ml_stmt_call(Sig, Func, Obj, Args, CallReturnLvals,
+                tail_call),
             AtTailBefore = not_at_tail_seen_reccall
         else
             (
@@ -661,25 +678,33 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Context, !InBodyInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-% match_return_vals(Rvals, Lvals):
-% match_return_val(Rval, Lval):
-%   Check that the Lval(s) returned by a call match
-%   the Rval(s) in the `return' statement that follows,
-%   and those Lvals are local variables
+% call_returns_same_local_lvals_as_return_stmt(ReturnStmtRvals,
+%   CallReturnLvals):
+% call_returns_same_local_lval_as_return_stmt(ReturnStmtRval,
+%   CallReturnLval):
+%
+%   Check that the lval(s) returned by a call match the rval(s) in the
+%   `return' statement that follows, and those lvals are local variables
 %   (so that assignments to them won't have any side effects),
 %   so that we can optimize the call into a tailcall.
 
-:- pred match_return_vals(list(mlds_rval)::in, list(mlds_lval)::in) is semidet.
+:- pred call_returns_same_local_lvals_as_return_stmt(list(mlds_rval)::in,
+    list(mlds_lval)::in) is semidet.
 
-match_return_vals([], []).
-match_return_vals([Rval | Rvals], [Lval | Lvals]) :-
-    match_return_val(Rval, Lval),
-    match_return_vals(Rvals, Lvals).
+call_returns_same_local_lvals_as_return_stmt([], []).
+call_returns_same_local_lvals_as_return_stmt(
+    [ReturnStmtRval | ReturnStmtRvals], [CallReturnLval | CallReturnLvals]) :-
+    call_returns_same_local_lval_as_return_stmt(ReturnStmtRval,
+        CallReturnLval),
+    call_returns_same_local_lvals_as_return_stmt(ReturnStmtRvals,
+        CallReturnLvals).
 
-:- pred match_return_val(mlds_rval::in, mlds_lval::in) is semidet.
+:- pred call_returns_same_local_lval_as_return_stmt(mlds_rval::in,
+    mlds_lval::in) is semidet.
 
-match_return_val(ml_lval(Lval), Lval) :-
-    lval_is_local(Lval) = is_local.
+call_returns_same_local_lval_as_return_stmt(ReturnStmtRval, CallReturnLval) :-
+    ReturnStmtRval = ml_lval(CallReturnLval),
+    lval_is_local(CallReturnLval) = is_local.
 
 :- type is_local
     --->    is_local
@@ -714,59 +739,83 @@ lval_is_local(Lval) = IsLocal :-
     --->    may_yield_dangling_stack_ref
     ;       will_not_yield_dangling_stack_ref.
 
-% check_rvals:
-% check_maybe_rval:
-% check_rval:
+% may_rvals_yield_dangling_staf_ref:
+% may_maybe_rval_yield_dangling_staf_ref:
+% may_rval_yield_dangling_staf_ref:
 %   Find out if the specified rval(s) might evaluate to the addresses of
 %   local variables (or fields of local variables) or nested functions.
 
-:- func check_rvals(list(mlds_rval), locals) = may_yield_dangling_stack_ref.
+:- func may_rvals_yield_dangling_staf_ref(list(mlds_rval), locals) =
+    may_yield_dangling_stack_ref.
 
-check_rvals([], _) = will_not_yield_dangling_stack_ref.
-check_rvals([Rval | Rvals], Locals) = MayYieldDanglingStackRef :-
-    ( if check_rval(Rval, Locals) = may_yield_dangling_stack_ref then
+may_rvals_yield_dangling_staf_ref([], _) = will_not_yield_dangling_stack_ref.
+may_rvals_yield_dangling_staf_ref([Rval | Rvals], Locals)
+        = MayYieldDanglingStackRef :-
+    MayYieldDanglingStackRef0 = may_rval_yield_dangling_staf_ref(Rval, Locals),
+    (
+        MayYieldDanglingStackRef0 = may_yield_dangling_stack_ref,
         MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-    else
-        MayYieldDanglingStackRef = check_rvals(Rvals, Locals)
+    ;
+        MayYieldDanglingStackRef0 = will_not_yield_dangling_stack_ref,
+        MayYieldDanglingStackRef =
+            may_rvals_yield_dangling_staf_ref(Rvals, Locals)
     ).
 
-:- func check_maybe_rval(maybe(mlds_rval), locals)
+:- func may_maybe_rval_yield_dangling_staf_ref(maybe(mlds_rval), locals)
     = may_yield_dangling_stack_ref.
 
-check_maybe_rval(no, _) = will_not_yield_dangling_stack_ref.
-check_maybe_rval(yes(Rval), Locals) = check_rval(Rval, Locals).
+may_maybe_rval_yield_dangling_staf_ref(MaybeRval, Locals)
+        = MayYieldDanglingStackRef :-
+    (
+        MaybeRval = no,
+        MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+    ;
+        MaybeRval = yes(Rval),
+        MayYieldDanglingStackRef =
+            may_rval_yield_dangling_staf_ref(Rval, Locals)
+    ).
 
-:- func check_rval(mlds_rval, locals) = may_yield_dangling_stack_ref.
+:- func may_rval_yield_dangling_staf_ref(mlds_rval, locals)
+    = may_yield_dangling_stack_ref.
 
-check_rval(Rval, Locals) = MayYieldDanglingStackRef :-
+may_rval_yield_dangling_staf_ref(Rval, Locals) = MayYieldDanglingStackRef :-
     (
         Rval = ml_lval(_Lval),
         % Passing the _value_ of an lval is fine.
         MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
     ;
         Rval = ml_mkword(_Tag, SubRval),
-        MayYieldDanglingStackRef = check_rval(SubRval, Locals)
+        MayYieldDanglingStackRef =
+            may_rval_yield_dangling_staf_ref(SubRval, Locals)
     ;
         Rval = ml_const(Const),
         MayYieldDanglingStackRef = check_const(Const, Locals)
     ;
-        Rval = ml_unop(_Op, XRval),
-        MayYieldDanglingStackRef = check_rval(XRval, Locals)
+        Rval = ml_unop(_Op, SubRval),
+        MayYieldDanglingStackRef =
+            may_rval_yield_dangling_staf_ref(SubRval, Locals)
     ;
-        Rval = ml_binop(_Op, XRval, YRval),
-        ( if check_rval(XRval, Locals) = may_yield_dangling_stack_ref then
+        Rval = ml_binop(_Op, SubRvalA, SubRvalB),
+        MayYieldDanglingStackRefA =
+            may_rval_yield_dangling_staf_ref(SubRvalA, Locals),
+        (
+            MayYieldDanglingStackRefA = may_yield_dangling_stack_ref,
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-        else
-            MayYieldDanglingStackRef = check_rval(YRval, Locals)
+        ;
+            MayYieldDanglingStackRefA = will_not_yield_dangling_stack_ref,
+            MayYieldDanglingStackRef =
+                may_rval_yield_dangling_staf_ref(SubRvalB, Locals)
         )
     ;
         Rval = ml_mem_addr(Lval),
         % Passing the address of an lval is a problem,
         % if that lval names a local variable.
-        MayYieldDanglingStackRef = check_lval(Lval, Locals)
+        MayYieldDanglingStackRef =
+            may_lval_yield_dangling_staf_ref(Lval, Locals)
     ;
         Rval = ml_vector_common_row(_VectorCommon, RowRval),
-        MayYieldDanglingStackRef = check_rval(RowRval, Locals)
+        MayYieldDanglingStackRef =
+            may_rval_yield_dangling_staf_ref(RowRval, Locals)
     ;
         ( Rval = ml_scalar_common(_)
         ; Rval = ml_self(_)
@@ -777,9 +826,10 @@ check_rval(Rval, Locals) = MayYieldDanglingStackRef :-
     % Find out if the specified lval might be a local variable
     % (or a field of a local variable).
     %
-:- func check_lval(mlds_lval, locals) = may_yield_dangling_stack_ref.
+:- func may_lval_yield_dangling_staf_ref(mlds_lval, locals)
+    = may_yield_dangling_stack_ref.
 
-check_lval(Lval, Locals) = MayYieldDanglingStackRef :-
+may_lval_yield_dangling_staf_ref(Lval, Locals) = MayYieldDanglingStackRef :-
     (
         Lval = ml_var(Var0, _),
         ( if var_is_local(Var0, Locals) then
@@ -789,7 +839,8 @@ check_lval(Lval, Locals) = MayYieldDanglingStackRef :-
         )
     ;
         Lval = ml_field(_MaybeTag, Rval, _FieldId, _, _),
-        MayYieldDanglingStackRef = check_rval(Rval, Locals)
+        MayYieldDanglingStackRef =
+            may_rval_yield_dangling_staf_ref(Rval, Locals)
     ;
         ( Lval = ml_mem_ref(_, _)
         ; Lval = ml_global_var_ref(_)
