@@ -250,7 +250,8 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
         OptTailCalls = yes,
         ModuleName = OptInfo ^ oi_module_name,
         EntityName = OptInfo ^ oi_entity_name,
-        can_optimize_tailcall(qual(ModuleName, module_qual, EntityName), Stmt0)
+        stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName,
+            EntityName, Stmt0)
     then
         Context = OptInfo ^ oi_context,
         CommentStatement = statement(
@@ -439,11 +440,11 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
         % would be faster.
         ModuleName = OptInfo ^ oi_module_name,
         EntityName = OptInfo ^ oi_entity_name,
-        QualName = qual(ModuleName, module_qual, EntityName),
         some [Call] (
-            stmt_contains_statement(Stmt0, Call),
-            Call = statement(CallStmt, _),
-            can_optimize_tailcall(QualName, CallStmt)
+            stmt_contains_statement(Stmt0, SubStatement),
+            SubStatement = statement(SubStmt, _),
+            stmt_is_self_recursive_call_replaceable_with_jump_to_top(
+                ModuleName, EntityName, SubStmt)
         )
     then
         Comment = ml_stmt_atomic(comment("tailcall optimized into a loop")),
@@ -494,6 +495,43 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
         Stmt = Stmt0
     ),
     Statement = statement(Stmt, Context).
+
+    % stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName,
+    %   FuncName, Stmt):
+    %
+    % True if Stmt is a directly recursive call
+    % (to qual(ModuleName, module_qual, FuncName)) which we can optimize
+    % into a jump back to the start of the function.
+    %
+:- pred stmt_is_self_recursive_call_replaceable_with_jump_to_top(
+    mlds_module_name::in, mlds_entity_name::in, mlds_stmt::in) is semidet.
+
+stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
+        Stmt) :-
+    Stmt = ml_stmt_call(_Signature, CalleeRval, MaybeObject, _CallArgs,
+        _Results, CallKind),
+
+    % Check if this call has been marked by ml_tailcall.m as one that
+    % can be optimized as a tail call.
+    %
+    % Note that a no_return_call may allocate lots of stack frames
+    % before it aborts the program. Optimizing such calls as tail calls
+    % allows the running program to give the user the program's *intended*
+    % abort message, not a message about stack exhaustion.
+    ( CallKind = tail_call ; CallKind = no_return_call ),
+
+    % In C++, `this' is a constant, so our usual technique of assigning
+    % the arguments won't work if it is a member function. Thus we don't do
+    % this optimization if we are optimizing a member function call.
+    % XXX We don't generate managed C++ anymore. Is this a problem for
+    % the other MLDS target languages?
+    MaybeObject = no,
+
+    % Is this a self-recursive call?
+    % We test this *after* we test CallKind, because the CallKind test
+    % is both (a) cheaper, and (b) significantly more likely to fail.
+    CalleeRval = ml_const(mlconst_code_addr(CalleeCodeAddr)),
+    code_address_is_for_this_function(CalleeCodeAddr, ModuleName, FuncName).
 
 %-----------------------------------------------------------------------------%
 

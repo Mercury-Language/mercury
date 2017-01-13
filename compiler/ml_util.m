@@ -36,16 +36,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    % True if the statement is a directly recursive tail call which can be
-    % optimized into a jump back to the start of the function.
+    % code_address_is_for_this_function(CodeAddr, ModuleName, FuncName):
     %
-:- pred can_optimize_tailcall(mlds_qualified_entity_name::in, mlds_stmt::in)
-    is semidet.
-
-    % True if the statement is a directly-recursive call.
+    % True if CodeAddr, if used as the callee of an ml_stmt_call statement,
+    % would call qual(ModuleName, module_qual, FuncName).
     %
-:- pred call_is_recursive(mlds_qualified_entity_name::in, mlds_stmt::in)
-    is semidet.
+:- pred code_address_is_for_this_function(mlds_code_addr::in,
+    mlds_module_name::in, mlds_entity_name::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -199,33 +196,18 @@
 %-----------------------------------------------------------------------------%
 
 defns_contain_main([Defn | Defns]) :-
-    (
+    ( if
         Defn = mlds_defn(Name, _, _, _),
         Name = entity_function(FuncName, _, _, _),
         FuncName = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _)
-    ;
+    then
+        true
+    else
         defns_contain_main(Defns)
     ).
 
-can_optimize_tailcall(Name, Call) :-
-    Call = ml_stmt_call(_Signature, _FuncRval, MaybeObject, _CallArgs,
-        _Results, CallKind),
-    % Check if this call can be optimized as a tail call.
-    ( CallKind = tail_call ; CallKind = no_return_call ),
-
-    % In C++, `this' is a constant, so our usual technique of assigning
-    % the arguments won't work if it is a member function. Thus we don't do
-    % this optimization if we're optimizing a member function call.
-    MaybeObject = no,
-
-    call_is_recursive(Name, Call).
-
-call_is_recursive(Name, Call) :-
-    Call = ml_stmt_call(_Signature, FuncRval, _MaybeObject, _CallArgs,
-        _Results, _CallKind),
-
+code_address_is_for_this_function(CodeAddr, ModuleName, FuncName) :-
     % Check if the callee address is the same as the caller.
-    FuncRval = ml_const(mlconst_code_addr(CodeAddr)),
     (
         CodeAddr = code_addr_proc(QualifiedProcLabel, _Sig),
         MaybeSeqNum = no
@@ -233,13 +215,12 @@ call_is_recursive(Name, Call) :-
         CodeAddr = code_addr_internal(QualifiedProcLabel, SeqNum, _Sig),
         MaybeSeqNum = yes(SeqNum)
     ),
-    ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    QualifiedProcLabel = qual(ModuleName, module_qual, ProcLabel),
 
     % Check that the module name matches.
-    Name = qual(ModuleName, module_qual, FuncName),
+    QualifiedProcLabel = qual(ModuleName, module_qual, ProcLabel),
 
-    % Check that the PredLabel, ProcId, and MaybeSeqNum match.
+    % Check that the function name (PredLabel, ProcId, MaybeSeqNum) matches.
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
     FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, _).
 
 %-----------------------------------------------------------------------------%

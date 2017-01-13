@@ -493,16 +493,20 @@ mark_tailcalls_in_stmt(TCallInfo, Context, AtTailAfter0, AtTailBefore,
 
 mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
         Stmt0, Stmt, !InBodyInfo) :-
-    Stmt0 = ml_stmt_call(Sig, FuncRval, Obj, Args, CallReturnLvals, CallKind0),
+    Stmt0 = ml_stmt_call(Sig, CalleeRval, MaybeObj, Args,
+        CallReturnLvals, CallKind0),
     ModuleName = TCallInfo ^ tci_module_name,
-    FunctionName = TCallInfo ^ tci_function_name,
-    QualName = qual(ModuleName, module_qual, FunctionName),
+    FuncName = TCallInfo ^ tci_function_name,
 
     % Check if we can mark this call as a tail call.
     ( if
         CallKind0 = ordinary_call,
-        FuncRval = ml_const(mlconst_code_addr(CodeAddr)),
-        call_is_recursive(QualName, Stmt0)
+        CalleeRval = ml_const(mlconst_code_addr(CalleeCodeAddr)),
+        % Currently, we can turn self-recursive calls into tail calls,
+        % but we cannot do the same with mutually-recursive calls.
+        % We therefore require the callee to be the same function
+        % as the caller.
+        code_address_is_for_this_function(CalleeCodeAddr, ModuleName, FuncName)
     then
         !InBodyInfo ^ tibi_found := found_recursive_call,
         ( if
@@ -517,18 +521,18 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
             % The call must not take the address of any local variables
             % or nested functions.
             Locals = TCallInfo ^ tci_locals,
-            may_maybe_rval_yield_dangling_stack_ref(Obj, Locals) =
+            may_maybe_rval_yield_dangling_stack_ref(MaybeObj, Locals) =
                 will_not_yield_dangling_stack_ref,
             may_rvals_yield_dangling_stack_ref(Args, Locals) =
                 will_not_yield_dangling_stack_ref,
 
             % The call must not be to a function nested within this function.
-            may_rval_yield_dangling_stack_ref(FuncRval, Locals) =
+            may_rval_yield_dangling_stack_ref(CalleeRval, Locals) =
                 will_not_yield_dangling_stack_ref
         then
             % Mark this call as a tail call.
-            Stmt = ml_stmt_call(Sig, FuncRval, Obj, Args, CallReturnLvals,
-                tail_call),
+            Stmt = ml_stmt_call(Sig, CalleeRval, MaybeObj, Args,
+                CallReturnLvals, tail_call),
             AtTailBefore = not_at_tail_seen_reccall
         else
             (
@@ -541,7 +545,8 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
                     % If so, a warning may be useful.
                     AtTailAfter = at_tail(_)
                 ),
-                maybe_warn_tailcalls(TCallInfo, CodeAddr, Context, !InBodyInfo)
+                maybe_warn_tailcalls(TCallInfo, CalleeCodeAddr, Context,
+                    !InBodyInfo)
             ),
             Stmt = Stmt0,
             AtTailBefore = not_at_tail_seen_reccall
