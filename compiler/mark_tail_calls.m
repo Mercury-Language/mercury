@@ -67,9 +67,9 @@
     --->    not_changed
     ;       maybe_changed.
 
-:- pred mark_tail_calls_in_proc(module_info::in, pred_proc_id::in,
-    pred_info::in, list(error_spec)::out, maybe_changed::out,
-    proc_info::in, proc_info::out) is det.
+:- pred mark_tail_calls_in_proc(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, proc_info::in, proc_info::out,
+    maybe_changed::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -122,6 +122,21 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type add_goal_feature
+    --->    add_goal_feature
+    ;       do_not_add_goal_feature.
+
+:- type warn_non_tail_rec_calls_opt
+    --->    do_not_warn_non_tail_rec_calls_opt
+    ;       warn_non_tail_rec_calls_opt.
+
+:- type maybe_warn_non_tail_rec_call
+    --->    do_not_warn_non_tail_rec_calls
+    ;       warn_non_tail_rec_calls(
+                warning_or_error,
+                require_tail_recursion_type
+            ).
+
 :- type mark_tail_calls_info
     --->    mark_tail_calls_info(
                 mtc_add_feature             :: add_goal_feature,
@@ -130,17 +145,8 @@
                 mtc_pred_id                 :: pred_id,
                 mtc_proc_id                 :: proc_id,
                 mtc_vartypes                :: vartypes,
-                mtc_warn_tail_calls         :: warn_tail_calls,
-                mtc_maybe_require_tailrec   :: maybe(require_tail_recursion)
+                mtc_warn_non_tail_rec_calls :: maybe_warn_non_tail_rec_call
             ).
-
-:- type add_goal_feature
-    --->    add_goal_feature
-    ;       do_not_add_goal_feature.
-
-:- type warn_tail_calls
-    --->    warn_tail_calls
-    ;       do_not_warn_tail_calls.
 
     % Is the current position within the procedure a tail position?
     % If it is, what are the output arguments?
@@ -170,19 +176,18 @@ mark_tail_calls_in_procs(_ModuleInfo, _PredId, [], !PredInfo, !Specs).
 mark_tail_calls_in_procs(ModuleInfo, PredId, [ProcId | ProcIds], !PredInfo,
         !Specs) :-
     pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
-    mark_tail_calls_in_proc(ModuleInfo, proc(PredId, ProcId),
-        !.PredInfo, Specs, MaybeChanged, ProcInfo0, ProcInfo),
+    mark_tail_calls_in_proc(ModuleInfo, PredId, ProcId,
+        !.PredInfo, ProcInfo0, ProcInfo, MaybeChanged, !Specs),
     (
         MaybeChanged = maybe_changed,
         pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
     ;
         MaybeChanged = not_changed
     ),
-    !:Specs = Specs ++ !.Specs,
     mark_tail_calls_in_procs(ModuleInfo, PredId, ProcIds, !PredInfo, !Specs).
 
-mark_tail_calls_in_proc(ModuleInfo, proc(PredId, ProcId), PredInfo,
-        Specs, MaybeChanged, !ProcInfo) :-
+mark_tail_calls_in_proc(ModuleInfo, PredId, ProcId, PredInfo, !ProcInfo,
+        MaybeChanged, !Specs) :-
     proc_info_interface_determinism(!.ProcInfo, Detism),
     determinism_components(Detism, _CanFail, SolnCount),
     (
@@ -193,14 +198,11 @@ mark_tail_calls_in_proc(ModuleInfo, proc(PredId, ProcId), PredInfo,
         ( SolnCount = at_most_many
         ; SolnCount = at_most_zero
         ),
-        Specs = [],
         MaybeChanged = not_changed
     ;
         ( SolnCount = at_most_one
         ; SolnCount = at_most_many_cc
         ),
-        proc_info_get_maybe_require_tailrec_info(!.ProcInfo,
-            MaybeRequireTailRecursion),
 
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, exec_trace_tail_rec,
@@ -213,50 +215,49 @@ mark_tail_calls_in_proc(ModuleInfo, proc(PredId, ProcId), PredInfo,
             AddGoalFeature = do_not_add_goal_feature
         ),
         globals.lookup_bool_option(Globals, warn_non_tail_recursion,
-            WarnNonTailRecursionBool),
+            WarnNonTailRecBool),
         (
-            WarnNonTailRecursionBool = yes,
-            WarnNonTailRecursion = warn_tail_calls
+            WarnNonTailRecBool = yes,
+            WarnNonTailRecOpt = warn_non_tail_rec_calls_opt
         ;
-            WarnNonTailRecursionBool = no,
-            WarnNonTailRecursion = do_not_warn_tail_calls
+            WarnNonTailRecBool = no,
+            WarnNonTailRecOpt = do_not_warn_non_tail_rec_calls_opt
         ),
+        proc_info_get_maybe_require_tailrec_info(!.ProcInfo,
+            MaybeRequireTailRec),
 
         % It is reasonably common that we don't need to check for tail calls
         % at all.
         ( if
             AddGoalFeature = do_not_add_goal_feature,
             (
-                WarnNonTailRecursion = do_not_warn_tail_calls,
-                (
-                    MaybeRequireTailRecursion = no
-                ;
-                    MaybeRequireTailRecursion =
-                        yes(suppress_tailrec_warnings(_))
+                WarnNonTailRecOpt = do_not_warn_non_tail_rec_calls_opt,
+                ( MaybeRequireTailRec = no
+                ; MaybeRequireTailRec = yes(suppress_tailrec_warnings(_))
                 )
             ;
-                WarnNonTailRecursion = warn_tail_calls,
-                MaybeRequireTailRecursion = yes(suppress_tailrec_warnings(_))
+                WarnNonTailRecOpt = warn_non_tail_rec_calls_opt,
+                MaybeRequireTailRec = yes(suppress_tailrec_warnings(_))
             )
         then
-            Specs = [],
             MaybeChanged = not_changed
         else
-            do_mark_tail_calls_in_proc(AddGoalFeature, WarnNonTailRecursion,
-                MaybeRequireTailRecursion, ModuleInfo, PredId, PredInfo,
-                ProcId, Specs, !ProcInfo),
+            do_mark_tail_calls_in_proc(AddGoalFeature,
+                WarnNonTailRecOpt, MaybeRequireTailRec,
+                ModuleInfo, PredId, ProcId, PredInfo, !ProcInfo, !Specs),
             MaybeChanged = maybe_changed
         )
     ).
 
 :- pred do_mark_tail_calls_in_proc(add_goal_feature::in,
-    warn_tail_calls::in, maybe(require_tail_recursion)::in,
-    module_info::in, pred_id::in, pred_info::in, proc_id::in,
-    list(error_spec)::out, proc_info::in, proc_info::out) is det.
+    warn_non_tail_rec_calls_opt::in, maybe(require_tail_recursion)::in,
+    module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, proc_info::in, proc_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-do_mark_tail_calls_in_proc(AddGoalFeature, WarnNonTailRecursion,
-        MaybeRequireTailRecursion, ModuleInfo, PredId,
-        PredInfo, ProcId, !:Specs, !ProcInfo) :-
+do_mark_tail_calls_in_proc(AddGoalFeature, WarnNonTailRecOpt,
+        MaybeRequireTailRec, ModuleInfo, PredId, ProcId,
+        PredInfo, !ProcInfo, !Specs) :-
     pred_info_get_arg_types(PredInfo, Types),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_argmodes(!.ProcInfo, Modes),
@@ -264,10 +265,36 @@ do_mark_tail_calls_in_proc(AddGoalFeature, WarnNonTailRecursion,
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
     find_maybe_output_args(ModuleInfo, Types, Modes, HeadVars, Outputs),
 
+    (
+        MaybeRequireTailRec = no,
+        MaybeRequireTailRecContext = no,
+        (
+            WarnNonTailRecOpt = do_not_warn_non_tail_rec_calls_opt,
+            WarnNonTailRec = do_not_warn_non_tail_rec_calls
+        ;
+            WarnNonTailRecOpt = warn_non_tail_rec_calls_opt,
+            % The MLDS backend doesn't (yet) support making
+            % mutually-recursive calls *tail*-recursive,
+            % but the LLDS backend does.
+            WarnNonTailRec = warn_non_tail_rec_calls(we_warning, 
+                both_self_and_mutual_recursion_must_be_tail)
+        )
+    ;
+        MaybeRequireTailRec = yes(RequireTailrecInfo0),
+        (
+            RequireTailrecInfo0 = enable_tailrec_warnings(WarnOrError,
+                RecType, RequireTailRecContext),
+            WarnNonTailRec = warn_non_tail_rec_calls(WarnOrError, RecType)
+        ;
+            RequireTailrecInfo0 = suppress_tailrec_warnings(
+                RequireTailRecContext),
+            WarnNonTailRec = do_not_warn_non_tail_rec_calls
+        ),
+        MaybeRequireTailRecContext = yes(RequireTailRecContext)
+    ),
+
     Info = mark_tail_calls_info(AddGoalFeature, ModuleInfo, PredInfo,
-        PredId, ProcId, VarTypes, WarnNonTailRecursion,
-        MaybeRequireTailRecursion),
-    !:Specs = [],
+        PredId, ProcId, VarTypes, WarnNonTailRec),
     mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
         at_tail(Outputs), _),
     proc_info_set_goal(Goal, !ProcInfo),
@@ -278,12 +305,9 @@ do_mark_tail_calls_in_proc(AddGoalFeature, WarnNonTailRecursion,
         FoundTailCalls = not_found_tail_calls,
         TailCallEvents = has_no_tail_call_event,
         (
-            MaybeRequireTailRecursion = no
+            MaybeRequireTailRecContext = no
         ;
-            MaybeRequireTailRecursion = yes(RequireTailrecInfo),
-            ( RequireTailrecInfo = suppress_tailrec_warnings(Context)
-            ; RequireTailrecInfo = enable_tailrec_warnings(_, _, Context)
-            ),
+            MaybeRequireTailRecContext = yes(Context),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             pred_info_get_name(PredInfo, Name),
             pred_info_get_orig_arity(PredInfo, Arity),
@@ -377,9 +401,8 @@ mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
                     TailWarnings)
                 )
             then
-                InnerInfo = ((Info
-                    ^ mtc_maybe_require_tailrec := no)
-                    ^ mtc_warn_tail_calls := do_not_warn_tail_calls)
+                InnerInfo = Info ^ mtc_warn_non_tail_rec_calls :=
+                    do_not_warn_non_tail_rec_calls
             else
                 InnerInfo = Info
             ),
@@ -666,33 +689,16 @@ maybe_report_nontail_recursive_call(AtTail, Info, SymName, Arity, ProcId,
         ; AtTail = not_at_tail_have_not_seen_reccall
         ),
         PredInfo = Info ^ mtc_pred_info,
-        WarnTailCalls = Info ^ mtc_warn_tail_calls,
-        MaybeRequireTailRecursion = Info ^ mtc_maybe_require_tailrec,
-        % XXX I (zs) don't understand the reason why the code below
-        % looks like it does. It should be enough to have a SINGLE field in
-        % Info that says whether we should call report_nontail_recursive_call,
-        % and if so, with what severity.
+        WarnNonTailRecCalls = Info ^ mtc_warn_non_tail_rec_calls,
         (
-            MaybeRequireTailRecursion = no,
-            (
-                WarnTailCalls = warn_tail_calls,
-                report_nontail_recursive_call(PredInfo, SymName, Arity, ProcId,
-                    we_warning, Context, !Specs)
-            ;
-                WarnTailCalls = do_not_warn_tail_calls
-            )
+            WarnNonTailRecCalls = do_not_warn_non_tail_rec_calls
         ;
-            MaybeRequireTailRecursion = yes(RequireTailrecInfo),
-            (
-                RequireTailrecInfo = enable_tailrec_warnings(WarnOrError,
-                    _Type, _),
-                % TODO: Check recursion type to implement support for
-                % mutual vs self recursion checking.
-                report_nontail_recursive_call(PredInfo, SymName, Arity, ProcId,
-                    WarnOrError, Context, !Specs)
-            ;
-                RequireTailrecInfo = suppress_tailrec_warnings(_)
-            )
+            WarnNonTailRecCalls = warn_non_tail_rec_calls(WarnOrError,
+                _RecType),
+            % TODO: Check recursion type to implement support for
+            % mutual vs self recursion checking.
+            report_nontail_recursive_call(PredInfo, SymName, Arity, ProcId,
+                WarnOrError, Context, !Specs)
         )
     ;
         % Never report calls that are followed by recursive calls.

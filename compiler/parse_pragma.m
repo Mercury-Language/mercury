@@ -1113,7 +1113,7 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaTerms, _ErrorTerm,
         ;
             MaybeOptionsTerm = no,
             MaybeOptions = ok1(enable_tailrec_warnings(we_warning,
-                require_any_tail_recursion, Context))
+                both_self_and_mutual_recursion_must_be_tail, Context))
         ),
 
         % Put them together.
@@ -1205,7 +1205,7 @@ parse_pragma_require_tail_recursion_options([], SeenNone, MaybeWarnOrError,
                 MaybeType = yes(Type)
             ;
                 MaybeType = no,
-                Type = require_any_tail_recursion
+                Type = both_self_and_mutual_recursion_must_be_tail
             ),
             MaybeRTR = ok1(enable_tailrec_warnings(WarnOrError, Type,
                 Context))

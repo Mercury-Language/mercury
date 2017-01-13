@@ -402,9 +402,8 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
             "% Marking directly tail recursive calls in ", PredId, ProcId,
             !.HLDS, !IO)
     ),
-    mark_tail_calls_in_proc(!.HLDS, PredProcId, PredInfo, TCallSpecs,
-        _, !ProcInfo),
-    !:Specs = TCallSpecs ++ !.Specs,
+    mark_tail_calls_in_proc(!.HLDS, PredId, ProcId, PredInfo, !ProcInfo,
+        _, !Specs),
 
     trace [io(!IO)] (
         write_proc_progress_message("% Allocating stack slots in ", PredId,

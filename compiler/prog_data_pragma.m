@@ -464,8 +464,8 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
             ).
 
 :- type require_tail_recursion_type
-    --->    require_direct_tail_recursion
-    ;       require_any_tail_recursion.
+    --->    only_self_recursion_must_be_tail
+    ;       both_self_and_mutual_recursion_must_be_tail.
 
 :- pred require_tailrec_type_string(require_tail_recursion_type, string).
 :- mode require_tailrec_type_string(in, out) is det.
@@ -473,9 +473,9 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 
 :- implementation.
 
-require_tailrec_type_string(require_direct_tail_recursion,
+require_tailrec_type_string(only_self_recursion_must_be_tail,
     "self_recursion_only").
-require_tailrec_type_string(require_any_tail_recursion,
+require_tailrec_type_string(both_self_and_mutual_recursion_must_be_tail,
     "self_or_mutual_recursion").
 
 %---------------------------------------------------------------------------%

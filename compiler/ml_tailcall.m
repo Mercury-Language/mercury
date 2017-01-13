@@ -634,7 +634,7 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Context, !InBodyInfo) :-
                 MaybeRequireTailrecInfo = no,
                 % Choose some defaults.
                 WarnOrError = we_warning,
-                TailrecType = require_any_tail_recursion
+                TailrecType = both_self_and_mutual_recursion_must_be_tail
             ;
                 MaybeRequireTailrecInfo = yes(RequireTailrecInfo),
                 require_complete_switch [RequireTailrecInfo]
@@ -649,9 +649,9 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Context, !InBodyInfo) :-
         ),
         require_complete_switch [TailrecType]
         (
-            TailrecType = require_any_tail_recursion
+            TailrecType = both_self_and_mutual_recursion_must_be_tail
         ;
-            TailrecType = require_direct_tail_recursion
+            TailrecType = only_self_recursion_must_be_tail
             % XXX: Currently this has no effect since all tailcalls on MLDS
             % are direct tail calls.
         )
