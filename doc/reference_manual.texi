@@ -310,15 +310,31 @@ A hexadecimal literal is @samp{0x} followed by any sequence of hexadecimal
 digits.
 A character-code literal is @samp{0'} followed by any single character.
 
+For decimal, binary, octal and hexadecimal literals, an arbitrary number of
+underscores (@samp{_}) may be inserted between the digits.  An arbitrary number
+of underscores may also be inserted between the radix prefix (i.e. @samp{0b},
+@samp{0o} and @samp{0x}) and the initial digit.
+The purpose of the underscores is to improve readability and they do not affect
+the numeric value of the literal.
+
+@c TODO: we should support hexadecimal float literals too.
 @item float
-A floating point literal consists of a sequence of decimal digits,
-a decimal point and a sequence of digits (the fraction part), and
-the letter @samp{E} (or @samp{e}), an optional sign (@samp{+} or @samp{-}),
-and then another sequence of decimal digits (the exponent).
+A floating point literal consists of a sequence of decimal digits, a decimal
+point (@samp{.}) and a sequence of digits (the fraction part), and the letter
+@samp{E} (or @samp{e}), an optional sign (@samp{+} or @samp{-}), and then
+another sequence of decimal digits (the exponent).
 The fraction part or the exponent (but not both) may be omitted.
 
+An arbitrary number of underscores (@samp{_}) may be inserted between the
+digits in a floating point literal.
+Underscores may @emph{not} occur adjacent to any non-digit characters (i.e.
+@samp{.}, @samp{e}, @samp{E}, @samp{+} or @samp{-}) in a floating point
+literal.
+The purpose of the underscores is to improve readability and they do not affect
+the numeric value of the literal.
+
 @item implementation_defined_literal
-An implementation-defined literal consists of a dollar sign (@code{$})
+An implementation-defined literal consists of a dollar sign (@samp{$})
 followed by an unquoted name.
 
 @item open_ct

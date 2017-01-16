@@ -17,26 +17,26 @@ invalid_float_literal.m:021:   by underscore.
 invalid_float_literal.m:023: Syntax error at token `. ': unexpected token at
 invalid_float_literal.m:023:   start of (sub)term.
 invalid_float_literal.m:023: Syntax error: unterminated exponent in float
-invalid_float_literal.m:023:   token.
+invalid_float_literal.m:023:   literal.
 invalid_float_literal.m:025: In clause head: error: atom expected at 12.
 invalid_float_literal.m:025: Syntax error: underscore before exponent.
 invalid_float_literal.m:027: In clause head: error: atom expected at _12.
 invalid_float_literal.m:027: Syntax error: unterminated exponent in float
-invalid_float_literal.m:027:   token.
+invalid_float_literal.m:027:   literal.
 invalid_float_literal.m:029: In clause head: error: atom expected at _123.
-invalid_float_literal.m:029: Syntax error: unterminated decimal constant.
+invalid_float_literal.m:029: Syntax error: unterminated decimal literal.
 invalid_float_literal.m:031: In clause head: error: atom expected at 123.
 invalid_float_literal.m:031: Syntax error: underscore following decimal point.
 invalid_float_literal.m:033: In clause head: error: atom expected at 123.
-invalid_float_literal.m:033: Syntax error: unterminated decimal constant.
+invalid_float_literal.m:033: Syntax error: unterminated decimal literal.
 invalid_float_literal.m:035: Syntax error: unterminated exponent in float
-invalid_float_literal.m:035:   token.
+invalid_float_literal.m:035:   literal.
 invalid_float_literal.m:035: Error: clause for predicate
 invalid_float_literal.m:035:   `invalid_float_literal.-'/2
 invalid_float_literal.m:035:   without corresponding `:- pred' declaration.
 invalid_float_literal.m:035: Inferred :- pred -(T1, int).
 invalid_float_literal.m:037: Syntax error: unterminated exponent in float
-invalid_float_literal.m:037:   token.
+invalid_float_literal.m:037:   literal.
 invalid_float_literal.m:037: Error: clause for predicate
 invalid_float_literal.m:037:   `invalid_float_literal.+'/2
 invalid_float_literal.m:037:   without corresponding `:- pred' declaration.
@@ -45,7 +45,7 @@ invalid_float_literal.m:039: In clause head: error: atom expected at 12.
 invalid_float_literal.m:039: Syntax error: underscore before exponent.
 invalid_float_literal.m:041: In clause head: error: atom expected at _12.
 invalid_float_literal.m:041: Syntax error: unterminated exponent in float
-invalid_float_literal.m:041:   token.
+invalid_float_literal.m:041:   literal.
 invalid_float_literal.m:043: In clause head: error: atom expected at _12.
 invalid_float_literal.m:043: Syntax error: unterminated exponent in float
-invalid_float_literal.m:043:   token.
+invalid_float_literal.m:043:   literal.

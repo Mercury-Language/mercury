@@ -2035,7 +2035,7 @@ get_char_code(Stream, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated char code constant")
+        Token = error("unterminated char code literal")
     ;
         Result = ok,
         char.to_int(Char, CharCode),
@@ -2051,7 +2051,7 @@ string_get_char_code(String, Len, Posn0, Token, Context, !Posn) :-
         Token = integer(CharCode),
         string_get_context(Posn0, Context, !Posn)
     else
-        Token = error("unterminated char code constant"),
+        Token = error("unterminated char code literal"),
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -2064,7 +2064,7 @@ get_binary(Stream, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated binary constant")
+        Token = error("unterminated binary literal")
     ;
         Result = ok,
         ( if char.is_binary_digit(Char) then
@@ -2074,7 +2074,7 @@ get_binary(Stream, Token, !IO) :-
             get_binary(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            Token = error("unterminated binary constant")
+            Token = error("unterminated binary literal")
         )
     ).
 
@@ -2092,11 +2092,11 @@ string_get_binary(String, Len, Posn0, Token, Context, !Posn) :-
             string_get_binary(String, Len, Posn1, Token, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
-            Token = error("unterminated binary constant"),
+            Token = error("unterminated binary literal"),
             string_get_context(Posn0, Context, !Posn)
         )
     else
-        Token = error("unterminated binary constant"),
+        Token = error("unterminated binary literal"),
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -2115,7 +2115,7 @@ get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             rev_char_list_to_int(!.RevChars, base_2, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated binary constant")
+            Token = error("unterminated binary literal")
         )
     ;
         Result = ok,
@@ -2133,7 +2133,7 @@ get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 rev_char_list_to_int(!.RevChars, base_2, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated binary constant")
+                Token = error("unterminated binary literal")
             )
         )
     ).
@@ -2160,7 +2160,7 @@ string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
                 conv_string_to_int(BinaryString, base_2, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated binary constant")
+                Token = error("unterminated binary literal")
             ),
             string_get_context(Posn1, Context, !Posn)
         )
@@ -2171,7 +2171,7 @@ string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
             conv_string_to_int(BinaryString, base_2, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated binary constant")
+            Token = error("unterminated binary literal")
         ),
         string_get_context(Posn1, Context, !Posn)
     ).
@@ -2185,7 +2185,7 @@ get_octal(Stream, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated octal constant")
+        Token = error("unterminated octal literal")
     ;
         Result = ok,
         ( if char.is_octal_digit(Char) then
@@ -2195,7 +2195,7 @@ get_octal(Stream, Token, !IO) :-
             get_octal(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            Token = error("unterminated octal constant")
+            Token = error("unterminated octal literal")
         )
     ).
 
@@ -2213,11 +2213,11 @@ string_get_octal(String, Len, Posn0, Token, Context, !Posn) :-
             string_get_octal(String, Len, Posn0, Token, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
-            Token = error("unterminated octal constant"),
+            Token = error("unterminated octal literal"),
             string_get_context(Posn0, Context, !Posn)
         )
     else
-        Token = error("unterminated octal constant"),
+        Token = error("unterminated octal literal"),
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -2236,7 +2236,7 @@ get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             rev_char_list_to_int(!.RevChars, base_8, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated octal constant")
+            Token = error("unterminated octal literal")
         )
     ;
         Result = ok,
@@ -2254,7 +2254,7 @@ get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 rev_char_list_to_int(!.RevChars, base_8, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated octal constant")
+                Token = error("unterminated octal literal")
             )
         )
     ).
@@ -2281,7 +2281,7 @@ string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
                 conv_string_to_int(BinaryString, base_8, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated octal constant")
+                Token = error("unterminated octal literal")
             ),
             string_get_context(Posn1, Context, !Posn)
         )
@@ -2292,7 +2292,7 @@ string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
             conv_string_to_int(BinaryString, base_8, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated octal constant")
+            Token = error("unterminated octal literal")
         ),
         string_get_context(Posn1, Context, !Posn)
     ).
@@ -2306,7 +2306,7 @@ get_hex(Stream, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated hex constant")
+        Token = error("unterminated hexadecimal literal")
     ;
         Result = ok,
         ( if char.is_hex_digit(Char) then
@@ -2316,7 +2316,7 @@ get_hex(Stream, Token, !IO) :-
             get_hex(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            Token = error("unterminated hex constant")
+            Token = error("unterminated hexadecimal literal")
         )
     ).
 
@@ -2334,11 +2334,11 @@ string_get_hex(String, Len, Posn0, Token, Context, !Posn) :-
             string_get_hex(String, Len, Posn0, Token, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
-            Token = error("unterminated hex constant"),
+            Token = error("unterminated hexadecimal literal"),
             string_get_context(Posn0, Context, !Posn)
         )
     else
-        Token = error("unterminated hex constant"),
+        Token = error("unterminated hexadecimal literal"),
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -2357,7 +2357,7 @@ get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             rev_char_list_to_int(!.RevChars, base_16, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated hex constant")
+            Token = error("unterminated hexadecimal literal")
         )
     ;
         Result = ok,
@@ -2375,7 +2375,7 @@ get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 rev_char_list_to_int(!.RevChars, base_16, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated hex constant")
+                Token = error("unterminated hexadecimal literal")
             )
         )
     ).
@@ -2402,7 +2402,7 @@ string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
                 conv_string_to_int(BinaryString, base_16, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated hex constant")
+                Token = error("unterminated hexadecimal literal")
             ),
             string_get_context(Posn1, Context, !Posn)
         )
@@ -2413,7 +2413,7 @@ string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
             conv_string_to_int(BinaryString, base_16, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated hex constant")
+            Token = error("unterminated hexadecimal literal")
         ),
         string_get_context(Posn1, Context, !Posn)
     ).
@@ -2433,7 +2433,7 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             rev_char_list_to_int(!.RevChars, base_10, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated decimal constant")
+            Token = error("unterminated decimal literal")
         )
     ;
         Result = ok,
@@ -2450,7 +2450,7 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal constant")
+                Token = error("unterminated decimal literal")
             )
         else if ( Char = 'e' ; Char = 'E' ) then
             (
@@ -2468,7 +2468,7 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 rev_char_list_to_int(!.RevChars, base_10, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal constant")
+                Token = error("unterminated decimal literal")
             )
         )
     ).
@@ -2494,7 +2494,7 @@ string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
                     Context, !Posn)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal constant"),
+                Token = error("unterminated decimal literal"),
                 string_get_context(Posn0, Context, !Posn)
             )
         else if ( Char = 'e' ; Char = 'E' ) then
@@ -2515,7 +2515,7 @@ string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
                 conv_string_to_int(NumberString, base_10, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal constant")
+                Token = error("unterminated decimal literal")
             ),
             string_get_context(Posn0, Context, !Posn)
         )
@@ -2526,7 +2526,7 @@ string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
             conv_string_to_int(NumberString, base_10, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated decimal constant")
+            Token = error("unterminated decimal literal")
         ),
         string_get_context(Posn0, Context, !Posn)
     ).
@@ -2548,7 +2548,7 @@ get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             rev_char_list_to_int(!.RevChars, base_10, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated decimal constant")
+            Token = error("unterminated decimal literal")
         )
     ;
         Result = ok,
@@ -2574,7 +2574,7 @@ get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 )
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal constant")
+                Token = error("unterminated decimal literal")
             )
         )
     ).
@@ -2601,7 +2601,7 @@ string_get_int_dot(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
                 conv_string_to_int(NumberString, base_10, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal constant")
+                Token = error("unterminated decimal literal")
             ),
             string_get_context(Posn0, Context, !Posn)
         )
@@ -2613,7 +2613,7 @@ string_get_int_dot(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
             conv_string_to_int(NumberString, base_10, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated decimal constant")
+            Token = error("unterminated decimal literal")
         ),
         string_get_context(Posn0, Context, !Posn)
     ).
@@ -2727,7 +2727,7 @@ get_float_exponent(Stream, !.RevChars, Token, !IO) :-
             get_float_exponent_3(Stream, LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            Token = error("unterminated exponent in float token")
+            Token = error("unterminated exponent in float literal")
         )
     ).
 
@@ -2745,7 +2745,7 @@ string_get_float_exponent(String, Len, Posn0, Token, Context, !Posn) :-
                 Context, !Posn)
         else
             string_ungetchar(String, !Posn),
-            Token = error("unterminated exponent in float token"),
+            Token = error("unterminated exponent in float literal"),
             string_get_context(Posn0, Context, !Posn)
         )
     else
@@ -2768,7 +2768,7 @@ get_float_exponent_2(Stream, !.RevChars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated exponent in float token")
+        Token = error("unterminated exponent in float literal")
     ;
         Result = ok,
         ( if char.is_digit(Char) then
@@ -2777,7 +2777,7 @@ get_float_exponent_2(Stream, !.RevChars, Token, !IO) :-
             get_float_exponent_3(Stream, LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            Token = error("unterminated exponent in float token")
+            Token = error("unterminated exponent in float literal")
         )
     ).
 
@@ -2796,11 +2796,11 @@ string_get_float_exponent_2(String, Len, Posn0, Token, Context, !Posn) :-
                 Context, !Posn)
         else
             string_ungetchar(String, !Posn),
-            Token = error("unterminated exponent in float token"),
+            Token = error("unterminated exponent in float literal"),
             string_get_context(Posn0, Context, !Posn)
         )
     else
-        Token = error("unterminated exponent in float token"),
+        Token = error("unterminated exponent in float literal"),
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -2822,7 +2822,7 @@ get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             rev_char_list_to_float(!.RevChars, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated exponent in float token")
+            Token = error("unterminated exponent in float literal")
         )
     ;
         Result = ok,
@@ -2840,7 +2840,7 @@ get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 rev_char_list_to_float(!.RevChars, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated exponent in float token")
+                Token = error("unterminated exponent in float literal")
             )
         )
     ).
@@ -2868,7 +2868,7 @@ string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token, Context,
                 conv_to_float(FloatString, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated exponent in float token")
+                Token = error("unterminated exponent in float literal")
             ),
             string_get_context(Posn0, Context, !Posn)
         )
@@ -2879,7 +2879,7 @@ string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token, Context,
             conv_to_float(FloatString, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated exponent in float token")
+            Token = error("unterminated exponent in float literal")
         ),
         string_get_context(Posn0, Context, !Posn)
     ).

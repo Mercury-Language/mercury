@@ -8,22 +8,22 @@ invalid_binary_literal.m:012: Error: no clauses for function `foo7'/0.
 invalid_binary_literal.m:013: Error: no clauses for function `foo8'/0.
 invalid_binary_literal.m:017: Syntax error at token `. ': unexpected token at
 invalid_binary_literal.m:017:   start of (sub)term.
-invalid_binary_literal.m:017: Syntax error: unterminated binary constant.
+invalid_binary_literal.m:017: Syntax error: unterminated binary literal.
 invalid_binary_literal.m:019: Syntax error at token `. ': unexpected token at
 invalid_binary_literal.m:019:   start of (sub)term.
-invalid_binary_literal.m:019: Syntax error: unterminated binary constant.
+invalid_binary_literal.m:019: Syntax error: unterminated binary literal.
 invalid_binary_literal.m:021: Syntax error at token `. ': unexpected token at
 invalid_binary_literal.m:021:   start of (sub)term.
-invalid_binary_literal.m:021: Syntax error: unterminated binary constant.
+invalid_binary_literal.m:021: Syntax error: unterminated binary literal.
 invalid_binary_literal.m:023: Syntax error at token `. ': unexpected token at
 invalid_binary_literal.m:023:   start of (sub)term.
-invalid_binary_literal.m:023: Syntax error: unterminated binary constant.
+invalid_binary_literal.m:023: Syntax error: unterminated binary literal.
 invalid_binary_literal.m:025: Syntax error at token `. ': unexpected token at
 invalid_binary_literal.m:025:   start of (sub)term.
-invalid_binary_literal.m:025: Syntax error: unterminated binary constant.
+invalid_binary_literal.m:025: Syntax error: unterminated binary literal.
 invalid_binary_literal.m:027: Syntax error at token `. ': unexpected token at
 invalid_binary_literal.m:027:   start of (sub)term.
-invalid_binary_literal.m:027: Syntax error: unterminated binary constant.
+invalid_binary_literal.m:027: Syntax error: unterminated binary literal.
 invalid_binary_literal.m:029: Syntax error at variable `_b11': operator or `.'
 invalid_binary_literal.m:029:   expected.
 invalid_binary_literal.m:031: Syntax error at variable `_b11': operator or `.'
