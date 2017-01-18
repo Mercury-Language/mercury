@@ -1751,7 +1751,6 @@
 
 :- import_module benchmarking.
 :- import_module dir.
-:- import_module enum.
 :- import_module exception.
 :- import_module int.
 :- import_module parser.
