@@ -1054,7 +1054,8 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
         % only `fail'.
         SubGoal = hlds_goal(SubGoalExpr, _),
         ( if
-            SubGoalExpr = switch(SwitchVar, CanFail, Cases),
+            is_scope_subgoal_a_sortof_switch(SubGoalExpr,
+                SwitchVar, CanFail, Cases),
             SwitchVar = RequiredVar
         then
             (
@@ -1091,21 +1092,8 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
         Reason = require_switch_arms_detism(RequiredVar, RequiredDetism),
         SubGoal = hlds_goal(SubGoalExpr, _),
         ( if
-            (
-                SubGoalExpr = switch(SwitchVar, _CanFail, Cases)
-            ;
-                % If the switch originally directly inside this scope
-                % has some arms that have more solutions than they should
-                % but the identity of those solutions does not matter,
-                % the main determinism analysis algorithm will wrap the
-                % switch with a commit scope. To diagnose the problem
-                % that required this scope, we want to look through it.
-                SubGoalExpr = scope(SubReason, SubSubGoal),
-                SubReason = commit(_MaybeForcePruning),
-                SubSubGoal = hlds_goal(SubSubGoalExpr, _),
-                SubSubGoalExpr = switch(SwitchVar, _CanFail, Cases)
-            ),
-            SwitchVar = RequiredVar
+            is_scope_subgoal_a_sortof_switch(SubGoalExpr,
+                SwitchVar, _CanFail, Cases)
         then
             det_info_get_vartypes(!.DetInfo, VarTypes),
             lookup_var_type(VarTypes, SwitchVar, SwitchVarType),
@@ -1175,6 +1163,65 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
         ; Reason = trace_goal(_, _, _, _, _)
         )
     ).
+
+    % Is the given goal, which should be the subgoal of either a
+    % require_complete_switch or require_switch_arms_detism scope,
+    % a switch, or something that started out as a switch before
+    % being modified by the compiler passes between switch detection
+    % and here?
+    %
+:- pred is_scope_subgoal_a_sortof_switch(hlds_goal_expr::in,
+    prog_var::out, can_fail::out, list(case)::out) is semidet.
+            
+is_scope_subgoal_a_sortof_switch(GoalExpr, SwitchVar, CanFail, Cases) :-
+    require_complete_switch [GoalExpr]
+    (
+        GoalExpr = switch(SwitchVar, CanFail, Cases)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        % If the switch originally directly inside this scope
+        % has some arms that have more solutions than they should
+        % but the identity of those solutions does not matter,
+        % the main determinism analysis algorithm will wrap the
+        % switch with a commit scope. To diagnose the problem
+        % that required this scope, we want to look through it.
+        Reason = commit(_MaybeForcePruning),
+        SubGoal = hlds_goal(SubGoalExpr, _),
+        SubGoalExpr = switch(SwitchVar, CanFail, Cases)
+    ;
+        GoalExpr = conj(plain_conj, Conjuncts0),
+        flatten_conj(Conjuncts0, Conjuncts),
+        cse_lifted_then_sortof_switch(Conjuncts, SwitchVar, CanFail, Cases)
+    ;
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr = disj(_)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = shorthand(_)
+        ),
+        fail
+    ).
+
+:- pred cse_lifted_then_sortof_switch(list(hlds_goal)::in,
+    prog_var::out, can_fail::out, list(case)::out) is semidet.
+
+cse_lifted_then_sortof_switch(Conjuncts, SwitchVar, CanFail, Cases) :-
+    (
+        Conjuncts = [Conjunct],
+        Conjunct = hlds_goal(ConjunctExpr, _),
+        is_scope_subgoal_a_sortof_switch(ConjunctExpr,
+            SwitchVar, CanFail, Cases)
+    ;
+        Conjuncts = [Conjunct1, Conjunct2 | TailConjuncts],
+        goal_has_feature(Conjunct1, feature_lifted_by_cse),
+        cse_lifted_then_sortof_switch([Conjunct2 | TailConjuncts],
+            SwitchVar, CanFail, Cases) 
+    ).
+
+%-----------------------------------------------------------------------------%
 
     % Are we checking the determinism of a goal for a require_{det,...} scope,
     % or for a require_switch_arms_{det,...} scope?

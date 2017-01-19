@@ -500,7 +500,7 @@ detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap,
 % We have found a non-empty branched structure, and we have a list
 % of the nonlocal variables of that structure. For each nonlocal variable,
 % we check whether each branch matches that variable against
-%the same functor.
+% the same functor.
 %
 
 :- pred detect_cse_in_disj(list(prog_var)::in, list(hlds_goal)::in,
@@ -759,7 +759,7 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
 
 construct_common_unify(Var, Goal0, !CseInfo, OldNewVars, HoistedGoal,
         ReplacementGoals) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( if
         GoalExpr0 = unify(_, RHS, Umode, Unif0, Ucontext),
         Unif0 = deconstruct(_, ConsId, ArgVars, Submodes, CanFail, CanCGC)
@@ -774,11 +774,12 @@ construct_common_unify(Var, Goal0, !CseInfo, OldNewVars, HoistedGoal,
             ),
             unexpected($module, $pred, "non-functor unify")
         ),
-        Context = goal_info_get_context(GoalInfo),
+        goal_info_add_feature(feature_lifted_by_cse, GoalInfo0, GoalInfo1),
+        Context = goal_info_get_context(GoalInfo1),
         create_new_arg_vars(ArgVars, Context, Ucontext, !CseInfo,
             OldNewVars, ReplacementGoals),
         map.from_assoc_list(OldNewVars, Subn),
-        rename_some_vars_in_goal(Subn, hlds_goal(GoalExpr1, GoalInfo),
+        rename_some_vars_in_goal(Subn, hlds_goal(GoalExpr1, GoalInfo1),
             HoistedGoal)
     else
         unexpected($module, $pred, "non-unify goal")

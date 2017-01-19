@@ -1450,7 +1450,7 @@
             % since a spawned off task may need to use the parent's stack frame
             % even after the parent makes a tail call.
 
-    ;       feature_do_not_warn_implicit_stream.
+    ;       feature_do_not_warn_implicit_stream
             % Even if this call is to a predicate that operates on an implicit
             % stream, do not generate a warning about that. This feature
             % should be set on calls that are constructed by the compiler
@@ -1458,6 +1458,16 @@
             % - for which the code from which this call has been constructed
             %   has already had generated for it all the warnings of this type
             %   that it deserved.
+
+    ;       feature_lifted_by_cse.
+            % This goal is a deconstruction unification that has been lifted
+            % out of each arm of a switch by cse_detection.m. Used to avoid
+            % spurious warnings about the goal inside a scope such as
+            % `require_complete_switch [X] (...)' not being a switch
+            % in situations where the `...' starts out as a switch on X,
+            % but where cse_detection.m turns it into a conjunction,
+            % inserting one or more of these lifted-out deconstructions
+            % before the original switch.
 
 %-----------------------------------------------------------------------------%
 %
