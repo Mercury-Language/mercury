@@ -180,13 +180,13 @@ insert_error(FileName, LineNumber, Message, !ErrorMap) :-
     message::out) is semidet.
 
 parse_error(Chars, File, Line, Message) :-
-    takewhile((pred(C0::in) is semidet :-
+    take_while((pred(C0::in) is semidet :-
         C0 \= (':')
     ), Chars, FileChars, [_|Rest0]),
-    takewhile((pred(C1::in) is semidet :-
+    take_while((pred(C1::in) is semidet :-
         C1 \= (':')
     ), Rest0, LineChars, [_|Rest1]), % throw away the :
-    takewhile((pred(C2::in) is semidet :-
+    take_while((pred(C2::in) is semidet :-
         C2 \= ('\n')
     ), Rest1, MsgChars, _),
     string.from_char_list(FileChars, File),
