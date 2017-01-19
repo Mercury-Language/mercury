@@ -108,6 +108,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 %
@@ -396,7 +397,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
     CastVarAddr = ml_unop(cast(CPointerType), ml_mem_addr(VarLval)),
     TraceStmt = ml_stmt_call(Signature, FuncAddr, no,
-        [TypeInfoRval, CastVarAddr], [], ordinary_call),
+        [TypeInfoRval, CastVarAddr], [], ordinary_call, set.init),
     TraceStatement = statement(TraceStmt, mlds_make_context(Context)).
 
     % Generate HLDS code to construct the type_info for this type.
@@ -504,7 +505,8 @@ fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
         Stmt0 = ml_stmt_computed_goto(Rval, Labels),
         Stmt = ml_stmt_computed_goto(Rval, Labels)
     ;
-        Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
+        Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals,
+            _TailCall, _Markers),
         Stmt = Stmt0
     ;
         Stmt0 = ml_stmt_return(_Rvals),

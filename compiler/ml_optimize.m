@@ -166,7 +166,7 @@ optimize_in_statement(!.OptInfo, !Statement) :-
 
 optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
     (
-        Stmt0 = ml_stmt_call(_, _, _, _, _, _),
+        Stmt0 = ml_stmt_call(_, _, _, _, _, _, _),
         optimize_in_call_stmt(OptInfo, Stmt0, Stmt)
     ;
         Stmt0 = ml_stmt_block(Defns0, Statements0),
@@ -233,15 +233,12 @@ optimize_in_default(OptInfo, Default0, Default) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst mlcall
-    --->    ml_stmt_call(ground, ground, ground, ground, ground, ground).
-
 :- pred optimize_in_call_stmt(opt_info::in,
-    mlds_stmt::in(mlcall), mlds_stmt::out) is det.
+    mlds_stmt::in(ml_stmt_is_call), mlds_stmt::out) is det.
 
 optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
     Stmt0 = ml_stmt_call(_Signature, FuncRval, _MaybeObject, CallArgs,
-        _Results, _IsTailCall),
+        _Results, _IsTailCall, _Markers),
     % If we have a self-tailcall, assign to the arguments and
     % then goto the top of the tailcall loop.
     Globals = OptInfo ^ oi_globals,
@@ -509,7 +506,7 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
 stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
         Stmt) :-
     Stmt = ml_stmt_call(_Signature, CalleeRval, MaybeObject, _CallArgs,
-        _Results, CallKind),
+        _Results, CallKind, _Markers),
 
     % Check if this call has been marked by ml_tailcall.m as one that
     % can be optimized as a tail call.
@@ -741,7 +738,7 @@ statement_affects_lvals(Lvals, Statement, Affects) :-
         ),
         Affects = yes
     ;
-        Stmt = ml_stmt_call(_, _, _, _, _, _),
+        Stmt = ml_stmt_call(_, _, _, _, _, _, _),
         % A call can update local variables even without referring to them
         % explicitly, by referring to the environment in which they reside.
         Affects = yes
@@ -1520,12 +1517,13 @@ eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo) :-
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         Stmt = ml_stmt_computed_goto(Rval, Labels)
     ;
-        Stmt0 = ml_stmt_call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
+        Stmt0 = ml_stmt_call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall,
+            Markers),
         eliminate_var_in_rval(Func0, Func, !VarElimInfo),
         eliminate_var_in_maybe_rval(Obj0, Obj, !VarElimInfo),
         eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
         eliminate_var_in_lvals(RetLvals0, RetLvals, !VarElimInfo),
-        Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall)
+        Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall, Markers)
     ;
         Stmt0 = ml_stmt_return(Rvals0),
         eliminate_var_in_rvals(Rvals0, Rvals, !VarElimInfo),

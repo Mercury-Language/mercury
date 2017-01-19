@@ -3403,7 +3403,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
         io.write_string("}\n", !IO)
     ;
         Stmt = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
-            Results, IsTailCall),
+            Results, IsTailCall, _Markers),
         FuncInfo = func_info(CallerName, CallerSignature),
 
         % We need to enclose the generated code inside an extra pair of curly

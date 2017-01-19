@@ -66,6 +66,8 @@
     is det.
 :- pred ml_gen_info_get_global_data(ml_gen_info::in, ml_global_data::out)
     is det.
+:- pred ml_gen_info_get_disabled_warnings(ml_gen_info::in,
+    set(goal_warning)::out) is det.
 
 :- pred ml_gen_info_set_module_info(module_info::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -78,6 +80,8 @@
 :- pred ml_gen_info_set_value_output_vars(list(prog_var)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_global_data(ml_global_data::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_disabled_warnings(set(goal_warning)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_gen_info_get_globals(ml_gen_info::in, globals::out) is det.
@@ -353,7 +357,9 @@
                 % the normal lval that we use for a variable.
 /* 14 */        mgsi_success_cont_stack :: stack(success_cont),
 
-/* 15 */        mgsi_env_var_names      :: set(string)
+/* 15 */        mgsi_env_var_names      :: set(string),
+
+/* 16 */        mgsi_disabled_warnings  :: set(goal_warning)
             ).
 
 ml_gen_info_init(ModuleInfo, ConstStructMap, PredId, ProcId, ProcInfo,
@@ -385,7 +391,8 @@ ml_gen_info_init(ModuleInfo, ConstStructMap, PredId, ProcId, ProcInfo,
     stack.init(SuccContStack),
     map.init(VarLvals),
     ClosureWrapperDefns = [],
-    EnvVarNames = set.init,
+    set.init(EnvVarNames),
+    set.init(DisabledWarnings),
 
     SubInfo = ml_gen_sub_info(
         HighLevelData,
@@ -402,7 +409,8 @@ ml_gen_info_init(ModuleInfo, ConstStructMap, PredId, ProcId, ProcInfo,
         ConstStructMap,
         ClosureWrapperDefns,
         SuccContStack,
-        EnvVarNames
+        EnvVarNames,
+        DisabledWarnings
     ),
     Info = ml_gen_info(
         ModuleInfo,
@@ -454,6 +462,8 @@ ml_gen_info_get_success_cont_stack(Info,
 ml_gen_info_get_closure_wrapper_defns(Info,
     Info ^ mgi_sub_info ^ mgsi_closure_wrapper_defns).
 ml_gen_info_get_env_var_names(Info, Info ^ mgi_sub_info ^ mgsi_env_var_names).
+ml_gen_info_get_disabled_warnings(Info,
+    Info ^ mgi_sub_info ^ mgsi_disabled_warnings).
 
 :- pred ml_gen_info_set_func_counter(counter::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -523,6 +533,12 @@ ml_gen_info_set_env_var_names(EnvVarNames, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
     SubInfo = SubInfo0 ^ mgsi_env_var_names := EnvVarNames,
     !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_disabled_warnings(DisabledWarnings, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_disabled_warnings := DisabledWarnings,
+    !Info ^ mgi_sub_info := SubInfo.
+
+%-----------------------------------------------------------------------------%
 
 ml_gen_info_get_module_name(Info, ModuleName) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),

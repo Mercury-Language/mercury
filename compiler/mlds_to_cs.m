@@ -550,7 +550,7 @@ method_ptrs_in_stmt(ml_stmt_return(Rvals), !CodeAddrs) :-
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
 method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
     CallStmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
-        _IsTailCall),
+        _IsTailCall, _Markers),
     % We don't check "_Rval" - it may be a code address but is a
     % standard call rather than a function pointer use.
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
@@ -2865,7 +2865,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         unexpected($module, $pred, "computed gotos not supported in Java.")
     ;
         Statement = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
-            Results, IsTailCall),
+            Results, IsTailCall, _Markers),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
         io.write_string("{\n", !IO),

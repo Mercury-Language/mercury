@@ -1446,12 +1446,13 @@ flatten_stmt(Action, Stmt0, Stmt, !Info) :-
         fixup_rval(Action, !.Info, Rval0, Rval),
         Stmt = ml_stmt_computed_goto(Rval, Labels)
     ;
-        Stmt0 = ml_stmt_call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
+        Stmt0 = ml_stmt_call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall,
+            Markers),
         fixup_rval(Action, !.Info, Func0, Func),
         fixup_maybe_rval(Action, !.Info, Obj0, Obj),
         fixup_rvals(Action, !.Info, Args0, Args),
         fixup_lvals(Action, !.Info, RetLvals0, RetLvals),
-        Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall)
+        Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall, Markers)
     ;
         Stmt0 = ml_stmt_return(Rvals0),
         fixup_rvals(Action, !.Info, Rvals0, Rvals),
@@ -2266,7 +2267,8 @@ stmt_contains_matching_defn(Filter, Stmt) :-
         ( Stmt = ml_stmt_label(_Label)
         ; Stmt = ml_stmt_goto(_)
         ; Stmt = ml_stmt_computed_goto(_Rval, _Labels)
-        ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall)
+        ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall,
+            _Markers)
         ; Stmt = ml_stmt_return(_Rvals)
         ; Stmt = ml_stmt_do_commit(_Ref)
         ; Stmt = ml_stmt_atomic(_AtomicStmt)
@@ -2401,7 +2403,8 @@ add_unchain_stack_to_stmt(Action, Context, Stmt0, Stmt, !Info) :-
         add_unchain_stack_to_default(Action, Default0, Default, !Info),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
-        Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, RetLvals, CallKind),
+        Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, RetLvals, CallKind,
+            _Markers),
         add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context,
             Stmt, !Info)
     ;

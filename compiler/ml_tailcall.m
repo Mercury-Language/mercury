@@ -98,6 +98,7 @@
 
 :- import_module bool.
 :- import_module maybe.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -449,7 +450,7 @@ mark_tailcalls_in_stmt(TCallInfo, Context, AtTailAfter0, AtTailBefore,
         ),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
-        Stmt0 = ml_stmt_call(_, _, _, _, _, _),
+        Stmt0 = ml_stmt_call(_, _, _, _, _, _, _),
         mark_tailcalls_in_stmt_call(TCallInfo, Context,
             AtTailAfter0, AtTailBefore, Stmt0, Stmt, !InBodyInfo)
     ;
@@ -482,17 +483,14 @@ mark_tailcalls_in_stmt(TCallInfo, Context, AtTailAfter0, AtTailBefore,
         Stmt = Stmt0
     ).
 
-:- inst ml_stmt_call
-    --->    ml_stmt_call(ground, ground, ground, ground, ground, ground).
-
 :- pred mark_tailcalls_in_stmt_call(tailcall_info::in, mlds_context::in,
-    at_tail::in, at_tail::out, mlds_stmt::in(ml_stmt_call), mlds_stmt::out,
+    at_tail::in, at_tail::out, mlds_stmt::in(ml_stmt_is_call), mlds_stmt::out,
     tc_in_body_info::in, tc_in_body_info::out) is det.
 
 mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
         Stmt0, Stmt, !InBodyInfo) :-
     Stmt0 = ml_stmt_call(Sig, CalleeRval, MaybeObj, Args,
-        CallReturnLvals, CallKind0),
+        CallReturnLvals, CallKind0, Markers),
     ModuleName = TCallInfo ^ tci_module_name,
     FuncName = TCallInfo ^ tci_function_name,
 
@@ -530,7 +528,7 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
         then
             % Mark this call as a tail call.
             Stmt = ml_stmt_call(Sig, CalleeRval, MaybeObj, Args,
-                CallReturnLvals, tail_call),
+                CallReturnLvals, tail_call, Markers),
             AtTailBefore = not_at_tail_seen_reccall
         else
             (
@@ -543,8 +541,8 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
                     % If so, a warning may be useful.
                     AtTailAfter = at_tail(_)
                 ),
-                maybe_warn_tailcalls(TCallInfo, CalleeCodeAddr, Context,
-                    !InBodyInfo)
+                maybe_warn_tailcalls(TCallInfo, CalleeCodeAddr, Markers,
+                    Context, !InBodyInfo)
             ),
             Stmt = Stmt0,
             AtTailBefore = not_at_tail_seen_reccall
@@ -601,9 +599,10 @@ mark_tailcalls_in_default(TCallInfo, AtTailAfter, AtTailBefore,
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_warn_tailcalls(tailcall_info::in, mlds_code_addr::in,
-    mlds_context::in, tc_in_body_info::in, tc_in_body_info::out) is det.
+    set(ml_call_marker)::in, mlds_context::in,
+    tc_in_body_info::in, tc_in_body_info::out) is det.
 
-maybe_warn_tailcalls(TCallInfo, CodeAddr, Context, !InBodyInfo) :-
+maybe_warn_tailcalls(TCallInfo, CodeAddr, Markers, Context, !InBodyInfo) :-
     WarnTailCalls = TCallInfo ^ tci_warn_tail_calls,
     MaybeRequireTailrecInfo = TCallInfo ^ tci_maybe_require_tailrec,
     ( if
@@ -668,12 +667,17 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Context, !InBodyInfo) :-
         ;
             PredLabel = mlds_user_pred_label(PredOrFunc, _MaybeModule,
                 Name, Arity, _CodeModel, _NonOutputFunc),
-            SymName = unqualified(Name),
-            SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
-            Specs0 = !.InBodyInfo ^ tibi_specs,
-            add_message_for_nontail_recursive_call(SimpleCallId, ProcId,
-                WarnOrError, mlds_get_prog_context(Context), Specs0, Specs),
-            !InBodyInfo ^ tibi_specs := Specs
+            ( if set.contains(Markers, mcm_disable_non_tail_rec_warning) then
+                true
+            else
+                SymName = unqualified(Name),
+                SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+                Specs0 = !.InBodyInfo ^ tibi_specs,
+                add_message_for_nontail_recursive_call(SimpleCallId, ProcId,
+                    WarnOrError, mlds_get_prog_context(Context),
+                    Specs0, Specs),
+                !InBodyInfo ^ tibi_specs := Specs
+            )
         )
     else
         true

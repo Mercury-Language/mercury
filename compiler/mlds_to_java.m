@@ -815,7 +815,7 @@ method_ptrs_in_stmt(ml_stmt_return(Rvals), !CodeAddrs) :-
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
 method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
     CallStmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
-        _IsTailCall),
+        _IsTailCall, _Markers),
     % We don't check "_Rval" - it may be a code address but is a
     % standard call rather than a function pointer use.
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
@@ -1243,7 +1243,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Statement) :-
         CallRetLvals = [ReturnLval]
     ),
     Call = ml_stmt_call(OrigFuncSignature, CallRval, no, CallArgs,
-        CallRetLvals, ordinary_call),
+        CallRetLvals, ordinary_call, set.init),
     CallStatement = statement(Call, Context),
 
     % Create a return statement that returns the result of the call to the
@@ -1596,7 +1596,7 @@ rename_class_names_stmt(Renaming, !Stmt) :-
         !:Stmt = ml_stmt_computed_goto(Rval, Labels)
     ;
         !.Stmt = ml_stmt_call(Signature0, Rval0, MaybeThis, Rvals0, RetLvals0,
-            CallKind),
+            CallKind, Markers),
         Signature0 = mlds_func_signature(ArgTypes0, RetTypes0),
         list.map(rename_class_names_type(Renaming), ArgTypes0, ArgTypes),
         list.map(rename_class_names_type(Renaming), RetTypes0, RetTypes),
@@ -1605,7 +1605,7 @@ rename_class_names_stmt(Renaming, !Stmt) :-
         list.map(rename_class_names_rval(Renaming), Rvals0, Rvals),
         list.map(rename_class_names_lval(Renaming), RetLvals0, RetLvals),
         !:Stmt = ml_stmt_call(Signature, Rval, MaybeThis, Rvals, RetLvals,
-            CallKind)
+            CallKind, Markers)
     ;
         !.Stmt = ml_stmt_return(Rvals0),
         list.map(rename_class_names_rval(Renaming), Rvals0, Rvals),
@@ -4055,7 +4055,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         unexpected($module, $pred, "computed gotos not supported in Java.")
     ;
         Statement = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
-            Results, _IsTailCall),
+            Results, _IsTailCall, _Markers),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),

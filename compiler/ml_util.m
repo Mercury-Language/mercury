@@ -279,7 +279,8 @@ stmt_contains_statement(Stmt, SubStatement) :-
         ( Stmt = ml_stmt_label(_Label)
         ; Stmt = ml_stmt_goto(_)
         ; Stmt = ml_stmt_computed_goto(_Rval, _Labels)
-        ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall)
+        ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall,
+            _Markers)
         ; Stmt = ml_stmt_return(_Rvals)
         ; Stmt = ml_stmt_do_commit(_Ref)
         ; Stmt = ml_stmt_atomic(_AtomicStmt)
@@ -403,7 +404,8 @@ stmt_contains_var(Stmt, DataName) = ContainsVar :-
         Stmt = ml_stmt_computed_goto(Rval, _Labels),
         ContainsVar = rval_contains_var(Rval, DataName)
     ;
-        Stmt = ml_stmt_call(_Sig, Func, Obj, Args, RetLvals, _TailCall),
+        Stmt = ml_stmt_call(_Sig, Func, Obj, Args, RetLvals, _TailCall,
+            _Markers),
         FuncContainsVar = rval_contains_var(Func, DataName),
         (
             FuncContainsVar = yes,

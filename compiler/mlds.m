@@ -1086,15 +1086,28 @@
     % Function call/return.
 
     ;       ml_stmt_call(
-                mlds_func_signature,    % Signature of the function.
-                mlds_rval,              % The function to call.
-                maybe(mlds_rval),       % For method calls, this field
-                                        % specifies the `this' object.
-                list(mlds_rval),        % Ordinary function arguments.
-                list(mlds_lval),        % Places to store the function return
-                                        % value(s).
-                ml_call_kind            % Indicates whether this call is a
-                                        % tail call.
+                % The signature of the callee function.
+                mlds_func_signature,
+
+                % The function to call.
+                mlds_rval,
+
+                % For method calls, this field specifies the `this' object.
+                maybe(mlds_rval),
+
+                % The ordinary function arguments.
+                list(mlds_rval),
+
+                % Th places to store the function return value(s).
+                list(mlds_lval),
+
+                % Is this call an ordinary call, a tail call,
+                % or a no-return call?
+                ml_call_kind,
+
+                % The set of special treatments that apply to this call.
+                % Almost always the empty set.
+                set(ml_call_marker)
             )
 
     ;       ml_stmt_return(list(mlds_rval))  % Some targets will not support
@@ -1158,6 +1171,10 @@
     % Atomic statements.
 
     ;       ml_stmt_atomic(mlds_atomic_statement).
+
+:- inst ml_stmt_is_call
+    --->    ml_stmt_call(ground, ground, ground, ground, ground,
+                ground, ground).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1255,6 +1272,19 @@
                             % (this is a special case of a tail call)
     ;       tail_call       % A tail call.
     ;       ordinary_call.  % Just an ordinary call.
+
+    % The `ml_call_marker' type lists the ways in which the MLDS backend's
+    % handling of a call should deviate from the usual course of events.
+    % 
+:- type ml_call_marker
+    --->    mcm_disable_non_tail_rec_warning.
+            % Don't generate a warning we would otherwise generate
+            % if this call is (a) recursive, but (b) not *tail* recursive.
+            %
+            % For the reason why this information is attached to a call
+            % in the MLDS, as well as being expressed as a scope in the HLDS, 
+            % see the comment at the top of ml_tailcall.m (which generates
+            % such warnings during compilations that target the MLDS backend).
 
 %-----------------------------------------------------------------------------%
 %

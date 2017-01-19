@@ -1894,8 +1894,9 @@ ml_gen_call_current_success_cont(Context, Statement, !Info) :-
     ObjectRval = no,
     RetLvals = [],
     CallKind = ordinary_call,
+    set.init(Markers),
     Stmt = ml_stmt_call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
-        CallKind),
+        CallKind, Markers),
     Statement = statement(Stmt, mlds_make_context(Context)).
 
 ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
@@ -1923,6 +1924,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     ObjectRval = no,
     RetLvals = [],
     CallKind = ordinary_call,
+    set.init(Markers),
 
     MLDS_Context = mlds_make_context(Context),
     ml_gen_info_get_module_name(!.Info, PredModule),
@@ -1942,7 +1944,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     ml_gen_cont_params(ArgTypes0, InnerFuncParams0, !Info),
     InnerFuncParams0 = mlds_func_params(InnerArgs0, Rets),
     InnerArgRvals = list.map(
-        (func(mlds_argument(Data, Type, _GC) ) = Lval :-
+        ( func(mlds_argument(Data, Type, _GC) ) = Lval :-
             ( if Data = entity_data(mlds_data_var(VarName)) then
                 Lval = ml_lval(ml_var(qual(MLDS_Module, module_qual, VarName),
                     Type))
@@ -1964,7 +1966,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     InnerFuncParams = mlds_func_params([PassedContArg | InnerArgs0], Rets),
 
     InnerStmt = ml_stmt_call(Signature, InnerFuncRval, ObjectRval,
-        InnerArgRvals, RetLvals, CallKind),
+        InnerArgRvals, RetLvals, CallKind, Markers),
     InnerStatement = statement(InnerStmt, MLDS_Context),
 
     ml_gen_label_func(!.Info, 1, InnerFuncParams, Context, InnerStatement,
@@ -1986,7 +1988,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
 
         % Put it inside a block where we call it.
         Stmt = ml_stmt_call(ProxySignature, ProxyFuncRval, ObjectRval,
-            ProxyArgRvals, RetLvals, CallKind),
+            ProxyArgRvals, RetLvals, CallKind, Markers),
         BlockStmt = ml_stmt_block([Defn], [statement(Stmt, MLDS_Context)]),
         Statement = statement(BlockStmt, MLDS_Context)
     else

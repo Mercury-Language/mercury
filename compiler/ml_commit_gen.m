@@ -11,12 +11,11 @@
 %
 % This module handles code generation for commits.
 %
-% There's several different ways of handling commits:
+% There are several different ways of handling commits:
 %   - using catch/throw
 %   - using setjmp/longjmp
 %   - using GCC's __builtin_setjmp/__builtin_longjmp
-%   - exiting nested functions via gotos to
-%     their containing functions
+%   - exiting nested functions via gotos to their containing functions
 %
 % The MLDS data structure abstracts away these differences using the
 % `try_commit' and `do_commit' instructions. The comments below show
@@ -25,7 +24,7 @@
 % This shows how the MLDS->target back-end can map mlds_commit_type,
 % do_commit and try_commit into target language constructs.
 %
-% Note that if we're using GCC's __builtin_longjmp(), then it is important
+% Note that if we are using GCC's __builtin_longjmp(), then it is important
 % that the call to __builtin_longjmp() be put in its own function, to ensure
 % that it is not in the same function as the __builtin_setjmp(). The code
 % generation schema below does that automatically. We will need to be careful
@@ -192,6 +191,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module string.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -370,7 +370,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
     %
     % To avoid this, whenever we generate a commit, we put it in its own
     % nested function, with the local variables (e.g. `succeeded', plus any
-    % outputs from the goal that we're committing over) remaining in the
+    % outputs from the goal that we are committing over) remaining in the
     % containing function. This ensures that none of the variables which
     % get modified between the setjmp() and the longjmp() and which get
     % referenced after the longjmp() are local variables in the function
@@ -379,7 +379,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
     % [The obvious alternative of declaring the local variables in the function
     % containing setjmp() as `volatile' doesn't work, since the assignments
     % to those output variables may be deep in some function called indirectly
-    % from the goal that we're committing across, and assigning to a
+    % from the goal that we are committing across, and assigning to a
     % volatile-qualified variable via a non-volatile pointer is undefined
     % behaviour. The only way to make it work would be to be to declare
     % *every* output argument that we pass by reference as `volatile T *'.
@@ -421,8 +421,9 @@ maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
         RetTypes = [],
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         CallKind = ordinary_call,
+        set.init(Markers),
         CallStmt = ml_stmt_call(Signature, CommitFuncLabelRval, no, ArgRvals,
-            [], CallKind),
+            [], CallKind, Markers),
         CallStatement = statement(CallStmt, mlds_make_context(Context)),
         % Package it all up.
         Statements = [CallStatement],
@@ -438,7 +439,7 @@ maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
     % if the context is a model_det or model_semi procedure with output
     % arguments passed by reference, then we need to introduce local variables
     % corresponding to those output arguments, and at the end of the commit
-    % we'll copy the local variables into the output arguments.
+    % we will copy the local variables into the output arguments.
     %
 :- pred ml_gen_maybe_make_locals_for_output_args(hlds_goal_info::in,
     list(mlds_defn)::out, list(statement)::out,

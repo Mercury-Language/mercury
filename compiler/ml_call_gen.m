@@ -107,6 +107,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -480,8 +481,14 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
     else
         CallKind = ordinary_call
     ),
+    ml_gen_info_get_disabled_warnings(!.Info, Warnings),
+    ( if set.contains(Warnings, goal_warning_non_tail_recursive_calls) then
+        Markers = set.make_singleton_set(mcm_disable_non_tail_rec_warning)
+    else
+        set.init(Markers)
+    ),
     Stmt = ml_stmt_call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
-        CallKind),
+        CallKind, Markers),
     Statement = statement(Stmt, mlds_make_context(Context)),
     Statements = [Statement].
 

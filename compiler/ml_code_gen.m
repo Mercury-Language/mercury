@@ -236,7 +236,7 @@
 %
 %       entry_func();
 %
-% The more efficient method generates the goals in reverse order, so it's less
+% The more efficient method generates the goals in reverse order, so it is less
 % readable, but it has fewer function calls and can make it easier for the C
 % compiler to inline things:
 %
@@ -251,7 +251,7 @@
 %
 % The more efficient method is the one we actually use.
 %
-% Here's how those two methods look on longer conjunctions of nondet goals:
+% Here is how those two methods look on longer conjunctions of nondet goals:
 %
 %   model_non goals (optimized for readability):
 %       <Goal1, Goal2, Goal3, Goals>
@@ -304,7 +304,7 @@
 %       <Goal1 && label1_func()>;
 %
 % This would avoid the undesirable deep nesting that we sometimes get with
-% our current scheme. However, if we're eliminating nested functions, as is
+% our current scheme. However, if we are eliminating nested functions, as is
 % normally the case, then after the ml_elim_nested transformation all the
 % functions and variables have been hoisted to the top level, so there is
 % no difference between these two.
@@ -409,7 +409,7 @@
 %           - deconstructions
 %       - switches
 %       - commits
-%       - `pragma c_code'
+%       - `pragma foreign_proc'
 %   - RTTI
 %   - high level data representation
 %     (i.e. generate MLDS type declarations for user-defined types)
@@ -532,6 +532,7 @@
 :- import_module bool.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -666,19 +667,49 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
         ml_gen_negation(SubGoal, CodeModel, Context, Decls, Statements, !Info)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( if
-            Reason = from_ground_term(TermVar, from_ground_term_construct)
-        then
+        (
+            Reason = from_ground_term(TermVar, from_ground_term_construct),
             ml_gen_ground_term(TermVar, SubGoal, Statements, !Info),
             Decls = []
-        else
+        ;
+            ( Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ; Reason = from_ground_term(_, from_ground_term_other)
+            ; Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ; Reason = require_switch_arms_detism(_, _)
+            ; Reason = trace_goal(_, _, _, _, _)
+            ),
+            ml_gen_goal(CodeModel, SubGoal, Decls, Statements, !Info)
+        ;
+            Reason = disable_warnings(HeadWarning, TailWarnings),
+            ml_gen_info_get_disabled_warnings(!.Info, Warnings0),
+            set.insert_list([HeadWarning | TailWarnings], Warnings0, Warnings),
+            ml_gen_info_set_disabled_warnings(Warnings, !Info),
+            ml_gen_goal(CodeModel, SubGoal, Decls, Statements, !Info),
+            ml_gen_info_set_disabled_warnings(Warnings0, !Info)
+        ;
+            ( Reason = exist_quant(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = promise_solutions(_, _)
+            ),
             ml_gen_commit(SubGoal, CodeModel, Context, Decls, Statements,
                 !Info)
+        ;
+            Reason = loop_control(_, _, _),
+            % This hasn't been implemented for the MLDS backend yet.
+            unexpected($module, "loop_control NYI")
+        ;
+            Reason = from_ground_term(_, from_ground_term_initial),
+            % These should have been replaced by one of the other
+            % from_ground_term_* scopes.
+            unexpected($module, "unexpected from_ground_term_initial")
         )
     ;
         GoalExpr = shorthand(_),
-        % these should have been expanded out by now
-        unexpected($module, $pred, "unexpected shorthand")
+        % These should have been expanded out by now.
+        unexpected($module, "unexpected shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
