@@ -44,9 +44,9 @@
 
     % adjust_func_arity(PredOrFunc, FuncArity, PredArity).
     %
-    % We internally store the arity as the length of the argument
-    % list including the return value, which is one more than the
-    % arity of the function reported in error messages.
+    % We internally store the arity as the length of the argument list
+    % including the return value, which is one more than the arity
+    % of the function reported in error messages.
     %
 :- pred adjust_func_arity(pred_or_func, int, int).
 :- mode adjust_func_arity(in, in, out) is det.
@@ -54,23 +54,29 @@
 
 %-----------------------------------------------------------------------------%
 
-    % make_pred_name_with_context(ModuleName, Prefix, PredOrFunc, PredName,
-    %   Line, Counter, SymName).
+    % make_pred_name_with_context(ModuleName, Prefix, PredOrFunc,
+    %   PredName, Line, Counter, SymName):
     %
-    % Create a predicate name with context, e.g. for introduced
-    % lambda or deforestation predicates.
+    % Create a predicate name and return it as SymName. Create the name
+    % based on the Prefix, the PredOrFunc, the base name PredName,
+    % and the line number Line.
     %
-:- pred make_pred_name(module_name::in, string::in, maybe(pred_or_func)::in,
-    string::in, new_pred_id::in, sym_name::out) is det.
-
-    % make_pred_name_with_context(ModuleName, Prefix, PredOrFunc, PredName,
-    %   Line, Counter, SymName).
-    %
-    % Create a predicate name with context, e.g. for introduced
-    % lambda or deforestation predicates.
+    % For use in cases where we create more than one predicate for the
+    % same line, we also include the per-line distinguishing Counter
+    % in the name.
     %
 :- pred make_pred_name_with_context(module_name::in, string::in,
     pred_or_func::in, string::in, int::in, int::in, sym_name::out) is det.
+
+    % make_pred_name_with_context(ModuleName, Prefix, MaybePredOrFunc,
+    %   PredName, NewPredId, SymName):
+    %
+    % Create a predicate name and return it as SymName. Create the name
+    % based on the Prefix, the (maybe) PredOrFunc, the base name PredName,
+    % and the pred-name-suffix generating scheme described by NewPredId.
+    %
+:- pred make_pred_name(module_name::in, string::in, maybe(pred_or_func)::in,
+    string::in, new_pred_id::in, sym_name::out) is det.
 
 :- type new_pred_id
     --->    newpred_counter(int, int)                   % Line number, Counter
@@ -84,6 +90,8 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type maybe_modes == maybe(list(mer_mode)).
+
     % A pred declaration may contains just types, as in
     %   :- pred list.append(list(T), list(T), list(T)).
     % or it may contain both types and modes, as in
@@ -91,9 +99,7 @@
     %
     % This predicate takes the argument list of a pred declaration, splits it
     % into two separate lists for the types and (if present) the modes.
-
-:- type maybe_modes == maybe(list(mer_mode)).
-
+    %
 :- pred split_types_and_modes(list(type_and_mode)::in, list(mer_type)::out,
     maybe_modes::out) is det.
 
@@ -538,8 +544,8 @@ rename_in_catch_expr(OldVar, NewVar, Catch0, Catch) :-
 
 %-----------------------------------------------------------------------------%
 
-make_pred_name_with_context(ModuleName, Prefix,
-        PredOrFunc, PredName, Line, Counter, SymName) :-
+make_pred_name_with_context(ModuleName, Prefix, PredOrFunc, PredName,
+        Line, Counter, SymName) :-
     make_pred_name(ModuleName, Prefix, yes(PredOrFunc), PredName,
         newpred_counter(Line, Counter), SymName).
 
