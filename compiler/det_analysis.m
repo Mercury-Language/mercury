@@ -71,8 +71,8 @@
 :- pred determinism_pass(module_info::in, module_info::out,
     list(error_spec)::out) is det.
 
-    % Check the determinism of a single procedure (only works if the
-    % determinism of the procedures it calls has already been inferred).
+    % Check the determinism of a single procedure. Works only if the
+    % determinisms of the procedures it calls have already been inferred.
     %
 :- pred determinism_check_proc(proc_id::in, pred_id::in,
     module_info::in, module_info::out, list(error_spec)::out) is det.
@@ -86,9 +86,39 @@
     --->    pess_info(prog_vars, prog_context).
             % short for promise_equivalent_solution_sets_info
 
+    % det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
+    %   RightFailingContexts, MaybePromiseEqvSolutionSets,
+    %   Detism, GoalFailingContexts, !DetInfo):
+    %
     % Infers the determinism of `Goal0' and returns this in `Detism'.
-    % It annotates the goal and all its subgoals with their determinism
+    % It annotates the goal and all its subgoals with their determinisms,
     % and returns the annotated goal in `Goal'.
+    %
+    % InstMap0 should be the instmap at the start of Goal0.
+    % SolnContext should tell us whether Goal0 occurs in a context
+    % where only the first solution is required (the inherited component
+    % of determinism mentioned at the top).
+    %
+    % RightFailingContexts should specify the set of failing_contexts
+    % (goals that can fail, with descriptions of how they can fail)
+    % to the right of Goal0 in the surrounding code. In GoalFailingContexts,
+    % we return the set of failing_contexts that can fail inside Goal.
+    %
+    % The reason why we need to know which goals can fail to the right of
+    % Goal0 has to do with committed choice code. If you only need
+    % the first solution of a conjunction, you may only need the first
+    % solution of each conjunct, but if conjunct k may fail, then it is not
+    % enough for a conjunct i for i<k to generate its first solution,
+    % since this solution may be rejected by conjunct k. The conjuncts i
+    % are therefore in an all_solns context, even if the conjunction
+    % is in a first_soln context. The reason why we want to know
+    % not only *whether* there are any goals to the right of Goal0
+    % that can fail, but also *where* they are, and *how* they can fail,
+    % is for the generation of informative error messages.
+    %
+    % If Goal0 is inside a promise_equivalent_solution_sets scope,
+    % then MaybePromiseEqvSolutionSets should specify its details.
+    % Otherwise, it should be `no'.
     %
 :- pred det_infer_goal(hlds_goal::in, hlds_goal::out, instmap::in,
     soln_context::in, list(failing_context)::in, maybe(pess_info)::in,

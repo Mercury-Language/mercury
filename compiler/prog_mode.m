@@ -145,7 +145,13 @@
     list(mer_inst)::out) is det.
 
     % Given a (list of) bound_insts, get the corresponding cons_ids.
-    % The type_ctor, if given,
+    % The type_ctor should be the type constructor of the variable
+    % the bound_insts are for.
+    %
+    % Note that it is entirely possible for two *different* bound_insts
+    % in a bound/3 inst to refer to the *same* cons_id, because they can
+    % specify different insts for the cons_id's arguments. Therefore the
+    % list returned from bound_insts_to_cons_ids may contain duplicates.
     %
 :- pred bound_inst_to_cons_id(type_ctor::in, bound_inst::in,
     cons_id::out) is det.
