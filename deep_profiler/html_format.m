@@ -549,8 +549,8 @@ table_data_to_html(_, td_t(Time)) =
     str_to_html(format_time(Time)).
 
     % This predicate is used when a table class map couldn't be built from the
-    % header of the table (perhaps there was no header). It it provides a
-    % class for some data that class is used, otherwise the default class is
+    % header of the table (perhaps there was no header). It provides a class
+    % for some data that class is used, otherwise the default class is
     % assumed.
     %
 :- pred table_data_class(table_data::in, table_column_class::out) is semidet.

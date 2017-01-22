@@ -2275,6 +2275,9 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
                 term.var_list_to_term_list(Args, ArgTerms),
                 construct_qualified_term(SymName, ArgTerms, RHSTerm)
             )
+        ;
+            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+            fail
         )
     then
         % Don't strip the headvar unifications if one of the

@@ -158,9 +158,13 @@ warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable, SpecialPredId,
 
 process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor, TypeDefn,
         PredId, !Specs) :-
-    ( if
-        special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
-    then
+    NeedsTermCheck =
+        special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn),
+    (
+        NeedsTermCheck = no
+    ;
+        NeedsTermCheck = yes,
+
         % Compiler generated special preds are always mode 0.
         proc_id_to_int(ProcId, 0),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
@@ -184,49 +188,82 @@ process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor, TypeDefn,
             generate_non_term_user_special_warning(Context, SpecialPredId,
                 TypeCtor, !Specs)
         )
-    else
-        true
     ).
 
-    % Succeeds if the specified type of special_pred for this type needs to
-    % have its termination status checked.
+    % Return `yes' iff the specified kind of special_pred for this type
+    % needs to have its termination status checked.
     %
-:- pred special_pred_needs_term_check(module_info::in,
-    special_pred_id::in, hlds_type_defn::in) is semidet.
+:- func special_pred_needs_term_check(module_info, special_pred_id,
+    hlds_type_defn) = bool.
 
-special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
+special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
+        = NeedsTermCheck :-
     get_type_defn_body(TypeDefn, TypeBody),
-    get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare),
+    get_user_unify_compare(ModuleInfo, TypeBody, MaybeUnifyCompare),
     (
-        UnifyCompare = unify_compare(MaybeUnify, MaybeCompare),
+        MaybeUnifyCompare = yes(UnifyCompare),
         (
-            MaybeUnify = yes(_),
-            SpecialPredId = spec_pred_unify
+            UnifyCompare = unify_compare(MaybeUnify, MaybeCompare),
+            (
+                SpecialPredId = spec_pred_unify,
+                (
+                    MaybeUnify = yes(_),
+                    NeedsTermCheck = yes
+                ;
+                    MaybeUnify = no,
+                    NeedsTermCheck = no
+                )
+            ;
+                SpecialPredId = spec_pred_compare,
+                (
+                    MaybeCompare = yes(_),
+                    NeedsTermCheck = yes
+                ;
+                    MaybeCompare = no,
+                    NeedsTermCheck = no
+                )
+            ;
+                SpecialPredId = spec_pred_index,
+                % There is no way for users to specify their own index
+                % predicates. All index predicates are compiler generated,
+                % and all of them are designed to terminate.
+                NeedsTermCheck = no
+            )
         ;
-            MaybeCompare = yes(_),
-            SpecialPredId = spec_pred_compare
+            UnifyCompare = abstract_noncanonical_type(_),
+            unexpected($pred, "type is local and abstract_noncanonical")
         )
     ;
-        UnifyCompare = abstract_noncanonical_type(_),
-        unexpected($module, $pred,
-            "type is local and abstract_noncanonical")
+        MaybeUnifyCompare = no,
+        NeedsTermCheck = no
     ).
 
     % Succeeds if the given type has user-defined equality and/or comparison
     % and returns the relevant information about which predicates implement it.
     %
 :- pred get_user_unify_compare(module_info::in, hlds_type_body::in,
-    unify_compare::out) is semidet.
+    maybe(unify_compare)::out) is det.
 
-get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare) :-
+get_user_unify_compare(ModuleInfo, TypeBody, MaybeUnifyCompare) :-
     (
-        TypeBody = hlds_du_type(_, _, _, _, yes(UnifyCompare), _, _, _, _)
+        TypeBody = hlds_du_type(_, _, _, _, MaybeUnifyCompare, _, _, _, _)
+    ;
+        TypeBody = hlds_solver_type(_, MaybeUnifyCompare)
     ;
         TypeBody = hlds_foreign_type(ForeignTypeBody),
-        foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
-            ForeignTypeBody, UnifyCompare)
+        ( if
+            foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
+                ForeignTypeBody, UnifyCompare)
+        then
+            MaybeUnifyCompare = yes(UnifyCompare)
+        else
+            MaybeUnifyCompare = no
+        )
     ;
-        TypeBody = hlds_solver_type(_, yes(UnifyCompare))
+        ( TypeBody = hlds_abstract_type(_)
+        ; TypeBody = hlds_eqv_type(_)
+        ),
+        MaybeUnifyCompare = no
     ).
 
 :- pred generate_non_term_user_special_warning(prog_context::in,

@@ -475,11 +475,15 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
         ( if
             Terminates = get_terminates(Attributes),
+            require_complete_switch [Terminates]
             (
                 Terminates = proc_terminates
             ;
                 Terminates = depends_on_mercury_calls,
                 get_may_call_mercury(Attributes) = proc_will_not_call_mercury
+            ;
+                Terminates = proc_does_not_terminate,
+                fail
             )
         then
             CanLoop = no

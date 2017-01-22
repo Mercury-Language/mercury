@@ -1114,7 +1114,7 @@ insert_refine_goals(ToInsertGoals, Goal0, Goal) :-
     % Given two sets of requirements about where a goal is needed, return
     % a single requirement that contains all the demands. The main purpose
     % of this predicate is to discover when the union of two sets of
-    % requirements (e.g. branch sets {b1,b2} and {b3} covers all
+    % requirements (e.g. branch sets {b1,b2} and {b3}) covers all
     % computation paths.
     %
 :- pred where_needed_upper_bound(containing_goal_map::in, goal_id::in,
@@ -1196,6 +1196,7 @@ get_parent_branch_point(ContainingGoalMap, GoalId, BranchGoalId,
         BranchArmGoalId, BranchAlt, BranchNum) :-
     map.lookup(ContainingGoalMap, GoalId, GoalContaining),
     GoalContaining = containing_goal(ContainingGoalId, LastStep),
+    require_complete_switch [LastStep]
     (
         LastStep = step_switch(Arm, MaybeNumAlts),
         BranchGoalId = ContainingGoalId,
@@ -1223,17 +1224,34 @@ get_parent_branch_point(ContainingGoalMap, GoalId, BranchGoalId,
         ),
         get_parent_branch_point(ContainingGoalMap, ContainingGoalId,
             BranchGoalId, BranchArmGoalId, BranchAlt, BranchNum)
+    ;
+        % The optimization has not yet been extended to handle atomic goals.
+        ( LastStep = step_atomic_main
+        ; LastStep = step_atomic_orelse(_)
+        ),
+        fail
+    ;
+        % Lambdas and try scopes should have been expanded out
+        % by the time this optimization is invoked.
+        ( LastStep = step_lambda
+        ; LastStep = step_try
+        ),
+        fail
     ).
 
 :- pred branch_point_is_complete(branch_alts::in, set(int)::in) is semidet.
 
-branch_point_is_complete(alt_ite, Alts) :-
-    set.count(Alts, NumAlts),
-    NumAlts = 2.
-branch_point_is_complete(alt_switch(known_num_functors_in_type(NumFunctors)),
-        Alts) :-
-    set.count(Alts, NumAlts),
-    NumAlts = NumFunctors.
+branch_point_is_complete(BranchAlts, Alts) :-
+    (
+        BranchAlts = alt_ite,
+        set.count(Alts, NumAlts),
+        NumAlts = 2
+    ;
+        BranchAlts = alt_switch(MaybeSwitchNumFunctors),
+        MaybeSwitchNumFunctors = known_num_functors_in_type(NumFunctors),
+        set.count(Alts, NumAlts),
+        NumAlts = NumFunctors
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module transform_hlds.unneeded_code.

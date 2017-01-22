@@ -342,10 +342,18 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
             ( Name = "store_at_ref_impure"
             ; Name = "store_at_ref"
             ),
-            ( CompilationTarget = target_java
-            ; CompilationTarget = target_csharp
-            ; CompilationTarget = target_erlang
-            )
+            require_complete_switch [CompilationTarget]
+            (
+                ( CompilationTarget = target_java
+                ; CompilationTarget = target_csharp
+                ; CompilationTarget = target_erlang
+                ),
+                SupportsStore = no
+            ;
+                CompilationTarget = target_c,
+                SupportsStore = yes
+            ),
+            SupportsStore = no
         )
     then
         GoalExpr = conj(plain_conj, []),

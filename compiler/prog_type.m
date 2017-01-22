@@ -1161,14 +1161,14 @@ type_unify_special(TypeX, TypeY, HeadTypeParams, !Bindings) :-
 
     % The idea here is that we try to strip off arguments from Y starting
     % from the end and unify each with the corresponding argument of X.
-    % If we reach an atomic type before the arguments run out then we fail.
-    % If we reach a variable before the arguments run out then we unify it
+    % If we reach an atomic type before the arguments run out, we fail.
+    % If we reach a variable before the arguments run out, we unify it
     % with what remains of the apply_n expression. If we manage to unify
-    % all of the arguments then we unify the apply_n variable with what
-    % remains of the other expression.
+    % all of the arguments, we unify the apply_n variable with what remains
+    % of the other expression.
     %
-    % Note that Y is not a variable, since that case would have been
-    % caught by type_unify.
+    % Note that Y is not a variable, since that case would have been caught
+    % by type_unify.
     %
 :- pred type_unify_apply(mer_type::in, tvar::in, list(mer_type)::in,
     list(tvar)::in, tsubst::in, tsubst::out) is semidet.
@@ -1221,6 +1221,10 @@ type_unify_apply(TypeY, VarX, ArgsX0, HeadTypeParams, !Bindings) :-
     ;
         TypeY = kinded_type(RawY, _),
         type_unify_apply(RawY, VarX, ArgsX0, HeadTypeParams, !Bindings)
+    ;
+        TypeY = builtin_type(_),
+        % XXX I (zs) am not sure *why* it is ok to fail here.
+        fail
     ).
 
 :- pred type_unify_args(list(mer_type)::in, list(mer_type)::in,
@@ -1253,12 +1257,13 @@ type_unify_list([X | Xs], [Y | Ys], HeadTypeParams, !Bindings) :-
     type_unify_list(Xs, Ys, HeadTypeParams, !Bindings).
 
     % type_occurs(Type, Var, Subst) succeeds iff Type contains Var,
-    % perhaps indirectly via the substitution.  (The variable must not
+    % perhaps indirectly via the substitution. (The variable must not
     % be mapped by the substitution.)
     %
 :- pred type_occurs(mer_type::in, tvar::in, tsubst::in) is semidet.
 
 type_occurs(TypeX, Y, Bindings) :-
+    require_complete_switch [TypeX]
     (
         TypeX = type_variable(X, _),
         ( if X = Y then
@@ -1289,6 +1294,9 @@ type_occurs(TypeX, Y, Bindings) :-
     ;
         TypeX = kinded_type(X, _),
         type_occurs(X, Y, Bindings)
+    ;
+        TypeX = builtin_type(_),
+        fail
     ).
 
 :- pred type_occurs_list(list(mer_type)::in, tvar::in, tsubst::in) is semidet.

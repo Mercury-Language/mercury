@@ -2629,21 +2629,45 @@ lval_does_not_support_lval(Lval1, Lval2) :-
 
 :- pred rval_depends_on_search_lval(rval::in, dep_search_lval::in) is semidet.
 
-rval_depends_on_search_lval(lval(Lval), SearchLval) :-
-    lval_depends_on_search_lval(Lval, SearchLval).
-rval_depends_on_search_lval(var(_Var), _SearchLval) :-
-    unexpected($module, $pred, "var").
-rval_depends_on_search_lval(mkword(_Tag, Rval), SearchLval) :-
-    rval_depends_on_search_lval(Rval, SearchLval).
-rval_depends_on_search_lval(const(_Const), _SearchLval) :-
-    fail.
-rval_depends_on_search_lval(unop(_Op, Rval), SearchLval) :-
-    rval_depends_on_search_lval(Rval, SearchLval).
-rval_depends_on_search_lval(binop(_Op, Rval0, Rval1), SearchLval) :-
+rval_depends_on_search_lval(Rval, SearchLval) :-
+    require_complete_switch [Rval]
     (
-        rval_depends_on_search_lval(Rval0, SearchLval)
+        Rval = lval(Lval),
+        lval_depends_on_search_lval(Lval, SearchLval)
     ;
-        rval_depends_on_search_lval(Rval1, SearchLval)
+        Rval = mkword(_Tag, SubRval),
+        rval_depends_on_search_lval(SubRval, SearchLval)
+    ;
+        Rval = unop(_Op, SubRval),
+        rval_depends_on_search_lval(SubRval, SearchLval)
+    ;
+        Rval = binop(_Op, SubRvalA, SubRvalB),
+        (
+            rval_depends_on_search_lval(SubRvalA, SearchLval)
+        ;
+            rval_depends_on_search_lval(SubRvalB, SearchLval)
+        )
+    ;
+        Rval = mem_addr(MemRef),
+        require_complete_switch [MemRef]
+        (
+            ( MemRef = stackvar_ref(SubRval)
+            ; MemRef = framevar_ref(SubRval)
+            ),
+            rval_depends_on_search_lval(SubRval, SearchLval)
+        ;
+            MemRef = heap_ref(CellRval, _MaybeTag, FieldNumRval),
+            rval_depends_on_search_lval(CellRval, SearchLval),
+            rval_depends_on_search_lval(FieldNumRval, SearchLval)
+        )
+    ;
+        ( Rval = const(_Const)
+        ; Rval = mkword_hole(_Tag)
+        ),
+        fail
+    ;
+        Rval = var(_Var),
+        unexpected($module, $pred, "var")
     ).
 
 :- pred lval_depends_on_search_lval(lval::in, dep_search_lval::in) is semidet.

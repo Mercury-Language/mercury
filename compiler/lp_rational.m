@@ -52,7 +52,7 @@
     % Create a term with a coefficient of 1.
     % For use with ho functions.
     %
-:- func lp_rational.lp_term(lp_var) = lp_term.
+:- func lp_term(lp_var) = lp_term.
 
 :- type lp_operator
     --->    lp_lt_eq
@@ -69,38 +69,37 @@
 
     % Create a constraint from the given components.
     %
-:- func lp_rational.construct_constraint(lp_terms, lp_operator, lp_constant)
-    = constraint.
+:- func construct_constraint(lp_terms, lp_operator, lp_constant) = constraint.
 
     % Create a constraint from the given components.
     % Throws an exception if the resulting constraint is trivially false.
     %
-:- func lp_rational.construct_non_false_constraint(lp_terms, lp_operator,
-    lp_constant) = constraint.
+:- func construct_non_false_constraint(lp_terms, lp_operator, lp_constant)
+    = constraint.
 
     % Deconstruct the given constraint.
     %
-:- pred lp_rational.deconstruct_constraint(constraint::in,
+:- pred deconstruct_constraint(constraint::in,
     lp_terms::out, lp_operator::out, lp_constant::out) is det.
 
     % As above but throws an exception if the constraint is false.
     %
-:- pred lp_rational.deconstruct_non_false_constraint(constraint::in,
+:- pred deconstruct_non_false_constraint(constraint::in,
     lp_terms::out, lp_operator::out, lp_constant::out) is det.
 
     % Succeeds iff the given constraint contains a single variable and
     % that variable is constrained to be a nonnegative value.
     %
-:- pred lp_rational.nonneg_constr(constraint::in) is semidet.
+:- pred nonneg_constr(constraint::in) is semidet.
 
     % Create a constraint that constrains the argument
     % have a non-negative value.
     %
-:- func lp_rational.make_nonneg_constr(lp_var) = constraint.
+:- func make_nonneg_constr(lp_var) = constraint.
 
     % Create a constraint that equates two variables.
     %
-:- func lp_rational.make_vars_eq_constraint(lp_var, lp_var) = constraint.
+:- func make_vars_eq_constraint(lp_var, lp_var) = constraint.
 
     % Create constraints of the form:
     %
@@ -108,24 +107,24 @@
     %
     % These functions are useful with higher-order code.
     %
-:- func lp_rational.make_var_const_eq_constraint(lp_var, rat) = constraint.
-:- func lp_rational.make_var_const_gte_constraint(lp_var, rat) = constraint.
+:- func make_var_const_eq_constraint(lp_var, rat) = constraint.
+:- func make_var_const_gte_constraint(lp_var, rat) = constraint.
 
     % Create a constraint that is trivially false.
     %
-:- func lp_rational.false_constraint = constraint.
+:- func false_constraint = constraint.
 
     % Create a constraint that is trivially true.
     %
-:- func lp_rational.true_constraint = constraint.
+:- func true_constraint = constraint.
 
     % Succeeds if the constraint is trivially false.
     %
-:- pred lp_rational.is_false(constraint::in) is semidet.
+:- pred is_false(constraint::in) is semidet.
 
     % Succeeds if the constraint is trivially true.
     %
-:- pred lp_rational.is_true(constraint::in) is semidet.
+:- pred is_true(constraint::in) is semidet.
 
     % Takes a list of constraints and looks for equality constraints
     % that may be implicit in any inequalities.
@@ -133,62 +132,61 @@
     % NOTE: this is only a syntactic check so it may miss
     % some equalities that are implicit in the system.
     %
-:- pred lp_rational.restore_equalities(constraints::in, constraints::out)
-    is det.
+:- pred restore_equalities(constraints::in, constraints::out) is det.
 
-    % This checks if a constraint is entailed by all the others in the set.
-    % If it is then it is removed from the set.
+    % Check if a constraint is entailed by all the others in the set.
+    % If it is, then remove it from the set.
     %
     % NOTE: this can be very slow - also due to the order in which
-    % the constraints are processed it may not produce a minimal set.
+    % the constraints are processed, it may not produce a minimal set.
     %
     % Fails if the system of constraints is inconsistent.
     %
 :- pred remove_some_entailed_constraints(lp_varset::in, constraints::in,
     constraints::out) is semidet.
 
-    % Succeeds iff the given system of constraints is inconsistent.
+    % Succeed iff the given system of constraints is inconsistent.
     %
-:- pred lp_rational.inconsistent(lp_varset::in, constraints::in) is semidet.
+:- pred inconsistent(lp_varset::in, constraints::in) is semidet.
 
     % Remove those constraints from the system whose redundancy can be
     % trivially detected.
     %
     % NOTE: the resulting system of constraints may not be minimal.
     %
-:- func lp_rational.simplify_constraints(constraints) = constraints.
+:- func simplify_constraints(constraints) = constraints.
 
-    % substitute_vars(VarsA, VarsB, Constraints0) = Constraints.
+    % substitute_vars(VarsA, VarsB, Constraints0) = Constraints:
+    %
     % Perform variable substitution on the given system of constraints
     % based upon the mapping that is implicit between the corresponding
     % elements of the variable lists `VarsA' and `VarsB'.
     %
-    % If length(VarsA) \= length(VarsB) then an exception is thrown.
+    % If length(VarsA) \= length(VarsB), then throw an exception.
     %
-:- func lp_rational.substitute_vars(lp_vars, lp_vars, constraints)
-    = constraints.
-:- func lp_rational.substitute_vars(map(lp_var, lp_var), constraints)
-    = constraints.
+:- func substitute_vars(lp_vars, lp_vars, constraints) = constraints.
+:- func substitute_vars(map(lp_var, lp_var), constraints) = constraints.
 
     % Make the values of all the variables in the set zero.
     %
-:- func lp_rational.set_vars_to_zero(set(lp_var), constraints) = constraints.
+:- func set_vars_to_zero(set(lp_var), constraints) = constraints.
 
 %-----------------------------------------------------------------------------%
 %
 % Bounding boxes and other approximations.
 %
+
     % Approximate the solution space of a set of constraints using
     % a bounding box. If the system is inconsistent then the resulting
     % system will also be inconsistent.
     %
-:- func lp_rational.bounding_box(lp_varset, constraints) = constraints.
+:- func bounding_box(lp_varset, constraints) = constraints.
 
-    % Create non-negativity constraints for all of the variables
-    % in list of constraints except for the variables specified
-    % in the argument.
+    % Create non-negativity constraints for all of the variables in the
+    % given list of constraints, except for the variables specified
+    % in the first argument.
     %
-:- func lp_rational.nonneg_box(lp_vars, constraints) = constraints.
+:- func nonneg_box(lp_vars, constraints) = constraints.
 
 %-----------------------------------------------------------------------------%
 %
@@ -217,8 +215,7 @@
     % the constraints, `inconsistent' if the given constraints are
     % inconsistent, or `satisfiable/2' otherwise.
     %
-:- func lp_rational.solve(constraints, direction, objective, lp_varset)
-    = lp_result.
+:- func solve(constraints, direction, objective, lp_varset) = lp_result.
 
 %-----------------------------------------------------------------------------%
 %
@@ -231,6 +228,7 @@
     ;       pr_res_aborted.         % ran out of time/space and backed out.
 
     % project(Constraints0, Vars, Varset) = Result:
+    %
     % Takes a list of constraints, `Constraints0', and eliminates the
     % variables in the list `Vars' using Fourier elimination.
     %
@@ -245,16 +243,16 @@
     % to do a consistency check on the result if they require
     % the resulting system of constraints to be consistent.
     %
-:- func lp_rational.project(lp_vars, lp_varset, constraints)
-    = projection_result.
-:- pred lp_rational.project(lp_vars::in, lp_varset::in, constraints::in,
+:- func project(lp_vars, lp_varset, constraints) = projection_result.
+:- pred project(lp_vars::in, lp_varset::in, constraints::in,
     projection_result::out) is det.
 
-    % project(Vars, Varset, maybe(MaxMatrixSize), Matrix, Result).
+    % project(Vars, Varset, maybe(MaxMatrixSize), Matrix, Result):
+    %
     % Same as above but if the size of the matrix ever exceeds
     % `MaxMatrixSize' we back out of the computation.
     %
-:- pred lp_rational.project(lp_vars::in, lp_varset::in, maybe(int)::in,
+:- pred project(lp_vars::in, lp_varset::in, maybe(int)::in,
     constraints::in, projection_result::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -278,16 +276,14 @@
     %
     % This assumes that all variables are non-negative.
     %
-:- func lp_rational.entailed(lp_varset, constraints, constraint) =
-    entailment_result.
+:- func entailed(lp_varset, constraints, constraint) = entailment_result.
 
     % entailed(Varset, Cs, C):
     %
     % As above but fails if `C' is not implied by `Cs' and
     % throws an exception if `Cs' is inconsistent.
     %
-:- pred lp_rational.entailed(lp_varset::in, constraints::in,
-    constraint::in) is semidet.
+:- pred entailed(lp_varset::in, constraints::in, constraint::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -301,8 +297,8 @@
     % Write out the constraints in a form we can read in using the
     % term parser from the standard library.
     %
-:- pred lp_rational.output_constraints(output_var::in, constraints::in,
-    io::di, io::uo) is det.
+:- pred output_constraints(output_var::in, constraints::in, io::di, io::uo)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -313,8 +309,8 @@
     % has no name it will be given the name Temp<n>, where <n> is the
     % variable number.
     %
-:- pred lp_rational.write_constraints(constraints::in, lp_varset::in,
-    io::di, io::uo) is det.
+:- pred write_constraints(constraints::in, lp_varset::in, io::di, io::uo)
+    is det.
 
     % Return the set of variables that are present in a list of constraints.
     %

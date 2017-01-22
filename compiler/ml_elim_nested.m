@@ -2335,6 +2335,10 @@ defn_contains_matching_defn(Filter, Defn) :-
             ;
                 defns_contains_matching_defn(Filter, CtorDefns)
             )
+        ;
+            DefnBody = mlds_data(_, _, _),
+            % Data entities contain no definitions.
+            fail
         )
     ).
 

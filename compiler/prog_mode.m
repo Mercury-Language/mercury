@@ -632,12 +632,15 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
     ;
         Inst0 = constrained_inst_vars(Vars0, SubInst0),
         rename_apart_inst_vars_in_inst(Renaming, SubInst0, SubInst),
-        Vars = set.map(func(Var0) =
-            ( if map.search(Renaming, Var0, Var) then
-                Var
-            else
-                Var0
-            ), Vars0),
+        MaybeReplaceFunc = (
+            func(Var0) =
+                ( if map.search(Renaming, Var0, Var) then
+                    Var
+                else
+                    Var0
+                )
+            ),
+        Vars = set.map(MaybeReplaceFunc, Vars0),
         Inst = constrained_inst_vars(Vars, SubInst)
     ;
         Inst0 = defined_inst(Name0),
@@ -722,6 +725,9 @@ inst_contains_unconstrained_var(Inst) :-
                     inst_result_contains_inst_vars_known(InstVars),
                 set.is_non_empty(InstVars)
             )
+        ;
+            InstResults = inst_test_results_fgtc,
+            fail
         ),
         list.member(BoundInst, BoundInsts),
         BoundInst = bound_functor(_ConsId, ArgInsts),
@@ -748,6 +754,7 @@ inst_contains_unconstrained_var(Inst) :-
 :- pred inst_name_contains_unconstrained_var(inst_name::in) is semidet.
 
 inst_name_contains_unconstrained_var(InstName) :-
+    require_complete_switch [InstName]
     (
         InstName = user_inst(_, SubInsts),
         list.member(SubInst, SubInsts),
@@ -777,6 +784,9 @@ inst_name_contains_unconstrained_var(InstName) :-
     ;
         InstName = typed_inst(_, SubInstName),
         inst_name_contains_unconstrained_var(SubInstName)
+    ;
+        InstName = typed_ground(_, _),
+        fail
     ).
 
 %---------------------------------------------------------------------------%
@@ -801,6 +811,7 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
     % XXX This is very similar to get_single_arg_inst in mode_util.
     % XXX Actually, it should be MORE similar; it does not handle
     % some cases that get_single_arg_inst does.
+    require_complete_switch [Inst]
     (
         Inst = not_reached,
         list.duplicate(Arity, not_reached, ArgInsts)
@@ -823,6 +834,22 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
     ;
         Inst = any(Uniq, _),
         list.duplicate(Arity, any(Uniq, none_or_default_func), ArgInsts)
+    ;
+        Inst = defined_inst(_),
+        % The documentation of this predicate says that it should be called
+        % only with insts that have already been expanded.
+        unexpected($pred, "defined_inst")
+    ;
+        Inst = constrained_inst_vars(_Vars, SubInst),
+        get_arg_insts(SubInst, ConsId, Arity, ArgInsts)
+    ;
+        ( Inst = inst_var(_)
+        ; Inst = abstract_inst(_, _)
+        ),
+        % The compiler has no information about what function symbol
+        % the variable whose inst Inst represents is bound to, so it
+        % cannot have any information about the insts of its arguments.
+        fail
     ).
 
 get_arg_insts_det(Inst, ConsId, Arity, ArgInsts) :-

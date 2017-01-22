@@ -119,7 +119,7 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
     % Generate the context.
     %
     % XXX The rtti_data ought to include a prog_context (the context of the
-    % corresponding type or instance definition)
+    % corresponding type or instance definition).
     term.context_init(Context),
     MLDS_Context = mlds_make_context(Context),
 
@@ -131,7 +131,7 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
     % constants, and can point only to other static constants, not to the heap.
     GCStatement = gc_no_stmt,
 
-    % Generate the declaration body, i.e. the type and the initializer
+    % Generate the declaration body, i.e. the type and the initializer.
     MLDS_Type = mlds_rtti_type(item_type(RttiId)),
     DefnBody = mlds_data(MLDS_Type, Initializer, GCStatement),
     Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody),
@@ -216,7 +216,7 @@ gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
             FunctorsInfo, LayoutInfo, NumberMapInfo, !GlobalData),
 
         % Note that gen_init_special_pred will by necessity add an extra
-        % level of indirection to calling the special preds. However the
+        % level of indirection to calling the special preds. However, the
         % backend compiler should be smart enough to ensure that this is
         % inlined away.
         gen_init_special_pred(ModuleInfo, UnifyUniv, UnifyInitializer,
@@ -566,8 +566,8 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
             ( if TargetLang = target_java then
                 % For Java we need to omit the arity argument as the
                 % TypeInfo_Struct class doesn't have a constructor that
-                % supports it.  The TypeInfo_Struct class is used to
-                % represent pseudo type-infos with the Java backend.
+                % supports it. The TypeInfo_Struct class is used to represent
+                % pseudo type-infos with the Java backend.
                 % (See java/runtime/PseudoTypeInfo.java for details.)
                 InitializerArgs = [InitRttiName, InitCastRttiDatasArray]
             else
@@ -1362,7 +1362,6 @@ gen_init_cast_rtti_datas_array(Type, ModuleName, RttiDatas) =
 
     % Generate the MLDS initializer comprising the rtti_name
     % for a given rtti_data, converted to mlds_generic_type.
-    % XXX We don't need to pass the module_name down to here.
     %
 :- func gen_init_cast_rtti_data(mlds_type, module_name, rtti_data) =
     mlds_initializer.
@@ -1409,8 +1408,8 @@ gen_init_rtti_data(ModuleName, RttiData) = Initializer :-
     rtti_data_to_id(RttiData, RttiId),
     Initializer = gen_init_rtti_id(ModuleName, RttiId).
 
-    % Generate an MLDS initializer comprising just the
-    % the rval for a given rtti_id.
+    % Generate an MLDS initializer comprising just the rval
+    % for a given rtti_id.
     %
 :- func gen_init_rtti_id(module_name, rtti_id) = mlds_initializer.
 
@@ -1419,8 +1418,8 @@ gen_init_rtti_id(ModuleName, ctor_rtti_id(RttiTypeCtor, RttiName)) =
 gen_init_rtti_id(ModuleName, tc_rtti_id(TCName, TCRttiName)) =
     gen_init_tc_rtti_name(ModuleName, TCName, TCRttiName).
 
-    % Generate an MLDS initializer comprising just the
-    % the rval for a given rtti_name.
+    % Generate an MLDS initializer comprising just the rval
+    % for a given rtti_name.
     %
 :- func gen_init_rtti_name(module_name, rtti_type_ctor, ctor_rtti_name) =
     mlds_initializer.
@@ -1428,8 +1427,8 @@ gen_init_rtti_id(ModuleName, tc_rtti_id(TCName, TCRttiName)) =
 gen_init_rtti_name(ModuleName, RttiTypeCtor, RttiName) =
     init_obj(gen_rtti_name(ModuleName, RttiTypeCtor, RttiName)).
 
-    % Generate an MLDS initializer comprising just the
-    % the rval for a given tc_rtti_name.
+    % Generate an MLDS initializer comprising just the rval
+    % for a given tc_rtti_name.
     %
 :- func gen_init_tc_rtti_name(module_name, tc_name, tc_rtti_name) =
     mlds_initializer.
