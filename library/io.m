@@ -472,7 +472,7 @@
 :- pred nl(io.text_output_stream::in, io::di, io::uo) is det.
 
     % Writes a string to the current output stream or to the
-    % specied output stream.
+    % specified output stream.
     %
 :- pred write_string(string::in, io::di, io::uo) is det.
 :- pred write_string(io.text_output_stream::in, string::in, io::di, io::uo)
