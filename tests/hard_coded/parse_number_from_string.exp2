@@ -1,10 +1,14 @@
 Valid decimal literals:
 read_term("0.") = functor(integer(0), [], context("", 1))
 read_term("-0.") = functor(integer(0), [], context("", 1))
+read_term("00.") = functor(integer(0), [], context("", 1))
+read_term("0_0.") = functor(integer(0), [], context("", 1))
 read_term("10.") = functor(integer(10), [], context("", 1))
 read_term("-10.") = functor(integer(-10), [], context("", 1))
 read_term("1_0.") = functor(integer(10), [], context("", 1))
 read_term("-1_0.") = functor(integer(-10), [], context("", 1))
+read_term("01.") = functor(integer(1), [], context("", 1))
+read_term("0_1.") = functor(integer(1), [], context("", 1))
 read_term("1_000_000_000_000_000_000_000.") = functor(big_integer(base_10, i(5, [13877, 12907, 7261, 14976, 0])), [], context("", 1))
 read_term("-1_000_000_000_000_000_000_000.") = functor(atom("-"), [functor(big_integer(base_10, i(5, [13877, 12907, 7261, 14976, 0])), [], context("", 1))], context("", 1))
 
@@ -84,6 +88,10 @@ read_term("1_2e+1_1.") = functor(float(1.2E12), [], context("", 1))
 read_term("1_2E+1_1.") = functor(float(1.2E12), [], context("", 1))
 read_term("1_2e-1_1.") = functor(float(1.2E-10), [], context("", 1))
 read_term("1_2E-1_1.") = functor(float(1.2E-10), [], context("", 1))
+read_term("00.0.") = functor(float(0.0), [], context("", 1))
+read_term("0_0.0.") = functor(float(0.0), [], context("", 1))
+read_term("01.0.") = functor(float(1.0), [], context("", 1))
+read_term("0_1.0.") = functor(float(1.0), [], context("", 1))
 
 Invalid float literals:
 read_term("1_2_3.1_2_3_.") = Syntax error: fractional part of float terminated by underscore

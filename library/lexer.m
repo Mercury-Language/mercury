@@ -1961,6 +1961,9 @@ get_zero(Stream, Token, !IO) :-
         ( if char.is_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
             get_number(Stream, LastDigit, [Char], Token, !IO)
+        else if Char = '_' then
+            LastDigit = last_digit_is_underscore,
+            get_number(Stream, LastDigit, [], Token, !IO)
         else if Char = '''' then
             get_char_code(Stream, Token, !IO)
         else if Char = 'b' then
@@ -1999,6 +2002,10 @@ string_get_zero(String, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
+            string_get_number(String, LastDigit, Len, Posn0, Token, Context,
+                !Posn)
+        else if Char = '_' then
+            LastDigit = last_digit_is_underscore,
             string_get_number(String, LastDigit, Len, Posn0, Token, Context,
                 !Posn)
         else if Char = '''' then

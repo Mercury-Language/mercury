@@ -15,10 +15,16 @@ main(!IO) :-
     io.print_line("Decimal:", !IO),
     io.print_line(0, !IO),
     io.print_line(-0, !IO),
+    io.print_line(00, !IO),
+    io.print_line(0_0, !IO),
     io.print_line(10, !IO),
     io.print_line(-10, !IO),
     io.print_line(1_0, !IO),
     io.print_line(-1_0, !IO),
+    io.print_line(01, !IO),
+    io.print_line(0_1, !IO),
+    io.print_line(-01, !IO),
+    io.print_line(-0_1, !IO),
     io.nl(!IO),
 
     io.print_line("Binary:", !IO),
@@ -67,4 +73,6 @@ main(!IO) :-
     io.print_line(1_2e+1_1, !IO),
     io.print_line(1_2E+1_1, !IO),
     io.print_line(1_2e-1_1, !IO),
-    io.print_line(1_2E-1_1, !IO).
+    io.print_line(1_2E-1_1, !IO),
+    io.print_line(0_0.0, !IO),
+    io.print_line(0_1.0_1, !IO).
