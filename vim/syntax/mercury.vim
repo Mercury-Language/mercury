@@ -188,8 +188,9 @@ syn match   mercuryOperator     "*"          " multiply
 syn match   mercuryDelimiter    "\^"         " field access
 syn match   mercuryOperator     /\v`[^`']+`/ " inlined operator
 syn match   mercuryImplication  "<=>\|<=\|=>"
-syn match   mercuryNumCode /\v<(0'.|0b[01]+|0o[0-7]+|0x\x+|[0-9]+)/
-syn match   mercuryFloat   /\v<([0-9]+\.[0-9]+([eE][-+]?[0-9]+)?)/
+syn match   mercuryNumCode /\v<(0'.|0b[01_]*[01]|0o[0-7_]*[0-7]|0x[0-9A-Fa-f_]*\x|[0-9]([0-9_]*[0-9])?)/
+syn match   mercuryFloat   /\v<([0-9]([0-9_]*[0-9])?\.[0-9]([0-9_]*[0-9])?([eE][-+]?[0-9]([0-9_]*[0-9])?)?)/
+syn match   mercuryFloat   /\v<([0-9]([0-9_]*[0-9])?[eE][-+]?[0-9]([0-9_]*[0-9])?)/
 syn region  mercuryAtom    start=+'+ skip=+\\'+   end=+'+ contains=
       \ mercuryStringEsc,@mercuryFormatting,mercuryEscErr,@Spell
 syn region  mercuryString matchgroup=mercuryString
@@ -332,9 +333,12 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn match mercuryCLikeCharEsc /\v\\\\([abfnrtv]|0[0-7]*|[xuU]\x+)?/ contained
   syn match mercuryCLikeCharEsc +\\\\""+ contained
   syn region mercuryCLikeChar start=+'+ end=+'+ contained contains=mercuryCLikeCharEsc
+  syn match mercuryCLikeNumber /\v<([1-9][0-9]*|0[xX]\x+|0[0-7]*)/ contained
+  syn match mercuryCLikeFloat /\v<([0-9]+\.[0-9]+([eE][-+]?[0-9]+)?)/ contained
+  syn match mercuryCLikeFloat /\v<([0-9]+[eE][-+]?[0-9]+)/ contained
   syn cluster mercuryCLike contains=mercuryCLikeKeyword,mercuryCLikeType
   syn cluster mercuryCLike add=mercuryCLikeOperator,mercuryCComment,mercuryCLikeChar
-  syn cluster mercuryCLike add=mercuryNumCode,mercuryFloat,mercuryCLikeBracket
+  syn cluster mercuryCLike add=mercuryCLikeNumber,mercuryCLikeFloat,mercuryCLikeBracket
   syn cluster mercuryCLike add=mercuryCLikeDelimiter,mercuryForeignIface
   syn cluster mercuryCLike add=@mercuryFormatting
 
@@ -424,7 +428,7 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn region mercuryErlangString start=+""+ end=+""+ contained contains=@Spell
   syn region mercuryErlangString start=+\v\\"+ end=+\v\\"+ contained contains=@Spell
   syn cluster mercuryErlangTerms contains=mercuryErlangBlock,mercuryErlangList,
-        \ mercuryErlangString,mercuryCLikeChar,mercuryNumCode,
+        \ mercuryErlangString,mercuryCLikeChar,mercuryCLikeNumber,
         \ mercuryErlangExtNumLiteral,mercuryFloat,mercuryComment,mercuryKeyword,
         \ mercuryErlangKeyword, mercuryErlangOperator, mercuryCComment,
         \ mercuryErlangBool,mercuryOperator,mercurySingleton,mercuryImplication,
@@ -596,6 +600,8 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   hi def link mercuryCLikeDelimiter   mercuryDelimiter
   hi def link mercuryCLikeKeyword     Keyword
   hi def link mercuryCLikeString      String
+  hi def link mercuryCLikeNumber      Number
+  hi def link mercuryCLikeFloat       Float
   hi def link mercuryCppLikeType      Type
   hi def link mercuryCLikeType        Type
   hi def link mercuryCBool            mercuryBool
