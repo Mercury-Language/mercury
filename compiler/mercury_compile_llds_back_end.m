@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -60,6 +61,7 @@
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.arg_info.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
@@ -90,8 +92,6 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 :- import_module top_level.mercury_compile_front_end.
-:- import_module transform_hlds.
-:- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
 :- import_module cord.
@@ -209,7 +209,7 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
         MaybeDupProcMap = no
     ;
         ProcDups = yes,
-        dependency_graph.build_pred_dependency_graph(!.HLDS, PredIds,
+        build_pred_dependency_graph(!.HLDS, PredIds,
             do_not_include_imported, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, PredSCCs),
         list.condense(PredSCCs, OrderedPredIds),

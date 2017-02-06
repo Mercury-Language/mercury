@@ -2,11 +2,12 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: dependency_graph.m.
+% File: hlds_dependency_graph.m.
 % Main authors: bromage, conway, stayl.
 %
 % The dependency_graph records which procedures depend on which other
@@ -21,10 +22,9 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds.dependency_graph.
+:- module hlds.hlds_dependency_graph.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
@@ -718,5 +718,5 @@ handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module transform_hlds.dependency_graph.
+:- end_module hlds.hlds_dependency_graph.
 %-----------------------------------------------------------------------------%

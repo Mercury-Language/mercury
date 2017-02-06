@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997,2002-2011 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -89,12 +90,12 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.term_constr_build.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.

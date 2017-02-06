@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2008, 2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,8 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- include_module intermod.
-
-:- include_module dependency_graph.
 
 :- include_module equiv_type_hlds.
 

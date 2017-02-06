@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,6 +65,7 @@
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.arg_info.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -90,7 +92,6 @@
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.ctgc.util.
-:- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.mmc_analysis.
 

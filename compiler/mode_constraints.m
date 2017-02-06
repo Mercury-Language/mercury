@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -44,14 +45,13 @@
 
 :- implementation.
 
-:- import_module transform_hlds.    % for pd_cost, etc.
-
 :- import_module check_hlds.build_mode_constraints.
 :- import_module check_hlds.ordering_mode_constraints.
 
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_ordering.
 :- import_module check_hlds.mode_util.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.hhf.
@@ -77,7 +77,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.set_of_var.
-:- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1870,7 +1869,7 @@ keep_var(_ForwardGoalPathMap, NonLocals, GoalVars, _GoalId, AtomicGoals,
 
 get_predicate_sccs(ModuleInfo, SCCs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    dependency_graph.build_pred_dependency_graph(ModuleInfo, PredIds,
+    build_pred_dependency_graph(ModuleInfo, PredIds,
         do_not_include_imported, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs0),
 

@@ -2,6 +2,7 @@
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -74,6 +75,7 @@
 :- import_module analysis.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -92,7 +94,6 @@
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.livedata.
 :- import_module transform_hlds.ctgc.util.
-:- import_module transform_hlds.dependency_graph.
 
 :- import_module bimap.
 :- import_module bool.

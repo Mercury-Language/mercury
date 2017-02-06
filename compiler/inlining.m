@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -155,6 +156,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module libs.
@@ -169,7 +171,6 @@
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.complexity.
 :- import_module transform_hlds.dead_proc_elim.
-:- import_module transform_hlds.dependency_graph.
 
 :- import_module int.
 :- import_module maybe.

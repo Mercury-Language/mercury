@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2010, 2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,6 +51,7 @@
 % Miscellaneous utilities.
 :- include_module arg_info.
 :- include_module code_model.
+:- include_module hlds_dependency_graph.
 :- include_module from_ground_term_util.
 :- include_module goal_form.
 :- include_module goal_path.

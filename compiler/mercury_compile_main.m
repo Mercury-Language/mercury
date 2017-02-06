@@ -2,6 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +50,7 @@
 :- import_module check_hlds.xml_documentation.
 :- import_module hlds.
 :- import_module hlds.hlds_defns.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.
 :- import_module hlds.passes_aux.
@@ -97,8 +99,6 @@
 :- import_module top_level.mercury_compile_llds_back_end.
 :- import_module top_level.mercury_compile_middle_passes.
 :- import_module top_level.mercury_compile_mlds_back_end.
-:- import_module transform_hlds.
-:- import_module transform_hlds.dependency_graph.
 
 :- import_module bool.
 :- import_module char.
@@ -2061,7 +2061,7 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
         (
             Res = ok(FileStream),
             io.set_output_stream(FileStream, OutputStream, !IO),
-            dependency_graph.write_dependency_graph(!HLDS, !IO),
+            write_dependency_graph(!HLDS, !IO),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO),
             maybe_write_string(Verbose, " done.\n", !IO)
@@ -2292,7 +2292,7 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
         (
             Res = ok(FileStream),
             io.set_output_stream(FileStream, OutputStream, !IO),
-            dependency_graph.write_prof_dependency_graph(!HLDS, !IO),
+            write_prof_dependency_graph(!HLDS, !IO),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO)
         ;

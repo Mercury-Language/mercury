@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,6 +65,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -79,7 +81,6 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_main_types.
 :- import_module transform_hlds.term_constr_util.
@@ -135,7 +136,7 @@ term_build_options_init(Norm, Failure, ArgSizeOnly) =
 %-----------------------------------------------------------------------------%
 
 term_constr_build_abstract_scc(DepOrder, SCC, Options, Errors, !ModuleInfo) :-
-    dependency_graph.get_scc_entry_points(SCC, DepOrder, !.ModuleInfo,
+    get_scc_entry_points(SCC, DepOrder, !.ModuleInfo,
         EntryProcs),
     list.foldl2(
         term_constr_build_abstract_proc(EntryProcs, Options, SCC,
