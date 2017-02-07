@@ -88,26 +88,6 @@
 :- pred get_scc_entry_points(list(pred_proc_id)::in, dependency_ordering::in,
     module_info::in, list(pred_proc_id)::out) is det.
 
-    % write_graph(Graph, WriteNode, WriteEdge):
-    %
-    % Write out the dependency graph using WriteNode to decide what to output
-    % for a node in the dependency graph and WriteEdge for an edge.
-    %
-:- pred write_graph(dependency_info::in,
-    pred(pred_proc_id, io, io)::pred(in, di, uo) is det,
-    pred(pred_proc_id, pred_proc_id, io, io)::pred(in, in, di, uo) is det,
-    io::di, io::uo) is det.
-
-    % write_graph_nodes(Nodes, Graph, WriteNode, WriteEdge)
-    %
-    % Write out each of the Nodes in the Graph using WriteNode and
-    % any edges originating in Nodes, using WriteEdge.
-    %
-:- pred write_graph_nodes(list(pred_proc_id)::in, dependency_graph::in,
-    pred(pred_proc_id, io, io)::pred(in, di, uo) is det,
-    pred(pred_proc_id, pred_proc_id, io, io)::pred(in, in, di, uo) is det,
-    io::di, io::uo) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -548,7 +528,8 @@ write_scc(ModuleInfo, [PredProcId | PredProcIds], !IO) :-
 write_prof_dependency_graph(!ModuleInfo, !IO) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    write_graph(DepInfo, write_empty_node,
+    hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
+    digraph.traverse(DepGraph, write_empty_node,
         write_prof_dep_graph_link(!.ModuleInfo), !IO).
 
 write_dependency_graph(!ModuleInfo, !IO) :-
@@ -556,7 +537,8 @@ write_dependency_graph(!ModuleInfo, !IO) :-
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     io.write_string("% Dependency graph\n", !IO),
     io.write_string("\n\n% Dependency ordering\n", !IO),
-    write_graph(DepInfo, write_empty_node,
+    hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
+    digraph.traverse(DepGraph, write_empty_node,
         write_dep_graph_link(!.ModuleInfo), !IO).
 
 :- pred write_empty_node(pred_proc_id::in, io::di, io::uo) is det.
@@ -597,34 +579,6 @@ write_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
     mercury_output_pred_mode_subdecl(output_mercury, ModeVarSet,
         unqualified(CName), CModes, CDet, !IO),
     io.write_string("\n", !IO).
-
-%-----------------------------------------------------------------------------%
-
-write_graph(DepInfo, WriteNode, WriteLink, !IO) :-
-    hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
-    digraph.vertices(DepGraph, DomSet),
-    set.to_sorted_list(DomSet, DomList),
-    write_graph_nodes(DomList, DepGraph, WriteNode, WriteLink, !IO).
-
-write_graph_nodes([], _Graph, _WriteNode, _WriteLink, !IO).
-write_graph_nodes([Node | Nodes], Graph, WriteNode, WriteLink, !IO) :-
-    WriteNode(Node, !IO),
-    digraph.lookup_key(Graph, Node, NodeKey),
-    digraph.lookup_from(Graph, NodeKey, ChildrenSet),
-    set.to_sorted_list(ChildrenSet, Children),
-    write_graph_children(Children, Node, Graph, WriteLink, !IO),
-    write_graph_nodes(Nodes, Graph, WriteNode, WriteLink, !IO).
-
-:- pred write_graph_children(list(dependency_graph_key)::in, pred_proc_id::in,
-    dependency_graph::in,
-    pred(pred_proc_id, pred_proc_id, io, io)::pred(in, in, di, uo) is det,
-    io::di, io::uo) is det.
-
-write_graph_children([], _Parent, _Graph, _WriteLink, !IO).
-write_graph_children([ChildKey | Children], Parent, Graph, WriteLink, !IO) :-
-    digraph.lookup_vertex(Graph, ChildKey, Child),
-    WriteLink(Parent, Child, !IO),
-    write_graph_children(Children, Parent, Graph, WriteLink, !IO).
 
 %-----------------------------------------------------------------------------%
 
