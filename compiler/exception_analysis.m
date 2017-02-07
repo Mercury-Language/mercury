@@ -128,6 +128,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
 :- import_module libs.options.
@@ -157,7 +158,7 @@
 analyse_exceptions_in_module(!ModuleInfo) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+    SCCs = dependency_info_get_ordering(DepInfo),
     list.foldl(check_scc_for_exceptions, SCCs, !ModuleInfo),
 
     module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),

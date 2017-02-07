@@ -82,6 +82,7 @@
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.
@@ -122,7 +123,7 @@ indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs,
     module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
     (
         MaybeDepInfo = yes(DepInfo),
-        hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+        SCCs = dependency_info_get_ordering(DepInfo),
         list.foldl5(indirect_reuse_analyse_scc(SharingTable), SCCs,
             !ModuleInfo, !ReuseTable, set.init, DepProcs, set.init, Requests,
             set.init, IntermodRequests)
@@ -162,7 +163,7 @@ update_reuse_in_table(FixpointTable, PPId, !ReuseTable) :-
 indirect_reuse_rerun(SharingTable, !ModuleInfo, !ReuseTable,
         DepProcs, Requests, !IntermodRequests) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+    SCCs = dependency_info_get_ordering(DepInfo),
     list.foldl5(indirect_reuse_rerun_analyse_scc(SharingTable),
         SCCs, !ModuleInfo, !ReuseTable, set.init, DepProcs, set.init, Requests,
         !IntermodRequests).

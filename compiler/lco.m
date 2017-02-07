@@ -188,6 +188,7 @@
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -297,7 +298,7 @@
 
 lco_modulo_constructors(!ModuleInfo) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+    SCCs = dependency_info_get_ordering(DepInfo),
     list.foldl2(lco_scc, SCCs, map.init, _, !ModuleInfo).
 
 :- pred lco_scc(list(pred_proc_id)::in, variant_map::in, variant_map::out,

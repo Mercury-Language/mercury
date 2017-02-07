@@ -58,6 +58,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
 :- import_module libs.options.
@@ -101,7 +102,7 @@ analyse_termination_in_module(!ModuleInfo, !:Specs) :-
     % Process all the SCCs of the call graph in a bottom-up order.
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+    SCCs = dependency_info_get_ordering(DepInfo),
 
     % Set the termination status of foreign_procs based on the foreign code
     % attributes.

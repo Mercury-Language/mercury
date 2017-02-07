@@ -44,6 +44,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.
@@ -74,7 +75,7 @@ closure_analyse_module(!ModuleInfo, !IO) :-
     globals.lookup_bool_option(Globals, debug_closure, Debug),
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+    SCCs = dependency_info_get_ordering(DepInfo),
     list.foldl2(closure_analyse_scc(Debug), SCCs, !ModuleInfo, !IO).
 
 %----------------------------------------------------------------------------%

@@ -110,6 +110,7 @@
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -140,8 +141,9 @@ maybe_par_loop_control_module(!ModuleInfo) :-
         update_module(maybe_par_loop_control_proc(DepInfo)),
         !ModuleInfo).
 
-:- pred maybe_par_loop_control_proc(dependency_info::in, pred_proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred maybe_par_loop_control_proc(hlds_dependency_info::in,
+    pred_proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
 maybe_par_loop_control_proc(DepInfo, PredProcId, !ProcInfo, !ModuleInfo) :-
     ( if loop_control_is_applicable(DepInfo, PredProcId, !.ProcInfo) then
@@ -179,8 +181,8 @@ maybe_par_loop_control_proc(DepInfo, PredProcId, !ProcInfo, !ModuleInfo) :-
     % conjunction with exactly two conjuncts whose right conjunct contains a
     % recursive call.
     %
-:- pred loop_control_is_applicable(dependency_info::in, pred_proc_id::in,
-    proc_info::in) is semidet.
+:- pred loop_control_is_applicable(hlds_dependency_info::in,
+    pred_proc_id::in, proc_info::in) is semidet.
 
 loop_control_is_applicable(DepInfo, PredProcId, ProcInfo) :-
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
@@ -194,11 +196,11 @@ loop_control_is_applicable(DepInfo, PredProcId, ProcInfo) :-
     ),
     proc_is_self_recursive(DepInfo, PredProcId).
 
-:- pred proc_is_self_recursive(dependency_info::in, pred_proc_id::in)
+:- pred proc_is_self_recursive(hlds_dependency_info::in, pred_proc_id::in)
     is semidet.
 
 proc_is_self_recursive(DepInfo, PredProcId) :-
-    hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
+    DepGraph = dependency_info_get_graph(DepInfo),
 
     % There must be a directly recursive call.
     digraph.lookup_key(DepGraph, PredProcId, SelfKey),

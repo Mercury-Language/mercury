@@ -146,6 +146,7 @@
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -1341,7 +1342,7 @@ insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
 reorder_indep_par_conj(PredProcId, VarTypes, InstMapBefore, Conjuncts0,
         GoalInfo, Goal, !ModuleInfo) :-
     module_info_dependency_info(!.ModuleInfo, DependencyInfo),
-    hlds_dependency_info_get_dependency_ordering(DependencyInfo, Ordering),
+    Ordering = dependency_info_get_ordering(DependencyInfo),
     search_scc(Ordering, PredProcId, SCC),
     CallsToSameSCC = goal_list_calls_proc_in_list(Conjuncts0, SCC),
     (

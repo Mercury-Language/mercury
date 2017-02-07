@@ -51,10 +51,10 @@
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_ordering.
 :- import_module check_hlds.mode_util.
-:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.hhf.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -64,6 +64,7 @@
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -1869,9 +1870,9 @@ keep_var(_ForwardGoalPathMap, NonLocals, GoalVars, _GoalId, AtomicGoals,
 
 get_predicate_sccs(ModuleInfo, SCCs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    build_pred_dependency_graph(ModuleInfo, PredIds,
-        do_not_include_imported, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs0),
+    DepInfo = build_pred_dependency_graph(ModuleInfo, PredIds,
+        do_not_include_imported),
+    SCCs0 = dependency_info_get_ordering(DepInfo),
 
     % Remove predicates that have mode declarations and place them in
     % their own ``SCC'' at the end of the list.

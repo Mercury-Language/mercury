@@ -15,7 +15,6 @@
 % The main data structures defined here are the types
 %
 %   module_info
-%   dependency_info
 %
 % There is a separate interface section for each of these.
 %
@@ -29,6 +28,7 @@
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
@@ -49,7 +49,6 @@
 :- import_module recompilation.
 
 :- import_module cord.
-:- import_module digraph.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -299,7 +298,7 @@
 :- pred module_get_fact_table_file_names(module_info::in,
     list(string)::out) is det.
 :- pred module_info_get_maybe_dependency_info(module_info::in,
-    maybe(dependency_info)::out) is det.
+    maybe(hlds_dependency_info)::out) is det.
 :- pred module_info_get_num_errors(module_info::in, int::out) is det.
 :- pred module_info_get_type_ctor_gen_infos(module_info::in,
     list(type_ctor_gen_info)::out) is det.
@@ -510,9 +509,9 @@
     % on the returned dependency_info.
     %
 :- pred module_info_dependency_info(module_info::in,
-    dependency_info::out) is det.
+    hlds_dependency_info::out) is det.
 
-:- pred module_info_set_dependency_info(dependency_info::in,
+:- pred module_info_set_dependency_info(hlds_dependency_info::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_info_clobber_dependency_info(
@@ -704,7 +703,7 @@
 
                 % Please see module_info_ensure_dependency_info for the
                 % meaning of this dependency_info, and the constraints on it.
-                mri_maybe_dependency_info       :: maybe(dependency_info),
+                mri_maybe_dependency_info       :: maybe(hlds_dependency_info),
 
                 mri_num_errors                  :: int,
 
@@ -1022,7 +1021,7 @@ module_info_optimize(!ModuleInfo) :-
     module_info::in, module_info::out) is det.
 :- pred module_info_set_atomics_per_context(map(prog_context, counter)::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_maybe_dependency_info(maybe(dependency_info)::in,
+:- pred module_info_set_maybe_dependency_info(maybe(hlds_dependency_info)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_user_init_pred_c_names(
     assoc_list(sym_name_and_arity, string)::in,
@@ -1659,60 +1658,6 @@ get_unique_pred_proc_id_for_symname_and_arity(MI,
     else
         unexpected($module, $pred, "lookup failed")
     ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- interface.
-
-    % A dependency ordering gives the list of SCCs of the module. The list
-    % is in ascending order: the lowest SCC is first, the highest SCC is last.
-:- type dependency_ordering(T)  == list(list(T)).
-:- type dependency_ordering     == dependency_ordering(pred_proc_id).
-
-:- type dependency_graph(T)     == digraph(T).
-:- type dependency_graph        == dependency_graph(pred_proc_id).
-:- type dependency_graph_key    == digraph_key(pred_proc_id).
-:- type dependency_info(T).
-:- type dependency_info         == dependency_info(pred_proc_id).
-
-:- pred hlds_dependency_info_init(dependency_info(T)::out) is det.
-
-:- pred hlds_dependency_info_get_dependency_graph(dependency_info(T)::in,
-    dependency_graph(T)::out) is det.
-
-:- pred hlds_dependency_info_get_dependency_ordering(dependency_info(T)::in,
-    dependency_ordering(T)::out) is det.
-
-:- pred hlds_dependency_info_set_dependency_graph(dependency_graph(T)::in,
-    dependency_info(T)::in, dependency_info(T)::out) is det.
-
-:- pred hlds_dependency_info_set_dependency_ordering(
-    dependency_ordering(T)::in,
-    dependency_info(T)::in, dependency_info(T)::out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- implementation.
-
-:- type dependency_info(T)
-    --->    dependency_info(
-                dep_graph       :: dependency_graph(T),
-                dep_ord         :: dependency_ordering(T)
-            ).
-
-hlds_dependency_info_init(DepInfo) :-
-    digraph.init(DepGraph),
-    DepOrd = [],
-    DepInfo = dependency_info(DepGraph, DepOrd).
-
-hlds_dependency_info_get_dependency_graph(DepInfo, DepInfo ^ dep_graph).
-hlds_dependency_info_get_dependency_ordering(DepInfo, DepInfo ^ dep_ord).
-
-hlds_dependency_info_set_dependency_graph(DepGraph, !DepInfo) :-
-    !DepInfo ^ dep_graph := DepGraph.
-hlds_dependency_info_set_dependency_ordering(DepOrd, !DepInfo) :-
-    !DepInfo ^ dep_ord := DepOrd.
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_module.

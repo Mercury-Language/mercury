@@ -52,6 +52,8 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
@@ -268,14 +270,14 @@ inter_proc_rpta(ModuleInfo0, !InfoTable) :-
     module_info_get_maybe_dependency_info(ModuleInfo, MaybeDepInfo),
     (
         MaybeDepInfo = yes(DepInfo),
-        hlds_dependency_info_get_dependency_ordering(DepInfo, DepOrdering),
+        DepOrdering = dependency_info_get_ordering(DepInfo),
         run_with_dependencies(DepOrdering, ModuleInfo, !InfoTable)
     ;
         MaybeDepInfo = no,
         unexpected($module, $pred, "no dependency information")
     ).
 
-:- pred run_with_dependencies(dependency_ordering::in, module_info::in,
+:- pred run_with_dependencies(hlds_dependency_ordering::in, module_info::in,
     rpta_info_table::in, rpta_info_table::out) is det.
 
 run_with_dependencies(Deps, ModuleInfo, !InfoTable) :-

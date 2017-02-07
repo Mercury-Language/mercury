@@ -85,6 +85,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
 :- import_module libs.options.
@@ -136,7 +137,7 @@ analyse_mm_tabling_in_module(!ModuleInfo) :-
         ),
         module_info_ensure_dependency_info(!ModuleInfo),
         module_info_dependency_info(!.ModuleInfo, DepInfo),
-        hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+        SCCs = dependency_info_get_ordering(DepInfo),
         globals.lookup_bool_option(Globals, debug_mm_tabling_analysis, Debug),
         list.foldl(analyse_mm_tabling_in_scc(Debug, Pass1Only), SCCs,
             !ModuleInfo),

@@ -64,6 +64,7 @@
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -121,8 +122,7 @@ deforestation(!ModuleInfo) :-
     % also to avoid redoing optimizations.
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, DepOrdering),
-    list.condense(DepOrdering, DepList),
+    DepList = dependency_info_get_condensed_ordering(DepInfo),
 
     pd_info_init(!.ModuleInfo, ProcArgInfo, PDInfo0),
     list.foldl(deforest_proc, DepList, PDInfo0, PDInfo),

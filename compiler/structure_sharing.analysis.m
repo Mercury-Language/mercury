@@ -74,6 +74,7 @@
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
@@ -370,7 +371,7 @@ sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
     module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
     (
         MaybeDepInfo = yes(DepInfo),
-        hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+        SCCs = dependency_info_get_ordering(DepInfo),
         list.foldl3(analyse_scc(!.ModuleInfo), SCCs,
             !SharingTable, [], DepProcs, !IO)
     ;

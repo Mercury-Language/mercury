@@ -64,6 +64,8 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
@@ -147,8 +149,7 @@ apply_live_region_rule(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
     module_info_get_maybe_dependency_info(ModuleInfo1, MaybeDepInfo),
     (
         MaybeDepInfo = yes(DepInfo),
-        hlds.hlds_module.hlds_dependency_info_get_dependency_ordering(
-            DepInfo, DepOrdering),
+        DepOrdering = dependency_info_get_ordering(DepInfo),
         run_with_dependencies(Rule, DepOrdering, ModuleInfo1,
             RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
             !ProcRegionSetTable)
@@ -158,7 +159,7 @@ apply_live_region_rule(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
     ).
 
 :- pred run_with_dependencies(rule_pred::in(rule_pred),
-    dependency_ordering::in, module_info::in, rpta_info_table::in,
+    hlds_dependency_ordering::in, module_info::in, rpta_info_table::in,
     execution_path_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.

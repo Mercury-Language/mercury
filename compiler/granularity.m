@@ -40,6 +40,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -59,7 +60,7 @@
 
 control_granularity(!ModuleInfo) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+    SCCs = dependency_info_get_ordering(DepInfo),
     list.foldl(runtime_granularity_test_in_scc, SCCs, !ModuleInfo).
 
 :- pred runtime_granularity_test_in_scc(list(pred_proc_id)::in,

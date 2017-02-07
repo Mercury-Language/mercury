@@ -66,6 +66,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_tail_calls.
+:- import_module libs.dependency_graph.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -209,10 +210,10 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
         MaybeDupProcMap = no
     ;
         ProcDups = yes,
-        build_pred_dependency_graph(!.HLDS, PredIds,
-            do_not_include_imported, DepInfo),
-        hlds_dependency_info_get_dependency_ordering(DepInfo, PredSCCs),
-        list.condense(PredSCCs, OrderedPredIds),
+        DepInfo = build_pred_dependency_graph(!.HLDS, PredIds,
+            do_not_include_imported),
+        OrderedPredIds =
+            dependency_info_get_condensed_ordering(DepInfo),
         MaybeDupProcMap = yes(map.init)
     ),
     generate_const_structs(!.HLDS, ConstStructMap, !GlobalData),

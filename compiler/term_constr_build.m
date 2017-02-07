@@ -24,6 +24,7 @@
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.term_constr_errors.
@@ -52,7 +53,7 @@
 
     % Builds the abstract representation of an SCC.
     %
-:- pred term_constr_build_abstract_scc(dependency_ordering::in,
+:- pred term_constr_build_abstract_scc(hlds_dependency_ordering::in,
     list(pred_proc_id)::in, term_build_options::in, list(term2_error)::out,
     module_info::in, module_info::out) is det.
 
@@ -65,7 +66,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.

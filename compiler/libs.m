@@ -26,6 +26,7 @@
 % Generic algorithms and data structures that are not quite useful enough
 % or otherwise aren't in the standard library.
 % :- include_module atsort.       % currently unused
+:- include_module dependency_graph.
 :- include_module file_util.
 :- include_module graph_colour.
 :- include_module int_emu.

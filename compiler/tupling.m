@@ -117,6 +117,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.
@@ -221,8 +222,8 @@ tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
 
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+    DepGraph = dependency_info_get_graph(DepInfo),
+    SCCs = dependency_info_get_ordering(DepInfo),
 
     % Add transformed versions of procedures that we think would be
     % beneficial.
@@ -243,7 +244,7 @@ tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
     % unused but might be useful for debugging.
     %
 :- pred maybe_tuple_scc_individual_procs(trace_counts::in, tuning_params::in,
-    dependency_graph::in, list(pred_proc_id)::in,
+    hlds_dependency_graph::in, list(pred_proc_id)::in,
     module_info::in, module_info::out, counter::in, counter::out,
     transform_map::in, transform_map::out) is det.
 :- pragma consider_used(maybe_tuple_scc_individual_procs/10).
@@ -258,7 +259,7 @@ maybe_tuple_scc_individual_procs(TraceCounts, TuningParams, DepGraph,
         Procs, !ModuleInfo, !Counter, !TransformMap).
 
 :- pred maybe_tuple_scc(trace_counts::in, tuning_params::in,
-    dependency_graph::in, list(pred_proc_id)::in,
+    hlds_dependency_graph::in, list(pred_proc_id)::in,
     module_info::in, module_info::out, counter::in, counter::out,
     transform_map::in, transform_map::out) is det.
 
@@ -315,8 +316,8 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
         )
     ).
 
-:- pred scc_has_local_callers(list(pred_proc_id)::in, dependency_graph::in)
-    is semidet.
+:- pred scc_has_local_callers(list(pred_proc_id)::in,
+    hlds_dependency_graph::in) is semidet.
 
 scc_has_local_callers(CalleeProcs, DepGraph) :-
     some [CalleeProc] (
@@ -324,7 +325,7 @@ scc_has_local_callers(CalleeProcs, DepGraph) :-
         proc_has_local_callers(CalleeProc, DepGraph)
     ).
 
-:- pred proc_has_local_callers(pred_proc_id::in, dependency_graph::in)
+:- pred proc_has_local_callers(pred_proc_id::in, hlds_dependency_graph::in)
     is semidet.
 
 proc_has_local_callers(CalleeProc, DepGraph) :-

@@ -67,6 +67,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -129,7 +130,7 @@ apply_deep_profiling_transform(!ModuleInfo) :-
 apply_deep_prof_tail_rec_transform(!ModuleInfo) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+    SCCs = dependency_info_get_ordering(DepInfo),
     list.foldl(apply_deep_prof_tail_rec_transform_to_scc, SCCs, !ModuleInfo).
 
 :- pred apply_deep_prof_tail_rec_transform_to_scc(list(pred_proc_id)::in,

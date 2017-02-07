@@ -10,14 +10,12 @@
 % File: hlds_dependency_graph.m.
 % Main authors: bromage, conway, stayl.
 %
-% The dependency_graph records which procedures depend on which other
-% procedures. It is defined as a digraph (see hlds_module.m) R where
-% edge x -> y means that the definition of x depends on the definition of y.
-% Note that imported procedures are not included in the dependency_graph
-% (although opt_imported procedures are included).
+% This dependency graph is based on the one in dependency_graph.m, it is
+% specialised for the HLDS.  Note that imported procedures are not included
+% in the dependency_graph (although opt_imported procedures are included).
 %
 % The other important structure is the dependency_ordering which is
-% a list of the cliques (strongly-connected components) of this graph,
+% a list of the SCCs (strongly-connected components) of this graph,
 % in topological order. This is very handy for doing fixpoint iterations.
 %
 %-----------------------------------------------------------------------------%
@@ -27,9 +25,19 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.dependency_graph.
 
 :- import_module io.
 :- import_module list.
+
+%---------------------------------------------------------------------------%
+
+:- type hlds_dependency_info        == dependency_info(pred_proc_id).
+
+:- type hlds_dependency_ordering    == dependency_ordering(pred_proc_id).
+:- type hlds_dependency_graph       == dependency_graph(pred_proc_id).
+:- type hlds_dependency_graph_key   == dependency_graph_key(pred_proc_id).
 
 %-----------------------------------------------------------------------------%
 
@@ -47,21 +55,21 @@
     % dependency_info will be up-to-date.
     %
 :- pred module_info_rebuild_dependency_info(module_info::in, module_info::out,
-    dependency_info(pred_proc_id)::out) is det.
+    hlds_dependency_info::out) is det.
 
 :- type include_imported
     --->    include_imported
     ;       do_not_include_imported.
 
-    % Build the dependency graph of procedures.
-    %
-:- pred build_pred_dependency_graph(module_info::in, list(pred_id)::in,
-    include_imported::in, dependency_info(pred_id)::out) is det.
-
     % Build the dependency graph of predicates.
     %
-:- pred build_proc_dependency_graph(module_info::in, list(pred_id)::in,
-    include_imported::in, dependency_info(pred_proc_id)::out) is det.
+:- func build_pred_dependency_graph(module_info, list(pred_id),
+    include_imported) = dependency_info(pred_id).
+
+    % Build the dependency graph of procedures.
+    %
+:- func build_proc_dependency_graph(module_info, list(pred_id),
+    include_imported) = dependency_info(pred_proc_id).
 
     % Output a form of the static call graph to a file, in a format suitable
     % for use in .dependency_info files. After the heading, the format of
@@ -85,8 +93,9 @@
     % and a module_info, find out which members of the SCC can be
     % called from outside the SCC.
     %
-:- pred get_scc_entry_points(list(pred_proc_id)::in, dependency_ordering::in,
-    module_info::in, list(pred_proc_id)::out) is det.
+:- pred get_scc_entry_points(list(pred_proc_id)::in,
+    hlds_dependency_ordering::in, module_info::in,
+    list(pred_proc_id)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -126,47 +135,34 @@ module_info_ensure_dependency_info(!ModuleInfo) :-
     ;
         MaybeDepInfo = no,
         module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-        build_dependency_graph(!.ModuleInfo, PredIds, do_not_include_imported,
-            DepInfo),
+        DepInfo = build_dependency_graph(!.ModuleInfo, PredIds,
+            do_not_include_imported),
         module_info_set_dependency_info(DepInfo, !ModuleInfo)
     ).
 
 module_info_rebuild_dependency_info(!ModuleInfo, DepInfo) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    build_dependency_graph(!.ModuleInfo, PredIds, do_not_include_imported,
-        DepInfo),
+    DepInfo = build_dependency_graph(!.ModuleInfo, PredIds,
+        do_not_include_imported),
     module_info_set_dependency_info(DepInfo, !ModuleInfo).
 
-build_proc_dependency_graph(ModuleInfo, PredIds, Imported, DepInfo) :-
-    build_dependency_graph(ModuleInfo, PredIds, Imported, DepInfo).
+build_proc_dependency_graph(ModuleInfo, PredIds, Imported) =
+    build_dependency_graph(ModuleInfo, PredIds, Imported).
 
-build_pred_dependency_graph(ModuleInfo, PredIds, Imported, DepInfo) :-
-    build_dependency_graph(ModuleInfo, PredIds, Imported, DepInfo).
+build_pred_dependency_graph(ModuleInfo, PredIds, Imported) =
+    build_dependency_graph(ModuleInfo, PredIds, Imported).
 
     % Traverse the module structure, calling `add_dependency_arcs'
     % for each procedure body.
     %
-:- pred build_dependency_graph(module_info::in, list(pred_id)::in,
-    include_imported::in, dependency_info(T)::out) is det
-    <= dependency_node(T).
+:- func build_dependency_graph(module_info, list(pred_id),
+    include_imported) = dependency_info(T) <= dependency_node(T).
 
-build_dependency_graph(ModuleInfo, PredIds, Imported, !:DepInfo) :-
+build_dependency_graph(ModuleInfo, PredIds, Imported) = DepInfo :-
     digraph.init(DepGraph0),
     add_dependency_nodes(PredIds, ModuleInfo, Imported, DepGraph0, DepGraph1),
     add_dependency_arcs(PredIds, ModuleInfo, Imported, DepGraph1, DepGraph),
-    hlds_dependency_info_init(!:DepInfo),
-    hlds_dependency_info_set_dependency_graph(DepGraph, !DepInfo),
-    digraph.atsort(DepGraph, DepOrd0),
-    sets_to_lists(DepOrd0, [], DepOrd),
-    hlds_dependency_info_set_dependency_ordering(DepOrd, !DepInfo).
-
-:- pred sets_to_lists(list(set(T))::in, list(list(T))::in,
-    list(list(T))::out) is det.
-
-sets_to_lists([], Xs, Xs).
-sets_to_lists([X | Xs], Ys, Zs) :-
-    set.to_sorted_list(X, Y),
-    sets_to_lists(Xs, [Y | Ys], Zs).
+    DepInfo = make_dependency_info(DepGraph).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -199,7 +195,9 @@ sets_to_lists([X | Xs], Ys, Zs) :-
 %-----------------------------------------------------------------------------%
 
 :- pred add_pred_proc_nodes(list(pred_id)::in, module_info::in,
-    include_imported::in, dependency_graph::in, dependency_graph::out) is det.
+    include_imported::in,
+    dependency_graph(pred_proc_id)::in, dependency_graph(pred_proc_id)::out)
+    is det.
 
 add_pred_proc_nodes([], _ModuleInfo, _, !DepGraph).
 add_pred_proc_nodes([PredId | PredIds], ModuleInfo, Imported, !DepGraph) :-
@@ -217,8 +215,9 @@ add_pred_proc_nodes([PredId | PredIds], ModuleInfo, Imported, !DepGraph) :-
     add_proc_nodes(ProcIds, PredId, ModuleInfo, !DepGraph),
     add_pred_proc_nodes(PredIds, ModuleInfo, Imported, !DepGraph).
 
-:- pred add_proc_nodes(list(proc_id)::in, pred_id::in,
-    module_info::in, dependency_graph::in, dependency_graph::out) is det.
+:- pred add_proc_nodes(list(proc_id)::in, pred_id::in, module_info::in,
+    dependency_graph(pred_proc_id)::in, dependency_graph(pred_proc_id)::out)
+    is det.
 
 add_proc_nodes([], _PredId, _ModuleInfo, !DepGraph).
 add_proc_nodes([ProcId | ProcIds], PredId, ModuleInfo, !DepGraph) :-
@@ -251,7 +250,9 @@ add_pred_nodes([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
 %-----------------------------------------------------------------------------%
 
 :- pred add_pred_proc_arcs(list(pred_id)::in, module_info::in,
-    include_imported::in, dependency_graph::in, dependency_graph::out) is det.
+    include_imported::in,
+    dependency_graph(pred_proc_id)::in, dependency_graph(pred_proc_id)::out)
+    is det.
 
 add_pred_proc_arcs([], _ModuleInfo, _, !DepGraph).
 add_pred_proc_arcs([PredId | PredIds], ModuleInfo, Imported, !DepGraph) :-
@@ -270,7 +271,9 @@ add_pred_proc_arcs([PredId | PredIds], ModuleInfo, Imported, !DepGraph) :-
     add_pred_proc_arcs(PredIds, ModuleInfo, Imported, !DepGraph).
 
 :- pred add_proc_arcs(list(proc_id)::in, pred_id::in, module_info::in,
-    include_imported::in, dependency_graph::in, dependency_graph::out) is det.
+    include_imported::in,
+    dependency_graph(pred_proc_id)::in, dependency_graph(pred_proc_id)::out)
+    is det.
 
 add_proc_arcs([], _PredId, _ModuleInfo, _, !DepGraph).
 add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo, IncludeImported,
@@ -528,18 +531,16 @@ write_scc(ModuleInfo, [PredProcId | PredProcIds], !IO) :-
 write_prof_dependency_graph(!ModuleInfo, !IO) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
-    digraph.traverse(DepGraph, write_empty_node,
-        write_prof_dep_graph_link(!.ModuleInfo), !IO).
+    digraph.traverse(dependency_info_get_graph(DepInfo),
+        write_empty_node, write_prof_dep_graph_link(!.ModuleInfo), !IO).
 
 write_dependency_graph(!ModuleInfo, !IO) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     io.write_string("% Dependency graph\n", !IO),
     io.write_string("\n\n% Dependency ordering\n", !IO),
-    hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
-    digraph.traverse(DepGraph, write_empty_node,
-        write_dep_graph_link(!.ModuleInfo), !IO).
+    digraph.traverse(dependency_info_get_graph(DepInfo),
+        write_empty_node, write_dep_graph_link(!.ModuleInfo), !IO).
 
 :- pred write_empty_node(pred_proc_id::in, io::di, io::uo) is det.
 
@@ -608,7 +609,7 @@ is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
     ;
         % Is the predicate called from a higher SCC?
         module_info_dependency_info(ModuleInfo, DepInfo),
-        hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
+        DepGraph = dependency_info_get_graph(DepInfo),
 
         digraph.lookup_key(DepGraph, PredProcId, PredProcIdKey),
         digraph.lookup_to(DepGraph, PredProcIdKey, CallingKeys),

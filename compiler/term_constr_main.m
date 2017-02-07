@@ -93,6 +93,7 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data_pragma.
@@ -151,7 +152,7 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     % Analyse the module per SCC in bottom-up fashion.
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+    SCCs = dependency_info_get_ordering(DepInfo),
     list.foldl2(
         term2_analyse_scc(SCCs, BuildOptions, FixpointOptions, Pass2Options),
         SCCs, !ModuleInfo, [], Specs),
@@ -201,8 +202,8 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     % If no argument size constraint is supplied then non-zero arguments
     % are assumed to have unbounded size.
     %
-:- pred term2_analyse_scc(dependency_ordering::in, term_build_options::in,
-    fixpoint_options::in, pass2_options::in,
+:- pred term2_analyse_scc(hlds_dependency_ordering::in,
+    term_build_options::in, fixpoint_options::in, pass2_options::in,
     list(pred_proc_id)::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 

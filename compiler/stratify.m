@@ -58,6 +58,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -78,7 +79,7 @@ check_module_for_stratification(!ModuleInfo, Specs) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
 
-    hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph0),
+    DepGraph0 = dependency_info_get_graph(DepInfo),
     digraph.atsort(DepGraph0, FOSCCs1),
     dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs),
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -491,7 +492,7 @@ higher_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
     % It also returns a map of all the higher order info it collects.
     %
 :- pred gen_conservative_graph(module_info::in,
-    dependency_graph::in, dependency_graph::out, ho_map::out) is det.
+    hlds_dependency_graph::in, hlds_dependency_graph::out, ho_map::out) is det.
 :- pragma consider_used(gen_conservative_graph/4).
 
 gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
@@ -626,7 +627,8 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
     % the given call graph with new arcs for every possible higher order call.
     %
 :- pred add_new_arcs(assoc_list(pred_proc_id, strat_ho_info)::in,
-    set(pred_proc_id)::in, dependency_graph::in, dependency_graph::out) is det.
+    set(pred_proc_id)::in,
+    hlds_dependency_graph::in, hlds_dependency_graph::out) is det.
 
 add_new_arcs([], _, !DepGraph).
 add_new_arcs([Caller - CallerInfo | Cs], CallsHO, !DepGraph) :-
@@ -641,8 +643,8 @@ add_new_arcs([Caller - CallerInfo | Cs], CallsHO, !DepGraph) :-
     ),
     add_new_arcs(Cs, CallsHO, !DepGraph).
 
-:- pred add_new_arcs2(list(pred_proc_id)::in, dependency_graph_key::in,
-    dependency_graph::in, dependency_graph::out) is det.
+:- pred add_new_arcs2(list(pred_proc_id)::in, hlds_dependency_graph_key::in,
+    hlds_dependency_graph::in, hlds_dependency_graph::out) is det.
 
 add_new_arcs2([], _, !DepGraph).
 add_new_arcs2([Callee | Cs], CallerKey, !DepGraph) :-
