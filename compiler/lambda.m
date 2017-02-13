@@ -680,7 +680,6 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
     ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
     Functor = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
 
-/* ###    expected type was `list.list(hlds.hlds_goal.unify_mode)'. */
     Unification = construct(Var, ConsId, ArgVars, ArgUnifyModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     HaveExpandedLambdas = yes,
