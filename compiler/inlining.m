@@ -45,22 +45,22 @@
 % because doing so *reduces* the size of the generated code:
 %
 % - access predicates that get or set one or more fields of a structure
-%   (Inlining these is almost always a win because the infrastructure for the
+%   Inlining these is almost always a win because the infrastructure for the
 %   call to the procedure is almost always larger than the code to do the
 %   access. In the case of `get' accessors, the call usually becomes a single
 %   `field' expression to get the relevant field of the structure. In the case
 %   of `set' accessors, it is a bit more complicated since the code to copy
-%   the fields can be quite big if there are lots of fields, however in the
-%   case where several `set' accessors get called one after the other,
-%   inlining them enables the code generator to avoid creating the intermediate
-%   structures which is often a win).
+%   the fields can be quite big if there are lots of fields. However, in the
+%   frequent case where several `set' accessors get called one after the other,
+%   inlining them all enables the code generator to avoid creating all the
+%   intermediate structures, which is usually a significant win.
 %
 % - arithmetic predicates where as above, the cost of the call will often
 %   outweigh the cost of the arithmetic.
 %
-% - det or semi pragma C code, where often the C operation is very small,
-%   inlining avoids a call and allows the C compiler to do a better job of
-%   optimizing it.
+% - det or semidet foreign_proc code, where the foreign code is often
+%   very small; inlining avoids a call and allows the target language
+%   compiler to do a better job of optimizing it.
 %
 % The threshold on the size of simple goals (which covers both of the first
 % two cases above), is to prevent the inlining of large goals such as those
