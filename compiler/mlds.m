@@ -753,7 +753,7 @@
 
     ;       mlds_cont_type(mlds_return_types)
             % The type for the continuation functions used to handle
-            % nondeterminism
+            % nondeterminism.
 
     ;       mlds_commit_type
             % mlds_commit_type is used for storing information about a
