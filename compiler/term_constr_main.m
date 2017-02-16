@@ -153,14 +153,27 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     SCCs = dependency_info_get_ordering(DepInfo),
-    list.foldl2(
-        term2_analyse_scc(SCCs, BuildOptions, FixpointOptions, Pass2Options),
-        SCCs, !ModuleInfo, [], Specs),
+    term2_analyse_sccs(BuildOptions, FixpointOptions, Pass2Options, SCCs,
+        !ModuleInfo, [], Specs),
 
     % Write termination2_info pragmas to `.opt' files.
     module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
     set.insert(pak_termination2, ProcAnalysisKinds0, ProcAnalysisKinds),
     module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo).
+
+:- pred term2_analyse_sccs(term_build_options::in, fixpoint_options::in,
+    pass2_options::in, list(list(pred_proc_id))::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+term2_analyse_sccs(_BuildOptions, _FixpointOptions, _Pass2Options,
+        [], !ModuleInfo, !Specs).
+term2_analyse_sccs(BuildOptions, FixpointOptions, Pass2Options,
+        [SCC | HigherSCCs], !ModuleInfo, !Specs) :-
+    term2_analyse_scc(BuildOptions, FixpointOptions, Pass2Options,
+        SCC, HigherSCCs, !ModuleInfo, !Specs),
+    term2_analyse_sccs(BuildOptions, FixpointOptions, Pass2Options,
+        HigherSCCs, !ModuleInfo, !Specs).
 
 %----------------------------------------------------------------------------%
 %
@@ -202,12 +215,12 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     % If no argument size constraint is supplied then non-zero arguments
     % are assumed to have unbounded size.
     %
-:- pred term2_analyse_scc(hlds_dependency_ordering::in,
-    term_build_options::in, fixpoint_options::in, pass2_options::in,
-    list(pred_proc_id)::in, module_info::in, module_info::out,
+:- pred term2_analyse_scc(term_build_options::in, fixpoint_options::in,
+    pass2_options::in, list(pred_proc_id)::in, list(list(pred_proc_id))::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-term2_analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC,
+term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCC, HigherSCCs,
         !ModuleInfo, !Specs) :-
     % Since all of the passes are potentially optional, we need to initialise
     % the size_var_maps separately. If they are left uninitialised, intermodule
@@ -217,7 +230,7 @@ term2_analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC,
     % Build the abstract representation for those procedures that require it.
     % The procedures that require it are those that do not already have
     % both argument size information and termination information.
-    term_constr_build_abstract_scc(DepOrder, NeedsAR, BuildOpts,
+    term_constr_build_abstract_scc(BuildOpts, HigherSCCs, NeedsAR,
         BuildErrors, !ModuleInfo),
 
     % We only perform the fixpoint computation for those procedures where

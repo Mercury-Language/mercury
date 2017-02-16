@@ -74,6 +74,18 @@
 :- func build_proc_dependency_graph(module_info, list(pred_id),
     include_imported) = dependency_info(pred_proc_id).
 
+    % Given the list of predicates in a strongly connected component
+    % of the dependency graph, and a list of the higher SCCs in the module,
+    % find out which members of the SCC can be called from outside the SCC.
+    %
+    % XXX This info would be more efficiently computed if we computed it
+    % for all the SCCs at once.
+    %
+:- pred get_scc_entry_points(module_info::in, list(pred_proc_id)::in,
+    hlds_dependency_ordering::in, list(pred_proc_id)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
     % Output a form of the static call graph to a file, in a format suitable
     % for use in .dependency_info files. After the heading, the format of
     % each line is
@@ -90,15 +102,6 @@
     %
 :- pred write_prof_dependency_graph(module_info::in, module_info::out,
     io::di, io::uo) is det.
-
-    % Given the list of predicates in a strongly connected component
-    % of the dependency graph, a list of the higher SCCs in the module
-    % and a module_info, find out which members of the SCC can be
-    % called from outside the SCC.
-    %
-:- pred get_scc_entry_points(list(pred_proc_id)::in,
-    hlds_dependency_ordering::in, module_info::in,
-    list(pred_proc_id)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -597,13 +600,13 @@ output_label_dependency(ModuleInfo, PredId, ProcId, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-get_scc_entry_points(SCC, HigherSCCs, ModuleInfo, EntryPoints) :-
-    list.filter(is_entry_point(HigherSCCs, ModuleInfo), SCC, EntryPoints).
+get_scc_entry_points(ModuleInfo, SCC, HigherSCCs, EntryPoints) :-
+    list.filter(is_entry_point(ModuleInfo, HigherSCCs), SCC, EntryPoints).
 
-:- pred is_entry_point(list(list(pred_proc_id))::in, module_info::in,
+:- pred is_entry_point(module_info::in, list(list(pred_proc_id))::in,
     pred_proc_id::in) is semidet.
 
-is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
+is_entry_point(ModuleInfo, HigherSCCs, PredProcId) :-
     (
         % Is the predicate exported?
         PredProcId = proc(PredId, _ProcId),
