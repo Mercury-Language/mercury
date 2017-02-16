@@ -105,15 +105,15 @@ check_module_for_stratification(!ModuleInfo, Specs) :-
     assoc_list(list(pred_proc_id), set(pred_id))::out) is det.
 
 dep_lists_to_lists_and_sets([], !DepList).
-dep_lists_to_lists_and_sets([PredProcList | PredProcSets], !DepList) :-
-    list.map(get_proc_id, PredProcList, ProcList),
-    set.list_to_set(ProcList, ProcSet),
-    !:DepList = [PredProcList - ProcSet | !.DepList],
-    dep_lists_to_lists_and_sets(PredProcSets, !DepList).
+dep_lists_to_lists_and_sets([PredProcList | PredProcLists], !DepList) :-
+    list.map(get_pred_id, PredProcList, PredList),
+    set.list_to_set(PredList, PredSet),
+    !:DepList = [PredProcList - PredSet | !.DepList],
+    dep_lists_to_lists_and_sets(PredProcLists, !DepList).
 
-:- pred get_proc_id(pred_proc_id::in, pred_id::out) is det.
+:- pred get_pred_id(pred_proc_id::in, pred_id::out) is det.
 
-get_proc_id(proc(PredId, _), PredId).
+get_pred_id(proc(PredId, _), PredId).
 
     % Check the first order SCCs for stratification.
     %
