@@ -78,12 +78,9 @@
 check_module_for_stratification(!ModuleInfo, Specs) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
+    FOSCCs0 = dependency_info_get_ordering(DepInfo),
+    dep_lists_to_lists_and_sets(FOSCCs0, [], FOSCCs),
 
-    DepGraph0 = dependency_info_get_graph(DepInfo),
-    % XXX The dependency_ordering field of DepInfo should contain
-    % the already computed list of SCCs; why compute them again?
-    digraph.atsort(DepGraph0, FOSCCs1),
-    dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
     module_info_get_must_be_stratified_preds(!.ModuleInfo,
@@ -103,17 +100,16 @@ check_module_for_stratification(!ModuleInfo, Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dep_sets_to_lists_and_sets(list(set(pred_proc_id))::in,
+:- pred dep_lists_to_lists_and_sets(list(list(pred_proc_id))::in,
     assoc_list(list(pred_proc_id), set(pred_id))::in,
     assoc_list(list(pred_proc_id), set(pred_id))::out) is det.
 
-dep_sets_to_lists_and_sets([], !DepList).
-dep_sets_to_lists_and_sets([PredProcSet | PredProcSets], !DepList) :-
-    set.to_sorted_list(PredProcSet, PredProcList),
+dep_lists_to_lists_and_sets([], !DepList).
+dep_lists_to_lists_and_sets([PredProcList | PredProcSets], !DepList) :-
     list.map(get_proc_id, PredProcList, ProcList),
     set.list_to_set(ProcList, ProcSet),
     !:DepList = [PredProcList - ProcSet | !.DepList],
-    dep_sets_to_lists_and_sets(PredProcSets, !DepList).
+    dep_lists_to_lists_and_sets(PredProcSets, !DepList).
 
 :- pred get_proc_id(pred_proc_id::in, pred_id::out) is det.
 
