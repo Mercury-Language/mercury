@@ -9,17 +9,18 @@
 % File: dependency_graph.m.
 %
 % These are generic types and predicates for managing a dependency graph.
-% hlds.dependency_graph.m and mlds.dependency_graph.m make use of them.
+% hlds_dependency_graph.m uses it, and if we need an mlds_dependency_graph.m,
+% that would use it too.
 %
-% A dependency_graph records which procedures depend on which other
-% procedures. It is defined as a digraph (see hlds_module.m) R where
-% edge x -> y means that the definition of x depends on the definition of y.
-% Imported procedures are not normally included in a dependency_graph
-% (although opt_imported procedures are included).
+% A dependency_graph records which entities depend on which other entities.
+% (For hlds_dependency_graph.m, the entities are HLDS procedures.)
+% It is defined as a digraph R where the presence of an edge x -> y means that
+% the definition of x depends on the definition of y. 
 %
-% The other important structure is the dependency_ordering which is
-% a list of the cliques (strongly-connected components) of this graph,
-% in topological order. This is very handy for doing fixpoint iterations.
+% The reason why we build the dependency graph is because from it,
+% we can compute the list of the SCCs (strongly-connected components)
+% of this graph. This list of SCCs is the dependency_ordering, the other
+% component in a dependency_info.
 %
 %-----------------------------------------------------------------------%
 
@@ -31,15 +32,22 @@
 
 %-----------------------------------------------------------------------%
 
-    % A dependency ordering gives the list of SCCs of the module. The list
-    % is in ascending order: the lowest SCC is first, the highest SCC is last.
-:- type dependency_ordering(T)  == list(list(T)).
+    % A dependency_info contains a dependency_graph and a dependency_ordering.
+    % Calling make_dependency_info on a graph fills in the dependency_ordering.
+    %
+:- type dependency_info(T).
 
 :- type dependency_graph(T)     == digraph(T).
-
 :- type dependency_graph_key(T) == digraph_key(T).
 
-:- type dependency_info(T).
+    % A dependency ordering gives the list of SCCs of the analysed entities.
+    % (For hlds_dependency_graph.m, this will be all the predicates or all
+    % the procedure of the module being compiled.)
+    %
+    % The list is in ascending order: the lowest SCC is first,
+    % the highest SCC is last.
+    %
+:- type dependency_ordering(T)  == list(list(T)).
 
 %-----------------------------------------------------------------------%
 
@@ -47,14 +55,15 @@
 
 %-----------------------------------------------------------------------%
 
-:- func dependency_info_get_graph(dependency_info(T)) = dependency_graph(T).
+:- func dependency_info_get_graph(dependency_info(T))
+    = dependency_graph(T). 
+:- func dependency_info_get_ordering(dependency_info(T))
+    = dependency_ordering(T).
 
-:- func dependency_info_get_ordering(dependency_info(T)) =
-    dependency_ordering(T).
-
-    % Same as the above, except all the nodes are condensed into a single
-    % list.  This is useful when processing them in order is important, but
-    % processing whole SCCs or knowing the SCC boundaries is not.
+    % This function does the same job as dependency_info_get_ordering,
+    % except that it condenses all the nodes into a single list.
+    % This is useful when the caller wants to process entities bottom up,
+    % but the SCC boundaries are not relevant.
     %
 :- func dependency_info_get_condensed_ordering(dependency_info(T)) = list(T).
 
@@ -88,10 +97,6 @@ sets_to_lists([X | Xs], Ys, Zs) :-
 %-----------------------------------------------------------------------%
 
 dependency_info_get_graph(DepInfo) = DepInfo ^ dep_graph.
-
-    % TODO: These could be improved to reduce the amount of intermedediate
-    % structures created.
-    %
 dependency_info_get_ordering(DepInfo) = DepInfo ^ dep_ord.
 
 dependency_info_get_condensed_ordering(DepInfo) =

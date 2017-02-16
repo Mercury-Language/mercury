@@ -80,6 +80,8 @@ check_module_for_stratification(!ModuleInfo, Specs) :-
     module_info_dependency_info(!.ModuleInfo, DepInfo),
 
     DepGraph0 = dependency_info_get_graph(DepInfo),
+    % XXX The dependency_ordering field of DepInfo should contain
+    % the already computed list of SCCs; why compute them again?
     digraph.atsort(DepGraph0, FOSCCs1),
     dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs),
     module_info_get_globals(!.ModuleInfo, Globals),

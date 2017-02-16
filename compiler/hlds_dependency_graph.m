@@ -10,13 +10,15 @@
 % File: hlds_dependency_graph.m.
 % Main authors: bromage, conway, stayl.
 %
-% This dependency graph is based on the one in dependency_graph.m, it is
-% specialised for the HLDS.  Note that imported procedures are not included
-% in the dependency_graph (although opt_imported procedures are included).
+% The HLDS dependency graph is an instance of dependency_graph in which
+% the entities are the HLDS procedures in the module being compiled.
+% The criterion for inclusion in the dependency graph is "do we have access
+% to the body of this procedure?", which means that imported procedures
+% are *not* included, but opt_imported procedures *are*.
 %
-% The other important structure is the dependency_ordering which is
-% a list of the SCCs (strongly-connected components) of this graph,
-% in topological order. This is very handy for doing fixpoint iterations.
+% The reason why we build the dependency graph is because from it,
+% dependency_graph.m can compute the list of the SCCs (strongly-connected
+% components) of this graph. This is very handy for doing fixpoint iterations.
 %
 %-----------------------------------------------------------------------------%
 
@@ -35,9 +37,10 @@
 
 :- type hlds_dependency_info        == dependency_info(pred_proc_id).
 
-:- type hlds_dependency_ordering    == dependency_ordering(pred_proc_id).
 :- type hlds_dependency_graph       == dependency_graph(pred_proc_id).
 :- type hlds_dependency_graph_key   == dependency_graph_key(pred_proc_id).
+
+:- type hlds_dependency_ordering    == dependency_ordering(pred_proc_id).
 
 %-----------------------------------------------------------------------------%
 
