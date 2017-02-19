@@ -1963,7 +1963,8 @@ failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
     (
         FailingGoal = incomplete_switch(Var),
         VarStr = mercury_var_to_name_only(VarSet, Var),
-        Pieces = [words("Switch on"), fixed(VarStr), words("is incomplete.")]
+        Pieces = [words("The switch on"), fixed(VarStr),
+            words("is incomplete.")]
     ;
         FailingGoal = fail_goal,
         Pieces = [words("Fail goal can fail.")]

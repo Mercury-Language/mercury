@@ -54,4 +54,4 @@ det_errors_cc.m:058:   Higher-order predicate call can fail.
 det_errors_cc.m:063: Error: call to predicate `det_errors_cc.p1'/2 with
 det_errors_cc.m:063:   determinism `cc_nondet' occurs in a context which
 det_errors_cc.m:063:   requires all solutions.
-det_errors_cc.m:074:   Switch on C is incomplete.
+det_errors_cc.m:074:   The switch on C is incomplete.
