@@ -76,15 +76,16 @@
 :- func build_proc_dependency_graph(module_info, list(pred_id),
     include_imported) = dependency_info(pred_proc_id).
 
-    % Given the list of predicates in a strongly connected component
-    % of the dependency graph, and a list of the higher SCCs in the module,
-    % find out which members of the SCC can be called from outside the SCC.
-    %
-    % XXX This info would be more efficiently computed if we computed it
-    % for all the SCCs at once.
-    %
-:- pred get_scc_entry_points(module_info::in, scc::in, list(scc)::in,
-    set(pred_proc_id)::out) is det.
+:- type scc_with_entry_points
+    --->    scc_with_entry_points(
+                % The set of procedures in the SCC.
+                swep_scc_procs                  :: set(pred_proc_id),
+                swep_called_from_higher_sccs    :: set(pred_proc_id),
+                swep_exported_procs             :: set(pred_proc_id)
+            ).
+
+:- pred get_bottom_up_sccs_with_entry_points(module_info::in,
+    list(scc_with_entry_points)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -601,33 +602,6 @@ output_label_dependency(ModuleInfo, PredId, ProcId, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-get_scc_entry_points(ModuleInfo, SCC, HigherSCCs, EntryPoints) :-
-    set.filter(is_entry_point(ModuleInfo, HigherSCCs), SCC, EntryPoints).
-
-:- pred is_entry_point(module_info::in, list(scc)::in,
-    pred_proc_id::in) is semidet.
-
-is_entry_point(ModuleInfo, HigherSCCs, PredProcId) :-
-    (
-        % Is the predicate exported?
-        PredProcId = proc(PredId, _ProcId),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_is_exported(PredInfo)
-    ;
-        % Is the predicate called from a higher SCC?
-        module_info_dependency_info(ModuleInfo, DepInfo),
-        DepGraph = dependency_info_get_graph(DepInfo),
-
-        digraph.lookup_key(DepGraph, PredProcId, PredProcIdKey),
-        digraph.lookup_to(DepGraph, PredProcIdKey, CallingKeys),
-        set.member(CallingKey, CallingKeys),
-        digraph.lookup_vertex(DepGraph, CallingKey, CallingPred),
-        list.member(HigherSCC, HigherSCCs),
-        set.member(CallingPred, HigherSCC)
-    ).
-
-%-----------------------------------------------------------------------------%
-
 :- type scc_id == int.
 
     % An SCC cannot be merged into its parents if one of its procedures
@@ -678,6 +652,68 @@ handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
     else
         true
     ).
+
+%-----------------------------------------------------------------------------%
+
+get_bottom_up_sccs_with_entry_points(ModuleInfo, BottomUpSCCsEntryPoints) :-
+    module_info_dependency_info(ModuleInfo, DepInfo),
+    DepGraph = dependency_info_get_graph(DepInfo),
+    BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
+    list.reverse(BottomUpSCCs, TopDownSCCs),
+    find_scc_entry_points(ModuleInfo, DepGraph, TopDownSCCs, set.init,
+        TopDownSCCsEntryPoints),
+    list.reverse(TopDownSCCsEntryPoints, BottomUpSCCsEntryPoints).
+
+:- pred find_scc_entry_points(module_info::in,
+    dependency_graph(pred_proc_id)::in, list(scc)::in,
+    set(pred_proc_id)::in, list(scc_with_entry_points)::out) is det.
+
+find_scc_entry_points(_, _, [], _, []).
+find_scc_entry_points(ModuleInfo, DepGraph, [SCC | SCCs],
+        !.CalledFromHigherSCC, [SCCEntryPoints | SCCsEntryPoints]) :-
+    set.intersect(!.CalledFromHigherSCC, SCC, SCCProcsCalledFromHigherSCCs),
+    set.filter(proc_is_exported(ModuleInfo), SCC, ExportedSCCProcs),
+    SCCEntryPoints = scc_with_entry_points(SCC,
+        SCCProcsCalledFromHigherSCCs, ExportedSCCProcs),
+
+    % The set of procedures called from SCCs at or above this SCC is
+    % the set of procedures called from SCCs above this SCC, plus
+    % the set of procedures called from this SCC.
+    set.map(find_callee_keys(DepGraph), SCC, CalleeKeySets),
+    CalleeKeys = set.power_union(CalleeKeySets),
+    set.map(lookup_vertex(DepGraph), CalleeKeys, Callees),
+    set.union(Callees, !CalledFromHigherSCC),
+
+    % When we process the lower SCCs, we won't care whether the procedures
+    % of *this* SCC get called or not. Deleting them should reduce the
+    % growth of CalledFromHigherSCC; for many modules, its size should remain
+    % roughly constant, instead of growing linearly in the number of SCCs
+    % processed so far. This is good, because the cost of the operations
+    % on CalledFromHigherSCC would then remain roughly constant as well.
+    set.difference(!.CalledFromHigherSCC, SCC, !:CalledFromHigherSCC),
+
+    find_scc_entry_points(ModuleInfo, DepGraph, SCCs,
+        !.CalledFromHigherSCC, SCCsEntryPoints).
+
+:- pred find_callee_keys(dependency_graph(pred_proc_id)::in, pred_proc_id::in,
+    set(dependency_graph_key(pred_proc_id))::out) is det.
+
+find_callee_keys(DepGraph, ParentId, ChildKeys) :-
+    digraph.lookup_key(DepGraph, ParentId, ParentKey),
+    digraph.lookup_from(DepGraph, ParentKey, ChildKeys).
+
+:- pred proc_is_exported(module_info::in, pred_proc_id::in) is semidet.
+
+proc_is_exported(ModuleInfo, PredProcId) :-
+    PredProcId = proc(PredId, _ProcId),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    % XXX This tests whether the *predicate* is exported, not whether
+    % the *procedure* is exported; the two can differ for compiler
+    % generated unification and comparison predicates. It just so happens
+    % that the only user of this predicate, termination analysis, does not
+    % need to care about the difference, since it knows that these compiler
+    % generated procedures always terminate.
+    pred_info_is_exported(PredInfo).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_dependency_graph.

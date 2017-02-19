@@ -93,7 +93,6 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
-:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data_pragma.
@@ -149,31 +148,17 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     % attributes.
     term2_preprocess_module(!ModuleInfo),
 
-    % Analyse the module per SCC in bottom-up fashion.
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_dependency_info(!.ModuleInfo, DepInfo),
-    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
-    term2_analyse_sccs(BuildOptions, FixpointOptions, Pass2Options, SCCs,
-        !ModuleInfo, [], Specs),
+    % Analyse the module SCC-bySCC in a bottom-up order.
+    get_bottom_up_sccs_with_entry_points(!.ModuleInfo,
+        BottomUpSCCsEntryPoints),
+    list.foldl2(
+        term2_analyse_scc(BuildOptions, FixpointOptions, Pass2Options),
+        BottomUpSCCsEntryPoints, !ModuleInfo, [], Specs),
 
     % Write termination2_info pragmas to `.opt' files.
     module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
     set.insert(pak_termination2, ProcAnalysisKinds0, ProcAnalysisKinds),
     module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo).
-
-:- pred term2_analyse_sccs(term_build_options::in, fixpoint_options::in,
-    pass2_options::in, list(scc)::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-term2_analyse_sccs(_BuildOptions, _FixpointOptions, _Pass2Options,
-        [], !ModuleInfo, !Specs).
-term2_analyse_sccs(BuildOptions, FixpointOptions, Pass2Options,
-        [SCC | HigherSCCs], !ModuleInfo, !Specs) :-
-    term2_analyse_scc(BuildOptions, FixpointOptions, Pass2Options,
-        SCC, HigherSCCs, !ModuleInfo, !Specs),
-    term2_analyse_sccs(BuildOptions, FixpointOptions, Pass2Options,
-        HigherSCCs, !ModuleInfo, !Specs).
 
 %----------------------------------------------------------------------------%
 %
@@ -216,12 +201,14 @@ term2_analyse_sccs(BuildOptions, FixpointOptions, Pass2Options,
     % are assumed to have unbounded size.
     %
 :- pred term2_analyse_scc(term_build_options::in, fixpoint_options::in,
-    pass2_options::in, scc::in, list(scc)::in,
+    pass2_options::in, scc_with_entry_points::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCC, HigherSCCs,
+term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCCEntryPoints,
         !ModuleInfo, !Specs) :-
+    SCC = SCCEntryPoints ^ swep_scc_procs,
+
     % Since all of the passes are potentially optional, we need to initialise
     % the size_var_maps separately. If they are left uninitialised, intermodule
     % optimization will not work.
@@ -230,7 +217,8 @@ term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCC, HigherSCCs,
     % Build the abstract representation for those procedures that require it.
     % The procedures that require it are those that do not already have
     % both argument size information and termination information.
-    term_constr_build_abstract_scc(BuildOpts, HigherSCCs, NeedsAR,
+    NeedsAREntryPoints = SCCEntryPoints ^ swep_scc_procs := NeedsAR,
+    term_constr_build_abstract_scc(BuildOpts, NeedsAREntryPoints,
         BuildErrors, !ModuleInfo),
 
     % We only perform the fixpoint computation for those procedures where

@@ -24,8 +24,8 @@
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module transform_hlds.term_constr_errors.
 :- import_module transform_hlds.term_norm.
 
@@ -53,7 +53,7 @@
     % Builds the abstract representation of an SCC.
     %
 :- pred term_constr_build_abstract_scc(term_build_options::in,
-    list(scc)::in, scc::in, list(term2_error)::out,
+    scc_with_entry_points::in, list(term2_error)::out,
     module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -65,10 +65,10 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
 :- import_module libs.
@@ -135,9 +135,12 @@ term_build_options_init(Norm, Failure, ArgSizeOnly) =
 
 %-----------------------------------------------------------------------------%
 
-term_constr_build_abstract_scc(Options, HigherSCCs, SCC, Errors,
+term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
         !ModuleInfo) :-
-    get_scc_entry_points(!.ModuleInfo, SCC, HigherSCCs, EntryProcs),
+    SCCWithEntryPoints = scc_with_entry_points(SCC,
+        SCCProcsCalledFromHigherSCCs, ExportedSCCProcs),
+    set.union(SCCProcsCalledFromHigherSCCs, ExportedSCCProcs, EntryProcs),
+
     set.foldl2(
         term_constr_build_abstract_proc(!.ModuleInfo, Options,
             SCC, EntryProcs),
