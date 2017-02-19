@@ -65,6 +65,12 @@
     --->    does_not_contain_require_scope
     ;       contains_require_scope.
 
+    % Does the predicate being analyzed contain an incomplete switch?
+    %
+:- type contains_incomplete_switch
+    --->    does_not_contain_incomplete_switch
+    ;       contains_incomplete_switch.
+
     % Does the predicate being analyzed contain a call that can be optimized
     % by format_call.m?
     %
@@ -124,12 +130,15 @@
     contains_format_call::out) is det.
 :- pred det_info_get_has_req_scope(det_info::in,
     contains_require_scope::out) is det.
+:- pred det_info_get_has_incomplete_switch(det_info::in,
+    contains_incomplete_switch::out) is det.
 :- pred det_info_get_error_specs(det_info::in, list(error_spec)::out) is det.
 
 :- pred det_info_set_module_info(module_info::in, det_info::in, det_info::out)
     is det.
 :- pred det_info_set_has_format_call(det_info::in, det_info::out) is det.
 :- pred det_info_set_has_req_scope(det_info::in, det_info::out) is det.
+:- pred det_info_set_has_incomplete_switch(det_info::in, det_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -235,22 +244,27 @@ det_info_add_error_spec(Spec, !DetInfo) :-
 
 :- type det_info
     --->    det_info(
-                di_module_info      :: module_info,
-                di_pred_id          :: pred_id,     % the id of the proc
-                di_proc_id          :: proc_id,     % currently processed
-                di_varset           :: prog_varset,
-                di_vartypes         :: vartypes,
-                di_pess_extra_vars  :: report_pess_extra_vars,
-                di_has_format_call  :: contains_format_call,
-                di_has_req_scope    :: contains_require_scope,
-                di_error_specs      :: list(error_spec)
+                di_module_info              :: module_info,
+
+                % The id of the proc currently processed.
+                di_pred_id                  :: pred_id,
+                di_proc_id                  :: proc_id,
+
+                di_varset                   :: prog_varset,
+                di_vartypes                 :: vartypes,
+                di_pess_extra_vars          :: report_pess_extra_vars,
+                di_has_format_call          :: contains_format_call,
+                di_has_req_scope            :: contains_require_scope,
+                di_has_incomplete_switch    :: contains_incomplete_switch,
+                di_error_specs              :: list(error_spec)
             ).
 
 det_info_init(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
         PessExtraVars, Specs, DetInfo) :-
     DetInfo = det_info(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
         PessExtraVars, does_not_contain_format_call,
-        does_not_contain_require_scope, Specs).
+        does_not_contain_require_scope, does_not_contain_incomplete_switch,
+        Specs).
 
 det_info_get_module_info(DetInfo, X) :-
     X = DetInfo ^ di_module_info.
@@ -268,6 +282,8 @@ det_info_get_has_format_call(DetInfo, X) :-
     X = DetInfo ^ di_has_format_call.
 det_info_get_has_req_scope(DetInfo, X) :-
     X = DetInfo ^ di_has_req_scope.
+det_info_get_has_incomplete_switch(DetInfo, X) :-
+    X = DetInfo ^ di_has_incomplete_switch.
 det_info_get_error_specs(DetInfo, X) :-
     X = DetInfo ^ di_error_specs.
 
@@ -293,6 +309,13 @@ det_info_set_has_req_scope(!DetInfo) :-
         true
     else
         !DetInfo ^ di_has_req_scope := X
+    ).
+det_info_set_has_incomplete_switch(!DetInfo) :-
+    X = contains_incomplete_switch,
+    ( if X = !.DetInfo ^ di_has_incomplete_switch then
+        true
+    else
+        !DetInfo ^ di_has_incomplete_switch := X
     ).
 det_info_set_error_specs(X, !DetInfo) :-
     !DetInfo ^ di_error_specs := X.

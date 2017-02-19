@@ -366,8 +366,19 @@
             % The body of this predicate contains a require_complete_switch
             % or require_detism scope. This marker is set if applicable during
             % determinism inference. It is used during determinism reporting:
-            % procedures that have this marker are checked for violations of
-            % the requirements of these scopes even if the overall determinism
+            % procedures in predicates that have this marker are checked
+            % for violations of the requirements of these scopes even if
+            % the overall determinism of the procedure body is correct.
+
+    ;       marker_has_incomplete_switch
+            % The body of this predicate contains an incomplete switch
+            % (one for which the switched-on variable may have a value
+            % that does not match any of the cases). This marker is set
+            % if applicable during determinism inference. It is used during
+            % determinism reporting: if the inform_incomplete_switch option
+            % is set, then procedures in predicates that have this marker
+            % are traversed again to generate informational messages about
+            % these incomplete switches, even if the overall determinism
             % of the procedure body is correct.
 
     ;       marker_has_format_call.

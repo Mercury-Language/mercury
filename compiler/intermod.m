@@ -2068,6 +2068,7 @@ should_output_marker(marker_calls_are_fully_qualified, no).
 should_output_marker(marker_mode_check_clauses, yes).
 should_output_marker(marker_mutable_access_pred, no).
 should_output_marker(marker_has_require_scope, no).
+should_output_marker(marker_has_incomplete_switch, no).
 should_output_marker(marker_has_format_call, no).
 
 %---------------------------------------------------------------------------%

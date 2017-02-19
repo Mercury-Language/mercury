@@ -315,14 +315,31 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
 make_reqscope_checks_if_needed(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         !Specs) :-
     pred_info_get_markers(PredInfo, Markers),
-    ( if check_marker(Markers, marker_has_require_scope) then
+    ( if
+        ( if
+            check_marker(Markers, marker_has_incomplete_switch),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, inform_incomplete_switch, yes)
+        then
+            % If this option is specified, it acts as an implicit
+            % require_complete_switch scope around all switches.
+            InformIncompleteSwitches = inform_incomplete_switches
+        else if
+            check_marker(Markers, marker_has_require_scope)
+        then
+            InformIncompleteSwitches = do_not_inform_incomplete_switches
+        else
+            fail
+        )
+    then
         proc_info_get_goal(ProcInfo, Goal),
         proc_info_get_varset(ProcInfo, VarSet),
         proc_info_get_vartypes(ProcInfo, VarTypes),
         proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
         det_info_init(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
             pess_extra_vars_ignore, [], DetInfo0),
-        reqscope_check_goal(Goal, InstMap0, DetInfo0, DetInfo),
+        reqscope_check_goal(Goal, InstMap0, InformIncompleteSwitches, no,
+            [], DetInfo0, DetInfo),
         det_info_get_error_specs(DetInfo, RCSSpecs),
         !:Specs = RCSSpecs ++ !.Specs
     else
@@ -577,21 +594,25 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             determinism_components(Desired, cannot_fail, _)
         then
             Context = goal_info_get_context(GoalInfo),
-            det_diagnose_switch_context(!.DetInfo, SwitchContexts,
-                NestingPieces),
-            find_missing_cons_ids(!.DetInfo, InstMap0, Var, Cases,
-                VarStr, MaybeMissingPieces),
+            find_missing_cons_ids(!.DetInfo, yes(10), InstMap0, SwitchContexts,
+                Var, Cases, NestingPieces, VarStr, MaybeMissingInfo),
             (
-                MaybeMissingPieces = yes(MissingPieces),
-                Pieces = [lower_case_next_if_not_first,
+                MaybeMissingInfo = yes(MissingInfo),
+                MissingInfo = missing_cons_id_info(_, _,
+                    MainPieces, VerbosePieces),
+                NoCoverPieces = [lower_case_next_if_not_first,
                     words("The switch on"), fixed(VarStr),
-                    words("does not cover") | MissingPieces] ++ [nl]
+                    words("does not cover")],
+                append_prefix_and_maybe_verbose(NestingPieces ++ NoCoverPieces,
+                    MainPieces, VerbosePieces, Component)
             ;
-                MaybeMissingPieces = no,
-                Pieces = [words("The switch on"), fixed(VarStr),
-                    words("can fail."), nl]
+                MaybeMissingInfo = no,
+                NoCoverPieces = [lower_case_next_if_not_first,
+                    words("The switch on"), fixed(VarStr),
+                    words("can fail."), nl],
+                Component = always(NestingPieces ++ NoCoverPieces)
             ),
-            Msgs1 = [simple_msg(Context, [always(NestingPieces ++ Pieces)])]
+            Msgs1 = [simple_msg(Context, [Component])]
         else
             Msgs1 = []
         ),
@@ -969,48 +990,123 @@ det_diagnose_orelse_goals([Goal | Goals], InstMap0, Desired, SwitchContexts0,
     Msgs = Msgs1 ++ Msgs2.
 
 %-----------------------------------------------------------------------------%
+%
+% There are two reasons why we may want to report that a switch is incomplete: 
+%
+% - because the switch is wrapped in a require_complete_switch scope, and
+% - because the --inform-incomplete-switch option is set.
+
+    % This type says whether the --inform-incomplete-switch option is set.
+    %
+:- type maybe_inform_incomplete_switches
+    --->    do_not_inform_incomplete_switches
+    ;       inform_incomplete_switches.
+
+    % This type says which of the above two reasons causes us to report
+    % the given incomplete switch.
+    %
+:- type why_report_incomplete_switch
+    --->    switch_required_to_be_complete
+    ;       inform_incomplete_switch_option.
+
+    % It is possible for *both* reasons to apply to the same incomplete switch.
+    % In such cases, we want to generate only the error required by the scope,
+    % and not the information message that the option calls for. We process
+    % procedure bodies top down, so we process the scope goal before
+    % the switch it wraps, so when we generate an error report for an
+    % incomplete switch, we pass along its details when we process the
+    % goal inside the scope (which may either be the incomplete switch,
+    % or a conjunction of feature_lifted_by_cse deconstruction unifications
+    % followed by the incomplete switch).
+    %
+:- type reported_switch
+    --->    reported_switch(
+                prog_context,
+                prog_var,
+                list(case)
+            ).
 
     % Check that the switches in all require_complete_switch scopes are
     % actually complete. If they are not, add an error message to !DetInfo.
     %
+    % If IIS = inform_incomplete_switches, do this for *all* switches.
+    %
 :- pred reqscope_check_goal(hlds_goal::in, instmap::in,
-    det_info::in, det_info::out) is det.
+    maybe_inform_incomplete_switches::in, maybe(reported_switch)::in,
+    list(switch_context)::in, det_info::in, det_info::out) is det.
 
-reqscope_check_goal(Goal, InstMap0, !DetInfo) :-
+reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
+        SwitchContexts, !DetInfo) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = conj(_, Goals),
-        reqscope_check_conj(Goals, InstMap0, !DetInfo)
+        reqscope_check_conj(Goals, InstMap0, IIS, MaybeReportedSwitch,
+            SwitchContexts, !DetInfo)
     ;
         GoalExpr = disj(Goals),
-        reqscope_check_disj(Goals, InstMap0, !DetInfo)
+        reqscope_check_disj(Goals, InstMap0, IIS, SwitchContexts, !DetInfo)
     ;
-        GoalExpr = switch(Var, _, Cases),
+        GoalExpr = switch(Var, CanFail, Cases),
+        (
+            CanFail = cannot_fail
+        ;
+            CanFail = can_fail,
+            Context = goal_info_get_context(GoalInfo),
+            ( if
+                (
+                    IIS = do_not_inform_incomplete_switches
+                ;
+                    MaybeReportedSwitch = yes(ReportedSwitch),
+                    ReportedSwitch = reported_switch(ReportedContext,
+                        ReportedVar, ReportedCases),
+                    ReportedContext = Context,
+                    ReportedVar = Var,
+                    ReportedCases = Cases
+                )
+            then
+                % We have already reported an error for this incomplete switch.
+                true
+            else
+                generate_incomplete_switch_spec(
+                    inform_incomplete_switch_option, yes(10),
+                    InstMap0, SwitchContexts, Var, Cases, Context, !DetInfo)
+            )
+        ),
         det_info_get_vartypes(!.DetInfo, VarTypes),
         lookup_var_type(VarTypes, Var, VarType),
-        reqscope_check_switch(Var, VarType, Cases, InstMap0, !DetInfo)
+        reqscope_check_cases(Var, VarType, Cases, InstMap0,
+            IIS, SwitchContexts, !DetInfo)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        reqscope_check_goal(Cond, InstMap0, !DetInfo),
+        reqscope_check_goal(Cond, InstMap0, IIS, no,
+            SwitchContexts, !DetInfo),
         update_instmap(Cond, InstMap0, InstMap1),
-        reqscope_check_goal(Then, InstMap1, !DetInfo),
-        reqscope_check_goal(Else, InstMap0, !DetInfo)
+        reqscope_check_goal(Then, InstMap1, IIS, no,
+            SwitchContexts, !DetInfo),
+        reqscope_check_goal(Else, InstMap0, IIS, no,
+            SwitchContexts, !DetInfo)
     ;
         GoalExpr = negation(SubGoal),
-        reqscope_check_goal(SubGoal, InstMap0, !DetInfo)
+        reqscope_check_goal(SubGoal, InstMap0, IIS, no,
+            SwitchContexts, !DetInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        reqscope_check_scope(Reason, SubGoal, GoalInfo, InstMap0, !DetInfo),
-        reqscope_check_goal(SubGoal, InstMap0, !DetInfo)
+        reqscope_check_scope(SwitchContexts, Reason, SubGoal, GoalInfo,
+            InstMap0, ScopeMaybeReportedSwitch, !DetInfo),
+        reqscope_check_goal(SubGoal, InstMap0, IIS, ScopeMaybeReportedSwitch,
+            SwitchContexts, !DetInfo)
     ;
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
-            reqscope_check_goal(MainGoal, InstMap0, !DetInfo),
-            reqscope_check_disj(OrElseGoals, InstMap0, !DetInfo)
+            reqscope_check_goal(MainGoal, InstMap0, IIS, no,
+                SwitchContexts, !DetInfo),
+            reqscope_check_disj(OrElseGoals, InstMap0, IIS,
+                SwitchContexts, !DetInfo)
         ;
             ShortHand = try_goal(_, _, SubGoal),
-            reqscope_check_goal(SubGoal, InstMap0, !DetInfo)
+            reqscope_check_goal(SubGoal, InstMap0, IIS, no,
+                SwitchContexts, !DetInfo)
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
@@ -1029,7 +1125,8 @@ reqscope_check_goal(Goal, InstMap0, !DetInfo) :-
             det_info_get_module_info(!.DetInfo, ModuleInfo),
             lambda_update_instmap(VarsModes, ModuleInfo,
                 InstMap0, LambdaInstMap0),
-            reqscope_check_goal(LambdaGoal, LambdaInstMap0, !DetInfo)
+            reqscope_check_goal(LambdaGoal, LambdaInstMap0, IIS, no,
+                [], !DetInfo)
         )
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
@@ -1038,62 +1135,52 @@ reqscope_check_goal(Goal, InstMap0, !DetInfo) :-
         )
     ).
 
-:- pred reqscope_check_scope(scope_reason::in, hlds_goal::in,
-    hlds_goal_info::in, instmap::in, det_info::in, det_info::out) is det.
+:- pred reqscope_check_scope(list(switch_context)::in,
+    scope_reason::in, hlds_goal::in, hlds_goal_info::in, instmap::in,
+    maybe(reported_switch)::out, det_info::in, det_info::out) is det.
 
-reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
+reqscope_check_scope(SwitchContexts, Reason, SubGoal, ScopeGoalInfo, InstMap0,
+        MaybeReportedSwitch, !DetInfo) :-
     (
         Reason = require_detism(RequiredDetism),
         reqscope_check_goal_detism(RequiredDetism, SubGoal,
-            require_detism_scope(ScopeGoalInfo), InstMap0, !DetInfo)
+            require_detism_scope(ScopeGoalInfo), InstMap0, !DetInfo),
+        MaybeReportedSwitch = no
     ;
         Reason = require_complete_switch(RequiredVar),
         % We must test the version of the subgoal that has not yet been
         % simplified, since simplification can convert a complete switch
         % into an incomplete switch by deleting an arm that contains
         % only `fail'.
-        SubGoal = hlds_goal(SubGoalExpr, _),
         ( if
-            is_scope_subgoal_a_sortof_switch(SubGoalExpr,
-                SwitchVar, CanFail, Cases),
+            is_scope_subgoal_a_sortof_switch(SubGoal,
+                SwitchGoalContext, SwitchVar, CanFail, Cases),
             SwitchVar = RequiredVar
         then
             (
-                CanFail = cannot_fail
+                CanFail = cannot_fail,
+                MaybeReportedSwitch = no
             ;
                 CanFail = can_fail,
-                find_missing_cons_ids(!.DetInfo, InstMap0, RequiredVar, Cases,
-                    RequiredVarStr, MaybeMissingPieces),
-                (
-                    MaybeMissingPieces = yes(MissingPieces),
-                    SwitchPieces = [words("Error: the switch on"),
-                        quote(RequiredVarStr),
-                        words("is required to be complete,"),
-                        words("but it does not cover") | MissingPieces] ++ [nl]
-                ;
-                    MaybeMissingPieces = no,
-                    SwitchPieces = [words("Error: the switch on"),
-                        quote(RequiredVarStr),
-                        words("is required to be complete,"),
-                        words("but it is not."), nl]
-                ),
-                Context = goal_info_get_context(ScopeGoalInfo),
-                SwitchMsg = simple_msg(Context,
-                    [always(SwitchPieces)]),
-                SwitchSpec = error_spec(severity_error, phase_detism_check,
-                    [SwitchMsg]),
-                det_info_add_error_spec(SwitchSpec, !DetInfo)
+                ScopeContext = goal_info_get_context(ScopeGoalInfo),
+                generate_incomplete_switch_spec(
+                    switch_required_to_be_complete, no, InstMap0,
+                    SwitchContexts, RequiredVar, Cases, ScopeContext,
+                    !DetInfo),
+                ReportedSwitch =
+                    reported_switch(SwitchGoalContext, SwitchVar, Cases),
+                MaybeReportedSwitch = yes(ReportedSwitch)
             )
         else
             generate_error_not_switch_on_required_var(RequiredVar,
-                "require_complete_switch", ScopeGoalInfo, !DetInfo)
+                "require_complete_switch", ScopeGoalInfo, !DetInfo),
+            MaybeReportedSwitch = no
         )
     ;
         Reason = require_switch_arms_detism(RequiredVar, RequiredDetism),
-        SubGoal = hlds_goal(SubGoalExpr, _),
         ( if
-            is_scope_subgoal_a_sortof_switch(SubGoalExpr,
-                SwitchVar, _CanFail, Cases)
+            is_scope_subgoal_a_sortof_switch(SubGoal,
+                _SwitchContext, SwitchVar, _CanFail, Cases)
         then
             det_info_get_vartypes(!.DetInfo, VarTypes),
             lookup_var_type(VarTypes, SwitchVar, SwitchVarType),
@@ -1127,7 +1214,8 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
             ),
             generate_error_not_switch_on_required_var(RequiredVar,
                 ScopeWord, ScopeGoalInfo, !DetInfo)
-        )
+        ),
+        MaybeReportedSwitch = no
     ;
         Reason = loop_control(_, _, _),
         SubGoal = hlds_goal(_, SubGoalInfo),
@@ -1151,7 +1239,8 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
             % the user with what would be a very confusing error message.
             unexpected($module, $pred,
                 "Loop control scope with strange determinism")
-        )
+        ),
+        MaybeReportedSwitch = no
     ;
         ( Reason = disable_warnings(_, _)
         ; Reason = exist_quant(_)
@@ -1161,7 +1250,8 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
         ; Reason = promise_solutions(_, _)
         ; Reason = from_ground_term(_, _)
         ; Reason = trace_goal(_, _, _, _, _)
-        )
+        ),
+        MaybeReportedSwitch = no
     ).
 
     % Is the given goal, which should be the subgoal of either a
@@ -1170,13 +1260,17 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
     % being modified by the compiler passes between switch detection
     % and here?
     %
-:- pred is_scope_subgoal_a_sortof_switch(hlds_goal_expr::in,
-    prog_var::out, can_fail::out, list(case)::out) is semidet.
+:- pred is_scope_subgoal_a_sortof_switch(hlds_goal::in,
+    prog_context::out, prog_var::out, can_fail::out, list(case)::out)
+    is semidet.
             
-is_scope_subgoal_a_sortof_switch(GoalExpr, SwitchVar, CanFail, Cases) :-
+is_scope_subgoal_a_sortof_switch(Goal, SwitchContext, SwitchVar,
+        CanFail, Cases) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     require_complete_switch [GoalExpr]
     (
-        GoalExpr = switch(SwitchVar, CanFail, Cases)
+        GoalExpr = switch(SwitchVar, CanFail, Cases),
+        SwitchContext = goal_info_get_context(GoalInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
         % If the switch originally directly inside this scope
@@ -1186,12 +1280,14 @@ is_scope_subgoal_a_sortof_switch(GoalExpr, SwitchVar, CanFail, Cases) :-
         % switch with a commit scope. To diagnose the problem
         % that required this scope, we want to look through it.
         Reason = commit(_MaybeForcePruning),
-        SubGoal = hlds_goal(SubGoalExpr, _),
-        SubGoalExpr = switch(SwitchVar, CanFail, Cases)
+        SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo),
+        SubGoalExpr = switch(SwitchVar, CanFail, Cases),
+        SwitchContext = goal_info_get_context(SubGoalInfo)
     ;
         GoalExpr = conj(plain_conj, Conjuncts0),
         flatten_conj(Conjuncts0, Conjuncts),
-        cse_lifted_then_sortof_switch(Conjuncts, SwitchVar, CanFail, Cases)
+        cse_lifted_then_sortof_switch(Conjuncts, SwitchContext, SwitchVar,
+            CanFail, Cases)
     ;
         ( GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = plain_call(_, _, _, _, _, _)
@@ -1206,19 +1302,103 @@ is_scope_subgoal_a_sortof_switch(GoalExpr, SwitchVar, CanFail, Cases) :-
     ).
 
 :- pred cse_lifted_then_sortof_switch(list(hlds_goal)::in,
-    prog_var::out, can_fail::out, list(case)::out) is semidet.
+    prog_context::out, prog_var::out, can_fail::out, list(case)::out)
+    is semidet.
 
-cse_lifted_then_sortof_switch(Conjuncts, SwitchVar, CanFail, Cases) :-
+cse_lifted_then_sortof_switch(Conjuncts, SwitchContext, SwitchVar,
+        CanFail, Cases) :-
     (
         Conjuncts = [Conjunct],
-        Conjunct = hlds_goal(ConjunctExpr, _),
-        is_scope_subgoal_a_sortof_switch(ConjunctExpr,
-            SwitchVar, CanFail, Cases)
+        is_scope_subgoal_a_sortof_switch(Conjunct,
+            SwitchContext, SwitchVar, CanFail, Cases)
     ;
         Conjuncts = [Conjunct1, Conjunct2 | TailConjuncts],
         goal_has_feature(Conjunct1, feature_lifted_by_cse),
         cse_lifted_then_sortof_switch([Conjunct2 | TailConjuncts],
-            SwitchVar, CanFail, Cases) 
+            SwitchContext, SwitchVar, CanFail, Cases) 
+    ).
+
+:- pred generate_incomplete_switch_spec(why_report_incomplete_switch::in,
+    maybe(int)::in, instmap::in, list(switch_context)::in,
+    prog_var::in, list(case)::in, prog_context::in,
+    det_info::in, det_info::out) is det.
+
+generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
+        SwitchVar, Cases, Context, !DetInfo) :-
+    find_missing_cons_ids(!.DetInfo, MaybeLimit, InstMap0, SwitchContexts,
+        SwitchVar, Cases, NestingPieces, SwitchVarStr, MaybeMissingInfo),
+    (
+        MaybeMissingInfo = yes(MissingInfo),
+        MissingInfo = missing_cons_id_info(NumPossibleConsIds,
+            NumUncoveredConsIds, MainPieces, VerbosePieces),
+        (
+            Why = switch_required_to_be_complete,
+            NoCoverPieces = [lower_case_next_if_not_first,
+                words("Error: the switch on"), quote(SwitchVarStr),
+                words("is required to be complete,"),
+                words("but it does not cover")],
+            append_prefix_and_maybe_verbose(NestingPieces ++ NoCoverPieces,
+                MainPieces, VerbosePieces, Component),
+            MaybeSeverityComponents = yes({severity_error, [Component]})
+        ;
+            Why = inform_incomplete_switch_option,
+            det_info_get_module_info(!.DetInfo, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_int_option(Globals,
+                inform_incomplete_switch_threshold, Threshold),
+            NumCoveredConsIds = NumPossibleConsIds - NumUncoveredConsIds,
+            ( if NumCoveredConsIds * 100 >= NumPossibleConsIds * Threshold then
+                % The number of covered cons_ids is above the threshold,
+                % so it is reasonably likely to that the switch is *meant*
+                % to be complete.
+                NoCoverPieces = [lower_case_next_if_not_first,
+                    words("The switch on"), quote(SwitchVarStr),
+                    words("does not cover")],
+                append_prefix_and_maybe_verbose(NestingPieces ++ NoCoverPieces,
+                    MainPieces, VerbosePieces, Component),
+                MaybeSeverityComponents =
+                    yes({severity_informational, [Component]})
+            else
+                MaybeSeverityComponents = no
+            )
+        )
+    ;
+        MaybeMissingInfo = no,
+        (
+            Why = switch_required_to_be_complete,
+            NoCoverPieces = [lower_case_next_if_not_first,
+                words("Error: the switch on"), quote(SwitchVarStr),
+                words("is required to be complete, but it is not."), nl],
+            Component = always(NestingPieces ++ NoCoverPieces),
+            MaybeSeverityComponents = yes({severity_error, [Component]})
+        ;
+            Why = inform_incomplete_switch_option,
+            MaybeSeverityComponents = no
+        )
+    ),
+    (
+        MaybeSeverityComponents = yes({Severity, SpecComponents}),
+        Msg = simple_msg(Context, SpecComponents),
+        Spec = error_spec(Severity, phase_detism_check, [Msg]),
+        det_info_add_error_spec(Spec, !DetInfo)
+    ;
+        MaybeSeverityComponents = no
+    ).
+
+:- pred append_prefix_and_maybe_verbose(list(format_component)::in,
+    list(format_component)::in, list(format_component)::in,
+    error_msg_component::out) is det.
+
+append_prefix_and_maybe_verbose(PrefixPieces, MainPieces, VerbosePieces,
+        Component) :-
+    (
+        VerbosePieces = [],
+        Component = always(PrefixPieces ++ MainPieces)
+    ;
+        VerbosePieces = [_ | _],
+        Component = verbose_and_nonverbose(
+            PrefixPieces ++ VerbosePieces,
+            PrefixPieces ++ MainPieces)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1336,34 +1516,51 @@ generate_error_not_switch_on_required_var(RequiredVar, ScopeWord,
 %-----------------------------------------------------------------------------%
 
 :- pred reqscope_check_conj(list(hlds_goal)::in, instmap::in,
+    maybe_inform_incomplete_switches::in, maybe(reported_switch)::in,
+    list(switch_context)::in,
     det_info::in, det_info::out) is det.
 
-reqscope_check_conj([], _InstMap0, !DetInfo).
-reqscope_check_conj([Goal | Goals], InstMap0, !DetInfo) :-
-    reqscope_check_goal(Goal, InstMap0, !DetInfo),
+reqscope_check_conj([], _InstMap0, _IIS,
+        _MaybeReportedSwitch, _SwitchContexts, !DetInfo).
+reqscope_check_conj([Goal | Goals], InstMap0, IIS,
+        MaybeReportedSwitch, SwitchContexts, !DetInfo) :-
+    reqscope_check_goal(Goal, InstMap0, IIS,
+        MaybeReportedSwitch, SwitchContexts, !DetInfo),
     update_instmap(Goal, InstMap0, InstMap1),
-    reqscope_check_conj(Goals, InstMap1, !DetInfo).
+    reqscope_check_conj(Goals, InstMap1, IIS,
+        MaybeReportedSwitch, SwitchContexts, !DetInfo).
 
 :- pred reqscope_check_disj(list(hlds_goal)::in, instmap::in,
+    maybe_inform_incomplete_switches::in, list(switch_context)::in,
     det_info::in, det_info::out) is det.
 
-reqscope_check_disj([], _InstMap0, !DetInfo).
-reqscope_check_disj([Goal | Goals], InstMap0, !DetInfo) :-
-    reqscope_check_goal(Goal, InstMap0, !DetInfo),
-    reqscope_check_disj(Goals, InstMap0, !DetInfo).
+reqscope_check_disj([], _InstMap0, _IIS, _SwitchContexts, !DetInfo).
+reqscope_check_disj([Goal | Goals], InstMap0, IIS, SwitchContexts,
+        !DetInfo) :-
+    reqscope_check_goal(Goal, InstMap0, IIS, no, SwitchContexts, !DetInfo),
+    reqscope_check_disj(Goals, InstMap0, IIS, SwitchContexts, !DetInfo).
 
-:- pred reqscope_check_switch(prog_var::in, mer_type::in, list(case)::in,
-    instmap::in, det_info::in, det_info::out) is det.
+:- pred reqscope_check_cases(prog_var::in, mer_type::in, list(case)::in,
+    instmap::in, maybe_inform_incomplete_switches::in,
+    list(switch_context)::in, det_info::in, det_info::out) is det.
 
-reqscope_check_switch(_Var, _VarType, [], _InstMap0, !DetInfo).
-reqscope_check_switch(Var, VarType, [Case | Cases], InstMap0, !DetInfo) :-
+reqscope_check_cases(_Var, _VarType, [], _InstMap0, _IIS,
+        _SwitchContexts0, !DetInfo).
+reqscope_check_cases(Var, VarType, [Case | Cases], InstMap0, IIS,
+        SwitchContexts0, !DetInfo) :-
     Case = case(MainConsId, OtherConsIds, Goal),
+    goal_to_conj_list(Goal, GoalSeq),
+    find_switch_var_matches(GoalSeq, [Var], MainConsId, OtherConsIds,
+        MainMatch, OtherMatches),
+    NewSwitchContext = switch_context(Var, MainMatch, OtherMatches),
+    SwitchContexts1 = [NewSwitchContext | SwitchContexts0],
     det_info_get_module_info(!.DetInfo, ModuleInfo0),
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     det_info_set_module_info(ModuleInfo, !DetInfo),
-    reqscope_check_goal(Goal, InstMap1, !DetInfo),
-    reqscope_check_switch(Var, VarType, Cases, InstMap0, !DetInfo).
+    reqscope_check_goal(Goal, InstMap1, IIS, no, SwitchContexts1, !DetInfo),
+    reqscope_check_cases(Var, VarType, Cases, InstMap0, IIS,
+        SwitchContexts0, !DetInfo).
 
 :- pred lambda_update_instmap(assoc_list(prog_var, mer_mode)::in,
     module_info::in, instmap::in, instmap::out) is det.
@@ -1376,61 +1573,162 @@ lambda_update_instmap([Var - Mode | VarsModes], ModuleInfo, !InstMap) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_missing_cons_ids(det_info::in, instmap::in, prog_var::in,
-    list(case)::in, string::out, maybe(list(format_component))::out) is det.
+:- type missing_cons_id_info
+    --->    missing_cons_id_info(
+                % The number of cons_ids that the switch variable could
+                % be bound to on entry to the switch. May be the number of
+                % function symbols in the variable's type, or it may be
+                % the number of cons_ids that appear in the variable's
+                % initial bound(...) inst.
+                int,
 
-find_missing_cons_ids(DetInfo, InstMap0, Var, Cases, VarStr,
-        MaybeMissingPieces) :-
+                % The number of these cons_ids that do NOT occur
+                % in any of the cases.
+                int,
+
+                % The diagnostic listing the missing cons_ids.
+                %
+                % If there are more missing cons_ids than the
+                % specified limit, we return two different versions
+                % of the error message fragment. The first is the version
+                % to use if the user doesn't want verbose errors,
+                % the second is the version to use if he/she does want them.
+                %
+                % If the number of missing cons_ids is below the limit,
+                % or if the caller did not specify the limit,
+                % the second list will be empty.
+                list(format_component),
+                list(format_component)
+            ).
+
+:- pred find_missing_cons_ids(det_info::in, maybe(int)::in, instmap::in,
+    list(switch_context)::in, prog_var::in, list(case)::in,
+    list(format_component)::out, string::out,
+    maybe(missing_cons_id_info)::out) is det.
+
+find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
+        Var, Cases, NestingPieces, VarStr, MaybeMissingInfo) :-
+    det_diagnose_switch_context(DetInfo, SwitchContexts, NestingPieces),
+
     det_get_proc_info(DetInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     VarStr = mercury_var_to_name_only(VarSet, Var),
     det_info_get_module_info(DetInfo, ModuleInfo),
+    instmap_lookup_var(InstMap0, Var, VarInst),
     ( if
         ( if
-            instmap_lookup_var(InstMap0, Var, VarInst),
             inst_is_bound_to_functors(ModuleInfo, VarInst, BoundInsts)
         then
             det_info_get_vartypes(DetInfo, VarTypes),
             lookup_var_type(VarTypes, Var, VarType),
             type_to_ctor_det(VarType, VarTypeCtor),
-            list.map(bound_inst_to_cons_id(VarTypeCtor),
-                BoundInsts, ConsIds)
+            bound_insts_to_cons_ids(VarTypeCtor, BoundInsts, BoundConsIds),
+            list.sort_and_remove_dups(BoundConsIds, SortedBoundConsIds),
+            set_tree234.sorted_list_to_set(SortedBoundConsIds,
+                BoundConsIdsSet),
+            % We should insist that all insts used in predicate
+            % declarations be specific to the type of the arguments
+            % they apply to. However, I (zs) don't think we enforce this
+            % yet with any consistency in the mode checker. The intersection
+            % operation below should compensate for this, but we can invoke it
+            % only for the switch variable's type is a du type, and not
+            % a builtin type such as int or string.
+            ( if
+                det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
+                hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+                ConsTable = TypeBody ^ du_type_cons_tag_values
+            then
+                map.keys(ConsTable, SortedTypeConsIds),
+                set_tree234.sorted_list_to_set(SortedTypeConsIds,
+                    TypeConsIdsSet),
+                set_tree234.intersect(TypeConsIdsSet, BoundConsIdsSet,
+                    PossibleConsIdsSet)
+            else
+                PossibleConsIdsSet = BoundConsIdsSet
+            )
         else
             det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             ConsTable = TypeBody ^ du_type_cons_tag_values,
-            map.keys(ConsTable, ConsIds)
+            map.keys(ConsTable, SortedTypeConsIds),
+            set_tree234.sorted_list_to_set(SortedTypeConsIds, TypeConsIdsSet),
+            PossibleConsIdsSet = TypeConsIdsSet
         )
     then
-        det_diagnose_missing_consids(ConsIds, Cases, MissingConsIds),
-        cons_id_list_to_pieces(MissingConsIds, MissingPieces0),
-        MissingPieces = [nl_indent_delta(1) | MissingPieces0]
-            ++ [nl_indent_delta(-1)],
-        MaybeMissingPieces = yes(MissingPieces)
+        compute_covered_cons_ids(Cases, set_tree234.init, CoveredConsIdsSet),
+        set_tree234.difference(PossibleConsIdsSet, CoveredConsIdsSet,
+            UncoveredConsIdsSet),
+        NumPossibleConsIds = set_tree234.count(PossibleConsIdsSet),
+        NumUncoveredConsIds = set_tree234.count(UncoveredConsIdsSet),
+
+        UncoveredConsIds = set_tree234.to_sorted_list(UncoveredConsIdsSet),
+        list.map(strip_module_qualifier_from_cons_id,
+            UncoveredConsIds, UnQualConsIds),
+        % Just in case the stripping of qualifiers has affected the order.
+        % It shouldn't, but this double insurance costs effectively nothing.
+        list.sort(UnQualConsIds, SortedUnQualConsIds),
+
+        (
+            MaybeLimit = no,
+            PrintedConsIds = SortedUnQualConsIds,
+            NonPrintedConsIds = []
+        ;
+            MaybeLimit = yes(Limit),
+            list.length(SortedUnQualConsIds, NumConsIds),
+            ( if NumConsIds =< Limit then
+                PrintedConsIds = SortedUnQualConsIds,
+                NonPrintedConsIds = []
+            else
+                % We use Limit-1 lines for the printed missing cons_ids,
+                % and one line for the message "and N more".
+                %
+                % If there are Limit missing cons_ids, the then-part above
+                % will print them all. If there are Limit+1 missing cons_ids,
+                % we will print Limit-1 of them here, followed by "and 2 more".
+                % We never print "and 1 more", and we don't want to, since
+                % anyone who read that would probably (justifiably) wonder
+                % "why didn't the compiler use that line to print the one
+                % unprinted missing cons_id?".
+                list.split_upto(Limit - 1, SortedUnQualConsIds,
+                    PrintedConsIds, NonPrintedConsIds)
+            )
+        ),
+        (
+            PrintedConsIds = [],
+            MaybeMissingInfo = no
+        ;
+            PrintedConsIds = [HeadPrintedConsId | TailPrintedConsIds],
+            (
+                NonPrintedConsIds = [],
+                MainPieces =
+                    [nl_indent_delta(1)] ++
+                    cons_id_list_to_pieces(HeadPrintedConsId,
+                        TailPrintedConsIds, [suffix(".")]) ++
+                    [nl_indent_delta(-1)],
+                VerbosePieces = []
+            ;
+                NonPrintedConsIds = [_ | _],
+                list.length(NonPrintedConsIds, NumNonPrintedConsIds),
+                MainPieces =
+                    [nl_indent_delta(1)] ++
+                    cons_id_list_to_pieces(HeadPrintedConsId,
+                        TailPrintedConsIds, [suffix(","), fixed("...")]) ++
+                    [nl_indent_delta(-1), words("and"),
+                    int_fixed(NumNonPrintedConsIds), words("more."), nl],
+                VerbosePieces =
+                    [nl_indent_delta(1)] ++
+                    cons_id_list_to_pieces(HeadPrintedConsId,
+                        TailPrintedConsIds ++ NonPrintedConsIds,
+                        [suffix(".")]) ++
+                    [nl_indent_delta(-1)]
+            ),
+            MissingInfo = missing_cons_id_info(NumPossibleConsIds,
+                NumUncoveredConsIds, MainPieces, VerbosePieces),
+            MaybeMissingInfo = yes(MissingInfo)
+        )
     else
-        MaybeMissingPieces = no
+        MaybeMissingInfo = no
     ).
-
-:- pred det_diagnose_missing_consids(list(cons_id)::in, list(case)::in,
-    list(cons_id)::out) is det.
-
-det_diagnose_missing_consids(ConsIds, Cases, MissingConsIds) :-
-    compute_covered_cons_ids(Cases, set_tree234.init, CoveredConsIds),
-    find_uncovered_consids(ConsIds, CoveredConsIds, [], RevMissingConsIds),
-    list.reverse(RevMissingConsIds, MissingConsIds).
-
-:- pred find_uncovered_consids(list(cons_id)::in, set_tree234(cons_id)::in,
-    list(cons_id)::in, list(cons_id)::out) is det.
-
-find_uncovered_consids([], _, !RevMissingConsIds).
-find_uncovered_consids([ConsId | ConsIds], CoveredConsIds,
-        !RevMissingConsIds) :-
-    ( if set_tree234.contains(CoveredConsIds, ConsId) then
-        true
-    else
-        !:RevMissingConsIds = [ConsId | !.RevMissingConsIds]
-    ),
-    find_uncovered_consids(ConsIds, CoveredConsIds, !RevMissingConsIds).
 
 :- pred compute_covered_cons_ids(list(case)::in,
     set_tree234(cons_id)::in, set_tree234(cons_id)::out) is det.
@@ -1442,37 +1740,35 @@ compute_covered_cons_ids([Case | Cases], !CoveredConsIds) :-
     set_tree234.insert_list(OtherConsIds, !CoveredConsIds),
     compute_covered_cons_ids(Cases, !CoveredConsIds).
 
-:- pred cons_id_list_to_pieces(list(cons_id)::in,
-    list(format_component)::out) is det.
+:- func cons_id_list_to_pieces(cons_id, list(cons_id), list(format_component))
+    = list(format_component).
 
-cons_id_list_to_pieces([], []).
-cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
+cons_id_list_to_pieces(ConsId1, ConsIds2Plus, EndCommaPieces) = Pieces :-
     % If we invoked determinism analysis on this procedure, then it must be
     % type correct. Since users will know the type of the switched-on variable, 
-    % they will know which module defined at, and hence which modules defined
+    % they will know which module defined it, and hence which modules defined
     % its function symbols. Repeating the name of that module for each cons_id
     % is much more likely to be distracting clutter than helpful information.
-    ( if ConsId = cons(SymName, Arity, TypeCtor) then
-        SymNameToUse = unqualified(unqualify_name(SymName)),
-        ConsIdToUse = cons(SymNameToUse, Arity, TypeCtor)
-    else
-        ConsIdToUse = ConsId
-    ),
-    ConsIdPiece = cons_id_and_maybe_arity(ConsIdToUse),
+    strip_module_qualifier_from_cons_id(ConsId1, ConsIdToUse1),
+    ConsIdPiece1 = cons_id_and_maybe_arity(ConsIdToUse1),
     (
-        ConsIds = [_, _ | _],
-        PiecesHead = [ConsIdPiece, suffix(","), nl]
+        ConsIds2Plus = [ConsId2 | ConsIds3Plus],
+        (
+            ConsIds3Plus = [_ | _],
+            Pieces1 = [ConsIdPiece1, suffix(","), nl]
+        ;
+            ConsIds3Plus = [],
+            Pieces1 = [ConsIdPiece1, words("or"), nl]
+        ),
+        Pieces2Plus = cons_id_list_to_pieces(ConsId2, ConsIds3Plus,
+            EndCommaPieces),
+        Pieces = Pieces1 ++ Pieces2Plus
     ;
-        ConsIds = [_],
-        PiecesHead = [ConsIdPiece, words("or"), nl]
-    ;
-        ConsIds = [],
+        ConsIds2Plus = [],
         % Our caller will append the newline, with a negative indent
         % to undo the positive indent before the start of the list of cons_ids.
-        PiecesHead = [ConsIdPiece, suffix(".")]
-    ),
-    cons_id_list_to_pieces(ConsIds, PiecesTail),
-    Pieces = PiecesHead ++ PiecesTail.
+        Pieces = [ConsIdPiece1 | EndCommaPieces]
+    ).
 
 %-----------------------------------------------------------------------------%
 

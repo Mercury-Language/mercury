@@ -348,6 +348,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     det_info_get_error_specs(DetInfo, !:Specs),
     det_info_get_has_format_call(DetInfo, HasFormatCalls),
     det_info_get_has_req_scope(DetInfo, HasRequireScope),
+    det_info_get_has_incomplete_switch(DetInfo, HasIncompleteSwitch),
 
     % Take the worst of the old and inferred detisms. This is needed to prevent
     % loops on p :- not(p), at least if the initial assumed detism is det.
@@ -436,22 +437,28 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
 
-    pred_info_get_markers(PredInfo1, Markers1),
-    (
-        HasFormatCalls = does_not_contain_format_call,
-        Markers2 = Markers1
-    ;
-        HasFormatCalls = contains_format_call,
-        add_marker(marker_has_format_call, Markers1, Markers2)
+    some [!Markers] (
+        pred_info_get_markers(PredInfo1, !:Markers),
+        (
+            HasFormatCalls = does_not_contain_format_call
+        ;
+            HasFormatCalls = contains_format_call,
+            add_marker(marker_has_format_call, !Markers)
+        ),
+        (
+            HasRequireScope = does_not_contain_require_scope
+        ;
+            HasRequireScope = contains_require_scope,
+            add_marker(marker_has_require_scope, !Markers)
+        ),
+        (
+            HasIncompleteSwitch = does_not_contain_incomplete_switch
+        ;
+            HasIncompleteSwitch = contains_incomplete_switch,
+            add_marker(marker_has_incomplete_switch, !Markers)
+        ),
+        pred_info_set_markers(!.Markers, PredInfo1, PredInfo)
     ),
-    (
-        HasRequireScope = does_not_contain_require_scope,
-        Markers = Markers2
-    ;
-        HasRequireScope = contains_require_scope,
-        add_marker(marker_has_require_scope, Markers2, Markers)
-    ),
-    pred_info_set_markers(Markers, PredInfo1, PredInfo),
 
     map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
@@ -681,6 +688,12 @@ det_infer_goal_expr(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, SwitchCanFail, Cases0),
+        (
+            SwitchCanFail = cannot_fail
+        ;
+            SwitchCanFail = can_fail,
+            det_info_set_has_incomplete_switch(!DetInfo)
+        ),
         trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
             io.write_string("inferring switch on ", !IO),
             io.write(Var, !IO),

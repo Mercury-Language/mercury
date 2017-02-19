@@ -288,6 +288,21 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         add_error(phase_options, FactTablePercentFullSpec, !Specs)
     ),
 
+    raw_lookup_int_option(!.OptionTable, inform_incomplete_switch_threshold,
+        IncompleteSwitchThreshold),
+    ( if
+        IncompleteSwitchThreshold >= 0,
+        IncompleteSwitchThreshold =< 100
+    then
+        true
+    else
+        IncompleteSwitchThresholdSpec =
+            [words("Invalid argument"), int_fixed(IncompleteSwitchThreshold),
+            words("to the"), quote("--inform-incomplete-switch-threshold"),
+            words("option; must be an integer between 0 and 100."), nl],
+        add_error(phase_options, IncompleteSwitchThresholdSpec, !Specs)
+    ),
+
     raw_lookup_string_option(!.OptionTable, termination_norm, TermNormStr),
     ( if convert_termination_norm(TermNormStr, TermNormPrime) then
         TermNorm = TermNormPrime

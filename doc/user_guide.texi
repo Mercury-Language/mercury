@@ -6698,6 +6698,21 @@ Generate informational messages for if-then-elses that could be
 replaced by switches.
 
 @sp 1
+@item --inform-incomplete-switch
+@findex --inform-incomplete-switch
+Generate informational messages for switches that do not cover
+all the function symbols that the switched-on variable could be
+bound to.
+
+@sp 1
+@item --inform-incomplete-switch-threshold @var{n}
+@findex --inform-incomplete-switch-threshold
+--inform-incomplete-switch-threshold <N>
+Have the @code{--inform-incomplete-switch} option generate its messages
+only for switches that @emph{do} cover at least @var{n} percent of the function
+symbols that the switched-on variable could be bound to.
+
+@sp 1
 @item --no-warn-unresolved-polymorphism
 @findex --no-warn-unresolved-polymorphism
 Do not warn about unresolved polymorphism.

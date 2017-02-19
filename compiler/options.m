@@ -184,6 +184,8 @@
     ;       warn_insts_without_matching_type
     ;       warn_unused_imports
     ;       inform_ite_instead_of_switch
+    ;       inform_incomplete_switch
+    ;       inform_incomplete_switch_threshold
     ;       warn_unresolved_polymorphism
     ;       warn_suspicious_foreign_procs
     ;       warn_state_var_shadowing
@@ -1175,6 +1177,8 @@ option_defaults_2(warning_option, [
         % with --halt-at-warn by default.
     warn_unused_imports                 -   bool(no),
     inform_ite_instead_of_switch        -   bool(no),
+    inform_incomplete_switch            -   bool(no),
+    inform_incomplete_switch_threshold  -   int(0),
     warn_unresolved_polymorphism        -   bool(yes),
     warn_suspicious_foreign_procs       -   bool(no),
     warn_state_var_shadowing            -   bool(yes),
@@ -2059,6 +2063,9 @@ long_option("warn-insts-without-matching-type",
                                         warn_insts_without_matching_type).
 long_option("warn-unused-imports",      warn_unused_imports).
 long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
+long_option("inform-incomplete-switch", inform_incomplete_switch).
+long_option("inform-incomplete-switch-threshold",
+                    inform_incomplete_switch_threshold).
 long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
 long_option("warn-suspicious-foreign-procs", warn_suspicious_foreign_procs).
 long_option("warn-state-var-shadowing", warn_state_var_shadowing).
@@ -3143,6 +3150,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                     warn_unknown_format_calls       -   bool(Enable),
                     warn_insts_without_matching_type -  bool(Enable),
                     inform_ite_instead_of_switch    -   bool(Enable),
+                    inform_incomplete_switch        -   bool(Enable),
                     warn_suspicious_foreign_procs   -   bool(Enable),
                     warn_state_var_shadowing        -   bool(Enable),
                     inform_inferred_types           -   bool(Enable),
@@ -3168,6 +3176,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                     warn_unknown_format_calls       -   bool(Enable),
                     warn_insts_without_matching_type -  bool(Enable),
                     inform_ite_instead_of_switch    -   bool(Enable),
+                    inform_incomplete_switch        -   bool(Enable),
                     warn_suspicious_foreign_procs   -   bool(Enable),
                     warn_state_var_shadowing        -   bool(Enable)
                 ], !OptionTable)
@@ -3785,6 +3794,14 @@ options_help_warning -->
         "--inform-ite-instead-of-switch",
         "\tGenerate informational messages for if-then-elses that could be",
         "\treplaced by switches.",
+        "--inform-incomplete-switch",
+        "\tGenerate informational messages for switches that do not cover",
+        "\tall the function symbols that the switched-on variable could be",
+        "\tbound to.",
+        "--inform-incomplete-switch-threshold <N>",
+        "\tHave the --inform-incomplete-switch option generate its messages",
+        "\tonly for switches that *do* cover at least N% of the function",
+        "\tsymbols that the switched-on variable could be bound to.",
         "--no-warn-unresolved-polymorphism",
         "\tDo not warn about unresolved polymorphism.",
         "--warn-suspicious-foreign-procs",

@@ -2081,6 +2081,7 @@ keep_marker(marker_calls_are_fully_qualified) = yes.
 keep_marker(marker_mode_check_clauses) = yes.
 keep_marker(marker_mutable_access_pred) = yes.
 keep_marker(marker_has_require_scope) = yes.
+keep_marker(marker_has_incomplete_switch) = yes.
 keep_marker(marker_has_format_call) = yes.
 
 %-----------------------------------------------------------------------------%

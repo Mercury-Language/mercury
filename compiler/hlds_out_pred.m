@@ -1353,6 +1353,7 @@ marker_name(marker_calls_are_fully_qualified, "calls_are_fully_qualified").
 marker_name(marker_mode_check_clauses, "mode_check_clauses").
 marker_name(marker_mutable_access_pred, "mutable_access_pred").
 marker_name(marker_has_require_scope, "has_require_scope").
+marker_name(marker_has_incomplete_switch, "has_incomplete_switch").
 marker_name(marker_has_format_call, "has_format_call").
 
 %-----------------------------------------------------------------------------%

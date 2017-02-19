@@ -152,6 +152,15 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Strip the module qualifier from the given cons_id or sym_name.
+    %
+:- pred strip_module_qualifier_from_cons_id(cons_id::in, cons_id::out) is det.
+:- pred strip_module_qualifier_from_sym_name(sym_name::in, sym_name::out)
+    is det.
+
+    % Strip the module qualifier from the given cons_id or sym_name, but
+    % only if the module named by that qualifier is the public builtin module.
+    %
 :- pred strip_builtin_qualifier_from_cons_id(cons_id::in, cons_id::out) is det.
 :- pred strip_builtin_qualifier_from_sym_name(sym_name::in, sym_name::out)
     is det.
@@ -740,6 +749,23 @@ source_integer_to_int(Base, Integer, Int) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+strip_module_qualifier_from_cons_id(ConsId0, ConsId) :-
+    ( if ConsId0 = cons(Name0, Arity, TypeCtor) then
+        strip_module_qualifier_from_sym_name(Name0, Name),
+        ConsId = cons(Name, Arity, TypeCtor)
+    else
+        ConsId = ConsId0
+    ).
+
+strip_module_qualifier_from_sym_name(SymName0, SymName) :-
+    (
+        SymName0 = qualified(_Module, Name),
+        SymName = unqualified(Name)
+    ;
+        SymName0 = unqualified(_Name),
+        SymName = SymName0
+    ).
 
 strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
     ( if ConsId0 = cons(Name0, Arity, TypeCtor) then
