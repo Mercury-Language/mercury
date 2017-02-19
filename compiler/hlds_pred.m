@@ -95,7 +95,7 @@
     % a strongly connected component of the call graph, i.e. a group of
     % procedures that all recursively call each other, directly or indirectly,
     % which aren't mutually recursive with any procedure outside the SCC.
-:- type scc == list(pred_proc_id).
+:- type scc == set(pred_proc_id).
 
     % Predicate and procedure ids are abstract data types. One important
     % advantage of this arrangement is to make it harder to accidentally

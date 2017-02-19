@@ -23,6 +23,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -30,8 +31,8 @@
     % "special_pred_map" known from module_info) or not defined in the
     % current module, as these predicates are not analysed by the CTGC system.
     %
-:- pred some_preds_requiring_no_analysis(module_info::in,
-    list(pred_proc_id)::in) is semidet.
+:- pred some_preds_require_no_analysis(module_info::in,
+    set(pred_proc_id)::in) is semidet.
 
 :- pred pred_requires_no_analysis(module_info::in, pred_id::in) is semidet.
 :- pred pred_requires_analysis(module_info::in, pred_id::in) is semidet.
@@ -99,8 +100,8 @@ pred_requires_no_analysis(ModuleInfo, PredId) :-
 pred_requires_analysis(ModuleInfo, PredId) :-
     not pred_requires_no_analysis(ModuleInfo, PredId).
 
-some_preds_requiring_no_analysis(ModuleInfo, PPIds) :-
-    list.member(proc(PredId, _), PPIds),
+some_preds_require_no_analysis(ModuleInfo, PPIds) :-
+    set.member(proc(PredId, _), PPIds),
     pred_requires_no_analysis(ModuleInfo, PredId).
 
 get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-

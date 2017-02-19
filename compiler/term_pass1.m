@@ -47,8 +47,7 @@
             ).
 
 :- pred find_arg_sizes_in_scc(module_info::in, pass_info::in,
-    list(pred_proc_id)::in, arg_size_result::out, list(term_error)::out)
-    is det.
+    scc::in, arg_size_result::out, list(term_error)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -95,8 +94,9 @@
             ).
 
 find_arg_sizes_in_scc(ModuleInfo, PassInfo, SCC, ArgSize, TermErrors) :-
-    init_output_suppliers(ModuleInfo, SCC, InitOutputSupplierMap),
-    find_arg_sizes_in_scc_fixpoint(ModuleInfo, PassInfo, SCC,
+    set.to_sorted_list(SCC, SCCProcs),
+    init_output_suppliers(ModuleInfo, SCCProcs, InitOutputSupplierMap),
+    find_arg_sizes_in_scc_fixpoint(ModuleInfo, PassInfo, SCCProcs,
         InitOutputSupplierMap, Result, TermErrors),
     (
         Result = term_pass1_ok(Paths, OutputSupplierMap, SubsetErrors),
@@ -112,7 +112,7 @@ find_arg_sizes_in_scc(ModuleInfo, PassInfo, SCC, ArgSize, TermErrors) :-
                 ArgSize = arg_size_error([ArgSizeError])
             ;
                 Paths = [_ | _],
-                solve_equations(Paths, SCC, MaybeSolution),
+                solve_equations(Paths, SCCProcs, MaybeSolution),
                 (
                     MaybeSolution = yes(Solution),
                     ArgSize = arg_size_ok(Solution, OutputSupplierMap)

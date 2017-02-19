@@ -212,7 +212,7 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
         ProcDups = yes,
         DepInfo = build_pred_dependency_graph(!.HLDS, PredIds,
             do_not_include_imported),
-        OrderedPredIds = dependency_info_get_condensed_ordering(DepInfo),
+        OrderedPredIds = dependency_info_get_condensed_bottom_up_sccs(DepInfo),
         MaybeDupProcMap = yes(map.init)
     ),
     generate_const_structs(!.HLDS, ConstStructMap, !GlobalData),

@@ -1850,7 +1850,7 @@ keep_var(_ForwardGoalPathMap, NonLocals, GoalVars, _GoalId, AtomicGoals,
             % list.append([_ | _], GoalPathSteps, RepGoalPathSteps)
             % I (zs) do not see how that can possibly make sense,
             % which is why I have disabled this test.
-%           \+ (
+%           not (
 %               RepVar = _ `at` RepGoalId,
 %               % XXX What higher level operation is being implemented here?
 %               map.lookup(ForwardGoalPathMap, GoalId, GoalPath),
@@ -1872,7 +1872,7 @@ get_predicate_sccs(ModuleInfo, SCCs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     DepInfo = build_pred_dependency_graph(ModuleInfo, PredIds,
         do_not_include_imported),
-    SCCs0 = dependency_info_get_ordering(DepInfo),
+    SCCs0 = dependency_info_get_bottom_up_sccs(DepInfo),
 
     % Remove predicates that have mode declarations and place them in
     % their own ``SCC'' at the end of the list.
@@ -1887,18 +1887,19 @@ get_predicate_sccs(ModuleInfo, SCCs) :-
     % based on its mode declarations.
     add_imported_preds(ModuleInfo, SCCs1, SCCs).
 
-:- pred extract_mode_decl_preds(module_info::in, sccs::in, sccs::in, sccs::out)
-    is det.
+:- pred extract_mode_decl_preds(module_info::in, list(set(pred_id))::in,
+    sccs::in, sccs::out) is det.
 
 extract_mode_decl_preds(_ModuleInfo, [], !DeclaredPreds).
 extract_mode_decl_preds(ModuleInfo, [SCC0 | SCCs0], !DeclaredPreds) :-
-    list.filter(pred_has_mode_decl(ModuleInfo), SCC0, Declared, SCC),
+    list.filter(pred_has_mode_decl(ModuleInfo), set.to_sorted_list(SCC0),
+        Declared, SCC),
     (
         Declared = []
     ;
         Declared = [_ | _],
         list.foldl(
-            (pred(Pred::in, Preds0::in, Preds::out) is det :-
+            ( pred(Pred::in, Preds0::in, Preds::out) is det :-
                 Preds = [[Pred] | Preds0]
             ), Declared, !DeclaredPreds)
     ),
@@ -1914,7 +1915,7 @@ extract_mode_decl_preds(ModuleInfo, [SCC0 | SCCs0], !DeclaredPreds) :-
 
 pred_has_mode_decl(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    \+ pred_info_infer_modes(PredInfo).
+    not pred_info_infer_modes(PredInfo).
 
 :- pred add_imported_preds(module_info::in, sccs::in, sccs::out) is det.
 
@@ -1978,7 +1979,7 @@ constrain_non_occurring_vars(yes, ParentNonLocals, OccurringVars, GoalId,
         (pred(V::out) is nondet :-
             set_of_var.member(ParentNonLocals, U),
             inst_graph.reachable(InstGraph, U, V),
-            \+ set_of_var.member(OccurringVars, V)
+            not set_of_var.member(OccurringVars, V)
         ),
     Accumulator =
         (pred(V::in, Vs0::in, Vs::out, in, out) is det -->
@@ -1992,7 +1993,7 @@ constrain_non_occurring_vars(yes, ParentNonLocals, OccurringVars, GoalId,
 %   aggregate2((pred(V::out) is nondet :-
 %       set.member(U, ParentNonLocals),
 %       inst_graph.reachable(InstGraph, U, V),
-%       \+ set.member(V, OccurringVars)
+%       not set.member(V, OccurringVars)
 %       ), (pred(V::in, C0::in, C::out, in, out) is det -->
 %           get_var(V `at` GoalId, VGP),
 %           { C = C0 ^ not_var(VGP) }

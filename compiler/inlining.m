@@ -250,7 +250,7 @@ inlining(!ModuleInfo) :-
 
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    PredProcs = dependency_info_get_condensed_ordering(DepInfo),
+    PredProcs = dependency_info_get_condensed_bottom_up_sccs(DepInfo),
     set.init(InlinedProcs0),
     do_inlining(PredProcs, NeededMap, Params, InlinedProcs0, !ModuleInfo),
 

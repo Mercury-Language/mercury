@@ -54,23 +54,24 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
 control_granularity(!ModuleInfo) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
-    SCCs = dependency_info_get_ordering(DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     list.foldl(runtime_granularity_test_in_scc, SCCs, !ModuleInfo).
 
-:- pred runtime_granularity_test_in_scc(list(pred_proc_id)::in,
+:- pred runtime_granularity_test_in_scc(set(pred_proc_id)::in,
     module_info::in, module_info::out) is det.
 
 runtime_granularity_test_in_scc(SCC, !ModuleInfo) :-
-    list.foldl(runtime_granularity_test_in_proc(SCC), SCC, !ModuleInfo).
+    set.foldl(runtime_granularity_test_in_proc(SCC), SCC, !ModuleInfo).
 
-:- pred runtime_granularity_test_in_proc(list(pred_proc_id)::in,
-    pred_proc_id::in, module_info::in, module_info::out) is det.
+:- pred runtime_granularity_test_in_proc(scc::in, pred_proc_id::in,
+    module_info::in, module_info::out) is det.
 
 runtime_granularity_test_in_proc(SCC, proc(PredId, ProcId), !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
@@ -102,7 +103,7 @@ runtime_granularity_test_in_proc(SCC, proc(PredId, ProcId), !ModuleInfo) :-
     ).
 
 :- pred runtime_granularity_test_in_goal(hlds_goal::in, hlds_goal::out,
-    bool::in, bool::out, list(pred_proc_id)::in, module_info::in) is det.
+    bool::in, bool::out, scc::in, module_info::in) is det.
 
 runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
@@ -115,12 +116,10 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
         (
             Target = target_c,
             ModuleName = mercury_par_builtin_module,
-            CalledSCCPredProcIds = goal_list_calls_proc_in_list(Goals, SCC),
-            (
-                CalledSCCPredProcIds = [],
+            CalledSCCPredProcIds = goal_list_calls_proc_in_set(Goals, SCC),
+            ( if set.is_empty(CalledSCCPredProcIds) then
                 GoalExpr = conj(parallel_conj, Goals)
-            ;
-                CalledSCCPredProcIds = [_ | _],
+            else
                 ProcName = "evaluate_parallelism_condition",
                 Args = [],
                 ExtraArgs = [],
@@ -222,7 +221,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
 
 :- pred runtime_granularity_test_in_goals(
     list(hlds_goal)::in, list(hlds_goal)::out, bool::in, bool::out,
-    list(pred_proc_id)::in, module_info::in) is det.
+    scc::in, module_info::in) is det.
 
 runtime_granularity_test_in_goals([], [], !Changed, _, _).
 runtime_granularity_test_in_goals([Goal0 | Goals0], [Goal | Goals], !Changed,
@@ -232,7 +231,7 @@ runtime_granularity_test_in_goals([Goal0 | Goals0], [Goal | Goals], !Changed,
         ModuleInfo).
 
 :- pred runtime_granularity_test_in_cases( list(case)::in, list(case)::out,
-    bool::in, bool::out, list(pred_proc_id)::in, module_info::in) is det.
+    bool::in, bool::out, scc::in, module_info::in) is det.
 
 runtime_granularity_test_in_cases([], [], !Changed, _, _).
 runtime_granularity_test_in_cases([Case0 | Cases0], [Case | Cases], !Changed,

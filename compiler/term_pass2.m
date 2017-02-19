@@ -23,8 +23,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.term_util.
 
-:- import_module list.
-
 %-----------------------------------------------------------------------------%
 
     % NOTE: This code assumes that the SCC does not call any nonterminating
@@ -32,7 +30,7 @@
     % during pass 1.
     %
 :- pred prove_termination_in_scc(module_info::in, pass_info::in,
-    list(pred_proc_id)::in, int::in, termination_info::out) is det.
+    scc::in, int::in, termination_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -52,6 +50,7 @@
 :- import_module bag.
 :- import_module bool.
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -87,8 +86,9 @@
 %-----------------------------------------------------------------------------%
 
 prove_termination_in_scc(ModuleInfo, PassInfo, SCC, SingleArgs, Termination) :-
-    init_rec_input_suppliers(SCC, ModuleInfo, InitRecSuppliers),
-    prove_termination_in_scc_trial(ModuleInfo, PassInfo, down, SCC,
+    set.to_sorted_list(SCC, SCCProcs),
+    init_rec_input_suppliers(SCCProcs, ModuleInfo, InitRecSuppliers),
+    prove_termination_in_scc_trial(ModuleInfo, PassInfo, down, SCCProcs,
         InitRecSuppliers, Termination0),
     (
         Termination0 = can_loop(Errors),
@@ -96,7 +96,7 @@ prove_termination_in_scc(ModuleInfo, PassInfo, SCC, SingleArgs, Termination) :-
             % On large SCCs, single arg analysis can require many iterations,
             % so we allow the user to limit the size of the SCCs we will try it
             % on.
-            list.length(SCC, ProcCount),
+            list.length(SCCProcs, ProcCount),
             ProcCount =< SingleArgs,
 
             % Don't try single arg analysis if it cannot cure the reason for
@@ -106,7 +106,7 @@ prove_termination_in_scc(ModuleInfo, PassInfo, SCC, SingleArgs, Termination) :-
                 Error = term_error(_, imported_pred)
             )
         then
-            prove_termination_in_scc_single_arg(ModuleInfo, SCC, PassInfo,
+            prove_termination_in_scc_single_arg(ModuleInfo, SCCProcs, PassInfo,
                 SingleArgTerminates),
             (
                 SingleArgTerminates = yes,

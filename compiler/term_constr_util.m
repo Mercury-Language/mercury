@@ -34,6 +34,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 %
@@ -51,7 +52,7 @@
 
     % Retrieve the abstraction representation from the module_info.
     %
-:- func get_abstract_scc(module_info, list(pred_proc_id)) = abstract_scc.
+:- func get_abstract_scc(module_info, set(pred_proc_id)) = abstract_scc.
 
 :- func get_abstract_proc(module_info, pred_proc_id) = abstract_proc.
 
@@ -203,7 +204,6 @@
 
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -461,7 +461,7 @@ change_procs_constr_arg_size_info([ProcId | ProcIds], Override, ArgSize,
 %-----------------------------------------------------------------------------%
 
 get_abstract_scc(ModuleInfo, SCC) =
-    list.map(get_abstract_proc(ModuleInfo), SCC).
+    set.map(get_abstract_proc(ModuleInfo), SCC).
 
 get_abstract_proc(ModuleInfo, PPId) = AbstractProc :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),

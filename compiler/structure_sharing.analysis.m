@@ -371,7 +371,7 @@ sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
     module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
     (
         MaybeDepInfo = yes(DepInfo),
-        SCCs = dependency_info_get_ordering(DepInfo),
+        SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
         list.foldl3(analyse_scc(!.ModuleInfo), SCCs,
             !SharingTable, [], DepProcs, !IO)
     ;
@@ -412,31 +412,32 @@ save_sharing_in_module_info(PPId, SharingAs_Status, !ModuleInfo) :-
         ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
-:- pred analyse_scc(module_info::in, list(pred_proc_id)::in,
+:- pred analyse_scc(module_info::in, scc::in,
     sharing_as_table::in, sharing_as_table::out,
     dep_procs::in, dep_procs::out, io::di, io::uo) is det.
 
 analyse_scc(ModuleInfo, SCC, !SharingTable, !DepProcs, !IO) :-
-    ( if some_preds_requiring_no_analysis(ModuleInfo, SCC) then
+    set.to_sorted_list(SCC, SCCProcs),
+    ( if some_preds_require_no_analysis(ModuleInfo, SCC) then
         % At least one procedure in the SCC requires that we don't analyse it.
         % We update the sharing table otherwise procedures which call it will
         % not be able to find a result, and therefore conclude that the
         % analysis is suboptimal.
-        ProcsStrings = list.map(pred_proc_id_to_string(ModuleInfo), SCC),
+        ProcsStrings = list.map(pred_proc_id_to_string(ModuleInfo), SCCProcs),
         ProcsString = string.join_list(", ", ProcsStrings),
         Msg = "SCC cannot be analysed: " ++ ProcsString,
         SharingAs = sharing_as_top_sharing(top_cannot_improve(Msg)),
         SharingAndStatus = sharing_as_and_status(SharingAs, optimal),
-        list.foldl(
-            (pred(PPId::in, ST0::in, ST::out) is det :-
+        set.foldl(
+            ( pred(PPId::in, ST0::in, ST::out) is det :-
                 sharing_as_table_set(PPId, SharingAndStatus, ST0, ST)
             ),
             SCC, !SharingTable)
     else
-        FixpointTable0 = ss_fixpoint_table_init(SCC),
-        analyse_scc_until_fixpoint(ModuleInfo, SCC, !.SharingTable,
+        FixpointTable0 = ss_fixpoint_table_init(SCCProcs),
+        analyse_scc_until_fixpoint(ModuleInfo, SCCProcs, !.SharingTable,
             FixpointTable0, FixpointTable, !DepProcs, !IO),
-        list.foldl(update_sharing_in_table(FixpointTable), SCC, !SharingTable)
+        set.foldl(update_sharing_in_table(FixpointTable), SCC, !SharingTable)
     ).
 
 :- pred analyse_scc_until_fixpoint(module_info::in, list(pred_proc_id)::in,

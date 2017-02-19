@@ -197,21 +197,21 @@
 :- mode goal_calls_pred_id(in, in) is semidet.
 :- mode goal_calls_pred_id(in, out) is nondet.
 
-    % goal_calls_proc_in_list(Goal, PredProcIds):
+    % goal_calls_proc_in_set(Goal, PredProcIds):
     %
     % Returns the subset of PredProcIds that are called from somewhere inside
     % Goal via plain_call.
     %
-:- func goal_calls_proc_in_list(hlds_goal, list(pred_proc_id))
-    = list(pred_proc_id).
+:- func goal_calls_proc_in_set(hlds_goal, set(pred_proc_id))
+    = set(pred_proc_id).
 
     % goal_list_calls_proc_in_list(Goal, PredProcIds):
     %
     % Returns the subset of PredProcIds that are called from somewhere inside
     % Goals via plain_call.
     %
-:- func goal_list_calls_proc_in_list(list(hlds_goal), list(pred_proc_id))
-    = list(pred_proc_id).
+:- func goal_list_calls_proc_in_set(list(hlds_goal), set(pred_proc_id))
+    = set(pred_proc_id).
 
     % Test whether the goal contains a reconstruction
     % (a construction where the `construct_how' field is `cell_to_reuse(_)').
@@ -1389,24 +1389,24 @@ goal_expr_calls_pred_id(GoalExpr, PredId) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_calls_proc_in_list(Goal, PredProcIds) = CalledPredProcIds :-
-    goal_calls_proc_in_list_2(Goal, PredProcIds, set.init, CalledSet),
-    set.to_sorted_list(CalledSet, CalledPredProcIds).
+goal_calls_proc_in_set(Goal, PredProcIds) = CalledPredProcIds :-
+    goal_calls_proc_in_set_acc(Goal, PredProcIds,
+        set.init, CalledPredProcIds).
 
-goal_list_calls_proc_in_list(Goals, PredProcIds) = CalledPredProcIds :-
-    goal_list_calls_proc_in_list_2(Goals, PredProcIds, set.init, CalledSet),
-    set.to_sorted_list(CalledSet, CalledPredProcIds).
+goal_list_calls_proc_in_set(Goals, PredProcIds) = CalledPredProcIds :-
+    goal_list_calls_proc_in_set_acc(Goals, PredProcIds,
+        set.init, CalledPredProcIds).
 
-:- pred goal_calls_proc_in_list_2(hlds_goal::in, list(pred_proc_id)::in,
+:- pred goal_calls_proc_in_set_acc(hlds_goal::in, set(pred_proc_id)::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
+goal_calls_proc_in_set_acc(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
         !CalledSet) :-
     (
         GoalExpr = unify(_, _, _, _, _)
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
-        ( if list.member(proc(PredId, ProcId), PredProcIds) then
+        ( if set.member(proc(PredId, ProcId), PredProcIds) then
             set.insert(proc(PredId, ProcId), !CalledSet)
         else
             true
@@ -1417,21 +1417,21 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         GoalExpr = conj(_, Goals),
-        goal_list_calls_proc_in_list_2(Goals, PredProcIds, !CalledSet)
+        goal_list_calls_proc_in_set_acc(Goals, PredProcIds, !CalledSet)
     ;
         GoalExpr = disj(Goals),
-        goal_list_calls_proc_in_list_2(Goals, PredProcIds, !CalledSet)
+        goal_list_calls_proc_in_set_acc(Goals, PredProcIds, !CalledSet)
     ;
         GoalExpr = switch(_, _, Cases),
-        case_list_calls_proc_in_list(Cases, PredProcIds, !CalledSet)
+        case_list_calls_proc_in_list_acc(Cases, PredProcIds, !CalledSet)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        goal_calls_proc_in_list_2(Cond, PredProcIds, !CalledSet),
-        goal_calls_proc_in_list_2(Then, PredProcIds, !CalledSet),
-        goal_calls_proc_in_list_2(Else, PredProcIds, !CalledSet)
+        goal_calls_proc_in_set_acc(Cond, PredProcIds, !CalledSet),
+        goal_calls_proc_in_set_acc(Then, PredProcIds, !CalledSet),
+        goal_calls_proc_in_set_acc(Else, PredProcIds, !CalledSet)
     ;
         GoalExpr = negation(Goal),
-        goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
+        goal_calls_proc_in_set_acc(Goal, PredProcIds, !CalledSet)
     ;
         GoalExpr = scope(Reason, Goal),
         ( if
@@ -1443,41 +1443,41 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
             % These goals contain only construction unifications.
             true
         else
-            goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
+            goal_calls_proc_in_set_acc(Goal, PredProcIds, !CalledSet)
         )
     ;
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
-            goal_calls_proc_in_list_2(MainGoal, PredProcIds, !CalledSet),
-            goal_list_calls_proc_in_list_2(OrElseGoals, PredProcIds,
+            goal_calls_proc_in_set_acc(MainGoal, PredProcIds, !CalledSet),
+            goal_list_calls_proc_in_set_acc(OrElseGoals, PredProcIds,
                 !CalledSet)
         ;
             ShortHand = try_goal(_, _, SubGoal),
-            goal_calls_proc_in_list_2(SubGoal, PredProcIds, !CalledSet)
+            goal_calls_proc_in_set_acc(SubGoal, PredProcIds, !CalledSet)
         ;
             ShortHand = bi_implication(_, _),
             unexpected($module, $pred, "bi_implication")
         )
     ).
 
-:- pred goal_list_calls_proc_in_list_2(list(hlds_goal)::in,
-    list(pred_proc_id)::in, set(pred_proc_id)::in, set(pred_proc_id)::out)
+:- pred goal_list_calls_proc_in_set_acc(list(hlds_goal)::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::in, set(pred_proc_id)::out)
     is det.
 
-goal_list_calls_proc_in_list_2([], _, !CalledSet).
-goal_list_calls_proc_in_list_2([Goal | Goals], PredProcIds, !CalledSet) :-
-    goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet),
-    goal_list_calls_proc_in_list_2(Goals, PredProcIds, !CalledSet).
+goal_list_calls_proc_in_set_acc([], _, !CalledSet).
+goal_list_calls_proc_in_set_acc([Goal | Goals], PredProcIds, !CalledSet) :-
+    goal_calls_proc_in_set_acc(Goal, PredProcIds, !CalledSet),
+    goal_list_calls_proc_in_set_acc(Goals, PredProcIds, !CalledSet).
 
-:- pred case_list_calls_proc_in_list(list(case)::in, list(pred_proc_id)::in,
+:- pred case_list_calls_proc_in_list_acc(list(case)::in, set(pred_proc_id)::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-case_list_calls_proc_in_list([], _, !CalledSet).
-case_list_calls_proc_in_list([Case | Cases], PredProcIds, !CalledSet) :-
+case_list_calls_proc_in_list_acc([], _, !CalledSet).
+case_list_calls_proc_in_list_acc([Case | Cases], PredProcIds, !CalledSet) :-
     Case = case(_, _, Goal),
-    goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet),
-    case_list_calls_proc_in_list(Cases, PredProcIds, !CalledSet).
+    goal_calls_proc_in_set_acc(Goal, PredProcIds, !CalledSet),
+    case_list_calls_proc_in_list_acc(Cases, PredProcIds, !CalledSet).
 
 %-----------------------------------------------------------------------------%
 

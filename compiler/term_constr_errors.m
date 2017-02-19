@@ -64,8 +64,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_report_term2_errors(module_info::in,
-    list(pred_proc_id)::in, list(term2_error)::in,
+:- pred maybe_report_term2_errors(module_info::in, scc::in,
+    list(term2_error)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -84,6 +84,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -99,8 +100,7 @@ maybe_report_term2_errors(ModuleInfo, SCC, Errors, !Specs) :-
     ).
 
 :- pred decide_what_term2_errors_to_report(module_info::in,
-    list(pred_proc_id)::in, list(term2_error)::in,
-    maybe(list(term2_error))::out) is det.
+    scc::in, list(term2_error)::in, maybe(list(term2_error))::out) is det.
 
 decide_what_term2_errors_to_report(ModuleInfo, SCC, Errors,
         MaybeErrorsToReport) :-
@@ -118,23 +118,25 @@ decide_what_term2_errors_to_report(ModuleInfo, SCC, Errors,
     globals.lookup_bool_option(Globals, verbose_check_termination2,
         VerboseErrors),
     ( if
-        IsCheckTerm = (pred(PPId::in) is semidet :-
-            module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
-            not pred_info_is_imported(PredInfo),
-            pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, marker_check_termination)
-        ),
-        list.filter(IsCheckTerm, SCC, CheckTermPPIds),
-        CheckTermPPIds = [_ | _]
+        IsCheckTerm =
+            ( pred(PPId::in) is semidet :-
+                module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
+                not pred_info_is_imported(PredInfo),
+                pred_info_get_markers(PredInfo, Markers),
+                check_marker(Markers, marker_check_termination)
+            ),
+        set.filter(IsCheckTerm, SCC, CheckTermPPIds),
+        set.is_non_empty(CheckTermPPIds)
     then
         MaybeErrorsToReport = yes(Errors)
     else if
-        IsNonImported = (pred(PPId::in) is semidet :-
-            module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
-            not pred_info_is_imported(PredInfo)
-        ),
-        list.filter(IsNonImported, SCC, NonImportedPPIds),
-        NonImportedPPIds = [_ | _]
+        IsNonImported =
+            ( pred(PPId::in) is semidet :-
+                module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
+                not pred_info_is_imported(PredInfo)
+            ),
+        set.filter(IsNonImported, SCC, NonImportedPPIds),
+        set.is_non_empty(NonImportedPPIds)
     then
         (
             VerboseErrors = yes,
@@ -143,10 +145,11 @@ decide_what_term2_errors_to_report(ModuleInfo, SCC, Errors,
             VerboseErrors = no,
             (
                 NormalErrors = yes,
-                IsDirect = (pred(Error::in) is semidet :-
-                    Error = term2_error(_, ErrorKind),
-                    term2_error_kind_is_direct(ErrorKind) = yes
-                ),
+                IsDirect =
+                    ( pred(Error::in) is semidet :-
+                        Error = term2_error(_, ErrorKind),
+                        term2_error_kind_is_direct(ErrorKind) = yes
+                    ),
                 list.filter(IsDirect, Errors, DirectErrors),
                 (
                     DirectErrors = [],
@@ -166,12 +169,12 @@ decide_what_term2_errors_to_report(ModuleInfo, SCC, Errors,
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_term2_errors(module_info::in, list(pred_proc_id)::in,
+:- pred report_term2_errors(module_info::in, scc::in,
     list(term2_error)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 report_term2_errors(ModuleInfo, SCC, Errors, !Specs) :-
     get_context_from_scc(ModuleInfo, SCC, Context),
-    ( if SCC = [PPId] then
+    ( if set.is_singleton(SCC, PPId) then
         Pieces0 = [words("Termination of")],
         ProcName = describe_one_proc_name(ModuleInfo,
             should_module_qualify, PPId),
@@ -181,7 +184,7 @@ report_term2_errors(ModuleInfo, SCC, Errors, !Specs) :-
         Pieces0 = [words("Termination of the"),
             words("mutually recursive procedures")],
         ProcNames = describe_several_proc_names(ModuleInfo,
-            should_module_qualify, SCC),
+            should_module_qualify, set.to_sorted_list(SCC)),
         Pieces1 = Pieces0 ++ ProcNames,
         Single = no
     ),

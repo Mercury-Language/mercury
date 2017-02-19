@@ -143,8 +143,8 @@
 :- type term_error
     --->    term_error(prog_context, term_error_kind).
 
-:- pred report_term_errors(module_info::in, list(pred_proc_id)::in,
-    list(term_error)::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_term_errors(module_info::in, scc::in, list(term_error)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % An error is considered an indirect error if it is due either to a
     % language feature we cannot analyze or due to an error in another part
@@ -173,6 +173,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -181,7 +182,7 @@
 
 report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
     get_context_from_scc(ModuleInfo, SCC, Context),
-    ( if SCC = [PPId] then
+    ( if set.is_singleton(SCC, PPId) then
         Pieces1 = [words("Termination of")] ++
             describe_one_proc_name(ModuleInfo, should_module_qualify, PPId),
         Single = yes(PPId)
@@ -189,7 +190,7 @@ report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
         Pieces1 = [words("Termination of the "),
             words("mutually recursive procedures")] ++
             describe_several_proc_names(ModuleInfo,
-                should_module_qualify, SCC),
+                should_module_qualify, set.to_sorted_list(SCC)),
         Single = no
     ),
     (
@@ -217,12 +218,12 @@ report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
     Spec = error_spec(severity_warning, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
-:- pred report_arg_size_errors(module_info::in, list(pred_proc_id)::in,
-    list(term_error)::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_arg_size_errors(module_info::in, scc::in, list(term_error)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
     get_context_from_scc(ModuleInfo, SCC, Context),
-    ( if SCC = [PPId] then
+    ( if set.is_singleton(SCC, PPId) then
         Pieces1 = [words("Termination constant of")] ++
             describe_one_proc_name(ModuleInfo, should_module_qualify, PPId),
         Single = yes(PPId)
@@ -230,7 +231,7 @@ report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
         Pieces1 = [words("Termination constants"),
             words("of the mutually recursive procedures")] ++
             describe_several_proc_names(ModuleInfo,
-                should_module_qualify, SCC),
+                should_module_qualify, set.to_sorted_list(SCC)),
         Single = no
     ),
     Piece2 = words("set to infinity for the following"),
@@ -294,7 +295,7 @@ describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
             % XXX Should we add a Msg about the relevance of the spec
             % added by the folliwng call?
             % XXX the next line is cheating
-            ArgSizePPIdSCC = [InfArgSizePPId],
+            ArgSizePPIdSCC = set.make_singleton_set(InfArgSizePPId),
             report_arg_size_errors(ModuleInfo, ArgSizePPIdSCC, ArgSizeErrors,
                 !Specs)
         else

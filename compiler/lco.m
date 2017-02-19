@@ -298,16 +298,16 @@
 
 lco_modulo_constructors(!ModuleInfo) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
-    SCCs = dependency_info_get_ordering(DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     list.foldl2(lco_scc, SCCs, map.init, _, !ModuleInfo).
 
-:- pred lco_scc(list(pred_proc_id)::in, variant_map::in, variant_map::out,
+:- pred lco_scc(set(pred_proc_id)::in, variant_map::in, variant_map::out,
     module_info::in, module_info::out) is det.
 
 lco_scc(SCC, !VariantMap, !ModuleInfo) :-
     % XXX did we forget to add CurSCCVariants to !VariantMap?
     ModuleInfo0 = !.ModuleInfo,
-    list.foldl4(lco_proc_if_permitted(!.VariantMap, SCC), SCC, !ModuleInfo,
+    set.foldl4(lco_proc_if_permitted(!.VariantMap, SCC), SCC, !ModuleInfo,
         map.init, CurSCCVariantMap, map.init, CurSCCUpdateMap,
         lco_is_permitted_on_scc, Permitted),
     multi_map.to_flat_assoc_list(CurSCCVariantMap, CurSCCVariants),
@@ -410,9 +410,8 @@ lco_process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_proc_if_permitted(variant_map::in, list(pred_proc_id)::in,
-    pred_proc_id::in, module_info::in, module_info::out,
-    variant_map::in, variant_map::out,
+:- pred lco_proc_if_permitted(variant_map::in, scc::in, pred_proc_id::in,
+    module_info::in, module_info::out, variant_map::in, variant_map::out,
     map(pred_proc_id, proc_info)::in, map(pred_proc_id, proc_info)::out,
     lco_is_permitted_on_scc::in, lco_is_permitted_on_scc::out) is det.
 
@@ -440,8 +439,8 @@ lco_proc_if_permitted(LowerSCCVariants, SCC, CurProc,
         )
     ).
 
-:- pred lco_proc(variant_map::in, list(pred_proc_id)::in,
-    pred_proc_id::in, pred_info::in, proc_info::in,
+:- pred lco_proc(variant_map::in, scc::in, pred_proc_id::in,
+    pred_info::in, proc_info::in,
     module_info::in, module_info::out, variant_map::in, variant_map::out,
     map(pred_proc_id, proc_info)::in, map(pred_proc_id, proc_info)::out,
     lco_is_permitted_on_scc::out) is det.
@@ -470,7 +469,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         UnboxedFloat = yes,
         AllowFloatAddr = allow_float_addr
     ),
-    ConstInfo = lco_const_info(LowerSCCVariants, list_to_set(SCC),
+    ConstInfo = lco_const_info(LowerSCCVariants, SCC,
         CurProc, PredInfo, ProcInfo0, OutputHeadVars, CurProcDetism,
         AllowFloatAddr, HighLevelData),
     Info0 = lco_info(!.ModuleInfo, !.CurSCCVariants, VarSet0, VarTypes0,

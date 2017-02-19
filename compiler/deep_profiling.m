@@ -130,10 +130,10 @@ apply_deep_profiling_transform(!ModuleInfo) :-
 apply_deep_prof_tail_rec_transform(!ModuleInfo) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    SCCs = dependency_info_get_ordering(DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     list.foldl(apply_deep_prof_tail_rec_transform_to_scc, SCCs, !ModuleInfo).
 
-:- pred apply_deep_prof_tail_rec_transform_to_scc(list(pred_proc_id)::in,
+:- pred apply_deep_prof_tail_rec_transform_to_scc(scc::in,
     module_info::in, module_info::out) is det.
 
 apply_deep_prof_tail_rec_transform_to_scc(SCC, !ModuleInfo) :-
@@ -142,7 +142,7 @@ apply_deep_prof_tail_rec_transform_to_scc(SCC, !ModuleInfo) :-
     % call in Proc A could end up calling the other procedure Proc B
     % in the SCC, which could then call back to Proc A. This would screw up
     % our bookkeeping.
-    ( if SCC = [PredProcId] then
+    ( if set.is_singleton(SCC, PredProcId) then
         apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo)
     else
         true

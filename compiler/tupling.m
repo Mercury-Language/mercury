@@ -223,7 +223,7 @@ tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     DepGraph = dependency_info_get_graph(DepInfo),
-    SCCs = dependency_info_get_ordering(DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
 
     % Add transformed versions of procedures that we think would be
     % beneficial.
@@ -240,8 +240,8 @@ tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
 
     % This predicate can be used in place of maybe_tuple_scc to evaluate
     % and transform each procedure of an SCC individually. This is to mimic
-    % the behaviour from an earlier version of this file. It's currently
-    % unused but might be useful for debugging.
+    % the behaviour from an earlier version of this file. It is currently
+    % unused, but might be useful for debugging.
     %
 :- pred maybe_tuple_scc_individual_procs(trace_counts::in, tuning_params::in,
     hlds_dependency_graph::in, list(pred_proc_id)::in,
@@ -254,12 +254,12 @@ maybe_tuple_scc_individual_procs(_TraceCounts, _TuningParams, _DepGraph,
 maybe_tuple_scc_individual_procs(TraceCounts, TuningParams, DepGraph,
         [Proc | Procs], !ModuleInfo, !Counter, !TransformMap) :-
     maybe_tuple_scc(TraceCounts, TuningParams, DepGraph,
-        [Proc], !ModuleInfo, !Counter, !TransformMap),
+        set.make_singleton_set(Proc), !ModuleInfo, !Counter, !TransformMap),
     maybe_tuple_scc_individual_procs(TraceCounts, TuningParams, DepGraph,
         Procs, !ModuleInfo, !Counter, !TransformMap).
 
 :- pred maybe_tuple_scc(trace_counts::in, tuning_params::in,
-    hlds_dependency_graph::in, list(pred_proc_id)::in,
+    hlds_dependency_graph::in, scc::in,
     module_info::in, module_info::out, counter::in, counter::out,
     transform_map::in, transform_map::out) is det.
 
@@ -271,14 +271,14 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
         VeryVerbose = yes,
         trace [io(!IO)] (
             io.write_string("% Considering tupling in ", !IO),
-            list.foldl(write_pred_proc_id(!.ModuleInfo), SCC, !IO),
+            set.foldl(write_pred_proc_id(!.ModuleInfo), SCC, !IO),
             io.write_string("...\n", !IO)
         )
     ;
         VeryVerbose = no
     ),
     ( if scc_has_local_callers(SCC, DepGraph) then
-        ( if SCC = [SingleProc] then
+        ( if set.is_singleton(SCC, SingleProc) then
             candidate_headvars_of_proc(!.ModuleInfo, SingleProc,
                 CandidateHeadVars)
         else
@@ -316,12 +316,12 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
         )
     ).
 
-:- pred scc_has_local_callers(list(pred_proc_id)::in,
+:- pred scc_has_local_callers(set(pred_proc_id)::in,
     hlds_dependency_graph::in) is semidet.
 
 scc_has_local_callers(CalleeProcs, DepGraph) :-
     some [CalleeProc] (
-        list.member(CalleeProc, CalleeProcs),
+        set.member(CalleeProc, CalleeProcs),
         proc_has_local_callers(CalleeProc, DepGraph)
     ).
 
@@ -335,14 +335,14 @@ proc_has_local_callers(CalleeProc, DepGraph) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_tuple_scc_2(trace_counts::in, tuning_params::in,
-    list(pred_proc_id)::in, candidate_headvars::in,
+:- pred maybe_tuple_scc_2(trace_counts::in, tuning_params::in, scc::in,
+    candidate_headvars::in,
     module_info::in, module_info::out, counter::in, counter::out,
     transform_map::in, transform_map::out, bool::in) is det.
 
 maybe_tuple_scc_2(TraceCounts, TuningParams, PredProcIds, CandidateHeadVars,
         !ModuleInfo, !Counter, !TransformMap, VeryVerbose) :-
-    list.foldl2(prepare_proc_for_counting, PredProcIds,
+    set.foldl2(prepare_proc_for_counting, PredProcIds,
         map.init, ReverseGoalPathMapMap, !ModuleInfo),
     % Count the average number of loads/stores without any transformation.
     count_load_stores_for_scc(TraceCounts, TuningParams, !.ModuleInfo,
@@ -367,17 +367,16 @@ maybe_tuple_scc_2(TraceCounts, TuningParams, PredProcIds, CandidateHeadVars,
     ).
 
 :- pred maybe_tuple_scc_3(trace_counts::in, tuning_params::in,
-    map(pred_proc_id, goal_reverse_path_map)::in, list(pred_proc_id)::in,
+    map(pred_proc_id, goal_reverse_path_map)::in, scc::in,
     candidate_headvars::in, costs::in, module_info::in, module_info::out,
     counter::in, counter::out, transform_map::in, transform_map::out,
     bool::in) is det.
 
 maybe_tuple_scc_3(TraceCounts, TuningParams, ReverseGoalPathMapMap,
-        PredProcIds, CandidateHeadVars, CostsWithoutTupling,
+        SCC, CandidateHeadVars, CostsWithoutTupling,
         !ModuleInfo, !Counter, !TransformMap, VeryVerbose) :-
     find_best_tupling_scheme(TraceCounts, TuningParams, !.ModuleInfo,
-        ReverseGoalPathMapMap, PredProcIds, CandidateHeadVars,
-        MaybeBestScheme),
+        ReverseGoalPathMapMap, SCC, CandidateHeadVars, MaybeBestScheme),
     (
         MaybeBestScheme = no
     ;
@@ -478,12 +477,11 @@ candidate_headvars_of_proc_2(PredProcId, VarSet, VarTypes, ModuleInfo,
     Origins = map.singleton(PredProcId, HeadVar).
 
 :- pred common_candidate_headvars_of_procs(module_info::in,
-    list(pred_proc_id)::in, candidate_headvars::out) is det.
+    scc::in, candidate_headvars::out) is det.
 
-common_candidate_headvars_of_procs(ModuleInfo, PredProcIds,
-        CandidateHeadVars) :-
+common_candidate_headvars_of_procs(ModuleInfo, SCC, CandidateHeadVars) :-
     list.map(candidate_headvars_of_proc(ModuleInfo),
-        PredProcIds, ListsOfCandidates),
+        set.to_sorted_list(SCC), ListsOfCandidates),
     list.condense(ListsOfCandidates, FlatListOfCandidates),
     multi_map.from_flat_assoc_list(FlatListOfCandidates, CandidatesMultiMap),
     map.foldl(common_candidate_headvars_of_procs_2, CandidatesMultiMap,
@@ -525,7 +523,7 @@ common_candidate_headvars_of_procs_2(HeadVarName, ListOfOrigins,
 
 :- pred find_best_tupling_scheme(trace_counts::in, tuning_params::in,
     module_info::in, map(pred_proc_id, goal_reverse_path_map)::in,
-    list(pred_proc_id)::in, candidate_headvars::in,
+    scc::in, candidate_headvars::in,
     maybe(pair(costs, tupling_scheme))::out) is det.
 
 find_best_tupling_scheme(TraceCounts, TuningParams, ModuleInfo,
@@ -540,21 +538,19 @@ find_best_tupling_scheme(TraceCounts, TuningParams, ModuleInfo,
 
 :- pred find_best_tupling_scheme_2(trace_counts::in, tuning_params::in,
     module_info::in, map(pred_proc_id, goal_reverse_path_map)::in,
-    list(pred_proc_id)::in, candidate_headvars::in,
+    scc::in, candidate_headvars::in,
     maybe(pair(costs, tupling_scheme))::in,
     maybe(pair(costs, tupling_scheme))::out) is det.
 
 find_best_tupling_scheme_2(TraceCounts, TuningParams, ModuleInfo,
-        ReverseGoalPathMapMap, PredProcIds, CandidateHeadVars,
+        ReverseGoalPathMapMap, SCC, CandidateHeadVars,
         MaybeBestScheme0, MaybeBestScheme) :-
     MinArgsToTuple = TuningParams ^ tp_min_args_to_tuple,
-    list.map(
-        make_tupling_proposal(ModuleInfo, CandidateHeadVars, MinArgsToTuple),
-        PredProcIds, TuplingProposals),
-    map.from_corresponding_lists(PredProcIds, TuplingProposals,
-        TuplingScheme),
+    set.foldl(
+        add_tupling_proposal(ModuleInfo, CandidateHeadVars, MinArgsToTuple),
+        SCC, map.init, TuplingScheme),
     count_load_stores_for_scc(TraceCounts, TuningParams, ModuleInfo,
-        TuplingScheme, ReverseGoalPathMapMap, PredProcIds, Costs),
+        TuplingScheme, ReverseGoalPathMapMap, SCC, Costs),
     ( if
         (
             MaybeBestScheme0 = no
@@ -568,11 +564,13 @@ find_best_tupling_scheme_2(TraceCounts, TuningParams, ModuleInfo,
         MaybeBestScheme = MaybeBestScheme0
     ).
 
-:- pred make_tupling_proposal(module_info::in, candidate_headvars::in,
-    int::in, pred_proc_id::in, tupling_proposal::out) is det.
+:- pred add_tupling_proposal(module_info::in, candidate_headvars::in,
+    int::in, pred_proc_id::in,
+    map(pred_proc_id, tupling_proposal)::in,
+    map(pred_proc_id, tupling_proposal)::out) is det.
 
-make_tupling_proposal(ModuleInfo, CandidateHeadVars, MinArgsToTuple,
-        PredProcId @ proc(PredId, ProcId), TuplingProposal) :-
+add_tupling_proposal(ModuleInfo, CandidateHeadVars, MinArgsToTuple,
+        PredProcId @ proc(PredId, ProcId), !TuplingScheme) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -590,7 +588,8 @@ make_tupling_proposal(ModuleInfo, CandidateHeadVars, MinArgsToTuple,
         varset.new_named_var("DummyCellVar", DummyCellVar, VarSet, _),
         FieldVars = assoc_list.keys(FieldVarArgPos),
         TuplingProposal = tupling(DummyCellVar, FieldVars, FieldVarArgPos)
-    ).
+    ),
+    map.det_insert(PredProcId, TuplingProposal, !TuplingScheme).
 
 :- pred less_total_cost(costs::in, costs::in) is semidet.
 
@@ -968,14 +967,14 @@ opt_at_recursive_call_for_loop_control(_NeedLC, _AllocData, !StackAlloc).
 :- pred count_load_stores_for_scc(trace_counts::in, tuning_params::in,
     module_info::in, tupling_scheme::in,
     map(pred_proc_id, goal_reverse_path_map)::in,
-    list(pred_proc_id)::in, costs::out) is det.
+    set(pred_proc_id)::in, costs::out) is det.
 
 count_load_stores_for_scc(TraceCounts, TuningParams, ModuleInfo,
-        TuplingScheme, ReverseGoalPathMapMap, PredProcIds, Costs) :-
-    list.foldl2(
+        TuplingScheme, ReverseGoalPathMapMap, SCC, Costs) :-
+    set.foldl2(
         count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
             TuplingScheme, ReverseGoalPathMapMap),
-        PredProcIds, 0.0, Loads, 0.0, Stores),
+        SCC, 0.0, Loads, 0.0, Stores),
     Costs = costs(Loads, Stores).
 
 :- pred count_load_stores_for_scc_2(trace_counts::in, tuning_params::in,
@@ -1689,11 +1688,11 @@ combine_inserts(A, [B | Bs], [C | Cs]) :-
                 call_template           :: hlds_goal
             ).
 
-:- pred fix_calls_in_procs(transform_map::in, list(pred_proc_id)::in,
+:- pred fix_calls_in_procs(transform_map::in, scc::in,
     module_info::in, module_info::out) is det.
 
-fix_calls_in_procs(TransformMap, PredProcIds, !ModuleInfo) :-
-    list.foldl(fix_calls_in_proc(TransformMap), PredProcIds, !ModuleInfo).
+fix_calls_in_procs(TransformMap, SCC, !ModuleInfo) :-
+    set.foldl(fix_calls_in_proc(TransformMap), SCC, !ModuleInfo).
 
 :- pred fix_calls_in_transformed_procs(transform_map::in,
     module_info::in, module_info::out) is det.

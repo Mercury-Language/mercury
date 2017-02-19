@@ -147,7 +147,7 @@ analyse_trail_usage(!ModuleInfo) :-
         ),
         module_info_ensure_dependency_info(!ModuleInfo),
         module_info_dependency_info(!.ModuleInfo, DepInfo),
-        SCCs = dependency_info_get_ordering(DepInfo),
+        SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
         globals.lookup_bool_option(Globals, debug_trail_usage, Debug),
         list.foldl(trail_analyse_scc(Debug, Pass1Only), SCCs, !ModuleInfo),
 
@@ -207,11 +207,11 @@ trail_analyse_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
     ),
 
     ProcTrailingInfo = proc_trailing_info(TrailingStatus, MaybeAnalysisStatus),
-    list.foldl(set_trailing_info(ProcTrailingInfo), SCC, !ModuleInfo),
+    set.foldl(set_trailing_info(ProcTrailingInfo), SCC, !ModuleInfo),
 
     (
         Pass1Only = no,
-        list.foldl(trail_annotate_proc, SCC, !ModuleInfo)
+        set.foldl(trail_annotate_proc, SCC, !ModuleInfo)
     ;
         Pass1Only = yes
     ).
@@ -230,7 +230,7 @@ set_trailing_info(ProcTrailingInfo, PPId, !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 check_procs_for_trail_mods(SCC, Result, !ModuleInfo) :-
-    list.foldl2(check_proc_for_trail_mods(SCC), SCC, [], Result, !ModuleInfo).
+    set.foldl2(check_proc_for_trail_mods(SCC), SCC, [], Result, !ModuleInfo).
 
     % Examine how the procedures interact with other procedures that
     % are mutually-recursive to them.
@@ -335,7 +335,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         module_info_pred_info(!.ModuleInfo, CallPredId, CallPredInfo),
         ( if
             % Handle (mutually-)recursive calls.
-            list.member(CallPPId, SCC)
+            set.member(CallPPId, SCC)
         then
             lookup_var_types(VarTypes, CallArgs, Types),
             TrailingStatus = trail_check_types(!.ModuleInfo, Types),
@@ -1201,7 +1201,7 @@ dump_trail_usage_debug_info(ModuleInfo, SCC, Status, !IO) :-
 :- pred output_proc_names(module_info::in, scc::in, io::di, io::uo) is det.
 
 output_proc_names(ModuleInfo, SCC, !IO) :-
-    list.foldl(output_proc_name(ModuleInfo), SCC, !IO).
+    set.foldl(output_proc_name(ModuleInfo), SCC, !IO).
 
 :- pred output_proc_name(module_info::in, pred_proc_id::in, io::di, io::uo)
     is det.

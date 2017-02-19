@@ -28,12 +28,14 @@
 :- import_module transform_hlds.term_constr_errors.
 
 :- import_module list.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
-    % Derive the argument size constraints for the procedures in this SCC.
+    % Derive the argument size constraints for the procedures in this SCC
+    % that need them.
     %
-:- pred do_fixpoint_calculation(fixpoint_options::in, list(pred_proc_id)::in,
+:- pred do_fixpoint_calculation(fixpoint_options::in, set(pred_proc_id)::in,
     int::in, list(term2_error)::out, module_info::in, module_info::out) is det.
 
     % This structure holds the values of options used to control
@@ -70,7 +72,6 @@
 :- import_module io.
 :- import_module maybe.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -112,7 +113,7 @@ do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo) :-
     % the build phase for non-recursive procedures (and in fact used to)
     % but the code ends up being a horrible mess.
     %
-    list.foldl(
+    set.foldl(
         term_iterate_over_abstract_proc(Iteration, Options, !.ModuleInfo),
         AbstractSCC, [], IterationInfos),
     ChangeFlag = or_flags(IterationInfos),

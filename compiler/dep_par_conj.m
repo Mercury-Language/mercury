@@ -171,6 +171,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -1342,28 +1343,26 @@ insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
 reorder_indep_par_conj(PredProcId, VarTypes, InstMapBefore, Conjuncts0,
         GoalInfo, Goal, !ModuleInfo) :-
     module_info_dependency_info(!.ModuleInfo, DependencyInfo),
-    Ordering = dependency_info_get_ordering(DependencyInfo),
-    search_scc(Ordering, PredProcId, SCC),
-    CallsToSameSCC = goal_list_calls_proc_in_list(Conjuncts0, SCC),
-    (
+    Ordering = dependency_info_get_bottom_up_sccs(DependencyInfo),
+    find_procs_scc(Ordering, PredProcId, SCC),
+    CallsToSameSCC = goal_list_calls_proc_in_set(Conjuncts0, SCC),
+    ( if set.is_empty(CallsToSameSCC) then
         % The conjunction doesn't contain a recursive or mutually-recursive
-        % call, this optimisation does not apply.
-        CallsToSameSCC = [],
+        % call, so this optimisation does not apply.
         Conjuncts = Conjuncts0
-    ;
-        CallsToSameSCC = [_ | _],
+    else
         reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, Conjuncts0,
             Conjuncts, !ModuleInfo)
     ),
     GoalExpr = conj(parallel_conj, Conjuncts),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred reorder_indep_par_conj_2(list(pred_proc_id)::in, vartypes::in,
-    instmap::in, hlds_goals::in, hlds_goals::out,
+:- pred reorder_indep_par_conj_2(scc::in, vartypes::in, instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     module_info::in, module_info::out) is det.
 
 reorder_indep_par_conj_2(_, _, _, [], [], !ModuleInfo).
-reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [ Goal | Goals0 ],
+reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [Goal | Goals0],
         Goals, !ModuleInfo) :-
     apply_instmap_delta(InstMapBefore,
         goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
@@ -1374,13 +1373,13 @@ reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [ Goal | Goals0 ],
     % delta.
     InstMapBeforeGoals1 = InstMapBeforeGoals0,
 
-    % If Goal is non recursive try to push it down into the conjunction.
+    % If Goal is non recursive, try to push it down into the conjunction.
     ( if
-        member(CallPredProcId, SCC),
+        set.member(CallPredProcId, SCC),
         goal_calls(Goal, CallPredProcId)
     then
         % Goal is recursive.
-        Goals = [ Goal | Goals1 ]
+        Goals = [Goal | Goals1]
     else
         % Goal is non-recursive.
         push_goal_into_conj(VarTypes, InstMapBefore, Goal, InstMapBeforeGoals1,
@@ -1389,7 +1388,7 @@ reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [ Goal | Goals0 ],
             MaybeGoals = yes(Goals)
         ;
             MaybeGoals = no,
-            Goals = [ Goal | Goals1 ]
+            Goals = [Goal | Goals1]
         )
     ).
 
@@ -1399,7 +1398,7 @@ reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [ Goal | Goals0 ],
 
 push_goal_into_conj(_, _, Goal, _, [], yes([Goal]), !ModuleInfo).
 push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
-        [ PivotGoal | Goals0 ], MaybeGoals, !ModuleInfo) :-
+        [PivotGoal | Goals0], MaybeGoals, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     lookup_bool_option(Globals, fully_strict, FullyStrict),
     can_reorder_goals(VarTypes, FullyStrict, InstMapBeforeGoal, Goal,
@@ -1423,10 +1422,10 @@ push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
             InstMapAfterPivotAndGoal, Goals0, MaybeGoals1, !ModuleInfo),
         (
             MaybeGoals1 = yes(Goals1),
-            Goals = [ PivotGoal | Goals1 ]
+            Goals = [PivotGoal | Goals1]
         ;
             MaybeGoals1 = no,
-            Goals = [ Goal, PivotGoal | Goals0 ]
+            Goals = [Goal, PivotGoal | Goals0]
         ),
         MaybeGoals = yes(Goals)
     ;
@@ -1434,20 +1433,15 @@ push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
         MaybeGoals = no
     ).
 
-:- pred search_scc(list(list(pred_proc_id))::in, pred_proc_id::in,
-    list(pred_proc_id)::out) is det.
+:- pred find_procs_scc(list(scc)::in, pred_proc_id::in, scc::out) is det.
 
-search_scc(SCCs, PredProcId, SCC) :-
-    % There should not be more than one solution here. Operationally the
-    % search stops after finding the first solution.
-    promise_equivalent_solutions [SCC]
-    ( if
-        list.member(SCCPrime, SCCs),
-        list.member(PredProcId, SCCPrime)
-    then
-        SCC = SCCPrime
+find_procs_scc([], _PredProcId, _) :-
+    unexpected($module, $pred, "Couldn't find SCC for pred/proc id.").
+find_procs_scc([SCC | SCCs], PredProcId, PredProcsSCC) :-
+    ( if set.member(PredProcId, SCC) then
+        PredProcsSCC = SCC
     else
-        unexpected($module, $pred, "Couldn't find SCC for pred/proc id.")
+        find_procs_scc(SCCs, PredProcId, PredProcsSCC)
     ).
 
 %---------------------------------------------------------------------------%

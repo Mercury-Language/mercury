@@ -152,7 +152,7 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     % Analyse the module per SCC in bottom-up fashion.
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    SCCs = dependency_info_get_ordering(DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     term2_analyse_sccs(BuildOptions, FixpointOptions, Pass2Options, SCCs,
         !ModuleInfo, [], Specs),
 
@@ -162,7 +162,7 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo).
 
 :- pred term2_analyse_sccs(term_build_options::in, fixpoint_options::in,
-    pass2_options::in, list(list(pred_proc_id))::in,
+    pass2_options::in, list(scc)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -216,7 +216,7 @@ term2_analyse_sccs(BuildOptions, FixpointOptions, Pass2Options,
     % are assumed to have unbounded size.
     %
 :- pred term2_analyse_scc(term_build_options::in, fixpoint_options::in,
-    pass2_options::in, list(pred_proc_id)::in, list(list(pred_proc_id))::in,
+    pass2_options::in, scc::in, list(scc)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -225,7 +225,7 @@ term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCC, HigherSCCs,
     % Since all of the passes are potentially optional, we need to initialise
     % the size_var_maps separately. If they are left uninitialised, intermodule
     % optimization will not work.
-    NeedsAR = list.filter(proc_needs_ar_built(!.ModuleInfo), SCC),
+    set.filter(proc_needs_ar_built(!.ModuleInfo), SCC, NeedsAR),
 
     % Build the abstract representation for those procedures that require it.
     % The procedures that require it are those that do not already have
@@ -237,7 +237,7 @@ term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCC, HigherSCCs,
     % we can gain meaningful information from it. We do not do it when:
     % - the information is already known, or
     % - the argument size relationships depend upon higher-order calls.
-    NeedsArgSize = list.filter(isnt(has_arg_size_info(!.ModuleInfo)), NeedsAR),
+    set.filter(isnt(has_arg_size_info(!.ModuleInfo)), NeedsAR, NeedsArgSize),
     term_constr_fixpoint.do_fixpoint_calculation(FixpointOpts,
         NeedsArgSize, 1, FixpointErrors, !ModuleInfo),
 
@@ -255,7 +255,7 @@ term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCC, HigherSCCs,
     globals.lookup_bool_option(Globals, arg_size_analysis_only, ArgSizeOnly),
     (
         ArgSizeOnly = no,
-        NeedsTerm = list.filter(isnt(has_term_info(!.ModuleInfo)), NeedsAR),
+        set.filter(isnt(has_term_info(!.ModuleInfo)), NeedsAR, NeedsTerm),
 
         % Some procedures may not have arg_size_info, but may have termination
         % info, i.e. those that have a pragma terminates or does_not_terminate
@@ -286,11 +286,11 @@ term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCC, HigherSCCs,
 % Procedures for storing 'termination2_info' in the HLDS.
 %
 
-:- pred set_termination_info_for_procs(list(pred_proc_id)::in,
+:- pred set_termination_info_for_procs(set(pred_proc_id)::in,
     constr_termination_info::in, module_info::in, module_info::out) is det.
 
 set_termination_info_for_procs(PPIds, TerminationInfo, !ModuleInfo) :-
-    list.foldl(set_termination_info_for_proc(TerminationInfo), PPIds,
+    set.foldl(set_termination_info_for_proc(TerminationInfo), PPIds,
         !ModuleInfo).
 
 :- pred set_termination_info_for_proc(constr_termination_info::in,

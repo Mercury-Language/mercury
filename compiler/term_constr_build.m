@@ -53,8 +53,8 @@
     % Builds the abstract representation of an SCC.
     %
 :- pred term_constr_build_abstract_scc(term_build_options::in,
-    list(list(pred_proc_id))::in, list(pred_proc_id)::in,
-    list(term2_error)::out, module_info::in, module_info::out) is det.
+    list(scc)::in, scc::in, list(term2_error)::out,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -138,9 +138,9 @@ term_build_options_init(Norm, Failure, ArgSizeOnly) =
 term_constr_build_abstract_scc(Options, HigherSCCs, SCC, Errors,
         !ModuleInfo) :-
     get_scc_entry_points(!.ModuleInfo, SCC, HigherSCCs, EntryProcs),
-    list.foldl2(
-        term_constr_build_abstract_proc(EntryProcs, Options, SCC,
-            !.ModuleInfo),
+    set.foldl2(
+        term_constr_build_abstract_proc(!.ModuleInfo, Options,
+            SCC, EntryProcs),
         SCC, varset.init, SizeVarset, [], AbstractSCC),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     RecordInfo = (pred(Info::in, !.Errors::in, !:Errors::out,
@@ -171,7 +171,7 @@ term_constr_build_abstract_scc(Options, HigherSCCs, SCC, Errors,
                 term2_info_set_success_constrs(yes(polyhedron.universe),
                     !Term2Info),
                 HorderErrors = list.map(
-                    (func(ho_call(Context)) =
+                    ( func(ho_call(Context)) =
                         term2_error(Context, horder_call)
                     ), AR ^ ap_ho_calls),
                 list.append(HorderErrors, !Errors)
@@ -188,12 +188,12 @@ term_constr_build_abstract_scc(Options, HigherSCCs, SCC, Errors,
     list.foldl2(RecordInfo, AbstractSCC, [], Errors, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
-:- pred term_constr_build_abstract_proc(list(pred_proc_id)::in,
-    term_build_options::in, list(pred_proc_id)::in, module_info::in,
-    pred_proc_id::in, size_varset::in, size_varset::out,
+:- pred term_constr_build_abstract_proc(module_info::in,
+    term_build_options::in, scc::in, set(pred_proc_id)::in, pred_proc_id::in,
+    size_varset::in, size_varset::out,
     list(term_scc_info)::in, list(term_scc_info)::out) is det.
 
-term_constr_build_abstract_proc(EntryProcs, Options, SCC, ModuleInfo, PPId,
+term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
         !SizeVarset, !AbstractInfo) :-
     trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
         io.write_string("Building procedure: ", !DebugIO),
@@ -230,22 +230,23 @@ term_constr_build_abstract_proc(EntryProcs, Options, SCC, ModuleInfo, PPId,
 
     % Work out which arguments can be used in termination proofs.
     % An argument may be used if (a) it is input and (b) it has non-zero size.
-    ChooseArg = (func(Var, Mode) = UseArg :-
-        lookup_var_type(VarTypes, Var, Type),
-        ( if
-            not zero_size_type(ModuleInfo, Type),
-            mode_util.mode_is_input(ModuleInfo, Mode)
-        then
-            UseArg = yes
-        else
-            UseArg = no
-        )
-    ),
+    ChooseArg =
+        ( func(Var, Mode) = UseArg :-
+            lookup_var_type(VarTypes, Var, Type),
+            ( if
+                not zero_size_type(ModuleInfo, Type),
+                mode_util.mode_is_input(ModuleInfo, Mode)
+            then
+                UseArg = yes
+            else
+                UseArg = no
+            )
+        ),
     Inputs = list.map_corresponding(ChooseArg, HeadProgVars, ArgModes0),
 
     % The size_varset for this procedure is set to rubbish here.
     % When we complete building this SCC we will set it to the correct value.
-    IsEntryPoint = ( if list.member(PPId, EntryProcs) then yes else no),
+    IsEntryPoint = ( if set.member(PPId, EntryProcs) then yes else no),
     AbstractProc = abstract_proc(real(PPId), IsEntryPoint, Context,
         HeadSizeVars, Inputs, AbstractBody, SizeVarMap, !.SizeVarset, Zeros,
         Info ^ tti_recursion, Info ^ tti_maxcalls, Info ^ tti_ho_info),
@@ -315,7 +316,7 @@ term_constr_build_abstract_proc(EntryProcs, Options, SCC, ModuleInfo, PPId,
 
                 % The procedures in the SCC of the call graph
                 % we are current traversing.
-                tti_scc                         :: list(pred_proc_id),
+                tti_scc                         :: set(pred_proc_id),
 
                 % The number of calls in the procedure.
                 tti_maxcalls                    :: int,
@@ -334,8 +335,8 @@ term_constr_build_abstract_proc(EntryProcs, Options, SCC, ModuleInfo, PPId,
         ).
 
 :- func init_traversal_info(module_info, functor_info, pred_proc_id,
-    term.context, vartypes, zero_vars, size_var_map, list(pred_proc_id),
-    bool, bool) = tti_traversal_info.
+    term.context, vartypes, zero_vars, size_var_map, scc, bool, bool)
+    = tti_traversal_info.
 
 init_traversal_info(ModuleInfo, Norm, PPId, Context, Types, Zeros,
         VarMap, SCC, FailConstrs, ArgSizeOnly)
@@ -529,7 +530,7 @@ build_abstract_conj(Conjuncts, AbstractGoal, !Info) :-
 
 build_abstract_call(CalleePPId, CallerArgs, GoalInfo, AbstractGoal, !Info) :-
     Context = goal_info_get_context(GoalInfo),
-    ( if list.member(CalleePPId, !.Info ^ tti_scc) then
+    ( if set.member(CalleePPId, !.Info ^ tti_scc) then
         build_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
             !Info)
     else

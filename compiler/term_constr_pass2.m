@@ -26,8 +26,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.term_constr_main_types.
 
-:- import_module list.
-
 %-----------------------------------------------------------------------------%
 
     % This structure holds the values of options used to control pass 2.
@@ -41,7 +39,7 @@
     %
 :- func pass2_options_init(int) = pass2_options.
 
-:- pred prove_termination_in_scc(pass2_options::in, list(pred_proc_id)::in,
+:- pred prove_termination_in_scc(pass2_options::in, scc::in,
     module_info::in, constr_termination_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -66,6 +64,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module io.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -143,20 +142,25 @@ pass2_options_init(MaxSize) = pass2_options(MaxSize).
 
 %-----------------------------------------------------------------------------%
 
-prove_termination_in_scc(_, [], _, cannot_loop(term_reason_analysis)).
-prove_termination_in_scc(Options, SCC0 @ [_ | _], ModuleInfo, Result) :-
-    AbstractSCC = get_abstract_scc(ModuleInfo, SCC0),
-    % XXX Pass 1 should really set this up.
-    SCC = list.map((func(A) = real(A)), SCC0),
-    ( if scc_contains_recursion(AbstractSCC) then
-        SizeVarSet = size_varset_from_abstract_scc(AbstractSCC),
-        Edges = label_edges_in_scc(AbstractSCC, ModuleInfo,
-            Options ^ max_matrix_size),
-        Cycles = find_elementary_cycles_in_scc(SCC, Edges),
-        CycleSets = partition_cycles(SCC, Cycles),
-        prove_termination(CycleSets, AbstractSCC, SizeVarSet, Result)
-    else
+prove_termination_in_scc(Options, SCC0, ModuleInfo, Result) :-
+    ( if set.is_empty(SCC0) then
         Result = cannot_loop(term_reason_analysis)
+    else
+        AbstractSCC = get_abstract_scc(ModuleInfo, SCC0),
+        ( if scc_contains_recursion(AbstractSCC) then
+            % XXX Pass 1 should really set this up.
+            PPIdSCC = set.map((func(A) = real(A)), SCC0),
+            set.to_sorted_list(PPIdSCC, PPIds),
+
+            SizeVarSet = size_varset_from_abstract_scc(AbstractSCC),
+            Edges = label_edges_in_scc(AbstractSCC, ModuleInfo,
+                Options ^ max_matrix_size),
+            Cycles = find_elementary_cycles_in_scc(PPIds, Edges),
+            CycleSets = partition_cycles(PPIds, Cycles),
+            prove_termination(CycleSets, AbstractSCC, SizeVarSet, Result)
+        else
+            Result = cannot_loop(term_reason_analysis)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -173,14 +177,15 @@ prove_termination_in_scc(Options, SCC0 @ [_ | _], ModuleInfo, Result) :-
 
 :- func label_edges_in_scc(abstract_scc, module_info, int) = edges.
 
-label_edges_in_scc(Procs, ModuleInfo, MaxMatrixSize) = Edges :-
-    FindEdges = (pred(Proc::in, !.Edges::in, !:Edges::out) is det :-
-        find_edges_in_goal(Proc, Procs, ModuleInfo, MaxMatrixSize,
-            Proc ^ ap_body, 1, _, polyhedron.universe, _, [],
-            ProcEdges, yes, _),
-        list.append(ProcEdges, !Edges)
-    ),
-    list.foldl(FindEdges, Procs, [], Edges).
+label_edges_in_scc(AbstractSCC, ModuleInfo, MaxMatrixSize) = Edges :-
+    FindEdges =
+        ( pred(Proc::in, !.Edges::in, !:Edges::out) is det :-
+            find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
+                Proc ^ ap_body, 1, _, polyhedron.universe, _, [],
+                ProcEdges, yes, _),
+            list.append(ProcEdges, !Edges)
+        ),
+    set.foldl(FindEdges, AbstractSCC, [], Edges).
 
     % The four accumulators here are for:
     % (1) the number of calls seen so far
@@ -383,17 +388,17 @@ partition_edges([ProcId | SCC], Edges0) = Map :-
         ( pred(Edge::in) is semidet :-
             ProcId = Edge ^ tcge_caller
         ), Edges0),
-    Map = map.det_insert(Map0, ProcId, Edges).
+    map.det_insert(ProcId, Edges, Map0, Map).
 
 :- func search_for_cycles(list(abstract_ppid), map(abstract_ppid, edges))
     = cycles.
 
 search_for_cycles([], _) = [].
-search_for_cycles([Start | Rest], Map0) = Cycles :-
-    Cycles0 = search_for_cycles_2(Start, Map0),
-    Map = map.delete(Map0, Start),
-    Cycles1 = search_for_cycles(Rest, Map),
-    Cycles = Cycles0 ++ Cycles1.
+search_for_cycles([HeadPPId | TailPPId], Map0) = Cycles :-
+    HeadCycles = search_for_cycles_2(HeadPPId, Map0),
+    map.delete(HeadPPId, Map0, Map1),
+    TailCycles = search_for_cycles(TailPPId, Map1),
+    Cycles = HeadCycles ++ TailCycles.
 
 :- func search_for_cycles_2(abstract_ppid, map(abstract_ppid, edges)) = cycles.
 
@@ -517,7 +522,7 @@ strict_decrease_around_loop(AbstractSCC, SizeVarSet, PPId, Loop) :-
     IsActive = (func(Var::in, Input::in) = (Var::out) is semidet :-
         Input = yes
     ),
-    Proc = get_proc_from_abstract_scc(AbstractSCC, PPId),
+    Proc = get_proc_from_abstract_scc(set.to_sorted_list(AbstractSCC), PPId),
     Inputs = Proc ^ ap_inputs,
     HeadArgs = list.filter_map_corresponding(IsActive, Loop ^ tcge_head_args,
         Inputs),

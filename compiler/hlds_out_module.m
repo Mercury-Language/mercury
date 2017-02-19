@@ -33,6 +33,8 @@
     %
 :- pred write_hlds(int::in, module_info::in, io::di, io::uo) is det.
 
+    % Exported for intermod.m.
+    %
 :- pred write_promise(hlds_out_info::in, module_info::in,
     prog_varset::in, maybe_vartypes::in, var_name_print::in, int::in,
     promise_type::in, pred_id::in, pred_or_func::in, list(prog_var)::in,
@@ -45,14 +47,18 @@
 
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_dependency_graph.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.pred_table.
 :- import_module libs.
+:- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
@@ -65,6 +71,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module digraph.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -143,6 +150,20 @@ write_hlds(Indent, ModuleInfo, !IO) :-
     ( if string.contains_char(DumpOptions, 'x') then
         module_info_get_preds(ModuleInfo, PredTable),
         write_preds(Info, Lang, Indent, ModuleInfo, PredTable, !IO)
+    else
+        true
+    ),
+    ( if string.contains_char(DumpOptions, 'O') then
+        module_info_get_maybe_dependency_info(ModuleInfo, MaybeDependencyInfo),
+        (
+            MaybeDependencyInfo = no,
+            write_indent(Indent, !IO),
+            io.write_string("% No dependency info\n\n", !IO)
+        ;
+            MaybeDependencyInfo = yes(DependencyInfo),
+            write_dependency_info(Info, Indent, ModuleInfo, DependencyInfo,
+                !IO)
+        )
     else
         true
     ),
@@ -1277,6 +1298,77 @@ write_promise(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint, Indent,
     Goal = Clause ^ clause_body,
     do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         Indent+1, ").\n", Goal, !IO).
+
+%-----------------------------------------------------------------------------%
+%
+% Write out dependency information.
+%
+
+:- pred write_dependency_info(hlds_out_info::in, int::in,
+    module_info::in, hlds_dependency_info::in, io::di, io::uo) is det.
+
+write_dependency_info(_Info, Indent, ModuleInfo, DependencyInfo, !IO) :-
+    write_indent(Indent, !IO),
+    io.write_string("% Dependency graph\n\n", !IO),
+    Graph = dependency_info_get_graph(DependencyInfo),
+    digraph.traverse(Graph,
+        write_dep_graph_node(Indent, ModuleInfo),
+        write_dep_graph_edge(Indent, ModuleInfo), !IO),
+
+% If needed, this code can be used to check the raw behavior
+% of digraph operations.
+%
+%   ( if tsort(Graph, TSort) then
+%       write_indent(Indent, !IO),
+%       io.write_string("\n% TSORT ordering\n\n", !IO),
+%       list.foldl(write_dependency_proc(Indent, "", ModuleInfo), TSort, !IO)
+%   else
+%       io.write_string("\n% NO TSORT ordering\n\n", !IO)
+%   ),
+%
+%   write_indent(Indent, !IO),
+%   io.write_string("\n% ATSORT ordering\n\n", !IO),
+%   AtSort = digraph.atsort(Graph),
+%   list.foldl(write_dependency_scc(Indent, ModuleInfo), AtSort, !IO),
+
+    write_indent(Indent, !IO),
+    io.write_string("\n% Bottom up dependency sccs\n\n", !IO),
+    Ordering = dependency_info_get_bottom_up_sccs(DependencyInfo),
+    list.foldl(write_dependency_scc(Indent, ModuleInfo), Ordering, !IO).
+
+:- pred write_dep_graph_node(int::in, module_info::in, pred_proc_id::in,
+    io::di, io::uo) is det.
+
+write_dep_graph_node(Indent, ModuleInfo, Proc, !IO) :-
+    write_dependency_proc(Indent, "calls from ", ModuleInfo, Proc, !IO).
+
+:- pred write_dep_graph_edge(int::in, module_info::in,
+    pred_proc_id::in, pred_proc_id::in, io::di, io::uo) is det.
+
+write_dep_graph_edge(Indent, ModuleInfo, _ParentProc, ChildProc, !IO) :-
+    write_dependency_proc(Indent, "  to ", ModuleInfo, ChildProc, !IO).
+
+:- pred write_dependency_scc(int::in, module_info::in, scc::in,
+    io::di, io::uo) is det.
+
+write_dependency_scc(Indent, ModuleInfo, SCC, !IO) :-
+    write_indent(Indent, !IO),
+    io.write_string("% SCC\n", !IO),
+    set.foldl(write_dependency_proc(Indent, "  ", ModuleInfo), SCC, !IO).
+
+:- pred write_dependency_proc(int::in, string::in, module_info::in,
+    pred_proc_id::in, io::di, io::uo) is det.
+
+write_dependency_proc(Indent, Prefix, ModuleInfo, PredProcId, !IO) :-
+    PredProcId = proc(PredId, ProcId),
+    Pieces = describe_one_proc_name(ModuleInfo,
+        should_not_module_qualify, PredProcId),
+    Desc = error_pieces_to_string(Pieces),
+
+    write_indent(Indent, !IO),
+    io.format("%% %spred %d proc %d, %s\n",
+        [s(Prefix), i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId)),
+        s(Desc)], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_module.

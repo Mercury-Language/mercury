@@ -104,9 +104,9 @@ intra_proc_rpta_pred(ModuleInfo, PredId, !InfoTable) :-
 
 intra_proc_rpta_proc(ModuleInfo, PredId, ProcId, !InfoTable) :-
     PPId = proc(PredId, ProcId),
-    ( some_are_special_preds([PPId], ModuleInfo) ->
+    ( if some_are_special_preds([PPId], ModuleInfo) then
         true
-    ;
+    else
         module_info_proc_info(ModuleInfo, PPId, ProcInfo),
         RptaInfo0 = rpta_info_init(ProcInfo),
         proc_info_get_goal(ProcInfo, Goal),
@@ -211,9 +211,9 @@ intra_analyse_unification(assign(ToVar, FromVar),
     rpta_info(!.Graph, AlphaMapping), rpta_info(!:Graph, AlphaMapping)) :-
     rptg_get_node_by_variable(!.Graph, ToVar, ToNode),
     rptg_get_node_by_variable(!.Graph, FromVar, FromNode),
-    ( ToNode = FromNode ->
+    ( if ToNode = FromNode then
         true
-    ;
+    else
         unify_operator(ToNode, FromNode, !Graph),
         % After merging the two nodes, apply rule P1 to restore the
         % RPTG's invariants.
@@ -238,9 +238,9 @@ process_cons_and_decons(LVar, ConsId, RVar, !Component, !Graph) :-
     % is actually added or not so it is convenient to check the edge's
     % existence outside edge_operator. Otherwise we can extend edge_operator
     % with one more argument to indicate that.
-    ( rptg_edge_in_graph(LNode, EdgeLabel, RNode, !.Graph) ->
+    ( if rptg_edge_in_graph(LNode, EdgeLabel, RNode, !.Graph) then
         true
-    ;
+    else
         edge_operator(LNode, RNode, EdgeLabel, !Graph),
 
         % After an edge is added, rules P2 and P3 are applied to ensure
@@ -270,46 +270,47 @@ inter_proc_rpta(ModuleInfo0, !InfoTable) :-
     module_info_get_maybe_dependency_info(ModuleInfo, MaybeDepInfo),
     (
         MaybeDepInfo = yes(DepInfo),
-        DepOrdering = dependency_info_get_ordering(DepInfo),
-        run_with_dependencies(DepOrdering, ModuleInfo, !InfoTable)
+        BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
+        run_with_dependencies(BottomUpSCCs, ModuleInfo, !InfoTable)
     ;
         MaybeDepInfo = no,
         unexpected($module, $pred, "no dependency information")
     ).
 
-:- pred run_with_dependencies(hlds_dependency_ordering::in, module_info::in,
-    rpta_info_table::in, rpta_info_table::out) is det.
+:- pred run_with_dependencies(hlds_bottom_up_dependency_sccs::in,
+    module_info::in, rpta_info_table::in, rpta_info_table::out) is det.
 
-run_with_dependencies(Deps, ModuleInfo, !InfoTable) :-
-    list.foldl(run_with_dependency(ModuleInfo), Deps, !InfoTable).
+run_with_dependencies(BottomUpSCCs, ModuleInfo, !InfoTable) :-
+    list.foldl(run_with_dependency(ModuleInfo), BottomUpSCCs, !InfoTable).
 
-:- pred run_with_dependency(module_info::in, list(pred_proc_id)::in,
+:- pred run_with_dependency(module_info::in, set(pred_proc_id)::in,
     rpta_info_table::in, rpta_info_table::out) is det.
 
 run_with_dependency(ModuleInfo, SCC, !InfoTable) :-
-    ( some_are_special_preds(SCC, ModuleInfo) ->
+    set.to_sorted_list(SCC, SCCProcs),
+    ( if some_are_special_preds(SCCProcs, ModuleInfo) then
         % Analysis ignores special predicates.
         true
-    ;
+    else
         % Run the fixpoint computation on the SCC.
-        FPTable = init_rpta_fixpoint_table(SCC, !.InfoTable),
+        FPTable = init_rpta_fixpoint_table(SCCProcs, !.InfoTable),
         run_with_dependency_until_fixpoint(SCC, FPTable, ModuleInfo,
             !InfoTable)
     ).
 
-:- pred run_with_dependency_until_fixpoint(list(pred_proc_id)::in,
+:- pred run_with_dependency_until_fixpoint(scc::in,
     rpta_fixpoint_table::in, module_info::in, rpta_info_table::in,
     rpta_info_table::out) is det.
 
 run_with_dependency_until_fixpoint(SCC, FPTable0, ModuleInfo, !InfoTable) :-
-    list.foldl(inter_analyse_proc(ModuleInfo, !.InfoTable), SCC,
+    set.foldl(inter_analyse_proc(ModuleInfo, !.InfoTable), SCC,
         FPTable0, FPTable1),
-    ( fixpoint_reached(FPTable1) ->
+    ( if fixpoint_reached(FPTable1) then
         % If we have reached a fixpoint for this SCC then update the
         % RPTA info table.
-        list.foldl(update_rpta_info_in_rpta_info_table(FPTable1), SCC,
+        set.foldl(update_rpta_info_in_rpta_info_table(FPTable1), SCC,
             !InfoTable)
-    ;
+    else
         % Otherwise, begin the next iteration.
         new_run(FPTable1, FPTable),
         run_with_dependency_until_fixpoint(SCC, FPTable, ModuleInfo,
@@ -503,20 +504,20 @@ inter_analyse_case(ModuleInfo, InfoTable, Case, !FPtable, !RptaInfo) :-
 
 lookup_rpta_info(PPId, InfoTable, !FPtable, RptaInfo, Init) :-
     ( if
-        % First look up in the current fixpoint table,
+        % First look up in the current fixpoint table, ...
         get_from_fixpoint_table(PPId, RptaInfo0, !.FPtable, FPtable1)
-      then
+    then
         RptaInfo  = RptaInfo0,
         !:FPtable = FPtable1,
         Init = bool.no
-      else
+    else
         % ... second look up among already recorded rpta_info.
         ( if
             RptaInfo0 = rpta_info_table_search_rpta_info(PPId, InfoTable)
-          then
+        then
             RptaInfo = RptaInfo0,
             Init = bool.no
-          else
+        else
             % Initialize a dummy.
             RptaInfo = rpta_info(rpt_graph_init, map.init),
             Init = bool.yes
@@ -613,14 +614,14 @@ merge_nodes_reached_by_same_labelled_edges(Edge, [Ed | Eds], Rest, !Graph,
     rptg_get_edge_contents(!.Graph, Ed, _S, E, EdC),
     ( if
         EdgeContent = EdC
-      then
+    then
         % Unify the two end nodes.
         unify_operator(End, E, !.Graph, Graph1),
 
         % Apply rule 1 after the above unification.
         rule_1(End, Graph1, !:Graph),
         Happened = bool.yes
-      else
+    else
         % Still not found an edge with the same label, continue the
         % inner loop.
         merge_nodes_reached_by_same_labelled_edges(Edge, Eds, Rest, !Graph,
@@ -661,10 +662,10 @@ merge_nodes_reached_by_same_labelled_edge(Sel, M, [Ed | Eds], !Graph) :-
         EdgeContent = rptg_edge_content(Selector),
         Selector = Sel,
         MPrime \= M
-      then
+    then
         unify_operator(M, MPrime, !Graph),
         rule_1(M, !Graph)
-      else
+    else
         % Still not found an edge with the same label, continue the loop.
         merge_nodes_reached_by_same_labelled_edge(Sel, M, Eds, !Graph)
     ).
@@ -736,13 +737,13 @@ rule_3_2([], _, !Graph, bool.no).
 rule_3_2([NZ | NZs], NY, !Graph, Happened) :-
     ( if
         rule_3_condition(NZ, NY, !.Graph, NZ1)
-      then
+    then
         unify_operator(NZ, NZ1, !Graph),
 
         % Apply rule 1.
         rule_1(NZ, !Graph),
         Happened = bool.yes
-      else
+    else
         % Try with the rest, namely NS.
         rule_3_2(NZs, NY, !Graph, Happened)
     ).
@@ -780,26 +781,26 @@ alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
     % Xi's are formal arguments, Yi's are actual arguments at the call site.
     rptg_get_node_by_variable(CalleeGraph, Xi, N_Xi),
     rptg_get_node_by_variable(!.CallerGraph, Yi, N_Yi),
-    ( map.search(!.AlphaMap, N_Xi, N_Y) ->
+    ( if map.search(!.AlphaMap, N_Xi, N_Y) then
         % alpha(N_Xi) = N_Y, alpha(N_Xi) = N_Yi, N_Y != N_Yi.
         %
-        ( N_Y = N_Yi ->
+        ( if N_Y = N_Yi then
             true
-        ;
+        else
             % Apply rule P4.
             unify_operator(N_Y, N_Yi, !CallerGraph),
 
             % Apply rule P1 after some nodes are unified.
             rule_1(N_Y, !CallerGraph)
         )
-    ;
+    else
         map.set(N_Xi, N_Yi, !AlphaMap),
 
         % If N_Xi's is_allocated then N_Yi is also allocated.
         % Otherwise leave N_Yi alone.
-        ( rptg_is_allocated_node(CalleeGraph, N_Xi) ->
+        ( if rptg_is_allocated_node(CalleeGraph, N_Xi) then
             rptg_set_node_is_allocated(N_Yi, bool.yes, !CallerGraph)
-        ;
+        else
            true
         )
     ),
@@ -888,14 +889,14 @@ rule_5(Edge, CallSite, CalleeRptaInfo, CallerNode,
         map.search(AlphaAtCallSite, CalleeM, CallerM),
         rptg_get_node_by_node(!.CallerGraph, CallerM, RealCallerM),
         CallerMPrime \= RealCallerM
-      then
+    then
         % When the conditions of rule P5 are satisfied, nodes are unified and
         % rule P1 applied to ensure invariants.
         unify_operator(RealCallerM, CallerMPrime, !CallerGraph),
 
         % Apply rule P1 after the unification.
         rule_1(RealCallerM, !CallerGraph)
-      else
+    else
         true
     ).
 
@@ -913,15 +914,13 @@ rule_6(Edge, CallSite, CalleeRptaInfo, CallerNode,
     ( if
         rptg_find_edge_from_node_with_same_content(RealCallerNode, Label,
             !.CallerGraph, CallerM)
-      then
+    then
         % (CallerNode, sel, CallerM) in the graph.
         map.lookup(!.CallerAlphaMapping, CallSite, AlphaAtCallSite0),
-        ( if
-            map.search(AlphaAtCallSite0, CalleeM, _)
-          then
+        ( if map.search(AlphaAtCallSite0, CalleeM, _) then
             % alpha(CalleeM) = CallerM so ignore.
             true
-          else
+        else
             % Apply rule P6: when its conditions are satisfied
             % record alpha(CalleeM) = CallerM.
             map.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite1),
@@ -929,12 +928,13 @@ rule_6(Edge, CallSite, CalleeRptaInfo, CallerNode,
 
             % If CalleeM's is_allocated then CallerM is also allocated.
             % Otherwise leave CallerM alone.
-            ( rptg_is_allocated_node(CalleeGraph, CalleeM) ->
+            ( if rptg_is_allocated_node(CalleeGraph, CalleeM) then
                 rptg_set_node_is_allocated(CallerM, bool.yes, !CallerGraph)
-            ;   true
+            else
+                true
             )
         )
-      else
+    else
         true
     ).
 
@@ -952,14 +952,14 @@ rule_7(Edge, CallSite, CalleeRptaInfo, CallerNode,
     ( if
         rptg_find_edge_from_node_with_same_content(RealCallerNode, Label,
             !.CallerGraph, _)
-      then
+    then
         true
-      else
+    else
         % No edge from CallerNode with the label exists.
         ( if
             map.lookup(CallerAlphaMapping, CallSite, AlphaAtCallSite),
             map.search(AlphaAtCallSite, CalleeM, CallerM)
-          then
+        then
             % Reach here means all the conditions of rule P7 are satisfied,
             % add (CallerNode, sel, CallerM).
             rptg_get_node_by_node(!.CallerGraph, CallerM, RealCallerM),
@@ -967,7 +967,7 @@ rule_7(Edge, CallSite, CalleeRptaInfo, CallerNode,
 
             % Need to apply rule 3.
             rule_3(RealCallerM, !CallerGraph)
-          else
+        else
             true
         )
     ).
@@ -986,16 +986,16 @@ rule_8(Edge, CallSite, CalleeRptaInfo, CallerNode,
     ( if
         rptg_find_edge_from_node_with_same_content(RealCallerNode, Label,
             !.CallerGraph, _)
-      then
+    then
         true
-      else
+    else
         % No edge from CallerNode with the label exists.
         ( if
             map.lookup(!.CallerAlphaMapping, CallSite, AlphaAtCallSite0),
             map.search(AlphaAtCallSite0, CalleeM, _)
-          then
+        then
             true
-          else
+        else
             % rule 8: add node CallerM, alpha(CalleeM) = CallerM,
             % edge(CallerNode, sel, CallerM)
             %
@@ -1053,9 +1053,9 @@ rpta_fixpoint_table_new_rpta_info(PPId, RptaInfo, !Table) :-
 :- func wrapped_init(rpta_info_table, pred_proc_id) = rpta_info.
 
 wrapped_init(InfoTable, PPId) = Entry :-
-    ( Entry0 = rpta_info_table_search_rpta_info(PPId, InfoTable) ->
+    ( if Entry0 = rpta_info_table_search_rpta_info(PPId, InfoTable) then
         Entry = Entry0
-    ;
+    else
         % The information we are looking for should be there after the
         % intraprocedural analysis.
         unexpected($module, $pred, "no rpta_info")

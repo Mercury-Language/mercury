@@ -180,8 +180,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred get_context_from_scc(module_info::in, list(pred_proc_id)::in,
-    prog_context::out) is det.
+:- pred get_context_from_scc(module_info::in, scc::in, prog_context::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -202,6 +202,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module require.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -419,12 +420,13 @@ add_context_to_arg_size_info(yes(infinite(_)), Context,
 %---------------------------------------------------------------------------%
 
 get_context_from_scc(ModuleInfo, SCC, Context) :-
+    set.to_sorted_list(SCC, SCCProcs),
     (
-        SCC = [proc(PredId, _) | _],
+        SCCProcs = [proc(PredId, _) | _],
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_context(PredInfo, Context)
     ;
-        SCC = [],
+        SCCProcs = [],
         unexpected($module, $pred, "empty SCC")
     ).
 

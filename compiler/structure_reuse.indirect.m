@@ -14,7 +14,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module structure_reuse.indirect.
+:- module transform_hlds.ctgc.structure_reuse.indirect.
 :- interface.
 
 :- import_module hlds.
@@ -123,7 +123,7 @@ indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs,
     module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
     (
         MaybeDepInfo = yes(DepInfo),
-        SCCs = dependency_info_get_ordering(DepInfo),
+        SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
         list.foldl5(indirect_reuse_analyse_scc(SharingTable), SCCs,
             !ModuleInfo, !ReuseTable, set.init, DepProcs, set.init, Requests,
             set.init, IntermodRequests)
@@ -132,8 +132,8 @@ indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs,
         unexpected($module, $pred, "no dependency information")
     ).
 
-:- pred indirect_reuse_analyse_scc(sharing_as_table::in,
-    list(pred_proc_id)::in, module_info::in, module_info::out,
+:- pred indirect_reuse_analyse_scc(sharing_as_table::in, scc::in,
+    module_info::in, module_info::out,
     reuse_as_table::in, reuse_as_table::out,
     dep_procs::in, dep_procs::out,
     set(sr_request)::in, set(sr_request)::out,
@@ -141,14 +141,15 @@ indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs,
 
 indirect_reuse_analyse_scc(SharingTable, SCC, !ModuleInfo, !ReuseTable,
         !DepProcs, !Requests, !IntermodRequests) :-
-    ( if some_preds_requiring_no_analysis(!.ModuleInfo, SCC) then
+    set.to_sorted_list(SCC, SCCProcs),
+    ( if some_preds_require_no_analysis(!.ModuleInfo, SCC) then
         true
     else
-        FixpointTable0 = sr_fixpoint_table_init(SCC, !.ReuseTable),
+        FixpointTable0 = sr_fixpoint_table_init(SCCProcs, !.ReuseTable),
         indirect_reuse_analyse_scc_until_fixpoint(SharingTable,
-            SCC, !.ReuseTable, !ModuleInfo, FixpointTable0, FixpointTable,
+            SCCProcs, !.ReuseTable, !ModuleInfo, FixpointTable0, FixpointTable,
             !DepProcs, !Requests, !IntermodRequests),
-        list.foldl(update_reuse_in_table(FixpointTable), SCC, !ReuseTable)
+        set.foldl(update_reuse_in_table(FixpointTable), SCC, !ReuseTable)
     ).
 
 :- pred update_reuse_in_table(sr_fixpoint_table::in, pred_proc_id::in,
@@ -163,13 +164,13 @@ update_reuse_in_table(FixpointTable, PPId, !ReuseTable) :-
 indirect_reuse_rerun(SharingTable, !ModuleInfo, !ReuseTable,
         DepProcs, Requests, !IntermodRequests) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
-    SCCs = dependency_info_get_ordering(DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     list.foldl5(indirect_reuse_rerun_analyse_scc(SharingTable),
         SCCs, !ModuleInfo, !ReuseTable, set.init, DepProcs, set.init, Requests,
         !IntermodRequests).
 
-:- pred indirect_reuse_rerun_analyse_scc(sharing_as_table::in,
-    list(pred_proc_id)::in, module_info::in, module_info::out,
+:- pred indirect_reuse_rerun_analyse_scc(sharing_as_table::in, scc::in,
+    module_info::in, module_info::out,
     reuse_as_table::in, reuse_as_table::out,
     dep_procs::in, dep_procs::out,
     set(sr_request)::in, set(sr_request)::out,
@@ -177,12 +178,13 @@ indirect_reuse_rerun(SharingTable, !ModuleInfo, !ReuseTable,
 
 indirect_reuse_rerun_analyse_scc(SharingTable, SCC, !ModuleInfo,
         !ReuseTable, !DepProcs, !Requests, !IntermodRequests) :-
-    ( if some_preds_requiring_no_analysis(!.ModuleInfo, SCC) then
+    ( if some_preds_require_no_analysis(!.ModuleInfo, SCC) then
         true
     else
         % Also analyse reuse versions of any procedures in the SCC at the same
         % time.
-        extend_scc_with_reuse_procs(!.ReuseTable, SCC, ExtendedSCC),
+        set.to_sorted_list(SCC, SCCProcs),
+        extend_scc_with_reuse_procs(!.ReuseTable, SCCProcs, ExtendedSCC),
 
         FixpointTable0 = sr_fixpoint_table_init(ExtendedSCC, !.ReuseTable),
         indirect_reuse_analyse_scc_until_fixpoint(SharingTable,
@@ -198,7 +200,7 @@ indirect_reuse_rerun_analyse_scc(SharingTable, SCC, !ModuleInfo,
 extend_scc_with_reuse_procs(ReuseTable, SCC, ExtendedSCC) :-
     ReuseVersionMap = bimap.forward_map(ReuseTable ^ reuse_version_map),
     solutions(
-        (pred(NewPPId::out) is nondet :-
+        ( pred(NewPPId::out) is nondet :-
             member(OrigPPId, SCC),
             map.member(ReuseVersionMap, ppid_no_clobbers(OrigPPId, _), NewPPId)
         ), Extension),
@@ -1236,5 +1238,5 @@ sr_fixpoint_table_get_final_as_semidet(PPId, T, Elem) :-
     get_from_fixpoint_table_final_semidet(PPId, T, Elem).
 
 %-----------------------------------------------------------------------------%
-:- end_module structure_reuse.indirect.
+:- end_module transform_hlds.ctgc.structure_reuse.indirect.
 %-----------------------------------------------------------------------------%

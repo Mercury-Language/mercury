@@ -197,11 +197,13 @@
 :- pred dfsrev(digraph(T)::in, digraph_key(T)::in,
     list(digraph_key(T))::out) is det.
 
-    % dfs(G, Dfs) is true if Dfs is a depth-first sorting of G,
-    % i.e. a list of all the keys in G such that all keys for children of
-    % a vertex are placed in the list before the parent key. If the
-    % digraph is cyclic, the position in which cycles are broken (that is,
-    % in which a child is placed *after* its parent) is undefined.
+    % dfs(G, Dfs) is true if Dfs is a depth-first sorting of G.
+    % If one considers each edge to point from a parent node to a child node,
+    % then Dfs will be a list of all the keys in G such that all keys for
+    % the children of a vertex are placed in the list before the parent key.
+    %
+    % If the digraph is cyclic, the position in which cycles are broken
+    % (that is, in which a child is placed *after* its parent) is undefined.
     %
 :- func dfs(digraph(T)) = list(digraph_key(T)).
 :- pred dfs(digraph(T)::in, list(digraph_key(T))::out) is det.
@@ -270,8 +272,8 @@
 :- func cliques(digraph(T)) = set(set(digraph_key(T))).
 :- pred cliques(digraph(T)::in, set(set(digraph_key(T)))::out) is det.
 
-    % reduced(G, R) is true if R is the reduced digraph (digraph of
-    % cliques) obtained from G.
+    % reduced(G, R) is true if R is the reduced digraph (digraph of cliques)
+    % obtained from G.
     %
 :- func reduced(digraph(T)) = digraph(set(T)).
 :- pred reduced(digraph(T)::in, digraph(set(T))::out) is det.
@@ -282,13 +284,17 @@
 :- pred reduced(digraph(T)::in, digraph(set(T))::out,
     map(digraph_key(T), digraph_key(set(T)))::out) is det.
 
-    % tsort(G, TS) is true if TS is a topological sorting of G.
-    % It fails if G is cyclic.
+    % tsort(G, TS) is true if TS is a topological sorting of G,
+    % with the order placing the clique of a parent vertex before
+    % the cliques of its child vertices.
+    %
+    % tsort fails if G is cyclic.
     %
 :- pred tsort(digraph(T)::in, list(T)::out) is semidet.
 
     % atsort(G, ATS) is true if ATS is a topological sorting
-    % of the cliques in G.
+    % of the cliques in G, with the order placing the clique
+    % of a parent vertex before the cliques of its child vertices.
     %
 :- func atsort(digraph(T)) = list(set(T)).
 :- pred atsort(digraph(T)::in, list(set(T))::out) is det.
@@ -304,8 +310,7 @@
 :- func tc(digraph(T)) = digraph(T).
 :- pred tc(digraph(T)::in, digraph(T)::out) is det.
 
-    % rtc(G, RTC) is true if RTC is the reflexive transitive closure
-    % of G.
+    % rtc(G, RTC) is true if RTC is the reflexive transitive closure of G.
     %
 :- func rtc(digraph(T)) = digraph(T).
 :- pred rtc(digraph(T)::in, digraph(T)::out) is det.
@@ -1087,40 +1092,41 @@ add_cartesian_product(KeySet1, KeySet2, !Rtc) :-
 
 %---------------------------------------------------------------------------%
 
-traverse(G, ProcessVertex, ProcessEdge, !Acc) :-
-    digraph.keys(G, Keys),
-    digraph.traverse_2(Keys, G, ProcessVertex, ProcessEdge, !Acc).
+traverse(Graph, ProcessVertex, ProcessEdge, !Acc) :-
+    digraph.keys(Graph, VertexKeys),
+    digraph.traverse_2(Graph, ProcessVertex, ProcessEdge, VertexKeys, !Acc).
 
-:- pred digraph.traverse_2(list(digraph_key(T)), digraph(T), pred(T, A, A),
-    pred(T, T, A, A), A, A).
-:- mode digraph.traverse_2(in, in, pred(in, di, uo) is det,
-    pred(in, in, di, uo) is det, di, uo) is det.
-:- mode digraph.traverse_2(in, in, pred(in, in, out) is det,
-    pred(in, in, in, out) is det, in, out) is det.
+:- pred digraph.traverse_2(digraph(T),
+    pred(T, A, A), pred(T, T, A, A), list(digraph_key(T)), A, A).
+:- mode digraph.traverse_2(in, pred(in, di, uo) is det,
+    pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode digraph.traverse_2(in, pred(in, in, out) is det,
+    pred(in, in, in, out) is det, in, in, out) is det.
 
-traverse_2([], _, _, _, !Acc).
-traverse_2([X | Xs], G, ProcessVertex, ProcessEdge, !Acc) :-
+traverse_2(_, _, _, [], !Acc).
+traverse_2(Graph, ProcessVertex, ProcessEdge, [VertexKey | VertexKeys],
+        !Acc) :-
     % XXX avoid the sparse_bitset.to_sorted_list here
     % (difficult to do using sparse_bitset.foldl because
     % traverse_children has multiple modes).
-    VX = lookup_vertex(G, X),
-    Children = to_sorted_list(lookup_from(G, X)),
-    ProcessVertex(VX, !Acc),
-    digraph.traverse_children(Children, VX, G, ProcessEdge, !Acc),
-    digraph.traverse_2(Xs, G, ProcessVertex, ProcessEdge, !Acc).
+    Vertex = lookup_vertex(Graph, VertexKey),
+    ProcessVertex(Vertex, !Acc),
+    ChildrenKeys = to_sorted_list(lookup_from(Graph, VertexKey)),
+    digraph.traverse_children(Graph, ProcessEdge, Vertex, ChildrenKeys, !Acc),
+    digraph.traverse_2(Graph, ProcessVertex, ProcessEdge, VertexKeys, !Acc).
 
-:- pred digraph.traverse_children(list(digraph_key(T)), T, digraph(T),
-    pred(T, T, A, A), A, A).
-:- mode digraph.traverse_children(in, in, in, pred(in, in, di, uo) is det,
-    di, uo) is det.
-:- mode digraph.traverse_children(in, in, in, pred(in, in, in, out) is det,
-    in, out) is det.
+:- pred digraph.traverse_children(digraph(T), pred(T, T, A, A),
+    T, list(digraph_key(T)), A, A).
+:- mode digraph.traverse_children(in, pred(in, in, di, uo) is det,
+    in, in, di, uo) is det.
+:- mode digraph.traverse_children(in, pred(in, in, in, out) is det,
+    in, in, in, out) is det.
 
-traverse_children([], _, _, _, !Acc).
-traverse_children([X | Xs], Parent, G, ProcessEdge, !Acc) :-
-    Child = lookup_vertex(G, X),
+traverse_children(_, _, _, [], !Acc).
+traverse_children(Graph, ProcessEdge, Parent, [ChildKey | ChildKeys], !Acc) :-
+    Child = lookup_vertex(Graph, ChildKey),
     ProcessEdge(Parent, Child, !Acc),
-    digraph.traverse_children(Xs, Parent, G, ProcessEdge, !Acc).
+    digraph.traverse_children(Graph, ProcessEdge, Parent, ChildKeys, !Acc).
 
 %---------------------------------------------------------------------------%
 :- end_module digraph.

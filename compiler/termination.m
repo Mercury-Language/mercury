@@ -102,7 +102,7 @@ analyse_termination_in_module(!ModuleInfo, !:Specs) :-
     % Process all the SCCs of the call graph in a bottom-up order.
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    SCCs = dependency_info_get_ordering(DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
 
     % Set the termination status of foreign_procs based on the foreign code
     % attributes.
@@ -136,7 +136,7 @@ analyse_termination_in_module(!ModuleInfo, !:Specs) :-
 % We also check that the foreign code attributes do not conflict with any
 % termination pragmas that have been supplied for the procedure.
 
-:- pred check_foreign_code_attributes(list(list(pred_proc_id))::in,
+:- pred check_foreign_code_attributes(list(scc)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -144,11 +144,12 @@ check_foreign_code_attributes(SCCs, !ModuleInfo, !Specs) :-
     list.foldl2(check_foreign_code_attributes_in_scc, SCCs,
         !ModuleInfo, !Specs).
 
-:- pred check_foreign_code_attributes_in_scc(list(pred_proc_id)::in,
+:- pred check_foreign_code_attributes_in_scc(scc::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_foreign_code_attributes_in_scc(PPIds, !ModuleInfo, !Specs) :-
+check_foreign_code_attributes_in_scc(SCC, !ModuleInfo, !Specs) :-
+    set.to_sorted_list(SCC, PPIds),
     (
         PPIds = [],
         unexpected($module, $pred, "empty SCC")
@@ -266,25 +267,26 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
 % whose termination status is unknown to be the same as those whose
 % termination status is known.
 
-:- pred check_pragmas_are_consistent(list(list(pred_proc_id))::in,
+:- pred check_pragmas_are_consistent(list(scc)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_pragmas_are_consistent(SCCs, !ModuleInfo, !Specs) :-
     list.foldl2(check_scc_pragmas_are_consistent, SCCs, !ModuleInfo, !Specs).
 
-:- pred check_scc_pragmas_are_consistent(list(pred_proc_id)::in,
+:- pred check_scc_pragmas_are_consistent(scc::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
-    list.filter(is_termination_known(!.ModuleInfo), SCC, SCCTerminationKnown,
-        SCCTerminationUnknown),
+    list.filter(is_termination_known(!.ModuleInfo), set.to_sorted_list(SCC),
+        SCCTerminationKnown, SCCTerminationUnknown),
     (
         SCCTerminationKnown = []
     ;
         SCCTerminationKnown = [KnownPPId | _],
-        module_info_pred_proc_info(!.ModuleInfo, KnownPPId, _, KnownProcInfo),
+        module_info_pred_proc_info(!.ModuleInfo, KnownPPId,
+            KnownPredInfo, KnownProcInfo),
         proc_info_get_maybe_termination_info(KnownProcInfo, MaybeKnownTerm),
         (
             MaybeKnownTerm = no,
@@ -299,18 +301,19 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
             % Force any procedures in the SCC whose termination status is
             % unknown to have the same termination status as those that are
             % known.
-            set_termination_infos(SCCTerminationUnknown, KnownTermStatus,
-                !ModuleInfo)
+            list.foldl(set_termination_info(KnownTermStatus),
+                SCCTerminationUnknown, !ModuleInfo)
         else
             % There is a conflict between the user-supplied termination
             % information for two or more procedures in this SCC.
             % Emit a warning, and then assume that they all loop.
-            get_context_from_scc(!.ModuleInfo, SCCTerminationKnown, Context),
+            pred_info_get_context(KnownPredInfo, Context),
             NewTermStatus =
                 can_loop([term_error(Context, inconsistent_annotations)]),
-            set_termination_infos(SCC, NewTermStatus, !ModuleInfo),
+            set.foldl(set_termination_info(NewTermStatus), SCC, !ModuleInfo),
 
-            PredIds = list.map((func(proc(PredId, _)) = PredId),
+            PredIds = list.map(
+                (func(proc(PredId, _)) = PredId),
                 SCCTerminationKnown),
             PredNamePieces = describe_several_pred_names(!.ModuleInfo,
                 should_module_qualify, PredIds),
@@ -358,7 +361,7 @@ check_procs_known_term(Status, [PPId | PPIds], ModuleInfo) :-
     % arguments of the procedures of the SCC, and then attempt to prove
     % termination of the procedures.
     %
-:- pred analyse_termination_in_scc(pass_info::in, list(pred_proc_id)::in,
+:- pred analyse_termination_in_scc(pass_info::in, scc::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -367,13 +370,11 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !Specs) :-
         module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
         proc_info_get_maybe_arg_size_info(ProcInfo, yes(_))
     ),
-    list.filter(IsArgSizeKnown, SCC, _SCCArgSizeKnown, SCCArgSizeUnknown),
-    (
-        SCCArgSizeUnknown = [],
+    set.filter(IsArgSizeKnown, SCC, _SCCArgSizeKnown, SCCArgSizeUnknown),
+    ( if set.is_empty(SCCArgSizeUnknown) then
         ArgSizeErrors = [],
         TermErrors = []
-    ;
-        SCCArgSizeUnknown = [_ | _],
+    else
         find_arg_sizes_in_scc(!.ModuleInfo, PassInfo, SCCArgSizeUnknown,
             ArgSizeResult, TermErrors),
         (
@@ -383,20 +384,20 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !Specs) :-
             ArgSizeErrors = []
         ;
             ArgSizeResult = arg_size_error(Errors),
-            set_infinite_arg_size_infos(SCCArgSizeUnknown, infinite(Errors),
-                !ModuleInfo),
+            set.foldl(set_infinite_arg_size_info(infinite(Errors)),
+                SCCArgSizeUnknown, !ModuleInfo),
             ArgSizeErrors = Errors
         )
     ),
-    list.filter(is_termination_known(!.ModuleInfo), SCC,
+    set.filter(is_termination_known(!.ModuleInfo), SCC,
         _SCCTerminationKnown, SCCTerminationUnknown),
-    (
+    ( if set.is_empty(SCCTerminationUnknown) then
         % We may possibly have encountered inconsistent
         % terminates/does_not_terminate pragmas for this SCC, so we need to
         % report errors here as well.
-        SCCTerminationUnknown = []
-    ;
-        SCCTerminationUnknown = [_ | _],
+        % XXX That comment does not make sense here.
+        true
+    else
         IsFatal = (pred(Error::in) is semidet :-
             Error = term_error(_Context, ErrorKind),
             term_error_kind_is_fatal_error(ErrorKind) = yes
@@ -418,8 +419,8 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !Specs) :-
             prove_termination_in_scc(!.ModuleInfo, PassInfo,
                 SCCTerminationUnknown, SingleArgs, TerminationResult)
         ),
-        set_termination_infos(SCCTerminationUnknown, TerminationResult,
-            !ModuleInfo),
+        set.foldl(set_termination_info(TerminationResult),
+            SCCTerminationUnknown, !ModuleInfo),
         (
             TerminationResult = can_loop(TerminationErrors),
             maybe_report_termination_errors(!.ModuleInfo, SCC,
@@ -455,11 +456,10 @@ set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !ModuleInfo) :-
     module_info_set_preds(PredTable, !ModuleInfo),
     set_finite_arg_size_infos(Solns, OutputSupplierMap, !ModuleInfo).
 
-:- pred set_infinite_arg_size_infos(list(pred_proc_id)::in,
-    arg_size_info::in, module_info::in, module_info::out) is det.
+:- pred set_infinite_arg_size_info(arg_size_info::in, pred_proc_id::in,
+    module_info::in, module_info::out) is det.
 
-set_infinite_arg_size_infos([], _, !ModuleInfo).
-set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, !ModuleInfo) :-
+set_infinite_arg_size_info(ArgSizeInfo, PPId, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
@@ -470,16 +470,14 @@ set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, !ModuleInfo) :-
     map.set(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.set(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo),
-    set_infinite_arg_size_infos(PPIds, ArgSizeInfo, !ModuleInfo).
+    module_info_set_preds(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred set_termination_infos(list(pred_proc_id)::in, termination_info::in,
+:- pred set_termination_info(termination_info::in, pred_proc_id::in,
     module_info::in, module_info::out) is det.
 
-set_termination_infos([], _, !ModuleInfo).
-set_termination_infos([PPId | PPIds], TerminationInfo, !ModuleInfo) :-
+set_termination_info(TerminationInfo, PPId, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
@@ -491,13 +489,12 @@ set_termination_infos([PPId | PPIds], TerminationInfo, !ModuleInfo) :-
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo),
-    set_termination_infos(PPIds, TerminationInfo, !ModuleInfo).
+    module_info_set_preds(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_report_termination_errors(module_info::in,
-    list(pred_proc_id)::in, list(term_error)::in,
+:- pred maybe_report_termination_errors(module_info::in, scc::in,
+    list(term_error)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_report_termination_errors(ModuleInfo, SCC, Errors, !Specs) :-
@@ -510,9 +507,8 @@ maybe_report_termination_errors(ModuleInfo, SCC, Errors, !Specs) :-
         report_term_errors(ModuleInfo, SCC, ErrorsToReport, !Specs)
     ).
 
-:- pred decide_what_term_errors_to_report(module_info::in,
-    list(pred_proc_id)::in, list(term_error)::in,
-    maybe(list(term_error))::out) is det.
+:- pred decide_what_term_errors_to_report(module_info::in, scc::in,
+    list(term_error)::in, maybe(list(term_error))::out) is det.
 
 decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
         MaybeErrorsToReport) :-
@@ -534,8 +530,8 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
                 pred_info_get_markers(PredInfo, Markers),
                 check_marker(Markers, marker_check_termination)
             ),
-        list.filter(IsCheckTerm, SCC, CheckTermPPIds),
-        CheckTermPPIds = [_ | _]
+        set.filter(IsCheckTerm, SCC, CheckTermPPIds),
+        set.is_non_empty(CheckTermPPIds)
     then
         % If any procedure in the SCC has a check_terminates pragma,
         % print out one error message for the whole SCC and indicate an error.
@@ -545,8 +541,8 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
             module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
             not pred_info_is_imported(PredInfo)
         ),
-        list.filter(IsNonImported, SCC, NonImportedPPIds),
-        NonImportedPPIds = [_ | _]
+        set.filter(IsNonImported, SCC, NonImportedPPIds),
+        set.is_non_empty(NonImportedPPIds)
     then
         (
             VerboseErrors = yes,

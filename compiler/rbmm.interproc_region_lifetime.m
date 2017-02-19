@@ -149,8 +149,8 @@ apply_live_region_rule(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
     module_info_get_maybe_dependency_info(ModuleInfo1, MaybeDepInfo),
     (
         MaybeDepInfo = yes(DepInfo),
-        DepOrdering = dependency_info_get_ordering(DepInfo),
-        run_with_dependencies(Rule, DepOrdering, ModuleInfo1,
+        BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
+        run_with_dependencies(Rule, BottomUpSCCs, ModuleInfo1,
             RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
             !ProcRegionSetTable)
     ;
@@ -159,33 +159,33 @@ apply_live_region_rule(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
     ).
 
 :- pred run_with_dependencies(rule_pred::in(rule_pred),
-    hlds_dependency_ordering::in, module_info::in, rpta_info_table::in,
+    hlds_bottom_up_dependency_sccs::in, module_info::in, rpta_info_table::in,
     execution_path_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.
 
-run_with_dependencies(Rule, Deps, ModuleInfo, RptaInfoTable, ExecPathTable,
-        LRBeforeTable, LRAfterTable, !ProcRegionSetTable) :-
+run_with_dependencies(Rule, BottomUpSCCs, ModuleInfo, RptaInfoTable,
+        ExecPathTable, LRBeforeTable, LRAfterTable, !ProcRegionSetTable) :-
     % We want to proceed the SCC graph top-down so reverse the list
     % (the process is foldr2, but it is not yet in list module)
-    list.reverse(Deps, Deps1),
+    list.reverse(BottomUpSCCs, TopDownSCCs),
     list.foldl(
         run_with_dependency(Rule, ModuleInfo, RptaInfoTable,
             ExecPathTable, LRBeforeTable, LRAfterTable),
-        Deps1, !ProcRegionSetTable).
+        TopDownSCCs, !ProcRegionSetTable).
 
 :- pred run_with_dependency(rule_pred::in(rule_pred),
     module_info::in, rpta_info_table::in, execution_path_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
-    list(pred_proc_id)::in, proc_region_set_table::in,
-    proc_region_set_table::out) is det.
+    set(pred_proc_id)::in,
+    proc_region_set_table::in, proc_region_set_table::out) is det.
 
 run_with_dependency(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, SCC, !ProcRegionSetTable) :-
     % Ignores special predicates.
-    ( some_are_special_preds(SCC, ModuleInfo) ->
+    ( if some_are_special_preds(set.to_sorted_list(SCC), ModuleInfo) then
         true
-    ;
+    else
         % Perform a fixpoint computation for each strongly connected
         % component.
         run_with_dependency_until_fixpoint(Rule, SCC, ModuleInfo,
@@ -194,24 +194,24 @@ run_with_dependency(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
     ).
 
 :- pred run_with_dependency_until_fixpoint(rule_pred::in(rule_pred),
-    list(pred_proc_id)::in, module_info::in, rpta_info_table::in,
+    scc::in, module_info::in, rpta_info_table::in,
     execution_path_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::out) is det.
 
 run_with_dependency_until_fixpoint(Rule, SCC, ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable, !ProcRegionSetTable) :-
-    % This call calculates the region set for each procedure in SCC
-    list.foldl(apply_rule_pred_proc(Rule, ModuleInfo, RptaInfoTable,
+    % This call calculates the region set for each procedure in SCC.
+    set.foldl(apply_rule_pred_proc(Rule, ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable),
         SCC, !.ProcRegionSetTable, ProcRegionSetTable1),
-    (
+    ( if
         proc_region_set_table_equal(ProcRegionSetTable1, !.ProcRegionSetTable)
-    ->
+    then
         % If all region_set's in the FPTable are intact update the main
         % ProcRegionSetTable.
         !:ProcRegionSetTable = ProcRegionSetTable1
-    ;
+    else
         % Some is not fixed, start all over again
         run_with_dependency_until_fixpoint(Rule, SCC, ModuleInfo,
             RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
@@ -580,9 +580,9 @@ eliminate_primitive_regions(ModuleInfo, RptaInfoTable, PPId, RegionSet0,
 
 retain_non_primitive_regions(ModuleInfo, Graph, Region, !RegionSet) :-
     NodeType = rptg_lookup_node_type(Graph, Region),
-    ( type_not_stored_in_region(NodeType, ModuleInfo) ->
+    ( if type_not_stored_in_region(NodeType, ModuleInfo) then
         true
-    ;
+    else
         set.insert(Region, !RegionSet)
     ).
 

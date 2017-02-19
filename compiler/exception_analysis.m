@@ -158,7 +158,7 @@
 analyse_exceptions_in_module(!ModuleInfo) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    SCCs = dependency_info_get_ordering(DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     list.foldl(check_scc_for_exceptions, SCCs, !ModuleInfo),
 
     module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
@@ -218,7 +218,7 @@ check_scc_for_exceptions(SCC, !ModuleInfo) :-
         MaybeAnalysisStatus),
 
     ProcExceptionInfo = proc_exception_info(Status, MaybeAnalysisStatus),
-    list.foldl(set_exception_info(ProcExceptionInfo), SCC, !ModuleInfo).
+    set.foldl(set_exception_info(ProcExceptionInfo), SCC, !ModuleInfo).
 
 :- pred set_exception_info(proc_exception_info::in, pred_proc_id::in,
     module_info::in, module_info::out) is det.
@@ -234,8 +234,7 @@ set_exception_info(ProcExceptionInfo, PPId, !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 check_procs_for_exceptions(SCC, Result, !ModuleInfo) :-
-    list.foldl2(check_proc_for_exceptions(SCC), SCC, [], Result,
-        !ModuleInfo).
+    set.foldl2(check_proc_for_exceptions(SCC), SCC, [], Result, !ModuleInfo).
 
     % Examine how procedures interact with other procedures that are
     % mutually-recursive to them.
@@ -451,7 +450,7 @@ check_goal_for_exceptions_plain_call(SCC, VarTypes, CallPredId, CallProcId,
     module_info_pred_info(!.ModuleInfo, CallPredId, CallPredInfo),
     ( if
         % Handle (mutually-)recursive calls.
-        list.member(CallPPId, SCC)
+        set.member(CallPPId, SCC)
     then
         lookup_var_types(VarTypes, CallArgs, Types),
         TypeStatus = excp_check_types(!.ModuleInfo, Types),

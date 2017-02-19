@@ -78,8 +78,7 @@
 check_module_for_stratification(!ModuleInfo, Specs) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    FOSCCs0 = dependency_info_get_ordering(DepInfo),
-    dep_lists_to_lists_and_sets(FOSCCs0, [], FOSCCs),
+    FOSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
@@ -100,32 +99,20 @@ check_module_for_stratification(!ModuleInfo, Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dep_lists_to_lists_and_sets(list(list(pred_proc_id))::in,
-    assoc_list(list(pred_proc_id), set(pred_id))::in,
-    assoc_list(list(pred_proc_id), set(pred_id))::out) is det.
-
-dep_lists_to_lists_and_sets([], !DepList).
-dep_lists_to_lists_and_sets([PredProcList | PredProcLists], !DepList) :-
-    list.map(get_pred_id, PredProcList, PredList),
-    set.list_to_set(PredList, PredSet),
-    !:DepList = [PredProcList - PredSet | !.DepList],
-    dep_lists_to_lists_and_sets(PredProcLists, !DepList).
-
 :- pred get_pred_id(pred_proc_id::in, pred_id::out) is det.
 
 get_pred_id(proc(PredId, _), PredId).
 
     % Check the first order SCCs for stratification.
     %
-:- pred first_order_check_sccs(
-    assoc_list(list(pred_proc_id), set(pred_id))::in,
+:- pred first_order_check_sccs(list(set(pred_proc_id))::in,
     set(pred_id)::in, bool::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 first_order_check_sccs([], _, _, _, !Specs).
-first_order_check_sccs([HeadSCC| TailSCCs], MustBeStratifiedPreds, Warn,
+first_order_check_sccs([HeadSCC | TailSCCs], MustBeStratifiedPreds, Warn,
         ModuleInfo, !Specs) :-
-    HeadSCC = HeadSCCProcs - HeadSCCPreds,
+    set.map(get_pred_id, HeadSCC, HeadSCCPreds),
     set.intersect(HeadSCCPreds, MustBeStratifiedPreds,
         MustBeStratifiedPredsInScc),
     ( if
@@ -133,26 +120,27 @@ first_order_check_sccs([HeadSCC| TailSCCs], MustBeStratifiedPreds, Warn,
         ; set.is_non_empty(MustBeStratifiedPredsInScc)
         )
     then
-        first_order_check_scc(HeadSCCProcs, is_warning, ModuleInfo, !Specs)
+        first_order_check_scc(HeadSCC, is_warning, ModuleInfo, !Specs)
     else
         true
     ),
     first_order_check_sccs(TailSCCs, MustBeStratifiedPreds, Warn,
         ModuleInfo, !Specs).
 
-:- pred first_order_check_scc(list(pred_proc_id)::in, error_or_warning::in,
+:- pred first_order_check_scc(set(pred_proc_id)::in, error_or_warning::in,
     module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 first_order_check_scc(Scc, ErrorOrWarning, ModuleInfo, !Specs) :-
-    first_order_check_scc_2(Scc, Scc, ErrorOrWarning, ModuleInfo, !Specs).
+    first_order_check_scc_loop(set.to_sorted_list(Scc), Scc,
+        ErrorOrWarning, ModuleInfo, !Specs).
 
-:- pred first_order_check_scc_2(list(pred_proc_id)::in, list(pred_proc_id)::in,
-    error_or_warning::in, module_info::in,
+:- pred first_order_check_scc_loop(list(pred_proc_id)::in,
+    set(pred_proc_id)::in, error_or_warning::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-first_order_check_scc_2([], _Scc, _, _, !Specs).
-first_order_check_scc_2([PredProcId | Remaining], WholeScc, ErrorOrWarning,
-        ModuleInfo, !Specs) :-
+first_order_check_scc_loop([], _WholeScc, _, _, !Specs).
+first_order_check_scc_loop([PredProcId | PredProcIds], WholeScc,
+        ErrorOrWarning, ModuleInfo, !Specs) :-
     PredProcId = proc(PredId, ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
@@ -160,10 +148,10 @@ first_order_check_scc_2([PredProcId | Remaining], WholeScc, ErrorOrWarning,
     proc_info_get_goal(Proc, Goal),
     first_order_check_goal(Goal, no, WholeScc,
         PredProcId, ErrorOrWarning, ModuleInfo, !Specs),
-    first_order_check_scc_2(Remaining, WholeScc, ErrorOrWarning,
+    first_order_check_scc_loop(PredProcIds, WholeScc, ErrorOrWarning,
         ModuleInfo, !Specs).
 
-:- pred first_order_check_goal(hlds_goal::in, bool::in, list(pred_proc_id)::in,
+:- pred first_order_check_goal(hlds_goal::in, bool::in, set(pred_proc_id)::in,
     pred_proc_id::in, error_or_warning::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -213,7 +201,7 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
         Callee = proc(CPred, CProc),
         ( if
             Negated = yes,
-            list.member(Callee, WholeScc)
+            set.member(Callee, WholeScc)
         then
             Context = goal_info_get_context(GoalInfo),
             ErrorMsg = "call introduces a non-stratified loop.",
@@ -249,7 +237,7 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
     ).
 
 :- pred first_order_check_goals(list(hlds_goal)::in, bool::in,
-    list(pred_proc_id)::in, pred_proc_id::in, error_or_warning::in,
+    set(pred_proc_id)::in, pred_proc_id::in, error_or_warning::in,
     module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 first_order_check_goals([], _, _, _, _, _, !Specs).
@@ -261,7 +249,7 @@ first_order_check_goals([Goal | Goals], Negated,
         ErrorOrWarning, ModuleInfo, !Specs).
 
 :- pred first_order_check_cases(list(case)::in, bool::in,
-    list(pred_proc_id)::in, pred_proc_id::in, error_or_warning::in,
+    set(pred_proc_id)::in, pred_proc_id::in, error_or_warning::in,
     module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 first_order_check_cases([], _, _, _, _, _, !Specs).

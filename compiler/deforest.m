@@ -122,7 +122,7 @@ deforestation(!ModuleInfo) :-
     % also to avoid redoing optimizations.
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
-    DepList = dependency_info_get_condensed_ordering(DepInfo),
+    DepList = dependency_info_get_condensed_bottom_up_sccs(DepInfo),
 
     pd_info_init(!.ModuleInfo, ProcArgInfo, PDInfo0),
     list.foldl(deforest_proc, DepList, PDInfo0, PDInfo),

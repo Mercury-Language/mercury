@@ -19,8 +19,8 @@
 %
 % The reason why we build the dependency graph is because from it,
 % we can compute the list of the SCCs (strongly-connected components)
-% of this graph. This list of SCCs is the dependency_ordering, the other
-% component in a dependency_info.
+% of this graph. This list of SCCs is the bottom_up_dependency_sccs, the other
+% component in a dependency_graph itself.
 %
 %-----------------------------------------------------------------------%
 
@@ -29,6 +29,7 @@
 
 :- import_module digraph.
 :- import_module list.
+:- import_module set.
 
 %-----------------------------------------------------------------------%
 
@@ -47,7 +48,7 @@
     % The list is in ascending order: the lowest SCC is first,
     % the highest SCC is last.
     %
-:- type dependency_ordering(T)  == list(list(T)).
+:- type bottom_up_dependency_sccs(T)  == list(set(T)).
 
 %-----------------------------------------------------------------------%
 
@@ -57,50 +58,45 @@
 
 :- func dependency_info_get_graph(dependency_info(T))
     = dependency_graph(T). 
-:- func dependency_info_get_ordering(dependency_info(T))
-    = dependency_ordering(T).
+:- func dependency_info_get_bottom_up_sccs(dependency_info(T))
+    = bottom_up_dependency_sccs(T).
 
     % This function does the same job as dependency_info_get_ordering,
     % except that it condenses all the nodes into a single list.
     % This is useful when the caller wants to process entities bottom up,
     % but the SCC boundaries are not relevant.
     %
-:- func dependency_info_get_condensed_ordering(dependency_info(T)) = list(T).
+:- func dependency_info_get_condensed_bottom_up_sccs(dependency_info(T))
+    = list(T).
 
 %-----------------------------------------------------------------------%
 %-----------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module set.
-
 %-----------------------------------------------------------------------%
 
 :- type dependency_info(T)
     --->    dependency_info(
-                dep_graph       :: dependency_graph(T),
-                dep_ord         :: dependency_ordering(T)
+                dep_graph           :: dependency_graph(T),
+                dep_bottom_up_sccs  :: bottom_up_dependency_sccs(T)
             ).
 
-make_dependency_info(Graph) = dependency_info(Graph, Ordering) :-
-    digraph.atsort(Graph, Ordering0),
-    sets_to_lists(Ordering0, [], Ordering).
-
-:- pred sets_to_lists(list(set(T))::in, list(list(T))::in,
-    list(list(T))::out) is det.
-
-sets_to_lists([], Xs, Xs).
-sets_to_lists([X | Xs], Ys, Zs) :-
-    set.to_sorted_list(X, Y),
-    sets_to_lists(Xs, [Y | Ys], Zs).
+make_dependency_info(Graph) = dependency_info(Graph, BottomUpOrdering) :-
+    % digraph.atsort puts the cliques of parents before the cliques
+    % of their children. This is a top down order.
+    digraph.atsort(Graph, TopDownOrdering),
+    list.reverse(TopDownOrdering, BottomUpOrdering).
 
 %-----------------------------------------------------------------------%
 
 dependency_info_get_graph(DepInfo) = DepInfo ^ dep_graph.
-dependency_info_get_ordering(DepInfo) = DepInfo ^ dep_ord.
+dependency_info_get_bottom_up_sccs(DepInfo) = DepInfo ^ dep_bottom_up_sccs.
 
-dependency_info_get_condensed_ordering(DepInfo) =
-    list.condense(dependency_info_get_ordering(DepInfo)).
+dependency_info_get_condensed_bottom_up_sccs(DepInfo) = CondensedOrder :-
+    ListOfSets = dependency_info_get_bottom_up_sccs(DepInfo),
+    list.map(set.to_sorted_list, ListOfSets, ListOfLists),
+    list.condense(ListOfLists, CondensedOrder).
 
 %-----------------------------------------------------------------------%
 %-----------------------------------------------------------------------%

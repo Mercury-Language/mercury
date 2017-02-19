@@ -172,7 +172,7 @@
 % about the SCC; currently the relevant information is just duplicated
 % amongst the abstract procs.
 
-:- type abstract_scc == list(abstract_proc).
+:- type abstract_scc == set(abstract_proc).
 
     % XXX This will need to be extended in order to handle HO calls and
     % intermodule mutual recursion.
@@ -421,17 +421,22 @@ update_local_and_nonlocal_vars(Goal0, Locals0, NonLocals0) = Goal :-
         Goal      = term_primitive(Polyhedron, Locals, NonLocals)
     ).
 
-scc_contains_recursion([]) :-
-    unexpected($module, $pred, "empty SCC").
-scc_contains_recursion([Proc | _]) :-
-    Proc ^ ap_recursion \= none.
+scc_contains_recursion(SCC) :-
+    ( if set.remove_least(Proc, SCC, _) then
+        Proc ^ ap_recursion \= none
+    else
+        unexpected($module, $pred, "empty SCC")
+    ).
 
 proc_is_recursive(Proc) :-
     not Proc ^ ap_recursion = none.
 
-size_varset_from_abstract_scc([]) = _ :-
-    unexpected($module, $pred, "empty SCC").
-size_varset_from_abstract_scc([Proc | _]) = Proc ^ ap_size_varset.
+size_varset_from_abstract_scc(SCC) = SizeVarSet :-
+    ( if set.remove_least(Proc, SCC, _) then
+        SizeVarSet = Proc ^ ap_size_varset
+    else
+        unexpected($module, $pred, "empty SCC")
+    ).
 
 analysis_depends_on_ho(Proc) :-
     list.is_not_empty(Proc ^ ap_ho_calls).
@@ -661,7 +666,7 @@ dump_abstract_scc(ModuleInfo, SCC, !IO) :-
     dump_abstract_scc(ModuleInfo, 0, SCC, !IO).
 
 dump_abstract_scc(ModuleInfo, Indent, SCC, !IO) :-
-    list.foldl(dump_abstract_proc(ModuleInfo, Indent), SCC, !IO).
+    set.foldl(dump_abstract_proc(ModuleInfo, Indent), SCC, !IO).
 
 dump_abstract_proc(ModuleInfo, Indent, Proc, !IO) :-
     AbstractPPId = Proc ^ ap_ppid,

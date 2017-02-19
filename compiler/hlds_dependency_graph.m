@@ -32,6 +32,7 @@
 
 :- import_module io.
 :- import_module list.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -40,7 +41,8 @@
 :- type hlds_dependency_graph       == dependency_graph(pred_proc_id).
 :- type hlds_dependency_graph_key   == dependency_graph_key(pred_proc_id).
 
-:- type hlds_dependency_ordering    == dependency_ordering(pred_proc_id).
+:- type hlds_bottom_up_dependency_sccs
+    == bottom_up_dependency_sccs(pred_proc_id).
 
 %-----------------------------------------------------------------------------%
 
@@ -81,8 +83,8 @@
     % XXX This info would be more efficiently computed if we computed it
     % for all the SCCs at once.
     %
-:- pred get_scc_entry_points(module_info::in, list(pred_proc_id)::in,
-    hlds_dependency_ordering::in, list(pred_proc_id)::out) is det.
+:- pred get_scc_entry_points(module_info::in, scc::in, list(scc)::in,
+    set(pred_proc_id)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -127,7 +129,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
-:- import_module set.
 :- import_module std_util.
 :- import_module term.
 :- import_module varset.
@@ -601,9 +602,9 @@ output_label_dependency(ModuleInfo, PredId, ProcId, !IO) :-
 %-----------------------------------------------------------------------------%
 
 get_scc_entry_points(ModuleInfo, SCC, HigherSCCs, EntryPoints) :-
-    list.filter(is_entry_point(ModuleInfo, HigherSCCs), SCC, EntryPoints).
+    set.filter(is_entry_point(ModuleInfo, HigherSCCs), SCC, EntryPoints).
 
-:- pred is_entry_point(module_info::in, list(list(pred_proc_id))::in,
+:- pred is_entry_point(module_info::in, list(scc)::in,
     pred_proc_id::in) is semidet.
 
 is_entry_point(ModuleInfo, HigherSCCs, PredProcId) :-
@@ -622,7 +623,7 @@ is_entry_point(ModuleInfo, HigherSCCs, PredProcId) :-
         set.member(CallingKey, CallingKeys),
         digraph.lookup_vertex(DepGraph, CallingKey, CallingPred),
         list.member(HigherSCC, HigherSCCs),
-        list.member(CallingPred, HigherSCC)
+        set.member(CallingPred, HigherSCC)
     ).
 
 %-----------------------------------------------------------------------------%

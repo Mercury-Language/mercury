@@ -137,7 +137,7 @@ analyse_mm_tabling_in_module(!ModuleInfo) :-
         ),
         module_info_ensure_dependency_info(!ModuleInfo),
         module_info_dependency_info(!.ModuleInfo, DepInfo),
-        SCCs = dependency_info_get_ordering(DepInfo),
+        SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
         globals.lookup_bool_option(Globals, debug_mm_tabling_analysis, Debug),
         list.foldl(analyse_mm_tabling_in_scc(Debug, Pass1Only), SCCs,
             !ModuleInfo),
@@ -182,7 +182,7 @@ analyse_mm_tabling_in_module(!ModuleInfo) :-
 
 analyse_mm_tabling_in_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
     % Begin by analysing each procedure in the SCC.
-    list.foldl2(check_proc_for_mm_tabling(SCC), SCC, [], ProcResults,
+    set.foldl2(check_proc_for_mm_tabling(SCC), SCC, [], ProcResults,
         !ModuleInfo),
     mm_tabling_combine_individual_proc_results(ProcResults, TablingStatus,
         MaybeAnalysisStatus),
@@ -199,10 +199,10 @@ analyse_mm_tabling_in_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
     ),
 
     ProcTablingInfo = proc_mm_tabling_info(TablingStatus, MaybeAnalysisStatus),
-    list.foldl(set_mm_tabling_info(ProcTablingInfo), SCC, !ModuleInfo),
+    set.foldl(set_mm_tabling_info(ProcTablingInfo), SCC, !ModuleInfo),
     (
         Pass1Only = no,
-        list.foldl(mm_tabling_annotate_proc, SCC, !ModuleInfo)
+        set.foldl(mm_tabling_annotate_proc, SCC, !ModuleInfo)
     ;
         Pass1Only = yes
     ).
@@ -413,7 +413,7 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
     module_info_pred_info(!.ModuleInfo, CalleePredId, CalleePredInfo),
     ( if
         % Handle (mutually-)recursive calls.
-        list.member(CalleePPId, SCC)
+        set.member(CalleePPId, SCC)
     then
         % XXX user-defined uc - need to handle polymorphic recursion here.
         Result = mm_tabled_will_not_call,
@@ -972,7 +972,7 @@ dump_mm_tabling_analysis_debug_info(ModuleInfo, SCC, Status, !IO) :-
 :- pred output_proc_names(module_info::in, scc::in, io::di, io::uo) is det.
 
 output_proc_names(ModuleInfo, SCC, !IO) :-
-    list.foldl(output_proc_name(ModuleInfo), SCC, !IO).
+    set.foldl(output_proc_name(ModuleInfo), SCC, !IO).
 
 :- pred output_proc_name(module_info::in, pred_proc_id::in, io::di, io::uo)
     is det.
