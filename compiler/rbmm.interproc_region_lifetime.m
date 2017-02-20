@@ -74,7 +74,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module require.
 :- import_module set.
 :- import_module solutions.
 
@@ -145,18 +144,11 @@ apply_live_region_born_removal_rules(ModuleInfo, RptaInfoTable, ExecPathTable,
 
 apply_live_region_rule(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
     LRBeforeTable, LRAfterTable, !ProcRegionSetTable) :-
-    module_info_ensure_dependency_info(ModuleInfo, ModuleInfo1),
-    module_info_get_maybe_dependency_info(ModuleInfo1, MaybeDepInfo),
-    (
-        MaybeDepInfo = yes(DepInfo),
-        BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
-        run_with_dependencies(Rule, BottomUpSCCs, ModuleInfo1,
-            RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
-            !ProcRegionSetTable)
-    ;
-        MaybeDepInfo = no,
-        unexpected($module, $pred, "no dependency info")
-    ).
+    module_info_ensure_dependency_info(ModuleInfo, ModuleInfo1, DepInfo),
+    BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
+    run_with_dependencies(Rule, BottomUpSCCs, ModuleInfo1,
+        RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
+        !ProcRegionSetTable).
 
 :- pred run_with_dependencies(rule_pred::in(rule_pred),
     hlds_bottom_up_dependency_sccs::in, module_info::in, rpta_info_table::in,

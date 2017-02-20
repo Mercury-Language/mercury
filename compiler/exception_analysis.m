@@ -156,8 +156,7 @@
 %
 
 analyse_exceptions_in_module(!ModuleInfo) :-
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_dependency_info(!.ModuleInfo, DepInfo),
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     list.foldl(check_scc_for_exceptions, SCCs, !ModuleInfo),
 

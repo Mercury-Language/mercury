@@ -266,16 +266,9 @@ process_cons_and_decons(LVar, ConsId, RVar, !Component, !Graph) :-
     rpta_info_table::in, rpta_info_table::out) is det.
 
 inter_proc_rpta(ModuleInfo0, !InfoTable) :-
-    module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo),
-    module_info_get_maybe_dependency_info(ModuleInfo, MaybeDepInfo),
-    (
-        MaybeDepInfo = yes(DepInfo),
-        BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
-        run_with_dependencies(BottomUpSCCs, ModuleInfo, !InfoTable)
-    ;
-        MaybeDepInfo = no,
-        unexpected($module, $pred, "no dependency information")
-    ).
+    module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo, DepInfo),
+    BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
+    run_with_dependencies(BottomUpSCCs, ModuleInfo, !InfoTable).
 
 :- pred run_with_dependencies(hlds_bottom_up_dependency_sccs::in,
     module_info::in, rpta_info_table::in, rpta_info_table::out) is det.

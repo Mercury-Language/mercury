@@ -76,8 +76,7 @@
 :- import_module string.
 
 check_module_for_stratification(!ModuleInfo, Specs) :-
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_dependency_info(!.ModuleInfo, DepInfo),
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     FOSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
 
     module_info_get_globals(!.ModuleInfo, Globals),

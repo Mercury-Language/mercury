@@ -115,22 +115,13 @@
 
 indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs,
         Requests, IntermodRequests) :-
-    %
     % Perform a bottom-up traversal of the SCCs in the module,
     % analysing indirect structure reuse in each one as we go.
-    %
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
-    (
-        MaybeDepInfo = yes(DepInfo),
-        SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
-        list.foldl5(indirect_reuse_analyse_scc(SharingTable), SCCs,
-            !ModuleInfo, !ReuseTable, set.init, DepProcs, set.init, Requests,
-            set.init, IntermodRequests)
-    ;
-        MaybeDepInfo = no,
-        unexpected($module, $pred, "no dependency information")
-    ).
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
+    list.foldl5(indirect_reuse_analyse_scc(SharingTable), SCCs,
+        !ModuleInfo, !ReuseTable, set.init, DepProcs, set.init, Requests,
+        set.init, IntermodRequests).
 
 :- pred indirect_reuse_analyse_scc(sharing_as_table::in, scc::in,
     module_info::in, module_info::out,

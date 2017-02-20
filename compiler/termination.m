@@ -100,8 +100,7 @@ analyse_termination_in_module(!ModuleInfo, !:Specs) :-
     term_preprocess_preds(PredIds, !ModuleInfo),
 
     % Process all the SCCs of the call graph in a bottom-up order.
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_dependency_info(!.ModuleInfo, DepInfo),
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
 
     % Set the termination status of foreign_procs based on the foreign code

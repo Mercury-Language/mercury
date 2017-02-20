@@ -73,8 +73,7 @@ closure_analyse_module(!ModuleInfo, !IO) :-
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_closure, Debug),
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_dependency_info(!.ModuleInfo, DepInfo),
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     list.foldl2(closure_analyse_scc(Debug), SCCs, !ModuleInfo, !IO).
 

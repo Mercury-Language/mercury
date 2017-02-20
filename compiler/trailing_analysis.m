@@ -145,8 +145,7 @@ analyse_trail_usage(!ModuleInfo) :-
         else
             Pass1Only = no
         ),
-        module_info_ensure_dependency_info(!ModuleInfo),
-        module_info_dependency_info(!.ModuleInfo, DepInfo),
+        module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
         SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
         globals.lookup_bool_option(Globals, debug_trail_usage, Debug),
         list.foldl(trail_analyse_scc(Debug, Pass1Only), SCCs, !ModuleInfo),

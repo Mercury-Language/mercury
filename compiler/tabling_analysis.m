@@ -135,8 +135,7 @@ analyse_mm_tabling_in_module(!ModuleInfo) :-
         else
             Pass1Only = no
         ),
-        module_info_ensure_dependency_info(!ModuleInfo),
-        module_info_dependency_info(!.ModuleInfo, DepInfo),
+        module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
         SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
         globals.lookup_bool_option(Globals, debug_mm_tabling_analysis, Debug),
         list.foldl(analyse_mm_tabling_in_scc(Debug, Pass1Only), SCCs,

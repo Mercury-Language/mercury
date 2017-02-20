@@ -120,8 +120,7 @@ deforestation(!ModuleInfo) :-
     % We process the module bottom-up to make estimation of the
     % cost improvement of new versions a little more accurate and
     % also to avoid redoing optimizations.
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_dependency_info(!.ModuleInfo, DepInfo),
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     DepList = dependency_info_get_condensed_bottom_up_sccs(DepInfo),
 
     pd_info_init(!.ModuleInfo, ProcArgInfo, PDInfo0),

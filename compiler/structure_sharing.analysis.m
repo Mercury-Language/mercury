@@ -367,17 +367,10 @@ simplify_and_detect_liveness_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
 sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
     % Perform a bottom-up traversal of the SCCs in the program,
     % analysing structure sharing in each one as we go.
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
-    (
-        MaybeDepInfo = yes(DepInfo),
-        SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
-        list.foldl3(analyse_scc(!.ModuleInfo), SCCs,
-            !SharingTable, [], DepProcs, !IO)
-    ;
-        MaybeDepInfo = no,
-        unexpected($module, $pred, "No dependency information")
-    ),
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
+    list.foldl3(analyse_scc(!.ModuleInfo), SCCs,
+        !SharingTable, [], DepProcs, !IO),
 
     % Record the sharing results in the HLDS.
     map.foldl(save_sharing_in_module_info, !.SharingTable, !ModuleInfo),

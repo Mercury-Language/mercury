@@ -128,8 +128,7 @@ apply_deep_profiling_transform(!ModuleInfo) :-
     is det.
 
 apply_deep_prof_tail_rec_transform(!ModuleInfo) :-
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_dependency_info(!.ModuleInfo, DepInfo),
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     list.foldl(apply_deep_prof_tail_rec_transform_to_scc, SCCs, !ModuleInfo).
 

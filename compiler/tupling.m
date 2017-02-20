@@ -220,8 +220,7 @@ tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     restrict_trace_counts_to_module(ModuleName, TraceCounts0, TraceCounts),
 
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_dependency_info(!.ModuleInfo, DepInfo),
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     DepGraph = dependency_info_get_graph(DepInfo),
     SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
 
