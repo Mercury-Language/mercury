@@ -4897,40 +4897,110 @@ output_unboxed_rval(Info, Type, Expr, !IO) :-
 :- pred java_builtin_type(mlds_type::in, string::out, string::out, string::out)
     is semidet.
 
-java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
-    Type = mlds_native_int_type.
-java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
-    Type = mercury_type(builtin_type(builtin_type_int), _, _).
-java_builtin_type(Type, "double", "java.lang.Double", "doubleValue") :-
-    Type = mlds_native_float_type.
-java_builtin_type(Type, "double", "java.lang.Double", "doubleValue") :-
-    Type = mercury_type(builtin_type(builtin_type_float), _, _).
-    % Java `char' not large enough for code points so we must use `int'.
-java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
-    Type = mlds_native_char_type.
-java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
-    Type = mercury_type(builtin_type(builtin_type_char), _, _).
-java_builtin_type(Type, "boolean", "java.lang.Boolean", "booleanValue") :-
-    Type = mlds_native_bool_type.
-
-    % io.state and store.store(S) are dummy variables for which we pass an
-    % arbitrary integer. For this reason they should have the Java type `int'.
-    %
-java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
-    % The test for defined/3 is logically redundant since all dummy
-    % types are defined types, but enables the compiler to infer that
-    % this disjunction is a switch.
-    Type = mercury_type(defined_type(_, _, _), TypeCtorCat, _),
-    TypeCtorCat = ctor_cat_builtin_dummy.
-
-    % Handle foreign types that map on to Java's primitive numeric types
-    % specially since we want to avoid boxing them where possible for
-    % performance reasons.
-    %
-java_builtin_type(Type, PrimitiveType, BoxedType, UnboxMethod) :-
-    Type = mlds_foreign_type(ForeignLangType),
-    java_primitive_foreign_language_type(ForeignLangType, PrimitiveType,
-        BoxedType, UnboxMethod, _DefaultValue).
+java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
+    require_complete_switch [MLDS_Type] (
+        MLDS_Type = mlds_native_bool_type,
+        JavaUnboxedType = "boolean",
+        JavaBoxedType = "java.lang.Boolean",
+        UnboxMethod = "booleanValue"
+    ;
+        % NOTE: Java's `char' type is not large enough for code points so we
+        % must use `int'.  Java has no unsigned types so we represent them
+        % as `int'.
+        ( MLDS_Type = mlds_native_char_type
+        ; MLDS_Type = mlds_native_int_type
+        ; MLDS_Type = mlds_native_uint_type
+        ),
+        JavaUnboxedType = "int",
+        JavaBoxedType = "java.lang.Integer",
+        UnboxMethod = "intValue"
+    ;
+        MLDS_Type = mlds_native_float_type,
+        JavaUnboxedType = "double",
+        JavaBoxedType = "java.lang.Double",
+        UnboxMethod = "doubleValue"
+    ;
+        MLDS_Type = mercury_type(MerType, TypeCtorCat, _),
+        require_complete_switch [MerType] (
+            MerType = builtin_type(BuiltinType),
+            require_complete_switch [BuiltinType] (
+                % The rationale for the handling of `char' and `uint' here is
+                % the same as for the mlds_native types above.
+                ( BuiltinType = builtin_type_char
+                ; BuiltinType = builtin_type_int
+                ; BuiltinType = builtin_type_uint
+                ),
+                JavaUnboxedType = "int",
+                JavaBoxedType = "java.lang.Integer",
+                UnboxMethod = "intValue"
+            ;
+                BuiltinType = builtin_type_float,
+                JavaUnboxedType = "double",
+                JavaBoxedType = "java.lang.Double",
+                UnboxMethod = "doubleValue"
+            ;
+                BuiltinType = builtin_type_string,
+                fail
+            )
+        ;
+            MerType = defined_type(_, _, _),
+            require_complete_switch [TypeCtorCat] (
+                % io.state and store.store(S) are dummy variables for which we
+                % pass an arbitrary integer. For this reason they should have
+                % the Java type `int'.
+                TypeCtorCat = ctor_cat_builtin_dummy,
+                JavaUnboxedType = "int",
+                JavaBoxedType = "java.lang.Integer",
+                UnboxMethod = "intValue"
+            ;
+                ( TypeCtorCat = ctor_cat_builtin(_)
+                ; TypeCtorCat = ctor_cat_higher_order
+                ; TypeCtorCat = ctor_cat_tuple
+                ; TypeCtorCat = ctor_cat_enum(_)
+                ; TypeCtorCat = ctor_cat_variable
+                ; TypeCtorCat = ctor_cat_system(_)
+                ; TypeCtorCat = ctor_cat_void
+                ; TypeCtorCat = ctor_cat_user(_)
+                ),
+                fail
+            )
+        ;
+            ( MerType = type_variable(_, _)
+            ; MerType = tuple_type(_, _)
+            ; MerType = higher_order_type(_, _, _, _, _)
+            ; MerType = apply_n_type(_, _, _)
+            ; MerType = kinded_type(_, _)
+            ),
+            fail
+        )
+    ;
+        % Handle foreign types that map on to Java's primitive types specially
+        % since we want to avoid boxing them where possible for performance
+        % reasons.
+        MLDS_Type = mlds_foreign_type(ForeignLangType),
+        java_primitive_foreign_language_type(ForeignLangType, JavaUnboxedType,
+            JavaBoxedType, UnboxMethod, _DefaultValue)
+    ;
+        ( MLDS_Type = mlds_mercury_array_type(_)
+        ; MLDS_Type = mlds_cont_type(_)
+        ; MLDS_Type = mlds_commit_type
+        ; MLDS_Type = mlds_class_type(_, _, _)
+        ; MLDS_Type = mlds_array_type(_)
+        ; MLDS_Type = mlds_mostly_generic_array_type(_)
+        ; MLDS_Type = mlds_ptr_type(_)
+        ; MLDS_Type = mlds_func_type(_)
+        ; MLDS_Type = mlds_generic_type
+        ; MLDS_Type = mlds_generic_env_ptr_type
+        ; MLDS_Type = mlds_type_info_type
+        ; MLDS_Type = mlds_pseudo_type_info_type
+        ; MLDS_Type = mlds_rtti_type(_)
+        ; MLDS_Type = mlds_tabling_type(_)
+        ),
+        fail
+    ;
+        MLDS_Type = mlds_unknown_type,
+        unexpected($file, $pred, "unknown typed")
+    ).
 
 :- pred java_primitive_foreign_language_type(foreign_language_type::in, string::out,
     string::out, string::out, string::out) is semidet.
