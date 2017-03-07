@@ -252,6 +252,7 @@
 type_info_num_functors(TypeInfo, NumFunctors) :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    require_complete_switch [TypeCtorRep]
     (
         ( TypeCtorRep = tcr_du
         ; TypeCtorRep = tcr_du_usereq
@@ -261,6 +262,12 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
         ; TypeCtorRep = tcr_enum_usereq
         ),
         NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
+    ;
+        ( TypeCtorRep = tcr_foreign_enum
+        ; TypeCtorRep = tcr_foreign_enum_usereq
+        ),
+        % XXX todo
+        fail
     ;
         ( TypeCtorRep = tcr_dummy
         ; TypeCtorRep = tcr_notag
@@ -279,6 +286,7 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
     ;
         ( TypeCtorRep = tcr_subgoal
         ; TypeCtorRep = tcr_int
+        ; TypeCtorRep = tcr_uint
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string
@@ -334,6 +342,7 @@ get_functor_impl(TypeInfo, FunctorNumber,
     FunctorNumber < NumFunctors,
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    require_complete_switch [TypeCtorRep]
     (
         ( TypeCtorRep = tcr_du
         ; TypeCtorRep = tcr_du_usereq
@@ -349,6 +358,12 @@ get_functor_impl(TypeInfo, FunctorNumber,
         ),
         get_functor_enum(TypeCtorRep, TypeCtorInfo,
             FunctorNumber, FunctorName, Arity, PseudoTypeInfoList, Names)
+    ;
+        ( TypeCtorRep = tcr_foreign_enum
+        ; TypeCtorRep = tcr_foreign_enum_usereq
+        ),
+        % XXX todo
+        fail
     ;
         ( TypeCtorRep = tcr_notag
         ; TypeCtorRep = tcr_notag_usereq
@@ -374,6 +389,7 @@ get_functor_impl(TypeInfo, FunctorNumber,
     ;
         ( TypeCtorRep = tcr_subgoal
         ; TypeCtorRep = tcr_int
+        ; TypeCtorRep = tcr_uint
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string
@@ -537,6 +553,7 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
 type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    require_complete_switch [TypeCtorRep]
     (
         ( TypeCtorRep = tcr_enum
         ; TypeCtorRep = tcr_enum_usereq
@@ -577,6 +594,7 @@ type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
         ; TypeCtorRep = tcr_func
         ; TypeCtorRep = tcr_pred
         ; TypeCtorRep = tcr_int
+        ; TypeCtorRep = tcr_uint
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_string

@@ -1065,12 +1065,14 @@ collect_matching_arg_types([Arg | Args], [Type | Types],
 
 goals_match_2([], [], !ONRenaming).
 goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
+    % ON here is short for OldNew.
     OldGoal = hlds_goal(OldGoalExpr, _),
     NewGoal = hlds_goal(NewGoalExpr, _),
     ( if
         (
             OldGoalExpr = unify(_, _, _, OldUnification, _),
             NewGoalExpr = unify(_, _, _, NewUnification, _),
+            require_complete_switch [OldUnification]
             (
                 OldUnification = simple_test(OldVar1, OldVar2),
                 NewUnification = simple_test(NewVar1, NewVar2),
@@ -1095,6 +1097,10 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
                     _, _, _),
                 OldArgs = [OldVar | OldArgs1],
                 NewArgs = [NewVar | NewArgs1]
+            ;
+                OldUnification = complicated_unify(_, _, _),
+                unexpected($pred,
+                    "complicated_unify should have been expanded by now")
             )
         ;
             OldGoalExpr = plain_call(PredId, ProcId, OldArgs, _, _, _),
@@ -1108,8 +1114,8 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
             match_generic_call(OldGenericCall, NewGenericCall),
             goal_util.generic_call_vars(OldGenericCall, OldArgs0),
             goal_util.generic_call_vars(NewGenericCall, NewArgs0),
-            list.append(OldArgs0, OldArgs1, OldArgs),
-            list.append(NewArgs0, NewArgs1, NewArgs)
+            OldArgs = OldArgs0 ++ OldArgs1,
+            NewArgs = NewArgs0 ++ NewArgs1
         )
     then
         assoc_list.from_corresponding_lists(OldArgs, NewArgs, ONArgsList),

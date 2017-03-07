@@ -808,9 +808,9 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
     ( if
         Base = base_octal,
         Flags ^ flag_hash = flag_hash_set,
-        \+ string.prefix(PrecStr, "0")
+        not string.prefix(PrecStr, "0")
     then
-        PrecModStr = append("0", PrecStr)
+        PrecModStr = "0" ++ PrecStr
     else
         PrecModStr = PrecStr
     ),
@@ -826,6 +826,7 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
         % Do we need to make room for "0x" or "0X" ?
         ( if
             Flags ^ flag_hash = flag_hash_set,
+            require_complete_switch [Base]
             (
                 Base = base_hex_p,
                 Prefix = "0x"
@@ -837,6 +838,12 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
                 Base = base_hex_uc,
                 Int \= 0,
                 Prefix = "0X"
+            ;
+                ( Base = base_octal
+                ; Base = base_decimal
+                ),
+                % These get padded with just zeroes on the left.
+                fail
             )
         then
             FieldStr = string.pad_left(PrecModStr, '0', Width - 2),
@@ -850,6 +857,7 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
         % Do we have to prefix "0x" or "0X"?
         ( if
             Flags ^ flag_hash = flag_hash_set,
+            require_complete_switch [Base]
             (
                 Base = base_hex_p,
                 Prefix = "0x"
@@ -861,6 +869,13 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
                 Base = base_hex_uc,
                 Int \= 0,
                 Prefix = "0X"
+            ;
+                Base = base_octal,
+                % We took care of adding the "0" prefix above.
+                fail
+            ;
+                Base = base_decimal,
+                fail
             )
         then
             FieldModStr = Prefix ++ FieldStr

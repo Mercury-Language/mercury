@@ -1422,7 +1422,7 @@ construct(TypeDesc, Index, Args) = Term :-
     TypeInfo = collapse_equivalences(unsafe_cast(TypeDesc)),
     TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
-
+    require_complete_switch [TypeCtorRep]
     (
         TypeCtorRep = etcr_du,
         Result = get_functor_with_names(TypeInfo, Index),
@@ -1462,6 +1462,7 @@ construct(TypeDesc, Index, Args) = Term :-
         ( TypeCtorRep = etcr_array
         ; TypeCtorRep = etcr_eqv
         ; TypeCtorRep = etcr_int
+        ; TypeCtorRep = etcr_uint
         ; TypeCtorRep = etcr_float
         ; TypeCtorRep = etcr_char
         ; TypeCtorRep = etcr_string

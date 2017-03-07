@@ -1032,6 +1032,7 @@ cons_has_normal_fields(ModuleInfo, Cons) :-
     ;
         ( Cons = closure_cons(_, _)
         ; Cons = int_const(_)
+        ; Cons = uint_const(_)
         ; Cons = float_const(_)
         ; Cons = char_const(_)
         ; Cons = string_const(_)

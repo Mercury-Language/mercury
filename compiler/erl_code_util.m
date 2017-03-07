@@ -509,19 +509,30 @@ match_inner_outer_cases([OC | OCs], [IC | ICs], [NC | NCs]) :-
 :- pred non_variable_term(elds_term::in) is semidet.
 
 non_variable_term(Term) :-
-    ( Term = elds_char(_)
-    ; Term = elds_int(_)
-    ; Term = elds_float(_)
-    ; Term = elds_binary(_)
-    ; Term = elds_list_of_ints(_)
-    ; Term = elds_atom_raw(_)
-    ; Term = elds_atom(_)
-    ; Term = elds_tuple(SubTerms),
+    require_complete_switch [Term]
+    (
+        ( Term = elds_char(_)
+        ; Term = elds_int(_)
+        ; Term = elds_uint(_)
+        ; Term = elds_float(_)
+        ; Term = elds_binary(_)
+        ; Term = elds_list_of_ints(_)
+        ; Term = elds_atom_raw(_)
+        ; Term = elds_atom(_)
+        )
+    ;
+        Term = elds_tuple(SubTerms),
         all [SubTerm] (
             list.member(elds_term(SubTerm), SubTerms)
         =>
             non_variable_term(SubTerm)
         )
+    ;
+        ( Term = elds_var(_)
+        ; Term = elds_fixed_name_var(_)
+        ; Term = elds_anon_var
+        ),
+        fail
     ).
 
 %-----------------------------------------------------------------------------%
