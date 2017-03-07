@@ -2525,24 +2525,52 @@ type_category_is_array(CtorCat) = IsArray :-
     list(int)::out) is semidet.
 
 hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims) :-
+    require_complete_switch [CtorCat] (
+        CtorCat = ctor_cat_system(TypeCtorCatSystem),
+        hand_defined_system_type_info(TypeCtorCatSystem, SubstituteName, ArrayDims)
+    ;
+        CtorCat = ctor_cat_user(TypeCtorCatUser),
+        hand_defined_user_type(TypeCtorCatUser, Type, SubstituteName, ArrayDims)
+    ;
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ),
+        fail
+    ).
+
+:- pred hand_defined_system_type_info(type_ctor_cat_system::in, string::out,
+    list(int)::out) is det.
+
+hand_defined_system_type_info(TypeCtorCatSystem, SubstituteName, ArrayDims) :-
     (
-        CtorCat = ctor_cat_system(cat_system_type_info),
+        TypeCtorCatSystem = cat_system_type_info,
         SubstituteName = "runtime.TypeInfo_Struct",
         ArrayDims = []
     ;
-        CtorCat = ctor_cat_system(cat_system_type_ctor_info),
+        TypeCtorCatSystem = cat_system_type_ctor_info,
         SubstituteName = "runtime.TypeCtorInfo_Struct",
         ArrayDims = []
     ;
-        CtorCat = ctor_cat_system(cat_system_typeclass_info),
+        TypeCtorCatSystem = cat_system_typeclass_info,
         SubstituteName = "/* typeclass_info */ object",
         ArrayDims = [0]
     ;
-        CtorCat = ctor_cat_system(cat_system_base_typeclass_info),
+        TypeCtorCatSystem = cat_system_base_typeclass_info,
         SubstituteName = "/* base_typeclass_info */ object",
         ArrayDims = [0]
-    ;
-        CtorCat = ctor_cat_user(cat_user_general),
+    ).
+
+:- pred hand_defined_user_type(type_ctor_cat_user::in, mer_type::in,
+    string::out, list(int)::out) is semidet.
+
+hand_defined_user_type(TypeCtorCatUser, Type, SubstituteName, ArrayDims) :-
+    require_complete_switch [TypeCtorCatUser] (
+        TypeCtorCatUser = cat_user_general,
         ( if Type = type_desc_type then
             SubstituteName = "runtime.TypeInfo_Struct"
         else if Type = pseudo_type_desc_type then
@@ -2553,6 +2581,11 @@ hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims) :-
             fail
         ),
         ArrayDims = []
+    ;
+        ( TypeCtorCatUser = cat_user_direct_dummy
+        ; TypeCtorCatUser = cat_user_notag
+        ),
+        fail
     ).
 
 :- pred boxed_type_to_string(csharp_out_info::in, mlds_type::in, string::out)
@@ -3563,27 +3596,92 @@ output_unboxed_rval(Info, Type, Expr, !IO) :-
 
 :- pred csharp_builtin_type(mlds_type::in, string::out) is semidet.
 
-csharp_builtin_type(Type, "int") :-
-    Type = mlds_native_int_type.
-csharp_builtin_type(Type, "int") :-
-    Type = mercury_type(builtin_type(builtin_type_int), _, _).
-csharp_builtin_type(Type, "double") :-
-    Type = mlds_native_float_type.
-csharp_builtin_type(Type, "double") :-
-    Type = mercury_type(builtin_type(builtin_type_float), _, _).
-    % C# `char' not large enough for code points so we must use `int'.
-csharp_builtin_type(Type, "int") :-
-    Type = mlds_native_char_type.
-csharp_builtin_type(Type, "int") :-
-    Type = mercury_type(builtin_type(builtin_type_char), _, _).
-csharp_builtin_type(Type, "bool") :-
-    Type = mlds_native_bool_type.
-csharp_builtin_type(Type, "int") :-
-    % The test for defined/3 is logically redundant since all dummy
-    % types are defined types, but enables the compiler to infer that
-    % this disjunction is a switch.
-    Type = mercury_type(defined_type(_, _, _), TypeCtorCat, _),
-    TypeCtorCat = ctor_cat_builtin_dummy.
+csharp_builtin_type(Type, TargetType) :-
+    require_complete_switch [Type] (
+        Type = mlds_native_bool_type,
+        TargetType = "bool"
+    ;
+        % C# `char' is not large enough for code points so we must use `int'.
+        ( Type = mlds_native_int_type
+        ; Type = mlds_native_char_type
+        ),
+        TargetType = "int"
+    ;
+        Type = mlds_native_uint_type,
+        TargetType = "uint"
+    ;
+        Type = mlds_native_float_type,
+        TargetType = "double"
+    ;
+        Type = mercury_type(MerType, TypeCtorCat, _),
+        require_complete_switch [MerType] (
+            MerType = builtin_type(BuiltinType),
+            require_complete_switch [BuiltinType] (
+                ( BuiltinType = builtin_type_char
+                ; BuiltinType = builtin_type_int
+                ),
+                TargetType = "int"
+            ;
+                BuiltinType = builtin_type_uint,
+                TargetType = "uint"
+            ;
+                BuiltinType = builtin_type_float,
+                TargetType = "double"
+            ;
+                BuiltinType = builtin_type_string,
+                fail
+            )
+    ;
+            MerType = defined_type(_, _, _),
+            require_complete_switch [TypeCtorCat] (
+                % io.state and store.store(S) are dummy variables for which we
+                % pass an arbitrary integer. For this reason they should have
+                % the C# type `int'.
+                TypeCtorCat = ctor_cat_builtin_dummy,
+                TargetType = "int"
+            ;
+                ( TypeCtorCat = ctor_cat_builtin(_)
+                ; TypeCtorCat = ctor_cat_higher_order
+                ; TypeCtorCat = ctor_cat_tuple
+                ; TypeCtorCat = ctor_cat_enum(_)
+                ; TypeCtorCat = ctor_cat_variable
+                ; TypeCtorCat = ctor_cat_system(_)
+                ; TypeCtorCat = ctor_cat_void
+                ; TypeCtorCat = ctor_cat_user(_)
+                ),
+                fail
+            )
+        ;
+            ( MerType = type_variable(_, _)
+            ; MerType = tuple_type(_, _)
+            ; MerType = higher_order_type(_, _, _, _, _)
+            ; MerType = apply_n_type(_, _, _)
+            ; MerType = kinded_type(_, _)
+            ),
+            fail
+        )
+    ;
+        ( Type = mlds_foreign_type(_)
+        ; Type = mlds_mercury_array_type(_)
+        ; Type = mlds_cont_type(_)
+        ; Type = mlds_commit_type
+        ; Type = mlds_class_type(_, _, _)
+        ; Type = mlds_array_type(_)
+        ; Type = mlds_mostly_generic_array_type(_)
+        ; Type = mlds_ptr_type(_)
+        ; Type = mlds_func_type(_)
+        ; Type = mlds_generic_type
+        ; Type = mlds_generic_env_ptr_type
+        ; Type = mlds_type_info_type
+        ; Type = mlds_pseudo_type_info_type
+        ; Type = mlds_rtti_type(_)
+        ; Type = mlds_tabling_type(_)
+        ),
+        fail
+    ;
+        Type = mlds_unknown_type,
+        unexpected($file, $pred, "unknown typed")
+    ).
 
 :- pred output_std_unop(csharp_out_info::in, builtin_ops.unary_op::in,
     mlds_rval::in, io::di, io::uo) is det.
