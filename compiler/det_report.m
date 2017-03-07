@@ -165,21 +165,19 @@
 %-----------------------------------------------------------------------------%
 
 global_checking_pass([], !ModuleInfo, !Specs).
-global_checking_pass([Proc | Procs], !ModuleInfo, !Specs) :-
-    Proc = proc(PredId, ProcId),
-    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-        PredInfo, ProcInfo),
-    check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs),
-    check_determinism_of_main(PredId, ProcId, PredInfo, ProcInfo, !Specs),
-    check_for_multisoln_func(PredId, ProcId, PredInfo, ProcInfo, !.ModuleInfo,
+global_checking_pass([PredProcId | PredProcIds], !ModuleInfo, !Specs) :-
+    module_info_pred_proc_info(!.ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs),
+    check_determinism_of_main(PredInfo, ProcInfo, !Specs),
+    check_for_multisoln_func(PredProcId, PredInfo, ProcInfo, !.ModuleInfo,
         !Specs),
-    global_checking_pass(Procs, !ModuleInfo, !Specs).
+    global_checking_pass(PredProcIds, !ModuleInfo, !Specs).
 
-:- pred check_determinism(pred_id::in, proc_id::in, pred_info::in,
-    proc_info::in, module_info::in, module_info::out,
+:- pred check_determinism(pred_proc_id::in, pred_info::in, proc_info::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
+check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
     (
@@ -240,7 +238,7 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 MessagePieces = [words("warning:"),
                     words(detism_decl_name(DetismDecl)),
                     words("could be tighter."), nl],
-                report_determinism_problem(PredId, ProcId, !.ModuleInfo,
+                report_determinism_problem(PredProcId, !.ModuleInfo,
                     MessagePieces, DeclaredDetism, InferredDetism, ReportMsgs),
                 ReportSpec = error_spec(severity_warning, phase_detism_check,
                     ReportMsgs),
@@ -256,13 +254,13 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             MessagePieces = [words("error:"),
                 words(detism_decl_name(DetismDecl)),
                 words("not satisfied."), nl],
-            report_determinism_problem(PredId, ProcId, !.ModuleInfo,
+            report_determinism_problem(PredProcId, !.ModuleInfo,
                 MessagePieces, DeclaredDetism, InferredDetism, ReportMsgs),
             proc_info_get_goal(ProcInfo, Goal),
             proc_info_get_varset(ProcInfo, VarSet),
             proc_info_get_vartypes(ProcInfo, VarTypes),
             proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
-            det_info_init(!.ModuleInfo, PredId, ProcId, VarSet, VarTypes,
+            det_info_init(!.ModuleInfo, PredProcId, VarSet, VarTypes,
                 pess_extra_vars_report, [], DetInfo0),
             det_diagnose_goal(Goal, InstMap0, DeclaredDetism, [],
                 DetInfo0, DetInfo, GoalMsgs),
@@ -274,7 +272,7 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
         )
     ),
 
-    make_reqscope_checks_if_needed(!.ModuleInfo, PredId, ProcId,
+    make_reqscope_checks_if_needed(!.ModuleInfo, PredProcId,
         PredInfo, ProcInfo, !Specs),
 
     % Make sure the code model is valid given the eval method.
@@ -309,10 +307,10 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
     ).
 
 :- pred make_reqscope_checks_if_needed(module_info::in,
-    pred_id::in, proc_id::in, pred_info::in, proc_info::in,
+    pred_proc_id::in, pred_info::in, proc_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-make_reqscope_checks_if_needed(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
+make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs) :-
     pred_info_get_markers(PredInfo, Markers),
     ( if
@@ -336,7 +334,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         proc_info_get_varset(ProcInfo, VarSet),
         proc_info_get_vartypes(ProcInfo, VarTypes),
         proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
-        det_info_init(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
+        det_info_init(ModuleInfo, PredProcId, VarSet, VarTypes,
             pess_extra_vars_ignore, [], DetInfo0),
         reqscope_check_goal(Goal, InstMap0, InformIncompleteSwitches, no,
             [], DetInfo0, DetInfo),
@@ -385,11 +383,10 @@ determinism(detism_cc_non).
 determinism(detism_erroneous).
 determinism(detism_failure).
 
-:- pred check_determinism_of_main(pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in,
+:- pred check_determinism_of_main(pred_info::in, proc_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo, !Specs) :-
+check_determinism_of_main(PredInfo, ProcInfo, !Specs) :-
     % Check that `main/2' has determinism `det' or `cc_multi',
     % as required by the language reference manual.
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
@@ -416,12 +413,11 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo, !Specs) :-
         true
     ).
 
-:- pred check_for_multisoln_func(pred_id::in, proc_id::in, pred_info::in,
+:- pred check_for_multisoln_func(pred_proc_id::in, pred_info::in,
     proc_info::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo, ModuleInfo,
-        !Specs) :-
+check_for_multisoln_func(PredProcId, PredInfo, ProcInfo, ModuleInfo, !Specs) :-
     proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
 
     % Functions can only have more than one solution if it is a non-standard
@@ -447,6 +443,7 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo, ModuleInfo,
         % ... then it is an error.
         proc_info_get_context(ProcInfo, FuncContext),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
+        PredProcId = proc(PredId, _ProcId),
         PredModePieces = describe_one_pred_name_mode(ModuleInfo,
             should_not_module_qualify, PredId, InstVarSet, PredArgModes),
         MainPieces = [words("Error: invalid determinism for")]
@@ -481,12 +478,11 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         ( Cmp = first_detism_tighter_than
         ; Cmp = first_detism_incomparable
         ),
-        det_info_get_pred_id(!.DetInfo, PredId),
-        det_info_get_proc_id(!.DetInfo, ProcId),
+        det_info_get_pred_proc_id(!.DetInfo, PredProcId),
         Context = goal_info_get_context(GoalInfo),
         det_info_get_module_info(!.DetInfo, ModuleInfo),
         PredPieces = describe_one_proc_name_mode(ModuleInfo,
-            should_not_module_qualify, proc(PredId, ProcId)),
+            should_not_module_qualify, PredProcId),
         Pieces = [words("In")] ++ PredPieces ++ [suffix(":"), nl,
             words("Determinism error in lambda expression."), nl,
             words("Declared"),
@@ -507,16 +503,16 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         % that will often be the case, and should not be warned about.
     ).
 
-:- pred report_determinism_problem(pred_id::in, proc_id::in, module_info::in,
+:- pred report_determinism_problem(pred_proc_id::in, module_info::in,
     format_components::in, determinism::in, determinism::in,
     list(error_msg)::out) is det.
 
-report_determinism_problem(PredId, ProcId, ModuleInfo, MessagePieces,
+report_determinism_problem(PredProcId, ModuleInfo, MessagePieces,
         DeclaredDetism, InferredDetism, Msgs) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+    module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_context(ProcInfo, Context),
     ProcPieces = describe_one_proc_name_mode(ModuleInfo,
-        should_not_module_qualify, proc(PredId, ProcId)),
+        should_not_module_qualify, PredProcId),
     Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl] ++
         MessagePieces ++ [nl] ++
         [words("Declared"),

@@ -305,7 +305,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
-    simplify_info_get_pred_proc_id(!.Info, PredId, ProcId),
+    simplify_info_get_pred_proc_id(!.Info, PredProcId),
 
     some [!PredInfo, !ProcInfo, !PolyInfo] (
         % The varset, vartypes and rtti_varmaps get updated by the call to
@@ -319,7 +319,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
         %   - copy the information from the proc_info back into the
         %     simplify_info.
 
-        module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+        module_info_pred_proc_info(ModuleInfo0, PredProcId,
             !:PredInfo, !:ProcInfo),
         proc_info_set_vartypes(VarTypes0, !ProcInfo),
         proc_info_set_varset(VarSet0, !ProcInfo),
@@ -344,7 +344,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
 
         % Put the new proc_info and pred_info back in the module_info
         % and put the new module_info back in the simplify_info.
-        module_info_set_pred_proc_info(PredId, ProcId, !.PredInfo, !.ProcInfo,
+        module_info_set_pred_proc_info(PredProcId, !.PredInfo, !.ProcInfo,
             ModuleInfo1, ModuleInfo)
     ),
     simplify_info_set_module_info(ModuleInfo, !Info).

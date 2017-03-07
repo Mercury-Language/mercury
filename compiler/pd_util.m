@@ -365,16 +365,16 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
 
     % det_infer_goal looks up the proc_info in the module_info for the
     % vartypes, so we'd better stick them back in the module_info.
-    pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
+    pd_info_get_pred_proc_id(!.PDInfo, PredProcId),
     pd_info_get_pred_info(!.PDInfo, PredInfo),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+    module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
         ModuleInfo0, ModuleInfo1),
 
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    det_info_init(ModuleInfo1, PredId, ProcId, VarSet, VarTypes,
+    det_info_init(ModuleInfo1, PredProcId, VarSet, VarTypes,
         pess_extra_vars_ignore, [], DetInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
     det_infer_goal(Goal0, Goal, InstMap, SolnContext, [], no, _, _,

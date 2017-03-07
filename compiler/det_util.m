@@ -115,13 +115,12 @@
 :- pred det_info_add_error_spec(error_spec::in, det_info::in, det_info::out)
     is det.
 
-:- pred det_info_init(module_info::in, pred_id::in, proc_id::in,
+:- pred det_info_init(module_info::in, pred_proc_id::in,
     prog_varset::in, vartypes::in, report_pess_extra_vars::in,
     list(error_spec)::in, det_info::out) is det.
 
 :- pred det_info_get_module_info(det_info::in, module_info::out) is det.
-:- pred det_info_get_pred_id(det_info::in, pred_id::out) is det.
-:- pred det_info_get_proc_id(det_info::in, proc_id::out) is det.
+:- pred det_info_get_pred_proc_id(det_info::in, pred_proc_id::out) is det.
 :- pred det_info_get_varset(det_info::in, prog_varset::out) is det.
 :- pred det_info_get_vartypes(det_info::in, vartypes::out) is det.
 :- pred det_info_get_pess_extra_vars(det_info::in,
@@ -215,12 +214,8 @@ det_lookup_pred_info_and_detism(DetInfo, PredId, ModeId, PredInfo, Detism) :-
 
 det_get_proc_info(DetInfo, ProcInfo) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
-    det_info_get_pred_id(DetInfo, PredId),
-    det_info_get_proc_id(DetInfo, ProcId),
-    module_info_get_preds(ModuleInfo, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    map.lookup(ProcTable, ProcId, ProcInfo).
+    det_info_get_pred_proc_id(DetInfo, PredProcId),
+    module_info_proc_info(ModuleInfo, PredProcId, ProcInfo).
 
 det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -247,8 +242,7 @@ det_info_add_error_spec(Spec, !DetInfo) :-
                 di_module_info              :: module_info,
 
                 % The id of the proc currently processed.
-                di_pred_id                  :: pred_id,
-                di_proc_id                  :: proc_id,
+                di_pred_proc_id             :: pred_proc_id,
 
                 di_varset                   :: prog_varset,
                 di_vartypes                 :: vartypes,
@@ -259,19 +253,17 @@ det_info_add_error_spec(Spec, !DetInfo) :-
                 di_error_specs              :: list(error_spec)
             ).
 
-det_info_init(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
+det_info_init(ModuleInfo, PredProcId, VarSet, VarTypes,
         PessExtraVars, Specs, DetInfo) :-
-    DetInfo = det_info(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
+    DetInfo = det_info(ModuleInfo, PredProcId, VarSet, VarTypes,
         PessExtraVars, does_not_contain_format_call,
         does_not_contain_require_scope, does_not_contain_incomplete_switch,
         Specs).
 
 det_info_get_module_info(DetInfo, X) :-
     X = DetInfo ^ di_module_info.
-det_info_get_pred_id(DetInfo, X) :-
-    X = DetInfo ^ di_pred_id.
-det_info_get_proc_id(DetInfo, X) :-
-    X = DetInfo ^ di_proc_id.
+det_info_get_pred_proc_id(DetInfo, X) :-
+    X = DetInfo ^ di_pred_proc_id.
 det_info_get_vartypes(DetInfo, X) :-
     X = DetInfo ^ di_vartypes.
 det_info_get_varset(DetInfo, X) :-

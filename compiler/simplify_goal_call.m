@@ -451,7 +451,8 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         % Don't warn about directly recursive calls to obsolete predicates.
         % That would cause spurious warnings, particularly with builtin
         % predicates, or predicates defined using foreign_procs.
-        simplify_info_get_pred_proc_id(!.Info, ThisPredId, _),
+        simplify_info_get_pred_proc_id(!.Info, ThisPredProcId),
+        ThisPredProcId = proc(ThisPredId, _ThisProcId),
         PredId \= ThisPredId,
 
         % Don't warn about calls to obsolete predicates from other predicates
@@ -496,9 +497,10 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
     ( if
         simplify_do_warn_simple_code(!.Info),
 
+        simplify_info_get_pred_proc_id(!.Info, CurPredProcId),
         % Is this a (directly) recursive call, i.e. is the procedure being
-        % called the same as the procedure we're analyzing?
-        simplify_info_get_pred_proc_id(!.Info, PredId, ProcId),
+        % called the same as the procedure we are analyzing?
+        CurPredProcId = proc(PredId, ProcId),
 
         % Don't count inline builtins. (The compiler generates code for
         % builtins that looks recursive, so that you can take their address,
