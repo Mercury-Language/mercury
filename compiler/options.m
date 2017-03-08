@@ -707,6 +707,7 @@
     ;       optimize_duplicate_calls
     ;       constant_propagation
     ;       excess_assign
+    ;       test_after_switch
     ;       optimize_format_calls
     ;       optimize_saved_vars_const
     ;       optimize_saved_vars_cell
@@ -1610,6 +1611,7 @@ option_defaults_2(optimization_option, [
     optimize_duplicate_calls            -   bool(no),
     constant_propagation                -   bool(no),
     excess_assign                       -   bool(no),
+    test_after_switch                   -   bool(no),
     optimize_format_calls               -   bool(yes),
     loop_invariants                     -   bool(no),
     optimize_saved_vars_const           -   bool(no),
@@ -2481,6 +2483,7 @@ long_option("const-struct",         enable_const_struct).
 long_option("common-struct",        common_struct).
 long_option("common-struct-preds",  common_struct_preds).
 long_option("excess-assign",        excess_assign).
+long_option("test-after-switch",    test_after_switch).
 long_option("optimize-format-calls",         optimize_format_calls).
 long_option("optimize-duplicate-calls", optimize_duplicate_calls).
 long_option("optimise-duplicate-calls", optimize_duplicate_calls).
@@ -3435,6 +3438,7 @@ opt_level(2, _, [
     % duplicate calls (we might combine calls to `array.init').
     % optimize_duplicate_calls  -   bool(yes),
     simple_neg                  -   bool(yes),
+    test_after_switch           -   bool(yes),
 
     optimize_initializations    -  bool(yes)
 ]).
@@ -5213,6 +5217,9 @@ options_help_hlds_hlds_optimization -->
         "\tDon't migrate into the end of branched goals.",
         "--excess-assign",
         "\tRemove excess assignment unifications.",
+        % "--test-after-switch",
+        % "\tOptimize away test unifications after switches whose arms",
+        % "\tdo nothing except set the to-be-tested variable.",
         "--no-optimize-format-calls",
         "\tDo not attempt to interpret the format string in calls to",
         "\tstring.format and related predicates at compile time;",

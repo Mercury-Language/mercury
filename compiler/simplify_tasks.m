@@ -53,6 +53,10 @@
     ;       simptask_excess_assigns
             % Remove excess assignment unifications.
 
+    ;       simptask_test_after_switch
+            % Optimize away test unifications after switches whose arms
+            % do nothing except set the to-be-tested variable.
+
     ;       simptask_elim_removable_scopes
             % Remove scopes that do not need processing during LLDS code
             % generation.
@@ -91,6 +95,7 @@
                 do_mark_code_model_changes      :: bool,
                 do_after_front_end              :: bool,
                 do_excess_assign                :: bool,
+                do_test_after_switch            :: bool,
                 do_elim_removable_scopes        :: bool,
                 do_opt_duplicate_calls          :: bool,
                 do_constant_prop                :: bool,
@@ -117,7 +122,7 @@
 simplify_tasks_to_list(SimplifyTasks) = List :-
     SimplifyTasks = simplify_tasks(WarnSimpleCode, WarnDupCalls,
         WarnImplicitStreamCalls, DoFormatCalls, WarnObsolete,
-        MarkCodeModelChanges, AfterFrontEnd, ExcessAssign,
+        MarkCodeModelChanges, AfterFrontEnd, ExcessAssign, TestAfterSwitch,
         ElimRemovableScopes, OptDuplicateCalls, ConstantProp,
         CommonStruct, ExtraCommonStruct, RemoveParConjunctions),
     List =
@@ -131,6 +136,7 @@ simplify_tasks_to_list(SimplifyTasks) = List :-
             [simptask_mark_code_model_changes] ; [] ) ++
         ( AfterFrontEnd = yes -> [simptask_after_front_end] ; [] ) ++
         ( ExcessAssign = yes -> [simptask_excess_assigns] ; [] ) ++
+        ( TestAfterSwitch = yes -> [simptask_test_after_switch] ; [] ) ++
         ( ElimRemovableScopes = yes ->
             [simptask_elim_removable_scopes] ; [] ) ++
         ( OptDuplicateCalls = yes -> [simptask_opt_duplicate_calls] ; [] ) ++
@@ -149,6 +155,7 @@ list_to_simplify_tasks(List) =
         ( list.member(simptask_mark_code_model_changes, List) -> yes ; no ),
         ( list.member(simptask_after_front_end, List) -> yes ; no ),
         ( list.member(simptask_excess_assigns, List) -> yes ; no ),
+        ( list.member(simptask_test_after_switch, List) -> yes ; no ),
         ( list.member(simptask_elim_removable_scopes, List) -> yes ; no ),
         ( list.member(simptask_opt_duplicate_calls, List) -> yes ; no ),
         ( list.member(simptask_constant_prop, List) -> yes ; no ),
@@ -182,6 +189,7 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
     ),
     globals.lookup_bool_option(Globals, warn_obsolete, WarnObsolete),
     globals.lookup_bool_option(Globals, excess_assign, ExcessAssign),
+    globals.lookup_bool_option(Globals, test_after_switch, TestAfterSwitch),
     globals.lookup_bool_option(Globals, common_struct, CommonStruct),
     globals.lookup_bool_option(Globals, optimize_duplicate_calls,
         OptDuplicateCalls),
@@ -203,6 +211,7 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         MarkCodeModelChanges,
         AfterFrontEnd,
         ExcessAssign,
+        TestAfterSwitch,
         ElimRemovableScopes,
         OptDuplicateCalls,
         ConstantProp,

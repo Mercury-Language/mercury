@@ -187,6 +187,7 @@
 :- pred simplify_do_mark_code_model_changes(simplify_info::in) is semidet.
 :- pred simplify_do_after_front_end(simplify_info::in) is semidet.
 :- pred simplify_do_excess_assign(simplify_info::in) is semidet.
+:- pred simplify_do_test_after_switch(simplify_info::in) is semidet.
 :- pred simplify_do_elim_removable_scopes(simplify_info::in) is semidet.
 :- pred simplify_do_opt_duplicate_calls(simplify_info::in) is semidet.
 :- pred simplify_do_const_prop(simplify_info::in) is semidet.
@@ -620,6 +621,9 @@ simplify_do_after_front_end(Info) :-
 simplify_do_excess_assign(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_excess_assign = yes.
+simplify_do_test_after_switch(Info) :-
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_test_after_switch = yes.
 simplify_do_elim_removable_scopes(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_elim_removable_scopes = yes.

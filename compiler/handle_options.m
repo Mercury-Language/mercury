@@ -1527,7 +1527,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
                 bool(no), !Globals),
             globals.set_option(loop_invariants, bool(no), !Globals),
             globals.set_option(untuple, bool(no), !Globals),
-            globals.set_option(tuple, bool(no), !Globals)
+            globals.set_option(tuple, bool(no), !Globals),
+            globals.set_option(test_after_switch, bool(no), !Globals)
         ;
             TraceOptimized = yes
         ),
