@@ -539,6 +539,9 @@ ml_specialize_generic_array_rval(!Rval) :-
             Op = unbox(Type)
         ;
             Op = cast(Type)
+        ;
+            Op = std_unop(_),
+            fail
         ),
         (
             Type = mlds_native_float_type,

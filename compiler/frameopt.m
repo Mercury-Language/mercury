@@ -1279,12 +1279,42 @@ matching_label_ref(FirstLabel, GotoLabel) :-
 :- pred matching_entry_type(entry_label_type::in, entry_label_type::in)
     is semidet.
 
-matching_entry_type(entry_label_exported, entry_label_exported).
-matching_entry_type(entry_label_exported, entry_label_c_local).
-matching_entry_type(entry_label_exported, entry_label_local).
-matching_entry_type(entry_label_local, entry_label_c_local).
-matching_entry_type(entry_label_local, entry_label_local).
-matching_entry_type(entry_label_c_local, entry_label_c_local).
+matching_entry_type(FirstLabel, GotoLabel) :-
+    require_complete_switch [FirstLabel]
+    (
+        FirstLabel = entry_label_exported,
+        require_complete_switch [GotoLabel]
+        ( GotoLabel = entry_label_exported
+        ; GotoLabel = entry_label_c_local
+        ; GotoLabel = entry_label_local
+        )
+    ;
+        FirstLabel = entry_label_local,
+        require_complete_switch [GotoLabel]
+        (
+            ( GotoLabel = entry_label_c_local
+            ; GotoLabel = entry_label_local
+            ),
+            Match = yes
+        ;
+            GotoLabel = entry_label_exported,
+            Match = no
+        ),
+        Match = yes
+    ;
+        FirstLabel = entry_label_c_local,
+        require_complete_switch [GotoLabel]
+        (
+            GotoLabel = entry_label_c_local,
+            Match = yes
+        ;
+            ( GotoLabel = entry_label_exported
+            ; GotoLabel = entry_label_local
+            ),
+            Match = no
+        ),
+        Match = yes
+    ).
 
 :- pred find_redoip_labels(list(instruction)::in, proc_label::in,
     list(label)::in, list(label)::out) is det.

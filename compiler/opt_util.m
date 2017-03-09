@@ -256,14 +256,6 @@
     %
 :- pred lval_access_rvals(lval::in, list(rval)::out) is det.
 
-    % See whether an rval is free of references to a given lval.
-    %
-:- pred rval_free_of_lval(rval::in, lval::in) is semidet.
-
-    % See whether a list of rvals is free of references to a given lval.
-    %
-:- pred rvals_free_of_lval(list(rval)::in, lval::in) is semidet.
-
     % Count the number of hp increments in a block of code.
     %
 :- pred count_incr_hp(list(instruction)::in, int::out) is det.
@@ -2023,28 +2015,6 @@ lval_access_rvals(lvar(_), _) :-
     unexpected($module, $pred, "lvar").
 lval_access_rvals(mem_ref(Rval), [Rval]).
 lval_access_rvals(global_var_ref(_), []).
-
-%-----------------------------------------------------------------------------%
-
-rvals_free_of_lval([], _).
-rvals_free_of_lval([Rval | Rvals], Forbidden) :-
-    rval_free_of_lval(Rval, Forbidden),
-    rvals_free_of_lval(Rvals, Forbidden).
-
-rval_free_of_lval(lval(Lval), Forbidden) :-
-    Lval \= Forbidden,
-    lval_access_rvals(Lval, Rvals),
-    rvals_free_of_lval(Rvals, Forbidden).
-rval_free_of_lval(var(_), _) :-
-    unexpected($module, $pred, "var").
-rval_free_of_lval(mkword(_, Rval), Forbidden) :-
-    rval_free_of_lval(Rval, Forbidden).
-rval_free_of_lval(const(_), _).
-rval_free_of_lval(unop(_, Rval), Forbidden) :-
-    rval_free_of_lval(Rval, Forbidden).
-rval_free_of_lval(binop(_, Rval1, Rval2), Forbidden) :-
-    rval_free_of_lval(Rval1, Forbidden),
-    rval_free_of_lval(Rval2, Forbidden).
 
 %-----------------------------------------------------------------------------%
 

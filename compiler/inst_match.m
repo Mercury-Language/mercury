@@ -891,7 +891,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         unique_matches_final(UniqA, UniqB)
     ;
         InstA = any(UniqA, HOInstInfoA),
-        InstB = ground(_, _)@InstB,
+        InstB = ground(_, _),
         maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
             HOInstInfoA, NextInstA),
         inst_matches_final_mt(NextInstA, InstB, MaybeType, !Info)

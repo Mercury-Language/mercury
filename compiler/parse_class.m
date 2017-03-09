@@ -281,12 +281,13 @@ parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-
     (
         Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
         ArbitraryConstraints = [HeadArbConstraint | TailArbConstraints],
-        ( if
-            collect_simple_and_fundep_constraints(ArbitraryConstraints,
-                Constraints, FunDeps)
-        then
-            Result = ok2(Constraints, FunDeps)
-        else
+        collect_simple_and_fundep_constraints(ArbitraryConstraints,
+            SimpleConstraints, FunDeps, BadConstraints),
+        (
+            BadConstraints = [],
+            Result = ok2(SimpleConstraints, FunDeps)
+        ;
+            BadConstraints = [_ | _],
             Pieces = [words("Error: constraints on class declarations"),
                 words("may only constrain type variables and ground types."),
                 nl],
@@ -301,21 +302,25 @@ parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-
     ).
 
 :- pred collect_simple_and_fundep_constraints(list(arbitrary_constraint)::in,
-    list(prog_constraint)::out, list(prog_fundep)::out) is semidet.
+    list(prog_constraint)::out, list(prog_fundep)::out,
+    list(arbitrary_constraint)::out) is det.
 
-collect_simple_and_fundep_constraints([], [], []).
+collect_simple_and_fundep_constraints([], [], [], []).
 collect_simple_and_fundep_constraints([Constraint | Constraints],
-        SimpleConstraints, FunDeps) :-
-    collect_simple_and_fundep_constraints(Constraints, SimpleConstraints0,
-        FunDeps0),
+        !:SimpleConstraints, !:FunDeps, !:BadConstraints) :-
+    collect_simple_and_fundep_constraints(Constraints,
+        !:SimpleConstraints, !:FunDeps, !:BadConstraints),
     (
         Constraint = simple(SimpleConstraint),
-        SimpleConstraints = [SimpleConstraint | SimpleConstraints0],
-        FunDeps = FunDeps0
+        !:SimpleConstraints = [SimpleConstraint | !.SimpleConstraints]
     ;
         Constraint = fundep(FunDep),
-        FunDeps = [FunDep | FunDeps0],
-        SimpleConstraints = SimpleConstraints0
+        !:FunDeps = [FunDep | !.FunDeps]
+    ;
+        ( Constraint = non_simple(_)
+        ; Constraint = inst_constraint(_, _)
+        ),
+        !:BadConstraints = [Constraint | !.BadConstraints]
     ).
 
 :- pred parse_unconstrained_class(module_name::in, tvarset::in, term::in,
@@ -465,12 +470,13 @@ parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
     (
         Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
         ArbitraryConstraints = [HeadArbConstraint | TailArbConstraints],
-        ( if
-            collect_class_and_inst_constraints(ArbitraryConstraints,
-                ProgConstraints, InstVarSub)
-        then
+        collect_class_and_inst_constraints(ArbitraryConstraints,
+            ProgConstraints, FunDeps, InstVarSub),
+        (
+            FunDeps = [],
             Result = ok2(ProgConstraints, InstVarSub)
-        else
+        ;
+            FunDeps = [_ | _],
             Pieces = [words("Error: functional dependencies are only allowed"),
                 words("in typeclass declarations."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -484,25 +490,25 @@ parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
     ).
 
 :- pred collect_class_and_inst_constraints(list(arbitrary_constraint)::in,
-    list(prog_constraint)::out, inst_var_sub::out) is semidet.
+    list(prog_constraint)::out, list(prog_fundep)::out, inst_var_sub::out)
+    is det.
 
-collect_class_and_inst_constraints([], [], map.init).
+collect_class_and_inst_constraints([], [], [], map.init).
 collect_class_and_inst_constraints([Constraint | Constraints],
-        ProgConstraints, InstVarSub) :-
-    collect_class_and_inst_constraints(Constraints, ProgConstraints0,
-        InstVarSub0),
+        !:ProgConstraints, !:FunDeps, !:InstVarSub) :-
+    collect_class_and_inst_constraints(Constraints,
+        !:ProgConstraints, !:FunDeps, !:InstVarSub),
     (
-        Constraint = simple(SimpleConstraint),
-        ProgConstraints = [SimpleConstraint | ProgConstraints0],
-        InstVarSub = InstVarSub0
-    ;
-        Constraint = non_simple(ClassConstraint),
-        ProgConstraints = [ClassConstraint | ProgConstraints0],
-        InstVarSub = InstVarSub0
+        ( Constraint = simple(ProgConstraint)
+        ; Constraint = non_simple(ProgConstraint)
+        ),
+        !:ProgConstraints = [ProgConstraint | !.ProgConstraints]
     ;
         Constraint = inst_constraint(InstVar, Inst),
-        map.set(InstVar, Inst, InstVarSub0, InstVarSub),
-        ProgConstraints = ProgConstraints0
+        map.set(InstVar, Inst, !InstVarSub)
+    ;
+        Constraint = fundep(FunDep),
+        !:FunDeps = [FunDep | !.FunDeps]
     ).
 
 :- type arbitrary_constraint

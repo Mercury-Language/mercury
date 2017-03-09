@@ -436,7 +436,7 @@ invariant_goal_candidates_handle_primitive_goal(Goal, !IGCs) :-
         all_instmap_deltas_are_ground(ModuleInfo, InstMapDeltaPairs)
     then
         !IGCs ^ igc_path_candidates :=
-            snoc(!.IGCs ^ igc_path_candidates, Goal)
+            cord.snoc(!.IGCs ^ igc_path_candidates, Goal)
     else
         true
     ).

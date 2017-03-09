@@ -880,6 +880,9 @@ lookup_mmc_maybe_module_options(Globals, Vars, MaybeModuleName, Result, !IO) :-
                 ;
                     VarResult = var_result_unset,
                     MaybeValue = no
+                ;
+                    VarResult = var_result_error(_),
+                    fail
                 )
             ), Results, Values)
     then

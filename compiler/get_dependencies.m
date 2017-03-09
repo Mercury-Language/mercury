@@ -321,16 +321,20 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         UseRegions = no
     ),
     globals.get_ssdb_trace_level(Globals, SSDBTraceLevel),
-    globals.lookup_bool_option(Globals, force_disable_ssdebug, DisableSSDB),
-    ( if
+    (
+        SSDBTraceLevel = none
+    ;
         ( SSDBTraceLevel = shallow
         ; SSDBTraceLevel = deep
         ),
-        DisableSSDB = no
-    then
-        set.insert(mercury_ssdb_builtin_module, !UseDeps)
-    else
-        true
+        globals.lookup_bool_option(Globals, force_disable_ssdebug,
+            DisableSSDB),
+        (
+            DisableSSDB = yes
+        ;
+            DisableSSDB = no,
+            set.insert(mercury_ssdb_builtin_module, !UseDeps)
+        )
     ).
 
 :- type maybe_need_tabling

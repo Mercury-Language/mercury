@@ -2323,24 +2323,40 @@ cell_is_constant(VarStateMap, ExprnOpts, [CellArg | CellArgs],
 :- pred expr_is_constant(var_state_map::in, exprn_opts::in,
     rval::in, rval::out) is semidet.
 
-expr_is_constant(_, ExprnOpts, const(Const), const(Const)) :-
-    exprn_aux.const_is_constant(Const, ExprnOpts, yes).
-expr_is_constant(VarStateMap, ExprnOpts,
-        unop(Op, Expr0), unop(Op, Expr)) :-
-    expr_is_constant(VarStateMap, ExprnOpts, Expr0, Expr).
-expr_is_constant(VarStateMap, ExprnOpts,
-        binop(Op, Expr1, Expr2), binop(Op, Expr3, Expr4)) :-
-    expr_is_constant(VarStateMap, ExprnOpts, Expr1, Expr3),
-    expr_is_constant(VarStateMap, ExprnOpts, Expr2, Expr4).
-expr_is_constant(VarStateMap, ExprnOpts,
-        mkword(Tag, Expr0), mkword(Tag, Expr)) :-
-    expr_is_constant(VarStateMap, ExprnOpts, Expr0, Expr).
-expr_is_constant(_, _ExprnOpts, mkword_hole(Tag), mkword_hole(Tag)).
-expr_is_constant(VarStateMap, ExprnOpts, var(Var), Rval) :-
-    map.search(VarStateMap, Var, State),
-    State = var_state(_, yes(Rval), _, _, _),
-    expect(expr_is_constant(VarStateMap, ExprnOpts, Rval, _),
-        $module, $pred, "non-constant rval in variable state").
+expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval) :-
+    require_complete_switch [Rval0]
+    (
+        Rval0 = const(Const),
+        exprn_aux.const_is_constant(Const, ExprnOpts, yes),
+        Rval = Rval0
+    ;
+        Rval0 = unop(UnOp, SubRval0),
+        expr_is_constant(VarStateMap, ExprnOpts, SubRval0, SubRval),
+        Rval = unop(UnOp, SubRval)
+    ;
+        Rval0 = binop(BinOp, SubRvalA0, SubRvalB0),
+        expr_is_constant(VarStateMap, ExprnOpts, SubRvalA0, SubRvalA),
+        expr_is_constant(VarStateMap, ExprnOpts, SubRvalB0, SubRvalB),
+        Rval = binop(BinOp, SubRvalA, SubRvalB)
+    ;
+        Rval0 = mkword(Tag, SubRval0),
+        expr_is_constant(VarStateMap, ExprnOpts, SubRval0, SubRval),
+        Rval = mkword(Tag, SubRval)
+    ;
+        Rval0 = mkword_hole(_Tag),
+        Rval = Rval0
+    ;
+        Rval0 = var(Var),
+        map.search(VarStateMap, Var, State),
+        State = var_state(_, yes(Rval), _, _, _),
+        expect(expr_is_constant(VarStateMap, ExprnOpts, Rval, _),
+            $module, $pred, "non-constant rval in variable state")
+    ;
+        ( Rval0 = lval(_)
+        ; Rval0 = mem_addr(_)
+        ),
+        fail
+    ).
 
 %----------------------------------------------------------------------------%
 

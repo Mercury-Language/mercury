@@ -515,7 +515,16 @@ stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
     % before it aborts the program. Optimizing such calls as tail calls
     % allows the running program to give the user the program's *intended*
     % abort message, not a message about stack exhaustion.
-    ( CallKind = tail_call ; CallKind = no_return_call ),
+    (
+        ( CallKind = tail_call
+        ; CallKind = no_return_call
+        ),
+        CallKindIsReplaceable = yes
+    ;
+        CallKind = ordinary_call,
+        CallKindIsReplaceable = no
+    ),
+    CallKindIsReplaceable = yes,
 
     % In C++, `this' is a constant, so our usual technique of assigning
     % the arguments won't work if it is a member function. Thus we don't do
@@ -1065,6 +1074,13 @@ try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Statements) :-
     ;
         Initializer = no_initializer,
         find_initial_val_in_statements(QualVarName, Rval, !Statements)
+    ;
+        ( Initializer = init_array(_)
+        ; Initializer = init_struct(_, _)
+        ),
+        % Should we try to eliminate definitions with these kinds of
+        % initializers?
+        fail
     ),
 
     % It is only safe to do this transformation if the variable's value

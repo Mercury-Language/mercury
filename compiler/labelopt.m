@@ -105,9 +105,16 @@ opt_labels_in_instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod,
         ( if
             (
                 Label = entry_label(EntryType, _),
-                ( EntryType = entry_label_exported
-                ; EntryType = entry_label_local
-                )
+                (
+                    ( EntryType = entry_label_exported
+                    ; EntryType = entry_label_local
+                    ),
+                    NeedLabel = yes
+                ;
+                    EntryType = entry_label_c_local,
+                    NeedLabel = no
+                ),
+                NeedLabel = yes
             ;
                 set_tree234.member(Label, Useset)
             )

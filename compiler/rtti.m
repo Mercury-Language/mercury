@@ -1855,8 +1855,16 @@ maybe_res_functor_rtti_name(res_func(ResFunctor)) =
 
 res_addr_rep(ResFunctor) = ResFunctor ^ res_rep.
 
-res_addr_is_numeric(null_pointer).
-res_addr_is_numeric(small_pointer(_)).
+res_addr_is_numeric(ResAddr) :-
+    require_complete_switch [ResAddr]
+    (
+        ( ResAddr = null_pointer
+        ; ResAddr = small_pointer(_)
+        )
+    ;
+        ResAddr = reserved_object(_, _, _),
+        fail
+    ).
 
 rtti_id_would_include_code_addr(ctor_rtti_id(_, RttiName)) =
     ctor_rtti_name_would_include_code_addr(RttiName).

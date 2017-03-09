@@ -1686,21 +1686,34 @@ MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_%d, %d);
 :- pred rtti_type_ctor_template_arity(ctor_rtti_name::in, int::out) is semidet.
 
 rtti_type_ctor_template_arity(RttiName, NumArgTypes) :-
-    RttiName = type_ctor_type_info(TypeInfo),
     (
-        TypeInfo = plain_type_info(_, ArgTypes)
+        RttiName = type_ctor_type_info(TypeInfo),
+        require_complete_switch [TypeInfo]
+        (
+            ( TypeInfo = plain_type_info(_, ArgTypes)
+            ; TypeInfo = var_arity_type_info(_, ArgTypes)
+            ),
+            list.length(ArgTypes, NumArgTypes)
+        ;
+            TypeInfo = plain_arity_zero_type_info(_),
+            NumArgTypes = 0
+        )
     ;
-        TypeInfo = var_arity_type_info(_, ArgTypes)
-    ),
-    NumArgTypes = list.length(ArgTypes).
-rtti_type_ctor_template_arity(RttiName, NumArgTypes) :-
-    RttiName = type_ctor_pseudo_type_info(PseudoTypeInfo),
-    (
-        PseudoTypeInfo = plain_pseudo_type_info(_, ArgTypes)
-    ;
-        PseudoTypeInfo = var_arity_pseudo_type_info(_, ArgTypes)
-    ),
-    NumArgTypes = list.length(ArgTypes).
+        RttiName = type_ctor_pseudo_type_info(PseudoTypeInfo),
+        require_complete_switch [PseudoTypeInfo]
+        (
+            ( PseudoTypeInfo = plain_pseudo_type_info(_, ArgTypes)
+            ; PseudoTypeInfo = var_arity_pseudo_type_info(_, ArgTypes)
+            ),
+            list.length(ArgTypes, NumArgTypes)
+        ;
+            PseudoTypeInfo = plain_arity_zero_pseudo_type_info(_),
+            NumArgTypes = 0
+        ;
+            PseudoTypeInfo = type_var(_),
+            fail
+        )
+    ).
 
 :- func max_always_declared_arity_type_ctor = int.
 
@@ -1710,9 +1723,9 @@ max_always_declared_arity_type_ctor = 20.
     is semidet.
 
 rtti_type_class_constraint_template_arity(TCRttiName, Arity) :-
-    TCRttiName = type_class_decl_super(_, Arity).
-rtti_type_class_constraint_template_arity(TCRttiName, Arity) :-
-    TCRttiName = type_class_instance_constraint(_, _, Arity).
+    ( TCRttiName = type_class_decl_super(_, Arity)
+    ; TCRttiName = type_class_instance_constraint(_, _, Arity)
+    ).
 
 :- func max_always_declared_arity_type_class_constraint = int.
 

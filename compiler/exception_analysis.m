@@ -1045,11 +1045,60 @@ excp_analysis_name = "exception_analysis".
 :- pred exception_status_more_precise_than(exception_status::in,
     exception_status::in) is semidet.
 
-exception_status_more_precise_than(will_not_throw, throw_conditional).
-exception_status_more_precise_than(will_not_throw, may_throw(_)).
-exception_status_more_precise_than(throw_conditional, may_throw(_)).
-exception_status_more_precise_than(may_throw(type_exception),
-    may_throw(user_exception)).
+exception_status_more_precise_than(StatusA, StatusB) :-
+    require_complete_switch [StatusA]
+    (
+        StatusA = will_not_throw,
+        require_complete_switch [StatusB]
+        (
+            StatusB = will_not_throw,
+            AMorePreciseThanB = no
+        ;
+            ( StatusB = throw_conditional
+            ; StatusB = may_throw(_)
+            ),
+            AMorePreciseThanB = yes
+        ),
+        AMorePreciseThanB = yes
+    ;
+        StatusA = throw_conditional,
+        require_complete_switch [StatusB]
+        (
+            ( StatusB = will_not_throw
+            ; StatusB = throw_conditional
+            ),
+            AMorePreciseThanB = no
+        ;
+            StatusB = may_throw(_),
+            AMorePreciseThanB = yes
+        ),
+        AMorePreciseThanB = yes
+    ;
+        StatusA = may_throw(ExceptionTypeA),
+        require_complete_switch [StatusB]
+        (
+            ( StatusB = will_not_throw
+            ; StatusB = throw_conditional
+            ),
+            AMorePreciseThanB = no
+        ;
+            StatusB = may_throw(ExceptionTypeB),
+            (
+                ExceptionTypeA = type_exception,
+                (
+                    ExceptionTypeB = type_exception,
+                    AMorePreciseThanB = no
+                ;
+                    ExceptionTypeB = user_exception,
+                    AMorePreciseThanB = yes
+                )
+            ;
+                ExceptionTypeA = user_exception,
+                AMorePreciseThanB = no
+            )
+        ),
+        AMorePreciseThanB = yes
+    ).
 
 :- instance to_term(exception_analysis_answer) where [
     func(to_term/1) is excp_answer_to_term,
