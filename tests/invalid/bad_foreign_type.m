@@ -65,3 +65,25 @@
          bar
     is
          baaz.
+
+    % No corresponding `:- type' declaration present.
+    %
+:- pragma foreign_type("C", bar, "int").
+
+    % Second argument is a type variable.
+    %
+:- pragma foreign_type("C", T, "int").
+
+    % Empty foreign type descriptor (C, C# , Java).
+    % Non-empty foreign type descriptor (Erlang).
+    %
+:- type quux.
+:- pragma foreign_type("C", quux, "").
+:- pragma foreign_type("C#", quux, "").
+:- pragma foreign_type("Java", quux, "").
+:- pragma foreign_type("Erlang", quux, "abcde").
+
+    % Repeated foreign type assertion.
+    %
+:- pragma foreign_type("C", foo, "int",
+    [can_pass_as_mercury_type, can_pass_as_mercury_type]).

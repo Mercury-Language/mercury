@@ -17,10 +17,12 @@
 :- interface.
 
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
 
+:- import_module cord.
 :- import_module list.
 :- import_module maybe.
 :- import_module term.
@@ -38,13 +40,22 @@
     list(term)::in, prog_context::in, int::in, is_solver_type::in,
     maybe1(item_or_marker)::out) is det.
 
-    % parse_type_defn_head(ModuleName, VarSet, Head, HeadResult):
+    % Are we parsing the type defn head in a `:- type' declaration or in the
+    % the second argument of a foreign_type pragma?
+    %
+:- type type_defn_head_parse_context
+    --->    tdhpc_type_defn
+    ;       tdhpc_foreign_type_pragma(cord(format_component)).
+
+    % parse_type_defn_head(ParseContext, ModuleName, VarSet, Head,
+    %   HeadResult):
     %
     % Check the head of a type definition for errors.
     %
     % Exported to parse_pragma.m for use when parsing foreign type pragmas.
     %
-:- pred parse_type_defn_head(module_name::in, varset::in, term::in,
+:- pred parse_type_defn_head(type_defn_head_parse_context::in,
+    module_name::in, varset::in, term::in,
     maybe2(sym_name, list(type_param))::out) is det.
 
     % A cut-down version of parse_type_decl_where_part_if_present
@@ -62,7 +73,6 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_class.
 :- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_mutable.
@@ -76,7 +86,6 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bag.
-:- import_module cord.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -161,7 +170,8 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         SolverSpecs = []
     ),
 
-    parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeTypeCtorAndArgs),
+    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+        MaybeTypeCtorAndArgs),
     du_type_rhs_ctors_and_where_terms(BodyTerm, CtorsTerm, MaybeWhereTerm),
     parse_maybe_exist_quant_constructors(ModuleName, VarSet, CtorsTerm,
         MaybeOneOrMoreCtors),
@@ -622,7 +632,8 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             [simple_msg(get_term_context(HeadTerm), [always(SolverPieces)])]),
         SolverSpecs = [SolverSpec]
     ),
-    parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameAndParams),
+    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+        MaybeNameAndParams),
     % XXX Should pass more correct ContextPieces.
     ContextPieces = cord.init,
     parse_type(no_allow_ho_inst_info(wnhii_eqv_type_defn_body),
@@ -703,7 +714,8 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
 parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
         Context, SeqNum, MaybeIOM) :-
     varset.coerce(VarSet, TypeVarSet),
-    parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameParams),
+    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+        MaybeNameParams),
     ( if
         BodyTerm = term.functor(term.atom("type_is_abstract_enum"), Args, _)
     then
@@ -748,7 +760,8 @@ parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         MaybeSolverTypeDetails, MaybeUserEqComp, Context, SeqNum, MaybeIOM) :-
     varset.coerce(VarSet, TVarSet),
-    parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameParams),
+    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+        MaybeNameParams),
     (
         MaybeSolverTypeDetails = yes(_),
         SolverSpecs = []
@@ -795,7 +808,8 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
 
 parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
         IsSolverType, MaybeIOM) :-
-    parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeTypeCtorAndArgs),
+    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+        MaybeTypeCtorAndArgs),
     (
         MaybeTypeCtorAndArgs = error2(Specs),
         MaybeIOM = error1(Specs)
@@ -943,10 +957,22 @@ parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeUnifyCompare) :-
             MaybeWhereEnd = ok1(unit)
         ;
             !.MaybeTerm = yes(EndTerm),
-            Pieces = [words("Error: unrecognized or unexpected attribute."),
-                nl],
+            EndTermStr = describe_error_term(VarSet, EndTerm),
+            Pieces = [
+                words("In"), pragma_decl("foreign_type"),
+                words("declaration: error: unrecognized"),
+                quote("where"), words("attribute"), quote(EndTermStr), suffix(".")
+            ],
+            VerbosePieces = [
+                words("Recognized"), quote("where"),
+                words("attributes have the form"),
+                quote("equality is <<equality pred name>>"), words("and"),
+                quote("comparison is <<comparison pred name>>"), suffix(".")
+            ],
             EndSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(EndTerm), [always(Pieces)])]),
+                [simple_msg(get_term_context(EndTerm),
+                [always(Pieces),
+                 verbose_only(verbose_always, VerbosePieces)])]),
             MaybeWhereEnd = error1([EndSpec])
         )
     ),
@@ -1358,16 +1384,33 @@ maybe_unify_compare(MaybeEqPred, MaybeCmpPred) =
 % Predicates useful for parsing several kinds of type definitions.
 %
 
-parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeTypeCtorAndArgs) :-
+parse_type_defn_head(ParseContext, ModuleName, VarSet, HeadTerm,
+        MaybeTypeCtorAndArgs) :-
     (
-        HeadTerm = term.variable(_, Context),
-        Pieces = [words("Error: variable on LHS of type definition."), nl],
+        HeadTerm = term.variable(Var, Context),
+        (
+            ParseContext = tdhpc_type_defn,
+            Pieces = [words("Error: variable on LHS of type definition."), nl]
+        ;
+            ParseContext = tdhpc_foreign_type_pragma(ContextPieces),
+            VarName = varset.lookup_name(VarSet, Var),
+            Pieces = cord.list(ContextPieces) ++ [
+                words("error: expected a type name declared"),
+                words("using a"), decl("type"), words("declaration, got"),
+                words("type variable"), quote(VarName), suffix(".")
+            ]
+        ),
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         MaybeTypeCtorAndArgs = error2([Spec])
     ;
         HeadTerm = term.functor(_, _, HeadContext),
-        ContextPieces = cord.singleton(words("In type definition:")),
+        (
+            ParseContext = tdhpc_type_defn,
+            ContextPieces = cord.singleton(words("In type definition:"))
+        ;
+            ParseContext = tdhpc_foreign_type_pragma(ContextPieces)
+        ),
         parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
             VarSet, ContextPieces, HeadResult),
         (

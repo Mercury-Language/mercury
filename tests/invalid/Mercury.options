@@ -97,6 +97,7 @@ MCFLAGS-unresolved_overloading  = --no-intermodule-optimization
 #
 MCFLAGS-ambiguous_method        = --verbose-error-messages
 MCFLAGS-anys_in_negated_contexts = --verbose-error-messages
+MCFLAGS-bad_foreign_type        = --verbose-error-messages
 MCFLAGS-bigtest                 = --verbose-error-messages
 MCFLAGS-bind_in_negated         = --verbose-error-messages
 MCFLAGS-bug83                   = --verbose-error-messages

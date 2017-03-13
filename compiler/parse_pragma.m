@@ -387,34 +387,42 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeAssertionTerm = yes(AssertionTerm0)
         )
     then
-        ( if term_to_foreign_language(LangTerm, Language) then
-            parse_foreign_language_type(ForeignTypeTerm, VarSet, Language,
-                MaybeForeignType)
-        else
-            LangPieces = [words("Error: invalid foreign language in"),
-                pragma_decl("foreign_type"), words("declaration."), nl],
-            LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(LangTerm),
-                    [always(LangPieces)])]),
-            MaybeForeignType = error1([LangSpec])
-        ),
-        parse_type_defn_head(ModuleName, VarSet, MercuryTypeTerm,
-            MaybeTypeDefnHead),
+        parse_foreign_language("foreign_type", VarSet, LangTerm,
+            MaybeForeignLang),
+        TypeDefnHeadContextPieces = cord.from_list([
+            words("In second argument of"), pragma_decl("foreign_type"),
+            words("declaration:")
+        ]),
+        parse_type_defn_head(
+            tdhpc_foreign_type_pragma(TypeDefnHeadContextPieces),
+            ModuleName, VarSet, MercuryTypeTerm, MaybeTypeDefnHead),
+        ForeignTypeContextPieces = cord.from_list([
+            words("In third argument of"), pragma_decl("foreign_type"),
+            words("declaration:")
+        ]),
+        parse_foreign_language_type(ForeignTypeContextPieces, ForeignTypeTerm,
+            VarSet, MaybeForeignLang, MaybeForeignType),
         (
             MaybeAssertionTerm = no,
             AssertionsSet = set.init,
             AssertionSpecs = []
         ;
             MaybeAssertionTerm = yes(AssertionTerm),
-            parse_foreign_type_assertions(VarSet, AssertionTerm,
-                set.init, AssertionsSet, [], AssertionSpecs)
+            AssertionContextPieces = cord.from_list([
+                words("In fourth argument of"), pragma_decl("foreign_type"),
+                words("declaration:")
+            ]),
+            parse_foreign_type_assertions(AssertionContextPieces, VarSet,
+                AssertionTerm, set.init, AssertionsSet,
+                [], AssertionSpecs)
         ),
         Assertions = foreign_type_assertions(AssertionsSet),
         ( if
-            MaybeMaybeUC = ok1(MaybeUC),
-            MaybeForeignType = ok1(ForeignType),
+            MaybeForeignLang = ok1(_),
             MaybeTypeDefnHead = ok2(MercuryTypeSymName, MercuryParams),
-            AssertionSpecs = []
+            MaybeForeignType = ok1(ForeignType),
+            AssertionSpecs = [],
+            MaybeMaybeUC = ok1(MaybeUC)
         then
             varset.coerce(VarSet, TVarSet),
             ItemTypeDefn = item_type_defn_info(MercuryTypeSymName,
@@ -424,10 +432,11 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             Item = item_type_defn(ItemTypeDefn),
             MaybeIOM = ok1(iom_item(Item))
         else
-            Specs = get_any_errors1(MaybeMaybeUC) ++
-                get_any_errors1(MaybeForeignType) ++
+            Specs = get_any_errors1(MaybeForeignLang) ++
                 get_any_errors2(MaybeTypeDefnHead) ++
-                AssertionSpecs,
+                get_any_errors1(MaybeForeignType) ++
+                AssertionSpecs ++
+                get_any_errors1(MaybeMaybeUC),
             MaybeIOM = error1(Specs)
         )
     else
@@ -438,11 +447,13 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_foreign_type_assertions(varset::in, term::in,
+:- pred parse_foreign_type_assertions(cord(format_component)::in,
+    varset::in, term::in,
     set(foreign_type_assertion)::in, set(foreign_type_assertion)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_foreign_type_assertions(VarSet, Term, !Assertions, !Specs) :-
+parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
+        !Specs) :-
     ( if Term = term.functor(term.atom("[]"), [], _) then
         true
     else if Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) then
@@ -454,10 +465,12 @@ parse_foreign_type_assertions(VarSet, Term, !Assertions, !Specs) :-
             then
                 true
             else
-                TermStr = mercury_term_to_string(VarSet, print_name_only,
-                    Term),
-                Pieces = [words("Error: foreign type assertion"),
-                    quote(TermStr), words("is repeated."), nl],
+                HeadTermStr = mercury_term_to_string(VarSet, print_name_only,
+                    HeadTerm),
+                Pieces = cord.list(ContextPieces) ++ [
+                    words("error:"), words("foreign type assertion"),
+                    quote(HeadTermStr), words("is repeated.")
+                ],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(HeadTerm),
                         [always(Pieces)])]),
@@ -465,18 +478,22 @@ parse_foreign_type_assertions(VarSet, Term, !Assertions, !Specs) :-
             )
         else
             TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
-            Pieces = [words("Error: expected an assertion for a foreign type"),
-                words("got"), quote(TermStr), suffix("."), nl],
+            Pieces = cord.list(ContextPieces) ++ [
+                words("error: expected a foreign type assertion,"),
+                words("got"), quote(TermStr), suffix(".")
+            ],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
             !:Specs = [Spec | !.Specs]
         ),
-        parse_foreign_type_assertions(VarSet, TailTerm, !Assertions, !Specs)
+        parse_foreign_type_assertions(ContextPieces, VarSet, TailTerm,
+            !Assertions, !Specs)
     else
         TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
-        Pieces = [words("Error: expected a list of"),
-            words("assertions for a foreign type, got"),
-            quote(TermStr), suffix("."), nl],
+        Pieces = cord.list(ContextPieces) ++ [
+            words("error: expected a list of foreign type assertions, got"),
+            quote(TermStr), suffix(".")
+        ],
         Spec = error_spec(severity_error,
             phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
@@ -683,7 +700,7 @@ process_export_enum_attribute(ee_attr_upper(MakeUpperCase), !Attributes) :-
 parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
     ( if
         Term = functor(atom("prefix"), Args, _),
-        Args = [ ForeignNameTerm ],
+        Args = [ForeignNameTerm],
         ForeignNameTerm = functor(string(Prefix), [], _)
     then
         MaybeAttribute = ok1(ee_attr_prefix(yes(Prefix)))
@@ -1922,60 +1939,71 @@ term_to_foreign_language(term.functor(term.string(String), _, _), Lang) :-
 term_to_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
     globals.convert_foreign_language(String, Lang).
 
-:- pred parse_foreign_language_type(term::in, varset::in, foreign_language::in,
+:- pred parse_foreign_language_type(cord(format_component)::in, term::in,
+    varset::in, maybe1(foreign_language)::in,
     maybe1(foreign_language_type)::out) is det.
 
-parse_foreign_language_type(InputTerm, VarSet, Language,
+parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
         MaybeForeignLangType) :-
-    (
-        Language = lang_c,
-        ( if InputTerm = term.functor(term.string(CTypeName), [], _) then
-            MaybeForeignLangType = ok1(c(c_type(CTypeName)))
-        else
-            InputTermStr = describe_error_term(VarSet, InputTerm),
-            Pieces = [words("Error: invalid backend specification"),
-                quote(InputTermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-            MaybeForeignLangType = error1([Spec])
+    ( if InputTerm = term.functor(term.string(ForeignTypeName), [], _) then
+        (
+            MaybeLanguage = ok1(Language),
+            (
+                (
+                    Language = lang_c,
+                    ForeignLangType = c(c_type(ForeignTypeName))
+                ;
+                    Language = lang_java,
+                    ForeignLangType = java(java_type(ForeignTypeName))
+                ;
+                    Language = lang_csharp,
+                    ForeignLangType = csharp(csharp_type(ForeignTypeName))
+                ),
+                ( if ForeignTypeName = "" then
+                    Pieces = cord.list(ContextPieces) ++ [
+                        words("error: foreign type descriptor for language"),
+                        quote(foreign_language_string(Language)),
+                        words("must be a non-empty string.")
+                    ],
+                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                        [simple_msg(get_term_context(InputTerm),
+                        [always(Pieces)])]),
+                    MaybeForeignLangType = error1([Spec])
+                else
+                    MaybeForeignLangType = ok1(ForeignLangType)
+                )
+            ;
+                Language = lang_erlang,
+                ( if ForeignTypeName = "" then
+                    MaybeForeignLangType = ok1(erlang(erlang_type))
+                else
+                    Pieces = cord.list(ContextPieces) ++ [
+                        words("error: foreign type descriptor for language"),
+                        quote(foreign_language_string(Language)),
+                        words("must be an empty string.")
+                    ],
+                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                        [simple_msg(get_term_context(InputTerm),
+                        [always(Pieces)])]),
+                    MaybeForeignLangType = error1([Spec])
+                )
+            )
+        ;
+            % NOTE: if we get here then MaybeFooreignLang will be an error and
+            % will give the user the required error message.
+            MaybeLanguage = error1(_),
+            MaybeForeignLangType = error1([])   % Dummy value.
         )
-    ;
-        Language = lang_java,
-        ( if InputTerm = term.functor(term.string(JavaTypeName), [], _) then
-            MaybeForeignLangType = ok1(java(java_type(JavaTypeName)))
-        else
-            InputTermStr = describe_error_term(VarSet, InputTerm),
-            Pieces = [words("Error: invalid backend specification"),
-                quote(InputTermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-            MaybeForeignLangType = error1([Spec])
-        )
-    ;
-        Language = lang_csharp,
-        ( if InputTerm = term.functor(term.string(CSharpTypeName), [], _) then
-            MaybeForeignLangType = ok1(csharp(csharp_type(CSharpTypeName)))
-        else
-            InputTermStr = describe_error_term(VarSet, InputTerm),
-            Pieces = [words("Error: invalid backend specification"),
-                quote(InputTermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-            MaybeForeignLangType = error1([Spec])
-        )
-    ;
-        Language = lang_erlang,
-        ( if InputTerm = term.functor(term.string(_ErlangTypeName), [], _) then
-            % XXX should we check if the type is blank?
-            MaybeForeignLangType = ok1(erlang(erlang_type))
-        else
-            InputTermStr = describe_error_term(VarSet, InputTerm),
-            Pieces = [words("Error: invalid backend specification"),
-                quote(InputTermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-            MaybeForeignLangType = error1([Spec])
-        )
+    else
+        InputTermStr = describe_error_term(VarSet, InputTerm),
+        Pieces = cord.list(ContextPieces) ++ [
+            words("error: expected a string specifying the"),
+            words("foreign type descriptor, got"), quote(InputTermStr),
+            suffix(".")
+        ],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
+        MaybeForeignLangType = error1([Spec])
     ).
 
     % This predicate parses foreign_decl pragmas.

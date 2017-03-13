@@ -1,25 +1,61 @@
-bad_foreign_type.m:011: Error: abstract declaration for type
-bad_foreign_type.m:011:   `bad_foreign_type.foo'/0 has no corresponding
-bad_foreign_type.m:011:   definition.
 bad_foreign_type.m:017: Error: wrong number of arguments in
 bad_foreign_type.m:017:   `:- pragma foreign_type' declaration.
 bad_foreign_type.m:021: Error: wrong number of arguments in
 bad_foreign_type.m:021:   `:- pragma foreign_type' declaration.
-bad_foreign_type.m:025: Error: invalid foreign language in
+bad_foreign_type.m:025: Error: invalid foreign language `"InvalidLanguage"' in
 bad_foreign_type.m:025:   `:- pragma foreign_type' declaration.
-bad_foreign_type.m:029: In type definition: error: atom expected at 1111.
-bad_foreign_type.m:033: Error: invalid backend specification `2222'.
-bad_foreign_type.m:037: Error: expected a list of assertions for a foreign
-bad_foreign_type.m:037:   type, got `5555'.
-bad_foreign_type.m:041: Error: expected an assertion for a foreign type got
-bad_foreign_type.m:041:   `[not_an_assertion]'.
-bad_foreign_type.m:045: Error: expected an assertion for a foreign type got
-bad_foreign_type.m:045:   `["I\'m a string"]'.
-bad_foreign_type.m:045: Error: expected an assertion for a foreign type got
-bad_foreign_type.m:045:   `[3333, "I\'m a string"]'.
+bad_foreign_type.m:029: In second argument of `:- pragma foreign_type'
+bad_foreign_type.m:029:   declaration: error: atom expected at 1111.
+bad_foreign_type.m:033: In third argument of `:- pragma foreign_type'
+bad_foreign_type.m:033:   declaration: error: expected a string specifying the
+bad_foreign_type.m:033:   foreign type descriptor, got `2222'.
+bad_foreign_type.m:037: In fourth argument of `:- pragma foreign_type'
+bad_foreign_type.m:037:   declaration: error: expected a list of foreign type
+bad_foreign_type.m:037:   assertions, got `5555'.
+bad_foreign_type.m:041: In fourth argument of `:- pragma foreign_type'
+bad_foreign_type.m:041:   declaration: error: expected a foreign type
+bad_foreign_type.m:041:   assertion, got `[not_an_assertion]'.
+bad_foreign_type.m:045: In fourth argument of `:- pragma foreign_type'
+bad_foreign_type.m:045:   declaration: error: expected a foreign type
+bad_foreign_type.m:045:   assertion, got `["I\'m a string"]'.
+bad_foreign_type.m:045: In fourth argument of `:- pragma foreign_type'
+bad_foreign_type.m:045:   declaration: error: expected a foreign type
+bad_foreign_type.m:045:   assertion, got `[3333, "I\'m a string"]'.
 bad_foreign_type.m:050: Error: expected `is'.
-bad_foreign_type.m:055: Error: unrecognized or unexpected attribute.
-bad_foreign_type.m:060: Error: invalid foreign language in
+bad_foreign_type.m:055: In `:- pragma foreign_type' declaration: error:
+bad_foreign_type.m:055:   unrecognized `where' attribute `(foo is bar)'.
+bad_foreign_type.m:055:   Recognized `where' attributes have the form
+bad_foreign_type.m:055:   `equality is <<equality pred name>>' and
+bad_foreign_type.m:055:   `comparison is <<comparison pred name>>'.
+bad_foreign_type.m:060: Error: invalid foreign language `"InvalidLanguage"' in
 bad_foreign_type.m:060:   `:- pragma foreign_type' declaration.
-bad_foreign_type.m:061: In type definition: error: atom expected at 9999.
-bad_foreign_type.m:066: Error: unrecognized or unexpected attribute.
+bad_foreign_type.m:061: In second argument of `:- pragma foreign_type'
+bad_foreign_type.m:061:   declaration: error: atom expected at 9999.
+bad_foreign_type.m:062: In third argument of `:- pragma foreign_type'
+bad_foreign_type.m:062:   declaration: error: expected a string specifying the
+bad_foreign_type.m:062:   foreign type descriptor, got `[not_an_assertion]'.
+bad_foreign_type.m:066: In `:- pragma foreign_type' declaration: error:
+bad_foreign_type.m:066:   unrecognized `where' attribute `(bar is baaz)'.
+bad_foreign_type.m:066:   Recognized `where' attributes have the form
+bad_foreign_type.m:066:   `equality is <<equality pred name>>' and
+bad_foreign_type.m:066:   `comparison is <<comparison pred name>>'.
+bad_foreign_type.m:071: Error: type `bad_foreign_type.bar'/0 defined as
+bad_foreign_type.m:071:   foreign_type without being declared.
+bad_foreign_type.m:075: In second argument of `:- pragma foreign_type'
+bad_foreign_type.m:075:   declaration: error: expected a type name declared
+bad_foreign_type.m:075:   using a `:- type' declaration, got type variable `T'.
+bad_foreign_type.m:081: In third argument of `:- pragma foreign_type'
+bad_foreign_type.m:081:   declaration: error: foreign type descriptor for
+bad_foreign_type.m:081:   language `C' must be a non-empty string.
+bad_foreign_type.m:082: In third argument of `:- pragma foreign_type'
+bad_foreign_type.m:082:   declaration: error: foreign type descriptor for
+bad_foreign_type.m:082:   language `C#' must be a non-empty string.
+bad_foreign_type.m:083: In third argument of `:- pragma foreign_type'
+bad_foreign_type.m:083:   declaration: error: foreign type descriptor for
+bad_foreign_type.m:083:   language `Java' must be a non-empty string.
+bad_foreign_type.m:084: In third argument of `:- pragma foreign_type'
+bad_foreign_type.m:084:   declaration: error: foreign type descriptor for
+bad_foreign_type.m:084:   language `Erlang' must be an empty string.
+bad_foreign_type.m:089: In fourth argument of `:- pragma foreign_type'
+bad_foreign_type.m:089:   declaration: error: foreign type assertion
+bad_foreign_type.m:089:   `can_pass_as_mercury_type' is repeated.
