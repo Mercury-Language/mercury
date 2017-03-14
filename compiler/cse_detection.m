@@ -258,10 +258,11 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
 
 :- type cse_info
     --->    cse_info(
+                csei_module_info    :: module_info,
                 csei_varset         :: prog_varset,
                 csei_vartypes       :: vartypes,
                 csei_rtti_varmaps   :: rtti_varmaps,
-                csei_module_info    :: module_info
+                csei_redo           :: bool
             ).
 
 :- pred detect_cse_in_proc_pass(module_info::in, bool::out,
@@ -277,23 +278,21 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
     proc_info_get_varset(!.ProcInfo, Varset0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
-    CseInfo0 = cse_info(Varset0, VarTypes0, RttiVarMaps0, ModuleInfo),
-    detect_cse_in_goal(Goal0, Goal1, CseInfo0, CseInfo, InstMap0, Redo),
-
+    Redo0 = no,
+    CseInfo0 = cse_info(ModuleInfo, Varset0, VarTypes0, RttiVarMaps0, Redo0),
+    detect_cse_in_goal(Goal0, Goal1, CseInfo0, CseInfo, InstMap0),
+    CseInfo = cse_info(_, _, _, _, Redo),
     (
         Redo = no
     ;
         Redo = yes,
-
         % ModuleInfo should not be changed by detect_cse_in_goal.
-        CseInfo = cse_info(VarSet1, VarTypes1, RttiVarMaps1, _),
-        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        CseInfo = cse_info(_ModuleInfo, VarSet1, VarTypes1, RttiVarMaps1, _),
 
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
         implicitly_quantify_clause_body_general(
-            ordinary_nonlocals_maybe_lambda,
-            HeadVars, _Warnings,
-            Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes,
-            RttiVarMaps1, RttiVarMaps),
+            ordinary_nonlocals_maybe_lambda, HeadVars, _Warnings, Goal1, Goal,
+            VarSet1, VarSet, VarTypes1, VarTypes, RttiVarMaps1, RttiVarMaps),
 
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(VarSet, !ProcInfo),
@@ -309,43 +308,27 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
     % we only look for cses that are deconstruction unifications.
     %
 :- pred detect_cse_in_goal(hlds_goal::in, hlds_goal::out,
-    cse_info::in, cse_info::out, instmap::in, bool::out) is det.
+    cse_info::in, cse_info::out, instmap::in) is det.
 
-detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0, Redo) :-
+detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0) :-
     detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo,
-        InstMap0, _InstMap, Redo).
+        InstMap0, _InstMap).
 
     % This version is the same as the above except that it returns
     % the resulting instmap on exit from the goal, which is computed by
     % applying the instmap delta specified in the goal's goalinfo.
     %
 :- pred detect_cse_in_goal_update_instmap(hlds_goal::in, hlds_goal::out,
-    cse_info::in, cse_info::out, instmap::in, instmap::out, bool::out) is det.
+    cse_info::in, cse_info::out, instmap::in, instmap::out) is det.
 
-detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, InstMap0, InstMap,
-        Redo) :-
+detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, InstMap0, InstMap) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo,
-        InstMap0, Redo),
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
-
-    % Here we process each of the different sorts of goals.
-    %
-:- pred detect_cse_in_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
-    cse_info::in, cse_info::out, hlds_goal_info::in,
-    instmap::in, bool::out) is det.
-
-detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
-        Redo) :-
     (
         ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ),
-        GoalExpr = GoalExpr0,
-        Redo = no
+        GoalExpr = GoalExpr0
     ;
         GoalExpr0 = unify(LHS, RHS0, Mode, Unify,  UnifyContext),
         (
@@ -354,111 +337,141 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
             ModuleInfo = !.CseInfo ^ csei_module_info,
             instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
                 InstMap0, InstMap1),
-            detect_cse_in_goal(LambdaGoal0, LambdaGoal, !CseInfo,
-                InstMap1, Redo),
+            detect_cse_in_goal(LambdaGoal0, LambdaGoal, !CseInfo, InstMap1),
             RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
                 NonLocalVars, Vars, Modes, Det, LambdaGoal)
         ;
             ( RHS0 = rhs_var(_)
             ; RHS0 = rhs_functor(_, _, _)
             ),
-            RHS = RHS0,
-            Redo = no
+            RHS = RHS0
         ),
         GoalExpr = unify(LHS, RHS, Mode,Unify, UnifyContext)
     ;
         GoalExpr0 = negation(SubGoal0),
-        detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
+        detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
-        ( if
-            Reason0 = from_ground_term(_, from_ground_term_construct)
-        then
-            % There are no deconstructions at all inside these scopes.
-            GoalExpr = GoalExpr0,
-            Redo = no
-        else if
+        (
+            Reason0 = from_ground_term(_, FGTReason),
+            (
+                FGTReason = from_ground_term_construct,
+                % There are no deconstructions at all inside these scopes.
+                GoalExpr = GoalExpr0
+            ;
+                FGTReason = from_ground_term_deconstruct,
+                % We want to know whether the redo flag is set during the
+                % processing of SubGoal0.
+                OldRedo = !.CseInfo ^ csei_redo,
+                !CseInfo ^ csei_redo := no,
+                detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
+                SubGoalRedo = !.CseInfo ^ csei_redo,
+                !CseInfo ^ csei_redo := bool.or(OldRedo, SubGoalRedo),
+                (
+                    SubGoalRedo = no,
+                    GoalExpr = scope(Reason0, SubGoal)
+                ;
+                    SubGoalRedo = yes,
+                    % If we remove a goal from such a scope, what is left
+                    % may no longer satisfy the invariants we expect it
+                    % to satisfy.
+                    SubGoal = hlds_goal(GoalExpr, _)
+                )
+            ;
+                FGTReason = from_ground_term_other,
+                detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
+                GoalExpr = scope(Reason0, SubGoal)
+            ;
+                FGTReason = from_ground_term_initial,
+                % Mode analysis should have replaced this kind of fgt scope
+                % with one of the other kinds.
+                unexpected($pred, "from_ground_term_initial")
+            )
+        ;
             Reason0 = require_switch_arms_detism(_, _),
             SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo0),
-            SubGoalExpr0 = switch(SwitchVar, CanFail, Cases0)
-        then
-            % If we find some common subexpressions in Cases0 and pull them
-            % out of the switch, then the updated subgoal of the scope
-            % will be a *conjunction* of the pulled-out subexpressions
-            % and the modified switch. Simply checking that each arm of the
-            % modified switch has the required determinism is not enough,
-            % because it is possible for the determinism of an arm to differ
-            % between the original and the modified switch. For example,
-            % an original arm could consist of a semidet unification and
-            % some det code; pulling the semidet unification out of the arm
-            % would transform a switch arm from one for which we want to
-            % generate an error and do, to one for which we want to generate
-            % an error but don't.
-            %
-            % We could in theory fix this by modifying the code that checks
-            % require_switch_arms_detism scopes to take into account
-            % the possibility that we modified the switch, but it is simpler
-            % not to modify such the arms of such switches at all.
-            % Since require_switch_arms_detism scopes are rare, the impact
-            % should be negligible in terms of both code size and speed.
-            detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0, Redo),
-            SubGoalExpr = switch(SwitchVar, CanFail, Cases),
-            SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo0),
-            GoalExpr = scope(Reason0, SubGoal)
-        else
-            detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
-            ( if
-                Redo = yes,
-                Reason0 = from_ground_term(_, from_ground_term_deconstruct)
-            then
-                % If we remove a goal from such a scope, what is left
-                % may no longer satisfy the invariants we expect it to satisfy.
-                SubGoal = hlds_goal(GoalExpr, _)
+            ( if SubGoalExpr0 = switch(SwitchVar, CanFail, Cases0) then
+                % If we find some common subexpressions in Cases0 and
+                % pull them out of the switch, then the updated subgoal
+                % of the scope will be a *conjunction* of the pulled-out
+                % subexpressions and the modified switch. Simply checking that
+                % each arm of the modified switch has the required determinism
+                % is not enough, because it is possible for the determinism
+                % of an arm to differ between the original and the modified
+                % switch. For example, an original arm could consist of a
+                % semidet unification and some det code; pulling the semidet
+                % unification out of the arm would transform a switch arm
+                % from one for which we want to generate an error and do,
+                % to one for which we want to generate an error but don't.
+                %
+                % We could in theory fix this by modifying the code that
+                % checks require_switch_arms_detism scopes to take into account
+                % the possibility that we modified the switch, but it is
+                % simpler not to modify such the arms of such switches at all.
+                % Since require_switch_arms_detism scopes are rare, the impact
+                % should be negligible in terms of both code size and speed.
+                detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0),
+                SubGoalExpr = switch(SwitchVar, CanFail, Cases),
+                SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo0),
+                GoalExpr = scope(Reason0, SubGoal)
             else
+                detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
                 GoalExpr = scope(Reason0, SubGoal)
             )
+        ;
+            ( Reason0 = exist_quant(_)
+            ; Reason0 = disable_warnings(_, _)
+            ; Reason0 = barrier(_)
+            ; Reason0 = commit(_)
+            ; Reason0 = loop_control(_, _, _)
+            ; Reason0 = promise_purity(_)
+            ; Reason0 = promise_solutions(_, _)
+            ; Reason0 = require_complete_switch(_)
+            ; Reason0 = require_detism(_)
+            ; Reason0 = trace_goal(_, _, _, _, _)
+            ),
+            detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
+            GoalExpr = scope(Reason0, SubGoal)
         )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        detect_cse_in_conj(Goals0, Goals, !CseInfo, ConjType, InstMap0, Redo),
+        detect_cse_in_conj(Goals0, Goals, !CseInfo, ConjType, InstMap0),
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
         (
             Goals0 = [],
-            Redo = no,
             GoalExpr = disj([])
         ;
             Goals0 = [_ | _],
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             NonLocalsList = set_of_var.to_sorted_list(NonLocals),
             detect_cse_in_disj(NonLocalsList, Goals0, GoalInfo,
-                InstMap0, !CseInfo, Redo, GoalExpr)
+                InstMap0, !CseInfo, GoalExpr)
         )
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         NonLocalsList = set_of_var.to_sorted_list(NonLocals),
         detect_cse_in_cases(NonLocalsList, Var, CanFail, Cases0, GoalInfo,
-            InstMap0, !CseInfo, Redo, GoalExpr)
+            InstMap0, !CseInfo, GoalExpr)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         NonLocalsList = set_of_var.to_sorted_list(NonLocals),
         detect_cse_in_ite(NonLocalsList, Vars, Cond0, Then0, Else0, GoalInfo,
-            InstMap0, !CseInfo, Redo, GoalExpr)
+            InstMap0, !CseInfo, GoalExpr)
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(AtomicGoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
-            detect_cse_in_goal(MainGoal0, MainGoal, !CseInfo, InstMap0, Redo1),
+            detect_cse_in_goal(MainGoal0, MainGoal, !CseInfo, InstMap0),
             detect_cse_in_independent_goals(OrElseGoals0, OrElseGoals,
-                !CseInfo, InstMap0, Redo2),
+                !CseInfo, InstMap0),
             ShortHand = atomic_goal(AtomicGoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
-            bool.or(Redo1, Redo2, Redo)
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
@@ -467,23 +480,24 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
             % XXX not sure about this as SubGoal0 is not in its final form.
             % Also, mightn't the try "Goal" part get hoisted out?
-            detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
+            detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ),
         GoalExpr = shorthand(ShortHand)
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
 %---------------------------------------------------------------------------%
 
 :- pred detect_cse_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    cse_info::in, cse_info::out, conj_type::in, instmap::in, bool::out) is det.
+    cse_info::in, cse_info::out, conj_type::in, instmap::in) is det.
 
-detect_cse_in_conj([], [], !CseInfo, _ConjType, _InstMap, no).
-detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap,
-        Redo) :-
-    detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, !InstMap, Redo1),
-    detect_cse_in_conj(Goals0, TailGoals, !CseInfo, ConjType, !.InstMap,
-        Redo2),
+detect_cse_in_conj([], [], !CseInfo, _ConjType, _InstMap).
+detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap) :-
+    detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, !InstMap),
+    detect_cse_in_conj(Goals0, TailGoals, !CseInfo, ConjType, !.InstMap),
     % Flatten any non-flat conjunctions we create.
     ( if
         Goal = hlds_goal(conj(InnerConjType, ConjGoals), _),
@@ -492,8 +506,7 @@ detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap,
         Goals = ConjGoals ++ TailGoals
     else
         Goals = [Goal | TailGoals]
-    ),
-    bool.or(Redo1, Redo2, Redo).
+    ).
 
 %---------------------------------------------------------------------------%
 %
@@ -504,128 +517,125 @@ detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap,
 %
 
 :- pred detect_cse_in_disj(list(prog_var)::in, list(hlds_goal)::in,
-    hlds_goal_info::in, instmap::in, cse_info::in,
-    cse_info::out, bool::out, hlds_goal_expr::out) is det.
+    hlds_goal_info::in, instmap::in, cse_info::in, cse_info::out,
+    hlds_goal_expr::out) is det.
 
-detect_cse_in_disj([], Goals0, _, InstMap, !CseInfo, Redo, disj(Goals)) :-
-    detect_cse_in_independent_goals(Goals0, Goals, !CseInfo, InstMap, Redo).
+detect_cse_in_disj([], Goals0, _GoalInfo0, InstMap0, !CseInfo, GoalExpr) :-
+    detect_cse_in_independent_goals(Goals0, Goals, !CseInfo, InstMap0),
+    GoalExpr = disj(Goals).
 detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
-        !CseInfo, Redo, GoalExpr) :-
-    ModuleInfo = !.CseInfo ^ csei_module_info,
+        !CseInfo, GoalExpr) :-
     instmap_lookup_var(InstMap0, Var, VarInst0),
     ( if
+        ModuleInfo = !.CseInfo ^ csei_module_info,
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
         inst_is_ground_or_any(ModuleInfo, VarInst0),
-        common_deconstruct(Goals0, Var, !CseInfo, Unify,
+        common_deconstruct(Goals0, Var, !CseInfo, UnifyGoal,
             FirstOldNew, LaterOldNew, Goals)
     then
-        maybe_update_existential_data_structures(Unify,
+        maybe_update_existential_data_structures(UnifyGoal,
             FirstOldNew, LaterOldNew, !CseInfo),
         GoalExpr = conj(plain_conj,
-            [Unify, hlds_goal(disj(Goals), GoalInfo0)]),
-        Redo = yes
+            [UnifyGoal, hlds_goal(disj(Goals), GoalInfo0)]),
+        !CseInfo ^ csei_redo := yes
     else
         detect_cse_in_disj(Vars, Goals0, GoalInfo0, InstMap0,
-            !CseInfo, Redo, GoalExpr)
+            !CseInfo, GoalExpr)
     ).
 
 :- pred detect_cse_in_independent_goals(
     list(hlds_goal)::in, list(hlds_goal)::out,
-    cse_info::in, cse_info::out, instmap::in, bool::out) is det.
+    cse_info::in, cse_info::out, instmap::in) is det.
 
-detect_cse_in_independent_goals([], [], !CseInfo, _, no).
+detect_cse_in_independent_goals([], [], !CseInfo, _).
 detect_cse_in_independent_goals([Goal0 | Goals0], [Goal | Goals], !CseInfo,
-        InstMap0, Redo) :-
-    detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0, Redo1),
-    detect_cse_in_independent_goals(Goals0, Goals, !CseInfo, InstMap0, Redo2),
-    bool.or(Redo1, Redo2, Redo).
+        InstMap0) :-
+    detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0),
+    detect_cse_in_independent_goals(Goals0, Goals, !CseInfo, InstMap0).
 
 :- pred detect_cse_in_cases(list(prog_var)::in, prog_var::in, can_fail::in,
     list(case)::in, hlds_goal_info::in, instmap::in,
-    cse_info::in, cse_info::out, bool::out, hlds_goal_expr::out) is det.
+    cse_info::in, cse_info::out, hlds_goal_expr::out) is det.
 
 detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo,
-        InstMap0, !CseInfo, Redo, GoalExpr) :-
-    detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0, Redo),
+        InstMap0, !CseInfo, GoalExpr) :-
+    detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0),
     GoalExpr = switch(SwitchVar, CanFail, Cases).
 detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
-        InstMap0, !CseInfo, Redo, GoalExpr) :-
+        InstMap0, !CseInfo, GoalExpr) :-
     ( if
         Var \= SwitchVar,
-        ModuleInfo = !.CseInfo ^ csei_module_info,
         instmap_lookup_var(InstMap0, Var, VarInst0),
+        ModuleInfo = !.CseInfo ^ csei_module_info,
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
         inst_is_ground_or_any(ModuleInfo, VarInst0),
         common_deconstruct_cases(Cases0, Var, !CseInfo,
-            Unify, FirstOldNew, LaterOldNew, Cases)
+            UnifyGoal, FirstOldNew, LaterOldNew, Cases)
     then
-        maybe_update_existential_data_structures(Unify,
+        maybe_update_existential_data_structures(UnifyGoal,
             FirstOldNew, LaterOldNew, !CseInfo),
-        GoalExpr = conj(plain_conj,
-            [Unify, hlds_goal(switch(SwitchVar, CanFail, Cases), GoalInfo)]),
-        Redo = yes
+        SwitchGoal = hlds_goal(switch(SwitchVar, CanFail, Cases), GoalInfo),
+        GoalExpr = conj(plain_conj, [UnifyGoal, SwitchGoal]),
+        !CseInfo ^ csei_redo := yes
     else
         detect_cse_in_cases(Vars, SwitchVar, CanFail, Cases0, GoalInfo,
-            InstMap0, !CseInfo, Redo, GoalExpr)
+            InstMap0, !CseInfo, GoalExpr)
     ).
 
 :- pred detect_cse_in_cases_arms(list(case)::in, list(case)::out,
-    cse_info::in, cse_info::out, instmap::in, bool::out) is det.
+    cse_info::in, cse_info::out, instmap::in) is det.
 
-detect_cse_in_cases_arms([], [], !CseInfo, _, no).
-detect_cse_in_cases_arms([Case0 | Cases0], [Case | Cases], !CseInfo, InstMap0,
-        Redo) :-
+detect_cse_in_cases_arms([], [], !CseInfo, _).
+detect_cse_in_cases_arms([Case0 | Cases0], [Case | Cases], !CseInfo,
+        InstMap0) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0, Redo1),
+    detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0),
     Case = case(MainConsId, OtherConsIds, Goal),
-    detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0, Redo2),
-    bool.or(Redo1, Redo2, Redo).
+    detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0).
 
 :- pred detect_cse_in_ite(list(prog_var)::in, list(prog_var)::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_info::in,
-    instmap::in, cse_info::in, cse_info::out, bool::out,
-    hlds_goal_expr::out) is det.
+    instmap::in, cse_info::in, cse_info::out, hlds_goal_expr::out) is det.
 
 detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, InstMap, !CseInfo,
-        Redo, if_then_else(IfVars, Cond, Then, Else)) :-
+        GoalExpr) :-
     detect_cse_in_ite_arms(Cond0, Cond, Then0, Then, Else0, Else, !CseInfo,
-        InstMap, Redo).
+        InstMap),
+    GoalExpr = if_then_else(IfVars, Cond, Then, Else).
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
-        InstMap, !CseInfo, Redo, GoalExpr) :-
-    ModuleInfo = !.CseInfo ^ csei_module_info,
+        InstMap, !CseInfo, GoalExpr) :-
     instmap_lookup_var(InstMap, Var, VarInst0),
     ( if
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
+        ModuleInfo = !.CseInfo ^ csei_module_info,
         inst_is_ground_or_any(ModuleInfo, VarInst0),
         common_deconstruct([Then0, Else0], Var, !CseInfo,
-            Unify, FirstOldNew, LaterOldNew, Goals),
+            UnifyGoal, FirstOldNew, LaterOldNew, Goals),
         Goals = [Then, Else]
     then
-        maybe_update_existential_data_structures(Unify,
+        maybe_update_existential_data_structures(UnifyGoal,
             FirstOldNew, LaterOldNew, !CseInfo),
         IfGoal = hlds_goal(if_then_else(IfVars, Cond0, Then, Else), GoalInfo),
-        GoalExpr = conj(plain_conj, [Unify, IfGoal]),
-        Redo = yes
+        GoalExpr = conj(plain_conj, [UnifyGoal, IfGoal]),
+        !CseInfo ^ csei_redo := yes
     else
         detect_cse_in_ite(Vars, IfVars, Cond0, Then0, Else0, GoalInfo,
-            InstMap, !CseInfo, Redo, GoalExpr)
+            InstMap, !CseInfo, GoalExpr)
     ).
 
 :- pred detect_cse_in_ite_arms(hlds_goal::in, hlds_goal::out,
     hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
-    cse_info::in, cse_info::out, instmap::in, bool::out) is det.
+    cse_info::in, cse_info::out, instmap::in) is det.
 
 detect_cse_in_ite_arms(Cond0, Cond, Then0, Then, Else0, Else, !CseInfo,
-        InstMap0, Redo) :-
+        InstMap0) :-
     detect_cse_in_goal_update_instmap(Cond0, Cond, !CseInfo,
-        InstMap0, InstMap1, Redo1),
-    detect_cse_in_goal(Then0, Then, !CseInfo, InstMap1, Redo2),
-    detect_cse_in_goal(Else0, Else, !CseInfo, InstMap0, Redo3),
-    bool.or(Redo1, Redo2, Redo12),
-    bool.or(Redo12, Redo3, Redo).
+        InstMap0, InstMap1),
+    detect_cse_in_goal(Then0, Then, !CseInfo, InstMap1),
+    detect_cse_in_goal(Else0, Else, !CseInfo, InstMap0).
 
 %---------------------------------------------------------------------------%
 
@@ -822,9 +832,7 @@ create_new_arg_var(OldArgVar, Context, UnifyContext, !CseInfo, !OldNewVars,
     % merge([S | Ss], [], [S | Ss]).
     % merge([], [S | Ss], [S | Ss]).
     % merge([A | As], [B | Bs], [C | Cs]) :-
-    %   ( if
-    %       A =< B
-    %   then
+    %   ( if A =< B then
     %       dice.merge(As, [B | Bs], Cs),
     %       C = A
     %   else
@@ -977,10 +985,10 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
     assoc_list(prog_var)::in, list(assoc_list(prog_var))::in,
     cse_info::in, cse_info::out) is det.
 
-maybe_update_existential_data_structures(Unify, FirstOldNew, LaterOldNew,
+maybe_update_existential_data_structures(UnifyGoal, FirstOldNew, LaterOldNew,
         !CseInfo) :-
     ( if
-        Unify = hlds_goal(unify(_, _, _, UnifyInfo, _), _),
+        UnifyGoal = hlds_goal(unify(_, _, _, UnifyInfo, _), _),
         UnifyInfo = deconstruct(Var, ConsId, _, _, _, _),
         ModuleInfo = !.CseInfo ^ csei_module_info,
         VarTypes = !.CseInfo ^ csei_vartypes,
