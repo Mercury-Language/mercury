@@ -11,7 +11,7 @@
     where equality is int_equals, comparison is int_compare.
 :- pragma foreign_type("Java", t, "Integer")
     where equality is int_equals, comparison is int_compare.
-:- pragma foreign_type("Erlang", t, "int")
+:- pragma foreign_type("Erlang", t, "")
     where equality is int_equals, comparison is int_compare.
 
 :- pred int_equals(t::in, t::in) is semidet.
