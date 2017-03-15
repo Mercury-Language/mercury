@@ -904,7 +904,7 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
     ( if
         PragmaTerms = [LangTerm, ImportTerm]
     then
-        parse_foreign_language("foreign_import_language", VarSet, LangTerm,
+        parse_foreign_language("foreign_import_module", VarSet, LangTerm,
             MaybeForeignLang),
         ( if try_parse_sym_name_and_no_args(ImportTerm, Import0) then
             MaybeImportModule = ok1(Import0)
