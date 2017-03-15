@@ -3095,7 +3095,6 @@ get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo, Index) = Univ :-
     type_to_univ(Arg, Univ).
 
 :- pred high_level_data is semidet.
-:- pragma promise_pure(high_level_data/0).
 :- pragma foreign_proc("Java",
     high_level_data,
     [will_not_call_mercury, promise_pure, thread_safe],
