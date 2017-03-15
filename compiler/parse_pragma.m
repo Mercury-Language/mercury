@@ -842,30 +842,18 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
     ( if PragmaTerms = [LangTerm, PredAndModesTerm, FunctionTerm] then
         parse_foreign_language("foreign_export", VarSet, LangTerm,
             MaybeForeignLang),
-        ContextPieces = cord.from_list([words("In"),
-            pragma_decl("foreign_export"), words("declaration:")]),
-        parse_pred_or_func_and_arg_modes(no, VarSet, ContextPieces,
+        PredAndModesContextPieces = cord.from_list([
+            words("In second argument of"), pragma_decl("foreign_export"),
+            words("declaration:")
+        ]),
+        parse_pred_or_func_and_arg_modes(no, VarSet, PredAndModesContextPieces,
             PredAndModesTerm, MaybePredAndModes),
-        ( if FunctionTerm = term.functor(term.string(Function0), [], _) then
-            MaybeFunction = ok1(Function0)
-            % XXX TODO: do some additional checks here:
-            % 1. check that Function0 is not the empty string.
-            % 2. if we have a valid foreign language, check that Function0
-            %    is a valid identifier in that language.
-        else
-            FunctionPieces = [
-                words("In"), pragma_decl("foreign_export"),
-                words("declaration: error:"),
-                words("expected a string that is the foreign language name of"),
-                words("the exported procedure at"),
-                quote(describe_error_term(VarSet, FunctionTerm)),
-                suffix("."), nl
-            ],
-            FunctionSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(FunctionTerm),
-                    [always(FunctionPieces)])]),
-            MaybeFunction = error1([FunctionSpec])
-        ),
+        ForeignFunctionContextPieces = cord.from_list([
+            words("In third argument of"), pragma_decl("foreign_export"),
+            words("declaration:")
+        ]),
+        parse_foreign_function_name(VarSet, ForeignFunctionContextPieces,
+            FunctionTerm, MaybeFunction),
         ( if
             MaybeForeignLang = ok1(ForeignLang),
             MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
@@ -891,6 +879,40 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
+    ).
+
+:- pred parse_foreign_function_name(varset::in, cord(format_component)::in,
+    term::in, maybe1(string)::out) is det.
+
+parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
+        MaybeFunction) :-
+    ( if FunctionTerm = term.functor(term.string(Function), [], _) then
+        ( if Function = "" then
+            EmptyNamePieces = cord.list(ContextPieces) ++ [
+                words("error: expected a non-empty string for the"),
+                words("foreign language name of the exported procedure,"),
+                words("got empty string.")
+            ],
+            FunctionSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(FunctionTerm),
+                    [always(EmptyNamePieces)])]),
+            MaybeFunction = error1([FunctionSpec])
+        else
+            % XXX TODO: if we have a valid foreign language, check that
+            % Function is a valid identifier in that language.
+            MaybeFunction = ok1(Function)
+        )
+    else
+        FunctionPieces = cord.list(ContextPieces) ++ [
+            words("error: expected a non-empty string for the foreign"),
+            words("language name of the exported procedure, got"),
+            quote(describe_error_term(VarSet, FunctionTerm)),
+            suffix("."), nl
+        ],
+        FunctionSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(FunctionTerm),
+                [always(FunctionPieces)])]),
+        MaybeFunction = error1([FunctionSpec])
     ).
 
 %---------------------------------------------------------------------------%

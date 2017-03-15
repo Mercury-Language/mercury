@@ -38,3 +38,7 @@ foo(X, Y) = X + Y.
     3333,
     4444
 ).
+
+    % Third arg is the empty string.
+    %
+:- pragma foreign_export("C", foo(in, in) = out, "").

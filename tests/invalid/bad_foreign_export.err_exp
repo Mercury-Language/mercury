@@ -1,16 +1,22 @@
 bad_foreign_export.m:020: Error: wrong number of arguments in
 bad_foreign_export.m:020:   `:- pragma foreign_export' declaration.
-bad_foreign_export.m:024: In `:- pragma foreign_export' declaration: error:
-bad_foreign_export.m:024:   atom expected at 11111.
-bad_foreign_export.m:028: In `:- pragma foreign_export' declaration: error:
-bad_foreign_export.m:028:   expected a string that is the foreign language name
-bad_foreign_export.m:028:   of the exported procedure at `22222'.
+bad_foreign_export.m:024: In second argument of `:- pragma foreign_export'
+bad_foreign_export.m:024:   declaration: error: atom expected at 11111.
+bad_foreign_export.m:028: In third argument of `:- pragma foreign_export'
+bad_foreign_export.m:028:   declaration: error: expected a non-empty string for
+bad_foreign_export.m:028:   the foreign language name of the exported
+bad_foreign_export.m:028:   procedure, got `22222'.
 bad_foreign_export.m:032: Error: invalid foreign language `"InvalidLanguage"'
 bad_foreign_export.m:032:   in `:- pragma foreign_export' declaration.
 bad_foreign_export.m:037: Error: invalid foreign language `"InvalidLanguage"'
 bad_foreign_export.m:037:   in `:- pragma foreign_export' declaration.
-bad_foreign_export.m:038: In `:- pragma foreign_export' declaration: error:
-bad_foreign_export.m:038:   atom expected at 3333.
-bad_foreign_export.m:039: In `:- pragma foreign_export' declaration: error:
-bad_foreign_export.m:039:   expected a string that is the foreign language name
-bad_foreign_export.m:039:   of the exported procedure at `4444'.
+bad_foreign_export.m:038: In second argument of `:- pragma foreign_export'
+bad_foreign_export.m:038:   declaration: error: atom expected at 3333.
+bad_foreign_export.m:039: In third argument of `:- pragma foreign_export'
+bad_foreign_export.m:039:   declaration: error: expected a non-empty string for
+bad_foreign_export.m:039:   the foreign language name of the exported
+bad_foreign_export.m:039:   procedure, got `4444'.
+bad_foreign_export.m:044: In third argument of `:- pragma foreign_export'
+bad_foreign_export.m:044:   declaration: error: expected a non-empty string for
+bad_foreign_export.m:044:   the foreign language name of the exported
+bad_foreign_export.m:044:   procedure, got empty string.
