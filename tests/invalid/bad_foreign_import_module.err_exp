@@ -3,11 +3,11 @@ bad_foreign_import_module.m:018:   `:- pragma foreign_import_module'
 bad_foreign_import_module.m:018:   declaration.
 bad_foreign_import_module.m:022: Error: invalid foreign language
 bad_foreign_import_module.m:022:   `"InvalidForeignLang"' in
-bad_foreign_import_module.m:022:   `:- pragma foreign_import_language'
+bad_foreign_import_module.m:022:   `:- pragma foreign_import_module'
 bad_foreign_import_module.m:022:   declaration.
 bad_foreign_import_module.m:027: Error: invalid foreign language
 bad_foreign_import_module.m:027:   `"InvalidForeignLang"' in
-bad_foreign_import_module.m:027:   `:- pragma foreign_import_language'
+bad_foreign_import_module.m:027:   `:- pragma foreign_import_module'
 bad_foreign_import_module.m:027:   declaration.
 bad_foreign_import_module.m:028: Error: invalid module name `int(int)' in
 bad_foreign_import_module.m:028:   `:- pragma foreign_import_module'
