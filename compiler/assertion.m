@@ -686,12 +686,6 @@ update_pred_info(AssertId, PredId, !Module) :-
 
 normalise_goal(Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    normalise_goal_expr(GoalExpr0, GoalExpr),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-:- pred normalise_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out) is det.
-
-normalise_goal_expr(GoalExpr0, GoalExpr) :-
     (
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _, _)
@@ -700,23 +694,23 @@ normalise_goal_expr(GoalExpr0, GoalExpr) :-
         ),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = conj(ConjType, Goals0),
+        GoalExpr0 = conj(ConjType, SubGoals0),
         (
             ConjType = plain_conj,
-            normalise_conj(Goals0, Goals)
+            normalise_conj(SubGoals0, SubGoals)
         ;
             ConjType = parallel_conj,
-            normalise_goals(Goals0, Goals)
+            normalise_goals(SubGoals0, SubGoals)
         ),
-        GoalExpr = conj(ConjType, Goals)
+        GoalExpr = conj(ConjType, SubGoals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         normalise_cases(Cases0, Cases),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
-        GoalExpr0 = disj(Goals0),
-        normalise_goals(Goals0, Goals),
-        GoalExpr = disj(Goals)
+        GoalExpr0 = disj(SubGoals0),
+        normalise_goals(SubGoals0, SubGoals),
+        GoalExpr = disj(SubGoals)
     ;
         GoalExpr0 = negation(SubGoal0),
         normalise_goal(SubGoal0, SubGoal),
@@ -751,7 +745,8 @@ normalise_goal_expr(GoalExpr0, GoalExpr) :-
             ShortHand = bi_implication(LHS, RHS)
         ),
         GoalExpr = shorthand(ShortHand)
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
