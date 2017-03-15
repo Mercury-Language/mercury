@@ -71,6 +71,12 @@ net		A network library which uses the standard library stream
 odbc		A Mercury interface to ODBC (Open Database Connectivity),
 		for interfacing to standard relational database packages.
 
+
+old_term_parser	A library containing versions of the the standard library's
+		lexer, parser, term, term_io and varset modules as they
+		were on 2017-02-15.  Intended for backwards compatibility
+		with older code.
+
 posix		A Mercury interface to some of the POSIX
 		(Portable Operating System Interface) APIs.
 
