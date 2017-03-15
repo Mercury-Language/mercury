@@ -195,30 +195,12 @@
 
 :- import_module assoc_list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
-
-%-----------------------------------------------------------------------------%
-
-    % The possible results of a purity check.
-:- type purity_check_result
-    --->    no_worries
-            % All is well.
-
-    ;       insufficient_decl
-            % Purity decl is less than required.
-
-    ;       inconsistent_promise
-            % Promise is given but decl is impure.
-
-    ;       unnecessary_promise_pure
-            % Purity promise is given but not required.
-
-    ;       unnecessary_decl.
-            % Purity decl is more than is required.
 
 %-----------------------------------------------------------------------------%
 
@@ -286,8 +268,8 @@ check_preds_purity([PredId | PredIds], !ModuleInfo, !Specs) :-
     module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
-    pred_info_get_purity(!.PredInfo, DeclPurity),
-    pred_info_get_promised_purity(!.PredInfo, PromisedPurity),
+    pred_info_get_purity(!.PredInfo, DeclaredPurity),
+    pred_info_get_promised_purity(!.PredInfo, MaybePromisedPurity),
     some [!ClausesInfo] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_clauses(Clauses0, ItemNumbers, !ClausesInfo),
@@ -297,7 +279,7 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
             !.PredInfo, VarTypes0, VarSet0, [], do_not_need_to_requantify,
             have_not_converted_unify),
         compute_purity_for_clauses(Clauses0, Clauses, !.PredInfo,
-            purity_pure, Purity, PurityInfo0, PurityInfo),
+            purity_pure, ActualPurity, PurityInfo0, PurityInfo),
         PurityInfo = purity_info(_, _, !:PredInfo,
             VarTypes, VarSet, GoalSpecs, _, _),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
@@ -306,95 +288,82 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
         clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo)
     ),
-    WorstPurity = Purity,
-    perform_pred_purity_checks(!.PredInfo, Purity, DeclPurity,
-        PromisedPurity, PurityCheckResult0),
-    % This was to avoid a crash in the following computed goto, when compiled
-    % with gcc 4.1 on x86-64. The problem seems to be gone now, but there is
-    % not much to gain from removing the workaround.
-    PurityCheckResult = workaround_gcc_bug(PurityCheckResult0),
-    (
-        PurityCheckResult = inconsistent_promise,
-        Spec = error_inconsistent_promise(ModuleInfo, !.PredInfo, PredId,
-            DeclPurity),
-        PredSpecs = [Spec | GoalSpecs]
-    ;
-        PurityCheckResult = unnecessary_decl,
-        Spec = warn_exaggerated_impurity_decl(ModuleInfo, !.PredInfo, PredId,
-            DeclPurity, WorstPurity),
-        PredSpecs = [Spec | GoalSpecs]
-    ;
-        PurityCheckResult = insufficient_decl,
-        Spec = error_inferred_impure(ModuleInfo, !.PredInfo, PredId, Purity),
-        PredSpecs = [Spec | GoalSpecs]
-    ;
-        PurityCheckResult = unnecessary_promise_pure,
-        Spec = warn_unnecessary_promise_pure(ModuleInfo, !.PredInfo, PredId,
-            PromisedPurity),
-        PredSpecs = [Spec | GoalSpecs]
-    ;
-        PurityCheckResult = no_worries,
-        PredSpecs = GoalSpecs
-    ),
-    !:Specs = PredSpecs ++ !.Specs.
-
-:- func workaround_gcc_bug(purity_check_result) = purity_check_result.
-:- pragma no_inline(workaround_gcc_bug/1).
-
-workaround_gcc_bug(X) = X.
+    perform_pred_purity_checks(ModuleInfo, PredId, !.PredInfo,
+        ActualPurity, DeclaredPurity, MaybePromisedPurity, PredSpecs),
+    !:Specs = GoalSpecs ++ PredSpecs ++ !.Specs.
 
     % Perform purity checking of the actual and declared purity,
     % and check that promises are consistent.
     %
-    % ActualPurity:     The inferred purity of the pred.
-    % DeclaredPurity:   The declared purity of the pred.
-    % Promised:         Did we promise this pred as pure?
+    % ActualPurity:         The inferred purity of the pred.
+    % DeclaredPurity:       The declared purity of the pred.
+    % MaybePromisedPurity:  Did we promise this pred as pure or semipure?
     %
-:- pred perform_pred_purity_checks(pred_info::in, purity::in, purity::in,
-    purity::in, purity_check_result::out) is det.
+:- pred perform_pred_purity_checks(module_info::in, pred_id::in, pred_info::in,
+    purity::in, purity::in, maybe(purity)::in, list(error_spec)::out) is det.
 
-perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
-        PromisedPurity, PurityCheckResult) :-
-    ( if
+perform_pred_purity_checks(ModuleInfo, PredId, PredInfo,
+        ActualPurity, DeclaredPurity, MaybePromisedPurity, !:Specs) :-
+    !:Specs = [],
+
+    (
+        MaybePromisedPurity = no
+    ;
+        MaybePromisedPurity = yes(PromisedPurity),
+
         % The declared purity must match any promises.
-        % (A promise of impure means no promise was made).
-        PromisedPurity \= purity_impure,
-        DeclaredPurity \= PromisedPurity
-    then
-        PurityCheckResult = inconsistent_promise
-    else if
-        % You shouldn't promise pure unnecessarily. It's OK in the case
-        % of foreign_procs though. There is also no point in warning about
-        % compiler-generated predicates.
-        PromisedPurity \= purity_impure,
-        ActualPurity = PromisedPurity,
-        not pred_info_pragma_goal_type(PredInfo),
-        pred_info_get_origin(PredInfo, Origin),
-        not (
-            Origin = origin_transformed(_, _, _)
-        ;
-            Origin = origin_created(_)
+        (  if DeclaredPurity = PromisedPurity then
+            true
+        else
+            InconsistentPromiseSpec = error_inconsistent_purity_promise(
+                ModuleInfo, PredInfo, PredId, DeclaredPurity),
+            !:Specs = [InconsistentPromiseSpec | !.Specs]
+        ),
+
+        % You shouldn't promise pure unnecessarily. However, there is no point
+        % in warning about compiler generated predicates.
+        ( if
+            ActualPurity = PromisedPurity,
+            pred_info_get_origin(PredInfo, Origin),
+            not (
+                Origin = origin_transformed(_, _, _)
+            ;
+                Origin = origin_created(_)
+            )
+        then
+            UnnecessaryPromiseSpec = warn_unnecessary_purity_promise(
+                ModuleInfo, PredInfo, PredId, PromisedPurity),
+            !:Specs = [UnnecessaryPromiseSpec | !.Specs]
+        else
+            true
         )
-    then
-        PurityCheckResult = unnecessary_promise_pure
-    else if
-        % The purity should match the declaration.
-        ActualPurity = DeclaredPurity
-    then
-        PurityCheckResult = no_worries
-    else if
-        less_pure(ActualPurity, DeclaredPurity)
-    then
+    ),
+
+    % The purity should match the declaration.
+    ComparisonResult = compare_purity(ActualPurity, DeclaredPurity),
+    (
+        ComparisonResult = (=)
+    ;
+        ComparisonResult = (<),
         (
-            PromisedPurity = purity_impure,
-            PurityCheckResult = insufficient_decl
+            MaybePromisedPurity = yes(_PromisedPurity),
+            % The promise is intended to tell the compiler that the purity
+            % of the procedure body is not ActualPurity, but _PromisedPurity.
+            %
+            % If _PromisedPurity = DeclaredPurity, then this means that
+            % ComparisonResult should really be (=).
+            %
+            % If _PromisedPurity \= DeclaredPurity, then we have already
+            % generated an error message (see InconsistentPromiseSpec).
+            true
         ;
-            ( PromisedPurity = purity_pure
-            ; PromisedPurity = purity_semipure
-            ),
-            PurityCheckResult = no_worries
+            MaybePromisedPurity = no,
+            NotPureEnoughSpec = error_not_pure_enough(ModuleInfo, PredInfo,
+                PredId, ActualPurity),
+            !:Specs = [NotPureEnoughSpec | !.Specs]
         )
-    else if
+    ;
+        ComparisonResult = (>),
         % We don't warn about exaggerated impurity decls in class methods
         % or instance methods --- it just means that the predicate provided
         % as an implementation was more pure than necessary.
@@ -408,17 +377,33 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 
         pred_info_get_markers(PredInfo, Markers),
         pred_info_get_goal_type(PredInfo, GoalType),
-        ( GoalType = goal_type_foreign
-        ; GoalType = goal_type_clause_and_foreign
-        ; check_marker(Markers, marker_class_method)
-        ; check_marker(Markers, marker_class_instance_method)
-        ; check_marker(Markers, marker_stub)
+        ( if
+            ( GoalType = goal_type_foreign
+            ; GoalType = goal_type_clause_and_foreign
+            ; check_marker(Markers, marker_class_method)
+            ; check_marker(Markers, marker_class_instance_method)
+            ; check_marker(Markers, marker_stub)
+            )
+        then
+            true
+        else
+            TooPureSpec = warn_pred_body_too_pure(ModuleInfo,
+                PredInfo, PredId, ActualPurity, DeclaredPurity),
+            !:Specs = [TooPureSpec | !.Specs]
         )
-    then
-        PurityCheckResult = no_worries
-    else
-        PurityCheckResult = unnecessary_decl
     ).
+
+:- func compare_purity(purity, purity) = comparison_result.
+
+compare_purity(purity_pure, purity_pure) = (=).
+compare_purity(purity_pure, purity_semipure) = (>).
+compare_purity(purity_pure, purity_impure) = (>).
+compare_purity(purity_semipure, purity_pure) = (<).
+compare_purity(purity_semipure, purity_semipure) = (=).
+compare_purity(purity_semipure, purity_impure) = (>).
+compare_purity(purity_impure, purity_pure) = (<).
+compare_purity(purity_impure, purity_semipure) = (<).
+compare_purity(purity_impure, purity_impure) = (=).
 
 %-----------------------------------------------------------------------------%
 
@@ -1418,10 +1403,11 @@ pred_context(ModuleInfo, _PredInfo, PredId) = Pieces :-
         PredId),
     Pieces = [words("In")] ++ PredPieces ++ [suffix(":"), nl].
 
-:- func error_inconsistent_promise(module_info, pred_info, pred_id, purity)
-    = error_spec.
+:- func error_inconsistent_purity_promise(module_info, pred_info, pred_id,
+    purity) = error_spec.
 
-error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
+error_inconsistent_purity_promise(ModuleInfo, PredInfo, PredId, Purity)
+        = Spec :-
     pred_info_get_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
@@ -1438,25 +1424,25 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 
-:- func warn_exaggerated_impurity_decl(module_info, pred_info, pred_id,
+:- func warn_pred_body_too_pure(module_info, pred_info, pred_id,
     purity, purity) = error_spec.
 
-warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
-        DeclPurity, ActualPurity) = Spec :-
+warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
+        ActualPurity, DeclaredPurity) = Spec :-
     pred_info_get_context(PredInfo, Context),
     PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
-    purity_name(DeclPurity, DeclPurityName),
+    purity_name(DeclaredPurity, DeclaredPurityName),
     purity_name(ActualPurity, ActualPurityName),
     Pieces = PredContextPieces ++
-        [words("warning: declared"), fixed(DeclPurityName),
+        [words("warning: declared"), fixed(DeclaredPurityName),
         words("but actually"), fixed(ActualPurityName ++ ".")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
 
-:- func warn_unnecessary_promise_pure(module_info, pred_info, pred_id, purity)
+:- func warn_unnecessary_purity_promise(module_info, pred_info, pred_id, purity)
     = error_spec.
 
-warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity)
+warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         = Spec :-
     pred_info_get_context(PredInfo, Context),
     PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
@@ -1484,10 +1470,10 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity)
             verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
 
-:- func error_inferred_impure(module_info, pred_info, pred_id, purity)
+:- func error_not_pure_enough(module_info, pred_info, pred_id, purity)
     = error_spec.
 
-error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
+error_not_pure_enough(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
     pred_info_get_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),

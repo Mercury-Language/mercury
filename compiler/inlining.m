@@ -1054,7 +1054,8 @@ can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
         % inline predicates which are promised pure because the extra impurity
         % propagated through the goal will defeat any attempts at optimization.
         InlinePromisedPure = no,
-        pred_info_get_promised_purity(PredInfo, purity_impure)
+        pred_info_get_promised_purity(PredInfo, MaybePromisedPurity),
+        MaybePromisedPurity = no
     ).
 
     % Succeed iff it is appropriate to inline `pragma foreign_proc'

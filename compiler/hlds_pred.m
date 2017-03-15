@@ -844,7 +844,11 @@
 
 :- pred pred_info_get_purity(pred_info::in, purity::out) is det.
 
-:- pred pred_info_get_promised_purity(pred_info::in, purity::out) is det.
+    % If the predicate has a purity promise, return it wrapped inside a `yes'.
+    % Otherwise, return `no'.
+    %
+:- pred pred_info_get_promised_purity(pred_info::in, maybe(purity)::out)
+    is det.
 
 :- pred pred_info_infer_modes(pred_info::in) is semidet.
 
@@ -1764,14 +1768,14 @@ pred_info_get_purity(PredInfo0, Purity) :-
         Purity = purity_pure
     ).
 
-pred_info_get_promised_purity(PredInfo0, PromisedPurity) :-
+pred_info_get_promised_purity(PredInfo0, MaybePromisedPurity) :-
     pred_info_get_markers(PredInfo0, Markers),
     ( if check_marker(Markers, marker_promised_pure) then
-        PromisedPurity = purity_pure
+        MaybePromisedPurity = yes(purity_pure)
     else if check_marker(Markers, marker_promised_semipure) then
-        PromisedPurity = purity_semipure
+        MaybePromisedPurity = yes(purity_semipure)
     else
-        PromisedPurity = purity_impure
+        MaybePromisedPurity = no
     ).
 
 pred_info_infer_modes(PredInfo) :-
