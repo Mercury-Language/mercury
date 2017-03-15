@@ -966,6 +966,78 @@ calls_are_fully_qualified(Markers) =
 
     % The information specific to a predicate, as opposed to a procedure.
     % (Functions count as predicates.)
+    %
+    % The pred_info and pred_sub_info types constitute a single logical
+    % data structure split into two parts for efficiency purposes.
+    %
+    % The pred_info type contains the most frequently accessed and/or updated
+    % pieces of information about the predicate. Everything else is in the
+    % pred_sub_info type. This arrangement minimizes the amount of memory that
+    % needs to be allocated, and filled in, when a field is updated.
+
+:- type pred_info
+    --->    pred_info(
+                % The Boehm collector allocates blocks whose sizes are
+                % multiples of 2. Ideally, we would want the number of fields
+                % of pred_info to be a multiple of 2 as well, but as of
+                % 2017 march 15, this seems to be the optimal arrangement (zs).
+
+                % Module in which pred occurs.
+/*  1 */        pi_module_name          :: module_name,
+
+                % Predicate name.
+/*  2 */        pi_name                 :: string,
+
+                % The original arity of the pred, i.e. its arity *not* counting
+                % any type_info and/or typeclass_info arguments inserted
+                % automatically by the compiler.
+                %
+                % For functions, the original arity *includes* the return
+                % value, so that e.g. the original arity of int.+ would be 3.
+/*  3 */        pi_orig_arity           :: arity,
+
+                % Is this "predicate" really a predicate or a function?
+/*  4 */        pi_is_pred_or_func      :: pred_or_func,
+
+                % Where did the predicate come from?
+/*  5 */        pi_pred_origin          :: pred_origin,
+
+/*  6 */        pi_status               :: pred_status,
+
+                % Various boolean flags.
+/*  7 */        pi_markers              :: pred_markers,
+
+                % Argument types.
+                % Note that it is an invariant that any type_info- and/or
+                % typeclass_info-related variables in the arguments of a
+                % predicate must precede any polymorphically-typed arguments
+                % whose type depends on the values of those type_info- and/or
+                % typeclass_info-related variables; accurate GC for the MLDS
+                % back-end relies on this.
+/*  8 */        pi_arg_types            :: list(mer_type),
+
+                % Names of type vars in the predicate's type declaration.
+/*  9 */        pi_decl_typevarset      :: tvarset,
+
+                % Names of type vars in the predicate's type declaration
+                % or in the variable type assignments.
+/* 10 */        pi_typevarset           :: tvarset,
+
+                % The set of existentially quantified type variables in the
+                % predicate's type declaration.
+/* 11 */        pi_exist_quant_tvars    :: existq_tvars,
+
+                % The class constraints on the type variables in the
+                % predicate's type declaration.
+/* 12 */        pi_class_context        :: prog_constraints,
+
+/* 13 */        pi_clauses_info         :: clauses_info,
+
+/* 14 */        pi_proc_table           :: proc_table,
+
+/* 15 */        pi_pred_sub_info        :: pred_sub_info
+            ).
+
 :- type pred_sub_info
     --->    pred_sub_info(
                 % The location (line #) of the :- pred decl.
@@ -1037,70 +1109,6 @@ calls_are_fully_qualified(Markers) =
                 psi_instance_method_arg_types   :: list(mer_type)
             ).
 
-:- type pred_info
-    --->    pred_info(
-                % Module in which pred occurs.
-/*  1 */        pi_module_name          :: module_name,
-
-                % Predicate name.
-/*  2 */        pi_name                 :: string,
-
-                % The original arity of the pred, i.e. its arity *not* counting
-                % any type_info and/or typeclass_info arguments inserted
-                % automatically by the compiler.
-                %
-                % For functions, the original arity *includes* the return
-                % value, so that e.g. the original arity of int.+ would be 3.
-/*  3 */        pi_orig_arity           :: arity,
-
-                % Is this "predicate" really a predicate or a function?
-/*  4 */        pi_is_pred_or_func      :: pred_or_func,
-
-                % Where did the predicate come from?
-/*  5 */        pi_pred_origin          :: pred_origin,
-
-/*  6 */        pi_status               :: pred_status,
-
-                % Various boolean flags.
-/*  7 */        pi_markers              :: pred_markers,
-
-                % Argument types.
-                % Note that it is an invariant that any type_info- and/or
-                % typeclass_info-related variables in the arguments of a
-                % predicate must precede any polymorphically-typed arguments
-                % whose type depends on the values of those type_info- and/or
-                % typeclass_info-related variables; accurate GC for the MLDS
-                % back-end relies on this.
-/*  8 */        pi_arg_types            :: list(mer_type),
-
-                % Names of type vars in the predicate's type declaration.
-/*  9 */        pi_decl_typevarset      :: tvarset,
-
-                % Names of type vars in the predicate's type declaration
-                % or in the variable type assignments.
-/* 10 */        pi_typevarset           :: tvarset,
-
-                % The set of existentially quantified type variables in the
-                % predicate's type declaration.
-/* 11 */        pi_exist_quant_tvars    :: existq_tvars,
-
-                % The class constraints on the type variables in the
-                % predicate's type declaration.
-/* 12 */        pi_class_context        :: prog_constraints,
-
-/* 13 */        pi_clauses_info         :: clauses_info,
-
-/* 14 */        pi_proc_table           :: proc_table,
-
-/* 15 */        pi_pred_sub_info        :: pred_sub_info
-
-                % If you are adding any new fields, please try to ensure
-                % that the number of fields doesn't cross a threshold that
-                % would cause Boehm gc to double the amount of memory allocated
-                % for a cell (since Boehm gc deals only with power-of-2 cell
-                % sizes).
-            ).
-
 pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
         Origin, Status, CurUserDecl, GoalType, Markers,
         ArgTypes, TypeVarSet, ExistQVars, ClassContext, ClassProofs,
@@ -1140,10 +1148,10 @@ pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
     % argument ExistQVars
     % argument ClassContext
     % argument ClausesInfo
-    map.init(Procs),
+    map.init(ProcTable),
     PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
-        ExistQVars, ClassContext, ClausesInfo, Procs, PredSubInfo).
+        ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
 pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
         Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
@@ -1199,12 +1207,12 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
     % argument TypeVarSet
     % argument ExistQVars
     % argument ClassContext
-    map.init(Procs0),
-    next_mode_id(Procs0, ProcId),
-    map.det_insert(ProcId, ProcInfo, Procs0, Procs),
+    map.init(ProcTable0),
+    next_mode_id(ProcTable0, ProcId),
+    map.det_insert(ProcId, ProcInfo, ProcTable0, ProcTable),
     PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
-        ExistQVars, ClassContext, ClausesInfo, Procs, PredSubInfo).
+        ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
 define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
         SymName, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
