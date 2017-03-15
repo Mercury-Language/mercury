@@ -10214,8 +10214,8 @@ Use the specified profiling feedback file
 which may currently only be processed for automatic parallelism.
 
 @c @sp 1
-@c @item --loop-control
-@c @findex --loop-control
+@c @item --par-loop-control
+@c @findex --par-loop-control
 @c Enable the loop control transformation for parallel conjunctions.
 @c This causes right-recursive parallel conjunctions to use fewer contexts while
 @c maintaining parallelism.
@@ -10223,8 +10223,8 @@ which may currently only be processed for automatic parallelism.
 @c probably be enabled by default.
 @c
 @c @sp 1
-@c @item --no-loop-control-preserve-tail-recursion
-@c @findex --no-loop-control-preserve-tail-recursion
+@c @item --no-par-loop-control-preserve-tail-recursion
+@c @findex --no-par-loop-control-preserve-tail-recursion
 @c Do not attempt to preserve tail recursion in the loop control transformation.
 @c This option causes all code spawned off using loop control to access it's
 @c parent stack frame through the parent stack pointer.
