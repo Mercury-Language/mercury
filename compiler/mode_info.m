@@ -340,6 +340,51 @@
 :- import_module term.
 :- import_module varset.
 
+    % The information we need while we modecheck a procedure.
+    %
+    % The mode_info and mode_sub_info types constitute a single logical
+    % data structure split into two parts for efficiency purposes.
+    %
+    % The most frequently used fields are in the mode_info type,
+    % while all the other fields are in the mode_sub_info type.
+
+:- type mode_info
+    --->    mode_info(
+                % The Boehm collector allocates blocks whose sizes are
+                % multiples of 2, so we should keep the number of fields
+                % in a mode_info to be a multiple of 2 as well.
+
+/*  1 */        mi_module_info              :: module_info,
+
+                % The current instantiatedness of the variables.
+/*  2 */        mi_instmap                  :: instmap,
+
+                % Info about delayed goals.
+/*  3 */        mi_delay_info               :: delay_info,
+
+                % The mode errors found.
+/*  4 */        mi_errors                   :: list(mode_error_info),
+
+                % A description of where in the goal the error occurred.
+/*  5 */        mi_mode_context             :: mode_context,
+
+                % The line number of the subgoal we are currently checking.
+/*  6 */        mi_context                  :: prog_context,
+
+                % The nondet-live variables, i.e. those variables which may be
+                % referenced again after deep backtracking TO THE CURRENT
+                % EXECUTION POINT. These are the variables which need to be
+                % made mostly_unique rather than unique when we get to a
+                % nondet disjunction or a nondet call.  We do not include
+                % variables which may be referenced again after backtracking
+                % to a point EARLIER THAN the current execution point, since
+                % those variables will *already* have been marked as
+                % mostly_unique rather than unique.)
+/*  7 */        mi_nondet_live_vars         :: bag(prog_var),
+
+/*  8 */        mi_sub_info                 :: mode_sub_info
+            ).
+
 :- type mode_sub_info
     --->    mode_sub_info(
                 % The pred we are checking.
@@ -442,43 +487,6 @@
                 % Set to `yes' if we are inside a goal with a
                 % duplicate_for_switch feature.
                 msi_in_dupl_for_switch      :: in_dupl_for_switch
-            ).
-
-    % Please try to keep the size of this structure down to eight fields.
-    % Even one more field will cause the Boehm allocator to round up the size
-    % of each memory cell to 16 words.
-    %
-:- type mode_info
-    --->    mode_info(
-/*  1 */        mi_module_info              :: module_info,
-
-                % The current instantiatedness of the variables.
-/*  2 */        mi_instmap                  :: instmap,
-
-                % Info about delayed goals.
-/*  3 */        mi_delay_info               :: delay_info,
-
-                % The mode errors found.
-/*  4 */        mi_errors                   :: list(mode_error_info),
-
-                % A description of where in the goal the error occurred.
-/*  5 */        mi_mode_context             :: mode_context,
-
-                % The line number of the subgoal we are currently checking.
-/*  6 */        mi_context                  :: prog_context,
-
-                % The nondet-live variables, i.e. those variables which may be
-                % referenced again after deep backtracking TO THE CURRENT
-                % EXECUTION POINT. These are the variables which need to be
-                % made mostly_unique rather than unique when we get to a
-                % nondet disjunction or a nondet call.  We do not include
-                % variables which may be referenced again after backtracking
-                % to a point EARLIER THAN the current execution point, since
-                % those variables will *already* have been marked as
-                % mostly_unique rather than unique.)
-/*  7 */        mi_nondet_live_vars         :: bag(prog_var),
-
-/*  8 */        mi_sub_info                 :: mode_sub_info
             ).
 
 %-----------------------------------------------------------------------------%

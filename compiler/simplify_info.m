@@ -215,14 +215,22 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+    % The information we need while we traverse the body of a procedure,
+    % simplifying it.
+    %
+    % The simplify_info, simplify_sub_info and simplify_info_params types
+    % constitute a single logical data structure split into three parts
+    % for efficiency purposes.
+    %
+    % The simplify_info type contains the most frequently used writeable
+    % fields. The other writeable fields are in the simplify_sub_info, while
+    % all the readonly fields are in the simplify_info_params.
+
 :- type simplify_info
     --->    simplify_info(
-                % The most frequently used writeable fields, held at eight
-                % fields (adding even just one more field would cause Boehm
-                % to allocate a 16 word cell).
-                %
-                % The other writeable fields are in the simplify_sub_info,
-                % while all the readonly fields are in the simp_params.
+                % The Boehm collector allocates blocks whose sizes are
+                % multiples of 2, so we should keep the number of fields
+                % in a simplify_info to be a multiple of 2 as well.
 
                 % The tasks we do in this invocation of simplification.
 /* 1 */         simp_simplify_tasks         :: simplify_tasks,

@@ -201,6 +201,33 @@ project_cons_type_info_source(CTI) = CTI ^ cti_source.
 
 %-----------------------------------------------------------------------------%
 
+:- type typecheck_info
+    --->    typecheck_info(
+                % The four most frequently used parts of the conceptual
+                % typecheck_info are here in this cell. The less frequently
+                % used parts are in the typecheck_sub_info, or (if they are
+                % needed for the generation of type error messages) in the
+                % type_error_clause_context.
+
+                tci_sub_info                    :: typecheck_sub_info,
+
+                % The part of the information needed to generate good error
+                % messages for type errors that remains valid during the
+                % typechecking of an entire clause. As for the Information
+                % needed to generate good error messages that changes as
+                % we traverse the body of a clause, that is passed around
+                % separately in typecheck.m.
+                tci_error_clause_context        :: type_error_clause_context,
+
+                % The symbols used by the current predicate that have
+                % more than one accessible definition, mapped to the unsorted
+                % list of the locations that refer to them.
+                tci_overloaded_symbol_map       :: overloaded_symbol_map,
+
+                % The value of the option --typecheck-ambiguity-warn-limit.
+                tci_ambiguity_warn_limit        :: int
+            ).
+
 :- type typecheck_sub_info
     --->    typecheck_sub_info(
                 % Are calls from the body of the predicate we are checking
@@ -227,33 +254,6 @@ project_cons_type_info_source(CTI) = CTI ^ cti_source.
 
                 % The value of the option --typecheck-ambiguity-error-limit.
                 tcsi_ambiguity_error_limit      :: int
-            ).
-
-:- type typecheck_info
-    --->    typecheck_info(
-                % The four most frequently used parts of the conceptual
-                % typecheck_info are here in this cell. The less frequently
-                % used parts are in the typecheck_sub_info, or (if they are
-                % needed for the generation of type error messages) in the
-                % type_error_clause_context.
-
-                tci_sub_info                    :: typecheck_sub_info,
-
-                % The part of the information needed to generate good error
-                % messages for type errors that remains valid during the
-                % typechecking of an entire clause. As for the Information
-                % needed to generate good error messages that changes as
-                % we traverse the body of a clause, that is passed around
-                % separately in typecheck.m.
-                tci_error_clause_context        :: type_error_clause_context,
-
-                % The symbols used by the current predicate that have
-                % more than one accessible definition, mapped to the unsorted
-                % list of the locations that refer to them.
-                tci_overloaded_symbol_map       :: overloaded_symbol_map,
-
-                % The value of the option --typecheck-ambiguity-warn-limit.
-                tci_ambiguity_warn_limit        :: int
             ).
 
 %-----------------------------------------------------------------------------%

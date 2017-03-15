@@ -2554,8 +2554,23 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
 
 :- implementation.
 
+    % The information specific to a procedure, as opposed to a predicate.
+    %
+    % The proc_info and proc_sub_info types constitute a single logical
+    % data structure split into two parts for efficiency purposes.
+    %
+    % The proc_info type contains the most frequently accessed and/or updated
+    % pieces of information about the procedure. Everything else is in the
+    % proc_sub_info type. This arrangement minimizes the amount of memory that
+    % needs to be allocated, and filled in, when a field is updated.
+
 :- type proc_info
     --->    proc_info(
+                % The Boehm collector allocates blocks whose sizes are
+                % multiples of 2. Ideally, we would want the number of fields
+                % of pred_info to be a multiple of 2 as well, but as of
+                % 2017 march 15, this seems to be the optimal arrangement (zs).
+
 /*  1 */        proc_head_vars                  :: list(prog_var),
 /*  2 */        proc_body                       :: hlds_goal,
 

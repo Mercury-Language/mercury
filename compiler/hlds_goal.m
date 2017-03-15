@@ -1855,15 +1855,22 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
 % Information stored with all kinds of goals.
 %
 
-    % This type has eight fields, which means that the Boehm collector
-    % allocates eight words for it. For a type with nine or ten fields,
-    % the Boehm collector would allocate a sixteen word block, so if
-    % you need any new fields, you probably want to add them to the
-    % extension structure in the hlds_goal_extra_info field instead of
-    % directly to this type.
+    % The information we have about a goal that is not specific to
+    % a particular *kind* of goal.
+    %
+    % The hlds_goal_info and hlds_goal_extra_info types constitute
+    % a single logical data structure split into two parts for efficiency
+    % purposes.
+    %
+    % The most frequently used fields are in the hlds_goal_info type,
+    % while all the other fields are in the hlds_goal_extra_info type.
 
 :- type hlds_goal_info
     --->    goal_info(
+                % The Boehm collector allocates blocks whose sizes are
+                % multiples of 2, so we should keep the number of fields
+                % in a hlds_goal_info to be a multiple of 2 as well.
+
                 % The overall determinism of the goal (computed during
                 % determinism analysis). Since the determinism analysis problem
                 % is is undecidable, this may be a conservative approximation.
