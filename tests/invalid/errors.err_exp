@@ -30,9 +30,10 @@ errors.m:059: Error: circular equivalence type
 errors.m:059:   `errors.indirectly_circular_eqv_type_1'/0.
 errors.m:060: Error: circular equivalence type
 errors.m:060:   `errors.indirectly_circular_eqv_type_2'/0.
-errors.m:062: Error: free type parameter T in RHS of type definition.
-errors.m:063: Error: the type variable T occurs only in the RHS of this type
-errors.m:063:   definition.
+errors.m:062: Error: free type parameter T in right hand side of type
+errors.m:062:   definition.
+errors.m:063: Error: the type variable T occurs only in the right hand side of
+errors.m:063:   this type definition.
 errors.m:077: In clause for predicate
 errors.m:077:   `errors.pred_with_unresolved_polymorphism'/0:
 errors.m:077:   warning: variable `Arg' occurs only once in this scope.

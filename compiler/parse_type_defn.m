@@ -465,7 +465,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
             words(choose_number(NotExistQOrParamVars,
                 "parameter", "parameters")),
             words(NotExistQOrParamVarsStr),
-            words("in RHS of type definition."), nl],
+            words("in right hand side of type definition."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(BodyTerm), [always(Pieces)])]),
         !:Specs = [Spec | !.Specs]
@@ -1504,7 +1504,8 @@ check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
             "occurs", "occur"),
         Pieces = [words("Error:"), words(VarWord)] ++
             list_to_pieces(OnlyBodyTVarNames) ++ [words(OccurWord),
-            words("only in the RHS of this type definition."), nl],
+            words("only in the right hand side of this type definition."),
+            nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(BodyContext, [always(Pieces)])]),
         Specs = [Spec]
