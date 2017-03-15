@@ -270,6 +270,7 @@ SINGLEMODULE= \
 	type_error_ambiguous \
 	type_error_in_arg \
 	type_inf_loop \
+	type_lhs_var \
 	type_loop \
 	type_mismatch \
 	type_vars \

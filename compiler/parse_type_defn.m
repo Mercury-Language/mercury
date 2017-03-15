@@ -1390,7 +1390,10 @@ parse_type_defn_head(ParseContext, ModuleName, VarSet, HeadTerm,
         HeadTerm = term.variable(Var, Context),
         (
             ParseContext = tdhpc_type_defn,
-            Pieces = [words("Error: variable on LHS of type definition."), nl]
+            Pieces = [
+                words("Error: variable on left hand side of type definition."),
+                nl
+            ]
         ;
             ParseContext = tdhpc_foreign_type_pragma(ContextPieces),
             VarName = varset.lookup_name(VarSet, Var),
