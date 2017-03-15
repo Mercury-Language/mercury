@@ -635,6 +635,10 @@
 
 :- type module_info
     --->    module_info(
+                % The Boehm collector allocates blocks whose sizes are
+                % multiples of 2. Please keep the number of fields here
+                % to a multiple of 2 as well.
+
                 % Note that the no_tag_type_table contains information
                 % about notag types that is also available in the type_table,
                 % but in a format that allows faster access.
@@ -648,19 +652,13 @@
 /* 07 */        mi_inst_table                   :: inst_table,
 /* 08 */        mi_mode_table                   :: mode_table,
 /* 09 */        mi_cons_table                   :: cons_table,
-/* 10 */        mi_class_table                  :: class_table,
-/* 11 */        mi_ctor_field_table             :: ctor_field_table
-
-                % The Boehm collector allocates blocks whose sizes are
-                % powers of 2. While 11 fields does not fit into an 8 word
-                % cell and does not use the full potential of a 16 word cell,
-                % I (zs) have found that this arrangement seems to yield
-                % the best performance.
+/* 10 */        mi_ctor_field_table             :: ctor_field_table
             ).
 
 :- type module_sub_info
     --->    module_sub_info(
                 msi_special_pred_maps           :: special_pred_maps,
+                mi_class_table                  :: class_table,
                 msi_instance_table              :: instance_table,
 
                 % Data used for user-guided type specialization.
@@ -809,6 +807,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         OptItemBlocks, IntForOptItemBlocks),
 
     SpecialPredMaps = special_pred_maps(map.init, map.init, map.init),
+    map.init(ClassTable),
     map.init(InstanceTable),
 
     set.init(TypeSpecPreds),
@@ -824,6 +823,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
 
     ModuleSubInfo = module_sub_info(
         SpecialPredMaps,
+        ClassTable,
         InstanceTable,
         TypeSpecInfo,
         ConstStructDb,
@@ -955,7 +955,6 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     inst_table_init(InstTable),
     mode_table_init(ModeTable),
     CtorTable = init_cons_table,
-    map.init(ClassTable),
     map.init(FieldNameTable),
 
     ModuleInfo = module_info(
@@ -968,7 +967,6 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         InstTable,
         ModeTable,
         CtorTable,
-        ClassTable,
         FieldNameTable).
 
 :- pred add_implicit_avail_module(import_or_use::in, module_name::in,
@@ -1049,13 +1047,13 @@ module_info_get_mode_table(MI, X) :-
     X = MI ^ mi_mode_table.
 module_info_get_cons_table(MI, X) :-
     X = MI ^ mi_cons_table.
-module_info_get_class_table(MI, X) :-
-    X = MI ^ mi_class_table.
 module_info_get_ctor_field_table(MI, X) :-
     X = MI ^ mi_ctor_field_table.
 
 module_info_get_special_pred_maps(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_special_pred_maps.
+module_info_get_class_table(MI, X) :-
+    X = MI ^ mi_sub_info ^ mi_class_table.
 module_info_get_instance_table(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_instance_table.
 module_info_get_type_spec_info(MI, X) :-
@@ -1160,13 +1158,13 @@ module_info_set_mode_table(X, !MI) :-
     !MI ^ mi_mode_table := X.
 module_info_set_cons_table(X, !MI) :-
     !MI ^ mi_cons_table := X.
-module_info_set_class_table(X, !MI) :-
-    !MI ^ mi_class_table := X.
 module_info_set_ctor_field_table(X, !MI) :-
     !MI ^ mi_ctor_field_table := X.
 
 module_info_set_special_pred_maps(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_special_pred_maps := X.
+module_info_set_class_table(X, !MI) :-
+    !MI ^ mi_sub_info ^ mi_class_table := X.
 module_info_set_instance_table(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_instance_table := X.
 module_info_set_type_spec_info(X, !MI) :-
