@@ -51,10 +51,10 @@ require_tailrec_invalid.m:054:   without corresponding `:- pred' or `:- func'
 require_tailrec_invalid.m:054:   declaration.
 require_tailrec_invalid.m:056: Error: expected attribute list for
 require_tailrec_invalid.m:056:   `:- pragma require_tail_recursion'
-require_tailrec_invalid.m:056:   declaration, not `Woop'.
+require_tailrec_invalid.m:056:   declaration, got `Woop'.
 require_tailrec_invalid.m:059: Error: expected attribute list for
 require_tailrec_invalid.m:059:   `:- pragma require_tail_recursion'
-require_tailrec_invalid.m:059:   declaration, not `23'.
+require_tailrec_invalid.m:059:   declaration, got `23'.
 require_tailrec_invalid.m:066: Error: Conflicting
 require_tailrec_invalid.m:066:   `:- pragma require_tail_recursion' attributes:
 require_tailrec_invalid.m:066:   `none' conflicts with earlier attribute

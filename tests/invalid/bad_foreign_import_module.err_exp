@@ -1,6 +1,5 @@
-bad_foreign_import_module.m:018: Error: wrong number of arguments in
-bad_foreign_import_module.m:018:   `:- pragma foreign_import_module'
-bad_foreign_import_module.m:018:   declaration.
+bad_foreign_import_module.m:018: Error: a `:- pragma foreign_import_module'
+bad_foreign_import_module.m:018:   declaration must have two arguments.
 bad_foreign_import_module.m:022: In first argument of
 bad_foreign_import_module.m:022:   `:- pragma foreign_import_module'
 bad_foreign_import_module.m:022:   declaration: error: invalid foreign language

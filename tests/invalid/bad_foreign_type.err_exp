@@ -1,9 +1,9 @@
-bad_foreign_type.m:017: Error: wrong number of arguments in
-bad_foreign_type.m:017:   `:- pragma foreign_type' declaration.
-bad_foreign_type.m:021: Error: wrong number of arguments in
-bad_foreign_type.m:021:   `:- pragma foreign_type' declaration.
+bad_foreign_type.m:017: Error: a `:- pragma foreign_type' declaration must have
+bad_foreign_type.m:017:   three or four arguments.
+bad_foreign_type.m:021: Error: a `:- pragma foreign_type' declaration must have
+bad_foreign_type.m:021:   three or four arguments.
 bad_foreign_type.m:025: In first argument of `:- pragma foreign_type'
-bad_foreign_type.m:025:   declaration error: invalid foreign language
+bad_foreign_type.m:025:   declaration: error: invalid foreign language
 bad_foreign_type.m:025:   `"InvalidLanguage"'.
 bad_foreign_type.m:029: In second argument of `:- pragma foreign_type'
 bad_foreign_type.m:029:   declaration: error: atom expected at 1111.
@@ -29,7 +29,7 @@ bad_foreign_type.m:055:   Recognized `where' attributes have the form
 bad_foreign_type.m:055:   `equality is <<equality pred name>>' and
 bad_foreign_type.m:055:   `comparison is <<comparison pred name>>'.
 bad_foreign_type.m:060: In first argument of `:- pragma foreign_type'
-bad_foreign_type.m:060:   declaration error: invalid foreign language
+bad_foreign_type.m:060:   declaration: error: invalid foreign language
 bad_foreign_type.m:060:   `"InvalidLanguage"'.
 bad_foreign_type.m:061: In second argument of `:- pragma foreign_type'
 bad_foreign_type.m:061:   declaration: error: atom expected at 9999.

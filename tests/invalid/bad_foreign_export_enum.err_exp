@@ -1,5 +1,6 @@
-bad_foreign_export_enum.m:017: Error: wrong number of arguments in
-bad_foreign_export_enum.m:017:   `:- pragma foreign_export_enum' declaration.
+bad_foreign_export_enum.m:017: Error: a `:- pragma foreign_export_enum'
+bad_foreign_export_enum.m:017:   declaration must have two, three or four
+bad_foreign_export_enum.m:017:   arguments.
 bad_foreign_export_enum.m:021: In first argument of
 bad_foreign_export_enum.m:021:   `:- pragma foreign_export_enum' declaration:
 bad_foreign_export_enum.m:021:   error: invalid foreign language

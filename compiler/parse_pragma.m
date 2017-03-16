@@ -357,8 +357,8 @@ parse_pragma_source_file(PragmaTerms, Context, MaybeIOM) :-
             MaybeIOM = error1([Spec])
         )
     else
-        Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl("source_file"), words("declaration."), nl],
+        Pieces = [words("Error: a"), pragma_decl("source_file"),
+            words("declaration must have exactly one argument."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -389,7 +389,7 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     then
         LangContextPieces = cord.from_list([
             words("In first argument of"), pragma_decl("foreign_type"),
-            words("declaration")
+            words("declaration:")
         ]),
         parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
@@ -444,8 +444,8 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl("foreign_type"), words("declaration."), nl],
+        Pieces = [words("Error: a"), pragma_decl("foreign_type"),
+            words("declaration must have three or four arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -472,7 +472,8 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
                 HeadTermStr = mercury_term_to_string(VarSet, print_name_only,
                     HeadTerm),
                 Pieces = cord.list(ContextPieces) ++ [
-                    words("error:"), words("foreign type assertion"),
+                    lower_case_next_if_not_first,
+                    words("Error:"), words("foreign type assertion"),
                     quote(HeadTermStr), words("is repeated.")
                 ],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -483,7 +484,8 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
         else
             TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
             Pieces = cord.list(ContextPieces) ++ [
-                words("error: expected a foreign type assertion,"),
+                lower_case_next_if_not_first,
+                words("Error: expected a foreign type assertion,"),
                 words("got"), quote(TermStr), suffix(".")
             ],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -495,8 +497,9 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
     else
         TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
         Pieces = cord.list(ContextPieces) ++ [
-            words("error: expected a list of foreign type assertions, got"),
-            quote(TermStr), suffix(".")
+            lower_case_next_if_not_first,
+            words("Error: expected a list of foreign type assertions,"),
+            words("got"), quote(TermStr), suffix(".")
         ],
         Spec = error_spec(severity_error,
             phase_term_to_parse_tree,
@@ -583,8 +586,8 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl("foreign_export_enum"), words("declaration."), nl],
+        Pieces = [words("Error: a"), pragma_decl("foreign_export_enum"),
+            words("declaration must have two, three or four arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -653,17 +656,17 @@ parse_export_enum_attributes(VarSet, AttributesTerm, AttributesResult) :-
         then
             % XXX Print the conflicting attributes themselves.
             Pieces = [words("Error: conflicting attributes in"),
-                pragma_decl("foreign_export_enum"), words("declaration."),
-                nl],
+                pragma_decl("foreign_export_enum"), words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(AttributesTerm),
                     [always(Pieces)])]),
             AttributesResult = error1([Spec])
         else
             % Check that the prefix attribute is specified at most once.
-            IsPrefixAttr = (pred(A::in) is semidet :-
-                A = ee_attr_prefix(_)
-            ),
+            IsPrefixAttr =
+                ( pred(A::in) is semidet :-
+                    A = ee_attr_prefix(_)
+                ),
             list.filter(IsPrefixAttr, CollectedAttributes, PrefixAttributes),
             (
                 ( PrefixAttributes = []
@@ -827,7 +830,8 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
         MaybeForeignLang = ok1(ForeignLang)
     else
         LangPieces = cord.list(ContextPieces) ++ [
-            words("error: invalid foreign language"),
+            lower_case_next_if_not_first,
+            words("Error: invalid foreign language"),
             quote(describe_error_term(VarSet, LangTerm)), suffix(".")
         ],
         LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -844,8 +848,9 @@ parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
     else
         TypeTermStr = describe_error_term(VarSet, TypeTerm),
         Pieces = cord.list(ContextPieces) ++ [
-            words("error: expected name/arity for type, got"),
-            quote(TypeTermStr), suffix(".")
+            lower_case_next_if_not_first,
+            words("Error: expected name/arity for type,"),
+            words("got"), quote(TypeTermStr), suffix(".")
         ],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
@@ -916,7 +921,8 @@ parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
     ( if FunctionTerm = term.functor(term.string(Function), [], _) then
         ( if Function = "" then
             EmptyNamePieces = cord.list(ContextPieces) ++ [
-                words("error: expected a non-empty string for the"),
+                lower_case_next_if_not_first,
+                words("Error: expected a non-empty string for the"),
                 words("foreign language name of the exported procedure,"),
                 words("got empty string.")
             ],
@@ -931,7 +937,8 @@ parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
         )
     else
         FunctionPieces = cord.list(ContextPieces) ++ [
-            words("error: expected a non-empty string for the foreign"),
+            lower_case_next_if_not_first,
+            words("Error: expected a non-empty string for the foreign"),
             words("language name of the exported procedure, got"),
             quote(describe_error_term(VarSet, FunctionTerm)),
             suffix("."), nl
@@ -990,9 +997,8 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl("foreign_import_module"),
-            words("declaration."), nl],
+        Pieces = [words("Error: a"), pragma_decl("foreign_import_module"),
+            words("declaration must have two arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -1053,9 +1059,8 @@ parse_pragma_external_proc(ModuleName, VarSet, ErrorTerm,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl(PragmaName), words("declaration"),
-            words("(should be one or two)."), nl],
+        Pieces = [words("Error: a"), pragma_decl(PragmaName),
+            words("declaration must have one or two arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -1173,7 +1178,7 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaTerms, _ErrorTerm,
                 OptionsContext = get_term_context(OptionsTerm),
                 Pieces1 = [words("Error: expected attribute list for"),
                     pragma_decl("require_tail_recursion"),
-                    words("declaration, not"),
+                    words("declaration, got"),
                     quote(describe_error_term(VarSet, OptionsTerm)),
                     suffix("."), nl],
                 Message1 = simple_msg(OptionsContext, [always(Pieces1)]),
@@ -1212,8 +1217,8 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaTerms, _ErrorTerm,
             )
         )
     else
-        Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl(PragmaName), words("declaration."), nl],
+        Pieces = [words("Error: a"), pragma_decl(PragmaName),
+            words("declaration must have one or two arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -1478,8 +1483,8 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl("type_spec"), words("declaration."), nl],
+        Pieces = [words("Error: a"), pragma_decl("type_spec"),
+            words("declaration must have two or three arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -1520,8 +1525,8 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl("fact_table"), words("declaration."), nl],
+        Pieces = [words("Error: a"), pragma_decl("fact_table"),
+            words("declaration must have two arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -1946,8 +1951,8 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Syntax error in"),
-            pragma_decl("require_feature_set"), words("declaration."), nl],
+        Pieces = [words("Error: a"), pragma_decl("require_feature_set"),
+            words("declaration must have exactly one argument."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -2014,7 +2019,8 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
                 ),
                 ( if ForeignTypeName = "" then
                     Pieces = cord.list(ContextPieces) ++ [
-                        words("error: foreign type descriptor for language"),
+                        lower_case_next_if_not_first,
+                        words("Error: foreign type descriptor for language"),
                         quote(foreign_language_string(Language)),
                         words("must be a non-empty string.")
                     ],
@@ -2031,7 +2037,8 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
                     MaybeForeignLangType = ok1(erlang(erlang_type))
                 else
                     Pieces = cord.list(ContextPieces) ++ [
-                        words("error: foreign type descriptor for language"),
+                        lower_case_next_if_not_first,
+                        words("Error: foreign type descriptor for language"),
                         quote(foreign_language_string(Language)),
                         words("must be an empty string.")
                     ],
@@ -2050,7 +2057,8 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
     else
         InputTermStr = describe_error_term(VarSet, InputTerm),
         Pieces = cord.list(ContextPieces) ++ [
-            words("error: expected a string specifying the"),
+            lower_case_next_if_not_first,
+            words("Error: expected a string specifying the"),
             words("foreign type descriptor, got"), quote(InputTermStr),
             suffix(".")
         ],
