@@ -313,9 +313,9 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
                 DupVarNames =
                     list.map(mercury_var_to_name_only(VarSet), DupArgVars),
                 RepeatPieces = [words("Error: inst"), words(ParamWord)] ++
-                    list_to_pieces(DupVarNames) ++
-                    [words(IsAreWord), words("in LHS of"), words(DefnKind),
-                    suffix("."), nl],
+                    list_to_quoted_pieces(DupVarNames) ++
+                    [words(IsAreWord), words("repeated on left hand side of"),
+                    words(DefnKind), suffix("."), nl],
                 RepeatSpec = error_spec(severity_error,
                     phase_term_to_parse_tree,
                     [simple_msg(HeadTermContext, [always(RepeatPieces)])]),
@@ -341,8 +341,9 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
                 FreePieces = [words("Error: free inst"),
                     words(choose_number(FreeVars,
                         "parameter", "parameters"))] ++
-                    list_to_pieces(FreeVarNames) ++
-                    [words("in RHS of"), words(DefnKind), suffix("."), nl],
+                    list_to_quoted_pieces(FreeVarNames) ++
+                    [words("on right hand side of"),
+                    words(DefnKind), suffix("."), nl],
                 FreeSpec = error_spec(severity_error,
                     phase_term_to_parse_tree,
                     [simple_msg(get_term_context(BodyTerm),
