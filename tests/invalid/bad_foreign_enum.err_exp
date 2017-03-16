@@ -3,14 +3,18 @@ bad_foreign_enum.m:044:   `:- pragma foreign_enum' declaration.
 bad_foreign_enum.m:048: Error: expected a non-empty list mapping constructors
 bad_foreign_enum.m:048:   to foreign values in `:- pragma foreign_enum'
 bad_foreign_enum.m:048:   declaration.
-bad_foreign_enum.m:048: Error: invalid foreign language `"InvalidLanguage"' in
-bad_foreign_enum.m:048:   `:- pragma foreign_enum' declaration.
-bad_foreign_enum.m:052: Error: expected name/arity for type in
-bad_foreign_enum.m:052:   `:- pragma foreign_enum' declaration.
-bad_foreign_enum.m:059: Error: invalid foreign language `"InvalidLanguage"' in
-bad_foreign_enum.m:059:   `:- pragma foreign_enum' declaration.
-bad_foreign_enum.m:060: Error: expected name/arity for type in
-bad_foreign_enum.m:060:   `:- pragma foreign_enum' declaration.
+bad_foreign_enum.m:048: In first argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:048:   declaration: error: invalid foreign language
+bad_foreign_enum.m:048:   `"InvalidLanguage"'.
+bad_foreign_enum.m:052: In second argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:052:   declaration: error: expected name/arity for type, got
+bad_foreign_enum.m:052:   `vegetable'.
+bad_foreign_enum.m:059: In first argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:059:   declaration: error: invalid foreign language
+bad_foreign_enum.m:059:   `"InvalidLanguage"'.
+bad_foreign_enum.m:060: In second argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:060:   declaration: error: expected name/arity for type, got
+bad_foreign_enum.m:060:   `meat'.
 bad_foreign_enum.m:061: Error: expected a non-empty list mapping constructors
 bad_foreign_enum.m:061:   to foreign values in `:- pragma foreign_enum'
 bad_foreign_enum.m:061:   declaration.

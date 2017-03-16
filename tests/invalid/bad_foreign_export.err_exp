@@ -6,10 +6,12 @@ bad_foreign_export.m:028: In third argument of `:- pragma foreign_export'
 bad_foreign_export.m:028:   declaration: error: expected a non-empty string for
 bad_foreign_export.m:028:   the foreign language name of the exported
 bad_foreign_export.m:028:   procedure, got `22222'.
-bad_foreign_export.m:032: Error: invalid foreign language `"InvalidLanguage"'
-bad_foreign_export.m:032:   in `:- pragma foreign_export' declaration.
-bad_foreign_export.m:037: Error: invalid foreign language `"InvalidLanguage"'
-bad_foreign_export.m:037:   in `:- pragma foreign_export' declaration.
+bad_foreign_export.m:032: In first argument of `:- pragma foreign_export'
+bad_foreign_export.m:032:   declaration: error: invalid foreign language
+bad_foreign_export.m:032:   `"InvalidLanguage"'.
+bad_foreign_export.m:037: In first argument of `:- pragma foreign_export'
+bad_foreign_export.m:037:   declaration: error: invalid foreign language
+bad_foreign_export.m:037:   `"InvalidLanguage"'.
 bad_foreign_export.m:038: In second argument of `:- pragma foreign_export'
 bad_foreign_export.m:038:   declaration: error: atom expected at 3333.
 bad_foreign_export.m:039: In third argument of `:- pragma foreign_export'

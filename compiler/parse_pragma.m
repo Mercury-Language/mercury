@@ -387,7 +387,11 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeAssertionTerm = yes(AssertionTerm0)
         )
     then
-        parse_foreign_language("foreign_type", VarSet, LangTerm,
+        LangContextPieces = cord.from_list([
+            words("In first argument of"), pragma_decl("foreign_type"),
+            words("declaration")
+        ]),
+        parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
         TypeDefnHeadContextPieces = cord.from_list([
             words("In second argument of"), pragma_decl("foreign_type"),
@@ -542,9 +546,17 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             MaybeOverridesTerm = yes(OverridesTerm)
         )
     then
-        parse_foreign_language("foreign_export_enum", VarSet, LangTerm,
+        LangContextPieces = cord.from_list([
+            words("In first argument of"),
+            pragma_decl("foreign_export_enum"), words("declaration:")
+        ]),
+        parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
-        parse_type_ctor_name_arity("foreign_export_enum", MercuryTypeTerm,
+        TypeContextPieces = cord.from_list([
+            words("In second argument of"),
+            pragma_decl("foreign_export_enum"), words("declaration:")
+        ]),
+        parse_type_ctor_name_arity(TypeContextPieces, VarSet, MercuryTypeTerm,
             MaybeTypeCtor),
         maybe_parse_export_enum_attributes(VarSet, MaybeAttributesTerm,
             MaybeAttributes),
@@ -730,9 +742,17 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if PragmaTerms = [LangTerm, MercuryTypeTerm, ValuesTerm] then
 
-        parse_foreign_language("foreign_enum", VarSet, LangTerm,
+        LangContextPieces = cord.from_list([
+            words("In first argument of"), pragma_decl("foreign_enum"),
+            words("declaration:")
+        ]),
+        parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
-        parse_type_ctor_name_arity("foreign_enum", MercuryTypeTerm,
+        TypeContextPieces = cord.from_list([
+            words("In second argument of"), pragma_decl("foreign_enum"),
+            words("declaration:")
+        ]),
+        parse_type_ctor_name_arity(TypeContextPieces, VarSet, MercuryTypeTerm,
             MaybeTypeCtor),
 
         UnrecognizedPieces =
@@ -796,34 +816,37 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
 
 %---------------------------------------------------------------------------%
 %
-% Common code for parsing foreign_export_enum and foreign_enum pragms.
+% Common code for parsing foreign language interface pragmas.
 %
 
-:- pred parse_foreign_language(string::in, varset::in, term::in,
-    maybe1(foreign_language)::out) is det.
+:- pred parse_foreign_language(cord(format_component)::in, varset::in,
+    term::in, maybe1(foreign_language)::out) is det.
 
-parse_foreign_language(PragmaName, VarSet, LangTerm, MaybeForeignLang) :-
+parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
     ( if term_to_foreign_language(LangTerm, ForeignLang) then
         MaybeForeignLang = ok1(ForeignLang)
     else
-        LangPieces = [words("Error: invalid foreign language"),
-            quote(describe_error_term(VarSet, LangTerm)), words("in"),
-            pragma_decl(PragmaName), words("declaration."),
-            nl],
-       LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
+        LangPieces = cord.list(ContextPieces) ++ [
+            words("error: invalid foreign language"),
+            quote(describe_error_term(VarSet, LangTerm)), suffix(".")
+        ],
+        LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(LangTerm), [always(LangPieces)])]),
             MaybeForeignLang = error1([LangSpec])
     ).
 
-:- pred parse_type_ctor_name_arity(string::in, term::in,
-    maybe1(type_ctor)::out) is det.
+:- pred parse_type_ctor_name_arity(cord(format_component)::in, varset::in,
+    term::in, maybe1(type_ctor)::out) is det.
 
-parse_type_ctor_name_arity(PragmaName, TypeTerm, MaybeTypeCtor) :-
+parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
     ( if parse_name_and_arity_unqualified(TypeTerm, Name, Arity) then
         MaybeTypeCtor = ok1(type_ctor(Name, Arity))
     else
-        Pieces = [words("Error: expected name/arity for type in"),
-            pragma_decl(PragmaName), words("declaration."), nl],
+        TypeTermStr = describe_error_term(VarSet, TypeTerm),
+        Pieces = cord.list(ContextPieces) ++ [
+            words("error: expected name/arity for type, got"),
+            quote(TypeTermStr), suffix(".")
+        ],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
         MaybeTypeCtor = error1([Spec])
@@ -840,7 +863,11 @@ parse_type_ctor_name_arity(PragmaName, TypeTerm, MaybeTypeCtor) :-
 parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if PragmaTerms = [LangTerm, PredAndModesTerm, FunctionTerm] then
-        parse_foreign_language("foreign_export", VarSet, LangTerm,
+        LangContextPieces = cord.from_list([
+            words("In first argument of"), pragma_decl("foreign_export"),
+            words("declaration:")
+        ]),
+        parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
         PredAndModesContextPieces = cord.from_list([
             words("In second argument of"), pragma_decl("foreign_export"),
@@ -926,7 +953,11 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
     ( if
         PragmaTerms = [LangTerm, ImportTerm]
     then
-        parse_foreign_language("foreign_import_module", VarSet, LangTerm,
+        LangContextPieces = cord.from_list([
+            words("In first argument of"),
+            pragma_decl("foreign_import_module"), words("declaration:")
+        ]),
+        parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
         ( if try_parse_sym_name_and_no_args(ImportTerm, Import0) then
             MaybeImportModule = ok1(Import0)

@@ -1,15 +1,21 @@
 bad_foreign_export_enum.m:017: Error: wrong number of arguments in
 bad_foreign_export_enum.m:017:   `:- pragma foreign_export_enum' declaration.
-bad_foreign_export_enum.m:021: Error: invalid foreign language
-bad_foreign_export_enum.m:021:   `"InvalidLanguage"' in
-bad_foreign_export_enum.m:021:   `:- pragma foreign_export_enum' declaration.
-bad_foreign_export_enum.m:025: Error: expected name/arity for type in
-bad_foreign_export_enum.m:025:   `:- pragma foreign_export_enum' declaration.
-bad_foreign_export_enum.m:028: Error: invalid foreign language
-bad_foreign_export_enum.m:028:   `"InvalidLanguage"' in
-bad_foreign_export_enum.m:028:   `:- pragma foreign_export_enum' declaration.
-bad_foreign_export_enum.m:029: Error: expected name/arity for type in
-bad_foreign_export_enum.m:029:   `:- pragma foreign_export_enum' declaration.
+bad_foreign_export_enum.m:021: In first argument of
+bad_foreign_export_enum.m:021:   `:- pragma foreign_export_enum' declaration:
+bad_foreign_export_enum.m:021:   error: invalid foreign language
+bad_foreign_export_enum.m:021:   `"InvalidLanguage"'.
+bad_foreign_export_enum.m:025: In second argument of
+bad_foreign_export_enum.m:025:   `:- pragma foreign_export_enum' declaration:
+bad_foreign_export_enum.m:025:   error: expected name/arity for type, got
+bad_foreign_export_enum.m:025:   `fruit'.
+bad_foreign_export_enum.m:028: In first argument of
+bad_foreign_export_enum.m:028:   `:- pragma foreign_export_enum' declaration:
+bad_foreign_export_enum.m:028:   error: invalid foreign language
+bad_foreign_export_enum.m:028:   `"InvalidLanguage"'.
+bad_foreign_export_enum.m:029: In second argument of
+bad_foreign_export_enum.m:029:   `:- pragma foreign_export_enum' declaration:
+bad_foreign_export_enum.m:029:   error: expected name/arity for type, got
+bad_foreign_export_enum.m:029:   `fruit'.
 bad_foreign_export_enum.m:030: Error: malformed attributes list in
 bad_foreign_export_enum.m:030:   `:- pragma foreign_export_enum' declaration.
 bad_foreign_export_enum.m:031: Error: expected list of mapping elements, not
