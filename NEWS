@@ -249,7 +249,7 @@ Changes to the Mercury standard library:
   only succeed for decimal digits (0-9) may be broken.
 
 * Float special values, NaNs and Infinities, are now converted to strings in
-  a way that is backend and grade-independent.  (Bug #348)
+  a way that is backend- and grade-independent.  (Bug #348)
 
 * string.base_digit_to_int/3 and string.det_base_digit_to_int/2 now check
   for overflow and underflow in all bases, not only base 10.
@@ -434,6 +434,13 @@ Changes to the Mercury standard library:
 
   - maybe_pred/3
   - maybe_func/2
+
+* We have added the following predicates and functions to the digraph module:
+
+  - return_vertices_in_from_to_order/2
+  - return_vertices_in_to_from_order/2
+  - return_sccs_in_from_to_order/1
+  - return_sccs_in_to_from_order/1
 
 Changes to the Mercury compiler:
 

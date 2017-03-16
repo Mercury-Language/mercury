@@ -284,20 +284,48 @@
 :- pred reduced(digraph(T)::in, digraph(set(T))::out,
     map(digraph_key(T), digraph_key(set(T)))::out) is det.
 
-    % tsort(G, TS) is true if TS is a topological sorting of G,
-    % with the order placing the clique of a parent vertex before
-    % the cliques of its child vertices.
+    % tsort(G, TS) is true if TS is a topological sorting of G.
+    %
+    % If we view each edge in the digraph as representing a <from, to>
+    % relationship, then TS will contain a vertex "from" *before*
+    % all the other vertices "to" for which a <from, to> edge exists
+    % in the graph. In other words, TS will be in from-to order.
     %
     % tsort fails if G is cyclic.
     %
 :- pred tsort(digraph(T)::in, list(T)::out) is semidet.
 
+    % Both these predicates do a topological sort of G.
+    %
+    % return_vertices_in_from_to_order(G, TS) is a synonym for tsort(G, TS).
+    % return_vertices_in_to_from_order(G, TS) is identical to both
+    % except for the fact that it returns the vertices in the opposite order.
+    %
+:- pred return_vertices_in_from_to_order(digraph(T)::in, list(T)::out)
+    is semidet.
+:- pred return_vertices_in_to_from_order(digraph(T)::in, list(T)::out)
+    is semidet.
+
     % atsort(G, ATS) is true if ATS is a topological sorting
-    % of the cliques in G, with the order placing the clique
-    % of a parent vertex before the cliques of its child vertices.
+    % of the strongly connected components (SCCs) in G.
+    %
+    % If we view each edge in the digraph as representing a <from, to>
+    % relationship, then ATS will contain SCC A before all SCCs B
+    % for which there is a vertex <from, to> with "from" being in SCC A
+    % and "to" being in SCC B. In other words, ATS will be in from-to order.
     %
 :- func atsort(digraph(T)) = list(set(T)).
 :- pred atsort(digraph(T)::in, list(set(T))::out) is det.
+
+    % Both these predicates do a topological sort of the strongly connected
+    % components (SCCs) of G.
+    %
+    % return_sccs_in_from_to_order(G) = ATS is a synonym for atsort(G) = ATS.
+    % return_sccs_in_to_from_order(G) = ATS is identical to both
+    % except for the fact that it returns the SCCs in the opposite order.
+    %
+:- func return_sccs_in_from_to_order(digraph(T)) = list(set(T)).
+:- func return_sccs_in_to_from_order(digraph(T)) = list(set(T)).
 
     % sc(G, SC) is true if SC is the symmetric closure of G.
     % That is, (x,y) is in SC iff either (x,y) or (y,x) is in G.
@@ -930,10 +958,17 @@ make_reduced_graph(CliqMap, [X - Y | Edges], !R) :-
 
 %---------------------------------------------------------------------------%
 
-tsort(G, Tsort) :-
+tsort(G, FromToTsort) :-
+    return_vertices_in_from_to_order(G, FromToTsort).
+
+return_vertices_in_from_to_order(G, FromToTsort) :-
     digraph.dfsrev(G, Tsort0),
     digraph.check_tsort(G, init, Tsort0),
-    Tsort = list.map(digraph.lookup_vertex(G), Tsort0).
+    FromToTsort = list.map(digraph.lookup_vertex(G), Tsort0).
+
+return_vertices_in_to_from_order(G, ToFromTsort) :-
+    return_vertices_in_from_to_order(G, FromToTsort),
+    list.reverse(FromToTsort, ToFromTsort).
 
 :- pred digraph.check_tsort(digraph(T)::in, digraph_key_set(T)::in,
     list(digraph_key(T))::in) is semidet.
@@ -949,19 +984,23 @@ check_tsort(G, Vis0, [X | Xs]) :-
 %---------------------------------------------------------------------------%
 
 atsort(G) = ATsort :-
-    digraph.atsort(G, ATsort).
+    ATsort = digraph.return_sccs_in_from_to_order(G).
 
 atsort(G, ATsort) :-
-    % digraph.atsort returns a topological sorting of the cliques in a digraph.
-    %
+    ATsort = digraph.return_sccs_in_from_to_order(G).
+
+digraph.return_sccs_in_from_to_order(G) = ATsort :-
+    ATsort0 = digraph.return_sccs_in_to_from_order(G),
+    list.reverse(ATsort0, ATsort).
+
+digraph.return_sccs_in_to_from_order(G) = ATsort :-
     % The algorithm used is described in R.E. Tarjan, "Depth-first search
     % and linear graph algorithms", SIAM Journal on Computing, 1, 2 (1972).
 
     digraph.dfsrev(G, DfsRev),
     digraph.inverse(G, GInv),
     init(Vis),
-    digraph.atsort_2(DfsRev, GInv, Vis, [], ATsort0),
-    list.reverse(ATsort0, ATsort).
+    digraph.atsort_2(DfsRev, GInv, Vis, [], ATsort).
 
 :- pred digraph.atsort_2(list(digraph_key(T))::in, digraph(T)::in,
     digraph_key_set(T)::in, list(set(T))::in, list(set(T))::out) is det.
