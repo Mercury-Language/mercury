@@ -2187,21 +2187,20 @@ parse_pragma_foreign_code_pragma(ErrorTerm,
 
 parse_pragma_foreign_proc_pragma(ModuleName, VarSet, ErrorTerm,
         PragmaTerms, Context, SeqNum, MaybeIOM) :-
-    InvalidDeclPrefix = [words("Error: invalid"),
-        pragma_decl("foreign_proc"), words("declaration:")],
     (
         PragmaTerms = [LangTerm | RestTerms],
-        ( if term_to_foreign_language(LangTerm, ForeignLanguagePrime) then
-            ForeignLanguage = ForeignLanguagePrime,
+        LangContextPieces = cord.from_list([
+            words("In first argument of"), pragma_decl("foreign_proc"),
+            words("declaration:")
+        ]),
+        parse_foreign_language(LangContextPieces, VarSet, LangTerm,
+            MaybeForeignLanguage),
+        (
+            MaybeForeignLanguage = ok1(ForeignLanguage),
             LangSpecs = []
-        else
-            ForeignLanguage = lang_c,   % Dummy, ignored when LangSpecs \= []
-            LangPieces = InvalidDeclPrefix ++
-                [words("invalid language parameter."), nl],
-            LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(LangTerm),
-                    [always(LangPieces)])]),
-            LangSpecs = [LangSpec]
+        ;
+            MaybeForeignLanguage = error1(LangSpecs),
+            ForeignLanguage = lang_c  % Dummy, ignored when LangSpecs \= []
         ),
         ( if
             RestTerms = [PredAndVarsTerm, FlagsTerm, CodeTerm],
@@ -2223,16 +2222,20 @@ parse_pragma_foreign_proc_pragma(ModuleName, VarSet, ErrorTerm,
                 MaybeIOM = error1(LangSpecs ++ RestSpecs)
             )
         else
-            Pieces = InvalidDeclPrefix ++
-                [words("wrong number of arguments."), nl],
+            Pieces = [
+                words("Error: a "), pragma_decl("foreign_proc"),
+                words("declaration must have four arguments.")
+            ],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
             MaybeIOM = error1([Spec])
         )
     ;
         PragmaTerms = [],
-        Pieces = InvalidDeclPrefix ++
-            [words("wrong number of arguments."), nl],
+        Pieces = [
+            words("Error: a "), pragma_decl("foreign_proc"),
+            words("declaration must have four arguments.")
+        ],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -2287,9 +2290,11 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet,
         Impl0 = fp_impl_ordinary(Code, yes(CodeContext)),
         MaybeImpl = ok1(Impl0)
     else
-        ImplPieces = [words("Error in the fourth argument of"),
+        CodeTermStr = describe_error_term(VarSet, CodeTerm),
+        ImplPieces = [words("In the fourth argument of"),
             pragma_decl("foreign_proc"), words("declaration:"),
-            words("expected a string containing foreign code."), nl],
+            words("error: expected a string containing foreign code, got"),
+            quote(CodeTermStr), suffix("."), nl],
         ImplSpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(CodeContext, [always(ImplPieces)])]),
         MaybeImpl = error1([ImplSpec])

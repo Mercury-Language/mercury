@@ -1,9 +1,10 @@
-bad_foreign_proc.m:017: Error: invalid `:- pragma foreign_proc' declaration:
-bad_foreign_proc.m:017:   wrong number of arguments.
-bad_foreign_proc.m:021: Error: invalid `:- pragma foreign_proc' declaration:
-bad_foreign_proc.m:021:   wrong number of arguments.
-bad_foreign_proc.m:030: Error: invalid `:- pragma foreign_proc' declaration:
-bad_foreign_proc.m:030:   invalid language parameter.
+bad_foreign_proc.m:017: Error: a `:- pragma foreign_proc' declaration must have
+bad_foreign_proc.m:017:   four arguments.
+bad_foreign_proc.m:021: Error: a `:- pragma foreign_proc' declaration must have
+bad_foreign_proc.m:021:   four arguments.
+bad_foreign_proc.m:030: In first argument of `:- pragma foreign_proc'
+bad_foreign_proc.m:030:   declaration: error: invalid foreign language
+bad_foreign_proc.m:030:   `"InvalidLanuage"'.
 bad_foreign_proc.m:039: In the second argument of `:- pragma foreign_proc'
 bad_foreign_proc.m:039:   declaration: error: atom expected at "foo".
 bad_foreign_proc.m:043: In the third argument of `:- pragma foreign_proc'
@@ -12,16 +13,17 @@ bad_foreign_proc.m:043:   "promise_pure".
 bad_foreign_proc.m:053: In the third argument of `:- pragma foreign_proc'
 bad_foreign_proc.m:053:   declaration: error: conflicting attributes in
 bad_foreign_proc.m:053:   attribute list.
-bad_foreign_proc.m:060: Error in the fourth argument of
-bad_foreign_proc.m:060:   `:- pragma foreign_proc' declaration: expected a
-bad_foreign_proc.m:060:   string containing foreign code.
-bad_foreign_proc.m:065: Error: invalid `:- pragma foreign_proc' declaration:
-bad_foreign_proc.m:065:   invalid language parameter.
+bad_foreign_proc.m:060: In the fourth argument of `:- pragma foreign_proc'
+bad_foreign_proc.m:060:   declaration: error: expected a string containing
+bad_foreign_proc.m:060:   foreign code, got `5555'.
+bad_foreign_proc.m:065: In first argument of `:- pragma foreign_proc'
+bad_foreign_proc.m:065:   declaration: error: invalid foreign language
+bad_foreign_proc.m:065:   `"InvalidLanguage"'.
 bad_foreign_proc.m:066: In the second argument of `:- pragma foreign_proc'
 bad_foreign_proc.m:066:   declaration: error: atom expected at "foo".
 bad_foreign_proc.m:067: In the third argument of `:- pragma foreign_proc'
 bad_foreign_proc.m:067:   declaration: error: expected an attribute list, found
 bad_foreign_proc.m:067:   "promise_pure".
-bad_foreign_proc.m:068: Error in the fourth argument of
-bad_foreign_proc.m:068:   `:- pragma foreign_proc' declaration: expected a
-bad_foreign_proc.m:068:   string containing foreign code.
+bad_foreign_proc.m:068: In the fourth argument of `:- pragma foreign_proc'
+bad_foreign_proc.m:068:   declaration: error: expected a string containing
+bad_foreign_proc.m:068:   foreign code, got `6666'.
