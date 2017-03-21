@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,7 +106,7 @@
 ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
     Defns0 = !.MLDS ^ mlds_defns,
     ModuleName = mercury_module_name_to_mlds(!.MLDS ^ mlds_name),
-    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
+    globals.lookup_bool_option(Globals, warn_non_tail_recursion_self,
         WarnTailCallsBool),
     (
         WarnTailCallsBool = yes,
@@ -673,8 +674,8 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Markers, Context, !InBodyInfo) :-
                 SymName = unqualified(Name),
                 SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
                 Specs0 = !.InBodyInfo ^ tibi_specs,
-                add_message_for_nontail_recursive_call(SimpleCallId, ProcId,
-                    mlds_get_prog_context(Context), WarnOrError,
+                add_message_for_nontail_self_recursive_call(SimpleCallId,
+                    ProcId, mlds_get_prog_context(Context), WarnOrError,
                     Specs0, Specs),
                 !InBodyInfo ^ tibi_specs := Specs
             )

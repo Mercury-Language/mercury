@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -169,6 +170,8 @@
     ;       warn_wrong_module_name
     ;       warn_smart_recompilation
     ;       warn_undefined_options_variables
+    ;       warn_non_tail_recursion_self
+    ;       warn_non_tail_recursion_mutual
     ;       warn_non_tail_recursion
     ;       warn_target_code
     ;       warn_up_to_date
@@ -1161,7 +1164,9 @@ option_defaults_2(warning_option, [
     warn_wrong_module_name              -   bool(yes),
     warn_smart_recompilation            -   bool(yes),
     warn_undefined_options_variables    -   bool(yes),
-    warn_non_tail_recursion             -   bool(no),
+    warn_non_tail_recursion_self        -   bool(no),
+    warn_non_tail_recursion_mutual      -   bool(no),
+    warn_non_tail_recursion             -   maybe_string_special,
     warn_target_code                    -   bool(yes),
     warn_up_to_date                     -   bool(yes),
     warn_stubs                          -   bool(yes),
@@ -2052,6 +2057,10 @@ long_option("warn-undefined-options-variables",
                     warn_undefined_options_variables).
 long_option("warn-undefined-options-vars",
                     warn_undefined_options_variables).
+long_option("warn-non-tail-recursion-self",
+                    warn_non_tail_recursion_self).
+long_option("warn-non-tail-recursion-mutual",
+                    warn_non_tail_recursion_mutual).
 long_option("warn-non-tail-recursion",  warn_non_tail_recursion).
 long_option("warn-target-code",         warn_target_code).
 long_option("warn-up-to-date",          warn_up_to_date).
@@ -3148,7 +3157,8 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                     warn_wrong_module_name          -   bool(Enable),
                     warn_smart_recompilation        -   bool(Enable),
                     warn_undefined_options_variables -  bool(Enable),
-                    warn_non_tail_recursion         -   bool(Enable),
+                    warn_non_tail_recursion_self    -   bool(Enable),
+                    warn_non_tail_recursion_mutual  -   bool(Enable),
                     warn_target_code                -   bool(Enable),
                     warn_up_to_date                 -   bool(Enable),
                     warn_stubs                      -   bool(Enable),
@@ -3179,7 +3189,8 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                     warn_simple_code                -   bool(Enable),
                     warn_duplicate_calls            -   bool(Enable),
                     warn_implicit_stream_calls      -   bool(Enable),
-                    warn_non_tail_recursion         -   bool(Enable),
+                    warn_non_tail_recursion_self    -   bool(Enable),
+                    warn_non_tail_recursion_mutual  -   bool(Enable),
                     warn_dead_procs                 -   bool(Enable),
                     warn_dead_preds                 -   bool(Enable),
                     warn_known_bad_format_calls     -   bool(Enable),
@@ -3190,6 +3201,37 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                     warn_suspicious_foreign_procs   -   bool(Enable),
                     warn_state_var_shadowing        -   bool(Enable)
                 ], !OptionTable)
+        ;
+            Option = warn_non_tail_recursion,
+            SpecialData = maybe_string(MaybeRecCalls0),
+            (
+                MaybeRecCalls0 = yes(RecCalls0),
+                RecCalls = to_lower(RecCalls0),
+                (
+                    RecCalls = "none",
+                    WarnSelfRec = no,
+                    WarnMutualRec = no
+                ;
+                    RecCalls = "self",
+                    WarnSelfRec = yes,
+                    WarnMutualRec = no
+                ;
+                    ( RecCalls = "self-and-mutual"
+                    ; RecCalls = "both"
+                    ; RecCalls = "all"
+                    ),
+                    WarnSelfRec = yes,
+                    WarnMutualRec = yes
+                )
+            ;
+                MaybeRecCalls0 = no,
+                WarnSelfRec = no,
+                WarnMutualRec = no
+            ),
+            map.set(warn_non_tail_recursion_self, bool(WarnSelfRec),
+                !OptionTable),
+            map.set(warn_non_tail_recursion_mutual, bool(WarnMutualRec),
+                !OptionTable)
         ;
             Option = infer_all,
             SpecialData = bool(Infer),
@@ -3760,8 +3802,9 @@ options_help_warning -->
         "--no-warn-undefined-options-variables",
         "\tDo not warn about references to undefined variables in",
         "\toptions files with `--make'.",
-        "--warn-non-tail-recursion",
-        "\tWarn about any directly recursive calls that are not tail calls.",
+        "--warn-non-tail-recursion <type>",
+        "\tWarn about recursive calls that are not tail calls,",
+        "\t<type> may be ""self"", ""self-and-mutual"" or ""none"".",
         "--no-warn-up-to-date",
         "\tDo not warn if targets specified on the command line",
         "\twith `--make' are already up-to-date.",

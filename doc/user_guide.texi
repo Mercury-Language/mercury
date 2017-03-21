@@ -6614,8 +6614,16 @@ Do not warn about references to undefined variables in
 options files with @samp{--make}.
 
 @sp 1
-@item --warn-non-tail-recursion
+@item --warn-non-tail-recursion @var{type}
 @findex --warn-non-tail-recursion
+Warn about any recursive calls that are not tail recursive.
+Implies the next two options.
+Warn about any recursive calls that are not tail recursive.
+@var{type} may be @samp{self}, @samp{self-and-mutual} or @samp{none}.
+
+@sp 1
+@item --warn-non-tail-recursion-self
+@findex --warn-non-tail-recursion-self
 Warn about any directly recursive calls that are not tail recursive.
 
 @sp 1

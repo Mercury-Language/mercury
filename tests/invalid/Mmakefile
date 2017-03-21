@@ -249,6 +249,7 @@ SINGLEMODULE= \
 	require_switch_arms_detism \
 	require_tailrec_1 \
 	require_tailrec_2 \
+	require_tailrec_3 \
 	require_tailrec_invalid \
 	reserved \
 	some \
@@ -522,7 +523,7 @@ illtyped_compare.err: illtyped_compare.m
 
 # For these tests the error is only caught when generating target code.
 .PHONY: missing_file
-require_tailrec_1.err require_tailrec_2.err foreign_include_file_missing.err: %.err : %.m
+require_tailrec_1.err require_tailrec_2.err require_tailrec_3.err foreign_include_file_missing.err: %.err : %.m
 	if $(MC) --target-code-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 			$* > $*.err 2>&1; \
 	then false; \

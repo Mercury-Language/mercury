@@ -1,11 +1,23 @@
 % vim: ft=mercury ts=4 sw=4 et
-% Require tail recursion pragma tests with --warn-non-tail-recursive
+% Require tail recursion pragma tests with --warn-non-tail-recursive-self
 :- module require_tailrec_2.
 
 :- interface.
 
+:- import_module bool.
 :- import_module int.
 :- import_module list.
+
+:- pred map1(pred(X, Y), list(X), list(Y)).
+:- mode map1(pred(in, out) is det, in, out) is det.
+
+:- pred map2(pred(X, Y), list(X), list(Y)).
+:- mode map2(pred(in, out) is det, in, out) is det.
+
+:- func even1(int) = bool.
+:- func odd1(int) = bool.
+
+%-----------------------------------------------------------------------%
 
 :- pred qsortapp_1(list(int)::in, list(int)::out) is det.
 :- pred qsortapp_2(list(int)::in, list(int)::out) is det.
@@ -16,7 +28,42 @@
 
 :- func cons(X, list(X)) = list(X).
 
+%-----------------------------------------------------------------------%
+
 :- implementation.
+
+% self non-tail recursion with no pragma
+map1(_, [], []).
+map1(P, [X | Xs], [Y | Ys]) :-
+    P(X, Y),
+    map1(P, Xs, Ys).
+
+% self non-tail recursion with self pragma
+:- pragma require_tail_recursion(map2/3, [self_or_mutual_recursion]).
+map2(_, [], []).
+map2(P, [X | Xs], [Y | Ys]) :-
+    P(X, Y),
+    map2(P, Xs, Ys).
+
+% mutual non-tail recursion with mutual pragma
+:- pragma require_tail_recursion(even1/1, [self_or_mutual_recursion]).
+even1(N) =
+    ( if N = 0 then
+        yes
+    else
+        bool.not(odd1(N))
+    ).
+
+% mutual tail recursion with mutual pragma, this does not raise an error.
+:- pragma require_tail_recursion(odd1/1, [self_or_mutual_recursion]).
+odd1(N) =
+    ( if N = 0 then
+        no
+    else
+        even1(N - 1)
+    ).
+
+%-----------------------------------------------------------------------%
 
 :- pragma require_tail_recursion(qsortapp_1/2).
 

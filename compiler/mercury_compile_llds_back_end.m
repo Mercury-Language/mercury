@@ -210,14 +210,21 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
         MaybeDupProcMap = no
     ;
         ProcDups = yes,
-        DepInfo = build_pred_dependency_graph(!.HLDS, PredIds,
+        PredDepInfo = build_pred_dependency_graph(!.HLDS, PredIds,
             do_not_include_imported),
-        OrderedPredIds = dependency_info_get_condensed_bottom_up_sccs(DepInfo),
+        OrderedPredIds = dependency_info_get_condensed_bottom_up_sccs(
+            PredDepInfo),
         MaybeDupProcMap = yes(map.init)
     ),
+    % The dependency information used to warn about mutual tail recursion
+    % cannot be shared with the information used to remove duplicate
+    % procedures, they're based on different nodes (predicates versus
+    % procs).
+    module_info_rebuild_dependency_info(!HLDS, ProcDepInfo),
+    SCCMap = dependency_info_make_scc_map(ProcDepInfo),
     generate_const_structs(!.HLDS, ConstStructMap, !GlobalData),
     llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
-        OrderedPredIds, MaybeDupProcMap, cord.init, CProcsCord,
+        SCCMap, OrderedPredIds, MaybeDupProcMap, cord.init, CProcsCord,
         !GlobalData, !Specs),
     LLDS = cord.list(CProcsCord).
 
@@ -225,30 +232,32 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
     map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label).
 
 :- pred llds_backend_pass_by_preds_loop_over_preds(
-    module_info::in, module_info::out, const_struct_map::in, list(pred_id)::in,
+    module_info::in, module_info::out, const_struct_map::in,
+    scc_map(pred_proc_id)::in, list(pred_id)::in,
     maybe(dup_proc_label_map)::in,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_by_preds_loop_over_preds(!HLDS, _,
+llds_backend_pass_by_preds_loop_over_preds(!HLDS, _, _,
         [], _, !CProcsCord, !GlobalData, !Specs).
-llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
+llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap, SCCMap,
         [PredId | PredIds], !.MaybeDupProcMap,
         !CProcsCord, !GlobalData, !Specs) :-
-    llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, PredId,
-        !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs),
-    llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap, PredIds,
-        !.MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs).
+    llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, SCCMap,
+        PredId, !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs),
+    llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
+        SCCMap, PredIds, !.MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs).
 
 :- pred llds_backend_pass_by_preds_do_one_pred(
-    module_info::in, module_info::out, const_struct_map::in, pred_id::in,
+    module_info::in, module_info::out, const_struct_map::in,
+    scc_map(pred_proc_id)::in, pred_id::in,
     maybe(dup_proc_label_map)::in, maybe(dup_proc_label_map)::out,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, PredId,
+llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, SCCMap, PredId,
         !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs) :-
     module_info_get_preds(!.HLDS, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
@@ -283,13 +292,13 @@ llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, PredId,
             globals.get_trace_level(Globals0, TraceLevel),
             globals.set_trace_level_none(Globals0, Globals1),
             module_info_set_globals(Globals1, !HLDS),
-            llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
-                ProcIds, IdCProcs, !GlobalData, !Specs),
+            llds_backend_pass_for_pred(!HLDS, ConstStructMap, SCCMap,
+                PredId, PredInfo, ProcIds, IdCProcs, !GlobalData, !Specs),
             module_info_get_globals(!.HLDS, Globals2),
             globals.set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS)
         else
-            llds_backend_pass_for_pred(!HLDS, ConstStructMap,
+            llds_backend_pass_for_pred(!HLDS, ConstStructMap, SCCMap,
                 PredId, PredInfo, ProcIds, IdCProcs, !GlobalData, !Specs)
         ),
         (
@@ -310,30 +319,31 @@ llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, PredId,
     ).
 
 :- pred llds_backend_pass_for_pred(module_info::in, module_info::out,
-    const_struct_map::in, pred_id::in, pred_info::in, list(proc_id)::in,
+    const_struct_map::in, scc_map(pred_proc_id)::in, pred_id::in,
+    pred_info::in, list(proc_id)::in,
     assoc_list(mdbcomp.prim_data.proc_label, c_procedure)::out,
     global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_for_pred(!HLDS, _, _, _, [], [], !GlobalData, !Specs).
-llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
+llds_backend_pass_for_pred(!HLDS, _, _, _, _, [], [], !GlobalData, !Specs).
+llds_backend_pass_for_pred(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
         [ProcId | ProcIds], [ProcLabel - CProc | ProcLabelsCProcs],
         !GlobalData, !Specs) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
-    llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
-        ProcId, ProcInfo, CProc, !GlobalData, !Specs),
-    llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
-        ProcIds, ProcLabelsCProcs, !GlobalData, !Specs).
+    llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId,
+        PredInfo, ProcId, ProcInfo, CProc, !GlobalData, !Specs),
+    llds_backend_pass_for_pred(!HLDS, ConstStructMap, SCCMap, PredId,
+        PredInfo, ProcIds, ProcLabelsCProcs, !GlobalData, !Specs).
 
-:- pred llds_backend_pass_for_proc( module_info::in, module_info::out,
-    const_struct_map::in, pred_id::in, pred_info::in,
-    proc_id::in, proc_info::in, c_procedure::out,
+:- pred llds_backend_pass_for_proc(module_info::in, module_info::out,
+    const_struct_map::in, scc_map(pred_proc_id)::in, pred_id::in,
+    pred_info::in, proc_id::in, proc_info::in, c_procedure::out,
     global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
+llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
         ProcId, !.ProcInfo, CProc, !GlobalData, !Specs) :-
     PredProcId = proc(PredId, ProcId),
     module_info_get_globals(!.HLDS, Globals),
@@ -403,7 +413,7 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
             !.HLDS, !IO)
     ),
     mark_tail_rec_calls_in_proc_for_llds_code_gen(!.HLDS, PredId, ProcId,
-        PredInfo, !ProcInfo, !Specs),
+        PredInfo, SCCMap, !ProcInfo, !Specs),
 
     trace [io(!IO)] (
         write_proc_progress_message("% Allocating stack slots in ", PredId,
@@ -533,8 +543,10 @@ maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !Specs, !IO) :-
     maybe_write_string(Verbose,
         "% Marking directly tail recursive calls...", !IO),
     maybe_flush_output(Verbose, !IO),
-    process_all_nonimported_preds_errors(
-        update_pred_error(mark_tail_rec_calls_in_pred_for_llds_code_gen),
+    module_info_rebuild_dependency_info(!HLDS, DepInfo),
+    SCCMap = dependency_info_make_scc_map(DepInfo),
+    process_all_nonimported_preds_errors(update_pred_error(
+            mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap)),
         !HLDS, !Specs, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).

@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2014 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2184,12 +2185,15 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
 
     % --warn-non-tail-recursion requires tail call optimization to be enabled.
     % It also doesn't work if you use --errorcheck-only.
-    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion,
-        WarnNonTailRec),
-    (
-        WarnNonTailRec = no
-    ;
-        WarnNonTailRec = yes,
+    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_self,
+        WarnNonTailRecSelf),
+    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_mutual,
+        WarnNonTailRecMutual),
+    ( if
+        ( WarnNonTailRecSelf = yes
+        ; WarnNonTailRecMutual = yes
+        )
+    then
         globals.lookup_bool_option(!.Globals, pessimize_tailcalls,
             PessimizeTailCalls),
         globals.lookup_bool_option(!.Globals, optimize_tailcalls,
@@ -2217,6 +2221,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         else
             true
         )
+    else
+        true
     ),
 
     % The backend foreign languages depend on the target.

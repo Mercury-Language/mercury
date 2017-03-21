@@ -15,7 +15,7 @@
 % A dependency_graph records which entities depend on which other entities.
 % (For hlds_dependency_graph.m, the entities are HLDS procedures.)
 % It is defined as a digraph R where the presence of an edge x -> y means that
-% the definition of x depends on the definition of y. 
+% the definition of x depends on the definition of y.
 %
 % The reason why we build the dependency graph is because from it,
 % we can compute the list of the SCCs (strongly-connected components)
@@ -30,6 +30,7 @@
 :- import_module assoc_list.
 :- import_module digraph.
 :- import_module list.
+:- import_module map.
 :- import_module set.
 
 %-----------------------------------------------------------------------%
@@ -48,6 +49,7 @@
 :- type dependency_graph(T)     == digraph(T).
 :- type dependency_graph_key(T) == digraph_key(T).
 :- type dependency_arcs(T)      == assoc_list(digraph_key(T), digraph_key(T)).
+:- type scc_map(T)              == map(T, set(T)).
 
     % A dependency ordering gives the list of SCCs of the analysed entities.
     % (For hlds_dependency_graph.m, this will be all the predicates or all
@@ -66,9 +68,9 @@
 %-----------------------------------------------------------------------%
 
 :- func dependency_info_get_graph(dependency_info(T))
-    = dependency_graph(T). 
+    = dependency_graph(T).
 :- func dependency_info_get_arcs(dependency_info(T))
-    = dependency_arcs(T). 
+    = dependency_arcs(T).
 :- func dependency_info_get_bottom_up_sccs(dependency_info(T))
     = bottom_up_dependency_sccs(T).
 
@@ -79,6 +81,10 @@
     %
 :- func dependency_info_get_condensed_bottom_up_sccs(dependency_info(T))
     = list(T).
+
+    % Build a map from each node to its SCC.
+    %
+:- func dependency_info_make_scc_map(dependency_info(T)) = scc_map(T).
 
 %-----------------------------------------------------------------------%
 %-----------------------------------------------------------------------%
@@ -111,6 +117,20 @@ dependency_info_get_condensed_bottom_up_sccs(DepInfo) = CondensedOrder :-
     ListOfSets = dependency_info_get_bottom_up_sccs(DepInfo),
     list.map(set.to_sorted_list, ListOfSets, ListOfLists),
     list.condense(ListOfLists, CondensedOrder).
+
+%-----------------------------------------------------------------------%
+
+dependency_info_make_scc_map(DepInfo) = SCCMap :-
+    SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
+    foldl(make_scc_map, SCCs, init, SCCMap).
+
+:- pred make_scc_map(set(T)::in, map(T, set(T))::in, map(T, set(T))::out)
+    is det.
+
+make_scc_map(SCC, !Map) :-
+    fold((pred(Node::in, Map0::in, Map::out) is det :-
+            map.det_insert(Node, SCC, Map0, Map)
+        ), SCC, !Map).
 
 %-----------------------------------------------------------------------%
 %-----------------------------------------------------------------------%
