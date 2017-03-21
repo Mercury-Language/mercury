@@ -8,7 +8,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: hlds_dependency_graph.m.
-% Main authors: bromage, conway, stayl.
+% Main authors: bromage, conway, stayl, zs.
 %
 % The HLDS dependency graph is an instance of dependency_graph in which
 % the entities are the HLDS procedures in the module being compiled.
@@ -66,19 +66,43 @@
 :- pred module_info_rebuild_dependency_info(module_info::in, module_info::out,
     hlds_dependency_info::out) is det.
 
+%---------------------%
+
 :- type include_imported
     --->    include_imported
     ;       do_not_include_imported.
 
-    % Build the dependency graph of predicates.
+    % Should the dependency graph include an edge from p to q
+    % only if p calls q in a tail call (only_tail_calls calls for this),
+    % or if p calls q in any call, and if p references q in a unification
+    % (all_calls_and_unifies).
+    %
+    % Note that only_tail_calls requires recursive calls to be marked by
+    % mark_tail_calls.m, and mark_tail_calls.m requires a previously built
+    % dependency graph, which therefore must have been built with
+    % all_calls_and_unifies.
+    %
+:- type what_dependency_edges
+    --->    only_tail_calls
+    ;       all_calls_and_unifies.
+
+    % Build the dependency graph for the given set of predicates,
+    % after filtering out imported predicates if the last argument
+    % is do_not_include_imported.
+    %
+    % Predicates without mode information have no idea what calls will
+    % end up being tail calls, so for their dependency graphs, we cannot
+    % restrict the edges to tail calls.
     %
 :- func build_pred_dependency_graph(module_info, list(pred_id),
     include_imported) = dependency_info(pred_id).
 
-    % Build the dependency graph of procedures.
+    % Build the dependency graph for the given set of procedures.
     %
-:- func build_proc_dependency_graph(module_info, list(pred_id),
-    include_imported) = dependency_info(pred_proc_id).
+:- func build_proc_dependency_graph(module_info, set(pred_proc_id),
+    what_dependency_edges) = dependency_info(pred_proc_id).
+
+%---------------------%
 
 :- type scc_with_entry_points
     --->    scc_with_entry_points(
@@ -89,7 +113,7 @@
             ).
 
 :- pred get_bottom_up_sccs_with_entry_points(module_info::in,
-    list(scc_with_entry_points)::out) is det.
+    hlds_dependency_info::in, list(scc_with_entry_points)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -127,12 +151,14 @@
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module digraph.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module std_util.
 :- import_module term.
 :- import_module varset.
@@ -150,106 +176,123 @@ module_info_ensure_dependency_info(!ModuleInfo, DepInfo) :-
 
 module_info_rebuild_dependency_info(!ModuleInfo, DepInfo) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    DepInfo = build_proc_dependency_graph(!.ModuleInfo, PredIds,
-        do_not_include_imported),
+    list.foldl(gather_pred_proc_ids(!.ModuleInfo, do_not_include_imported),
+        PredIds, [], GatheredPredProcIds),
+    DepInfo = build_proc_dependency_graph(!.ModuleInfo,
+        set.list_to_set(GatheredPredProcIds), all_calls_and_unifies),
     module_info_set_dependency_info(DepInfo, !ModuleInfo).
 
-build_proc_dependency_graph(ModuleInfo, PredIds, Imported) = DepInfo :-
-    digraph.init(DepGraph0),
-    list.foldl(maybe_add_pred_proc_nodes(ModuleInfo, Imported), PredIds,
-        DepGraph0, DepGraph1),
-    list.foldl(maybe_add_pred_proc_arcs(ModuleInfo), PredIds,
-        DepGraph1, DepGraph),
-    DepInfo = make_dependency_info(DepGraph).
+:- pred gather_pred_proc_ids(module_info::in, include_imported::in,
+    pred_id::in, list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
-build_pred_dependency_graph(ModuleInfo, PredIds, Imported) = DepInfo :-
-    digraph.init(DepGraph0),
-    list.foldl(maybe_add_pred_node(ModuleInfo, Imported), PredIds,
-        DepGraph0, DepGraph1),
-    list.foldl(maybe_add_pred_arcs(ModuleInfo), PredIds, DepGraph1, DepGraph),
-    DepInfo = make_dependency_info(DepGraph).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred maybe_add_pred_node(module_info::in, include_imported::in, pred_id::in,
-    dependency_graph(pred_id)::in, dependency_graph(pred_id)::out) is det.
-
-maybe_add_pred_node(ModuleInfo, IncludeImported, PredId, !DepGraph) :-
-    % Don't bother adding nodes (or arcs) for predicates
-    % which are imported (i.e. which we don't have any `clauses' for).
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ( if
-        IncludeImported = do_not_include_imported,
-        pred_info_is_imported(PredInfo)
-    then
-        true
-    else
-        digraph.add_vertex(PredId, _, !DepGraph)
-    ).
-
-:- pred maybe_add_pred_arcs(module_info::in, pred_id::in,
-    dependency_graph(pred_id)::in, dependency_graph(pred_id)::out) is det.
-
-maybe_add_pred_arcs(ModuleInfo, PredId, !DepGraph) :-
-    ( if digraph.search_key(!.DepGraph, PredId, Caller) then
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_clauses_info(PredInfo, ClausesInfo),
-        clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
-        get_clause_list_maybe_repeated(ClausesRep, Clauses),
-        Goals = list.map(clause_body, Clauses),
-        add_dependency_arcs_in_goals(Caller, Goals, !DepGraph)
-    else
-        true
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred maybe_add_pred_proc_nodes(module_info::in, include_imported::in,
-    pred_id::in, 
-    dependency_graph(pred_proc_id)::in, dependency_graph(pred_proc_id)::out)
-    is det.
-
-maybe_add_pred_proc_nodes(ModuleInfo, Imported, PredId, !DepGraph) :-
+gather_pred_proc_ids(ModuleInfo, Imported, PredId, !PredProcIds) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     (
-        % Don't bother adding nodes (or arcs) for procedures which are imported
-        % (i.e. which we don't have any `clauses' for).
+        % Don't bother to add imported procedures, since we don't have
+        % their bodies.
+        % XXX We do have bodies for opt_imported procedures.
         Imported = do_not_include_imported,
         ProcIds = pred_info_non_imported_procids(PredInfo)
     ;
         Imported = include_imported,
         ProcIds = pred_info_procids(PredInfo)
     ),
-    list.foldl(add_proc_node(PredId), ProcIds, !DepGraph).
+    list.foldl(gather_pred_proc_id(PredId), ProcIds, !PredProcIds).
 
-:- pred add_proc_node(pred_id::in, proc_id::in,
-    dependency_graph(pred_proc_id)::in, dependency_graph(pred_proc_id)::out)
-    is det.
+:- pred gather_pred_proc_id(pred_id::in, proc_id::in,
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
-add_proc_node(PredId, ProcId, !DepGraph) :-
-    digraph.add_vertex(proc(PredId, ProcId), _, !DepGraph).
+gather_pred_proc_id(PredId, ProcId, !PredProcIds) :-
+    !:PredProcIds = [proc(PredId, ProcId) | !.PredProcIds].
 
-%---------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred maybe_add_pred_proc_arcs(module_info::in, pred_id::in,
-    dependency_graph(pred_proc_id)::in, dependency_graph(pred_proc_id)::out)
-    is det.
+build_pred_dependency_graph(ModuleInfo, PredIds, Imported) = DepInfo :-
+    list.foldl(gather_pred_ids(ModuleInfo, Imported), PredIds,
+        [], GatheredPredIds),
 
-maybe_add_pred_proc_arcs(ModuleInfo, PredId, !DepGraph) :-
+    digraph.init(DepGraph0),
+    list.map_foldl(add_vertex, GatheredPredIds, _VertexKeys,
+        DepGraph0, DepGraph1),
+
+    list.foldl(
+        maybe_add_pred_arcs(DepGraph1, all_calls_and_unifies, ModuleInfo),
+        PredIds, [], DepArcs),
+    digraph.add_assoc_list(DepArcs, DepGraph1, DepGraph),
+    DepInfo = make_dependency_info(DepGraph, DepArcs).
+
+:- pred gather_pred_ids(module_info::in, include_imported::in, pred_id::in,
+    list(pred_id)::in, list(pred_id)::out) is det.
+
+gather_pred_ids(ModuleInfo, IncludeImported, PredId, !PredIds) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ( if
+        IncludeImported = do_not_include_imported,
+        pred_info_is_imported(PredInfo)
+    then
+        % Don't bother adding nodes (or arcs) for predicates
+        % which are imported (i.e. which we don't have any `clauses' for).
+        % XXX This is slightly wrong: if a predicate is opt_imported,
+        % then pred_info_is_imported will succeed for it, but we *will* have
+        % its clauses.
+        true
+    else
+        !:PredIds = [PredId | !.PredIds]
+    ).
+
+:- pred maybe_add_pred_arcs(dependency_graph(pred_id)::in,
+    what_dependency_edges::in, module_info::in, pred_id::in,
+    dep_arcs(pred_id)::in, dep_arcs(pred_id)::out) is det.
+
+maybe_add_pred_arcs(DepGraph, WhatEdges, ModuleInfo, PredId, !DepArcs) :-
+    ( if digraph.search_key(DepGraph, PredId, Caller) then
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_clauses_info(PredInfo, ClausesInfo),
+        clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
+        get_clause_list_maybe_repeated(ClausesRep, Clauses),
+        Goals = list.map(clause_body, Clauses),
+        add_dependency_arcs_in_goals(DepGraph, WhatEdges, Caller, Goals,
+            !DepArcs)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+build_proc_dependency_graph(ModuleInfo, PredProcIds, WhatEdges) = DepInfo :-
+    digraph.init(DepGraph0),
+    set.map_fold(add_vertex, PredProcIds, _VertexKeys, DepGraph0, DepGraph1),
+    PredIds = set.map(pred_proc_id_get_pred_id, PredProcIds),
+    set.foldl(maybe_add_pred_proc_arcs(DepGraph1, WhatEdges, ModuleInfo),
+        PredIds, [], DepArcs),
+    digraph.add_assoc_list(DepArcs, DepGraph1, DepGraph),
+    DepInfo = make_dependency_info(DepGraph, DepArcs).
+
+:- func pred_proc_id_get_pred_id(pred_proc_id) = pred_id.
+
+pred_proc_id_get_pred_id(proc(PredId, _ProcId)) = PredId.
+
+:- pred maybe_add_pred_proc_arcs(dependency_graph(pred_proc_id)::in,
+    what_dependency_edges::in, module_info::in, pred_id::in,
+    dep_arcs(pred_proc_id)::in, dep_arcs(pred_proc_id)::out) is det.
+
+maybe_add_pred_proc_arcs(DepGraph, WhatEdges, ModuleInfo, PredId, !DepArcs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl(maybe_add_proc_arcs(PredId), ProcTable, !DepGraph).
+    map.foldl(maybe_add_proc_arcs(DepGraph, WhatEdges, PredId), ProcTable,
+        !DepArcs).
 
-:- pred maybe_add_proc_arcs(pred_id::in, proc_id::in, proc_info::in,
-    dependency_graph(pred_proc_id)::in, dependency_graph(pred_proc_id)::out)
-    is det.
+:- pred maybe_add_proc_arcs(dependency_graph(pred_proc_id)::in,
+    what_dependency_edges::in, pred_id::in, proc_id::in, proc_info::in,
+    dep_arcs(pred_proc_id)::in, dep_arcs(pred_proc_id)::out) is det.
 
-maybe_add_proc_arcs(PredId, ProcId, ProcInfo, !DepGraph) :-
-    ( if digraph.search_key(!.DepGraph, proc(PredId, ProcId), Caller) then
+maybe_add_proc_arcs(DepGraph, WhatEdges, PredId, ProcId, ProcInfo, !DepArcs) :-
+    ( if digraph.search_key(DepGraph, proc(PredId, ProcId), Caller) then
         proc_info_get_goal(ProcInfo, Goal),
-        add_dependency_arcs_in_goal(Caller, Goal, !DepGraph)
+        add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, Goal,
+            !DepArcs)
     else
         true
     ).
@@ -269,35 +312,40 @@ maybe_add_proc_arcs(PredId, ProcId, ProcInfo, !DepGraph) :-
     func(dependency_node/1) is pred_proc_id_get_pred_id
 ].
 
-:- func pred_proc_id_get_pred_id(pred_proc_id) = pred_id.
+%---------------------%
 
-pred_proc_id_get_pred_id(proc(PredId, _)) = PredId.
+:- type dep_arcs(T) == assoc_list(dependency_graph_key(T)).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_goal(digraph_key(T)::in, hlds_goal::in,
-    dependency_graph(T)::in, dependency_graph(T)::out) is det
-    <= dependency_node(T).
+:- pred add_dependency_arcs_in_goal(dependency_graph(T)::in,
+    what_dependency_edges::in, digraph_key(T)::in, hlds_goal::in,
+    dep_arcs(T)::in, dep_arcs(T)::out) is det <= dependency_node(T).
 
-add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
-    Goal = hlds_goal(GoalExpr, _),
+add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, Goal, !DepArcs) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        add_dependency_arcs_in_goals(Caller, Goals, !DepGraph)
+        add_dependency_arcs_in_goals(DepGraph, WhatEdges, Caller, Goals,
+            !DepArcs)
     ;
-        GoalExpr = switch(_Var, _Det, Cases),
-        add_dependency_arcs_in_cases(Caller, Cases, !DepGraph)
+        GoalExpr = switch(_Var, _CanFail, Cases),
+        add_dependency_arcs_in_cases(DepGraph, WhatEdges, Caller, Cases,
+            !DepArcs)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        add_dependency_arcs_in_goal(Caller, Cond, !DepGraph),
-        add_dependency_arcs_in_goal(Caller, Then, !DepGraph),
-        add_dependency_arcs_in_goal(Caller, Else, !DepGraph)
+        add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, Cond,
+            !DepArcs),
+        add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, Then,
+            !DepArcs),
+        add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, Else,
+            !DepArcs)
     ;
         GoalExpr = negation(SubGoal),
-        add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
+        add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, SubGoal,
+            !DepArcs)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -309,7 +357,8 @@ add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
             % The scope references no predicates or procedures.
             true
         else
-            add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
+            add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, SubGoal,
+            !DepArcs)
         )
     ;
         GoalExpr = generic_call(_, _, _, _, _)
@@ -323,76 +372,92 @@ add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
             ( Builtin = out_of_line_builtin
             ; Builtin = not_builtin
             ),
-            maybe_add_dependency_arc(Caller, proc(PredId, ProcId), !DepGraph)
+            ( if
+                goal_info_has_feature(GoalInfo,
+                    feature_self_or_mutual_tail_rec_call)
+            then
+                EdgeKind = edge_tail_call
+            else
+                EdgeKind = edge_non_tail_call
+            ),
+            maybe_add_dependency_arc(DepGraph, WhatEdges, EdgeKind,
+                Caller, proc(PredId, ProcId), !DepArcs)
         )
     ;
         GoalExpr = unify(_,_,_,Unify,_),
         (
-            Unify = assign(_, _)
+            ( Unify = construct(_, ConsId, _, _, _, _, _)
+            ; Unify = deconstruct(_, ConsId, _, _, _, _)
+            ),
+            add_dependency_arcs_in_cons(DepGraph, WhatEdges, Caller, ConsId,
+                !DepArcs)
         ;
-            Unify = simple_test(_, _)
-        ;
-            Unify = construct(_, ConsId, _, _, _, _, _),
-            add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph)
-        ;
-            Unify = deconstruct(_, ConsId, _, _, _, _),
-            add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph)
-        ;
-            Unify = complicated_unify(_, _, _)
+            ( Unify = assign(_, _)
+            ; Unify = simple_test(_, _)
+            ; Unify = complicated_unify(_, _, _)
+            )
         )
     ;
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_GoalType, _Outer, _Inner, _Vars,
                 MainGoal, OrElseGoals, _OrElseInners),
-            add_dependency_arcs_in_goal(Caller, MainGoal, !DepGraph),
-            add_dependency_arcs_in_goals(Caller, OrElseGoals, !DepGraph)
+            add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller,
+                MainGoal, !DepArcs),
+            add_dependency_arcs_in_goals(DepGraph, WhatEdges, Caller,
+                OrElseGoals, !DepArcs)
         ;
             ShortHand = try_goal(_, _, SubGoal),
-            add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
+            add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, SubGoal,
+                !DepArcs)
         ;
             ShortHand = bi_implication(LHS, RHS),
-            add_dependency_arcs_in_goal(Caller, LHS, !DepGraph),
-            add_dependency_arcs_in_goal(Caller, RHS, !DepGraph)
+            add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, LHS,
+                !DepArcs),
+            add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, RHS,
+                !DepArcs)
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_goals(digraph_key(T)::in, list(hlds_goal)::in,
-    dependency_graph(T)::in, dependency_graph(T)::out) is det
-    <= dependency_node(T).
+:- pred add_dependency_arcs_in_goals(dependency_graph(T)::in,
+    what_dependency_edges::in, digraph_key(T)::in, list(hlds_goal)::in,
+    dep_arcs(T)::in, dep_arcs(T)::out) is det <= dependency_node(T).
 
-add_dependency_arcs_in_goals(_Caller, [], !DepGraph).
-add_dependency_arcs_in_goals(Caller, [Goal | Goals], !DepGraph) :-
-    add_dependency_arcs_in_goal(Caller, Goal, !DepGraph),
-    add_dependency_arcs_in_goals(Caller, Goals, !DepGraph).
+add_dependency_arcs_in_goals(_DepGraph, _WhatEdges, _Caller, [], !DepArcs).
+add_dependency_arcs_in_goals(DepGraph, WhatEdges, Caller, [Goal | Goals],
+        !DepArcs) :-
+    add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, Goal, !DepArcs),
+    add_dependency_arcs_in_goals(DepGraph, WhatEdges, Caller, Goals, !DepArcs).
 
-%---------------------------------------------------------------------------%
+:- pred add_dependency_arcs_in_cases(dependency_graph(T)::in,
+    what_dependency_edges::in, digraph_key(T)::in, list(case)::in,
+    dep_arcs(T)::in, dep_arcs(T)::out) is det <= dependency_node(T).
 
-:- pred add_dependency_arcs_in_cases(digraph_key(T)::in, list(case)::in,
-    dependency_graph(T)::in, dependency_graph(T)::out) is det
-    <= dependency_node(T).
-
-add_dependency_arcs_in_cases(_Caller, [], !DepGraph).
-add_dependency_arcs_in_cases(Caller, [Case | Cases], !DepGraph) :-
+add_dependency_arcs_in_cases(_DepGraph, _WhatEdges, _Caller, [], !DepArcs).
+add_dependency_arcs_in_cases(DepGraph, WhatEdges, Caller, [Case | Cases],
+        !DepArcs) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    add_dependency_arcs_in_cons(Caller, MainConsId, !DepGraph),
-    list.foldl(add_dependency_arcs_in_cons(Caller), OtherConsIds, !DepGraph),
-    add_dependency_arcs_in_goal(Caller, Goal, !DepGraph),
-    add_dependency_arcs_in_cases(Caller, Cases, !DepGraph).
+    add_dependency_arcs_in_cons(DepGraph, WhatEdges, Caller,
+        MainConsId, !DepArcs),
+    list.foldl(add_dependency_arcs_in_cons(DepGraph, WhatEdges, Caller),
+        OtherConsIds, !DepArcs),
+    add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, Goal, !DepArcs),
+    add_dependency_arcs_in_cases(DepGraph, WhatEdges, Caller, Cases, !DepArcs).
 
 %---------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_cons(digraph_key(T)::in, cons_id::in,
-    dependency_graph(T)::in, dependency_graph(T)::out) is det
-    <= dependency_node(T).
+:- pred add_dependency_arcs_in_cons(dependency_graph(T)::in,
+    what_dependency_edges::in, digraph_key(T)::in, cons_id::in,
+    dep_arcs(T)::in, dep_arcs(T)::out) is det <= dependency_node(T).
 
-add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph) :-
+add_dependency_arcs_in_cons(DepGraph, WhatEdges, Caller, ConsId, !DepArcs) :-
     (
         ConsId = closure_cons(ShroudedPredProcId, _),
         PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
-        maybe_add_dependency_arc(Caller, PredProcId, !DepGraph)
+        maybe_add_dependency_arc(DepGraph, WhatEdges, edge_unify,
+            Caller, PredProcId, !DepArcs)
     ;
         ( ConsId = cons(_, _, _)
         ; ConsId = tuple_cons(_)
@@ -417,18 +482,31 @@ add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_add_dependency_arc(digraph_key(T)::in, pred_proc_id::in,
-    dependency_graph(T)::in, dependency_graph(T)::out) is det
-    <= dependency_node(T).
+:- type edge_kind
+    --->    edge_non_tail_call
+    ;       edge_tail_call
+    ;       edge_unify.
 
-maybe_add_dependency_arc(Caller, PredProcId, !DepGraph) :-
+:- pred maybe_add_dependency_arc(dependency_graph(T)::in,
+    what_dependency_edges::in, edge_kind::in,
+    digraph_key(T)::in, pred_proc_id::in,
+    dep_arcs(T)::in, dep_arcs(T)::out) is det <= dependency_node(T).
+
+maybe_add_dependency_arc(DepGraph, WhatEdges, EdgeKind, Caller, PredProcId,
+        !DepArcs) :-
     % If the callee isn't in the graph, then we didn't create a node for it.
     % If we didn't create a node for it, then we are not interested in calls
     % to it.
     ( if
-        digraph.search_key(!.DepGraph, dependency_node(PredProcId), Callee)
+        digraph.search_key(DepGraph, dependency_node(PredProcId), Callee),
+        (
+            WhatEdges = all_calls_and_unifies
+        ;
+            WhatEdges = only_tail_calls,
+            EdgeKind = edge_tail_call
+        )
     then
-        digraph.add_edge(Caller, Callee, !DepGraph)
+        !:DepArcs = [Caller - Callee | !.DepArcs]
     else
         true
     ).
@@ -586,8 +664,8 @@ handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
 
 %---------------------------------------------------------------------------%
 
-get_bottom_up_sccs_with_entry_points(ModuleInfo, BottomUpSCCsEntryPoints) :-
-    module_info_dependency_info(ModuleInfo, DepInfo),
+get_bottom_up_sccs_with_entry_points(ModuleInfo, DepInfo,
+        BottomUpSCCsEntryPoints) :-
     DepGraph = dependency_info_get_graph(DepInfo),
     BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
     list.reverse(BottomUpSCCs, TopDownSCCs),

@@ -8770,6 +8770,14 @@ containing more than @var{threshold} variables. Procedures
 containing large numbers of variables can cause
 slow compilation.
 
+@item --inline-linear-tail-rec-sccs @var{threshold}
+@findex --inline-linear-tail-rec-sccs
+Given a set of mutually recursive procedures (an SCC, or strongly
+connected component, of the call graph) in which each procedure
+contains exactly one call to a procedure in the SCC and
+that call is a tail call, inline the callee at every one of those
+call sites.
+
 @item --loop-invariants
 @findex --loop-invariants
 Optimize loop invariants by moving computations within a loop that are

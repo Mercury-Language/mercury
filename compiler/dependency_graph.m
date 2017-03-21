@@ -27,19 +27,27 @@
 :- module libs.dependency_graph.
 :- interface.
 
+:- import_module assoc_list.
 :- import_module digraph.
 :- import_module list.
 :- import_module set.
 
 %-----------------------------------------------------------------------%
 
-    % A dependency_info contains a dependency_graph and a dependency_ordering.
+    % A dependency_info contains
+    %
+    % - a dependency_graph,
+    % - a list of the arcs in that graph, in which the same arc
+    %   may appear more than once), and
+    % - a dependency_ordering.
+    %
     % Calling make_dependency_info on a graph fills in the dependency_ordering.
     %
 :- type dependency_info(T).
 
 :- type dependency_graph(T)     == digraph(T).
 :- type dependency_graph_key(T) == digraph_key(T).
+:- type dependency_arcs(T)      == assoc_list(digraph_key(T), digraph_key(T)).
 
     % A dependency ordering gives the list of SCCs of the analysed entities.
     % (For hlds_dependency_graph.m, this will be all the predicates or all
@@ -52,12 +60,15 @@
 
 %-----------------------------------------------------------------------%
 
-:- func make_dependency_info(digraph(T)) = dependency_info(T).
+:- func make_dependency_info(digraph(T), dependency_arcs(T))
+    = dependency_info(T).
 
 %-----------------------------------------------------------------------%
 
 :- func dependency_info_get_graph(dependency_info(T))
     = dependency_graph(T). 
+:- func dependency_info_get_arcs(dependency_info(T))
+    = dependency_arcs(T). 
 :- func dependency_info_get_bottom_up_sccs(dependency_info(T))
     = bottom_up_dependency_sccs(T).
 
@@ -79,18 +90,21 @@
 :- type dependency_info(T)
     --->    dependency_info(
                 dep_graph           :: dependency_graph(T),
+                dep_arcs            :: dependency_arcs(T),
                 dep_bottom_up_sccs  :: bottom_up_dependency_sccs(T)
             ).
 
-make_dependency_info(Graph) = dependency_info(Graph, BottomUpOrdering) :-
+make_dependency_info(Graph, Arcs) = DepInfo :-
     % digraph.atsort puts the cliques of parents before the cliques
     % of their children. This is a top down order.
     digraph.atsort(Graph, TopDownOrdering),
-    list.reverse(TopDownOrdering, BottomUpOrdering).
+    list.reverse(TopDownOrdering, BottomUpOrdering),
+    DepInfo = dependency_info(Graph, Arcs, BottomUpOrdering).
 
 %-----------------------------------------------------------------------%
 
 dependency_info_get_graph(DepInfo) = DepInfo ^ dep_graph.
+dependency_info_get_arcs(DepInfo) = DepInfo ^ dep_arcs.
 dependency_info_get_bottom_up_sccs(DepInfo) = DepInfo ^ dep_bottom_up_sccs.
 
 dependency_info_get_condensed_bottom_up_sccs(DepInfo) = CondensedOrder :-

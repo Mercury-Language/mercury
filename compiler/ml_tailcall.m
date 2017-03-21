@@ -674,7 +674,7 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Markers, Context, !InBodyInfo) :-
                 SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
                 Specs0 = !.InBodyInfo ^ tibi_specs,
                 add_message_for_nontail_recursive_call(SimpleCallId, ProcId,
-                    WarnOrError, mlds_get_prog_context(Context),
+                    mlds_get_prog_context(Context), WarnOrError,
                     Specs0, Specs),
                 !InBodyInfo ^ tibi_specs := Specs
             )
@@ -700,7 +700,8 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Markers, Context, !InBodyInfo) :-
 
 call_returns_same_local_lvals_as_return_stmt([], []).
 call_returns_same_local_lvals_as_return_stmt(
-    [ReturnStmtRval | ReturnStmtRvals], [CallReturnLval | CallReturnLvals]) :-
+        [ReturnStmtRval | ReturnStmtRvals],
+        [CallReturnLval | CallReturnLvals]) :-
     call_returns_same_local_lval_as_return_stmt(ReturnStmtRval,
         CallReturnLval),
     call_returns_same_local_lvals_as_return_stmt(ReturnStmtRvals,

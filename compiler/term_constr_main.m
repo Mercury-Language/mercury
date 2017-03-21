@@ -149,7 +149,8 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     term2_preprocess_module(!ModuleInfo),
 
     % Analyse the module SCC-bySCC in a bottom-up order.
-    get_bottom_up_sccs_with_entry_points(!.ModuleInfo,
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
+    get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
         BottomUpSCCsEntryPoints),
     list.foldl2(
         term2_analyse_scc(BuildOptions, FixpointOptions, Pass2Options),

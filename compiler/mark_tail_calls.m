@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: mark_tail_calls.m.
 % Main author: zs.
@@ -35,13 +35,15 @@
 % use the same predicates (which are in this module) to actually generate
 % the error messages themselves.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.mark_tail_calls.
 :- interface.
 
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
@@ -49,42 +51,59 @@
 
 :- import_module list.
 
-:- pred mark_tail_calls_in_pred(pred_id::in,
+%---------------------------------------------------------------------------%
+
+    % Mark both self and mutual tail recursive calls in the module.
+    %
+    % Unlike the predicates below serving the LLDS code generator,
+    % this predicate never generates any error messages, and it never
+    % restricts it attention to only *self* tail recursive calls.
+    %
+:- pred mark_self_and_mutual_tail_rec_calls_in_module(hlds_dependency_info::in,
+    module_info::in, module_info::out) is det.
+
+%---------------------%
+
+    % Mark tail calls as needed by the LLDS code generator.
+    %
+    % This can mean
+    %
+    % - marking self-tail-recursive calls so that the code generator can emit
+    %   TAIL events and tail recursive calls instead of non tail recursive
+    %   calls followed by an EXIT event. This is needed only if we are
+    %   generating code for the debugger.
+    %
+    % - generating warnings for recursive calls that are not *tail* recursive,
+    %   if the warn_non_tail_recursion option is set.
+    %
+    % It can also mean both, or neither.
+    %
+    % The LLDS code generator can be invoked to compile procedures either
+    % by phases, or by procedures; the two do the same jobs, but in different
+    % order. It calls the in_pred version when compiling procedures by phases,
+    % and it calls the in_proc version when compiling procedures by procedures.
+    %
+:- pred mark_tail_rec_calls_in_pred_for_llds_code_gen(pred_id::in,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
+:- pred mark_tail_rec_calls_in_proc_for_llds_code_gen(module_info::in,
+    pred_id::in, proc_id::in, pred_info::in, proc_info::in, proc_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-    % This pass is only required when either
-    %
-    % - tail recursion warnings are enabled (via the command line option
-    %   or the require_tail_recursion pragma), or
-    % - a debug grade is used.
-    %
-    % In all other situations the HLDS traversal can be skipped and
-    % mark_tail_calls_in_proc will return not_changed to allow the caller
-    % to avoid updating the proc table.
-    %
-:- type maybe_changed
-    --->    not_changed
-    ;       maybe_changed.
-
-:- pred mark_tail_calls_in_proc(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, proc_info::out,
-    maybe_changed::out, list(error_spec)::in, list(error_spec)::out) is det.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % These predicates are exported for ml_tailcall.m; see above for the reason.
 %
 
     % add_message_for_nontail_recursive_call(SimpleCallId, ProcId,
-    %    WarnOrError, Context, !Specs):
+    %    Context, WarnOrError, !Specs):
     %
     % Add an error_spec to !Specs reporting that the recursive call inside
     % the procedure described by SimpleCallId and ProcId at Context
     % is not *tail* recursive. Set its severity based on WarnOrError.
     %
 :- pred add_message_for_nontail_recursive_call(simple_call_id::in, proc_id::in,
-    warning_or_error::in, prog_context::in,
+    prog_context::in, warning_or_error::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % add_message_for_no_tail_or_nontail_recursive_calls(SimpleCallId, Context,
@@ -98,8 +117,8 @@
 :- pred add_message_for_no_tail_or_nontail_recursive_calls(simple_call_id::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -108,7 +127,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.vartypes.
-:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -117,112 +135,190 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+mark_self_and_mutual_tail_rec_calls_in_module(DepInfo, !ModuleInfo) :-
+    AddGoalFeature = add_goal_feature_self_or_mutual,
+    WarnNonTailRecOpt = do_not_warn_non_tail_rec_calls_opt,
+    get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
+        BottomUpSCCsEntryPoints),
+    mark_tail_rec_calls_in_sccs(AddGoalFeature, WarnNonTailRecOpt,
+        BottomUpSCCsEntryPoints, !ModuleInfo).
+
+:- pred mark_tail_rec_calls_in_sccs(add_goal_feature::in,
+    warn_non_tail_rec_calls_opt::in, list(scc_with_entry_points)::in,
+    module_info::in, module_info::out) is det.
+
+mark_tail_rec_calls_in_sccs(_AddGoalFeature, _WarnNonTailRecOpt,
+        [], !ModuleInfo).
+mark_tail_rec_calls_in_sccs(AddGoalFeature, WarnNonTailRecOpt,
+        [SCCEntry | SCCEntries], !ModuleInfo) :-
+    SCCEntry = scc_with_entry_points(SCC, _CalledFromHigherSCC, _Exported),
+    mark_tail_rec_calls_in_scc(AddGoalFeature, WarnNonTailRecOpt,
+        SCC, set.to_sorted_list(SCC), !ModuleInfo),
+    mark_tail_rec_calls_in_sccs(AddGoalFeature, WarnNonTailRecOpt,
+        SCCEntries, !ModuleInfo).
+
+:- pred mark_tail_rec_calls_in_scc(add_goal_feature::in,
+    warn_non_tail_rec_calls_opt::in, set(pred_proc_id)::in,
+    list(pred_proc_id)::in, module_info::in, module_info::out) is det.
+
+mark_tail_rec_calls_in_scc(_AddGoalFeature, _WarnNonTailRecOpt, _SCC,
+        [], !ModuleInfo).
+mark_tail_rec_calls_in_scc(AddGoalFeature, WarnNonTailRecOpt, SCC,
+        [PredProcId | PredProcIds], !ModuleInfo) :-
+    PredProcId = proc(PredId, ProcId),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
+    map.lookup(PredTable0, PredId, PredInfo0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
+
+    do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecOpt,
+        !.ModuleInfo, SCC, PredId, ProcId, PredInfo0, ProcInfo0, ProcInfo,
+        _WasProcChanged, [], _Specs),
+
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
+    module_info_set_preds(PredTable, !ModuleInfo),
+
+    mark_tail_rec_calls_in_scc(AddGoalFeature, WarnNonTailRecOpt, SCC,
+        PredProcIds, !ModuleInfo).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred mark_tail_rec_call_options_for_llds_code_gen(globals::in,
+    add_goal_feature::out, warn_non_tail_rec_calls_opt::out) is det.
+
+mark_tail_rec_call_options_for_llds_code_gen(Globals, AddGoalFeature,
+        WarnNonTailRecOpt) :-
+    globals.lookup_bool_option(Globals, exec_trace_tail_rec,
+        ExecTraceTailRec),
+    (
+        ExecTraceTailRec = yes,
+        AddGoalFeature = add_goal_feature_self_for_debug
+    ;
+        ExecTraceTailRec = no,
+        AddGoalFeature = do_not_add_goal_feature
+    ),
+    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
+        WarnNonTailRecBool),
+    (
+        WarnNonTailRecBool = yes,
+        WarnNonTailRecOpt = warn_non_tail_rec_calls_opt
+    ;
+        WarnNonTailRecBool = no,
+        WarnNonTailRecOpt = do_not_warn_non_tail_rec_calls_opt
+    ).
+
+%---------------------------------------------------------------------------%
+
+mark_tail_rec_calls_in_pred_for_llds_code_gen(PredId, !ModuleInfo,
+        !PredInfo, !Specs) :-
+    % We don't update ModuleInfo. Nevertheless, the passes_aux traversal
+    % that our caller uses to call us requires us to pass back a new
+    % ModuleInfo, even though it will itself put the updated PredInfo
+    % back into ModuleInfo.
+    module_info_get_globals(!.ModuleInfo, Globals),
+    mark_tail_rec_call_options_for_llds_code_gen(Globals, AddGoalFeature,
+        WarnNonTailRecOpt),
+    ProcIds = pred_info_non_imported_procids(!.PredInfo),
+    mark_tail_rec_calls_in_procs_for_llds_code_gen(AddGoalFeature,
+        WarnNonTailRecOpt, !.ModuleInfo, PredId, ProcIds, !PredInfo, !Specs).
+
+:- pred mark_tail_rec_calls_in_procs_for_llds_code_gen(
+    add_goal_feature::in, warn_non_tail_rec_calls_opt::in,
+    module_info::in, pred_id::in, list(proc_id)::in,
+    pred_info::in, pred_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+mark_tail_rec_calls_in_procs_for_llds_code_gen(_AddGoalFeature,
+        _WarnNonTailRecOpt, _ModuleInfo, _PredId, [], !PredInfo, !Specs).
+mark_tail_rec_calls_in_procs_for_llds_code_gen(AddGoalFeature,
+        WarnNonTailRecOpt, ModuleInfo, PredId, [ProcId | ProcIds],
+        !PredInfo, !Specs) :-
+    pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
+    % For LLDS code generation, we don't need information about mutual
+    % recursive calls, so what we pass as the SCC of each procedure
+    % does not matter.
+    set.init(SCC),
+    do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecOpt,
+        ModuleInfo, SCC, PredId, ProcId, !.PredInfo, ProcInfo0, ProcInfo,
+        WasProcChanged, !Specs),
+    (
+        WasProcChanged = proc_was_not_changed
+    ;
+        WasProcChanged = proc_may_have_been_changed,
+        pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
+    ),
+    mark_tail_rec_calls_in_procs_for_llds_code_gen(AddGoalFeature,
+        WarnNonTailRecOpt, ModuleInfo, PredId, ProcIds, !PredInfo, !Specs).
+
+%---------------------------------------------------------------------------%
+
+mark_tail_rec_calls_in_proc_for_llds_code_gen(ModuleInfo, PredId, ProcId,
+        PredInfo, !ProcInfo, !Specs) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    mark_tail_rec_call_options_for_llds_code_gen(Globals, AddGoalFeature,
+        WarnNonTailRecOpt),
+    % For LLDS code generation, we don't need information about mutual
+    % recursive calls, so what we pass as the SCC of each procedure
+    % does not matter.
+    set.init(SCC),
+    % mark_tail_rec_call_options_for_llds_code_gen is called only when we are
+    % doing proc-by-proc, as opposed to phase-by-phase, code generation.
+    % For this, we don't need to put the new proc_info back into its pred_info.
+    do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecOpt,
+        ModuleInfo, SCC, PredId, ProcId, PredInfo, !ProcInfo,
+        _WasProcChanged, !Specs).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type add_goal_feature
-    --->    add_goal_feature
-    ;       do_not_add_goal_feature.
+    --->    do_not_add_goal_feature
+    ;       add_goal_feature_self_for_debug
+    ;       add_goal_feature_self_or_mutual.
 
 :- type warn_non_tail_rec_calls_opt
     --->    do_not_warn_non_tail_rec_calls_opt
     ;       warn_non_tail_rec_calls_opt.
 
-:- type maybe_warn_non_tail_rec_call
-    --->    do_not_warn_non_tail_rec_calls
-    ;       warn_non_tail_rec_calls(
-                warning_or_error,
-                require_tail_recursion_type
-            ).
+:- type was_proc_changed
+    --->    proc_was_not_changed
+    ;       proc_may_have_been_changed.
 
-:- type mark_tail_calls_info
-    --->    mark_tail_calls_info(
-                mtc_add_feature             :: add_goal_feature,
-                mtc_module                  :: module_info,
-                mtc_pred_info               :: pred_info,
-                mtc_pred_id                 :: pred_id,
-                mtc_proc_id                 :: proc_id,
-                mtc_vartypes                :: vartypes,
-                mtc_warn_non_tail_rec_calls :: maybe_warn_non_tail_rec_call
-            ).
+:- pred do_mark_tail_rec_calls_in_proc(add_goal_feature::in,
+    warn_non_tail_rec_calls_opt::in, module_info::in, set(pred_proc_id)::in,
+    pred_id::in, proc_id::in, pred_info::in, proc_info::in, proc_info::out,
+    was_proc_changed::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Is the current position within the procedure a tail position?
-    % If it is, what are the output arguments?
-    %
-:- type at_tail
-    --->    at_tail(list(maybe(prog_var)))
-    ;       not_at_tail_seen_reccall
-    ;       not_at_tail_have_not_seen_reccall.
-
-    % Has any tail call been found so far? We use this to set the tailcall
-    % procedure feature if there is at least one tailcall in the procedure.
-    %
-:- type found_tail_calls
-    --->    found_tail_calls
-    ;       not_found_tail_calls.
-
-mark_tail_calls_in_pred(PredId, !ModuleInfo, !PredInfo, !Specs) :-
-    ProcIds = pred_info_non_imported_procids(!.PredInfo),
-    mark_tail_calls_in_procs(!.ModuleInfo, PredId, ProcIds, !PredInfo,
-        !Specs).
-
-:- pred mark_tail_calls_in_procs(module_info::in, pred_id::in,
-    list(proc_id)::in, pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-mark_tail_calls_in_procs(_ModuleInfo, _PredId, [], !PredInfo, !Specs).
-mark_tail_calls_in_procs(ModuleInfo, PredId, [ProcId | ProcIds], !PredInfo,
-        !Specs) :-
-    pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
-    mark_tail_calls_in_proc(ModuleInfo, PredId, ProcId,
-        !.PredInfo, ProcInfo0, ProcInfo, MaybeChanged, !Specs),
-    (
-        MaybeChanged = maybe_changed,
-        pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
-    ;
-        MaybeChanged = not_changed
-    ),
-    mark_tail_calls_in_procs(ModuleInfo, PredId, ProcIds, !PredInfo, !Specs).
-
-mark_tail_calls_in_proc(ModuleInfo, PredId, ProcId, PredInfo, !ProcInfo,
-        MaybeChanged, !Specs) :-
+do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecOpt, ModuleInfo,
+        SCC, PredId, ProcId, PredInfo, !ProcInfo, WasProcChanged, !Specs) :-
     proc_info_interface_determinism(!.ProcInfo, Detism),
     determinism_components(Detism, _CanFail, SolnCount),
     (
         % In at_most_many procedures, we cannot in general know at compile time
         % whether we can delete the current stack frame at a tail call.
+        %
         % For at_most_zero procedures, there is no point in handling tail calls
         % specially.
         ( SolnCount = at_most_many
         ; SolnCount = at_most_zero
         ),
-        MaybeChanged = not_changed
+        WasProcChanged = proc_was_not_changed
     ;
         ( SolnCount = at_most_one
         ; SolnCount = at_most_many_cc
         ),
 
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, exec_trace_tail_rec,
-            ExecTraceTailRec),
-        (
-            ExecTraceTailRec = yes,
-            AddGoalFeature = add_goal_feature
-        ;
-            ExecTraceTailRec = no,
-            AddGoalFeature = do_not_add_goal_feature
-        ),
-        globals.lookup_bool_option(Globals, warn_non_tail_recursion,
-            WarnNonTailRecBool),
-        (
-            WarnNonTailRecBool = yes,
-            WarnNonTailRecOpt = warn_non_tail_rec_calls_opt
-        ;
-            WarnNonTailRecBool = no,
-            WarnNonTailRecOpt = do_not_warn_non_tail_rec_calls_opt
-        ),
         proc_info_get_maybe_require_tailrec_info(!.ProcInfo,
             MaybeRequireTailRec),
 
@@ -240,84 +336,90 @@ mark_tail_calls_in_proc(ModuleInfo, PredId, ProcId, PredInfo, !ProcInfo,
                 MaybeRequireTailRec = yes(suppress_tailrec_warnings(_))
             )
         then
-            MaybeChanged = not_changed
+            WasProcChanged = proc_was_not_changed
         else
-            do_mark_tail_calls_in_proc(AddGoalFeature,
-                WarnNonTailRecOpt, MaybeRequireTailRec,
-                ModuleInfo, PredId, ProcId, PredInfo, !ProcInfo, !Specs),
-            MaybeChanged = maybe_changed
+            pred_info_get_arg_types(PredInfo, Types),
+            proc_info_get_goal(!.ProcInfo, Goal0),
+            proc_info_get_argmodes(!.ProcInfo, Modes),
+            proc_info_get_headvars(!.ProcInfo, HeadVars),
+            proc_info_get_vartypes(!.ProcInfo, VarTypes),
+            find_maybe_output_args(ModuleInfo, Types, Modes, HeadVars,
+                Outputs),
+
+            (
+                MaybeRequireTailRec = no,
+                MaybeRequireTailRecContext = no,
+                (
+                    WarnNonTailRecOpt = do_not_warn_non_tail_rec_calls_opt,
+                    WarnNonTailRec = do_not_warn_non_tail_rec_calls
+                ;
+                    WarnNonTailRecOpt = warn_non_tail_rec_calls_opt,
+                    % The MLDS backend doesn't (yet) support making
+                    % mutually-recursive calls *tail*-recursive,
+                    % but the LLDS backend does.
+                    WarnNonTailRec = warn_non_tail_rec_calls(we_warning,
+                        both_self_and_mutual_recursion_must_be_tail)
+                )
+            ;
+                MaybeRequireTailRec = yes(RequireTailRecInfo),
+                (
+                    RequireTailRecInfo = enable_tailrec_warnings(WarnOrError,
+                        RecType, RequireTailRecContext),
+                    WarnNonTailRec = warn_non_tail_rec_calls(WarnOrError,
+                        RecType)
+                ;
+                    RequireTailRecInfo = suppress_tailrec_warnings(
+                        RequireTailRecContext),
+                    WarnNonTailRec = do_not_warn_non_tail_rec_calls
+                ),
+                MaybeRequireTailRecContext = yes(RequireTailRecContext)
+            ),
+
+            Info0 = mark_tail_rec_calls_info(AddGoalFeature, ModuleInfo,
+                PredInfo, proc(PredId, ProcId), SCC, VarTypes, WarnNonTailRec,
+                not_found_any_rec_calls, not_found_self_tail_rec_calls, []),
+            mark_tail_rec_calls_in_goal(Goal0, Goal, at_tail(Outputs), _,
+                Info0, Info),
+            Info = mark_tail_rec_calls_info(_, _, _, _, _, _, _,
+                FoundAnyRecCalls, FoundSelfTailRecCalls, GoalSpecs),
+
+            proc_info_set_goal(Goal, !ProcInfo),
+            (
+                FoundAnyRecCalls = not_found_any_rec_calls,
+                (
+                    MaybeRequireTailRecContext = no
+                ;
+                    MaybeRequireTailRecContext = yes(Context),
+                    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+                    pred_info_get_name(PredInfo, Name),
+                    pred_info_get_orig_arity(PredInfo, Arity),
+                    SimpleCallId = simple_call_id(PredOrFunc,
+                        unqualified(Name), Arity),
+                    add_message_for_no_tail_or_nontail_recursive_calls(
+                        SimpleCallId, Context, !Specs)
+                )
+            ;
+                FoundAnyRecCalls = found_any_rec_calls
+            ),
+            (
+                FoundSelfTailRecCalls = not_found_self_tail_rec_calls,
+                TailCallEvents = has_no_tail_call_event
+            ;
+                FoundSelfTailRecCalls = found_self_tail_rec_calls,
+                TailCallEvents = has_tail_call_event
+            ),
+            (
+                ( AddGoalFeature = do_not_add_goal_feature
+                ; AddGoalFeature = add_goal_feature_self_or_mutual
+                )
+            ;
+                AddGoalFeature = add_goal_feature_self_for_debug,
+                proc_info_set_has_tail_call_event(TailCallEvents, !ProcInfo)
+            ),
+            !:Specs = GoalSpecs ++ !.Specs,
+            WasProcChanged = proc_may_have_been_changed
         )
     ).
-
-:- pred do_mark_tail_calls_in_proc(add_goal_feature::in,
-    warn_non_tail_rec_calls_opt::in, maybe(require_tail_recursion)::in,
-    module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, proc_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-do_mark_tail_calls_in_proc(AddGoalFeature, WarnNonTailRecOpt,
-        MaybeRequireTailRec, ModuleInfo, PredId, ProcId,
-        PredInfo, !ProcInfo, !Specs) :-
-    pred_info_get_arg_types(PredInfo, Types),
-    proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_argmodes(!.ProcInfo, Modes),
-    proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
-    find_maybe_output_args(ModuleInfo, Types, Modes, HeadVars, Outputs),
-
-    (
-        MaybeRequireTailRec = no,
-        MaybeRequireTailRecContext = no,
-        (
-            WarnNonTailRecOpt = do_not_warn_non_tail_rec_calls_opt,
-            WarnNonTailRec = do_not_warn_non_tail_rec_calls
-        ;
-            WarnNonTailRecOpt = warn_non_tail_rec_calls_opt,
-            % The MLDS backend doesn't (yet) support making
-            % mutually-recursive calls *tail*-recursive,
-            % but the LLDS backend does.
-            WarnNonTailRec = warn_non_tail_rec_calls(we_warning, 
-                both_self_and_mutual_recursion_must_be_tail)
-        )
-    ;
-        MaybeRequireTailRec = yes(RequireTailrecInfo0),
-        (
-            RequireTailrecInfo0 = enable_tailrec_warnings(WarnOrError,
-                RecType, RequireTailRecContext),
-            WarnNonTailRec = warn_non_tail_rec_calls(WarnOrError, RecType)
-        ;
-            RequireTailrecInfo0 = suppress_tailrec_warnings(
-                RequireTailRecContext),
-            WarnNonTailRec = do_not_warn_non_tail_rec_calls
-        ),
-        MaybeRequireTailRecContext = yes(RequireTailRecContext)
-    ),
-
-    Info = mark_tail_calls_info(AddGoalFeature, ModuleInfo, PredInfo,
-        PredId, ProcId, VarTypes, WarnNonTailRec),
-    mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
-        at_tail(Outputs), _),
-    proc_info_set_goal(Goal, !ProcInfo),
-    (
-        FoundTailCalls = found_tail_calls,
-        TailCallEvents = has_tail_call_event
-    ;
-        FoundTailCalls = not_found_tail_calls,
-        TailCallEvents = has_no_tail_call_event,
-        (
-            MaybeRequireTailRecContext = no
-        ;
-            MaybeRequireTailRecContext = yes(Context),
-            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-            pred_info_get_name(PredInfo, Name),
-            pred_info_get_orig_arity(PredInfo, Arity),
-            SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name),
-                Arity),
-            add_message_for_no_tail_or_nontail_recursive_calls(SimpleCallId,
-                Context, !Specs)
-        )
-    ),
-    proc_info_set_has_tail_call_event(TailCallEvents, !ProcInfo).
 
 :- pred find_maybe_output_args(module_info::in,
      list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,
@@ -339,49 +441,140 @@ find_maybe_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
 find_maybe_output_args_2(_, [], [], [], []).
 find_maybe_output_args_2(ModuleInfo, [Type | Types], [Mode | Modes],
         [Var | Vars], [OutputVar | OutputVars]) :-
-    mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
-    (
-        ( TopFunctorMode = top_in
-        ; TopFunctorMode = top_unused
-        ),
-        OutputVar = no
-    ;
-        TopFunctorMode = top_out,
-        IsDummy = check_dummy_type(ModuleInfo, Type),
+    require_det (
+        mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
         (
-            IsDummy = is_not_dummy_type,
-            OutputVar = yes(Var)
-        ;
-            IsDummy = is_dummy_type,
+            ( TopFunctorMode = top_in
+            ; TopFunctorMode = top_unused
+            ),
             OutputVar = no
+        ;
+            TopFunctorMode = top_out,
+            IsDummy = check_dummy_type(ModuleInfo, Type),
+            (
+                IsDummy = is_not_dummy_type,
+                OutputVar = yes(Var)
+            ;
+                IsDummy = is_dummy_type,
+                OutputVar = no
+            )
         )
     ),
     find_maybe_output_args_2(ModuleInfo, Types, Modes, Vars, OutputVars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % mark_tail_calls_in_goal(Info, Outputs0, MaybeOutputs, !Specs,
-    %   Goal0, Goal, !FoundTailCalls):
+    % Is the current position within the procedure a tail position?
+    % If it is, what are the output arguments?
     %
-    % This predicate transforms Goal0 into Goal by marking all tail calls
-    % in it with the feature in Info. Tailcalls are calls to the pred_id
-    % and proc_id in Info, in which the variables of the argument list match
-    % the corresponding variables in the elements of the Outputs list that
-    % actually contain a variable.
-    %
-    % If Goal0 neither is a tailcall nor contains a tailcall, but could
-    % actually follow a tailcall (which is possible if it is either an
-    % assignment unification that simply renames an output variable,
-    % or a conjunction of such unifications), then return MaybeOutputs
-    % as copy of Outputs0 updated to account for the renaming. Otherwise,
-    % return 'no' for MaybeOutputs.
-    %
-:- pred mark_tail_calls_in_goal(mark_tail_calls_info::in,
-    found_tail_calls::out, list(error_spec)::in, list(error_spec)::out,
-    hlds_goal::in, hlds_goal::out, at_tail::in, at_tail::out) is det.
+:- type at_tail
+    --->    at_tail(list(maybe(prog_var)))
+    ;       not_at_tail(later_rec_call).
 
-mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
-        AtTail0, AtTail) :-
+:- type later_rec_call
+    --->    have_seen_later_rec_call
+    ;       have_not_seen_later_rec_call.
+
+:- type maybe_warn_non_tail_rec_call
+    --->    do_not_warn_non_tail_rec_calls
+    ;       warn_non_tail_rec_calls(
+                warning_or_error,
+                require_tail_recursion_type
+            ).
+
+    % Has any self-recursive tail call been found so far?
+    %
+    % We use this to set the has_tail_call_event field in the procedure's
+    % proc_info. The LLDS debugger uses this field's value to decide
+    % whether to prepare for any TAIL events in the procedure body.
+    %
+    % For the time being, the debugger supports TAIL events only for
+    % *self*-tail-recursive calls, and not for mutually-tail-recursive calls.
+    %
+:- type found_self_tail_rec_calls
+    --->    not_found_self_tail_rec_calls
+    ;       found_self_tail_rec_calls.
+
+    % Have we found any recursive call been found so far?
+    %
+    % We use this to generate warnings about pragmas that intend to control
+    % how recursive calls that are not *tail* recursive should be treated,
+    % when the procedure they are about contains no recursive calls at all,
+    % either self-recursive or (if we have SCC information) mutually recursive.
+    %
+:- type found_any_rec_calls
+    --->    not_found_any_rec_calls
+    ;       found_any_rec_calls.
+
+:- type mark_tail_rec_calls_info
+    --->    mark_tail_rec_calls_info(
+                mtc_add_feature             :: add_goal_feature,
+                mtc_module                  :: module_info,
+                mtc_pred_info               :: pred_info,
+                mtc_cur_proc                :: pred_proc_id,
+                mtc_cur_scc                 :: set(pred_proc_id),
+                mtc_vartypes                :: vartypes,
+                mtc_warn_non_tail_rec_calls :: maybe_warn_non_tail_rec_call,
+                mtc_any_rec_calls           :: found_any_rec_calls,
+                mtc_self_tail_rec_calls     :: found_self_tail_rec_calls,
+                mtc_error_specs             :: list(error_spec)
+            ).
+
+%---------------------------------------------------------------------------%
+
+    % mark_tail_rec_calls_in_goal(Goal0, Goal, !AtTail, !Info):
+    %
+    % This predicate performs a backwards traversal of Goal0.
+    % It can transform Goal0 into Goal
+    %
+    % - by adding the feature feature_debug_self_tail_rec_call feature to
+    %   self-tail-recursive calls, i.e. calls to !.Info ^ mtc_cur_proc,
+    %   if !.Info ^ mtc_add_feature is add_goal_feature_self_for_debug, or
+    %
+    % - by adding the feature feature_self_or_mutual_tail_rec_call to
+    %   either self- or mutually-tail-recursive calls, i.e. calls to either
+    %   !.Info ^ mtc_cur_proc or to a procedure in !.Info ^ mtc_cur_scc,
+    %   if !.Info ^ mtc_add_feature is add_goal_feature_self_or_mutual, or
+    %
+    % It adds nothing to the goal if !.Info ^ mtc_add_feature is
+    % do_not_add_goal_feature.
+    %
+    % If the value of !.Info ^ mtc_warn_non_tail_rec_calls calls for it,
+    % we generate warnings for non-tail recursive calls, and add them
+    % to !Info.
+    %
+    % Since we do a *backward* traversal, AtTail0 describes the situation
+    % *after* Goal0, and the value of AtTail we return describes the situation
+    % *before* Goal0 (which is also the situation before its marked-up twin
+    % Goal).
+    %
+    % When the backwards traversal starts, the value of AtTail0 is initialized
+    % to at_tail(MaybeOutputArgs). If Goal0 neither is a tailcall nor contains
+    % a tailcall, but could actually follow a tailcall (which is possible
+    % if it is either an assignment unification that simply renames an output
+    % variable, or a conjunction of such unifications), then we return AtTail
+    % as at_tail, but with a value of MaybeOutputArgs that is updated
+    % to account for the renaming. We want this because Goal0 is a tail
+    % recursive call only if (a) AtTail0 is at_tail(MaybeOutputArgs),
+    % it is a call to !.Info ^ mtc_cur_proc or to a procedure in !.Info ^
+    % mtc_cur_scc whose argument list matches MaybeOutputArgs in the
+    % output argument positions, i.e. the positions in which MaybeOutputArgs
+    % has a yes(_).
+    %
+    % When we see a goal that cannot follow a tail call (a goal which may be
+    % a tail call itself), we return not_at_tail as the value of AtTail.
+    % Its argument will say whether we have seen a recursive call (tail
+    % or otherwise) earlier on the backwards traversal, i.e. in Goal or
+    % in code that follows Goal.
+    %
+    % We record whether we have found any (self or mutual) recursive calls
+    % in the mtc_any_rec_calls and mtc_self_tail_rec_calls fields.
+    %
+:- pred mark_tail_rec_calls_in_goal(hlds_goal::in, hlds_goal::out,
+    at_tail::in, at_tail::out,
+    mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
+
+mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
@@ -389,8 +582,7 @@ mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
         ; GoalExpr0 = negation(_)
         ),
         Goal = Goal0,
-        not_at_tail(AtTail0, AtTail),
-        FoundTailCalls = not_found_tail_calls
+        not_at_tail(AtTail0, AtTail)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         (
@@ -401,21 +593,24 @@ mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
                     TailWarnings)
                 )
             then
-                InnerInfo = Info ^ mtc_warn_non_tail_rec_calls :=
-                    do_not_warn_non_tail_rec_calls
+                OldWarn = !.Info ^ mtc_warn_non_tail_rec_calls,
+                InnerWarn = do_not_warn_non_tail_rec_calls,
+                InnerInfo0 = !.Info ^ mtc_warn_non_tail_rec_calls := InnerWarn,
+                mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
+                    InnerInfo0, InnerInfo),
+                !:Info = InnerInfo ^ mtc_warn_non_tail_rec_calls := OldWarn
             else
-                InnerInfo = Info
-            ),
-            mark_tail_calls_in_goal(InnerInfo, FoundTailCalls, !Specs,
-                SubGoal0, SubGoal, AtTail0, AtTail)
+                mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
+                    !Info)
+            )
         ;
             ( Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = commit(_)
             ),
             not_at_tail(AtTail0, AtTail1),
-            mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs,
-                SubGoal0, SubGoal, AtTail1, AtTail)
+            mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail1, AtTail,
+                !Info)
         ;
             ( Reason = promise_purity(_)
             ; Reason = barrier(_)
@@ -423,8 +618,8 @@ mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
             ; Reason = trace_goal(_, _, _, _, _)
             ; Reason = loop_control(_, _, _)
             ),
-            mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs,
-                SubGoal0, SubGoal, AtTail0, AtTail)
+            mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
+                !Info)
         ;
             ( Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
@@ -436,8 +631,8 @@ mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
     ;
         GoalExpr0 = unify(LHS, _, _, Unify0, _),
         Goal = Goal0,
-        ModuleInfo = Info ^ mtc_module,
-        VarTypes = Info ^ mtc_vartypes,
+        ModuleInfo = !.Info ^ mtc_module,
+        VarTypes = !.Info ^ mtc_vartypes,
         ( if var_is_of_dummy_type(ModuleInfo, VarTypes, LHS) then
             % Unifications involving dummy type variables are no-ops,
             % and do not inhibit a preceding tail call.
@@ -458,48 +653,59 @@ mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
                 then
                     AtTail = at_tail(Outputs)
                 else
-                    AtTail = not_at_tail_have_not_seen_reccall
+                    AtTail = not_at_tail(have_not_seen_later_rec_call)
                 )
             )
-        ),
-        FoundTailCalls = not_found_tail_calls
+        )
     ;
-        GoalExpr0 = plain_call(CallPredId, CallProcId, Args, Builtin,
+        GoalExpr0 = plain_call(CalleePredId, CalleeProcId, Args, Builtin,
             _UnifyContext, SymName),
-        PredId = Info ^ mtc_pred_id,
-        ProcId = Info ^ mtc_proc_id,
+        CalleePredProcId = proc(CalleePredId, CalleeProcId),
+        CurPredProcId = !.Info ^ mtc_cur_proc,
+        CurSCCPredProcIds = !.Info ^ mtc_cur_scc,
         ( if
-            CallPredId = PredId,
-            CallProcId = ProcId,
+            ( CalleePredProcId = CurPredProcId
+            ; set.member(CalleePredProcId, CurSCCPredProcIds)
+            ),
             Builtin = not_builtin
         then
+            !Info ^ mtc_any_rec_calls := found_any_rec_calls,
             ( if
-                AtTail0 = at_tail(Outputs0),
-                match_output_args(Outputs0, Args)
+                AtTail0 = at_tail(Outputs),
+                match_output_args(Outputs, Args)
             then
-                AddFeature = Info ^ mtc_add_feature,
+                AddFeature = !.Info ^ mtc_add_feature,
                 (
-                    AddFeature = add_goal_feature,
-                    goal_info_add_feature(feature_debug_tail_rec_call,
-                        GoalInfo0, GoalInfo),
-                    Goal = hlds_goal(GoalExpr0, GoalInfo)
-                ;
                     AddFeature = do_not_add_goal_feature,
                     Goal = Goal0
+                ;
+                    AddFeature = add_goal_feature_self_for_debug,
+                    ( if CalleePredProcId = CurPredProcId then
+                        !Info ^ mtc_self_tail_rec_calls :=
+                            found_self_tail_rec_calls,
+                        goal_info_add_feature(feature_debug_self_tail_rec_call,
+                            GoalInfo0, GoalInfo),
+                        Goal = hlds_goal(GoalExpr0, GoalInfo)
+                    else
+                        Goal = Goal0
+                    )
+                ;
+                    AddFeature = add_goal_feature_self_or_mutual,
+                    goal_info_add_feature(feature_self_or_mutual_tail_rec_call,
+                        GoalInfo0, GoalInfo),
+                    Goal = hlds_goal(GoalExpr0, GoalInfo)
                 )
             else
                 Goal = Goal0,
                 Arity = length(Args),
-                maybe_report_nontail_recursive_call(AtTail0, Info,
-                    SymName, Arity, CallProcId,
-                    goal_info_get_context(GoalInfo0), !Specs)
+                Context = goal_info_get_context(GoalInfo0),
+                maybe_report_nontail_recursive_call(SymName, Arity,
+                    CalleeProcId, Context, AtTail0, !Info)
             ),
-            AtTail = not_at_tail_seen_reccall,
-            FoundTailCalls = found_tail_calls
+            AtTail = not_at_tail(have_seen_later_rec_call)
         else
             Goal = Goal0,
-            not_at_tail(AtTail0, AtTail),
-            FoundTailCalls = not_found_tail_calls
+            not_at_tail(AtTail0, AtTail)
         )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
@@ -510,51 +716,53 @@ mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
             ConjType = parallel_conj,
             % Tail calls in parallel conjunctions are only supported when
             % loop control is enabled. But loop control would have rewritten
-            % the conjunction into a loop control scope, and therefore
-            % parallel conjunctions at this point cannot support tail calls.
+            % the conjunction into a loop control scope, and therefore any
+            % parallel conjunctions we find at *this* point cannot support
+            % tail calls.
             not_at_tail(AtTail0, AtTail1)
         ),
         list.reverse(Goals0, RevGoals0),
-        mark_tail_calls_in_conj(Info, RevGoals0, RevGoals,
-            AtTail1, AtTail, not_found_tail_calls, FoundTailCalls, !Specs),
+        mark_tail_rec_calls_in_conj(RevGoals0, RevGoals, AtTail1, AtTail,
+            !Info),
         list.reverse(RevGoals, Goals),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjs0),
-        list.map3_foldl(mark_tail_calls_in_disj(Info, AtTail0), Disjs0, Disjs,
-            AtTails, FoundTailCallDisjs, !Specs),
-        AtTail = at_tail_branches(AtTails),
-        FoundTailCalls = found_tail_calls_condense(FoundTailCallDisjs),
+        project_seen_later_rec_call(AtTail0, SeenLaterRecCall0),
+        list.map_foldl2(mark_tail_rec_calls_in_disj(AtTail0), Disjs0, Disjs,
+            SeenLaterRecCall0, SeenLaterRecCall, !Info),
+        AtTail = not_at_tail(SeenLaterRecCall),
         GoalExpr = disj(Disjs),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map3_foldl(mark_tail_calls_in_case(Info, AtTail0), Cases0, Cases,
-            AtTails, FoundTailCallsCases, !Specs),
-        AtTail = at_tail_branches(AtTails),
-        FoundTailCalls = found_tail_calls_condense(FoundTailCallsCases),
+        project_seen_later_rec_call(AtTail0, SeenLaterRecCall0),
+        list.map_foldl2(mark_tail_rec_calls_in_case(AtTail0), Cases0, Cases,
+            SeenLaterRecCall0, SeenLaterRecCall, !Info),
+        AtTail = not_at_tail(SeenLaterRecCall),
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        mark_tail_calls_in_goal(Info, FoundTailCallsThen, !Specs,
-            Then0, Then, AtTail0, AtTailThen),
-        mark_tail_calls_in_goal(Info, FoundTailCallsElse, !Specs,
-            Else0, Else, AtTail0, AtTailElse),
-        AtTailBranch0 = at_tail_branch(AtTailThen, AtTailElse),
-        not_at_tail(AtTailBranch0, AtTailBranch),
-        mark_tail_calls_in_goal(Info, _, !Specs, Cond0, Cond,
-            AtTailBranch, AtTail),
+        mark_tail_rec_calls_in_goal(Then0, Then, AtTail0, AtTailBeforeThen,
+            !Info),
+        mark_tail_rec_calls_in_goal(Else0, Else, AtTail0, AtTailBeforeElse,
+            !Info),
+        project_seen_later_rec_call(AtTailBeforeThen, SeenRecCallInThen),
+        project_seen_later_rec_call(AtTailBeforeElse, SeenRecCallInElse),
         ( if
-            ( FoundTailCallsThen = found_tail_calls
-            ; FoundTailCallsElse = found_tail_calls
+            ( SeenRecCallInThen = have_seen_later_rec_call
+            ; SeenRecCallInElse = have_seen_later_rec_call
             )
         then
-            FoundTailCalls = found_tail_calls
+            SeenRecCallAfterCond = have_seen_later_rec_call
         else
-            FoundTailCalls = not_found_tail_calls
+            SeenRecCallAfterCond = have_not_seen_later_rec_call
         ),
+        AtTailAfterCond = not_at_tail(SeenRecCallAfterCond),
+        mark_tail_rec_calls_in_goal(Cond0, Cond, AtTailAfterCond, AtTail,
+            !Info),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -577,44 +785,6 @@ is_output_arg_rename(ToVar, FromVar,
         is_output_arg_rename(ToVar, FromVar, MaybeVars0, MaybeVars)
     ).
 
-:- pred mark_tail_calls_in_disj(mark_tail_calls_info::in, at_tail::in,
-    hlds_goal::in, hlds_goal::out, at_tail::out, found_tail_calls::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-mark_tail_calls_in_disj(Info, AtTail0, !Disj, AtTail, FoundAtTail, !Specs) :-
-    mark_tail_calls_in_goal(Info, FoundAtTail, !Specs, !Disj, AtTail0,
-        AtTail).
-
-:- pred mark_tail_calls_in_case(mark_tail_calls_info::in, at_tail::in,
-    case::in, case::out, at_tail::out, found_tail_calls::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-mark_tail_calls_in_case(Info, AtTail0, Case0, Case, AtTail, FoundTailCalls,
-        !Specs) :-
-    Case0 = case(MainConsId, OtherConsIds, Goal0),
-    mark_tail_calls_in_goal(Info, FoundTailCalls, !Specs, Goal0, Goal,
-        AtTail0, AtTail),
-    Case = case(MainConsId, OtherConsIds, Goal).
-
-:- pred mark_tail_calls_in_conj(mark_tail_calls_info::in,
-    list(hlds_goal)::in, list(hlds_goal)::out, at_tail::in, at_tail::out,
-    found_tail_calls::in, found_tail_calls::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-mark_tail_calls_in_conj(_Info, [], [], !AtTail, !FoundTailCalls, !Specs).
-mark_tail_calls_in_conj(Info, [RevGoal0 | RevGoals0], [RevGoal | RevGoals],
-        !AtTail, !FoundTailCalls, !Specs) :-
-    mark_tail_calls_in_goal(Info, FoundTailCallsConj, !Specs,
-        RevGoal0, RevGoal, !AtTail),
-    (
-        FoundTailCallsConj = found_tail_calls,
-        !:FoundTailCalls = found_tail_calls
-    ;
-        FoundTailCallsConj = not_found_tail_calls
-    ),
-    mark_tail_calls_in_conj(Info, RevGoals0, RevGoals, !AtTail,
-        !FoundTailCalls, !Specs).
-
 :- pred match_output_args(list(maybe(prog_var))::in, list(prog_var)::in)
     is semidet.
 
@@ -631,65 +801,84 @@ match_output_args([MaybeOutputVar | MaybeOutputVars], [ArgVar | ArgVars]) :-
     ),
     match_output_args(MaybeOutputVars, ArgVars).
 
-:- func found_tail_calls_condense(list(found_tail_calls)) =
-    found_tail_calls.
+:- pred mark_tail_rec_calls_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+    at_tail::in, at_tail::out,
+    mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
 
-found_tail_calls_condense(List) =
-    ( if list.member(found_tail_calls, List) then
-        found_tail_calls
-    else
-        not_found_tail_calls
+mark_tail_rec_calls_in_conj([], [], !AtTail, !Info).
+mark_tail_rec_calls_in_conj([RevGoal0 | RevGoals0], [RevGoal | RevGoals],
+        !AtTail, !Info) :-
+    mark_tail_rec_calls_in_goal(RevGoal0, RevGoal, !AtTail, !Info),
+    mark_tail_rec_calls_in_conj(RevGoals0, RevGoals, !AtTail, !Info).
+
+:- pred mark_tail_rec_calls_in_disj(at_tail::in, hlds_goal::in, hlds_goal::out,
+    later_rec_call::in, later_rec_call::out,
+    mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
+
+mark_tail_rec_calls_in_disj(AtTail0, !Disjunct, !SeenLaterRecCall, !Info) :-
+    mark_tail_rec_calls_in_goal(!Disjunct, AtTail0, AtTail, !Info),
+    accumulate_seen_later_rec_call(AtTail, !SeenLaterRecCall).
+
+:- pred mark_tail_rec_calls_in_case(at_tail::in, case::in, case::out,
+    later_rec_call::in, later_rec_call::out,
+    mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
+
+mark_tail_rec_calls_in_case(AtTail0, Case0, Case, !SeenLaterRecCall, !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info),
+    accumulate_seen_later_rec_call(AtTail, !SeenLaterRecCall),
+    Case = case(MainConsId, OtherConsIds, Goal).
+
+:- pred accumulate_seen_later_rec_call(at_tail::in,
+    later_rec_call::in, later_rec_call::out) is det.
+
+accumulate_seen_later_rec_call(AtTail, !SeenLaterRecCall) :-
+    (
+        AtTail = at_tail(_)
+    ;
+        AtTail = not_at_tail(AtTailSeenLaterRecCall),
+        (
+            AtTailSeenLaterRecCall = have_not_seen_later_rec_call
+        ;
+            AtTailSeenLaterRecCall = have_seen_later_rec_call,
+            !:SeenLaterRecCall = have_seen_later_rec_call
+        )
+    ).
+
+:- pred project_seen_later_rec_call(at_tail::in, later_rec_call::out) is det.
+
+project_seen_later_rec_call(AtTail, SeenLaterRecCall) :-
+    (
+        AtTail = at_tail(_),
+        SeenLaterRecCall = have_not_seen_later_rec_call
+    ;
+        AtTail = not_at_tail(SeenLaterRecCall)
     ).
 
 :- pred not_at_tail(at_tail::in, at_tail::out) is det.
 
-not_at_tail(at_tail(_), not_at_tail_have_not_seen_reccall).
-not_at_tail(not_at_tail_seen_reccall, not_at_tail_seen_reccall).
-not_at_tail(not_at_tail_have_not_seen_reccall,
-    not_at_tail_have_not_seen_reccall).
-
-:- func at_tail_branches(list(at_tail)) = at_tail.
-
-at_tail_branches(List) =
-    list.foldl(at_tail_branch, List, not_at_tail_have_not_seen_reccall).
-
-:- func at_tail_branch(at_tail, at_tail) = at_tail.
-
-at_tail_branch(A, B) = R :-
+not_at_tail(Before, After) :-
     (
-        A = at_tail(_),
-        (
-            B = at_tail(_),
-            % This shouldn't happen.
-            R = not_at_tail_have_not_seen_reccall
-        ;
-            ( B = not_at_tail_have_not_seen_reccall
-            ; B = not_at_tail_seen_reccall
-            ),
-            R = B
-        )
+        Before = at_tail(_),
+        After = not_at_tail(have_not_seen_later_rec_call)
     ;
-        A = not_at_tail_have_not_seen_reccall,
-        R = B
-    ;
-        A = not_at_tail_seen_reccall,
-        R = not_at_tail_seen_reccall
+        Before = not_at_tail(_),
+        After = Before
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred maybe_report_nontail_recursive_call(at_tail::in,
-    mark_tail_calls_info::in, sym_name::in, arity::in, proc_id::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred maybe_report_nontail_recursive_call(sym_name::in, arity::in,
+    proc_id::in, prog_context::in, at_tail::in,
+    mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
 
-maybe_report_nontail_recursive_call(AtTail, Info, SymName, Arity, ProcId,
-        Context, !Specs) :-
+maybe_report_nontail_recursive_call(SymName, Arity, ProcId, Context, AtTail,
+        !Info) :-
     (
         ( AtTail = at_tail(_)
-        ; AtTail = not_at_tail_have_not_seen_reccall
+        ; AtTail = not_at_tail(have_not_seen_later_rec_call)
         ),
-        PredInfo = Info ^ mtc_pred_info,
-        WarnNonTailRecCalls = Info ^ mtc_warn_non_tail_rec_calls,
+        WarnNonTailRecCalls = !.Info ^ mtc_warn_non_tail_rec_calls,
         (
             WarnNonTailRecCalls = do_not_warn_non_tail_rec_calls
         ;
@@ -697,34 +886,37 @@ maybe_report_nontail_recursive_call(AtTail, Info, SymName, Arity, ProcId,
                 _RecType),
             % TODO: Check recursion type to implement support for
             % mutual vs self recursion checking.
-            report_nontail_recursive_call(PredInfo, SymName, Arity, ProcId,
-                WarnOrError, Context, !Specs)
+            report_nontail_recursive_call(SymName, Arity, ProcId, Context,
+                WarnOrError, !Info)
         )
     ;
+        AtTail = not_at_tail(have_seen_later_rec_call)
         % Never report calls that are followed by recursive calls.
         % NOTE: We could report these issues, doing so would help programmers
         % to ensure that they use constant stack space. This was not part
         % of the initial design for the pragma but I (Paul) would like
         % to add support for it with another option in the near future.
-        AtTail = not_at_tail_seen_reccall
     ).
 
-:- pred report_nontail_recursive_call(pred_info::in, sym_name::in, arity::in,
-    proc_id::in, warning_or_error::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_nontail_recursive_call(sym_name::in, arity::in, proc_id::in,
+    prog_context::in, warning_or_error::in,
+    mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
 
-report_nontail_recursive_call(PredInfo, SymName, Arity, ProcId,
-        WarnOrError, Context, !Specs) :-
+report_nontail_recursive_call(SymName, Arity, ProcId, Context, WarnOrError,
+        !Info) :-
+    PredInfo = !.Info ^ mtc_pred_info,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    Name = unqualify_name(SymName),
-    SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
-    add_message_for_nontail_recursive_call(SimpleCallId, ProcId,
-        WarnOrError, Context, !Specs).
+    UnqualName = unqualified(unqualify_name(SymName)),
+    SimpleCallId = simple_call_id(PredOrFunc, UnqualName, Arity),
+    Specs0 = !.Info ^ mtc_error_specs,
+    add_message_for_nontail_recursive_call(SimpleCallId, ProcId, Context,
+        WarnOrError, Specs0, Specs),
+    !Info ^ mtc_error_specs := Specs.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-add_message_for_nontail_recursive_call(SimpleCallId, ProcId,
-        WarnOrError, Context, !Specs) :-
+add_message_for_nontail_recursive_call(SimpleCallId, ProcId, Context,
+        WarnOrError, !Specs) :-
     (
         WarnOrError = we_warning,
         Severity = severity_warning,
@@ -755,6 +947,6 @@ add_message_for_no_tail_or_nontail_recursive_calls(SimpleCallId, Context,
     Spec = error_spec(severity_warning, phase_code_gen, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.mark_tail_calls.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

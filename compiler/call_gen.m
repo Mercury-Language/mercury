@@ -152,7 +152,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI, !CLD) :-
     reset_to_position(AfterReturn, !.CI, !:CLD),
 
     ( if
-        goal_info_has_feature(GoalInfo, feature_debug_tail_rec_call),
+        goal_info_has_feature(GoalInfo, feature_debug_self_tail_rec_call),
         get_maybe_trace_info(!.CI, MaybeTraceInfo),
         MaybeTraceInfo = yes(TraceInfo)
     then

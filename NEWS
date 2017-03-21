@@ -484,6 +484,12 @@ Changes to the Mercury compiler:
   programming style, and do not point out code that is reasonably likely
   to be wrong.
 
+* We have added a new option --inline-linear-tail-rec-sccs that tells
+  the compiler, when it finds a set of procedures that each contain
+  one tail call to one *other* member of the set, to inline the tail calls
+  to turn those mutually recursive procedures into procedures that each
+  contain only *self* tail recursion.
+
 * We have fixed a long-standing bug causing crashes in deep profiling
   grades, related to unify/compare for tuples.  (Bug #3)
 

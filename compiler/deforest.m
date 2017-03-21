@@ -884,7 +884,6 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
 
 can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         !PDInfo) :-
-    pd_info_get_pred_info(!.PDInfo, PredInfo),
     pd_info_get_depth(!.PDInfo, Depth0),
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
@@ -941,14 +940,12 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
             LaterGoalExpr = plain_call(PredId, ProcId, _, BuiltinState, _, _)
         ),
 
-        % We don't attempt to deforest predicates which are promised pure
+        % We don't attempt to deforest predicates which have purity promises
         % because the extra impurity propagated through the goal when such
         % predicates are inlined will defeat any attempt at deforestation.
         % XXX We should probably allow deforestation of semipure goals.
-        InlinePromisedPure = no,
-        pred_info_get_markers(PredInfo, CallerMarkers),
         not inlining.can_inline_proc(ModuleInfo, PredId, ProcId, BuiltinState,
-            InlinePromisedPure, CallerMarkers)
+            may_not_inline_purity_promised_pred)
     then
         trace [io(!IO)] (
             pd_debug_message(DebugPD, "non-inlineable calls\n", [], !IO)
@@ -1916,11 +1913,9 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
 
     pd_info_get_local_term_info(!.PDInfo, LocalTermInfo0),
 
-    pd_info_get_pred_info(!.PDInfo, PredInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_int_option(Globals, deforestation_size_threshold,
         SizeThreshold),
-    pred_info_get_markers(PredInfo, CallerMarkers),
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         % Check for extra information to the call.
@@ -1931,15 +1926,13 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
         instmap_lookup_var(InstMap, Arg, ArgInst),
         inst_is_bound_to_functors(ModuleInfo, ArgInst, [_]),
 
-        % We don't attempt to deforest predicates which are
-        % promised pure because the extra impurity propagated
-        % through the goal when such predicates are inlined
-        % will defeat any attempt at deforestation.
-        % XXX We should probably allow deforestation of
-        % semipure goals.
-        InlinePromisedPure = no,
+        % We don't attempt to deforest predicates which have purity promises
+        % because the extra impurity propagated through the goal when such
+        % predicates are inlined will defeat any attempt at deforestation.
+        % XXX We should probably allow deforestation of semipure goals.
+
         inlining.can_inline_proc(ModuleInfo, PredId, ProcId, BuiltinState,
-            InlinePromisedPure, CallerMarkers),
+            may_not_inline_purity_promised_pred),
 
         % Check the goal size.
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,

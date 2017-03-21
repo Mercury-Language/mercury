@@ -891,16 +891,19 @@ maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, inline_simple, Simple),
     globals.lookup_bool_option(Globals, inline_single_use, SingleUse),
     globals.lookup_int_option(Globals, inline_compound_threshold, Threshold),
+    globals.lookup_bool_option(Globals, inline_linear_tail_rec_sccs,
+        LinearRec),
     ( if
         Allow = yes,
         ( Simple = yes
         ; SingleUse = yes
         ; Threshold > 0
+        ; LinearRec = yes
         )
     then
         maybe_write_string(Verbose, "% Inlining...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        inlining(!HLDS),
+        inline_in_module(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     else

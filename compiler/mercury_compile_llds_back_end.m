@@ -402,8 +402,8 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
             "% Marking directly tail recursive calls in ", PredId, ProcId,
             !.HLDS, !IO)
     ),
-    mark_tail_calls_in_proc(!.HLDS, PredId, ProcId, PredInfo, !ProcInfo,
-        _, !Specs),
+    mark_tail_rec_calls_in_proc_for_llds_code_gen(!.HLDS, PredId, ProcId,
+        PredInfo, !ProcInfo, !Specs),
 
     trace [io(!IO)] (
         write_proc_progress_message("% Allocating stack slots in ", PredId,
@@ -534,7 +534,7 @@ maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !Specs, !IO) :-
         "% Marking directly tail recursive calls...", !IO),
     maybe_flush_output(Verbose, !IO),
     process_all_nonimported_preds_errors(
-        update_pred_error(mark_tail_calls_in_pred),
+        update_pred_error(mark_tail_rec_calls_in_pred_for_llds_code_gen),
         !HLDS, !Specs, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
