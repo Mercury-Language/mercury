@@ -684,6 +684,7 @@
     ;       inline_vars_threshold
     ;       intermod_inline_simple_threshold
     ;       inline_linear_tail_rec_sccs
+    ;       inline_linear_tail_rec_sccs_max_extra
     ;       from_ground_term_threshold
     ;       enable_const_struct
     ;       common_struct
@@ -1604,6 +1605,7 @@ option_defaults_2(optimization_option, [
                                         % Has no effect until
                                         % --intermodule-optimization.
     inline_linear_tail_rec_sccs         -   bool(no),
+    inline_linear_tail_rec_sccs_max_extra -   int(0),
     from_ground_term_threshold          -   int(5),
     enable_const_struct                 -   bool(yes),
     common_struct                       -   bool(no),
@@ -2479,6 +2481,8 @@ long_option("inline-simple-threshold",      inline_simple_threshold).
 long_option("intermod-inline-simple-threshold",
                                     intermod_inline_simple_threshold).
 long_option("inline-linear-tail-rec-sccs",  inline_linear_tail_rec_sccs).
+long_option("inline-linear-tail-rec-sccs-max-extra",
+                                    inline_linear_tail_rec_sccs_max_extra).
 long_option("from-ground-term-threshold",
                                     from_ground_term_threshold).
 long_option("inline-vars-threshold",        inline_vars_threshold).
@@ -5188,9 +5192,16 @@ options_help_hlds_hlds_optimization -->
         "--inline-linear-tail-rec-sccs",
         "\tGiven a set of mutually recursive procedures (an SCC, or strongly",
         "\tconnected component, of the call graph) in which each procedure",
-        "\tcontains exactly one call to a procedure in the SCC and",
-        "\tthat call is a tail call, inline the callee at every one of those",
-        "\tcall sites.",
+        "\tcontains exactly tail call to a procedure in the SCC, so that",
+        "\tthe tail recursive calls form a linear chain through the SCC,",
+        "\tinline the callee at every one of those mutually tail recursive",
+        "\tcall sites. This converts mutual tail recursion into self tail",
+        "\trecursion, which the MLDS backend can turn into code that runs",
+        "\tin constant stack space.",
+%       "--inline-linear-tail-rec-sccs-max-extra <E>",
+%       "\tWhen considering whether to apply --inline-linear-tail-rec-sccs",
+%       "\tto an SCC containing N procedures, allow the SCC to contain",
+%       "\tup to N+E mutually recursive tail calls."
 %       "--from-ground-term-threshold <n>",
 %       "\tWrap a from_ground_term scope around the expanded,",
 %       "\tsuperhomogeneous form of a ground term that involves at least.",

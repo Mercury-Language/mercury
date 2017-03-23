@@ -199,19 +199,20 @@
     %
 :- type inline_params
     --->    inline_params(
-                ip_simple                   :: bool,
-                ip_single_use               :: bool,
-                ip_linear_tail_rec          :: bool,
-                ip_call_cost                :: int,
-                ip_compound_size_threshold  :: int,
-                ip_simple_goal_threshold    :: int,
-                ip_var_threshold            :: int,
-                ip_highlevel_code           :: bool,
-                ip_any_tracing              :: bool,
-                                            % Is any procedure being traced
-                                            % in the module?
+                ip_simple                       :: bool,
+                ip_single_use                   :: bool,
+                ip_linear_tail_rec              :: bool,
+                ip_linear_tail_rec_max_extra    :: int,
+                ip_call_cost                    :: int,
+                ip_compound_size_threshold      :: int,
+                ip_simple_goal_threshold        :: int,
+                ip_var_threshold                :: int,
+                ip_highlevel_code               :: bool,
 
-                ip_needed_map               :: needed_map
+                % Is any procedure being traced in the module?
+                ip_any_tracing                  :: bool,
+
+                ip_needed_map                   :: needed_map
             ).
 
 inline_in_module(!ModuleInfo) :-
@@ -230,6 +231,8 @@ inline_in_module(!ModuleInfo) :-
     globals.lookup_bool_option(Globals, inline_single_use, SingleUse),
     globals.lookup_bool_option(Globals, inline_linear_tail_rec_sccs,
         LinearTailRec),
+    globals.lookup_int_option(Globals, inline_linear_tail_rec_sccs,
+        LinearTailRecMaxExtra),
     globals.lookup_int_option(Globals, inline_call_cost, CallCost),
     globals.lookup_int_option(Globals, inline_compound_threshold,
         CompoundThreshold),
@@ -251,11 +254,12 @@ inline_in_module(!ModuleInfo) :-
     else
         map.init(NeededMap)
     ),
-    Params = inline_params(Simple, SingleUse, LinearTailRec,
+    Params = inline_params(Simple, SingleUse,
+        LinearTailRec, LinearTailRecMaxExtra,
         CallCost, CompoundThreshold, SimpleThreshold, VarThreshold,
         HighLevelCode, AnyTracing, NeededMap),
 
-    % Build the call graph and extract the list of SCC. We process
+    % Build the call graph and extract the list of SCCs. We process
     % SCCs bottom up, so that if a caller wants to inline a callee
     % in a lower SCC, it gets the *already optimized* version of the callee.
     % If LinearTailRec = no, we don't try to do anything special about
@@ -337,16 +341,21 @@ inline_in_maybe_linear_tail_rec_scc(Params, SCCEntryPoints, SCCProcs,
         build_proc_dependency_graph(!.ModuleInfo, SCC, only_tail_calls),
     get_bottom_up_sccs_with_entry_points(!.ModuleInfo, TSCCDepInfo,
         TSCCsEntries),
+    % Read the comments on the following code assuming that
+    % LinearTailRecMaxExtra is zero, until you get to the part that explains
+    % what happens if it is not.
+    LinearTailRecMaxExtra = Params ^ ip_linear_tail_rec_max_extra,
     ( if
-        % If every procedure in the SCC is reachable from every other
-        % via tail recursive calls, and ...
+        % If there is only one TSSC, which means that every procedure
+        % in the SCC is reachable from every other procedure via
+        % *tail* recursive calls, ...
         TSCCsEntries = [_],
-        % ... the number of tail recursive calls in the SCC is equal
+        % ... and the number of tail recursive calls in the SCC is equal
         % to the number of procedures in the SCC, ...
         TSCCArcs = dependency_info_get_arcs(TSCCDepInfo),
         list.length(TSCCArcs, NumTSCCArcs),
         list.length(SCCProcs, NumSCCProcs),
-        NumTSCCArcs = NumSCCProcs
+        NumTSCCArcs =< NumSCCProcs + LinearTailRecMaxExtra
     then
         % ... then every procedure in the SCC is called from exactly
         % one call site in some other procedure in the SCC.
@@ -377,6 +386,30 @@ inline_in_maybe_linear_tail_rec_scc(Params, SCCEntryPoints, SCCProcs,
         % that are *not* entry points in the SCC unused, after all
         % calls to them have been inlined. They will be deleted by
         % dead procedure elimination in the usual course of events.
+        %
+        % Any increase in the value of LinearTailRecMaxExtra allows the
+        % SCC to contain one more mutually-tail-recursive call site that
+        % we will inline. For example, having LinearTailRecMaxExtra = 1
+        % would allow the example SCC above to contain either two A->B calls,
+        % or two B->C calls, or two C->D calls, or two D->A calls.
+        %
+        % Suppose we are doing inlining inside A. With two D->A calls,
+        % there will be no code size increase, since recurive calls to A
+        % won't be inlined. With two C->D calls, there will be two copies
+        % of the body of D. With two B->C calls, there will be two copies
+        % of the bodies of both C and D, since the call to D will be inlined
+        % in both copies of C. With two A->B calls, there will be two copies
+        % of B, C and D. If the body of A itself is small, this may mean
+        % that the total size of the code after inlining may be close to
+        % double what it would be without the extra tail call permitted
+        % by LinearTailRecMaxExtra = 1.
+        %
+        % In general, the size of the resulting code may grow almost as
+        % fast as 2^LinearTailRecMaxExtra.
+        %
+        % (Since a TSCC with N procedures must have at least N tail recursive
+        % calls, negative values of LinearTailRecMaxExtra *will* cause the
+        % test above to fail, so execution will never get here.)
         %
         set.union(CalledFromHigherSCCs, Exported, EntryPoints),
         list.foldl(

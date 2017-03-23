@@ -8770,13 +8770,22 @@ containing more than @var{threshold} variables. Procedures
 containing large numbers of variables can cause
 slow compilation.
 
-@item --inline-linear-tail-rec-sccs @var{threshold}
+@item --inline-linear-tail-rec-sccs
 @findex --inline-linear-tail-rec-sccs
 Given a set of mutually recursive procedures (an SCC, or strongly
 connected component, of the call graph) in which each procedure
-contains exactly one call to a procedure in the SCC and
-that call is a tail call, inline the callee at every one of those
-call sites.
+contains exactly tail call to a procedure in the SCC, so that
+the tail recursive calls form a linear chain through the SCC,
+inline the callee at every one of those mutually tail recursive
+call sites. This converts mutual tail recursion into self tail
+recursion, which the MLDS backend can turn into code that runs
+in constant stack space.
+
+@c @item --inline-linear-tail-rec-sccs-max-extra @var{E}
+@c @findex --inline-linear-tail-rec-sccs-max-extra
+@c When considering whether to apply @samp{--inline-linear-tail-rec-sccs}
+@c to an SCC containing @var{N} procedures, allow the SCC to contain
+@c up to @var{N}+@var{E} mutually recursive tail calls.
 
 @item --loop-invariants
 @findex --loop-invariants
