@@ -231,7 +231,7 @@ inline_in_module(!ModuleInfo) :-
     globals.lookup_bool_option(Globals, inline_single_use, SingleUse),
     globals.lookup_bool_option(Globals, inline_linear_tail_rec_sccs,
         LinearTailRec),
-    globals.lookup_int_option(Globals, inline_linear_tail_rec_sccs,
+    globals.lookup_int_option(Globals, inline_linear_tail_rec_sccs_max_extra,
         LinearTailRecMaxExtra),
     globals.lookup_int_option(Globals, inline_call_cost, CallCost),
     globals.lookup_int_option(Globals, inline_compound_threshold,
