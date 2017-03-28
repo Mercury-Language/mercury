@@ -814,10 +814,11 @@ clean_subdirs:
 .PHONY: clean_tests
 clean_tests:
 	+if test -d tests; then \
-		(cd tests; $(MMAKE) clean) \
+		(cd tests; $(SUBDIR_MMAKE) clean) \
 	fi
 
 realclean: realclean_tests realclean_subdirs realclean_local
+	+cd scripts; $(SUBDIR_MMAKE) realclean
 
 .PHONY: realclean_local
 realclean_local: realclean_config realclean_docs
@@ -830,7 +831,6 @@ realclean_subdirs: clean_subdirs
 		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
 	done
-	+cd scripts; $(SUBDIR_MMAKE) realclean
 
 .PHONY: realclean_docs
 realclean_docs:
@@ -843,7 +843,7 @@ realclean_config:
 .PHONY: realclean_tests
 realclean_tests:
 	+if test -d tests; then \
-		(cd tests; $(MMAKE) realclean) \
+		(cd tests; $(SUBDIR_MMAKE) realclean) \
 	fi
 
 #-----------------------------------------------------------------------------#
