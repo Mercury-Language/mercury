@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -775,7 +776,9 @@ lookup_bool_option(Globals, Option, Value) :-
     ( if OptionData = bool(Bool) then
         Value = Bool
     else
-        unexpected($module, $pred, "invalid bool option")
+        unexpected($module, $pred,
+            format("invalid bool option (%s is %s)",
+                [s(string(Option)), s(string(OptionData))]))
     ).
 
 lookup_string_option(Globals, Option, Value) :-
@@ -783,7 +786,9 @@ lookup_string_option(Globals, Option, Value) :-
     ( if OptionData = string(String) then
         Value = String
     else
-        unexpected($module, $pred, "invalid string option")
+        unexpected($module, $pred,
+            format("invalid string option (%s is %s)",
+                [s(string(Option)), s(string(OptionData))]))
     ).
 
 lookup_int_option(Globals, Option, Value) :-
@@ -791,7 +796,9 @@ lookup_int_option(Globals, Option, Value) :-
     ( if OptionData = int(Int) then
         Value = Int
     else
-        unexpected($module, $pred, "invalid int option")
+        unexpected($module, $pred,
+            format("invalid int option (%s is %s)",
+                [s(string(Option)), s(string(OptionData))]))
     ).
 
 lookup_maybe_int_option(Globals, Option, Value) :-
@@ -799,7 +806,9 @@ lookup_maybe_int_option(Globals, Option, Value) :-
     ( if OptionData = maybe_int(MaybeInt) then
         Value = MaybeInt
     else
-        unexpected($module, $pred, "invalid maybe_int option")
+        unexpected($module, $pred,
+            format("invalid maybe_int option (%s is %s)",
+                [s(string(Option)), s(string(OptionData))]))
     ).
 
 lookup_maybe_string_option(Globals, Option, Value) :-
@@ -807,7 +816,9 @@ lookup_maybe_string_option(Globals, Option, Value) :-
     ( if OptionData = maybe_string(MaybeString) then
         Value = MaybeString
     else
-        unexpected($module, $pred, "invalid maybe_string option")
+        unexpected($module, $pred,
+            format("invalid maybe_string option (%s is %s)",
+                [s(string(Option)), s(string(OptionData))]))
     ).
 
 lookup_accumulating_option(Globals, Option, Value) :-
@@ -815,7 +826,9 @@ lookup_accumulating_option(Globals, Option, Value) :-
     ( if OptionData = accumulating(Accumulating) then
         Value = Accumulating
     else
-        unexpected($module, $pred, "invalid accumulating option")
+        unexpected($module, $pred,
+            format("invalid accumulating option (%s is %s)",
+                [s(string(Option)), s(string(OptionData))]))
     ).
 
 %-----------------------------------------------------------------------------%
