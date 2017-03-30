@@ -411,9 +411,7 @@ will_flush(GoalExpr, BeforeAfter) = WillFlush :-
             BuiltinState = inline_builtin,
             WillFlush = no
         ;
-            ( BuiltinState = out_of_line_builtin
-            ; BuiltinState = not_builtin
-            ),
+            BuiltinState = not_builtin,
             (
                 BeforeAfter = before,
                 WillFlush = no

@@ -235,9 +235,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         (
             GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
             (
-                ( BuiltinState = out_of_line_builtin
-                ; BuiltinState = not_builtin
-                ),
+                BuiltinState = not_builtin,
                 GathersCoverageAfter = yes
             ;
                 BuiltinState = inline_builtin,
@@ -897,9 +895,7 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
         %
         GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
         (
-            ( BuiltinState = out_of_line_builtin
-            ; BuiltinState = not_builtin
-            ),
+            BuiltinState = not_builtin,
             Trivial0 = goal_is_nontrivial,
             PortCountsCoverageAfterDirect = port_counts_give_coverage_after
         ;

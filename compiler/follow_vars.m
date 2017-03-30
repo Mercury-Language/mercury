@@ -240,14 +240,12 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             true
         )
     ;
-        GoalExpr0 = plain_call(PredId, ProcId, Args, State, _UC, _Name),
+        GoalExpr0 = plain_call(PredId, ProcId, Args, BuiltinState, _UC, _Name),
         GoalExpr = GoalExpr0,
         (
-            State = inline_builtin
+            BuiltinState = inline_builtin
         ;
-            ( State = out_of_line_builtin
-            ; State = not_builtin
-            ),
+            BuiltinState = not_builtin,
             find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo,
                 !:FollowVarsMap, !:NextNonReservedR, !:NextNonReservedF)
         )

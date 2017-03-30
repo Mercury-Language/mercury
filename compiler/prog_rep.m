@@ -587,9 +587,6 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
             ;
                 Builtin = inline_builtin,
                 AtomicGoalRep = builtin_call_rep(ModuleName, PredName, ArgsRep)
-            ;
-                Builtin = out_of_line_builtin,
-                unexpected($module, $pred, "out_of_line_builtin")
             )
         ;
             GoalExpr = call_foreign_proc(_, _PredId, _, Args, _, _, _),

@@ -236,9 +236,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             Detism = goal_info_get_determinism(GoalInfo),
             gen_call(PredId, ProcId, ArgVars, Detism, !.ByteInfo, Code)
         ;
-            ( BuiltinState = inline_builtin
-            ; BuiltinState = out_of_line_builtin
-            ),
+            BuiltinState = inline_builtin,
             gen_builtin(PredId, ProcId, ArgVars, !.ByteInfo, Code)
         )
     ;

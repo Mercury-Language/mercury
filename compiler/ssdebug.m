@@ -350,8 +350,6 @@ ssdebug_first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
             insert_context_update_call(!.ModuleInfo, !Goal, !ProcInfo)
         ;
             Builtin = inline_builtin
-        ;
-            Builtin = out_of_line_builtin
         )
     ;
         GoalExpr0 = generic_call(_, _, _, _, _),

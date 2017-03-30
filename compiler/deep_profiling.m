@@ -523,9 +523,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
             true
         ),
         (
-            ( BuiltinState = out_of_line_builtin
-            ; BuiltinState = not_builtin
-            ),
+            BuiltinState = not_builtin,
             !:N = !.N + 1
         ;
             BuiltinState = inline_builtin
@@ -1050,9 +1048,7 @@ deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
     (
         GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
         (
-            ( BuiltinState = out_of_line_builtin
-            ; BuiltinState = not_builtin
-            ),
+            BuiltinState = not_builtin,
             deep_prof_wrap_call(Goal1, Goal, !DeepInfo),
             AddedImpurity = yes
         ;

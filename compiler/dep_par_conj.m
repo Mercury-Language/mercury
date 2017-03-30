@@ -2494,9 +2494,7 @@ should_we_push_wait(Var, Goal, Wait) :-
                 Wait = not_seen_wait_negligible_cost_so_far
             )
         ;
-            ( BuiltinStatus = not_builtin
-            ; BuiltinStatus = out_of_line_builtin
-            ),
+            BuiltinStatus = not_builtin,
             ( if set_of_var.member(NonLocals, Var) then
                 Wait = seen_wait_non_negligible_cost_before
             else

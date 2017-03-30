@@ -173,9 +173,7 @@ contains_only_builtins_expr(GoalExpr) = OnlyBuiltins :-
             BuiltinState = inline_builtin,
             OnlyBuiltins = yes
         ;
-            ( BuiltinState = out_of_line_builtin
-            ; BuiltinState = not_builtin
-            ),
+            BuiltinState = not_builtin,
             OnlyBuiltins = no
         )
     ;

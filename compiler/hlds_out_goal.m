@@ -1255,10 +1255,6 @@ write_goal_plain_call(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
             write_indent(Indent, !IO),
             io.write_string("% inline builtin\n", !IO)
         ;
-            Builtin = out_of_line_builtin,
-            write_indent(Indent, !IO),
-            io.write_string("% out of line builtin\n", !IO)
-        ;
             Builtin = not_builtin
         )
     else

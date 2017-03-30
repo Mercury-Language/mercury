@@ -369,9 +369,7 @@ add_dependency_arcs_in_goal(DepGraph, WhatEdges, Caller, Goal, !DepArcs) :-
         (
             Builtin = inline_builtin
         ;
-            ( Builtin = out_of_line_builtin
-            ; Builtin = not_builtin
-            ),
+            Builtin = not_builtin,
             ( if
                 goal_info_has_feature(GoalInfo,
                     feature_self_or_mutual_tail_rec_call)

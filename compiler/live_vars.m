@@ -497,9 +497,7 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             Builtin = inline_builtin,
             GoalInfo = GoalInfo0
         ;
-            ( Builtin = out_of_line_builtin
-            ; Builtin = not_builtin
-            ),
+            Builtin = not_builtin,
             build_live_sets_in_call(set_to_bitset(OutVars),
                 GoalInfo0, GoalInfo, ResumeVars0, AllocData,
                 !StackAlloc, !.Liveness, !NondetLiveness, !ParStackVars)

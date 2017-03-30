@@ -293,9 +293,7 @@ generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
             call_gen.generate_call(CodeModel, PredId, ProcId, Args, GoalInfo,
                 Code, !CI, !CLD)
         ;
-            ( BuiltinState = inline_builtin
-            ; BuiltinState = out_of_line_builtin
-            ),
+            BuiltinState = inline_builtin,
             call_gen.generate_builtin(CodeModel, PredId, ProcId, Args,
                 Code, !CI, !CLD)
         )

@@ -613,15 +613,15 @@
 % Information for calls.
 %
 
-    % There may be two sorts of "builtin" predicates - those that we open-code
-    % using inline instructions (e.g. arithmetic predicates), and those which
-    % are still "internal", but for which we generate a call to an out-of-line
-    % procedure. At the moment there are no builtins of the second sort,
-    % although we used to handle call/N that way.
-
+    % For all of our current builtin predicates and functions
+    % (such as those that do arithmetic), we generate inline instructions.
+    % In the past, we had some builtins (such as call/N) for which
+    % we generated a call to an out-of-line procedure, but there is
+    % no prospect of any new builtins ever requiring that treatment.
+    % Therefore currently all builtins are inline builtins.
+    %
 :- type builtin_state
     --->    inline_builtin
-    ;       out_of_line_builtin
     ;       not_builtin.
 
 %-----------------------------------------------------------------------------%

@@ -84,9 +84,7 @@ goal_expr_cost(GoalExpr, GoalInfo, Cost) :-
             BuiltinState = inline_builtin,
             Cost = cost_of_builtin_call
         ;
-            ( BuiltinState = out_of_line_builtin
-            ; BuiltinState = not_builtin
-            ),
+            BuiltinState = not_builtin,
             list.length(Args, Arity),
             InputArgs = Arity // 2, % rough
             Cost = cost_of_stack_flush + cost_of_call

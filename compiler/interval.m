@@ -338,9 +338,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             require_in_regs(Inputs, !IntervalInfo),
             require_access(Inputs, !IntervalInfo)
         ;
-            ( Builtin = out_of_line_builtin
-            ; Builtin = not_builtin
-            ),
+            Builtin = not_builtin,
             goal_info_get_maybe_need_across_call(GoalInfo,
                 MaybeNeedAcrossCall),
             build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
@@ -1013,9 +1011,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             Builtin = inline_builtin,
             MustHaveMap = no
         ;
-            ( Builtin = out_of_line_builtin
-            ; Builtin = not_builtin
-            ),
+            Builtin = not_builtin,
             MustHaveMap = yes
         ),
         record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,

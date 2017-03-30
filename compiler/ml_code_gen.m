@@ -612,9 +612,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
             ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
                 CodeModel, Context, no, Decls, Statements, !Info)
         ;
-            ( BuiltinState = inline_builtin
-            ; BuiltinState = out_of_line_builtin
-            ),
+            BuiltinState = inline_builtin,
             ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
                 Decls, Statements, !Info)
         )

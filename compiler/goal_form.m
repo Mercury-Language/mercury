@@ -789,9 +789,7 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
             Builtin = inline_builtin,
             May = no
         ;
-            ( Builtin = out_of_line_builtin
-            ; Builtin = not_builtin
-            ),
+            Builtin = not_builtin,
             May = yes
         )
     ;

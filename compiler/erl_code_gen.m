@@ -723,9 +723,6 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
             BuiltinState = inline_builtin,
             erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
                 MaybeSuccessExpr, Statement, !Info)
-        ;
-            BuiltinState = out_of_line_builtin,
-            unexpected($module, $pred, "out_of_line_builtin")
         )
     ;
         GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
