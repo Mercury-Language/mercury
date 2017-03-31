@@ -198,6 +198,10 @@ Changes to the Mercury standard library:
   values in parallel using other threads.  These modules were contributed by
   Mission Critical IT.
 
+* We have added a new module, ranges, that represents sets of integers using
+  a sorted list of ranges.  The new module exports operations that make it
+  suitable for implementing domains in finite domain constraint solvers.
+
 * We have added thread.spawn_native/4 to dedicate an OS thread to a Mercury
   thread. thread.spawn/4 was added as well.
 
