@@ -52,6 +52,7 @@ prolog.m
 psqueue.m
 queue.m
 random.m
+ranges.m
 rational.m
 rbtree.m
 require.m
