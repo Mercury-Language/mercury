@@ -122,15 +122,19 @@ dependency_info_get_condensed_bottom_up_sccs(DepInfo) = CondensedOrder :-
 
 dependency_info_make_scc_map(DepInfo) = SCCMap :-
     SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
-    foldl(make_scc_map, SCCs, init, SCCMap).
+    list.foldl(add_scc_entries_to_scc_map, SCCs, init, SCCMap).
 
-:- pred make_scc_map(set(T)::in, map(T, set(T))::in, map(T, set(T))::out)
-    is det.
+:- pred add_scc_entries_to_scc_map(set(T)::in,
+    scc_map(T)::in, scc_map(T)::out) is det.
 
-make_scc_map(SCC, !Map) :-
-    fold((pred(Node::in, Map0::in, Map::out) is det :-
-            map.det_insert(Node, SCC, Map0, Map)
-        ), SCC, !Map).
+add_scc_entries_to_scc_map(SCC, !Map) :-
+    set.fold(add_scc_entry_to_scc_map(SCC), SCC, !Map).
+
+:- pred add_scc_entry_to_scc_map(set(T)::in, T::in,
+    scc_map(T)::in, scc_map(T)::out) is det.
+
+add_scc_entry_to_scc_map(SCC, Node, !Map) :-
+    map.det_insert(Node, SCC, !Map).
 
 %-----------------------------------------------------------------------%
 %-----------------------------------------------------------------------%
