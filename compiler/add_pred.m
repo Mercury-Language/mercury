@@ -178,9 +178,8 @@ module_add_pred_or_func(Origin, Context, ItemNumber,
             % in this module.
             pred_status_defined_in_this_module(PredStatus) = yes
         then
-            UnqualPredName = unqualified(unqualify_name(PredName)),
             DetPieces = [words("Error: predicate"),
-                sym_name_and_arity(sym_name_arity(UnqualPredName, Arity)),
+                unqual_sym_name_and_arity(sym_name_arity(PredName, Arity)),
                 words("declares a determinism without declaring"),
                 words("the modes of its arguments."), nl],
             DetMsg = simple_msg(Context, [always(DetPieces)]),
@@ -592,7 +591,7 @@ module_do_add_mode(Context, ItemNumber, MaybeItemMercuryStatus, Arity,
                 SectionPieces = [words("Error: mode declaration in the"),
                     fixed(ModeSectionStr), words("section"),
                     words("for"), p_or_f(PredOrFunc),
-                    sym_name_and_arity(
+                    unqual_sym_name_and_arity(
                         sym_name_arity(unqualified(PredName), Arity)),
                     suffix(","), words("whose"),
                     p_or_f(PredOrFunc), words("declaration"), words("is"),
@@ -608,7 +607,7 @@ module_do_add_mode(Context, ItemNumber, MaybeItemMercuryStatus, Arity,
                 PredIsPredMode = predmode_decl,
                 PredModePieces = [words("Error:"),
                     p_or_f(PredOrFunc),
-                    sym_name_and_arity(
+                    unqual_sym_name_and_arity(
                         sym_name_arity(unqualified(PredName), Arity)),
                     words("has its"), p_or_f(PredOrFunc), words("declaration"),
                     words("combined with a mode declaration,"),
@@ -669,7 +668,7 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !Specs) :-
 unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !Specs) :-
     Pieces = [words("Error: no determinism declaration"),
         words("for type class method"), p_or_f(PredOrFunc),
-        sym_name_and_arity(sym_name_arity(Name, Arity)), suffix("."), nl],
+        qual_sym_name_and_arity(sym_name_arity(Name, Arity)), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
@@ -679,8 +678,8 @@ unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !Specs) :-
 
 unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !Specs) :-
     Pieces = [words("Error: no determinism declaration for exported"),
-        p_or_f(PredOrFunc), sym_name_and_arity(sym_name_arity(Name, Arity)),
-        suffix("."), nl],
+        p_or_f(PredOrFunc),
+        qual_sym_name_and_arity(sym_name_arity(Name, Arity)), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
@@ -690,7 +689,7 @@ unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !Specs) :-
 
 unqualified_pred_error(PredName, Arity, Context, !Specs) :-
     Pieces = [words("Internal error: the unqualified predicate name"),
-        sym_name_and_arity(sym_name_arity(PredName, Arity)),
+        unqual_sym_name_and_arity(sym_name_arity(PredName, Arity)),
         words("should have been qualified by the parser."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),

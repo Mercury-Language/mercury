@@ -1,6 +1,6 @@
-wrong_type_arity.m:032: In declaration of predicate `wrong_type_arity.q'/2:
+wrong_type_arity.m:032: In declaration of predicate `q'/2:
 wrong_type_arity.m:032:   error: undefined type `t1'/0.
 wrong_type_arity.m:032:   (There is a type named `t1' with arity 1.)
-wrong_type_arity.m:038: In declaration of predicate `wrong_type_arity.r'/2:
+wrong_type_arity.m:038: In declaration of predicate `r'/2:
 wrong_type_arity.m:038:   error: undefined type `t2'/0.
 wrong_type_arity.m:038:   (There are types named `t2' with arities 1, 2 and 3.)

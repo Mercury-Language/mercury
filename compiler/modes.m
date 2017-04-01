@@ -1538,7 +1538,7 @@ report_eval_method_destroys_uniqueness(ProcInfo) = Spec :-
 report_wrong_mode_for_main(ProcInfo) = Spec :-
     proc_info_get_context(ProcInfo, Context),
     Pieces = [words("Error:"),
-        sym_name_and_arity(sym_name_arity(unqualified("main"), 2)),
+        unqual_sym_name_and_arity(sym_name_arity(unqualified("main"), 2)),
         words("must have mode"), quote("(di, uo)"), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),

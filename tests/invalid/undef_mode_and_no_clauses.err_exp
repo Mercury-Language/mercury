@@ -1,4 +1,3 @@
 undef_mode_and_no_clauses.m:016: Error: no clauses for predicate `p'/2.
-undef_mode_and_no_clauses.m:017: In mode declaration for predicate
-undef_mode_and_no_clauses.m:017:   `undef_mode_and_no_clauses.p'/2:
+undef_mode_and_no_clauses.m:017: In mode declaration for predicate `p'/2:
 undef_mode_and_no_clauses.m:017:   error: undefined mode `result'/1.

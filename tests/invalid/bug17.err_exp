@@ -1,3 +1,3 @@
-bug17.m:008: In declaration of function `bug17.init_foo'/2:
-bug17.m:008:   error: the type `bug17.foo'/0 is not exported, and thus it may
-bug17.m:008:   not be used in the interface.
+bug17.m:008: In declaration of function `init_foo'/2:
+bug17.m:008:   error: the type `foo'/0 is not exported, and thus it may not be
+bug17.m:008:   used in the interface.

@@ -125,7 +125,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
         else if unqualify_name(PredName) = ",", Arity = 2 then
             MaybePredId = no,
             Pieces = [words("Attempt to define a clause for"),
-                sym_name_and_arity(sym_name_arity(unqualified(","), 2)),
+                unqual_sym_name_and_arity(sym_name_arity(unqualified(","), 2)),
                 suffix("."),
                 words("This is usually caused by"),
                 words("inadvertently writing a period instead of a comma"),

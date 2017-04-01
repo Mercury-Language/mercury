@@ -1,12 +1,9 @@
 instance_no_type.m:025: In declaration of instance of typeclass `tc'/1:
-instance_no_type.m:025:   error: the type `instance_no_type.no_such_type'/0 is
-instance_no_type.m:025:   not exported, and thus it may not be used in the
-instance_no_type.m:025:   interface.
+instance_no_type.m:025:   error: the type `no_such_type'/0 is not exported, and
+instance_no_type.m:025:   thus it may not be used in the interface.
 instance_no_type.m:030: In declaration of instance of typeclass `tc2'/2:
-instance_no_type.m:030:   error: the type `instance_no_type.no_such_type'/0 is
-instance_no_type.m:030:   not exported, and thus it may not be used in the
-instance_no_type.m:030:   interface.
+instance_no_type.m:030:   error: the type `no_such_type'/0 is not exported, and
+instance_no_type.m:030:   thus it may not be used in the interface.
 instance_no_type.m:030: In declaration of instance of typeclass `tc2'/2:
-instance_no_type.m:030:   error: the type `instance_no_type.no_such_type2'/0 is
-instance_no_type.m:030:   not exported, and thus it may not be used in the
-instance_no_type.m:030:   interface.
+instance_no_type.m:030:   error: the type `no_such_type2'/0 is not exported,
+instance_no_type.m:030:   and thus it may not be used in the interface.

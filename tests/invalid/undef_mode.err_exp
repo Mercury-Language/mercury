@@ -4,6 +4,6 @@ undef_mode.m:007: Error: module `undef_mode' should start with either an
 undef_mode.m:007:   `:- interface' or an `:- implementation' declaration.
 undef_mode.m:007:   The following assumes that the missing declaration is an
 undef_mode.m:007:   `:- implementation' declaration.
-undef_mode.m:008: In mode declaration for predicate `undef_mode.x'/1:
+undef_mode.m:008: In mode declaration for predicate `x'/1:
 undef_mode.m:008:   error: undefined mode `foo'/0.
 For more information, recompile with `-E'.

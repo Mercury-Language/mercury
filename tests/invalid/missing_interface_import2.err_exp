@@ -1,11 +1,9 @@
-missing_interface_import2.m:009: In declaration of predicate
-missing_interface_import2.m:009:   `missing_interface_import2.write_key'/3:
+missing_interface_import2.m:009: In declaration of predicate `write_key'/3:
 missing_interface_import2.m:009:   error: undefined type `partition_id'/0.
 missing_interface_import2.m:009:   (The modules `eqvclass' and
 missing_interface_import2.m:009:   `missing_interface_import3' have not been
 missing_interface_import2.m:009:   imported in the interface.)
-missing_interface_import2.m:009: In declaration of predicate
-missing_interface_import2.m:009:   `missing_interface_import2.write_key'/3:
+missing_interface_import2.m:009: In declaration of predicate `write_key'/3:
 missing_interface_import2.m:009:   error: undefined type `io.state'/0.
 missing_interface_import2.m:009:   (The module `io' has not been imported in
 missing_interface_import2.m:009:   the interface.)

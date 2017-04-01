@@ -6,5 +6,5 @@ fundeps_vars.m:037: Error: instance declaration for `coll'/2 without
 fundeps_vars.m:037:   corresponding `:- typeclass' declaration.
 fundeps_vars.m:037: In declaration of instance of typeclass `coll'/2:
 fundeps_vars.m:037:   error: undefined typeclass `coll'/2.
-fundeps_vars.m:044: In declaration of predicate `fundeps_vars.test'/2:
+fundeps_vars.m:044: In declaration of predicate `test'/2:
 fundeps_vars.m:044:   error: undefined typeclass `coll'/2.

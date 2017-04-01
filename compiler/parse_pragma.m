@@ -1047,7 +1047,7 @@ parse_pragma_external_proc(ModuleName, VarSet, ErrorTerm,
                 Pieces = [words("Error: the predicate name in the")] ++
                     cord.list(ContextPieces1) ++
                     [words("is not for the expected module, which is"),
-                    sym_name(ModuleName), suffix("."), nl],
+                    qual_sym_name(ModuleName), suffix("."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(ErrorTerm),
                         [always(Pieces)])]),

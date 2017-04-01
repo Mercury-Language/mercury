@@ -3,6 +3,6 @@ typeclass_test_5.m:023:   superclass constraints not satisfied:
 typeclass_test_5.m:023:   `typeclass_test_5.c1(int)'.
 typeclass_test_5.m:023: In instance declaration for `typeclass_test_5.c2(int)':
 typeclass_test_5.m:023:   multiple implementations of type class predicate
-typeclass_test_5.m:023:   method `typeclass_test_5.p'/1.
+typeclass_test_5.m:023:   method `p'/1.
 typeclass_test_5.m:024:   First definition appears here.
 typeclass_test_5.m:025:   Subsequent definition appears here.

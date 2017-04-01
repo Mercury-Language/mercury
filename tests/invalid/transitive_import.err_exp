@@ -1,5 +1,4 @@
-transitive_import.m:021: In declaration of function
-transitive_import.m:021:   `transitive_import.assoc_list_first'/3:
+transitive_import.m:021: In declaration of function `assoc_list_first'/3:
 transitive_import.m:021:   error: undefined type `std_util.pair'/2.
 transitive_import.m:021:   (No module named `std_util' has been imported.)
 transitive_import.m:028: In declaration of instance of typeclass `enum.enum'/1:

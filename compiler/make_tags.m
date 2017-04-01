@@ -883,7 +883,7 @@ check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
         list.contains(AssertedDirectArgCtors, sym_name_arity(SymName, Arity))
     then
         Pieces = [words("Error:"),
-            sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("cannot be represented as a direct pointer to its"),
             words("sole argument."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),

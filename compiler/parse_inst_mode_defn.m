@@ -142,7 +142,7 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
         NamedContextPieces = cord.from_list(
             [words("In the definition of the inst"),
-            sym_name(SymName), suffix(":")]),
+            unqual_sym_name(SymName), suffix(":")]),
         parse_inst(no_allow_constrained_inst_var(wnciv_eqv_inst_defn_rhs),
             VarSet, NamedContextPieces, BodyTerm, MaybeInst),
         ( if
@@ -228,7 +228,7 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
         NamedContextPieces = cord.from_list(
             [words("In the definition of the mode"),
-            sym_name(SymName), suffix(":")]),
+            unqual_sym_name(SymName), suffix(":")]),
         parse_mode(no_allow_constrained_inst_var(wnciv_mode_defn_rhs), VarSet,
             NamedContextPieces, BodyTerm, MaybeMode),
         ( if

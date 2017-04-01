@@ -12,8 +12,8 @@ undef_type.m:007:   `:- implementation' declaration.
 undef_type.m:011: In the first argument of function symbol `d' of the type
 undef_type.m:011:   `undef_type.t1'/0:
 undef_type.m:011:   error: undefined type `undef1'/0.
-undef_type.m:018: In declaration of predicate `undef_type.q'/1:
+undef_type.m:018: In declaration of predicate `q'/1:
 undef_type.m:018:   error: undefined type `undef2'/0.
-undef_type.m:021: In declaration of predicate `undef_type.r'/1:
+undef_type.m:021: In declaration of predicate `r'/1:
 undef_type.m:021:   error: undefined type `io.state'/0.
 undef_type.m:021:   (No module named `io' has been imported.)

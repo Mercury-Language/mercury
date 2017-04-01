@@ -1,2 +1,2 @@
 inline_conflict.m:019: Error: `:- pragma no_inline' declaration conflicts with
-inline_conflict.m:019:   previous pragma for `inline_conflict.bar'/2.
+inline_conflict.m:019:   previous pragma for `bar'/2.

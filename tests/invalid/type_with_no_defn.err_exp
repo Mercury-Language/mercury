@@ -1,6 +1,4 @@
-type_with_no_defn.m:009: Error: abstract declaration for type
-type_with_no_defn.m:009:   `type_with_no_defn.alpha'/0 has no corresponding
-type_with_no_defn.m:009:   definition.
-type_with_no_defn.m:017: Error: abstract declaration for type
-type_with_no_defn.m:017:   `type_with_no_defn.baz'/0 has no corresponding
-type_with_no_defn.m:017:   definition.
+type_with_no_defn.m:009: Error: abstract declaration for type `alpha'/0 has no
+type_with_no_defn.m:009:   corresponding definition.
+type_with_no_defn.m:017: Error: abstract declaration for type `baz'/0 has no
+type_with_no_defn.m:017:   corresponding definition.

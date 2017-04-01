@@ -10,26 +10,20 @@ foreign_purity_mismatch.m:011:   purity error: predicate is impure.
 foreign_purity_mismatch.m:011:   It must be declared `impure' or promised
 foreign_purity_mismatch.m:011:   semipure.
 foreign_purity_mismatch.m:022: Error: foreign clause for predicate
-foreign_purity_mismatch.m:022:   `foreign_purity_mismatch.pure_with_impure'/1
-foreign_purity_mismatch.m:022:   has purity impure but that predicate has been
-foreign_purity_mismatch.m:022:   declared pure.
+foreign_purity_mismatch.m:022:   `pure_with_impure'/1 has purity impure but
+foreign_purity_mismatch.m:022:   that predicate has been declared pure.
 foreign_purity_mismatch.m:029: Error: foreign clause for predicate
-foreign_purity_mismatch.m:029:   `foreign_purity_mismatch.pure_with_semipure'/1
-foreign_purity_mismatch.m:029:   has purity semipure but that predicate has
-foreign_purity_mismatch.m:029:   been declared pure.
+foreign_purity_mismatch.m:029:   `pure_with_semipure'/1 has purity semipure but
+foreign_purity_mismatch.m:029:   that predicate has been declared pure.
 foreign_purity_mismatch.m:036: Error: foreign clause for predicate
-foreign_purity_mismatch.m:036:   `foreign_purity_mismatch.semipure_with_impure'/1
-foreign_purity_mismatch.m:036:   has purity impure but that predicate has been
-foreign_purity_mismatch.m:036:   declared semipure.
+foreign_purity_mismatch.m:036:   `semipure_with_impure'/1 has purity impure but
+foreign_purity_mismatch.m:036:   that predicate has been declared semipure.
 foreign_purity_mismatch.m:043: Error: foreign clause for predicate
-foreign_purity_mismatch.m:043:   `foreign_purity_mismatch.semipure_with_pure'/1
-foreign_purity_mismatch.m:043:   has purity pure but that predicate has been
-foreign_purity_mismatch.m:043:   declared semipure.
+foreign_purity_mismatch.m:043:   `semipure_with_pure'/1 has purity pure but
+foreign_purity_mismatch.m:043:   that predicate has been declared semipure.
 foreign_purity_mismatch.m:050: Error: foreign clause for predicate
-foreign_purity_mismatch.m:050:   `foreign_purity_mismatch.impure_with_pure'/1
-foreign_purity_mismatch.m:050:   has purity pure but that predicate has been
-foreign_purity_mismatch.m:050:   declared impure.
+foreign_purity_mismatch.m:050:   `impure_with_pure'/1 has purity pure but that
+foreign_purity_mismatch.m:050:   predicate has been declared impure.
 foreign_purity_mismatch.m:057: Error: foreign clause for predicate
-foreign_purity_mismatch.m:057:   `foreign_purity_mismatch.impure_with_semipure'/1
-foreign_purity_mismatch.m:057:   has purity semipure but that predicate has
-foreign_purity_mismatch.m:057:   been declared impure.
+foreign_purity_mismatch.m:057:   `impure_with_semipure'/1 has purity semipure
+foreign_purity_mismatch.m:057:   but that predicate has been declared impure.

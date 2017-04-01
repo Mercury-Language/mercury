@@ -1723,7 +1723,7 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             (
                 Constraints = [],
                 Pieces = [words("The constructor"),
-                    sym_name_and_arity(sym_name_arity(Name, Arity)),
+                    qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
                     words("has not been defined."), nl],
                 ErrMsg = simple_msg(Context, [always(Pieces)]),
                 add_message_to_spec(ErrMsg, !TCInfo)
@@ -1830,21 +1830,21 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
                     Pieces = [words("Incorrect number of arguments"),
                         words("provided to method"), int_fixed(MethodNum),
                         words("of typeclass"),
-                        sym_name_and_arity(sym_name_arity(Name, Arity)),
+                        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
                         suffix("."), nl],
                     ErrMsg = simple_msg(Context, [always(Pieces)]),
                     add_message_to_spec(ErrMsg, !TCInfo)
                 )
             else
                 Pieces = [words("The typeclass"),
-                    sym_name_and_arity(sym_name_arity(Name, Arity)),
+                    qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
                     words("does not have the given method."), nl],
                 ErrMsg = simple_msg(Context, [always(Pieces)]),
                 add_message_to_spec(ErrMsg, !TCInfo)
             )
         else
             Pieces = [words("The typeclass"),
-                sym_name_and_arity(sym_name_arity(Name, Arity)),
+                qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
                 words("is undefined."), nl],
             ErrMsg = simple_msg(Context, [always(Pieces)]),
             add_message_to_spec(ErrMsg, !TCInfo)

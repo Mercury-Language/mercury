@@ -267,10 +267,11 @@ check_in_interface_promise_goals(ModuleInfo, PredInfo, [Goal0 | Goal0s],
 report_assertion_interface_error(ModuleInfo, Context, IdPieces, !Specs) :-
     module_info_get_name(ModuleInfo, ModuleName),
     MainPieces =
-        [words("In interface for module"), sym_name(ModuleName), suffix(":"),
-        nl, words("error: exported promise refers to")] ++ IdPieces ++
+        [words("In interface for module"), qual_sym_name(ModuleName),
+        suffix(":"), nl,
+        words("error: exported promise refers to")] ++ IdPieces ++
         [words("which is defined in the implementation section of module"),
-        sym_name(ModuleName), suffix("."), nl],
+        qual_sym_name(ModuleName), suffix("."), nl],
     VerbosePieces =
         [words("Either move the promise into the implementation section"),
         words("or move the definition into the interface."), nl],

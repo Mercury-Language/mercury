@@ -949,7 +949,7 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
     (
         PredIds = [],
         Pieces = [words("Error:"),
-            sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("used in"), decl("initialise"), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
@@ -1023,7 +1023,7 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                     !ModuleInfo, !Specs)
             else
                 Pieces = [words("Error:"),
-                    sym_name_and_arity(sym_name_arity(SymName, Arity)),
+                    qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                     words("used in initialise declaration"),
                     words("has invalid signature."), nl],
                 % TODO: provide verbose error information here.
@@ -1035,7 +1035,7 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         ;
             TailPredIds = [_ | _],
             Pieces = [words("Error:"),
-                sym_name_and_arity(sym_name_arity(SymName, Arity)),
+                qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 words("used in initialise declaration"),
                 words("matches multiple pred declarations."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
@@ -1069,7 +1069,7 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
     (
         PredIds = [],
         Pieces = [words("Error:"),
-            sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("used in"), decl("finalise"), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
@@ -1142,7 +1142,7 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                     !ModuleInfo, !Specs)
             else
                 Pieces = [words("Error:"),
-                    sym_name_and_arity(sym_name_arity(SymName, Arity)),
+                    qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                     words("used in"), decl("finalise"),
                     words("declaration has invalid signature."), nl],
                 Msg = simple_msg(Context, [always(Pieces)]),
@@ -1153,7 +1153,7 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         ;
             TailPredIds = [_ | _],
             Pieces = [words("Error:"),
-                sym_name_and_arity(sym_name_arity(SymName, Arity)),
+                qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 words("used in"), decl("finalise"), words("declaration"),
                 words("has multiple"), decl("pred"), words("declarations."),
                 nl],

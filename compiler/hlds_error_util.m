@@ -159,10 +159,10 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
         ),
         ( if TypeArity = 0 then
             Pieces = [words(Descr), words("for type"),
-                sym_name(TypeSymName)]
+                qual_sym_name(TypeSymName)]
         else
             Pieces = [words(Descr), words("for type constructor"),
-                sym_name(TypeSymName)]
+                qual_sym_name(TypeSymName)]
         )
     else if check_marker(Markers, marker_class_instance_method) then
         Pieces = [words("type class method implementation")]
@@ -175,15 +175,16 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
         else
             Prefix = [p_or_f(PredOrFunc)]
         ),
+        PredSymName = qualified(ModuleName, PredName),
+        PredSymNameAndArity = sym_name_arity(PredSymName, OrigArity),
         (
             ShouldModuleQualify = should_module_qualify,
-            PredSymName = qualified(ModuleName, PredName)
+            PredSymNamePiece = qual_sym_name_and_arity(PredSymNameAndArity)
         ;
             ShouldModuleQualify = should_not_module_qualify,
-            PredSymName = unqualified(PredName)
+            PredSymNamePiece = unqual_sym_name_and_arity(PredSymNameAndArity)
         ),
-        Pieces = Prefix ++
-            [sym_name_and_arity(sym_name_arity(PredSymName, OrigArity))]
+        Pieces = Prefix ++ [PredSymNamePiece]
     ).
 
 describe_one_pred_name_mode(ModuleInfo, ShouldModuleQualify, PredId,

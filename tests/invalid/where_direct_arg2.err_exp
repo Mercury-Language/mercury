@@ -1,11 +1,9 @@
-where_direct_arg2.m:011: Error: `where_direct_arg2.string'/1 cannot be
-where_direct_arg2.m:011:   represented as a direct pointer to its sole
-where_direct_arg2.m:011:   argument.
-where_direct_arg2.m:012: Error: `where_direct_arg2.int'/1 cannot be represented
-where_direct_arg2.m:012:   as a direct pointer to its sole argument.
-where_direct_arg2.m:016: Error: `where_direct_arg2.enum'/1 cannot be
-where_direct_arg2.m:016:   represented as a direct pointer to its sole
-where_direct_arg2.m:016:   argument.
+where_direct_arg2.m:011: Error: `string'/1 cannot be represented as a direct
+where_direct_arg2.m:011:   pointer to its sole argument.
+where_direct_arg2.m:012: Error: `int'/1 cannot be represented as a direct
+where_direct_arg2.m:012:   pointer to its sole argument.
+where_direct_arg2.m:016: Error: `enum'/1 cannot be represented as a direct
+where_direct_arg2.m:016:   pointer to its sole argument.
 where_direct_arg2.m:038: In `:- pragma foreign_type' declaration: error:
 where_direct_arg2.m:038:   unrecognized `where' attribute `(direct_arg is [])'.
 For more information, recompile with `-E'.

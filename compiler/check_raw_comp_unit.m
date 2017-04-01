@@ -124,7 +124,7 @@ generate_no_exports_warning(ModuleName, Context, Spec) :-
         severity_warning, no),
     Component = option_is_set(warn_nothing_exported, yes,
         [always([invis_order_default_start(2),
-            words("Warning: interface for module"), sym_name(ModuleName),
+            words("Warning: interface for module"), qual_sym_name(ModuleName),
             words("does not export anything."), nl]),
         verbose_only(verbose_always,
             [words("To be useful, a module should export something."),

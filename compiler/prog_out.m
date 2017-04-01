@@ -266,7 +266,7 @@ simple_call_id_to_string(PredOrFunc, SymName, Arity) = Str :-
         simple_call_id_to_sym_name_and_arity(SimpleCallId,
             AdjustedSymNameAndArity),
         Pieces = [p_or_f(PredOrFunc),
-            sym_name_and_arity(AdjustedSymNameAndArity)]
+            qual_sym_name_and_arity(AdjustedSymNameAndArity)]
     ),
     Str = error_pieces_to_string(Pieces).
 

@@ -403,7 +403,7 @@ check_determinism_of_main(PredInfo, ProcInfo, !Specs) :-
     then
         proc_info_get_context(ProcInfo, ProcContext),
         Pieces = [words("Error:"),
-            sym_name_and_arity(sym_name_arity(unqualified("main"), 2)),
+            unqual_sym_name_and_arity(sym_name_arity(unqualified("main"), 2)),
             words("must be"), quote("det"), words("or"), quote("cc_multi"),
             suffix("."), nl],
         Spec = error_spec(severity_error, phase_detism_check,

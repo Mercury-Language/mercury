@@ -667,7 +667,7 @@ find_avail_contexts_for_module_in_avails([Avail | Avails],
     list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_import_for_self(ModuleName, Context, !Specs) :-
-    Pieces = [words("Warning: module"), sym_name(ModuleName),
+    Pieces = [words("Warning: module"), qual_sym_name(ModuleName),
         words("imports itself!"), nl],
     Msg = simple_msg(Context,
         [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
@@ -680,9 +680,9 @@ warn_import_for_self(ModuleName, Context, !Specs) :-
     prog_context::in,list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_import_for_ancestor(ModuleName, AncestorName, Context, !Specs) :-
-    MainPieces = [words("Module"), sym_name(ModuleName),
+    MainPieces = [words("Module"), qual_sym_name(ModuleName),
         words("imports its own ancestor, module"),
-        sym_name(AncestorName), words(".")],
+        qual_sym_name(AncestorName), words(".")],
     VerbosePieces = [words("Every submodule"),
         words("implicitly imports its ancestors."),
         words("There is no need to explicitly import them.")],
@@ -768,7 +768,7 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
 
 :- func wrap_symname(module_name) = format_component.
 
-wrap_symname(ModuleName) = sym_name(ModuleName).
+wrap_symname(ModuleName) = qual_sym_name(ModuleName).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1510,16 +1510,17 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
     ( ImportOrUse = import_decl, DeclName = "import_module"
     ; ImportOrUse = use_decl, DeclName = "use_module"
     ),
-    MainPieces = [words("In module"), sym_name(ModuleName), suffix(":"), nl,
+    MainPieces = [words("In module"), qual_sym_name(ModuleName),
+        suffix(":"), nl,
         words("error in"), quote(DeclName), words("declaration:"), nl,
-        words("module"), sym_name(qualified(ParentModule, SubModule)),
+        words("module"), qual_sym_name(qualified(ParentModule, SubModule)),
         words("is inaccessible."), nl],
     VerbosePieces = [words("Either there was no prior"),
         quote("import_module"),
             words("or"), quote("use_module"),
-            words("declaration to import module"), sym_name(ParentModule),
+            words("declaration to import module"), qual_sym_name(ParentModule),
             suffix(","), words("or the interface for module"),
-            sym_name(ParentModule), words("does not contain an"),
+            qual_sym_name(ParentModule), words("does not contain an"),
             quote("include_module"), words("declaration for module"),
             quote(SubModule), suffix("."), nl],
     Msg = simple_msg(Context,

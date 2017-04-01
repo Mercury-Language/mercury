@@ -1793,7 +1793,7 @@ lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars, MaybeResult) :-
         pred_info_get_name(PredInfo, PredName),
         PredSymName = qualified(PredModuleName, PredName),
         Pieces = [words("Error: the"), words(PredOrFuncStr),
-            sym_name(PredSymName), words("has no declared determinism,"),
+            qual_sym_name(PredSymName), words("has no declared determinism,"),
             words("so a curried call to it"),
             words("may not be used as a lambda expression."), nl],
         Spec = error_spec(severity_error, phase_polymorphism,

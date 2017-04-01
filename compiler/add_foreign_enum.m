@@ -49,7 +49,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
     module_info_get_type_table(!.ModuleInfo, TypeTable),
     ContextPieces = [words("In"), pragma_decl("foreign_export_enum"),
         words("declaration for type"),
-        sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+        qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
         suffix(":"), nl],
     ( if
         % Emit an error message for foreign_export_enum pragmas for the
@@ -63,8 +63,8 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
         )
     then
         ErrorPieces = [words("error: "),
-            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            words("is a builtin type"), suffix("."), nl],
+            unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            words("is a builtin type."), nl],
         MaybeError = yes({severity_error, ErrorPieces})
     else
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
@@ -76,8 +76,9 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
                 ; TypeBody = hlds_foreign_type(_)
                 ),
                 ErrorPieces = [words("error: "),
-                    sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-                    words("is not an enumeration type"), suffix("."), nl],
+                    qual_sym_name_and_arity(
+                        sym_name_arity(TypeName, TypeArity)),
+                    words("is not an enumeration type."), nl],
                 MaybeError = yes({severity_error, ErrorPieces})
             ;
                 % XXX How should we handle IsForeignType here?
@@ -128,7 +129,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
                     % XXX Maybe we should add a verbose component
                     % that identifies the non-zero arity constructors.
                     ErrorPieces = [words("error: "),
-                        sym_name_and_arity(
+                        qual_sym_name_and_arity(
                             sym_name_arity(TypeName, TypeArity)),
                         words("is not an enumeration type."),
                         words("It has one or more non-zero arity"),
@@ -244,11 +245,11 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
             ),
             BadCtorsErrorPieces = [
                 words("error: not all the constructors of the type"),
-                sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+                qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
                 words("can be converted into valid " ++ What)
             ],
             list.sort(BadCtors, SortedBadCtors),
-            BadCtorComponents = list.map((func(S) = [sym_name(S)]),
+            BadCtorComponents = list.map((func(S) = [qual_sym_name(S)]),
                 SortedBadCtors),
             BadCtorsList = component_list_to_line_pieces(
                 BadCtorComponents, [nl]),
@@ -267,12 +268,12 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
     else
         InvalidRenamings = map.keys(Overrides),
         InvalidRenamingSymNamePieces =
-            list.map((func(S) = [sym_name(S)]), InvalidRenamings),
+            list.map((func(S) = [qual_sym_name(S)]), InvalidRenamings),
         InvalidRenamingPieces = [words("the following"),
             words(choose_number(InvalidRenamings,
                 "constructor does", "constructors do")),
             words("not match any of the constructors of"),
-            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
             suffix(":"), nl] ++
             component_list_to_line_pieces(InvalidRenamingSymNamePieces,
                 [suffix("."), nl]),
@@ -372,7 +373,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
         words("declaration for type"),
-        sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+        qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
         suffix(":"), nl],
     ( if
         % Emit an error message for foreign_enum pragmas for the
@@ -386,8 +387,8 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
         )
     then
         ErrorPieces = [words("error: "),
-            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            words("is a builtin type"), suffix(".")],
+            unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            words("is a builtin type."), nl],
         MaybeError = yes({severity_error, ErrorPieces})
     else if
         search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0)
@@ -400,8 +401,8 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
             ; TypeBody0 = hlds_foreign_type(_)
             ),
             ErrorPieces = [words("error: "),
-                sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-                words("is not an enumeration type"), suffix(".")],
+                qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+                words("is not an enumeration type."), nl],
             MaybeError = yes({severity_error, ErrorPieces})
         ;
             TypeBody0 = hlds_du_type(Ctors, OldTagValues, CheaperTagTest,
@@ -476,7 +477,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                     MaybeError = no
                 else
                     ErrorPieces = [words("error: "),
-                        sym_name_and_arity(
+                        qual_sym_name_and_arity(
                             sym_name_arity(TypeName, TypeArity)),
                         words("is not defined in this module.")],
                     MaybeError = yes({severity_error, ErrorPieces})
@@ -494,7 +495,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                     % read awkwardly -- also we should report the location
                     % of the duplicate foreign_enum pragmas.
                     ErrorPieces = [words("error: "),
-                        sym_name_and_arity(
+                        qual_sym_name_and_arity(
                             sym_name_arity(TypeName, TypeArity)),
                         words("has multiple foreign_enum pragmas.")],
                     MaybeError = yes({severity_error, ErrorPieces})
@@ -504,8 +505,9 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                 ; DuTypeKind0 = du_type_kind_notag(_, _, _)
                 ),
                 ErrorPieces = [words("error: "),
-                    sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-                    words("is not an enumeration type"), suffix(".")],
+                    qual_sym_name_and_arity(
+                        sym_name_arity(TypeName, TypeArity)),
+                    words("is not an enumeration type."), nl],
                 MaybeError = yes({severity_error, ErrorPieces})
             )
         )
@@ -630,7 +632,7 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
         CtorsEnd = [],
         CtorsPieces =
             [nl_indent_delta(2)] ++
-            ctors_to_line_pieces(Ctors, [suffix(".")]) ++
+            unqual_ctors_to_line_pieces(Ctors, [suffix(".")]) ++
             [nl_indent_delta(-2)],
         CtorsComponent = always(CtorsPieces)
     ;
@@ -638,12 +640,13 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
         list.length(CtorsEnd, NumEndCtors),
         NonVerboseCtorsPieces =
             [nl_indent_delta(2)] ++
-            ctors_to_line_pieces(CtorsStart, [suffix(","), fixed("...")]) ++
+            unqual_ctors_to_line_pieces(CtorsStart,
+                [suffix(","), fixed("...")]) ++
             [nl_indent_delta(-2), words("and"),
             int_fixed(NumEndCtors), words("more."), nl],
         VerboseCtorsPieces =
             [nl_indent_delta(2)] ++
-            ctors_to_line_pieces(Ctors, [suffix(".")]) ++
+            unqual_ctors_to_line_pieces(Ctors, [suffix(".")]) ++
             [nl_indent_delta(-2)],
         CtorsComponent =
             verbose_and_nonverbose(VerboseCtorsPieces, NonVerboseCtorsPieces)
@@ -653,16 +656,16 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     list.cons(Spec, !Specs).
 
-:- func ctors_to_line_pieces(list(sym_name), list(format_component))
+:- func unqual_ctors_to_line_pieces(list(sym_name), list(format_component))
     = list(format_component).
 
-ctors_to_line_pieces(Ctors, Final) = Pieces :-
-    Components = list.map(ctor_to_format_component, Ctors),
+unqual_ctors_to_line_pieces(Ctors, Final) = Pieces :-
+    Components = list.map(unqual_ctor_to_format_component, Ctors),
     Pieces = component_list_to_line_pieces(Components, Final).
 
-:- func ctor_to_format_component(sym_name) = list(format_component).
+:- func unqual_ctor_to_format_component(sym_name) = list(format_component).
 
-ctor_to_format_component(S) = [sym_name(unqualified(unqualify_name(S)))].
+unqual_ctor_to_format_component(SymName) = [unqual_sym_name(SymName)].
 
 %-----------------------------------------------------------------------------%
 
@@ -687,7 +690,7 @@ add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
         !Specs) :-
     ErrorPieces = [words("Error: "),
         pragma_decl("foreign_enum"), words("declaration for"),
-        sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+        qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
         words("in module interface."), nl ],
     Msg = simple_msg(Context, [always(ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),

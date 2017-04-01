@@ -91,7 +91,7 @@ check_for_missing_type_defns_in_type(TypeCtor, TypeDefn, !Specs) :-
         then
             get_type_defn_context(TypeDefn, TypeContext),
             Pieces = [words("Error: abstract declaration for type"),
-                sym_name_and_arity(sym_name_arity(SymName, Arity)),
+                unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 words("has no corresponding definition."), nl],
             Msg = simple_msg(TypeContext, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_type_check, [Msg]),

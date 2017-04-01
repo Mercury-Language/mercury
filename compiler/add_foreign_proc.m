@@ -546,7 +546,7 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
                 purity_name(Purity, PurityStr),
                 Pieces = [words("Error: foreign clause for"),
                     p_or_f(PredOrFunc),
-                    sym_name_and_arity(sym_name_arity(PredName, Arity)),
+                    unqual_sym_name_and_arity(sym_name_arity(PredName, Arity)),
                     words("has purity"), words(ForeignAttributePurityStr),
                     words("but that"), p_or_f(PredOrFunc),
                     words("has been declared"), words(PurityStr),
@@ -730,7 +730,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                     ( if OldLang = NewLang then
                         PiecesA = [words("Error: multiple clauses for"),
                             p_or_f(PredOrFunc),
-                            sym_name_and_arity(
+                            unqual_sym_name_and_arity(
                                 sym_name_arity(PredName, Arity)),
                             words("in language"),
                             words(foreign_language_string(OldLang)),

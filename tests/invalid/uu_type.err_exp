@@ -1,6 +1,6 @@
-uu_type.m:018: In declaration of predicate `uu_type.gen'/1:
-uu_type.m:018:   error: the type `uu_type.hiddentype'/0 is not exported, and
-uu_type.m:018:   thus it may not be used in the interface.
+uu_type.m:018: In declaration of predicate `gen'/1:
+uu_type.m:018:   error: the type `hiddentype'/0 is not exported, and thus it
+uu_type.m:018:   may not be used in the interface.
 uu_type.m:026: Error: the type name `=' is reserved for the Mercury
 uu_type.m:026:   implementation.
 uu_type.m:026: Error: type parameters must be variables: (hiddenrenamedtype =

@@ -264,7 +264,7 @@ report_error_pred_num_args(ClauseContext, Context, SimpleCallId, AritiesSet)
     Pieces = in_clause_for_pieces(ClauseContext) ++
         [words("error:")] ++
         error_num_args_to_pieces(yes(PredOrFunc), Arity, Arities) ++ [nl] ++
-        [words("in call to"), p_or_f(PredOrFunc), sym_name(SymName),
+        [words("in call to"), p_or_f(PredOrFunc), qual_sym_name(SymName),
         suffix("."), nl],
     Spec = error_spec(severity_error, phase_type_check,
         [simple_msg(Context, [always(Pieces)])]).
@@ -639,7 +639,7 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
         Source = source_type(TypeCtor),
         TypeCtor = type_ctor(SymName, Arity),
         Pieces = [words("the type constructor"),
-            sym_name_and_arity(sym_name_arity(SymName, Arity))]
+            qual_sym_name_and_arity(sym_name_arity(SymName, Arity))]
     ;
         Source = source_builtin_type(TypeCtorName),
         Pieces = [words("the builtin type constructor"), quote(TypeCtorName)]
@@ -648,13 +648,13 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
         TypeCtor = type_ctor(SymName, Arity),
         Pieces = [words("a"), quote("get"), words("field access function"),
             words("for the type constructor"),
-            sym_name_and_arity(sym_name_arity(SymName, Arity))]
+            qual_sym_name_and_arity(sym_name_arity(SymName, Arity))]
     ;
         Source = source_set_field_access(TypeCtor),
         TypeCtor = type_ctor(SymName, Arity),
         Pieces = [words("a"), quote("set"), quote("field access function"),
             words("for the type constructor"),
-            sym_name_and_arity(sym_name_arity(SymName, Arity))]
+            qual_sym_name_and_arity(sym_name_arity(SymName, Arity))]
     ;
         Source = source_pred(PredId),
         Pieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
@@ -1436,7 +1436,7 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
 language_builtin_functor_components(Name, Arity, Components) :-
     language_builtin_functor(Name, Arity),
     MainPieces = [words("error: the language construct"),
-        sym_name_and_arity(sym_name_arity(unqualified(Name), Arity)),
+        unqual_sym_name_and_arity(sym_name_arity(unqualified(Name), Arity)),
         words("should be used as a goal, not as an expression."), nl],
     VerbosePieces = [words("If you are trying to use a goal"),
         words("as a boolean function, you should write"),
@@ -1531,7 +1531,7 @@ syntax_functor_components("-->", 2, Components) :-
     Components = [always(Pieces)].
 syntax_functor_components(".", 2, Components) :-
     Pieces = [words("error: the list constructor is now"),
-        sym_name_and_arity(sym_name_arity(unqualified("[|]"), 2)),
+        unqual_sym_name_and_arity(sym_name_arity(unqualified("[|]"), 2)),
         suffix(","), words("not"), quote("./2"),
         suffix("."), nl],
     Components = [always(Pieces)].
@@ -1567,7 +1567,7 @@ wrong_arity_constructor_to_pieces(Name, Arity, ActualArities) = Pieces :-
     NumArgsPieces = error_num_args_to_pieces(MaybePredOrFunc, Arity,
         ActualArities),
     Pieces = [words("error: ")] ++ NumArgsPieces ++
-        [words("in use of constructor"), sym_name(Name), suffix(".")].
+        [words("in use of constructor"), qual_sym_name(Name), suffix(".")].
 
 :- func report_cons_error(prog_context, cons_error) = list(error_msg).
 
@@ -1578,7 +1578,7 @@ report_cons_error(Context, ConsError) = Msgs :-
         Pieces = [words("There are"),
             pragma_decl("foreign_type"),
             words("declarations for type"),
-            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
             suffix(","),
             words("so it is treated as an abstract type"),
             words("in all predicates and functions"),
@@ -1594,7 +1594,7 @@ report_cons_error(Context, ConsError) = Msgs :-
     ;
         ConsError = invalid_field_update(FieldName, FieldDefn, TVarSet, TVars),
         FieldDefn = hlds_ctor_field_defn(DefnContext, _, _, ConsId, _),
-        Pieces1 = [words("Field"), sym_name(FieldName),
+        Pieces1 = [words("Field"), unqual_sym_name(FieldName),
             words("cannot be updated because"),
             words("the existentially quantified type")],
         (
@@ -1609,7 +1609,7 @@ report_cons_error(Context, ConsError) = Msgs :-
             TVarsStr = mercury_vars_to_name_only(TVarSet, TVars),
             Pieces2 = [words("variables"), quote(TVarsStr), words("occur")]
         ),
-        Pieces3 = [words("in the types of field"), sym_name(FieldName),
+        Pieces3 = [words("in the types of field"), unqual_sym_name(FieldName),
             words("and some other field"),
             words("in definition of constructor"),
             cons_id_and_maybe_arity(ConsId), suffix("."), nl],
@@ -1620,7 +1620,7 @@ report_cons_error(Context, ConsError) = Msgs :-
         TypeCtor = type_ctor(TypeName, TypeArity),
         Pieces = [words("Invalid use of"), quote("new"),
             words("on a constructor of type"),
-            sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
             words("which is not existentially typed."), nl],
         Msgs = [simple_msg(Context, [always(Pieces)])]
     ).
@@ -1802,7 +1802,7 @@ functor_name_to_pieces(Functor, Arity) = Pieces :-
     ( if Arity = 0 then
         Piece1 = words("constant"),
         ( if Functor = cons(Name, _, _) then
-            Piece2 = sym_name(Name)
+            Piece2 = qual_sym_name(Name)
         else
             Piece2 = quote(cons_id_and_arity_to_string(StrippedFunctor))
         ),
@@ -2027,7 +2027,7 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier)
     ( if set.is_empty(MatchingVisibleModules) then
         % The module qualifier does not match any of the visible modules,
         % so we report that the module has not been imported.
-        Pieces = [nl, words("(the module"), sym_name(ModuleQualifier),
+        Pieces = [nl, words("(the module"), qual_sym_name(ModuleQualifier),
             words("has not been imported)."), nl]
     else
         % The module qualifier matches one or more of the visible modules.

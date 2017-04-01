@@ -89,10 +89,10 @@ multiple_def_error(IsOptImported, Name, Arity, DefType, Context, OrigContext,
     ;
         IsOptImported = is_not_opt_imported,
         Pieces1 = [words("Error:"), fixed(DefType),
-            sym_name_and_arity(sym_name_arity(Name, Arity)),
+            qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
             words("multiply defined."), nl],
-        Pieces2 = [words("Here is the previous definition of"),
-            fixed(DefType), sym_name_and_arity(sym_name_arity(Name, Arity)),
+        Pieces2 = [words("Here is the previous definition of"), fixed(DefType),
+            qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
             suffix("."), nl],
         Msg1 = simple_msg(Context, [always(Pieces1)]),
         Msg2 = error_msg(yes(OrigContext), treat_as_first, 0,
@@ -111,7 +111,7 @@ multiple_def_error(IsOptImported, Name, Arity, DefType, Context, OrigContext,
 
 undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs) :-
     Pieces = [words("Error:") | DescPieces] ++ [words("for"),
-        sym_name_and_arity(sym_name_arity(Name, Arity)),
+        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
         words("without corresponding"), decl("pred"), words("or"),
         decl("func"), words("declaration.")],
     Msg = simple_msg(Context, [always(Pieces)]),
@@ -120,7 +120,7 @@ undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs) :-
 
 undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
     Pieces = [words("Error:") | DescPieces] ++ [words("for"),
-        sym_name_and_arity(sym_name_arity(Name, Arity)),
+        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
         words("specifies non-existent mode.")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),

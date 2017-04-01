@@ -1,25 +1,25 @@
-inst_with_no_type.m:018: Warning: inst `inst_with_no_type.i1_no_match'/0 does
-inst_with_no_type.m:018:   not match any of the types in scope.
+inst_with_no_type.m:018: Warning: inst `i1_no_match'/0 does not match any of
+inst_with_no_type.m:018:   the types in scope.
 inst_with_no_type.m:018:   The closest match is inst_with_no_type.t1/0, for
 inst_with_no_type.m:018:   which the top level mismatches are the following.
 inst_with_no_type.m:018:   In bound functor #1:
 inst_with_no_type.m:018:   function symbol t1_f1 has arity 1,
 inst_with_no_type.m:018:   expected arity was 2.
-inst_with_no_type.m:039: Warning: inst `inst_with_no_type.i2_no_match'/1 does
-inst_with_no_type.m:039:   not match any of the types in scope.
+inst_with_no_type.m:039: Warning: inst `i2_no_match'/1 does not match any of
+inst_with_no_type.m:039:   the types in scope.
 inst_with_no_type.m:039:   The closest match is inst_with_no_type.t2/1, for
 inst_with_no_type.m:039:   which the top level mismatches are the following.
 inst_with_no_type.m:039:   In bound functor #2:
 inst_with_no_type.m:039:   function symbol i2_f2 has arity 4,
 inst_with_no_type.m:039:   expected arity was 3.
-inst_with_no_type.m:050: Warning: inst `inst_with_no_type.i4_no_match'/0 does
-inst_with_no_type.m:050:   not match any of the types in scope.
+inst_with_no_type.m:050: Warning: inst `i4_no_match'/0 does not match any of
+inst_with_no_type.m:050:   the types in scope.
 inst_with_no_type.m:050:   The closest match is int, for which the top level
 inst_with_no_type.m:050:   mismatches are the following.
 inst_with_no_type.m:050:   In bound functor #3:
 inst_with_no_type.m:050:   function symbol is "3"/0.
-inst_with_no_type.m:063: Warning: inst `inst_with_no_type.i7_no_match'/0 does
-inst_with_no_type.m:063:   not match any of the types in scope.
+inst_with_no_type.m:063: Warning: inst `i7_no_match'/0 does not match any of
+inst_with_no_type.m:063:   the types in scope.
 inst_with_no_type.m:063:   There are 2 equally close matches.
 inst_with_no_type.m:063:   The first match is int, for which the top level
 inst_with_no_type.m:063:   mismatches are the following.
@@ -29,30 +29,26 @@ inst_with_no_type.m:063:   The second match is float, for which the top level
 inst_with_no_type.m:063:   mismatches are the following.
 inst_with_no_type.m:063:   In bound functor #1:
 inst_with_no_type.m:063:   function symbol is 1/0.
-inst_with_no_type.m:074: Warning: inst `inst_with_no_type.mostly_unique_inst'/0
-inst_with_no_type.m:074:   is exported, but the one type it matches
-inst_with_no_type.m:074:   (inst_with_no_type.fruit/0) is not visible from
-inst_with_no_type.m:074:   outside this module.
-inst_with_no_type.m:076: Warning: inst
-inst_with_no_type.m:076:   `inst_with_no_type.mostly_unique_no_match'/0 does
-inst_with_no_type.m:076:   not match any of the types in scope.
+inst_with_no_type.m:074: Warning: inst `mostly_unique_inst'/0 is exported, but
+inst_with_no_type.m:074:   the one type it matches (inst_with_no_type.fruit/0)
+inst_with_no_type.m:074:   is not visible from outside this module.
+inst_with_no_type.m:076: Warning: inst `mostly_unique_no_match'/0 does not
+inst_with_no_type.m:076:   match any of the types in scope.
 inst_with_no_type.m:076:   The closest match is inst_with_no_type.fruit/0, for
 inst_with_no_type.m:076:   which the top level mismatches are the following.
 inst_with_no_type.m:076:   In bound functor #2:
 inst_with_no_type.m:076:   function symbol is banana/0.
-inst_with_no_type.m:078: Warning: inst `inst_with_no_type.unique_inst'/0 is
-inst_with_no_type.m:078:   exported, but the one type it matches
-inst_with_no_type.m:078:   (inst_with_no_type.fruit/0) is not visible from
-inst_with_no_type.m:078:   outside this module.
-inst_with_no_type.m:080: Warning: inst `inst_with_no_type.unique_no_match'/0
-inst_with_no_type.m:080:   does not match any of the types in scope.
+inst_with_no_type.m:078: Warning: inst `unique_inst'/0 is exported, but the one
+inst_with_no_type.m:078:   type it matches (inst_with_no_type.fruit/0) is not
+inst_with_no_type.m:078:   visible from outside this module.
+inst_with_no_type.m:080: Warning: inst `unique_no_match'/0 does not match any
+inst_with_no_type.m:080:   of the types in scope.
 inst_with_no_type.m:080:   The closest match is inst_with_no_type.fruit/0, for
 inst_with_no_type.m:080:   which the top level mismatches are the following.
 inst_with_no_type.m:080:   In bound functor #2:
 inst_with_no_type.m:080:   function symbol is banana/0.
-inst_with_no_type.m:083: Warning: inst `inst_with_no_type.citrus'/0 is
-inst_with_no_type.m:083:   exported, but the one type it matches
-inst_with_no_type.m:083:   (inst_with_no_type.fruit/0) is not visible from
-inst_with_no_type.m:083:   outside this module.
-inst_with_no_type.m:097: Warning: inst `inst_with_no_type.t_no_match'/0 does
-inst_with_no_type.m:097:   not match any of the types in scope.
+inst_with_no_type.m:083: Warning: inst `citrus'/0 is exported, but the one type
+inst_with_no_type.m:083:   it matches (inst_with_no_type.fruit/0) is not
+inst_with_no_type.m:083:   visible from outside this module.
+inst_with_no_type.m:097: Warning: inst `t_no_match'/0 does not match any of the
+inst_with_no_type.m:097:   types in scope.

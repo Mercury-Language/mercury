@@ -366,11 +366,13 @@
     ;       words_quote(string)
             % Surround the string with `' quotes, then treat as words.
 
-    ;       sym_name(sym_name)
+    ;       qual_sym_name(sym_name)
+    ;       unqual_sym_name(sym_name)
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes.
 
-    ;       sym_name_and_arity(sym_name_and_arity)
+    ;       qual_sym_name_and_arity(sym_name_and_arity)
+    ;       unqual_sym_name_and_arity(sym_name_and_arity)
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes, followed by '/' and the arity.
 
@@ -1460,11 +1462,23 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Component = suffix(Suffix),
         Str = join_string_and_tail(Suffix, Components, TailStr)
     ;
-        Component = sym_name(SymName),
+        (
+            Component = qual_sym_name(SymName)
+        ;
+            Component = unqual_sym_name(SymName0),
+            SymName = unqualified(unqualify_name(SymName0))
+        ),
         Word = sym_name_to_word(SymName),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
-        Component = sym_name_and_arity(SymNameAndArity),
+        (
+            Component = qual_sym_name_and_arity(SymNameAndArity)
+        ;
+            Component = unqual_sym_name_and_arity(SymNameAndArity0),
+            SymNameAndArity0 = sym_name_arity(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0)),
+            SymNameAndArity = sym_name_arity(SymName, Arity)
+        ),
         Word = sym_name_and_arity_to_word(SymNameAndArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
@@ -1629,10 +1643,22 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         Component = suffix(Word),
         RevWords1 = [suffix_word(Word) | RevWords0]
     ;
-        Component = sym_name(SymName),
+        (
+            Component = qual_sym_name(SymName)
+        ;
+            Component = unqual_sym_name(SymName0),
+            SymName = unqualified(unqualify_name(SymName0))
+        ),
         RevWords1 = [plain_word(sym_name_to_word(SymName)) | RevWords0]
     ;
-        Component = sym_name_and_arity(SymNameAndArity),
+        (
+            Component = qual_sym_name_and_arity(SymNameAndArity)
+        ;
+            Component = unqual_sym_name_and_arity(SymNameAndArity0),
+            SymNameAndArity0 = sym_name_arity(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0)),
+            SymNameAndArity = sym_name_arity(SymName, Arity)
+        ),
         Word = sym_name_and_arity_to_word(SymNameAndArity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;

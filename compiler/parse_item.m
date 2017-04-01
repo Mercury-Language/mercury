@@ -1349,7 +1349,7 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
         WithInst, MaybeDet, Context, SeqNum, QuantConstrAttrs, MaybeIOM) :-
     ArgContextPieces = cord.from_list(
         [words("In the mode declaration of the predicate"),
-        sym_name(Functor), suffix(":")]),
+        unqual_sym_name(Functor), suffix(":")]),
     parse_modes(allow_constrained_inst_var, VarSet, ArgContextPieces,
         ArgTerms, MaybeArgModes0),
     ContextPieces = cord.from_list([words("In predicate"), decl("mode"),
@@ -1403,12 +1403,12 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, RetModeTerm, FullTerm,
         VarSet, MaybeDetism, Context, SeqNum, QuantConstrAttrs, MaybeIOM) :-
     ArgContextPieces = cord.from_list(
         [words("In the mode declaration of the function"),
-        sym_name(Functor), suffix(":")]),
+        unqual_sym_name(Functor), suffix(":")]),
     parse_modes(allow_constrained_inst_var, VarSet, ArgContextPieces,
         ArgTerms, MaybeArgModes0),
     RetContextPieces = cord.from_list([words("In the return value"),
         words("of the mode declaration of the function"),
-        sym_name(Functor), suffix(":")]),
+        unqual_sym_name(Functor), suffix(":")]),
     parse_mode(allow_constrained_inst_var, VarSet, RetContextPieces,
         RetModeTerm, MaybeRetMode0),
     QuantContextPieces = cord.from_list([words("In function"), decl("mode"),
