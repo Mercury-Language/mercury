@@ -508,11 +508,8 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
         !:Specs = [Spec | !.Specs],
         InstanceDefns = InstanceDefns0
     else
-        GetClassProcPredId =
-            ( pred(ClassProc::in, ClassProcPredId::out) is det :-
-                ClassProc = hlds_class_proc(ClassProcPredId, _ClassProcProcId)
-            ),
-        list.map(GetClassProcPredId, ClassInterface, ClassProcPredIds0),
+        ClassProcPredIds0 = list.map(
+            pred_proc_id_project_pred_id, ClassInterface),
         list.sort_and_remove_dups(ClassProcPredIds0, ClassProcPredIds),
         list.map_foldl3(
             check_class_instance(ClassId, SuperClasses, ClassVars,
@@ -664,7 +661,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
     GetClassProcProcId =
         ( pred(ClassProc::in, ClassProcProcId::out) is semidet :-
-            ClassProc = hlds_class_proc(PredId, ClassProcProcId)
+            ClassProc = proc(PredId, ClassProcProcId)
         ),
     list.filter_map(GetClassProcProcId, ClassInterface, ClassProcProcIds0),
     list.sort_and_remove_dups(ClassProcProcIds0, ClassProcProcIds),
@@ -789,7 +786,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
             CheckInfo, !ModuleInfo, !QualInfo, !Specs),
         MakeClassProc =
             ( pred(TheProcId::in, PredProcId::out) is det :-
-                PredProcId = hlds_class_proc(InstancePredId, TheProcId)
+                PredProcId = proc(InstancePredId, TheProcId)
             ),
         list.map(MakeClassProc, InstanceProcIds, InstancePredProcs1),
         (

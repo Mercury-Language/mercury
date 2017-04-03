@@ -1747,14 +1747,7 @@ mode_table_optimize(!ModeDefns) :-
 
 :- func restrict_list_elements(set(hlds_class_argpos), list(T)) = list(T).
 
-:- type hlds_class_interface    ==  list(hlds_class_proc).
-
-    % XXX Why is this type separate from the usual pred_proc_id?
-:- type hlds_class_proc
-    --->    hlds_class_proc(
-                pred_id,
-                proc_id
-            ).
+:- type hlds_class_interface == list(pred_proc_id).
 
     % For each class, we keep track of a list of its instances, since there
     % can be more than one instance of each class. Each visible instance

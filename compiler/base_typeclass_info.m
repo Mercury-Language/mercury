@@ -128,13 +128,7 @@ gen_body(ModuleInfo, ClassId, InstanceDefn, BaseTypeClassInfo) :-
     ;
         MaybeInstancePredProcIds = yes(InstancePredProcIds)
     ),
-    ExtractPredProcId =
-        ( pred(HldsPredProc::in, PredProc::out) is det :-
-            HldsPredProc = hlds_class_proc(PredId, ProcId),
-            PredProc = proc(PredId, ProcId)
-        ),
-    list.map(ExtractPredProcId, InstancePredProcIds, PredProcIds),
-    construct_proc_labels(ModuleInfo, PredProcIds, ProcLabels),
+    construct_proc_labels(ModuleInfo, InstancePredProcIds, ProcLabels),
     gen_superclass_count(ClassId, ModuleInfo, SuperClassCount, ClassArity),
     list.length(ProcLabels, NumMethods),
     BaseTypeClassInfo = base_typeclass_info(NumExtra, NumConstraints,

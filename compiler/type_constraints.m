@@ -1819,7 +1819,7 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
                 list.index0(ClassDefn ^ classdefn_hlds_interface, MethodNum,
                     Method)
             then
-                Method = hlds_class_proc(PredId, _),
+                Method = proc(PredId, _),
                 predicate_table_get_preds(Environment ^ tce_pred_env, Preds),
                 ( if pred_has_arity(Preds, list.length(Vars), PredId) then
                     pred_call_constraint(Preds, GoalInfo, ArgTVars, PredId,

@@ -68,7 +68,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module varset.
@@ -159,14 +158,8 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
             module_add_class_interface(ClassName, ClassParamVars,
                 TypeClassStatus, yes(ItemMercuryStatus), NeedQual,
                 Methods, PredProcIds0, !ModuleInfo, !Specs),
-            % Get rid of the `no's from the list of maybes, and convert
-            % from pairs to hlds_class_procs.
-            IsYes =
-                ( pred(Maybe::in, PredProcId::out) is semidet :-
-                    Maybe = yes(PredId - ProcId),
-                    PredProcId = hlds_class_proc(PredId, ProcId)
-                ),
-            list.filter_map(IsYes, PredProcIds0, PredProcIds1),
+            % Get rid of the `no's from the list of maybes.
+            list.filter_map(maybe_is_yes, PredProcIds0, PredProcIds1),
 
             % The list must be sorted on pred_id and then proc_id --
             % check_typeclass.m assumes this when it is generating the
@@ -254,8 +247,7 @@ class_fundeps_are_identical(OldFunDeps0, FunDeps0) :-
 
 :- pred module_add_class_interface(sym_name::in, list(tvar)::in,
     typeclass_status::in, maybe(item_mercury_status)::in,
-    need_qualifier::in, list(class_method)::in,
-    list(maybe(pair(pred_id, proc_id)))::out,
+    need_qualifier::in, list(class_method)::in, list(maybe(pred_proc_id))::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -289,8 +281,7 @@ is_class_method_mode_item(Method) :-
 :- pred add_class_pred_or_func_mode_method(sym_name::in, list(tvar)::in,
     int::in, maybe(item_mercury_status)::in, typeclass_status::in,
     need_qualifier::in, class_method::in,
-    list(maybe(pair(pred_id, proc_id)))::in,
-    list(maybe(pair(pred_id, proc_id)))::out,
+    list(maybe(pred_proc_id))::in, list(maybe(pred_proc_id))::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -348,7 +339,7 @@ add_class_pred_or_func_mode_method(ClassName, ClassParamVars,
 
 :- pred add_class_pred_or_func_methods(sym_name::in, list(tvar)::in,
     maybe(item_mercury_status)::in, typeclass_status::in, need_qualifier::in,
-    list(class_method)::in, list(maybe(pair(pred_id, proc_id)))::out,
+    list(class_method)::in, list(maybe(pred_proc_id))::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -366,7 +357,7 @@ add_class_pred_or_func_methods(ClassName, ClassParamVars,
 
 :- pred module_add_class_method(sym_name::in, list(tvar)::in,
     int::in, maybe(item_mercury_status)::in, typeclass_status::in,
-    need_qualifier::in, class_method::in, maybe(pair(pred_id, proc_id))::out,
+    need_qualifier::in, class_method::in, maybe(pred_proc_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -426,8 +417,7 @@ module_add_class_method(ClassName, ClassParamVars,
     % - mode declarations with no determinism: report an error
     %
 :- pred check_method_modes(class_methods::in,
-    list(maybe(pair(pred_id, proc_id)))::in,
-    list(maybe(pair(pred_id, proc_id)))::out,
+    list(maybe(pred_proc_id))::in, list(maybe(pred_proc_id))::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -458,7 +448,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
                     MaybeProc = no
                 ;
                     MaybeProc = yes(ProcId),
-                    NewPredProc = yes(PredId - ProcId),
+                    NewPredProc = yes(proc(PredId, ProcId)),
                     !:PredProcIds = [NewPredProc | !.PredProcIds],
                     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
                 ) ;

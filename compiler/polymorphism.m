@@ -4117,11 +4117,11 @@ expand_class_method_bodies_in_defn(ClassDefn, !ModuleInfo) :-
     Interface = ClassDefn ^ classdefn_hlds_interface,
     list.foldl2(expand_class_method_body, Interface, 1, _, !ModuleInfo).
 
-:- pred expand_class_method_body(hlds_class_proc::in, int::in, int::out,
+:- pred expand_class_method_body(pred_proc_id::in, int::in, int::out,
     module_info::in, module_info::out) is det.
 
 expand_class_method_body(ClassProc, !ProcNum, !ModuleInfo) :-
-    ClassProc = hlds_class_proc(PredId, ProcId), 
+    ClassProc = proc(PredId, ProcId), 
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),

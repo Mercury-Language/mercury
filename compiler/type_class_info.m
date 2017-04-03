@@ -113,10 +113,10 @@ generate_class_id(ModuleInfo, ClassId, ClassDefn) = TCId :-
     MethodIds = list.map(generate_method_id(ModuleInfo), Interface),
     TCId = tc_id(TCName, VarNames, MethodIds).
 
-:- func generate_method_id(module_info, hlds_class_proc) = tc_method_id.
+:- func generate_method_id(module_info, pred_proc_id) = tc_method_id.
 
 generate_method_id(ModuleInfo, ClassProc) = MethodId :-
-    ClassProc = hlds_class_proc(PredId, _ProcId),
+    ClassProc = proc(PredId, _ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     MethodName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
@@ -185,10 +185,10 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
         TCConstraints, MethodProcLabels),
     RttiData = rtti_data_type_class_instance(TCInstance).
 
-:- func generate_method_proc_label(module_info, hlds_class_proc) =
+:- func generate_method_proc_label(module_info, pred_proc_id) =
     rtti_proc_label.
 
-generate_method_proc_label(ModuleInfo, hlds_class_proc(PredId, ProcId)) =
+generate_method_proc_label(ModuleInfo, proc(PredId, ProcId)) =
     make_rtti_proc_label(ModuleInfo, PredId, ProcId).
 
 %---------------------------------------------------------------------------%

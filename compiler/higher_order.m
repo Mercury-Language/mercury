@@ -1007,8 +1007,7 @@ maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goals,
         list.take(NumArgsToExtract, OtherTypeClassInfoArgs,
             InstanceConstraintArgs)
     then
-        list.det_index1(ClassInterface, Method,
-            hlds_class_proc(PredId, ProcId)),
+        list.det_index1(ClassInterface, Method, proc(PredId, ProcId)),
         AllArgs = InstanceConstraintArgs ++ Args,
         construct_specialized_higher_order_call(PredId, ProcId, AllArgs,
             GoalInfo, Goal, !Info),
@@ -1087,8 +1086,7 @@ find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
         Constraints = Constraints0,
         UnconstrainedTVarTypes = UnconstrainedTVarTypes0,
         yes(ClassInterface) = Instance ^ instdefn_hlds_interface,
-        list.det_index1(ClassInterface, MethodNum,
-            hlds_class_proc(PredId, ProcId))
+        list.det_index1(ClassInterface, MethodNum, proc(PredId, ProcId))
     else
         find_matching_instance_method(Instances, MethodNum, ClassTypes,
             PredId, ProcId, Constraints, UnconstrainedTVarTypes, !TVarSet)

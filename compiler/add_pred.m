@@ -25,7 +25,6 @@
 
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -34,7 +33,7 @@
     pred_or_func::in, sym_name::in, tvarset::in, inst_varset::in,
     existq_tvars::in, list(type_and_mode)::in, prog_constraints::in,
     maybe(determinism)::in, purity::in, pred_markers::in,
-    maybe(pair(pred_id, proc_id))::out, module_info::in, module_info::out,
+    maybe(pred_proc_id)::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred do_add_new_proc(prog_context::in, int::in, arity::in,
@@ -50,7 +49,7 @@
     maybe(item_mercury_status)::in, pred_status::in,
     pred_or_func::in, sym_name::in, inst_varset::in, list(mer_mode)::in,
     maybe(determinism)::in, maybe_class_method::in,
-    pair(pred_id, proc_id)::out, module_info::in, module_info::out,
+    pred_proc_id::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Whenever there is a clause or mode declaration for an undeclared
@@ -531,7 +530,7 @@ module_add_mode(Context, ItemNumber, MaybeItemMercuryStatus, PredStatus,
     map.det_update(PredId, PredInfo, Preds0, Preds),
     predicate_table_set_preds(Preds, PredicateTable1, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
-    PredProcId = PredId - ProcId.
+    PredProcId = proc(PredId, ProcId).
 
 :- pred module_do_add_mode(prog_context::in, int::in,
     maybe(item_mercury_status)::in, arity::in,

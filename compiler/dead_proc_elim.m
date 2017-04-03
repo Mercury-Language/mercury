@@ -418,12 +418,12 @@ get_class_pred_procs(Class, !Queue, !Needed) :-
     Methods = Class ^ classdefn_hlds_interface,
     list.foldl2(get_class_interface_pred_proc, Methods, !Queue, !Needed).
 
-:- pred get_class_interface_pred_proc(hlds_class_proc::in,
+:- pred get_class_interface_pred_proc(pred_proc_id::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
 get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
-    ClassProc = hlds_class_proc(PredId, ProcId),
+    ClassProc = proc(PredId, ProcId),
     Entity = entity_proc(PredId, ProcId),
     queue.put(Entity, !Queue),
     map.set(Entity, not_eliminable, !Needed).

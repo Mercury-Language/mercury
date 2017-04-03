@@ -783,7 +783,7 @@ fundep_to_xml_2(Tag, TVarset, Vars, Set) =
 :- func class_methods_to_xml(comments, pred_table, hlds_class_interface) = xml.
 
 class_methods_to_xml(C, PredTable, Methods) = Xml :-
-    AllPredIds = list.map(func(hlds_class_proc(PredId, _)) = PredId, Methods),
+    AllPredIds = list.map(pred_proc_id_project_pred_id, Methods),
     PredIds = list.sort_and_remove_dups(AllPredIds),
     PredInfos = list.map(func(Id) = map.lookup(PredTable, Id), PredIds),
     Xml = xml_list("methods", predicate_documentation(C), PredInfos).

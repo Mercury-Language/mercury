@@ -975,11 +975,8 @@ gather_opt_export_instance_in_instance_defn(ModuleInfo, ClassId, InstanceDefn,
             Interface0 = instance_body_concrete(Methods0),
             (
                 MaybePredProcIds = yes(ClassProcs),
-                GetPredId =
-                    ( pred(Proc::in, PredId::out) is det :-
-                        Proc = hlds_class_proc(PredId, _)
-                    ),
-                list.map(GetPredId, ClassProcs, ClassPreds0),
+                ClassPreds0 =
+                    list.map(pred_proc_id_project_pred_id, ClassProcs),
 
                 % The interface is sorted on pred_id.
                 list.remove_adjacent_dups(ClassPreds0, ClassPreds),
@@ -3403,15 +3400,11 @@ maybe_opt_export_class_defn(ClassId - ClassDefn0, ClassId - ClassDefn,
         ClassDefn = ClassDefn0
     ).
 
-:- pred class_procs_to_pred_ids(list(hlds_class_proc)::in, list(pred_id)::out)
+:- pred class_procs_to_pred_ids(list(pred_proc_id)::in, list(pred_id)::out)
     is det.
 
 class_procs_to_pred_ids(ClassProcs, PredIds) :-
-    list.map(
-        ( pred(ClassProc::in, PredId::out) is det :-
-            ClassProc = hlds_class_proc(PredId, _)
-        ),
-        ClassProcs, PredIds0),
+    PredIds0 = list.map(pred_proc_id_project_pred_id, ClassProcs),
     list.sort_and_remove_dups(PredIds0, PredIds).
 
 %---------------------%

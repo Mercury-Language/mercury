@@ -553,10 +553,10 @@ hlds_output_fundep(fundep(Domain, Range), !IO) :-
     % probably not that useful to have the names. If that information is
     % needed, it shouldn't be a very difficult fix.
     %
-:- pred write_class_proc(hlds_class_proc::in, io::di, io::uo) is det.
+:- pred write_class_proc(pred_proc_id::in, io::di, io::uo) is det.
 
-write_class_proc(hlds_class_proc(PredId, ProcId), !IO) :-
-    io.write_string("hlds_class_proc(pred_id:", !IO),
+write_class_proc(proc(PredId, ProcId), !IO) :-
+    io.write_string("proc(pred_id:", !IO),
     pred_id_to_int(PredId, PredInt),
     io.write_int(PredInt, !IO),
     io.write_string(", proc_id:", !IO),

@@ -91,6 +91,9 @@
 :- type pred_proc_id
     --->    proc(pred_id, proc_id).
 
+:- func pred_proc_id_project_pred_id(pred_proc_id) = pred_id.
+:- func pred_proc_id_project_proc_id(pred_proc_id) = proc_id.
+
     % Several passes operate on the module one SCC at a time. An SCC is
     % a strongly connected component of the call graph, i.e. a group of
     % procedures that all recursively call each other, directly or indirectly,
@@ -145,7 +148,7 @@
 :- type pred_info.
 :- type proc_info.
 
-:- type proc_table  ==  map(proc_id, proc_info).
+:- type proc_table == map(proc_id, proc_info).
 
 :- pred next_mode_id(proc_table::in, proc_id::out) is det.
 
@@ -159,7 +162,7 @@
     ;       gcid_event_call(string)
     ;       gcid_cast(cast_kind).
 
-:- type pred_proc_list  ==  list(pred_proc_id).
+:- type pred_proc_list == list(pred_proc_id).
 
 %-----------------------------------------------------------------------------%
 
@@ -918,7 +921,10 @@
 :- type pred_id
     --->    pred_id(int).
 
-:- type proc_id     ==  int.
+:- type proc_id == int.
+
+pred_proc_id_project_pred_id(proc(PredId, _ProcId)) = PredId.
+pred_proc_id_project_proc_id(proc(_PredId, ProcId)) = ProcId.
 
 shroud_pred_id(pred_id(PredId)) = shrouded_pred_id(PredId).
 shroud_proc_id(ProcId) = shrouded_proc_id(ProcId).
