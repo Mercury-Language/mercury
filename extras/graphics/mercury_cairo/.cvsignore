@@ -1,7 +1,0 @@
-Mercury
-*.mh
-*.err
-*.init
-libmercury_cairo.a
-libmercury_cairo.so
-libmercury_cairo.dylib

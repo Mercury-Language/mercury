@@ -1,7 +1,0 @@
-CLEAN
-.mgnuc_copts
-.mgnuc_opts
-Prof.CallPair
-Prof.Decl
-Prof.MemoryCells
-Prof.MemoryWords

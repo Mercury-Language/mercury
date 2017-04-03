@@ -4,7 +4,6 @@
 *.date
 *.date0
 *.date3
-*.java_date
 *.dep
 *.dep_err
 *.dv
@@ -16,6 +15,7 @@
 *.int0
 *.int2
 *.int3
+*.java_date
 *.log
 *.mh
 *.mih
@@ -23,18 +23,10 @@
 .mgnuc_copts
 .mgnuc_opts
 CLEAN
-FAILED_TESTS
-Mercury
-runtests.errs
-Prof.CallPair
-Prof.Decl
-Prof.MemoryCells
-Prof.MemoryWords
-CLEAN
+DEFNS_FOR_TESTS
 EXPECTED_FAILED_TESTS
 EXPECT_FAIL_TESTS
 FAILED_TC_DIR
-FAILED_TESTS
 FAILED_TESTS_SUMMARY
 FAIL_TESTS
 Mercury
@@ -47,7 +39,6 @@ Prof.MemoryWords
 TESTS_FLAGS
 UNEXPECTED_FAILED_TESTS
 WS_FLAGS
-DEFNS_FOR_TESTS
 jmercury
 mdbrc
 mdbrc.in
