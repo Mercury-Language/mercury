@@ -221,7 +221,7 @@ is_associativity_assertion(Module, AssertId, CallVars,
     %   compose( A, B,  AB),        compose(B,  C,  BC),
     %   compose(AB, C, ABC)     <=> compose(A, BC, ABC)
     %
-:- pred associative(hlds_goals::in, hlds_goals::in,
+:- pred associative(list(hlds_goal)::in, list(hlds_goal)::in,
     set_of_progvar::in, list(prog_var)::in,
     pair(pair(prog_var), prog_var)::out) is cc_nondet.
 
@@ -254,8 +254,8 @@ associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     %
     % Given both sides of the equivalence return another possible ordering.
     %
-:- pred reorder(hlds_goals::in, hlds_goals::in,
-    hlds_goals::out, hlds_goals::out) is multi.
+:- pred reorder(list(hlds_goal)::in, list(hlds_goal)::in,
+    list(hlds_goal)::out, list(hlds_goal)::out) is multi.
 
 reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
     list.perm(PCalls, LHSCalls),
@@ -275,7 +275,7 @@ reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
     % i.e. for app(TypeInfo, X, Y, XY), app(TypeInfo, XY, Z, XYZ)
     % L <= XY and Ps <= [X - XY, Y - Z, XY - XYZ]
     %
-:- pred process_one_side(hlds_goals::in, set_of_progvar::in, pred_id::out,
+:- pred process_one_side(list(hlds_goal)::in, set_of_progvar::in, pred_id::out,
     prog_var::out, assoc_list(prog_var)::out, list(prog_var)::out) is semidet.
 
 process_one_side(Goals, UniversiallyQuantifiedVars, PredId,
@@ -309,7 +309,7 @@ is_update_assertion(Module, AssertId, _PredId, CallVars, StateA - StateB) :-
     %   compose(S0, A, SA),     compose(SB, A, S),
     %   compose(SA, B, S)   <=> compose(S0, B, SB)
     %
-:- pred update(hlds_goals::in, hlds_goals::in, set_of_progvar::in,
+:- pred update(list(hlds_goal)::in, list(hlds_goal)::in, set_of_progvar::in,
     list(prog_var)::in, pair(prog_var)::out) is nondet.
 
 update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
@@ -348,7 +348,7 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     % corresponding variable in the second call, and VAs are the
     % variables of the first call.
     %
-:- pred process_two_linked_calls(hlds_goals::in, set_of_progvar::in,
+:- pred process_two_linked_calls(list(hlds_goal)::in, set_of_progvar::in,
     pred_id::out, prog_var::out, assoc_list(prog_var)::out,
     list(prog_var)::out) is semidet.
 
@@ -359,8 +359,8 @@ process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
         hlds_goal(plain_call(PredId, _, VarsB, _, _, _), _)
     ],
 
-    % Determine the linking variable, L. By definition it must be
-    % existentially quantified and a member of both variable lists.
+    % Determine the linking variable, L. By definition, it must be
+    % existentially quantified, and a member of both variable lists.
     SetVarsA = set_of_var.list_to_set(VarsA),
     SetVarsB = set_of_var.list_to_set(VarsB),
     CommonVars = set_of_var.intersect(SetVarsA, SetVarsB),
@@ -411,12 +411,13 @@ predicate_call(Goal, PredId) :-
         list.member(Call, Goals),
         Call = hlds_goal(plain_call(PredId, _, _, _, _, _), _),
         list.delete(Goals, Call, Unifications),
-        P = (pred(G::in) is semidet :-
-            not (
-                G = hlds_goal(unify(_, UnifyRhs, _, _, _), _),
-                UnifyRhs = rhs_functor(_, _, _)
-            )
-        ),
+        P =
+            ( pred(G::in) is semidet :-
+                not (
+                    G = hlds_goal(unify(_, UnifyRhs, _, _, _), _),
+                    UnifyRhs = rhs_functor(_, _, _)
+                )
+            ),
         list.filter(P, Unifications, [])
     else
         Goal = hlds_goal(plain_call(PredId, _, _, _, _, _), _)
@@ -499,7 +500,7 @@ goal_is_equivalence(Goal, P, Q) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % equal_goals(GA, GB):
+    % equal_goals(GA, GB, !Subst):
     %
     % Do these two goals represent the same hlds_goal modulo renaming?
     %
@@ -509,12 +510,7 @@ goal_is_equivalence(Goal, P, Q) :-
 equal_goals(GoalA, GoalB, !Subst) :-
     GoalA = hlds_goal(GoalExprA, _GoalInfoA),
     GoalB = hlds_goal(GoalExprB, _GoalInfoB),
-    equal_goal_exprs(GoalExprA, GoalExprB, !Subst).
-
-:- pred equal_goal_exprs(hlds_goal_expr::in, hlds_goal_expr::in,
-    subst::in, subst::out) is semidet.
-
-equal_goal_exprs(GoalExprA, GoalExprB, !Subst) :-
+    require_complete_switch [GoalExprA]
     (
         GoalExprA = conj(ConjType, GoalsA),
         GoalExprB = conj(ConjType, GoalsB),
@@ -579,13 +575,56 @@ equal_goal_exprs(GoalExprA, GoalExprB, !Subst) :-
 :- pred equal_reason(scope_reason::in, scope_reason::in, subst::in, subst::out)
     is semidet.
 
-equal_reason(exist_quant(VarsA), exist_quant(VarsB), !Subst) :-
-    equal_vars(VarsA, VarsB, !Subst).
-equal_reason(barrier(Removable), barrier(Removable), !Subst).
-equal_reason(commit(ForcePruning), commit(ForcePruning), !Subst).
-equal_reason(from_ground_term(VarA, Kind), from_ground_term(VarB, Kind),
-        !Subst) :-
-    equal_var(VarA, VarB, !Subst).
+equal_reason(ReasonA, ReasonB, !Subst) :-
+    require_complete_switch [ReasonA]
+    (
+        ReasonA = exist_quant(VarsA),
+        ReasonB = exist_quant(VarsB),
+        equal_vars(VarsA, VarsB, !Subst)
+    ;
+        ReasonA = disable_warnings(HeadWarning, TailWarnings),
+        ReasonB = disable_warnings(HeadWarning, TailWarnings)
+    ;
+        ReasonA = promise_solutions(VarsA, Kind),
+        ReasonB = promise_solutions(VarsB, Kind),
+        equal_vars(VarsA, VarsB, !Subst)
+    ;
+        ReasonA = promise_purity(Purity),
+        ReasonB = promise_purity(Purity)
+    ;
+        ReasonA = require_detism(Detism),
+        ReasonB = require_detism(Detism)
+    ;
+        ReasonA = require_complete_switch(VarA),
+        ReasonB = require_complete_switch(VarB),
+        equal_var(VarA, VarB, !Subst)
+    ;
+        ReasonA = require_switch_arms_detism(VarA, Detism),
+        ReasonB = require_switch_arms_detism(VarB, Detism),
+        equal_var(VarA, VarB, !Subst)
+    ;
+        ReasonA = commit(ForcePruning),
+        ReasonB = commit(ForcePruning)
+    ;
+        ReasonA = barrier(Removable),
+        ReasonB = barrier(Removable)
+    ;
+        ReasonA = from_ground_term(VarA, Kind),
+        ReasonB = from_ground_term(VarB, Kind),
+        equal_var(VarA, VarB, !Subst)
+    ;
+        ReasonA = trace_goal(_CompileTime, _Runtime, _MaybeIO,
+            _MutableVars, _QuantVars),
+        % We could match all the vars, but there would be no point;
+        % trace goals should not occur in assertions.
+        fail
+    ;
+        ReasonA = loop_control(_LCVar, _LCSVar, _UseParentStack),
+        % We could match the vars, but there would be no point.
+        % These scopes can never occur in user-written code;
+        % they can only added by the compiler itself.
+        fail
+    ).
 
 :- pred equal_goals_shorthand(shorthand_goal_expr::in, shorthand_goal_expr::in,
     subst::in, subst::out) is semidet.
@@ -617,22 +656,27 @@ equal_vars([VA | VAs], [VB | VBs], !Subst) :-
 :- pred equal_unification(unify_rhs::in, unify_rhs::in, subst::in, subst::out)
     is semidet.
 
-equal_unification(rhs_var(A), rhs_var(B), !Subst) :-
-    equal_vars([A], [B], !Subst).
-equal_unification(rhs_functor(ConsId, E, VarsA), rhs_functor(ConsId, E, VarsB),
-        !Subst) :-
-    equal_vars(VarsA, VarsB, !Subst).
-equal_unification(LambdaGoalA, LambdaGoalB, !Subst) :-
-    LambdaGoalA = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-        NLVarsA, LVarsA, Modes, Det, GoalA),
-    LambdaGoalB = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-        NLVarsB, LVarsB, Modes, Det, GoalB),
-    equal_vars(NLVarsA, NLVarsB, !Subst),
-    equal_vars(LVarsA, LVarsB, !Subst),
-    equal_goals(GoalA, GoalB, !Subst).
+equal_unification(RhsA, RhsB, !Subst) :-
+    (
+        RhsA = rhs_var(A),
+        RhsB = rhs_var(B),
+        equal_var(A, B, !Subst)
+    ;
+        RhsA = rhs_functor(ConsId, E, VarsA),
+        RhsB = rhs_functor(ConsId, E, VarsB),
+        equal_vars(VarsA, VarsB, !Subst)
+    ;
+        RhsA = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NLVarsA, LVarsA, Modes, Det, GoalA),
+        RhsB = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NLVarsB, LVarsB, Modes, Det, GoalB),
+        equal_vars(NLVarsA, NLVarsB, !Subst),
+        equal_vars(LVarsA, LVarsB, !Subst),
+        equal_goals(GoalA, GoalB, !Subst)
+    ).
 
-:- pred equal_goals_list(hlds_goals::in, hlds_goals::in, subst::in, subst::out)
-    is semidet.
+:- pred equal_goals_list(list(hlds_goal)::in, list(hlds_goal)::in,
+    subst::in, subst::out) is semidet.
 
 equal_goals_list([], [], !Subst).
 equal_goals_list([GoalA | GoalAs], [GoalB | GoalBs], !Subst) :-
@@ -750,7 +794,7 @@ normalise_goal(Goal0, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred normalise_conj(hlds_goals::in, hlds_goals::out) is det.
+:- pred normalise_conj(list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 normalise_conj([], []).
 normalise_conj([Goal0 | Goals0], Goals) :-
@@ -767,7 +811,7 @@ normalise_cases([Case0 | Cases0], [Case | Cases]) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     normalise_cases(Cases0, Cases).
 
-:- pred normalise_goals(hlds_goals::in, hlds_goals::out) is det.
+:- pred normalise_goals(list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 normalise_goals([], []).
 normalise_goals([Goal0 | Goals0], [Goal | Goals]) :-
