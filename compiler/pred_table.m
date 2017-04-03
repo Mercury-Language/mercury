@@ -299,7 +299,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module multi_map.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -350,11 +349,14 @@
 :- type name_arity
     --->    name_arity(string, arity).
 
+:- type module_and_name
+    --->    module_and_name(module_name, string).
+
     % First search on module and name, then search on arity. The two levels
     % are needed because typecheck.m needs to be able to search on module
     % and name only for higher-order terms.
 :- type module_name_arity_index ==
-    map(pair(module_name, string), map(arity, list(pred_id))).
+    map(module_and_name, map(arity, list(pred_id))).
 
 predicate_table_init(PredicateTable) :-
     map.init(Preds),
@@ -444,7 +446,8 @@ predicate_table_remove_from_index(Module, Name, Arity, PredId,
         !N, !NA, !MNA) :-
     do_remove_from_index(Name, PredId, !N),
     do_remove_from_index(name_arity(Name, Arity), PredId, !NA),
-    do_remove_from_m_n_a_index(Module, Name, Arity, PredId, !MNA).
+    do_remove_from_m_n_a_index(module_and_name(Module, Name), Arity,
+        PredId, !MNA).
 
 :- pred do_remove_from_index(T::in, pred_id::in,
     map(T, list(pred_id))::in, map(T, list(pred_id))::out) is det.
@@ -463,26 +466,26 @@ do_remove_from_index(T, PredId, !Index) :-
         true
     ).
 
-:- pred do_remove_from_m_n_a_index(module_name::in, string::in, int::in,
+:- pred do_remove_from_m_n_a_index(module_and_name::in, int::in,
     pred_id::in, module_name_arity_index::in, module_name_arity_index::out)
     is det.
 
-do_remove_from_m_n_a_index(Module, Name, Arity, PredId, !MNA) :-
-    map.lookup(!.MNA, Module - Name, Arities0),
+do_remove_from_m_n_a_index(ModuleAndName, Arity, PredId, !MNA) :-
+    map.lookup(!.MNA, ModuleAndName, Arities0),
     map.lookup(Arities0, Arity, PredIds0),
     list.delete_all(PredIds0, PredId, PredIds),
     (
         PredIds = [],
         map.delete(Arity, Arities0, Arities),
         ( if map.is_empty(Arities) then
-            map.delete(Module - Name, !MNA)
+            map.delete(ModuleAndName, !MNA)
         else
-            map.det_update(Module - Name, Arities, !MNA)
+            map.det_update(ModuleAndName, Arities, !MNA)
         )
     ;
         PredIds = [_ | _],
         map.det_update(Arity, PredIds, Arities0, Arities),
-        map.det_update(Module - Name, Arities, !MNA)
+        map.det_update(ModuleAndName, Arities, !MNA)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -638,7 +641,8 @@ predicate_table_lookup_module_name(PredicateTable, IsFullyQualified,
 predicate_table_lookup_pred_module_name(PredicateTable, IsFullyQualified,
         Module, PredName, PredIds) :-
     Pred_MNA_Index = PredicateTable ^ pred_module_name_arity_index,
-    ( if map.search(Pred_MNA_Index, Module - PredName, Arities) then
+    ModuleAndName = module_and_name(Module, PredName),
+    ( if map.search(Pred_MNA_Index, ModuleAndName, Arities) then
         map.values(Arities, PredIdLists),
         list.condense(PredIdLists, PredIds0),
         maybe_filter_pred_ids_matching_module(IsFullyQualified,
@@ -654,7 +658,8 @@ predicate_table_lookup_pred_module_name(PredicateTable, IsFullyQualified,
 predicate_table_lookup_func_module_name(PredicateTable, IsFullyQualified,
         Module, FuncName, PredIds) :-
     Func_MNA_Index = PredicateTable ^ func_module_name_arity_index,
-    ( if map.search(Func_MNA_Index, Module - FuncName, Arities) then
+    ModuleAndName = module_and_name(Module, FuncName),
+    ( if map.search(Func_MNA_Index, ModuleAndName, Arities) then
         map.values(Arities, PredIdLists),
         list.condense(PredIdLists, PredIds0),
         maybe_filter_pred_ids_matching_module(IsFullyQualified,
@@ -705,8 +710,9 @@ predicate_table_lookup_m_n_a(PredicateTable, IsFullyQualified,
 predicate_table_lookup_pred_m_n_a(PredicateTable, IsFullyQualified,
         Module, PredName, Arity, !:PredIds) :-
     P_MNA_Index = PredicateTable ^ pred_module_name_arity_index,
+    ModuleAndName = module_and_name(Module, PredName),
     ( if
-        map.search(P_MNA_Index, Module - PredName, ArityIndex),
+        map.search(P_MNA_Index, ModuleAndName, ArityIndex),
         map.search(ArityIndex, Arity, !:PredIds)
     then
         maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
@@ -718,8 +724,9 @@ predicate_table_lookup_pred_m_n_a(PredicateTable, IsFullyQualified,
 predicate_table_lookup_func_m_n_a(PredicateTable, IsFullyQualified,
         Module, FuncName, Arity, !:PredIds) :-
     F_MNA_Index = PredicateTable ^ func_module_name_arity_index,
+    ModuleAndName = module_and_name(Module, FuncName),
     ( if
-        map.search(F_MNA_Index, Module - FuncName, ArityIndex),
+        map.search(F_MNA_Index, ModuleAndName, ArityIndex),
         map.search(ArityIndex, Arity, !:PredIds)
     then
         maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
@@ -971,12 +978,13 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
     is det.
 
 insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index) :-
-    ( if map.search(!.MNA_Index, Module - Name, MN_Arities0) then
+    ModuleAndName = module_and_name(Module, Name),
+    ( if map.search(!.MNA_Index, ModuleAndName, MN_Arities0) then
         multi_map.set(Arity, PredId, MN_Arities0, MN_Arities),
-        map.det_update(Module - Name, MN_Arities, !MNA_Index)
+        map.det_update(ModuleAndName, MN_Arities, !MNA_Index)
     else
         MN_Arities = map.singleton(Arity, [PredId]),
-        map.det_insert(Module - Name, MN_Arities, !MNA_Index)
+        map.det_insert(ModuleAndName, MN_Arities, !MNA_Index)
     ).
 
 %-----------------------------------------------------------------------------%
