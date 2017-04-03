@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2000,2002-2007, 2009-2012 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Module: accumulator.m.
 % Main authors: petdr.
@@ -140,7 +140,7 @@
 % XXX Replace calls to can_reorder_goals with calls to the version that
 % use the intermodule-analysis framework.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.accumulator.
 :- interface.
@@ -160,8 +160,8 @@
     proc_info::in, proc_info::out, module_info::in, module_info::out,
     univ::in, univ::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -205,7 +205,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The form of the goal around the base and recursive cases.
     %
@@ -241,7 +241,7 @@
             % Warn that two prog_vars in a call to pred_id at the given context
             % were swapped, which may cause an efficiency problem.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
         !Cookie) :-
@@ -324,8 +324,8 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
         true
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_warnings(module_info::in, prog_varset::in,
     list(accu_warning)::in, list(error_msg)::out) is det.
@@ -352,8 +352,8 @@ generate_warning(ModuleInfo, VarSet, Warning, Msg) :-
         words("swapped to allow accumulator introduction."), nl],
     Msg = simple_msg(Context, [always(Pieces)]).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % should_attempt_accu_transform is only true iff the current
     % proc has been transformed to call the newly created
@@ -375,7 +375,7 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
 
     C = initialize_goal_store(Rec, RecInstMap, Base, BaseInstMap),
     identify_recursive_calls(PredId, ProcId, C, RecCallIds),
-    M = list.length(Rec),
+    list.length(Rec, M),
 
     should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
         HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCO,
@@ -394,7 +394,7 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
     %
 :- pred should_attempt_accu_transform_2(module_info::in, module_info::out,
     pred_id::in, pred_info::in, proc_info::in, proc_info::out,
-    prog_vars::in, instmap::in, top_level::in, bool::in, bool::in,
+    list(prog_var)::in, instmap::in, top_level::in, bool::in, bool::in,
     list(accu_goal_id)::in, accu_goal_store::in, int::in, list(hlds_goal)::in,
     list(accu_warning)::out) is semidet.
 
@@ -421,8 +421,8 @@ should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
             Ids, C, M, Rec, Warnings)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Transform the goal into a standard form that is amenable to
     % introducing accumulators.
@@ -449,8 +449,8 @@ accu_standardize(Goal0, Goal) :-
         Goal = Goal0
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate takes the original goal and identifies the `shape'
     % of the goal around the recursive and base cases.
@@ -550,8 +550,8 @@ is_recursive_case(Goals, proc(PredId, ProcId)) :-
     list.append(_Initial, [RecursiveCall | _Final], Goals),
     RecursiveCall = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The store info is folded over the list of goals which
     % represent the base and recursive case conjunctions.
@@ -588,8 +588,8 @@ accu_store(Case, Goal, !N, !InstMap, !GoalStore) :-
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(!.InstMap, InstMapDelta, !:InstMap).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Determine the k's which are recursive calls.
     % Note that this doesn't find recursive calls which are `hidden'
@@ -600,15 +600,16 @@ accu_store(Case, Goal, !N, !InstMap, !GoalStore) :-
     accu_goal_store::in, list(accu_goal_id)::out) is det.
 
 identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
-    P = (pred(Key::out) is nondet :-
-        goal_store_member(GoalStore, Key, stored_goal(Goal, _InstMap)),
-        Key = accu_goal_id(accu_rec, _),
-        Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
-    ),
+    P =
+        ( pred(Key::out) is nondet :-
+            goal_store_member(GoalStore, Key, stored_goal(Goal, _InstMap)),
+            Key = accu_goal_id(accu_rec, _),
+            Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
+        ),
     solutions.solutions(P, Ids).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Determine the variables which are members of the sets Out and Out',
     % and initialize the substitutions between the two sets.
@@ -621,8 +622,9 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
     % which are produced prior to the recursive call.
     %
 :- pred identify_out_and_out_prime(module_info::in, vartypes::in, instmap::in,
-    accu_goal_id::in, list(hlds_goal)::in, prog_vars::in, prog_vars::out,
-    prog_vars::out, accu_subst::out, accu_subst::out) is det.
+    accu_goal_id::in, list(hlds_goal)::in,
+    list(prog_var)::in, list(prog_var)::out, list(prog_var)::out,
+    accu_subst::out, accu_subst::out) is det.
 
 identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
         Rec, HeadVars, Out, OutPrime, HeadToCallSubst, CallToHeadSubst) :-
@@ -645,10 +647,11 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
 
         assoc_list.from_corresponding_lists(HeadVars, Args, HeadArg0),
 
-        Member = (pred(M::in) is semidet :-
-            M = HeadVar - _,
-            set_of_var.member(ChangedVars, HeadVar)
-        ),
+        Member =
+            ( pred(M::in) is semidet :-
+                M = HeadVar - _,
+                set_of_var.member(ChangedVars, HeadVar)
+            ),
         list.filter(Member, HeadArg0, HeadArg),
         list.map(fst, HeadArg, Out),
         list.map(snd, HeadArg, OutPrime),
@@ -661,8 +664,8 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
         unexpected($module, $pred, "test failed")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % For each goal after the recursive call, we place that goal
     % into a set according to what properties that goal has.
@@ -771,7 +774,7 @@ accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, GoalId, K, M, GoalStore,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred accu_sets_init(accu_sets::out) is det.
 
@@ -798,7 +801,7 @@ set_upto(Case, K) = Set :-
         set.insert(accu_goal_id(Case, K), Set0, Set)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A goal is a member of the before set iff the goal only depends on goals
     % which are before the recursive call or can be moved before the recursive
@@ -965,7 +968,7 @@ member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId, LessThanGoal) :-
     LessThanGoalId = accu_goal_id(Case, J),
     J < I.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type accu_assoc
     --->    accu_assoc(
@@ -978,7 +981,7 @@ member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId, LessThanGoal) :-
     % associative and the variable which depends on those two arguments,
     % and an indicator of whether or not the predicate is commutative.
     %
-:- pred accu_is_associative(module_info::in, pred_id::in, prog_vars::in,
+:- pred accu_is_associative(module_info::in, pred_id::in, list(prog_var)::in,
     accu_assoc::out) is semidet.
 
 accu_is_associative(ModuleInfo, PredId, Args, Result) :-
@@ -1004,7 +1007,7 @@ accu_is_associative(ModuleInfo, PredId, Args, Result) :-
     % is descended from which.
     %
 :- pred associativity_assertion(module_info::in, list(assert_id)::in,
-    prog_vars::in, set_of_progvar::out, prog_var::out) is semidet.
+    list(prog_var)::in, set_of_progvar::out, prog_var::out) is semidet.
 
 associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0, VarAB,
         OutputVar) :-
@@ -1027,7 +1030,7 @@ associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0, VarAB,
     % is descended from which.
     %
 :- pred commutativity_assertion(module_info::in,list(assert_id)::in,
-    prog_vars::in, set_of_progvar::out) is semidet.
+    list(prog_var)::in, set_of_progvar::out) is semidet.
 
 commutativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
         PossibleStaticVars) :-
@@ -1042,18 +1045,18 @@ commutativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
             PossibleStaticVars)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Does the current predicate update some state?
     %
-:- pred accu_is_update(module_info::in, pred_id::in, prog_vars::in,
+:- pred accu_is_update(module_info::in, pred_id::in, list(prog_var)::in,
     pair(prog_var)::out) is semidet.
 
 accu_is_update(ModuleInfo, PredId, Args, ResultStateVars) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_assertions(PredInfo, Assertions),
     list.filter_map(
-        (pred(AssertId::in, StateVars::out) is semidet :-
+        ( pred(AssertId::in, StateVars::out) is semidet :-
             assertion.is_update_assertion(ModuleInfo, AssertId,
                 PredId, Args, StateVars)
         ),
@@ -1062,7 +1065,7 @@ accu_is_update(ModuleInfo, PredId, Args, ResultStateVars) :-
     % just in case there are duplicate promises.
     Result = [ResultStateVars].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Can the construction unification be expressed as a call to the
     % specified predicate.
@@ -1074,15 +1077,15 @@ is_associative_construction(ModuleInfo, PredId, ConsId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_assertions(PredInfo, Assertions),
     list.filter(
-        (pred(AssertId::in) is semidet :-
+        ( pred(AssertId::in) is semidet :-
             assertion.is_construction_equivalence_assertion(ModuleInfo,
                 AssertId, ConsId, PredId)
         ),
         set.to_sorted_list(Assertions), Result),
     Result = [_ | _].
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type accu_substs
     --->    accu_substs(
@@ -1116,8 +1119,8 @@ is_associative_construction(ModuleInfo, PredId, ConsId) :-
     %
 :- pred accu_stage2(module_info::in, proc_info::in,
     accu_goal_id::in, accu_goal_store::in, accu_sets::in,
-    prog_vars::in, prog_vars::in, prog_varset::out, vartypes::out,
-    prog_vars::out, accu_base::out, list(pair(prog_var))::out,
+    list(prog_var)::in, list(prog_var)::in, prog_varset::out, vartypes::out,
+    list(prog_var)::out, accu_base::out, list(pair(prog_var))::out,
     accu_substs::out, accu_goal_store::out, list(accu_warning)::out)
     is semidet.
 
@@ -1133,12 +1136,13 @@ accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
     % associative calls.
     After = Assoc `union` ConstructAssoc `union` Construct,
 
-    P = (pred(Id::in, Set0::in, Set::out) is det :-
-        goal_store_lookup(GoalStore, Id, stored_goal(Goal, _InstMap)),
-        Goal = hlds_goal(_GoalExpr, GoalInfo),
-        NonLocals = goal_info_get_nonlocals(GoalInfo),
-        set_of_var.union(NonLocals, Set0, Set)
-    ),
+    P =
+        ( pred(Id::in, Set0::in, Set::out) is det :-
+            goal_store_lookup(GoalStore, Id, stored_goal(Goal, _InstMap)),
+            Goal = hlds_goal(_GoalExpr, GoalInfo),
+            NonLocals = goal_info_get_nonlocals(GoalInfo),
+            set_of_var.union(NonLocals, Set0, Set)
+        ),
     list.foldl(P, set.to_sorted_list(Before),
         set_of_var.init, BeforeNonLocals),
     list.foldl(P, set.to_sorted_list(After),
@@ -1166,9 +1170,9 @@ accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
 
     BaseCase = accu_base(UpdateBase, AssocBase, OtherBase).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred accu_substs_init(prog_vars::in, prog_varset::in, prog_varset::out,
+:- pred accu_substs_init(list(prog_var)::in, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, accu_substs::out) is det.
 
 accu_substs_init(InitAccs, !VarSet, !VarTypes, Substs) :-
@@ -1183,8 +1187,9 @@ accu_substs_init(InitAccs, !VarSet, !VarTypes, Substs) :-
     % Initialise the acc_var_subst to be from Var to A_Var where Var is a
     % member of InitAccs and A_Var is a fresh variable of the same type of Var.
     %
-:- pred acc_var_subst_init(prog_vars::in, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, accu_subst::out) is det.
+:- pred acc_var_subst_init(list(prog_var)::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    accu_subst::out) is det.
 
 acc_var_subst_init([], !VarSet, !VarTypes, map.init).
 acc_var_subst_init([Var | Vars], !VarSet, !VarTypes, Subst) :-
@@ -1205,7 +1210,7 @@ create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
     lookup_var_type(!.VarTypes, OldVar, Type),
     add_var_type(NewVar, Type, !VarTypes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % For each member of the assoc set determine the substitutions needed,
     % and also check the efficiency of the procedure isn't worsened
@@ -1292,14 +1297,14 @@ accu_has_heuristic(unqualified("list"), "append", 3).
     % heuristic returns the set of which head variables are important
     % in the running time of the predicate.
     %
-:- pred accu_heuristic(module_name::in, string::in, arity::in, prog_vars::in,
-    set_of_progvar::out) is semidet.
+:- pred accu_heuristic(module_name::in, string::in, arity::in,
+    list(prog_var)::in, set_of_progvar::out) is semidet.
 
 accu_heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C],
         Set) :-
     set_of_var.make_singleton(A, Set).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % For each member of the update set determine the substitutions needed
     % (creating the accumulator variables when needed).
@@ -1310,7 +1315,8 @@ accu_heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C],
     list(accu_goal_id)::in, set_of_progvar::in,
     accu_substs::in, accu_substs::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    prog_vars::out, prog_vars::out, list(pair(prog_var))::out) is semidet.
+    list(prog_var)::out, list(prog_var)::out, list(pair(prog_var))::out)
+    is semidet.
 
 accu_process_update_set(_ModuleInfo, _GS, [], _OutPrime, !Substs,
         !VarSet, !VarTypes, [], [], []).
@@ -1354,7 +1360,7 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     Accs = Accs0 ++ [Acc],
     BasePairs = BasePairs0 ++ [StateOutputVar - Acc0].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % divide_base_case(UpdateOut, Out, U, A, O) is true iff given the output
     % variables which are instantiated by update goals, UpdateOut, and all
@@ -1367,7 +1373,7 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     % the same goal_id.
     %
 :- pred accu_divide_base_case(module_info::in, vartypes::in,
-    accu_goal_store::in, prog_vars::in, prog_vars::in,
+    accu_goal_store::in, list(prog_var)::in, list(prog_var)::in,
     set(accu_goal_id)::out, set(accu_goal_id)::out, set(accu_goal_id)::out)
     is det.
 
@@ -1384,7 +1390,7 @@ accu_divide_base_case(ModuleInfo, VarTypes, C, UpdateOut, Out,
     set.to_sorted_list(Set, List),
 
     list.map(
-        (pred(GoalId::in, Ancestors::out) is det :-
+        ( pred(GoalId::in, Ancestors::out) is det :-
             goal_store_all_ancestors(C, GoalId, VarTypes,
                 ModuleInfo, no, Ancestors)
         ), List, OtherBaseList),
@@ -1403,7 +1409,7 @@ accu_divide_base_case(ModuleInfo, VarTypes, C, UpdateOut, Out,
 
 accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
     solutions.solutions(
-        (pred(Key::out) is nondet :-
+        ( pred(Key::out) is nondet :-
             goal_store_member(GoalStore, Key, stored_goal(Goal, InstMap0)),
             Key = accu_goal_id(accu_base, _),
             Goal = hlds_goal(_GoalExpr, GoalInfo),
@@ -1428,7 +1434,7 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
         unexpected($module, $pred, "more than one Id")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst stored_goal_plain_call
     --->    stored_goal(goal_plain_call, ground).
@@ -1449,18 +1455,18 @@ lookup_call(GoalStore, Id, stored_goal(Call, InstMap)) :-
         unexpected($module, $pred, "not a call")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % accu_stage3 creates the accumulator version of the predicate using
     % the substitutions determined in stage2. It also redefines the
     % original procedure to call the accumulator version of the procedure.
     %
-:- pred accu_stage3(accu_goal_id::in, prog_vars::in, prog_varset::in,
+:- pred accu_stage3(accu_goal_id::in, list(prog_var)::in, prog_varset::in,
     vartypes::in, accu_goal_store::in, accu_goal_store::in,
     accu_substs::in, accu_subst::in, accu_subst::in,
     accu_base::in, list(pair(prog_var))::in, accu_sets::in,
-    prog_vars::in, top_level::in, pred_id::in, pred_info::in,
+    list(prog_var)::in, top_level::in, pred_id::in, pred_info::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 accu_stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
@@ -1490,11 +1496,11 @@ accu_stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
     requantify_proc_general(ordinary_nonlocals_no_lambda, !OrigProcInfo),
     update_accumulator_pred(AccPredId, AccProcId, AccGoal, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Construct a proc_info for the introduced predicate.
     %
-:- pred acc_proc_info(prog_vars::in, prog_varset::in, vartypes::in,
+:- pred acc_proc_info(list(prog_var)::in, prog_varset::in, vartypes::in,
     accu_substs::in, proc_info::in, list(mer_type)::out, proc_info::out)
     is det.
 
@@ -1538,11 +1544,11 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
         InstVarSet, HeadModes, detism_decl_none, Detism, Goal, RttiVarMaps,
         IsAddressTaken, HasParallelConj, VarNameRemap, AccProcInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Construct the pred_info for the introduced predicate.
     %
-:- pred acc_pred_info(list(mer_type)::in, prog_vars::in, proc_info::in,
+:- pred acc_pred_info(list(mer_type)::in, list(prog_var)::in, proc_info::in,
     pred_id::in, pred_info::in, proc_id::out, pred_info::out) is det.
 
 acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
@@ -1578,14 +1584,14 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
         ExistQVars, ClassContext, Assertions, VarNameRemap,
         NewProcInfo, NewProcId, NewPredInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % create_goal creates the new base and recursive case of the
     % original procedure (OrigBaseGoal and OrigRecGoal) and the base
     % and recursive cases of accumulator version (AccBaseGoal and
     % AccRecGoal).
     %
-:- pred accu_create_goal(accu_goal_id::in, prog_vars::in,
+:- pred accu_create_goal(accu_goal_id::in, list(prog_var)::in,
     pred_id::in, proc_id::in, sym_name::in, accu_substs::in,
     accu_subst::in, accu_subst::in, accu_base::in,
     list(pair(prog_var))::in, accu_sets::in,
@@ -1606,7 +1612,7 @@ accu_create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
     % accumulator version of the call, which can have the substitutions
     % applied to it easily.
     %
-:- func create_acc_call(hlds_goal::in(goal_plain_call), prog_vars::in,
+:- func create_acc_call(hlds_goal::in(goal_plain_call), list(prog_var)::in,
     pred_id::in, proc_id::in, sym_name::in) = (hlds_goal::out(goal_plain_call))
     is det.
 
@@ -1745,7 +1751,7 @@ acc_unification(Out - Acc, Goal) :-
     goal_info_init(NonLocalVars, InstMapDelta, detism_det, purity_pure, Info),
     Goal = hlds_goal(Expr, Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given the top level structure of the goal create new version
     % with new base and recursive cases plugged in.
@@ -1836,7 +1842,7 @@ accu_top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Place the accumulator version of the predicate in the HLDS.
     %
@@ -1851,8 +1857,8 @@ update_accumulator_pred(NewPredId, NewProcId, AccGoal, !ModuleInfo) :-
     module_info_set_pred_proc_info(NewPredId, NewProcId,
         PredInfo, ProcInfo, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % accu_rename(Ids, Subst, From, Initial):
     %
@@ -1865,7 +1871,7 @@ update_accumulator_pred(NewPredId, NewProcId, AccGoal, !ModuleInfo) :-
 
 accu_rename(Ids, Subst, From, Initial) = Final :-
     list.foldl(
-        (pred(Id::in, GS0::in, GS::out) is det :-
+        ( pred(Id::in, GS0::in, GS::out) is det :-
             goal_store_lookup(From, Id, stored_goal(Goal0, InstMap)),
             rename_some_vars_in_goal(Subst, Goal0, Goal),
             goal_store_det_insert(Id, stored_goal(Goal, InstMap), GS0, GS)
@@ -1877,7 +1883,7 @@ accu_rename(Ids, Subst, From, Initial) = Final :-
 
 base_case_ids(GS) = Base :-
     solutions.solutions(
-        (pred(Key::out) is nondet :-
+        ( pred(Key::out) is nondet :-
             goal_store_member(GS, Key, _Goal),
             Key = accu_goal_id(accu_base, _)
         ), Base).
@@ -1893,12 +1899,12 @@ base_case_ids_set(GS) = set.list_to_set(base_case_ids(GS)).
 
 accu_goal_list(Ids, GS) = Goals :-
     list.map(
-        (pred(Key::in, G::out) is det :-
+        ( pred(Key::in, G::out) is det :-
             goal_store_lookup(GS, Key, stored_goal(G, _))
         ), Ids, Goals).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred calculate_goal_info(hlds_goal_expr::in, hlds_goal::out) is det.
 
@@ -1913,8 +1919,8 @@ calculate_goal_info(GoalExpr, hlds_goal(GoalExpr, GoalInfo)) :-
         unexpected($module, $pred, "not a conj")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func chain_subst(accu_subst, accu_subst) = accu_subst.
 
@@ -1936,6 +1942,6 @@ chain_subst_2([A|As], AtoB, BtoC, AtoC) :-
         AtoC = AtoC0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.accumulator.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
