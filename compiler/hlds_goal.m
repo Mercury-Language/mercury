@@ -37,7 +37,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 :- import_module term.
 
@@ -638,7 +637,7 @@
     % The arg_name_mode field gives the foreign variable name and the original
     % mode declaration for the argument; a no means that the argument is not
     % used by the foreign code. (In particular, the type_info variables
-    % introduced by polymorphism.m might be represented in this way).
+    % introduced by polymorphism.m might be represented in this way.)
     %
     % The arg_type field gives the original types of the arguments.
     % (With inlining, the actual type may be an instance of the original type.)
@@ -646,20 +645,20 @@
 :- type foreign_arg
     --->    foreign_arg(
                 arg_var         :: prog_var,
-                arg_name_mode   :: maybe(pair(string, mer_mode)),
+                arg_name_mode   :: maybe(foreign_arg_name_mode),
                 arg_type        :: mer_type,
                 arg_box_policy  :: box_policy
             ).
 
 :- func foreign_arg_var(foreign_arg) = prog_var.
 :- func foreign_arg_maybe_name_mode(foreign_arg) =
-    maybe(pair(string, mer_mode)).
+    maybe(foreign_arg_name_mode).
 :- func foreign_arg_type(foreign_arg) = mer_type.
 :- func foreign_arg_box(foreign_arg) = box_policy.
 
 :- pred make_foreign_args(list(prog_var)::in,
-    list(pair(maybe(pair(string, mer_mode)), box_policy))::in,
-    list(mer_type)::in, list(foreign_arg)::out) is det.
+    list(foreign_arg_name_mode_box)::in, list(mer_type)::in,
+    list(foreign_arg)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1792,6 +1791,7 @@
 :- import_module parse_tree.prog_detism.
 
 :- import_module io.
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -1812,8 +1812,8 @@ make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
         Types = [Type | TypesTail]
     then
         make_foreign_args(VarsTail, NamesModesBoxesTail, TypesTail, ArgsTail),
-        NameModeBox = NameMode - Box,
-        Arg = foreign_arg(Var, NameMode, Type, Box),
+        NameModeBox = foreign_arg_name_mode_box(MaybeNameMode, Box),
+        Arg = foreign_arg(Var, MaybeNameMode, Type, Box),
         Args = [Arg | ArgsTail]
     else if
         Vars = [],

@@ -25,7 +25,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -395,11 +394,23 @@ default_export_enum_attributes =
             % We explicitly store the name because we need the real
             % name in code_gen.
 
+:- type foreign_arg_name_mode
+    --->    foreign_arg_name_mode(string, mer_mode).
+
     % box_policy only makes sense in high-level C grades using low-level data.
     %
 :- type box_policy
     --->    bp_native_if_possible
     ;       bp_always_boxed.
+
+:- type foreign_arg_name_mode_box
+    --->    foreign_arg_name_mode_box(
+                maybe(foreign_arg_name_mode),
+                box_policy
+            ).
+
+:- func foreign_arg_name_mode_box_project_maybe_name_mode(
+    foreign_arg_name_mode_box) = maybe(foreign_arg_name_mode).
 
     % Extract the modes from the list of pragma_vars.
     %
@@ -412,7 +423,7 @@ default_export_enum_attributes =
     % Extract the names from the list of pragma_vars.
     %
 :- pred pragma_get_var_infos(list(pragma_var)::in,
-    list(pair(maybe(pair(string, mer_mode)), box_policy))::out) is det.
+    list(foreign_arg_name_mode_box)::out) is det.
 
 :- type proc_affects_liveness
     --->    proc_affects_liveness
@@ -568,6 +579,10 @@ add_extra_attribute(NewAttribute, !Attrs) :-
     !Attrs ^ attr_extra_attributes :=
         [NewAttribute | !.Attrs ^ attr_extra_attributes].
 
+foreign_arg_name_mode_box_project_maybe_name_mode(MaybeNameModeBox)
+        = MaybeNameMode :-
+    MaybeNameModeBox = foreign_arg_name_mode_box(MaybeNameMode, _).
+
 pragma_get_modes([], []).
 pragma_get_modes([PragmaVar | PragmaVars], [Mode | Modes]) :-
     PragmaVar = pragma_var(_Var, _Name, Mode, _BoxPolicy),
@@ -581,7 +596,8 @@ pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
 pragma_get_var_infos([], []).
 pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
     PragmaVar = pragma_var(_Var, Name, Mode, BoxPolicy),
-    Info = yes(Name - Mode) - BoxPolicy,
+    NameMode = foreign_arg_name_mode(Name, Mode),
+    Info = foreign_arg_name_mode_box(yes(NameMode), BoxPolicy),
     pragma_get_var_infos(PragmaVars, Infos).
 
 %---------------------------------------------------------------------------%

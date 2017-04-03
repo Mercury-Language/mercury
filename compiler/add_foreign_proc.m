@@ -52,7 +52,6 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module bag.
 :- import_module cord.
@@ -367,7 +366,9 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
                 predicate_table_set_preds(Preds, PredTable1, PredTable),
                 module_info_set_predicate_table(PredTable, !ModuleInfo),
                 pragma_get_var_infos(PVars, ArgInfoBox),
-                assoc_list.keys(ArgInfoBox, ArgInfo),
+                ArgInfo = list.map(
+                    foreign_arg_name_mode_box_project_maybe_name_mode,
+                    ArgInfoBox),
                 warn_singletons_in_pragma_foreign_proc(!.ModuleInfo,
                     PragmaImpl, PragmaForeignLanguage, ArgInfo, Context,
                     SimpleCallId, PredId, ProcId, !Specs)

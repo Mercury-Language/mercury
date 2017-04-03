@@ -803,7 +803,7 @@ make_c_arg_list([], [], []).
 make_c_arg_list([Arg | ArgTail], [ArgInfo | ArgInfoTail], [CArg | CArgTail]) :-
     Arg = foreign_arg(Var, MaybeNameMode, Type, BoxPolicy),
     (
-        MaybeNameMode = yes(Name - _),
+        MaybeNameMode = yes(foreign_arg_name_mode(Name, _)),
         MaybeName = yes(Name)
     ;
         MaybeNameMode = no,
@@ -847,7 +847,7 @@ make_extra_c_arg_list_seq([ExtraArg | ExtraArgs], ModuleInfo, LastReg,
         [CArg | CArgs]) :-
     ExtraArg = foreign_arg(Var, MaybeNameMode, OrigType, BoxPolicy),
     (
-        MaybeNameMode = yes(Name - Mode),
+        MaybeNameMode = yes(foreign_arg_name_mode(Name, Mode)),
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, TopFunctorMode)
     ;
         MaybeNameMode = no,

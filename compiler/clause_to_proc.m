@@ -76,6 +76,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
@@ -290,7 +291,7 @@ set_arg_names(Arg, !.Vars) = !:Vars :-
     Var = foreign_arg_var(Arg),
     MaybeNameMode = foreign_arg_maybe_name_mode(Arg),
     (
-        MaybeNameMode = yes(Name - _),
+        MaybeNameMode = yes(foreign_arg_name_mode(Name, _)),
         varset.name_var(Var, Name, !Vars)
     ;
         MaybeNameMode = no

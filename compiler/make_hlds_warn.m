@@ -24,7 +24,6 @@
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module list.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -52,7 +51,7 @@
     %
 :- pred warn_singletons_in_pragma_foreign_proc(module_info::in,
     pragma_foreign_proc_impl::in, foreign_language::in,
-    list(maybe(pair(string, mer_mode)))::in, prog_context::in,
+    list(maybe(foreign_arg_name_mode))::in, prog_context::in,
     simple_call_id::in, pred_id::in, proc_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -526,30 +525,30 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
     pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, SimpleCallId,
         PredId, ProcId, C_CodeList, !Specs).
 
-:- pred var_is_unmentioned(list(string)::in, maybe(pair(string, mer_mode))::in,
+:- pred var_is_unmentioned(list(string)::in, maybe(foreign_arg_name_mode)::in,
     string::out) is semidet.
 
 var_is_unmentioned(NameList1, MaybeArg, Name) :-
-    MaybeArg = yes(Name - _Mode),
+    MaybeArg = yes(foreign_arg_name_mode(Name, _Mode)),
     not string.prefix(Name, "_"),
     not list.member(Name, NameList1).
 
 :- pred input_var_is_unmentioned(module_info::in,
-    list(string)::in, maybe(pair(string, mer_mode))::in,
+    list(string)::in, maybe(foreign_arg_name_mode)::in,
     string::out) is semidet.
 
 input_var_is_unmentioned(ModuleInfo, NameList1, MaybeArg, Name) :-
-    MaybeArg = yes(Name - Mode),
+    MaybeArg = yes(foreign_arg_name_mode(Name, Mode)),
     mode_is_input(ModuleInfo, Mode),
     not string.prefix(Name, "_"),
     not list.member(Name, NameList1).
 
 :- pred output_var_is_unmentioned(module_info::in,
-    list(string)::in, list(string)::in, maybe(pair(string, mer_mode))::in,
+    list(string)::in, list(string)::in, maybe(foreign_arg_name_mode)::in,
     string::out) is semidet.
 
 output_var_is_unmentioned(ModuleInfo, NameList1, NameList2, MaybeArg, Name) :-
-    MaybeArg = yes(Name - Mode),
+    MaybeArg = yes(foreign_arg_name_mode(Name, Mode)),
     mode_is_output(ModuleInfo, Mode),
     not string.prefix(Name, "_"),
     not list.member(Name, NameList1),

@@ -2322,7 +2322,7 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
             MaybeNameAndMode = no,
             Name = "_"
         ;
-            MaybeNameAndMode = yes(Name - _Mode2)
+            MaybeNameAndMode = yes(foreign_arg_name_mode(Name, _Mode2))
         ),
         PragmaVar = pragma_var(Var, Name, Mode, bp_native_if_possible),
         varset.name_var(Var, Name, !VarSet),

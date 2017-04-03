@@ -1539,7 +1539,7 @@ write_foreign_args(VarSet, TVarSet, VarNamePrint, [Arg | Args], !IO) :-
     Arg = foreign_arg(Var, MaybeNameMode, Type, BoxPolicy),
     mercury_output_var(VarSet, VarNamePrint, Var, !IO),
     (
-        MaybeNameMode = yes(Name - Mode),
+        MaybeNameMode = yes(foreign_arg_name_mode(Name, Mode)),
         io.write_string("/" ++ Name ++ "(", !IO),
         ( if Mode = in_mode then
             io.write_string("in", !IO)

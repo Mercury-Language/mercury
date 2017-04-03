@@ -49,6 +49,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
@@ -379,15 +380,16 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         % XXX We may eventually want to annotate foreign_procs with
         % clousure_infos as well. It isn't useful at the moment however.
 
-        ForeignHOArgs = (pred(Arg::in, Out::out) is semidet :-
-            Arg = foreign_arg(Var, NameMode, Type, _BoxPolicy),
+        ForeignHOArgs =
+            ( pred(Arg::in, Out::out) is semidet :-
+                Arg = foreign_arg(Var, NameMode, Type, _BoxPolicy),
 
-            % A 'no' here means that the foreign argument is unused.
-            NameMode = yes(_ - Mode),
-            mode_util.mode_is_output(ModuleInfo, Mode),
-            type_is_higher_order(Type),
-            Out = Var - unknown
-        ),
+                % A 'no' here means that the foreign argument is unused.
+                NameMode = yes(foreign_arg_name_mode(_, Mode)),
+                mode_util.mode_is_output(ModuleInfo, Mode),
+                type_is_higher_order(Type),
+                Out = Var - unknown
+            ),
         list.filter_map(ForeignHOArgs, Args, OutputForeignHOArgs),
         map.det_insert_from_assoc_list(OutputForeignHOArgs, !ClosureInfo),
         Goal = Goal0

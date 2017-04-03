@@ -1976,10 +1976,10 @@ polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars,
 
 :- pred foreign_proc_add_typeclass_info(bool::in, mer_mode::in,
     pragma_foreign_proc_impl::in, tvarset::in, prog_constraint::in,
-    pair(maybe(pair(string, mer_mode)), box_policy)::out) is det.
+    foreign_arg_name_mode_box::out) is det.
 
 foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
-        Constraint, MaybeArgName - bp_native_if_possible) :-
+        Constraint, MaybeArgNameBox) :-
     Constraint = constraint(SymName, Types),
     Name = sym_name_to_string_sep(SymName, "__"),
     type_vars_list(Types, TypeVars),
@@ -1994,15 +1994,17 @@ foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
     then
         MaybeArgName = no
     else
-        MaybeArgName = yes(ConstraintVarName - Mode)
-    ).
+        MaybeArgName = yes(foreign_arg_name_mode(ConstraintVarName, Mode))
+    ),
+    MaybeArgNameBox =
+        foreign_arg_name_mode_box(MaybeArgName, bp_native_if_possible).
 
 :- pred foreign_proc_add_typeinfo(bool::in, mer_mode::in,
     pragma_foreign_proc_impl::in, tvarset::in, tvar::in,
-    pair(maybe(pair(string, mer_mode)), box_policy)::out) is det.
+    foreign_arg_name_mode_box::out) is det.
 
 foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
-        MaybeArgName - bp_native_if_possible) :-
+        MaybeArgNameBox) :-
     ( if varset.search_name(TypeVarSet, TVar, TypeVarName) then
         C_VarName = "TypeInfo_for_" ++ TypeVarName,
         % If the variable name corresponding to the type_info isn't mentioned
@@ -2013,11 +2015,13 @@ foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
         then
             MaybeArgName = no
         else
-            MaybeArgName = yes(C_VarName - Mode)
+            MaybeArgName = yes(foreign_arg_name_mode(C_VarName, Mode))
         )
     else
         MaybeArgName = no
-    ).
+    ),
+    MaybeArgNameBox =
+        foreign_arg_name_mode_box(MaybeArgName, bp_native_if_possible).
 
 :- pred foreign_proc_does_not_use_variable(pragma_foreign_proc_impl::in,
     string::in) is semidet.

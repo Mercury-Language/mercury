@@ -114,12 +114,11 @@
 :- import_module hlds.vartypes.
 
 :- import_module int.
-:- import_module pair.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
 %
-% Code for procedure calls
+% Code for procedure calls.
 %
 
 erl_gen_call(PredId, ProcId, ArgVars, _ActualArgTypes,
@@ -269,7 +268,7 @@ make_nondet_call(CallTarget, InputExprs, OutputVars, SuccessCont0,
 
 %-----------------------------------------------------------------------------%
 %
-% Code for generic calls
+% Code for generic calls.
 %
 
 erl_gen_higher_order_call(GenericCall, ArgVars, Modes, Detism,
@@ -572,7 +571,7 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for foreign proc calls
+% Code for foreign proc calls.
 %
 
 % Currently dummy arguments do not exist at all. The writer of the foreign
@@ -702,7 +701,7 @@ erl_gen_ordinary_pragma_foreign_proc(ForeignArgs, ForeignCode,
 
 foreign_arg_type_mode(foreign_arg(_, MaybeNameMode, Type, _), Type, Mode) :-
     (
-        MaybeNameMode = yes(_Name - Mode)
+        MaybeNameMode = yes(foreign_arg_name_mode(_Name, Mode))
     ;
         MaybeNameMode = no,
         % This argument is unused.
@@ -713,7 +712,7 @@ foreign_arg_type_mode(foreign_arg(_, MaybeNameMode, Type, _), Type, Mode) :-
 
 foreign_arg_name(foreign_arg(_, MaybeNameMode, _, _)) = Name :-
     (
-        MaybeNameMode = yes(Name - _)
+        MaybeNameMode = yes(foreign_arg_name_mode(Name, _))
     ;
         MaybeNameMode = no,
         % This argument is unused.

@@ -91,7 +91,6 @@
 
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module term.
 :- import_module varset.
@@ -442,7 +441,8 @@ gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
             Info ^ trail_module_info, Context, SaveTicketGoal)
     ;
         GenerateInline =  yes,
-        Args = [foreign_arg(TicketVar, yes("Ticket" - out_mode),
+        Args = [foreign_arg(TicketVar,
+            yes(foreign_arg_name_mode("Ticket", out_mode)),
             ticket_type, bp_native_if_possible)],
         ForeignCode = "MR_store_ticket(Ticket);",
         trail_generate_foreign_proc("store_ticket", purity_impure,
@@ -462,7 +462,8 @@ gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
             Context, ResetTicketGoal)
     ;
         GenerateInline = yes,
-        Args = [foreign_arg(TicketVar, yes("Ticket" - in_mode),
+        Args = [foreign_arg(TicketVar,
+            yes(foreign_arg_name_mode("Ticket", in_mode)),
             ticket_type, bp_native_if_possible)],
         ForeignCode = "MR_reset_ticket(Ticket, MR_undo);",
         trail_generate_foreign_proc("reset_ticket_undo", purity_impure,
@@ -482,7 +483,8 @@ gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
             Context, ResetTicketGoal)
     ;
         GenerateInline = yes,
-        Args = [foreign_arg(TicketVar, yes("Ticket" - in_mode),
+        Args = [foreign_arg(TicketVar,
+            yes(foreign_arg_name_mode("Ticket", in_mode)),
             ticket_type, bp_native_if_possible)],
         ForeignCode = "MR_reset_ticket(Ticket, MR_solve);",
         trail_generate_foreign_proc("reset_ticket_solve", purity_impure,
@@ -502,7 +504,8 @@ gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
             Context, ResetTicketGoal)
     ;
         GenerateInline = yes,
-        Args = [foreign_arg(TicketVar, yes("Ticket" - in_mode),
+        Args = [foreign_arg(TicketVar,
+            yes(foreign_arg_name_mode("Ticket", in_mode)),
             ticket_type, bp_native_if_possible)],
         ForeignCode = "MR_reset_ticket(Ticket, MR_commit);",
         trail_generate_foreign_proc("reset_ticket_commit", purity_impure,
@@ -563,8 +566,8 @@ gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
     ;
         GenerateInline = yes,
         Args = [foreign_arg(SavedTicketCounterVar,
-            yes("TicketCounter" - out_mode), ticket_counter_type,
-            bp_native_if_possible)],
+            yes(foreign_arg_name_mode("TicketCounter", out_mode)),
+            ticket_counter_type, bp_native_if_possible)],
         ForeignCode = "MR_mark_ticket_stack(TicketCounter);",
         trail_generate_foreign_proc("mark_ticket_stack", purity_impure,
             instmap_delta_bind_no_var, Info ^ trail_module_info,
@@ -585,8 +588,8 @@ gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
     ;
         GenerateInline = yes,
         Args = [foreign_arg(SavedTicketCounterVar,
-            yes("TicketCounter" - in_mode), ticket_counter_type,
-            bp_native_if_possible)],
+            yes(foreign_arg_name_mode("TicketCounter", in_mode)),
+            ticket_counter_type, bp_native_if_possible)],
         ForeignCode = "MR_prune_tickets_to(TicketCounter);",
         trail_generate_foreign_proc("prune_tickets_to", purity_impure,
             instmap_delta_bind_no_var, Info ^ trail_module_info,

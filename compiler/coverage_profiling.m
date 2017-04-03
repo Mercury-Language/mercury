@@ -1157,13 +1157,15 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
     ModuleInfo = !.CoverageInfo ^ ci_module_info,
     Ground = ground(shared, none_or_default_func),
     DataType = CPOptions ^ cpo_dynamic_coverage,
+    FromToGround = from_to_mode(Ground, Ground),
     (
         DataType = dynamic_coverage_data,
         PredName = "increment_dynamic_coverage_point_count",
         ArgVars = [CPIndexVar],
         make_foreign_args(ArgVars,
-            [(yes("CPIndex" - from_to_mode(Ground, Ground))
-                - bp_native_if_possible)],
+            [foreign_arg_name_mode_box(
+                yes(foreign_arg_name_mode("CPIndex", FromToGround)),
+                bp_native_if_possible)],
             [int_type], ForeignArgVars),
         PredArity = 1
     ;
@@ -1171,10 +1173,12 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         PredName = "increment_static_coverage_point_count",
         ArgVars = [ProcLayoutVar, CPIndexVar],
         make_foreign_args(ArgVars,
-            [(yes("ProcLayout" - from_to_mode(Ground, Ground))
-                - bp_native_if_possible),
-             (yes("CPIndex" - from_to_mode(Ground, Ground))
-                - bp_native_if_possible)],
+            [foreign_arg_name_mode_box(
+                yes(foreign_arg_name_mode("ProcLayout", FromToGround)),
+                bp_native_if_possible),
+            foreign_arg_name_mode_box(
+                yes(foreign_arg_name_mode("CPIndex", FromToGround)),
+                bp_native_if_possible)],
             [c_pointer_type, int_type], ForeignArgVars),
         PredArity = 2
     ),

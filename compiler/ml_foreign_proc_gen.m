@@ -58,7 +58,6 @@
 
 :- import_module bool.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -350,7 +349,7 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
         MldsType = mlds_generic_type
     ),
     ( if
-        MaybeVarMode = yes(ArgName - Mode),
+        MaybeVarMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
         not var_is_singleton(ArgName)
     then
@@ -642,7 +641,7 @@ ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
     Arg = foreign_arg(_Var, MaybeNameAndMode, Type, BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ( if
-        MaybeNameAndMode = yes(ArgName - _Mode),
+        MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, _Mode)),
         not var_is_singleton(ArgName)
     then
         (
@@ -694,7 +693,7 @@ ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
     Arg = foreign_arg(_Var, MaybeNameAndMode, Type, _BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ( if
-        MaybeNameAndMode = yes(ArgName - _Mode),
+        MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, _Mode)),
         not var_is_singleton(ArgName)
     then
         (
@@ -759,7 +758,7 @@ ml_gen_pragma_ccsj_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ( if
         ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
-        MaybeNameAndMode = yes(ArgName - Mode),
+        MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         not var_is_singleton(ArgName),
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_in)
     then
@@ -914,7 +913,7 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
     ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ( if
-        MaybeNameAndMode = yes(ArgName - Mode),
+        MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         not var_is_singleton(ArgName),
         check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_out)
@@ -984,7 +983,7 @@ ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
     Arg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ( if
-        MaybeNameAndMode = yes(ArgName - Mode),
+        MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         not var_is_singleton(ArgName),
         check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_out)
