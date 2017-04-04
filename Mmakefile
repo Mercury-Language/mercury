@@ -492,7 +492,8 @@ tar: 	$(GENERATED_DOCS)
 			mv $$ROOTNAME/bytecode stuff-to-exclude; 	\
 		mv $$ROOTNAME/extras/quickcheck stuff-to-exclude;	\
 		mv $$ROOTNAME		mercury-srcdist-$(VERSION);	\
-		$(TAR) --exclude ".git" --dereference -cf - 		\
+		$(TAR) --exclude ".git" --exclude ".gitignore" 		\
+			--dereference -cf - 				\
 			mercury-srcdist-$(VERSION) | 			\
 			gzip -9 > mercury-srcdist-$(VERSION).tar.gz;	\
 		mv mercury-srcdist-$(VERSION)	$$ROOTNAME;		\
