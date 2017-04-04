@@ -31,16 +31,33 @@ HTML_TO_TEXT=TERM=vt100 lynx -dump
 
 #-----------------------------------------------------------------------------#
 
-DOCS_HTML=allocation.html analysis.html bootstrapping.html bytecode.html \
-	c_coding_standard.html coding_standards.html compiler_design.html \
-	developer_intro.html failure.html gc_and_c_code.html glossary.html \
-	grade_library.html index.html overall_design.html promise_ex.html \
-	release_checklist.html reviews.html todo.html trailing.html \
-	type_class_transformation.html upgrade_boehm_gc.html \
+DOCS_HTML = \
+	allocation.html \
+	analysis.html \
+	bootstrapping.html \
+	bytecode.html \
+	c_coding_standard.html \
+	coding_standards.html \
+	compiler_design.html \
+	developer_intro.html \
+	failure.html \
+	gc_and_c_code.html \
+	glossary.html \
+	grade_library.html \
+	index.html \
+	overall_design.html \
+	promise_ex.html \
+	release_checklist.html \
+	reviews.html \
+	todo.html \
+	trailing.html \
+	type_class_transformation.html \
+	upgrade_boehm_gc.html \
 	work_in_progress.html
-DOCS_TEXT=$(subst .html,.text,$(DOCS_HTML))
 
-DOCS_ALL=$(DOCS_TEXT) $(DOCS_HTML)
+DOCS_TEXT = $(subst .html,.text,$(DOCS_HTML))
+
+DOCS_ALL = $(DOCS_TEXT) $(DOCS_HTML)
 
 #-----------------------------------------------------------------------------#
 
@@ -50,8 +67,8 @@ all: $(DOCS_ALL)
 # This install is for installing the Mercury webpage, which goes to
 # a different directory (supplied by the environment variable
 # INSTALL_WEBDIR).
-# Currently the webpage and this documentation on it is installed by a
-# differemt method.  A copy if the repository is checked out on the
+# Currently the webpage and this documentation on it is installed by
+# a different method. A copy if the repository is checked out on the
 # webserver and linked to.
 
 .PHONY: install
