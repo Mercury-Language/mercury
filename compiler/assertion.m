@@ -24,9 +24,9 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -45,8 +45,8 @@
     % Does the assertion represented by the assertion id, Id,
     % state the commutativity of a pred/func?
     % We extend the usual definition of commutativity to apply to
-    % predicates or functions with more than two arguments as
-    % follows by allowing extra arguments which must be invariant.
+    % predicates or functions with more than two arguments
+    % by allowing extra arguments which must be invariant.
     % If so, this predicate returns (in CVs) the two variables which
     % can be swapped in order if it was a call to Vs.
     %
@@ -57,20 +57,31 @@
     % identical locations on both sides of the equivalence).
     %
 :- pred is_commutativity_assertion(module_info::in, assert_id::in,
-    list(prog_var)::in, pair(prog_var)::out) is semidet.
+    list(prog_var)::in, set_of_progvar::out) is semidet.
 
-    % is_associativity_assertion(MI, Id, Vs, CVs, OV):
+:- type associative_vars_output_var
+    --->    associative_vars_output_var(
+                % The associative vars.
+                set_of_progvar,
+
+                % The output var.
+                prog_var
+            ).
+
+    % is_associativity_assertion(MI, Id, Vs, AssocVarsOutputVar):
     %
     % Does the assertion represented by the assertion id, Id,
     % state the associativity of a pred/func?
-    % We extend the usual definition of associativity to apply to
-    % predicates or functions with more than two arguments as
-    % follows by allowing extra arguments which must be invariant.
-    % If so, this predicate returns (in CVs) the two variables which
-    % can be swapped in order if it was a call to Vs, and the
-    % output variable, OV, related to these two variables (for the
-    % case below it would be the variable in the same position as
-    % AB, BC or ABC).
+    % (We extend the usual definition of associativity to apply to
+    % predicates or functions with more than two arguments
+    % by allowing extra arguments which must be invariant.)
+    % If so, this predicate returns
+    %   associative_vars_output_var(AssocVars, OutputVar),
+    % where AssocVars contains the two input variables which can be swapped
+    % in order if it (what?) was a call to Vs, and OutputVar is the output
+    % variable related to these two variables (for the case below, it would be
+    % the variable in the same position as AB, BC or ABC).
+    % XXX The above comment is both confused and confusing.
     %
     % The assertion must be in a form similar to this
     %
@@ -81,22 +92,26 @@
     %     some [BC] p(Is,B,C,BC), p(Is,A,BC,ABC)
     %   )
     %
-    % for the predicate to return true (note that the invariant
-    % arguments, Is, can be any where providing they are in
-    % identical locations on both sides of the equivalence).
+    % for the predicate to return true.
+    %
+    % Note that the invariant arguments, Is, can be anywhere, provided
+    % they are in identical locations on both sides of the equivalence.
     %
 :- pred is_associativity_assertion(module_info::in, assert_id::in,
-    list(prog_var)::in, pair(prog_var)::out, prog_var::out) is semidet.
+    list(prog_var)::in, associative_vars_output_var::out) is semidet.
 
-    % is_update_assertion(MI, Id, PId, Ss):
+:- type state_update_vars
+    --->    state_update_vars(prog_var, prog_var).
+
+    % is_update_assertion(MI, Id, PId, StateVars):
     %
     % is true iff the assertion, Id, is about a predicate, PId,
     % which takes some state as input and produces some state as output
     % and we are guaranteed to get the same final state regardless of
     % the order that the state is updated.
     %
-    % i.e. the promise should look something like this, note that A
-    % and B could be vectors of variables.
+    % The promise should look something like the following.
+    % Note that A and B could be vectors of variables.
     %
     % :- promise all [A,B,SO,S]
     %   (
@@ -106,10 +121,11 @@
     %   ).
     %
     % Given the actual variables, Vs, to the call to update, return
-    % the pair of variables which are state variables, SPair.
+    % the pair of variables which are state variables, S0 and S,
+    % in StateVars.
     %
 :- pred is_update_assertion(module_info::in, assert_id::in,
-    pred_id::in, list(prog_var)::in, pair(prog_var)::out) is semidet.
+    pred_id::in, list(prog_var)::in, state_update_vars::out) is semidet.
 
     % is_construction_equivalence_assertion(MI, Id, C, P):
     %
@@ -138,11 +154,11 @@
 :- import_module hlds.hlds_clauses.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
@@ -169,14 +185,14 @@ is_commutativity_assertion(Module, AssertId, CallVars, CommutativeVars) :-
     % that will be [A,B].
     %
 :- pred commutative_var_ordering(list(prog_var)::in, list(prog_var)::in,
-    list(prog_var)::in, pair(prog_var)::out) is semidet.
+    list(prog_var)::in, set_of_progvar::out) is semidet.
 
 commutative_var_ordering([P | Ps], [Q | Qs], [V | Vs], CommutativeVars) :-
     ( if P = Q then
         commutative_var_ordering(Ps, Qs, Vs, CommutativeVars)
     else
         commutative_var_ordering_2(P, Q, Ps, Qs, Vs, CallVarB),
-        CommutativeVars = V - CallVarB
+        CommutativeVars = set_of_var.list_to_set([V, CallVarB])
     ).
 
 :- pred commutative_var_ordering_2(prog_var::in, prog_var::in,
@@ -198,7 +214,7 @@ commutative_var_ordering_2(VarP, VarQ, [P | Ps], [Q | Qs], [V | Vs],
 %-----------------------------------------------------------------------------%
 
 is_associativity_assertion(Module, AssertId, CallVars,
-        AssociativeVars, OutputVar) :-
+        AssociativeVarsOutputVar) :-
     assert_id_goal(Module, AssertId, hlds_goal(GoalExpr, GoalInfo)),
     goal_is_equivalence(hlds_goal(GoalExpr, GoalInfo), P, Q),
 
@@ -206,9 +222,9 @@ is_associativity_assertion(Module, AssertId, CallVars,
 
     get_conj_goals(P, PCalls),
     get_conj_goals(Q, QCalls),
-    promise_equivalent_solutions [AssociativeVars, OutputVar] (
+    promise_equivalent_solutions [AssociativeVarsOutputVar] (
         associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
-            AssociativeVars - OutputVar)
+            AssociativeVarsOutputVar)
     ).
 
     % associative(Ps, Qs, Us, R):
@@ -223,10 +239,10 @@ is_associativity_assertion(Module, AssertId, CallVars,
     %
 :- pred associative(list(hlds_goal)::in, list(hlds_goal)::in,
     set_of_progvar::in, list(prog_var)::in,
-    pair(pair(prog_var), prog_var)::out) is cc_nondet.
+    associative_vars_output_var::out) is cc_nondet.
 
 associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
-        (CallVarA - CallVarB) - OutputVar) :-
+        AssociativeVarsOutputVar) :-
     reorder(PCalls, QCalls, LHSCalls, RHSCalls),
     process_one_side(LHSCalls, UniversiallyQuantifiedVars, PredId,
         AB, PairsL, Vs),
@@ -234,7 +250,7 @@ associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
         BC, PairsR, _),
 
     % If you read the predicate documentation, you will note that
-    % for each pair of variables on the left hand side there are an equivalent
+    % for each pair of variables on the left hand side, there is an equivalent
     % pair of variables on the right hand side. As the pairs of variables
     % are not symmetric, the call to list.perm will only succeed once,
     % if at all.
@@ -248,7 +264,11 @@ associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     list.filter((pred(X - _Y::in) is semidet :- X = A),
         AssocList, [_A - CallVarA]),
     list.filter((pred(X - _Y::in) is semidet :- X = B),
-        AssocList, [_B - CallVarB]).
+        AssocList, [_B - CallVarB]),
+
+    AssociativeVars = set_of_var.list_to_set([CallVarA, CallVarB]),
+    AssociativeVarsOutputVar =
+        associative_vars_output_var(AssociativeVars, OutputVar).
 
     % reorder(Ps, Qs, Ls, Rs):
     %
@@ -295,7 +315,7 @@ number_of_associative_vars = 3.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-is_update_assertion(Module, AssertId, _PredId, CallVars, StateA - StateB) :-
+is_update_assertion(Module, AssertId, _PredId, CallVars, StateVars) :-
     assert_id_goal(Module, AssertId, hlds_goal(GoalExpr, GoalInfo)),
     goal_is_equivalence(hlds_goal(GoalExpr, GoalInfo), P, Q),
     UniversiallyQuantifiedVars = goal_info_get_nonlocals(GoalInfo),
@@ -304,16 +324,16 @@ is_update_assertion(Module, AssertId, _PredId, CallVars, StateA - StateB) :-
     get_conj_goals(Q, QCalls),
     solutions.solutions(
         update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars),
-        [StateA - StateB | _]).
+        [StateVars | _]).
 
     %   compose(S0, A, SA),     compose(SB, A, S),
     %   compose(SA, B, S)   <=> compose(S0, B, SB)
     %
 :- pred update(list(hlds_goal)::in, list(hlds_goal)::in, set_of_progvar::in,
-    list(prog_var)::in, pair(prog_var)::out) is nondet.
+    list(prog_var)::in, state_update_vars::out) is nondet.
 
 update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
-        StateA - StateB) :-
+        StateVars) :-
     reorder(PCalls, QCalls, LHSCalls, RHSCalls),
     process_two_linked_calls(LHSCalls, UniversiallyQuantifiedVars, PredId,
         SA, PairsL, Vs),
@@ -335,7 +355,8 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     list.filter((pred(X - _Y::in) is semidet :- X = S0),
         AssocList, [_S0 - StateA]),
     list.filter((pred(X - _Y::in) is semidet :- X = SA),
-        AssocList, [_SA - StateB]).
+        AssocList, [_SA - StateB]),
+    StateVars = state_update_vars(StateA, StateB).
 
 %-----------------------------------------------------------------------------%
 

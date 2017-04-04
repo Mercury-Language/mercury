@@ -355,9 +355,8 @@ generate_warning(ModuleInfo, VarSet, Warning, Msg) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % should_attempt_accu_transform is only true iff the current
-    % proc has been transformed to call the newly created
-    % accumulator proc.
+    % should_attempt_accu_transform is only true iff the current proc
+    % has been transformed to call the newly created accumulator proc.
     %
 :- pred should_attempt_accu_transform(module_info::in, module_info::out,
     pred_id::in, proc_id::in, pred_info::in, proc_info::in, proc_info::out,
@@ -384,9 +383,9 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
     % should_attempt_accu_transform_2 takes a list of locations of the
     % recursive calls, and attempts to introduce accumulator into each of the
     % recursive calls, stopping at the first one that succeeds.
-    % This catches the following case, as selecting the first
-    % recursive call allows the second recursive call to be moved
-    % before it, and OutA is in the correct spot in list.append.
+    % This catches the following case, as selecting the first recursive call
+    % allows the second recursive call to be moved before it, and
+    % OutA is in the correct spot in list.append.
     %
     %   p(InA, OutA),
     %   p(InB, OutB),
@@ -617,9 +616,9 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
     % This is done by identifing those variables whose instantiatedness change
     % in the goals after the recursive call and are headvars.
     %
-    % Note that we are only identifying the output variables which
-    % will need to be accumulated, as there may be other output variables
-    % which are produced prior to the recursive call.
+    % Note that we are only identifying the output variables which will need
+    % to be accumulated, as there may be other output variables which are
+    % produced prior to the recursive call.
     %
 :- pred identify_out_and_out_prime(module_info::in, vartypes::in, instmap::in,
     accu_goal_id::in, list(hlds_goal)::in,
@@ -669,8 +668,8 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
 
     % For each goal after the recursive call, we place that goal
     % into a set according to what properties that goal has.
-    % For the definition of what goes into each set, inspect the
-    % documentation for the functions named before, assoc, and so on.
+    % For the definition of what goes into each set, inspect the documentation
+    % for the functions named before, assoc, and so on.
     %
 :- type accu_sets
     --->    accu_sets(
@@ -711,7 +710,7 @@ accu_stage1(ModuleInfo, VarTypes, FullyStrict, DoLCO, GoalId, M, GoalStore,
     ),
     (
         DoLCO = no,
-        % If LCMC is not turned on then there must be no construction
+        % If LCMC is not turned on, then there must be no construction
         % unifications after the recursive call.
         set.is_empty(Construct),
         set.is_empty(ConstructAssoc)
@@ -841,7 +840,7 @@ accu_assoc(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore, Sets) :-
     accu_is_associative(ModuleInfo, PredId, Args, _),
     (
         % XXX LessThanGoalId was _N - J, not N - J: it ignored the case.
-        % See the cvs diff with the previous version.
+        % See the diff with the previous version.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
@@ -870,7 +869,7 @@ accu_construct(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore,
     Unify = construct(_, _, _, _, _, _, _),
     (
         % XXX LessThanGoalId was _N - J, not N - J: it ignored the case.
-        % See the cvs diff with the previous version.
+        % See the diff with the previous version.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
@@ -915,7 +914,7 @@ accu_construct_assoc(ModuleInfo, VarTypes, FullyStrict,
     is_associative_construction(ModuleInfo, PredId, ConsId),
     (
         % XXX LessThanGoalId was _N - J, not N - J: it ignored the case.
-        % See the cvs diff with the previous version.
+        % See the diff with the previous version.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
@@ -930,8 +929,8 @@ accu_construct_assoc(ModuleInfo, VarTypes, FullyStrict,
 
     % A goal is a member of the update set iff the goal only depends
     % on goals upto and including the recursive call and goals which
-    % can be moved before the recursive call (member of the before
-    % set) AND the goal updates some state.
+    % can be moved before the recursive call (member of the before set)
+    % AND the goal updates some state.
     %
 :- pred accu_update(module_info::in, vartypes::in, bool::in,
     accu_goal_id::in, int::in, accu_goal_store::in, accu_sets::in) is semidet.
@@ -944,7 +943,7 @@ accu_update(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore, Sets) :-
     accu_is_update(ModuleInfo, PredId, Args, _),
     (
         % XXX LessThanGoalId was _N - J, not N - J: it ignored the case.
-        % See the cvs diff with the previous version.
+        % See the diff with the previous version.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
@@ -987,16 +986,19 @@ member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId, LessThanGoal) :-
 accu_is_associative(ModuleInfo, PredId, Args, Result) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_assertions(PredInfo, Assertions),
-    associativity_assertion(ModuleInfo, set.to_sorted_list(Assertions),
-        Args, AssociativeVars, OutputVar),
+    AssertionsList = set.to_sorted_list(Assertions),
+    associativity_assertion(ModuleInfo, AssertionsList, Args,
+        AssociativeVarsOutputVar),
     ( if
-        commutativity_assertion(ModuleInfo, set.to_sorted_list(Assertions),
-            Args, _CommutativeVars)
+        commutativity_assertion(ModuleInfo, AssertionsList, Args,
+            _CommutativeVars)
     then
         IsCommutative = yes
     else
         IsCommutative = no
     ),
+    AssociativeVarsOutputVar =
+        associative_vars_output_var(AssociativeVars, OutputVar),
     Result = accu_assoc(AssociativeVars, OutputVar, IsCommutative).
 
     % Does there exist one (and only one) associativity assertion for the
@@ -1007,19 +1009,19 @@ accu_is_associative(ModuleInfo, PredId, Args, Result) :-
     % is descended from which.
     %
 :- pred associativity_assertion(module_info::in, list(assert_id)::in,
-    list(prog_var)::in, set_of_progvar::out, prog_var::out) is semidet.
+    list(prog_var)::in, associative_vars_output_var::out) is semidet.
 
-associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0, VarAB,
-        OutputVar) :-
+associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
+        AssociativeVarsOutputVar) :-
     ( if
         assertion.is_associativity_assertion(ModuleInfo, AssertId,
-            Args0, VarA - VarB, OutputVar0)
+            Args0, AssociativeVarsOutputVarPrime)
     then
-        \+ associativity_assertion(ModuleInfo, AssertIds, Args0, _, _),
-        VarAB = set_of_var.list_to_set([VarA, VarB]),
-        OutputVar = OutputVar0
+        AssociativeVarsOutputVar = AssociativeVarsOutputVarPrime,
+        not associativity_assertion(ModuleInfo, AssertIds, Args0, _)
     else
-        associativity_assertion(ModuleInfo, AssertIds, Args0, VarAB, OutputVar)
+        associativity_assertion(ModuleInfo, AssertIds, Args0,
+            AssociativeVarsOutputVar)
     ).
 
     % Does there exist one (and only one) commutativity assertion for the
@@ -1033,16 +1035,16 @@ associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0, VarAB,
     list(prog_var)::in, set_of_progvar::out) is semidet.
 
 commutativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
-        PossibleStaticVars) :-
+        CommutativeVars) :-
     ( if
         assertion.is_commutativity_assertion(ModuleInfo, AssertId,
-            Args0, StaticVarA - StaticVarB)
+            Args0, CommutativeVarsPrime)
     then
-        \+ commutativity_assertion(ModuleInfo, AssertIds, Args0, _),
-        PossibleStaticVars = set_of_var.list_to_set([StaticVarA, StaticVarB])
+        CommutativeVars = CommutativeVarsPrime,
+        not commutativity_assertion(ModuleInfo, AssertIds, Args0, _)
     else
         commutativity_assertion(ModuleInfo, AssertIds, Args0,
-            PossibleStaticVars)
+            CommutativeVars)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1050,7 +1052,7 @@ commutativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
     % Does the current predicate update some state?
     %
 :- pred accu_is_update(module_info::in, pred_id::in, list(prog_var)::in,
-    pair(prog_var)::out) is semidet.
+    state_update_vars::out) is semidet.
 
 accu_is_update(ModuleInfo, PredId, Args, ResultStateVars) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1110,11 +1112,10 @@ is_associative_construction(ModuleInfo, PredId, ConsId) :-
     % Stage 2 is responsible for identifying the substitutions which
     % are needed to mimic the unfold/fold process that was used as
     % the justification of the algorithm in the paper.
-    % It is also responsible for ensuring that the reordering of
-    % arguments doesn't worsen the big-O complexity of the
-    % procedure.
+    % It is also responsible for ensuring that the reordering of arguments
+    % doesn't worsen the big-O complexity of the procedure.
     % It also divides the base case into goals that initialize the
-    % variables used by the update goals and those used by the assoc
+    % variables used by the update goals, and those used by the assoc
     % goals and then all the rest.
     %
 :- pred accu_stage2(module_info::in, proc_info::in,
@@ -1327,7 +1328,8 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     lookup_call(GS, Id, stored_goal(Goal, _InstMap)),
 
     Goal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _GoalInfo),
-    accu_is_update(ModuleInfo, PredId, Args, StateVarA - StateVarB),
+    accu_is_update(ModuleInfo, PredId, Args, StateVars),
+    StateVars = state_update_vars(StateVarA, StateVarB),
 
     ( if set_of_var.member(OutPrime, StateVarA) then
         StateInputVar = StateVarA,
@@ -1933,7 +1935,7 @@ chain_subst(AtoB, BtoC) = AtoC :-
 
 chain_subst_2([], _, _, AtoC) :-
     map.init(AtoC).
-chain_subst_2([A|As], AtoB, BtoC, AtoC) :-
+chain_subst_2([A | As], AtoB, BtoC, AtoC) :-
     chain_subst_2(As, AtoB, BtoC, AtoC0),
     map.lookup(AtoB, A, B),
     ( if map.search(BtoC, B, C) then
