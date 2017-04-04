@@ -166,7 +166,7 @@
 
     % maybe_is_yes(yes(X), X).
     %
-    % This is useful as an argument to list.filter_map
+    % This is useful as an argument to list.filter_map.
     %
 :- pred maybe_is_yes(maybe(T)::in, T::out) is semidet.
 
