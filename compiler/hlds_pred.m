@@ -2483,17 +2483,6 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
 :- pred proc_interface_should_use_typeinfo_liveness(pred_info::in, proc_id::in,
     globals::in, bool::out) is det.
 
-    % Return true if the interface of a procedure in a non-special
-    % predicate with the given characteristics (import/export/local
-    % status, address taken status) must include typeinfos for
-    % all the type variables in the types of the arguments.
-    % Note that only a few predicates in the builtin modules are special
-    % in this sense, and that compiler-generated predicates are never
-    % special.
-    %
-:- pred non_special_interface_should_use_typeinfo_liveness(pred_status::in,
-    is_address_taken::in, globals::in, bool::out) is det.
-
     % Return true if the body of a procedure from the given predicate
     % must keep a typeinfo variable alive during the lifetime of all
     % variables whose type includes the corresponding type variable.
@@ -2501,13 +2490,6 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     % but not vice versa.
     %
 :- pred body_should_use_typeinfo_liveness(pred_info::in, globals::in,
-    bool::out) is det.
-
-    % Return true if the body of a procedure in a non-special predicate
-    % must keep a typeinfo variable alive during the lifetime of all
-    % variables whose type includes the corresponding type variable.
-    %
-:- pred non_special_body_should_use_typeinfo_liveness(globals::in,
     bool::out) is det.
 
     % If the procedure has a input/output pair of io.state arguments,
@@ -3556,6 +3538,17 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
             IsAddressTaken, Globals, InterfaceTypeInfoLiveness)
     ).
 
+    % Return true if the interface of a procedure in a non-special predicate
+    % with the given characteristics (import/export/local status,
+    % address taken status) must include typeinfos for all the type variables
+    % in the types of the arguments.
+    %
+    % Note that only a few predicates in the builtin modules are special
+    % in this sense, and that compiler-generated predicates are never special.
+    %
+:- pred non_special_interface_should_use_typeinfo_liveness(pred_status::in,
+    is_address_taken::in, globals::in, bool::out) is det.
+
 non_special_interface_should_use_typeinfo_liveness(PredStatus, IsAddressTaken,
         Globals, InterfaceTypeInfoLiveness) :-
     ( if
@@ -3596,6 +3589,13 @@ body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeInfoLiveness) :-
         non_special_body_should_use_typeinfo_liveness(Globals,
             BodyTypeInfoLiveness)
     ).
+
+    % Return true if the body of a procedure in a non-special predicate
+    % must keep a typeinfo variable alive during the lifetime of all variables
+    % whose type includes the corresponding type variable.
+    %
+:- pred non_special_body_should_use_typeinfo_liveness(globals::in,
+    bool::out) is det.
 
 non_special_body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
     globals.lookup_bool_option(Globals, body_typeinfo_liveness,
