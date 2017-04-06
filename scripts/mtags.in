@@ -482,7 +482,7 @@ while ($#ARGV >= 0)
 
         # Skip lines which are not pred, func, type, inst, mode,
         # typeclass or instance declarations.
-        # Also skip instance declarations if we're producing a normal vi
+        # Also skip instance declarations if we are producing a normal vi
         # tags file since vi doesn't allow duplicate tags and the
         # typeclass tags are probably more important than the instance tags.
         next unless (
@@ -502,11 +502,11 @@ while ($#ARGV >= 0)
             $decl eq "func" ||
             $decl eq "typeclass" ||
 
-            # If it doesn't end in a `.' (i.e if it doesn't fit on one line),
-            # then it's probably a definition.
+            # If it doesn't end in a `.' (i.e. if it doesn't fit on one line),
+            # then it is probably a definition.
             ($body !~ /\.\s*$/ && $body !~ /\.[ \t]*%.*$/) ||
 
-            # if it contains `--->', `=', or `::', it's probably a
+            # If it contains `--->', `=', or `::', it is probably a
             # definition.
             $body =~ /--->/ ||
             $body =~ /=/ ||
@@ -516,7 +516,7 @@ while ($#ARGV >= 0)
         $name = $body;
         $kind = $decl;
         # Shorten $kind for typeclass and instance so they display better in
-        # vim which assumes the kind attribute has at most 4 chars.
+        # vim, which assumes the kind attribute has at most 4 chars.
         if ($kind eq "typeclass") { $kind = "tc"; }
         if ($kind eq "instance") { $kind = "tci"; }
         output_name();
@@ -528,12 +528,12 @@ while ($#ARGV >= 0)
         }
 
         # For everything except type, typeclass and instance declarations,
-        # we're done.
+        # we are done.
         next unless ($decl eq "type" || $decl eq "typeclass" ||
             $decl eq "instance");
 
         if ($decl eq "type") {
-            # Make sure we're at the line with the `--->'.
+            # Make sure we are at the line with the `--->'.
             while ($body !~ /--->/) {
                 # Skip blank lines and comments but stop if we see the end of
                 # the term.
@@ -550,25 +550,32 @@ while ($#ARGV >= 0)
             # Replace everything up to the `--->' with `;'.
             $body =~ s/.*--->/;/;
 
-            for(;;) {
+            for (;;) {
                 # If the body starts with `;', we assume it must be the start
                 # of a constructor definition.
                 if ($body =~ /^[ \t]*;/) {
-                    # delete the leading `;'
+                    # Delete the leading `;'.
                     $body =~ s/[^;]*;[ \t]*//;
 
-                    # Skip blank lines and comments.
+                    # Skip blank lines and lines containing only comments.
+                    # Do *not* skip lines in which end-of-line comments
+                    # follow actual code.
                     while ($body =~ /^\s*$/ || $body =~ /^[ \t]*%.*$/) {
                         $_ = <SRCFILE> || last;
                         chop;
                         $body = $_;
 
-                        # delete leading whitespace
+                        # Delete leading whitespace.
                         $body =~ s/^[ \t]*//;
 
-                        # delete the leading `;', if any
+                        # Delete the leading `;', if any.
                         $body =~ s/[^;%]*;[ \t]*//;
                     }
+
+                    # Delete any comments at the end of the line; we don't
+                    # want to confuse any semicolons in a comment for the
+                    # start of the next function symbol.
+                    $body =~ s/%.*//;
 
                     $name = $body;
                     $name =~ s/[ \t;.%].*//;
@@ -626,7 +633,7 @@ while ($#ARGV >= 0)
                 $body = $_;
             }
         } elsif ($decl eq "typeclass") {
-            for(;;) {
+            for (;;) {
                 # Skip blank lines and comments.
                 while ($body =~ /^\s*$/ || $body =~ /^[ \t]*%.*$/) {
                     $_ = <SRCFILE> || last;
@@ -657,7 +664,7 @@ while ($#ARGV >= 0)
                 $body = $_;
             }
         } else { # instance declaration
-            for(;;) {
+            for (;;) {
                 # Skip blank lines and comments.
                 while ($body =~ /^\s*$/ || $body =~ /^[ \t]*%.*$/) {
                     $_ = <SRCFILE> || last;
