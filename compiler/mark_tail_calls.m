@@ -458,7 +458,7 @@ do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParams,
 
 :- pred find_maybe_output_args(module_info::in,
      list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,
-     list(maybe(prog_var))::out) is det.
+     list(prog_var)::out) is det.
 
 find_maybe_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
     ( if
@@ -471,31 +471,41 @@ find_maybe_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
 
 :- pred find_maybe_output_args_2(module_info::in,
     list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,
-    list(maybe(prog_var))::out) is semidet.
+    list(prog_var)::out) is semidet.
 
 find_maybe_output_args_2(_, [], [], [], []).
 find_maybe_output_args_2(ModuleInfo, [Type | Types], [Mode | Modes],
-        [Var | Vars], [OutputVar | OutputVars]) :-
+        [Var | Vars], OutputVars) :-
     require_det (
-        mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
-        (
-            ( TopFunctorMode = top_in
-            ; TopFunctorMode = top_unused
-            ),
-            OutputVar = no
-        ;
-            TopFunctorMode = top_out,
-            IsDummy = check_dummy_type(ModuleInfo, Type),
-            (
-                IsDummy = is_not_dummy_type,
-                OutputVar = yes(Var)
-            ;
-                IsDummy = is_dummy_type,
-                OutputVar = no
-            )
+        ( if is_output(ModuleInfo, Mode, Type) then
+            OutputVars = [Var | OutputVars0]
+        else
+            OutputVars = OutputVars0
         )
     ),
-    find_maybe_output_args_2(ModuleInfo, Types, Modes, Vars, OutputVars).
+    find_maybe_output_args_2(ModuleInfo, Types, Modes, Vars, OutputVars0).
+
+:- pred is_output(module_info::in, mer_mode::in, mer_type::in) is semidet.
+
+is_output(ModuleInfo, Mode, Type) :-
+    mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
+    require_complete_switch [TopFunctorMode]
+    (
+        ( TopFunctorMode = top_in
+        ; TopFunctorMode = top_unused
+        ),
+        false
+    ;
+        TopFunctorMode = top_out,
+        IsDummy = check_dummy_type(ModuleInfo, Type),
+        require_complete_switch [IsDummy]
+        (
+            IsDummy = is_not_dummy_type
+        ;
+            IsDummy = is_dummy_type,
+            false
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -503,7 +513,7 @@ find_maybe_output_args_2(ModuleInfo, [Type | Types], [Mode | Modes],
     % If it is, what are the output arguments?
     %
 :- type at_tail
-    --->    at_tail(list(maybe(prog_var)))
+    --->    at_tail(list(prog_var))
     ;       not_at_tail(later_rec_call).
 
 :- type later_rec_call
@@ -736,7 +746,8 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
             !Info ^ mtc_any_rec_calls := found_any_rec_calls,
             ( if
                 AtTail0 = at_tail(Outputs),
-                match_output_args(Outputs, Args)
+                match_output_args(!.Info, Outputs, Args, CalleePredId,
+                    CalleeProcId, outputs_match)
             then
                 AddFeature = !.Info ^ mtc_add_feature,
                 (
@@ -836,35 +847,94 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
     ).
 
 :- pred is_output_arg_rename(prog_var::in, prog_var::in,
-    list(maybe(prog_var))::in, list(maybe(prog_var))::out) is semidet.
+    list(prog_var)::in, list(prog_var)::out) is semidet.
 
-is_output_arg_rename(ToVar, FromVar,
-        [MaybeVar0 | MaybeVars0], [MaybeVar | MaybeVars]) :-
-    (
-        MaybeVar0 = yes(ToVar),
-        MaybeVar = yes(FromVar),
-        MaybeVars = MaybeVars0
-    ;
-        MaybeVar0 = no,
-        MaybeVar = no,
-        is_output_arg_rename(ToVar, FromVar, MaybeVars0, MaybeVars)
+is_output_arg_rename(ToVar, FromVar, [Var0 | Vars0], [Var | Vars]) :-
+    % The assignment assings _to_ ToVar, so we went to map _from_ ToVar back
+    % to FromVar.
+    ( if ToVar = Var0 then
+        Var = FromVar,
+        Vars = Vars0
+    else
+        % The original code didn't keep searching if the first output
+        % variable wasn't the one being renamed.  That seems incorrect.
+        %  -pbone.
+        Var = Var0,
+        is_output_arg_rename(ToVar, FromVar, Vars0, Vars)
     ).
 
-:- pred match_output_args(list(maybe(prog_var))::in, list(prog_var)::in)
-    is semidet.
+:- type outputs_match
+    --->    outputs_match
+    ;       outputs_dont_match.
 
-match_output_args([], []).
-match_output_args([], [_ | _]) :-
-    unexpected($module, $pred, "length mismatch").
-match_output_args([_ | _], []) :-
-    unexpected($module, $pred, "length mismatch").
-match_output_args([MaybeOutputVar | MaybeOutputVars], [ArgVar | ArgVars]) :-
+    % match output arguments to see if the call is in tail position WRT
+    % argument swaps.
+    %
+    % For self recursive code this can be very simple, it simply needs to
+    % check any of the caller's output arguments and see if the call site
+    % has the same variable in the same position, we know it's an output
+    % because the call and callee are the same.
+    %
+    % For mutualy recursive code this is more complex.  We have to step
+    % through each list looking for pairs of outputs to mach, skipping any
+    % inputs (rather than pairing all arguments stepwise).
+    %
+    % We implement only the algorithm for mutually recursive code since that
+    % is also correct for self recursive code.
+    %
+:- pred match_output_args(mark_tail_rec_calls_info::in, list(prog_var)::in,
+    list(prog_var)::in, pred_id::in, proc_id::in, outputs_match::out) is det.
+
+match_output_args(Info, OutputVars, ArgVars, PredId, ProcId, Match) :-
+    module_info_pred_info(Info ^ mtc_module, PredId, PredInfo),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    ( if
+        match_output_args_2(Info, OutputVars, ArgVars, ArgTypes, ArgModes,
+            MatchPrime)
+    then
+        Match = MatchPrime
+    else
+        unexpected($file, $pred, "mismatched lists")
+    ).
+
+:- pred match_output_args_2(mark_tail_rec_calls_info::in, list(prog_var)::in,
+    list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
+    outputs_match::out) is semidet.
+
+match_output_args_2(_, OutputVars, [], [], [], Match) :-
+    require_det
     (
-        MaybeOutputVar = no
+        OutputVars = [],
+        Match = outputs_match
     ;
-        MaybeOutputVar = yes(ArgVar)
-    ),
-    match_output_args(MaybeOutputVars, ArgVars).
+        OutputVars = [_ | _],
+        Match = outputs_dont_match
+    ).
+match_output_args_2(Info, OutputVars0, [ArgVar | ArgVars],
+        [ArgType | ArgTypes], [ArgMode | ArgModes], Match) :-
+    (
+        OutputVars0 = [],
+        % Any remaning arguments (of the call site) don't matter, if they're
+        % outputs those outputs are simply ignored.
+        Match = outputs_match
+    ;
+        OutputVars0 = [OutputVar | OutputVars],
+        ( if is_output(Info ^ mtc_module, ArgMode, ArgType) then
+            ( if OutputVar = ArgVar then
+                match_output_args_2(Info, OutputVars, ArgVars, ArgTypes,
+                    ArgModes, Match)
+            else
+                Match = outputs_dont_match
+            )
+        else
+            % Don't consume the current output if the current ArgVar is not
+            % an output.
+            match_output_args_2(Info, OutputVars0, ArgVars, ArgTypes,
+                ArgModes, Match)
+        )
+    ).
 
 :- pred mark_tail_rec_calls_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     at_tail::in, at_tail::out,

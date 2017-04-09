@@ -181,6 +181,7 @@ OTHER_PROGS = \
 	mostly_uniq_neg \
 	multidet_prune1 \
 	multidet_test \
+	mutual_tailrec_outputs \
 	nasty_func_test \
 	neg_erroneous \
 	negation_in_dupl_for_switch \
