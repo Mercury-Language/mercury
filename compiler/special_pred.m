@@ -340,11 +340,7 @@ can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, TypeBody) :-
 is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
     Builtin = mercury_public_builtin_module,
     TypeCtor = type_ctor(qualified(Builtin, TypeName), 0),
-    ( TypeName = "int"
-    ; TypeName = "uint"
-    ; TypeName = "string"
-    ; TypeName = "character"
-    ; TypeName = "float"
+    ( is_builtin_type_name(TypeName)
     ; TypeName = "pred"
     ).
 

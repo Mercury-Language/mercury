@@ -1196,12 +1196,7 @@ type_to_type_ctor_set(Type, !TypeCtors) :-
             % arguments.
             true
         else if
-            ( SymName = unqualified("int")
-            ; SymName = unqualified("uint")
-            ; SymName = unqualified("float")
-            ; SymName = unqualified("string")
-            ; SymName = unqualified("character")
-            )
+            is_builtin_type_sym_name(SymName)
         then
             % We don't need to import these modules as the types are builtin.
             true

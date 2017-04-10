@@ -535,11 +535,9 @@ qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
     %
 :- pred is_builtin_atomic_type(type_ctor::in) is semidet.
 
-is_builtin_atomic_type(type_ctor(unqualified("int"), 0)).
-is_builtin_atomic_type(type_ctor(unqualified("uint"), 0)).
-is_builtin_atomic_type(type_ctor(unqualified("float"), 0)).
-is_builtin_atomic_type(type_ctor(unqualified("string"), 0)).
-is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
+is_builtin_atomic_type(TypeCtor) :-
+    TypeCtor = type_ctor(SymName, 0),
+    is_builtin_type_sym_name(SymName).
 
 %---------------------------------------------------------------------------%
 %

@@ -55,12 +55,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
         % Emit an error message for foreign_export_enum pragmas for the
         % builtin atomic types.
         TypeArity = 0,
-        ( TypeName = unqualified("character")
-        ; TypeName = unqualified("float")
-        ; TypeName = unqualified("uint")
-        ; TypeName = unqualified("int")
-        ; TypeName = unqualified("string")
-        )
+        is_builtin_type_sym_name(TypeName)
     then
         ErrorPieces = [words("error: "),
             unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
@@ -379,12 +374,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
         % Emit an error message for foreign_enum pragmas for the
         % builtin atomic types.
         TypeArity = 0,
-        ( TypeName = unqualified("character")
-        ; TypeName = unqualified("float")
-        ; TypeName = unqualified("int")
-        ; TypeName = unqualified("uint")
-        ; TypeName = unqualified("string")
-        )
+        is_builtin_type_sym_name(TypeName)
     then
         ErrorPieces = [words("error: "),
             unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),

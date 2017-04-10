@@ -482,12 +482,26 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % A type expression with an explicit kind annotation.
             % (These are not yet used.)
 
+
+    % This type enumerates all of the builtin primitive types in Mercury.
+    % If you add a new alternative then you may also need to update the
+    % following predicates:
+    %
+    %     - parse_type_name.is_known_type_name_args/3
+    %     - inst_check.check_inst_defn_has_matching_type/7
+    %     - llds_out_data.output_type_ctor_addr/5
+    %     - type_util.classify_type_ctor/2
+    %
 :- type builtin_type
     --->    builtin_type_int
     ;       builtin_type_uint
     ;       builtin_type_float
     ;       builtin_type_string
     ;       builtin_type_char.
+
+:- pred is_builtin_type_sym_name(sym_name::in) is semidet.
+
+:- pred is_builtin_type_name(string::in) is semidet.
 
 :- type type_term == term(tvar_type).
 
@@ -533,6 +547,23 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     tvarset::out, tvar_renaming::out) is det.
 
 :- implementation.
+
+is_builtin_type_sym_name(SymName) :-
+    SymName = unqualified(Name),
+    builtin_type_name(_, Name).
+
+is_builtin_type_name(Name) :-
+    builtin_type_name(_, Name).
+
+:- pred builtin_type_name(builtin_type, string).
+:- mode builtin_type_name(in, out) is det.
+:- mode builtin_type_name(out, in) is semidet.
+
+builtin_type_name(builtin_type_int, "int").
+builtin_type_name(builtin_type_uint, "uint").
+builtin_type_name(builtin_type_float, "float").
+builtin_type_name(builtin_type_string, "string").
+builtin_type_name(builtin_type_char, "character").
 
 tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
     varset.merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming).

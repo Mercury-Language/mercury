@@ -428,8 +428,9 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     ),
     RttiData = rtti_data_type_ctor_info(TypeCtorData).
 
-:- pred builtin_type_ctor(string::in, string::in, int::in, builtin_ctor::out)
-    is semidet.
+:- pred builtin_type_ctor(string, string, int, builtin_ctor).
+:- mode builtin_type_ctor(in, in, in, out) is semidet.
+:- mode builtin_type_ctor(out, out, out, in) is det.
 
 % Some of these type_ctors are listed in prog_type.m in the function
 % builtin_type_ctors_with_no_hlds_type_defn; any changes here may need
