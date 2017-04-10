@@ -503,6 +503,10 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- pred is_builtin_type_name(string::in) is semidet.
 
+:- pred builtin_type_to_string(builtin_type, string).
+:- mode builtin_type_to_string(in, out) is det.
+:- mode builtin_type_to_string(out, in) is semidet.
+
 :- type type_term == term(tvar_type).
 
 :- type tvar_type
@@ -550,20 +554,16 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 is_builtin_type_sym_name(SymName) :-
     SymName = unqualified(Name),
-    builtin_type_name(_, Name).
+    builtin_type_to_string(_, Name).
 
 is_builtin_type_name(Name) :-
-    builtin_type_name(_, Name).
+    builtin_type_to_string(_, Name).
 
-:- pred builtin_type_name(builtin_type, string).
-:- mode builtin_type_name(in, out) is det.
-:- mode builtin_type_name(out, in) is semidet.
-
-builtin_type_name(builtin_type_int, "int").
-builtin_type_name(builtin_type_uint, "uint").
-builtin_type_name(builtin_type_float, "float").
-builtin_type_name(builtin_type_string, "string").
-builtin_type_name(builtin_type_char, "character").
+builtin_type_to_string(builtin_type_int, "int").
+builtin_type_to_string(builtin_type_uint, "uint").
+builtin_type_to_string(builtin_type_float, "float").
+builtin_type_to_string(builtin_type_string, "string").
+builtin_type_to_string(builtin_type_char, "character").
 
 tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
     varset.merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming).

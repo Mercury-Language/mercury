@@ -103,10 +103,6 @@
 
 :- func type_name_to_string(type_ctor) = string.
 
-:- pred builtin_type_to_string(builtin_type, string).
-:- mode builtin_type_to_string(in, out) is det.
-:- mode builtin_type_to_string(out, in) is semidet.
-
     % Print "predicate" or "function" depending on the given value.
     %
 :- pred write_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
@@ -431,12 +427,6 @@ write_type_name(type_ctor(Name, _Arity), !IO) :-
 
 type_name_to_string(type_ctor(Name, _Arity)) =
     sym_name_to_escaped_string(Name).
-
-builtin_type_to_string(builtin_type_int, "int").
-builtin_type_to_string(builtin_type_uint, "uint").
-builtin_type_to_string(builtin_type_float, "float").
-builtin_type_to_string(builtin_type_string, "string").
-builtin_type_to_string(builtin_type_char, "character").
 
 write_promise_type(PromiseType, !IO) :-
     io.write_string(promise_to_string(PromiseType), !IO).
