@@ -566,6 +566,8 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = uint_bitwise_and,      EldsBinOp = elds.band
         ; StdBinOp = uint_bitwise_or,       EldsBinOp = elds.bor
         ; StdBinOp = uint_bitwise_xor,      EldsBinOp = elds.bxor
+        ; StdBinOp = uint_unchecked_left_shift, EldsBinOp = elds.bsl
+        ; StdBinOp = uint_unchecked_right_shift, EldsBinOp = elds.bsr
         )
     ).
 

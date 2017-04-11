@@ -3797,6 +3797,8 @@ output_binop(Info, Op, X, Y, !IO) :-
         ; Op = uint_bitwise_and
         ; Op = uint_bitwise_or
         ; Op = uint_bitwise_xor
+        ; Op = uint_unchecked_left_shift
+        ; Op = uint_unchecked_right_shift
         ; Op = float_plus
         ; Op = float_minus
         ; Op = float_times
@@ -3859,6 +3861,8 @@ output_binary_op(Op, !IO) :-
         ; Op = uint_bitwise_and, OpStr = "&"
         ; Op = uint_bitwise_or, OpStr = "|"
         ; Op = uint_bitwise_xor, OpStr = "^"
+        ; Op = uint_unchecked_left_shift, OpStr = "<<"
+        ; Op = uint_unchecked_right_shift, OpStr = ">>"
 
         ; Op = float_eq, OpStr = "=="
         ; Op = float_ne, OpStr = "!="

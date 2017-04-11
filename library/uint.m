@@ -53,11 +53,17 @@
 
     % Addition.
     %
-:- func (uint::in) + (uint::in) = (uint::uo) is det.
+:- func uint + int = uint.
+:- mode in   + in  = uo is det.
+%:- mode uo   + in  = in is det.
+%:- mode in   + uo  = in is det.
 
     % Subtraction.
     %
-:- func (uint::in) - (uint::in) = (uint::uo) is det.
+:- func uint - uint = uint.
+:- mode in   - in   = uo is det.
+%:- mode uo   - in   = in is det.
+%:- mode in   - uo   = in is det.
 
     % Multiplication.
     %

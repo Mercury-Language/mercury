@@ -1769,6 +1769,8 @@ binop_return_type(uint_mod, lt_unsigned).
 binop_return_type(uint_bitwise_and, lt_unsigned).
 binop_return_type(uint_bitwise_or, lt_unsigned).
 binop_return_type(uint_bitwise_xor, lt_unsigned).
+binop_return_type(uint_unchecked_left_shift, lt_unsigned).
+binop_return_type(uint_unchecked_right_shift, lt_unsigned).
 
 register_type(reg_r, lt_word).
 register_type(reg_f, lt_float).

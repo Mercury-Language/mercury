@@ -855,6 +855,8 @@ binop_category_string(uint_mod, uint_binary_infix_binop, "%").
 binop_category_string(uint_bitwise_and, uint_binary_infix_binop, "&").
 binop_category_string(uint_bitwise_or, uint_binary_infix_binop, "|").
 binop_category_string(uint_bitwise_xor, uint_binary_infix_binop, "^").
+binop_category_string(uint_unchecked_left_shift, uint_binary_infix_binop, "<<").
+binop_category_string(uint_unchecked_right_shift, uint_binary_infix_binop, ">>").
 
 binop_category_string(float_plus, float_arith_binop, "+").
 binop_category_string(float_minus, float_arith_binop, "-").

@@ -111,6 +111,9 @@
     ;       uint_bitwise_or
     ;       uint_bitwise_xor
 
+    ;       uint_unchecked_left_shift
+    ;       uint_unchecked_right_shift
+
     ;       float_plus      %  XXX the integer versions use different names.
     ;       float_minus     %  E.g add instead of plus etc.
     ;       float_times
@@ -397,15 +400,43 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ProcNum = 0,
             Args = [X, Y],
             Code = assign(Y, unary(uint_bitwise_complement, leaf(X)))
-    ;
-            ( PredName = "+", ArithOp = uint_add
-            ; PredName = "-", ArithOp = uint_sub
-            ; PredName = "*", ArithOp = uint_mul
+        ;
+            PredName = "+",
+            Args = [X, Y, Z],
+            (
+                ProcNum = 0,
+                Code = assign(Z, binary(uint_add, leaf(X), leaf(Y)))
+            ;
+                ProcNum = 1,
+                Code = assign(X, binary(uint_sub, leaf(Z), leaf(Y)))
+            ;
+                ProcNum = 2,
+                Code = assign(Y, binary(uint_sub, leaf(Z), leaf(X)))
+            )
+        ;
+            PredName = "-",
+            Args = [X, Y, Z],
+            (
+                ProcNum = 0,
+                Code = assign(Z, binary(int_sub, leaf(X), leaf(Y)))
+            ;
+                ProcNum = 1,
+                Code = assign(X, binary(uint_add, leaf(Y), leaf(Z)))
+            ;
+                ProcNum = 2,
+                Code = assign(Y, binary(uint_sub, leaf(X), leaf(Z)))
+            )
+        ;
+            ( PredName = "*", ArithOp = uint_mul
             ; PredName = "unchecked_quotient", ArithOp = uint_div
             ; PredName = "unchecked_rem", ArithOp = uint_mod
             ; PredName = "/\\", ArithOp = uint_bitwise_and
             ; PredName = "\\/", ArithOp = uint_bitwise_or
             ; PredName = "xor", ArithOp = uint_bitwise_xor
+            ; PredName = "unchecked_left_shift",
+                ArithOp = uint_unchecked_left_shift
+            ; PredName = "unchecked_right_shift",
+                ArithOp = uint_unchecked_right_shift
             ),
             ProcNum = 0,
             Args = [X, Y, Z],

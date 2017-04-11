@@ -1090,6 +1090,8 @@ binop_code(uint_mod,                55).
 binop_code(uint_bitwise_and,        56).
 binop_code(uint_bitwise_or,         57).
 binop_code(uint_bitwise_xor,        58).
+binop_code(uint_unchecked_left_shift, 59).
+binop_code(uint_unchecked_right_shift, 60).
 
 :- pred binop_debug(binary_op::in, string::out) is det.
 
@@ -1152,6 +1154,8 @@ binop_debug(uint_mod,               "uint_mod").
 binop_debug(uint_bitwise_and,       "uint_bitwise_and").
 binop_debug(uint_bitwise_or,        "uint_bitwise_or").
 binop_debug(uint_bitwise_xor,       "uint_bitwise_xor").
+binop_debug(uint_unchecked_left_shift, "uint_unchecked_left_shift").
+binop_debug(uint_unchecked_right_shift, "uint_unchecked_right_shift").
 
 :- pred unop_code(unary_op::in, int::out) is det.
 
