@@ -398,8 +398,7 @@ do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParams,
             proc_info_get_argmodes(!.ProcInfo, Modes),
             proc_info_get_headvars(!.ProcInfo, HeadVars),
             proc_info_get_vartypes(!.ProcInfo, VarTypes),
-            find_maybe_output_args(ModuleInfo, Types, Modes, HeadVars,
-                Outputs),
+            find_output_args(ModuleInfo, Types, Modes, HeadVars, Outputs),
 
             Info0 = mark_tail_rec_calls_info(AddGoalFeature, ModuleInfo,
                 PredInfo, proc(PredId, ProcId), SCC, VarTypes,
@@ -456,34 +455,32 @@ do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParams,
         )
     ).
 
-:- pred find_maybe_output_args(module_info::in,
+:- pred find_output_args(module_info::in,
      list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,
      list(prog_var)::out) is det.
 
-find_maybe_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
-    ( if
-        find_maybe_output_args_2(ModuleInfo, Types, Modes, Vars, OutputsPrime)
-    then
+find_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
+    ( if find_output_args_2(ModuleInfo, Types, Modes, Vars, OutputsPrime) then
         Outputs = OutputsPrime
     else
         unexpected($module, $pred, "list length mismatch")
     ).
 
-:- pred find_maybe_output_args_2(module_info::in,
+:- pred find_output_args_2(module_info::in,
     list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,
     list(prog_var)::out) is semidet.
 
-find_maybe_output_args_2(_, [], [], [], []).
-find_maybe_output_args_2(ModuleInfo, [Type | Types], [Mode | Modes],
-        [Var | Vars], OutputVars) :-
+find_output_args_2(_, [], [], [], []).
+find_output_args_2(ModuleInfo, [Type | Types], [Mode | Modes], [Var | Vars],
+        OutputVars) :-
+    find_output_args_2(ModuleInfo, Types, Modes, Vars, TailOutputVars),
     require_det (
         ( if is_output(ModuleInfo, Mode, Type) then
-            OutputVars = [Var | OutputVars0]
+            OutputVars = [Var | TailOutputVars]
         else
-            OutputVars = OutputVars0
+            OutputVars = TailOutputVars
         )
-    ),
-    find_maybe_output_args_2(ModuleInfo, Types, Modes, Vars, OutputVars0).
+    ).
 
 :- pred is_output(module_info::in, mer_mode::in, mer_type::in) is semidet.
 
