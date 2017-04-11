@@ -53,7 +53,7 @@
 
     % Addition.
     %
-:- func uint + int = uint.
+:- func uint + uint = uint.
 :- mode in   + in  = uo is det.
 %:- mode uo   + in  = in is det.
 %:- mode in   + uo  = in is det.
