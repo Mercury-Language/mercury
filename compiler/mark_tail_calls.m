@@ -721,7 +721,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
             )
         )
     ;
-        GoalExpr0 = plain_call(CalleePredId, CalleeProcId, Args, Builtin,
+        GoalExpr0 = plain_call(CalleePredId, CalleeProcId, ArgVars, Builtin,
             _UnifyContext, _SymName),
         CalleePredProcId = proc(CalleePredId, CalleeProcId),
         CurPredProcId = !.Info ^ mtc_cur_proc,
@@ -731,20 +731,57 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
             ( if
                 CalleePredProcId = CurPredProcId
             then
-                SelfRecursion = call_is_self_rec
+                SelfOrMutual = call_is_self_rec
             else if
                 set.member(CalleePredProcId, CurSCCPredProcIds)
             then
-                SelfRecursion = call_is_mutual_rec
+                SelfOrMutual = call_is_mutual_rec
             else
                 false
             )
         then
             !Info ^ mtc_any_rec_calls := found_any_rec_calls,
             ( if
-                AtTail0 = at_tail(Outputs),
-                match_output_args(!.Info, Outputs, Args, CalleePredId,
-                    CalleeProcId, outputs_match)
+                AtTail0 = at_tail(OutputVars),
+                require_det (
+                    ModuleInfo = !.Info ^ mtc_module,
+                    module_info_pred_info(ModuleInfo, CalleePredId,
+                        CalleePredInfo),
+                    pred_info_get_arg_types(CalleePredInfo, CalleeArgTypes),
+                    pred_info_proc_info(CalleePredInfo, CalleeProcId,
+                        CalleeProcInfo),
+                    proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
+                    find_output_args(ModuleInfo,
+                        CalleeArgTypes, CalleeArgModes, ArgVars,
+                        CalleeOutputVars)
+                ),
+
+                % For self-recursive calls, the caller and callee
+                % will obviously have
+                %
+                % - the same number of arguments, and
+                % - the same number of output arguments.
+                %
+                % Neither condition is a given for mutually recursive calls,
+                % which is why we check only output arguments, not all
+                % arguments.
+                %
+                % For a recursive call (either self or mutual) to be a *tail*
+                % call, the callee must have the same sequence of output
+                % arguments (the same set of variables in the same order)
+                % as the caller.
+                %
+                % CalleeOutputVars is the sequence of output vars of this call;
+                % OutputVars is the sequence of output vars of the caller,
+                % updated to reflect any "renaming" done by assigment
+                % unifications after the call. For example, if the first
+                % output argument of the caller is X, but the call is followed
+                % by the assignment X: = X0 (which our backwards traversal
+                % will have already seen, and updated AtTail0 accordingly),
+                % then this call cannot be a tail call unless its first output
+                % argument is X0. (The call cannot output X, since X cannot
+                % have two producers.)
+                OutputVars = CalleeOutputVars
             then
                 AddFeature = !.Info ^ mtc_add_feature,
                 (
@@ -753,14 +790,14 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                 ;
                     AddFeature = add_goal_feature_self_for_debug,
                     (
-                        SelfRecursion = call_is_self_rec,
+                        SelfOrMutual = call_is_self_rec,
                         !Info ^ mtc_self_tail_rec_calls :=
                             found_self_tail_rec_calls,
                         goal_info_add_feature(feature_debug_self_tail_rec_call,
                             GoalInfo0, GoalInfo),
                         Goal = hlds_goal(GoalExpr0, GoalInfo)
                     ;
-                        SelfRecursion = call_is_mutual_rec,
+                        SelfOrMutual = call_is_mutual_rec,
                         Goal = Goal0
                     )
                 ;
@@ -773,7 +810,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                 Goal = Goal0,
                 Context = goal_info_get_context(GoalInfo0),
                 maybe_report_nontail_recursive_call(CalleePredId,
-                    SelfRecursion, Context, AtTail0, !Info)
+                    SelfOrMutual, Context, AtTail0, !Info)
             ),
             AtTail = not_at_tail(have_seen_later_rec_call)
         else
@@ -847,90 +884,15 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
     list(prog_var)::in, list(prog_var)::out) is semidet.
 
 is_output_arg_rename(ToVar, FromVar, [Var0 | Vars0], [Var | Vars]) :-
-    % The assignment assings _to_ ToVar, so we went to map _from_ ToVar back
-    % to FromVar.
     ( if ToVar = Var0 then
+        % The assignment assigns FromVar to ToVar. Any tail recursive call
+        % cannot assign to ToVar (since this assignment is the atomic goal
+        % that produces ToVar); it will have to generate FromVar instead.
         Var = FromVar,
         Vars = Vars0
     else
-        % The original code didn't keep searching if the first output
-        % variable wasn't the one being renamed.  That seems incorrect.
-        %  -pbone.
         Var = Var0,
         is_output_arg_rename(ToVar, FromVar, Vars0, Vars)
-    ).
-
-:- type outputs_match
-    --->    outputs_match
-    ;       outputs_dont_match.
-
-    % match output arguments to see if the call is in tail position WRT
-    % argument swaps.
-    %
-    % For self recursive code this can be very simple, it simply needs to
-    % check any of the caller's output arguments and see if the call site
-    % has the same variable in the same position, we know it's an output
-    % because the call and callee are the same.
-    %
-    % For mutualy recursive code this is more complex.  We have to step
-    % through each list looking for pairs of outputs to mach, skipping any
-    % inputs (rather than pairing all arguments stepwise).
-    %
-    % We implement only the algorithm for mutually recursive code since that
-    % is also correct for self recursive code.
-    %
-:- pred match_output_args(mark_tail_rec_calls_info::in, list(prog_var)::in,
-    list(prog_var)::in, pred_id::in, proc_id::in, outputs_match::out) is det.
-
-match_output_args(Info, OutputVars, ArgVars, PredId, ProcId, Match) :-
-    module_info_pred_info(Info ^ mtc_module, PredId, PredInfo),
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    pred_info_proc_info(PredInfo, ProcId, ProcInfo),
-    proc_info_get_argmodes(ProcInfo, ArgModes),
-    ( if
-        match_output_args_2(Info, OutputVars, ArgVars, ArgTypes, ArgModes,
-            MatchPrime)
-    then
-        Match = MatchPrime
-    else
-        unexpected($file, $pred, "mismatched lists")
-    ).
-
-:- pred match_output_args_2(mark_tail_rec_calls_info::in, list(prog_var)::in,
-    list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
-    outputs_match::out) is semidet.
-
-match_output_args_2(_, OutputVars, [], [], [], Match) :-
-    require_det
-    (
-        OutputVars = [],
-        Match = outputs_match
-    ;
-        OutputVars = [_ | _],
-        Match = outputs_dont_match
-    ).
-match_output_args_2(Info, OutputVars0, [ArgVar | ArgVars],
-        [ArgType | ArgTypes], [ArgMode | ArgModes], Match) :-
-    (
-        OutputVars0 = [],
-        % Any remaning arguments (of the call site) don't matter, if they're
-        % outputs those outputs are simply ignored.
-        Match = outputs_match
-    ;
-        OutputVars0 = [OutputVar | OutputVars],
-        ( if is_output(Info ^ mtc_module, ArgMode, ArgType) then
-            ( if OutputVar = ArgVar then
-                match_output_args_2(Info, OutputVars, ArgVars, ArgTypes,
-                    ArgModes, Match)
-            else
-                Match = outputs_dont_match
-            )
-        else
-            % Don't consume the current output if the current ArgVar is not
-            % an output.
-            match_output_args_2(Info, OutputVars0, ArgVars, ArgTypes,
-                ArgModes, Match)
-        )
     ).
 
 :- pred mark_tail_rec_calls_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
