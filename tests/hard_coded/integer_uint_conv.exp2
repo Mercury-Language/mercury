@@ -1,0 +1,41 @@
+*** Testing uint -> integer conversion ***
+
+uint = 0, integer = 0
+uint = 1, integer = 1
+uint = 2, integer = 2
+uint = 4, integer = 4
+uint = 8, integer = 8
+uint = 10, integer = 10
+uint = 16, integer = 16
+uint = 32, integer = 32
+uint = 64, integer = 64
+uint = 16383, integer = 16383
+uint = 16384, integer = 16384
+uint = 16385, integer = 16385
+uint = 32768, integer = 32768
+uint = 65536, integer = 65536
+uint = 2147483647, integer = 2147483647
+uint = 2147483648, integer = 2147483648
+uint = 4294967295, integer = 4294967295
+
+*** Testing integer -> uint conversion ***
+
+integer = -9223372036854775808, uint = <<OUT-OF-RANGE>>
+integer = -4294967296, uint = <<OUT-OF-RANGE>>
+integer = -2147483648, uint = <<OUT-OF-RANGE>>
+integer = -2, uint = <<OUT-OF-RANGE>>
+integer = -1, uint = <<OUT-OF-RANGE>>
+integer = 0, uint = 0
+integer = 1, uint = 1
+integer = 2, uint = 2
+integer = 16383, uint = 16383
+integer = 16384, uint = 16384
+integer = 16385, uint = 16385
+integer = 1073741824, uint = 1073741824
+integer = 2147483648, uint = 2147483648
+integer = 4294967295, uint = 4294967295
+integer = 4294967296, uint = <<OUT-OF-RANGE>>
+integer = 4294967297, uint = <<OUT-OF-RANGE>>
+integer = 9223372036854775808, uint = <<OUT-OF-RANGE>>
+integer = 18446744073709551615, uint = <<OUT-OF-RANGE>>
+integer = 18446744073709551616, uint = <<OUT-OF-RANGE>>

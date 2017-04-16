@@ -2,6 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2000, 2003-2007, 2011-2012 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +50,10 @@
     % Convert int to integer.
     %
 :- func integer(int) = integer.
+
+    % Convert a uint to an integer.
+    %
+:- func from_uint(uint) = integer.
 
     % Convert an integer to a string (in base 10).
     %
@@ -186,6 +191,15 @@
     %
 :- func det_to_int(integer) = int.
 
+    % Convert an integer to a uint.
+    % Fails if the integer is not in the range [0, max_uint].
+    %
+:- pred to_uint(integer::in, uint::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_uint(integer) = uint.
+
 :- func int(integer) = int.
 :- pragma obsolete(int/1).
 
@@ -231,6 +245,7 @@
 :- import_module math.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -750,6 +765,16 @@ int_to_integer(D) = Int :-
         )
     ).
 
+from_uint(U) = Integer :-
+    % XXX UINT use uint literals here when we have them.
+    ( if U = cast_from_int(0) then
+        Integer = integer.zero
+    else if U < cast_from_int(base) then
+        Integer = i(1, [cast_to_int(U)])
+    else
+        Integer = uint_to_digits(U)
+    ).
+
 :- func shortint_to_integer(int) = integer.
 
 shortint_to_integer(D) = Result :-
@@ -791,6 +816,21 @@ pos_int_to_digits_2(D, Tail) = Result :-
         Result = pos_int_to_digits_2(Div, i(Length + 1, [Mod | Digits]))
     ).
 
+:- func uint_to_digits(uint) = integer.
+
+uint_to_digits(U) = uint_to_digits_2(U, integer.zero).
+
+:- func uint_to_digits_2(uint, integer) = integer.
+
+uint_to_digits_2(U, Tail) = Result :-
+    ( if U = cast_from_int(0) then
+        Result = Tail
+    else
+        Tail = i(Length, Digits),
+        chop_uint(U, Div, Mod),
+        Result = uint_to_digits_2(Div, i(Length + 1, [cast_to_int(Mod) | Digits]))
+    ).
+
 :- func mul_base(integer) = integer.
 
 mul_base(i(Len, Digits)) = Result :-
@@ -830,6 +870,41 @@ mul_by_digit_2(D, Div, [X | Xs], [Mod | NewXs]) :-
 chop(N, Div, Mod) :-
     Div = N >> log2base,    % i.e. Div = N div base
     Mod = N /\ basemask.    % i.e. Mod = N mod base
+
+:- pred chop_uint(uint::in, uint::out, uint::out) is det.
+
+chop_uint(N, Div, Mod) :-
+    Div = N `uint_right_shift` log2base,
+    Mod = N /\ cast_from_int(basemask).
+
+    % XXX UINT - we define right shift for uints locally until the support for
+    % unchecked_right_shift has bootstrapped.
+    %
+:- func uint_right_shift(uint, int) = uint.
+
+:- pragma foreign_proc("C",
+    uint_right_shift(A::in, B::in) = (C::out),
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
+"
+    C = A >> B;
+").
+
+:- pragma foreign_proc("C#",
+    uint_right_shift(A::in, B::in) = (C::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    C = A >> B;
+").
+
+:- pragma foreign_proc("Java",
+    uint_right_shift(A::in, B::in) = (C::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    C = A >>> B;
+").
+
+uint_right_shift(_, _) = _ :-
+    sorry($module, "uint_right_shift/1 for Erlang NYI").
 
 :- func pos_plus(integer, integer) = integer.
 
@@ -1237,6 +1312,28 @@ int(Integer) = integer.det_to_int(Integer).
 
 int_list([], Accum) = Accum.
 int_list([H | T], Accum) = int_list(T, Accum * base + H).
+
+%---------------------------------------------------------------------------%
+
+to_uint(Integer, UInt) :-
+    Integer >= integer.zero,
+    Integer =< integer.from_uint(uint.max_uint),
+    Integer = i(_Sign, Digits),
+    UInt = uint_list(Digits, cast_from_int(0)).
+
+:- func uint_list(list(int), uint) = uint.
+
+uint_list([], Accum) = Accum.
+uint_list([H | T], Accum) =
+    uint_list(T, Accum * cast_from_int(base) + cast_from_int(H)).
+
+det_to_uint(Integer) = UInt :-
+    ( if integer.to_uint(Integer, UIntPrime) then
+        UInt = UIntPrime
+    else
+        throw(math.domain_error(
+            "integer.det_to_uint: domain error (conversion would overflow)"))
+    ).
 
 %---------------------------------------------------------------------------%
 

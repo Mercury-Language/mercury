@@ -166,6 +166,7 @@ ORDINARY_PROGS =	\
 	int_fold_up_down \
 	int_range_ops \
 	integer_test \
+	integer_uint_conv \
 	intermod_c_code \
 	intermod_foreign_type \
 	intermod_multimode_main \
