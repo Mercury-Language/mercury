@@ -55,15 +55,15 @@
     %
 :- func uint + uint = uint.
 :- mode in   + in  = uo is det.
-%:- mode uo   + in  = in is det.
-%:- mode in   + uo  = in is det.
+:- mode uo   + in  = in is det.
+:- mode in   + uo  = in is det.
 
     % Subtraction.
     %
 :- func uint - uint = uint.
 :- mode in   - in   = uo is det.
-%:- mode uo   - in   = in is det.
-%:- mode in   - uo   = in is det.
+:- mode uo   - in   = in is det.
+:- mode in   - uo   = in is det.
 
     % Multiplication.
     %
@@ -80,6 +80,10 @@
 :- func unchecked_quotient(uint::in, uint::in) = (uint::uo) is det.
 
 :- func unchecked_rem(uint::in, uint::in) = (uint::uo) is det.
+
+:- func unchecked_left_shift(uint::in, int::in) = (uint::uo) is det.
+
+:- func unchecked_right_shift(uint::in, int::in) = (uint::uo) is det.
 
     % even(X) is equivalent to (X mod 2 = 0).
     %
