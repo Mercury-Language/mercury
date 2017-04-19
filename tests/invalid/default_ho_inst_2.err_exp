@@ -1,14 +1,15 @@
 default_ho_inst_2.m:033: In clause for `main(di, uo)':
 default_ho_inst_2.m:033:   mode mismatch in disjunction.
-default_ho_inst_2.m:033:   The variable `F' has these instantiation states:
-default_ho_inst_2.m:033:     line 31:
-default_ho_inst_2.m:033:       unique(
-default_ho_inst_2.m:033:         foo(
-default_ho_inst_2.m:033:           /* unique */ (func(
-default_ho_inst_2.m:033:             in
-default_ho_inst_2.m:033:           ) = out is semidet)
-default_ho_inst_2.m:033:         )
-default_ho_inst_2.m:033:       )
-default_ho_inst_2.m:033:     line 33:
-default_ho_inst_2.m:033:       ground
+default_ho_inst_2.m:033:   The variable `F' has the following instantiation
+default_ho_inst_2.m:033:   states.
+default_ho_inst_2.m:031:     In this branch, `F' has instantiatedness
+default_ho_inst_2.m:031:       unique(
+default_ho_inst_2.m:031:         foo(
+default_ho_inst_2.m:031:           /* unique */ (func(
+default_ho_inst_2.m:031:             in
+default_ho_inst_2.m:031:           ) = out is semidet)
+default_ho_inst_2.m:031:         )
+default_ho_inst_2.m:031:       ).
+default_ho_inst_2.m:033:     In this branch, `F' has instantiatedness
+default_ho_inst_2.m:033:       ground.
 For more information, recompile with `-E'.

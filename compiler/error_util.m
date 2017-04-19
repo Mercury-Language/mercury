@@ -1338,19 +1338,30 @@ do_write_error_pieces_params(Stream, TreatAsFirst, MaybeContext, FixedIndent,
         % Suppress the printing of the error pieces.
     ;
         MaybeContextLength = yes(ContextLength),
-        convert_components_to_paragraphs(Components, Paragraphs),
-        FirstIndent = (if TreatAsFirst = treat_as_first then 0 else 1),
         (
-            MaybeMaxWidth = yes(MaxWidth),
-            Remain = MaxWidth - (ContextLength + FixedIndent),
-            MaybeRemain = yes(Remain)
+            Components = []
+            % There are no error pieces to print. Don't print the context
+            % at the start of a line followed by nothing.
+            %
+            % This can happen if e.g. the original error_msg_component was
+            % verbose_and_nonverbose(SomePieces, []), and this compiler
+            % invocation is not printing verbose errors.
         ;
-            MaybeMaxWidth = no,
-            MaybeRemain = no
-        ),
-        divide_paragraphs_into_lines(TreatAsFirst, FirstIndent, Paragraphs,
-            MaybeRemain, Lines),
-        write_lines(Stream, Lines, MaybeContext, FixedIndent, !IO)
+            Components = [_ | _],
+            convert_components_to_paragraphs(Components, Paragraphs),
+            FirstIndent = (if TreatAsFirst = treat_as_first then 0 else 1),
+            (
+                MaybeMaxWidth = yes(MaxWidth),
+                Remain = MaxWidth - (ContextLength + FixedIndent),
+                MaybeRemain = yes(Remain)
+            ;
+                MaybeMaxWidth = no,
+                MaybeRemain = no
+            ),
+            divide_paragraphs_into_lines(TreatAsFirst, FirstIndent, Paragraphs,
+                MaybeRemain, Lines),
+            write_lines(Stream, Lines, MaybeContext, FixedIndent, !IO)
+        )
     ).
 
 :- func line_number_is_in_a_range(list(line_number_range), int) = bool.

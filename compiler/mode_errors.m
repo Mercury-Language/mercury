@@ -545,26 +545,26 @@ mode_error_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     MainPieces = [words("mode mismatch in "),
         words(merge_context_to_string(MergeContext)), suffix("."), nl],
-    MergePieceLists = list.map(merge_error_to_pieces(ModeInfo), MergeErrors),
-    list.condense(MergePieceLists, MergePieces),
+    MergeMsgLists = list.map(merge_error_to_msgs(ModeInfo, Context, yes),
+        MergeErrors),
+    list.condense(MergeMsgLists, MergeMsgs),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context,
-            [always(Preamble ++ MainPieces ++ MergePieces)])]).
+        [simple_msg(Context, [always(Preamble ++ MainPieces)]) | MergeMsgs]).
 
 :- func mode_error_par_conj_to_spec(mode_info, merge_errors) = error_spec.
 
 mode_error_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
-    Pieces = [words("mode error: mutually exclusive bindings"),
+    MainPieces = [words("mode error: mutually exclusive bindings"),
         words("in parallel conjunction."),
         words("(The current implementation does not permit"),
         words("parallel conjunctions to fail.)"), nl],
-    MergePieceLists = list.map(merge_error_to_pieces(ModeInfo), MergeErrors),
-    list.condense(MergePieceLists, MergePieces),
+    MergeMsgLists = list.map(merge_error_to_msgs(ModeInfo, Context, no),
+        MergeErrors),
+    list.condense(MergeMsgLists, MergeMsgs),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context,
-            [always(Preamble ++ Pieces ++ MergePieces)])]).
+        [simple_msg(Context, [always(Preamble ++ MainPieces)]) | MergeMsgs]).
 
 :- func merge_context_to_string(merge_context) = string.
 
@@ -572,53 +572,51 @@ merge_context_to_string(merge_disj) = "disjunction".
 merge_context_to_string(merge_if_then_else) = "if-then-else".
 merge_context_to_string(merge_stm_atomic) = "atomic".
 
-:- func merge_error_to_pieces(mode_info, merge_error) = list(format_component).
+:- func merge_error_to_msgs(mode_info, prog_context, bool, merge_error)
+    = list(error_msg).
 
-merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
+merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
     MergeError = merge_error(Var, ContextsInsts0),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_varset(ModeInfo, VarSet),
-    count_ground_insts(ModuleInfo, ContextsInsts0,
+    VarNamePiece = quote(mercury_var_to_name_only(VarSet, Var)),
+    list.sort(ContextsInsts0, ContextsInsts),
+    count_ground_insts(ModuleInfo, ContextsInsts,
         0, NumGroundInsts, 0, NumAllInsts),
     ( if
+        IsDisjunctive = yes,
         NumGroundInsts < NumAllInsts,
         NumGroundInsts * 2 > NumAllInsts
     then
         % More than half the insts are ground, so it is likely that they
         % were *all* intended to be ground, but not all actually *are* ground,
         % which is likely to be the bug.
-        VarPieces = [words("The variable"),
-            quote(mercury_var_to_name_only(VarSet, Var)),
-            words("is ground in"), int_fixed(NumGroundInsts),
-            words("out of"), int_fixed(NumAllInsts), words("branches."),
-            words("It has these instantiation states:"), nl_indent_delta(1)],
-        ReportGround = yes
+        CommonPieces = [words("The variable"), VarNamePiece, words("is ground"),
+            words("in"), int_fixed(NumGroundInsts),
+            words("out of"), int_fixed(NumAllInsts), words("branches."), nl],
+        VerbosePieces =
+            [words("It has the following instantiation states."), nl],
+        NonVerbosePieces =
+            [words("It has non-ground instantiation states"),
+            words("in the following branches."), nl],
+        VarMsg = simple_msg(MainContext,
+            [always(CommonPieces),
+            verbose_and_nonverbose(VerbosePieces, NonVerbosePieces)]),
+        InstMsgs = list.map(
+            report_inst_in_context(ModeInfo, VarNamePiece,
+                report_is_ground_v_and_nonv),
+            ContextsInsts),
+        Msgs = [VarMsg | InstMsgs]
     else
-        VarPieces = [words("The variable"),
-            quote(mercury_var_to_name_only(VarSet, Var)),
-            words("has these instantiation states:"), nl_indent_delta(1)],
-        ReportGround = no
-    ),
-
-    list.sort(ContextsInsts0, ContextsInsts),
-    (
-        ContextsInsts = [],
-        unexpected($module, $pred, "ContextsInsts0 = []")
-    ;
-        ContextsInsts = [HeadContext - _HeadInst | TailContextInsts],
-        HeadContext = term.context(FileName, _),
-        ( if all_in_same_file(FileName, TailContextInsts) then
-            InclFileName = no
-        else
-            InclFileName = yes
-        )
-    ),
-    InstPiecesList = list.map(
-        report_inst_in_context(ModeInfo, InclFileName, ReportGround),
-        ContextsInsts),
-    InstPieces = list.condense(InstPiecesList),
-    SuffixPieces = [nl_indent_delta(-1)],
-    Pieces = VarPieces ++ InstPieces ++ SuffixPieces.
+        VarPieces = [words("The variable"), VarNamePiece,
+            words("has the following instantiation states."), nl],
+        VarMsg = simple_msg(MainContext, [always(VarPieces)]),
+        InstMsgs = list.map(
+            report_inst_in_context(ModeInfo, VarNamePiece,
+                dont_report_is_ground),
+            ContextsInsts),
+        Msgs = [VarMsg | InstMsgs]
+    ).
 
 :- pred count_ground_insts(module_info::in,
     assoc_list(prog_context, mer_inst)::in,
@@ -636,15 +634,6 @@ count_ground_insts(ModuleInfo, [ContextInst | ContextsInsts],
     !:NumAllInsts = !.NumAllInsts + 1,
     count_ground_insts(ModuleInfo, ContextsInsts,
         !NumGroundInsts, !NumAllInsts).
-
-:- pred all_in_same_file(string::in, assoc_list(prog_context, mer_inst)::in)
-    is semidet.
-
-all_in_same_file(_, []).
-all_in_same_file(FileName, [Pair | Pairs]) :-
-    Pair = Context - _Inst,
-    Context = term.context(FileName, _),
-    all_in_same_file(FileName, Pairs).
 
 %---------------------------------------------------------------------------%
 
@@ -1578,35 +1567,45 @@ expected_inst_was(ModeInfo, Inst) =
 
 %---------------------------------------------------------------------------%
 
-:- func report_inst_in_context(mode_info, bool, bool,
-    pair(prog_context, mer_inst)) = list(format_component).
+:- type maybe_report_is_ground
+    --->    dont_report_is_ground
+    ;       report_is_ground_v_and_nonv.
 
-report_inst_in_context(ModeInfo, InclFileName, ReportGround, Context - Inst)
-        = Pieces :-
+:- func report_inst_in_context(mode_info, format_component,
+    maybe_report_is_ground, pair(prog_context, mer_inst)) = error_msg.
+
+report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
+        = Msg :-
     (
-        ReportGround = no,
-        GroundStr = ""
+        ReportIsGround = dont_report_is_ground,
+        IntroPieces = [words("In this branch,"), VarNamePiece,
+            words("has instantiatedness")],
+        Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst),
+        Msg = simple_msg(Context, [always(Pieces)])
     ;
-        ReportGround = yes,
+        ReportIsGround = report_is_ground_v_and_nonv,
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         ( if inst_is_ground(ModuleInfo, Inst) then
-            GroundStr = " (ground)"
+            IntroPieces = [words("In this branch,"), VarNamePiece,
+                words("has the ground instantiatedness")],
+            Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst),
+            Msg = simple_msg(Context, [verbose_and_nonverbose(Pieces, [])])
         else
-            GroundStr = " (not ground)"
+            IntroPieces = [words("In this branch,"), VarNamePiece,
+                words("has the non-ground instantiatedness")],
+            Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst),
+            Msg = simple_msg(Context, [always(Pieces)])
         )
-    ),
-    Context = context(FileName, LineNum),
-    LineNumStr = string.int_to_string(LineNum),
-    (
-        InclFileName = no,
-        ContextStr = "line " ++ LineNumStr ++ GroundStr ++ ":"
-    ;
-        InclFileName = yes,
-        ContextStr = FileName ++ ":" ++ LineNumStr ++ GroundStr ++ ":"
-    ),
-    Pieces = [fixed(ContextStr), nl_indent_delta(1) |
-        report_inst(ModeInfo, fixed_short_inst, [nl_indent_delta(-1)],
-            [], [nl_indent_delta(-1)], Inst)].
+    ).
+
+:- func report_inst_in_branch(mode_info, list(format_component), mer_inst)
+    = list(format_component).
+
+report_inst_in_branch(ModeInfo, IntroPieces, Inst) = Pieces :-
+    Pieces = [nl_indent_delta(1) | IntroPieces] ++ [nl_indent_delta(1) |
+        report_inst(ModeInfo, fixed_short_inst,
+            [suffix("."), nl_indent_delta(-2)],
+            [], [suffix("."), nl_indent_delta(-2)], Inst)].
 
 :- func report_inst(mode_info, short_inst,
     list(format_component), list(format_component), list(format_component),
