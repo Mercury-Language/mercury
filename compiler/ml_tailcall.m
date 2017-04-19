@@ -962,7 +962,8 @@ locals_member(Name, LocalsList) :-
     ;
         Locals = local_params(Params),
         list.member(Param, Params),
-        Param = mlds_argument(Name, _, _)
+        Param = mlds_argument(VarName, _, _),
+        Name = entity_data(mlds_data_var(VarName))
     ).
 
 %-----------------------------------------------------------------------------%

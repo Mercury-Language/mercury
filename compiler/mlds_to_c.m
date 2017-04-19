@@ -1293,53 +1293,56 @@ mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
     io::di, io::uo) is det.
 
 mlds_output_pragma_input_arg(ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GCStatement),
-    QualName = qual(ModuleName, module_qual, Name),
-    BoxedQualName = qual(ModuleName, module_qual, boxed_name(Name)),
+    Arg = mlds_argument(VarName, Type, _GCStatement),
+    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
+        UnboxedEntityName, BoxedEntityName),
     io.write_string("\tMR_MAYBE_BOX_FOREIGN_TYPE(", !IO),
     mlds_output_pragma_export_type_prefix_suffix(Type, !IO),
     io.write_string(", ", !IO),
-    mlds_output_fully_qualified_name(QualName, !IO),
+    mlds_output_fully_qualified_name(UnboxedEntityName, !IO),
     io.write_string(", ", !IO),
-    mlds_output_fully_qualified_name(BoxedQualName, !IO),
+    mlds_output_fully_qualified_name(BoxedEntityName, !IO),
     io.write_string(");\n", !IO).
 
 :- pred mlds_output_pragma_output_arg(mlds_module_name::in, mlds_argument::in,
     io::di, io::uo) is det.
 
 mlds_output_pragma_output_arg(ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GCStatement),
-    QualName = qual(ModuleName, module_qual, Name),
-    BoxedQualName = qual(ModuleName, module_qual, boxed_name(Name)),
+    Arg = mlds_argument(VarName, Type, _GCStatement),
+    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
+        UnboxedEntityName, BoxedEntityName),
     io.write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
     mlds_output_pragma_export_type_prefix_suffix(pointed_to_type(Type), !IO),
     io.write_string(", ", !IO),
-    mlds_output_fully_qualified_name(BoxedQualName, !IO),
+    mlds_output_fully_qualified_name(BoxedEntityName, !IO),
     io.write_string(", *", !IO),
-    mlds_output_fully_qualified_name(QualName, !IO),
+    mlds_output_fully_qualified_name(UnboxedEntityName, !IO),
     io.write_string(");\n", !IO).
 
 :- pred mlds_output_pragma_export_input_defns(mlds_to_c_opts::in,
     mlds_module_name::in, mlds_argument::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_input_defns(Opts, ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GCStatement),
+    Arg = mlds_argument(VarName, Type, _GCStatement),
     io.write_string("\t", !IO),
+    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
+        _UnboxedEntityName, BoxedEntityName),
     mlds_output_data_decl_ho(Opts,
         mlds_output_type_prefix, mlds_output_type_suffix_no_size,
-        qual(ModuleName, module_qual, boxed_name(Name)), Type, !IO),
+        BoxedEntityName, Type, !IO),
     io.write_string(";\n", !IO).
 
 :- pred mlds_output_pragma_export_output_defns(mlds_to_c_opts::in,
     mlds_module_name::in, mlds_argument::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_output_defns(Opts, ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GCStatement),
+    Arg = mlds_argument(VarName, Type, _GCStatement),
     io.write_string("\t", !IO),
+    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
+        _UnboxedEntityName, BoxedEntityName),
     mlds_output_data_decl_ho(Opts,
         mlds_output_type_prefix, mlds_output_type_suffix_no_size,
-        qual(ModuleName, module_qual, boxed_name(Name)), pointed_to_type(Type),
-        !IO),
+        BoxedEntityName, pointed_to_type(Type), !IO),
     io.write_string(";\n", !IO).
 
 :- func pointed_to_type(mlds_type) = mlds_type.
@@ -1351,15 +1354,18 @@ pointed_to_type(PtrType) =
         unexpected($module, $pred, "not pointer")
     ).
 
-:- func boxed_name(mlds_entity_name) = mlds_entity_name.
+:- pred qualified_unboxed_and_boxed_entity_names(mlds_module_name::in,
+    mlds_var_name::in,
+    mlds_qualified_entity_name::out, mlds_qualified_entity_name::out) is det.
 
-boxed_name(Name) = BoxedName :-
-    ( if Name = entity_data(mlds_data_var(mlds_var_name(VarName, Seq))) then
-        BoxedName = entity_data(mlds_data_var(
-            mlds_var_name("boxed_" ++ VarName, Seq)))
-    else
-        unexpected($module, $pred, "boxed_name called for non-var argument")
-    ).
+qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
+        UnboxedEntityName, BoxedEntityName) :-
+    VarName = mlds_var_name(Name, MaybeSeq),
+    BoxedVarName = mlds_var_name("boxed_" ++ Name, MaybeSeq),
+    UnboxedEntityName = qual(ModuleName, module_qual,
+        entity_data(mlds_data_var(VarName))),
+    BoxedEntityName = qual(ModuleName, module_qual,
+        entity_data(mlds_data_var(BoxedVarName))).
 
 :- pred mlds_output_pragma_export_call(mlds_to_c_opts::in,
     mlds_module_name::in, mlds_qualified_entity_name::in, mlds_arguments::in,
@@ -1378,25 +1384,22 @@ mlds_output_pragma_export_call(Opts, ModuleName, FuncName, Parameters, !IO) :-
     mlds_argument::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_arg(Opts, ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GCStatement),
+    Arg = mlds_argument(VarName, Type, _GCStatement),
+    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
+        UnboxedEntityName, BoxedEntityName),
     ( if Type = mlds_foreign_type(c(_)) then
         % This is a foreign_type input. Pass in the already-boxed value.
-        BoxedName = boxed_name(Name),
-        mlds_output_fully_qualified_name(
-            qual(ModuleName, module_qual, BoxedName), !IO)
+        mlds_output_fully_qualified_name(BoxedEntityName, !IO)
     else if Type = mlds_ptr_type(mlds_foreign_type(c(_))) then
-        % This is a foreign_type output.  Pass in the address of the
+        % This is a foreign_type output. Pass in the address of the
         % local variable which will hold the boxed value.
         io.write_string("&", !IO),
-        BoxedName = boxed_name(Name),
-        mlds_output_fully_qualified_name(
-            qual(ModuleName, module_qual, BoxedName), !IO)
+        mlds_output_fully_qualified_name(BoxedEntityName, !IO)
     else
         % Otherwise, no boxing or unboxing is needed.
         % Just cast the argument to the right type.
         mlds_output_cast(Opts, Type, !IO),
-        mlds_output_fully_qualified_name(qual(ModuleName, module_qual, Name),
-            !IO)
+        mlds_output_fully_qualified_name(UnboxedEntityName, !IO)
     ).
 
 :- pred mlds_output_export_enums(mlds_to_c_opts::in, indent::in,
@@ -2386,35 +2389,12 @@ mlds_output_func_decl_ho(Opts, Indent, QualifiedName, Context,
     int::in, int::out) is det.
 
 standardize_param_names(!Argument, !ArgNum) :-
-    !.Argument = mlds_argument(EntityName0, Type, GCStmt),
-    (
-        EntityName0 = entity_data(DataName0),
-        (
-            DataName0 = mlds_data_var(VarName0),
-            VarName0 = mlds_var_name(_Name, _MaybeNum),
-            Name = "param",
-            MaybeNum = yes(!.ArgNum),
-            VarName = mlds_var_name(Name, MaybeNum),
-            DataName = mlds_data_var(VarName)
-        ;
-            ( DataName0 = mlds_scalar_common_ref(_)
-            ; DataName0 = mlds_rtti(_)
-            ; DataName0 = mlds_module_layout
-            ; DataName0 = mlds_proc_layout(_)
-            ; DataName0 = mlds_internal_layout(_, _)
-            ; DataName0 = mlds_tabling_ref(_, _)
-            ),
-            unexpected($module, $pred, "unexpected data name")
-        ),
-        EntityName = entity_data(DataName)
-    ;
-        ( EntityName0 = entity_type(_, _)
-        ; EntityName0 = entity_function(_, _, _, _)
-        ; EntityName0 = entity_export(_)
-        ),
-        unexpected($module, $pred, "unexpected entity name")
-    ),
-    !:Argument = mlds_argument(EntityName, Type, GCStmt),
+    !.Argument = mlds_argument(VarName0, Type, GCStmt),
+    VarName0 = mlds_var_name(_Name, _MaybeNum),
+    Name = "param",
+    MaybeNum = yes(!.ArgNum),
+    VarName = mlds_var_name(Name, MaybeNum),
+    !:Argument = mlds_argument(VarName, Type, GCStmt),
     !:ArgNum = !.ArgNum + 1.
 
 :- pred mlds_output_prefix_suffix(mlds_to_c_opts::in,
@@ -2451,7 +2431,8 @@ mlds_output_params(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
 
 mlds_output_param(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
         Context, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, GCStatement),
+    Arg = mlds_argument(VarName, Type, GCStatement),
+    Name = entity_data(mlds_data_var(VarName)),
     QualName = qual(ModuleName, module_qual, Name),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     mlds_indent(Indent, !IO),

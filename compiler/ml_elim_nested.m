@@ -676,7 +676,7 @@ strip_gc_statement(Argument0) = Argument :-
     % Add any arguments which are used in nested functions
     % to the local_data field in the elim_info.
     %
-:- pred ml_maybe_add_args(action, mlds_arguments, statement,
+:- pred ml_maybe_add_args(action, list(mlds_argument), statement,
     mlds_module_name, mlds_context, elim_info, elim_info).
 :- mode ml_maybe_add_args(in(hoist), in, in, in, in, in, out) is det.
 :- mode ml_maybe_add_args(in(chain), in, in, in, in, in, out) is det.
@@ -684,9 +684,8 @@ strip_gc_statement(Argument0) = Argument :-
 ml_maybe_add_args(_, [], _, _, _, !Info).
 ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
         !Info) :-
+    Arg = mlds_argument(VarName, _Type, GCStatement),
     ( if
-        Arg = mlds_argument(entity_data(mlds_data_var(VarName)), _Type,
-            GCStatement),
         ml_should_add_local_data(Action, !.Info, mlds_data_var(VarName),
             GCStatement, [], [FuncBody])
     then
@@ -700,7 +699,7 @@ ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
     % Generate code to copy any arguments which are used in nested functions
     % to the environment struct.
     %
-:- pred ml_maybe_copy_args(action, elim_info, mlds_arguments, statement,
+:- pred ml_maybe_copy_args(action, elim_info, list(mlds_argument), statement,
     mlds_type, mlds_type, mlds_context, list(mlds_defn), list(statement)).
 :- mode ml_maybe_copy_args(in(hoist), in, in, in, in, in, in, out, out) is det.
 :- mode ml_maybe_copy_args(in(chain), in, in, in, in, in, in, out, out) is det.
@@ -711,9 +710,8 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassType,
     ml_maybe_copy_args(Action, Info, Args, FuncBody, ClassType,
         EnvPtrTypeName, Context, ArgsToCopyTail, CodeToCopyArgsTail),
     ModuleName = elim_info_get_module_name(Info),
+    Arg = mlds_argument(VarName, FieldType, GCStatement),
     ( if
-        Arg = mlds_argument(entity_data(mlds_data_var(VarName)), FieldType,
-            GCStatement),
         ml_should_add_local_data(Action, Info, mlds_data_var(VarName),
             GCStatement, [], [FuncBody])
     then
@@ -1000,13 +998,13 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
 gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
         Context, GCTraceFuncAddr, FuncParams, GCTraceFuncDefn) :-
     % Compute the signature of the GC tracing function
-    ArgName = entity_data(mlds_data_var(mlds_var_name("this_frame", no))),
+    ArgVarName = mlds_var_name("this_frame", no),
     ArgType = mlds_generic_type,
-    Argument = mlds_argument(ArgName, ArgType, gc_no_stmt),
+    Argument = mlds_argument(ArgVarName, ArgType, gc_no_stmt),
     FuncParams = mlds_func_params([Argument], []),
     Signature = mlds_get_func_signature(FuncParams),
 
-    % Compute the name of the GC tracing function
+    % Compute the name of the GC tracing function.
     %
     % To compute the name, we just take the name of the original function
     % and add 100000 to the original function's sequence number.
@@ -1206,10 +1204,11 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     mlds_defn::out) is det.
 
 ml_conv_arg_to_var(Context, Arg, LocalVar) :-
-    Arg = mlds_argument(Name, Type, GCStatement),
+    Arg = mlds_argument(VarName, Type, GCStatement),
     Flags = ml_gen_local_var_decl_flags,
     DefnBody = mlds_data(Type, no_initializer, GCStatement),
-    LocalVar = mlds_defn(Name, Context, Flags, DefnBody).
+    LocalVar = mlds_defn(entity_data(mlds_data_var(VarName)), Context, Flags,
+        DefnBody).
 
     % Return the declaration flags appropriate for an environment struct
     % type declaration.

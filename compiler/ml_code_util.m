@@ -965,21 +965,20 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
             ContType = mlds_cont_type([]),
             RetTypes = RetTypes0
         ),
-        ContName = entity_data(mlds_data_var(mlds_var_name("cont", no))),
+        ContVarName = mlds_var_name("cont", no),
         % The cont variable always points to code, not to the heap,
         % so the GC never needs to trace it.
         ContGCStatement = gc_no_stmt,
-        ContArg = mlds_argument(ContName, ContType, ContGCStatement),
+        ContArg = mlds_argument(ContVarName, ContType, ContGCStatement),
         ContEnvType = mlds_generic_env_ptr_type,
-        ContEnvName = entity_data(
-            mlds_data_var(mlds_var_name("cont_env_ptr", no))),
+        ContEnvVarName = mlds_var_name("cont_env_ptr", no),
         % The cont_env_ptr always points to the stack, since continuation
         % environments are always allocated on the stack (unless
         % put_nondet_env_on_heap is true, which won't be the case when doing
         % our own GC -- this is enforced in handle_options.m).
         % So the GC doesn't need to trace it.
         ContEnvGCStatement = gc_no_stmt,
-        ContEnvArg = mlds_argument(ContEnvName, ContEnvType,
+        ContEnvArg = mlds_argument(ContEnvVarName, ContEnvType,
             ContEnvGCStatement),
         globals.lookup_bool_option(Globals, gcc_nested_functions,
             NestedFunctions),
@@ -1063,7 +1062,6 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
         ),
         MLDS_ArgType = mlds_ptr_type(MLDS_Type)
     ),
-    Name = entity_data(mlds_data_var(Var)),
     (
         !.MaybeInfo = yes(Info0),
         % XXX We should fill in this Context properly.
@@ -1075,7 +1073,7 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
         GCStatement = gc_no_stmt,
         !:MaybeInfo = no
     ),
-    FuncArg = mlds_argument(Name, MLDS_ArgType, GCStatement).
+    FuncArg = mlds_argument(Var, MLDS_ArgType, GCStatement).
 
 ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
@@ -1944,23 +1942,17 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     ml_gen_cont_params(ArgTypes0, InnerFuncParams0, !Info),
     InnerFuncParams0 = mlds_func_params(InnerArgs0, Rets),
     InnerArgRvals = list.map(
-        ( func(mlds_argument(Data, Type, _GC) ) = Lval :-
-            ( if Data = entity_data(mlds_data_var(VarName)) then
-                Lval = ml_lval(ml_var(qual(MLDS_Module, module_qual, VarName),
-                    Type))
-            else
-                unexpected($module, $pred,
-                    "expected variable name in continuation parameters")
-            )
+        ( func(mlds_argument(VarName, Type, _GC) ) = Lval :-
+            Lval = ml_lval(ml_var(qual(MLDS_Module, module_qual, VarName),
+                Type))
         ), InnerArgs0),
     InnerFuncArgType = mlds_cont_type(ArgTypes0),
     PassedContVarName = mlds_var_name("passed_cont", no),
     % The passed_cont variable always points to code, not to heap,
     % so the GC never needs to trace it.
     PassedContGCStatement = gc_no_stmt,
-    PassedContArg = mlds_argument(
-        entity_data(mlds_data_var(PassedContVarName)),
-        InnerFuncArgType, PassedContGCStatement),
+    PassedContArg = mlds_argument(PassedContVarName, InnerFuncArgType,
+        PassedContGCStatement),
     InnerFuncRval = ml_lval(ml_var(qual(MLDS_Module, module_qual,
         PassedContVarName), InnerFuncArgType)),
     InnerFuncParams = mlds_func_params([PassedContArg | InnerArgs0], Rets),
@@ -2005,8 +1997,8 @@ ml_get_env_ptr(Info, ml_lval(EnvPtrLval)) :-
     ml_gen_var_lval(Info, mlds_var_name("env_ptr", no), mlds_unknown_type,
         EnvPtrLval).
 
-ml_declare_env_ptr_arg(mlds_argument(Name, Type, GCStatement)) :-
-    Name = entity_data(mlds_data_var(mlds_var_name("env_ptr_arg", no))),
+ml_declare_env_ptr_arg(mlds_argument(VarName, Type, GCStatement)) :-
+    VarName = mlds_var_name("env_ptr_arg", no),
     Type = mlds_generic_env_ptr_type,
     % The env_ptr_arg always points to the stack, since continuation
     % environments are always allocated on the stack (unless

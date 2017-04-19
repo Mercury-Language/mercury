@@ -355,7 +355,7 @@ output_export(Info, Indent, Export, !IO) :-
         ;
             OutArgs = [FirstOutArg | RestOutArgs],
             FirstOutArg = mlds_argument(FirstOutArgName, _, _),
-            output_name(FirstOutArgName, !IO),
+            output_var_name_for_csharp(FirstOutArgName, !IO),
             io.write_string(" = ", !IO)
         )
     ;
@@ -380,7 +380,7 @@ is_out_argument(mlds_argument(_, Type, _)) :-
     list(mlds_argument)::in, io::di, io::uo) is det.
 
 write_export_call(MLDS_Name, Parameters, !IO) :-
-    output_fully_qualified_thing(MLDS_Name, output_name, !IO),
+    output_fully_qualified_thing(MLDS_Name, output_entity_name_for_csharp, !IO),
     io.write_char('(', !IO),
     io.write_list(Parameters, ", ", write_argument_name, !IO),
     io.write_string(");\n", !IO).
@@ -394,7 +394,7 @@ write_argument_name(Arg, !IO) :-
     else
         true
     ),
-    output_name(Name, !IO).
+    output_var_name_for_csharp(Name, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1026,7 +1026,7 @@ output_class(!.Info, Indent, UnqualName, ClassDefn, !IO) :-
     !Info ^ oi_univ_tvars := TypeParams,
 
     output_class_kind(Kind, !IO),
-    output_unqual_class_name(ClassName, Arity, !IO),
+    output_unqual_class_name_for_csharp(ClassName, Arity, !IO),
     OutputGenerics = !.Info ^ oi_output_generics,
     (
         OutputGenerics = do_output_generics,
@@ -1188,7 +1188,7 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
             Initializer = init_obj(Rval),
             % The name might require mangling.
             indent_line(Indent, !IO),
-            output_name(Name, !IO),
+            output_entity_name_for_csharp(Name, !IO),
             io.write_string(" = ", !IO),
             ( if
                 Rval = ml_const(mlconst_enum(N, _))
@@ -1246,7 +1246,7 @@ output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
 output_data_decl(Info, Name, Type, !IO) :-
     output_type(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_name(Name, !IO).
+    output_entity_name_for_csharp(Name, !IO).
 
 :- pred output_init_data_method(csharp_out_info::in, indent::in,
     list(mlds_defn)::in, io::di, io::uo) is det.
@@ -1266,7 +1266,7 @@ output_init_data_statements(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     ( if DefnBody = mlds_data(Type, Initializer, _GCStatement) then
         indent_line(Indent, !IO),
-        output_name(Name, !IO),
+        output_entity_name_for_csharp(Name, !IO),
         output_initializer(Info, none, Type, Initializer, !IO),
         io.write_string(";\n", !IO)
     else
@@ -1779,7 +1779,7 @@ output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO) :-
         (
             IsArray = not_array,
             indent_line(Indent, !IO),
-            output_name(Name, !IO),
+            output_entity_name_for_csharp(Name, !IO),
             io.write_string(".init(", !IO),
             output_initializer_body_list(Info, FieldInits, !IO),
             io.write_string(");\n", !IO)
@@ -1801,7 +1801,7 @@ output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO) :-
 output_rtti_array_assignments(Info, Indent, Name, ElementInit,
         Index, Index + 1, !IO) :-
     indent_line(Indent, !IO),
-    output_name(Name, !IO),
+    output_entity_name_for_csharp(Name, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
     io.write_string("] = ", !IO),
@@ -1861,12 +1861,12 @@ output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
         OutputAux = cname(CtorName),
         Name = entity_export("<constructor>")
     then
-        output_name(CtorName, !IO),
+        output_entity_name_for_csharp(CtorName, !IO),
         OutParams = []
     else
         output_return_types(Info, RetTypes, RestRetTypes, !IO),
         io.write_char(' ', !IO),
-        output_name(Name, !IO),
+        output_entity_name_for_csharp(Name, !IO),
         list.map_foldl(make_out_param, RestRetTypes, OutParams, 2, _)
     ),
     output_params(Info, Indent, Parameters ++ OutParams, !IO).
@@ -1875,8 +1875,8 @@ output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
     is det.
 
 make_out_param(Type, Argument, Num, Num + 1) :-
-    Argument = mlds_argument(Name, mlds_ptr_type(Type), gc_no_stmt),
-    Name = entity_data(mlds_data_var(mlds_var_name("out_param", yes(Num)))).
+    VarName = mlds_var_name("out_param", yes(Num)),
+    Argument = mlds_argument(VarName, mlds_ptr_type(Type), gc_no_stmt).
 
 :- pred output_return_types(csharp_out_info::in, mlds_return_types::in,
     list(mlds_type)::out, io::di, io::uo) is det.
@@ -1920,7 +1920,7 @@ output_param(Info, Indent, Arg, !IO) :-
     ),
     output_type(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_name(Name, !IO).
+    output_var_name_for_csharp(Name, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1940,9 +1940,10 @@ output_maybe_qualified_name(Info, QualifiedName, !IO) :-
     QualifiedName = qual(ModuleName, _QualKind, Name),
     CurrentModuleName = Info ^ oi_module_name,
     ( if ModuleName = CurrentModuleName then
-        output_name(Name, !IO)
+        output_entity_name_for_csharp(Name, !IO)
     else
-        output_fully_qualified_thing(QualifiedName, output_name, !IO)
+        output_fully_qualified_thing(QualifiedName,
+            output_entity_name_for_csharp, !IO)
     ).
 
 :- pred output_fully_qualified_thing(mlds_fully_qualified_name(T)::in,
@@ -2008,26 +2009,26 @@ remove_sym_name_prefixes(SymName0, Prefix, SymName) :-
 convert_qual_kind(module_qual) = module_qual.
 convert_qual_kind(type_qual) = type_qual.
 
-:- pred output_unqual_class_name(mlds_class_name::in, arity::in,
+:- pred output_unqual_class_name_for_csharp(mlds_class_name::in, arity::in,
     io::di, io::uo) is det.
 
-output_unqual_class_name(Name, Arity, !IO) :-
-    unqual_class_name_to_string(Name, Arity, String),
-    write_identifier_string(String, !IO).
+output_unqual_class_name_for_csharp(Name, Arity, !IO) :-
+    unqual_class_name_to_string_for_csharp(Name, Arity, String),
+    write_identifier_string_for_csharp(String, !IO).
 
-:- pred unqual_class_name_to_string(mlds_class_name::in, arity::in,
+:- pred unqual_class_name_to_string_for_csharp(mlds_class_name::in, arity::in,
     string::out) is det.
 
-unqual_class_name_to_string(Name, Arity, String) :-
+unqual_class_name_to_string_for_csharp(Name, Arity, String) :-
     MangledName = name_mangle_no_leading_digit(Name),
     % By convention, class names should start with a capital letter.
     UppercaseMangledName = flip_initial_case(MangledName),
     String = UppercaseMangledName ++ "_" ++ string.from_int(Arity).
 
-:- pred qual_class_name_to_string(mlds_class::in, arity::in, string::out)
-    is det.
+:- pred qual_class_name_to_string_for_csharp(mlds_class::in, arity::in,
+    string::out) is det.
 
-qual_class_name_to_string(QualName, Arity, String) :-
+qual_class_name_to_string_for_csharp(QualName, Arity, String) :-
     QualName = qual(MLDS_ModuleName, QualKind, ClassName),
     ( if
         SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
@@ -2037,19 +2038,26 @@ qual_class_name_to_string(QualName, Arity, String) :-
         String = "runtime." ++ ClassName
     else
         qualifier_to_string(MLDS_ModuleName, QualKind, QualString),
-        unqual_class_name_to_string(ClassName, Arity, UnqualString),
+        unqual_class_name_to_string_for_csharp(ClassName, Arity, UnqualString),
         String = QualString ++ "." ++ UnqualString
     ).
 
-:- pred output_name(mlds_entity_name::in, io::di, io::uo) is det.
+:- pred output_entity_name_for_csharp(mlds_entity_name::in, io::di, io::uo)
+    is det.
 
-output_name(EntityName, !IO) :-
-    entity_name_to_string(EntityName, EntityNameStr),
-    write_identifier_string(EntityNameStr, !IO).
+output_entity_name_for_csharp(EntityName, !IO) :-
+    entity_name_to_string_for_csharp(EntityName, EntityNameStr),
+    write_identifier_string_for_csharp(EntityNameStr, !IO).
 
-:- pred write_identifier_string(string::in, io::di, io::uo) is det.
+:- pred output_var_name_for_csharp(mlds_var_name::in, io::di, io::uo) is det.
 
-write_identifier_string(String, !IO) :-
+output_var_name_for_csharp(VarName, !IO) :-
+    var_name_to_string_for_csharp(VarName, VarNameStr),
+    write_identifier_string_for_csharp(VarNameStr, !IO).
+
+:- pred write_identifier_string_for_csharp(string::in, io::di, io::uo) is det.
+
+write_identifier_string_for_csharp(String, !IO) :-
     % Although the C# spec does not limit identifier lengths, the Microsoft
     % compiler restricts identifiers to 511 characters and Mono restricts
     % identifiers to 512 characters.
@@ -2064,18 +2072,19 @@ write_identifier_string(String, !IO) :-
         io.write_string(String, !IO)
     ).
 
-:- pred entity_name_to_string(mlds_entity_name::in, string::out) is det.
+:- pred entity_name_to_string_for_csharp(mlds_entity_name::in, string::out)
+    is det.
 
-entity_name_to_string(EntityName, String) :-
+entity_name_to_string_for_csharp(EntityName, String) :-
     (
         EntityName = entity_type(Name, Arity),
-        unqual_class_name_to_string(Name, Arity, String)
+        unqual_class_name_to_string_for_csharp(Name, Arity, String)
     ;
         EntityName = entity_data(DataName),
-        data_name_to_string(DataName, String)
+        data_name_to_string_for_csharp(DataName, String)
     ;
         EntityName = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
-        pred_label_to_string(PredLabel, PredLabelStr),
+        pred_label_to_string_for_csharp(PredLabel, PredLabelStr),
         proc_id_to_int(ProcId, ModeNum),
         (
             MaybeSeqNum = yes(SeqNum),
@@ -2090,56 +2099,61 @@ entity_name_to_string(EntityName, String) :-
         String = Name
     ).
 
-:- pred pred_label_to_string(mlds_pred_label::in, string::out) is det.
+:- pred pred_label_to_string_for_csharp(mlds_pred_label::in, string::out)
+    is det.
 
-pred_label_to_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-        Name, PredArity, _, _), String) :-
+pred_label_to_string_for_csharp(PredLabel, String) :-
     (
-        PredOrFunc = pf_predicate,
-        Suffix = "p",
-        OrigArity = PredArity
+        PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
+            Name, PredArity, _, _),
+        (
+            PredOrFunc = pf_predicate,
+            Suffix = "p",
+            OrigArity = PredArity
+        ;
+            PredOrFunc = pf_function,
+            Suffix = "f",
+            OrigArity = PredArity - 1
+        ),
+        MangledName = name_mangle_no_leading_digit(Name),
+        (
+            MaybeDefiningModule = yes(DefiningModule),
+            DefiningModuleStr = sym_name_mangle(DefiningModule),
+            string.format("%s_%d_%s_in__%s",
+                [s(MangledName), i(OrigArity), s(Suffix),
+                    s(DefiningModuleStr)],
+                String)
+        ;
+            MaybeDefiningModule = no,
+            string.format("%s_%d_%s",
+                [s(MangledName), i(OrigArity), s(Suffix)], String)
+        )
     ;
-        PredOrFunc = pf_function,
-        Suffix = "f",
-        OrigArity = PredArity - 1
-    ),
-    MangledName = name_mangle_no_leading_digit(Name),
-    (
-        MaybeDefiningModule = yes(DefiningModule),
-        DefiningModuleStr = sym_name_mangle(DefiningModule),
-        string.format("%s_%d_%s_in__%s",
-            [s(MangledName), i(OrigArity), s(Suffix), s(DefiningModuleStr)],
-            String)
-    ;
-        MaybeDefiningModule = no,
-        string.format("%s_%d_%s",
-            [s(MangledName), i(OrigArity), s(Suffix)], String)
+        PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,
+            TypeName, TypeArity),
+        MangledPredName = name_mangle_no_leading_digit(PredName),
+        MangledTypeName = name_mangle(TypeName),
+        (
+            MaybeTypeModule = yes(TypeModule),
+            TypeModuleStr = sym_name_mangle(TypeModule),
+            string.format("%s__%s__%s_%d",
+                [s(TypeModuleStr), s(MangledPredName), s(MangledTypeName),
+                    i(TypeArity)],
+                String)
+        ;
+            MaybeTypeModule = no,
+            string.format("%s__%s_%d",
+                [s(MangledPredName), s(MangledTypeName), i(TypeArity)],
+                String)
+        )
     ).
 
-pred_label_to_string(mlds_special_pred_label(PredName, MaybeTypeModule,
-        TypeName, TypeArity), String) :-
-    MangledPredName = name_mangle_no_leading_digit(PredName),
-    MangledTypeName = name_mangle(TypeName),
-    (
-        MaybeTypeModule = yes(TypeModule),
-        TypeModuleStr = sym_name_mangle(TypeModule),
-        string.format("%s__%s__%s_%d",
-            [s(TypeModuleStr), s(MangledPredName), s(MangledTypeName),
-                i(TypeArity)],
-            String)
-    ;
-        MaybeTypeModule = no,
-        string.format("%s__%s_%d",
-            [s(MangledPredName), s(MangledTypeName), i(TypeArity)],
-            String)
-    ).
+:- pred data_name_to_string_for_csharp(mlds_data_name::in, string::out) is det.
 
-:- pred data_name_to_string(mlds_data_name::in, string::out) is det.
-
-data_name_to_string(DataName, String) :-
+data_name_to_string_for_csharp(DataName, String) :-
     (
         DataName = mlds_data_var(VarName),
-        var_name_to_string(VarName, String)
+        var_name_to_string_for_csharp(VarName, String)
     ;
         DataName = mlds_scalar_common_ref(Common),
         Common = ml_scalar_common(_ModuleName, _Type,
@@ -2164,9 +2178,9 @@ data_name_to_string(DataName, String) :-
         unexpected($module, $pred, "NYI: mlds_tabling_ref")
     ).
 
-:- pred var_name_to_string(mlds_var_name::in, string::out) is det.
+:- pred var_name_to_string_for_csharp(mlds_var_name::in, string::out) is det.
 
-var_name_to_string(VarName, String) :-
+var_name_to_string_for_csharp(VarName, String) :-
     (
         VarName = mlds_var_name(Name, no),
         MangledName = name_mangle(Name),
@@ -2304,7 +2318,7 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         )
     ;
         MLDS_Type = mlds_class_type(Name, Arity, _ClassKind),
-        qual_class_name_to_string(Name, Arity, String),
+        qual_class_name_to_string_for_csharp(Name, Arity, String),
         ArrayDims = []
     ;
         MLDS_Type = mlds_ptr_type(Type),
@@ -3193,7 +3207,7 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
             io.write_char('.', !IO),
             QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
-            output_unqual_class_name(CtorName, CtorArity, !IO)
+            output_unqual_class_name_for_csharp(CtorName, CtorArity, !IO)
         else
             output_type(Info, Type, !IO)
         ),
@@ -3420,7 +3434,7 @@ output_lval(Info, Lval, !IO) :-
 output_valid_mangled_name(Name, !IO) :-
     MangledName = name_mangle(Name),
     JavaSafeName = valid_csharp_symbol_name(MangledName),
-    write_identifier_string(JavaSafeName, !IO).
+    write_identifier_string_for_csharp(JavaSafeName, !IO).
 
 :- pred output_call_rval(csharp_out_info::in, mlds_rval::in, io::di, io::uo)
     is det.
@@ -4043,10 +4057,10 @@ method_ptr_type_to_string(Info, ArgTypes, RetTypes) = String :-
     is det.
 
 mlds_output_proc_label(Suffix, mlds_proc_label(PredLabel, ProcId), !IO) :-
-    pred_label_to_string(PredLabel, PredLabelStr),
+    pred_label_to_string_for_csharp(PredLabel, PredLabelStr),
     proc_id_to_int(ProcId, ModeNum),
     string.format("%s_%d%s", [s(PredLabelStr), i(ModeNum), s(Suffix)], String),
-    write_identifier_string(String, !IO).
+    write_identifier_string_for_csharp(String, !IO).
 
 :- pred mlds_output_data_addr(mlds_data_addr::in, io::di, io::uo) is det.
 
@@ -4061,8 +4075,8 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
     ),
     io.write_string(ModuleName, !IO),
     io.write_string(".", !IO),
-    data_name_to_string(DataName, DataNameStr),
-    write_identifier_string(DataNameStr, !IO).
+    data_name_to_string_for_csharp(DataName, DataNameStr),
+    write_identifier_string_for_csharp(DataNameStr, !IO).
 
 %-----------------------------------------------------------------------------%
 %

@@ -952,9 +952,13 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
 
 make_arg(mlds_defn(Name, _Context, _Flags, Defn)) = Arg :-
     ( if Defn = mlds_data(Type, _Init, GCStatement) then
-        Arg = mlds_argument(Name, Type, GCStatement)
+        ( if Name = entity_data(mlds_data_var(VarName)) then
+            Arg = mlds_argument(VarName, Type, GCStatement)
+        else
+            unexpected($pred, "non-var data member")
+        )
     else
-        unexpected($module, $pred, "non-data member")
+        unexpected($pred, "non-data member")
     ).
 
     % Generate "this-><fieldname> = <fieldname>;".

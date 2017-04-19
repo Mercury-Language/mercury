@@ -620,7 +620,7 @@ output_export_params_ref_out(Info, Indent, Parameters, !IO) :-
     mlds_argument::in, io::di, io::uo) is det.
 
 output_export_param_ref_out(Info, Indent, Argument, !IO) :-
-    Argument = mlds_argument(Name, Type, _),
+    Argument = mlds_argument(VarName, Type, _),
     indent_line(Indent, !IO),
     ( if Type = mlds_ptr_type(InnerType) then
         boxed_type_to_string(Info, InnerType, InnerTypeString),
@@ -629,13 +629,13 @@ output_export_param_ref_out(Info, Indent, Argument, !IO) :-
         output_type(Info, Type, !IO),
         io.write_string(" ", !IO)
     ),
-    output_name(Name, !IO).
+    output_mlds_var_name_for_java(VarName, !IO).
 
 :- pred write_export_call(mlds_qualified_entity_name::in,
     list(mlds_argument)::in, io::di, io::uo) is det.
 
 write_export_call(MLDS_Name, Parameters, !IO) :-
-    output_fully_qualified_thing(MLDS_Name, output_name, !IO),
+    output_fully_qualified_thing(MLDS_Name, output_entity_name_for_java, !IO),
     io.write_char('(', !IO),
     io.write_list(Parameters, ", ", write_argument_name, !IO),
     io.write_string(");\n", !IO).
@@ -643,16 +643,16 @@ write_export_call(MLDS_Name, Parameters, !IO) :-
 :- pred write_argument_name(mlds_argument::in, io::di, io::uo) is det.
 
 write_argument_name(Arg, !IO) :-
-    Arg = mlds_argument(Name, _, _),
-    output_name(Name, !IO).
+    Arg = mlds_argument(VarName, _, _),
+    output_mlds_var_name_for_java(VarName, !IO).
 
 :- pred assign_ref_output(java_out_info::in, indent::in, mlds_argument::in,
     int::in, int::out, io::di, io::uo) is det.
 
 assign_ref_output(Info, Indent, Arg, N, N + 1, !IO) :-
-    Arg = mlds_argument(Name, Type, _),
+    Arg = mlds_argument(VarName, Type, _),
     indent_line(Indent, !IO),
-    output_name(Name, !IO),
+    output_mlds_var_name_for_java(VarName, !IO),
     ( if Type = mlds_ptr_type(InnerType) then
         boxed_type_to_string(Info, InnerType, TypeString)
     else
@@ -1035,8 +1035,8 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
             mlds_native_int_type, ClassType),
 
         CtorArgName = mlds_var_name("ptr_num", no),
-        CtorArg = entity_data(mlds_data_var(CtorArgName)),
-        CtorArgs = [mlds_argument(CtorArg, mlds_native_int_type, gc_no_stmt)],
+        CtorArgs = [mlds_argument(CtorArgName, mlds_native_int_type,
+            gc_no_stmt)],
         CtorReturnValues = [],
 
         CtorArgLval = ml_var(qual(MLDS_ModuleName, type_qual, CtorArgName),
@@ -1110,9 +1110,8 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
         InputArgs = cmi_separate(ArgNames)
     else
         ArgName = mlds_var_name("args", no),
-        ArgDataName = entity_data(mlds_data_var(ArgName)),
         ArgType = mlds_array_type(mlds_generic_type),
-        Arg = mlds_argument(ArgDataName, ArgType, gc_no_stmt),
+        Arg = mlds_argument(ArgName, ArgType, gc_no_stmt),
         MethodArgs = [Arg],
         InputArgs = cmi_array(ArgName)
     ),
@@ -1174,8 +1173,7 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
 
 create_generic_arg(I, ArgName, Arg) :-
     ArgName = mlds_var_name("arg" ++ string.from_int(I), no),
-    Arg = mlds_argument(entity_data(mlds_data_var(ArgName)),
-        mlds_generic_type, gc_no_stmt).
+    Arg = mlds_argument(ArgName, mlds_generic_type, gc_no_stmt).
 
 :- pred generate_call_statement_for_addr(call_method_inputs::in,
     mlds_code_addr::in, statement::out) is det.
@@ -2215,7 +2213,7 @@ output_class(!.Info, Indent, UnqualName, ClassDefn, !IO) :-
     ),
 
     output_class_kind(Kind, !IO),
-    output_unqual_class_name(ClassName, Arity, !IO),
+    output_unqual_class_name_for_java(ClassName, Arity, !IO),
     OutputGenerics = !.Info ^ joi_output_generics,
     (
         OutputGenerics = do_output_generics,
@@ -2374,7 +2372,7 @@ defn_is_const(Defn) :-
 output_enum_ctor(Indent, UnqualName, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("private ", !IO),
-    output_name(UnqualName, !IO),
+    output_entity_name_for_java(UnqualName, !IO),
     io.write_string("(int val) {\n", !IO),
     indent_line(Indent + 1, !IO),
     % Call the MercuryEnum constructor, which will set the MR_value field.
@@ -2405,13 +2403,13 @@ output_enum_constant(_Info, Indent, EnumName, Defn, !IO) :-
             ( if Rval = ml_const(mlconst_enum(N, _)) then
                 indent_line(Indent, !IO),
                 io.write_string("public static final ", !IO),
-                output_name(EnumName, !IO),
+                output_entity_name_for_java(EnumName, !IO),
                 io.format(" K%d = new ", [i(N)], !IO),
-                output_name(EnumName, !IO),
+                output_entity_name_for_java(EnumName, !IO),
                 io.format("(%d); ", [i(N)], !IO),
 
                 io.write_string(" /* ", !IO),
-                output_name(Name, !IO),
+                output_entity_name_for_java(Name, !IO),
                 io.write_string(" */", !IO)
             else
                 unexpected($module, $pred, "not mlconst_enum")
@@ -2454,7 +2452,7 @@ output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
 output_data_decl(Info, Name, Type, !IO) :-
     output_type(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_name(Name, !IO).
+    output_entity_name_for_java(Name, !IO).
 
 :- pred output_data_assignments(java_out_info::in, indent::in,
     list(mlds_defn)::in, io::di, io::uo) is det.
@@ -2492,7 +2490,7 @@ output_init_data_statements(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     ( if DefnBody = mlds_data(Type, Initializer, _GCStatement) then
         indent_line(Indent, !IO),
-        output_name(Name, !IO),
+        output_entity_name_for_java(Name, !IO),
         output_initializer(Info, none, Type, Initializer, !IO),
         io.write_string(";\n", !IO)
     else
@@ -3013,7 +3011,7 @@ output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO) :-
         (
             IsArray = not_array,
             indent_line(Indent, !IO),
-            output_name(Name, !IO),
+            output_entity_name_for_java(Name, !IO),
             io.write_string(".init(", !IO),
             output_initializer_body_list(Info, FieldInits, !IO),
             io.write_string(");\n", !IO)
@@ -3035,7 +3033,7 @@ output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO) :-
 output_rtti_array_assignments(Info, Indent, Name, ElementInit,
         Index, Index + 1, !IO) :-
     indent_line(Indent, !IO),
-    output_name(Name, !IO),
+    output_entity_name_for_java(Name, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
     io.write_string("] = ", !IO),
@@ -3096,11 +3094,11 @@ output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
         OutputAux = cname(CtorName),
         Name = entity_export("<constructor>")
     then
-        output_name(CtorName, !IO)
+        output_entity_name_for_java(CtorName, !IO)
     else
         output_return_types(Info, RetTypes, !IO),
         io.write_char(' ', !IO),
-        output_name(Name, !IO)
+        output_entity_name_for_java(Name, !IO)
     ),
     output_params(Info, Indent, Parameters, !IO).
 
@@ -3138,11 +3136,11 @@ output_params(Info, Indent, Parameters, !IO) :-
     io::di, io::uo) is det.
 
 output_param(Info, Indent, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GCStatement),
+    Arg = mlds_argument(VarName, Type, _GCStatement),
     indent_line(Indent, !IO),
     output_type(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_name(Name, !IO).
+    output_mlds_var_name_for_java(VarName, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3162,9 +3160,10 @@ output_maybe_qualified_name(Info, QualifiedName, !IO) :-
     QualifiedName = qual(ModuleName, _QualKind, Name),
     CurrentModuleName = Info ^ joi_module_name,
     ( if ModuleName = CurrentModuleName then
-        output_name(Name, !IO)
+        output_entity_name_for_java(Name, !IO)
     else
-        output_fully_qualified_thing(QualifiedName, output_name, !IO)
+        output_fully_qualified_thing(QualifiedName,
+            output_entity_name_for_java, !IO)
     ).
 
 :- pred output_fully_qualified_thing(mlds_fully_qualified_name(T)::in,
@@ -3226,26 +3225,26 @@ convert_qual_kind(type_qual) = type_qual.
 output_module_name(ModuleName, !IO) :-
     io.write_string(sym_name_mangle(ModuleName), !IO).
 
-:- pred output_unqual_class_name(mlds_class_name::in, arity::in,
+:- pred output_unqual_class_name_for_java(mlds_class_name::in, arity::in,
     io::di, io::uo) is det.
 
-output_unqual_class_name(Name, Arity, !IO) :-
-    unqual_class_name_to_string(Name, Arity, String),
+output_unqual_class_name_for_java(Name, Arity, !IO) :-
+    unqual_class_name_to_string_for_java(Name, Arity, String),
     io.write_string(String, !IO).
 
-:- pred unqual_class_name_to_string(mlds_class_name::in, arity::in,
+:- pred unqual_class_name_to_string_for_java(mlds_class_name::in, arity::in,
     string::out) is det.
 
-unqual_class_name_to_string(Name, Arity, String) :-
+unqual_class_name_to_string_for_java(Name, Arity, String) :-
     MangledName = name_mangle_no_leading_digit(Name),
     % By convention, class names should start with a capital letter.
     UppercaseMangledName = flip_initial_case(MangledName),
     String = UppercaseMangledName ++ "_" ++ string.from_int(Arity).
 
-:- pred qual_class_name_to_string(mlds_class::in, arity::in, string::out)
-    is det.
+:- pred qual_class_name_to_string_for_java(mlds_class::in, arity::in,
+    string::out) is det.
 
-qual_class_name_to_string(QualName, Arity, String) :-
+qual_class_name_to_string_for_java(QualName, Arity, String) :-
     QualName = qual(MLDS_ModuleName, QualKind, ClassName),
     ( if
         SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
@@ -3255,28 +3254,35 @@ qual_class_name_to_string(QualName, Arity, String) :-
         String = "jmercury.runtime." ++ ClassName
     else
         qualifier_to_string(MLDS_ModuleName, QualKind, QualString),
-        unqual_class_name_to_string(ClassName, Arity, UnqualString),
+        unqual_class_name_to_string_for_java(ClassName, Arity, UnqualString),
         String = QualString ++ "." ++ UnqualString
     ).
 
-:- pred output_name(mlds_entity_name::in, io::di, io::uo) is det.
+:- pred output_entity_name_for_java(mlds_entity_name::in, io::di, io::uo)
+    is det.
 
-output_name(entity_type(Name, Arity), !IO) :-
-    output_unqual_class_name(Name, Arity, !IO).
-output_name(entity_data(DataName), !IO) :-
-    output_data_name(DataName, !IO).
-output_name(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
-    output_pred_label(PredLabel, !IO),
-    proc_id_to_int(ProcId, ModeNum),
-    io.format("_%d", [i(ModeNum)], !IO),
+output_entity_name_for_java(EntityName, !IO) :-
     (
-        MaybeSeqNum = yes(SeqNum),
-        io.format("_%d", [i(SeqNum)], !IO)
+        EntityName = entity_type(Name, Arity),
+        output_unqual_class_name_for_java(Name, Arity, !IO)
     ;
-        MaybeSeqNum = no
+        EntityName = entity_data(DataName),
+        output_data_name_for_java(DataName, !IO)
+    ;
+        EntityName = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+        output_pred_label(PredLabel, !IO),
+        proc_id_to_int(ProcId, ModeNum),
+        io.format("_%d", [i(ModeNum)], !IO),
+        (
+            MaybeSeqNum = yes(SeqNum),
+            io.format("_%d", [i(SeqNum)], !IO)
+        ;
+            MaybeSeqNum = no
+        )
+    ;
+        EntityName = entity_export(Name),
+        io.write_string(Name, !IO)
     ).
-output_name(entity_export(Name), !IO) :-
-    io.write_string(Name, !IO).
 
 :- pred output_pred_label(mlds_pred_label::in, io::di, io::uo) is det.
 
@@ -3316,35 +3322,44 @@ output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
     ),
     io.format("%s_%d", [s(MangledTypeName), i(TypeArity)], !IO).
 
-:- pred output_data_name(mlds_data_name::in, io::di, io::uo) is det.
+:- pred output_data_name_for_java(mlds_data_name::in, io::di, io::uo) is det.
 
-output_data_name(mlds_data_var(VarName), !IO) :-
-    output_mlds_var_name(VarName, !IO).
+output_data_name_for_java(DataName, !IO) :-
+    (
+        DataName = mlds_data_var(VarName),
+        output_mlds_var_name_for_java(VarName, !IO)
+    ;
+        DataName = mlds_scalar_common_ref(Common),
+        Common = ml_scalar_common(_ModuleName, _Type,
+            ml_scalar_common_type_num(TypeNum), RowNum),
+        io.format("MR_scalar_common_%d[%d]", [i(TypeNum), i(RowNum)], !IO)
+    ;
+        DataName = mlds_rtti(RttiId),
+        rtti.id_to_c_identifier(RttiId, RttiAddrName),
+        io.write_string(RttiAddrName, !IO)
+    ;
+        DataName = mlds_module_layout,
+        unexpected($module, $pred, "NYI: mlds_module_layout")
+    ;
+        DataName = mlds_proc_layout(_ProcLabel),
+        unexpected($module, $pred, "NYI: mlds_proc_layout")
+    ;
+        DataName = mlds_internal_layout(_ProcLabel, _FuncSeqNum),
+        unexpected($module, $pred, "NYI: mlds_internal_layout")
+    ;
+        DataName = mlds_tabling_ref(ProcLabel, Id),
+        Prefix = tabling_info_id_str(Id) ++ "_",
+        io.write_string(Prefix, !IO),
+        mlds_output_proc_label(mlds_std_tabling_proc_label(ProcLabel), !IO)
+    ).
 
-output_data_name(mlds_scalar_common_ref(Common), !IO) :-
-    Common = ml_scalar_common(_ModuleName, _Type,
-        ml_scalar_common_type_num(TypeNum), RowNum),
-    io.format("MR_scalar_common_%d[%d]", [i(TypeNum), i(RowNum)], !IO).
 
-output_data_name(mlds_rtti(RttiId), !IO) :-
-    rtti.id_to_c_identifier(RttiId, RttiAddrName),
-    io.write_string(RttiAddrName, !IO).
-output_data_name(mlds_module_layout, !IO) :-
-    unexpected($module, $pred, "NYI: mlds_module_layout").
-output_data_name(mlds_proc_layout(_ProcLabel), !IO) :-
-    unexpected($module, $pred, "NYI: mlds_proc_layout").
-output_data_name(mlds_internal_layout(_ProcLabel, _FuncSeqNum), !IO) :-
-    unexpected($module, $pred, "NYI: mlds_internal_layout").
-output_data_name(mlds_tabling_ref(ProcLabel, Id), !IO) :-
-    Prefix = tabling_info_id_str(Id) ++ "_",
-    io.write_string(Prefix, !IO),
-    mlds_output_proc_label(mlds_std_tabling_proc_label(ProcLabel), !IO).
+:- pred output_mlds_var_name_for_java(mlds_var_name::in, io::di, io::uo)
+    is det.
 
-:- pred output_mlds_var_name(mlds_var_name::in, io::di, io::uo) is det.
-
-output_mlds_var_name(mlds_var_name(Name, no), !IO) :-
+output_mlds_var_name_for_java(mlds_var_name(Name, no), !IO) :-
     output_valid_mangled_name(Name, !IO).
-output_mlds_var_name(mlds_var_name(Name, yes(Num)), !IO) :-
+output_mlds_var_name_for_java(mlds_var_name(Name, yes(Num)), !IO) :-
     output_mangled_name(string.format("%s_%d", [s(Name), i(Num)]), !IO).
 
 %-----------------------------------------------------------------------------%
@@ -3477,7 +3492,7 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         )
     ;
         MLDS_Type = mlds_class_type(Name, Arity, _ClassKind),
-        qual_class_name_to_string(Name, Arity, String),
+        qual_class_name_to_string_for_java(Name, Arity, String),
         ArrayDims = []
     ;
         MLDS_Type = mlds_ptr_type(Type),
@@ -4512,7 +4527,7 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
             io.write_char('.', !IO),
             QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
-            output_unqual_class_name(CtorName, CtorArity, !IO)
+            output_unqual_class_name_for_java(CtorName, CtorArity, !IO)
         else
             output_type(Info, Type, !IO)
         ),
@@ -5002,8 +5017,8 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
         unexpected($file, $pred, "unknown typed")
     ).
 
-:- pred java_primitive_foreign_language_type(foreign_language_type::in, string::out,
-    string::out, string::out, string::out) is semidet.
+:- pred java_primitive_foreign_language_type(foreign_language_type::in,
+    string::out, string::out, string::out, string::out) is semidet.
 
 java_primitive_foreign_language_type(ForeignLangType, PrimitiveType,
         BoxedType, UnboxMethod, DefaultValue) :-
@@ -5492,7 +5507,7 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
     mangle_sym_name_for_java(SymName, module_qual, "__", ModuleName),
     io.write_string(ModuleName, !IO),
     io.write_string(".", !IO),
-    output_data_name(DataName, !IO).
+    output_data_name_for_java(DataName, !IO).
 
 %-----------------------------------------------------------------------------%
 %

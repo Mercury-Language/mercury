@@ -330,7 +330,7 @@ tailcall_loop_label_name = "loop_top".
     % Assign the specified list of rvals to the arguments.
     % This is used as part of tail recursion optimization (see above).
     %
-:- pred generate_assign_args(opt_info::in, mlds_arguments::in,
+:- pred generate_assign_args(opt_info::in, list(mlds_argument)::in,
     list(mlds_rval)::in, list(statement)::out, list(mlds_defn)::out) is det.
 
 generate_assign_args(_, [], [], [], []).
@@ -340,65 +340,57 @@ generate_assign_args(_, [], [_|_], [], []) :-
     unexpected($module, $pred, "length mismatch").
 generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
         Statements, TempDefns) :-
-    Arg = mlds_argument(Name, Type, _ArgGCStatement),
+    Arg = mlds_argument(VarName, Type, _ArgGCStatement),
+    ModuleName = OptInfo ^ oi_module_name,
+    QualVarName = qual(ModuleName, module_qual, VarName),
     ( if
-        % Extract the variable name.
-        Name = entity_data(mlds_data_var(VarName))
+        % Don't bother assigning a variable to itself.
+        ArgRval = ml_lval(ml_var(QualVarName, _VarType))
     then
-        ModuleName = OptInfo ^ oi_module_name,
-        QualVarName = qual(ModuleName, module_qual, VarName),
-        ( if
-            % Don't bother assigning a variable to itself.
-            ArgRval = ml_lval(ml_var(QualVarName, _VarType))
-        then
-            generate_assign_args(OptInfo, Args, ArgRvals,
-                Statements, TempDefns)
-        else
-            % Declare a temporary variable, initialized it to the arg,
-            % recursively process the remaining args, and then assign the
-            % temporary to the parameter:
-            %
-            %   SomeType argN__tmp_copy;
-            %   argN__tmp_copy = new_argN_value;
-            %   ...
-            %   argN = argN_tmp_copy;
-            %
-            % The temporaries are needed for the case where we are e.g.
-            % assigning v1, v2 to v2, v1; they ensure that we don't try
-            % to reference the old value of a parameter after it has already
-            % been clobbered by the new value.
-            %
-            % Note that we have to use an assignment rather than an initializer
-            % to initialize the temp, because this pass comes before
-            % ml_elem_nested.m, and ml_elim_nested.m doesn't handle code
-            % containing initializers.
-
-            VarName = mlds_var_name(VarNameStr, MaybeNum),
-            TempName = mlds_var_name(VarNameStr ++ "__tmp_copy", MaybeNum),
-            QualTempName = qual(ModuleName, module_qual, TempName),
-            Initializer = no_initializer,
-            % We don't need to trace the temporary variables for GC, since they
-            % are not live across a call or a heap allocation.
-            GCStatement = gc_no_stmt,
-            Context = OptInfo ^ oi_context,
-            TempDefn = ml_gen_mlds_var_decl_init(mlds_data_var(TempName), Type,
-                Initializer, GCStatement, Context),
-            TempInitStatement = statement(
-                ml_stmt_atomic(assign(ml_var(QualTempName, Type), ArgRval)),
-                Context),
-            AssignStatement = statement(
-                ml_stmt_atomic(assign(
-                    ml_var(QualVarName, Type),
-                    ml_lval(ml_var(QualTempName, Type)))),
-                Context),
-            generate_assign_args(OptInfo, Args, ArgRvals,
-                Statements0, TempDefns0),
-            Statements = [TempInitStatement | Statements0] ++
-                [AssignStatement],
-            TempDefns = [TempDefn | TempDefns0]
-        )
+        generate_assign_args(OptInfo, Args, ArgRvals, Statements, TempDefns)
     else
-        unexpected($module, $pred, "function param is not a var")
+        % Declare a temporary variable, initialized it to the arg,
+        % recursively process the remaining args, and then assign the
+        % temporary to the parameter:
+        %
+        %   SomeType argN__tmp_copy;
+        %   argN__tmp_copy = new_argN_value;
+        %   ...
+        %   argN = argN_tmp_copy;
+        %
+        % The temporaries are needed for the case where we are e.g.
+        % assigning v1, v2 to v2, v1; they ensure that we don't try
+        % to reference the old value of a parameter after it has already
+        % been clobbered by the new value.
+        %
+        % Note that we have to use an assignment rather than an initializer
+        % to initialize the temp, because this pass comes before
+        % ml_elem_nested.m, and ml_elim_nested.m doesn't handle code
+        % containing initializers.
+
+        VarName = mlds_var_name(VarNameStr, MaybeNum),
+        TempName = mlds_var_name(VarNameStr ++ "__tmp_copy", MaybeNum),
+        QualTempName = qual(ModuleName, module_qual, TempName),
+        Initializer = no_initializer,
+        % We don't need to trace the temporary variables for GC, since they
+        % are not live across a call or a heap allocation.
+        GCStatement = gc_no_stmt,
+        Context = OptInfo ^ oi_context,
+        TempDefn = ml_gen_mlds_var_decl_init(mlds_data_var(TempName), Type,
+            Initializer, GCStatement, Context),
+        TempInitStatement = statement(
+            ml_stmt_atomic(assign(ml_var(QualTempName, Type), ArgRval)),
+            Context),
+        AssignStatement = statement(
+            ml_stmt_atomic(assign(
+                ml_var(QualVarName, Type),
+                ml_lval(ml_var(QualTempName, Type)))),
+            Context),
+        generate_assign_args(OptInfo, Args, ArgRvals,
+            Statements0, TempDefns0),
+        Statements = [TempInitStatement | Statements0] ++
+            [AssignStatement],
+        TempDefns = [TempDefn | TempDefns0]
     ).
 
 %----------------------------------------------------------------------------

@@ -654,7 +654,7 @@
 :- type mlds_arguments == list(mlds_argument).
 :- type mlds_argument
     --->    mlds_argument(
-                mlds_entity_name,          % Argument name.
+                mlds_var_name,             % Argument name.
                 mlds_type,                 % Argument type.
                 mlds_gc_statement          % code for GC necessitated
                                            % by this argument.

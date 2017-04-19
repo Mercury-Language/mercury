@@ -172,8 +172,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % `closure_arg'.
     GCStatement = gc_no_stmt,
     ClosureArgType = mlds_generic_type,
-    ClosureArg = mlds_argument(
-        entity_data(mlds_data_var(mlds_var_name("closure_arg", no))),
+    ClosureArg = mlds_argument(mlds_var_name("closure_arg", no),
         ClosureArgType, GCStatement),
     Params0 = mlds_func_params(ArgParams0, RetParam),
     Params = mlds_func_params([ClosureArg | ArgParams0], RetParam),
@@ -565,8 +564,7 @@ ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) :-
     % So here we just leave it blank. The caller of ml_gen_cont_param has the
     % reponsibility of fillling this in properly if needed.
     GCStatement = gc_no_stmt,
-    Argument =
-        mlds_argument(entity_data(mlds_data_var(ArgName)), Type, GCStatement),
+    Argument = mlds_argument(ArgName, Type, GCStatement),
     ml_gen_cont_params_2(Types, ArgNum + 1, Arguments).
 
 :- pred ml_gen_copy_args_to_locals(ml_gen_info::in, list(mlds_lval)::in,
