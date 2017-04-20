@@ -100,15 +100,44 @@
     %
 :- func ml_target_uses_constructors(compilation_target) = bool.
 
+    % A description of a field in a compiler-generated data structure.
+:- type mlds_field_info
+    --->    mlds_field_info(
+                % The compiler generated field name. It should be of a type
+                % that is separate from the type of variables, but that change
+                % is for later.
+                mlds_var_name,
+
+                % The type of the field.
+                mlds_type,
+
+                % What tracing, if any, is required for the field.
+                mlds_gc_statement,
+
+                % The context we will use for code derived from this field.
+                % This *ought* to be the context of the field itself
+                % in the type definition, but there is no guarantee
+                % that it will be; at the moment, it may be the context
+                % of the whole type definition. Since pretty much noone
+                % ever looks at the contexts of the generated code,
+                % such minor differences don't really matter.
+                mlds_context
+            ).
+
     % Generate a constructor function to initialise the given fields in a
-    % class.
+    % class representing a compiler generated data structure.
+    %
+    % The input we take as the description of each field is a bespoke type,
+    % mlds_field_info, not the field's mlds_defn. This is because not all
+    % mlds_defns define fields, and we don't want this predicate to have to
+    % test whether the data it is given makes sense.
     %
 :- func ml_gen_constructor_function(compilation_target, mlds_class_id,
-    mlds_type, mlds_module_name, mlds_class_id, maybe(int), list(mlds_defn),
-    mlds_context) = mlds_defn.
+    mlds_type, mlds_module_name, mlds_class_id, maybe(int),
+    list(mlds_field_info), mlds_context) = mlds_defn.
 
     % Exported enumeration info in the HLDS is converted into an MLDS
-    % specific representation.  The target specific code generators may
+    % specific representation. The target specific code generators may
     % further transform it.
     %
 :- pred ml_gen_exported_enums(module_info::in, mlds_exported_enums::out)
@@ -384,16 +413,14 @@ ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
     %       ** that use a `reserved_address(reserved_object(...))'
     %       ** representation.
     %       **
-    %       ** Derived classes are generated for any other
-    %       ** constructors; these are generated as nested classes
-    %       ** avoid name clashes.
+    %       ** Derived classes are generated for any other constructors;
+    %       ** these are generated as nested classes avoid name clashes.
     %       ** These will derive either directly from
     %       ** <ClassName> or from <ClassName>::tag_type
     %       ** (which in turn derives from <ClassName>),
-    %       ** depending on whether they need a secondary
-    %       ** tag.  If all the ctors for a type need a
-    %       ** secondary tag, we put the secondary tag members
-    %       ** directly in the base class.
+    %       ** depending on whether they need a secondary tag.
+    %       ** If all the ctors for a type need a secondary tag,
+    %       ** we put the secondary tag members directly in the base class.
     %       */
     %       */
     % #if ctor1_uses_reserved_object
@@ -402,14 +429,13 @@ ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
     %       static class <ctor1> : public <ClassName> {
     %       public:
     %           /*
-    %           ** fields, one for each argument of this
-    %           ** constructor
+    %           ** Fields, one for each argument of this constructor.
     %           */
     %           MR_Word F1;
     %           MR_Word F2;
     %           ...
     %           /*
-    %           ** A constructor to initialize the fields
+    %           ** A constructor to initialize the fields.
     %           */
     %           <ctor1>(MR_Word F1, MR_Word F2, ...) {
     %               this->F1 = F1;
@@ -727,27 +753,32 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
         %   - finally the ordinary members
         (
             ExistQTVars = [],
-            % optimize common case
+            % Optimize this common case.
             ExtraMembers = [],
+            ExtraFieldInfos = [],
             ArgNum2 = ArgNum0
         ;
             ExistQTVars = [_ | _],
             constraint_list_get_tvars(Constraints, ConstrainedTVars),
             list.delete_elems(ExistQTVars, ConstrainedTVars,
                 UnconstrainedTVars),
-            list.map_foldl(ml_gen_type_info_member(ModuleInfo, Context),
-                UnconstrainedTVars, TypeInfoMembers, ArgNum0, ArgNum1),
-            list.map_foldl(ml_gen_typeclass_info_member(ModuleInfo, Context),
-                Constraints, TypeClassInfoMembers, ArgNum1, ArgNum2),
-            ExtraMembers = TypeInfoMembers ++ TypeClassInfoMembers
+            list.map2_foldl(ml_gen_type_info_member(ModuleInfo, Context),
+                UnconstrainedTVars, TypeInfoMembers, TypeInfoFieldInfos,
+                ArgNum0, ArgNum1),
+            list.map2_foldl(ml_gen_typeclass_info_member(ModuleInfo, Context),
+                Constraints, TypeClassInfoMembers, TypeClassInfoFieldInfos,
+                ArgNum1, ArgNum2),
+            ExtraMembers = TypeInfoMembers ++ TypeClassInfoMembers,
+            ExtraFieldInfos = TypeInfoFieldInfos ++ TypeClassInfoFieldInfos
         ),
 
         % Generate the class members for the ordinary fields
         % of this constructor.
-        list.map_foldl(ml_gen_du_ctor_field(ModuleInfo, Context),
-            Args, OrdinaryMembers, ArgNum2, _ArgNum3),
+        list.map2_foldl(ml_gen_du_ctor_field(ModuleInfo, Context),
+            Args, OrdinaryMembers, OrdinaryFieldInfos, ArgNum2, _ArgNum3),
 
         Members = ExtraMembers ++ OrdinaryMembers,
+        FieldInfos = ExtraFieldInfos ++ OrdinaryFieldInfos,
 
         % Generate a constructor function to initialize the fields, if needed
         % (not all back-ends use constructor functions).
@@ -768,9 +799,9 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
                 CtorClassQualifier = mlds_append_class_qualifier(Target,
                     BaseClassQualifier, type_qual, UnqualCtorName, CtorArity)
             ),
-            CtorFunction = ml_gen_constructor_function(Target,
-                BaseClassId, CtorClassType, CtorClassQualifier,
-                SecondaryTagClassId, MaybeSecTagVal, Members, MLDS_Context),
+            CtorFunction = ml_gen_constructor_function(Target, BaseClassId,
+                CtorClassType, CtorClassQualifier, SecondaryTagClassId,
+                MaybeSecTagVal, FieldInfos, MLDS_Context),
             % If this constructor is going to go in the base class, then we may
             % also need to generate an additional zero-argument constructor,
             % which is used to construct the class that is used for
@@ -915,13 +946,15 @@ target_requires_module_qualified_params(target_java) = yes.
 target_requires_module_qualified_params(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
-ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
-        SecondaryTagClassId, MaybeTag, Members, Context) = CtorDefn :-
-    Args = list.map(make_arg, Members),
+ml_gen_constructor_function(Target, BaseClassId, ClassType,
+        ClassQualifier, SecondaryTagClassId, MaybeTag, FieldInfos, Context)
+        = CtorDefn :-
+    Args = list.map(make_arg, FieldInfos),
     ReturnValues = [],
 
-    InitMembers0 = list.map(gen_init_field(Target, BaseClassId,
-        ClassType, ClassQualifier), Members),
+    InitMembers0 = list.map(
+        gen_init_field(Target, BaseClassId, ClassType, ClassQualifier),
+        FieldInfos),
     (
         MaybeTag = yes(TagVal),
         InitTag = gen_init_tag(Target, ClassType, SecondaryTagClassId, TagVal,
@@ -945,47 +978,27 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
     CtorDefn = mlds_defn(entity_export("<constructor>"), Context, CtorFlags,
         Ctor).
 
-    % Get the name and type from the field definition, for use as a
+    % Get the name and type from the field description, for use as a
     % constructor argument name and type.
     %
-:- func make_arg(mlds_defn) = mlds_argument is det.
+:- func make_arg(mlds_field_info) = mlds_argument is det.
 
-make_arg(mlds_defn(Name, _Context, _Flags, Defn)) = Arg :-
-    ( if Defn = mlds_data(Type, _Init, GCStatement) then
-        ( if Name = entity_data(mlds_data_var(VarName)) then
-            Arg = mlds_argument(VarName, Type, GCStatement)
-        else
-            unexpected($pred, "non-var data member")
-        )
-    else
-        unexpected($pred, "non-data member")
-    ).
+make_arg(FieldInfo) = Arg :-
+    FieldInfo = mlds_field_info(VarName, Type, GcStmt, _Context),
+    Arg = mlds_argument(VarName, Type, GcStmt).
 
     % Generate "this-><fieldname> = <fieldname>;".
     %
 :- func gen_init_field(compilation_target, mlds_class_id, mlds_type,
-    mlds_module_name, mlds_defn) = statement is det.
+    mlds_module_name, mlds_field_info) = statement is det.
 
-gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
-        Statement :-
-    Member = mlds_defn(EntityName, Context, _Flags, Defn),
-    (
-        Defn = mlds_data(Type0, _Init, _GCStatement),
-        Type = Type0
-    ;
-        ( Defn = mlds_function(_, _, _, _, _, _)
-        ; Defn = mlds_class(_)
-        ),
-        unexpected($module, $pred, "non-data member")
-    ),
-    ( if
-        EntityName = entity_data(mlds_data_var(VarName0)),
-        VarName0 = mlds_var_name(Name0, no)
-    then
-        Name = Name0,
-        VarName = VarName0
+gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, FieldInfo)
+        = Statement :-
+    FieldInfo = mlds_field_info(VarName, Type, _GcStmt, Context),
+    ( if VarName = mlds_var_name(NamePrime, no) then
+        Name = NamePrime
     else
-        unexpected($module, $pred, "non-var member")
+        unexpected($module, $pred, "unexpected var name")
     ),
     RequiresQualifiedParams = target_requires_module_qualified_params(Target),
     (
@@ -1033,58 +1046,62 @@ gen_init_tag(Target, ClassType, SecondaryTagClassId, TagVal, Context)
     Statement = statement(ml_stmt_atomic(assign(Field, Val)), Context).
 
 :- pred ml_gen_typeclass_info_member(module_info::in, prog_context::in,
-    prog_constraint::in, mlds_defn::out, int::in, int::out) is det.
+    prog_constraint::in, mlds_defn::out, mlds_field_info::out,
+    int::in, int::out) is det.
 
-ml_gen_typeclass_info_member(ModuleInfo, Context, Constraint, Defn, !ArgNum) :-
+ml_gen_typeclass_info_member(ModuleInfo, Context, Constraint,
+        Defn, FieldInfo, !ArgNum) :-
     polymorphism.build_typeclass_info_type(Constraint, Type),
-    ml_gen_field(ModuleInfo, Context, no, Type, full_word, Defn, !ArgNum).
+    ml_gen_field(ModuleInfo, Context, no, Type, full_word,
+        Defn, FieldInfo, !ArgNum).
 
 :- pred ml_gen_type_info_member(module_info::in, prog_context::in, tvar::in,
-    mlds_defn::out, int::in, int::out) is det.
+    mlds_defn::out, mlds_field_info::out, int::in, int::out) is det.
 
-ml_gen_type_info_member(ModuleInfo, Context, TypeVar, Defn, !ArgNum) :-
+ml_gen_type_info_member(ModuleInfo, Context, TypeVar,
+        Defn, FieldInfo, !ArgNum) :-
     % We don't have access to the correct kind here. This won't matter though,
     % since the type will only be checked to see that it is a variable,
     % and won't be used in any other way.
     Kind = kind_star,
     polymorphism.build_type_info_type(type_variable(TypeVar, Kind), Type),
-    ml_gen_field(ModuleInfo, Context, no, Type, full_word, Defn, !ArgNum).
+    ml_gen_field(ModuleInfo, Context, no, Type, full_word,
+        Defn, FieldInfo, !ArgNum).
 
 :- pred ml_gen_du_ctor_field(module_info::in, prog_context::in,
-    constructor_arg::in, mlds_defn::out, int::in, int::out) is det.
-
-ml_gen_du_ctor_field(ModuleInfo, Context, Arg, Defn, !ArgNum) :-
-    Arg = ctor_arg(MaybeFieldName, Type, Width, _Context),
-    ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, Width, Defn,
-        !ArgNum).
-
-:- pred ml_gen_field(module_info::in, prog_context::in,
-    maybe(ctor_field_name)::in, mer_type::in, arg_width::in, mlds_defn::out,
+    constructor_arg::in, mlds_defn::out, mlds_field_info::out,
     int::in, int::out) is det.
 
-ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, Width, Defn,
-        !ArgNum) :-
+ml_gen_du_ctor_field(ModuleInfo, Context, Arg, Defn, FieldInfo, !ArgNum) :-
+    Arg = ctor_arg(MaybeFieldName, Type, Width, _Context),
+    ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, Width,
+        Defn, FieldInfo, !ArgNum).
+
+:- pred ml_gen_field(module_info::in, prog_context::in,
+    maybe(ctor_field_name)::in, mer_type::in, arg_width::in,
+    mlds_defn::out, mlds_field_info::out, int::in, int::out) is det.
+
+ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, Width,
+        Defn, FieldInfo, !ArgNum) :-
     ( if ml_must_box_field_type(ModuleInfo, Type, Width) then
         MLDS_Type = mlds_generic_type
     else
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)
     ),
     FieldName = ml_gen_field_name(MaybeFieldName, !.ArgNum),
-    Defn = ml_gen_mlds_field_decl(
-        mlds_data_var(mlds_var_name(FieldName, no)),
-            MLDS_Type, mlds_make_context(Context)),
-    !:ArgNum = !.ArgNum + 1.
-
-:- func ml_gen_mlds_field_decl(mlds_data_name, mlds_type, mlds_context)
-    = mlds_defn.
-
-ml_gen_mlds_field_decl(DataName, MLDS_Type, Context) = Defn :-
+    FieldVarName = mlds_var_name(FieldName, no),
+    DataName = mlds_data_var(FieldVarName),
     Name = entity_data(DataName),
-    % We only need GC tracing code for top-level variables, not for fields
-    GCStatement = gc_no_stmt,
-    EntityDefn = mlds_data(MLDS_Type, no_initializer, GCStatement),
+    % We only need GC tracing code for top-level variables, not for fields.
+    GcStmt = gc_no_stmt,
+    EntityDefn = mlds_data(MLDS_Type, no_initializer, GcStmt),
     DeclFlags = ml_gen_public_field_decl_flags,
-    Defn = mlds_defn(Name, Context, DeclFlags, EntityDefn).
+    MLDS_Context = mlds_make_context(Context),
+    Defn = mlds_defn(Name, MLDS_Context, DeclFlags, EntityDefn),
+
+    FieldInfo = mlds_field_info(FieldVarName, MLDS_Type, GcStmt, MLDS_Context),
+
+    !:ArgNum = !.ArgNum + 1.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1119,7 +1136,7 @@ ml_gen_du_ctor_name_unqual_type(CompilationTarget, UnqualTypeName, TypeArity,
         Arity = TypeArity
     then
         % In Java and C# we must not generate a class with the same name as its
-        % enclosing class.  We add the prefix to avoid that situation arising.
+        % enclosing class. We add the prefix to avoid that situation arising.
         % (A user may name another functor of the same type with "mr_" to
         % trigger the problem.)
         CtorName = "mr_" ++ UnqualName

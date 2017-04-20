@@ -658,7 +658,8 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
             overridable, const, concrete),
         FieldNamePrefix = "vct_" ++ TypeRawNumStr,
         ml_gen_vector_cell_field_types(MLDS_Context, FieldFlags,
-            FieldNamePrefix, 0, ArgTypes, FieldNames, FieldDefns),
+            FieldNamePrefix, 0, ArgTypes, FieldNames,
+            FieldDefns, FieldInfos),
 
         (
             Target = target_c,
@@ -673,7 +674,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
                 ClassKind = mlds_struct
             ),
             CtorDefn = ml_gen_constructor_function(Target, StructType,
-                StructType, MLDS_ModuleName, StructType, no, FieldDefns,
+                StructType, MLDS_ModuleName, StructType, no, FieldInfos,
                 MLDS_Context),
             CtorDefns = [CtorDefn]
         ;
@@ -711,18 +712,21 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
 
 :- pred ml_gen_vector_cell_field_types(mlds_context::in, mlds_decl_flags::in,
     string::in, int::in, list(mlds_type)::in,
-    list(string)::out, list(mlds_defn)::out) is det.
+    list(string)::out, list(mlds_defn)::out, list(mlds_field_info)::out)
+    is det.
 
-ml_gen_vector_cell_field_types(_, _, _, _, [], [], []).
+ml_gen_vector_cell_field_types(_, _, _, _, [], [], [], []).
 ml_gen_vector_cell_field_types(MLDS_Context, Flags, FieldNamePrefix, FieldNum,
         [Type | Types], [RawFieldName | RawFieldNames],
-        [FieldDefn | FieldDefns]) :-
+        [FieldDefn | FieldDefns], [FieldInfo | FieldInfos]) :-
     RawFieldName = FieldNamePrefix ++ "_f_" ++ string.int_to_string(FieldNum),
-    FieldName = entity_data(mlds_data_var(mlds_var_name(RawFieldName, no))),
+    FieldVarName = mlds_var_name(RawFieldName, no),
+    FieldName = entity_data(mlds_data_var(FieldVarName)),
     FieldEntityDefn = mlds_data(Type, no_initializer, gc_no_stmt),
     FieldDefn = mlds_defn(FieldName, MLDS_Context, Flags, FieldEntityDefn),
+    FieldInfo = mlds_field_info(FieldVarName, Type, gc_no_stmt, MLDS_Context),
     ml_gen_vector_cell_field_types(MLDS_Context, Flags, FieldNamePrefix,
-        FieldNum + 1, Types, RawFieldNames, FieldDefns).
+        FieldNum + 1, Types, RawFieldNames, FieldDefns, FieldInfos).
 
 :- pred make_named_fields(mlds_module_name::in, mlds_type::in,
     list(string)::in, list(mlds_field_id)::out) is det.
