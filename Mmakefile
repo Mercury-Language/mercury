@@ -417,6 +417,7 @@ README: .README.in VERSION
 
 INSTALL: .INSTALL.in VERSION
 	sed 's/@VERSION@/$(VERSION)/g' .INSTALL.in > INSTALL
+	chmod a+x INSTALL
 
 ifeq ("$(LYNX)","")
 HTML_TO_TEXT = cat

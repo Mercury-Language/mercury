@@ -40,6 +40,13 @@
 #	   If you don't want to do a parallel make, comment out the
 #	   `parallel=-j3' line below.
 
+if pwd | grep ' '
+then
+    echo "The name of the current directory contains spaces."
+    echo "Mercury cannot be installed from such directories."
+    exit 1
+fi
+
 parallel=-j3
 
 ./prepare.sh &&

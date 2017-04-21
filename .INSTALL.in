@@ -95,6 +95,21 @@
 # and read the Mercury documentation in the `doc' directory while you are
 # waiting.
 
+if pwd | grep ' '
+then
+    echo "The name of the current directory contains spaces."
+    echo "Mercury cannot be installed from such directories."
+    exit 1
+fi
+
+if test ! -d boehm_gc
+then
+    echo "This directory does not contain a complete source distribution."
+    echo "If you are trying to compile a workspace checked out of git,"
+    echo "you will need to read and follow INSTALL.git, not INSTALL."
+    exit 1
+fi
+
 sh configure &&
 make &&
 make install
