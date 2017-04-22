@@ -465,8 +465,7 @@ mercury_limited_term_nq_to_string(VarSet, VarNamePrint, NextToGraphicToken,
                 ArityStr = int_to_string(list.length(Args)),
                 String = FunctorString ++ "/" ++ ArityStr
             ;
-                ( Functor = term.integer(_)
-                ; Functor = term.big_integer(_, _)
+                ( Functor = term.integer(_, _, _, _)
                 ; Functor = term.float(_)
                 ; Functor = term.string(_)
                 ; Functor = term.implementation_defined(_)

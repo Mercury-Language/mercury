@@ -129,8 +129,7 @@ report_eval_error(unexpected_const(Const), !IO) :-
         io.write_string(String, !IO),
         io.write_string("""", !IO)
     ;
-        ( Const = term.integer(_)
-        ; Const = term.big_integer(_, _)
+        ( Const = term.integer(_, _, _, _)
         ; Const = term.atom(_)
         ; Const = term.implementation_defined(_)
         ),
@@ -163,9 +162,14 @@ eval_expr(CalcInfo, VarSet, term.functor(term.atom(Op), Args, _)) = Res :-
     else
         throw(unknown_operator(Op, list.length(Args)))
     ).
-eval_expr(_, _, term.functor(term.integer(Int), _, _)) = Int.
-eval_expr(_, _, term.functor(term.big_integer(Base, BigInt), _, Context)) =
-    throw(unexpected_const(term.big_integer(Base, BigInt)) - Context).
+eval_expr(_, _, Term) = Int :-
+    Term = term.functor(Const, _, Context),
+    Const = term.integer(_, _, _, _),
+    ( if term_to_int(Term, Int0) then
+        Int = Int0
+    else
+        throw(unexpected_const(Const) - Context)
+    ).
 eval_expr(_, _, term.functor(term.float(Float), _, Context)) =
     throw(unexpected_const(term.float(Float)) - Context).
 eval_expr(_, _, term.functor(term.string(String), _, Context)) =

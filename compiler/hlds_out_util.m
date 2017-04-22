@@ -226,6 +226,7 @@
 
 :- import_module assoc_list.
 :- import_module int.
+:- import_module integer.
 :- import_module map.
 :- import_module string.
 :- import_module term_io.
@@ -671,13 +672,12 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
     ;
         ConsId = int_const(Int),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(Int), ArgVars)
+            term.integer(base_10, integer(Int), signed, size_word), ArgVars)
     ;
         ConsId = uint_const(UInt),
-        Str = uint_to_string(UInt)
-        % XXX UINT - need to extend term module to handle uints.
-        %Str = functor_to_string(VarSet, VarNamePrint,
-        %    term.integer(UInt), ArgVars)
+        Str = functor_to_string(VarSet, VarNamePrint,
+            term.integer(base_10, integer.from_uint(UInt), unsigned, size_word),
+            ArgVars)
     ;
         ConsId = float_const(Float),
         Str = functor_to_string(VarSet, VarNamePrint,

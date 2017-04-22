@@ -695,8 +695,7 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
         ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm]
     then
         ( if
-            VersionNumberTerm =
-                term.functor(term.integer(VersionNumber), [], _),
+            term_to_decimal_int(VersionNumberTerm, VersionNumber),
             VersionNumber = version_numbers_version_number
         then
             ( if try_parse_symbol_name(ModuleNameTerm, ModuleName) then

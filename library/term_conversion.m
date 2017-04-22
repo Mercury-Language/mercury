@@ -112,6 +112,7 @@
 :- import_module construct.
 :- import_module deconstruct.
 :- import_module int.
+:- import_module integer.
 :- import_module require.
 :- import_module string.
 :- import_module version_array.
@@ -209,8 +210,14 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
             type_to_univ(String, Univ)
         ;
             TypeCtorName = "int",
-            Functor = integer(Int),
+            Functor = integer(_, Integer, signed, size_word),
+            integer.to_int(Integer, Int),
             type_to_univ(Int, Univ)
+        ;
+            TypeCtorName = "uint",
+            Functor = integer(_, Integer, unsigned, size_word),
+            integer.to_uint(Integer, UInt),
+            type_to_univ(UInt, Univ)
         ;
             TypeCtorName = "float",
             Functor = float(Float),
@@ -286,8 +293,12 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
         ArgTerm = functor(atom(":"), [ValueTerm, TypeTerm], _),
         (
             TypeTerm = functor(atom("int"), [], _),
-            ValueTerm = functor(integer(Int), [], _),
+            term_to_int(ValueTerm, Int),
             Univ = univ(Int)
+        ;
+            TypeTerm = functor(atom("uint"), [], _),
+            term_to_uint(ValueTerm, UInt),
+            Univ = univ(UInt)
         ;
             TypeTerm = functor(atom("string"), [], _),
             ValueTerm = functor(string(String), [], _),
@@ -398,7 +409,12 @@ univ_to_term_special_case(ModuleName, TypeCtorName, TypeArgs, Univ, Context,
         ;
             TypeCtorName = "int",
             det_univ_to_type(Univ, Int),
-            Functor = integer(Int)
+            Functor = integer(base_10, integer(Int), signed, size_word)
+        ;
+            TypeCtorName = "uint",
+            det_univ_to_type(Univ, UInt),
+            Functor = integer(base_10, integer.from_uint(UInt), unsigned,
+                size_word)
         ;
             TypeCtorName = "float",
             det_univ_to_type(Univ, Float),

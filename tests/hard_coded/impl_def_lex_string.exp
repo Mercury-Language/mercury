@@ -4,4 +4,4 @@
 {token_cons(name("$"), 1, token_nil), posn(1, 0, 1)}
 {token_cons(name("$!$"), 1, token_nil), posn(1, 0, 3)}
 {token_cons(name("$"), 1, token_cons(comma, 1, token_nil)), posn(1, 0, 2)}
-{token_cons(name("$"), 1, token_cons(integer(0), 1, token_nil)), posn(1, 0, 2)}
+{token_cons(name("$"), 1, token_cons(integer(base_10, 0), 1, token_nil)), posn(1, 0, 2)}

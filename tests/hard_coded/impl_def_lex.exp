@@ -7,4 +7,4 @@ name("$!$") 5
 name("$") 6
 comma 6
 name("$") 7
-integer(0) 7
+integer(base_10, 0) 7

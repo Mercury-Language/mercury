@@ -778,8 +778,7 @@ gather_implicit_import_needs_in_term(Term, !ImplicitImportNeeds) :-
                 true
             )
         ;
-            ( Const = integer(_)
-            ; Const = big_integer(_, _)
+            ( Const = integer(_, _, _, _)
             ; Const = string(_)
             ; Const = float(_)
             ; Const = implementation_defined(_)

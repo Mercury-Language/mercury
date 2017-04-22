@@ -1,2 +1,2 @@
-functor(atom("univ_cons"), [functor(integer(4), [], context("", 0))], context("", 0))
+functor(atom("univ_cons"), [functor(integer(base_10, i(1, [4]), signed, size_word), [], context("", 0))], context("", 0))
 univ_cons(4)

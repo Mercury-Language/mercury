@@ -55,9 +55,12 @@
 
 :- type const
     --->    atom(string)
-    ;       integer(int)
-    ;       big_integer(integer_base, integer)
-            % An integer that is too big for `int'.
+    ;       integer(
+                integer_base       :: integer_base,
+                integer_value      :: integer,
+                integer_signedness :: signedness,
+                integer_size       :: integer_size
+            )
     ;       string(string)
     ;       float(float)
     ;       implementation_defined(string).
@@ -67,6 +70,17 @@
     ;       base_8
     ;       base_10
     ;       base_16.
+
+:- type signedness
+    --->    signed
+    ;       unsigned.
+
+:- type integer_size
+    --->    size_word.
+    %;       size_8_bit
+    %;       size_16_bit
+    %;       size_32_bit
+    %;       size_64_bit
 
 :- type generic
     --->    generic.
@@ -130,6 +144,18 @@
 
 :- type substitution(T) == map(var(T), term(T)).
 :- type substitution    == substitution(generic).
+
+%---------------------------------------------------------------------------%
+
+:- pred term_to_int(term(T)::in, int::out) is semidet.
+
+:- pred term_to_uint(term(T)::in, uint::out) is semidet.
+
+:- pred term_to_decimal_int(term(T)::in, int::out) is semidet.
+
+:- func decimal_int_to_term(int, context) = term(T).
+
+:- func decimal_uint_to_term(uint, context) = term(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -759,6 +785,31 @@ var_to_int(var(VarNum)) = VarNum.
 var_to_int(var(VarNum), VarNum).
 
 var_id(var(VarNum)) = VarNum.
+
+%---------------------------------------------------------------------------%
+
+term_to_int(Term, Int) :-
+    Term = functor(Const, [], _),
+    Const = integer(_, Integer, signed, size_word),
+    integer.to_int(Integer, Int).
+
+term_to_uint(Term, UInt) :-
+    Term = functor(Const, [], _),
+    Const = integer(_, Integer, unsigned, size_word),
+    integer.to_uint(Integer, UInt).
+
+term_to_decimal_int(Term, Int) :-
+    Term = functor(Const, [], _),
+    Const = integer(base_10, Integer, signed, size_word),
+    integer.to_int(Integer, Int).
+
+decimal_int_to_term(Int, Context) = Term :-
+    Const = integer(base_10, integer(Int), signed, size_word),
+    Term = functor(Const, [], Context).
+
+decimal_uint_to_term(UInt, Context) = Term :-
+    Const = integer(base_10, integer.from_uint(UInt), unsigned, size_word),
+    Term = functor(Const, [], Context).
 
 %---------------------------------------------------------------------------%
 

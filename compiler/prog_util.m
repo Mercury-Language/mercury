@@ -627,7 +627,10 @@ list_to_string_2(Pred, [T | Ts], !Strings) :-
 
 cons_id_and_args_to_term(int_const(Int), [], Term) :-
     term.context_init(Context),
-    Term = term.functor(term.integer(Int), [], Context).
+    Term = decimal_int_to_term(Int, Context).
+cons_id_and_args_to_term(uint_const(UInt), [], Term) :-
+    term.context_init(Context),
+    Term = decimal_uint_to_term(UInt, Context).
 cons_id_and_args_to_term(float_const(Float), [], Term) :-
     term.context_init(Context),
     Term = term.functor(term.float(Float), [], Context).
@@ -705,12 +708,16 @@ make_functor_cons_id(Functor, Arity, ConsId) :-
         Functor = term.atom(Name),
         ConsId = cons(unqualified(Name), Arity, cons_id_dummy_type_ctor)
     ;
-        Functor = term.integer(Int),
-        ConsId = int_const(Int)
-    ;
-        Functor = term.big_integer(Base, Integer),
-        source_integer_to_int(Base, Integer, Int),
-        ConsId = int_const(Int)
+        Functor = term.integer(Base, Integer, Signedness, size_word),
+        (
+            Signedness = signed,
+            source_integer_to_int(Base, Integer, Int),
+            ConsId = int_const(Int)
+        ;
+            Signedness = unsigned,
+            integer.to_uint(Integer, UInt),
+            ConsId = uint_const(UInt)
+        )
     ;
         Functor = term.string(String),
         ConsId = string_const(String)

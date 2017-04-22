@@ -721,7 +721,7 @@ parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
     then
         ( if
             Args = [Arg],
-            Arg = term.functor(integer(NumBits), [], _)
+            term_to_decimal_int(Arg, NumBits)
         then
             TypeDefn0 = parse_tree_abstract_type(abstract_enum_type(NumBits)),
             MaybeTypeDefn = ok1(TypeDefn0)

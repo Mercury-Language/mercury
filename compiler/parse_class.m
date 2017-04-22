@@ -886,7 +886,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         then
             ( if
                 try_parse_sym_name_and_no_args(PredNameTerm, PredName),
-                ArityTerm = term.functor(term.integer(ArityInt), [], _),
+                term_to_decimal_int(ArityTerm, ArityInt),
                 try_parse_sym_name_and_no_args(InstanceMethodTerm,
                     InstanceMethodName)
             then
@@ -912,7 +912,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         then
             ( if
                 try_parse_sym_name_and_no_args(FuncNameTerm, FuncName),
-                ArityTerm = term.functor(term.integer(ArityInt), [], _),
+                term_to_decimal_int(ArityTerm, ArityInt),
                 try_parse_sym_name_and_no_args(InstanceMethodTerm,
                     InstanceMethodName)
             then

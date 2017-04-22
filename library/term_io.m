@@ -565,7 +565,7 @@ write_list_tail(OutStream, Ops, Term, !VarSet, !N, !IO) :-
     %
 :- pred starts_with_digit(term(T)::in) is semidet.
 
-starts_with_digit(functor(integer(_), _, _)).
+starts_with_digit(functor(integer(_, _, _, _), _, _)).
 starts_with_digit(functor(float(_), _, _)).
 starts_with_digit(functor(atom(Op), Args, _)) :-
     (
@@ -606,10 +606,8 @@ write_constant(OutStream, Const, !IO) :-
 
 write_constant(OutStream, Const, NextToGraphicToken, !IO) :-
     (
-        Const = term.integer(I),
-        io.write_int(OutStream, I, !IO)
-    ;
-        Const = term.big_integer(Base, I),
+        Const = term.integer(Base, I, _Signedness, _Size),
+        % XXX UINT hand signedness and size.
         Prefix = integer_base_prefix(Base),
         IntString = integer.to_base_string(I, integer_base_int(Base)),
         io.write_string(OutStream, Prefix, !IO),
@@ -634,9 +632,8 @@ format_constant(Const) =
 
 :- func term_io.format_constant_agt(const, adjacent_to_graphic_token) = string.
 
-format_constant_agt(term.integer(I), _) =
-    string.int_to_string(I).
-format_constant_agt(term.big_integer(Base, I), _) =
+    % XXX UINT handle Signedness and Size.
+format_constant_agt(term.integer(Base, I, _Signedness, _Size), _) =
     integer_base_prefix(Base) ++ to_base_string(I, integer_base_int(Base)).
 format_constant_agt(term.float(F), _) =
     string.float_to_string(F).

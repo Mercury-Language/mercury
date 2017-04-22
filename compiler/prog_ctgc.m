@@ -201,13 +201,14 @@ parse_unit_selector(Term) = UnitSelector :-
         then
             ( if
                 try_parse_sym_name_and_no_args(ConsTerm, ConsIdName),
-                ArityTerm = term.functor(term.integer(Arity), _, _),
-                PosTerm = term.functor(term.integer(Pos), _, _)
+                term_to_decimal_int(ArityTerm, Arity),
+                term_to_decimal_int(PosTerm, Pos)
             then
                 ConsId = cons(ConsIdName, Arity, cons_id_dummy_type_ctor),
                 UnitSelector = termsel(ConsId, Pos)
             else if
-                ConsTerm = term.functor(term.integer(Int), _, _)
+                % XXX UINT, presuambly we need to handle uints here too.
+                term_to_decimal_int(ConsTerm, Int)
             then
                 ConsId = int_const(Int),
                 UnitSelector = termsel(ConsId, 0)

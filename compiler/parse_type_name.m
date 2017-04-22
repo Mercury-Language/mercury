@@ -136,8 +136,7 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
     ;
         Term = term.functor(Functor, ArgTerms, FunctorContext),
         (
-            ( Functor = term.integer(_)
-            ; Functor = term.big_integer(_, _)
+            ( Functor = term.integer(_, _, _, _)
             ; Functor = term.float(_)
             ; Functor = term.string(_)
             ; Functor = term.implementation_defined(_)

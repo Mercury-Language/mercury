@@ -36,6 +36,7 @@
 :- import_module bool.
 :- import_module getopt.
 :- import_module int.
+:- import_module integer.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -414,7 +415,7 @@ interface_term(functor(atom(":-"), [functor(atom("interface"), [], _)], _)).
 
 :- pred implementation_term(term::in) is semidet.
 
-implementation_term(functor(atom(":-"), 
+implementation_term(functor(atom(":-"),
     [functor(atom("implementation"), [], _)], _)).
 
 :- pred rule_term(term, varset, rule_decl).
@@ -431,16 +432,17 @@ rule_term(functor(atom(":-"), [functor(atom("rule"), [RuleTerm], _)], _),
 
 parser_term(functor(atom(":-"), [functor(atom("parse"), Args, _)], _),
         _VarSet, WhereAmI, Decl) :-
-    Args = [StartIdTerm, TokTerm, EndTerm, PrefixTerm, InAtomTerm, 
+    Args = [StartIdTerm, TokTerm, EndTerm, PrefixTerm, InAtomTerm,
         OutAtomTerm],
     StartIdTerm = functor(atom("/"), [functor(atom(Name), [], _),
-        functor(integer(Arity), _, _)], _),
+        functor(integer(base_10, ArityInteger, signed, size_word), _, _)], _),
+    integer.to_int(ArityInteger, Arity),
     StartId = Name / Arity,
     TokTerm = functor(atom(TokAtom), [], _),
     PrefixTerm = functor(atom(PrefixAtom), [], _),
     InAtomTerm = functor(atom(InAtom), [], _),
     OutAtomTerm = functor(atom(OutAtom), [], _),
-    Decl = parser(WhereAmI, StartId, EndTerm, TokAtom, PrefixAtom, InAtom, 
+    Decl = parser(WhereAmI, StartId, EndTerm, TokAtom, PrefixAtom, InAtom,
         OutAtom).
 
 :- pred xform_term(term, xform).
@@ -451,11 +453,12 @@ xform_term(Term, XForm) :-
         functor(atom("action"), [
             functor(atom("/"), [
                 functor(atom(Name), [], _),
-                functor(integer(Arity), _, _)
+                functor(integer(base_10, ArityInteger, signed, size_word), _, _)
             ], _),
             functor(atom(Pred), [], _)
         ], _)
     ], _),
+    integer.to_int(ArityInteger, Arity),
     XForm = xform(Name/Arity, Pred).
 
 %------------------------------------------------------------------------------%
@@ -525,12 +528,12 @@ write_state_actions(SS, End, StateActions, !IO) :-
         Term = functor(atom(Name),
             [Token,
             functor(atom(Kind), [], Ctxt),
-            functor(integer(Val), [], Ctxt)], Ctxt),
+            decimal_int_to_term(Val, Ctxt)], Ctxt),
         (
             Action = shift(Val),
             Kind = "shift"
         ;
-            Action = reduce(Val), 
+            Action = reduce(Val),
             Kind = "reduce"
         ;
             Action = accept,
@@ -617,7 +620,7 @@ write_state_gotos(SS, StateActions, !IO) :-
         nonterminal_to_term(NT, Token),
         term.context_init(Ctxt),
         Term = functor(atom(Name),
-            [Token, functor(integer(NS), [], Ctxt)], Ctxt),
+            [Token, decimal_int_to_term(NS, Ctxt)], Ctxt),
         varset.init(Varset),
         term_io.write_term_nl(Varset, Term, !IO)
     ), StateActions, !IO),

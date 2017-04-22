@@ -117,10 +117,7 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
         Term = term.functor(TermFunctor, ArgTerms0, Context),
         (
             (
-                TermFunctor = term.integer(_),
-                Name = "an integer"
-            ;
-                TermFunctor = term.big_integer(_, _),
+                TermFunctor = term.integer(_, _, _, _),
                 Name = "an integer"
             ;
                 TermFunctor = term.float(_),
@@ -350,8 +347,7 @@ parse_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeInst) :-
     ;
         Term = term.functor(Functor, ArgTerms, Context),
         (
-            ( Functor = term.integer(_)
-            ; Functor = term.big_integer(_, _)
+            ( Functor = term.integer(_, _, _, _)
             ; Functor = term.string(_)
             ; Functor = term.float(_)
             ; Functor = term.implementation_defined(_)
@@ -931,8 +927,7 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                 [simple_msg(Context, [always(Pieces)])]),
             MaybeBoundInst = error1([Spec])
         ;
-            ( Functor = term.integer(_)
-            ; Functor = term.big_integer(_, _)
+            ( Functor = term.integer(_, _, _, _)
             ; Functor = term.float(_)
             ; Functor = term.string(_)
             ),
@@ -943,10 +938,9 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                 MaybeBoundInst = ok1(BoundInst)
             ;
                 ArgTerms0 = [_ | _],
-                ( Functor = term.integer(_),        FunctorStr = "an integer"
-                ; Functor = term.big_integer(_, _), FunctorStr = "an integer"
-                ; Functor = term.float(_),          FunctorStr = "a float"
-                ; Functor = term.string(_),         FunctorStr = "a string"
+                ( Functor = term.integer(_, _, _, _), FunctorStr = "an integer"
+                ; Functor = term.float(_),            FunctorStr = "a float"
+                ; Functor = term.string(_),           FunctorStr = "a string"
                 ),
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = cord.list(ContextPieces) ++

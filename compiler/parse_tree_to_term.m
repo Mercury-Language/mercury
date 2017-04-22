@@ -340,7 +340,7 @@ inst_result_contains_inst_names_to_term(Context, ContainsInstNames) = Term :-
         % Inst names can be pretty big, so we print only a count.
         % If necessary, we can later modify this code to actually print them.
         set.count(InstNameSet, NumInstNames),
-        CountTerm = term.functor(term.integer(NumInstNames), [], Context),
+        CountTerm = decimal_int_to_term(NumInstNames, Context),
         Term = term.functor(term.atom("contains_inst_names_known"),
             [CountTerm], Context)
     ).
@@ -646,12 +646,11 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
     ;
         ConsId = int_const(Int),
         term.context_init(Context),
-        Term = term.functor(term.integer(Int), [], Context)
+        Term = decimal_int_to_term(Int, Context)
     ;
-        ConsId = uint_const(_UInt),
+        ConsId = uint_const(UInt),
         term.context_init(Context),
-        % XXX UINT.
-        Term = term.functor(term.string("<<uint>>"), [], Context)
+        Term = decimal_uint_to_term(UInt, Context)
     ;
         ConsId = float_const(Float),
         term.context_init(Context),
@@ -699,7 +698,7 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
             "type_info_const arity != 0"),
         term.context_init(Context),
         FunctorName = "type_info_const",
-        Arg = term.functor(term.integer(TIConstNum), [], Context),
+        Arg = decimal_int_to_term(TIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
     ;
         ConsId = typeclass_info_const(TCIConstNum),
@@ -707,7 +706,7 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
             "typeclass_info_const arity != 0"),
         term.context_init(Context),
         FunctorName = "typeclass_info_const",
-        Arg = term.functor(term.integer(TCIConstNum), [], Context),
+        Arg = decimal_int_to_term(TCIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
     ;
         ConsId = ground_term_const(TCIConstNum, SubConsId),
@@ -716,7 +715,7 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         cons_id_and_args_to_term_full(SubConsId, [], SubArg),
         term.context_init(Context),
         FunctorName = "ground_term_const",
-        NumArg = term.functor(term.integer(TCIConstNum), [], Context),
+        NumArg = decimal_int_to_term(TCIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [NumArg, SubArg],
             Context)
     ;

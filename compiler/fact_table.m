@@ -129,6 +129,7 @@
 :- import_module cord.
 :- import_module float.
 :- import_module int.
+:- import_module integer.
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
@@ -532,11 +533,14 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
             Functor = term.string(_),
             RequiredType = yes(builtin_type_string)
         ;
-            Functor = term.integer(_),
-            RequiredType = yes(builtin_type_int)
-        ;
-            Functor = term.big_integer(_, _),
-            RequiredType = yes(builtin_type_int)
+            Functor = term.integer(_, _, Signedness, _),
+            (
+                Signedness = signed,
+                RequiredType = yes(builtin_type_int)
+            ;
+                Signedness = unsigned,
+                RequiredType = yes(builtin_type_uint)
+            )
         ;
             Functor = term.float(_),
             RequiredType = yes(builtin_type_float)
@@ -1095,16 +1099,19 @@ make_key_part(Const) = Key :-
         Const = term.atom(_),
         unexpected($module, $pred, "enumerated types are not supported yet.")
     ;
-        Const = term.integer(I),
-        % Print the integer in base 36 to reduce the amount of I/O we do.
-        Key = string.int_to_base_string(I, 36)
-    ;
-        Const = term.big_integer(Base, Integer),
-        ( if source_integer_to_int(Base, Integer, I) then
-            % As above.
-            Key = string.int_to_base_string(I, 36)
-        else
-            unexpected($module, $pred, "integer too big")
+        Const = term.integer(Base, Integer, Signedness, _Size),
+        (
+            Signedness = signed,
+            ( if source_integer_to_int(Base, Integer, I) then
+                % Print the integer in base 36 to reduce the amount of I/O we
+                % do.
+                Key = string.int_to_base_string(I, 36)
+            else
+                unexpected($module, $pred, "integer too big")
+            )
+        ;
+            Signedness = unsigned,
+            unexpected($module, $pred, "NYI uints and fact tables")
         )
     ;
         Const = term.float(F),
@@ -1345,16 +1352,18 @@ write_fact_args(OutputStream, [Arg | Args], !IO) :-
         c_util.output_quoted_string(OutputStream, String, !IO),
         io.write_string(OutputStream, """, ", !IO)
     ;
-        Arg = term.integer(Int),
-        io.write_int(OutputStream, Int, !IO),
-        io.write_string(OutputStream, ", ", !IO)
-    ;
-        Arg = term.big_integer(Base, Integer),
-        ( if source_integer_to_int(Base, Integer, Int) then
-            io.write_int(OutputStream, Int, !IO),
-            io.write_string(OutputStream, ", ", !IO)
-        else
-            unexpected($module, $pred, "integer too big")
+        Arg = term.integer(Base, Integer, Signedness, _),
+        (
+            Signedness = signed,
+            ( if source_integer_to_int(Base, Integer, Int) then
+                io.write_int(OutputStream, Int, !IO),
+                io.write_string(OutputStream, ", ", !IO)
+            else
+                unexpected($module, $pred, "integer too big")
+            )
+        ;
+            Signedness = unsigned,
+            unexpected($module, $pred, "NYI uints in fact tables")
         )
     ;
         Arg = term.float(Float),
@@ -1931,9 +1940,10 @@ get_output_args_list([Info | Infos], ArgStrings0, Args) :-
     is det.
 
 convert_key_string_to_arg(ArgString, Type, Arg) :-
+    % XXX UINT - handle uints here too when we support them in fact tables.
     ( if Type = builtin_type(builtin_type_int) then
         ( if string.base_string_to_int(36, ArgString, I) then
-            Arg = term.integer(I)
+            Arg = term.integer(base_10, integer(I), signed, size_word)
         else
             unexpected($module, $pred, "could not convert string to int")
         )
@@ -2089,15 +2099,22 @@ get_free_hash_slot_2(HashTable, Start, Max, Free) :-
 :- pred fact_table_hash(int::in, fact_arg::in, int::out) is det.
 
 fact_table_hash(HashSize, Key, HashVal) :-
-    ( if Key = term.string(String) then
+    ( if
+        Key = term.string(String)
+    then
         % XXX This method of hashing strings may not work if cross-compiling
         % between systems that have different character representations.
         string.to_char_list(String, Cs),
         list.map((pred(C::in, I::out) is det :- char.to_int(C, I)), Cs, Ns)
-    else if Key = term.integer(Int) then
+    else if
+        Key = term.integer(_, Integer, signed, size_word),
+        integer.to_int(Integer, Int)
+    then
         int.abs(Int, N),
         Ns = [N]
-    else if Key = term.float(Float) then
+    else if
+        Key = term.float(Float)
+    then
         % XXX This method of hashing floats may not work cross-compiling
         % between architectures that have different floating-point
         % representations.
@@ -2204,14 +2221,20 @@ write_hash_table_loop(Stream, HashTable, CurrIndex, MaxIndex, !IO) :-
                 c_util.output_quoted_string(Stream, String, !IO),
                 io.write_string(Stream, """", !IO)
             ;
-                Key = term.integer(Int),
-                io.write_int(Stream, Int, !IO)
+                Key = term.integer(_, Integer, Signedness, _),
+                (
+                    Signedness = signed,
+                    Int = integer.det_to_int(Integer),
+                    io.write_int(Stream, Int, !IO)
+                ;
+                    Signedness = unsigned,
+                    unexpected($pred, "NYI uints in fact tables")
+                )
             ;
                 Key = term.float(Float),
                 io.write_float(Stream, Float, !IO)
             ;
                 ( Key = term.atom(_)
-                ; Key = term.big_integer(_, _)
                 ; Key = term.implementation_defined(_)
                 ),
                 unexpected($pred, "unsupported type")
@@ -2257,7 +2280,7 @@ get_hash_table_type_2(Map, Index, TableType) :-
         Entry = hash_entry(Key, _, _),
         ( if Key = term.string(_) then
             TableType = 's'
-        else if Key = term.integer(_) then
+        else if Key = term.integer(_, _, _, _) then
             TableType = 'i'
         else if Key = term.float(_) then
             TableType = 'f'

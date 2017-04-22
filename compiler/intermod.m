@@ -2257,7 +2257,10 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
             RHS = rhs_functor(ConsId, _, Args),
             (
                 ConsId = int_const(Int),
-                RHSTerm = term.functor(term.integer(Int), [], Context)
+                RHSTerm = decimal_int_to_term(Int, Context)
+            ;
+                ConsId  = uint_const(UInt),
+                RHSTerm = decimal_uint_to_term(UInt, Context)
             ;
                 ConsId = float_const(Float),
                 RHSTerm = term.functor(term.float(Float), [], Context)
