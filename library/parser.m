@@ -310,8 +310,7 @@ check_for_bad_token(token_cons(Token, LineNum0, Tokens), Message, LineNum) :-
     ;
         ( Token = name(_)
         ; Token = variable(_)
-        ; Token = integer(_, _)
-        ; Token = big_integer(_, _)
+        ; Token = integer(_, _, _, _)
         ; Token = float(_)
         ; Token = string(_)
         ; Token = implementation_defined(_)
@@ -423,16 +422,11 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
             !.TokensLeft =
                 token_cons(NextToken, _NextContext, !:TokensLeft),
             (
-                NextToken = integer(LexerBase, X),
-                NegX = integer(0 - X),
+                NextToken = integer(LexerBase, X, signed, LexerSize),
+                NegX = -X,
                 Base = lexer_base_to_term_base(LexerBase),
-                NewFunctor = integer(Base, NegX, signed, size_word)
-            ;
-                NextToken = big_integer(LexerBase, X),
-                -X = integer(min_int),
-                NegX = integer(int.min_int),
-                Base = lexer_base_to_term_base(LexerBase),
-                NewFunctor = integer(Base, NegX, signed, size_word)
+                Size = lexer_size_to_term_size(LexerSize),
+                NewFunctor = integer(Base, NegX, signed, Size)
             ;
                 NextToken = float(F),
                 NegF = 0.0 - F,
@@ -736,29 +730,12 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         BaseTerm = term.variable(Var, TermContext),
         BaseTermParse = ok(BaseTerm)
     ;
-        Token = integer(LexerBase, Int),
-        parser_get_term_context(!.PS, Context, TermContext),
+        Token = integer(LexerBase, Integer, LexerSignedness, LexerSize),
         Base = lexer_base_to_term_base(LexerBase),
-        BaseTerm = functor(integer(Base, integer(Int), signed, size_word), [],
-            TermContext),
-        BaseTermParse = ok(BaseTerm)
-    ;
-        Token = big_integer(LexerBase, Integer),
+        Signedness = lexer_signedness_to_term_signedness(LexerSignedness),
+        Size = lexer_size_to_term_size(LexerSize),
         parser_get_term_context(!.PS, Context, TermContext),
-        (
-            LexerBase = base_2,
-            TermBase = base_2
-        ;
-            LexerBase = base_8,
-            TermBase = base_8
-        ;
-            LexerBase = base_10,
-            TermBase = base_10
-        ;
-            LexerBase = base_16,
-            TermBase = base_16
-        ),
-        BaseTerm = functor(integer(TermBase, Integer, signed, size_word), [],
+        BaseTerm = functor(integer(Base, Integer, Signedness, Size), [],
             TermContext),
         BaseTermParse = ok(BaseTerm)
     ;
@@ -1131,8 +1108,7 @@ parser_get_term_context(ParserState, TokenContext, TermContext) :-
 
 could_start_term(name(_), yes).
 could_start_term(variable(_), yes).
-could_start_term(integer(_, _), yes).
-could_start_term(big_integer(_, _), yes).
+could_start_term(integer(_, _, _, _), yes).
 could_start_term(float(_), yes).
 could_start_term(string(_), yes).
 could_start_term(implementation_defined(_), yes).
@@ -1160,6 +1136,16 @@ lexer_base_to_term_base(base_2) = base_2.
 lexer_base_to_term_base(base_8) = base_8.
 lexer_base_to_term_base(base_10) = base_10.
 lexer_base_to_term_base(base_16) = base_16.
+
+:- func lexer_signedness_to_term_signedness(lexer.signedness)
+    = term.signedness.
+
+lexer_signedness_to_term_signedness(unsigned) = unsigned.
+lexer_signedness_to_term_signedness(signed) = signed.
+
+:- func lexer_size_to_term_size(lexer.integer_size) = term.integer_size.
+
+lexer_size_to_term_size(size_word) = size_word.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

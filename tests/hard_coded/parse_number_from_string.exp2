@@ -10,7 +10,7 @@ read_term("-1_0.") = functor(integer(base_10, i(-1, [-10]), signed, size_word), 
 read_term("01.") = functor(integer(base_10, i(1, [1]), signed, size_word), [], context("", 1))
 read_term("0_1.") = functor(integer(base_10, i(1, [1]), signed, size_word), [], context("", 1))
 read_term("1_000_000_000_000_000_000_000.") = functor(integer(base_10, i(5, [13877, 12907, 7261, 14976, 0]), signed, size_word), [], context("", 1))
-read_term("-1_000_000_000_000_000_000_000.") = functor(atom("-"), [functor(integer(base_10, i(5, [13877, 12907, 7261, 14976, 0]), signed, size_word), [], context("", 1))], context("", 1))
+read_term("-1_000_000_000_000_000_000_000.") = functor(integer(base_10, i(-5, [-13877, -12907, -7261, -14976, 0]), signed, size_word), [], context("", 1))
 
 Invalid decimal literals:
 read_term("123_.") = Syntax error: unterminated decimal literal
@@ -61,7 +61,7 @@ read_term("-0xf_f.") = functor(integer(base_16, i(-1, [-255]), signed, size_word
 read_term("0x_f_f__f.") = functor(integer(base_16, i(1, [4095]), signed, size_word), [], context("", 1))
 read_term("-0x_f_f__f.") = functor(integer(base_16, i(-1, [-4095]), signed, size_word), [], context("", 1))
 read_term("0xfffffffffffffffffffffffff.") = functor(integer(base_16, i(8, [3, 16383, 16383, 16383, 16383, 16383, 16383, 16383]), signed, size_word), [], context("", 1))
-read_term("-0xfffffffffffffffffffffffff.") = functor(atom("-"), [functor(integer(base_16, i(8, [3, 16383, 16383, 16383, 16383, 16383, 16383, 16383]), signed, size_word), [], context("", 1))], context("", 1))
+read_term("-0xfffffffffffffffffffffffff.") = functor(integer(base_16, i(-8, [-3, -16383, -16383, -16383, -16383, -16383, -16383, -16383]), signed, size_word), [], context("", 1))
 
 Invalid hexadecimal literals:
 read_term("0x.") = Syntax error: unterminated hexadecimal literal

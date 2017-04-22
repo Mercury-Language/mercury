@@ -30,11 +30,7 @@
 :- type token
     --->    name(string)
     ;       variable(string)
-    ;       integer(integer_base, int)
-
-    ;       big_integer(integer_base, integer)
-            % An integer that is too big for `int'.
-
+    ;       integer(integer_base, integer, signedness, integer_size)
     ;       float(float)
     ;       string(string)      % "...."
     ;       implementation_defined(string) % $name
@@ -53,7 +49,7 @@
     ;       io_error(io.error)  % error reading from the input stream
     ;       eof                 % end-of-file
 
-    ;       integer_dot(int).
+    ;       integer_dot(integer).
             % The lexer will never return integer_dot. This token is used
             % internally in the lexer, to keep the grammar LL(1) so that
             % only one character of pushback is needed. But the lexer will
@@ -65,6 +61,17 @@
     ;       base_8
     ;       base_10
     ;       base_16.
+
+:- type signedness
+    --->    signed
+    ;       unsigned.
+
+:- type integer_size
+    --->    size_word.
+    %;       size_8_bit
+    %;       size_16_bit
+    %;       size_32_bit
+    %;       size_64_bit
 
     % For every token, we record the line number of the line on
     % which the token occurred.
@@ -191,17 +198,17 @@ get_token_list_2(Stream, Token0, Context0, Tokens, !IO) :-
         ),
         Tokens = token_cons(Token0, Context0, token_nil)
     ;
-        Token0 = integer_dot(Int),
+        Token0 = integer_dot(Integer),
         get_context(Stream, Context1, !IO),
         get_dot(Stream, Token1, !IO),
         get_token_list_2(Stream, Token1, Context1, Tokens1, !IO),
-        Tokens = token_cons(integer(base_10, Int), Context0, Tokens1)
+        Tokens = token_cons(integer(base_10, Integer, signed, size_word),
+            Context0, Tokens1)
     ;
         ( Token0 = float(_)
         ; Token0 = string(_)
         ; Token0 = variable(_)
-        ; Token0 = integer(_, _)
-        ; Token0 = big_integer(_, _)
+        ; Token0 = integer(_, _, _, _)
         ; Token0 = implementation_defined(_)
         ; Token0 = junk(_)
         ; Token0 = name(_)
@@ -235,8 +242,7 @@ string_get_token_list_max(String, Len, Tokens, !Posn) :-
         ( Token = float(_)
         ; Token = string(_)
         ; Token = variable(_)
-        ; Token = integer(_, _)
-        ; Token = big_integer(_, _)
+        ; Token = integer(_, _, _, _)
         ; Token = integer_dot(_)
         ; Token = implementation_defined(_)
         ; Token = junk(_)
@@ -1955,7 +1961,7 @@ get_zero(Stream, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = integer(base_10, 0)
+        Token = integer(base_10, integer.zero, signed, size_word)
     ;
         Result = ok,
         ( if char.is_digit(Char) then
@@ -1979,7 +1985,7 @@ get_zero(Stream, Token, !IO) :-
             get_float_exponent(Stream, [Char, '0'], Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            Token = integer(base_10, 0)
+            Token = integer(base_10, integer.zero, signed, size_word)
         )
     ).
 
@@ -2026,11 +2032,11 @@ string_get_zero(String, Len, Posn0, Token, Context, !Posn) :-
         else
             string_ungetchar(String, !Posn),
             string_get_context(Posn0, Context, !Posn),
-            Token = integer(base_10, 0)
+            Token = integer(base_10, integer.zero, signed, size_word)
         )
     else
         string_get_context(Posn0, Context, !Posn),
-        Token = integer(base_10, 0)
+        Token = integer(base_10, integer.zero, signed, size_word)
     ).
 
 :- pred get_char_code(io.input_stream::in, token::out, io::di, io::uo) is det.
@@ -2046,7 +2052,7 @@ get_char_code(Stream, Token, !IO) :-
     ;
         Result = ok,
         char.to_int(Char, CharCode),
-        Token = integer(base_10, CharCode)
+        Token = integer(base_10, integer(CharCode), signed, size_word)
     ).
 
 :- pred string_get_char_code(string::in, int::in, posn::in, token::out,
@@ -2055,7 +2061,7 @@ get_char_code(Stream, Token, !IO) :-
 string_get_char_code(String, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         char.to_int(Char, CharCode),
-        Token = integer(base_10, CharCode),
+        Token = integer(base_10, integer(CharCode), signed, size_word),
         string_get_context(Posn0, Context, !Posn)
     else
         Token = error("unterminated char code literal"),
@@ -2574,8 +2580,8 @@ get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             (
                 !.LastDigit = last_digit_is_not_underscore,
                 rev_char_list_to_int(!.RevChars, base_10, Token0),
-                ( if Token0 = integer(_, Int) then
-                    Token = integer_dot(Int)
+                ( if Token0 = integer(_, Integer, _, _) then
+                    Token = integer_dot(Integer)
                 else
                     Token = Token0
                 )
@@ -2910,10 +2916,8 @@ rev_char_list_to_int(RevChars, Base, Token) :-
 
 conv_string_to_int(String, Base, Token) :-
     BaseInt = integer_base_int(Base),
-    ( if string.base_string_to_int_underscore(BaseInt, String, Int) then
-        Token = integer(Base, Int)
-    else if integer.from_base_string_underscore(BaseInt, String, Integer) then
-        Token = big_integer(Base, Integer)
+    ( if integer.from_base_string_underscore(BaseInt, String, Integer) then
+        Token = integer(Base, Integer, signed, size_word)
     else
         Token = error("invalid character in int")
     ).
@@ -2963,12 +2967,7 @@ token_to_string(Token, String) :-
         Token = variable(Var),
         string.append_list(["variable `", Var, "'"], String)
     ;
-        Token = integer(Base, Int),
-        base_to_int_and_prefix(Base, BaseInt, Prefix),
-        string.int_to_base_string(Int, BaseInt, IntString),
-        string.append_list(["integer `", Prefix, IntString, "'"], String)
-    ;
-        Token = big_integer(Base, Integer),
+        Token = integer(Base, Integer, _Signedness, _Size),
         base_to_int_and_prefix(Base, BaseInt, Prefix),
         IntString = integer.to_base_string(Integer, BaseInt),
         string.append_list(["integer `", Prefix, IntString, "'"], String)
@@ -3028,8 +3027,8 @@ token_to_string(Token, String) :-
         Token = error(Message),
         string.append_list(["illegal token (", Message, ")"], String)
     ;
-        Token = integer_dot(Int),
-        string.int_to_string(Int, IntString),
+        Token = integer_dot(Integer),
+        IntString = integer.to_string(Integer),
         string.append_list(["integer `", IntString, "'."], String)
     ).
 

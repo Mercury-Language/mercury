@@ -188,6 +188,7 @@
 
 :- import_module exception.
 :- import_module int.
+:- import_module integer.
 :- import_module lexer.
 :- import_module require.
 :- import_module string.
@@ -547,18 +548,22 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                 TokenName = "pproc",
                 TokenListRest =
                     token_cons(name(Name), _,
-                    token_cons(integer(base_10, Arity), _,
-                    token_cons(integer(base_10, Mode), _,
+                    token_cons(ArityToken, _,
+                    token_cons(ModeToken, _,
                     token_nil))),
+                decimal_token_to_int(ArityToken, Arity),
+                decimal_token_to_int(ModeToken, Mode),
                 ProcLabel = ordinary_proc_label(CurModuleNameSym, pf_predicate,
                     CurModuleNameSym, Name, Arity, Mode)
             ;
                 TokenName = "fproc",
                 TokenListRest =
                     token_cons(name(Name), _,
-                    token_cons(integer(base_10, Arity), _,
-                    token_cons(integer(base_10, Mode), _,
+                    token_cons(ArityToken, _,
+                    token_cons(ModeToken, _,
                     token_nil))),
+                decimal_token_to_int(ArityToken, Arity),
+                decimal_token_to_int(ModeToken, Mode),
                 ProcLabel = ordinary_proc_label(CurModuleNameSym, pf_function,
                     CurModuleNameSym, Name, Arity, Mode)
             ;
@@ -566,9 +571,11 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                 TokenListRest =
                     token_cons(name(DeclModuleName), _,
                     token_cons(name(Name), _,
-                    token_cons(integer(base_10, Arity), _,
-                    token_cons(integer(base_10, Mode), _,
+                    token_cons(ArityToken, _,
+                    token_cons(ModeToken, _,
                     token_nil)))),
+                decimal_token_to_int(ArityToken, Arity),
+                decimal_token_to_int(ModeToken, Mode),
                 DeclModuleNameSym = string_to_sym_name(DeclModuleName),
                 ProcLabel = ordinary_proc_label(CurModuleNameSym, pf_predicate,
                     DeclModuleNameSym, Name, Arity, Mode)
@@ -577,9 +584,11 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                 TokenListRest =
                     token_cons(name(DeclModuleName), _,
                     token_cons(name(Name), _,
-                    token_cons(integer(base_10, Arity), _,
-                    token_cons(integer(base_10, Mode), _,
+                    token_cons(ArityToken, _,
+                    token_cons(ModeToken, _,
                     token_nil)))),
+                decimal_token_to_int(ArityToken, Arity),
+                decimal_token_to_int(ModeToken, Mode),
                 DeclModuleNameSym = string_to_sym_name(DeclModuleName),
                 ProcLabel = ordinary_proc_label(CurModuleNameSym, pf_function,
                     DeclModuleNameSym, Name, Arity, Mode)
@@ -736,6 +745,12 @@ make_path_port(GoalPath, port_disj_first) = path_only(GoalPath).
 make_path_port(GoalPath, port_disj_later) = path_only(GoalPath).
 make_path_port(GoalPath, port_switch) = path_only(GoalPath).
 make_path_port(_GoalPath, port_user) = port_only(port_user).
+
+:- pred decimal_token_to_int(token::in, int::out) is semidet.
+
+decimal_token_to_int(Token, Int) :-
+    Token = integer(base_10, Integer, signed, size_word),
+    integer.to_int(Integer, Int).
 
 %-----------------------------------------------------------------------------%
 
