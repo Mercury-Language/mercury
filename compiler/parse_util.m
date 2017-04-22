@@ -128,7 +128,7 @@ parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
         [PredNameTerm, ArityTerm], _),
     try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
         PredNameTerm, SymName),
-    term_to_decimal_int(ArityTerm, Arity).
+    decimal_term_to_int(ArityTerm, Arity).
 
 parse_name_and_arity_unqualified(PredAndArityTerm, SymName, Arity) :-
     parse_name_and_arity(unqualified(""), PredAndArityTerm, SymName, Arity).

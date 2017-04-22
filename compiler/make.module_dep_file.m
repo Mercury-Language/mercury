@@ -665,7 +665,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
 :- pred version_number_term(term::in, module_dep_file_version::out) is semidet.
 
 version_number_term(Term, Version) :-
-    term_to_decimal_int(Term, Int),
+    decimal_term_to_int(Term, Int),
     version_number(Version, Int).
 
 :- pred string_term(term::in, string::out) is semidet.

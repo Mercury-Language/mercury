@@ -242,9 +242,9 @@ should_recompile_3(VersionStream, Globals, IsSubModule, FindTargetFiles,
         VersionNumberTerm = term.functor(term.atom(","),
             [UsageFileVersionNumberTerm,
             VersionNumbersVersionNumberTerm], _),
-        term_to_decimal_int(UsageFileVersionNumberTerm,
+        decimal_term_to_int(UsageFileVersionNumberTerm,
             usage_file_version_number),
-        term_to_decimal_int(VersionNumbersVersionNumberTerm,
+        decimal_term_to_int(VersionNumbersVersionNumberTerm,
             version_numbers_version_number)
     then
         true
@@ -561,7 +561,7 @@ parse_resolved_functor(Info, Term, Ctor) :-
         ; PredOrFuncStr = "function", PredOrFunc = pf_function
         ),
         try_parse_sym_name_and_no_args(ModuleTerm, ModuleName),
-        term_to_decimal_int(ArityTerm, Arity)
+        decimal_term_to_int(ArityTerm, Arity)
     then
         PredId = invalid_pred_id,
         Ctor = resolved_functor_pred_or_func(PredId, ModuleName, PredOrFunc,
@@ -619,7 +619,7 @@ parse_resolved_item_arity_matches(Info, ParseMatches, Term,
         Arity - MatchMap) :-
     ( if
         Term = term.functor(term.atom("-"), [ArityTerm, MatchesTerm], _),
-        term_to_decimal_int(ArityTerm, Arity0),
+        decimal_term_to_int(ArityTerm, Arity0),
         conjunction_to_list(MatchesTerm, MatchTermList)
     then
         Arity = Arity0,

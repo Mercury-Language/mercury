@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -210,12 +210,12 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
             type_to_univ(String, Univ)
         ;
             TypeCtorName = "int",
-            Functor = integer(_, Integer, signed, size_word),
+            Functor = integer(_Base, Integer, signed, size_word),
             integer.to_int(Integer, Int),
             type_to_univ(Int, Univ)
         ;
             TypeCtorName = "uint",
-            Functor = integer(_, Integer, unsigned, size_word),
+            Functor = integer(_Base, Integer, unsigned, size_word),
             integer.to_uint(Integer, UInt),
             type_to_univ(UInt, Univ)
         ;

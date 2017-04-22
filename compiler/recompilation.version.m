@@ -1415,7 +1415,7 @@ parse_key_version_number(ParseName, Term, Result) :-
         ItemNameArityTerm = term.functor(term.atom("/"),
             [NameTerm, ArityTerm], _),
         ParseName(NameTerm, Name),
-        term_to_decimal_int(ArityTerm, Arity),
+        decimal_term_to_int(ArityTerm, Arity),
         VersionNumber = term_to_version_number(VersionNumberTerm)
     then
         Result = ok1((Name - Arity) - VersionNumber)
@@ -1437,7 +1437,7 @@ parse_item_version_number(ParseName, Term, Result) :-
         ItemNameArityTerm = term.functor(term.atom("/"),
             [NameTerm, ArityTerm], _),
         ParseName(NameTerm, SymName),
-        term_to_decimal_int(ArityTerm, Arity),
+        decimal_term_to_int(ArityTerm, Arity),
         VersionNumber = term_to_version_number(VersionNumberTerm)
     then
         Result = ok1(item_name(SymName, Arity) - VersionNumber)

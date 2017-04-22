@@ -372,7 +372,7 @@ parse_result_entry(Compiler, Term, !Results) :-
     then
         ( if
             VersionNumber = analysis_version_number(_ : Call, _ : Answer),
-            term_to_decimal_int(VersionNumberTerm, VersionNumber)
+            decimal_term_to_int(VersionNumberTerm, VersionNumber)
         then
             Result = 'new some_analysis_result'(CallPattern, AnswerPattern,
                 Status),
@@ -424,7 +424,7 @@ parse_request_entry(Compiler, Term, !Requests) :-
     then
         ( if
             VersionNumber = analysis_version_number(_ : Call, _ : Answer),
-            term_to_decimal_int(VersionNumberTerm, VersionNumber)
+            decimal_term_to_int(VersionNumberTerm, VersionNumber)
         then
             Result = 'new analysis_request'(CallPattern, CallerModule),
             ( if map.search(!.Requests, AnalysisName, AnalysisRequests0) then
@@ -472,7 +472,7 @@ parse_imdg_arc(Compiler, Term, !Arcs) :-
     then
         ( if
             VersionNumber = analysis_version_number(_ : Call, _ : Answer),
-            term_to_decimal_int(VersionNumberTerm, VersionNumber)
+            decimal_term_to_int(VersionNumberTerm, VersionNumber)
         then
             Arc = 'new imdg_arc'(CallPattern, DependentModule),
             ( if map.search(!.Arcs, AnalysisName, AnalysisArcs0) then
@@ -512,8 +512,8 @@ parse_func_id(Term, FuncId) :-
         PredOrFunc = pf_function
     ),
     NameTerm = functor(atom(Name), [], _),
-    term_to_decimal_int(ArityTerm, Arity),
-    term_to_decimal_int(ProcTerm, ProcInt),
+    decimal_term_to_int(ArityTerm, Arity),
+    decimal_term_to_int(ProcTerm, ProcInt),
     proc_id_to_int(ProcId, ProcInt),
     FuncId = func_id(PredOrFunc, Name, Arity, ProcId).
 
@@ -596,7 +596,7 @@ check_analysis_file_version_number(Stream, !IO) :-
     parser.read_term(Stream, TermResult : read_term, !IO),
     ( if
         TermResult  = term(_, NumberTerm),
-        term_to_decimal_int(NumberTerm, version_number)
+        decimal_term_to_int(NumberTerm, version_number)
     then
         true
     else
@@ -721,7 +721,7 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         io.close_input(InputStream, !IO),
         ( if
             VersionResult = term(_, NumberTerm),
-            term_to_decimal_int(NumberTerm, version_number)
+            decimal_term_to_int(NumberTerm, version_number)
         then
             io.open_append(AnalysisFileName, AppendResult, !IO),
             (

@@ -1072,7 +1072,7 @@ parse_pragma_external_proc(ModuleName, VarSet, ErrorTerm,
 parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
     ( if PredTerm = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) then
         parse_symbol_name(VarSet, NameTerm, MaybeSymName),
-        ( if term_to_decimal_int(ArityTerm, ArityPrime) then
+        ( if decimal_term_to_int(ArityTerm, ArityPrime) then
             MaybeArity = ok1(ArityPrime)
         else
             ArityPieces = [words("Error: in")] ++ cord.list(ContextPieces) ++
@@ -1386,8 +1386,8 @@ parse_pragma_unused_args(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     ( if
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
             UnusedArgsTerm],
-        term_to_decimal_int(ArityTerm, Arity),
-        term_to_decimal_int(ModeNumTerm, ModeNum),
+        decimal_term_to_int(ArityTerm, Arity),
+        decimal_term_to_int(ModeNumTerm, ModeNum),
         parse_predicate_or_function(PredOrFuncTerm, PredOrFunc),
         try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
             PredNameTerm, PredName),
@@ -1560,7 +1560,7 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ;
             ArgSizeFunctor = "finite",
             ArgSizeArgTerms = [IntTerm, UsedArgsTerm],
-            term_to_decimal_int(IntTerm, Int),
+            decimal_term_to_int(IntTerm, Int),
             convert_bool_list(VarSet, UsedArgsTerm, UsedArgs),
             MaybeArgSizeInfo = yes(finite(Int, UsedArgs))
         ),
@@ -1765,8 +1765,8 @@ parse_pragma_exceptions(ModuleName, ErrorTerm, PragmaTerms, Context, SeqNum,
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
             ThrowStatusTerm],
         parse_predicate_or_function(PredOrFuncTerm, PredOrFunc),
-        term_to_decimal_int(ArityTerm, Arity),
-        term_to_decimal_int(ModeNumTerm, ModeNum),
+        decimal_term_to_int(ArityTerm, Arity),
+        decimal_term_to_int(ModeNumTerm, ModeNum),
         try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
             PredNameTerm, PredName),
         ThrowStatusTerm = term.functor(term.atom(ThrowStatusFunctor),
@@ -1822,8 +1822,8 @@ parse_pragma_trailing_info(ModuleName, ErrorTerm, PragmaTerms,
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
             TrailingStatusTerm],
         parse_predicate_or_function(PredOrFuncTerm, PredOrFunc),
-        term_to_decimal_int(ArityTerm, Arity),
-        term_to_decimal_int(ModeNumTerm, ModeNum),
+        decimal_term_to_int(ArityTerm, Arity),
+        decimal_term_to_int(ModeNumTerm, ModeNum),
         try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
             PredNameTerm, PredName),
         TrailingStatusTerm = term.functor(term.atom(TrailingStatusFunctor),
@@ -1867,8 +1867,8 @@ parse_pragma_mm_tabling_info(ModuleName, ErrorTerm, PragmaTerms,
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
             MM_TablingStatusTerm],
         parse_predicate_or_function(PredOrFuncTerm, PredOrFunc),
-        term_to_decimal_int(ArityTerm, Arity),
-        term_to_decimal_int(ModeNumTerm, ModeNum),
+        decimal_term_to_int(ArityTerm, Arity),
+        decimal_term_to_int(ModeNumTerm, ModeNum),
         try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
             PredNameTerm, PredName),
         MM_TablingStatusTerm = term.functor(term.atom(MM_TablingStatusFunctor),
@@ -3254,7 +3254,7 @@ parse_tabling_attribute(VarSet, EvalMethod, Term, MaybeContextAttribute) :-
     ;
         Functor = "size_limit",
         Args = [LimitTerm],
-        term_to_decimal_int(LimitTerm, Limit),
+        decimal_term_to_int(LimitTerm, Limit),
         AllowsSizeLimit = eval_method_allows_size_limit(EvalMethod),
         (
             AllowsSizeLimit = yes,
@@ -3321,7 +3321,7 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
         ( if
             try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
                 PredNameTerm, PredName),
-            term_to_decimal_int(ArityTerm, Arity)
+            decimal_term_to_int(ArityTerm, Arity)
         then
             MaybeArityOrModes = ok1(pred_name_arity_mpf_mmode(PredName,
                 Arity, no, no))
@@ -3424,7 +3424,7 @@ convert_bool_list(VarSet, ListTerm, Bools) :-
 :- pred convert_int_list(varset::in, term::in, maybe1(list(int))::out) is det.
 
 convert_int_list(VarSet, ListTerm, Result) :-
-    convert_list("integers", yes(VarSet), ListTerm, term_to_decimal_int,
+    convert_list("integers", yes(VarSet), ListTerm, decimal_term_to_int,
         [words("Error: expected integer")], Result).
 
     % convert_list(What, MaybeVarSet, Term, Pred, UnrecognizedPieces, Result):
@@ -3646,7 +3646,7 @@ parse_arg_size_constraint(Term, Constr) :-
 
 parse_lp_term(Term, LpTerm) :-
     Term = term.functor(term.atom("term"), [VarIdTerm, CoeffTerm], _),
-    term_to_decimal_int(VarIdTerm, VarId),
+    decimal_term_to_int(VarIdTerm, VarId),
     parse_rational(CoeffTerm, Coeff),
     LpTerm = arg_size_term(VarId, Coeff).
 
@@ -3654,8 +3654,8 @@ parse_lp_term(Term, LpTerm) :-
 
 parse_rational(Term, Rational) :-
     Term = term.functor(term.atom("r"), [NumerTerm, DenomTerm], _),
-    term_to_decimal_int(NumerTerm, Numer),
-    term_to_decimal_int(DenomTerm, Denom),
+    decimal_term_to_int(NumerTerm, Numer),
+    decimal_term_to_int(DenomTerm, Denom),
     Rational = rat.rat(Numer, Denom).
 
 %---------------------------------------------------------------------------%

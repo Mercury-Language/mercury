@@ -607,7 +607,7 @@ write_constant(OutStream, Const, !IO) :-
 write_constant(OutStream, Const, NextToGraphicToken, !IO) :-
     (
         Const = term.integer(Base, I, _Signedness, _Size),
-        % XXX UINT hand signedness and size.
+        % XXX UINT handle signedness and size.
         Prefix = integer_base_prefix(Base),
         IntString = integer.to_base_string(I, integer_base_int(Base)),
         io.write_string(OutStream, Prefix, !IO),

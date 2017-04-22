@@ -627,10 +627,10 @@ list_to_string_2(Pred, [T | Ts], !Strings) :-
 
 cons_id_and_args_to_term(int_const(Int), [], Term) :-
     term.context_init(Context),
-    Term = decimal_int_to_term(Int, Context).
+    Term = int_to_decimal_term(Int, Context).
 cons_id_and_args_to_term(uint_const(UInt), [], Term) :-
     term.context_init(Context),
-    Term = decimal_uint_to_term(UInt, Context).
+    Term = uint_to_decimal_term(UInt, Context).
 cons_id_and_args_to_term(float_const(Float), [], Term) :-
     term.context_init(Context),
     Term = term.functor(term.float(Float), [], Context).

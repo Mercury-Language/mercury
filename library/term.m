@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -151,11 +151,11 @@
 
 :- pred term_to_uint(term(T)::in, uint::out) is semidet.
 
-:- pred term_to_decimal_int(term(T)::in, int::out) is semidet.
+:- pred decimal_term_to_int(term(T)::in, int::out) is semidet.
 
-:- func decimal_int_to_term(int, context) = term(T).
+:- func int_to_decimal_term(int, context) = term(T).
 
-:- func decimal_uint_to_term(uint, context) = term(T).
+:- func uint_to_decimal_term(uint, context) = term(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -789,25 +789,25 @@ var_id(var(VarNum)) = VarNum.
 %---------------------------------------------------------------------------%
 
 term_to_int(Term, Int) :-
-    Term = functor(Const, [], _),
-    Const = integer(_, Integer, signed, size_word),
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, signed, size_word),
     integer.to_int(Integer, Int).
 
 term_to_uint(Term, UInt) :-
-    Term = functor(Const, [], _),
-    Const = integer(_, Integer, unsigned, size_word),
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, unsigned, size_word),
     integer.to_uint(Integer, UInt).
 
-term_to_decimal_int(Term, Int) :-
-    Term = functor(Const, [], _),
+decimal_term_to_int(Term, Int) :-
+    Term = functor(Const, [], _Context),
     Const = integer(base_10, Integer, signed, size_word),
     integer.to_int(Integer, Int).
 
-decimal_int_to_term(Int, Context) = Term :-
+int_to_decimal_term(Int, Context) = Term :-
     Const = integer(base_10, integer(Int), signed, size_word),
     Term = functor(Const, [], Context).
 
-decimal_uint_to_term(UInt, Context) = Term :-
+uint_to_decimal_term(UInt, Context) = Term :-
     Const = integer(base_10, integer.from_uint(UInt), unsigned, size_word),
     Term = functor(Const, [], Context).
 

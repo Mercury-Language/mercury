@@ -393,7 +393,7 @@ parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier) :-
 parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
         MaybeSymNameSpecifier) :-
     ( if Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) then
-        ( if term_to_decimal_int(ArityTerm, Arity) then
+        ( if decimal_term_to_int(ArityTerm, Arity) then
             ( if Arity >= 0 then
                 parse_implicitly_qualified_symbol_name(DefaultModule, VarSet,
                     NameTerm, MaybeName),
