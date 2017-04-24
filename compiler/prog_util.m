@@ -142,10 +142,18 @@
     % source_integer_to_int(Base, Integer, Int):
     %
     % Convert an arbitrary precision integer to a native int. For base 10, this
-    % predicate succeeds iff the value of String does not exceed int.max_int.
-    % For other bases, this predicate succeeds iff the value of String can be
+    % predicate succeeds iff the value of Integer does not exceed int.max_int.
+    % For other bases, this predicate succeeds iff the value of Integer can be
     % represented by an unsigned integer of the same width as `int', and `Int'
     % is the signed integer with the same bit pattern as that unsigned value.
+    % The rationale for this behaviour is that non base 10 integers are assumed
+    % to denote bit patterns and that in Mercury source files it is useful to
+    % be able to write values with the high bit set (e.g. 0x80000000 on 32-bit
+    % machines) that would be greater than max_int if interpreted as a positive
+    % integer.
+    %
+    % XXX UINT - we should revisit the the above behaviour once support for
+    % unsigned integers is stable.
     %
 :- pred source_integer_to_int(integer_base::in, integer::in, int::out)
     is semidet.
