@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -154,8 +155,8 @@
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    MR_Float    x;
-    MR_Float    y;
+    double  x;
+    double  y;
 
     x = Ux;
     y = Uy;
@@ -169,8 +170,8 @@
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    MR_Float    x;
-    MR_Float    y;
+    double  x;
+    double  y;
 
     x = Ux;
     y = Uy;
@@ -184,8 +185,8 @@
        _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    MR_Float x;
-    MR_Float y;
+    double  x;
+    double  y;
 
     x = Dx;
     y = Dy;
@@ -199,8 +200,8 @@
        _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    MR_Float x;
-    MR_Float y;
+    double  x;
+    double  y;
 
     x = Dx;
     y = Dy;
