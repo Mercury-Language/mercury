@@ -43,7 +43,7 @@
 %   there should normally be one entry for each spelling. In the rare case
 %   that the option is used very frequently, there may also be an entry
 %   for the option in the short_option predicate.
-%   
+%
 % - Every option should have a description in one of the options_help_x
 %   predicates, with the right predicate again depending on what category
 %   of options the option belongs to.
@@ -141,7 +141,7 @@
     % Warning options
     --->    inhibit_warnings
     ;       inhibit_style_warnings
-    ;       inhibit_accumulator_warnings
+    ;       warn_accumulator_swaps
     ;       halt_at_warn
     ;       halt_at_syntax_errors
     ;       halt_at_auto_parallel_failure
@@ -1127,7 +1127,7 @@ option_defaults_2(warning_option, [
     % Warning Options
     inhibit_warnings                    -   bool_special,
     inhibit_style_warnings              -   bool_special,
-    inhibit_accumulator_warnings        -   bool(no),
+    warn_accumulator_swaps              -   bool(yes),
     halt_at_warn                        -   bool(no),
     halt_at_syntax_errors               -   bool(no),
     halt_at_auto_parallel_failure       -   bool(no),
@@ -2017,7 +2017,7 @@ short_option('?', help).
 % warning options
 long_option("inhibit-warnings",         inhibit_warnings).
 long_option("inhibit-style-warnings",   inhibit_style_warnings).
-long_option("inhibit-accumulator-warnings", inhibit_accumulator_warnings).
+long_option("warn-accumulator-swaps",   warn_accumulator_swaps).
 long_option("halt-at-warn",             halt_at_warn).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
 long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure).
@@ -3130,77 +3130,16 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
             Option = inhibit_warnings,
             SpecialData = bool(Inhibit),
             bool.not(Inhibit, Enable),
-            override_options([
-                    inhibit_accumulator_warnings    -   bool(Inhibit),
-                    warn_singleton_vars             -   bool(Enable),
-                    warn_overlapping_scopes         -   bool(Enable),
-                    warn_det_decls_too_lax          -   bool(Enable),
-                    warn_inferred_erroneous         -   bool(Enable),
-                    warn_nothing_exported           -   bool(Enable),
-                    warn_unused_args                -   bool(Enable),
-                    warn_interface_imports          -   bool(Enable),
-                    warn_interface_imports_in_parents - bool(Enable),
-                    warn_missing_opt_files          -   bool(Enable),
-                    warn_missing_trans_opt_files    -   bool(Enable),
-                    warn_missing_trans_opt_deps     -   bool(Enable),
-                    warn_inconsistent_pred_order_clauses - bool(Enable),
-                    warn_inconsistent_pred_order_foreign_procs - bool(Enable),
-                    warn_non_contiguous_decls       -   bool(Enable),
-                    warn_non_contiguous_clauses     -   bool(Enable),
-                    warn_non_contiguous_foreign_procs - bool(Enable),
-                    warn_non_stratification         -   bool(Enable),
-                    warn_unification_cannot_succeed -   bool(Enable),
-                    warn_simple_code                -   bool(Enable),
-                    warn_duplicate_calls            -   bool(Enable),
-                    warn_implicit_stream_calls            -   bool(Enable),
-                    warn_missing_module_name        -   bool(Enable),
-                    warn_wrong_module_name          -   bool(Enable),
-                    warn_smart_recompilation        -   bool(Enable),
-                    warn_undefined_options_variables -  bool(Enable),
-                    warn_non_tail_recursion_self    -   bool(Enable),
-                    warn_non_tail_recursion_mutual  -   bool(Enable),
-                    warn_target_code                -   bool(Enable),
-                    warn_up_to_date                 -   bool(Enable),
-                    warn_stubs                      -   bool(Enable),
-                    warn_dead_procs                 -   bool(Enable),
-                    warn_dead_preds                 -   bool(Enable),
-                    warn_table_with_inline          -   bool(Enable),
-                    warn_non_term_special_preds     -   bool(Enable),
-                    warn_known_bad_format_calls     -   bool(Enable),
-                    warn_unknown_format_calls       -   bool(Enable),
-                    warn_insts_without_matching_type -  bool(Enable),
-                    inform_ite_instead_of_switch    -   bool(Enable),
-                    inform_incomplete_switch        -   bool(Enable),
-                    warn_suspicious_foreign_procs   -   bool(Enable),
-                    warn_state_var_shadowing        -   bool(Enable),
-                    inform_inferred_types           -   bool(Enable),
-                    inform_inferred_modes           -   bool(Enable)
-                ], !OptionTable)
+            set_all_options_to(style_warning_options, bool(Enable),
+                !OptionTable),
+            set_all_options_to(non_style_warning_options, bool(Enable),
+                !OptionTable)
         ;
             Option = inhibit_style_warnings,
             SpecialData = bool(Inhibit),
             bool.not(Inhibit, Enable),
-            override_options([
-                    warn_inconsistent_pred_order_clauses - bool(Enable),
-                    warn_inconsistent_pred_order_foreign_procs - bool(Enable),
-                    warn_non_contiguous_decls       -   bool(Enable),
-                    warn_non_contiguous_clauses     -   bool(Enable),
-                    warn_non_contiguous_foreign_procs - bool(Enable),
-                    warn_simple_code                -   bool(Enable),
-                    warn_duplicate_calls            -   bool(Enable),
-                    warn_implicit_stream_calls      -   bool(Enable),
-                    warn_non_tail_recursion_self    -   bool(Enable),
-                    warn_non_tail_recursion_mutual  -   bool(Enable),
-                    warn_dead_procs                 -   bool(Enable),
-                    warn_dead_preds                 -   bool(Enable),
-                    warn_known_bad_format_calls     -   bool(Enable),
-                    warn_unknown_format_calls       -   bool(Enable),
-                    warn_insts_without_matching_type -  bool(Enable),
-                    inform_ite_instead_of_switch    -   bool(Enable),
-                    inform_incomplete_switch        -   bool(Enable),
-                    warn_suspicious_foreign_procs   -   bool(Enable),
-                    warn_state_var_shadowing        -   bool(Enable)
-                ], !OptionTable)
+            set_all_options_to(style_warning_options, bool(Enable),
+                !OptionTable)
         ;
             Option = warn_non_tail_recursion,
             SpecialData = maybe_string(MaybeRecCalls0),
@@ -3346,6 +3285,59 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
         Result = ok(!.OptionTable)
     ).
 
+:- func style_warning_options = list(option).
+
+style_warning_options = [
+    warn_inconsistent_pred_order_clauses,
+    warn_inconsistent_pred_order_foreign_procs,
+    warn_non_contiguous_decls,
+    warn_non_contiguous_clauses,
+    warn_non_contiguous_foreign_procs,
+    warn_simple_code,
+    warn_duplicate_calls,
+    warn_implicit_stream_calls,
+    warn_non_tail_recursion_self,
+    warn_non_tail_recursion_mutual,
+    warn_dead_procs,
+    warn_dead_preds,
+    warn_known_bad_format_calls,
+    warn_unknown_format_calls,
+    warn_insts_without_matching_type,
+    inform_ite_instead_of_switch,
+    inform_incomplete_switch,
+    warn_suspicious_foreign_procs,
+    warn_state_var_shadowing
+].
+
+:- func non_style_warning_options = list(option).
+
+non_style_warning_options = [
+    warn_accumulator_swaps,
+    warn_singleton_vars,
+    warn_overlapping_scopes,
+    warn_det_decls_too_lax,
+    warn_inferred_erroneous,
+    warn_nothing_exported,
+    warn_unused_args,
+    warn_interface_imports,
+    warn_interface_imports_in_parents,
+    warn_missing_opt_files,
+    warn_missing_trans_opt_files,
+    warn_missing_trans_opt_deps,
+    warn_non_stratification,
+    warn_unification_cannot_succeed,
+    warn_missing_module_name,
+    warn_wrong_module_name,
+    warn_smart_recompilation,
+    warn_undefined_options_variables,
+    warn_target_code,
+    warn_up_to_date,
+    warn_stubs,
+    warn_table_with_inline,
+    warn_non_term_special_preds,
+    inform_inferred_types
+].
+
 %---------------------------------------------------------------------------%
 
 option_table_add_mercury_library_directory(Dir, !OptionTable) :-
@@ -3405,9 +3397,17 @@ enable_opt_levels(Cur, Max, !OptionTable) :-
     option_table::in, option_table::out) is det.
 
 override_options([], !OptionTable).
-override_options([Option - Value | Settings], !OptionTable) :-
+override_options([Option - Value | OptionsValues], !OptionTable) :-
     map.set(Option, Value, !OptionTable),
-    override_options(Settings, !OptionTable).
+    override_options(OptionsValues, !OptionTable).
+
+:- pred set_all_options_to(list(option)::in, option_data::in,
+    option_table::in, option_table::out) is det.
+
+set_all_options_to([], _Value, !OptionTable).
+set_all_options_to([Option | Options], Value, !OptionTable) :-
+    map.set(Option, Value, !OptionTable),
+    set_all_options_to(Options, Value, !OptionTable).
 
 %---------------------------------------------------------------------------%
 
@@ -3431,149 +3431,155 @@ opt_space([
 :- pred opt_level(int::in, option_table::in,
     list(pair(option, option_data))::out) is semidet.
 
-% Optimization level -1:
-% Generate totally unoptimized code; turns off ALL optimizations that
-% can be turned off, including HLDS->HLDS, HLDS->LLDS, LLDS->LLDS, LLDS->C,
-% and C->object optimizations.
-% (However, there are some optimizations that can't be disabled.)
+opt_level(OptLevel, OptionTable, Settings) :-
+    % If the optimization level is not set, we use the default values of
+    % all the optimization options (HLDS->HLDS, HLDS->LLDS, LLDS->LLDS,
+    % LLDS->C, and C->object, and their equivalents for the other backends
+    % and targets.
+    %
+    % However, some optimizations are not controlled by options
+    % and thus can't be disabled.
 
-% Optimization level 0: aim to minimize overall compilation time.
-% XXX I just guessed. We should run lots of experiments.
+    (
+        OptLevel = 0,
+        % Optimization level 0: aim to minimize overall compilation time.
+        % XXX I just guessed. We should run lots of experiments.
+        Settings = [
+            common_data                 -   bool(yes),
+            optimize                    -   bool(yes),
+            optimize_repeat             -   int(1),
+            optimize_peep               -   bool(yes),
+            optimize_peep_mkword        -   bool(yes),
+            static_ground_cells         -   bool(yes),
+            smart_indexing              -   bool(yes),
+            optimize_jumps              -   bool(yes),
+            optimize_labels             -   bool(yes),
+            optimize_dead_procs         -   bool(yes),
+            excess_assign               -   bool(yes)   % ???
+        ]
+    ;
+        OptLevel = 1,
+        % Optimization level 1: apply optimizations which are cheap and
+        % have a good payoff while still keeping compilation time small.
+        getopt_io.lookup_bool_option(OptionTable, have_delay_slot, DelaySlot),
+        Settings = [
+            use_local_vars              -   bool(yes),
+            c_optimize                  -   bool(yes),  % XXX we want `gcc -O1'
+            optimize_frames             -   bool(yes),
+            optimize_delay_slot         -   bool(DelaySlot),
+            middle_rec                  -   bool(yes),
+            emit_c_loops                -   bool(yes),
+            optimize_tailcalls          -   bool(yes)
+            % dups?
+        ]
+    ;
+        OptLevel = 2,
+        % Optimization level 2: apply optimizations which have a good payoff
+        % relative to their cost; but include optimizations which are
+        % more costly than with -O1.
+        Settings = [
+            optimize_fulljumps          -   bool(yes),
+            optimize_repeat             -   int(3),
+            optimize_dups               -   bool(yes),
+            follow_code                 -   bool(yes),
+            inline_simple               -   bool(yes),
+            inline_single_use           -   bool(yes),
+            inline_compound_threshold   -   int(10),
+            common_struct               -   bool(yes),
+            user_guided_type_specialization -   bool(yes),
+            % XXX While inst `array' is defined as `ground', we can't optimize
+            % duplicate calls (we might combine calls to `array.init').
+            % optimize_duplicate_calls  -   bool(yes),
+            simple_neg                  -   bool(yes),
+            test_after_switch           -   bool(yes),
 
-opt_level(0, _, [
-    common_data                 -   bool(yes),
-    optimize                    -   bool(yes),
-    optimize_repeat             -   int(1),
-    optimize_peep               -   bool(yes),
-    optimize_peep_mkword        -   bool(yes),
-    static_ground_cells         -   bool(yes),
-    smart_indexing              -   bool(yes),
-    optimize_jumps              -   bool(yes),
-    optimize_labels             -   bool(yes),
-    optimize_dead_procs         -   bool(yes),
-    excess_assign               -   bool(yes)   % ???
-]).
+            optimize_initializations    -  bool(yes)
+        ]
+    ;
+        OptLevel = 3,
+        % Optimization level 3: apply optimizations which usually have a good
+        % payoff even if they increase compilation time quite a bit.
+        Settings = [
+            optimize_saved_vars_const   - bool(yes),
+            optimize_unused_args        -   bool(yes),
+            optimize_higher_order       -   bool(yes),
+            deforestation               -   bool(yes),
+            local_constraint_propagation -  bool(yes),
+            constant_propagation        -   bool(yes),
+            optimize_reassign           -   bool(yes),
+            % Disabled until a bug in extras/trailed_update/var.m is resolved.
+            % introduce_accumulators    -   bool(yes),
+            optimize_repeat             -   int(4)
+        ]
+    ;
+        OptLevel = 4,
+        % Optimization level 4: apply optimizations which may have some payoff
+        % even if they increase compilation time quite a bit.
+        %
+        % Currently this enables the use of local variables
+        % and increases the inlining thresholds.
+        Settings = [
+            inline_simple_threshold     -   int(8),
+            inline_compound_threshold   -   int(20),
+            higher_order_size_limit     -   int(30)
+        ]
+    ;
+        OptLevel = 5,
+        % Optimization level 5: apply optimizations which may have some
+        % payoff even if they increase compilation time a lot.
+        %
+        % Currently this enables the search for construction unifications that
+        % can be delayed past failing computations, allows more passes of the
+        % low-level optimizations, and increases the inlining thresholds
+        % still further. We also enable eliminate_local_vars only at
+        % this level, because that pass is implemented pretty inefficiently.
+        Settings = [
+            optimize_repeat             -   int(5),
+            delay_construct             -   bool(yes),
+            inline_compound_threshold   -   int(100),
+            higher_order_size_limit     -   int(40),
+            eliminate_local_vars        -   bool(yes),
+            loop_invariants             -   bool(yes)
+        ]
+    ;
+        OptLevel = 6,
+        % Optimization level 6: apply optimizations which may have any payoff
+        % even if they increase compilation time to completely unreasonable
+        % levels.
+        %
+        % Currently this sets `everything_in_one_c_function', which causes
+        % the compiler to put everything in the one C function and treat calls
+        % to predicates in the same module as local. We also enable inlining
+        % of GC_malloc(), redo(), and fail().
+        Settings = [
+            procs_per_c_function        -   int(0),
+            inline_alloc                -   bool(yes),
+            use_macro_for_redo_fail     -   bool(yes)
+        ]
 
-% Optimization level 1: apply optimizations which are cheap and
-% have a good payoff while still keeping compilation time small.
-
-opt_level(1, OptionTable, [
-    use_local_vars              -   bool(yes),
-    c_optimize                  -   bool(yes),  % XXX we want `gcc -O1'
-    optimize_frames             -   bool(yes),
-    optimize_delay_slot         -   bool(DelaySlot),
-    middle_rec                  -   bool(yes),
-    emit_c_loops                -   bool(yes),
-    optimize_tailcalls          -   bool(yes)
-    % dups?
-]) :-
-    getopt_io.lookup_bool_option(OptionTable, have_delay_slot, DelaySlot).
-
-% Optimization level 2: apply optimizations which have a good
-% payoff relative to their cost; but include optimizations
-% which are more costly than with -O1.
-
-opt_level(2, _, [
-    optimize_fulljumps          -   bool(yes),
-    optimize_repeat             -   int(3),
-    optimize_dups               -   bool(yes),
-    follow_code                 -   bool(yes),
-    inline_simple               -   bool(yes),
-    inline_single_use           -   bool(yes),
-    inline_compound_threshold   -   int(10),
-    common_struct               -   bool(yes),
-    user_guided_type_specialization -   bool(yes),
-    % XXX While inst `array' is defined as `ground', we can't optimize
-    % duplicate calls (we might combine calls to `array.init').
-    % optimize_duplicate_calls  -   bool(yes),
-    simple_neg                  -   bool(yes),
-    test_after_switch           -   bool(yes),
-
-    optimize_initializations    -  bool(yes)
-]).
-
-% Optimization level 3: apply optimizations which usually have a good
-% payoff even if they increase compilation time quite a bit.
-
-opt_level(3, _, [
-    optimize_saved_vars_const   - bool(yes),
-    optimize_unused_args        -   bool(yes),
-    optimize_higher_order       -   bool(yes),
-    deforestation               -   bool(yes),
-    local_constraint_propagation -  bool(yes),
-    constant_propagation        -   bool(yes),
-    optimize_reassign           -   bool(yes),
-    % Disabled until a bug in extras/trailed_update/var.m is resolved.
-    % introduce_accumulators    -   bool(yes),
-    optimize_repeat             -   int(4)
-]).
-
-% Optimization level 4: apply optimizations which may have some
-% payoff even if they increase compilation time quite a bit.
-
-% Currently this enables the use of local variables
-% and increases the inlining thresholds.
-
-opt_level(4, _, [
-    inline_simple_threshold     -   int(8),
-    inline_compound_threshold   -   int(20),
-    higher_order_size_limit     -   int(30)
-]).
-
-% Optimization level 5: apply optimizations which may have some
-% payoff even if they increase compilation time a lot.
-
-% Currently this enables the search for construction unifications that can be
-% delayed past failing computations, allows more passes of the low-level
-% optimizations, and increases the inlining thresholds still further.
-% We also enable eliminate_local_vars only at this level,
-% because that pass is implemented pretty inefficiently.
-
-opt_level(5, _, [
-    optimize_repeat             -   int(5),
-    delay_construct             -   bool(yes),
-    inline_compound_threshold   -   int(100),
-    higher_order_size_limit     -   int(40),
-    eliminate_local_vars        -   bool(yes),
-    loop_invariants             -   bool(yes)
-]).
-
-% Optimization level 6: apply optimizations which may have any payoff even if
-% they increase compilation time to completely unreasonable levels.
-
-% Currently this sets `everything_in_one_c_function', which causes the compiler
-% to put everything in the one C function and treat calls to predicates in the
-% same module as local. We also enable inlining of GC_malloc(), redo(), and
-% fail().
-
-opt_level(6, _, [
-    procs_per_c_function        -   int(0), % everything in one C function
-    inline_alloc                -   bool(yes),
-    use_macro_for_redo_fail     -   bool(yes)
-]).
-
-% The following optimization options are not enabled at any level:
-%
-%   checked_nondet_tailcalls:
-%       This is deliberate, because the transformation
-%       might make code run slower.
-%
-%   constraint_propagation:
-%       I think this is deliberate, because the transformation
-%       might make code run slower?
-%
-%   unneeded_code:
-%       Because it can cause slowdowns at high optimization levels;
-%       cause unknown
-%   type_specialization:
-%       XXX why not?
-%
-%   introduce_accumulators:
-%       XXX Disabled until a bug in extras/trailed_update/var.m
-%       is resolved.
-%
-%   optimize_constructor_last_call:
-%       Not a speedup in general.
+        % The following optimization options are not enabled at any level:
+        %
+        %   checked_nondet_tailcalls:
+        %       This is deliberate, because the transformation
+        %       might make code run slower.
+        %
+        %   constraint_propagation:
+        %       I think this is deliberate, because the transformation
+        %       might make code run slower?
+        %
+        %   unneeded_code:
+        %       Because it can cause slowdowns at high optimization levels;
+        %       cause unknown
+        %   type_specialization:
+        %       XXX why not?
+        %
+        %   introduce_accumulators:
+        %       XXX Disabled until a bug in extras/trailed_update/var.m
+        %       is resolved.
+        %
+        %   optimize_constructor_last_call:
+        %       Not a speedup in general.
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -3710,7 +3716,7 @@ options_help_warning -->
 %       "--halt-at-auto-parallel-failure",
 %       "\tThis option causes the compiler to halt if it cannot perform",
 %       "\tan auto-parallelization requested by a feedback file.",
-        "--inhibit-accumulator-warnings",
+        "--no-warn-accumulator-swaps",
         "\tDo not warn about argument order rearrangement caused",
         "\tby `--introduce-accumulators'.",
         "--no-warn-singleton-vars, --no-warn-singleton-variables",

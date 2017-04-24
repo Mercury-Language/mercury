@@ -6422,8 +6422,9 @@ if it finds any syntax errors in the program.
 @c an auto-parallelization requested by a feedback file.
 
 @sp 1
-@item --inhibit-accumulator-warnings
-@findex --inhibit-accumulator-warnings
+@item --no-warn-accumulator-swaps
+@findex --no-warn-accumulator-swaps
+@findex --warn-accumulator-swaps
 Do not warn about argument order rearrangement caused by
 @samp{--introduce-accumulators}.
 

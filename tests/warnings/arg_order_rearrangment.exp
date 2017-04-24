@@ -6,4 +6,4 @@ arg_order_rearrangment.m:018:   swapped to allow accumulator introduction.
 arg_order_rearrangment.m:012:   Please ensure that this argument rearrangement
 arg_order_rearrangment.m:012:   does not introduce performance problems.
 arg_order_rearrangment.m:012:   These warnings can be suppressed by
-arg_order_rearrangment.m:012:   `--inhibit-accumulator-warnings'.
+arg_order_rearrangment.m:012:   `--no-warn-accumulator-swaps'.

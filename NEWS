@@ -523,6 +523,9 @@ Changes to the Mercury compiler:
   prevent the compiler adding any directories to the runtime search path
   automatically.
 
+* We have renamed the --inhibit-accumulator-warnings option to
+  --no-warn-accumulator-swaps.
+
 * We have disabled intermodule optimisation of any predicates or functions
   using `try' goals. This fixes a serious issue as `try' goals are not
   properly written to .opt files, so when read back would not actually
