@@ -146,6 +146,10 @@
     %
 :- pred type_list_to_var_list(list(mer_type)::in, list(tvar)::out) is semidet.
 
+    % Convert a var into a variable type.
+    %
+:- pred var_to_type(tvar_kind_map::in, tvar::in, mer_type::out) is det.
+
     % Convert a list of vars into a list of variable types.
     %
 :- pred var_list_to_type_list(tvar_kind_map::in, list(tvar)::in,
@@ -611,10 +615,13 @@ type_list_to_var_list([Type | Types], [Var | Vars]) :-
     Type = type_variable(Var, _),
     type_list_to_var_list(Types, Vars).
 
+var_to_type(KindMap, Var, Type) :-
+    get_tvar_kind(KindMap, Var, Kind),
+    Type = type_variable(Var, Kind).
+
 var_list_to_type_list(_, [], []).
 var_list_to_type_list(KindMap, [Var | Vars], [Type | Types]) :-
-    get_tvar_kind(KindMap, Var, Kind),
-    Type = type_variable(Var, Kind),
+    var_to_type(KindMap, Var, Type),
     var_list_to_type_list(KindMap, Vars, Types).
 
 type_vars(Type, TVars) :-

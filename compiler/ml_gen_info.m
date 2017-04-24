@@ -124,15 +124,14 @@
     %
 :- pred ml_gen_info_bump_counters(ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Generate a new auxiliary variable name. The name of the variable
-    % will start with the given prefix and end with a sequence number
-    % that differentiates this aux var from all others.
+    % Generate a new auxiliary variable of the given kind,
+    % with a sequence number that differentiates this aux var from all others.
     %
     % Auxiliary variables are used for purposes such as commit label numbers
     % and holding table indexes in switches.
     %
-:- pred ml_gen_info_new_aux_var_name(string::in, mlds_var_name::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_new_aux_var_name(mlds_compiler_aux_var::in,
+    mlds_var_name::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate a new `cond' variable number.
     %
@@ -290,9 +289,7 @@
 
 :- import_module counter.
 :- import_module int.
-:- import_module maybe.
 :- import_module stack.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %
@@ -574,13 +571,11 @@ ml_gen_info_bump_counters(!Info) :-
     FuncLabelCounter = counter.init(FuncLabel + 10000),
     ml_gen_info_set_func_counter(FuncLabelCounter, !Info).
 
-ml_gen_info_new_aux_var_name(Prefix, VarName, !Info) :-
+ml_gen_info_new_aux_var_name(AuxVar, VarName, !Info) :-
     ml_gen_info_get_aux_var_counter(!.Info, AuxVarCounter0),
     counter.allocate(AuxVarNum, AuxVarCounter0, AuxVarCounter),
     ml_gen_info_set_aux_var_counter(AuxVarCounter, !Info),
-
-    Name = Prefix ++ "_" ++ string.int_to_string(AuxVarNum),
-    VarName = mlds_var_name(Name, no).
+    VarName = mlds_comp_var(mcv_aux_var(AuxVar, AuxVarNum)).
 
 ml_gen_info_new_cond_var(cond_seq(CondNum), !Info) :-
     ml_gen_info_get_cond_var_counter(!.Info, CondCounter0),

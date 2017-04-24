@@ -510,7 +510,7 @@ output_export(Info0, Indent, Export, !IO) :-
         io.write_string("void", !IO)
     ;
         ReturnTypes = [RetType],
-        output_type(Info, RetType, !IO)
+        output_type_for_java(Info, RetType, !IO)
     ;
         ReturnTypes = [_, _ | _],
         % For multiple outputs, we return an array of objects.
@@ -553,7 +553,7 @@ output_export_no_ref_out(Info, Indent, Export, !IO) :-
         % The cast is required when the exported method uses generics but the
         % underlying method does not use generics (i.e. returns Object).
         io.write_string("return (", !IO),
-        output_type(Info, RetType, !IO),
+        output_type_for_java(Info, RetType, !IO),
         io.write_string(") ", !IO)
     ;
         ReturnTypes = [_, _ | _],
@@ -626,7 +626,7 @@ output_export_param_ref_out(Info, Indent, Argument, !IO) :-
         boxed_type_to_string(Info, InnerType, InnerTypeString),
         io.format("jmercury.runtime.Ref<%s> ", [s(InnerTypeString)], !IO)
     else
-        output_type(Info, Type, !IO),
+        output_type_for_java(Info, Type, !IO),
         io.write_string(" ", !IO)
     ),
     output_mlds_var_name_for_java(VarName, !IO).
@@ -703,7 +703,7 @@ output_exported_enum_constant(Info, Indent, MLDS_Type, ExportedConstant,
     ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
     indent_line(Indent, !IO),
     io.write_string("public static final ", !IO),
-    output_type(Info, MLDS_Type, !IO),
+    output_type_for_java(Info, MLDS_Type, !IO),
     io.write_string(" ", !IO),
     io.write_string(Name, !IO),
     io.write_string(" = ", !IO),
@@ -986,10 +986,8 @@ method_ptrs_in_lval(ml_global_var_ref(_), !CodeAddrs).
 
 make_code_addr_map([], !Map).
 make_code_addr_map([CodeAddr | CodeAddrs], !Map) :-
-    (
-        CodeAddr = code_addr_proc(_ProcLabel, OrigFuncSignature)
-    ;
-        CodeAddr = code_addr_internal(_ProcLabel, _SeqNum, OrigFuncSignature)
+    ( CodeAddr = code_addr_proc(_ProcLabel, OrigFuncSignature)
+    ; CodeAddr = code_addr_internal(_ProcLabel, _SeqNum, OrigFuncSignature)
     ),
     OrigFuncSignature = mlds_func_signature(OrigArgTypes, _OrigRetTypes),
     list.length(OrigArgTypes, Arity),
@@ -1007,10 +1005,13 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     % (predicate) name.
     ClassName = "addrOf" ++ string.from_int(Arity),
 
-    % If the class is wrapping more than one method then add a member variable
+    % If the class is wrapping more than one method, then add a member variable
     % which says which predicate to call, and a constructor function to
     % initialise that variable.
     (
+        CodeAddrs = [],
+        unexpected($pred, "no addresses")
+    ;
         CodeAddrs = [_],
         DataDefns = [],
         CtorDefns = []
@@ -1019,8 +1020,9 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         Context = mlds_make_context(term.context_init),
 
         % Create the member variable.
+        CtorArgName = mlds_comp_var(mcv_ptr_num),
         DataDefn = mlds_defn(
-            entity_data(mlds_data_var(mlds_var_name("ptr_num", no))),
+            entity_data(mlds_data_var(CtorArgName)),
             Context, ml_gen_const_member_decl_flags,
             mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)),
         DataDefns = [DataDefn],
@@ -1034,7 +1036,6 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         FieldLval = ml_field(no, ml_self(ClassType), FieldId,
             mlds_native_int_type, ClassType),
 
-        CtorArgName = mlds_var_name("ptr_num", no),
         CtorArgs = [mlds_argument(CtorArgName, mlds_native_int_type,
             gc_no_stmt)],
         CtorReturnValues = [],
@@ -1054,9 +1055,6 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         CtorDefn = mlds_defn(entity_export("<constructor>"), Context,
             CtorFlags, Ctor),
         CtorDefns = [CtorDefn]
-    ;
-        CodeAddrs = [],
-        unexpected($module, $pred, "no addresses")
     ),
 
     % Create a method that calls the original predicates.
@@ -1102,14 +1100,14 @@ max_specialised_method_ptr_arity = 15.
     list(mlds_code_addr)::in, mlds_defn::out) is det.
 
 generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
-    % Create the arguments to the call method. For low arities the method
-    % takes n arguments directly. For higher arities the arguments are passed
-    % in as an array.
+    % Create the arguments to the call method. For low arities, the method
+    % takes n arguments directly. For higher arities, the arguments are
+    % passed in as an array.
     ( if Arity =< max_specialised_method_ptr_arity then
         list.map2(create_generic_arg, 1 .. Arity, ArgNames, MethodArgs),
         InputArgs = cmi_separate(ArgNames)
     else
-        ArgName = mlds_var_name("args", no),
+        ArgName = mlds_comp_var(mcv_args),
         ArgType = mlds_array_type(mlds_generic_type),
         Arg = mlds_argument(ArgName, ArgType, gc_no_stmt),
         MethodArgs = [Arg],
@@ -1122,30 +1120,31 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
 
     Context = mlds_make_context(term.context_init),
 
-    % If there is more than one original method then we need to switch on the
+    % If there is more than one original method, then we need to switch on the
     % ptr_num member variable.
     (
+        CodeAddrStatements = [],
+        unexpected($pred, "no statements")
+    ;
         CodeAddrStatements = [Statement]
     ;
         CodeAddrStatements = [_, _ | _],
         MaxCase = list.length(CodeAddrs) - 1,
-        MakeCase = (func(I, CaseStatement) = Case :-
-            MatchCond = match_value(ml_const(mlconst_int(I))),
-            Case = mlds_switch_case(MatchCond, [], CaseStatement)
-        ),
+        MakeCase =
+            ( func(I, CaseStatement) = Case :-
+                MatchCond = match_value(ml_const(mlconst_int(I))),
+                Case = mlds_switch_case(MatchCond, [], CaseStatement)
+            ),
         Cases = list.map_corresponding(MakeCase, 0 .. MaxCase,
             CodeAddrStatements),
 
-        SwitchVarName = mlds_var_name("ptr_num", no),
+        SwitchVarName = mlds_comp_var(mcv_ptr_num),
         SwitchVar = qual(MLDS_ModuleName, module_qual, SwitchVarName),
         SwitchVarRval = ml_lval(ml_var(SwitchVar, mlds_native_int_type)),
         SwitchRange = mlds_switch_range(0, MaxCase),
         Switch = ml_stmt_switch(mlds_native_int_type, SwitchVarRval,
             SwitchRange, Cases, default_is_unreachable),
         Statement = statement(Switch, Context)
-    ;
-        CodeAddrStatements = [],
-        unexpected($module, $pred, "no statements")
     ),
 
     % Create new method name.
@@ -1172,17 +1171,15 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
     is det.
 
 create_generic_arg(I, ArgName, Arg) :-
-    ArgName = mlds_var_name("arg" ++ string.from_int(I), no),
+    ArgName = mlds_comp_var(mcv_arg(I)),
     Arg = mlds_argument(ArgName, mlds_generic_type, gc_no_stmt).
 
 :- pred generate_call_statement_for_addr(call_method_inputs::in,
     mlds_code_addr::in, statement::out) is det.
 
 generate_call_statement_for_addr(InputArgs, CodeAddr, Statement) :-
-    (
-        CodeAddr = code_addr_proc(ProcLabel, OrigFuncSignature)
-    ;
-        CodeAddr = code_addr_internal(ProcLabel, _SeqNum, OrigFuncSignature)
+    ( CodeAddr = code_addr_proc(ProcLabel, OrigFuncSignature)
+    ; CodeAddr = code_addr_internal(ProcLabel, _SeqNum, OrigFuncSignature)
     ),
     OrigFuncSignature = mlds_func_signature(OrigArgTypes, OrigRetTypes),
     ModuleName = ProcLabel ^ mod_name,
@@ -1201,7 +1198,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Statement) :-
 
     % Create a temporary variable to store the result of the call to the
     % original method.
-    ReturnVarName = mlds_var_name("return_value", no),
+    ReturnVarName = mlds_comp_var(mcv_return_value),
     ReturnVar = qual(ModuleName, module_qual, ReturnVarName),
 
     % Create a declaration for this variable.
@@ -1231,8 +1228,8 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Statement) :-
 
     % If the original method has a return type of void, then we obviously
     % cannot assign its return value to "return_value". Thus, in this
-    % case the value returned by the call method will just be the value
-    % which "return_value" was initialised to.
+    % case, the value returned by the call method will just be the value
+    % that "return_value" was initialised to.
     (
         OrigRetTypes = [],
         CallRetLvals = []
@@ -2281,7 +2278,7 @@ output_extends_list(_, _, [], !IO).
 output_extends_list(Info, Indent, [SuperClass], !IO) :-
     indent_line(Indent, !IO),
     io.write_string("extends ", !IO),
-    output_type(Info, SuperClass, !IO),
+    output_type_for_java(Info, SuperClass, !IO),
     io.nl(!IO).
 output_extends_list(_, _, [_, _ | _], _, _) :-
     unexpected($module, $pred, "multiple inheritance not supported in Java").
@@ -2450,7 +2447,7 @@ output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
     mlds_type::in, io::di, io::uo) is det.
 
 output_data_decl(Info, Name, Type, !IO) :-
-    output_type(Info, Type, !IO),
+    output_type_for_java(Info, Type, !IO),
     io.write_char(' ', !IO),
     output_entity_name_for_java(Name, !IO).
 
@@ -2564,7 +2561,7 @@ output_scalar_defns(Info, Indent, TypeNum, CellGroup, !Graph, !Map, !IO) :-
 
     indent_line(Indent, !IO),
     io.write_string("private static final ", !IO),
-    output_type(Info, Type, !IO),
+    output_type_for_java(Info, Type, !IO),
     io.format("[] MR_scalar_common_%d = ", [i(TypeRawNum)], !IO),
     output_initializer_alloc_only(Info, init_array(RowInits), yes(ArrayType),
         !IO),
@@ -2719,7 +2716,7 @@ output_vector_cell_group(Info, Indent, TypeNum, CellGroup, !IO) :-
 
     indent_line(Indent, !IO),
     io.write_string("private static final ", !IO),
-    output_type(Info, Type, !IO),
+    output_type_for_java(Info, Type, !IO),
     io.format(" MR_vector_common_%d[] = {\n", [i(TypeRawNum)], !IO),
     indent_line(Indent + 1, !IO),
     output_initializer_body_list(Info, cord.list(RowInits), !IO),
@@ -2881,7 +2878,7 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
             Size = list.length(FieldInits),
             io.format("java.lang.Object[%d]", [i(Size)], !IO)
         else
-            output_type(Info, StructType, !IO),
+            output_type_for_java(Info, StructType, !IO),
             io.write_string("()", !IO)
         )
     ;
@@ -2918,7 +2915,7 @@ output_initializer_body(Info, Initializer, MaybeType, !IO) :-
     ;
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
-        output_type(Info, StructType, !IO),
+        output_type_for_java(Info, StructType, !IO),
         IsArray = type_is_array(StructType),
         io.write_string(if IsArray = is_array then " {" else "(", !IO),
         output_initializer_body_list(Info, FieldInits, !IO),
@@ -2928,7 +2925,7 @@ output_initializer_body(Info, Initializer, MaybeType, !IO) :-
         io.write_string("new ", !IO),
         (
             MaybeType = yes(Type),
-            output_type(Info, Type, !IO)
+            output_type_for_java(Info, Type, !IO)
         ;
             MaybeType = no,
             % XXX we need to know the type here
@@ -3111,7 +3108,7 @@ output_return_types(Info, RetTypes, !IO) :-
         io.write_string("void", !IO)
     ;
         RetTypes = [RetType],
-        output_type(Info, RetType, !IO)
+        output_type_for_java(Info, RetType, !IO)
     ;
         RetTypes = [_, _ | _],
         % For multiple outputs, we return an array of objects.
@@ -3138,7 +3135,7 @@ output_params(Info, Indent, Parameters, !IO) :-
 output_param(Info, Indent, Arg, !IO) :-
     Arg = mlds_argument(VarName, Type, _GCStatement),
     indent_line(Indent, !IO),
-    output_type(Info, Type, !IO),
+    output_type_for_java(Info, Type, !IO),
     io.write_char(' ', !IO),
     output_mlds_var_name_for_java(VarName, !IO).
 
@@ -3270,7 +3267,7 @@ output_entity_name_for_java(EntityName, !IO) :-
         output_data_name_for_java(DataName, !IO)
     ;
         EntityName = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
-        output_pred_label(PredLabel, !IO),
+        output_pred_label_for_java(PredLabel, !IO),
         proc_id_to_int(ProcId, ModeNum),
         io.format("_%d", [i(ModeNum)], !IO),
         (
@@ -3284,43 +3281,46 @@ output_entity_name_for_java(EntityName, !IO) :-
         io.write_string(Name, !IO)
     ).
 
-:- pred output_pred_label(mlds_pred_label::in, io::di, io::uo) is det.
+:- pred output_pred_label_for_java(mlds_pred_label::in, io::di, io::uo) is det.
 
-output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
-        PredArity, _, _), !IO) :-
+output_pred_label_for_java(PredLabel, !IO) :-
     (
-        PredOrFunc = pf_predicate,
-        Suffix = "p",
-        OrigArity = PredArity
+        PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
+            PredArity, _, _),
+        (
+            PredOrFunc = pf_predicate,
+            Suffix = "p",
+            OrigArity = PredArity
+        ;
+            PredOrFunc = pf_function,
+            Suffix = "f",
+            OrigArity = PredArity - 1
+        ),
+        MangledName = name_mangle_no_leading_digit(Name),
+        io.format("%s_%d_%s", [s(MangledName), i(OrigArity), s(Suffix)], !IO),
+        (
+            MaybeDefiningModule = yes(DefiningModule),
+            io.write_string("_in__", !IO),
+            output_module_name(DefiningModule, !IO)
+        ;
+            MaybeDefiningModule = no
+        )
     ;
-        PredOrFunc = pf_function,
-        Suffix = "f",
-        OrigArity = PredArity - 1
-    ),
-    MangledName = name_mangle_no_leading_digit(Name),
-    io.format("%s_%d_%s", [s(MangledName), i(OrigArity), s(Suffix)], !IO),
-    (
-        MaybeDefiningModule = yes(DefiningModule),
-        io.write_string("_in__", !IO),
-        output_module_name(DefiningModule, !IO)
-    ;
-        MaybeDefiningModule = no
+        PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,
+            TypeName, TypeArity),
+        MangledPredName = name_mangle_no_leading_digit(PredName),
+        MangledTypeName = name_mangle(TypeName),
+        io.write_string(MangledPredName, !IO),
+        io.write_string("__", !IO),
+        (
+            MaybeTypeModule = yes(TypeModule),
+            output_module_name(TypeModule, !IO),
+            io.write_string("__", !IO)
+        ;
+            MaybeTypeModule = no
+        ),
+        io.format("%s_%d", [s(MangledTypeName), i(TypeArity)], !IO)
     ).
-
-output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
-        TypeArity), !IO) :-
-    MangledPredName = name_mangle_no_leading_digit(PredName),
-    MangledTypeName = name_mangle(TypeName),
-    io.write_string(MangledPredName, !IO),
-    io.write_string("__", !IO),
-    (
-        MaybeTypeModule = yes(TypeModule),
-        output_module_name(TypeModule, !IO),
-        io.write_string("__", !IO)
-    ;
-        MaybeTypeModule = no
-    ),
-    io.format("%s_%d", [s(MangledTypeName), i(TypeArity)], !IO).
 
 :- pred output_data_name_for_java(mlds_data_name::in, io::di, io::uo) is det.
 
@@ -3339,43 +3339,44 @@ output_data_name_for_java(DataName, !IO) :-
         io.write_string(RttiAddrName, !IO)
     ;
         DataName = mlds_module_layout,
-        unexpected($module, $pred, "NYI: mlds_module_layout")
+        unexpected($pred, "NYI: mlds_module_layout")
     ;
         DataName = mlds_proc_layout(_ProcLabel),
-        unexpected($module, $pred, "NYI: mlds_proc_layout")
+        unexpected($pred, "NYI: mlds_proc_layout")
     ;
         DataName = mlds_internal_layout(_ProcLabel, _FuncSeqNum),
-        unexpected($module, $pred, "NYI: mlds_internal_layout")
+        unexpected($pred, "NYI: mlds_internal_layout")
     ;
         DataName = mlds_tabling_ref(ProcLabel, Id),
         Prefix = tabling_info_id_str(Id) ++ "_",
         io.write_string(Prefix, !IO),
-        mlds_output_proc_label(mlds_std_tabling_proc_label(ProcLabel), !IO)
+        mlds_output_proc_label_for_java(
+            mlds_std_tabling_proc_label(ProcLabel), !IO)
     ).
 
 
 :- pred output_mlds_var_name_for_java(mlds_var_name::in, io::di, io::uo)
     is det.
 
-output_mlds_var_name_for_java(mlds_var_name(Name, no), !IO) :-
-    output_valid_mangled_name(Name, !IO).
-output_mlds_var_name_for_java(mlds_var_name(Name, yes(Num)), !IO) :-
-    output_mangled_name(string.format("%s_%d", [s(Name), i(Num)]), !IO).
+output_mlds_var_name_for_java(VarName, !IO) :-
+    NameStr = ml_var_name_to_string(VarName),
+    output_valid_mangled_name_for_java(NameStr, !IO).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to output types.
 %
 
-:- pred output_type(java_out_info::in, mlds_type::in, io::di, io::uo) is det.
+:- pred output_type_for_java(java_out_info::in, mlds_type::in, io::di, io::uo)
+    is det.
 
-output_type(Info, MLDS_Type, !IO) :-
-    output_type(Info, MLDS_Type, [], !IO).
+output_type_for_java(Info, MLDS_Type, !IO) :-
+    output_type_for_java_dims(Info, MLDS_Type, [], !IO).
 
-:- pred output_type(java_out_info::in, mlds_type::in, list(int)::in,
-    io::di, io::uo) is det.
+:- pred output_type_for_java_dims(java_out_info::in, mlds_type::in,
+    list(int)::in, io::di, io::uo) is det.
 
-output_type(Info, MLDS_Type, ArrayDims0, !IO) :-
+output_type_for_java_dims(Info, MLDS_Type, ArrayDims0, !IO) :-
     type_to_string(Info, MLDS_Type, String, ArrayDims),
     io.write_string(String, !IO),
     output_array_dimensions(ArrayDims ++ ArrayDims0, !IO).
@@ -4367,7 +4368,7 @@ output_unboxed_result(Info, Type, ResultIndex, !IO) :-
         io.format("result[%d]).%s()", [i(ResultIndex), s(UnboxMethod)], !IO)
     else
         io.write_string("(", !IO),
-        output_type(Info, Type, !IO),
+        output_type_for_java(Info, Type, !IO),
         io.write_string(") ", !IO),
         io.format("result[%d]", [i(ResultIndex)], !IO)
     ).
@@ -4523,13 +4524,13 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
                 hand_defined_type(MerType, CtorCat, _, _)
             )
         then
-            output_type(Info, Type, !IO),
+            output_type_for_java(Info, Type, !IO),
             io.write_char('.', !IO),
             QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
             output_unqual_class_name_for_java(CtorName, CtorArity, !IO)
         else
-            output_type(Info, Type, !IO)
+            output_type_for_java(Info, Type, !IO)
         ),
         IsArray = type_is_array(Type),
         (
@@ -4608,7 +4609,7 @@ output_target_code_component(Info, TargetCode, !IO) :-
     ;
         TargetCode = target_code_type(Type),
         InfoGenerics = Info ^ joi_output_generics := do_output_generics,
-        output_type(InfoGenerics, Type, !IO)
+        output_type_for_java(InfoGenerics, Type, !IO)
     ;
         TargetCode = target_code_name(Name),
         output_maybe_qualified_name(Info, Name, !IO)
@@ -4622,8 +4623,8 @@ output_target_code_component(Info, TargetCode, !IO) :-
     % Output initial values of an object's fields as arguments for the
     % object's class constructor.
     %
-:- pred output_init_args(java_out_info::in, list(mlds_rval)::in,
-    list(mlds_type)::in, io::di, io::uo) is det.
+:- pred output_init_args(java_out_info::in,
+    list(mlds_rval)::in, list(mlds_type)::in, io::di, io::uo) is det.
 
 output_init_args(_, [], [], !IO).
 output_init_args(_, [_ | _], [], _, _) :-
@@ -4694,13 +4695,13 @@ output_lval(Info, Lval, !IO) :-
                 % of their base class, so we need to downcast to the derived
                 % class to access some fields.
                 io.write_string("((", !IO),
-                output_type(Info, CtorType, !IO),
+                output_type_for_java(Info, CtorType, !IO),
                 io.write_string(") ", !IO),
                 output_bracketed_rval(Info, PtrRval, !IO),
                 io.write_string(").", !IO)
             ),
             FieldName = qual(_, _, UnqualFieldName),
-            output_valid_mangled_name(UnqualFieldName, !IO)
+            output_valid_mangled_name_for_java(UnqualFieldName, !IO)
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
@@ -4716,17 +4717,17 @@ output_lval(Info, Lval, !IO) :-
         output_maybe_qualified_name(Info, QualName, !IO)
     ).
 
-:- pred output_mangled_name(string::in, io::di, io::uo) is det.
+:- pred output_mangled_name_for_java(string::in, io::di, io::uo) is det.
 
-output_mangled_name(Name, !IO) :-
+output_mangled_name_for_java(Name, !IO) :-
     MangledName = name_mangle(Name),
     io.write_string(MangledName, !IO).
 
-:- pred output_valid_mangled_name(string::in, io::di, io::uo) is det.
+:- pred output_valid_mangled_name_for_java(string::in, io::di, io::uo) is det.
 
-output_valid_mangled_name(Name, !IO) :-
+output_valid_mangled_name_for_java(Name, !IO) :-
     MangledName = name_mangle(Name),
-    JavaSafeName = valid_java_symbol_name(MangledName),
+    JavaSafeName = make_valid_java_symbol_name(MangledName),
     io.write_string(JavaSafeName, !IO).
 
 :- pred output_call_rval(java_out_info::in, mlds_rval::in, io::di, io::uo)
@@ -4738,7 +4739,7 @@ output_call_rval(Info, Rval, !IO) :-
         Const = mlconst_code_addr(CodeAddr)
     then
         IsCall = yes,
-        mlds_output_code_addr(Info, CodeAddr, IsCall, !IO)
+        mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO)
     else
         output_bracketed_rval(Info, Rval, !IO)
     ).
@@ -4853,7 +4854,7 @@ output_cast_rval(Info, Type, Expr, !IO) :-
         output_rval_maybe_with_enum(Info, Expr, !IO)
     else
         io.write_string("(", !IO),
-        output_type(Info, Type, !IO),
+        output_type_for_java(Info, Type, !IO),
         io.write_string(") ", !IO),
         output_rval(Info, Expr, !IO)
     ).
@@ -4895,7 +4896,7 @@ output_unboxed_rval(Info, Type, Expr, !IO) :-
         io.write_string("()", !IO)
     else
         io.write_string("((", !IO),
-        output_type(Info, Type, !IO),
+        output_type_for_java(Info, Type, !IO),
         io.write_string(") ", !IO),
         output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
@@ -5385,7 +5386,7 @@ output_rval_const(Info, Const, !IO) :-
         io.write_string(")", !IO)
     ;
         Const = mlconst_enum(N, EnumType),
-        output_type(Info, EnumType, !IO),
+        output_type_for_java(Info, EnumType, !IO),
         io.write_string(".K", !IO),
         output_int_const(N, !IO)
     ;
@@ -5415,10 +5416,10 @@ output_rval_const(Info, Const, !IO) :-
     ;
         Const = mlconst_code_addr(CodeAddr),
         IsCall = no,
-        mlds_output_code_addr(Info, CodeAddr, IsCall, !IO)
+        mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO)
     ;
         Const = mlconst_data_addr(DataAddr),
-        mlds_output_data_addr(DataAddr, !IO)
+        mlds_output_data_addr_for_java(DataAddr, !IO)
     ;
         Const = mlconst_null(Type),
         Initializer = get_java_type_initializer(Type),
@@ -5459,10 +5460,10 @@ output_vector_common_row_rval(Info, VectorCommon, RowRval, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mlds_output_code_addr(java_out_info::in, mlds_code_addr::in, bool::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_code_addr_for_java(java_out_info::in, mlds_code_addr::in,
+    bool::in, io::di, io::uo) is det.
 
-mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
+mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO) :-
     (
         IsCall = no,
         % Not a function call, so we are taking the address of the
@@ -5484,25 +5485,29 @@ mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
         IsCall = yes,
         (
             CodeAddr = code_addr_proc(Label, _Sig),
-            output_fully_qualified_thing(Label, mlds_output_proc_label, !IO)
+            output_fully_qualified_thing(Label,
+                mlds_output_proc_label_for_java, !IO)
         ;
             CodeAddr = code_addr_internal(Label, SeqNum, _Sig),
-            output_fully_qualified_thing(Label, mlds_output_proc_label, !IO),
+            output_fully_qualified_thing(Label,
+                mlds_output_proc_label_for_java, !IO),
             io.write_string("_", !IO),
             io.write_int(SeqNum, !IO)
         )
     ).
 
-:- pred mlds_output_proc_label(mlds_proc_label::in, io::di, io::uo) is det.
+:- pred mlds_output_proc_label_for_java(mlds_proc_label::in, io::di, io::uo)
+    is det.
 
-mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
-    output_pred_label(PredLabel, !IO),
+mlds_output_proc_label_for_java(mlds_proc_label(PredLabel, ProcId), !IO) :-
+    output_pred_label_for_java(PredLabel, !IO),
     proc_id_to_int(ProcId, ModeNum),
     io.format("_%d", [i(ModeNum)], !IO).
 
-:- pred mlds_output_data_addr(mlds_data_addr::in, io::di, io::uo) is det.
+:- pred mlds_output_data_addr_for_java(mlds_data_addr::in, io::di, io::uo)
+    is det.
 
-mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
+mlds_output_data_addr_for_java(data_addr(ModuleQualifier, DataName), !IO) :-
     SymName = mlds_module_name_to_sym_name(ModuleQualifier),
     mangle_sym_name_for_java(SymName, module_qual, "__", ModuleName),
     io.write_string(ModuleName, !IO),

@@ -569,7 +569,7 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         % later generate assignment statements to fill in the values properly
         % (see below).
         counter.allocate(Id, !.Fixup ^ fnoi_next_id, NextId),
-        VarName = mlds_var_name("new_obj", yes(Id)),
+        VarName = mlds_comp_var(mcv_new_obj(Id)),
         VarType = mlds_array_type(mlds_generic_type),
         NullPointers = list.duplicate(list.length(ArgRvals),
             init_obj(ml_const(mlconst_null(mlds_generic_type)))),

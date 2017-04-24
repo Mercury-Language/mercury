@@ -949,7 +949,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         %
         % except that we hoist any declarations generated for <Cond> to the top
         % of the scope, so that they are in scope for the <Then> goal (this
-        % is needed for declarations of static consts)
+        % is needed for declarations of static consts).
 
         CondCodeModel = model_non,
         ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),

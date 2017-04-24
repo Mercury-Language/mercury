@@ -190,7 +190,6 @@
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
-:- import_module string.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -250,7 +249,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             !Info),
         % push nesting level
         MLDS_Context = mlds_make_context(Context),
-        ml_gen_info_new_aux_var_name("commit", CommitRef, !Info),
+        ml_gen_info_new_aux_var_name(mcav_commit, CommitRef, !Info),
         ml_gen_var_lval(!.Info, CommitRef, mlds_commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval)),
@@ -324,7 +323,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             !Info),
         % push nesting level
         MLDS_Context = mlds_make_context(Context),
-        ml_gen_info_new_aux_var_name("commit", CommitRef, !Info),
+        ml_gen_info_new_aux_var_name(mcav_commit, CommitRef, !Info),
         ml_gen_var_lval(!.Info, CommitRef, mlds_commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval)),
@@ -502,12 +501,10 @@ ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
     OutputVarName = ml_gen_var_name(VarSet, OutputVar),
 
     % Generate a declaration for a corresponding local variable.
-    OutputVarName = mlds_var_name(OutputVarNameStr, MaybeNum),
-    LocalVarName = mlds_var_name(
-        string.append("local_", OutputVarNameStr), MaybeNum),
+    OutputVarName = mlds_prog_var(OutputVarNameStr, MaybeNum),
+    LocalVarName = mlds_local_var(OutputVarNameStr, MaybeNum),
     ml_gen_type(!.Info, Type, MLDS_Type),
-    ml_gen_gc_statement(LocalVarName, Type, Context, GCStatement,
-        !Info),
+    ml_gen_gc_statement(LocalVarName, Type, Context, GCStatement, !Info),
     LocalVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LocalVarName), MLDS_Type,
         GCStatement, mlds_make_context(Context)),
 

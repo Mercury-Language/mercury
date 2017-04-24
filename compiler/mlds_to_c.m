@@ -1360,8 +1360,12 @@ pointed_to_type(PtrType) =
 
 qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
         UnboxedEntityName, BoxedEntityName) :-
-    VarName = mlds_var_name(Name, MaybeSeq),
-    BoxedVarName = mlds_var_name("boxed_" ++ Name, MaybeSeq),
+    ( if VarName = mlds_prog_var(Name, Seq) then
+        BoxedVarName = mlds_prog_var_boxed(Name, Seq)
+    else
+        NameStr = ml_var_name_to_string(VarName),
+        BoxedVarName = mlds_comp_var(mcv_non_prog_var_boxed(NameStr))
+    ),
     UnboxedEntityName = qual(ModuleName, module_qual,
         entity_data(mlds_data_var(VarName))),
     BoxedEntityName = qual(ModuleName, module_qual,
@@ -2093,8 +2097,7 @@ is_static_member(Defn) :-
     mlds_defn::out, int::in, int::out) is det.
 
 mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
-    BaseName = "base_" ++ string.int_to_string(BaseNum0),
-    BaseVarName = mlds_var_name(BaseName, no),
+    BaseVarName = mlds_comp_var(mcv_base_class(BaseNum0)),
     Type = ClassId,
     % We only need GC tracing code for top-level variables,
     % not for base classes.
@@ -2389,11 +2392,8 @@ mlds_output_func_decl_ho(Opts, Indent, QualifiedName, Context,
     int::in, int::out) is det.
 
 standardize_param_names(!Argument, !ArgNum) :-
-    !.Argument = mlds_argument(VarName0, Type, GCStmt),
-    VarName0 = mlds_var_name(_Name, _MaybeNum),
-    Name = "param",
-    MaybeNum = yes(!.ArgNum),
-    VarName = mlds_var_name(Name, MaybeNum),
+    VarName = mlds_comp_var(mcv_param(!.ArgNum)),
+    !.Argument = mlds_argument(_VarName0, Type, GCStmt),
     !:Argument = mlds_argument(VarName, Type, GCStmt),
     !:ArgNum = !.ArgNum + 1.
 

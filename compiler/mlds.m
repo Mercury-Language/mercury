@@ -647,8 +647,8 @@
 
 :- type mlds_func_params
     --->    mlds_func_params(
-                mlds_arguments,    % names and types of arguments (inputs)
-                mlds_return_types  % types of return values (outputs)
+                list(mlds_argument),    % names and types of arguments (inputs)
+                mlds_return_types       % types of return values (outputs)
             ).
 
 :- type mlds_arguments == list(mlds_argument).
@@ -663,11 +663,11 @@
 :- type mlds_arg_types == list(mlds_type).
 :- type mlds_return_types == list(mlds_type).
 
-:- func mlds_get_arg_types(mlds_arguments) = list(mlds_type).
+:- func mlds_get_arg_types(list(mlds_argument)) = list(mlds_type).
 
-    % An mlds_func_signature is like an mlds_func_params
-    % except that it only includes the function's type, not
-    % the parameter names.
+    % An mlds_func_signature is like an mlds_func_params, except that
+    % it only includes the types of the function's arguments,
+    % and not their names.
     %
 :- type mlds_func_signature
     --->    mlds_func_signature(
@@ -1275,14 +1275,14 @@
 
     % The `ml_call_marker' type lists the ways in which the MLDS backend's
     % handling of a call should deviate from the usual course of events.
-    % 
+    %
 :- type ml_call_marker
     --->    mcm_disable_non_tail_rec_warning.
             % Don't generate a warning we would otherwise generate
             % if this call is (a) recursive, but (b) not *tail* recursive.
             %
             % For the reason why this information is attached to a call
-            % in the MLDS, as well as being expressed as a scope in the HLDS, 
+            % in the MLDS, as well as being expressed as a scope in the HLDS,
             % see the comment at the top of ml_tailcall.m (which generates
             % such warnings during compilations that target the MLDS backend).
 
@@ -1546,11 +1546,312 @@
 
     % An mlds_var represents a variable or constant.
     %
+    % XXX While this may have been the original intention, we currently
+    % also use mlds_var_names to represent the names of fields in
+    % structure types.
+    %
+    % XXX Some global constants need to be visible throughout the program,
+    % including outside the module that defines them, and therefore their
+    % names need to be module qualified. However, variables used inside
+    % a function, method or class should *not* need to be module qualified,
+    % since the target language should restrict their visibility to
+    % just (one part of) the target language module. Removing the module
+    % qualification from such variables would make the generated code
+    % considerably less cluttered and therefore easier to read.
+    %
 :- type mlds_var == mlds_fully_qualified_name(mlds_var_name).
 :- type mlds_var_name
-        --->    mlds_var_name(string, maybe(int)).
-                % Var name and perhaps a unique number to be added as a
-                % suffix where necessary.
+    --->    mlds_prog_var(string, int)
+            % This MLDS variable represents a variable in the HLDS procedure
+            % being translated to MLDS. The string gives its name
+            % (if it is unnamed, the string will be ""), and the int gives
+            % its HLDS variable number.
+
+    ;       mlds_prog_var_foreign(string)
+            % This MLDS variable represents a HLDS variable. It does not
+            % have the usual numeric suffix derived from its HLDS variable
+            % number because it is one of the arguments of a foreign_proc
+            % goal. Its name in the target language must be exactly the same
+            % as the name written by the programmer, since that is the name
+            % by which the foreign language code will refer to it.
+
+    ;       mlds_prog_var_boxed(string, int)
+            % This MLDS variable represents the boxed version of the HLDS
+            % variable with the given name and number.
+
+    ;       mlds_prog_var_conv(int, string, int)
+            % This MLDS variable represents a version of a HLDS variable
+            % (of the name and number given by the second and third args)
+            % created by a boxing or unboxing operation. The first integer
+            % is a sequence number that uniquely identifies the operation
+            % within the MLDS code generated for a Mercury procedure.
+            % XXX Why is mlds_prog_var_boxed separate from this?
+
+    ;       mlds_prog_var_next_value(string, int)
+            % This MLDS variable represents the next value to be assigned
+            % to the HLDS variable with the given name and number.
+            %
+            % The compiler must generate such temporaries when generating code
+            % for tail calls that switch input arguments. For example,
+            % if a procedure with head p(X, Y, ...) contains a tail call
+            % p(Y, X, ...), then having the tail call assign the first
+            % two arguments as X := Y, Y := X would not work, since
+            % the first assignment would clobber X. The compiler therefore
+            % generates next_value_of_X := Y, next_value_of_Y := X,
+            % followed by X := next_value_of_X, Y := next_value_of_Y.
+
+    ;       mlds_local_var(string, int)
+            % This MLDS variable represents a local copy of a HLDS variable
+            % (with the given name and number) that is an output variable
+            % of a commit scope. With --nondet-copy-out, the code inside
+            % the scope that produces the HLDS variable assigns its value
+            % to the local copy; this value is then copied to the actual
+            % mlds_prog_var representing the HLDS variable when the scope
+            % succeeds.
+
+    ;       mlds_comp_var(mlds_compiler_var).
+            % This MLDS variable was created by the compiler as part of
+            % the translation process; it does NOT correspond to a variable
+            % in the HLDS.
+
+:- inst mlds_prog_var for mlds_var_name/0
+    --->    mlds_prog_var(ground, ground).
+
+:- type mlds_compiler_var
+    --->    mcv_non_prog_var_boxed(string)
+    ;       mcv_non_prog_var_conv(int, string)
+    ;       mcv_non_prog_var_next_value(string)
+            % What the mlds_prog_var_boxed, mlds_prog_var_conv, and
+            % mlds_prog_var_next_value are to mlds_prog_vars, these are
+            % to mlds_comp_vars. The string is the output of
+            % ml_var_name_to_string of the original mlds_comp_var.
+
+    ;       mcv_succeeded
+            % The MLDS variable indicating whether a compiler generated
+            % semidet goal has succeeded.
+
+    ;       mcv_success_indicator
+            % The MLDS variable representing the target language variable
+            % SUCCESS_INDICATOR used by hand-written code in semidet
+            % foreign_procs to indicate success or failure.
+
+    ;       mcv_new_obj(int)
+            % A temporary variable holding the address of a newly allocated
+            % object, used by accurate gc. The integer is a unique sequence
+            % number allocated from a per-procedure counter that dedicated
+            % for this purpose.
+
+    ;       mcv_dummy_var
+            % HLDS variables of dummy types don't have MLDS variables holding
+            % their values, since they don't *have* values. All HLDS variables
+            % of dummy types are mapped to this single MLDS variable when
+            % they are used in a context that requires an MLDS variable for
+            % them. This MLDS variable is (obviously) never initialized
+            % to any meaningful value.
+
+    ;       mcv_cond(int)
+            % This MLDS variable records whether the condition of a model_non
+            % if-then-else has ever succeeded. The integer is a sequence number
+            % allocated from a counter that is dedicated for this purpose.
+
+    ;       mcv_conv_var(int)
+            % This MLDS variable holds the address of the callee of a generic
+            % call (according to the comment creating it, we need a variable
+            % to hold the address to work around limitations in old C
+            % compilers). The integer is a sequence number allocated from
+            % a counter that is dedicated for this purpose.
+
+    ;       mcv_arg(int)
+            % This MLDS variable represents the Nth output parameter of
+            % a success continuation, where N is the given integer.
+
+    ;       mcv_wrapper_arg(int)
+            % This MLDS variable represents the Nth parameter of the wrapper
+            % function around a procedure, where N is the given integer.
+            % We put a wrapper function around procedures when they are used
+            % as the code in a closure.
+
+    ;       mcv_param(int)
+            % This MLDS variable represents the Nth parameter of an MLDS
+            % function, where N is the given integer, when the declaration
+            % of that function is standardized for printing in an automatically
+            % generated header file. This standardization avoids the need
+            % to regenerate every file that depends on that header file
+            % when the actual names of the corresponding procedure's arguments
+            % change in the HLDS.
+
+    ;       mcv_out_param(int)
+            % This MLDS variable represents the Nth putput parameter of an MLDS
+            % function being compiled to C#, where N is the given integer,
+            % and N > 1. (The C# backend returns the first output parameter
+            % as the return value, but returns the others as the "out"
+            % parameters represented by these MLDS variables.
+
+    ;       mcv_return_value
+            % This MLDS variable represents the return value(s) of method
+            % created by the Java backend.
+            % XXX document me in more detail.
+
+    ;       mcv_closure
+    ;       mcv_closure_arg
+            % These two MLDS variables respectively represent the unboxed
+            % and the boxed versions of a closure.
+
+    ;       mcv_closure_layout_ptr
+            % This MLDS variable holds a pointer to a closure's
+            % MR_Closure_Layout structure. This is used for accurate gc.
+
+    ;       mcv_type_params
+            % This MLDS variable holds a pointer to a closure's materialized
+            % type_infos. This is used for accurate gc.
+
+    ;       mcv_type_info
+            % This MLDS variable holds a pointer to a materialized type_info.
+            % This is used for accurate gc.
+
+    ;       mcv_cont
+    ;       mcv_cont_env_ptr
+            % These MLDS variables hold respectively a nondet continuation,
+            % and the pointer to the environment containing the variables
+            % for the continuation.
+
+    ;       mcv_env
+    ;       mcv_env_ptr
+            % These MLDS variables refer to environments needed to simulate
+            % nested functions in targets that don't support them. The mcv_env
+            % variable is the environment structure itself, while mcv_env_ptr
+            % is its address.
+
+    ;       mcv_env_ptr_arg
+            % This MLDS variable, like mcv_env_ptr, points to an environment
+            % structure, but its type is generic; it is not specific to the
+            % structure of the environment it actually points to. Therefore
+            % mcv_env_ptr_args are cast to mcv_env_ptrs before use.
+
+    ;       mcv_frame
+    ;       mcv_frame_ptr
+            % These MLDS variables refer to the frames that hold variables
+            % when we compile code for accurate gc. The mcv_frame variable
+            % is the frame structure itself, while mcv_frame_ptr
+            % is its address.
+
+    ;       mcv_this_frame
+            % This MLDS variable, like mcv_frame_ptr, points to a frame
+            % that holds variables when we compile for accurate gc, but
+            % its type is generic; it is not specific to the structure
+            % of the frame it actually points to. Therefore mcv_this_frames
+            % are cast to mcv_frame_ptrs before use.
+
+    ;       mcv_prev
+    ;       mcv_trace
+            % These MLDS variables represent two fixed fields in the frames
+            % that hold variables when we compiler for accurate gc. mcv_prev
+            % points to the previous frame (if any) in the chain of frames,
+            % while mcv_trace points to the function that traces the contents
+            % of the current frame.
+
+    ;       mcv_stack_chain
+            % This MLDS variable represents the global variable that holds
+            % the pointer to the current chain of frames.
+
+    ;       mcv_saved_stack_chain(int)
+            % This MLDS variable represents a locally-saved copy of the
+            % global variable represented by mcv_stack_chain.
+
+    ;       mcv_ptr_num
+    ;       mcv_args
+            % These two MLDS variables are used by the Java backend.
+            % I (zs) don't know what their semantics is.
+
+    ;       mcv_reserved_obj_name(string, int)
+            % This MLDS variable is the specially reserved global variable
+            % (or static member variable) whose address is used to represent
+            % the function symbol with the given name and arity.
+
+    ;       mcv_aux_var(mlds_compiler_aux_var, int)
+            % These MLDS variables contain values (most, but not all of which
+            % are very short-lived) used to implement Mercury constructs
+            % such as commits and switches. They contain such information
+            % as the boundaries of a binary search or slot numbers in the
+            % hash tables used to implement switches.
+            % The integer is a sequence number (unique within the procedure)
+            % allocated from a counter that is shared between all mcv_aux_vars.
+
+    ;       mcv_const_var(mlds_compiler_const_var, int)
+            % These MLDS variables are global variables holding constant,
+            % immutable data. What kind of data is given by the first argument.
+            % The integer is a sequence number (unique within the whole module)
+            % allocated from a counter that is shared between all
+            % mcv_const_vars.
+
+    ;       mcv_global_data_field(int, int)
+            % This MLDS "variable name" is actually not the name of a variable,
+            % but the name of a structure field. When implementing lookup
+            % switches (and some related HLDS constructs, such as lookup
+            % disjunctions, which are like lookup switches without the switch),
+            % the compiler generates a vector of rows, with each row holding
+            % one solution generated by the switch (or the disjunction).
+            % We store all solutions that contain the same vector of types
+            % in the same static (immutable) global variable. The type
+            % of this variable is thus an array of structures, with the
+            % types of the field being given by the types of the variables that
+            % comprise the outputs of the HLDS construct being implemented.
+            %
+            % The two arguments of mcv_global_data_field are the type number
+            % and the field number. The type number uniquely identifies
+            % the list of field types in each row (among all the lists of
+            % field types for which we generate static arrays of rows),
+            % while the second just gives the position of the field
+            % in that list. Field numbers start at 0.
+
+    ;       mcv_du_ctor_field_hld(string)
+            % This MLDS "variable name" is actually not the name of a variable,
+            % but the name of a structure field. When compiling with
+            % --high-level-data, we generate a type in the target language
+            % for each data constructor in a discriminated union type;
+            % this MLDS "variable" is the name of one of the fields
+            % of this type.
+            % NOTE: See the XXX on the code that turns these MLDS variables
+            % into strings.
+
+    ;       mcv_mr_value
+    ;       mcv_data_tag
+    ;       mcv_enum_const(string)
+    ;       mcv_sectag_const(string)
+            % These MLDS variables represent member variables in the classes
+            % we generate with --high-level-data for discriminated union types
+            % (both enum and non-enum). I (zs) don't know exactly what
+            % they are used for.
+            % NOTE: See the XXX on the code that turns some these
+            % MLDS variables into strings.
+
+    ;       mcv_base_class(int).
+            % This MLDS variable name is used in the implementation of
+            % base classes in the C backend, but I (zs) don't know exactly
+            % what it is used for.
+
+:- type mlds_compiler_aux_var
+    --->    mcav_commit
+    ;       mcav_slot
+    ;       mcav_later_slot
+    ;       mcav_num_later_solns
+    ;       mcav_limit
+    ;       mcav_str
+    ;       mcav_lo
+    ;       mcav_mid
+    ;       mcav_hi
+    ;       mcav_stop_loop
+    ;       mcav_result
+    ;       mcav_case_num.
+
+:- type mlds_compiler_const_var
+    --->    mccv_const_var
+    ;       mccv_float
+    ;       mccv_closure_layout
+    ;       mccv_typevar_vector
+    ;       mccv_bit_vector.
+
+:- func ml_var_name_to_string(mlds_var_name) = string.
 
     % An lval represents a data location or variable that can be used
     % as the target of an assignment.
@@ -1608,8 +1909,10 @@
             )
 
     % Variables.
-    % These may be local or they may come from some enclosing scope
-    % the variable name should be fully qualified.
+    % These may be local or they may come from some enclosing scope.
+    % The variable name should be fully qualified.
+    % XXX See the comment on mlds_var above about module qualifying the names
+    % of *local* variables.
 
     ;       ml_var(
                 mlds_var,
@@ -1903,6 +2206,262 @@ mlds_get_module_name(MLDS) = MLDS ^ mlds_name.
 mlds_make_context(Context) = mlds_context(Context).
 
 mlds_get_prog_context(mlds_context(Context)) = Context.
+
+%-----------------------------------------------------------------------------%
+
+ml_var_name_to_string(Var) = Str :-
+    (
+        Var = mlds_prog_var(ProgVarName, ProgVarNum),
+        ( if ProgVarName = "" then
+            Str = string.format("Var_%d", [i(ProgVarNum)])
+        else
+            Str = string.format("%s_%d", [s(ProgVarName), i(ProgVarNum)])
+        )
+    ;
+        Var = mlds_prog_var_foreign(ProgVarName),
+        ( if ProgVarName = "" then
+            unexpected($pred, "mlds_prog_var_foreign with empty name")
+        else
+            Str = ProgVarName
+        )
+    ;
+        Var = mlds_prog_var_boxed(ProgVarName, ProgVarNum),
+        ( if ProgVarName = "" then
+            Str = string.format("boxed_Var_%d", [i(ProgVarNum)])
+        else
+            Str = string.format("boxed_%s_%d", [s(ProgVarName), i(ProgVarNum)])
+        )
+    ;
+        Var = mlds_prog_var_conv(ConvSeq, ProgVarName, ProgVarNum),
+        ( if ProgVarName = "" then
+            Str = string.format("conv%d_Var_%d", [i(ConvSeq), i(ProgVarNum)])
+        else
+            Str = string.format("conv%d_%s_%d",
+                [i(ConvSeq), s(ProgVarName), i(ProgVarNum)])
+        )
+    ;
+        Var = mlds_prog_var_next_value(ProgVarName, ProgVarNum),
+        % Before the change to structure representations of mlds_var_names,
+        % we used to add "__tmp_copy" as a suffix, not "next_value_of_"
+        % as a prefix. Using a suffix created the possibility of conflict
+        % with other compiler generated names (which could have added a
+        % known prefix to a string controlled by the user, which in turn
+        % *could* have ended in "__tmp_copy"), and the "tmp_copy" part
+        % was also misleading, since these variables are not copied *from*
+        % the variable they are named after; in fact, they are copied *to*
+        % that variable.
+        ( if ProgVarName = "" then
+            Str = string.format("next_value_of_Var_%d", [i(ProgVarNum)])
+        else
+            Str = string.format("next_value_of_%s_%d",
+                [s(ProgVarName), i(ProgVarNum)])
+        )
+    ;
+        Var = mlds_local_var(ProgVarName, ProgVarNum),
+        ( if ProgVarName = "" then
+            Str = string.format("local_Var_%d", [i(ProgVarNum)])
+        else
+            Str = string.format("local_%s_%d", [s(ProgVarName), i(ProgVarNum)])
+        )
+    ;
+        Var = mlds_comp_var(CompVar),
+        (
+            CompVar = mcv_non_prog_var_boxed(BaseVarStr),
+            Str = string.format("boxed_%s", [s(BaseVarStr)])
+        ;
+            CompVar = mcv_non_prog_var_conv(ConvSeq, BaseVarStr),
+            Str = string.format("conv%d_%s", [i(ConvSeq), s(BaseVarStr)])
+        ;
+            CompVar = mcv_non_prog_var_next_value(BaseVarStr),
+            Str = string.format("next_value_of_%s", [s(BaseVarStr)])
+        ;
+            CompVar = mcv_succeeded,
+            Str = "succeeded"
+        ;
+            CompVar = mcv_success_indicator,
+            Str = "SUCCESS_INDICATOR"
+        ;
+            CompVar = mcv_new_obj(Id),
+            Str = string.format("new_obj_%d", [i(Id)])
+        ;
+            CompVar = mcv_dummy_var,
+            Str = "dummy_var"
+        ;
+            CompVar = mcv_cond(CondNum),
+            Str = string.format("cond_%d", [i(CondNum)])
+        ;
+            CompVar = mcv_conv_var(ConvVarNum),
+            Str = string.format("func_%d", [i(ConvVarNum)])
+        ;
+            CompVar = mcv_arg(ArgNum),
+            Str = string.format("arg%d", [i(ArgNum)])
+        ;
+            CompVar = mcv_wrapper_arg(ArgNum),
+            Str = string.format("wrapper_arg_%d", [i(ArgNum)])
+        ;
+            CompVar = mcv_param(ArgNum),
+            Str = string.format("param_%d", [i(ArgNum)])
+        ;
+            CompVar = mcv_out_param(ArgNum),
+            Str = string.format("out_param_%d", [i(ArgNum)])
+        ;
+            CompVar = mcv_return_value,
+            Str = "return_value"
+        ;
+            CompVar = mcv_closure,
+            Str = "closure"
+        ;
+            CompVar = mcv_closure_arg,
+            Str = "closure_arg"
+        ;
+            CompVar = mcv_closure_layout_ptr,
+            Str = "closure_layout_ptr"
+        ;
+            CompVar = mcv_type_params,
+            Str = "type_params"
+        ;
+            CompVar = mcv_type_info,
+            Str = "type_info"
+        ;
+            CompVar = mcv_cont,
+            Str = "cont"
+        ;
+            CompVar = mcv_cont_env_ptr,
+            Str = "cont_env_ptr"
+        ;
+            CompVar = mcv_env,
+            Str = "env"
+        ;
+            CompVar = mcv_env_ptr,
+            Str = "env_ptr"
+        ;
+            CompVar = mcv_env_ptr_arg,
+            Str = "env_ptr_arg"
+        ;
+            CompVar = mcv_frame,
+            Str = "frame"
+        ;
+            CompVar = mcv_frame_ptr,
+            Str = "frame_ptr"
+        ;
+            CompVar = mcv_this_frame,
+            Str = "this_frame"
+        ;
+            CompVar = mcv_prev,
+            Str = "prev"
+        ;
+            CompVar = mcv_trace,
+            Str = "trace"
+        ;
+            CompVar = mcv_stack_chain,
+            Str = "stack_chain"
+        ;
+            CompVar = mcv_saved_stack_chain(Id),
+            Str = string.format("saved_stack_chain_%d", [i(Id)])
+        ;
+            CompVar = mcv_ptr_num,
+            Str = "ptr_num"
+        ;
+            CompVar = mcv_args,
+            Str = "args"
+        ;
+            CompVar = mcv_reserved_obj_name(CtorName, CtorArity),
+            Str = string.format("obj_%s_%d", [s(CtorName), i(CtorArity)])
+        ;
+            CompVar = mcv_aux_var(AuxVar, Num),
+            (
+                AuxVar = mcav_commit,
+                AuxVarStr = "commit"
+            ;
+                AuxVar = mcav_slot,
+                AuxVarStr = "slot"
+            ;
+                AuxVar = mcav_later_slot,
+                AuxVarStr = "later_slot"
+            ;
+                AuxVar = mcav_num_later_solns,
+                AuxVarStr = "num_later_solns"
+            ;
+                AuxVar = mcav_limit,
+                AuxVarStr = "limit"
+            ;
+                AuxVar = mcav_str,
+                AuxVarStr = "str"
+            ;
+                AuxVar = mcav_lo,
+                AuxVarStr = "lo"
+            ;
+                AuxVar = mcav_mid,
+                AuxVarStr = "mid"
+            ;
+                AuxVar = mcav_hi,
+                AuxVarStr = "hi"
+            ;
+                AuxVar = mcav_stop_loop,
+                AuxVarStr = "stop_loop"
+            ;
+                AuxVar = mcav_result,
+                AuxVarStr = "result"
+            ;
+                AuxVar = mcav_case_num,
+                AuxVarStr = "case_num"
+            ),
+            Str = string.format("%s_%d", [s(AuxVarStr), i(Num)])
+        ;
+            CompVar = mcv_const_var(ConstVar, Num),
+            (
+                ConstVar = mccv_const_var,
+                ConstVarStr = "const_var"
+            ;
+                ConstVar = mccv_float,
+                ConstVarStr = "float"
+            ;
+                ConstVar = mccv_closure_layout,
+                ConstVarStr = "closure_layout"
+            ;
+                ConstVar = mccv_typevar_vector,
+                ConstVarStr = "typevar_vector"
+            ;
+                ConstVar = mccv_bit_vector,
+                ConstVarStr = "bit_vector"
+            ),
+            Str = string.format("%s_%d", [s(ConstVarStr), i(Num)])
+        ;
+            CompVar = mcv_global_data_field(TypeRawNum, FieldNum),
+            Str = string.format("vct_%d_f_%d", [i(TypeRawNum), i(FieldNum)])
+        ;
+            CompVar = mcv_du_ctor_field_hld(FieldName),
+            % XXX There is nothing to stop the variable names we generate here
+            % from clashing with the strings we generate for other kinds of
+            % mlds_var_names. In particular, the values of FieldName that
+            % ml_gen_hld_field_name generates for unnamed field in a Mercury
+            % type, which are generated with "F" ++ .int_to_string(ArgNum),
+            % *will* conflict with the mlds_prog_vars that correspond
+            % to any variables that the user names "F1", "F2" and so on.
+            Str = FieldName
+        ;
+            CompVar = mcv_mr_value,
+            Str = "MR_value"
+        ;
+            CompVar = mcv_data_tag,
+            Str = "data_tag"
+        ;
+            CompVar = mcv_enum_const(ConstName),
+            % XXX There is nothing to stop the variable names we generate here
+            % from clashing with the strings we generate for other kinds of
+            % mlds_var_names.
+            Str = ConstName
+        ;
+            CompVar = mcv_sectag_const(ConstName),
+            % XXX There is nothing to stop the variable names we generate here
+            % from clashing with the strings we generate for other kinds of
+            % mlds_var_names.
+            Str = ConstName
+        ;
+            CompVar = mcv_base_class(BaseNum),
+            Str = string.format("base_%d", [i(BaseNum)])
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 

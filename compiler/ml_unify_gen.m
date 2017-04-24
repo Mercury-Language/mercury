@@ -548,7 +548,7 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
             globals.get_target(Globals, Target),
             MLDS_TypeName = mlds_append_class_qualifier(Target,
                 MLDS_ModuleName, module_qual, UnqualTypeName, TypeArity),
-            Name = ml_format_reserved_object_name(CtorName, CtorArity),
+            Name = mlds_comp_var(mcv_reserved_obj_name(CtorName, CtorArity)),
             Rval0 = ml_const(mlconst_data_addr(
                 data_addr(MLDS_TypeName, mlds_data_var(Name)))),
 
@@ -832,7 +832,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
         ),
         module_info_get_name(ModuleInfo, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        ml_gen_static_scalar_const_addr(MLDS_ModuleName, "const_var",
+        ml_gen_static_scalar_const_addr(MLDS_ModuleName, mccv_const_var,
             ConstType, Initializer, Context, ConstAddrRval, !GlobalData),
         ml_gen_info_set_global_data(!.GlobalData, !Info)
     ),
@@ -1810,11 +1810,11 @@ ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
     list(statement)::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
+ml_gen_unify_arg(ConsId, ArgVar, Mode, ArgType, CtorArg, VarType, VarLval,
         Offset, ArgNum, Tag, Context, !Statements, !Info) :-
-    MaybeFieldName = Field ^ arg_field_name,
-    FieldType = Field ^ arg_type,
-    FieldWidth = Field ^ arg_width,
+    MaybeFieldName = CtorArg ^ arg_field_name,
+    FieldType = CtorArg ^ arg_type,
+    FieldWidth = CtorArg ^ arg_width,
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     (
         % With the low-level data representation, we access all fields
@@ -1833,7 +1833,7 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
             Offset = offset(OffsetInt),
             FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt)))
         else
-            FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
+            FieldName = ml_gen_hld_field_name(MaybeFieldName, ArgNum),
             ( if ConsId = cons(ConsName, ConsArity, TypeCtor) then
                 UnqualConsName = ml_gen_du_ctor_name(Target, TypeCtor,
                     ConsName, ConsArity),
@@ -1855,7 +1855,7 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
     MaybePrimaryTag = get_primary_tag(Tag),
     FieldLval = ml_field(MaybePrimaryTag, ml_lval(VarLval), FieldId,
         MLDS_BoxedFieldType, MLDS_VarType),
-    ml_gen_var(!.Info, Arg, ArgLval),
+    ml_gen_var(!.Info, ArgVar, ArgLval),
 
     % Now generate code to unify them.
     ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType,
@@ -2714,7 +2714,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     ),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ml_gen_static_scalar_const_addr(MLDS_ModuleName, "const_var", ConstType,
+    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mccv_const_var, ConstType,
         Initializer, Context, ConstDataAddrRval, !GlobalData),
 
     % Assign the (possibly tagged) address of the local static constant
@@ -3030,7 +3030,7 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
     ),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ml_gen_static_scalar_const_addr(MLDS_ModuleName, "const_var", ConstType,
+    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mccv_const_var, ConstType,
         Initializer, term.context_init, ConstDataAddrRval, !GlobalData),
 
     % Assign the (possibly tagged) address of the local static constant

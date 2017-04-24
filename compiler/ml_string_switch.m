@@ -592,7 +592,7 @@ insert_case_into_trie_choice(InsertMatched, InsertNotYetMatched, InsertCaseId,
 
 ml_gen_trie_case_num_var_and_init(MLDS_Context, CaseNumVarLval, CaseNumVarDefn,
         InitStatement, !Info) :-
-    ml_gen_info_new_aux_var_name("case_num", CaseNumVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_case_num, CaseNumVar, !Info),
     CaseNumVarType = mlds_native_int_type,
     % We never need to trace ints.
     CaseNumVarDefn = ml_gen_mlds_var_decl(mlds_data_var(CaseNumVar),
@@ -1427,14 +1427,14 @@ ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
     %   int         slot;
     %   MR_String   str;
 
-    ml_gen_info_new_aux_var_name("slot", SlotVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_slot, SlotVar, !Info),
     SlotVarType = mlds_native_int_type,
     % We never need to trace ints.
     SlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(SlotVar), SlotVarType,
         gc_no_stmt, MLDS_Context),
     ml_gen_var_lval(!.Info, SlotVar, SlotVarType, SlotVarLval),
 
-    ml_gen_info_new_aux_var_name("str", StringVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_str, StringVar, !Info),
     StringVarType = ml_string_type,
     % StringVar always points to an element of the string_table array.
     % All those elements are static constants; they can never point into
@@ -1975,22 +1975,22 @@ ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
     IndexGCStatement = gc_no_stmt,
     ResultGCStatement = gc_no_stmt,
 
-    ml_gen_info_new_aux_var_name("lo", LoVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_lo, LoVar, !Info),
     LoVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LoVar), IndexType,
         IndexGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, LoVar, IndexType, LoVarLval),
 
-    ml_gen_info_new_aux_var_name("hi", HiVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_hi, HiVar, !Info),
     HiVarDefn = ml_gen_mlds_var_decl(mlds_data_var(HiVar), IndexType,
         IndexGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, HiVar, IndexType, HiVarLval),
 
-    ml_gen_info_new_aux_var_name("mid", MidVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_mid, MidVar, !Info),
     MidVarDefn = ml_gen_mlds_var_decl(mlds_data_var(MidVar), IndexType,
         IndexGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, MidVar, IndexType, MidVarLval),
 
-    ml_gen_info_new_aux_var_name("result", ResultVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_result, ResultVar, !Info),
     ResultVarDefn = ml_gen_mlds_var_decl(mlds_data_var(ResultVar), ResultType,
         ResultGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, ResultVar, ResultType, ResultVarLval),
@@ -2164,7 +2164,7 @@ ml_should_use_stop_loop(MLDS_Context, LoopPresent,
         % We never need to trace ints.
         StopLoopGCStatement = gc_no_stmt,
 
-        ml_gen_info_new_aux_var_name("stop_loop", StopLoopVar, !Info),
+        ml_gen_info_new_aux_var_name(mcav_stop_loop, StopLoopVar, !Info),
         StopLoopVarDefn = ml_gen_mlds_var_decl(mlds_data_var(StopLoopVar),
             StopLoopType, StopLoopGCStatement, MLDS_Context),
         ml_gen_var_lval(!.Info, StopLoopVar, StopLoopType, StopLoopVarLval),

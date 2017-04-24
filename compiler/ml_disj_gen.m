@@ -330,7 +330,7 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Statements, !Info) :-
         VectorCommon, GlobalData1, GlobalData),
     ml_gen_info_set_global_data(GlobalData, !Info),
 
-    ml_gen_info_new_aux_var_name("slot", SlotVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_slot, SlotVar, !Info),
     SlotVarType = mlds_native_int_type,
     % We never need to trace ints.
     SlotVarGCStatement = gc_no_stmt,

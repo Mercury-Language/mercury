@@ -58,7 +58,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -349,14 +348,14 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
     then
         generate_assign_args(OptInfo, Args, ArgRvals, Statements, TempDefns)
     else
-        % Declare a temporary variable, initialized it to the arg,
-        % recursively process the remaining args, and then assign the
-        % temporary to the parameter:
+        % Declare a temporary variable to hold the new value of the argument,
+        % assign it the new value, recursively process the remaining args,
+        % and then assign the new value to the parameter's actual variable:
         %
-        %   SomeType argN__tmp_copy;
-        %   argN__tmp_copy = new_argN_value;
+        %   SomeType new_value_of_argN;
+        %   new_value_of_argN = <actual new value of argN>
         %   ...
-        %   argN = argN_tmp_copy;
+        %   argN = new_value_of_argN;
         %
         % The temporaries are needed for the case where we are e.g.
         % assigning v1, v2 to v2, v1; they ensure that we don't try
@@ -367,29 +366,38 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
         % to initialize the temp, because this pass comes before
         % ml_elem_nested.m, and ml_elim_nested.m doesn't handle code
         % containing initializers.
+        % XXX We should teach it to handle them.
 
-        VarName = mlds_var_name(VarNameStr, MaybeNum),
-        TempName = mlds_var_name(VarNameStr ++ "__tmp_copy", MaybeNum),
-        QualTempName = qual(ModuleName, module_qual, TempName),
+        ( if VarName = mlds_prog_var(VarNameStr, VarNum) then
+            NextValueName = mlds_prog_var_next_value(VarNameStr, VarNum)
+        else
+            % This should not happen; the head variables of a procedure
+            % should all be mlds_prog_vars, even the ones representing
+            % the typeinfos and typeclassinfos added by the compiler.
+            % However, better safe than sorry.
+            VarNameStr = ml_var_name_to_string(VarName),
+            NextValueName =
+                mlds_comp_var(mcv_non_prog_var_next_value(VarNameStr))
+        ),
+        QualNextValueName = qual(ModuleName, module_qual, NextValueName),
         Initializer = no_initializer,
         % We don't need to trace the temporary variables for GC, since they
         % are not live across a call or a heap allocation.
         GCStatement = gc_no_stmt,
         Context = OptInfo ^ oi_context,
-        TempDefn = ml_gen_mlds_var_decl_init(mlds_data_var(TempName), Type,
-            Initializer, GCStatement, Context),
-        TempInitStatement = statement(
-            ml_stmt_atomic(assign(ml_var(QualTempName, Type), ArgRval)),
+        TempDefn = ml_gen_mlds_var_decl_init(mlds_data_var(NextValueName),
+            Type, Initializer, GCStatement, Context),
+        NextValueInitStatement = statement(
+            ml_stmt_atomic(assign(ml_var(QualNextValueName, Type), ArgRval)),
             Context),
         AssignStatement = statement(
             ml_stmt_atomic(assign(
                 ml_var(QualVarName, Type),
-                ml_lval(ml_var(QualTempName, Type)))),
+                ml_lval(ml_var(QualNextValueName, Type)))),
             Context),
-        generate_assign_args(OptInfo, Args, ArgRvals,
-            Statements0, TempDefns0),
-        Statements = [TempInitStatement | Statements0] ++
-            [AssignStatement],
+        generate_assign_args(OptInfo, Args, ArgRvals, Statements0, TempDefns0),
+        Statements =
+            [NextValueInitStatement | Statements0] ++ [AssignStatement],
         TempDefns = [TempDefn | TempDefns0]
     ).
 
@@ -836,7 +844,7 @@ cases_affect_lvals(Lvals, [Head | Tail], Affects) :-
 %   }
 %
 % Note that if there are multiple initializations of the same variable,
-% then we'll apply the optimization successively, replacing the existing
+% then we will apply the optimization successively, replacing the existing
 % initializers as we go, and keeping only the last, e.g.
 %
 %       int v = 1;

@@ -172,16 +172,18 @@
     % name prefix, type, and initializer (access is always acc_private),
     % and return a reference to the constant itself (not its address).
     %
-:- pred ml_gen_static_scalar_const_value(mlds_module_name::in, string::in,
-    mlds_type::in, mlds_initializer::in, prog_context::in, mlds_rval::out,
+:- pred ml_gen_static_scalar_const_value(mlds_module_name::in,
+    mlds_compiler_const_var::in, mlds_type::in, mlds_initializer::in,
+    prog_context::in, mlds_rval::out,
     ml_global_data::in, ml_global_data::out) is det.
 
     % Generate a definition for a static scalar constant, given the constant's
     % name prefix, type, and initializer (access is always acc_private),
     % and return a reference to the constant's address.
     %
-:- pred ml_gen_static_scalar_const_addr(mlds_module_name::in, string::in,
-    mlds_type::in, mlds_initializer::in, prog_context::in, mlds_rval::out,
+:- pred ml_gen_static_scalar_const_addr(mlds_module_name::in,
+    mlds_compiler_const_var::in, mlds_type::in, mlds_initializer::in,
+    prog_context::in, mlds_rval::out,
     ml_global_data::in, ml_global_data::out) is det.
 
     % Look up (and if necessary, create) the type of the structure needed
@@ -370,7 +372,7 @@ ml_global_data_add_maybe_nonflat_defns(Defns, !GlobalData) :-
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstBaseName, ConstType0,
+ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstVarKind, ConstType0,
         Initializer0, Context, DataRval, !GlobalData) :-
     ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
         Initializer0, Initializer),
@@ -382,14 +384,14 @@ ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstBaseName, ConstType0,
         DataRval = ml_scalar_common(Common)
     ;
         UseCommonCells = do_not_use_common_cells,
-        ml_gen_plain_static_defn(ConstBaseName, ConstType, Initializer,
+        ml_gen_plain_static_defn(ConstVarKind, ConstType, Initializer,
             Context, VarName, !GlobalData),
         QualVarName = qual(MLDS_ModuleName, module_qual, VarName),
         DataVar = ml_var(QualVarName, ConstType),
         DataRval = ml_lval(DataVar)
     ).
 
-ml_gen_static_scalar_const_addr(MLDS_ModuleName, ConstBaseName, ConstType0,
+ml_gen_static_scalar_const_addr(MLDS_ModuleName, ConstVarKind, ConstType0,
         Initializer0, Context, DataAddrRval, !GlobalData) :-
     ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
         Initializer0, Initializer),
@@ -403,7 +405,7 @@ ml_gen_static_scalar_const_addr(MLDS_ModuleName, ConstBaseName, ConstType0,
         DataAddrRval = ml_const(mlconst_data_addr(DataAddr))
     ;
         UseCommonCells = do_not_use_common_cells,
-        ml_gen_plain_static_defn(ConstBaseName, ConstType, Initializer,
+        ml_gen_plain_static_defn(ConstVarKind, ConstType, Initializer,
             Context, VarName, !GlobalData),
         DataName = mlds_data_var(VarName),
         DataAddr = data_addr(MLDS_ModuleName, DataName),
@@ -468,17 +470,17 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer, Common,
         )
     ).
 
-:- pred ml_gen_plain_static_defn(string::in, mlds_type::in,
+:- pred ml_gen_plain_static_defn(mlds_compiler_const_var::in, mlds_type::in,
     mlds_initializer::in, prog_context::in, mlds_var_name::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_plain_static_defn(ConstBaseName, ConstType,
+ml_gen_plain_static_defn(ConstVarKind, ConstType,
         Initializer, Context, VarName, !GlobalData) :-
     ml_global_data_get_const_counter(!.GlobalData, ConstCounter0),
     counter.allocate(ConstNum, ConstCounter0, ConstCounter),
     ml_global_data_set_const_counter(ConstCounter, !GlobalData),
 
-    VarName = mlds_var_name(ConstBaseName, yes(ConstNum)),
+    VarName = mlds_comp_var(mcv_const_var(ConstVarKind, ConstNum)),
     EntityName = entity_data(mlds_data_var(VarName)),
     % The GC never needs to trace static constants, because they can never
     % point into the heap; they can point only to other static constants.
@@ -656,10 +658,8 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
 
         FieldFlags = init_decl_flags(acc_public, per_instance, non_virtual,
             overridable, const, concrete),
-        FieldNamePrefix = "vct_" ++ TypeRawNumStr,
         ml_gen_vector_cell_field_types(MLDS_Context, FieldFlags,
-            FieldNamePrefix, 0, ArgTypes, FieldNames,
-            FieldDefns, FieldInfos),
+            TypeRawNum, 0, ArgTypes, FieldNames, FieldDefns, FieldInfos),
 
         (
             Target = target_c,
@@ -711,32 +711,33 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
     ).
 
 :- pred ml_gen_vector_cell_field_types(mlds_context::in, mlds_decl_flags::in,
-    string::in, int::in, list(mlds_type)::in,
-    list(string)::out, list(mlds_defn)::out, list(mlds_field_info)::out)
+    int::in, int::in, list(mlds_type)::in,
+    list(mlds_var_name)::out, list(mlds_defn)::out, list(mlds_field_info)::out)
     is det.
 
 ml_gen_vector_cell_field_types(_, _, _, _, [], [], [], []).
-ml_gen_vector_cell_field_types(MLDS_Context, Flags, FieldNamePrefix, FieldNum,
-        [Type | Types], [RawFieldName | RawFieldNames],
+ml_gen_vector_cell_field_types(MLDS_Context, Flags, TypeRawNum, FieldNum,
+        [Type | Types], [FieldVarName | FieldVarNames],
         [FieldDefn | FieldDefns], [FieldInfo | FieldInfos]) :-
-    RawFieldName = FieldNamePrefix ++ "_f_" ++ string.int_to_string(FieldNum),
-    FieldVarName = mlds_var_name(RawFieldName, no),
-    FieldName = entity_data(mlds_data_var(FieldVarName)),
+    FieldVarName = mlds_comp_var(mcv_global_data_field(TypeRawNum, FieldNum)),
+    FieldEntityName = entity_data(mlds_data_var(FieldVarName)),
     FieldEntityDefn = mlds_data(Type, no_initializer, gc_no_stmt),
-    FieldDefn = mlds_defn(FieldName, MLDS_Context, Flags, FieldEntityDefn),
+    FieldDefn = mlds_defn(FieldEntityName, MLDS_Context, Flags,
+        FieldEntityDefn),
     FieldInfo = mlds_field_info(FieldVarName, Type, gc_no_stmt, MLDS_Context),
-    ml_gen_vector_cell_field_types(MLDS_Context, Flags, FieldNamePrefix,
-        FieldNum + 1, Types, RawFieldNames, FieldDefns, FieldInfos).
+    ml_gen_vector_cell_field_types(MLDS_Context, Flags, TypeRawNum,
+        FieldNum + 1, Types, FieldVarNames, FieldDefns, FieldInfos).
 
 :- pred make_named_fields(mlds_module_name::in, mlds_type::in,
-    list(string)::in, list(mlds_field_id)::out) is det.
+    list(mlds_var_name)::in, list(mlds_field_id)::out) is det.
 
 make_named_fields(_, _, [], []).
-make_named_fields(MLDS_ModuleName, StructType, [RawFieldName | RawFieldNames],
-        [FieldName | FieldNames]) :-
-    QualName = qual(MLDS_ModuleName, module_qual, RawFieldName),
-    FieldName = ml_field_named(QualName, StructType),
-    make_named_fields(MLDS_ModuleName, StructType, RawFieldNames, FieldNames).
+make_named_fields(MLDS_ModuleName, StructType, [FieldName | FieldNames],
+        [FieldId | FieldIds]) :-
+    FieldNameStr = ml_var_name_to_string(FieldName),
+    QualName = qual(MLDS_ModuleName, module_qual, FieldNameStr),
+    FieldId = ml_field_named(QualName, StructType),
+    make_named_fields(MLDS_ModuleName, StructType, FieldNames, FieldIds).
 
 ml_gen_static_vector_defn(MLDS_ModuleName, TypeNum, RowInitializers, Common,
         !GlobalData) :-

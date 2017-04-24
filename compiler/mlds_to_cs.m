@@ -530,12 +530,15 @@ method_ptrs_in_stmt(ml_stmt_switch(_Type, Rval, _Range, Cases, Default),
     method_ptrs_in_switch_cases(Cases, !CodeAddrs),
     method_ptrs_in_switch_default(Default, !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_label(_), _, _) :-
+    % XXX We are generating C#, not Java.
     unexpected($module, $pred, "labels not supported in Java.").
 method_ptrs_in_stmt(ml_stmt_goto(goto_break), !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_goto(goto_continue), !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_goto(goto_label(_)), _, _) :-
+    % XXX We are generating C#, not Java.
     unexpected($module, $pred, "goto label not supported in Java.").
 method_ptrs_in_stmt(ml_stmt_computed_goto(_, _), _, _) :-
+    % XXX We are generating C#, not Java.
     unexpected($module, $pred, "computed gotos not supported in Java.").
 method_ptrs_in_stmt(ml_stmt_try_commit(_Lval, StatementGoal,
         StatementHandler), !CodeAddrs) :-
@@ -608,8 +611,7 @@ method_ptrs_in_defn(mlds_defn(_Name, _Context, _Flags, Body), !CodeAddrs) :-
     code_addr_map::in, code_addr_map::out) is det.
 
 method_ptrs_in_initializer(no_initializer, !CodeAddrs).
-method_ptrs_in_initializer(init_struct(_Type, Initializers),
-        !CodeAddrs) :-
+method_ptrs_in_initializer(init_struct(_Type, Initializers), !CodeAddrs) :-
     method_ptrs_in_initializers(Initializers, !CodeAddrs).
 method_ptrs_in_initializer(init_array(Initializers), !CodeAddrs) :-
     method_ptrs_in_initializers(Initializers, !CodeAddrs).
@@ -1875,7 +1877,7 @@ output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
     is det.
 
 make_out_param(Type, Argument, Num, Num + 1) :-
-    VarName = mlds_var_name("out_param", yes(Num)),
+    VarName = mlds_comp_var(mcv_out_param(Num)),
     Argument = mlds_argument(VarName, mlds_ptr_type(Type), gc_no_stmt).
 
 :- pred output_return_types(csharp_out_info::in, mlds_return_types::in,
@@ -2181,15 +2183,9 @@ data_name_to_string_for_csharp(DataName, String) :-
 :- pred var_name_to_string_for_csharp(mlds_var_name::in, string::out) is det.
 
 var_name_to_string_for_csharp(VarName, String) :-
-    (
-        VarName = mlds_var_name(Name, no),
-        MangledName = name_mangle(Name),
-        String = valid_csharp_symbol_name(MangledName)
-    ;
-        VarName = mlds_var_name(Name, yes(Num)),
-        string.format("%s_%d", [s(Name), i(Num)], UnmangledName),
-        String = name_mangle(UnmangledName)
-    ).
+    RawString = ml_var_name_to_string(VarName),
+    MangledString = name_mangle(RawString),
+    String = make_valid_csharp_symbol_name(MangledString).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3384,7 +3380,7 @@ output_lval(Info, Lval, !IO) :-
                 io.write_string(").", !IO)
             ),
             FieldName = qual(_, _, UnqualFieldName),
-            output_valid_mangled_name(UnqualFieldName, !IO)
+            output_valid_mangled_name_for_csharp(UnqualFieldName, !IO)
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
@@ -3398,12 +3394,12 @@ output_lval(Info, Lval, !IO) :-
         Lval = ml_var(qual(ModName, QualKind, Name), _),
         % Rewrite references to constants in private_builtin.m to the
         % mercury_dotnet.cs file.
-        Name = mlds_var_name(NameStr, _),
         ( if
             SymName = mlds_module_name_to_sym_name(ModName),
             strip_outermost_qualifier(SymName, "mercury",
                 mercury_private_builtin_module)
         then
+            NameStr = ml_var_name_to_string(Name),
             ( if string.prefix(NameStr, "MR_TYPECTOR_REP_") then
                 io.write_string("runtime.TypeCtorRep.", !IO),
                 io.write_string(NameStr, !IO)
@@ -3429,12 +3425,13 @@ output_lval(Info, Lval, !IO) :-
         )
     ).
 
-:- pred output_valid_mangled_name(string::in, io::di, io::uo) is det.
+:- pred output_valid_mangled_name_for_csharp(string::in, io::di, io::uo)
+    is det.
 
-output_valid_mangled_name(Name, !IO) :-
+output_valid_mangled_name_for_csharp(Name, !IO) :-
     MangledName = name_mangle(Name),
-    JavaSafeName = valid_csharp_symbol_name(MangledName),
-    write_identifier_string_for_csharp(JavaSafeName, !IO).
+    ValidName = make_valid_csharp_symbol_name(MangledName),
+    write_identifier_string_for_csharp(ValidName, !IO).
 
 :- pred output_call_rval(csharp_out_info::in, mlds_rval::in, io::di, io::uo)
     is det.

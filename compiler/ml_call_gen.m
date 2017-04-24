@@ -108,7 +108,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -172,8 +171,8 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % `closure_arg'.
     GCStatement = gc_no_stmt,
     ClosureArgType = mlds_generic_type,
-    ClosureArg = mlds_argument(mlds_var_name("closure_arg", no),
-        ClosureArgType, GCStatement),
+    ClosureArg = mlds_argument(mlds_comp_var(mcv_closure_arg), ClosureArgType,
+        GCStatement),
     Params0 = mlds_func_params(ArgParams0, RetParam),
     Params = mlds_func_params([ClosureArg | ArgParams0], RetParam),
     Signature = mlds_get_func_signature(Params),
@@ -218,10 +217,11 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % necessary when using a non-standard calling convention with GNU C,
     % since GNU C (2.95.2) ignores the function attributes on function
     % pointer types in casts.
+    % XXX Is this limitation still there in currently used C compilers?
     %
     ml_gen_info_new_conv_var(ConvVarSeq, !Info),
     ConvVarSeq = conv_seq(ConvVarNum),
-    FuncVarName = mlds_var_name(string.format("func_%d", [i(ConvVarNum)]), no),
+    FuncVarName = mlds_comp_var(mcv_conv_var(ConvVarNum)),
     % The function address is always a pointer to code,
     % not to the heap, so the GC doesn't need to trace it.
     GCStatement = gc_no_stmt,
@@ -503,7 +503,7 @@ ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
     ( if
         % As an optimization, check if the parameters expected by the current
         % continuation are the same as the ones expected by the new
-        % continuation that we're generating; if so, we can just use the
+        % continuation that we are generating; if so, we can just use the
         % current continuation rather than creating a new one.
         %
         CurrentContArgTypes = OutputArgTypes,
@@ -549,16 +549,16 @@ ml_gen_cont_params(OutputArgTypes, Params, !Info) :-
     ;
         UseNestedFuncs = no,
         ml_declare_env_ptr_arg(EnvPtrArg),
-        Args = list.append(Args0, [EnvPtrArg])
+        Args = Args0 ++ [EnvPtrArg]
     ),
     Params = mlds_func_params(Args, []).
 
 :- pred ml_gen_cont_params_2(list(mlds_type)::in, int::in,
-    mlds_arguments::out) is det.
+    list(mlds_argument)::out) is det.
 
 ml_gen_cont_params_2([], _, []).
 ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) :-
-    ArgName = ml_gen_arg_name(ArgNum),
+    ArgName = mlds_comp_var(mcv_arg(ArgNum)),
     % Figuring out the correct GC code here is difficult, since doing that
     % requires knowing the HLDS types, but here we only have the MLDS types.
     % So here we just leave it blank. The caller of ml_gen_cont_param has the
@@ -584,7 +584,7 @@ ml_gen_copy_args_to_locals(Info, ArgLvals, ArgTypes, Context,
 ml_gen_copy_args_to_locals_2(_Info, [], [], _, _, []).
 ml_gen_copy_args_to_locals_2(Info, [LocalLval | LocalLvals], [Type | Types],
         ArgNum, Context, [Statement | Statements]) :-
-    ArgName = ml_gen_arg_name(ArgNum),
+    ArgName = mlds_comp_var(mcv_arg(ArgNum)),
     ml_gen_var_lval(Info, ArgName, Type, ArgLval),
     Statement = ml_gen_assign(LocalLval, ml_lval(ArgLval), Context),
     ml_gen_copy_args_to_locals_2(Info, LocalLvals, Types, ArgNum + 1,
@@ -593,11 +593,6 @@ ml_gen_copy_args_to_locals_2(_Info, [], [_ | _], _, _, _) :-
     unexpected($module, $pred, "length mismatch").
 ml_gen_copy_args_to_locals_2(_Info, [_ | _], [], _, _, _) :-
     unexpected($module, $pred, "length mismatch").
-
-:- func ml_gen_arg_name(int) = mlds_var_name.
-
-ml_gen_arg_name(ArgNum) = mlds_var_name(ArgName, no) :-
-    string.format("arg%d", [i(ArgNum)], ArgName).
 
 ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),

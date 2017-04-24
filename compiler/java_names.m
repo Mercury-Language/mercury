@@ -37,14 +37,14 @@
 :- pred mangle_sym_name_for_java(sym_name::in, csj_qual_kind::in,
     string::in, string::out) is det.
 
-    % If the given name conflicts with a reserved Java word we must add a
-    % prefix to it to avoid compilation errors.
+    % If the given name conflicts with a reserved Java word,
+    % add a prefix to it to avoid compilation errors.
     %
-:- func valid_java_symbol_name(string) = string.
+:- func make_valid_java_symbol_name(string) = string.
 
     % Succeeds iff the given string matches a reserved word in Java.
     %
-:- pred java_is_keyword(string::in) is semidet.
+:- pred is_java_keyword(string::in) is semidet.
 
     % The package containing the Mercury Java runtime classes.
     %
@@ -57,14 +57,14 @@
 :- pred mangle_sym_name_for_csharp(sym_name::in, csj_qual_kind::in,
     string::in, string::out) is det.
 
-    % If the given name conflicts with a reserved C# word we must add a
-    % prefix to it to avoid compilation errors.
+    % If the given name conflicts with a reserved C# word,
+    % add a prefix to it to avoid compilation errors.
     %
-:- func valid_csharp_symbol_name(string) = string.
+:- func make_valid_csharp_symbol_name(string) = string.
 
     % Succeeds iff the given string matches a reserved word in C#.
     %
-:- pred csharp_is_keyword(string::in) is semidet.
+:- pred is_csharp_keyword(string::in) is semidet.
 
     % The package containing the Mercury C# runtime classes.
     %
@@ -135,11 +135,11 @@ java_safe_name_component(QualKind, Name) = JavaSafeName :-
         QualKind = type_qual,
         FlippedName = flip_initial_case(MangledName)
     ),
-    JavaSafeName = valid_java_symbol_name(FlippedName).
+    JavaSafeName = make_valid_java_symbol_name(FlippedName).
 
-valid_java_symbol_name(SymName) = ValidSymName :-
+make_valid_java_symbol_name(SymName) = ValidSymName :-
     Prefix = "mr_",
-    ( if java_is_keyword(SymName) then
+    ( if is_java_keyword(SymName) then
         % This is a reserved Java word, add the above prefix.
         ValidSymName = Prefix ++ SymName
     else if string.append(Prefix, Suffix, SymName) then
@@ -151,58 +151,58 @@ valid_java_symbol_name(SymName) = ValidSymName :-
         ValidSymName = SymName
     ).
 
-java_is_keyword("abstract").
-java_is_keyword("boolean").
-java_is_keyword("break").
-java_is_keyword("byte").
-java_is_keyword("case").
-java_is_keyword("catch").
-java_is_keyword("char").
-java_is_keyword("class").
-java_is_keyword("const").
-java_is_keyword("continue").
-java_is_keyword("default").
-java_is_keyword("do").
-java_is_keyword("double").
-java_is_keyword("else").
-java_is_keyword("enum").
-java_is_keyword("extends").
-java_is_keyword("false").
-java_is_keyword("final").
-java_is_keyword("finally").
-java_is_keyword("float").
-java_is_keyword("for").
-java_is_keyword("goto").
-java_is_keyword("if").
-java_is_keyword("implements").
-java_is_keyword("import").
-java_is_keyword("instanceof").
-java_is_keyword("int").
-java_is_keyword("interface").
-java_is_keyword("long").
-java_is_keyword("native").
-java_is_keyword("new").
-java_is_keyword("null").
-java_is_keyword("package").
-java_is_keyword("private").
-java_is_keyword("protected").
-java_is_keyword("public").
-java_is_keyword("return").
-java_is_keyword("short").
-java_is_keyword("static").
-java_is_keyword("strictfp").
-java_is_keyword("super").
-java_is_keyword("switch").
-java_is_keyword("synchronized").
-java_is_keyword("this").
-java_is_keyword("throw").
-java_is_keyword("throws").
-java_is_keyword("transient").
-java_is_keyword("true").
-java_is_keyword("try").
-java_is_keyword("void").
-java_is_keyword("volatile").
-java_is_keyword("while").
+is_java_keyword("abstract").
+is_java_keyword("boolean").
+is_java_keyword("break").
+is_java_keyword("byte").
+is_java_keyword("case").
+is_java_keyword("catch").
+is_java_keyword("char").
+is_java_keyword("class").
+is_java_keyword("const").
+is_java_keyword("continue").
+is_java_keyword("default").
+is_java_keyword("do").
+is_java_keyword("double").
+is_java_keyword("else").
+is_java_keyword("enum").
+is_java_keyword("extends").
+is_java_keyword("false").
+is_java_keyword("final").
+is_java_keyword("finally").
+is_java_keyword("float").
+is_java_keyword("for").
+is_java_keyword("goto").
+is_java_keyword("if").
+is_java_keyword("implements").
+is_java_keyword("import").
+is_java_keyword("instanceof").
+is_java_keyword("int").
+is_java_keyword("interface").
+is_java_keyword("long").
+is_java_keyword("native").
+is_java_keyword("new").
+is_java_keyword("null").
+is_java_keyword("package").
+is_java_keyword("private").
+is_java_keyword("protected").
+is_java_keyword("public").
+is_java_keyword("return").
+is_java_keyword("short").
+is_java_keyword("static").
+is_java_keyword("strictfp").
+is_java_keyword("super").
+is_java_keyword("switch").
+is_java_keyword("synchronized").
+is_java_keyword("this").
+is_java_keyword("throw").
+is_java_keyword("throws").
+is_java_keyword("transient").
+is_java_keyword("true").
+is_java_keyword("try").
+is_java_keyword("void").
+is_java_keyword("volatile").
+is_java_keyword("while").
 
 java_mercury_runtime_package_name =
     qualified(unqualified("jmercury"), "runtime").
@@ -245,11 +245,11 @@ csharp_safe_name_component(QualKind, Name) = SafeName :-
         QualKind = type_qual,
         FlippedName = flip_initial_case(MangledName)
     ),
-    SafeName = valid_csharp_symbol_name(FlippedName).
+    SafeName = make_valid_csharp_symbol_name(FlippedName).
 
-valid_csharp_symbol_name(SymName) = ValidSymName :-
+make_valid_csharp_symbol_name(SymName) = ValidSymName :-
     Prefix = "mr_",
-    ( if csharp_is_keyword(SymName) then
+    ( if is_csharp_keyword(SymName) then
         % This is a reserved word, add the above prefix.
         ValidSymName = Prefix ++ SymName
     else if string.append(Prefix, Suffix, SymName) then
@@ -261,83 +261,83 @@ valid_csharp_symbol_name(SymName) = ValidSymName :-
         ValidSymName = SymName
     ).
 
-csharp_is_keyword("abstract").
-csharp_is_keyword("as").
-csharp_is_keyword("base").
-csharp_is_keyword("bool").
-csharp_is_keyword("break").
-csharp_is_keyword("byte").
-csharp_is_keyword("case").
-csharp_is_keyword("catch").
-csharp_is_keyword("char").
-csharp_is_keyword("checked").
-csharp_is_keyword("class").
-csharp_is_keyword("const").
-csharp_is_keyword("continue").
-csharp_is_keyword("decimal").
-csharp_is_keyword("default").
-csharp_is_keyword("delegate").
-csharp_is_keyword("do").
-csharp_is_keyword("double").
-csharp_is_keyword("else").
-csharp_is_keyword("enum").
-csharp_is_keyword("event").
-csharp_is_keyword("explicit").
-csharp_is_keyword("extern").
-csharp_is_keyword("false").
-csharp_is_keyword("finally").
-csharp_is_keyword("fixed").
-csharp_is_keyword("float").
-csharp_is_keyword("for").
-csharp_is_keyword("foreach").
-csharp_is_keyword("goto").
-csharp_is_keyword("if").
-csharp_is_keyword("implicit").
-csharp_is_keyword("in").
-csharp_is_keyword("int").
-csharp_is_keyword("interface").
-csharp_is_keyword("internal").
-csharp_is_keyword("is").
-csharp_is_keyword("lock").
-csharp_is_keyword("long").
-csharp_is_keyword("namespace").
-csharp_is_keyword("new").
-csharp_is_keyword("null").
-csharp_is_keyword("object").
-csharp_is_keyword("operator").
-csharp_is_keyword("out").
-csharp_is_keyword("override").
-csharp_is_keyword("params").
-csharp_is_keyword("private").
-csharp_is_keyword("protected").
-csharp_is_keyword("public").
-csharp_is_keyword("readonly").
-csharp_is_keyword("ref").
-csharp_is_keyword("return").
-csharp_is_keyword("sbyte").
-csharp_is_keyword("sealed").
-csharp_is_keyword("short").
-csharp_is_keyword("sizeof").
-csharp_is_keyword("stackalloc").
-csharp_is_keyword("static").
-csharp_is_keyword("string").
-csharp_is_keyword("struct").
-csharp_is_keyword("switch").
-csharp_is_keyword("this").
-csharp_is_keyword("throw").
-csharp_is_keyword("true").
-csharp_is_keyword("try").
-csharp_is_keyword("typeof").
-csharp_is_keyword("uint").
-csharp_is_keyword("ulong").
-csharp_is_keyword("unchecked").
-csharp_is_keyword("unsafe").
-csharp_is_keyword("ushort").
-csharp_is_keyword("using").
-csharp_is_keyword("virtual").
-csharp_is_keyword("volatile").
-csharp_is_keyword("void").
-csharp_is_keyword("while").
+is_csharp_keyword("abstract").
+is_csharp_keyword("as").
+is_csharp_keyword("base").
+is_csharp_keyword("bool").
+is_csharp_keyword("break").
+is_csharp_keyword("byte").
+is_csharp_keyword("case").
+is_csharp_keyword("catch").
+is_csharp_keyword("char").
+is_csharp_keyword("checked").
+is_csharp_keyword("class").
+is_csharp_keyword("const").
+is_csharp_keyword("continue").
+is_csharp_keyword("decimal").
+is_csharp_keyword("default").
+is_csharp_keyword("delegate").
+is_csharp_keyword("do").
+is_csharp_keyword("double").
+is_csharp_keyword("else").
+is_csharp_keyword("enum").
+is_csharp_keyword("event").
+is_csharp_keyword("explicit").
+is_csharp_keyword("extern").
+is_csharp_keyword("false").
+is_csharp_keyword("finally").
+is_csharp_keyword("fixed").
+is_csharp_keyword("float").
+is_csharp_keyword("for").
+is_csharp_keyword("foreach").
+is_csharp_keyword("goto").
+is_csharp_keyword("if").
+is_csharp_keyword("implicit").
+is_csharp_keyword("in").
+is_csharp_keyword("int").
+is_csharp_keyword("interface").
+is_csharp_keyword("internal").
+is_csharp_keyword("is").
+is_csharp_keyword("lock").
+is_csharp_keyword("long").
+is_csharp_keyword("namespace").
+is_csharp_keyword("new").
+is_csharp_keyword("null").
+is_csharp_keyword("object").
+is_csharp_keyword("operator").
+is_csharp_keyword("out").
+is_csharp_keyword("override").
+is_csharp_keyword("params").
+is_csharp_keyword("private").
+is_csharp_keyword("protected").
+is_csharp_keyword("public").
+is_csharp_keyword("readonly").
+is_csharp_keyword("ref").
+is_csharp_keyword("return").
+is_csharp_keyword("sbyte").
+is_csharp_keyword("sealed").
+is_csharp_keyword("short").
+is_csharp_keyword("sizeof").
+is_csharp_keyword("stackalloc").
+is_csharp_keyword("static").
+is_csharp_keyword("string").
+is_csharp_keyword("struct").
+is_csharp_keyword("switch").
+is_csharp_keyword("this").
+is_csharp_keyword("throw").
+is_csharp_keyword("true").
+is_csharp_keyword("try").
+is_csharp_keyword("typeof").
+is_csharp_keyword("uint").
+is_csharp_keyword("ulong").
+is_csharp_keyword("unchecked").
+is_csharp_keyword("unsafe").
+is_csharp_keyword("ushort").
+is_csharp_keyword("using").
+is_csharp_keyword("virtual").
+is_csharp_keyword("volatile").
+is_csharp_keyword("void").
+is_csharp_keyword("while").
 
 csharp_mercury_runtime_package_name =
     qualified(unqualified("mercury"), "runtime").

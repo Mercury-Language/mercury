@@ -919,12 +919,12 @@ lval_contains_var(Lval, DataName) = ContainsVar :-
 gen_init_builtin_const(Name) = init_obj(Rval) :-
     PrivateBuiltin = mercury_private_builtin_module,
     MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
+    VarName = mlds_comp_var(mcv_enum_const(Name)),
     % XXX These are actually enumeration constants.
     % Perhaps we should be using an enumeration type here,
     % rather than `mlds_native_int_type'.
     Type = mlds_native_int_type,
-    Rval = ml_lval(ml_var(qual(MLDS_Module, module_qual,
-        mlds_var_name(Name, no)), Type)).
+    Rval = ml_lval(ml_var(qual(MLDS_Module, module_qual, VarName), Type)).
 
 gen_init_array(Conv, List) = init_array(list.map(Conv, List)).
 
