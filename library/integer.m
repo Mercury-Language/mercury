@@ -868,43 +868,16 @@ mul_by_digit_2(D, Div, [X | Xs], [Mod | NewXs]) :-
 :- pred chop(int::in, digit::out, digit::out) is det.
 
 chop(N, Div, Mod) :-
-    Div = N >> log2base,    % i.e. Div = N div base
-    Mod = N /\ basemask.    % i.e. Mod = N mod base
+    % The unchecked shifts here and in the uint case below are safe since
+    % log2base is 14.
+    Div = N `int.unchecked_right_shift` log2base,    % i.e. Div = N div base
+    Mod = N /\ basemask.                             % i.e. Mod = N mod base
 
 :- pred chop_uint(uint::in, uint::out, uint::out) is det.
 
 chop_uint(N, Div, Mod) :-
-    Div = N `uint_right_shift` log2base,
+    Div = N `uint.unchecked_right_shift` log2base,
     Mod = N /\ cast_from_int(basemask).
-
-    % XXX UINT - we define right shift for uints locally until the support for
-    % unchecked_right_shift has bootstrapped.
-    %
-:- func uint_right_shift(uint, int) = uint.
-
-:- pragma foreign_proc("C",
-    uint_right_shift(A::in, B::in) = (C::out),
-    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
-"
-    C = A >> B;
-").
-
-:- pragma foreign_proc("C#",
-    uint_right_shift(A::in, B::in) = (C::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    C = A >> B;
-").
-
-:- pragma foreign_proc("Java",
-    uint_right_shift(A::in, B::in) = (C::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    C = A >>> B;
-").
-
-uint_right_shift(_, _) = _ :-
-    sorry($module, "uint_right_shift/1 for Erlang NYI").
 
 :- func pos_plus(integer, integer) = integer.
 
