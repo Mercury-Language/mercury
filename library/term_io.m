@@ -606,12 +606,13 @@ write_constant(OutStream, Const, !IO) :-
 
 write_constant(OutStream, Const, NextToGraphicToken, !IO) :-
     (
-        Const = term.integer(Base, I, _Signedness, _Size),
-        % XXX UINT handle signedness and size.
+        Const = term.integer(Base, I, Signedness, Size),
         Prefix = integer_base_prefix(Base),
         IntString = integer.to_base_string(I, integer_base_int(Base)),
+        Suffix = integer_signedness_and_size_suffix(Signedness, Size),
         io.write_string(OutStream, Prefix, !IO),
-        io.write_string(OutStream, IntString, !IO)
+        io.write_string(OutStream, IntString, !IO),
+        io.write_string(OutStream, Suffix, !IO)
     ;
         Const = term.float(F),
         io.write_float(OutStream, F, !IO)
@@ -630,11 +631,11 @@ write_constant(OutStream, Const, NextToGraphicToken, !IO) :-
 format_constant(Const) =
     term_io.format_constant_agt(Const, not_adjacent_to_graphic_token).
 
-:- func term_io.format_constant_agt(const, adjacent_to_graphic_token) = string.
+:- func format_constant_agt(const, adjacent_to_graphic_token) = string.
 
-    % XXX UINT handle Signedness and Size.
-format_constant_agt(term.integer(Base, I, _Signedness, _Size), _) =
-    integer_base_prefix(Base) ++ to_base_string(I, integer_base_int(Base)).
+format_constant_agt(term.integer(Base, I, Signedness, Size), _) =
+    integer_base_prefix(Base) ++ to_base_string(I, integer_base_int(Base)) ++
+        integer_signedness_and_size_suffix(Signedness, Size).
 format_constant_agt(term.float(F), _) =
     string.float_to_string(F).
 format_constant_agt(term.atom(A), NextToGraphicToken) =
@@ -653,6 +654,20 @@ integer_base_prefix(base_2) = "0b".
 integer_base_prefix(base_8) = "0o".
 integer_base_prefix(base_10) = "".
 integer_base_prefix(base_16) = "0x".
+
+:- func integer_signedness_and_size_suffix(term.signedness,
+    term.integer_size) = string.
+
+integer_signedness_and_size_suffix(signed, size_word) = "".
+integer_signedness_and_size_suffix(signed, size_8_bit) = "i8".
+integer_signedness_and_size_suffix(signed, size_16_bit) = "i16".
+integer_signedness_and_size_suffix(signed, size_32_bit) = "i32".
+integer_signedness_and_size_suffix(signed, size_64_bit) = "i64".
+integer_signedness_and_size_suffix(unsigned, size_word) = "u".
+integer_signedness_and_size_suffix(unsigned, size_8_bit) = "u8".
+integer_signedness_and_size_suffix(unsigned, size_16_bit) = "u16".
+integer_signedness_and_size_suffix(unsigned, size_32_bit) = "u32".
+integer_signedness_and_size_suffix(unsigned, size_64_bit) = "u64".
 
 %---------------------------------------------------------------------------%
 

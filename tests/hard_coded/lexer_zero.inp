@@ -29,3 +29,188 @@
 0e-12
 0E12
 0E-12
+
+"Decimal signed zeros"
+0i
+0i8
+0i16
+0i32
+0i64
+
+"Decimal signed zeros (with underscores)"
+0_i
+0_i8
+0_i16
+0_i32
+0_i64
+
+"Decimal signed zeros (with leading zeros)"
+00i
+00i8
+00i16
+00i32
+00i64
+
+"Decimal unsigned zeros"
+0u
+0u8
+0u16
+0u32
+0u64
+
+"Decimal unsigned zeros (with underscores)"
+0_u
+0_u8
+0_u16
+0_u32
+0_u64
+
+"Decimal unsigned zeros (with leading zeros)"
+00u
+00u8
+00u16
+00u32
+00u64
+
+"Binary signed zeros"
+0b0
+0b0i
+0b0i8
+0b0i16
+0b0i32
+0b0i64
+
+"Binary signed zeros (with underscores)"
+0b_0
+0b_0_i
+0b_0_i8
+0b_0_i16
+0b_0_i32
+0b_0_i64
+
+"Binary signed zeros (with leading zeros)"
+0b00
+0b00i
+0b00i8
+0b00i16
+0b00i32
+0b00i64
+
+"Binary unsigned zeros"
+0b0u
+0b0u8
+0b0u16
+0b0u32
+0b0u64
+
+"Binary unsigned zeros (with underscores)"
+0b_0_u
+0b_0_u8
+0b_0_u16
+0b_0_u32
+0b_0_u64
+
+"Binary unsigned zeros (with leading zeros)"
+0b00u
+0b00u8
+0b00u16
+0b00u32
+0b00u64
+
+"Octal signed zeros"
+0o0
+0o0i
+0o0i8
+0o0i16
+0o0i32
+0o0i64
+
+"Octal signed zeros (with underscores)"
+0o_0
+0o_0_i
+0o_0_i8
+0o_0_i16
+0o_0_i32
+0o_0_i64
+
+"Octal signed zeros (with leading zeros)"
+0o00
+0o00i
+0o00i8
+0o00i16
+0o00i32
+0o00i64
+
+"Octal unsigned zeros"
+0o0u
+0o0u8
+0o0u16
+0o0u32
+0o0u64
+
+"Octal unsigned zeros (with underscores)"
+0o_0_u
+0o_0_u8
+0o_0_u16
+0o_0_u32
+0o_0_u64
+
+"Octal unsigned zeros (with leading zeros)"
+0o00u
+0o00u8
+0o00u16
+0o00u32
+0o00u64
+
+"Hexadecimal signed zeros"
+0x0
+0x0i
+0x0i8
+0x0i16
+0x0i32
+0x0i64
+
+"Hexadecimal signed zeros (with underscores)"
+0x_0
+0x_0_i
+0x_0_i8
+0x_0_i16
+0x_0_i32
+0x_0_i64
+
+"Hexadecimal signed zeros (with leading zeros)"
+0x00
+0x00i
+0x00i8
+0x00i16
+0x00i32
+0x00i64
+
+"Hexadecimal unsigned zeros"
+0x0u
+0x0u8
+0x0u16
+0x0u32
+0x0u64
+
+"Hexadecimal unsigned zeros (with underscores)"
+0x_0_u
+0x_0_u8
+0x_0_u16
+0x_0_u32
+0x_0_u64
+
+"Hexadecimal unsigned zeros (with leading zeros)"
+0x00u
+0x00u8
+0x00u16
+0x00u32
+0x00u64
+
+"Miscellaneous underscores"
+0b_0_u8
+0x_00_u16
+0o_00_i32
+0_0_0_i64
+0b_0_0_0__i
+0b_0_0_00__u

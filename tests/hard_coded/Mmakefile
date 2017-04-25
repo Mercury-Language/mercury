@@ -183,6 +183,7 @@ ORDINARY_PROGS =	\
 	lco_no_inline \
 	lco_pack_args \
 	lexer_bigint \
+	lexer_ints \
 	lexer_zero \
 	list_series_int \
 	list_split_take_drop \

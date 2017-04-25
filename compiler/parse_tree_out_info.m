@@ -191,7 +191,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_strings/3) is io.write_strings,
     pred(add_char/3) is io.write_char,
     pred(add_int/3) is io.write_int,
-    pred(add_uint/3) is io.write_uint, % XXX UINT - literal syntax.
+    pred(add_uint/3) is write_uint_literal,
     pred(add_float/3) is io.write_float,
     pred(add_purity_prefix/3) is prog_out.write_purity_prefix,
     pred(add_quoted_atom/3) is term_io.quote_atom,
@@ -221,6 +221,14 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_format/4) is output_format,
     pred(add_list/5) is output_list
 ].
+
+%---------------------------------------------------------------------------%
+
+:- pred write_uint_literal(uint::in, io::di, io::uo) is det.
+
+write_uint_literal(UInt, !IO) :-
+    io.write_uint(UInt, !IO),
+    io.write_char('u', !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -264,8 +272,7 @@ output_int(I, Str0, Str) :-
 :- pred output_uint(uint::in, string::di, string::uo) is det.
 
 output_uint(U, Str0, Str) :-
-    % XXX UINT - literal syntax.
-    S = uint_to_string(U),
+    S = uint_to_string(U) ++ "u",
     string.append(Str0, S, Str).
 
 :- pred output_float(float::in, string::di, string::uo) is det.

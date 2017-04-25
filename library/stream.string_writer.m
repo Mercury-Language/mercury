@@ -287,11 +287,13 @@ print_cc(Stream, Term, !State) :-
     print(Stream, include_details_cc, Term, !State).
 
 print(Stream, NonCanon, Term, !State) :-
-    % `string', `char' and `univ' are special cases for print
+    % `string', `char', `uint' and `univ' are special cases for print
     ( if dynamic_cast(Term, String : string) then
         put(Stream, String, !State)
     else if dynamic_cast(Term, Char : char) then
         put(Stream, Char, !State)
+    else if dynamic_cast(Term, UInt : uint) then
+        put(Stream, uint_to_string(UInt), !State)
     else if dynamic_cast(Term, OrigUniv) then
         write_univ(Stream, OrigUniv, !State)
     else if dynamic_cast(Term, BigInt) then
@@ -382,7 +384,7 @@ do_write_univ(Stream, NonCanon, Univ, !State) :-
 
 do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     % We need to special-case the builtin types:
-    %   int, char, float, string
+    %   int, uint, char, float, string
     %   type_info, univ, c_pointer, array
     %   and private_builtin.type_info
     %
@@ -393,9 +395,8 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     else if univ_to_type(Univ, Int) then
         put_int(Stream, Int, !State)
     else if univ_to_type(Univ, UInt) then
-        % XXX UINT -- write should emit an unsigned literal
-        %             print should just emit a decimal
-        put_uint(Stream, UInt, !State)
+        put_uint(Stream, UInt, !State),
+        put_char(Stream, 'u', !State)
     else if univ_to_type(Univ, Float) then
         put_float(Stream, Float, !State)
     else if univ_to_type(Univ, Bitmap) then

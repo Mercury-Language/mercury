@@ -834,7 +834,7 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
         string.int_to_string(Int, String)
     ;
         ConsId = uint_const(UInt),
-        String = uint_to_string(UInt)
+        String = uint_to_string(UInt) ++ "u"
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)

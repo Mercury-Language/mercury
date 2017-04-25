@@ -1,0 +1,179 @@
+"Signed binary integers"
+0b10
+0b100i
+0b10i8
+0b100i16
+0b100i32
+0b101i64
+
+"Signed binary integers (with underscores)"
+0b_1000_1000_1000
+0b_1000_1000_1000_i
+0b_11_11_i8
+0b_1000_1000_1000_i16
+0b_1000_1000_1000_i32
+0b_1000_1000_1000_i64
+
+"Signed binary integers (with leading zeros)"
+0b0010
+0b00100i
+0b0010i8
+0b00100i16
+0b00100i32
+0b00101i64
+
+"Unsigned binary integers"
+0b100u
+0b10u8
+0b100u16
+0b100u32
+0b101u64
+
+"Unsigned binary integers (with underscores)"
+0b_1000_1000_1000_u
+0b_11_11_u8
+0b_1000_1000_1000_u16
+0b_1000_1000_1000_u32
+0b_1000_1000_1000_u64
+
+"Unsigned binary integers (with leading zeros)"
+0b00100u
+0b0010u8
+0b00100u16
+0b00100u32
+0b00101u64
+
+"Signed octal integers"
+0o77
+0o77i
+0o77i8
+0o77i16
+0o77i32
+0o77i64
+
+"Signed octal integers (with underscores)"
+0o_77
+0o_77_i
+0o_77_i8
+0o_77_i16
+0o_77_i32
+0o_77_i64
+
+"Signed octal integers"
+0o0077
+0o0077i
+0o0077i8
+0o0077i16
+0o0077i32
+0o0077i64
+
+"Unsigned octal integers"
+0o77u
+0o77u8
+0o77u16
+0o77u32
+0o77u64
+
+"Unsigned octal integers (with underscores)"
+0o_77_u
+0o_77_u8
+0o_77_u16
+0o_77_u32
+0o_77_u64
+
+"Unsigned octal integers (with leading zeros)"
+0o0077u
+0o0077u8
+0o0077u16
+0o0077u32
+0o0077u64
+
+"Signed decimal integers"
+99
+99i
+99i8
+99i16
+99i32
+99i64
+
+"Signed decimal integers (with underscores)"
+99
+99_i
+99_i8
+99_i16
+99_i32
+99_i64
+
+"Signed decimal integers (with leading zeros)"
+0099
+0099i
+0099i8
+0099i16
+0099i32
+0099i64
+
+"Unsigned decimal integers"
+99u
+99u8
+99u16
+99u32
+99u64
+
+"Unsigned decimal integers (with underscores)"
+99_u
+99_u8
+99_u16
+99_u32
+99_u64
+
+"Unsigned decimal integers (with leading zeros)"
+0099u
+0099u8
+0099u16
+0099u32
+0099u64
+
+"Signed hexadecimal integers"
+0x1f
+0x1fi
+0x1fi8
+0x1fi16
+0x1fi32
+0x1fi64
+
+"Signed hexadecimal integers (with underscores)"
+0x_1f
+0x_1f_i
+0x_1f_i8
+0x_1f_i16
+0x_1f_i32
+0x_1f_i64
+
+"Signed hexadecimal integers (with leading zeros)"
+0x001f
+0x001fi
+0x001fi8
+0x01fi16
+0x001fi32
+0x001fi64
+
+"Unsigned hexadecimal integers"
+0x1fu
+0x1fu8
+0x1fu16
+0x1fu32
+0x1fu64
+
+"Unsigned hexadecimal integers (with underscores)"
+0x_1f_u
+0x_1f_u8
+0x_1f_u16
+0x_1f_u32
+0x_1f_u64
+
+"Unsigned hexadecimal integers (with leading zeros)"
+0x001fu
+0x001fu8
+0x001fu16
+0x001fu32
+0x001fu64

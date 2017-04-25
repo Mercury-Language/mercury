@@ -76,11 +76,11 @@
     ;       unsigned.
 
 :- type integer_size
-    --->    size_word.
-    %;       size_8_bit
-    %;       size_16_bit
-    %;       size_32_bit
-    %;       size_64_bit
+    --->    size_word
+    ;       size_8_bit
+    ;       size_16_bit
+    ;       size_32_bit
+    ;       size_64_bit.
 
 :- type generic
     --->    generic.

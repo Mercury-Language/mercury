@@ -1146,6 +1146,10 @@ lexer_signedness_to_term_signedness(signed) = signed.
 :- func lexer_size_to_term_size(lexer.integer_size) = term.integer_size.
 
 lexer_size_to_term_size(size_word) = size_word.
+lexer_size_to_term_size(size_8_bit) = size_8_bit.
+lexer_size_to_term_size(size_16_bit) = size_16_bit.
+lexer_size_to_term_size(size_32_bit) = size_32_bit.
+lexer_size_to_term_size(size_64_bit) = size_64_bit.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

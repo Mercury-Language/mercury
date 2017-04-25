@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module lexer_zero.
+:- module lexer_ints.
 :- interface.
 
 :- import_module io.
@@ -24,7 +24,7 @@ main(!IO) :-
     io.nl(!IO),
 
     % Read from a string.
-    io.open_input("lexer_zero.inp", OpenRes, !IO),
+    io.open_input("lexer_ints.inp", OpenRes, !IO),
     (
         OpenRes = ok(Stream),
         io.read_file_as_string(Stream, ReadRes, !IO),

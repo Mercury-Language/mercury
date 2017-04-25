@@ -67,11 +67,11 @@
     ;       unsigned.
 
 :- type integer_size
-    --->    size_word.
-    %;       size_8_bit
-    %;       size_16_bit
-    %;       size_32_bit
-    %;       size_64_bit
+    --->    size_word
+    ;       size_8_bit
+    ;       size_16_bit
+    ;       size_32_bit
+    ;       size_64_bit.
 
     % For every token, we record the line number of the line on
     % which the token occurred.
@@ -1969,7 +1969,7 @@ get_zero(Stream, Token, !IO) :-
             get_number(Stream, LastDigit, [Char], Token, !IO)
         else if Char = '_' then
             LastDigit = last_digit_is_underscore,
-            get_number(Stream, LastDigit, [], Token, !IO)
+            get_number(Stream, LastDigit, ['0'], Token, !IO)
         else if Char = '''' then
             get_char_code(Stream, Token, !IO)
         else if Char = 'b' then
@@ -1978,6 +1978,12 @@ get_zero(Stream, Token, !IO) :-
             get_octal(Stream, Token, !IO)
         else if Char = 'x' then
             get_hex(Stream, Token, !IO)
+        else if Char = 'u' then
+            get_integer_size_suffix(Stream, ['0'], base_10, unsigned,
+                Token, !IO)
+        else if Char = 'i' then
+            get_integer_size_suffix(Stream, ['0'], base_10, signed,
+                Token, !IO)
         else if Char = ('.') then
             LastDigit = last_digit_is_not_underscore,
             get_int_dot(Stream, LastDigit, ['0'], Token, !IO)
@@ -2005,6 +2011,7 @@ get_zero(Stream, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_zero(String, Len, Posn0, Token, Context, !Posn) :-
+    Posn1 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
@@ -2022,6 +2029,14 @@ string_get_zero(String, Len, Posn0, Token, Context, !Posn) :-
             string_get_octal(String, Len, Posn0, Token, Context, !Posn)
         else if Char = 'x' then
             string_get_hex(String, Len, Posn0, Token, Context, !Posn)
+        else if Char = 'u' then
+            string_get_integer_size_suffix(String, Len, Posn0, Posn1, base_10,
+                unsigned, Token, !Posn),
+            string_get_context(Posn0, Context, !Posn)
+        else if Char = 'i' then
+            string_get_integer_size_suffix(String, Len, Posn0, Posn1, base_10,
+                signed, Token, !Posn),
+            string_get_context(Posn0, Context, !Posn)
         else if Char = ('.') then
             LastDigit = last_digit_is_not_underscore,
             string_get_int_dot(String, LastDigit, Len, Posn0, Token, Context,
@@ -2125,7 +2140,8 @@ get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         Result = eof,
         (
             !.LastDigit = last_digit_is_not_underscore,
-            rev_char_list_to_int(!.RevChars, base_2, Token)
+            rev_char_list_to_int(!.RevChars, base_2, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated binary literal")
@@ -2139,11 +2155,18 @@ get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
             get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = 'u' then
+            get_integer_size_suffix(Stream, !.RevChars, base_2, unsigned,
+                Token, !IO)
+        else if Char = 'i' then
+            get_integer_size_suffix(Stream, !.RevChars, base_2, signed,
+                Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                rev_char_list_to_int(!.RevChars, base_2, Token)
+                rev_char_list_to_int(!.RevChars, base_2, signed, size_word,
+                    Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated binary literal")
@@ -2156,6 +2179,7 @@ get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     posn::in, posn::out) is det.
 
 string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
+    Posn2 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_binary_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
@@ -2165,12 +2189,21 @@ string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
             !:LastDigit = last_digit_is_underscore,
             string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
                 Context, !Posn)
+        else if Char = 'u' then
+            string_get_integer_size_suffix(String, Len, Posn1, Posn2, base_2,
+                unsigned, Token, !Posn),
+            string_get_context(Posn1, Context, !Posn)
+        else if Char = 'i' then
+            string_get_integer_size_suffix(String, Len, Posn1, Posn2, base_2,
+                signed, Token, !Posn),
+            string_get_context(Posn1, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             (
                 !.LastDigit = last_digit_is_not_underscore,
                 grab_string(String, Posn1, BinaryString, !Posn),
-                conv_string_to_int(BinaryString, base_2, Token)
+                conv_string_to_int(BinaryString, base_2, signed, size_word,
+                    Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated binary literal")
@@ -2181,7 +2214,8 @@ string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
         (
             !.LastDigit = last_digit_is_not_underscore,
             grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, base_2, Token)
+            conv_string_to_int(BinaryString, base_2, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated binary literal")
@@ -2246,7 +2280,8 @@ get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         Result = eof,
         (
             !.LastDigit = last_digit_is_not_underscore,
-            rev_char_list_to_int(!.RevChars, base_8, Token)
+            rev_char_list_to_int(!.RevChars, base_8, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated octal literal")
@@ -2260,11 +2295,18 @@ get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
             get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = 'u' then
+            get_integer_size_suffix(Stream, !.RevChars, base_8, unsigned,
+                Token, !IO)
+        else if Char = 'i' then
+            get_integer_size_suffix(Stream, !.RevChars, base_8, signed,
+                Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                rev_char_list_to_int(!.RevChars, base_8, Token)
+                rev_char_list_to_int(!.RevChars, base_8, signed, size_word,
+                    Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated octal literal")
@@ -2277,6 +2319,7 @@ get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     posn::in, posn::out) is det.
 
 string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
+    Posn2 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_octal_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
@@ -2286,12 +2329,21 @@ string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
             !:LastDigit = last_digit_is_underscore,
             string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context,
                 !Posn)
+        else if Char = 'u' then
+            string_get_integer_size_suffix(String, Len, Posn1, Posn2, base_8,
+                unsigned, Token, !Posn),
+            string_get_context(Posn1, Context, !Posn)
+        else if Char = 'i' then
+            string_get_integer_size_suffix(String, Len, Posn1, Posn2, base_8,
+                signed, Token, !Posn),
+            string_get_context(Posn1, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             (
                 !.LastDigit = last_digit_is_not_underscore,
                 grab_string(String, Posn1, BinaryString, !Posn),
-                conv_string_to_int(BinaryString, base_8, Token)
+                conv_string_to_int(BinaryString, base_8, signed, size_word,
+                    Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated octal literal")
@@ -2302,7 +2354,8 @@ string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
         (
             !.LastDigit = last_digit_is_not_underscore,
             grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, base_8, Token)
+            conv_string_to_int(BinaryString, base_8, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated octal literal")
@@ -2367,7 +2420,8 @@ get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         Result = eof,
         (
             !.LastDigit = last_digit_is_not_underscore,
-            rev_char_list_to_int(!.RevChars, base_16, Token)
+            rev_char_list_to_int(!.RevChars, base_16, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated hexadecimal literal")
@@ -2381,11 +2435,18 @@ get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
             get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
+        else if Char = 'u' then
+            get_integer_size_suffix(Stream, !.RevChars, base_16, unsigned,
+                Token, !IO)
+        else if Char = 'i' then
+            get_integer_size_suffix(Stream, !.RevChars, base_16, signed,
+                Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                rev_char_list_to_int(!.RevChars, base_16, Token)
+                rev_char_list_to_int(!.RevChars, base_16, signed, size_word,
+                    Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated hexadecimal literal")
@@ -2398,6 +2459,7 @@ get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     posn::in, posn::out) is det.
 
 string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
+    Posn2 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
@@ -2407,12 +2469,21 @@ string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
             !:LastDigit = last_digit_is_underscore,
             string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context,
                 !Posn)
+        else if Char = 'u' then
+            string_get_integer_size_suffix(String, Len, Posn1, Posn2, base_16,
+                unsigned, Token, !Posn),
+            string_get_context(Posn1, Context, !Posn)
+        else if Char = 'i' then
+            string_get_integer_size_suffix(String, Len, Posn1, Posn2, base_16,
+                signed, Token, !Posn),
+            string_get_context(Posn1, Context, !Posn)
         else
             (
                 !.LastDigit = last_digit_is_not_underscore,
                 string_ungetchar(String, !Posn),
                 grab_string(String, Posn1, BinaryString, !Posn),
-                conv_string_to_int(BinaryString, base_16, Token)
+                conv_string_to_int(BinaryString, base_16, signed, size_word,
+                    Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated hexadecimal literal")
@@ -2423,7 +2494,8 @@ string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
         (
             !.LastDigit = last_digit_is_not_underscore,
             grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, base_16, Token)
+            conv_string_to_int(BinaryString, base_16, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated hexadecimal literal")
@@ -2443,7 +2515,8 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         Result = eof,
         (
             !.LastDigit = last_digit_is_not_underscore,
-            rev_char_list_to_int(!.RevChars, base_10, Token)
+            rev_char_list_to_int(!.RevChars, base_10, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated decimal literal")
@@ -2465,6 +2538,12 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated decimal literal")
             )
+        else if Char = 'u' then
+            get_integer_size_suffix(Stream, !.RevChars, base_10, unsigned,
+                Token, !IO)
+        else if Char = 'i' then
+            get_integer_size_suffix(Stream, !.RevChars, base_10, signed,
+                Token, !IO)
         else if ( Char = 'e' ; Char = 'E' ) then
             (
                 !.LastDigit = last_digit_is_not_underscore,
@@ -2478,7 +2557,8 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             io.putback_char(Stream, Char, !IO),
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                rev_char_list_to_int(!.RevChars, base_10, Token)
+                rev_char_list_to_int(!.RevChars, base_10, signed, size_word,
+                    Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated decimal literal")
@@ -2491,6 +2571,7 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     posn::in, posn::out) is det.
 
 string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
+    Posn1 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
@@ -2510,6 +2591,14 @@ string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
                 Token = error("unterminated decimal literal"),
                 string_get_context(Posn0, Context, !Posn)
             )
+        else if Char = 'u' then
+            string_get_integer_size_suffix(String, Len, Posn0, Posn1, base_10,
+                unsigned, Token, !Posn),
+            string_get_context(Posn0, Context, !Posn)
+        else if Char = 'i' then
+            string_get_integer_size_suffix(String, Len, Posn0, Posn1, base_10,
+                signed, Token, !Posn),
+            string_get_context(Posn0, Context, !Posn)
         else if ( Char = 'e' ; Char = 'E' ) then
             (
                 !.LastDigit = last_digit_is_not_underscore,
@@ -2525,7 +2614,8 @@ string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
             (
                 !.LastDigit = last_digit_is_not_underscore,
                 grab_string(String, Posn0, NumberString, !Posn),
-                conv_string_to_int(NumberString, base_10, Token)
+                conv_string_to_int(NumberString, base_10, signed, size_word,
+                    Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated decimal literal")
@@ -2536,12 +2626,118 @@ string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
         (
             !.LastDigit = last_digit_is_not_underscore,
             grab_string(String, Posn0, NumberString, !Posn),
-            conv_string_to_int(NumberString, base_10, Token)
+            conv_string_to_int(NumberString, base_10, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated decimal literal")
         ),
         string_get_context(Posn0, Context, !Posn)
+    ).
+
+:- pred get_integer_size_suffix(io.input_stream::in, list(char)::in, integer_base::in,
+    signedness::in, token::out, io::di, io::uo) is det.
+
+get_integer_size_suffix(Stream, RevChars, Base, Signedness, Token, !IO) :-
+    io.read_char_unboxed(Stream, Result, Char, !IO),
+    (
+        Result = error(Error),
+        Token = io_error(Error)
+    ;
+        Result = eof,
+        rev_char_list_to_int(RevChars, Base, Signedness, size_word, Token)
+    ;
+        Result = ok,
+        ( if Char = '8' then
+            rev_char_list_to_int(RevChars, Base, Signedness, size_8_bit, Token)
+        else if Char = '1' then
+            get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
+                '6', size_16_bit, Token, !IO)
+        else if Char = '3' then
+            get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
+                '2', size_32_bit, Token, !IO)
+        else if Char = '6' then
+            get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
+                '4', size_64_bit, Token, !IO)
+        else if char.is_digit(Char) then
+            Token = error("invalid integer size suffix")
+        else
+            io.putback_char(Stream, Char, !IO),
+            rev_char_list_to_int(RevChars, Base, Signedness, size_word, Token)
+        )
+    ).
+
+:- pred get_integer_size_suffix_2(io.input_stream::in, list(char)::in,
+    integer_base::in, signedness::in, char::in, integer_size::in,
+    token::out, io::di, io::uo) is det.
+
+get_integer_size_suffix_2(Stream, RevChars, Base, Signedness, ExpectedNextChar,
+        ExpectedSize, Token, !IO) :-
+    io.read_char_unboxed(Stream, Result, Char, !IO),
+    (
+        Result = error(Error),
+        Token = io_error(Error)
+    ;
+        Result = eof,
+        Token = error("invalid integer size suffix")
+    ;
+        Result = ok,
+        ( if Char = ExpectedNextChar then
+            rev_char_list_to_int(RevChars, Base, Signedness, ExpectedSize, Token)
+        else
+            Token = error("invalid integer size suffix")
+        )
+    ).
+
+:- pred string_get_integer_size_suffix(string::in, int::in, posn::in,
+    posn::in, integer_base::in, signedness::in, token::out,
+    posn::in, posn::out) is det.
+
+string_get_integer_size_suffix(String, Len, Posn1, Posn2, Base, Signedness,
+        Token, !Posn) :-
+    ( if string_read_char(String, Len, Char, !Posn) then
+        ( if Char = '8' then
+            grab_string(String, Posn1, DigitString, Posn2, _),
+            conv_string_to_int(DigitString, Base, Signedness, size_8_bit,
+                Token)
+        else if Char = '1' then
+            string_get_integer_size_suffix_2(String, Len, Posn1, Posn2,
+                Base, Signedness, '6', size_16_bit, Token, !Posn)
+        else if Char = '3' then
+            string_get_integer_size_suffix_2(String, Len, Posn1, Posn2,
+                Base, Signedness, '2', size_32_bit, Token, !Posn)
+        else if Char = '6' then
+            string_get_integer_size_suffix_2(String, Len, Posn1, Posn2,
+                Base, Signedness, '4', size_64_bit, Token, !Posn)
+        else if char.is_digit(Char) then
+            Token = error("invalid integer size suffix")
+        else
+            string_ungetchar(String, !Posn),
+            grab_string(String, Posn1, DigitString, Posn2, _),
+            conv_string_to_int(DigitString, Base, Signedness, size_word,
+                Token)
+        )
+    else
+        grab_string(String, Posn1, DigitString, Posn2, _),
+        conv_string_to_int(DigitString, Base, Signedness, size_word,
+            Token)
+    ).
+
+:- pred string_get_integer_size_suffix_2(string::in, int::in,
+    posn::in, posn::in, integer_base::in, signedness::in, char::in,
+    integer_size::in, token::out, posn::in, posn::out) is det.
+
+string_get_integer_size_suffix_2(String, Len, Posn1, Posn2,
+        Base, Signedness, ExpectedChar, Size, Token, !Posn) :-
+    ( if string_read_char(String, Len, Char, !Posn) then
+        ( if Char = ExpectedChar then
+            grab_string(String, Posn1, DigitString, Posn2, _),
+            conv_string_to_int(DigitString, Base, Signedness, Size, Token)
+        else
+            Token = error("invalid integer size suffix")
+        )
+    else
+        Token = error("invalid integer size suffix")
     ).
 
 :- pred get_int_dot(io.input_stream::in, last_digit_is_underscore::in,
@@ -2558,7 +2754,8 @@ get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         io.putback_char(Stream, '.', !IO),
         (
             !.LastDigit = last_digit_is_not_underscore,
-            rev_char_list_to_int(!.RevChars, base_10, Token)
+            rev_char_list_to_int(!.RevChars, base_10, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated decimal literal")
@@ -2579,7 +2776,8 @@ get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             % handle this appropriately.
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                rev_char_list_to_int(!.RevChars, base_10, Token0),
+                rev_char_list_to_int(!.RevChars, base_10, signed, size_word,
+                    Token0),
                 ( if Token0 = integer(_, Integer, _, _) then
                     Token = integer_dot(Integer)
                 else
@@ -2611,7 +2809,8 @@ string_get_int_dot(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
             (
                 !.LastDigit = last_digit_is_not_underscore,
                 grab_string(String, Posn0, NumberString, !Posn),
-                conv_string_to_int(NumberString, base_10, Token)
+                conv_string_to_int(NumberString, base_10, signed,
+                    size_word, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated decimal literal")
@@ -2623,7 +2822,8 @@ string_get_int_dot(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
         (
             !.LastDigit = last_digit_is_not_underscore,
             grab_string(String, Posn0, NumberString, !Posn),
-            conv_string_to_int(NumberString, base_10, Token)
+            conv_string_to_int(NumberString, base_10, signed, size_word,
+                Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated decimal literal")
@@ -2902,22 +3102,24 @@ string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token, Context,
 % Utility routines.
 %
 
-:- pred rev_char_list_to_int(list(char)::in, integer_base::in, token::out)
+:- pred rev_char_list_to_int(list(char)::in, integer_base::in,
+    signedness::in, integer_size::in, token::out)
     is det.
 
-rev_char_list_to_int(RevChars, Base, Token) :-
+rev_char_list_to_int(RevChars, Base, Signedness, Size, Token) :-
     ( if rev_char_list_to_string(RevChars, String) then
-        conv_string_to_int(String, Base, Token)
+        conv_string_to_int(String, Base, Signedness, Size, Token)
     else
         Token = error("invalid character in int")
     ).
 
-:- pred conv_string_to_int(string::in, integer_base::in, token::out) is det.
+:- pred conv_string_to_int(string::in, integer_base::in, signedness::in,
+    integer_size::in, token::out) is det.
 
-conv_string_to_int(String, Base, Token) :-
+conv_string_to_int(String, Base, Signedness, Size, Token) :-
     BaseInt = integer_base_int(Base),
     ( if integer.from_base_string_underscore(BaseInt, String, Integer) then
-        Token = integer(Base, Integer, signed, size_word)
+        Token = integer(Base, Integer, Signedness, Size)
     else
         Token = error("invalid character in int")
     ).

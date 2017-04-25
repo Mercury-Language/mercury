@@ -734,41 +734,62 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !Specs) :-
         list.length(ArgTerms, Arity),
         ConsId = cons(unqualified(Name), Arity, cons_id_dummy_type_ctor)
     ;
-        Functor = term.integer(Base, Integer, Signedness, size_word),
+        Functor = term.integer(Base, Integer, Signedness, Size),
         (
-            Signedness = signed,
-            ( if source_integer_to_int(Base, Integer, Int) then
-                ConsId = int_const(Int)
-            else
-                BasePrefix = integer_base_prefix(Base),
-                IntString =
-                    integer.to_base_string(Integer, integer_base_int(Base)),
-                Pieces = [words("Error: the integer literal"),
-                    quote(BasePrefix ++ IntString),
-                    words("is too big to be represented on this machine."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-                !:Specs = [Spec | !.Specs],
-                % This is a dummy.
-                ConsId = int_const(0)
+            Size = size_word,
+            (
+                Signedness = signed,
+                ( if source_integer_to_int(Base, Integer, Int) then
+                    ConsId = int_const(Int)
+                else
+                    BasePrefix = integer_base_prefix(Base),
+                    IntString = integer.to_base_string(Integer,
+                        integer_base_int(Base)),
+                    Pieces = [words("Error: the integer literal"),
+                        quote(BasePrefix ++ IntString),
+                        words("is too big to be represented on this machine."),
+                        nl],
+                    Msg = simple_msg(Context, [always(Pieces)]),
+                    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                        [Msg]),
+                    !:Specs = [Spec | !.Specs],
+                    % This is a dummy.
+                    ConsId = int_const(0)
+                )
+            ;
+                Signedness = unsigned,
+                ( if integer.to_uint(Integer, UInt) then
+                    ConsId = uint_const(UInt)
+                else
+                    BasePrefix = integer_base_prefix(Base),
+                    IntString = integer.to_base_string(Integer,
+                        integer_base_int(Base)),
+                    Pieces = [words("Error: the unsigned integer literal"),
+                        quote(BasePrefix ++ IntString ++ "u"),
+                        words("is too big to be represented on this machine."),
+                        nl],
+                    Msg = simple_msg(Context, [always(Pieces)]),
+                    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                        [Msg]),
+                    !:Specs = [Spec | !.Specs],
+                    % This is a dummy.
+                    ConsId = int_const(0)
+                )
             )
         ;
-            Signedness = unsigned,
-            ( if integer.to_uint(Integer, UInt) then
-                ConsId = uint_const(UInt)
-            else
-                BasePrefix = integer_base_prefix(Base),
-                IntString =
-                    integer.to_base_string(Integer, integer_base_int(Base)),
-                Pieces = [words("Error: the unsigned integer literal"),
-                    quote(BasePrefix ++ IntString ++ "u"),
-                    words("is too big to be represented on this machine."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-                !:Specs = [Spec | !.Specs],
-                % This is a dummy.
-                ConsId = int_const(0)
-            )
+            ( Size = size_8_bit
+            ; Size = size_16_bit
+            ; Size = size_32_bit
+            ; Size = size_64_bit
+            ),
+            Pieces = [words("Error: fixed size integers"),
+                words("are not (yet) supported.")],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [Msg]),
+            !:Specs = [Spec | !.Specs],
+            % This is a dummy.
+            ConsId = int_const(0)
         )
     ;
         Functor = term.string(String),
