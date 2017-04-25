@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: write_module_interface_files.m.
 % Main author: fjh (when this code was in modules.m).
@@ -35,7 +35,7 @@
 % It is used when compiling submodules. The datestamp on the .date0
 % file gives the last time the .int0 file was checked.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.write_module_interface_files.
 :- interface.
@@ -51,7 +51,7 @@
 :- import_module io.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % write_private_interface_file(Globals, SourceFileName,
     %   SourceFileModuleName, CompUnit, MaybeTimestamp, !IO):
@@ -92,12 +92,13 @@
 :- pred write_short_interface_file(globals::in, file_name::in,
     raw_compilation_unit::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module libs.options.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.check_raw_comp_unit.% undesirable dependency
 :- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.error_util.
@@ -130,7 +131,7 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out .int0 files.
 %
@@ -399,7 +400,7 @@ add_item_to_section_items(Section, Item, !IntItemsCord, !ImpItemsCord) :-
         !:ImpItemsCord = cord.snoc(!.ImpItemsCord, Item)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out .int and .int2 files.
 %
@@ -535,7 +536,7 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out .int3 files.
 %
@@ -572,7 +573,7 @@ write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO) :-
         touch_interface_datestamp(Globals, ModuleName, ".date3", !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type maybe_strip_assertions
     --->    dont_strip_assertions
@@ -645,7 +646,7 @@ src_item_blocks_to_int_imp_items_loop([SrcItemBlock | SrcItemBlocks],
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred strip_assertions_in_item_blocks(list(item_block(MS))::in,
     list(item_block(MS))::out) is det.
@@ -681,7 +682,7 @@ strip_assertions_in_items_acc([Item | Items], !RevItems) :-
     ),
     strip_assertions_in_items_acc(Items, !RevItems).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred strip_unnecessary_impl_defns(
     list(item_avail)::in, list(item_avail)::out,
@@ -795,7 +796,7 @@ add_type_defn_items([TypeDefnPair | TypeDefnPairs], !ImpItems) :-
     !:ImpItems = [item_type_defn(ItemTypeDefn) | !.ImpItems],
     add_type_defn_items(TypeDefnPairs, !ImpItems).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred standardize_imports(list(item_avail)::in, list(item_avail)::out)
     is det.
@@ -868,7 +869,7 @@ rebuild_imports([Pair | Pairs], [Avail | Avails]) :-
     ),
     rebuild_imports(Pairs, Avails).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred standardize_items(list(item)::in, list(item)::out) is det.
 
@@ -1226,7 +1227,7 @@ cons_args_to_type_ctor_set([Arg | Args], !TypeCtors) :-
     type_to_type_ctor_set(Type, !TypeCtors),
     cons_args_to_type_ctor_set(Args, !TypeCtors).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type type_defn_map ==
     multi_map(type_ctor, pair(type_defn, item_type_defn_info)).
@@ -1266,7 +1267,7 @@ gather_type_defns_in_section_loop(Section, [Item | Items],
     ),
     gather_type_defns_in_section_loop(Section, Items, !ItemsCord, !TypesMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gather_type_defn(type_ctor::in, type_defn::in, item_type_defn_info::in,
     type_defn_map::in, type_defn_map::out) is det.
@@ -1358,7 +1359,7 @@ accumulate_modules_from_constraint_arg_type(ArgType, !Modules) :-
         accumulate_modules_from_constraint_arg_types(Args, !Modules)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX ITEM_LIST Integrate this traversal with other traversals.
     %
@@ -1432,7 +1433,7 @@ clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
     Spec = error_spec(severity_warning, phase_term_to_parse_tree,
         [simple_msg(Context, [always(Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred actually_write_interface_file(globals::in, file_name::in,
     parse_tree_int::in, maybe(timestamp)::in, io::di, io::uo) is det.
@@ -1499,8 +1500,8 @@ actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
     % Start using the original globals again.
     update_interface(Globals, OutputFileName, !IO).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a module interface (the contents of its .int file), extract
     % the short interface part of that module (the contents of its .int2 file),
@@ -1602,7 +1603,7 @@ get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
     ),
     get_short_interface_from_items_acc(Kind, Items, !ItemsCord).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type maybe_need_imports
     --->    dont_need_imports
@@ -1800,8 +1801,8 @@ strip_foreign_import_items([Item | Items], !ItemsCord) :-
     ),
     strip_foreign_import_items(Items, !ItemsCord).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Put the contents of an interface file, as represented by its parse tree,
     % into a sort of standard order. We want to ensure that if the set of
@@ -1830,7 +1831,7 @@ strip_foreign_import_items([Item | Items], !ItemsCord) :-
     %   declaration for both a predicate and a function for the same
     %   sym_name_and_arity (which can happen, and does happen reasonably often)
     %   the resulting order is somewhat awkward, but since mode declarations
-    %   contains only a maybe(pred_or_func), not a definite pred_or_func,
+    %   contain only a maybe(pred_or_func), not a definite pred_or_func,
     %   we cannot easily do any better. We preserve the order of mode
     %   declarations for a given sym_name_and_arity, since these matter.
     %
@@ -1883,7 +1884,7 @@ order_parse_tree_int_contents(ParseTreeInt0, ParseTreeInt) :-
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntItems, ImpItems).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred order_avails(list(item_avail)::in, list(item_avail)::out) is det.
 
@@ -1934,7 +1935,7 @@ append_avail_entry(ModuleName, ImportOrUse, !AvailsCord) :-
     ),
     !:AvailsCord = cord.snoc(!.AvailsCord, Avail).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred order_items(list(item)::in, list(item)::out) is det.
 
@@ -1948,10 +1949,13 @@ order_items(Items, OrderedItems) :-
         cord.init, NonReorderableItemsCord),
     some [!OrderedItemsCord] (
         !:OrderedItemsCord = cord.init,
-        map.foldl(append_sym_name_map_items, TypeDefnMap, !OrderedItemsCord),
-        map.foldl(append_sym_name_map_items, InstDefnMap, !OrderedItemsCord),
-        map.foldl(append_sym_name_map_items, ModeDefnMap, !OrderedItemsCord),
-        map.foldl(append_pred_related_items, PredRelatedMap,
+        map.foldl_values(append_sym_name_map_items, TypeDefnMap,
+            !OrderedItemsCord),
+        map.foldl_values(append_sym_name_map_items, InstDefnMap,
+            !OrderedItemsCord),
+        map.foldl_values(append_sym_name_map_items, ModeDefnMap,
+            !OrderedItemsCord),
+        map.foldl_values(append_pred_related_items, PredRelatedMap,
             !OrderedItemsCord),
         !:OrderedItemsCord = !.OrderedItemsCord ++
             cord.from_list(set.to_sorted_list(SortableItems)),
@@ -1959,16 +1963,61 @@ order_items(Items, OrderedItems) :-
         OrderedItems = cord.list(!.OrderedItemsCord)
     ).
 
+%---------------------------------------------------------------------------%
+
 :- type sym_name_items_map == map(sym_name_and_arity, cord(item)).
-:- type pred_related_items_map == map(sym_name_and_arity, pred_related_items).
+:- type pred_related_items_map == map(sym_name, pred_related_items).
+
+:- type are_arities_pfs_known
+    --->    some_arities_pfs_are_unknown
+    ;       all_arities_pfs_are_known.
+
+:- type arity_pf
+    --->    arity_pf(int, pred_or_func).
 
 :- type pred_related_items
     --->    pred_related_items(
-                prs_pred_decl_items     :: cord(item),
-                prs_mode_decl_items     :: cord(item)
+                prs_arities_pfs_known   :: are_arities_pfs_known,
+
+                % The next two field contain redundant information;
+                % we only use one. Which one that is depends on the
+                % value of prs_arities_pfs_known.
+
+                % If there is a pred_decl and/or mode_decl item for this
+                % sym_name for which we don't know either its arity
+                % or whether it applies to a predicate or a function
+                % (due to their use of with_type and/or with_inst annotations),
+                % then we print all the pred and mode declarations
+                % for this sym_name in their original order. This field
+                % contains them in that order.
+                prs_all_items           :: cord(item),
+
+                % If we know the arity and the pred_or_func for all the
+                % pred_decl and mode_decl items for this sym_name, then
+                % we can and do print the pred and mode declarations
+                % for each arity/pf combination separately. This field
+                % contains all the predicate and mode declarations
+                % for which we know the arity and the pred_or_func.
+                prs_arity_pf_items      :: map(arity_pf, arity_pf_items)
+            ).
+
+:- type arity_pf_items
+    --->    arity_pf_items(
+                apfi_pred_decl_items    :: cord(item),
+                % There should be exactly one item_pred_decl for any
+                % sym_name/arity/pred_or_func combination that has any
+                % item_mode_decl, but using a cord simplifies the code.
+
+                apfi_mode_decl_items    :: cord(item)
+                % There may be any number of item_mode_decls for any
+                % sym_name/arity/pred_or_func combination that has
+                % an item_pred_decl, from zero on up.
+
                 % We could have a third field here for pragmas related
                 % to the predicate, for more "natural-looking" output.
             ).
+
+%---------------------------------------------------------------------------%
 
 :- pred classify_items(list(item)::in,
     sym_name_items_map::in, sym_name_items_map::out,
@@ -2002,39 +2051,111 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         add_to_sym_name_items_map(SymNameAndArity, Item, !ModeDefnMap)
     ;
         Item = item_pred_decl(ItemPredDeclInfo),
-        ItemPredDeclInfo = item_pred_decl_info(SymName, _PorF, Args,
-            _, _, _, _, _, _, _, _, _, _, _),
-        list.length(Args, Arity),
-        SymNameAndArity = sym_name_arity(SymName, Arity),
-        ( if map.search(!.PredRelatedMap, SymNameAndArity, OldPredRelated) then
-            OldPredRelated =
-                pred_related_items(OldPredDeclItems, ModeDeclItems),
-            NewPredDeclItems = cord.snoc(OldPredDeclItems, Item),
-            NewPredRelated = pred_related_items(NewPredDeclItems,
-                ModeDeclItems),
-            map.det_update(SymNameAndArity, NewPredRelated, !PredRelatedMap)
+        ItemPredDeclInfo = item_pred_decl_info(SymName, PorF, Args,
+            MaybeWithType, MaybeWithInst, _, _, _, _, _, _, _, _, _),
+        ( if
+            MaybeWithType = no,
+            MaybeWithInst = no
+        then
+            list.length(Args, Arity),
+            ArityPf = arity_pf(Arity, PorF),
+            ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
+                PredRelated0 =
+                    pred_related_items(Known, AllItems0, ArityPfMap0),
+                AllItems = cord.snoc(AllItems0, Item),
+                ( if map.search(ArityPfMap0, ArityPf, ArityPfItems0) then
+                    ArityPfItems0 = arity_pf_items(PredItems0, ModeItems),
+                    PredItems = cord.snoc(PredItems0, Item),
+                    ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                    map.det_update(ArityPf, ArityPfItems,
+                        ArityPfMap0, ArityPfMap)
+                else
+                    PredItems = cord.singleton(Item),
+                    ModeItems = cord.init,
+                    ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                    map.det_insert(ArityPf, ArityPfItems,
+                        ArityPfMap0, ArityPfMap)
+                ),
+                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+                map.det_update(SymName, PredRelated, !PredRelatedMap)
+            else
+                Known = all_arities_pfs_are_known,
+                AllItems = cord.singleton(Item),
+                PredItems = cord.singleton(Item),
+                ModeItems = cord.init,
+                ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                ArityPfMap = map.singleton(ArityPf, ArityPfItems),
+                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+                map.det_insert(SymName, PredRelated, !PredRelatedMap)
+            )
         else
-            NewPredRelated =
-                pred_related_items(cord.singleton(Item), cord.init),
-            map.det_insert(SymNameAndArity, NewPredRelated, !PredRelatedMap)
+            Known = some_arities_pfs_are_unknown,
+            ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
+                PredRelated0 =
+                    pred_related_items(_Known0, AllItems0, ArityPfMap),
+                AllItems = cord.snoc(AllItems0, Item),
+                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+                map.det_update(SymName, PredRelated, !PredRelatedMap)
+            else
+                AllItems = cord.singleton(Item),
+                map.init(ArityPfMap),
+                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+                map.det_insert(SymName, PredRelated, !PredRelatedMap)
+            )
         )
     ;
         Item = item_mode_decl(ItemModeDeclInfo),
-        ItemModeDeclInfo = item_mode_decl_info(SymName, _PorF, Args,
-            _, _, _, _, _),
-        list.length(Args, Arity),
-        SymNameAndArity = sym_name_arity(SymName, Arity),
-        ( if map.search(!.PredRelatedMap, SymNameAndArity, OldPredRelated) then
-            OldPredRelated =
-                pred_related_items(PredDeclItems, OldModeDeclItems),
-            NewModeDeclItems = cord.snoc(OldModeDeclItems, Item),
-            NewPredRelated =
-                pred_related_items(PredDeclItems, NewModeDeclItems),
-            map.det_update(SymNameAndArity, NewPredRelated, !PredRelatedMap)
+        ItemModeDeclInfo = item_mode_decl_info(SymName, MaybePorF, Args,
+            MaybeWithInst, _, _, _, _),
+        ( if
+            MaybePorF = yes(PorF),
+            MaybeWithInst = no
+        then
+            list.length(Args, Arity),
+            ArityPf = arity_pf(Arity, PorF),
+            ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
+                PredRelated0 =
+                    pred_related_items(Known, AllItems0, ArityPfMap0),
+                AllItems = cord.snoc(AllItems0, Item),
+                ( if map.search(ArityPfMap0, ArityPf, ArityPfItems0) then
+                    ArityPfItems0 = arity_pf_items(PredItems, ModeItems0),
+                    ModeItems = cord.snoc(ModeItems0, Item),
+                    ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                    map.det_update(ArityPf, ArityPfItems,
+                        ArityPfMap0, ArityPfMap)
+                else
+                    PredItems = cord.init,
+                    ModeItems = cord.singleton(Item),
+                    ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                    map.det_insert(ArityPf, ArityPfItems,
+                        ArityPfMap0, ArityPfMap)
+                ),
+                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+                map.det_update(SymName, PredRelated, !PredRelatedMap)
+            else
+                Known = all_arities_pfs_are_known,
+                AllItems = cord.singleton(Item),
+                PredItems = cord.init,
+                ModeItems = cord.singleton(Item),
+                ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                ArityPfMap = map.singleton(ArityPf, ArityPfItems),
+                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+                map.det_insert(SymName, PredRelated, !PredRelatedMap)
+            )
         else
-            NewPredRelated = pred_related_items(cord.init,
-                cord.singleton(Item)),
-            map.det_insert(SymNameAndArity, NewPredRelated, !PredRelatedMap)
+            Known = some_arities_pfs_are_unknown,
+            ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
+                PredRelated0 =
+                    pred_related_items(_Known0, AllItems0, ArityPfMap),
+                AllItems = cord.snoc(AllItems0, Item),
+                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+                map.det_update(SymName, PredRelated, !PredRelatedMap)
+            else
+                AllItems = cord.singleton(Item),
+                map.init(ArityPfMap),
+                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+                map.det_insert(SymName, PredRelated, !PredRelatedMap)
+            )
         )
     ;
         Item = item_pragma(ItemPragmaInfo),
@@ -2112,19 +2233,61 @@ add_to_sym_name_items_map(SymNameAndArity, Item, !SymNameItemsMap) :-
         map.det_insert(SymNameAndArity, NewItems, !SymNameItemsMap)
     ).
 
-:- pred append_sym_name_map_items(sym_name_and_arity::in, cord(item)::in,
+%---------------------------------------------------------------------------%
+
+:- pred append_sym_name_map_items(cord(item)::in,
     cord(item)::in, cord(item)::out) is det.
 
-append_sym_name_map_items(_SymName, SymNameItemsCord, !ItemsCord) :-
+append_sym_name_map_items(SymNameItemsCord, !ItemsCord) :-
     !:ItemsCord = !.ItemsCord ++ SymNameItemsCord.
 
-:- pred append_pred_related_items(sym_name_and_arity::in,
-    pred_related_items::in, cord(item)::in, cord(item)::out) is det.
+:- pred append_pred_related_items(pred_related_items::in,
+    cord(item)::in, cord(item)::out) is det.
 
-append_pred_related_items(_SymName, PredRelated, !ItemsCord) :-
-    PredRelated = pred_related_items(PredDeclItemsCord, ModeDeclItemsCord),
-    !:ItemsCord = !.ItemsCord ++ PredDeclItemsCord ++ ModeDeclItemsCord.
+append_pred_related_items(PredRelated, !ItemsCord) :-
+    PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+    (
+        Known = all_arities_pfs_are_known,
+        % We know, for each pred and mode declaration, the actual arity
+        % and pred_or_func of the "predicate" they apply to. This allows us
+        % to order the declarations we output by
+        %
+        % - lower arities before higher arities,
+        % - functions before predicates,
+        % - "predicate" declarations (for functions as well as actual
+        %   predicates) before their mode declarations.
+        %
+        % The first two criteria are enforced by the key type of the map,
+        % and the third by append_arity_pf_items.
+        %
+        % Specifying this precise an order keeps the interface file unchanged
+        % even if the order of the items involved changes in the source code.
+        map.foldl_values(append_arity_pf_items, ArityPfMap, !ItemsCord)
+    ;
+        Known = some_arities_pfs_are_unknown,
+        % We cannot do what we do above, because for at least one pred
+        % or mode declaration, we do not know either its arity, or
+        % whether it belongs to a function or to a predicate.
+        % Reordering mode declarations for the same entity (predicate or
+        % function) could change the meaning of the program.
+        %
+        % Reordering pred declarations cannot change the meaning of the
+        % program (since each of those entities must have exactly one),
+        % but treating them differently from mode declarations would
+        % not be worthwhile, since predicate declarations with with_type
+        % and/or with_inst annotations are very rare. (With_inst annotations
+        % are possible on item_pred_decls that contain a combined predmode
+        % declaration.)
+        !:ItemsCord = !.ItemsCord ++ AllItems
+    ).
 
-%-----------------------------------------------------------------------------%
+:- pred append_arity_pf_items(arity_pf_items::in,
+    cord(item)::in, cord(item)::out) is det.
+
+append_arity_pf_items(ArityPfItems, !ItemsCord) :-
+    ArityPfItems = arity_pf_items(PredDeclItems, ModeDeclItems),
+    !:ItemsCord = !.ItemsCord ++ PredDeclItems ++ ModeDeclItems.
+
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.write_module_interface_files.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
