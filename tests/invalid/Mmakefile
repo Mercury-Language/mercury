@@ -186,6 +186,7 @@ SINGLEMODULE= \
 	invalid_new \
 	invalid_pragma \
 	invalid_typeclass \
+	invalid_uint_inst \
 	io_in_ite_cond \
 	kind \
 	lambda_syntax_error \
