@@ -54,7 +54,7 @@ into another language, under the above conditions for modified versions.
 @author Peter Wang
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995--2012 The University of Melbourne.
+Copyright @copyright{} 1995--2012 The University of Melbourne.@*
 Copyright @copyright{} 2013--2017 The Mercury team.
 
 Permission is granted to make and distribute verbatim copies of
