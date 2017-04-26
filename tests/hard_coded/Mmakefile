@@ -636,6 +636,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		try_syntax_5 \
 		try_syntax_6 \
 		try_syntax_7 \
+		uint_arith \
 		user_defined_equality \
 		version_array_test \
 		version_hash_table_delete \
