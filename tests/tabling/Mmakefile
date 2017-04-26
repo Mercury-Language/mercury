@@ -23,6 +23,7 @@ SIMPLE_NONLOOP_PROGS = \
 	fib_list \
 	fib_stats \
 	fib_string \
+	fib_uint \
 	loopcheck_no_loop \
 	loopcheck_nondet_no_loop \
 	mercury_java_parser_dead_proc_elim_bug \
