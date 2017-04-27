@@ -46,8 +46,8 @@
 
     % Initialize an empty map.
     %
-:- pred init(map(_, _)::uo) is det.
 :- func init = (map(K, V)::uo) is det.
+:- pred init(map(_, _)::uo) is det.
 
     % Initialize a map containing the given key-value pair.
     %
@@ -81,6 +81,10 @@
     %
 :- func lookup(map(K, V), K) = V.
 :- pred lookup(map(K, V)::in, K::in, V::out) is det.
+
+    % Search map for data.
+    %
+:- pred inverse_search(map(K, V)::in, V::in, K::out) is nondet.
 
     % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next lower key instead.
@@ -123,10 +127,6 @@
     % As above, but abort if there is no smallest key.
     %
 :- func det_min_key(map(K, V)) = K.
-
-    % Search map for data.
-    %
-:- pred inverse_search(map(K, V)::in, V::in, K::out) is nondet.
 
     % Insert a new key and corresponding value into a map.
     % Fail if the key already exists.
@@ -281,6 +281,11 @@
     %
 :- pred det_remove(K::in, V::out, map(K, V)::in, map(K, V)::out) is det.
 
+    % Remove the smallest item from the map, fail if the map is empty.
+    %
+:- pred remove_smallest(K::out, V::out, map(K, V)::in, map(K, V)::out)
+    is semidet.
+
     % Count the number of elements in the map.
     %
 :- func count(map(K, V)) = int.
@@ -345,11 +350,6 @@
     %
 :- func optimize(map(K, V)) = map(K, V).
 :- pred optimize(map(K, V)::in, map(K, V)::out) is det.
-
-    % Remove the smallest item from the map, fail if the map is empty.
-    %
-:- pred remove_smallest(K::out, V::out, map(K, V)::in, map(K, V)::out)
-    is semidet.
 
     % Perform an inorder traversal of the map, applying
     % an accumulator predicate for each key-value pair.
@@ -739,19 +739,19 @@
     % Fail if and only if this predicate fails on the values associated
     % with some common key.
     %
+:- func intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+
 :- pred intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
 :- mode intersect(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode intersect(pred(in, in, out) is det, in, in, out) is det.
 
-:- func intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
-
     % Calls intersect. Aborts if intersect fails.
     %
-:- pred det_intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
-:- mode det_intersect(pred(in, in, out) is semidet, in, in, out) is det.
-
 :- func det_intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- mode det_intersect(func(in, in) = out is semidet, in, in) = out is det.
+
+:- pred det_intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode det_intersect(pred(in, in, out) is semidet, in, in, out) is det.
 
     % Given two maps M1 and M2, create a third map M3 that has only the
     % keys that occur in both M1 and M2. For keys that occur in both M1
@@ -783,11 +783,11 @@
 
     % Calls union. Aborts if union fails.
     %
-:- pred det_union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
-:- mode det_union(pred(in, in, out) is semidet, in, in, out) is det.
-
 :- func det_union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- mode det_union(func(in, in) = out is semidet, in, in) = out is det.
+
+:- pred det_union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode det_union(pred(in, in, out) is semidet, in, in, out) is det.
 
     % Consider the original map a set of key-value pairs. This predicate
     % returns a map that maps each value to the set of keys it is paired
@@ -944,6 +944,9 @@ map.lookup(Map, K, V) :-
         report_lookup_error("map.lookup: key not found", K, V)
     ).
 
+map.inverse_search(Map, V, K) :-
+    map.member(Map, K, V).
+
 map.lower_bound_search(Map, SearchK, K, V) :-
     tree234.lower_bound_search(Map, SearchK, K, V).
 
@@ -974,7 +977,7 @@ map.det_max_key(M) =
     ( if K = map.max_key(M) then
         K
     else
-        unexpected($module, $pred, "map.max_key failed")
+        unexpected($pred, "map.max_key failed")
     ).
 
 map.min_key(M) = tree234.min_key(M).
@@ -983,7 +986,7 @@ map.det_min_key(M) =
     ( if K = map.min_key(M) then
         K
     else
-        unexpected($module, $pred, "map.min_key failed")
+        unexpected($pred, "map.min_key failed")
     ).
 
 map.insert(M1, K, V) = M2 :-
@@ -1007,9 +1010,9 @@ map.det_insert_from_corresponding_lists(M1, Ks, Vs) = M2 :-
 
 map.det_insert_from_corresponding_lists([], [], !Map).
 map.det_insert_from_corresponding_lists([], [_ | _], _, _) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 map.det_insert_from_corresponding_lists([_ | _], [], _, _) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 map.det_insert_from_corresponding_lists([K | Ks], [V | Vs], !Map) :-
     map.det_insert(K, V, !Map),
     map.det_insert_from_corresponding_lists(Ks, Vs, !Map).
@@ -1027,9 +1030,9 @@ map.set_from_corresponding_lists(M1, Ks, Vs) = M2 :-
 
 map.set_from_corresponding_lists([], [], !Map).
 map.set_from_corresponding_lists([], [_ | _], _, _) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 map.set_from_corresponding_lists([_ | _], [], _, _) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 map.set_from_corresponding_lists([K | Ks], [V | Vs], !Map) :-
     map.set(K, V, !Map),
     map.set_from_corresponding_lists(Ks, Vs, !Map).
@@ -1064,16 +1067,16 @@ map.search_insert(K, V, MaybeOldV, !Map) :-
 map.transform_value(P, K, !Map) :-
     tree234.transform_value(P, K, !Map).
 
+map.det_transform_value(F, K, !.Map) = !:Map :-
+    map.det_transform_value(pred(V0::in, V::out) is det :- V = F(V0), K,
+        !Map).
+
 map.det_transform_value(P, K, !Map) :-
     ( if map.transform_value(P, K, !.Map, NewMap) then
         !:Map = NewMap
     else
         report_lookup_error("map.det_transform_value: key not found", K)
     ).
-
-map.det_transform_value(F, K, !.Map) = !:Map :-
-    map.det_transform_value(pred(V0::in, V::out) is det :- V = F(V0), K,
-        !Map).
 
 map.set(M1, K, V) = M2 :-
     map.set(K, V, M1, M2).
@@ -1209,16 +1212,14 @@ map.det_remove(Key, Value, !Map) :-
         report_lookup_error("map.det_remove: key not found", Key, Value)
     ).
 
+map.remove_smallest(K, V, !Map) :-
+    tree234.remove_smallest(K, V, !Map).
+
 map.count(M) = N :-
     map.count(M, N).
 
 map.count(Map, Count) :-
     tree234.count(Map, Count).
-
-%---------------------------------------------------------------------------%
-
-map.inverse_search(Map, V, K) :-
-    map.member(Map, K, V).
 
 %---------------------------------------------------------------------------%
 
@@ -1235,27 +1236,9 @@ map.merge(M1, M2) = M3 :-
     map.merge(M1, M2, M3).
 
 map.merge(MA, MB, M) :-
+    % You may wish to compare this to old_merge below.
     map.to_assoc_list(MB, MBList),
     map.det_insert_from_assoc_list(MBList, MA, M).
-
-%---------------------------------------------------------------------------%
-
-map.old_merge(M1, M2) = M3 :-
-    map.old_merge(M1, M2, M3).
-
-map.old_merge(M0, M1, M) :-
-    map.to_assoc_list(M0, ML0),
-    map.to_assoc_list(M1, ML1),
-    list.merge(ML0, ML1, ML),
-    % ML may be sorted, but it may contain duplicates.
-    map.from_assoc_list(ML, M).
-
-%---------------------------------------------------------------------------%
-
-map.optimize(M1) = M2 :-
-    map.optimize(M1, M2).
-
-map.optimize(Map, Map).
 
 %---------------------------------------------------------------------------%
 
@@ -1300,13 +1283,13 @@ map.overlay_large_map_2([K - V | AssocList], Map0, Map) :-
 map.select(M1, S) = M2 :-
     map.select(M1, S, M2).
 
-map.select_sorted_list(M1, S) = M2 :-
-    map.select_sorted_list(M1, S, M2).
-
 map.select(Original, KeySet, NewMap) :-
     set.to_sorted_list(KeySet, Keys),
     map.init(NewMap0),
     map.select_loop(Keys, Original, NewMap0, NewMap).
+
+map.select_sorted_list(M1, S) = M2 :-
+    map.select_sorted_list(M1, S, M2).
 
 map.select_sorted_list(Original, Keys, NewMap) :-
     map.init(NewMap0),
@@ -1337,8 +1320,10 @@ map.apply_to_list([K | Ks], Map, [V | Vs]) :-
 
 %---------------------------------------------------------------------------%
 
-map.remove_smallest(K, V, !Map) :-
-    tree234.remove_smallest(K, V, !Map).
+map.optimize(M1) = M2 :-
+    map.optimize(M1, M2).
+
+map.optimize(Map, Map).
 
 %---------------------------------------------------------------------------%
 
@@ -1429,10 +1414,6 @@ map.intersect(F, M1, M2) = M3 :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     map.intersect(P, M1, M2, M3).
 
-map.det_intersect(PF, M1, M2) = M3 :-
-    P = (pred(X::in, Y::in, Z::out) is semidet :- Z = PF(X, Y) ),
-    map.det_intersect(P, M1, M2, M3).
-
 map.intersect(CommonPred, Map1, Map2, Common) :-
     map.to_sorted_assoc_list(Map1, AssocList1),
     map.to_sorted_assoc_list(Map2, AssocList2),
@@ -1478,11 +1459,15 @@ map.intersect_loop(AssocList1, AssocList2, CommonPred, !RevCommonAssocList) :-
         )
     ).
 
+map.det_intersect(PF, M1, M2) = M3 :-
+    P = (pred(X::in, Y::in, Z::out) is semidet :- Z = PF(X, Y) ),
+    map.det_intersect(P, M1, M2, M3).
+
 map.det_intersect(CommonPred, Map1, Map2, Common) :-
     ( if map.intersect(CommonPred, Map1, Map2, CommonPrime) then
         Common = CommonPrime
     else
-        unexpected($module, $pred, "map.intersect failed")
+        unexpected($pred, "map.intersect failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1531,10 +1516,6 @@ map.common_subset_loop(AssocList1, AssocList2, !RevCommonAssocList) :-
 map.union(F, M1, M2) = M3 :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     map.union(P, M1, M2, M3).
-
-map.det_union(F, M1, M2) = M3 :-
-    P = (pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
-    map.det_union(P, M1, M2, M3).
 
 map.union(CommonPred, Map1, Map2, Common) :-
     map.to_sorted_assoc_list(Map1, AssocList1),
@@ -1600,11 +1581,15 @@ map.union_loop(AssocList1, AssocList2, CommonPred, !RevCommonAssocList) :-
         )
     ).
 
+map.det_union(F, M1, M2) = M3 :-
+    P = (pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
+    map.det_union(P, M1, M2, M3).
+
 map.det_union(CommonPred, Map1, Map2, Union) :-
     ( if map.union(CommonPred, Map1, Map2, UnionPrime) then
         Union = UnionPrime
     else
-        unexpected($module, $pred, "map.union failed")
+        unexpected($pred, "map.union failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1630,6 +1615,18 @@ map.det_elem(Key, Map) = map.lookup(Map, Key).
 'elem :='(Key, Map, Value) = map.set(Map, Key, Value).
 
 'det_elem :='(Key, Map, Value) = map.det_update(Map, Key, Value).
+
+%---------------------------------------------------------------------------%
+
+map.old_merge(M1, M2) = M3 :-
+    map.old_merge(M1, M2, M3).
+
+map.old_merge(M0, M1, M) :-
+    map.to_assoc_list(M0, ML0),
+    map.to_assoc_list(M1, ML1),
+    list.merge(ML0, ML1, ML),
+    % ML may be sorted, but it may contain duplicates.
+    map.from_assoc_list(ML, M).
 
 %---------------------------------------------------------------------------%
 :- end_module map.

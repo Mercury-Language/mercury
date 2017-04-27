@@ -26,12 +26,12 @@
 
     % A version_array2d is a two-dimensional version array stored in row-major
     % order (that is, the elements of the first row in left-to-right order,
-    % followed by the elements of the second row and so forth.)
+    % followed by the elements of the second row, and so on.)
     %
 :- type version_array2d(T).
 
-    % version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs a 2d
-    % version array of size M * N, with the special case that
+    % version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs
+    % a 2d version array of size M * N, with the special case that
     % bounds(version_array2d([]), 0, 0).
     %
     % An exception is thrown if the sublists are not all the same length.
@@ -44,6 +44,15 @@
     % An exception is thrown if M < 0 or N < 0.
     %
 :- func init(int, int, T) = version_array2d(T).
+
+    % bounds(version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), M, N)
+    %
+:- pred bounds(version_array2d(T)::in, int::out, int::out) is det.
+
+    % in_bounds(version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), I, J)
+    % succeeds iff 0 =< I < M, 0 =< J < N.
+    %
+:- pred in_bounds(version_array2d(T)::in, int::in, int::in) is semidet.
 
     % version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) ^ elem(I, J) = X
     % where X is the J+1th element of the I+1th row (i.e. indices start from
@@ -62,17 +71,8 @@
     % A predicate version is also provided.
     %
 :- func ( version_array2d(T) ^ elem(int, int) := T  ) = version_array2d(T).
-:- pred set(int::in, int::in, T::in, version_array2d(T)::in,
-            version_array2d(T)::out) is det.
-
-    % bounds(version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), M, N)
-    %
-:- pred bounds(version_array2d(T)::in, int::out, int::out) is det.
-
-    % in_bounds(version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), I, J)
-    % succeeds iff 0 =< I < M, 0 =< J < N.
-    %
-:- pred in_bounds(version_array2d(T)::in, int::in, int::in) is semidet.
+:- pred set(int::in, int::in, T::in,
+    version_array2d(T)::in, version_array2d(T)::out) is det.
 
     % lists(version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN])) =
     %     [[X11, ..., X1N], ..., [XM1, ..., XMN]]
@@ -118,23 +118,24 @@
 %---------------------------------------------------------------------------%
 
 version_array2d(      []      ) = version_array2d(0, 0, version_array([])).
-
 version_array2d(Xss @ [Xs | _]) = VA2D :-
-    M    = length(Xss),
-    N    = length(Xs),
-    A    = version_array(condense(Xss)),
-    VA2D = ( if    all [Ys] ( member(Ys, Xss) => length(Ys) = N )
-             then  version_array2d(M, N, A)
-             else  func_error("version_array2d.version_array2d/1: " ++
-                       "non-rectangular list of lists")
-           ).
+    M = length(Xss),
+    N = length(Xs),
+    A = version_array(condense(Xss)),
+    ( if all [Ys] ( member(Ys, Xss) => length(Ys) = N ) then
+        VA2D = version_array2d(M, N, A)
+    else
+        error("version_array2d.version_array2d/1: " ++
+            "non-rectangular list of lists")
+    ).
 
 %---------------------------------------------------------------------------%
 
 init(M, N, X) =
-    ( if    M >= 0, N >= 0
-      then  version_array2d(M, N, version_array.init(M * N, X))
-      else  func_error("version_array2d.new: bounds must be non-negative")
+    ( if M >= 0, N >= 0 then
+        version_array2d(M, N, version_array.init(M * N, X))
+    else
+        func_error("version_array2d.new: bounds must be non-negative")
     ).
 
 %---------------------------------------------------------------------------%
@@ -162,16 +163,17 @@ set(I, J, X, VA2D, VA2D ^ elem(I, J) := X).
 
 lists(version_array2d(M, N, VA)) = lists_2((M * N) - 1, N - 1, N, VA, [], []).
 
-:- func lists_2(int, int, int, version_array(T), list(T), list(list(T))) =
-            list(list(T)).
+:- func lists_2(int, int, int, version_array(T), list(T),
+    list(list(T))) = list(list(T)).
 
 lists_2(IJ, J, N, VA, Xs, Xss) =
     ( if 0 =< IJ then
-        ( if    0 =< J
-          then  lists_2(IJ - 1, J - 1, N, VA, [VA ^ elem(IJ) | Xs], Xss       )
-          else  lists_2(IJ,     N - 1, N, VA, [],                   [Xs | Xss])
+        ( if 0 =< J then
+            lists_2(IJ - 1, J - 1, N, VA, [VA ^ elem(IJ) | Xs], Xss       )
+        else
+            lists_2(IJ,     N - 1, N, VA, [],                   [Xs | Xss])
         )
-      else
+    else
         [Xs | Xss]
     ).
 
@@ -188,16 +190,17 @@ resize(VA2D0, M, N, X) = VA2D :-
     N1    = min(N0, N),
     VA2D  = resize_2(0, 0, M1, N1, VA2D0, VA2D1).
 
-:- func resize_2(int, int, int, int, version_array2d(T), version_array2d(T)) =
-            version_array2d(T).
+:- func resize_2(int, int, int, int, version_array2d(T),
+    version_array2d(T)) = version_array2d(T).
 
 resize_2(I, J, M, N, SrcVA2D, DestVA2D) =
-    ( if      I >= M
-      then    DestVA2D
-      else if J >= N
-      then    resize_2(I + 1, 0, M, N, SrcVA2D, DestVA2D)
-      else    resize_2(I, J + 1, M, N, SrcVA2D,
-                    DestVA2D ^ elem(I, J) := SrcVA2D ^ elem(I, J))
+    ( if I >= M then
+        DestVA2D
+    else if J >= N then
+        resize_2(I + 1, 0, M, N, SrcVA2D, DestVA2D)
+    else
+        resize_2(I, J + 1, M, N, SrcVA2D,
+            DestVA2D ^ elem(I, J) := SrcVA2D ^ elem(I, J))
     ).
 
 %---------------------------------------------------------------------------%

@@ -320,6 +320,131 @@ functor(Term, NonCanon, Functor, Arity) :-
         functor_idcc(Term, Functor, Arity)
     ).
 
+:- pred functor_dna(T::in, string::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+    functor_dna(Term::in, Functor::out, Arity::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"{
+#define TYPEINFO_ARG            TypeInfo_for_T
+#define TERM_ARG                Term
+#define FUNCTOR_ARG             Functor
+#define ARITY_ARG               Arity
+#define NONCANON                MR_NONCANON_ABORT
+#include ""mercury_ml_functor_body.h""
+#undef  TYPEINFO_ARG
+#undef  TERM_ARG
+#undef  FUNCTOR_ARG
+#undef  ARITY_ARG
+#undef  NONCANON
+}").
+
+functor_dna(Term, Functor, Arity) :-
+    local_deconstruct(Term, do_not_allow, Functor, _, Arity, _Arguments).
+
+:- pred functor_can(T::in, string::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+    functor_can(Term::in, Functor::out, Arity::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"{
+#define TYPEINFO_ARG            TypeInfo_for_T
+#define TERM_ARG                Term
+#define FUNCTOR_ARG             Functor
+#define ARITY_ARG               Arity
+#define NONCANON                MR_NONCANON_ALLOW
+#include ""mercury_ml_functor_body.h""
+#undef  TYPEINFO_ARG
+#undef  TERM_ARG
+#undef  FUNCTOR_ARG
+#undef  ARITY_ARG
+#undef  NONCANON
+}").
+
+functor_can(Term, Functor, Arity) :-
+    local_deconstruct(Term, canonicalize, Functor, _, Arity, _Arguments).
+
+:- pred functor_idcc(T::in, string::out, int::out) is cc_multi.
+
+:- pragma foreign_proc("C",
+    functor_idcc(Term::in, Functor::out, Arity::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"{
+#define TYPEINFO_ARG            TypeInfo_for_T
+#define TERM_ARG                Term
+#define FUNCTOR_ARG             Functor
+#define ARITY_ARG               Arity
+#define NONCANON                MR_NONCANON_CC
+#include ""mercury_ml_functor_body.h""
+#undef  TYPEINFO_ARG
+#undef  TERM_ARG
+#undef  FUNCTOR_ARG
+#undef  ARITY_ARG
+#undef  NONCANON
+}").
+
+functor_idcc(Term, Functor, Arity) :-
+    local_deconstruct(Term, include_details_cc, Functor, _, Arity, _Arguments).
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    functor_number(Term::in, FunctorNumber::out, Arity::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"{
+#define TYPEINFO_ARG            TypeInfo_for_T
+#define TERM_ARG                Term
+#define FUNCTOR_NUMBER_ARG      FunctorNumber
+#undef  FUNCTOR_ARG
+#define ARITY_ARG               Arity
+#define NONCANON                MR_NONCANON_ABORT
+#include ""mercury_ml_functor_body.h""
+#undef  TYPEINFO_ARG
+#undef  TERM_ARG
+#undef  FUNCTOR_NUMBER_ARG
+#undef  ARITY_ARG
+#undef  NONCANON
+
+SUCCESS_INDICATOR = (FunctorNumber >= 0);
+}").
+
+functor_number(Term, FunctorNumber, Arity) :-
+    ( if erlang_rtti_implementation.is_erlang_backend then
+        erlang_rtti_implementation.functor_number(Term, FunctorNumber, Arity)
+    else
+        private_builtin.sorry("deconstruct.functor_number")
+    ).
+
+:- pragma foreign_proc("C",
+    functor_number_cc(Term::in, FunctorNumber::out, Arity::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"{
+#define TYPEINFO_ARG            TypeInfo_for_T
+#define TERM_ARG                Term
+#define FUNCTOR_NUMBER_ARG      FunctorNumber
+#undef  FUNCTOR_ARG
+#define ARITY_ARG               Arity
+#define NONCANON                MR_NONCANON_ALLOW
+#include ""mercury_ml_functor_body.h""
+#undef  TYPEINFO_ARG
+#undef  TERM_ARG
+#undef  FUNCTOR_NUMBER_ARG
+#undef  ARITY_ARG
+#undef  NONCANON
+
+SUCCESS_INDICATOR = (FunctorNumber >= 0);
+}").
+
+functor_number_cc(Term, FunctorNumber, Arity) :-
+    ( if erlang_rtti_implementation.is_erlang_backend then
+        erlang_rtti_implementation.functor_number_cc(Term, FunctorNumber,
+            Arity)
+    else
+        rtti_implementation.functor_number_cc(Term, FunctorNumber, Arity)
+    ).
+
+%---------------------------------------------------------------------------%
+
 arg(Term, NonCanon, Index, Argument) :-
     (
         NonCanon = do_not_allow,
@@ -487,129 +612,6 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
         MaybeResult = yes({Functor, Arity, Arguments})
     else
         MaybeResult = no
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred functor_dna(T::in, string::out, int::out) is det.
-:- pred functor_can(T::in, string::out, int::out) is det.
-:- pred functor_idcc(T::in, string::out, int::out) is cc_multi.
-
-:- pragma foreign_proc("C",
-    functor_dna(Term::in, Functor::out, Arity::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"{
-#define TYPEINFO_ARG            TypeInfo_for_T
-#define TERM_ARG                Term
-#define FUNCTOR_ARG             Functor
-#define ARITY_ARG               Arity
-#define NONCANON                MR_NONCANON_ABORT
-#include ""mercury_ml_functor_body.h""
-#undef  TYPEINFO_ARG
-#undef  TERM_ARG
-#undef  FUNCTOR_ARG
-#undef  ARITY_ARG
-#undef  NONCANON
-}").
-
-:- pragma foreign_proc("C",
-    functor_can(Term::in, Functor::out, Arity::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"{
-#define TYPEINFO_ARG            TypeInfo_for_T
-#define TERM_ARG                Term
-#define FUNCTOR_ARG             Functor
-#define ARITY_ARG               Arity
-#define NONCANON                MR_NONCANON_ALLOW
-#include ""mercury_ml_functor_body.h""
-#undef  TYPEINFO_ARG
-#undef  TERM_ARG
-#undef  FUNCTOR_ARG
-#undef  ARITY_ARG
-#undef  NONCANON
-}").
-
-:- pragma foreign_proc("C",
-    functor_idcc(Term::in, Functor::out, Arity::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"{
-#define TYPEINFO_ARG            TypeInfo_for_T
-#define TERM_ARG                Term
-#define FUNCTOR_ARG             Functor
-#define ARITY_ARG               Arity
-#define NONCANON                MR_NONCANON_CC
-#include ""mercury_ml_functor_body.h""
-#undef  TYPEINFO_ARG
-#undef  TERM_ARG
-#undef  FUNCTOR_ARG
-#undef  ARITY_ARG
-#undef  NONCANON
-}").
-
-functor_dna(Term, Functor, Arity) :-
-    local_deconstruct(Term, do_not_allow, Functor, _, Arity, _Arguments).
-
-functor_can(Term, Functor, Arity) :-
-    local_deconstruct(Term, canonicalize, Functor, _, Arity, _Arguments).
-
-functor_idcc(Term, Functor, Arity) :-
-    local_deconstruct(Term, include_details_cc, Functor, _, Arity, _Arguments).
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    functor_number(Term::in, FunctorNumber::out, Arity::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"{
-#define TYPEINFO_ARG            TypeInfo_for_T
-#define TERM_ARG                Term
-#define FUNCTOR_NUMBER_ARG      FunctorNumber
-#undef  FUNCTOR_ARG
-#define ARITY_ARG               Arity
-#define NONCANON                MR_NONCANON_ABORT
-#include ""mercury_ml_functor_body.h""
-#undef  TYPEINFO_ARG
-#undef  TERM_ARG
-#undef  FUNCTOR_NUMBER_ARG
-#undef  ARITY_ARG
-#undef  NONCANON
-
-SUCCESS_INDICATOR = (FunctorNumber >= 0);
-}").
-
-:- pragma foreign_proc("C",
-    functor_number_cc(Term::in, FunctorNumber::out, Arity::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"{
-#define TYPEINFO_ARG            TypeInfo_for_T
-#define TERM_ARG                Term
-#define FUNCTOR_NUMBER_ARG      FunctorNumber
-#undef  FUNCTOR_ARG
-#define ARITY_ARG               Arity
-#define NONCANON                MR_NONCANON_ALLOW
-#include ""mercury_ml_functor_body.h""
-#undef  TYPEINFO_ARG
-#undef  TERM_ARG
-#undef  FUNCTOR_NUMBER_ARG
-#undef  ARITY_ARG
-#undef  NONCANON
-
-SUCCESS_INDICATOR = (FunctorNumber >= 0);
-}").
-
-functor_number(Term, FunctorNumber, Arity) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.functor_number(Term, FunctorNumber, Arity)
-    else
-        private_builtin.sorry("deconstruct.functor_number")
-    ).
-
-functor_number_cc(Term, FunctorNumber, Arity) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.functor_number_cc(Term, FunctorNumber,
-            Arity)
-    else
-        rtti_implementation.functor_number_cc(Term, FunctorNumber, Arity)
     ).
 
 %---------------------------------------------------------------------------%

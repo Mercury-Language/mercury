@@ -1148,9 +1148,10 @@ split(X, Set, Lesser, IsPresent, Greater) :-
 
 %---------------------------------------------------------------------------%
 
-union(DietA, DietB, union(DietA, DietB)).
+union(DietA, DietB) = DietAB :-
+    union(DietA, DietB, DietAB).
 
-union(Input, Stream0) = Result :-
+union(Input, Stream0, Result) :-
     ( if int_gt(height(Stream0), height(Input)) then
         Result = union(Stream0, Input)
     else

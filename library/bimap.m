@@ -84,6 +84,14 @@
 :- func reverse_lookup(bimap(K, V), V) = K.
 :- pred reverse_lookup(bimap(K, V)::in, K::out, V::in) is det.
 
+    % Succeeds iff the bimap contains the given key.
+    %
+:- pred contains_key(bimap(K, V)::in, K::in) is semidet.
+
+    % Succeeds iff the bimap contains the given value.
+    %
+:- pred contains_value(bimap(K, V)::in, V::in) is semidet.
+
     % Given a bimap, return a list of all the keys in the bimap.
     %
 :- func ordinates(bimap(K, V)) = list(K).
@@ -93,14 +101,6 @@
     %
 :- func coordinates(bimap(K, V)) = list(V).
 :- pred coordinates(bimap(K, V)::in, list(V)::out) is det.
-
-    % Succeeds iff the bimap contains the given key.
-    %
-:- pred contains_key(bimap(K, V)::in, K::in) is semidet.
-
-    % Succeeds iff the bimap contains the given value.
-    %
-:- pred contains_value(bimap(K, V)::in, V::in) is semidet.
 
     % Insert a new key-value pair into the bimap.
     % Fails if either the key or value already exists.
@@ -388,12 +388,6 @@ reverse_search(BM, V) = K :-
 reverse_search(bimap(_, Reverse), K, V) :-
     map.search(Reverse, V, K).
 
-contains_key(bimap(Forward, _), K) :-
-    map.contains(Forward, K).
-
-contains_value(bimap(_, Reverse), V) :-
-    map.contains(Reverse, V).
-
 lookup(BM, K) = V :-
     bimap.lookup(BM, K, V).
 
@@ -405,6 +399,12 @@ reverse_lookup(BM, V) = K :-
 
 reverse_lookup(bimap(_, Reverse), K, V) :-
     map.lookup(Reverse, V, K).
+
+contains_key(bimap(Forward, _), K) :-
+    map.contains(Forward, K).
+
+contains_value(bimap(_, Reverse), V) :-
+    map.contains(Reverse, V).
 
 ordinates(BM) = Ks :-
     bimap.ordinates(BM, Ks).
@@ -629,24 +629,24 @@ apply_reverse_map_to_list(BM, Vs) = Ks :-
 apply_reverse_map_to_list(bimap(_, Reverse), Vs, Ks) :-
     map.apply_to_list(Vs, Reverse, Ks).
 
-map_keys(KeyMap, BM0, BM) :-
-    bimap.to_assoc_list(BM0, L0),
-    bimap.map_keys_2(KeyMap, L0, [], L),
-    bimap.det_from_assoc_list(L, BM).
-
 map_keys(KeyMap, BM0) = BM :-
     bimap.to_assoc_list(BM0, L0),
     bimap.map_keys_func_2(KeyMap, L0, [], L),
     bimap.det_from_assoc_list(L, BM).
 
-map_values(ValueMap, BM0, BM) :-
+map_keys(KeyMap, BM0, BM) :-
     bimap.to_assoc_list(BM0, L0),
-    bimap.map_values_2(ValueMap, L0, [], L),
+    bimap.map_keys_2(KeyMap, L0, [], L),
     bimap.det_from_assoc_list(L, BM).
 
 map_values(ValueMap, BM0) = BM :-
     bimap.to_assoc_list(BM0, L0),
     bimap.map_values_func_2(ValueMap, L0, [], L),
+    bimap.det_from_assoc_list(L, BM).
+
+map_values(ValueMap, BM0, BM) :-
+    bimap.to_assoc_list(BM0, L0),
+    bimap.map_values_2(ValueMap, L0, [], L),
     bimap.det_from_assoc_list(L, BM).
 
 :- pred bimap.map_keys_2(pred(V, K, L)::in(pred(in, in, out) is det),

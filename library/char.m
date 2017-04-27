@@ -71,27 +71,37 @@
 :- func det_from_int(int) = char.
 :- pred det_from_int(int::in, char::out) is det.
 
-    % Returns the maximum numerical character code.
-    %
-:- func max_char_value = int.
-:- pred max_char_value(int::out) is det.
-
     % Returns the minimum numerical character code.
     %
 :- func min_char_value = int.
 :- pred min_char_value(int::out) is det.
 
-    % Convert a character to uppercase.
-    % Note that this only converts letters (a-z) in the ASCII range.
+    % Returns the maximum numerical character code.
     %
-:- func to_upper(char) = char.
-:- pred to_upper(char::in, char::out) is det.
+:- func max_char_value = int.
+:- pred max_char_value(int::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % True iff the character is a lowercase letter (a-z) in the ASCII range.
+    %
+:- pred is_lower(char::in) is semidet.
+
+    % True iff the character is an uppercase letter (A-Z) in the ASCII range.
+    %
+:- pred is_upper(char::in) is semidet.
 
     % Convert a character to lowercase.
     % Note that this only converts letters (A-Z) in the ASCII range.
     %
 :- func to_lower(char) = char.
 :- pred to_lower(char::in, char::out) is det.
+
+    % Convert a character to uppercase.
+    % Note that this only converts letters (a-z) in the ASCII range.
+    %
+:- func to_upper(char) = char.
+:- pred to_upper(char::in, char::out) is det.
 
     % lower_upper(Lower, Upper) is true iff
     % Lower is a lowercase letter (a-z) and Upper is the corresponding
@@ -101,18 +111,12 @@
 :- mode lower_upper(in, out) is semidet.
 :- mode lower_upper(out, in) is semidet.
 
+%---------------------------------------------------------------------------%
+
     % True iff the character is a whitespace character in the ASCII range,
     % i.e. a space, tab, newline, carriage return, form-feed, or vertical tab.
     %
 :- pred is_whitespace(char::in) is semidet.
-
-    % True iff the character is an uppercase letter (A-Z) in the ASCII range.
-    %
-:- pred is_upper(char::in) is semidet.
-
-    % True iff the character is a lowercase letter (a-z) in the ASCII range.
-    %
-:- pred is_lower(char::in) is semidet.
 
     % True iff the character is a letter (A-Z, a-z) in the ASCII range.
     %
@@ -132,6 +136,8 @@
     % underscore (_) in the ASCII range.
     %
 :- pred is_alnum_or_underscore(char::in) is semidet.
+
+%---------------------------------------------------------------------------%
 
     % True iff the character is a decimal digit (0-9) in the ASCII range.
     %
@@ -161,50 +167,7 @@
     %
 :- pred is_base_digit(int::in, char::in) is semidet.
 
-    % Convert an integer in the range 0-1 to a binary digit (0 or 1) in the
-    % ASCII range.
-    %
-:- pred int_to_binary_digit(int::in, char::out) is semidet.
-
-    % As above, but throw an exception instead of failing.
-    %
-:- func det_int_to_binary_digit(int) = char.
-
-    % Convert an integer 0-7 to an octal digit (0-7) in the ASCII range.
-    %
-:- pred int_to_octal_digit(int::in, char::out) is semidet.
-
-    % As above, but throw an exception instead of failing.
-    %
-:- func det_int_to_octal_digit(int) = char.
-
-    % Convert an integer 0-9 to a decimal digit (0-9) in the ASCII range.
-    %
-:- pred int_to_decimal_digit(int::in, char::out) is semidet.
-
-    % As above, but throw an exception in instead of failing.
-    %
-:- func det_int_to_decimal_digit(int) = char.
-
-    % Convert an integer 0-15 to an uppercase hexadecimal digit (0-9, A-F) in
-    % the ASCII range.
-    %
-:- pred int_to_hex_digit(int::in, char::out) is semidet.
-
-    % As above, but throw an exception in instead of failing.
-    %
-:- func det_int_to_hex_digit(int) = char.
-
-    % base_int_to_digit(Base, Int, Char):
-    % True iff Char is a decimal digit (0-9) or an uppercase letter (A-Z)
-    % representing the value Int (0-35) in the given base.
-    % Throws an exception if Base < 2 or Base > 36.
-    %
-:- pred base_int_to_digit(int::in, int::in, char::out) is semidet.
-
-    % As above, but throw an exception instead of failing.
-    %
-:- func det_base_int_to_digit(int, int) = char.
+%---------------------%
 
     % binary_digit_to_int(Char, Int):
     % True iff Char is a binary digit (0-1) representing the value Int.
@@ -254,9 +217,54 @@
     %
 :- func det_base_digit_to_int(int, char) = int.
 
-    % Convert a char to a pretty_printer.doc for formatting.
+%---------------------%
+
+    % Convert an integer in the range 0-1 to a binary digit (0 or 1) in the
+    % ASCII range.
     %
-:- func char_to_doc(char) = pretty_printer.doc.
+:- pred int_to_binary_digit(int::in, char::out) is semidet.
+
+    % As above, but throw an exception instead of failing.
+    %
+:- func det_int_to_binary_digit(int) = char.
+
+    % Convert an integer 0-7 to an octal digit (0-7) in the ASCII range.
+    %
+:- pred int_to_octal_digit(int::in, char::out) is semidet.
+
+    % As above, but throw an exception instead of failing.
+    %
+:- func det_int_to_octal_digit(int) = char.
+
+    % Convert an integer 0-9 to a decimal digit (0-9) in the ASCII range.
+    %
+:- pred int_to_decimal_digit(int::in, char::out) is semidet.
+
+    % As above, but throw an exception in instead of failing.
+    %
+:- func det_int_to_decimal_digit(int) = char.
+
+    % Convert an integer 0-15 to an uppercase hexadecimal digit (0-9, A-F) in
+    % the ASCII range.
+    %
+:- pred int_to_hex_digit(int::in, char::out) is semidet.
+
+    % As above, but throw an exception in instead of failing.
+    %
+:- func det_int_to_hex_digit(int) = char.
+
+    % base_int_to_digit(Base, Int, Char):
+    % True iff Char is a decimal digit (0-9) or an uppercase letter (A-Z)
+    % representing the value Int (0-35) in the given base.
+    % Throws an exception if Base < 2 or Base > 36.
+    %
+:- pred base_int_to_digit(int::in, int::in, char::out) is semidet.
+
+    % As above, but throw an exception instead of failing.
+    %
+:- func det_base_int_to_digit(int, int) = char.
+
+%---------------------------------------------------------------------------%
 
     % Encode a Unicode code point in UTF-8.
     % Fails for surrogate code points.
@@ -292,6 +300,12 @@
     % internally.
     %
 :- pred is_noncharacter(char::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
+    % Convert a char to a pretty_printer.doc for formatting.
+    %
+:- func char_to_doc(char) = pretty_printer.doc.
 
 %---------------------------------------------------------------------------%
 
@@ -356,9 +370,221 @@
 :- import_module term_io.
 
 :- instance enum(character) where [
-    (to_int(X) = Y :- to_int(X, Y)),
-    (from_int(X) = Y :- to_int(Y, X))
+    (to_int(X) = Y :-
+        to_int(X, Y)),
+    (from_int(X) = Y :-
+        to_int(Y, X))
 ].
+
+:- pragma foreign_decl("C", "#include <limits.h>").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Int = (MR_UnsignedChar) Character;
+").
+
+to_int(C) = N :-
+    to_int(C, N).
+
+:- pragma foreign_proc("C",
+    to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
+").
+
+:- pragma foreign_proc("C",
+    to_int(Character::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Character = Int;
+    SUCCESS_INDICATOR = (Character >= 0 && Character <= 0x10ffff);
+").
+
+:- pragma foreign_proc("C#",
+    to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Int = Character;
+").
+
+:- pragma foreign_proc("C#",
+    to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (Character == Int);
+").
+
+:- pragma foreign_proc("C#",
+    to_int(Character::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Character = Int;
+    SUCCESS_INDICATOR = (Int >= 0 && Int <= 0x10ffff);
+").
+
+:- pragma foreign_proc("Java",
+    to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Int = (int) Character;
+").
+
+:- pragma foreign_proc("Java",
+    to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = ((int) Character == Int);
+").
+
+:- pragma foreign_proc("Java",
+    to_int(Character::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Character = Int;
+    SUCCESS_INDICATOR = (Int >= 0 && Int <= 0x10ffff);
+").
+
+:- pragma foreign_proc("Erlang",
+    to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Int = Character
+").
+
+:- pragma foreign_proc("Erlang",
+    to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (Character =:= Int)
+").
+
+:- pragma foreign_proc("Erlang",
+    to_int(Character::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Character = Int,
+    SUCCESS_INDICATOR = (Int >= 0 andalso Int =< 16#10ffff)
+").
+
+from_int(Int, Char) :-
+    to_int(Char, Int).
+
+det_from_int(Int) = Char :-
+    det_from_int(Int, Char).
+
+det_from_int(Int, Char) :-
+    ( if from_int(Int, CharPrime) then
+        Char = CharPrime
+    else
+        unexpected($module, $pred, "char.det_from_int: conversion failed")
+    ).
+
+%---------------------------------------------------------------------------%
+
+min_char_value = N :-
+    min_char_value(N).
+
+    % We use unsigned character codes, so the minimum character code
+    % is always zero.
+min_char_value(0).
+
+max_char_value = N :-
+    max_char_value(N).
+
+:- pragma foreign_proc("C",
+    max_char_value(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Max = 0x10ffff;
+").
+:- pragma foreign_proc("C#",
+    max_char_value(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Max = 0x10ffff;
+").
+:- pragma foreign_proc("Java",
+    max_char_value(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Max = 0x10ffff;
+").
+:- pragma foreign_proc("Erlang",
+    max_char_value(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Max = 16#10ffff
+").
+
+%---------------------------------------------------------------------------%
+
+is_lower(Lower) :-
+    lower_upper(Lower, _).
+
+is_upper(Upper) :-
+    ( if lower_upper(_, Upper) then
+        true
+    else
+        fail
+    ).
+
+to_lower(C1) = C2 :-
+    to_lower(C1, C2).
+
+to_lower(Char, Lower) :-
+    ( if lower_upper(LowerChar, Char) then
+        Lower = LowerChar
+    else
+        Lower = Char
+    ).
+
+to_upper(C1) = C2 :-
+    to_upper(C1, C2).
+
+to_upper(Char, Upper) :-
+    ( if lower_upper(Char, UpperChar) then
+        Upper = UpperChar
+    else
+        Upper = Char
+    ).
+
+lower_upper('a', 'A').
+lower_upper('b', 'B').
+lower_upper('c', 'C').
+lower_upper('d', 'D').
+lower_upper('e', 'E').
+lower_upper('f', 'F').
+lower_upper('g', 'G').
+lower_upper('h', 'H').
+lower_upper('i', 'I').
+lower_upper('j', 'J').
+lower_upper('k', 'K').
+lower_upper('l', 'L').
+lower_upper('m', 'M').
+lower_upper('n', 'N').
+lower_upper('o', 'O').
+lower_upper('p', 'P').
+lower_upper('q', 'Q').
+lower_upper('r', 'R').
+lower_upper('s', 'S').
+lower_upper('t', 'T').
+lower_upper('u', 'U').
+lower_upper('v', 'V').
+lower_upper('w', 'W').
+lower_upper('x', 'X').
+lower_upper('y', 'Y').
+lower_upper('z', 'Z').
+
+%---------------------------------------------------------------------------%
 
 % The information here is duplicated in lookup_token_action in lexer.m.
 % If you update this; you will also need update that.
@@ -394,10 +620,18 @@ is_alpha_or_underscore(Char) :-
         is_alpha(Char)
     ).
 
+is_alnum_or_underscore(Char) :-
     % We explicitly enumerate here for efficiency.
     % (The information here and in some of the following predicates,
     % e.g. lower_upper, is duplicated in lookup_token_action in lexer.m.)
-is_alnum_or_underscore(Char) :-
+    %
+    % A more concise implementation would be:
+    %   ( if is_digit(Char) then
+    %       true
+    %   else
+    %       is_alpha_or_underscore(Char)
+    %   ).
+
     ( Char = '0'
     ; Char = '1'
     ; Char = '2'
@@ -462,54 +696,21 @@ is_alnum_or_underscore(Char) :-
     ; Char = 'Z'
     ; Char = '_'
     ).
-% A more concise implementation is:
-%   ( if is_digit(Char) then
-%       true
-%   else
-%       is_alpha_or_underscore(Char)
-%   ).
-
-is_lower(Lower) :-
-    lower_upper(Lower, _).
-
-is_upper(Upper) :-
-    ( if lower_upper(_, Upper) then
-        true
-    else
-        fail
-    ).
-
-to_lower(C1) = C2 :-
-    to_lower(C1, C2).
-
-to_lower(Char, Lower) :-
-    ( if lower_upper(LowerChar, Char) then
-        Lower = LowerChar
-    else
-        Lower = Char
-    ).
-
-to_upper(C1) = C2 :-
-    to_upper(C1, C2).
-
-to_upper(Char, Upper) :-
-    ( if lower_upper(Char, UpperChar) then
-        Upper = UpperChar
-    else
-        Upper = Char
-    ).
 
 %---------------------------------------------------------------------------%
 
 % Lots of big tables.
 %
-% It's conceivable that there are more efficient implementations,
+% It is conceivable that there are more efficient implementations,
 % but these versions are very portable.
 
 %---------------------------------------------------------------------------%
 %
 % Digit classification.
 %
+
+is_digit(D) :-
+    is_decimal_digit(D).
 
 is_binary_digit('0').
 is_binary_digit('1').
@@ -533,8 +734,6 @@ is_decimal_digit('6').
 is_decimal_digit('7').
 is_decimal_digit('8').
 is_decimal_digit('9').
-
-is_digit(D) :- is_decimal_digit(D).
 
 is_hex_digit('0').
 is_hex_digit('1').
@@ -614,9 +813,6 @@ det_decimal_digit_to_int(Digit) = Int :-
     else
         error("char.decimal_digit_to_int failed")
     ).
-
-is_hex_digit(Digit, Int) :-
-    hex_digit_to_int(Digit, Int).
 
 hex_digit_to_int('0', 0).
 hex_digit_to_int('1', 1).
@@ -740,9 +936,6 @@ det_int_to_hex_digit(Int) = Digit :-
         error("char.int_to_hex_digit failed")
     ).
 
-int_to_hex_char(Int, Char) :-
-    int_to_hex_digit(Int, Char).
-
 base_int_to_digit(Base, Int, Digit) :-
     ( if 1 < Base, Base < 37 then
         Int < Base,
@@ -759,243 +952,6 @@ det_base_int_to_digit(Base, Int) = Digit :-
     ).
 
 %---------------------------------------------------------------------------%
-
-det_int_to_digit(N) = C :-
-    det_int_to_digit(N, C).
-
-det_int_to_digit(Int, Digit) :-
-    ( if int_to_extended_digit(Int, DigitPrime) then
-        Digit = DigitPrime
-    else
-        error("char.int_to_digit failed")
-    ).
-
-:- pred int_to_extended_digit(int, char).
-:- mode int_to_extended_digit(in, out) is semidet.
-:- mode int_to_extended_digit(out, in) is semidet.
-
-int_to_extended_digit(0, '0').
-int_to_extended_digit(1, '1').
-int_to_extended_digit(2, '2').
-int_to_extended_digit(3, '3').
-int_to_extended_digit(4, '4').
-int_to_extended_digit(5, '5').
-int_to_extended_digit(6, '6').
-int_to_extended_digit(7, '7').
-int_to_extended_digit(8, '8').
-int_to_extended_digit(9, '9').
-int_to_extended_digit(10, 'A').
-int_to_extended_digit(11, 'B').
-int_to_extended_digit(12, 'C').
-int_to_extended_digit(13, 'D').
-int_to_extended_digit(14, 'E').
-int_to_extended_digit(15, 'F').
-int_to_extended_digit(16, 'G').
-int_to_extended_digit(17, 'H').
-int_to_extended_digit(18, 'I').
-int_to_extended_digit(19, 'J').
-int_to_extended_digit(20, 'K').
-int_to_extended_digit(21, 'L').
-int_to_extended_digit(22, 'M').
-int_to_extended_digit(23, 'N').
-int_to_extended_digit(24, 'O').
-int_to_extended_digit(25, 'P').
-int_to_extended_digit(26, 'Q').
-int_to_extended_digit(27, 'R').
-int_to_extended_digit(28, 'S').
-int_to_extended_digit(29, 'T').
-int_to_extended_digit(30, 'U').
-int_to_extended_digit(31, 'V').
-int_to_extended_digit(32, 'W').
-int_to_extended_digit(33, 'X').
-int_to_extended_digit(34, 'Y').
-int_to_extended_digit(35, 'Z').
-
-int_to_digit(Int, Digit) :-
-    int_to_extended_digit(Int, Digit).
-
-digit_to_int(Digit, Int) :-
-    ( if lower_upper(Digit, Upper) then
-        int_to_extended_digit(Int, Upper)
-    else
-        int_to_extended_digit(Int, Digit)
-    ).
-
-%---------------------------------------------------------------------------%
-
-lower_upper('a', 'A').
-lower_upper('b', 'B').
-lower_upper('c', 'C').
-lower_upper('d', 'D').
-lower_upper('e', 'E').
-lower_upper('f', 'F').
-lower_upper('g', 'G').
-lower_upper('h', 'H').
-lower_upper('i', 'I').
-lower_upper('j', 'J').
-lower_upper('k', 'K').
-lower_upper('l', 'L').
-lower_upper('m', 'M').
-lower_upper('n', 'N').
-lower_upper('o', 'O').
-lower_upper('p', 'P').
-lower_upper('q', 'Q').
-lower_upper('r', 'R').
-lower_upper('s', 'S').
-lower_upper('t', 'T').
-lower_upper('u', 'U').
-lower_upper('v', 'V').
-lower_upper('w', 'W').
-lower_upper('x', 'X').
-lower_upper('y', 'Y').
-lower_upper('z', 'Z').
-
-%---------------------------------------------------------------------------%
-
-from_int(Int, Char) :-
-    to_int(Char, Int).
-
-det_from_int(Int, Char) :-
-    ( if from_int(Int, CharPrime) then
-        Char = CharPrime
-    else
-        unexpected($module, $pred, "char.det_from_int: conversion failed")
-    ).
-
-det_from_int(Int) = Char :-
-    det_from_int(Int, Char).
-
-:- pragma foreign_proc("C",
-    to_int(Character::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Int = (MR_UnsignedChar) Character;
-").
-
-to_int(C) = N :-
-    to_int(C, N).
-
-:- pragma foreign_proc("C",
-    to_int(Character::in, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
-").
-
-:- pragma foreign_proc("C",
-    to_int(Character::out, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Character = Int;
-    SUCCESS_INDICATOR = (Character >= 0 && Character <= 0x10ffff);
-").
-
-:- pragma foreign_proc("C#",
-    to_int(Character::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Int = Character;
-").
-
-:- pragma foreign_proc("C#",
-    to_int(Character::in, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (Character == Int);
-").
-
-:- pragma foreign_proc("C#",
-    to_int(Character::out, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Character = Int;
-    SUCCESS_INDICATOR = (Int >= 0 && Int <= 0x10ffff);
-").
-
-:- pragma foreign_proc("Java",
-    to_int(Character::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Int = (int) Character;
-").
-
-:- pragma foreign_proc("Java",
-    to_int(Character::in, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = ((int) Character == Int);
-").
-
-:- pragma foreign_proc("Java",
-    to_int(Character::out, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Character = Int;
-    SUCCESS_INDICATOR = (Int >= 0 && Int <= 0x10ffff);
-").
-
-:- pragma foreign_proc("Erlang",
-    to_int(Character::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Int = Character
-").
-
-:- pragma foreign_proc("Erlang",
-    to_int(Character::in, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (Character =:= Int)
-").
-
-:- pragma foreign_proc("Erlang",
-    to_int(Character::out, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Character = Int,
-    SUCCESS_INDICATOR = (Int >= 0 andalso Int =< 16#10ffff)
-").
-
-min_char_value = N :-
-    min_char_value(N).
-
-    % We used unsigned character codes, so the minimum character code
-    % is always zero.
-min_char_value(0).
-
-:- pragma foreign_decl("C", "#include <limits.h>").
-
-max_char_value = N :-
-    max_char_value(N).
-
-:- pragma foreign_proc("C",
-    max_char_value(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Max = 0x10ffff;
-").
-:- pragma foreign_proc("C#",
-    max_char_value(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Max = 0x10ffff;
-").
-:- pragma foreign_proc("Java",
-    max_char_value(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Max = 0x10ffff;
-").
-:- pragma foreign_proc("Erlang",
-    max_char_value(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Max = 16#10ffff
-").
 
 to_utf8(Char, CodeUnits) :-
     Int = char.to_int(Char),
@@ -1064,6 +1020,75 @@ is_noncharacter(Char) :-
     ).
 
 char_to_doc(C) = str(term_io.quoted_char(C)).
+
+%---------------------------------------------------------------------------%
+
+is_hex_digit(Digit, Int) :-
+    hex_digit_to_int(Digit, Int).
+
+int_to_hex_char(Int, Char) :-
+    int_to_hex_digit(Int, Char).
+
+digit_to_int(Digit, Int) :-
+    ( if lower_upper(Digit, Upper) then
+        int_to_extended_digit(Int, Upper)
+    else
+        int_to_extended_digit(Int, Digit)
+    ).
+
+int_to_digit(Int, Digit) :-
+    int_to_extended_digit(Int, Digit).
+
+det_int_to_digit(N) = C :-
+    det_int_to_digit(N, C).
+
+det_int_to_digit(Int, Digit) :-
+    ( if int_to_extended_digit(Int, DigitPrime) then
+        Digit = DigitPrime
+    else
+        error("char.int_to_digit failed")
+    ).
+
+:- pred int_to_extended_digit(int, char).
+:- mode int_to_extended_digit(in, out) is semidet.
+:- mode int_to_extended_digit(out, in) is semidet.
+
+int_to_extended_digit(0, '0').
+int_to_extended_digit(1, '1').
+int_to_extended_digit(2, '2').
+int_to_extended_digit(3, '3').
+int_to_extended_digit(4, '4').
+int_to_extended_digit(5, '5').
+int_to_extended_digit(6, '6').
+int_to_extended_digit(7, '7').
+int_to_extended_digit(8, '8').
+int_to_extended_digit(9, '9').
+int_to_extended_digit(10, 'A').
+int_to_extended_digit(11, 'B').
+int_to_extended_digit(12, 'C').
+int_to_extended_digit(13, 'D').
+int_to_extended_digit(14, 'E').
+int_to_extended_digit(15, 'F').
+int_to_extended_digit(16, 'G').
+int_to_extended_digit(17, 'H').
+int_to_extended_digit(18, 'I').
+int_to_extended_digit(19, 'J').
+int_to_extended_digit(20, 'K').
+int_to_extended_digit(21, 'L').
+int_to_extended_digit(22, 'M').
+int_to_extended_digit(23, 'N').
+int_to_extended_digit(24, 'O').
+int_to_extended_digit(25, 'P').
+int_to_extended_digit(26, 'Q').
+int_to_extended_digit(27, 'R').
+int_to_extended_digit(28, 'S').
+int_to_extended_digit(29, 'T').
+int_to_extended_digit(30, 'U').
+int_to_extended_digit(31, 'V').
+int_to_extended_digit(32, 'W').
+int_to_extended_digit(33, 'X').
+int_to_extended_digit(34, 'Y').
+int_to_extended_digit(35, 'Z').
 
 %---------------------------------------------------------------------------%
 :- end_module char.

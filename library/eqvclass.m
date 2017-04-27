@@ -53,13 +53,6 @@
 :- pred partition_id(eqvclass(T)::in, T::in, partition_id::out)
     is semidet.
 
-    % Make this item known to the equivalence class if it isn't already,
-    % and return the id of its partition. The same proviso applies with
-    % respect to partition_ids as with partition_id.
-    %
-:- pred ensure_element_partition_id(T::in, partition_id::out,
-    eqvclass(T)::in, eqvclass(T)::out) is det.
-
     % Make an element known to the equivalence class.
     % The element may already be known to the class;
     % if it isn't, it is created without any equivalence relationships.
@@ -67,6 +60,13 @@
 :- func ensure_element(eqvclass(T), T) = eqvclass(T).
 :- pred ensure_element(T::in, eqvclass(T)::in, eqvclass(T)::out)
     is det.
+
+    % Make this item known to the equivalence class if it isn't already,
+    % and return the id of its partition. The same proviso applies with
+    % respect to partition_ids as with partition_id.
+    %
+:- pred ensure_element_partition_id(T::in, partition_id::out,
+    eqvclass(T)::in, eqvclass(T)::out) is det.
 
     % Make an element known to the equivalence class.
     % The element must not already be known to the class;
@@ -206,8 +206,7 @@ new_element(!.EqvClass, X) = !:EqvClass :-
 new_element(Element, !EqvClass) :-
     ElementMap0 = !.EqvClass ^ keys,
     ( if map.search(ElementMap0, Element, _OldId) then
-        unexpected($module, $pred,
-            "new element is already in equivalence class")
+        unexpected($pred, "new element is already in equivalence class")
     else
         eqvclass.add_element(Element, _, !EqvClass)
     ).
@@ -281,6 +280,18 @@ ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
         )
     ).
 
+ensure_corresponding_equivalences(L1, L2, EqvClass0) = EqvClass :-
+    eqvclass.ensure_corresponding_equivalences(L1, L2, EqvClass0, EqvClass).
+
+ensure_corresponding_equivalences([], [], !EqvClass).
+ensure_corresponding_equivalences([], [_ | _], !EqvClass) :-
+    unexpected($pred, "list length mismatch").
+ensure_corresponding_equivalences([_ | _], [], !EqvClass) :-
+    unexpected($pred, "list length mismatch").
+ensure_corresponding_equivalences([H1 | T1], [H2 | T2], !EqvClass) :-
+    eqvclass.ensure_equivalence(H1, H2, !EqvClass),
+    eqvclass.ensure_corresponding_equivalences(T1, T2, !EqvClass).
+
 new_equivalence(!.EqvClass, X, Y) = !:EqvClass :-
     eqvclass.new_equivalence(X, Y, !EqvClass).
 
@@ -292,8 +303,7 @@ new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
     ( if map.search(ElementMap0, ElementA, IdA) then
         ( if map.search(ElementMap0, ElementB, IdB) then
             ( if IdA = IdB then
-                unexpected($module, $pred,
-                    "the two elements are already equivalent")
+                unexpected($pred, "the two elements are already equivalent")
             else
                 eqvclass.add_equivalence(IdA, IdB, EqvClass0, EqvClass)
             )
@@ -326,18 +336,6 @@ new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
             EqvClass = eqvclass(NextId, PartitionMap, ElementMap)
         )
     ).
-
-ensure_corresponding_equivalences([], [], !EqvClass).
-ensure_corresponding_equivalences([], [_ | _], !EqvClass) :-
-    unexpected($module, $pred, "list length mismatch").
-ensure_corresponding_equivalences([_ | _], [], !EqvClass) :-
-    unexpected($module, $pred, "list length mismatch").
-ensure_corresponding_equivalences([H1 | T1], [H2 | T2], !EqvClass) :-
-    eqvclass.ensure_equivalence(H1, H2, !EqvClass),
-    eqvclass.ensure_corresponding_equivalences(T1, T2, !EqvClass).
-
-ensure_corresponding_equivalences(L1, L2, EqvClass0) = EqvClass :-
-    eqvclass.ensure_corresponding_equivalences(L1, L2, EqvClass0, EqvClass).
 
 :- pred eqvclass.add_equivalence(partition_id::in, partition_id::in,
     eqvclass(T)::in, eqvclass(T)::out) is det.
@@ -434,8 +432,7 @@ id_to_partition(EqvClass0, Id, Partition) :-
     ( if map.search(PartitionMap0, Id, PartitionPrime) then
         Partition = PartitionPrime
     else
-        unexpected($module, $pred,
-            "partition id not known to equivalence class")
+        unexpected($pred, "partition id not known to equivalence class")
     ).
 
 partition_set_to_eqvclass(Set) = EqvClass :-
@@ -486,17 +483,17 @@ get_minimum_element(EqvClass, X) =
     list.det_head(
         set.to_sorted_list(eqvclass.get_equivalent_elements(EqvClass, X))).
 
-remove_equivalent_elements(X, !EqvClass) :-
-    !:EqvClass = remove_equivalent_elements(!.EqvClass, X).
+remove_equivalent_elements(EqvClass0, X) = EqvClass :-
+    remove_equivalent_elements(X, EqvClass0, EqvClass).
 
-remove_equivalent_elements(eqvclass(Id, P0, E0), X) =
-        eqvclass(Id, P, E) :-
+remove_equivalent_elements(X, !EqvClass) :-
+    !.EqvClass = eqvclass(Id, P0, E0),
     ( if map.search(E0, X, Partition) then
         map.det_remove(Partition, Eq, P0, P),
-        map.delete_list(set.to_sorted_list(Eq), E0, E)
+        map.delete_list(set.to_sorted_list(Eq), E0, E),
+        !:EqvClass = eqvclass(Id, P, E)
     else
-        P = P0,
-        E = E0
+        true
     ).
 
 divide_equivalence_classes(F, E0) = E :-
@@ -515,7 +512,7 @@ divide_equivalence_classes_2(F, Id, ItemSet, !Counter, !Partitions, !Keys) :-
     set.to_sorted_list(ItemSet, ItemList),
     (
         ItemList = [],
-        unexpected($module, $pred, "empty partition")
+        unexpected($pred, "empty partition")
     ;
         ItemList = [Item | Items],
         MainValue = F(Item),

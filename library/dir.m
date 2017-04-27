@@ -117,16 +117,6 @@
 :- func dirname(string) = string.
 :- pred dirname(string::in, string::out) is det.
 
-    % path_name_is_absolute(PathName)
-    %
-    % Is the path name syntactically an absolute path
-    % (this doesn't check whether the path exists).
-    %
-    % An path is absolute iff it begins with a root directory
-    % (see path_name_is_root_directory).
-    %
-:- pred path_name_is_absolute(string::in) is semidet.
-
     % path_name_is_root_directory(PathName)
     %
     % On Unix, '/' is the only root directory.
@@ -141,6 +131,16 @@
     % current directory on drive X, where X is any letter.
     %
 :- pred path_name_is_root_directory(string::in) is semidet.
+
+    % path_name_is_absolute(PathName)
+    %
+    % Is the path name syntactically an absolute path
+    % (this doesn't check whether the path exists).
+    %
+    % An path is absolute iff it begins with a root directory
+    % (see path_name_is_root_directory).
+    %
+:- pred path_name_is_absolute(string::in) is semidet.
 
     % PathName = DirName / FileName
     %
@@ -322,8 +322,6 @@ ends_with_directory_separator(String, End, PrevIndex) :-
     string.unsafe_prev_index(String, End, PrevIndex, Char),
     dir.is_directory_separator(Char).
 
-use_windows_paths :- dir.directory_separator = ('\\').
-
 this_directory = ".".
 
 this_directory(dir.this_directory).
@@ -333,64 +331,6 @@ parent_directory = "..".
 parent_directory(dir.parent_directory).
 
 %---------------------------------------------------------------------------%
-
-det_basename(FileName) =
-    ( if BaseName = dir.basename(FileName) then
-        BaseName
-    else
-        unexpected($pred, "given directory is root directory")
-    ).
-
-basename(FileName) = BaseName :-
-    FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
-    not dir.is_root_directory(FileNameChars),
-    not (
-        % Current directory on the given drive.
-        use_windows_paths,
-        FileNameChars = [Drive, (':')],
-        char.is_alpha(Drive)
-    ),
-
-    FileNameWithoutSlash = remove_trailing_dir_separator(FileNameChars),
-    FileNameWithoutSlash \= string.to_char_list(dir.this_directory),
-    FileNameWithoutSlash \= string.to_char_list(dir.parent_directory),
-    ( if dir.split_name_2(FileNameChars, _, BaseName0) then
-        BaseName = BaseName0
-    else
-        BaseName = FileName
-    ).
-
-basename(S, dir.basename(S)).
-
-%---------------------------------------------------------------------------%
-
-dirname(FileName) = DirName :-
-    FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
-    ( if
-        dir.is_root_directory(FileNameChars)
-    then
-        DirName = string.from_char_list(FileNameChars)
-    else if
-        % Current directory on the given drive.
-        use_windows_paths,
-        FileNameChars = [Drive, (':')],
-        char.is_alpha(Drive)
-    then
-        DirName = string.from_char_list(FileNameChars)
-    else if
-        dir.split_name_2(FileNameChars, DirName0, _)
-    then
-        DirName = DirName0
-    else if
-        remove_trailing_dir_separator(FileNameChars) =
-            string.to_char_list(dir.parent_directory)
-    then
-        DirName = dir.parent_directory
-    else
-        DirName = dir.this_directory
-    ).
-
-dirname(S, dir.dirname(S)).
 
 split_name(FileName, DirName, BaseName) :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
@@ -505,6 +445,68 @@ split_name_dotnet(_, "", "") :-
     }
 ").
 
+%---------------------------------------------------------------------------%
+
+basename(FileName) = BaseName :-
+    FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
+    not dir.is_root_directory(FileNameChars),
+    not (
+        % Current directory on the given drive.
+        use_windows_paths,
+        FileNameChars = [Drive, (':')],
+        char.is_alpha(Drive)
+    ),
+
+    FileNameWithoutSlash = remove_trailing_dir_separator(FileNameChars),
+    FileNameWithoutSlash \= string.to_char_list(dir.this_directory),
+    FileNameWithoutSlash \= string.to_char_list(dir.parent_directory),
+    ( if dir.split_name_2(FileNameChars, _, BaseName0) then
+        BaseName = BaseName0
+    else
+        BaseName = FileName
+    ).
+
+basename(S, dir.basename(S)).
+
+det_basename(FileName) =
+    ( if BaseName = dir.basename(FileName) then
+        BaseName
+    else
+        unexpected($pred, "given directory is root directory")
+    ).
+
+%---------------------------------------------------------------------------%
+
+dirname(FileName) = DirName :-
+    FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
+    ( if
+        dir.is_root_directory(FileNameChars)
+    then
+        DirName = string.from_char_list(FileNameChars)
+    else if
+        % Current directory on the given drive.
+        use_windows_paths,
+        FileNameChars = [Drive, (':')],
+        char.is_alpha(Drive)
+    then
+        DirName = string.from_char_list(FileNameChars)
+    else if
+        dir.split_name_2(FileNameChars, DirName0, _)
+    then
+        DirName = DirName0
+    else if
+        remove_trailing_dir_separator(FileNameChars) =
+            string.to_char_list(dir.parent_directory)
+    then
+        DirName = dir.parent_directory
+    else
+        DirName = dir.this_directory
+    ).
+
+dirname(S, dir.dirname(S)).
+
+%---------------------------------------------------------------------------%
+
     % Remove repeated path separators.
     %
 :- func canonicalize_path_chars(list(char)) = list(char).
@@ -581,6 +583,8 @@ remove_trailing_dir_separator(Chars) =
     else
         Chars
     ).
+
+%---------------------------------------------------------------------------%
 
 path_name_is_root_directory(PathName) :-
     is_root_directory(canonicalize_path_chars(string.to_char_list(PathName))).
@@ -775,8 +779,6 @@ dotnet_path_name_is_absolute_2(_) :-
 
 %---------------------------------------------------------------------------%
 
-make_path_name(DirName, FileName) = DirName/FileName.
-
 DirName0/FileName0 = PathName :-
     DirName = string.from_char_list(canonicalize_path_chars(
         string.to_char_list(DirName0))),
@@ -836,6 +838,8 @@ DirName0/FileName0 = PathName :-
             string.char_to_string(dir.directory_separator),
             FileName])
     ).
+
+make_path_name(DirName, FileName) = DirName/FileName.
 
 relative_path_name_from_components(Components) = PathName :-
     Sep = string.from_char(dir.directory_separator),
@@ -2015,6 +2019,11 @@ find_matching_brace_or_comma([Char | Chars], Alternatives0, CurAlternative,
             list.append(CurAlternative, [Char]),
             BraceLevel, Alternatives, Left)
     ).
+
+%---------------------------------------------------------------------------%
+
+use_windows_paths :-
+    dir.directory_separator = ('\\').
 
 %---------------------------------------------------------------------------%
 :- end_module dir.

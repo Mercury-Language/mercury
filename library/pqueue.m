@@ -14,7 +14,7 @@
 %
 % This module implements a priority queue ADT.
 %
-% A pqueue is a priority queue.  A priority queue holds a collection
+% A pqueue is a priority queue. A priority queue holds a collection
 % of key-value pairs; the interface provides operations to create
 % an empty priority queue, to insert a key-value pair into a priority
 % queue, and to remove the element with the lowest key.
@@ -40,40 +40,40 @@
 :- func init = pqueue(K, V).
 :- pred init(pqueue(K, V)::out) is det.
 
-    % True iff the priority queue is empty.
+    % Succeed iff the priority queue is empty.
     %
 :- pred is_empty(pqueue(K, V)::in) is semidet.
 
-    % Insert a value V with key K into a priority queue
-    % and return the new priority queue.
-    %
-:- func insert(pqueue(K, V), K, V) = pqueue(K, V).
-:- pred insert(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::out)
-    is det.
-
     % Extract the smallest key-value pair from the priority queue without
-    % removing it.  Fails if the priority queue is empty.
+    % removing it. Fails if the priority queue is empty.
     %
 :- pred peek(pqueue(K, V)::in, K::out, V::out) is semidet.
 
     % Extract the smallest key from the priority queue without removing it.
-    % Fails if the priority queue is empty.
+    % Fail if the priority queue is empty.
     %
 :- pred peek_key(pqueue(K, V)::in, K::out) is semidet.
 
-    % Extract the smallest value from the priority queue without removing
-    % it.  Fails if the priority queue is empty.
+    % Extract the smallest value from the priority queue without removing it.
+    % Fail if the priority queue is empty.
     %
 :- pred peek_value(pqueue(K, V)::in, V::out) is semidet.
 
-    % As above, but calls error/1 if the priority queue is empty.
+    % As above, but call error/1 if the priority queue is empty.
     %
 :- pred det_peek(pqueue(K, V)::in, K::out, V::out) is det.
 :- func det_peek_key(pqueue(K, V)) = K.
 :- func det_peek_value(pqueue(K, V)) = V.
 
+    % Insert a value V with key K into the given priority queue,
+    % and return the updated priority queue.
+    %
+:- func insert(pqueue(K, V), K, V) = pqueue(K, V).
+:- pred insert(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::out)
+    is det.
+
     % Remove the smallest item from the priority queue.
-    % Fails if the priority queue is empty.
+    % Fail if the priority queue is empty.
     %
 :- pred remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
     is semidet.
@@ -83,15 +83,15 @@
 :- pred det_remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
     is det.
 
-    % Merges all the entries of one priority queue with another, returning
-    % the merged list.
+    % Merge all the entries of one priority queue with another,
+    % returning the merged list.
     %
 :- func merge(pqueue(K, V), pqueue(K, V)) = pqueue(K, V).
 :- pred merge(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out)
     is det.
 
-    % Extract all the items from a priority queue by repeated
-    % removal, and place them in an association list.
+    % Extract all the items from a priority queue by repeated removal,
+    % and place them in an association list.
     %
 :- func to_assoc_list(pqueue(K, V)) = assoc_list(K, V).
 :- pred to_assoc_list(pqueue(K, V)::in, assoc_list(K, V)::out)
@@ -110,7 +110,7 @@
 
     % length(PQueue) = Length.
     %
-    % Length is the number of items in PQueue
+    % Length is the number of items in PQueue.
     %
 :- func length(pqueue(K, V)) = int.
 
@@ -202,14 +202,6 @@ insert_2(K, V, pqueue(D0, K0, V0, L0, R0),
 
 %---------------------------------------------------------------------------%
 
-det_remove(K, V, !PQ) :-
-    ( if pqueue.remove(K0, V0, !PQ) then
-        K = K0,
-        V = V0
-    else
-        unexpected($file, $pred, "empty priority queue")
-    ).
-
 remove(K, V, pqueue(_, K, V, L0, R0), PQ) :-
     pqueue.remove_2(L0, R0, PQ).
 
@@ -231,6 +223,14 @@ remove_2(pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1), PQ) :-
         int.max(D1M1, D1, D),
         pqueue.remove_2(L1, R1, PQ1),
         PQ = pqueue(D, K1, V1, PQ1, pqueue(D0, K0, V0, L0, R0))
+    ).
+
+det_remove(K, V, !PQ) :-
+    ( if pqueue.remove(K0, V0, !PQ) then
+        K = K0,
+        V = V0
+    else
+        unexpected($file, $pred, "empty priority queue")
     ).
 
 %---------------------------------------------------------------------------%

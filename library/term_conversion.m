@@ -6,7 +6,7 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: term.m.
+% File: term_conversion.m.
 % Stability: medium.
 %
 % This file provides predicates to convert values of arbitrary types to terms,
@@ -61,7 +61,7 @@
 % to the type `term' and back again.
 %
 
-    % term.try_term_to_type(Term, Result):
+    % try_term_to_type(Term, Result):
     %
     % Try to convert the given term to a ground value of type T.
     % If successful, return `ok(X)' where X is the converted value.
@@ -119,9 +119,6 @@
 
 %---------------------------------------------------------------------------%
 
-term_to_type(Term, Val) :-
-    try_term_to_type(Term, ok(Val)).
-
 try_term_to_type(Term) = Result :-
     try_term_to_type(Term, Result).
 
@@ -136,6 +133,9 @@ try_term_to_type(Term, Result) :-
         UnivResult = error(Error),
         Result = error(Error)
     ).
+
+term_to_type(Term, Val) :-
+    try_term_to_type(Term, ok(Val)).
 
 :- pred try_term_to_univ(term(T)::in, type_desc.type_desc::in,
     term_to_type_result(univ, T)::out) is det.

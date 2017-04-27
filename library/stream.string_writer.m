@@ -82,6 +82,10 @@
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
+:- pred print_cc(Stream::in, T::in, State::di, State::uo) is cc_multi
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
 :- pred print(Stream, deconstruct.noncanon_handling, T, State, State)
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
@@ -89,10 +93,6 @@
 :- mode print(in, in(canonicalize), in, di, uo) is det.
 :- mode print(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode print(in, in, in, di, uo) is cc_multi.
-
-:- pred print_cc(Stream::in, T::in, State::di, State::uo) is cc_multi
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
 
     % write/4 writes its second argument to the string writer stream specified
     % in its first argument.  In all cases, the argument to output may be of
@@ -118,6 +118,10 @@
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
+:- pred write_cc(Stream::in, T::in, State::di, State::uo) is cc_multi
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
 :- pred write(Stream, deconstruct.noncanon_handling, T, State, State)
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
@@ -125,10 +129,6 @@
 :- mode write(in, in(canonicalize), in, di, uo) is det.
 :- mode write(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write(in, in, in, di, uo) is cc_multi.
-
-:- pred write_cc(Stream::in, T::in, State::di, State::uo) is cc_multi
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -138,17 +138,6 @@
 :- interface.
 
 :- import_module ops.
-
-%
-% For use by term_io.m.
-%
-
-:- pred maybe_write_paren(Stream::in, char::in, ops.priority::in,
-    ops.priority::in, State::di, State::uo) is det
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
-:- pragma type_spec(maybe_write_paren/6,
-    (Stream = io.output_stream, State = io.state)).
 
 %
 % For use by browser/browse.m.
@@ -168,6 +157,17 @@
 :- mode write_univ(in, in(canonicalize), in, di, uo) is det.
 :- mode write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write_univ(in, in, in, di, uo) is cc_multi.
+
+%
+% For use by term_io.m.
+%
+
+:- pred maybe_write_paren(Stream::in, char::in, ops.priority::in,
+    ops.priority::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+:- pragma type_spec(maybe_write_paren/6,
+    (Stream = io.output_stream, State = io.state)).
 
 :- pragma type_spec(write/4,
             (Stream = io.output_stream, State = io.state)).

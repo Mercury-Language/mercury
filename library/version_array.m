@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
 % Copyright (C) 2014 The Mercury Team.
@@ -119,23 +119,24 @@
     %
 :- func from_reverse_list(list(T)) = version_array(T).
 
-    % A ^ elem(I) = X iff the I'th member of A is X (the first item has
-    % index 0).
-    %
-:- func version_array(T) ^ elem(int) = T.
-
-    % lookup(A, I) = A ^ elem(I).
+    % lookup(A, I) = X iff the I'th member of A is X.
+    % (The first item has index 0).
     %
 :- func lookup(version_array(T), int) = T.
 
-    % (A ^ elem(I) := X) is a copy of array A with item I updated to be X.
-    % An exception is thrown if I is out of bounds. set/4 is an equivalent
-    % predicate.
+    % A ^ elem(I) = lookup(A, I)
     %
-:- func (version_array(T) ^ elem(int) := T) = version_array(T).
+:- func version_array(T) ^ elem(int) = T.
 
+    % set(I, X, A0, A): A is a copy of array A0 with item I updated to be X.
+    % An exception is thrown if I is out of bounds.
+    %
 :- pred set(int::in, T::in, version_array(T)::in, version_array(T)::out)
     is det.
+
+    % (A0 ^ elem(I) := X) = A is equivalent to set(I, X, A0, A).
+    %
+:- func (version_array(T) ^ elem(int) := T) = version_array(T).
 
     % size(A) = N if A contains N items (i.e. the valid indices for A
     % range from 0 to N - 1).
@@ -158,6 +159,10 @@
 :- func resize(version_array(T), int, T) = version_array(T).
 :- pred resize(int::in, T::in, version_array(T)::in, version_array(T)::out)
     is det.
+
+    % copy(A) is a copy of array A. Access to the copy is O(1).
+    %
+:- func copy(version_array(T)) = version_array(T).
 
     % list(A) = Xs where Xs is the list of items in A
     % (i.e. A = version_array(Xs)).
@@ -237,10 +242,6 @@
 :- pred all_false(pred(T)::in(pred(in) is semidet), version_array(T)::in)
     is semidet.
 
-    % copy(A) is a copy of array A. Access to the copy is O(1).
-    %
-:- func copy(version_array(T)) = version_array(T).
-
     % unsafe_rewind(A) produces a version of A for which all accesses are O(1).
     % Invoking this predicate renders A and all later versions undefined that
     % were derived by performing individual updates. Only use this when you are
@@ -271,18 +272,186 @@
 
 %---------------------------------------------------------------------------%
 
+:- pragma foreign_proc("C",
+    version_array.empty = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    MR_Word array;
+
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array, 1,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) array;
+    VA->rest.array->size = 0;
+
+#ifdef MR_THREAD_SAFE
+    MR_incr_hp_type_msg(VA->lock, MercuryLock, MR_ALLOC_ID, NULL);
+    pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
+#endif
+").
+
+:- pragma foreign_proc("C#",
+    version_array.empty = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = new version_array.ML_sva(version_array.ML_uva.empty());
+").
+
+:- pragma foreign_proc("Java",
+    version_array.empty = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = new ML_sva(ML_uva.empty());
+").
+
+:- pragma foreign_proc("C",
+    version_array.unsafe_empty = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    MR_Word array;
+
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array, 1,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) array;
+    VA->rest.array->size = 0;
+
+#ifdef MR_THREAD_SAFE
+    VA->lock             = NULL;
+#endif
+").
+
+:- pragma foreign_proc("C#",
+    version_array.unsafe_empty = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = version_array.ML_uva.empty();
+").
+
+:- pragma foreign_proc("Java",
+    version_array.unsafe_empty = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = ML_uva.empty();
+").
+
+:- pragma foreign_proc("C",
+    version_array.init(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    MR_Integer  i;
+    MR_Word     array;
+
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array, N + 1,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) array;
+    VA->rest.array->size = N;
+
+    for (i = 0; i < N; i++) {
+        VA->rest.array->elements[i] = X;
+    }
+
+#ifdef MR_THREAD_SAFE
+    MR_incr_hp_type_msg(VA->lock, MercuryLock, MR_ALLOC_ID, NULL);
+    pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
+#endif
+").
+
+:- pragma foreign_proc("C#",
+    version_array.init(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = new version_array.ML_sva(version_array.ML_uva.init(N, X));
+").
+
+:- pragma foreign_proc("Java",
+    version_array.init(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = new ML_sva(ML_uva.init(N, X));
+").
+
+:- pragma foreign_proc("C",
+    version_array.unsafe_init(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    MR_Integer  i;
+    MR_Word     array;
+
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array,  N + 1,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) array;
+    VA->rest.array->size = N;
+
+    for (i = 0; i < N; i++) {
+        VA->rest.array->elements[i] = X;
+    }
+
+#ifdef MR_THREAD_SAFE
+    VA->lock             = NULL;
+#endif
+").
+
+:- pragma foreign_proc("C#",
+    version_array.unsafe_init(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = version_array.ML_uva.init(N, X);
+").
+
+:- pragma foreign_proc("Java",
+    version_array.unsafe_init(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = ML_uva.init(N, X);
+").
+
+unsafe_new(N, X) = unsafe_init(N, X).
+
+%---------------------------------------------------------------------------%
+
 version_array([]) = version_array.empty.
 version_array([X | Xs]) = VA :-
     VA0 = version_array.init(1 + list.length(Xs), X),
-    version_array_2(1, Xs, VA0, VA).
+    version_array_loop(1, Xs, VA0, VA).
 
-:- pred version_array_2(int::in, list(T)::in,
+:- pred version_array_loop(int::in, list(T)::in,
     version_array(T)::in, version_array(T)::out) is det.
 
-version_array_2(_, [], !VA).
-version_array_2(I, [X | Xs], !VA) :-
+version_array_loop(_, [], !VA).
+version_array_loop(I, [X | Xs], !VA) :-
     set(I, X, !VA),
-    version_array_2(I + 1, Xs, !VA).
+    version_array_loop(I + 1, Xs, !VA).
 
 from_list(Xs) = version_array(Xs).
 
@@ -290,19 +459,17 @@ from_reverse_list([]) = version_array.empty.
 from_reverse_list([X | Xs]) = VA :-
     NumElems = 1 + list.length(Xs),
     VA0 = version_array.init(NumElems, X),
-    from_reverse_list_2(NumElems - 2, Xs, VA0, VA).
+    from_reverse_list_loop(NumElems - 2, Xs, VA0, VA).
 
-:- pred from_reverse_list_2(int::in, list(T)::in,
+:- pred from_reverse_list_loop(int::in, list(T)::in,
     version_array(T)::in, version_array(T)::out) is det.
 
-from_reverse_list_2(_, [], !VA).
-from_reverse_list_2(I, [X | Xs], !VA) :-
+from_reverse_list_loop(_, [], !VA).
+from_reverse_list_loop(I, [X | Xs], !VA) :-
     set(I, X, !VA),
-    from_reverse_list_2(I - 1, Xs, !VA).
+    from_reverse_list_loop(I - 1, Xs, !VA).
 
 %---------------------------------------------------------------------------%
-
-:- pragma inline(version_array.elem/2).
 
 lookup(VA, I) = X :-
     ( if get_if_in_range(VA, I, X0) then
@@ -311,12 +478,11 @@ lookup(VA, I) = X :-
         out_of_bounds_error(I, max(VA), "version_array.lookup")
     ).
 
+:- pragma inline(version_array.elem/2).
 VA ^ elem(I) =
     lookup(VA, I).
 
 %---------------------------------------------------------------------------%
-
-:- pragma inline(version_array.'elem :='/3).
 
 set(I, X, !VA) :-
     ( if set_if_in_range(I, X, !VA) then
@@ -325,12 +491,66 @@ set(I, X, !VA) :-
         out_of_bounds_error(I, max(!.VA), "version_array.set")
     ).
 
+:- pragma inline(version_array.'elem :='/3).
 (VA0 ^ elem(I) := X) = VA :-
     set(I, X, VA0, VA).
 
 %---------------------------------------------------------------------------%
 
+:- pragma foreign_proc("C",
+    size(VA::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    N = ML_va_size_dolock(VA);
+").
+
+:- pragma foreign_proc("C#",
+    size(VA::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    N = VA.size();
+").
+
+:- pragma foreign_proc("Java",
+    size(VA::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    N = VA.size();
+").
+
 max(VA) = size(VA) - 1.
+
+is_empty(VA) :-
+    size(VA) = 0.
+
+:- pragma foreign_proc("C",
+    resize(VA0::in, N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = ML_va_resize_dolock(VA0, N, X, MR_ALLOC_ID);
+").
+
+:- pragma foreign_proc("C#",
+    resize(VA0::in, N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = VA0.resize(N, X);
+").
+
+:- pragma foreign_proc("Java",
+    resize(VA0::in, N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = VA0.resize(N, X);
+").
+
+resize(N, X, VA, resize(VA, N, X)).
 
 %---------------------------------------------------------------------------%
 
@@ -602,225 +822,6 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
             R  = R0
         )
     ).
-
-:- pragma foreign_proc("C",
-    version_array.empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    MR_Word array;
-
-    MR_incr_hp_type_msg(VA, struct ML_va,
-        MR_ALLOC_ID, ""version_array.version_array/1"");
-    MR_incr_hp_msg(array, 1,
-        MR_ALLOC_ID, ""version_array.version_array/1"");
-
-    VA->index            = -1;
-    VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) array;
-    VA->rest.array->size = 0;
-
-#ifdef MR_THREAD_SAFE
-    MR_incr_hp_type_msg(VA->lock, MercuryLock, MR_ALLOC_ID, NULL);
-    pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
-#endif
-").
-
-:- pragma foreign_proc("C#",
-    version_array.empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    VA = new version_array.ML_sva(version_array.ML_uva.empty());
-").
-
-:- pragma foreign_proc("Java",
-    version_array.empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    VA = new ML_sva(ML_uva.empty());
-").
-
-:- pragma foreign_proc("C",
-    version_array.unsafe_empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    MR_Word array;
-
-    MR_incr_hp_type_msg(VA, struct ML_va,
-        MR_ALLOC_ID, ""version_array.version_array/1"");
-    MR_incr_hp_msg(array, 1,
-        MR_ALLOC_ID, ""version_array.version_array/1"");
-
-    VA->index            = -1;
-    VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) array;
-    VA->rest.array->size = 0;
-
-#ifdef MR_THREAD_SAFE
-    VA->lock             = NULL;
-#endif
-").
-
-:- pragma foreign_proc("C#",
-    version_array.unsafe_empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    VA = version_array.ML_uva.empty();
-").
-
-:- pragma foreign_proc("Java",
-    version_array.unsafe_empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    VA = ML_uva.empty();
-").
-
-:- pragma foreign_proc("C",
-    version_array.init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
-"
-    MR_Integer  i;
-    MR_Word     array;
-
-    MR_incr_hp_type_msg(VA, struct ML_va,
-        MR_ALLOC_ID, ""version_array.version_array/1"");
-    MR_incr_hp_msg(array, N + 1,
-        MR_ALLOC_ID, ""version_array.version_array/1"");
-
-    VA->index            = -1;
-    VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) array;
-    VA->rest.array->size = N;
-
-    for (i = 0; i < N; i++) {
-        VA->rest.array->elements[i] = X;
-    }
-
-#ifdef MR_THREAD_SAFE
-    MR_incr_hp_type_msg(VA->lock, MercuryLock, MR_ALLOC_ID, NULL);
-    pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
-#endif
-").
-
-:- pragma foreign_proc("C#",
-    version_array.init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
-"
-    VA = new version_array.ML_sva(version_array.ML_uva.init(N, X));
-").
-
-:- pragma foreign_proc("Java",
-    version_array.init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
-"
-    VA = new ML_sva(ML_uva.init(N, X));
-").
-
-unsafe_new(N, X) = unsafe_init(N, X).
-
-:- pragma foreign_proc("C",
-    version_array.unsafe_init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
-"
-    MR_Integer  i;
-    MR_Word     array;
-
-    MR_incr_hp_type_msg(VA, struct ML_va,
-        MR_ALLOC_ID, ""version_array.version_array/1"");
-    MR_incr_hp_msg(array,  N + 1,
-        MR_ALLOC_ID, ""version_array.version_array/1"");
-
-    VA->index            = -1;
-    VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) array;
-    VA->rest.array->size = N;
-
-    for (i = 0; i < N; i++) {
-        VA->rest.array->elements[i] = X;
-    }
-
-#ifdef MR_THREAD_SAFE
-    VA->lock             = NULL;
-#endif
-").
-
-:- pragma foreign_proc("C#",
-    version_array.unsafe_init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
-"
-    VA = version_array.ML_uva.init(N, X);
-").
-
-:- pragma foreign_proc("Java",
-    version_array.unsafe_init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
-"
-    VA = ML_uva.init(N, X);
-").
-
-:- pragma foreign_proc("C",
-    resize(VA0::in, N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    VA = ML_va_resize_dolock(VA0, N, X, MR_ALLOC_ID);
-").
-
-:- pragma foreign_proc("C#",
-    resize(VA0::in, N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
-"
-    VA = VA0.resize(N, X);
-").
-
-:- pragma foreign_proc("Java",
-    resize(VA0::in, N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
-"
-    VA = VA0.resize(N, X);
-").
-
-resize(N, X, VA, resize(VA, N, X)).
-
-:- pragma foreign_proc("C",
-    size(VA::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    N = ML_va_size_dolock(VA);
-").
-
-:- pragma foreign_proc("C#",
-    size(VA::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    N = VA.size();
-").
-
-:- pragma foreign_proc("Java",
-    size(VA::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    N = VA.size();
-").
-
-is_empty(VA) :-
-    size(VA) = 0.
 
 :- pred get_if_in_range(version_array(T)::in, int::in, T::out) is semidet.
 

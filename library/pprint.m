@@ -27,6 +27,7 @@
 % terms without thrashing the VM system.
 %
 % Wadler's approach has three main advantages:
+%
 % 1. the layout algebra is small and quite intuitive (more so than Hughes');
 % 2. the pretty printer is optimal in the sense that it will never generate
 %    output that over-runs the specified width unless that is unavoidable; and
@@ -39,7 +40,7 @@
 % allowing line-breaks to be converted into spaces at the pretty
 % printer's discretion) over docs, I have extended the doc type to
 % include a `GROUP' constructor and made the appropriate algorithmic
-% changes.  Because `UNION' only arises as a consequence of processing
+% changes. Because `UNION' only arises as a consequence of processing
 % a 'GROUP' it turns out to be simpler to do away with `UNION'
 % altogether and convert clauses that process `UNION' terms to
 % processing `GROUP's.
@@ -48,7 +49,7 @@
 %
 % (c) The third change is the introduction of the `LABEL' constructor,
 % which acts much like `NEST', except that indentation is defined
-% using a string rather than a number of spaces.  This is useful for,
+% using a string rather than a number of spaces. This is useful for,
 % e.g., multi-line compiler errors and warnings that should be
 % prefixed with the offending source file and line number.
 %
@@ -59,16 +60,16 @@
 % resulting doc is significantly larger than the original term.
 % Worse, any sharing structure in the original term leads to
 % duplicated sub-docs, which can cause an exponential blow-up in the
-% size of the doc w.r.t. the source term.  To get around this problem
+% size of the doc w.r.t. the source term. To get around this problem
 % I have introduced the 'DOC' constructor which causes on-demand
 % conversion of arguments.
 %
 % [This is not true laziness in the sense that the 'DOC', once
-% evaluated, will be overwritten with its value.  This approach would
+% evaluated, will be overwritten with its value. This approach would
 % lead to garbage retention and not solve the page thrashing behaviour
 % otherwise experienced when converting extremely large terms.
-% Instead, each 'DOC' is reevaluated each time it is examined.  This
-% trades off computation time for space.]
+% Instead, each 'DOC' is reevaluated each time it is examined.
+% This trades off computation time for space.]
 %
 % I have added several obvious general purpose formatting functions.
 %
@@ -475,9 +476,9 @@ layout_best(P, W, X, S0, S) :-
     %   S  is the resulting layout stream value after laying out X.
     %
     % This predicate is somewhat different to the function `be' described
-    % by Wadler.  In the first place, the decision procedure has been
+    % by Wadler. In the first place, the decision procedure has been
     % recoded (in fits_flat/2) to preserve linear running times under
-    % a strict language.  The second important change is that lb/8
+    % a strict language. The second important change is that lb/8
     % handles output strings as they are identified (e.g. writing them
     % out or accumulating them in a list), doing away with the need for
     % a more elaborate simple_doc type.
@@ -954,7 +955,7 @@ list_to_doc(Depth, Xs) =
 
 %---------------------------------------------------------------------------%
 
-    % XXX Ideally we'd just walk the array.  But that's an optimization
+    % XXX Ideally we wouldd just walk the array. But that is an optimization
     % for another day.
     %
 :- func array_to_doc(int, array(T)) = doc.
@@ -964,8 +965,8 @@ array_to_doc(Depth, A) =
 
 %---------------------------------------------------------------------------%
 
-    % XXX Ideally we'd just walk the version array.  But that's an optimization
-    % for another day.
+    % XXX Ideally we wouldd just walk the version array. But that is
+    % an optimization for another day.
     %
 :- func version_array_to_doc(int, version_array(T)) = doc.
 
