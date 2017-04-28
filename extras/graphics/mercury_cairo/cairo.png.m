@@ -87,30 +87,20 @@ image_surface_create_from_png(FileName, Surface, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- inst png_write_result
-    --->    status_success
-    ;       status_no_memory
-    ;       status_surface_type_mismatch
-    ;       status_write_error.
-
 write_surface_to_png(Surface, FileName, !IO) :-
     write_surface_to_png_2(Surface, FileName, Result, !IO),
-    (
-        Result = status_success
-    ;
-        ( Result = status_no_memory
-        ; Result = status_surface_type_mismatch
-        ; Result = status_write_error
-        ),
+    ( if Result = status_success then
+        true
+    else
         throw(cairo.error("png.write_surface_to_png/4", Result))
     ).
 
-:- pred write_surface_to_png_2(S::in, string::in,
-    cairo.status::out(png_write_result), io::di, io::uo) is det <= surface(S).
+:- pred write_surface_to_png_2(S::in, string::in, cairo.status::out,
+    io::di, io::uo) is det <= surface(S).
 
 :- pragma foreign_proc("C",
-    write_surface_to_png_2(Surface::in, FileName::in,
-        Result::out(png_write_result), _IO0::di, _IO::uo),
+    write_surface_to_png_2(Surface::in, FileName::in, Result::out,
+        _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Result = cairo_surface_write_to_png(

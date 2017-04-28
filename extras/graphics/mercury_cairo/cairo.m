@@ -177,35 +177,6 @@
     ;       status_device_finished
     ;       status_jbig2_global_missing.
 
-    % Status information for surfaces.
-    % XXX Consider removing this inst as it is liable to become out of date.
-    %
-:- inst cairo.surface_status
-    --->    status_success
-    ;       status_null_pointer
-    ;       status_no_memory
-    ;       status_read_error
-    ;       status_invalid_content
-    ;       status_invalid_format
-    ;       status_invalid_visual.
-
-    % Status information for patterns.
-    % XXX Consider removing this inst as it is liable to become out of date.
-    %
-:- inst cairo.pattern_status
-    --->    status_success
-    ;       status_no_memory
-    ;       status_invalid_matrix
-    ;       status_pattern_type_mismatch
-    ;       status_invalid_mesh_construction.
-
-    % Status information for regions.
-    % XXX Consider removing this inst as it is liable to become out of date.
-    %
-:- inst cairo.region_status
-    --->    status_success
-    ;       status_no_memory.
-
     % Exceptions of this type are thrown to indicate a cairo error.
     %
 :- type cairo.error
@@ -607,20 +578,18 @@
     % cairo.surface_status(Surface, Status, !IO):
     % Status is the current status of Surface.
     %
-:- pred surface_status(S::in, status::out(surface_status),
-    io::di, io::uo) is det <= surface(S).
+:- pred surface_status(S::in, status::out, io::di, io::uo) is det
+   <= surface(S).
 
     % cairo.pattern_status(Pattern, Status, !IO):
     % Status is the current status of Pattern.
     %
-:- pred pattern_status(pattern::in, status::out(pattern_status),
-    io::di, io::uo) is det.
+:- pred pattern_status(pattern::in, status::out, io::di, io::uo) is det.
 
     % cairo.region_status(Region, Status, !IO):
     % Status is the current status of Region.
     %
-:- pred region_status(region::in, status::out(region_status),
-    io::di, io::uo) is det.
+:- pred region_status(region::in, status::out, io::di, io::uo) is det.
 
     % cairo.status_to_string(Status) = String:
     % String is a human-readable description of Status.
@@ -1378,8 +1347,7 @@ set_dash(Context, Dashes, OffSet, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    surface_status(Surface::in, Status::out(surface_status),
-        _IO0::di, _IO::uo),
+    surface_status(Surface::in, Status::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Status = cairo_surface_status(
@@ -1387,16 +1355,14 @@ set_dash(Context, Dashes, OffSet, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    pattern_status(Pattern::in, Status::out(pattern_status),
-        _IO0::di, _IO::uo),
+    pattern_status(Pattern::in, Status::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Status = cairo_pattern_status(Pattern->mcairo_raw_pattern);
 ").
 
 :- pragma foreign_proc("C",
-    region_status(Region::in, Status::out(region_status),
-        _IO0::di, _IO::uo),
+    region_status(Region::in, Status::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Status = cairo_region_status(Region->mcairo_raw_region);
