@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,6 +38,7 @@
 
 :- type subpixel_order
     --->    subpixel_order_default
+    ;       subpixel_order_rgb
     ;       subpixel_order_bgr
     ;       subpixel_order_vrgb
     ;       subpixel_order_vbgr.
@@ -110,6 +112,7 @@
 
 :- pragma foreign_enum("C", subpixel_order/0, [
     subpixel_order_default - "CAIRO_SUBPIXEL_ORDER_DEFAULT",
+    subpixel_order_rgb     - "CAIRO_SUBPIXEL_ORDER_RGB",
     subpixel_order_bgr     - "CAIRO_SUBPIXEL_ORDER_BGR",
     subpixel_order_vrgb    - "CAIRO_SUBPIXEL_ORDER_VRGB",
     subpixel_order_vbgr    - "CAIRO_SUBPIXEL_ORDER_VBGR"

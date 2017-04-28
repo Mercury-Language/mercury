@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -73,8 +74,14 @@
     ;       pattern_type_linear
             % The pattern is a linear gradient.
 
-    ;       pattern_type_radial.
+    ;       pattern_type_radial
             % The pattern is a radial gradient.
+
+    ;       pattern_type_mesh
+            % The pattern is a mesh.
+
+    ;       pattern_type_raster_source.
+            % The pattern is a user pattern providing raster data.
 
 %---------------------------------------------------------------------------%
 
@@ -205,7 +212,9 @@
     pattern_type_solid   - "CAIRO_PATTERN_TYPE_SOLID",
     pattern_type_surface - "CAIRO_PATTERN_TYPE_SURFACE",
     pattern_type_linear  - "CAIRO_PATTERN_TYPE_LINEAR",
-    pattern_type_radial  - "CAIRO_PATTERN_TYPE_RADIAL"
+    pattern_type_radial  - "CAIRO_PATTERN_TYPE_RADIAL",
+    pattern_type_mesh    - "CAIRO_PATTERN_TYPE_MESH",
+    pattern_type_raster_source - "CAIRO_PATTERN_TYPE_RASTER_SOURCE"
 ]).
 
 %---------------------------------------------------------------------------%
@@ -213,12 +222,9 @@
 add_color_stop_rgb(Pattern, Offset, R, G, B, !IO) :-
     add_color_stop_rgb_2(Pattern, Offset, R, G, B, !IO),
     cairo.pattern_status(Pattern, Status, !IO),
-    (
-        Status = status_success
-    ;
-        ( Status = status_no_memory
-        ; Status = status_pattern_type_mismatch
-        ),
+    ( if Status = status_success then
+        true
+    else
         throw(cairo.error("pattern.add_color_stop_rgb/7", Status))
     ).
 
@@ -237,12 +243,9 @@ add_color_stop_rgb(Pattern, Offset, R, G, B, !IO) :-
 add_color_stop_rgba(Pattern, Offset, R, G, B, A, !IO) :-
     add_color_stop_rgba_2(Pattern, Offset, R, G, B, A, !IO),
     cairo.pattern_status(Pattern, Status, !IO),
-    (
-        Status = status_success
-    ;
-        ( Status = status_no_memory
-        ; Status = status_pattern_type_mismatch
-        ),
+    ( if Status = status_success then
+        true
+    else
         throw(cairo.error("pattern.add_color_stop_rgba/8", Status))
     ).
 

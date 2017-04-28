@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,16 +63,9 @@
 image_surface_create_from_png(FileName, Surface, !IO) :-
     image_surface_create_from_png_2(FileName, Surface, !IO),
     cairo.surface_status(Surface, Status, !IO),
-    (
-        Status = status_success
-    ;
-        ( Status = status_null_pointer
-        ; Status = status_no_memory
-        ; Status = status_read_error
-        ; Status = status_invalid_content
-        ; Status = status_invalid_format
-        ; Status = status_invalid_visual
-        ),
+    ( if Status = status_success then
+        true
+    else
         throw(cairo.error("png.image_surface_create_from_png/4", Status))
     ).
 

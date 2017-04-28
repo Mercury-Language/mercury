@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
+% Copyright (C) 2015, 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -130,6 +131,11 @@
 
     % The cairo status.
     %
+    % XXX This type is liable to become out of date as status codes are added
+    % to the cairo API. "Complete" switches on status values may not actually
+    % cover some possibilities. Attempting to print status values which are not
+    % enumerated here will result in a crash. And so on.
+    %
 :- type cairo.status
     --->    status_success
     ;       status_no_memory
@@ -162,9 +168,17 @@
     ;       status_negative_count
     ;       status_invalid_clusters
     ;       status_invalid_slant
-    ;       status_invalid_weight.
+    ;       status_invalid_weight
+    ;       status_invalid_size
+    ;       status_user_font_not_implemented
+    ;       status_device_type_mismatch
+    ;       status_device_error
+    ;       status_invalid_mesh_construction
+    ;       status_device_finished
+    ;       status_jbig2_global_missing.
 
     % Status information for surfaces.
+    % XXX Consider removing this inst as it is liable to become out of date.
     %
 :- inst cairo.surface_status
     --->    status_success
@@ -176,13 +190,17 @@
     ;       status_invalid_visual.
 
     % Status information for patterns.
+    % XXX Consider removing this inst as it is liable to become out of date.
     %
 :- inst cairo.pattern_status
     --->    status_success
     ;       status_no_memory
-    ;       status_pattern_type_mismatch.
+    ;       status_invalid_matrix
+    ;       status_pattern_type_mismatch
+    ;       status_invalid_mesh_construction.
 
     % Status information for regions.
+    % XXX Consider removing this inst as it is liable to become out of date.
     %
 :- inst cairo.region_status
     --->    status_success
@@ -398,19 +416,39 @@
     % operations (See: <http://cairographics.org/operators/> for details.)
     %
 :- type operator
-    --->    operator_source
+    --->    operator_clear
+
+    ;       operator_source
     ;       operator_over
     ;       operator_in
     ;       operator_out
     ;       operator_atop
+
     ;       operator_dest
     ;       operator_dest_over
     ;       operator_dest_in
     ;       operator_dest_out
     ;       operator_dest_atop
+
     ;       operator_xor
     ;       operator_add
-    ;       operator_saturate.
+    ;       operator_saturate
+
+    ;       operator_multiply
+    ;       operator_screen
+    ;       operator_overlay
+    ;       operator_darken
+    ;       operator_lighten
+    ;       operator_color_dodge
+    ;       operator_color_burn
+    ;       operator_hard_light
+    ;       operator_soft_light
+    ;       operator_difference
+    ;       operator_exclusion
+    ;       operator_hsl_hue
+    ;       operator_hsl_saturation
+    ;       operator_hsl_color
+    ;       operator_hsl_luminosity.
 
     % cairo.set_operator(Context, Operator, !IO):
     % Set the compositing operator for Context to Operator.
@@ -702,19 +740,39 @@ MCAIRO_finalize_scaled_font(void *scaled_font, void *client_data);
 ]).
 
 :- pragma foreign_enum("C", operator/0, [
+    operator_clear     - "CAIRO_OPERATOR_CLEAR",
+
     operator_source    - "CAIRO_OPERATOR_SOURCE",
     operator_over      - "CAIRO_OPERATOR_OVER",
     operator_in        - "CAIRO_OPERATOR_IN",
     operator_out       - "CAIRO_OPERATOR_OUT",
     operator_atop      - "CAIRO_OPERATOR_ATOP",
+
     operator_dest      - "CAIRO_OPERATOR_DEST",
     operator_dest_over - "CAIRO_OPERATOR_DEST_OVER",
     operator_dest_in   - "CAIRO_OPERATOR_DEST_IN",
     operator_dest_out  - "CAIRO_OPERATOR_DEST_OUT",
     operator_dest_atop - "CAIRO_OPERATOR_DEST_ATOP",
+
     operator_xor       - "CAIRO_OPERATOR_XOR",
     operator_add       - "CAIRO_OPERATOR_ADD",
-    operator_saturate  - "CAIRO_OPERATOR_SATURATE"
+    operator_saturate  - "CAIRO_OPERATOR_SATURATE",
+
+    operator_multiply       - "CAIRO_OPERATOR_MULTIPLY",
+    operator_screen         - "CAIRO_OPERATOR_SCREEN",
+    operator_overlay        - "CAIRO_OPERATOR_OVERLAY",
+    operator_darken         - "CAIRO_OPERATOR_DARKEN",
+    operator_lighten        - "CAIRO_OPERATOR_LIGHTEN",
+    operator_color_dodge    - "CAIRO_OPERATOR_COLOR_DODGE",
+    operator_color_burn     - "CAIRO_OPERATOR_COLOR_BURN",
+    operator_hard_light     - "CAIRO_OPERATOR_HARD_LIGHT",
+    operator_soft_light     - "CAIRO_OPERATOR_SOFT_LIGHT",
+    operator_difference     - "CAIRO_OPERATOR_DIFFERENCE",
+    operator_exclusion      - "CAIRO_OPERATOR_EXCLUSION",
+    operator_hsl_hue        - "CAIRO_OPERATOR_HSL_HUE",
+    operator_hsl_saturation - "CAIRO_OPERATOR_HSL_SATURATION",
+    operator_hsl_color      - "CAIRO_OPERATOR_HSL_COLOR",
+    operator_hsl_luminosity - "CAIRO_OPERATOR_HSL_LUMINOSITY"
 ]).
 
 :- pragma foreign_enum("C", cairo.format/0, [
@@ -757,8 +815,16 @@ MCAIRO_finalize_scaled_font(void *scaled_font, void *client_data);
     status_negative_count         - "CAIRO_STATUS_NEGATIVE_COUNT",
     status_invalid_clusters       - "CAIRO_STATUS_INVALID_CLUSTERS",
     status_invalid_slant          - "CAIRO_STATUS_INVALID_SLANT",
-    status_invalid_weight         - "CAIRO_STATUS_INVALID_WEIGHT"
+    status_invalid_weight         - "CAIRO_STATUS_INVALID_WEIGHT",
+    status_invalid_size           - "CAIRO_STATUS_INVALID_SIZE",
+    status_user_font_not_implemented- "CAIRO_STATUS_USER_FONT_NOT_IMPLEMENTED",
+    status_device_type_mismatch     - "CAIRO_STATUS_DEVICE_TYPE_MISMATCH",
+    status_device_error             - "CAIRO_STATUS_DEVICE_ERROR",
+    status_invalid_mesh_construction- "CAIRO_STATUS_INVALID_MESH_CONSTRUCTION",
+    status_device_finished          - "CAIRO_STATUS_DEVICE_FINISHED",
+    status_jbig2_global_missing     - "CAIRO_STATUS_JBIG2_GLOBAL_MISSING"
 ]).
+
 :- pragma foreign_code("C", "
 
 void
