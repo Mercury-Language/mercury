@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,9 +96,9 @@ create_surface(Content, MaybeExtents, Surface, !IO) :-
         Surface, !IO),
     (
         Supported = yes,
-        ( Status = status_success ->
+        ( if Status = status_success then
             true
-        ;
+        else
             throw(cairo.error("recording.create_surface/4", Status))
         )
     ;
