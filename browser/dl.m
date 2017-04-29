@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1998-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: dl.m.
 % Purpose: dynamic linking support.
@@ -15,7 +15,7 @@
 % and dlclose(). For details about the behaviour of those procedures,
 % see the documentation for those procedures (i.e. `man dlopen').
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.dl.
 
@@ -163,20 +163,6 @@ open(FileName, Mode, Scope, Result, !IO) :-
 dlopen(_, _, _, _, !IO) :-
     private_builtin.sorry("dlopen").
 
-mercury_sym(Handle, MercuryProc0, Result, !IO) :-
-    check_proc_spec_matches_result_type(Result, _, MercuryProc0, MercuryProc1),
-    check_type_is_supported(Result, _, MercuryProc1, MercuryProc),
-    MangledName = proc_name_mangle(MercuryProc),
-    sym(Handle, MangledName, Result0, !IO),
-    (
-        Result0 = dl_error(Msg),
-        Result = dl_error(Msg)
-    ;
-        Result0 = dl_ok(Address),
-        private_builtin.unsafe_type_cast(make_closure(Address), Closure),
-        Result = dl_ok(Closure)
-    ).
-
 :- pragma foreign_decl("C",
 "
 #include ""mercury_ho_call.h""
@@ -306,6 +292,20 @@ sym(handle(Handle), Name, Result, !IO) :-
         Result = dl_ok(Pointer)
     ).
 
+mercury_sym(Handle, MercuryProc0, Result, !IO) :-
+    check_proc_spec_matches_result_type(Result, _, MercuryProc0, MercuryProc1),
+    check_type_is_supported(Result, _, MercuryProc1, MercuryProc),
+    MangledName = proc_name_mangle(MercuryProc),
+    sym(Handle, MangledName, Result0, !IO),
+    (
+        Result0 = dl_error(Msg),
+        Result = dl_error(Msg)
+    ;
+        Result0 = dl_ok(Address),
+        private_builtin.unsafe_type_cast(make_closure(Address), Closure),
+        Result = dl_ok(Closure)
+    ).
+
 :- pred dlsym(c_pointer::in, string::in, c_pointer::out,
     io::di, io::uo) is det.
 
@@ -366,7 +366,7 @@ close(handle(Handle), Result, !IO) :-
 dlclose(_, !IO) :-
     private_builtin.sorry("dlclose").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred high_level_code is semidet.
 :- pragma foreign_proc("C",
@@ -383,4 +383,4 @@ dlclose(_, !IO) :-
 high_level_code :-
     private_builtin.sorry("high_level_code").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

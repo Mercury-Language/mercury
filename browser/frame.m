@@ -34,6 +34,10 @@
     % coordinates is needed.
 :- type clip_rect == pair(int, int).
 
+    % Create a frame from a string.
+    %
+:- func from_string(string) = frame.
+
     % Width of a frame (horizontal size).
     %
 :- func hsize(frame) = int.
@@ -41,10 +45,6 @@
     % Height of a frame (vertical size).
     %
 :- func vsize(frame) = int.
-
-    % Create a frame from a string.
-    %
-:- func from_string(string) = frame.
 
     % Stack (vertically glue) two frames, left-aligned.
     %
@@ -73,6 +73,14 @@
 %---------------------------------------------------------------------------%
 
 from_string(Str) = [Str].
+
+hsize(Frame) = HSize :-
+    Lengths = list.map(func(Str) = string.length(Str), Frame),
+    list.foldl(int.max, Lengths, 0, MaxLen),
+    HSize = MaxLen.
+
+vsize(Frame) = VSize :-
+    length(Frame, VSize).
 
 vglue(TopFrame, BottomFrame) = StackedFrame :-
     % Glue frames vertically (stack). Align to left.
@@ -133,14 +141,6 @@ subtract(M, X, Z) :-
 frame_lower_pad(Frame, PadLines) = PaddedFrame :-
     list.duplicate(PadLines, "", Padding),
     list.append(Frame, Padding, PaddedFrame).
-
-hsize(Frame) = HSize :-
-    Lengths = list.map(func(Str) = string.length(Str), Frame),
-    list.foldl(int.max, Lengths, 0, MaxLen),
-    HSize = MaxLen.
-
-vsize(Frame) = VSize :-
-    length(Frame, VSize).
 
 clip(X-Y, Frame) = ClippedFrame :-
     list.take_upto(Y, Frame, YClippedFrame),

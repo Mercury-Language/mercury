@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1998-2001, 2003, 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: debugger_interface.m.
 % Authors: fjh, jahier.
@@ -16,7 +16,7 @@
 %
 % This module corresponds to what is called the "Query Handler" in Opium.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.debugger_interface.
 :- interface.
@@ -34,8 +34,8 @@
 
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -320,7 +320,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
     % responses to collect_arg_off
     ;       response_collect_arg_off_ok.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %   send to the debugger (e.g. Opium) the wanted features.
 
 % output_current_slots_user "ML_DI_output_current_slots_user":
@@ -421,7 +421,7 @@ output_current_live_var_names(LiveVarNameList, LiveVarTypeList, OutputStream,
     io.print(OutputStream, ".\n", !IO),
     io.flush_output(OutputStream, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_export("C", get_var_number(in) = out,
     "ML_DI_get_var_number").
@@ -438,7 +438,7 @@ get_var_number(DebuggerRequest) = VarNumber :-
         unexpected($module, $pred, "not a current_nth_var request")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_export("C",
     found_match_user(in, in, in, in, in, in, in, in, in, in, in, in, in, in),
@@ -549,7 +549,7 @@ found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
         unexpected($module, $pred, "forward_move expected")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred read_request_from_socket(io.input_stream::in, debugger_request::out,
     int::out, io::di, io::uo) is det.
@@ -580,7 +580,7 @@ read_request_from_socket(SocketStream, Request, RequestType, !IO) :-
     % io.print(StdErr, RequestType, !IO),
     % io.print(StdErr, ".\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_list_modules_to_import(debugger_request::in, int::out,
     imports::out) is det.
@@ -600,7 +600,7 @@ get_list_modules_to_import(DebuggerRequest, ListLength, ModulesList) :-
     ),
     length(ModulesList, ListLength).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_mmc_options(debugger_request::in, options_string::out) is det.
 :- pragma foreign_export("C", get_mmc_options(in, out),
@@ -613,7 +613,7 @@ get_mmc_options(DebuggerRequest, Options) :-
         unexpected($module, $pred, "not a mmc_options request")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate allows mercury_trace_external.c to retrieve the name
     % of the object file to link the current execution with from a
@@ -630,7 +630,7 @@ get_object_file_name(DebuggerRequest, ObjectFileName) :-
         unexpected($module, $pred, "not a link_collect request")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred init_mercury_string(string::out) is det.
 :- pragma foreign_export("C", init_mercury_string(out),
@@ -638,7 +638,7 @@ get_object_file_name(DebuggerRequest, ObjectFileName) :-
 
 init_mercury_string("").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate allows mercury_trace_external.c to retrieve the name
     % of the variable to browse from a `browse(var_name)' request.
@@ -654,7 +654,7 @@ get_variable_name(DebuggerRequest, Options) :-
         unexpected($module, $pred, "not a browse request")
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred classify_request(debugger_request::in, int::out) is det.
 
@@ -684,4 +684,4 @@ classify_request(current_grade,20).
 classify_request(collect_arg_on,21).
 classify_request(collect_arg_off,22).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

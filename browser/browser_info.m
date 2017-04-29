@@ -114,6 +114,9 @@
 :- func down_to_up_down_dir(down_dir) = up_down_dir.
 :- func down_to_up_down_dirs(list(down_dir)) = list(up_down_dir).
 
+:- pred convert_dirs_to_term_path(term_rep::in, list(down_dir)::in,
+    term_path::out) is det.
+
     % The browser is required to behave differently for different caller
     % circumstances. The following type enumerates the various possibilities.
     %
@@ -172,10 +175,17 @@
 :- pred get_format_params(browser_info::in, browse_caller_type::in,
     portray_format::in, format_params::out) is det.
 
-:- func get_num_printed_io_actions(browser_persistent_state) = int.
+:- pred info_set_browse_param(option_table(setting_option)::in,
+    setting::in, browser_info::in, browser_info::out) is det.
 
-:- pred convert_dirs_to_term_path(term_rep::in, list(down_dir)::in,
-    term_path::out) is det.
+:- pred info_set_num_io_actions(int::in,
+    browser_info::in, browser_info::out) is det.
+
+:- pred info_set_xml_browser_cmd(string::in,
+    browser_info::in, browser_info::out) is det.
+
+:- pred info_set_xml_tmp_filename(string::in,
+    browser_info::in, browser_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -197,6 +207,11 @@
     %
 :- pred init_persistent_state(browser_persistent_state).
 :- mode init_persistent_state(out) is det.
+
+:- func get_num_printed_io_actions(browser_persistent_state) = int.
+:- pred get_num_io_actions(browser_persistent_state::in, int::out) is det.
+:- pred set_num_io_actions(int::in,
+    browser_persistent_state::in, browser_persistent_state::out) is det.
 
     % Update a setting in the browser state. The first argument should be
     % true iff the set command is invoked from within the browser. The next
@@ -233,22 +248,6 @@
     %
 :- pred set_browser_param_from_option_table(browse_caller_type::in,
     option_table(setting_option)::in, setting::in,
-    browser_persistent_state::in, browser_persistent_state::out) is det.
-
-:- pred info_set_browse_param(option_table(setting_option)::in,
-    setting::in, browser_info::in, browser_info::out) is det.
-
-:- pred info_set_num_io_actions(int::in,
-    browser_info::in, browser_info::out) is det.
-
-:- pred info_set_xml_browser_cmd(string::in,
-    browser_info::in, browser_info::out) is det.
-
-:- pred info_set_xml_tmp_filename(string::in,
-    browser_info::in, browser_info::out) is det.
-
-:- pred get_num_io_actions(browser_persistent_state::in, int::out) is det.
-:- pred set_num_io_actions(int::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
 
 :- type param_cmd
@@ -352,8 +351,91 @@
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", init_persistent_state(out),
-    "ML_BROWSE_init_persistent_state").
+down_to_up_down_dir(down_child_num(Num)) = updown_child_num(Num).
+down_to_up_down_dir(down_child_name(Name)) = updown_child_name(Name).
+
+down_to_up_down_dirs([]) = [].
+down_to_up_down_dirs([DownDir | DownDirs]) =
+    [down_to_up_down_dir(DownDir) | down_to_up_down_dirs(DownDirs)].
+
+%---------------------------------------------------------------------------%
+
+convert_dirs_to_term_path(Term, Dirs, TermPath) :-
+    (
+        Dirs = [],
+        TermPath = []
+    ;
+        Dirs = [down_child_num(N) | DirsTail],
+        ( if
+            term_rep.argument(Term, N, Subterm)
+        then
+            convert_dirs_to_term_path(Subterm, DirsTail, TermPathTail)
+        else
+            unexpected($module, $pred, "invalid argument")
+        ),
+        TermPath = [N | TermPathTail]
+    ;
+        Dirs =  [down_child_name(Name) | DirsTail],
+        ( if
+            term_rep.field_pos(Name, Term, Pos),
+            term_rep.argument(Term, Pos, Subterm)
+        then
+            convert_dirs_to_term_path(Subterm, DirsTail, TermPathTail),
+            N = Pos
+        else
+            unexpected($module, $pred, "invalid field name")
+        ),
+        TermPath = [N | TermPathTail]
+    ).
+
+%---------------------------------------------------------------------------%
+
+init(BrowserTerm, CallerType, MaybeFormat, MaybeModeFunc, State) =
+    browser_info(BrowserTerm, [], CallerType, MaybeFormat, State, no_track,
+        MaybeModeFunc).
+
+get_format(Info, Caller, MaybeFormat, Format) :-
+    (
+        MaybeFormat = yes(Format)
+    ;
+        MaybeFormat = no,
+        MdbFormatOption = Info ^ bri_format,
+        (
+            MdbFormatOption = yes(Format)
+        ;
+            MdbFormatOption = no,
+            get_caller_params(Info ^ bri_state, Caller, Params),
+            Format = Params ^ default_format
+        )
+    ).
+
+get_format_params(Info, Caller, Format, Params) :-
+    get_caller_params(Info ^ bri_state, Caller, CallerParams),
+    get_caller_format_params(CallerParams, Format, Params).
+
+info_set_browse_param(OptionTable, Setting, !Info) :-
+    PersistentState0 = !.Info ^ bri_state,
+    CallerType = !.Info ^ bri_caller_type,
+    set_browser_param_from_option_table(CallerType, OptionTable, Setting,
+        PersistentState0, PersistentState),
+    !Info ^ bri_state := PersistentState.
+
+info_set_num_io_actions(N, !Info) :-
+    PersistentState0 = !.Info ^ bri_state,
+    set_num_io_actions(N, PersistentState0, PersistentState),
+    !Info ^ bri_state := PersistentState.
+
+info_set_xml_browser_cmd(Cmd, !Info) :-
+    PersistentState0 = !.Info ^ bri_state,
+    set_xml_browser_cmd_from_mdb(Cmd, PersistentState0, PersistentState),
+    !Info ^ bri_state := PersistentState.
+
+info_set_xml_tmp_filename(FileName, !Info) :-
+    PersistentState0 = !.Info ^ bri_state,
+    set_xml_tmp_filename_from_mdb(FileName, PersistentState0, PersistentState),
+    !Info ^ bri_state := PersistentState.
+
+%---------------------------------------------------------------------------%
 
 %
 % The following exported predicates are a convenient way to
@@ -404,28 +486,6 @@ set_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines, !Browser) :-
     set_browser_param(no, P, B, A, F, Pr, V, NPr, setting_lines(Lines),
         !Browser).
 
-info_set_browse_param(OptionTable, Setting, !Info) :-
-    PersistentState0 = !.Info ^ bri_state,
-    CallerType = !.Info ^ bri_caller_type,
-    set_browser_param_from_option_table(CallerType, OptionTable, Setting,
-        PersistentState0, PersistentState),
-    !Info ^ bri_state := PersistentState.
-
-info_set_num_io_actions(N, !Info) :-
-    PersistentState0 = !.Info ^ bri_state,
-    set_num_io_actions(N, PersistentState0, PersistentState),
-    !Info ^ bri_state := PersistentState.
-
-info_set_xml_browser_cmd(Cmd, !Info) :-
-    PersistentState0 = !.Info ^ bri_state,
-    set_xml_browser_cmd_from_mdb(Cmd, PersistentState0, PersistentState),
-    !Info ^ bri_state := PersistentState.
-
-info_set_xml_tmp_filename(FileName, !Info) :-
-    PersistentState0 = !.Info ^ bri_state,
-    set_xml_tmp_filename_from_mdb(FileName, PersistentState0, PersistentState),
-    !Info ^ bri_state := PersistentState.
-
 :- pred set_format_from_mdb(bool::in, bool::in, bool::in, portray_format::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
 :- pragma foreign_export("C",
@@ -437,24 +497,9 @@ set_format_from_mdb(P, B, A, Format, !Browser) :-
     set_browser_param(no, P, B, A, no, no, no, no, setting_format(Format),
         !Browser).
 
-:- pragma foreign_export("C",
-    get_num_io_actions(in, out),
-    "ML_BROWSE_get_num_io_actions").
-
-get_num_io_actions(Browser, NumIOActions) :-
-    NumIOActions = Browser ^ num_printed_io_actions.
-
-:- pragma foreign_export("C",
-    set_num_io_actions(in, in, out),
-    "ML_BROWSE_set_num_io_actions").
-
-set_num_io_actions(NumIOActions, !Browser) :-
-    !Browser ^ num_printed_io_actions := NumIOActions.
-
 :- pred get_xml_browser_cmd_from_mdb(browser_persistent_state::in,
     string::out) is det.
-:- pragma foreign_export("C",
-    get_xml_browser_cmd_from_mdb(in, out),
+:- pragma foreign_export("C", get_xml_browser_cmd_from_mdb(in, out),
     "ML_BROWSE_get_xml_browser_cmd_from_mdb").
 
 get_xml_browser_cmd_from_mdb(Browser, Command) :-
@@ -468,8 +513,7 @@ get_xml_browser_cmd_from_mdb(Browser, Command) :-
 
 :- pred set_xml_browser_cmd_from_mdb(string::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma foreign_export("C",
-    set_xml_browser_cmd_from_mdb(in, in, out),
+:- pragma foreign_export("C", set_xml_browser_cmd_from_mdb(in, in, out),
     "ML_BROWSE_set_xml_browser_cmd_from_mdb").
 
 set_xml_browser_cmd_from_mdb(Command, !Browser) :-
@@ -481,8 +525,7 @@ set_xml_browser_cmd_from_mdb(Command, !Browser) :-
 
 :- pred get_xml_tmp_filename_from_mdb(browser_persistent_state::in,
     string::out) is det.
-:- pragma foreign_export("C",
-    get_xml_tmp_filename_from_mdb(in, out),
+:- pragma foreign_export("C", get_xml_tmp_filename_from_mdb(in, out),
     "ML_BROWSE_get_xml_tmp_filename_from_mdb").
 
 get_xml_tmp_filename_from_mdb(Browser, FileName) :-
@@ -496,8 +539,7 @@ get_xml_tmp_filename_from_mdb(Browser, FileName) :-
 
 :- pred set_xml_tmp_filename_from_mdb(string::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma foreign_export("C",
-    set_xml_tmp_filename_from_mdb(in, in, out),
+:- pragma foreign_export("C", set_xml_tmp_filename_from_mdb(in, in, out),
     "ML_BROWSE_set_xml_tmp_filename_from_mdb").
 
 set_xml_tmp_filename_from_mdb(FileName, !Browser) :-
@@ -507,9 +549,9 @@ set_xml_tmp_filename_from_mdb(FileName, !Browser) :-
         !Browser ^ xml_tmp_filename := yes(FileName)
     ).
 
+%---------------------------------------------------------------------------%
 %
-% The following exported functions allow C code to create
-% Mercury values of type bool.
+% The following functions allow C code to create Mercury values of type bool.
 %
 
 :- func mercury_bool_yes = bool.
@@ -523,40 +565,6 @@ mercury_bool_yes = yes.
     "ML_BROWSE_mercury_bool_no").
 
 mercury_bool_no = no.
-
-%---------------------------------------------------------------------------%
-
-down_to_up_down_dir(down_child_num(Num)) = updown_child_num(Num).
-down_to_up_down_dir(down_child_name(Name)) = updown_child_name(Name).
-
-down_to_up_down_dirs([]) = [].
-down_to_up_down_dirs([DownDir | DownDirs]) =
-    [down_to_up_down_dir(DownDir) | down_to_up_down_dirs(DownDirs)].
-
-%---------------------------------------------------------------------------%
-
-init(BrowserTerm, CallerType, MaybeFormat, MaybeModeFunc, State) =
-    browser_info(BrowserTerm, [], CallerType, MaybeFormat, State, no_track,
-        MaybeModeFunc).
-
-get_format(Info, Caller, MaybeFormat, Format) :-
-    (
-        MaybeFormat = yes(Format)
-    ;
-        MaybeFormat = no,
-        MdbFormatOption = Info ^ bri_format,
-        (
-            MdbFormatOption = yes(Format)
-        ;
-            MdbFormatOption = no,
-            get_caller_params(Info ^ bri_state, Caller, Params),
-            Format = Params ^ default_format
-        )
-    ).
-
-get_format_params(Info, Caller, Format, Params) :-
-    get_caller_params(Info ^ bri_state, Caller, CallerParams),
-    get_caller_format_params(CallerParams, Format, Params).
 
 %---------------------------------------------------------------------------%
 
@@ -582,6 +590,9 @@ get_format_params(Info, Caller, Format, Params) :-
                 verbose_params          :: format_params,
                 pretty_params           :: format_params
             ).
+
+:- pragma foreign_export("C", init_persistent_state(out),
+    "ML_BROWSE_init_persistent_state").
 
     % Initialise the persistent settings with default values. The rationale
     % for the default values is:
@@ -644,6 +655,21 @@ caller_type_print_all_defaults = Params :-
 % on the typical 24-line screen for the atom, the query, and some previous
 % context.
 num_printed_io_actions_default = 20.
+
+get_num_printed_io_actions(State) =
+    State ^ num_printed_io_actions.
+
+:- pragma foreign_export("C", get_num_io_actions(in, out),
+    "ML_BROWSE_get_num_io_actions").
+
+get_num_io_actions(Browser, NumIOActions) :-
+    NumIOActions = Browser ^ num_printed_io_actions.
+
+:- pragma foreign_export("C", set_num_io_actions(in, in, out),
+    "ML_BROWSE_set_num_io_actions").
+
+set_num_io_actions(NumIOActions, !Browser) :-
+    !Browser ^ num_printed_io_actions := NumIOActions.
 
 set_browser_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting,
         !State) :-
@@ -827,9 +853,6 @@ get_caller_format_params(Params, flat, Params ^ flat_params).
 get_caller_format_params(Params, raw_pretty, Params ^ raw_pretty_params).
 get_caller_format_params(Params, verbose, Params ^ verbose_params).
 get_caller_format_params(Params, pretty, Params ^ pretty_params).
-
-get_num_printed_io_actions(State) =
-    State ^ num_printed_io_actions.
 
 %---------------------------------------------------------------------------%
 
@@ -1259,35 +1282,5 @@ pretty_value(BrowserDb, Univ0) = Value :-
         Univ = Univ0
     ),
     Value = univ_value(Univ).
-
-%---------------------------------------------------------------------------%
-
-convert_dirs_to_term_path(Term, Dirs, TermPath) :-
-    (
-        Dirs = [],
-        TermPath = []
-    ;
-        Dirs = [down_child_num(N) | DirsTail],
-        ( if
-            term_rep.argument(Term, N, Subterm)
-        then
-            convert_dirs_to_term_path(Subterm, DirsTail, TermPathTail)
-        else
-            unexpected($module, $pred, "invalid argument")
-        ),
-        TermPath = [N | TermPathTail]
-    ;
-        Dirs =  [down_child_name(Name) | DirsTail],
-        ( if
-            term_rep.field_pos(Name, Term, Pos),
-            term_rep.argument(Term, Pos, Subterm)
-        then
-            convert_dirs_to_term_path(Subterm, DirsTail, TermPathTail),
-            N = Pos
-        else
-            unexpected($module, $pred, "invalid field name")
-        ),
-        TermPath = [N | TermPathTail]
-    ).
 
 %---------------------------------------------------------------------------%

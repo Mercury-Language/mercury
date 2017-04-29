@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: declarative_user.m.
 % Author: Mark Brown.
@@ -14,8 +14,8 @@
 % in a human-readable format, and for getting responses to debugger queries
 % from the user.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.declarative_user.
 :- interface.
@@ -27,7 +27,7 @@
 :- import_module bool.
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type user_question(T)
     --->    plain_question(decl_question(T))
@@ -99,8 +99,8 @@
 :- pred set_user_testing_flag(bool::in, user_state::in, user_state::out)
     is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -128,7 +128,7 @@
 :- import_module string.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type user_command
     --->    user_cmd_yes
@@ -219,7 +219,7 @@
 user_state_init(InStr, OutStr, Browser, HelpSystem,
     user_state(InStr, OutStr, Browser, yes, HelpSystem, no)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 query_user(UserQuestion, Response, !User, !IO) :-
     Question = get_decl_question(UserQuestion),
@@ -832,7 +832,7 @@ convert_maybe_track_dirs_to_term_path_from_arg(Term, TrackDirs, TrackPath) :-
     convert_dirs_to_term_path(Term, Dirs, TermPath),
     TrackPath = track(HowTrack, ShouldAssertInvalid, TermPath).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred user_confirm_bug_help(user_state::in, io::di, io::uo) is det.
 
@@ -1059,7 +1059,7 @@ string_to_range(Arg, From, To) :-
 
 is_dash('-').
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 user_confirm_bug(Bug, Response, !User, !IO) :-
     (
@@ -1114,7 +1114,7 @@ user_confirm_bug(Bug, Response, !User, !IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Returns the caller type we want to use throughout the
     % declarative debugger.
@@ -1332,7 +1332,7 @@ print_tabled_io_action(User, tabled(IoAction), !IO) :-
     browse.print_browser_term(Term, User ^ outstr, print_all,
         User ^ browser, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_browser_state(User) = User ^ browser.
 
@@ -1345,7 +1345,7 @@ get_user_input_stream(User) = User ^ instr.
 
 set_user_testing_flag(Testing, User, User ^ testing := Testing).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred convert_dirs_to_term_path_from_atom(trace_atom::in,
     list(down_dir)::in, term_path::out) is det.
@@ -1391,4 +1391,4 @@ convert_dirs_to_term_path_from_atom(atom(_, Args), [Dir | Dirs], TermPath) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -34,6 +34,22 @@
 
 %---------------------------------------------------------------------------%
 
+    % The non-interactive term browser. The caller type should be either
+    % `print' or `print_all'. The default portray format for that
+    % caller type is used.
+    %
+:- pred print_browser_term(browser_term::in,
+    io.output_stream::in, browse_caller_type::in,
+    browser_persistent_state::in, io::di, io::uo) is cc_multi.
+
+    % As above, except that the supplied format will override the default.
+    %
+:- pred print_browser_term_format(browser_term::in,
+    io.output_stream::in, browse_caller_type::in, portray_format::in,
+    browser_persistent_state::in, io::di, io::uo) is cc_multi.
+
+%---------------------------------------------------------------------------%
+
     % The interactive term browser. The caller type will be `browse', and
     % the default format for the `browse' caller type will be used. Since
     % this predicate is exported to be used by C code, no browser term
@@ -53,13 +69,6 @@
     maybe(browser_mode_func)::in, maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
-
-    % Dump the term as an XML file and launch the XML browser specified
-    % by the xml_browser_cmd field in the browser_persistent_state.
-    %
-:- pred save_and_browse_browser_term_xml(browser_term::in,
-    io.output_stream::in, io.output_stream::in,
-    browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
     % As above, except that the supplied format will override the default.
     % Again, this is exported to C code, so the browser term mode function
@@ -95,20 +104,6 @@
     io.output_stream::in, maybe(browser_mode_func)::in,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
-
-    % The non-interactive term browser. The caller type should be either
-    % `print' or `print_all'. The default portray format for that
-    % caller type is used.
-    %
-:- pred print_browser_term(browser_term::in,
-    io.output_stream::in, browse_caller_type::in,
-    browser_persistent_state::in, io::di, io::uo) is cc_multi.
-
-    % As above, except that the supplied format will override the default.
-    %
-:- pred print_browser_term_format(browser_term::in,
-    io.output_stream::in, browse_caller_type::in, portray_format::in,
-    browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
     % Estimate the total term size, in characters, We count the number of
     % characters in the functor, plus two characters for each argument:
@@ -149,6 +144,15 @@
     %
 :- pred save_term_to_file_xml(string::in, browser_term::in,
     io.output_stream::in, io::di, io::uo) is cc_multi.
+
+    % Dump the term as an XML file and launch the XML browser specified
+    % by the xml_browser_cmd field in the browser_persistent_state.
+    %
+:- pred save_and_browse_browser_term_xml(browser_term::in,
+    io.output_stream::in, io.output_stream::in,
+    browser_persistent_state::in, io::di, io::uo) is cc_multi.
+
+%---------------------------------------------------------------------------%
 
     % Remove "/dir/../" sequences from a list of directories to yield
     % a form that lacks ".." entries.
@@ -220,245 +224,6 @@
 :- pragma foreign_export("C",
     save_and_browse_browser_term_xml(in, in, in, in, di, uo),
     "ML_BROWSE_browse_term_xml").
-
-%---------------------------------------------------------------------------%
-%
-% Saving terms to files.
-%
-
-save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
-    trace [compile_time(flag("debug_save_term_to_file")), io(!TIO)] (
-        io.write_string(FileName, !TIO),
-        io.nl(!TIO),
-        io.write(BrowserTerm, !TIO),
-        io.nl(!TIO)
-    ),
-    io.tell(FileName, FileStreamRes, !IO),
-    (
-        FileStreamRes = ok,
-        (
-            BrowserTerm = plain_term(Term),
-            save_univ(0, Term, !IO),
-            io.nl(!IO)
-        ;
-            BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
-            io.write_string(Functor, !IO),
-            io.write_string("(\n", !IO),
-            save_args(1, Args, !IO),
-            io.write_string("\n)\n", !IO),
-            (
-                MaybeRes = no
-            ;
-                MaybeRes = yes(Result),
-                io.write_string("=\n", !IO),
-                save_univ(1, Result, !IO),
-                io.write_string("\n", !IO)
-            )
-        ),
-        io.told(!IO)
-    ;
-        FileStreamRes = error(Error),
-        io.error_message(Error, Msg),
-        io.write_string(OutStream, Msg, !IO)
-    ).
-
-:- type xml_predicate_wrapper
-    --->    predicate(
-                predicate_name      :: string,
-                predicate_arguments :: list(univ)
-            ).
-
-:- type xml_function_wrapper
-    --->    function(
-                function_name       :: string,
-                function_arguments  :: list(univ),
-                return_value        :: univ
-            ).
-
-save_term_to_file_xml(FileName, BrowserTerm, OutStream, !IO) :-
-    maybe_save_term_to_file_xml(FileName, BrowserTerm, Result, !IO),
-    (
-        Result = ok(_)
-    ;
-        Result = error(Error),
-        io.error_message(Error, Msg),
-        io.write_string(OutStream, Msg, !IO),
-        io.nl(!IO)
-    ).
-
-:- pred maybe_save_term_to_file_xml(string::in, browser_term::in,
-    io.res(io.output_stream)::out, io::di, io::uo) is cc_multi.
-
-maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
-    io.open_output(FileName, FileStreamRes, !IO),
-    (
-        FileStreamRes = ok(OutputStream),
-        (
-            BrowserTerm = plain_term(Univ),
-            Term = univ_value(Univ),
-            term_to_xml.write_xml_doc_general_cc(OutputStream, Term, simple,
-                no_stylesheet,  no_dtd, _, !IO)
-        ;
-            BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
-            (
-                MaybeRes = no,
-                PredicateTerm = predicate(Functor, Args),
-                term_to_xml.write_xml_doc_general_cc(OutputStream,
-                    PredicateTerm, simple, no_stylesheet, no_dtd, _, !IO)
-            ;
-                MaybeRes = yes(Result),
-                FunctionTerm = function(Functor, Args, Result),
-                term_to_xml.write_xml_doc_general_cc(OutputStream,
-                    FunctionTerm, simple, no_stylesheet, no_dtd, _, !IO)
-            )
-        ),
-        io.close_output(OutputStream, !IO)
-    ;
-        FileStreamRes = error(_)
-    ).
-
-save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State, !IO) :-
-    MaybeXMLBrowserCmd = State ^ xml_browser_cmd,
-    MaybeTmpFileName = State ^ xml_tmp_filename,
-    (
-        MaybeXMLBrowserCmd = yes(CommandStr),
-        MaybeTmpFileName = yes(TmpFileName),
-        io.write_string(OutStream, "Saving term to XML file...\n", !IO),
-        maybe_save_term_to_file_xml(TmpFileName, Term, SaveResult, !IO),
-        (
-            SaveResult = ok(_),
-            launch_xml_browser(OutStream, ErrStream, CommandStr, !IO)
-        ;
-            SaveResult = error(Error),
-            io.error_message(Error, Msg),
-            io.write_string(ErrStream,
-                "Error opening file `" ++ TmpFileName ++ "': ", !IO),
-            io.write_string(ErrStream, Msg, !IO),
-            io.nl(!IO)
-        )
-    ;
-        MaybeXMLBrowserCmd = yes(_),
-        MaybeTmpFileName = no,
-        io.write_string(ErrStream, "mdb: You need to issue a " ++
-            "\"set xml_tmp_filename '<filename>'\" command first.\n", !IO)
-    ;
-        MaybeXMLBrowserCmd = no,
-        MaybeTmpFileName = yes(_),
-        io.write_string(ErrStream, "mdb: You need to issue a " ++
-            "\"set xml_browser_cmd '<command>'\" command first.\n", !IO)
-    ;
-        MaybeXMLBrowserCmd = no,
-        MaybeTmpFileName = no,
-        io.write_string(ErrStream, "mdb: You need to issue a " ++
-            "\"set xml_browser_cmd '<command>'\" command\n" ++
-            "and a \"set xml_tmp_filename '<filename>'\" command first.\n",
-            !IO)
-    ).
-
-:- pred launch_xml_browser(io.output_stream::in, io.output_stream::in,
-    string::in, io::di, io::uo) is det.
-
-launch_xml_browser(OutStream, ErrStream, CommandStr, !IO) :-
-    io.write_string(OutStream, "Launching XML browser "
-        ++ "(this may take some time) ...\n", !IO),
-    % Flush the output stream, so output appears in the correct order
-    % for tests where the `cat' command is used as the XML browser.
-    io.flush_output(OutStream, !IO),
-    io.call_system_return_signal(CommandStr, Result, !IO),
-    (
-        Result = ok(ExitStatus),
-        (
-            ExitStatus = exited(ExitCode),
-            ( if ExitCode = 0 then
-                true
-            else
-                io.write_string(ErrStream,
-                    "mdb: The command `" ++ CommandStr ++
-                    "' terminated with a non-zero exit code.\n", !IO)
-            )
-        ;
-            ExitStatus = signalled(_),
-            io.write_string(ErrStream, "mdb: The browser was killed.\n", !IO)
-        )
-    ;
-        Result = error(Error),
-        io.write_string(ErrStream, "mdb: Error launching browser: "
-            ++ string.string(Error) ++ ".\n", !IO)
-    ).
-
-:- pred save_univ(int::in, univ::in, io::di, io::uo) is cc_multi.
-
-save_univ(Indent, Univ, !IO) :-
-    save_term(Indent, univ_value(Univ), !IO).
-
-:- pred save_term(int::in, T::in, io::di, io::uo) is cc_multi.
-
-save_term(Indent, Term, !IO) :-
-    ( if dynamic_cast_to_list(Term, List) then
-        (
-            List = [],
-            write_indent(Indent, !IO),
-            io.write_string("[]", !IO)
-        ;
-            List = [_ | _],
-            MakeUniv =
-                ( func(Element) = (ElementUniv) :-
-                    ElementUniv = univ(Element)
-                ),
-            Univs = list.map(MakeUniv, List),
-            write_indent(Indent, !IO),
-            io.write_string("[\n", !IO),
-            save_args(Indent + 1, Univs, !IO),
-            io.write_string("\n", !IO),
-            write_indent(Indent, !IO),
-            io.write_string("]", !IO)
-        )
-    else
-        deconstruct(Term, include_details_cc, Functor, _Arity, Args),
-        write_indent(Indent, !IO),
-        io.write_string(Functor, !IO),
-        (
-            Args = []
-        ;
-            Args = [_ | _],
-            io.write_string("(\n", !IO),
-            save_args(Indent + 1, Args, !IO),
-            io.write_string("\n", !IO),
-            write_indent(Indent, !IO),
-            io.write_string(")", !IO)
-        )
-    ).
-
-:- some [T2] pred dynamic_cast_to_list(T1::in, list(T2)::out) is semidet.
-
-dynamic_cast_to_list(X, L) :-
-    % The code of this predicate is copied from pprint.m.
-    [ArgTypeDesc] = type_args(type_of(X)),
-    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
-    dynamic_cast(X, L `with_type` list(ArgType)).
-
-:- pred save_args(int::in, list(univ)::in, io::di, io::uo) is cc_multi.
-
-save_args(_Indent, [], !IO).
-save_args(Indent, [Univ | Univs], !IO) :-
-    save_univ(Indent, Univ, !IO),
-    (
-        Univs = []
-    ;
-        Univs = [_ | _],
-        io.write_string(",\n", !IO),
-        save_args(Indent, Univs, !IO)
-    ).
-
-:- pred write_indent(int::in, io::di, io::uo) is det.
-
-write_indent(Indent, !IO) :-
-    ( if Indent =< 0 then
-        true
-    else
-        io.write_char(' ', !IO),
-        write_indent(Indent - 1, !IO)
-    ).
 
 %---------------------------------------------------------------------------%
 %
@@ -1435,13 +1200,6 @@ deref_subterm(BrowserTerm, Path, Result) :-
         )
     ).
 
-string_is_return_value_alias("r").
-string_is_return_value_alias("res").
-string_is_return_value_alias("rv").
-string_is_return_value_alias("result").
-string_is_return_value_alias("return").
-string_is_return_value_alias("ret").
-
 :- pred deref_result_univ_to_browser_term(deref_result(univ)::in,
     deref_result(browser_term)::out) is det.
 
@@ -1512,6 +1270,249 @@ change_dir(PwdDirs, Path, RootRelDirs) :-
         NewDirs = down_to_up_down_dirs(PwdDirs) ++ Dirs
     ),
     simplify_dirs(NewDirs, RootRelDirs).
+
+%---------------------------------------------------------------------------%
+%
+% Saving terms to files.
+%
+
+save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
+    trace [compile_time(flag("debug_save_term_to_file")), io(!TIO)] (
+        io.write_string(FileName, !TIO),
+        io.nl(!TIO),
+        io.write(BrowserTerm, !TIO),
+        io.nl(!TIO)
+    ),
+    io.tell(FileName, FileStreamRes, !IO),
+    (
+        FileStreamRes = ok,
+        (
+            BrowserTerm = plain_term(Term),
+            save_univ(0, Term, !IO),
+            io.nl(!IO)
+        ;
+            BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
+            io.write_string(Functor, !IO),
+            io.write_string("(\n", !IO),
+            save_args(1, Args, !IO),
+            io.write_string("\n)\n", !IO),
+            (
+                MaybeRes = no
+            ;
+                MaybeRes = yes(Result),
+                io.write_string("=\n", !IO),
+                save_univ(1, Result, !IO),
+                io.write_string("\n", !IO)
+            )
+        ),
+        io.told(!IO)
+    ;
+        FileStreamRes = error(Error),
+        io.error_message(Error, Msg),
+        io.write_string(OutStream, Msg, !IO)
+    ).
+
+:- type xml_predicate_wrapper
+    --->    predicate(
+                predicate_name      :: string,
+                predicate_arguments :: list(univ)
+            ).
+
+:- type xml_function_wrapper
+    --->    function(
+                function_name       :: string,
+                function_arguments  :: list(univ),
+                return_value        :: univ
+            ).
+
+save_term_to_file_xml(FileName, BrowserTerm, OutStream, !IO) :-
+    maybe_save_term_to_file_xml(FileName, BrowserTerm, Result, !IO),
+    (
+        Result = ok(_)
+    ;
+        Result = error(Error),
+        io.error_message(Error, Msg),
+        io.write_string(OutStream, Msg, !IO),
+        io.nl(!IO)
+    ).
+
+:- pred maybe_save_term_to_file_xml(string::in, browser_term::in,
+    io.res(io.output_stream)::out, io::di, io::uo) is cc_multi.
+
+maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
+    io.open_output(FileName, FileStreamRes, !IO),
+    (
+        FileStreamRes = ok(OutputStream),
+        (
+            BrowserTerm = plain_term(Univ),
+            Term = univ_value(Univ),
+            term_to_xml.write_xml_doc_general_cc(OutputStream, Term, simple,
+                no_stylesheet,  no_dtd, _, !IO)
+        ;
+            BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
+            (
+                MaybeRes = no,
+                PredicateTerm = predicate(Functor, Args),
+                term_to_xml.write_xml_doc_general_cc(OutputStream,
+                    PredicateTerm, simple, no_stylesheet, no_dtd, _, !IO)
+            ;
+                MaybeRes = yes(Result),
+                FunctionTerm = function(Functor, Args, Result),
+                term_to_xml.write_xml_doc_general_cc(OutputStream,
+                    FunctionTerm, simple, no_stylesheet, no_dtd, _, !IO)
+            )
+        ),
+        io.close_output(OutputStream, !IO)
+    ;
+        FileStreamRes = error(_)
+    ).
+
+%---------------------------------------------------------------------------%
+
+save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State, !IO) :-
+    MaybeXMLBrowserCmd = State ^ xml_browser_cmd,
+    MaybeTmpFileName = State ^ xml_tmp_filename,
+    (
+        MaybeXMLBrowserCmd = yes(CommandStr),
+        MaybeTmpFileName = yes(TmpFileName),
+        io.write_string(OutStream, "Saving term to XML file...\n", !IO),
+        maybe_save_term_to_file_xml(TmpFileName, Term, SaveResult, !IO),
+        (
+            SaveResult = ok(_),
+            launch_xml_browser(OutStream, ErrStream, CommandStr, !IO)
+        ;
+            SaveResult = error(Error),
+            io.error_message(Error, Msg),
+            io.write_string(ErrStream,
+                "Error opening file `" ++ TmpFileName ++ "': ", !IO),
+            io.write_string(ErrStream, Msg, !IO),
+            io.nl(!IO)
+        )
+    ;
+        MaybeXMLBrowserCmd = yes(_),
+        MaybeTmpFileName = no,
+        io.write_string(ErrStream, "mdb: You need to issue a " ++
+            "\"set xml_tmp_filename '<filename>'\" command first.\n", !IO)
+    ;
+        MaybeXMLBrowserCmd = no,
+        MaybeTmpFileName = yes(_),
+        io.write_string(ErrStream, "mdb: You need to issue a " ++
+            "\"set xml_browser_cmd '<command>'\" command first.\n", !IO)
+    ;
+        MaybeXMLBrowserCmd = no,
+        MaybeTmpFileName = no,
+        io.write_string(ErrStream, "mdb: You need to issue a " ++
+            "\"set xml_browser_cmd '<command>'\" command\n" ++
+            "and a \"set xml_tmp_filename '<filename>'\" command first.\n",
+            !IO)
+    ).
+
+:- pred launch_xml_browser(io.output_stream::in, io.output_stream::in,
+    string::in, io::di, io::uo) is det.
+
+launch_xml_browser(OutStream, ErrStream, CommandStr, !IO) :-
+    io.write_string(OutStream, "Launching XML browser "
+        ++ "(this may take some time) ...\n", !IO),
+    % Flush the output stream, so output appears in the correct order
+    % for tests where the `cat' command is used as the XML browser.
+    io.flush_output(OutStream, !IO),
+    io.call_system_return_signal(CommandStr, Result, !IO),
+    (
+        Result = ok(ExitStatus),
+        (
+            ExitStatus = exited(ExitCode),
+            ( if ExitCode = 0 then
+                true
+            else
+                io.write_string(ErrStream,
+                    "mdb: The command `" ++ CommandStr ++
+                    "' terminated with a non-zero exit code.\n", !IO)
+            )
+        ;
+            ExitStatus = signalled(_),
+            io.write_string(ErrStream, "mdb: The browser was killed.\n", !IO)
+        )
+    ;
+        Result = error(Error),
+        io.write_string(ErrStream, "mdb: Error launching browser: "
+            ++ string.string(Error) ++ ".\n", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred save_univ(int::in, univ::in, io::di, io::uo) is cc_multi.
+
+save_univ(Indent, Univ, !IO) :-
+    save_term(Indent, univ_value(Univ), !IO).
+
+:- pred save_term(int::in, T::in, io::di, io::uo) is cc_multi.
+
+save_term(Indent, Term, !IO) :-
+    ( if dynamic_cast_to_list(Term, List) then
+        (
+            List = [],
+            write_indent(Indent, !IO),
+            io.write_string("[]", !IO)
+        ;
+            List = [_ | _],
+            MakeUniv =
+                ( func(Element) = (ElementUniv) :-
+                    ElementUniv = univ(Element)
+                ),
+            Univs = list.map(MakeUniv, List),
+            write_indent(Indent, !IO),
+            io.write_string("[\n", !IO),
+            save_args(Indent + 1, Univs, !IO),
+            io.write_string("\n", !IO),
+            write_indent(Indent, !IO),
+            io.write_string("]", !IO)
+        )
+    else
+        deconstruct(Term, include_details_cc, Functor, _Arity, Args),
+        write_indent(Indent, !IO),
+        io.write_string(Functor, !IO),
+        (
+            Args = []
+        ;
+            Args = [_ | _],
+            io.write_string("(\n", !IO),
+            save_args(Indent + 1, Args, !IO),
+            io.write_string("\n", !IO),
+            write_indent(Indent, !IO),
+            io.write_string(")", !IO)
+        )
+    ).
+
+:- some [T2] pred dynamic_cast_to_list(T1::in, list(T2)::out) is semidet.
+
+dynamic_cast_to_list(X, L) :-
+    % The code of this predicate is copied from pprint.m.
+    [ArgTypeDesc] = type_args(type_of(X)),
+    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+    dynamic_cast(X, L `with_type` list(ArgType)).
+
+:- pred save_args(int::in, list(univ)::in, io::di, io::uo) is cc_multi.
+
+save_args(_Indent, [], !IO).
+save_args(Indent, [Univ | Univs], !IO) :-
+    save_univ(Indent, Univ, !IO),
+    (
+        Univs = []
+    ;
+        Univs = [_ | _],
+        io.write_string(",\n", !IO),
+        save_args(Indent, Univs, !IO)
+    ).
+
+:- pred write_indent(int::in, io::di, io::uo) is det.
+
+write_indent(Indent, !IO) :-
+    ( if Indent =< 0 then
+        true
+    else
+        io.write_char(' ', !IO),
+        write_indent(Indent - 1, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 %
@@ -1649,6 +1650,13 @@ down_dirs_to_string([Dir | Dirs]) = DirStr :-
         DirStr = down_dir_to_string(Dir) ++ "/" ++ down_dirs_to_string(Dirs)
     ).
 
+string_is_return_value_alias("r").
+string_is_return_value_alias("res").
+string_is_return_value_alias("rv").
+string_is_return_value_alias("result").
+string_is_return_value_alias("return").
+string_is_return_value_alias("ret").
+
 %---------------------------------------------------------------------------%
 
 :- pred write_term_mode_debugger(debugger::in, maybe(browser_mode_func)::in,
@@ -1720,7 +1728,7 @@ synthetic_term_to_doc(Functor0, Args, MaybeReturn) = Doc :-
         Doc = docs([Doc0, str(" = "), format_arg(format_univ(Return))])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func qualified_functor_to_doc(list(string)) = doc.
 

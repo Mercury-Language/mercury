@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: declarative_analyser.m
 % Authors: Mark Brown, Ian MacLarty
@@ -16,8 +16,8 @@
 % the type variables T and S refer to the types of nodes in the EDT and the
 % store of EDT nodes respectively.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.declarative_analyser.
 :- interface.
@@ -30,7 +30,7 @@
 :- import_module io.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type analyser_response(T)
     --->    analyser_response_no_suspects
@@ -117,17 +117,17 @@
     analyser_state(T)::in, analyser_state(T)::out,
     analyser_response(T)::out) is det <= mercury_edt(S, T).
 
-    % Display information about the current question and the state
-    % of the search to the supplied output stream.
-    %
-:- pred show_info(S::in, io.output_stream::in, analyser_state(T)::in,
-    io::di, io::uo) is det <= mercury_edt(S, T).
-
     % Revise the current analysis. This is done when a bug determined
     % by the analyser has been overruled by the oracle.
     %
 :- pred revise_analysis(S::in, analyser_response(T)::out,
     analyser_state(T)::in, analyser_state(T)::out) is det <= mercury_edt(S, T).
+
+    % Display information about the current question and the state
+    % of the search to the supplied output stream.
+    %
+:- pred show_info(S::in, io.output_stream::in, analyser_state(T)::in,
+    io::di, io::uo) is det <= mercury_edt(S, T).
 
     % Return information within the analyser state that is intended for
     % debugging the declarative debugger itself.
@@ -135,8 +135,8 @@
 :- pred debug_analyser_state(analyser_state(T)::in,
     maybe(subterm_origin(T))::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -159,7 +159,7 @@
 :- import_module string.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Describes what search strategy is being used by the analyser and the
     % state of the search.
@@ -364,8 +364,6 @@ set_fallback_search_mode(Store, FallBackSearchMode, !Analyser) :-
         FallBackSearchMode = analyser_top_down
     ).
 
-debug_analyser_state(Analyser, Analyser ^ debug_origin).
-
 start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
     (
         AnalysisType = new_tree(Node),
@@ -414,12 +412,17 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
 :- func get_maybe_weighting_from_search_mode(search_mode) =
     maybe(weighting_heuristic).
 
-get_maybe_weighting_from_search_mode(analyser_divide_and_query(Weighting)) =
-    yes(Weighting).
-get_maybe_weighting_from_search_mode(analyser_top_down) = no.
-get_maybe_weighting_from_search_mode(analyser_binary(_, _, _)) = no.
-get_maybe_weighting_from_search_mode(analyser_follow_subterm_end(_, _, _,
-    _, _)) = no.
+get_maybe_weighting_from_search_mode(SearchMode) = MaybeHeuristic :-
+    (
+        SearchMode = analyser_divide_and_query(Weighting),
+        MaybeHeuristic = yes(Weighting)
+    ;
+        ( SearchMode = analyser_top_down
+        ; SearchMode = analyser_binary(_, _, _)
+        ; SearchMode = analyser_follow_subterm_end(_, _, _, _, _)
+        ),
+        MaybeHeuristic = no
+    ).
 
 reask_last_question(Store, Analyser, Response) :-
     MaybeLastQuestion = Analyser ^ last_search_question,
@@ -655,7 +658,7 @@ bug_response(Store, SearchSpace, BugId, Evidence, InadmissibleChildren,
         EvidenceAsQuestions),
     Response = analyser_response_bug_found(Bug, EvidenceAsQuestions).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Search the search space for a question for the oracle. The search
     % should respond with a question about a suspect, or a request for an
@@ -1181,7 +1184,7 @@ max_weight(SearchSpace, SuspectId, PrevMax, NewMax,
         NewSuspectId = PrevSuspectId
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Check that a suspect is still unknown. This is called by the search
     % algorithms to make double sure that a suspect is still unknown (it
@@ -1193,72 +1196,84 @@ max_weight(SearchSpace, SuspectId, PrevMax, NewMax,
 suspect_still_unknown(SearchSpace, SuspectId) :-
     suspect_unknown(SearchSpace, SuspectId).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func reason_to_string(reason_for_question) = string.
 
-reason_to_string(ques_reason_start) =
-    "this is the node where the `dd' command was issued.".
-reason_to_string(ques_reason_binding_node(PrimOpType, FileName, LineNo,
-        MaybePath, ProcLabel, Eliminated)) = Str :-
-    PrimOpStr = primitive_op_type_to_string(PrimOpType),
-    LineNoStr = int_to_string(LineNo),
-    get_pred_attributes(ProcLabel, SymModule, Name, Arity, PredOrFunc),
+reason_to_string(Reason) = Str :-
     (
-        PredOrFunc = pf_function,
-        PredOrFuncStr = "function"
+        Reason = ques_reason_start,
+        Str = "this is the node where the `dd' command was issued."
     ;
-        PredOrFunc = pf_predicate,
-        PredOrFuncStr = "predicate"
-    ),
-    Module = sym_name_to_string(SymModule),
-    ArityStr = int_to_string(Arity),
-    (
-        Eliminated = yes,
-        EliminatedSent = " That node was, however, previously "
-            ++ "eliminated from the bug search."
+        Reason = ques_reason_binding_node(PrimOpType, FileName, LineNo,
+            MaybePath, ProcLabel, Eliminated),
+        PrimOpStr = primitive_op_type_to_string(PrimOpType),
+        LineNoStr = int_to_string(LineNo),
+        get_pred_attributes(ProcLabel, SymModule, Name, Arity, PredOrFunc),
+        (
+            PredOrFunc = pf_function,
+            PredOrFuncStr = "function"
+        ;
+            PredOrFunc = pf_predicate,
+            PredOrFuncStr = "predicate"
+        ),
+        Module = sym_name_to_string(SymModule),
+        ArityStr = int_to_string(Arity),
+        (
+            Eliminated = yes,
+            EliminatedSent = " That node was, however, previously "
+                ++ "eliminated from the bug search."
+        ;
+            Eliminated = no,
+            EliminatedSent = ""
+        ),
+        (
+            MaybePath = yes(Path),
+            PathStrings = list.map(int_to_string, Path),
+            PathStr = string.join_list("/", PathStrings),
+            PathSent = "The path to the subterm in the atom is " ++ PathStr ++ "."
+        ;
+            MaybePath = no,
+            PathSent = ""
+        ),
+        Str = "the marked subterm was bound by the " ++
+            PrimOpStr ++ " inside the " ++ PredOrFuncStr ++
+            " " ++ Module ++ "." ++ Name ++ "/" ++ ArityStr ++
+            " (" ++ FileName ++ ":" ++ LineNoStr ++ "). " ++
+            PathSent ++ EliminatedSent
     ;
-        Eliminated = no,
-        EliminatedSent = ""
-    ),
-    (
-        MaybePath = yes(Path),
-        PathStrings = list.map(int_to_string, Path),
-        PathStr = string.join_list("/", PathStrings),
-        PathSent = "The path to the subterm in the atom is " ++ PathStr ++ "."
+        Reason = ques_reason_top_down,
+        Str = "this is the next node in the top-down search."
     ;
-        MaybePath = no,
-        PathSent = ""
-    ),
-    Str = "the marked subterm was bound by the " ++
-        PrimOpStr ++ " inside the " ++ PredOrFuncStr ++
-        " " ++ Module ++ "." ++ Name ++ "/" ++ ArityStr ++
-        " (" ++ FileName ++ ":" ++ LineNoStr ++ "). " ++
-        PathSent ++ EliminatedSent.
-reason_to_string(ques_reason_top_down) =
-    "this is the next node in the top-down search.".
-reason_to_string(ques_reason_subterm_no_proc_rep) =
-    "tracking of the marked subterm had to be aborted here, because of "
-    ++ "missing tracing information.".
-reason_to_string(ques_reason_binding_node_eliminated) =
-    "tracking of the marked subterm was stopped here, because the binding "
-    ++ "node lies in a portion of the tree which has been eliminated.".
-reason_to_string(ques_reason_binary(Bottom, Top, Split)) = Str :-
-    PathLengthStr = int_to_string_thousands(Bottom - Top + 1),
-    SubPath1LengthStr = int_to_string_thousands(Bottom - Split),
-    SubPath2LengthStr = int_to_string_thousands(Split - Top + 1),
-    Str = "this node divides a path of length " ++ PathLengthStr
-        ++ " into two paths of length " ++
-        SubPath1LengthStr ++ " and " ++ SubPath2LengthStr ++ ".".
-reason_to_string(ques_reason_divide_and_query(Weighting, OldWeight,
-        SubtreeWeight)) =
-    weighting_to_reason_string(Weighting, OldWeight - SubtreeWeight,
-        SubtreeWeight).
-reason_to_string(ques_reason_skipped) =
-    "there are no more non-skipped questions left.".
-reason_to_string(ques_reason_revise) =
-    "this question is being revisited, because of "
-    ++ "an unsuccessful previous bug search.".
+        Reason = ques_reason_subterm_no_proc_rep,
+        Str = "tracking of the marked subterm had to be aborted here, " ++
+            "because of missing tracing information."
+    ;
+        Reason = ques_reason_binding_node_eliminated,
+        Str = "tracking of the marked subterm was stopped here, " ++
+            "because the binding node lies in a portion of the tree " ++
+            "which has been eliminated."
+    ;
+        Reason = ques_reason_binary(Bottom, Top, Split),
+        PathLengthStr = int_to_string_thousands(Bottom - Top + 1),
+        SubPath1LengthStr = int_to_string_thousands(Bottom - Split),
+        SubPath2LengthStr = int_to_string_thousands(Split - Top + 1),
+        Str = "this node divides a path of length " ++ PathLengthStr
+            ++ " into two paths of length " ++
+            SubPath1LengthStr ++ " and " ++ SubPath2LengthStr ++ "."
+    ;
+        Reason = ques_reason_divide_and_query(Weighting, OldWeight,
+            SubtreeWeight),
+        Str = weighting_to_reason_string(Weighting, OldWeight - SubtreeWeight,
+            SubtreeWeight)
+    ;
+        Reason = ques_reason_skipped,
+        Str = "there are no more non-skipped questions left."
+    ;
+        Reason = ques_reason_revise,
+        Str = "this question is being revisited, because of " ++
+            "an unsuccessful previous bug search."
+    ).
 
 :- func weighting_to_reason_string(weighting_heuristic, int, int) = string.
 
@@ -1347,15 +1362,29 @@ show_info(Store, OutStream, Analyser, !IO) :-
 
 :- func search_mode_to_string(search_mode) = string.
 
-search_mode_to_string(analyser_top_down) = "top down".
-search_mode_to_string(analyser_follow_subterm_end(_, _, _, _,
-        track_accurate)) =
-    "tracking marked sub-term (using accurate algorithm)".
-search_mode_to_string(analyser_follow_subterm_end(_, _, _, _,
-        track_fast)) =
-    "tracking marked sub-term (using fast algorithm)".
-search_mode_to_string(analyser_binary(_, _, _)) = "binary search on path".
-search_mode_to_string(analyser_divide_and_query(number_of_events)) =
-    "divide and query".
-search_mode_to_string(analyser_divide_and_query(suspicion)) =
-    "suspicion divide and query".
+search_mode_to_string(SearchMode) = Str :-
+    (
+        SearchMode = analyser_top_down,
+        Str = "top down"
+    ;
+        SearchMode = analyser_follow_subterm_end(_, _, _, _, track_accurate),
+        Str = "tracking marked sub-term (using accurate algorithm)"
+    ;
+        SearchMode = analyser_follow_subterm_end(_, _, _, _, track_fast),
+        Str = "tracking marked sub-term (using fast algorithm)"
+    ;
+        SearchMode = analyser_binary(_, _, _),
+        Str = "binary search on path"
+    ;
+        SearchMode = analyser_divide_and_query(number_of_events),
+        Str = "divide and query"
+    ;
+        SearchMode = analyser_divide_and_query(suspicion),
+        Str = "suspicion divide and query"
+    ).
+
+%---------------------------------------------------------------------------%
+
+debug_analyser_state(Analyser, Analyser ^ debug_origin).
+
+%---------------------------------------------------------------------------%

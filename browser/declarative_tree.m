@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: declarative_tree.m
 % Author: Mark Brown
 %
 % This module defines an instance of mercury_edt/2, the debugging tree.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.declarative_tree.
 :- interface.
@@ -22,7 +22,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The type of nodes in our implementation of EDTs. The parameter is meant
     % to be the type of references to trace nodes. In particular, the
@@ -40,17 +40,17 @@
 :- type wrap(S)
     --->    wrap(S).
 
+:- pred trace_implicit_tree_info(wrap(S)::in, edt_node(R)::in,
+    implicit_tree_info::out) is semidet <= annotated_trace(S, R).
+
 :- pred edt_subtree_details(S::in, edt_node(R)::in, event_number::out,
     sequence_number::out, R::out) is det <= annotated_trace(S, R).
 
 :- pred trace_atom_subterm_is_ground(trace_atom::in, arg_pos::in,
     term_path::in) is semidet.
 
-:- pred trace_implicit_tree_info(wrap(S)::in, edt_node(R)::in,
-    implicit_tree_info::out) is semidet <= annotated_trace(S, R).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -74,7 +74,7 @@
 :- import_module unit.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance mercury_edt(wrap(S), edt_node(R)) <= annotated_trace(S, R)
     where [
@@ -95,7 +95,7 @@
         func(edt_arg_pos_to_user_arg_num/3) is trace_arg_pos_to_user_arg_num
     ].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func exit_node_decl_atom(S::in,
     trace_node(R)::in(trace_node_exit)) = (final_decl_atom::out) is det
@@ -150,7 +150,7 @@ get_edt_node_event_number(Store, Ref, Event) :-
         Node = node_excp(_, _, _, _, Event, _, _)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred trace_question(wrap(S)::in, edt_node(R)::in,
     decl_question(edt_node(R))::out) is det <= annotated_trace(S, R).
@@ -301,7 +301,7 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 
 trace_is_implicit_root(wrap(Store), dynamic(Ref)) :-
     get_edt_call_node(Store, Ref, CallId),
-    \+ not_at_depth_limit(Store, CallId).
+    not not_at_depth_limit(Store, CallId).
 
 trace_implicit_tree_info(wrap(Store), dynamic(Ref), ImplicitTreeInfo) :-
     get_edt_call_node(Store, Ref, CallId),
@@ -698,7 +698,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
     Next = step_in_stratum(Store, Node),
     stratum_children(Store, Next, StartId, Ns1, Ns).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Tracking a subterm dependency.
 %
@@ -1763,7 +1763,7 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
         traverse_primitives(Prims, Var, TermPath, Store, ProcDefnRep, Origin)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_paths_to_conjuncts(list(goal_rep)::in, reverse_goal_path::in,
     int::in, goal_and_path_list::out) is det.
@@ -1774,7 +1774,7 @@ add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
     Path = rev_goal_path_add_at_end(ParentPath, step_conj(N)),
     add_paths_to_conjuncts(Goals, ParentPath, N + 1, GoalAndPaths).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred is_traced_grade(bool::out) is det.
 
@@ -1789,14 +1789,14 @@ add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
     #endif
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func start_loc_to_subterm_mode(start_loc(R)) = subterm_mode.
 
 start_loc_to_subterm_mode(cur_goal) = subterm_out.
 start_loc_to_subterm_mode(parent_goal(_, _)) = subterm_in.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func find_arg_pos(list(var_rep), var_rep) = arg_pos.
 
@@ -1815,7 +1815,7 @@ find_arg_pos_from_back([HeadVar | HeadVars], Var, Pos, ArgPos) :-
         find_arg_pos_from_back(HeadVars, Var, Pos - 1, ArgPos)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 edt_subtree_details(Store, dynamic(Ref), Event, SeqNo, CallPreceding) :-
     det_edt_return_node_from_id(Store, Ref, Node),
@@ -1865,7 +1865,7 @@ get_edt_call_node(Store, Ref, CallId) :-
         throw(internal_error($pred, "not a return node"))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 trace_atom_subterm_is_ground(atom(_, Args), ArgPos, _) :-
     select_arg_at_pos(ArgPos, Args, ArgInfo),
@@ -1895,7 +1895,7 @@ calls_arguments_are_all_ground(Store, CallId) :-
         Arg = arg_info(_, _, yes(_))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred decl_require((pred)::in((pred) is semidet), string::in, string::in)
     is det.

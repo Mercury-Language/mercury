@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: io_action.m.
 % Author: zs.
@@ -12,8 +12,8 @@
 % This module defines the representation of I/O actions used by the
 % declarative debugger.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.io_action.
 :- interface.
@@ -26,7 +26,7 @@
 :- import_module io.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type io_action
     --->    io_action(
@@ -47,20 +47,20 @@
                 to_io_action        :: io_seq_num
             ).
 
-:- func io_action_to_browser_term(io_action) = browser_term.
-
 :- pred get_maybe_io_action(io_seq_num::in, maybe_tabled_io_action::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+:- func io_action_to_browser_term(io_action) = browser_term.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module bool.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_maybe_io_action(IoActionNum, MaybeTabledIoAction, !IO) :-
     pickup_io_action(IoActionNum, MaybeIoAction, !IO),
@@ -115,6 +115,9 @@ io_action_to_browser_term(IoAction) = Term :-
     S = S0;
 }").
 
+pickup_io_action(_, _, _, _) :-
+    private_builtin.sorry("pickup_io_action").
+
 :- func make_no_io_action = maybe(io_action).
 :- pragma foreign_export("C", make_no_io_action = out,
     "MR_IO_ACTION_make_no_io_action").
@@ -129,6 +132,3 @@ make_yes_io_action(ProcName, yes, Args) =
     yes(io_action(ProcName, pf_function, Args)).
 make_yes_io_action(ProcName, no, Args) =
     yes(io_action(ProcName, pf_predicate, Args)).
-
-pickup_io_action(_, _, _, _) :-
-    private_builtin.sorry("pickup_io_action").

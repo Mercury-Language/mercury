@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: declarative_execution.m.
 % Author: Mark Brown.
@@ -16,8 +16,8 @@
 % the structure is passed to the front end (in browser/declarative_debugger.m)
 % where it is analysed to produce a bug diagnosis.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.declarative_execution.
 :- interface.
@@ -33,7 +33,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This type represents a port in the annotated trace.
     % The type R is the type of references to other nodes in the store.
@@ -284,7 +284,7 @@
 :- pred call_node_maybe_proc_defn_rep(trace_node(R)::in(trace_node_call),
     maybe(proc_defn_rep)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % If the following type is modified, some of the macros in
     % trace/mercury_trace_declarative.h may need to be updated.
@@ -411,7 +411,7 @@
 :- pred save_trace_node_store(io.output_stream::in, trace_node_store::in,
     trace_node_id::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This instance is used when the declarative debugger is in normal mode.
     % Values of this instance are produced by the back end and passed directly
@@ -430,7 +430,7 @@
 :- type trace_node_key.
 :- instance annotated_trace(trace_node_map, trace_node_key).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type which_headvars
     --->    all_headvars
@@ -450,8 +450,8 @@
 
 :- pred user_arg_num(arg_pos::in, trace_atom::in, int::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -464,7 +464,18 @@
 :- import_module store.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+get_trace_exit_atom(node_exit(_, _, _, AtomArgs, _, Label, _, _)) = Atom :-
+    ProcLayout = get_proc_layout_from_label_layout(Label),
+    Atom = atom(ProcLayout, AtomArgs).
+
+get_trace_call_atom(node_call(_, _, AtomArgs, _, _, _, _, Label, _, _))
+        = Atom :-
+    ProcLayout = get_proc_layout_from_label_layout(Label),
+    Atom = atom(ProcLayout, AtomArgs).
+
+%---------------------------------------------------------------------------%
 
 get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
     (
@@ -476,7 +487,7 @@ get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
         Name = get_special_pred_id_target_name(SpecialId)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 call_node_maybe_proc_defn_rep(CallNode, MaybeProcDefnRep) :-
     Label = CallNode ^ call_label,
@@ -596,18 +607,7 @@ cache_proc_defn_rep(_, _).
     MR_insert_proc_defn_rep(ProcLayout, ProcDefnRep);
 ").
 
-%-----------------------------------------------------------------------------%
-
-get_trace_exit_atom(node_exit(_, _, _, AtomArgs, _, Label, _, _)) = Atom :-
-    ProcLayout = get_proc_layout_from_label_layout(Label),
-    Atom = atom(ProcLayout, AtomArgs).
-
-get_trace_call_atom(node_call(_, _, AtomArgs, _, _, _, _, Label, _, _))
-        = Atom :-
-    ProcLayout = get_proc_layout_from_label_layout(Label),
-    Atom = atom(ProcLayout, AtomArgs).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 step_left_in_contour(Store, Node) = Prec :-
     (
@@ -856,7 +856,7 @@ disj_node_from_id(Store, NodeId, Node) :-
             "not a DISJ node"))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance annotated_trace(trace_node_store, trace_node_id) where [
     pred(trace_node_from_id/3) is search_trace_node_store
@@ -1128,7 +1128,7 @@ print_trace_node(OutStr, Node, !IO) :-
     convert_node(Node, CNode),
     io.write(OutStr, CNode, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Each node type has a Mercury function which constructs a node of
     % that type. The functions are exported to C so that the back end
@@ -1354,7 +1354,7 @@ c_bool_to_merc_bool(ProgVis) =
         yes
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The most important property of this instance is that it
     % can be written to or read in from a stream easily. It
@@ -1472,7 +1472,7 @@ preceding_node(node_neg(P, _, _))                = P.
 preceding_node(node_neg_succ(P, _, _))           = P.
 preceding_node(node_neg_fail(P, _, _))           = P.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_filter_headvars(Which, Args0, Args) :-
     (
@@ -1559,5 +1559,5 @@ arg_num_to_head_var_num([Arg | Args], ArgNum, CurArgNum, UserArgNum) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

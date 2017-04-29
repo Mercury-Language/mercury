@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: declarative_debugger.m.
 % Author: Mark Brown.
@@ -54,8 +54,8 @@
 % nodes which already exist in the current annotated trace when materializing
 % a supertree.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.declarative_debugger.
 :- interface.
@@ -74,7 +74,7 @@
 :- import_module maybe.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This type represents the possible truth values for nodes
     % in the EDT.
@@ -240,6 +240,9 @@
                 final_io_actions    :: maybe(io_action_range)
             ).
 
+:- pred unravel_decl_atom(some_decl_atom::in, trace_atom::out,
+    maybe(io_action_range)::out) is det.
+
 :- type decl_exception == term_rep.
 
     % The diagnoser eventually responds with a value of this type
@@ -303,10 +306,7 @@
     browser_info.browser_persistent_state::out,
     io::di, io::uo) is cc_multi <= annotated_trace(S, R).
 
-:- pred unravel_decl_atom(some_decl_atom::in, trace_atom::out,
-    maybe(io_action_range)::out) is det.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The diagnoser generates exceptions of the following type.
     %
@@ -323,8 +323,8 @@
                 string          % feature that is NYI
             ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -340,15 +340,7 @@
 :- import_module string.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
-
-unravel_decl_atom(DeclAtom, TraceAtom, MaybeIoActions) :-
-    (
-        DeclAtom = init(init_decl_atom(TraceAtom)),
-        MaybeIoActions = no
-    ;
-        DeclAtom = final(final_decl_atom(TraceAtom, MaybeIoActions))
-    ).
+%---------------------------------------------------------------------------%
 
 get_decl_question_node(wrong_answer(Node, _, _)) = Node.
 get_decl_question_node(missing_answer(Node, _, _)) = Node.
@@ -359,7 +351,17 @@ get_decl_question_atom(missing_answer(_, init_decl_atom(Atom), _)) = Atom.
 get_decl_question_atom(unexpected_exception(_, init_decl_atom(Atom), _)) =
     Atom.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+unravel_decl_atom(DeclAtom, TraceAtom, MaybeIoActions) :-
+    (
+        DeclAtom = init(init_decl_atom(TraceAtom)),
+        MaybeIoActions = no
+    ;
+        DeclAtom = final(final_decl_atom(TraceAtom, MaybeIoActions))
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- type diagnoser_state(R)
     --->    diagnoser(
@@ -651,7 +653,7 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
     handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
         Response, Diagnoser1, Diagnoser, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Export a monomorphic version of diagnosis_state_init/4, to
     % make it easier to call from C code.
@@ -827,7 +829,7 @@ diagnoser_require_subtree(require_subtree(Event, SeqNo, CallPreceding,
 
 diagnoser_require_supertree(require_supertree(Event, SeqNo), Event, SeqNo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Adds a trusted module to the given diagnoser.
     %
@@ -896,7 +898,7 @@ remove_trusted(N, !Diagnoser) :-
 get_trusted_list(Diagnoser, MDBCommandFormat, List) :-
     get_trusted_list(Diagnoser ^ oracle_state, MDBCommandFormat, List).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred handle_diagnoser_exception(diagnoser_exception::in,
     diagnoser_response(R)::out, diagnoser_state(R)::in,
@@ -937,7 +939,7 @@ handle_diagnoser_exception(unimplemented_feature(Feature), Response,
     !Diagnoser ^ analyser_state := Analyser,
     Response = no_bug_found.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred decl_bug_get_event_number(decl_bug::in, event_number::out) is det.
 
@@ -952,7 +954,7 @@ decl_bug_get_event_number(e_bug(EBug), Event) :-
 decl_bug_get_event_number(i_bug(IBug), Event) :-
     IBug = inadmissible_call(_, _, _, Event).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred write_origin(wrap(S)::in, subterm_origin(edt_node(R))::in,
     io::di, io::uo) is det <= annotated_trace(S, R).

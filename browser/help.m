@@ -4,7 +4,7 @@
 % Copyright (C) 1998-2000, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: help.m.
 % Author: zs.
@@ -19,8 +19,8 @@
 % on the topic named by the node's entry. Each node also has an associated
 % list of child entries; this list may of course be empty.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.help.
 
@@ -38,7 +38,7 @@
     --->    help_ok
     ;       help_error(string).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Initialize an empty help system.
     %
@@ -69,7 +69,7 @@
 :- pred name(system::in, string::in, io.output_stream::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the type_info for the type system, for use by C code.
     %
@@ -79,8 +79,8 @@
     %
 :- pred result_is_error(help_res::in, string::out) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -112,7 +112,7 @@
                 node
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_export("C", init(out), "ML_HELP_init").
 :- pragma foreign_export("C", add_help_node(in, in, in, in, in, out, out),
@@ -125,7 +125,7 @@
 :- pragma foreign_export("C", result_is_error(in, out),
     "ML_HELP_result_is_error").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init([]).
 
@@ -182,10 +182,34 @@ insert_into_entry_list([Head | Tail], Index, Name, Node, List) :-
         List = [Entry, Head | Tail]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 help(Sys, Stream, !IO) :-
     print_entry_list(Sys, Stream, !IO).
+
+path(Entries, Path, Stream, Result, !IO) :-
+    (
+        Path = [Step | Tail],
+        ( if one_path_step(Entries, Step, Entry) then
+            Entry = entry(_, _, EntryNode),
+            (
+                Tail = [],
+                EntryNode = node(Text, _),
+                io.write_string(Stream, Text, !IO),
+                Result = help_ok
+            ;
+                Tail = [_ | _],
+                EntryNode = node(_, SubEntries),
+                path(SubEntries, Tail, Stream, Result, !IO)
+            )
+        else
+            Msg = "error at path component """ ++ Step ++ """",
+            Result = help_error(Msg)
+        )
+    ;
+        Path = [],
+        Result = help_error("the path does not go that deep")
+    ).
 
 name(Sys, Name, Stream, !IO) :-
     search_entry_list(Sys, Name, 0, Count, Stream, !IO),
@@ -217,31 +241,7 @@ search_entry_list([Entry | Tail], Name, !C, Stream, !IO) :-
 search_node(node(_, SubNodes), Name, !C, Stream, !IO) :-
     search_entry_list(SubNodes, Name, !C, Stream, !IO).
 
-path(Entries, Path, Stream, Result, !IO) :-
-    (
-        Path = [Step | Tail],
-        ( if one_path_step(Entries, Step, Entry) then
-            Entry = entry(_, _, EntryNode),
-            (
-                Tail = [],
-                EntryNode = node(Text, _),
-                io.write_string(Stream, Text, !IO),
-                Result = help_ok
-            ;
-                Tail = [_ | _],
-                EntryNode = node(_, SubEntries),
-                path(SubEntries, Tail, Stream, Result, !IO)
-            )
-        else
-            Msg = "error at path component """ ++ Step ++ """",
-            Result = help_error(Msg)
-        )
-    ;
-        Path = [],
-        Result = help_error("the path does not go that deep")
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred print_entry_list(list(entry)::in, io.output_stream::in,
     io::di, io::uo) is det.
@@ -257,7 +257,7 @@ print_node(node(Text, _Nodes), Stream, !IO) :-
     io.write_string(Stream, Text, !IO).
     % XXX print_entry_list(Nodes, Stream, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred one_path_step(list(entry)::in, string::in, entry::out) is semidet.
 
@@ -283,7 +283,7 @@ replace_entry([Head | Tail], Entry, List) :-
         List = [Head | NewTail]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 help_system_type(Type) :-
     init(HelpInit),
@@ -291,4 +291,4 @@ help_system_type(Type) :-
 
 result_is_error(help_error(Msg), Msg).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
