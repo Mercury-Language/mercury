@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: feedback.m.
 % Main author: pbone.
@@ -17,8 +17,8 @@
 % This module is included both in the compiler and in the tools that
 % generate this feedback data.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdbcomp.feedback.
 
@@ -35,7 +35,7 @@
 :- import_module io.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The feedback_info type stores the data that may be fed back
     % into the compiler. For a detailed description, see the comment
@@ -59,7 +59,7 @@
     %
 :- func init_feedback_info(string) = feedback_info.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The kinds of information that we can record in a feedback file.
 %
@@ -85,7 +85,7 @@
                                         candidate_par_conjunctions_proc)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The getter predicates of feedback_info.
 %
@@ -111,7 +111,7 @@
     string::out, maybe(feedback_info_candidate_parallel_conjunctions)::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The setter predicates of feedback_info.
 %
@@ -137,7 +137,7 @@
     feedback_info_candidate_parallel_conjunctions::in,
     feedback_info::in, feedback_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Reading in feedback files.
 %
@@ -196,7 +196,7 @@
 :- pred read_feedback_file(string::in, maybe(string)::in,
     feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Writing out feedback files.
 %
@@ -213,8 +213,8 @@
 :- pred write_feedback_file(string::in, feedback_info::in,
     feedback_write_result::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -272,7 +272,7 @@
                 feedback_info_candidate_parallel_conjunctions
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Initialization and getter and setter predicates for feedback_infos.
 %
@@ -301,7 +301,7 @@ replace_feedback_candidate_parallel_conjunctions(ProfiledProgramName, Data,
         $pred, "replacing candidate parallel conjunctions for wrong program"),
     !Info ^ fi_maybe_candidate_parallel_conjunctions := yes(Data).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Interpreting the errors that can happen when reading in feedback files.
 %
@@ -337,7 +337,7 @@ feedback_read_error_message_string(File, Error, Message) :-
     ),
     string.format("%s: %s\n", [s(File), s(MessagePart)], Message).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Reading feedback files.
 %
@@ -529,7 +529,7 @@ add_feedback_components([Wrapper | Wrappers], !.Info, Result) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Writing feedback files.
 %
@@ -592,7 +592,7 @@ actually_write_feedback_file(Stream, FeedbackInfo, unit, !IO) :-
     io.write_string(Stream, ".\n", !IO),
     io.close_output(Stream, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The identifying marks of feedback files.
 %
@@ -605,6 +605,6 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 feedback_version = "19".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

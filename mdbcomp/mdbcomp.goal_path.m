@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: goal_path.m
 % Authors: zs, pbone
@@ -46,7 +46,7 @@
 % most operations inside the compiler use reverse goal paths, because most
 % operations on goal paths focus on the last element, not the first.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdbcomp.goal_path.
 :- interface.
@@ -57,12 +57,7 @@
 :- import_module map.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
-
-:- type goal_id
-    --->    goal_id(int).
-
-:- pred is_valid_goal_id(goal_id::in) is semidet.
+%---------------------------------------------------------------------------%
 
 :- type forward_goal_path
     --->    fgp_nil
@@ -99,15 +94,7 @@
     --->    scope_is_cut
     ;       scope_is_no_cut.
 
-    % Return a goal id on which the typeclass checking code can hang
-    % the constraints that need to be proven for clause heads.
-    %
-    % This goal id will be distinct from all goal_ids that can be hung
-    % on goals in the bodies of clauses.
-    %
-:- func goal_id_for_head_constraints = goal_id.
-
-:- func whole_body_goal_id = goal_id.
+%---------------------%
 
     % Append a goal path step onto the end of a goal path.
     %
@@ -155,6 +142,48 @@
 :- pred rev_goal_path_get_last(reverse_goal_path::in, goal_path_step::out)
     is semidet.
 
+%---------------------%
+
+    % goal_path_inside(PathA, PathB):
+    %
+    % Succeed if PathB denotes a goal *inside* the goal denoted by PathA.
+    % (It considers a goal to be inside itself.)
+    %
+:- pred goal_path_inside(forward_goal_path::in, forward_goal_path::in)
+    is semidet.
+:- pred rev_goal_path_inside(reverse_goal_path::in, reverse_goal_path::in)
+    is semidet.
+
+    % goal_path_inside_relative(PathA, PathB, RelativePath):
+    %
+    % As goal_path_inside, except that it also returns RelativePath, which
+    % denotes the same goal that PathB denotes, only from GoalA's perspective.
+    %
+:- pred goal_path_inside_relative(forward_goal_path::in,
+    forward_goal_path::in, forward_goal_path::out) is semidet.
+:- pred rev_goal_path_inside_relative(reverse_goal_path::in,
+    reverse_goal_path::in, reverse_goal_path::out) is semidet.
+
+%---------------------%
+
+    % Convert one kind of goal path into the other.
+    %
+:- pred rgp_to_fgp(reverse_goal_path::in, forward_goal_path::out) is det.
+:- pred fgp_to_rgp(forward_goal_path::in, reverse_goal_path::out) is det.
+
+%---------------------%
+
+    % Remove information from the goal path that depends on type information.
+    %
+    % This is necessary when using goal paths to lookup a map within the deep
+    % profiler. The goal paths used to perform the query cannot construct the
+    % parts of the goal paths that depend on type information.
+    %
+:- pred rev_goal_path_remove_type_info(reverse_goal_path::in,
+    reverse_goal_path::out) is det.
+
+%---------------------%
+
     % Converts a string to a forward goal path, failing if the string
     % is not a valid goal path.
     %
@@ -182,6 +211,12 @@
     %
 :- pred goal_path_step_from_string(string::in, goal_path_step::out) is semidet.
 
+    % Is this character the one that ends each goal path step?
+    %
+:- pred is_goal_path_separator(char::in) is semidet.
+
+%---------------------%
+
     % Convert the goal path to its string representation. The resulting string
     % is guaranteed to be acceptable to path_from_string_det.
     %
@@ -192,49 +227,34 @@
     %
 :- func rev_goal_path_to_string(reverse_goal_path) = string.
 
-    % Is this character the one that ends each goal path step?
-    %
-:- pred is_goal_path_separator(char::in) is semidet.
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % Convert one kind of goal path into the other.
-    %
-:- pred rgp_to_fgp(reverse_goal_path::in, forward_goal_path::out) is det.
-:- pred fgp_to_rgp(forward_goal_path::in, reverse_goal_path::out) is det.
+:- type goal_id
+    --->    goal_id(int).
 
-    % goal_path_inside(PathA, PathB):
+    % Return the goal_id that identifies the whole of a procedure's body.
     %
-    % Succeed if PathB denotes a goal *inside* the goal denoted by PathA.
-    % (It considers a goal to be inside itself.)
-    %
-:- pred goal_path_inside(forward_goal_path::in, forward_goal_path::in)
-    is semidet.
-:- pred rev_goal_path_inside(reverse_goal_path::in, reverse_goal_path::in)
-    is semidet.
+:- func whole_body_goal_id = goal_id.
 
-    % goal_path_inside_relative(PathA, PathB, RelativePath):
+    % Succeed iff the given goal id is valid.
     %
-    % As goal_path_inside, except that it also returns RelativePath, which
-    % denotes the same goal that PathB denotes, only from GoalA's perspective.
-    %
-:- pred goal_path_inside_relative(forward_goal_path::in,
-    forward_goal_path::in, forward_goal_path::out) is semidet.
-:- pred rev_goal_path_inside_relative(reverse_goal_path::in,
-    reverse_goal_path::in, reverse_goal_path::out) is semidet.
+:- pred is_valid_goal_id(goal_id::in) is semidet.
 
-    % Remove information from the goal path that depends on type information.
+    % Return a goal id on which the typeclass checking code can hang
+    % the constraints that need to be proven for clause heads.
     %
-    % This is necessary when using goal paths to lookup a map within the deep
-    % profiler. The goal paths used to perform the query cannot construct the
-    % parts of the goal paths that depend on type information.
+    % This goal id will be *distinct* from all goal_ids that can be hung
+    % on goals in the bodies of clauses, i.e. it will NOT be a valid goal id.
     %
-:- pred rev_goal_path_remove_type_info(reverse_goal_path::in,
-    reverse_goal_path::out) is det.
+:- func goal_id_for_head_constraints = goal_id.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type containing_goal
     --->    whole_body_goal
-            % This goal is the entire body of its procedure.
+            % This goal is the entire body of its procedure;
+            % there is no larger goal containing it.
     ;       containing_goal(goal_id, goal_path_step).
             % This goal is contained immediately inside the larger goal
             % identified by the goal_id, from which you need to take the
@@ -247,14 +267,6 @@
 :- type goal_forward_path_map == map(goal_id, forward_goal_path).
 :- type goal_reverse_path_map == map(goal_id, reverse_goal_path).
 :- type goal_reverse_path_bimap == bimap(goal_id, reverse_goal_path).
-
-    % goal_id_inside(ContainingGoalMap, GoalIdA, GoalIdB):
-    %
-    % Succeeds if GoalIdB denotes a goal *inside* the goal denoted by GoalIdA.
-    % (It considers a goal to be inside itself.)
-    %
-:- pred goal_id_inside(containing_goal_map::in,
-    goal_id::in, goal_id::in) is semidet.
 
     % Convert a goal_id to a forward goal path.
     %
@@ -284,12 +296,21 @@
 :- func create_reverse_goal_path_bimap(containing_goal_map) =
     goal_reverse_path_bimap.
 
-%-----------------------------------------------------------------------------%
+    % goal_id_inside(ContainingGoalMap, GoalIdA, GoalIdB):
+    %
+    % Succeeds if GoalIdB denotes a goal *inside* the goal denoted by GoalIdA.
+    % (It considers a goal to be inside itself.)
+    %
+:- pred goal_id_inside(containing_goal_map::in,
+    goal_id::in, goal_id::in) is semidet.
+
+%---------------------------------------------------------------------------%
 
 :- type goal_attr_array(T)
     --->    goal_attr_array(array(maybe(T))).
 
-    % This isn't really unique, see the commends at the type of library/array.m
+    % This isn't really unique. See the comments on the `uniq_array' type
+    % in library/array.m.
     %
 :- inst uniq_goal_attr_array
     --->    goal_attr_array(uniq_array).
@@ -299,8 +320,8 @@
 
     % create_goal_id_array(LastGoalId) = Array.
     %
-    % Create an array of the correct size to label all the goals up to and
-    % including LastGoalId.
+    % Create an array of the correct size to label all the goals
+    % up to and including LastGoalId.
     %
 :- func create_goal_id_array(goal_id) = goal_attr_array(T).
 :- mode create_goal_id_array(in) = gaa_uo is det.
@@ -325,8 +346,8 @@
     %
 :- func get_goal_attribute_det(goal_attr_array(T), goal_id) = T.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -337,15 +358,7 @@
 :- import_module require.
 :- import_module string.
 
-is_valid_goal_id(goal_id(GoalIdNum)) :-
-    GoalIdNum >= 0.
-
-goal_id_for_head_constraints = goal_id(-1).
-    % Note that this is NOT a valid goal_id for a goal. Not being able
-    % to confuse the goal_id on which head constraints are hung with the
-    % goal_id of an actual goal is the POINT of this function.
-
-whole_body_goal_id = goal_id(0).
+%---------------------------------------------------------------------------%
 
 goal_path_add_at_end(fgp_nil, NewStep) = fgp_cons(NewStep, fgp_nil).
 goal_path_add_at_end(fgp_cons(OldStep, GoalPath0), NewStep) =
@@ -390,6 +403,14 @@ rev_goal_path_remove_last(rgp_cons(GoalPath, LastStep), GoalPath, LastStep).
 
 rev_goal_path_get_last(rgp_cons(_, LastStep), LastStep).
 
+%---------------------------------------------------------------------------%
+
+goal_path_inside(PathA, PathB) :-
+    goal_path_inside_relative(PathA, PathB, _).
+
+rev_goal_path_inside(RevPathA, RevPathB) :-
+    rev_goal_path_inside_relative(RevPathA, RevPathB, _).
+
 goal_path_inside_relative(fgp_nil, PathB, PathB).
 goal_path_inside_relative(fgp_cons(StepA, PathA), fgp_cons(StepB, PathB),
         RelativePath) :-
@@ -405,11 +426,61 @@ rev_goal_path_inside_relative(RevPathA, RevPathB, RevRelativePath) :-
     goal_path_inside_relative(PathA, PathB, RelativePath),
     fgp_to_rgp(RelativePath, RevRelativePath).
 
-goal_path_inside(PathA, PathB) :-
-    goal_path_inside_relative(PathA, PathB, _).
+%---------------------------------------------------------------------------%
 
-rev_goal_path_inside(RevPathA, RevPathB) :-
-    rev_goal_path_inside_relative(RevPathA, RevPathB, _).
+rgp_to_fgp(ReverseGoalPath, ForwardGoalPath) :-
+    rgp_to_fgp_2(ReverseGoalPath, fgp_nil, ForwardGoalPath).
+
+:- pred rgp_to_fgp_2(reverse_goal_path::in,
+    forward_goal_path::in, forward_goal_path::out) is det.
+
+rgp_to_fgp_2(rgp_nil, !ForwardGoalPath).
+rgp_to_fgp_2(rgp_cons(EarlierSteps, LastStep), !ForwardGoalPath) :-
+    !:ForwardGoalPath = fgp_cons(LastStep, !.ForwardGoalPath),
+    rgp_to_fgp_2(EarlierSteps, !ForwardGoalPath).
+
+fgp_to_rgp(ForwardGoalPath, ReverseGoalPath) :-
+    fgp_to_rgp_2(ForwardGoalPath, rgp_nil, ReverseGoalPath).
+
+:- pred fgp_to_rgp_2(forward_goal_path::in,
+    reverse_goal_path::in, reverse_goal_path::out) is det.
+
+fgp_to_rgp_2(fgp_nil, !ReverseGoalPath).
+fgp_to_rgp_2(fgp_cons(FirstStep, LaterSteps), !ReverseGoalPath) :-
+    !:ReverseGoalPath = rgp_cons(!.ReverseGoalPath, FirstStep),
+    fgp_to_rgp_2(LaterSteps, !ReverseGoalPath).
+
+%---------------------------------------------------------------------------%
+
+rev_goal_path_remove_type_info(rgp_nil, rgp_nil).
+rev_goal_path_remove_type_info(rgp_cons(Steps0, Step0),
+        rgp_cons(Steps, Step)) :-
+    goal_path_step_remove_type_info(Step0, Step),
+    rev_goal_path_remove_type_info(Steps0, Steps).
+
+:- pred goal_path_step_remove_type_info(goal_path_step::in,
+    goal_path_step::out) is det.
+
+goal_path_step_remove_type_info(!Step) :-
+    (
+        ( !.Step = step_conj(_)
+        ; !.Step = step_disj(_)
+        ; !.Step = step_ite_cond
+        ; !.Step = step_ite_then
+        ; !.Step = step_ite_else
+        ; !.Step = step_neg
+        ; !.Step = step_scope(_)
+        ; !.Step = step_lambda
+        ; !.Step = step_try
+        ; !.Step = step_atomic_main
+        ; !.Step = step_atomic_orelse(_)
+        )
+    ;
+        !.Step = step_switch(N, _),
+        !:Step = step_switch(N, unknown_num_functors_in_type)
+    ).
+
+%---------------------------------------------------------------------------%
 
 goal_path_from_string(GoalPathStr, GoalPath) :-
     StepStrs = string.words_separator(is_goal_path_separator, GoalPathStr),
@@ -427,7 +498,7 @@ goal_path_from_string_det(GoalPathStr, GoalPath) :-
     ( if goal_path_from_string(GoalPathStr, GoalPathPrime) then
         GoalPath = GoalPathPrime
     else
-        unexpected($module, $pred, "goal_path_from_string failed")
+        unexpected($pred, "goal_path_from_string failed")
     ).
 
 rev_goal_path_from_string(GoalPathStr, GoalPath) :-
@@ -447,8 +518,10 @@ rev_goal_path_from_string_det(GoalPathStr, GoalPath) :-
     ( if rev_goal_path_from_string(GoalPathStr, GoalPathPrime) then
         GoalPath = GoalPathPrime
     else
-        unexpected($module, $pred, "rev_goal_path_from_string failed")
+        unexpected($pred, "rev_goal_path_from_string failed")
     ).
+
+%---------------------%
 
 goal_path_step_from_string(String, Step) :-
     string.first_char(String, First, Rest),
@@ -484,6 +557,8 @@ goal_path_step_from_string_2('o', NStr, step_atomic_orelse(N)) :-
     string.to_int(NStr, N).
 
 is_goal_path_separator(';').
+
+%---------------------------------------------------------------------------%
 
 goal_path_to_string(GoalPath) = GoalPathStr :-
     StepStrs = goal_path_to_strings(GoalPath),
@@ -528,44 +603,20 @@ goal_path_step_to_string(step_atomic_main) = "a;".
 goal_path_step_to_string(step_atomic_orelse(N)) =
     "o" ++ int_to_string(N) ++ ";".
 
-rev_goal_path_remove_type_info(rgp_nil, rgp_nil).
-rev_goal_path_remove_type_info(rgp_cons(Steps0, Step0),
-        rgp_cons(Steps, Step)) :-
-    goal_path_step_remove_type_info(Step0, Step),
-    rev_goal_path_remove_type_info(Steps0, Steps).
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred goal_path_step_remove_type_info(goal_path_step::in,
-    goal_path_step::out) is det.
+whole_body_goal_id = goal_id(0).
 
-goal_path_step_remove_type_info(!Step) :-
-    (
-        ( !.Step = step_conj(_)
-        ; !.Step = step_disj(_)
-        ; !.Step = step_ite_cond
-        ; !.Step = step_ite_then
-        ; !.Step = step_ite_else
-        ; !.Step = step_neg
-        ; !.Step = step_scope(_)
-        ; !.Step = step_lambda
-        ; !.Step = step_try
-        ; !.Step = step_atomic_main
-        ; !.Step = step_atomic_orelse(_)
-        )
-    ;
-        !.Step = step_switch(N, _),
-        !:Step = step_switch(N, unknown_num_functors_in_type)
-    ).
+is_valid_goal_id(goal_id(GoalIdNum)) :-
+    GoalIdNum >= 0.
 
-%-----------------------------------------------------------------------------%
+goal_id_for_head_constraints = goal_id(-1).
+    % Note that this is NOT a valid goal_id for a goal. Not being able
+    % to confuse the goal_id on which head constraints are hung with the
+    % goal_id of an actual goal is the POINT of this function.
 
-goal_id_inside(ContainingGoalId, GoalIdA, GoalIdB) :-
-    (
-        GoalIdB = GoalIdA
-    ;
-        map.lookup(ContainingGoalId, GoalIdB, GoalContainingB),
-        GoalContainingB = containing_goal(ParentGoalIdB, _),
-        goal_id_inside(ContainingGoalId, GoalIdA, ParentGoalIdB)
-    ).
+%---------------------------------------------------------------------------%
 
 goal_id_to_forward_path(ContainingGoalMap, GoalId) = GoalPath :-
     RevGoalPath = goal_id_to_reverse_path(ContainingGoalMap, GoalId),
@@ -585,28 +636,6 @@ goal_id_to_reverse_path(ContainingGoalMap, GoalId) = GoalPath :-
 create_forward_goal_path_map(ContainingGoalMap) = ForwardGoalPathMap :-
     ReverseGoalPathMap = create_reverse_goal_path_map(ContainingGoalMap),
     map.map_values_only(rgp_to_fgp, ReverseGoalPathMap, ForwardGoalPathMap).
-
-rgp_to_fgp(ReverseGoalPath, ForwardGoalPath) :-
-    rgp_to_fgp_2(ReverseGoalPath, fgp_nil, ForwardGoalPath).
-
-:- pred rgp_to_fgp_2(reverse_goal_path::in,
-    forward_goal_path::in, forward_goal_path::out) is det.
-
-rgp_to_fgp_2(rgp_nil, !ForwardGoalPath).
-rgp_to_fgp_2(rgp_cons(EarlierSteps, LastStep), !ForwardGoalPath) :-
-    !:ForwardGoalPath = fgp_cons(LastStep, !.ForwardGoalPath),
-    rgp_to_fgp_2(EarlierSteps, !ForwardGoalPath).
-
-fgp_to_rgp(ForwardGoalPath, ReverseGoalPath) :-
-    fgp_to_rgp_2(ForwardGoalPath, rgp_nil, ReverseGoalPath).
-
-:- pred fgp_to_rgp_2(forward_goal_path::in,
-    reverse_goal_path::in, reverse_goal_path::out) is det.
-
-fgp_to_rgp_2(fgp_nil, !ReverseGoalPath).
-fgp_to_rgp_2(fgp_cons(FirstStep, LaterSteps), !ReverseGoalPath) :-
-    !:ReverseGoalPath = rgp_cons(!.ReverseGoalPath, FirstStep),
-    fgp_to_rgp_2(LaterSteps, !ReverseGoalPath).
 
 create_reverse_goal_path_map(ContainingGoalMap) = ReverseGoalPathMap :-
     map.to_assoc_list(ContainingGoalMap, ContainingGoalList),
@@ -658,7 +687,16 @@ create_reverse_goal_path_bimap_2([Head | Tail], !ReverseGoalPathBiMap) :-
     bimap.det_insert(GoalId, GoalReversePath, !ReverseGoalPathBiMap),
     create_reverse_goal_path_bimap_2(Tail, !ReverseGoalPathBiMap).
 
-%-----------------------------------------------------------------------------%
+goal_id_inside(ContainingGoalId, GoalIdA, GoalIdB) :-
+    (
+        GoalIdB = GoalIdA
+    ;
+        map.lookup(ContainingGoalId, GoalIdB, GoalContainingB),
+        GoalContainingB = containing_goal(ParentGoalIdB, _),
+        goal_id_inside(ContainingGoalId, GoalIdA, ParentGoalIdB)
+    ).
+
+%---------------------------------------------------------------------------%
 
 create_goal_id_array(goal_id(LastGoalIdNum)) =
     goal_attr_array(array.init(LastGoalIdNum + 1, no)).
@@ -676,8 +714,8 @@ get_goal_attribute_det(goal_attr_array(Array), goal_id(Index)) = Attr :-
         MaybeAttr = yes(Attr)
     ;
         MaybeAttr = no,
-        unexpected($module, $pred, "Goal attribute array slot empty")
+        unexpected($pred, "Goal attribute array slot empty")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

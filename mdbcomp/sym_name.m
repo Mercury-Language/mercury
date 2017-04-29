@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: sym_name.m.
 %
@@ -13,7 +13,7 @@
 %
 % This functionality is shared between the compiler and the debugger.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdbcomp.sym_name.
 :- interface.
@@ -197,8 +197,8 @@
 :- pred sym_name_to_term(term.context::in, sym_name::in, list(term(T))::in,
     term(T)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -206,7 +206,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_ancestors(ModuleName) = get_ancestors_2(ModuleName, []).
 
@@ -218,7 +218,7 @@ get_ancestors_2(qualified(Parent, _), Ancestors0) =
 
 get_ancestors_set(ModuleName) = set.list_to_set(get_ancestors(ModuleName)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 string_to_sym_name_sep(String, ModuleSeparator) = Result :-
     % This would be simpler if we had a string.rev_sub_string_search/3 pred.
@@ -242,7 +242,7 @@ string_to_sym_name_sep(String, ModuleSeparator) = Result :-
 
 string_to_sym_name(String) = string_to_sym_name_sep(String, ".").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 sym_name_to_string_sep(unqualified(Name), _Separator) = Name.
 sym_name_to_string_sep(qualified(ModuleSym, Name), Separator) = QualName :-
@@ -251,7 +251,7 @@ sym_name_to_string_sep(qualified(ModuleSym, Name), Separator) = QualName :-
 
 sym_name_to_string(SymName) = sym_name_to_string_sep(SymName, ".").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 sym_name_to_list(unqualified(Name)) = [Name].
 sym_name_to_list(qualified(Module, Name))
@@ -262,13 +262,13 @@ sym_name_to_qualifier_list_and_name(qualified(Module, Name),
         Qualifiers, Name) :-
     Qualifiers = sym_name_to_list(Module).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_submodule(SymName, SymName).
 is_submodule(qualified(SymNameA, _), SymNameB) :-
     is_submodule(SymNameA, SymNameB).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 unqualify_name(unqualified(Name)) = Name.
 unqualify_name(qualified(_ModuleName, Name)) = Name.
@@ -277,7 +277,7 @@ sym_name_get_module_name(unqualified(_), _) :- fail.
 sym_name_get_module_name(qualified(ModuleName, _), ModuleName).
 
 det_sym_name_get_module_name(unqualified(_), _) :-
-    unexpected($module, $pred, "unqualified sym_name").
+    unexpected($pred, "unqualified sym_name").
 det_sym_name_get_module_name(qualified(ModuleName, _), ModuleName).
 
 sym_name_get_module_name_default(SymName, DefaultModuleName, ModuleName) :-
@@ -297,7 +297,7 @@ sym_name_get_module_name_default_name(SymName, DefaultModuleName, ModuleName,
         SymName = qualified(ModuleName, Name)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 partial_sym_name_matches_full(Partial, Full) :-
     (
@@ -354,7 +354,7 @@ add_sym_name_suffix(SymName0, Suffix, SymName) :-
         SymName = qualified(Module, Name)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 transform_sym_base_name(TransformFunc, SymName0) = SymName :-
     (
@@ -365,7 +365,7 @@ transform_sym_base_name(TransformFunc, SymName0) = SymName :-
         SymName = qualified(Module, TransformFunc(Name0))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 outermost_qualifier(SymName) = Name :-
     (
@@ -397,7 +397,7 @@ strip_outermost_qualifier(SymName0, OuterModuleName, SymName) :-
         SymName = qualified(ModuleSymName, Name)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 sym_name_to_term(Context, SymName, ArgTerms, Term) :-
     sym_name_to_qualifier_list_and_name(SymName, Qualifiers, Name),
@@ -415,6 +415,6 @@ add_qualifiers_to_term([Qualifier | Qualifiers], Context, Term0, Term) :-
     Term1 = functor(atom("."), [QualifierTerm, Term0], Context),
     add_qualifiers_to_term(Qualifiers, Context, Term1, Term).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module mdbcomp.sym_name.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

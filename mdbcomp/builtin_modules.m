@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This module contains information about various modules of the Mercury
 % standard library that serve to implement various kinds of builtin operations.
@@ -12,7 +12,7 @@
 % in these modules, and the debugger and the profilers need access to
 % many of these as well.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdbcomp.builtin_modules.
 :- interface.
@@ -137,8 +137,6 @@
     %
 :- func mercury_std_lib_module_name(sym_name) = sym_name.
 
-:- pred is_std_lib_module_name(sym_name::in, string::out) is semidet.
-
     % Succeeds iff the specified module is one of the builtin modules listed
     % above which may be automatically imported.
     %
@@ -148,16 +146,18 @@
     %
 :- pred non_traced_mercury_builtin_module(sym_name::in) is semidet.
 
+:- pred is_std_lib_module_name(sym_name::in, string::out) is semidet.
+
 :- pred is_mdbcomp_module_name(sym_name::in) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module library.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 all_builtin_modules = [
     mercury_public_builtin_module,
@@ -205,12 +205,6 @@ mercury_int_module = unqualified("int").
 mercury_io_module = unqualified("io").
 mercury_stream_module = unqualified("stream").
 
-is_std_lib_module_name(ModuleName, Name) :-
-    % -- not yet:
-    % ModuleName = qualified(unqualified("std"), UnqualifiedModuleName),
-    Name = sym_name_to_string(ModuleName),
-    mercury_std_library_module(Name).
-
 mercury_std_lib_module_name(ModuleName) = ModuleName.
     % -- not yet:
     % QualfiedModuleName = qualified(unqualified("std"), ModuleName),
@@ -234,10 +228,16 @@ non_traced_mercury_builtin_module(Module) :-
     ; Module = mercury_ssdb_builtin_module
     ).
 
+is_std_lib_module_name(ModuleName, Name) :-
+    % -- not yet:
+    % ModuleName = qualified(unqualified("std"), UnqualifiedModuleName),
+    Name = sym_name_to_string(ModuleName),
+    mercury_std_library_module(Name).
+
 is_mdbcomp_module_name(ModuleName) :-
     Name = sym_name_to_string(ModuleName),
     mercury_mdbcomp_module(Name).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module mdbcomp.builtin_modules.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

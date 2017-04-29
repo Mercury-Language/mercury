@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: program_representation.m
 % Authors: zs, dougl
@@ -30,7 +30,7 @@
 % we are pretty sure can be usefully exploited by the declarative debugger
 % and/or the deep profiler.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdbcomp.program_representation.
 :- interface.
@@ -48,10 +48,11 @@
 :- import_module unit.
 :- import_module type_desc.
 
-    % read_prog_rep_file(FileName, Result, !IO)
-    %
-:- pred read_prog_rep_file(string::in, io.res(prog_rep)::out, io::di, io::uo)
-    is det.
+%---------------------------------------------------------------------------%
+%
+% The representation of programs, as recorded by the compiler for use
+% by tools such as the declarative debugger and the deep profiler.
+%
 
 :- type prog_rep(GoalAnnotation)
     --->    prog_rep(
@@ -257,9 +258,6 @@
 
 :- type case_rep == case_rep(unit).
 
-:- func project_case_rep_goal(case_rep(GoalAnnotation)) =
-    goal_rep(GoalAnnotation).
-
 :- type switch_can_fail_rep
     --->    switch_can_fail_rep
     ;       switch_can_not_fail_rep.
@@ -391,6 +389,11 @@
     --->    committed_choice
     ;       not_committed_choice.
 
+%---------------------------------------------------------------------------%
+%
+% Operations on determinisms.
+%
+
 :- func detism_get_solutions(detism_rep) = solution_count_rep.
 
 :- func detism_get_can_fail(detism_rep) = can_fail_rep.
@@ -403,6 +406,11 @@
 :- mode detism_committed_choice(in, out) is det.
 :- mode detism_committed_choice(out, in) is multi.
 
+%---------------------------------------------------------------------------%
+%
+% Operations on variable name tables.
+%
+
     % A table of var_rep to string mappings.
     %
     % This table may not contain all the variables in the procedure. Variables
@@ -411,18 +419,21 @@
     %
 :- type var_name_table.
 
-    % Lookup the name of a variable within the variable table. If the variable
-    % is unknown a distinct name is automatically generated.
-    %
-:- pred lookup_var_name(var_name_table::in, var_rep::in, string::out) is det.
-
     % Retrieve the name for this variable if it is known, otherwise fail.
     %
 :- pred search_var_name(var_name_table::in, var_rep::in, string::out)
     is semidet.
 
+    % Retrieve the name for this variable if it is known, otherwise,
+    % return `no'.
+    %
 :- pred maybe_search_var_name(var_name_table::in, var_rep::in,
     maybe(string)::out) is det.
+
+    % Lookup the name of a variable within the variable table. If the variable
+    % is unknown a distinct name is automatically generated.
+    %
+:- pred lookup_var_name(var_name_table::in, var_rep::in, string::out) is det.
 
     % A table mapping var_reps to representations of the variables' types.
     % It is intended to be used by a program analysis for order-independent
@@ -433,6 +444,11 @@
     %
 :- type var_type_table == map(var_rep, type_rep).
 
+%---------------------------------------------------------------------------%
+%
+% Operations on goals.
+%
+
     % If the given atomic goal behaves like a call in the sense that it
     % generates events as ordinary calls do, then return the list of variables
     % that are passed as arguments.
@@ -440,17 +456,18 @@
 :- func atomic_goal_generates_event_like_call(atomic_goal_rep) =
     maybe(list(var_rep)).
 
-    % If the given goal generates internal events directly then this
-    % function will return yes and no otherwise.
+    % call_does_not_generate_events(ModuleName, PredName, Arity):
     %
-:- func goal_generates_internal_event(goal_rep(unit)) = bool.
-
-    % call_does_not_generate_events(ModuleName, PredName, Arity): succeeds iff
-    % a call to the named predicate will not generate events in a debugging
-    % grade.
+    % Succeed iff a call to the named predicate will not generate events
+    % in a debugging grade.
     %
 :- pred call_does_not_generate_events(string::in, string::in, int::in)
     is semidet.
+
+    % If the given goal generates internal events directly, then return yes;
+    % otherwise, return no.
+    %
+:- func goal_generates_internal_event(goal_rep(unit)) = bool.
 
     % The atomic goal's module, name and arity.
     %
@@ -458,10 +475,9 @@
     --->    atomic_goal_id(string, string, int).
 
     % Can we find out the atomic goal's name, module and arity from
-    % its atomic_goal_rep? If so return them, otherwise return no.
+    % its atomic_goal_rep? If so, return them; otherwise, return no.
     %
-:- func atomic_goal_identifiable(atomic_goal_rep) =
-    maybe(atomic_goal_id).
+:- func atomic_goal_identifiable(atomic_goal_rep) = maybe(atomic_goal_id).
 
 :- func head_var_to_var(head_var_rep) = var_rep.
 
@@ -470,13 +486,13 @@
     %
 :- pred case_get_goal(case_rep(T)::in, goal_rep(T)::out) is det.
 
-    % Transform a goal representation annotated with T into one annotated with
-    % U.
+    % Transform the annotations on a goal representation. This may change
+    % not only the values of the annotations, but also their type.
     %
 :- pred transform_goal_rep(pred(T, U), goal_rep(T), goal_rep(U)).
 :- mode transform_goal_rep(pred(in, out) is det, in, out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Describe a call site.
     %
@@ -495,8 +511,6 @@
     ;       method_call
     ;       plain_call(string_proc_label)
     ;       special_call.
-
-%-----------------------------------------------------------------------------%
 
     % User-visible head variables are represented by a number from 1..N,
     % where N is the user-visible arity.
@@ -525,6 +539,8 @@
     % is first).
 :- type term_path == list(int).
 
+%---------------------------------------------------------------------------%
+
     % Returns type_of(_ : proc_defn_rep), for use in C code.
     %
 :- func proc_defn_rep_type = type_desc.
@@ -532,6 +548,12 @@
     % Returns type_of(_ : goal_rep), for use in C code.
     %
 :- func goal_rep_type = type_desc.
+
+%---------------------------------------------------------------------------%
+%
+% Conversions between the internal form of program representations
+% and their form as stored in bytecode.
+%
 
     % Construct a representation of the interface determinism of a
     % procedure. The code we have chosen is not sequential; instead
@@ -591,7 +613,6 @@
     ;       var_num_2_bytes
     ;       var_num_4_bytes.
 
-
     % Describe whether a variable name table should be included in the
     % bytecode. The variable name table actually adds the strings into the
     % module's string table.
@@ -632,12 +653,17 @@
 :- mode can_fail_byte(in, out) is det.
 :- mode can_fail_byte(out, in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % read_prog_rep_file(FileName, Result, !IO)
+    %
+:- pred read_prog_rep_file(string::in, io.res(prog_rep)::out, io::di, io::uo)
+    is det.
 
 :- pred trace_read_proc_defn_rep(bytecode_bytes::in, label_layout::in,
     proc_defn_rep::out) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Some predicates that operate on polymorphic values do not need
     % the type_infos describing the types bound to the variables.
@@ -661,7 +687,7 @@
     %
 :- pred no_type_info_builtin(module_name::in, string::in, int::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type coverage_point_info
     --->    coverage_point_info(
@@ -687,7 +713,8 @@
     %
 :- pred coverage_point_type_c_value(cp_type::in, string::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -696,6 +723,57 @@
 :- import_module int.
 :- import_module require.
 :- import_module string.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+detism_get_solutions(Detism) = Solutions :-
+    detism_components(Detism, Solutions, _).
+
+detism_get_can_fail(Detism) = CanFail :-
+    detism_components(Detism, _, CanFail).
+
+detism_components(det_rep,          at_most_one_rep,    cannot_fail_rep).
+detism_components(semidet_rep,      at_most_one_rep,    can_fail_rep).
+detism_components(multidet_rep,     at_most_many_rep,   cannot_fail_rep).
+detism_components(nondet_rep,       at_most_many_rep,   can_fail_rep).
+detism_components(cc_multidet_rep,  at_most_one_rep,    cannot_fail_rep).
+detism_components(cc_nondet_rep,    at_most_one_rep,    can_fail_rep).
+detism_components(erroneous_rep,    at_most_zero_rep,   cannot_fail_rep).
+detism_components(failure_rep,      at_most_zero_rep,   can_fail_rep).
+
+detism_committed_choice(det_rep,            not_committed_choice).
+detism_committed_choice(semidet_rep,        not_committed_choice).
+detism_committed_choice(multidet_rep,       not_committed_choice).
+detism_committed_choice(nondet_rep,         not_committed_choice).
+detism_committed_choice(cc_multidet_rep,    committed_choice).
+detism_committed_choice(cc_nondet_rep,      committed_choice).
+detism_committed_choice(erroneous_rep,      not_committed_choice).
+detism_committed_choice(failure_rep,        not_committed_choice).
+
+%---------------------------------------------------------------------------%
+
+:- type var_name_table == map(var_rep, string).
+
+search_var_name(VarNameTable, VarRep, String) :-
+    map.search(VarNameTable, VarRep, String).
+
+maybe_search_var_name(VarNameTable, VarRep, MaybeString) :-
+    ( if search_var_name(VarNameTable, VarRep, String) then
+        MaybeString = yes(String)
+    else
+        MaybeString = no
+    ).
+
+lookup_var_name(VarNameTable, VarRep, String) :-
+    ( if search_var_name(VarNameTable, VarRep, StringPrime) then
+        String = StringPrime
+    else
+        % Generate an automatic name for the variable.
+        String = string.format("V_%d", [i(VarRep)])
+    ).
+
+%---------------------------------------------------------------------------%
 
 atomic_goal_generates_event_like_call(GoalRep) = Generates :-
     (
@@ -740,65 +818,65 @@ call_does_not_generate_events(ModuleName, PredName, Arity) :-
     ;
         % Events from compiler generated predicates are not included in the
         % annotated trace at the moment.
-        (
-            PredName = "__Unify__"
-        ;
-            PredName = "__Index__"
-        ;
-            PredName = "__Compare__"
+        ( PredName = "__Unify__"
+        ; PredName = "__Index__"
+        ; PredName = "__Compare__"
         )
     ).
 
-goal_generates_internal_event(goal_rep(GoalExpr, _, _)) =
-    goal_expr_generates_internal_event(GoalExpr).
+goal_generates_internal_event(goal_rep(GoalExpr, _, _)) = InternalEvent :-
+    require_complete_switch [GoalExpr]
+    (
+        ( GoalExpr = conj_rep(_)
+        ; GoalExpr = scope_rep(_, _)
+        ; GoalExpr = atomic_goal_rep(_, _, _, _)
+        % Atomic goals may generate interface events,
+        % but not internal events.
+        ),
+        InternalEvent = no
+    ;
+        ( GoalExpr = disj_rep(_)
+        ; GoalExpr = switch_rep(_, _, _)
+        ; GoalExpr = ite_rep(_, _, _)
+        ; GoalExpr = negation_rep(_)
+        ),
+        InternalEvent = yes
+    ).
 
-:- func goal_expr_generates_internal_event(goal_expr_rep(unit)) = bool.
-
-goal_expr_generates_internal_event(conj_rep(_)) = no.
-goal_expr_generates_internal_event(disj_rep(_)) = yes.
-goal_expr_generates_internal_event(switch_rep(_, _, _)) = yes.
-goal_expr_generates_internal_event(ite_rep(_, _, _)) = yes.
-goal_expr_generates_internal_event(negation_rep(_)) = yes.
-goal_expr_generates_internal_event(scope_rep(_, _)) = no.
-% Atomic goals may generate interface events, not internal events.
-goal_expr_generates_internal_event(atomic_goal_rep(_, _, _, _)) = no.
-
-atomic_goal_identifiable(unify_construct_rep(_, _, _)) = no.
-atomic_goal_identifiable(unify_deconstruct_rep(_, _, _)) = no.
-atomic_goal_identifiable(partial_construct_rep(_, _, _)) = no.
-atomic_goal_identifiable(partial_deconstruct_rep(_, _, _)) = no.
-atomic_goal_identifiable(unify_assign_rep(_, _)) = no.
-atomic_goal_identifiable(unify_simple_test_rep(_, _)) = no.
-atomic_goal_identifiable(cast_rep(_, _)) = no.
-atomic_goal_identifiable(pragma_foreign_code_rep(_)) = no.
-atomic_goal_identifiable(higher_order_call_rep(_, _)) = no.
-atomic_goal_identifiable(method_call_rep(_, _, _)) = no.
-atomic_goal_identifiable(builtin_call_rep(Module, Name, Args)) =
-    yes(atomic_goal_id(Module, Name, length(Args))).
-atomic_goal_identifiable(plain_call_rep(Module, Name, Args)) =
-    yes(atomic_goal_id(Module, Name, length(Args))).
-atomic_goal_identifiable(event_call_rep(_, _)) = no.
+atomic_goal_identifiable(AtomicGoalExpr) = Identifieable :-
+    (
+        ( AtomicGoalExpr = unify_construct_rep(_, _, _)
+        ; AtomicGoalExpr = unify_deconstruct_rep(_, _, _)
+        ; AtomicGoalExpr = partial_construct_rep(_, _, _)
+        ; AtomicGoalExpr = partial_deconstruct_rep(_, _, _)
+        ; AtomicGoalExpr = unify_assign_rep(_, _)
+        ; AtomicGoalExpr = unify_simple_test_rep(_, _)
+        ; AtomicGoalExpr = cast_rep(_, _)
+        ; AtomicGoalExpr = pragma_foreign_code_rep(_)
+        ; AtomicGoalExpr = higher_order_call_rep(_, _)
+        ; AtomicGoalExpr = method_call_rep(_, _, _)
+        ; AtomicGoalExpr = event_call_rep(_, _)
+        ),
+        Identifieable = no
+    ;
+        AtomicGoalExpr = builtin_call_rep(Module, Name, Args),
+        Identifieable = yes(atomic_goal_id(Module, Name, length(Args)))
+    ;
+        AtomicGoalExpr = plain_call_rep(Module, Name, Args),
+        Identifieable = yes(atomic_goal_id(Module, Name, length(Args)))
+    ).
 
 head_var_to_var(head_var_rep(Var, _)) = Var.
 
 case_get_goal(case_rep(_, _, Goal), Goal).
 
-:- pragma foreign_export("C", proc_defn_rep_type = out,
-    "ML_proc_defn_rep_type").
-
-proc_defn_rep_type = type_of(_ : proc_defn_rep).
-
-:- pragma foreign_export("C", goal_rep_type = out, "ML_goal_rep_type").
-
-goal_rep_type = type_of(_ : goal_rep).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 transform_goal_rep(Pred, Goal0, Goal) :-
-    Goal0 = goal_rep(Expr0, Detism, A),
+    Goal0 = goal_rep(Expr0, Detism, AnnotationT),
     transform_goal_expr(Pred, Expr0, Expr),
-    Pred(A, B),
-    Goal = goal_rep(Expr, Detism, B).
+    Pred(AnnotationT, AnnotationU),
+    Goal = goal_rep(Expr, Detism, AnnotationU).
 
 :- pred transform_goal_expr(pred(T, U)::in(pred(in, out) is det),
     goal_expr_rep(T)::in, goal_expr_rep(U)::out) is det.
@@ -806,11 +884,11 @@ transform_goal_rep(Pred, Goal0, Goal) :-
 transform_goal_expr(Pred, Expr0, Expr) :-
     (
         Expr0 = conj_rep(Conjs0),
-        map(transform_goal_rep(Pred), Conjs0, Conjs),
+        list.map(transform_goal_rep(Pred), Conjs0, Conjs),
         Expr = conj_rep(Conjs)
     ;
         Expr0 = disj_rep(Disjs0),
-        map(transform_goal_rep(Pred), Disjs0, Disjs),
+        list.map(transform_goal_rep(Pred), Disjs0, Disjs),
         Expr = disj_rep(Disjs)
     ;
         Expr0 = switch_rep(Var, CanFail, Cases0),
@@ -839,11 +917,23 @@ transform_goal_expr(Pred, Expr0, Expr) :-
     case_rep(T)::in, case_rep(U)::out) is det.
 
 transform_switch_case(Pred, Case0, Case) :-
-    Case0 = case_rep(ConsId, OtherConsIds, Goal0),
+    Case0 = case_rep(MainConsId, OtherConsIds, Goal0),
     transform_goal_rep(Pred, Goal0, Goal),
-    Case = case_rep(ConsId, OtherConsIds, Goal).
+    Case = case_rep(MainConsId, OtherConsIds, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_export("C", proc_defn_rep_type = out,
+    "ML_proc_defn_rep_type").
+
+proc_defn_rep_type = type_of(_ : proc_defn_rep).
+
+:- pragma foreign_export("C", goal_rep_type = out,
+    "ML_goal_rep_type").
+
+goal_rep_type = type_of(_ : goal_rep).
+
+%---------------------------------------------------------------------------%
 
 detism_rep(Detism) = Rep :-
     determinism_representation(Detism, Rep).
@@ -895,37 +985,7 @@ goal_type_byte(17, goal_plain_call).
 goal_type_byte(18, goal_builtin_call).
 goal_type_byte(19, goal_event_call).
 
-%-----------------------------------------------------------------------------%
-
-project_case_rep_goal(Case) = Case ^ cr_case_goal.
-
-%-----------------------------------------------------------------------------%
-
-detism_get_solutions(Detism) = Solutions :-
-    detism_components(Detism, Solutions, _).
-
-detism_get_can_fail(Detism) = CanFail :-
-    detism_components(Detism, _, CanFail).
-
-detism_components(det_rep,          at_most_one_rep,    cannot_fail_rep).
-detism_components(semidet_rep,      at_most_one_rep,    can_fail_rep).
-detism_components(multidet_rep,     at_most_many_rep,   cannot_fail_rep).
-detism_components(nondet_rep,       at_most_many_rep,   can_fail_rep).
-detism_components(cc_multidet_rep,  at_most_one_rep,    cannot_fail_rep).
-detism_components(cc_nondet_rep,    at_most_one_rep,    can_fail_rep).
-detism_components(erroneous_rep,    at_most_zero_rep,   cannot_fail_rep).
-detism_components(failure_rep,      at_most_zero_rep,   can_fail_rep).
-
-detism_committed_choice(det_rep,            not_committed_choice).
-detism_committed_choice(semidet_rep,        not_committed_choice).
-detism_committed_choice(multidet_rep,       not_committed_choice).
-detism_committed_choice(nondet_rep,         not_committed_choice).
-detism_committed_choice(cc_multidet_rep,    committed_choice).
-detism_committed_choice(cc_nondet_rep,      committed_choice).
-detism_committed_choice(erroneous_rep,      not_committed_choice).
-detism_committed_choice(failure_rep,        not_committed_choice).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 var_num_rep_byte(var_num_1_byte, 0).
 var_num_rep_byte(var_num_2_bytes, 1).
@@ -956,28 +1016,59 @@ var_flag_byte(var_num_4_bytes,
 var_flag_byte(var_num_4_bytes,
     include_var_name_table, include_var_types, 11).
 
-:- type var_name_table == map(var_rep, string).
+cut_byte(scope_is_no_cut, 0).
+cut_byte(scope_is_cut, 1).
 
-lookup_var_name(VarNameTable, VarRep, String) :-
-    ( if search_var_name(VarNameTable, VarRep, StringPrime) then
-        String = StringPrime
-    else
-        % Generate an automatic name for the variable.
-        String = string.format("V_%d", [i(VarRep)])
+can_fail_byte(switch_can_fail_rep, 0).
+can_fail_byte(switch_can_not_fail_rep, 1).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+%---------------------------------------------------------------------------%
+%
+% The top level of the code that reads the representation of a whole program
+% from a file.
+%
+
+read_prog_rep_file(FileName, Result, !IO) :-
+    read_file_as_bytecode(FileName, ReadResult, !IO),
+    (
+        ReadResult = error(Error),
+        Result = error(Error)
+    ;
+        ReadResult = ok(ByteCode),
+        ( if
+            some [!Pos] (
+                !:Pos = 0,
+                read_line(ByteCode, Line, !Pos),
+                ( if Line = old_procrep_id_string then
+                    ExpectNewFormat = no
+                else if Line = new_procrep_id_string  then
+                    ExpectNewFormat = yes
+                else
+                    fail
+                ),
+                read_module_reps(ExpectNewFormat, ByteCode,
+                    map.init, ModuleReps, !Pos),
+                ByteCode = bytecode(_, Size),
+                !.Pos = Size
+            )
+        then
+            Result = ok(prog_rep(ModuleReps))
+        else
+            Msg = FileName ++ ": is not a valid program representation file",
+            Result = error(io.make_io_error(Msg))
+        )
     ).
 
-search_var_name(VarNameTable, VarRep, String) :-
-    map.search(VarNameTable, VarRep, String).
+    % Return the string written out by MR_write_out_procrep_id_string.
+    %
+:- func old_procrep_id_string = string.
+:- func new_procrep_id_string = string.
 
-maybe_search_var_name(VarNameTable, VarRep, MaybeString) :-
-    ( if search_var_name(VarNameTable, VarRep, String) then
-        MaybeString = yes(String)
-    else
-        MaybeString = no
-    ).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+old_procrep_id_string = "Mercury deep profiler procrep version 5\n".
+new_procrep_id_string = "Mercury deep profiler procrep version 6\n".
 
 :- pred read_file_as_bytecode(string::in, io.res(bytecode)::out,
     io::di, io::uo) is det.
@@ -1048,48 +1139,49 @@ read_file_as_bytecode(FileName, Result, !IO) :-
 #endif
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% The top level of the code that reads the representation of a procedure
+% from that procedure's proc layout structure.
+%
 
-read_prog_rep_file(FileName, Result, !IO) :-
-    read_file_as_bytecode(FileName, ReadResult, !IO),
-    (
-        ReadResult = error(Error),
-        Result = error(Error)
-    ;
-        ReadResult = ok(ByteCode),
-        ( if
-            some [!Pos] (
-                !:Pos = 0,
-                read_line(ByteCode, Line, !Pos),
-                ( if Line = old_procrep_id_string then
-                    ExpectNewFormat = no
-                else if Line = new_procrep_id_string  then
-                    ExpectNewFormat = yes
-                else
-                    fail
-                ),
-                read_module_reps(ExpectNewFormat, ByteCode,
-                    map.init, ModuleReps, !Pos),
-                ByteCode = bytecode(_, Size),
-                !.Pos = Size
-            )
-        then
-            Result = ok(prog_rep(ModuleReps))
-        else
-            Msg = FileName ++ ": is not a valid program representation file",
-            Result = error(io.make_io_error(Msg))
-        )
+:- pragma foreign_export("C", trace_read_proc_defn_rep(in, in, out),
+    "MR_MDBCOMP_trace_read_proc_defn_rep").
+
+trace_read_proc_defn_rep(Bytes, LabelLayout, ProcDefnRep) :-
+    ProcLayout = containing_proc_layout(LabelLayout),
+    ( if containing_module_layout(ProcLayout, ModuleLayout) then
+        StringTable = module_string_table(ModuleLayout)
+    else
+        unexpected($pred, "no module layout")
+    ),
+    some [!Pos] (
+        !:Pos = 0,
+        % The size of the bytecode is not recorded anywhere in the proc layout
+        % except at the start of the bytecode itself.
+        DummyByteCode = bytecode(Bytes, 4),
+        read_int32(DummyByteCode, Size, !Pos),
+        ByteCode = bytecode(Bytes, Size),
+        read_string_via_offset(ByteCode, StringTable, FileName, !Pos),
+        Info = read_proc_rep_info(FileName),
+        % The declarative debugger does not need variable type representations
+        % from the bytecode. It has access to actual type_infos in label
+        % layouts.
+        ExpectNewFormat = yes,
+        read_var_table(ExpectNewFormat, ByteCode, StringTable,
+            map.init, VarNumRep, VarNameTable, _MaybeVarTypeTable, !Pos),
+        read_head_vars(VarNumRep, ByteCode, HeadVars, !Pos),
+        read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
+        read_determinism(ByteCode, Detism, !Pos),
+        ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarNameTable, no, Detism),
+        expect(unify(!.Pos, Size), $pred, "limit mismatch")
     ).
 
-    % Return the string written out by MR_write_out_procrep_id_string.
-    %
-:- func old_procrep_id_string = string.
-:- func new_procrep_id_string = string.
-
-old_procrep_id_string = "Mercury deep profiler procrep version 5\n".
-new_procrep_id_string = "Mercury deep profiler procrep version 6\n".
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Operations that parse the (remaining part of) the bytecode string
+% as various components of a program representation.
+%
 
 :- pred read_module_reps(bool::in, bytecode::in,
     module_map(unit)::in, module_map(unit)::out,
@@ -1138,7 +1230,7 @@ read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos) :-
             ),
             read_n_items(read_oisu_type_procs(ByteCode), NumOISUTypes,
                 OISUTypes, !Pos),
-            expect(unify(!.Pos, OISUStartPos + OISUSize), $module, $pred,
+            expect(unify(!.Pos, OISUStartPos + OISUSize), $pred,
                 "oisu limit mismatch")
         else
             OISUTypes = []
@@ -1157,7 +1249,7 @@ read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos) :-
             ),
             read_n_encoded_types(ByteCode, StringTable, 0, NumTableTypes,
                 map.init, TypeTable, !Pos),
-            expect(unify(!.Pos, TypeStartPos + TypeSize), $module, $pred,
+            expect(unify(!.Pos, TypeStartPos + TypeSize), $pred,
                 "type limit mismatch")
         else
             map.init(TypeTable)
@@ -1168,7 +1260,7 @@ read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos) :-
     ModuleRep = module_rep(ModuleName, StringTable, OISUTypes, TypeTable,
         ProcReps).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- pred read_oisu_type_procs(bytecode::in, oisu_type_procs::out,
     int::in, int::out) is semidet.
@@ -1187,7 +1279,7 @@ read_oisu_type_procs(ByteCode, OISUTypeProcs, !Pos) :-
     OISUTypeProcs = oisu_type_procs(TypeCtorName,
         CreatorProcLabels, MutatorProcLabels, DestructorProcLabels).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- pred read_n_encoded_types(bytecode::in, string_table::in, int::in, int::in,
     encoded_type_table::in, encoded_type_table::out,
@@ -1293,7 +1385,7 @@ read_encoded_type(ByteCode, StringTable, TypeTable, TypeRep, !Pos) :-
         TypeRep = type_var_rep(VarNum)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- pred read_proc_reps(bool::in, bytecode::in, string_table::in,
     encoded_type_table::in, proc_map(unit)::in, proc_map(unit)::out,
@@ -1331,7 +1423,7 @@ read_proc_rep(ExpectNewFormat, ByteCode, StringTable, TypeTable, ProcRep,
     read_determinism(ByteCode, Detism, !Pos),
     ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarNameTable,
         MaybeVarTypeTable, Detism),
-    expect(unify(!.Pos, StartPos + Size), $module, $pred, "limit mismatch"),
+    expect(unify(!.Pos, StartPos + Size), $pred, "limit mismatch"),
     ProcRep = proc_rep(ProcLabel, ProcDefnRep).
 
 :- pred read_string_proc_label(bytecode::in, string_proc_label::out,
@@ -1367,7 +1459,7 @@ read_string_proc_label(ByteCode, ProcLabel, !Pos) :-
             PredName, Arity, ModeNum)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
     % Read the var table from the bytecode. The var table contains the names
     % of all the variables used in the procedure representation, and may
@@ -1393,7 +1485,7 @@ read_var_table(ExpectNewFormat, ByteCode, StringTable, TypeTable, VarNumRep,
         (
             IncludeVarNameTable = do_not_include_var_name_table,
             expect(unify(IncludeVarTypes, do_not_include_var_types),
-                $module, $pred, "var types but not names"),
+                $pred, "var types but not names"),
             map.init(VarNameTable),
             MaybeVarTypeTable = no
         ;
@@ -1460,39 +1552,7 @@ read_var_name_type_table_entries(NumVarsLeftInTable, VarNumRep,
         true
     ).
 
-%----------------------------------------------------------------------------%
-
-:- pragma foreign_export("C", trace_read_proc_defn_rep(in, in, out),
-    "MR_MDBCOMP_trace_read_proc_defn_rep").
-
-trace_read_proc_defn_rep(Bytes, LabelLayout, ProcDefnRep) :-
-    ProcLayout = containing_proc_layout(LabelLayout),
-    ( if containing_module_layout(ProcLayout, ModuleLayout) then
-        StringTable = module_string_table(ModuleLayout)
-    else
-        unexpected($module, $pred, "no module layout")
-    ),
-    some [!Pos] (
-        !:Pos = 0,
-        % The size of the bytecode is not recorded anywhere in the proc layout
-        % except at the start of the bytecode itself.
-        DummyByteCode = bytecode(Bytes, 4),
-        read_int32(DummyByteCode, Size, !Pos),
-        ByteCode = bytecode(Bytes, Size),
-        read_string_via_offset(ByteCode, StringTable, FileName, !Pos),
-        Info = read_proc_rep_info(FileName),
-        % The declarative debugger does not need variable type representations
-        % from the bytecode. It has access to actual type_infos in label
-        % layouts.
-        ExpectNewFormat = yes,
-        read_var_table(ExpectNewFormat, ByteCode, StringTable,
-            map.init, VarNumRep, VarNameTable, _MaybeVarTypeTable, !Pos),
-        read_head_vars(VarNumRep, ByteCode, HeadVars, !Pos),
-        read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
-        read_determinism(ByteCode, Detism, !Pos),
-        ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarNameTable, no, Detism),
-        expect(unify(!.Pos, Size), $module, $pred, "limit mismatch")
-    ).
+%---------------------%
 
 :- type read_proc_rep_info
     --->    read_proc_rep_info(
@@ -1581,7 +1641,7 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             ( if cut_byte(MaybeCutPrime, MaybeCutByte) then
                 MaybeCut = MaybeCutPrime
             else
-                unexpected($module, $pred, "bad maybe_cut")
+                unexpected($pred, "bad maybe_cut")
             ),
             read_goal(VarNumRep, ByteCode, StringTable, Info, SubGoal, !Pos),
             GoalExpr = scope_rep(SubGoal, MaybeCut)
@@ -1640,7 +1700,7 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
         read_determinism(ByteCode, Detism, !Pos),
         Goal = goal_rep(GoalExpr, Detism, unit)
     else
-        unexpected($module, $pred, "invalid goal type")
+        unexpected($pred, "invalid goal type")
     ).
 
 :- pred read_atomic_info(var_num_rep::in, bytecode::in, string_table::in,
@@ -1736,7 +1796,7 @@ read_maybe_var(VarNumRep, ByteCode, MaybeVar, !Pos) :-
     else if YesOrNo = 0  then
         MaybeVar = no
     else
-        unexpected($module, $pred, "invalid yes or no flag")
+        unexpected($pred, "invalid yes or no flag")
     ).
 
 :- pred read_head_vars(var_num_rep::in, bytecode::in,
@@ -1790,7 +1850,7 @@ read_var_num_rep(ByteCode, VarNumRep, !Pos) :-
     ( if var_num_rep_byte(VarNumRepPrime, Byte) then
         VarNumRep = VarNumRepPrime
     else
-        unexpected($module, $pred, "unknown var_num_rep")
+        unexpected($pred, "unknown var_num_rep")
     ).
 
 :- pred read_var_flag(bytecode::in, var_num_rep::out,
@@ -1808,7 +1868,7 @@ read_var_flag(ByteCode, VarNumRep, IncludeVarNameTable, IncludeVarTypes,
         IncludeVarNameTable = IncludeVarNameTablePrime,
         IncludeVarTypes = IncludeVarTypesPrime
     else
-        unexpected($module, $pred, "unknown var_flag_byte")
+        unexpected($pred, "unknown var_flag_byte")
     ).
 
 :- pred read_determinism(bytecode::in, detism_rep::out, int::in, int::out)
@@ -1819,7 +1879,7 @@ read_determinism(ByteCode, Detism, !Pos) :-
     ( if determinism_representation(DetismPrime, DetismByte) then
         Detism = DetismPrime
     else
-        unexpected($module, $pred, "bad detism")
+        unexpected($pred, "bad detism")
     ).
 
 :- pred read_switch_can_fail(bytecode::in, switch_can_fail_rep::out,
@@ -1838,16 +1898,95 @@ read_switch_can_fail(Bytecode, CanFail, !Pos) :-
     then
         CanFail = CanFailPrime
     else
-        unexpected($module, $pred, "bad switch_can_fail")
+        unexpected($pred, "bad switch_can_fail")
     ).
 
-cut_byte(scope_is_no_cut, 0).
-cut_byte(scope_is_cut, 1).
+%---------------------------------------------------------------------------%
 
-can_fail_byte(switch_can_fail_rep, 0).
-can_fail_byte(switch_can_not_fail_rep, 1).
+:- type more_modules
+    --->    no_more_modules
+    ;       next_module.
 
-%-----------------------------------------------------------------------------%
+:- pragma foreign_enum("C", more_modules/0, [
+    no_more_modules - "MR_no_more_modules",
+    next_module     - "MR_next_module"
+]).
+
+:- pred is_more_modules(int::in, more_modules::out) is semidet.
+
+:- pragma foreign_proc("C",
+    is_more_modules(Int::in, MoreModules::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    MoreModules = (MR_MoreModules) Int;
+
+    switch (MoreModules) {
+        case MR_no_more_modules:
+        case MR_next_module:
+            SUCCESS_INDICATOR = MR_TRUE;
+            break;
+
+        default:
+            SUCCESS_INDICATOR = MR_FALSE;
+            break;
+    }
+").
+
+:- type more_procs
+    --->    no_more_procs
+    ;       next_proc.
+
+:- pragma foreign_enum("C", more_procs/0, [
+    no_more_procs   - "MR_no_more_procs",
+    next_proc       - "MR_next_proc"
+]).
+
+:- pred is_more_procs(int::in, more_procs::out) is semidet.
+
+:- pragma foreign_proc("C",
+    is_more_procs(Int::in, MoreProcs::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    MoreProcs = (MR_MoreProcs) Int;
+
+    switch (MoreProcs) {
+        case MR_no_more_procs:
+        case MR_next_proc:
+            SUCCESS_INDICATOR = MR_TRUE;
+            break;
+
+        default:
+            SUCCESS_INDICATOR = MR_FALSE;
+            break;
+    }
+").
+
+:- pragma foreign_enum("C", proclabel_kind_token/0, [
+    proclabel_user_predicate    - "MR_proclabel_user_predicate",
+    proclabel_user_function     - "MR_proclabel_user_function",
+    proclabel_special           - "MR_proclabel_special"
+]).
+
+:- pragma foreign_proc("C",
+    is_proclabel_kind(Int::in, ProcLabelKind::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    ProcLabelKind = (MR_ProcLabelToken) Int;
+
+    switch (ProcLabelKind) {
+        case MR_proclabel_user_predicate:
+        case MR_proclabel_user_function:
+        case MR_proclabel_special:
+            SUCCESS_INDICATOR = MR_TRUE;
+            break;
+
+        default:
+            SUCCESS_INDICATOR = MR_FALSE;
+            break;
+    }
+").
+
+%---------------------------------------------------------------------------%
 
     % An abstraction to read the given number of items using the higher order
     % predicate.
@@ -1866,8 +2005,8 @@ read_n_items(Read, N, Items, !Pos) :-
         Items = []
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 no_type_info_builtin(ModuleName, PredName, Arity) :-
     no_type_info_builtin_2(ModuleNameType, PredName, Arity),
@@ -1954,101 +2093,11 @@ pred_is_external("backjump", "builtin_backjump", 1).
 pred_is_external("par_builtin", "lc_finish", 1).
 pred_is_external("par_builtin", "lc_wait_free_slot", 2).
 
-%-----------------------------------------------------------------------------%
-
-:- type more_modules
-    --->    no_more_modules
-    ;       next_module.
-
-:- pragma foreign_enum("C", more_modules/0, [
-    no_more_modules - "MR_no_more_modules",
-    next_module     - "MR_next_module"
-]).
-
-:- pred is_more_modules(int::in, more_modules::out) is semidet.
-
-:- pragma foreign_proc("C",
-    is_more_modules(Int::in, MoreModules::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    MoreModules = (MR_MoreModules) Int;
-
-    switch (MoreModules) {
-        case MR_no_more_modules:
-        case MR_next_module:
-            SUCCESS_INDICATOR = MR_TRUE;
-            break;
-
-        default:
-            SUCCESS_INDICATOR = MR_FALSE;
-            break;
-    }
-").
-
-:- type more_procs
-    --->    no_more_procs
-    ;       next_proc.
-
-:- pragma foreign_enum("C", more_procs/0, [
-    no_more_procs   - "MR_no_more_procs",
-    next_proc       - "MR_next_proc"
-]).
-
-:- pred is_more_procs(int::in, more_procs::out) is semidet.
-
-:- pragma foreign_proc("C",
-    is_more_procs(Int::in, MoreProcs::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    MoreProcs = (MR_MoreProcs) Int;
-
-    switch (MoreProcs) {
-        case MR_no_more_procs:
-        case MR_next_proc:
-            SUCCESS_INDICATOR = MR_TRUE;
-            break;
-
-        default:
-            SUCCESS_INDICATOR = MR_FALSE;
-            break;
-    }
-").
-
-:- pragma foreign_enum("C", proclabel_kind_token/0, [
-    proclabel_user_predicate    - "MR_proclabel_user_predicate",
-    proclabel_user_function     - "MR_proclabel_user_function",
-    proclabel_special           - "MR_proclabel_special"
-]).
-
-:- pragma foreign_proc("C",
-    is_proclabel_kind(Int::in, ProcLabelKind::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    ProcLabelKind = (MR_ProcLabelToken) Int;
-
-    switch (ProcLabelKind) {
-        case MR_proclabel_user_predicate:
-        case MR_proclabel_user_function:
-        case MR_proclabel_special:
-            SUCCESS_INDICATOR = MR_TRUE;
-            break;
-
-        default:
-            SUCCESS_INDICATOR = MR_FALSE;
-            break;
-    }
-").
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Please keep runtime/mercury_deep_profiling.h updated when modifying this
 % section.
 %
-
-coverage_point_type_c_value(cp_type_coverage_after,
-    "MR_cp_type_coverage_after").
-coverage_point_type_c_value(cp_type_branch_arm,
-    "MR_cp_type_branch_arm").
 
 :- pragma foreign_enum("C", cp_type/0,
     [
@@ -2056,4 +2105,9 @@ coverage_point_type_c_value(cp_type_branch_arm,
         cp_type_branch_arm      - "MR_cp_type_branch_arm"
     ]).
 
-%-----------------------------------------------------------------------------%
+coverage_point_type_c_value(cp_type_coverage_after,
+    "MR_cp_type_coverage_after").
+coverage_point_type_c_value(cp_type_branch_arm,
+    "MR_cp_type_branch_arm").
+
+%---------------------------------------------------------------------------%

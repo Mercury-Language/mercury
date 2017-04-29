@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: rtti_access.m.
 % Main authors: zs, maclarty
@@ -12,7 +12,7 @@
 % This module contains an interface to the label_layout and proc_layout
 % types which are used in the C backend of the debugger.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdbcomp.rtti_access.
 :- interface.
@@ -39,7 +39,7 @@
 :- pred get_context_from_label_layout(label_layout::in, string::out, int::out)
     is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type proc_layout.
 
@@ -72,7 +72,7 @@
 
 :- func proc_bytecode_bytes(proc_layout) = bytecode_bytes.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type string_table
     --->    string_table(
@@ -94,7 +94,7 @@
 
 :- func lookup_string_table(string_table, int) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type bytecode
     --->    bytecode(
@@ -169,7 +169,7 @@
 :- pred read_string_table(bytecode::in, string_table::out,
     int::in, int::out) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred encode_byte(int::in, list(int)::out) is semidet.
 :- pred encode_byte_det(int::in, list(int)::out) is det.
@@ -190,7 +190,7 @@
 :- pred encode_len_string(string::in, list(int)::out) is det.
 :- func encode_len_string_func(string) = list(int).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -253,7 +253,7 @@ get_path_port_from_label_layout(Label) = PathPort :-
     rev_goal_path_from_string_det(GoalPathStr, GoalPath),
     PathPort = make_path_port(GoalPath, Port).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_type("C", proc_layout, "const MR_ProcLayout *",
     [can_pass_as_mercury_type, stable]).
@@ -269,7 +269,7 @@ get_proc_label_from_layout(Layout) = ProcLabel :-
         ( special_pred_name_arity(SpecialIdPrime, _, PredName, _) ->
             SpecialId = SpecialIdPrime
         ;
-            unexpected($module, $pred, "bad special_pred_id")
+            unexpected($pred, "bad special_pred_id")
         ),
         SymDefModule = string_to_sym_name(DefModule),
         SymTypeModule = string_to_sym_name(TypeModule),
@@ -607,7 +607,7 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
     % Default version for non-C backends.
 proc_bytecode_bytes(_) = dummy_bytecode_bytes.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_type("C", module_layout, "const MR_ModuleLayout *",
     [can_pass_as_mercury_type, stable]).
@@ -674,7 +674,7 @@ lookup_string_table(StringTable, NameCode) = Str :-
     }
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_byte(ByteCode, Value, !Pos) :-
     ByteCode = bytecode(Bytes, Size),
@@ -805,7 +805,7 @@ read_string_table(ByteCode, StringTable, !Pos) :-
     StringTableChars = (MR_ConstString) buf;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 encode_byte(Byte, [Byte]) :-
     Byte >= 0,
@@ -815,7 +815,7 @@ encode_byte_det(Byte, Bytes) :-
     ( if encode_byte(Byte, BytesPrime) then
         Bytes = BytesPrime
     else
-        unexpected($module, $pred, "encode_byte failed")
+        unexpected($pred, "encode_byte failed")
     ).
 
 encode_byte_func(Byte) = Bytes :-
@@ -831,7 +831,7 @@ encode_short_det(Short, Bytes) :-
     ( if encode_short(Short, BytesPrime)then
         Bytes = BytesPrime
     else
-        unexpected($module, $pred, "encode_short failed")
+        unexpected($pred, "encode_short failed")
     ).
 
 encode_short_func(Short) = Bytes :-
@@ -851,7 +851,7 @@ encode_int32_det(Int32, Bytes) :-
     ( if encode_int32(Int32, BytesPrime) then
         Bytes = BytesPrime
     else
-        unexpected($module, $pred, "encode_int32 failed")
+        unexpected($pred, "encode_int32 failed")
     ).
 
 encode_int32_func(Int32) = Bytes :-
@@ -878,7 +878,7 @@ encode_num_det(Num, Bytes) :-
     ( if encode_num(Num, BytesPrime)then
         Bytes = BytesPrime
     else
-        unexpected($module, $pred, "encode_num failed")
+        unexpected($pred, "encode_num failed")
     ).
 
 encode_num_func(Num) = Bytes :-
@@ -894,6 +894,6 @@ encode_len_string(String, Bytes) :-
 encode_len_string_func(String) = Bytes :-
     encode_len_string(String, Bytes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module mdbcomp.rtti_access.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

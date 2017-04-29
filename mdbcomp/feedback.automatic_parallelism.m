@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: feedback.automatic_parallelism.m.
 % Main author: pbone.
@@ -15,8 +15,8 @@
 % NOTE: After modifying any of these structures please increment the
 % feedback_version in feedback.m
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdbcomp.feedback.automatic_parallelism.
 
@@ -32,7 +32,7 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type stat_measure
     --->    stat_mean
@@ -304,7 +304,7 @@
     pred(A, B)::in(pred(in, out) is det),
     seq_conj(A)::in, seq_conj(B)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Represent the metrics of a parallel execution.
     %
@@ -359,8 +359,8 @@
     %
 :- func parallel_exec_metrics_get_overheads(parallel_exec_metrics) = float.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -370,26 +370,7 @@
 :- import_module unit.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
-
-parallel_exec_metrics_get_speedup(PEM) = SeqTime / ParTime :-
-    SeqTime = PEM ^ pem_seq_time,
-    ParTime = PEM ^ pem_par_time.
-
-parallel_exec_metrics_get_time_saving(PEM) = SeqTime - ParTime :-
-    SeqTime = PEM ^ pem_seq_time,
-    ParTime = PEM ^ pem_par_time.
-
-parallel_exec_metrics_get_cpu_time(PEM) = SeqTime + Overheads :-
-    SeqTime = PEM ^ pem_seq_time,
-    Overheads = parallel_exec_metrics_get_overheads(PEM).
-
-parallel_exec_metrics_get_overheads(PEM) =
-        SparkCosts + BarrierCosts + SignalCosts + WaitCosts :-
-    PEM = parallel_exec_metrics(_, _, _, SparkCosts, BarrierCosts,
-        SignalCosts, WaitCosts, _, _).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Helper predicates for the candidate parallel conjunctions type.
 %
@@ -416,6 +397,26 @@ convert_candidate_par_conjunction(Conv0, CPC0, CPC) :-
 convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-
     list.map(Conv, Conjs0, Conjs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+parallel_exec_metrics_get_speedup(PEM) = SeqTime / ParTime :-
+    SeqTime = PEM ^ pem_seq_time,
+    ParTime = PEM ^ pem_par_time.
+
+parallel_exec_metrics_get_time_saving(PEM) = SeqTime - ParTime :-
+    SeqTime = PEM ^ pem_seq_time,
+    ParTime = PEM ^ pem_par_time.
+
+parallel_exec_metrics_get_cpu_time(PEM) = SeqTime + Overheads :-
+    SeqTime = PEM ^ pem_seq_time,
+    Overheads = parallel_exec_metrics_get_overheads(PEM).
+
+parallel_exec_metrics_get_overheads(PEM) =
+        SparkCosts + BarrierCosts + SignalCosts + WaitCosts :-
+    PEM = parallel_exec_metrics(_, _, _, SparkCosts, BarrierCosts,
+        SignalCosts, WaitCosts, _, _).
+
+%---------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.automatic_parallelism.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

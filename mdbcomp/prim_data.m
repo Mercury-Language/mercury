@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2009, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prim_data.m.
 % Main authors: fjh, zs.
@@ -12,7 +12,7 @@
 % This module contains some types and predicates that are, or are planned to
 % be, shared between the compiler and the debugger.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdbcomp.prim_data.
 :- interface.
@@ -52,6 +52,10 @@
     ;       port_disj_later
     ;       port_switch
     ;       port_user.
+
+:- pred string_to_trace_port(string, trace_port).
+:- mode string_to_trace_port(in, out) is semidet.
+:- mode string_to_trace_port(out, in) is det.
 
     % A proc_label is a data structure a backend can use to as the basis
     % of the label used as the entry point of a procedure.
@@ -123,10 +127,27 @@
     %
 :- func get_special_pred_id_arity(special_pred_id) = int.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
+
+string_to_trace_port("CALL", port_call).
+string_to_trace_port("EXIT", port_exit).
+string_to_trace_port("REDO", port_redo).
+string_to_trace_port("FAIL", port_fail).
+string_to_trace_port("TAIL", port_tailrec_call).
+string_to_trace_port("EXCP", port_exception).
+string_to_trace_port("COND", port_ite_cond).
+string_to_trace_port("THEN", port_ite_then).
+string_to_trace_port("ELSE", port_ite_else).
+string_to_trace_port("NEGE", port_neg_enter).
+string_to_trace_port("NEGS", port_neg_success).
+string_to_trace_port("NEGF", port_neg_failure).
+string_to_trace_port("DSJF", port_disj_first).
+string_to_trace_port("DSJL", port_disj_later).
+string_to_trace_port("SWTC", port_switch).
+string_to_trace_port("USER", port_user).
 
 special_pred_name_arity(spec_pred_unify, "unify", "__Unify__", 2).
 special_pred_name_arity(spec_pred_index, "index", "__Index__", 2).
@@ -141,6 +162,6 @@ get_special_pred_id_target_name(Id) = Name :-
 get_special_pred_id_arity(Id) = Arity :-
     special_pred_name_arity(Id, _, _, Arity).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module mdbcomp.prim_data.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
