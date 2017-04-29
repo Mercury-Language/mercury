@@ -15,12 +15,12 @@ ee_invalid.m:058:   `ee_invalid.baz'/0:
 ee_invalid.m:058:   error: `ee_invalid.baz'/0 is not an enumeration type.
 ee_invalid.m:063: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:063:   `ee_invalid.alphabet'/0:
-ee_invalid.m:063:   the following constructor does not match any of the
+ee_invalid.m:063:   error: the following constructor does not match any of the
 ee_invalid.m:063:   constructors of `ee_invalid.alphabet'/0:
 ee_invalid.m:063:   `deg'.
 ee_invalid.m:068: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:068:   `ee_invalid.alphabet'/0:
-ee_invalid.m:068:   the following constructor does not match any of the
+ee_invalid.m:068:   error: the following constructor does not match any of the
 ee_invalid.m:068:   constructors of `ee_invalid.alphabet'/0:
 ee_invalid.m:068:   `foo.def'.
 ee_invalid.m:073: In `:- pragma foreign_export_enum' declaration for type

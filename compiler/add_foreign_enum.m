@@ -264,7 +264,7 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
         InvalidRenamings = map.keys(Overrides),
         InvalidRenamingSymNamePieces =
             list.map((func(S) = [qual_sym_name(S)]), InvalidRenamings),
-        InvalidRenamingPieces = [words("the following"),
+        InvalidRenamingPieces = [words("error: the following"),
             words(choose_number(InvalidRenamings,
                 "constructor does", "constructors do")),
             words("not match any of the constructors of"),
