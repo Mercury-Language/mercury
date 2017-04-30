@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: autopar_search_goals.m
 % Authors: pbone, zs.
@@ -12,7 +12,7 @@
 % This module contains the code for searching a goal for conjunctions worth
 % parallelising.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdprof_fb.automatic_parallelism.autopar_search_goals.
 :- interface.
@@ -27,7 +27,7 @@
 
 :- import_module cord.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred goal_get_conjunctions_worth_parallelising(
     implicit_parallelism_info::in, reverse_goal_path::in,
@@ -48,8 +48,8 @@
     %
 :- pred can_parallelise_goal(goal_rep(T)::in) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -76,7 +76,7 @@
 :- import_module set.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 goal_get_conjunctions_worth_parallelising(Info, RevGoalPath,
         !Goal, Candidates, Pushes, Singles, Messages) :-
@@ -768,7 +768,7 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPath,
         MaybeCandidate = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 goal_to_pard_goal(Info, RevGoalPath, Goal, DetailGoal, !Messages) :-
     Goal = goal_rep(GoalExpr, Detism, GoalId),
@@ -950,7 +950,7 @@ case_to_pard_goal(Info, RevGoalPath, !Case, !CaseNum, !Messages) :-
     !:CaseNum = !.CaseNum + 1,
     !:Case = case_rep(ConsId, OtherConsId, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred atomic_pard_goal_type(implicit_parallelism_info::in,
     reverse_goal_path::in, atomic_goal_rep::in, inst_map_info::in,
@@ -1014,7 +1014,7 @@ var_get_mode(InstMapBefore, InstMapAfter, VarRep, VarModeRep) :-
     inst_map_get(InstMapAfter, VarRep, InstAfter, _),
     VarModeRep = var_mode_rep(InstBefore, InstAfter).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 can_parallelise_goal(Goal) :-
     Detism = Goal ^ goal_detism_rep,
@@ -1032,4 +1032,4 @@ goal_cost_above_par_threshold(Info, Cost) :-
     PercallCost = goal_cost_get_percall(Cost),
     PercallCost > float(Info ^ ipi_opts ^ cpcp_call_site_threshold).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

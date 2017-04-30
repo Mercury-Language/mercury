@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: startup.m.
 % Authors: conway, zs.
@@ -14,7 +14,7 @@
 % requests for web pages. The algorithm it implements is documented in the
 % deep profiling paper.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module startup.
 :- interface.
@@ -27,7 +27,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred read_and_startup_default_deep_options(string::in, string::in,
     string::in, bool::in, maybe(io.output_stream)::in, list(string)::in,
@@ -37,8 +37,8 @@
     string::in, bool::in, maybe(io.output_stream)::in, list(string)::in,
     dump_options::in, maybe_error(deep)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -58,7 +58,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_and_startup_default_deep_options(Machine, ScriptName, DataFileName,
         Canonical, MaybeOutputStream, DumpStages, Res, !IO) :-
@@ -421,7 +421,7 @@ maybe_dump(BaseName, DumpStages, ThisStageNum, Action, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred record_css_containers_module_procs(int::in, proc_static::in,
     array(call_site_static)::array_di,
@@ -464,7 +464,7 @@ record_css_containers_2(SlotNum, PSPtr, CSSPtrs, !CallSiteStatics) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred record_csd_containers_zeroed_pss(int::in, proc_dynamic::in,
     array(call_site_dynamic)::array_di,
@@ -501,7 +501,7 @@ record_csd_containers_2(PDPtr, [CSDPtr | CSDPtrs], !CallSiteDynamics) :-
     update_call_site_dynamics(CSDPtr, CSD, !CallSiteDynamics),
     record_csd_containers_2(PDPtr, CSDPtrs, !CallSiteDynamics).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred construct_clique_parents(initial_deep::in, array(clique_ptr)::in,
     int::in, clique_ptr::in,
@@ -552,7 +552,7 @@ construct_clique_parents_2(InitDeep, CliqueIndex, ParentCliquePtr, CSDPtr,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred construct_proc_callers(initial_deep::in, int::in,
     call_site_dynamic::in,
@@ -624,7 +624,7 @@ construct_call_site_caller_3(CallSiteDynamics, CSSPtr, _Dummy, CSDPtr,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred construct_call_site_calls(initial_deep::in, int::in, proc_dynamic::in,
     array(map(proc_static_ptr, list(call_site_dynamic_ptr)))::array_di,
@@ -702,7 +702,7 @@ construct_call_site_calls_3(CallSiteDynamics, ProcDynamics, CSSPtr,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred sum_call_sites_in_proc_dynamic(int::in, call_site_dynamic::in,
     array(own_prof_info)::array_di, array(own_prof_info)::array_uo) is det.
@@ -719,7 +719,7 @@ sum_call_sites_in_proc_dynamic(_, CSD, !PDOwnArray) :-
         error("sum_call_sites_in_proc_dynamic: invalid pdptr")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred summarize_proc_dynamics(deep::in, deep::out) is det.
 
@@ -806,7 +806,7 @@ summarize_proc_dynamic_with_coverage(PDOwnArray, PDDescArray, PDCompTableArray,
         unexpected($module, $pred, "no coverage point array in proc dynamic")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred summarize_call_site_dynamics(deep::in, deep::out) is det.
 
@@ -856,7 +856,7 @@ summarize_call_site_dynamic(CallSiteStaticMap, CallSiteStatics,
         error("summarize_call_site_dynamic: invalid css ptr")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred summarize_modules(deep::in, deep::out) is det.
 
@@ -873,7 +873,7 @@ summarize_module_costs(Deep, ModuleData0) = ModuleData :-
     list.foldl2(accumulate_ps_costs(Deep), PSPtrs, Own0, Own, Desc0, Desc),
     ModuleData = module_data(Own, Desc, PSPtrs).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred summarize_proc_statics_coverage(deep::in, deep::out) is det.
 
@@ -900,7 +900,7 @@ summarize_proc_static_coverage(Index, PS, !CoverageArray) :-
         unexpected($module, $pred, "no coverage data in proc static")
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred accumulate_ps_costs(deep::in, proc_static_ptr::in,
     own_prof_info::in, own_prof_info::out,
@@ -912,7 +912,7 @@ accumulate_ps_costs(Deep, PSPtr, Own0, Own, Desc0, Desc) :-
     Own = add_own_to_own(Own0, PSOwn),
     Desc = add_inherit_to_inherit(Desc0, PSDesc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred propagate_to_clique(int::in, list(proc_dynamic_ptr)::in,
     deep::in, deep::out) is det.
@@ -990,7 +990,7 @@ propagate_to_call_site(CliqueNumber, PDPtr, CSDPtr, !Deep, !PDCompTable) :-
         !:PDCompTable = add_comp_tables(!.PDCompTable, CSDCompTable)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func add_comp_tables(compensation_table, compensation_table)
     = compensation_table.
@@ -1032,7 +1032,7 @@ add_to_override(!.CompTable, PSPtr, PDTotal) = !:CompTable :-
         map.det_insert(PSPtr, PDTotal, !CompTable)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred flat_call_sites(proc_dynamics::in, proc_dynamic_ptr::in,
     list(call_site_dynamic_ptr)::out) is det.
@@ -1084,7 +1084,7 @@ gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_report_stats(maybe(io.output_stream)::in,
     io::di, io::uo) is det.
@@ -1107,6 +1107,6 @@ maybe_report_msg(yes(OutputStream), Msg, !IO) :-
     flush_output(OutputStream, !IO).
 maybe_report_msg(no, _, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module startup.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

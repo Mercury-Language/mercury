@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: autopar_types.
 % Author: pbone.
 %
 % This module contains types useful in automatic parallelization.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdprof_fb.automatic_parallelism.autopar_types.
 :- interface.
@@ -38,7 +38,7 @@
 :- import_module maybe.
 :- import_module set.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type implicit_parallelism_info
     --->    implicit_parallelism_info(
@@ -120,7 +120,7 @@
     set(var_rep)::in, set(var_rep)::out,
     set(var_rep)::in, set(var_rep)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type is_costly_goal
     --->    is_not_costly_goal
@@ -132,7 +132,7 @@
 :- pred identify_costly_goals(list(pard_goal_detail)::in, int::in,
     list(int)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A variable and its mode.
     %
@@ -264,14 +264,14 @@
 
 :- func ip_calc_sharedvars_set(incomplete_parallelisation) = set(var_rep).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
 :- import_module pair.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pard_goal_detail_to_pard_goal(CPC, !Goal) :-
     IsDependent = CPC ^ cpc_is_dependent,
@@ -322,16 +322,16 @@ build_var_use_list(Map, Var, !List) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 conj_produced_and_consumed_vars(Conj, !Produced, !Consumed) :-
     InstMapInfo = Conj ^ goal_annotation ^ pgd_inst_map_info,
     !:Produced = set.union(!.Produced, InstMapInfo ^ im_bound_vars),
     !:Consumed = set.union(!.Consumed, InstMapInfo ^ im_consumed_vars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 identify_costly_goal(Annotation, Costly) :-
     CostAboveThreshold = Annotation ^ pgd_cost_above_threshold,
@@ -360,7 +360,7 @@ identify_costly_goals([Goal | Goals], Index, Indexes) :-
         Indexes = Indexes0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ip_get_goals_before(Parallelisation) = GoalsBefore :-
     Goals = Parallelisation ^ ip_goals,
@@ -418,4 +418,4 @@ build_sharedvars_set(seq_conj(Conjs), !BoundVars, !SharedVars) :-
     !:SharedVars = set.union(!.SharedVars, SharedVars),
     !:BoundVars = set.union(!.BoundVars, ProducedVars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

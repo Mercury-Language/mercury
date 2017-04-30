@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: mdprof_create_feedback.m.
 % Author: tannier, pbone.
@@ -12,19 +12,19 @@
 % This module contains code for generating feedback files that tell the
 % compiler things such as which conjunctions can be profitably parallelised.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdprof_create_feedback.
 :- interface.
 
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -52,7 +52,7 @@
 :- import_module parsing_utils.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This section contains the main predicate as well as code to read the deep
 % profiling data and display usage and version messages to the user.
@@ -319,7 +319,7 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     read_and_startup_default_deep_options(Machine, ScriptName, Input, no,
         MaybeOutput, [], MaybeDeep, !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This section describes and processes command line options. Individual
 % feedback information can be requested by the user, as well as options named
@@ -711,7 +711,7 @@ option_implies(Option, ImpliedOption, ImpliedValue, !Options) :-
 set_option(Option, Value, !Options) :-
     map.set(Option, Value, !Options).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % process_deep_to_feedback(RequestedFeedbackInfo, Deep, Messages,
     %   !Feedback)
@@ -732,6 +732,6 @@ process_deep_to_feedback(RequestedFeedbackInfo, Deep, Messages, !Feedback) :-
         Messages = cord.empty
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module mdprof_create_feedback.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

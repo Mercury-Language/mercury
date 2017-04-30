@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001, 2004-2006, 2008-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Authors: conway, zs.
 %
 % This module defines the data structures that store deep profiling
 % measurements and the operations on them.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module measurements.
 
@@ -26,7 +26,7 @@
 :- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module measurement_units.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type own_prof_info.
 :- type inherit_prof_info.
@@ -87,7 +87,7 @@
     %
 :- func compute_is_active(own_prof_info) = is_active.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type proc_cost_csq.
 
@@ -143,7 +143,7 @@
 
 :- func cs_cost_per_proc_call(cs_cost_csq, proc_cost_csq) = cs_cost_csq.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The cost of a goal.
     %
@@ -191,7 +191,7 @@
 
 :- func goal_cost_change_calls(goal_cost_csq, int) = goal_cost_csq.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type recursion_depth.
 
@@ -205,7 +205,7 @@
 
 :- pred recursion_depth_is_base_case(recursion_depth::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type static_coverage_info.
 
@@ -220,7 +220,7 @@
 :- func static_coverage_maybe_get_coverage_points(static_coverage_info) =
     maybe(array(int)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The amount of parallelism either available or exploited.
     %
@@ -257,7 +257,7 @@
 :- pred exceeded_desired_parallelism(float::in, parallelism_amount::in)
     is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Represent the metrics of part of a parallel execution.
     %
@@ -304,12 +304,12 @@
 :- func parallel_exec_metrics_get_num_calls(parallel_exec_metrics_incomplete)
     = int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred weighted_average(list(float)::in, list(float)::in, float::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -320,7 +320,7 @@
 
 :- import_module array_util.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type own_prof_info
     --->    own_prof_all(
@@ -564,7 +564,7 @@ compress_profile(PI0) = PI :-
         PI = PI0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 decompress_profile(Own, Calls, Exits, Fails, Redos, Excps, Quanta, CallSeqs,
         Allocs, Words) :-
@@ -642,7 +642,7 @@ compute_is_active(Own) = IsActive :-
         IsActive = is_active
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type proc_cost_csq
     --->    proc_cost_csq(
@@ -669,23 +669,11 @@ compute_is_active(Own) = IsActive :-
                 cscc_csq_cost       :: cost
             ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 build_proc_cost_csq(NonRecursiveCalls, RecursiveCalls, TotalCost) =
     proc_cost_csq(NonRecursiveCalls, RecursiveCalls,
         cost_total(float(TotalCost))).
-
-proc_cost_get_total(proc_cost_csq(NRCalls, RCalls, Cost)) =
-    cost_get_total(float(NRCalls + RCalls), Cost).
-
-proc_cost_get_calls_total(proc_cost_csq(NRCalls, RCalls, _)) =
-    NRCalls + RCalls.
-
-proc_cost_get_calls_nonrec(proc_cost_csq(NRCalls, _, _)) = NRCalls.
-
-proc_cost_get_calls_rec(proc_cost_csq(_, RCalls, _)) = RCalls.
-
-%----------------------------------------------------------------------------%
 
 build_cs_cost_csq(Calls, TotalCost) =
     cs_cost_csq(float(Calls), cost_total(TotalCost)).
@@ -699,6 +687,20 @@ zero_cs_cost =
     % solution.
     build_cs_cost_csq_percall(0.0, 0.0).
 
+%---------------------------------------------------------------------------%
+
+proc_cost_get_total(proc_cost_csq(NRCalls, RCalls, Cost)) =
+    cost_get_total(float(NRCalls + RCalls), Cost).
+
+proc_cost_get_calls_total(proc_cost_csq(NRCalls, RCalls, _)) =
+    NRCalls + RCalls.
+
+proc_cost_get_calls_nonrec(proc_cost_csq(NRCalls, _, _)) = NRCalls.
+
+proc_cost_get_calls_rec(proc_cost_csq(_, RCalls, _)) = RCalls.
+
+%---------------------------------------------------------------------------%
+
 cs_cost_get_total(cs_cost_csq(Calls, Cost)) =
     cost_get_total(Calls, Cost).
 
@@ -707,7 +709,7 @@ cs_cost_get_percall(cs_cost_csq(Calls, Cost)) =
 
 cs_cost_get_calls(cs_cost_csq(Calls, _)) = Calls.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 cs_cost_to_proc_cost(cs_cost_csq(CSCalls, CSCost), TotalCalls,
         proc_cost_csq(NRCalls, RCalls, PCost)) :-
@@ -722,7 +724,7 @@ cs_cost_per_proc_call(cs_cost_csq(CSCalls0, CSCost0), ParentCost) =
     CSCalls = CSCalls0 / float(TotalParentCalls),
     CSCost = CSCost0 / TotalParentCalls.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type goal_cost_csq
     --->    dead_goal
@@ -856,7 +858,7 @@ goal_cost_change_calls(non_trivial_goal(Cost0, Calls0), Calls) =
         non_trivial_goal(Cost, Calls) :-
     Cost = cost_per_call(cost_get_percall(float(Calls0), Cost0)).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type cost
     --->    cost_per_call(float)
@@ -895,7 +897,7 @@ sum_costs(CallsA, CostA, CallsB, CostB) = cost_total(Sum) :-
     CostTotalA = cost_get_total(CallsA, CostA),
     CostTotalB = cost_get_total(CallsB, CostB).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type recursion_depth
     --->    recursion_depth(float).
@@ -918,7 +920,7 @@ recursion_depth_is_base_case(recursion_depth(D)) :-
     D < 0.5,
     D >= -0.5.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type static_coverage_info == maybe(array(int)).
 
@@ -944,7 +946,7 @@ array_to_static_coverage(Array, yes(Array)).
 
 static_coverage_maybe_get_coverage_points(MaybeCoverage) = MaybeCoverage.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This type can be represented in multiple ways. A single value expressing
     % the probable value, or a probable value and a measure of
@@ -993,7 +995,7 @@ exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
     Parallelism = parallelism_amount(LikelyParallelism),
     DesiredParallelism < LikelyParallelism.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type parallel_exec_metrics_incomplete
     --->    pem_incomplete(
@@ -1212,7 +1214,7 @@ pem_get_wait_costs(pem_additional(Left, _, WaitsR, _, _, _)) = Waits :-
     Waits = WaitsR + WaitsL,
     WaitsL = pem_get_wait_costs(Left).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 weighted_average(Weights, Values, Average) :-
     list.foldl2_corresponding(update_weighted_sum,
@@ -1230,6 +1232,6 @@ update_weighted_sum(Weight, Value, !WeightedSum, !TotalWeight) :-
     !:WeightedSum = !.WeightedSum + (Weight * Value),
     !:TotalWeight = !.TotalWeight + Weight.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module measurements.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

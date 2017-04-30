@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: autopar_reports.m
 % Author: pbone.
 %
 % This module contains code for creating reports for debugging.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdprof_fb.automatic_parallelism.autopar_reports.
 :- interface.
@@ -29,8 +29,8 @@
 :- pred create_candidate_parallel_conj_report(var_name_table::in,
     candidate_par_conjunction(pard_goal)::in, cord(string)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -50,7 +50,7 @@
 :- import_module std_util.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 print_feedback_report(FeedbackInfo, !IO) :-
     get_all_feedback_info(FeedbackInfo, ProfiledProgramName,
@@ -79,7 +79,7 @@ print_feedback_report(FeedbackInfo, !IO) :-
     io.format("Feedback report for %s:\n\n%s",
         [s(ProfiledProgramName), s(Report)], !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_feedback_autopar_report(
     feedback_info_candidate_parallel_conjunctions::in, string::out) is det.
@@ -170,6 +170,10 @@ alg_for_finding_best_par_to_string(Alg) = Str :-
         Str = "complete"
     ).
 
+:- pred create_candidate_parallel_conj_proc_report(
+    pair(string_proc_label, candidate_par_conjunctions_proc)::in,
+    cord(string)::out) is det.
+
 create_candidate_parallel_conj_proc_report(Proc - CandidateParConjunctionProc,
         Report) :-
     CandidateParConjunctionProc = candidate_par_conjunctions_proc(VarNameTable,
@@ -196,10 +200,6 @@ create_push_goal_report(PushGoal, Report) :-
     ),
     TailPushGoalStrs = list.map(FormatPushedGoals, PushedGoalPathStrs),
     Report = cord.from_list([HeadPushGoalStr | TailPushGoalStrs]).
-
-:- pred create_candidate_parallel_conj_proc_report(
-    pair(string_proc_label, candidate_par_conjunctions_proc)::in,
-    cord(string)::out) is det.
 
 create_candidate_parallel_conj_report(VarNameTable, CandidateParConjunction,
         Report) :-
@@ -277,7 +277,7 @@ create_candidate_parallel_conj_report(VarNameTable, CandidateParConjunction,
     ( if rev_goal_path_from_string(GoalPathString, RevGoalPathPrime) then
         RevGoalPath = RevGoalPathPrime
     else
-        unexpected($module, $pred, "couldn't parse goal path")
+        unexpected($pred, "couldn't parse goal path")
     ),
     some [!ConjNum] (
         !:ConjNum = FirstConjNum,
@@ -325,7 +325,7 @@ format_parallel_conjuncts(VarNameTable, Indent, RevGoalPath, ConjNum0,
     Conj = seq_conj(Goals),
     (
         Goals = [],
-        unexpected($module, $pred, "empty conjunct in parallel conjunction")
+        unexpected($pred, "empty conjunct in parallel conjunction")
     ;
         Goals = [Goal | GoalsTail],
         RevInnerGoalPath = rgp_cons(RevGoalPath, step_conj(ConjNum0)),
@@ -451,4 +451,4 @@ format_var_use_line(VarNameTable, Var - Use, singleton(String)) :-
         String),
     lookup_var_name(VarNameTable, Var, VarName).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

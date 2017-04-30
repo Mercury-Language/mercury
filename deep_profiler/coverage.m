@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Authors: pbone, zs.
 %
 % This file implements the coverage propagation algorithm, which attaches
 % coverage information to the component goals of a procedure body.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module coverage.
 
@@ -52,7 +52,7 @@
     int::out, int::out) is det.
 :- pred get_coverage_after_det(coverage_info::in, int::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This is similar to the coverage_point type in
     % mdbcomp/program_representation.m, however it includes an integer count
@@ -80,7 +80,7 @@
 :- pred coverage_point_arrays_to_list(array(coverage_point_info)::in,
     array(int)::in, list(coverage_point)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Annotate the program representation structure with coverage information.
     %
@@ -100,7 +100,7 @@
     containing_goal_map::in, goal_id::in,
     goal_attr_array(coverage_info)::gaa_uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % foldl(add_coverage_point, CoveragePoints, map.init, SolnsCPs,
     %   map.init, BranchCPs),
@@ -111,7 +111,7 @@
     map(reverse_goal_path, coverage_point)::in,
     map(reverse_goal_path, coverage_point)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -123,7 +123,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_coverage_before(coverage_known(Before, _), Before).
 get_coverage_before(coverage_known_zero, 0).
@@ -166,7 +166,7 @@ get_coverage_after_det(Coverage, After) :-
 complete_coverage_error :-
     unexpected($module, $pred, "Expected complete coverage information").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 coverage_point_arrays_to_list(StaticArray, DynamicArray, CoveragePoints) :-
     array.bounds(StaticArray, Min, Max),
@@ -195,7 +195,7 @@ coverage_point_arrays_to_list_2(Num, Max, StaticArray, DynamicArray,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type coverage_before
     --->    before_unknown
@@ -791,7 +791,7 @@ scope_annotate_coverage(Goal, Info, MaybeCut, Before, After, !Array) :-
         After = AfterScopedGoal
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % These predicates are used to check that computed coverage counts make sense.
 %
@@ -1034,7 +1034,7 @@ check_coverage_complete(coverage_known_zero, _GoalExpr).
 %    ),
 %    goal_expr_is_trivial(GoalExpr).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Coverage information helper predicates.
 %
@@ -1307,7 +1307,7 @@ before_coverage(Count) =
         before_known(Count)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 add_coverage_point_to_map(CoveragePoint, !SolnsMap, !BranchMap) :-
     CoveragePoint = coverage_point(_, GoalPath, CPType),
@@ -1319,5 +1319,5 @@ add_coverage_point_to_map(CoveragePoint, !SolnsMap, !BranchMap) :-
         map.det_insert(GoalPath, CoveragePoint, !BranchMap)
     ).
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

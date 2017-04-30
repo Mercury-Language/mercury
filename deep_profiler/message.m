@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: message.m.
 % Author: pbone.
@@ -13,7 +13,7 @@
 % mdprof_create_feedback tool. These messages can represent information such as
 % warnings and errors. Code is also included here to print them out.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module message.
 :- interface.
@@ -26,7 +26,7 @@
 :- import_module cord.
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 	% A message to be displayed to the user.
     %
@@ -52,7 +52,7 @@
     ;       pl_clique(clique_ptr)
     ;       pl_csd(call_site_dynamic_ptr).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func message_get_level(message) = message_level.
 
@@ -70,7 +70,7 @@
 :- pred append_message(program_location::in, message_type::in,
     cord(message)::in, cord(message)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type message_type
     --->    info_found_candidate_conjunction
@@ -152,7 +152,7 @@
 
     ;       error_exception_thrown(string).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Create an indentation of the appropriate amount.  Indentation is two
     % spaces per indentation level.
@@ -170,7 +170,7 @@
     %
 :- func indent_size(int) = int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Write out messages.
     %
@@ -186,8 +186,8 @@
     %
 :- func default_verbosity_level = int.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -198,12 +198,19 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 message_get_level(message(_, Type)) =
     message_type_to_level(Type).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+message_level_to_int(message_info) = 4.
+message_level_to_int(message_notice) = 3.
+message_level_to_int(message_warning) = 2.
+message_level_to_int(message_error) = 1.
+
+%---------------------------------------------------------------------------%
 
 message_to_string(message(Location, MessageType), String) :-
     location_to_string(1, Location, LocationString),
@@ -244,13 +251,13 @@ location_to_string(Level, Location, String) :-
         String = indent(Level) ++ singleton(String0)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_message(Location, MessageType, !Messages) :-
     Message = message(Location, MessageType),
     !:Messages = cord.snoc(!.Messages, Message).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func message_level_to_string(message_level) = cord(string).
 
@@ -259,14 +266,7 @@ message_level_to_string(message_notice) = singleton("Notice").
 message_level_to_string(message_warning) = singleton("Warning").
 message_level_to_string(message_error) = singleton("Error").
 
-%-----------------------------------------------------------------------------%
-
-message_level_to_int(message_info) = 4.
-message_level_to_int(message_notice) = 3.
-message_level_to_int(message_warning) = 2.
-message_level_to_int(message_error) = 1.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func message_type_to_level(message_type) = message_level.
 
@@ -301,7 +301,7 @@ message_type_to_level(MsgType) = MsgLevel :-
         MsgLevel = message_error
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func message_type_to_string(message_type) = cord(string).
 
@@ -379,7 +379,7 @@ message_type_to_string(MessageType) = Cord :-
     ),
     Cord = singleton(String).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 indent(N) = Indent :-
     ( if N < 0 then
@@ -396,7 +396,7 @@ nl = singleton("\n").
 
 indent_size(N) = 2 * N.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- mutable(verbosity_level_mut, int, default_verbosity_level, ground,
     [attach_to_io_state, untrailed]).
@@ -423,6 +423,6 @@ set_verbosity_level(VerbosityLevel, !IO) :-
 
 default_verbosity_level = 2.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module message.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

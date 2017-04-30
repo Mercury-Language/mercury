@@ -1,16 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2008-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: apply_exclusion.m.
 %
 % This module contains the predicates required to implement contour exclusion.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module apply_exclusion.
 :- interface.
@@ -44,7 +44,7 @@
 :- func pair_contour(deep, excluded_modules, call_site_dynamic_ptr)
     = pair(call_site_dynamic_ptr).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -70,7 +70,7 @@ group_csds_by_clique(Deep, GroupCostCSDPtrs) = Groups :-
         GroupCostCSDPtrs, map.init),
     map.to_assoc_list(GroupMap, Groups).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func accumulate_csds_by_call_site(deep, pair(call_site_dynamic_ptr),
     map(call_site_static_ptr, list(call_site_dynamic_ptr))) =
@@ -128,7 +128,7 @@ accumulate_csds_by_clique(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
         map.det_insert(CliquePtr, [CostCSDPtr], Map0, Map)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc) :-
     list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr), CSDPtrs,
@@ -170,12 +170,12 @@ compensate_using_comp_table(Deep, CallerPSPtr, PDPtr, Desc0, Desc) :-
         Desc = Desc0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pair_self(CSDPtr) = CSDPtr - CSDPtr.
 
 pair_contour(Deep, ExcludeSpec, CSDPtr) =
     apply_contour_exclusion(Deep, ExcludeSpec, CSDPtr) - CSDPtr.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 

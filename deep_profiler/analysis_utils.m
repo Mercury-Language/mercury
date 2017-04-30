@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: analysis_utils.m.
 % Author: pbone.
@@ -12,7 +12,7 @@
 % This module contains utility code that is useful for writing profile
 % analyses.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module analysis_utils.
 :- interface.
@@ -31,7 +31,7 @@
 :- import_module pair.
 :- import_module set.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Instead of using the clique report above to find proc dynamics for a
     % clique, use this as it is much faster.
@@ -39,7 +39,7 @@
 :- pred find_clique_first_and_other_procs(deep::in, clique_ptr::in,
     maybe(proc_dynamic_ptr)::out, list(proc_dynamic_ptr)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Lookup a procedure representation from the deep structure.
     %
@@ -48,7 +48,7 @@
 :- pred deep_get_maybe_procrep(deep::in, proc_static_ptr::in,
     maybe_error(proc_rep)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type cost_and_callees == cost_and_callees(callee).
 
@@ -80,7 +80,7 @@
     map(reverse_goal_path, cost_and_callees)::in,
     map(reverse_goal_path, cost_and_callees)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Estimate the cost of the recursive calls under the assumption that
     % current call to this procedure had a particular cost.
@@ -93,18 +93,18 @@
     out(maybe_error_ok(ground))) is det.
 :- mode build_recursive_call_site_cost_map(in, in, in, in, in, out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred proc_dynamic_paired_call_site_slots(deep::in, proc_dynamic_ptr::in,
     assoc_list(call_site_static_ptr, call_site_array_slot)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred cost_and_callees_is_recursive(clique_ptr::in, cost_and_callees::in)
     is semidet.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -120,7 +120,7 @@
 :- import_module require.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr,
         OtherPDPtrs) :-
@@ -136,7 +136,7 @@ find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr,
         OtherPDPtrs = PDPtrs
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 deep_get_maybe_procrep(Deep, PSPtr, MaybeProcRep) :-
     deep_get_maybe_progrep(Deep, MaybeProgRep),
@@ -154,7 +154,30 @@ deep_get_maybe_procrep(Deep, PSPtr, MaybeProcRep) :-
         MaybeProcRep = error(Error)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+build_static_call_site_cost_and_callee_map(Deep, CSSPtr, !CallSitesMap) :-
+    deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
+    deep_lookup_css_own(Deep, CSSPtr, Own),
+    deep_lookup_css_desc(Deep, CSSPtr, Inherit),
+    CostCsq = build_cs_cost_csq(calls(Own),
+        float(callseqs(Own) + inherit_callseqs(Inherit))),
+    Exits = exits(Own),
+    KindAndCallee = CSS ^ css_kind,
+    call_site_kind_to_higher_order(KindAndCallee, HigherOrder),
+    call_site_kind_to_maybe_callee(KindAndCallee, MaybeCallee),
+    (
+        MaybeCallee = yes(Callee),
+        Callees = set([Callee])
+    ;
+        MaybeCallee = no,
+        Callees = set.init
+    ),
+    CostAndCallees = cost_and_callees(CostCsq, Exits, Callees, HigherOrder),
+    RevGoalPath = CSS ^ css_goal_path,
+    map.det_insert(RevGoalPath, CostAndCallees, !CallSitesMap).
+
+%---------------------------------------------------------------------------%
 
 build_dynamic_call_site_cost_and_callee_map(Deep, CSSPtr - Slot,
         !CallSitesMap) :-
@@ -228,30 +251,7 @@ call_site_kind_to_maybe_callee(higher_order_call_and_no_callee, no).
 call_site_kind_to_maybe_callee(method_call_and_no_callee, no).
 call_site_kind_to_maybe_callee(callback_and_no_callee, no).
 
-%----------------------------------------------------------------------------%
-
-build_static_call_site_cost_and_callee_map(Deep, CSSPtr, !CallSitesMap) :-
-    deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
-    deep_lookup_css_own(Deep, CSSPtr, Own),
-    deep_lookup_css_desc(Deep, CSSPtr, Inherit),
-    CostCsq = build_cs_cost_csq(calls(Own),
-        float(callseqs(Own) + inherit_callseqs(Inherit))),
-    Exits = exits(Own),
-    KindAndCallee = CSS ^ css_kind,
-    call_site_kind_to_higher_order(KindAndCallee, HigherOrder),
-    call_site_kind_to_maybe_callee(KindAndCallee, MaybeCallee),
-    (
-        MaybeCallee = yes(Callee),
-        Callees = set([Callee])
-    ;
-        MaybeCallee = no,
-        Callees = set.init
-    ),
-    CostAndCallees = cost_and_callees(CostCsq, Exits, Callees, HigherOrder),
-    RevGoalPath = CSS ^ css_goal_path,
-    map.det_insert(RevGoalPath, CostAndCallees, !CallSitesMap).
-
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
         MaybeDepth, MaybeRecursiveCallSiteCostMap) :-
@@ -401,7 +401,7 @@ format_recursive_call_site_cost(RevGoalPath, Cost, !Result) :-
     PerCallCost = cs_cost_get_percall(Cost),
     Calls = cs_cost_get_calls(Cost).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 proc_dynamic_paired_call_site_slots(Deep, PDPtr, PairedSlots) :-
     deep_lookup_proc_dynamics(Deep, PDPtr, PD),
@@ -413,11 +413,11 @@ proc_dynamic_paired_call_site_slots(Deep, PDPtr, PairedSlots) :-
     array.to_list(CSSArray, CSSSlots),
     assoc_list.from_corresponding_lists(CSSSlots, CSDSlots, PairedSlots).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 cost_and_callees_is_recursive(ParentCliquePtr, CostAndCallees) :-
     Callees = CostAndCallees ^ cac_callees,
     member(Callee, Callees),
     ParentCliquePtr = Callee ^ c_clique.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

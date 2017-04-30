@@ -1,21 +1,21 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: program_representation_utils.m.
 % Author: pbone.
 %
 % Utilities for working with the program representation structures in the
-% mdbcomp library.  This file is not part of the mdbcomp library, since it
-% contains routines only used by the deep profiling tools.  Code here should be
-% moved into the mdbcomp.program_representation.m module if it is to be used by
-% other tools.
+% mdbcomp library. This file is not part of the mdbcomp library, since it
+% contains routines only used by the deep profiling tools. Code here
+% should be moved into the mdbcomp.program_representation.m module
+% if it is to be used by other tools.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module program_representation_utils.
 :- interface.
@@ -29,7 +29,7 @@
 :- import_module set.
 :- import_module unit.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Ugly-print a module to a string representation. We return a cord of
     % strings is returned rather than a string, since this reduces the cost
@@ -68,7 +68,7 @@
     reverse_goal_path::in, goal_rep(T)::in, cord(string)::out) is det
     <= goal_annotation(GoalAnn).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- typeclass goal_annotation(T) where [
     % Print the goal annotation for inclusion by print_proc_to_strings
@@ -83,7 +83,7 @@
     %
 :- instance goal_annotation(unit).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Goal IDs are a more efficient way to identify goals than goal paths.
     %
@@ -92,7 +92,7 @@
 :- pred label_goals(goal_id::out, containing_goal_map::out,
     goal_rep(T)::in, goal_rep(goal_id)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Search a program representation for the given procedure and return its
     % procedure representation if found, otherwise fail.
@@ -100,7 +100,7 @@
 :- pred progrep_search_proc(prog_rep::in, string_proc_label::in, proc_rep::out)
     is semidet.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A map of variables to instantiation states,  Like inst_map within the
     % compiler.
@@ -125,10 +125,27 @@
 :- pred inst_map_ground_vars(list(var_rep)::in, set(var_rep)::in, inst_map::in,
     inst_map::out, seen_duplicate_instantiation::out) is det.
 
+    % Retrieve the instantiatedness of a variable, and variables that it's
+    % binding depends upon from the instmap, if the variable is new ir_free is
+    % returned and the variables it depends upon is the empty set.
+    %
+:- pred inst_map_get(inst_map::in, var_rep::in, inst_rep::out,
+    set(var_rep)::out) is det.
+
+    % Retrieve all the variables this variable depends upon,  indirect
+    % dependencies are also returned.
+    %
+:- pred inst_map_get_var_deps(inst_map::in, var_rep::in, set(var_rep)::out)
+    is det.
+
+    % Merge two inst maps from different branches of execution.
+    %
+:- func merge_inst_map(inst_map, detism_rep, inst_map, detism_rep) = inst_map.
+
     % This type represents whether a traversal has seen more than one
-    % instantiation of a variable within a single branch.  If at the end of a
-    % traversal a duplicate instantiation has been seen we can either accept a
-    % pessimistic default or abort parallelisation of this particular
+    % instantiation of a variable within a single branch. If at the end of a
+    % traversal a duplicate instantiation has been seen, we can either
+    % accept a pessimistic default, or abort parallelisation of this particular
     % conjunction.
     %
 :- type seen_duplicate_instantiation
@@ -138,26 +155,9 @@
 :- func merge_seen_duplicate_instantiation(seen_duplicate_instantiation,
     seen_duplicate_instantiation) = seen_duplicate_instantiation.
 
-    % Retrieve the instantiatedness of a variable, and variables that it's
-    % binding depends upon from the instmap, if the variable is new ir_free is
-    % returned and the variables it depends upon is the empty set.
-    %
-:- pred inst_map_get(inst_map::in, var_rep::in, inst_rep::out,
-    set(var_rep)::out) is det.
+%---------------------------------------------------------------------------%
 
-    % Merge two inst maps from different branches of execution.
-    %
-:- func merge_inst_map(inst_map, detism_rep, inst_map, detism_rep) = inst_map.
-
-    % Retrieve all the variables this variable depends upon,  indirect
-    % dependencies are also returned.
-    %
-:- pred inst_map_get_var_deps(inst_map::in, var_rep::in, set(var_rep)::out)
-    is det.
-
-%----------------------------------------------------------------------------%
-
-    % A difference between too inst maps.  This lists the variables that are
+    % A difference between too inst maps. This lists the variables that are
     % instantiated by a particular goal.
     %
 :- type inst_map_delta.
@@ -167,7 +167,7 @@
 :- pred inst_map_delta_get_var_set(inst_map_delta::in, set(var_rep)::out)
     is det.
 
-    % The empty inst_map_delta.  Nothing is instantiated.
+    % The empty inst_map_delta. Nothing is instantiated.
     %
 :- pred empty_inst_map_delta(inst_map_delta::out) is det.
 :- func empty_inst_map_delta = inst_map_delta.
@@ -182,13 +182,13 @@
 :- pred calc_inst_map_delta(inst_map::in, inst_map::in, inst_map_delta::out)
     is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Retrieve a set of all the vars involved with this atomic goal.
     %
 :- pred atomic_goal_get_vars(atomic_goal_rep::in, set(var_rep)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type atomic_goal_is_call
     --->    atomic_goal_is_call(list(var_rep))
@@ -197,7 +197,7 @@
 :- pred atomic_goal_is_call(atomic_goal_rep::in, atomic_goal_is_call::out)
     is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -213,7 +213,7 @@
 :- import_module std_util.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 print_module_to_strings(ModuleRep, Strings) :-
     ModuleRep = module_rep(ModuleName, _StringTable, OISUTypesProcs,
@@ -234,7 +234,7 @@ print_module_to_strings(ModuleRep, Strings) :-
     Strings = cord.singleton(HeaderString) ++ OISUStrs ++ TypeTableStrs
         ++ ProcRepStrs.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred accumulate_print_oisu_type_procs_to_strings(oisu_type_procs::in,
     cord(string)::in, cord(string)::out) is det.
@@ -263,7 +263,7 @@ print_oisu_type_procs_to_strings(OISUTypeProcs, Str) :-
         ++ cord.cons("\nDestructor procs:\n",
             cord.cord_list_to_cord(DestructorNlCords)).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred accumulate_print_type_table_entries_to_strings(int::in,
     type_rep::in, cord(string)::in, cord(string)::out) is det.
@@ -375,7 +375,7 @@ arg_type_reps_to_strings(HeadTypeRep, [HeadTailTypeRep | TailTailTypeReps],
     arg_type_reps_to_strings(HeadTailTypeRep, TailTailTypeReps, TailCord),
     Cord = HeadCord ++ cord.singleton(", ") ++ TailCord.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Print a procedure to a string representation.
     %
@@ -459,7 +459,7 @@ print_proc_label_to_string(ProcLabel, String) :-
             [s(Name), s(TypeModule), s(TypeName), i(Arity), i(Mode)], String)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 print_goal_to_strings(Info, Indent, RevGoalPath, GoalRep, Strings) :-
     GoalRep = goal_rep(GoalExprRep, DetismRep, AnnotationKey),
@@ -665,7 +665,7 @@ print_cons_id_and_arity_to_strings(Indent, ConsIdArityRep, Strings) :-
     string.format("%% case %s/%d\n", [s(ConsIdRep), i(Arity)], String),
     Strings = cord.snoc(indent(Indent), String).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred print_atomic_goal_to_strings(var_name_table::in, atomic_goal_rep::in,
     cord(string)::out) is det.
@@ -756,7 +756,7 @@ print_atomic_goal_to_strings(VarTable, AtomicGoalRep, Strings) :-
     ),
     Strings = Strings0 ++ nl.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred print_args_to_strings(pred(var_name_table, T, string), var_name_table,
     list(T), cord(string)).
@@ -808,6 +808,8 @@ inst_rep_to_string(ir_free_rep, "free").
 inst_rep_to_string(ir_ground_rep, "ground").
 inst_rep_to_string(ir_other_rep, "other").
 
+%---------------------------------------------------------------------------%
+
 :- func indent(int) = cord(string).
 
 indent(N) =
@@ -820,6 +822,16 @@ indent(N) =
 :- func nl_indent(int) = cord(string).
 
 nl_indent(N) = nl ++ indent(N).
+
+:- func nl = cord(string).
+
+nl = cord.singleton("\n").
+
+:- func add_nl(string) = cord(string).
+
+add_nl(Str) = cord.from_list([Str, "\n"]).
+
+%---------------------------------------------------------------------------%
 
 :- pred detism_to_string(detism_rep::in, cord(string)::out) is det.
 
@@ -851,17 +863,7 @@ detism_to_string(Detism, DetismStrCord) :-
     ),
     DetismStrCord = cord.singleton(DetismStr).
 
-%----------------------------------------------------------------------------%
-
-:- func nl = cord(string).
-
-nl = cord.singleton("\n").
-
-:- func add_nl(string) = cord(string).
-
-add_nl(Str) = cord.from_list([Str, "\n"]).
-
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance goal_annotation(unit) where [
     pred(print_goal_annotation_to_strings/3) is print_unit_to_strings
@@ -872,33 +874,7 @@ add_nl(Str) = cord.from_list([Str, "\n"]).
 
 print_unit_to_strings(_, _, cord.empty).
 
-%----------------------------------------------------------------------------%
-
-progrep_search_proc(ProgRep, ProcLabel, ProcRep) :-
-    ( ProcLabel = str_ordinary_proc_label(_, _DeclModule, DefModule, _, _, _)
-    ; ProcLabel = str_special_proc_label(_, _DeclModule, DefModule, _, _, _)
-    ),
-    progrep_search_module(ProgRep, DefModule, ModuleRep),
-    modulerep_search_proc(ModuleRep, ProcLabel, ProcRep).
-
-    % Search for a module within a program representation.
-    %
-:- pred progrep_search_module(prog_rep::in, string::in, module_rep::out)
-    is semidet.
-
-progrep_search_module(ProgRep, ModuleName, ModuleRep) :-
-    ProgRep = prog_rep(ModuleReps),
-    map.search(ModuleReps, ModuleName, ModuleRep).
-
-    % Search for a procedure within a module representation.
-    %
-:- pred modulerep_search_proc(module_rep::in, string_proc_label::in,
-    proc_rep::out) is semidet.
-
-modulerep_search_proc(ModuleRep, ProcLabel, ProcRep) :-
-    map.search(ModuleRep ^ mr_procs, ProcLabel, ProcRep).
-
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Label goals with IDs.
 %
@@ -981,7 +957,33 @@ label_case(ParentGoalId, !Case, !CaseNum, !Counter, !Map) :-
         ParentGoalId, Goal0, Goal, !CaseNum, !Counter, !Map),
     !:Case = case_rep(MainConsId, OtherConsIds, Goal).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+progrep_search_proc(ProgRep, ProcLabel, ProcRep) :-
+    ( ProcLabel = str_ordinary_proc_label(_, _DeclModule, DefModule, _, _, _)
+    ; ProcLabel = str_special_proc_label(_, _DeclModule, DefModule, _, _, _)
+    ),
+    progrep_search_module(ProgRep, DefModule, ModuleRep),
+    modulerep_search_proc(ModuleRep, ProcLabel, ProcRep).
+
+    % Search for a module within a program representation.
+    %
+:- pred progrep_search_module(prog_rep::in, string::in, module_rep::out)
+    is semidet.
+
+progrep_search_module(ProgRep, ModuleName, ModuleRep) :-
+    ProgRep = prog_rep(ModuleReps),
+    map.search(ModuleReps, ModuleName, ModuleRep).
+
+    % Search for a procedure within a module representation.
+    %
+:- pred modulerep_search_proc(module_rep::in, string_proc_label::in,
+    proc_rep::out) is semidet.
+
+modulerep_search_proc(ModuleRep, ProcLabel, ProcRep) :-
+    map.search(ModuleRep ^ mr_procs, ProcLabel, ProcRep).
+
+%---------------------------------------------------------------------------%
 
 :- type inst_map
     --->    inst_map(
@@ -1014,6 +1016,75 @@ add_inst_mapping(VarRep, InstRep, DepVars, InstMap0, InstMap) :-
     map.det_insert(VarRep, InstRep, VarToInst0, VarToInst),
     map.det_insert(VarRep, DepVars, VarToDepVars0, VarToDepVars),
     InstMap = inst_map(VarToInst, VarToDepVars).
+
+%---------------------------------------------------------------------------%
+
+inst_map_ground_vars(Vars, DepVars, !InstMap, SeenDuplicateInstantiation) :-
+    list.foldl2(inst_map_ground_var(DepVars), Vars, !InstMap,
+        have_not_seen_duplicate_instantiation, SeenDuplicateInstantiation).
+
+:- pred inst_map_ground_var(set(var_rep)::in, var_rep::in,
+    inst_map::in, inst_map::out, seen_duplicate_instantiation::in,
+    seen_duplicate_instantiation::out) is det.
+
+inst_map_ground_var(DepVars0, Var, InstMap0, InstMap,
+        !SeenDuplicateInstantiation) :-
+    InstMap0 = inst_map(VarToInst0, VarToDepVars0),
+    ( if map.search(VarToInst0, Var, InstPrime) then
+        Inst = InstPrime
+    else
+        Inst = ir_free_rep
+    ),
+    (
+        Inst = ir_free_rep,
+        NewInst = ir_ground_rep,
+        DepVars = DepVars0
+    ;
+        ( Inst = ir_ground_rep
+        ; Inst = ir_other_rep
+        ),
+        NewInst = ir_other_rep,
+        map.lookup(VarToDepVars0, Var, DepVarsFromIM),
+        DepVars = set.union(DepVars0,  DepVarsFromIM),
+        !:SeenDuplicateInstantiation = seen_duplicate_instantiation
+    ),
+    map.set(Var, NewInst, VarToInst0, VarToInst),
+    map.set(Var, DepVars, VarToDepVars0, VarToDepVars),
+    InstMap = inst_map(VarToInst, VarToDepVars).
+
+%---------------------------------------------------------------------------%
+
+inst_map_get(inst_map(VarToInst, VarToDepVars), Var, Inst, DepVars) :-
+    ( if map.search(VarToInst, Var, InstPrime) then
+        Inst = InstPrime,
+        map.lookup(VarToDepVars, Var, DepVars)
+    else
+        Inst = ir_free_rep,
+        DepVars = set.init
+    ).
+
+inst_map_get_var_deps(inst_map(_, VarToDepVars), VarRep, DepVars) :-
+    inst_map_get_var_deps_2(VarToDepVars, VarRep, set.init, DepVars).
+
+:- pred inst_map_get_var_deps_2(map(var_rep, set(var_rep))::in, var_rep::in,
+    set(var_rep)::in, set(var_rep)::out) is det.
+
+inst_map_get_var_deps_2(VarToDepVars, VarRep, !Set) :-
+    ( if set.contains(!.Set, VarRep) then
+        true
+        % This variable has already been visited. Stopping here prevents
+        % following any cycles in the graph (which should be impossible anyway)
+        % or following the same path twice if there are diamonds in the graph.
+    else
+        ( if map.search(VarToDepVars, VarRep, DepVars) then
+            !:Set = set.union(!.Set, DepVars),
+            set.fold(inst_map_get_var_deps_2(VarToDepVars), DepVars, !Set)
+        else
+            true
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 
 merge_inst_map(InstMapA, DetismA, InstMapB, DetismB) = InstMap :-
     (
@@ -1062,70 +1133,19 @@ inst_intersect(ir_other_rep,    ir_free_rep,    ir_other_rep).
 inst_intersect(ir_other_rep,    ir_ground_rep,  ir_other_rep).
 inst_intersect(ir_other_rep,    ir_other_rep,   ir_other_rep).
 
-inst_map_ground_vars(Vars, DepVars, !InstMap, SeenDuplicateInstantiation) :-
-    list.foldl2(inst_map_ground_var(DepVars), Vars, !InstMap,
-        have_not_seen_duplicate_instantiation, SeenDuplicateInstantiation).
+%---------------------------------------------------------------------------%
 
-:- pred inst_map_ground_var(set(var_rep)::in, var_rep::in,
-    inst_map::in, inst_map::out, seen_duplicate_instantiation::in,
-    seen_duplicate_instantiation::out) is det.
-
-inst_map_ground_var(DepVars0, Var, InstMap0, InstMap,
-        !SeenDuplicateInstantiation) :-
-    InstMap0 = inst_map(VarToInst0, VarToDepVars0),
-    ( if map.search(VarToInst0, Var, InstPrime) then
-        Inst = InstPrime
+merge_seen_duplicate_instantiation(A, B) = R :-
+    ( if
+        A = have_not_seen_duplicate_instantiation,
+        B = have_not_seen_duplicate_instantiation
+    then
+        R = have_not_seen_duplicate_instantiation
     else
-        Inst = ir_free_rep
-    ),
-    (
-        Inst = ir_free_rep,
-        NewInst = ir_ground_rep,
-        DepVars = DepVars0
-    ;
-        ( Inst = ir_ground_rep
-        ; Inst = ir_other_rep
-        ),
-        NewInst = ir_other_rep,
-        map.lookup(VarToDepVars0, Var, DepVarsFromIM),
-        DepVars = set.union(DepVars0,  DepVarsFromIM),
-        !:SeenDuplicateInstantiation = seen_duplicate_instantiation
-    ),
-    map.set(Var, NewInst, VarToInst0, VarToInst),
-    map.set(Var, DepVars, VarToDepVars0, VarToDepVars),
-    InstMap = inst_map(VarToInst, VarToDepVars).
-
-inst_map_get(inst_map(VarToInst, VarToDepVars), Var, Inst, DepVars) :-
-    ( if map.search(VarToInst, Var, InstPrime) then
-        Inst = InstPrime,
-        map.lookup(VarToDepVars, Var, DepVars)
-    else
-        Inst = ir_free_rep,
-        DepVars = set.init
+        R = seen_duplicate_instantiation
     ).
 
-inst_map_get_var_deps(inst_map(_, VarToDepVars), VarRep, DepVars) :-
-    inst_map_get_var_deps_2(VarToDepVars, VarRep, set.init, DepVars).
-
-:- pred inst_map_get_var_deps_2(map(var_rep, set(var_rep))::in, var_rep::in,
-    set(var_rep)::in, set(var_rep)::out) is det.
-
-inst_map_get_var_deps_2(VarToDepVars, VarRep, !Set) :-
-    ( if set.contains(!.Set, VarRep) then
-        true
-        % This variable has already been visited. Stopping here prevents
-        % following any cycles in the graph (which should be impossible anyway)
-        % or following the same path twice if there are diamonds in the graph.
-    else
-        ( if map.search(VarToDepVars, VarRep, DepVars) then
-            !:Set = set.union(!.Set, DepVars),
-            set.fold(inst_map_get_var_deps_2(VarToDepVars), DepVars, !Set)
-        else
-            true
-        )
-    ).
-
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type inst_map_delta
     --->    inst_map_delta(set(var_rep)).
@@ -1139,7 +1159,7 @@ empty_inst_map_delta = InstMap :-
 
 calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
     map.foldl(
-        (pred(Var::in, Inst::in, Set0::in, Set::out) is det :-
+        ( pred(Var::in, Inst::in, Set0::in, Set::out) is det :-
             ( if
                 map.search(Before ^ im_inst_map, Var, BeforeInst)
             then
@@ -1159,7 +1179,7 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
                     BeforeInst = ir_ground_rep,
                     (
                         Inst = ir_free_rep,
-                        unexpected($module, $pred,
+                        unexpected($pred,
                             "variable should become less instantiated")
                     ;
                         ( Inst = ir_ground_rep
@@ -1171,7 +1191,7 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
                     BeforeInst = ir_other_rep,
                     (
                         Inst = ir_free_rep,
-                        unexpected($module, $pred,
+                        unexpected($pred,
                             "variable should become less instantiated")
                     ;
                         ( Inst = ir_ground_rep
@@ -1181,8 +1201,8 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
                     Set = Set0
                 )
             else
-                % If we couldn't find the variable then it was free; it may
-                % have been in the head of the procedure.
+                % If we couldn't find the variable then it was free;
+                % it may have been in the head of the procedure.
                 (
                     Inst = ir_free_rep,
                     Set = Set0
@@ -1196,7 +1216,7 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
             )
         ), After ^ im_inst_map, set.init, DeltaVars).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 atomic_goal_get_vars(AtomicGoal, Vars) :-
     (
@@ -1212,7 +1232,7 @@ atomic_goal_get_vars(AtomicGoal, Vars) :-
         ; AtomicGoal = partial_deconstruct_rep(Var, _, MaybeVars)
         ),
         list.foldl(
-            (pred(MaybeVar::in, Set0::in, Set::out) is det :-
+            ( pred(MaybeVar::in, Set0::in, Set::out) is det :-
                 (
                     MaybeVar = yes(VarI),
                     set.insert(VarI, Set0, Set)
@@ -1237,17 +1257,7 @@ atomic_goal_get_vars(AtomicGoal, Vars) :-
         Vars = list_to_set(VarsL)
     ).
 
-merge_seen_duplicate_instantiation(A, B) = R :-
-    ( if
-        A = have_not_seen_duplicate_instantiation,
-        B = have_not_seen_duplicate_instantiation
-    then
-        R = have_not_seen_duplicate_instantiation
-    else
-        R = seen_duplicate_instantiation
-    ).
-
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 atomic_goal_is_call(AtomicGoal, IsCall) :-
     (
@@ -1271,4 +1281,4 @@ atomic_goal_is_call(AtomicGoal, IsCall) :-
         IsCall = atomic_goal_is_call(Args)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

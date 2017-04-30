@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001, 2004-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Authors: conway, zs.
 %
@@ -18,7 +18,7 @@
 % proc_static and proc_dynamic structures, being reflections of arrays created
 % in C code, start at index 0.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module profile.
 :- interface.
@@ -35,7 +35,7 @@
 :- import_module map.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type deep_compression_flag
     --->    no_compression.
@@ -165,7 +165,7 @@
                 module_procs            :: list(proc_static_ptr)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type proc_dynamics == array(proc_dynamic).
 :- type proc_statics == array(proc_static).
@@ -188,7 +188,7 @@
 :- type clique_ptr
     --->    clique_ptr(int).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type proc_dynamic
     --->    proc_dynamic(
@@ -197,7 +197,7 @@
 
                 % An array of coverage points. If present then coverage points
                 % for this procedure are dynamic and the corresponding static
-                % info can be found in the proc_static.  If no, then coverage
+                % info can be found in the proc_static. If no, then coverage
                 % points aren't available or are stored in the proc static.
                 pd_maybe_coverage_points    :: maybe(array(int))
             ).
@@ -252,7 +252,7 @@
                 css_goal_path :: reverse_goal_path
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type call_site_array_slot
     --->    slot_normal(call_site_dynamic_ptr)
@@ -311,18 +311,18 @@
 
 :- pred is_call_site_kind(int::in, call_site_kind::out) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func decl_module(string_proc_label) = string.
 
 :- func dummy_proc_id = string_proc_label.
 :- func main_parent_proc_id = string_proc_label.
 
-:- func dummy_proc_dynamic_ptr = proc_dynamic_ptr.
-:- func dummy_proc_static_ptr = proc_static_ptr.
-:- func dummy_call_site_dynamic_ptr = call_site_dynamic_ptr.
-:- func dummy_call_site_static_ptr = call_site_static_ptr.
 :- func dummy_clique_ptr = clique_ptr.
+:- func dummy_proc_static_ptr = proc_static_ptr.
+:- func dummy_proc_dynamic_ptr = proc_dynamic_ptr.
+:- func dummy_call_site_static_ptr = call_site_static_ptr.
+:- func dummy_call_site_dynamic_ptr = call_site_dynamic_ptr.
 
 :- pred valid_clique_ptr(deep::in, clique_ptr::in) is semidet.
 :- pred valid_proc_dynamic_ptr(deep::in, proc_dynamic_ptr::in) is semidet.
@@ -445,13 +445,13 @@
     proc_dynamics::array_di, proc_dynamics::array_uo) is det.
 :- pred update_proc_statics(proc_static_ptr::in, proc_static::in,
     proc_statics::array_di, proc_statics::array_uo) is det.
+:- pred update_call_site_static_map(call_site_dynamic_ptr::in,
+    call_site_static_ptr::in,
+    call_site_static_map::array_di, call_site_static_map::array_uo) is det.
 :- pred update_proc_callers(proc_static_ptr::in,
     list(call_site_dynamic_ptr)::in,
     array(list(call_site_dynamic_ptr))::array_di,
     array(list(call_site_dynamic_ptr))::array_uo) is det.
-:- pred update_call_site_static_map(call_site_dynamic_ptr::in,
-    call_site_static_ptr::in,
-    call_site_static_map::array_di, call_site_static_map::array_uo) is det.
 :- pred update_ps_own(proc_static_ptr::in, own_prof_info::in,
     array(own_prof_info)::array_di, array(own_prof_info)::array_uo) is det.
 :- pred update_ps_desc(proc_static_ptr::in, inherit_prof_info::in,
@@ -517,7 +517,7 @@
 :- func root_desc_info(deep) = inherit_prof_info.
 :- func root_own_info(deep) = own_prof_info.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Lookup the program representation data.
     %
@@ -525,8 +525,8 @@
 
 :- pred deep_get_maybe_progrep(deep::in, maybe_error(prog_rep)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -537,7 +537,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "#include ""mercury_deep_profiling.h""").
 
@@ -570,7 +570,7 @@
     }
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 decl_module(ProcId) = DeclModule :-
     (
@@ -585,15 +585,15 @@ dummy_proc_id = str_ordinary_proc_label(pf_predicate, "unknown",
 main_parent_proc_id = str_ordinary_proc_label(pf_predicate, "mercury_runtime",
     "mercury_runtime", "main_parent", 0, 0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
+dummy_clique_ptr = clique_ptr(-1).
 dummy_proc_static_ptr = proc_static_ptr(-1).
 dummy_proc_dynamic_ptr = proc_dynamic_ptr(-1).
 dummy_call_site_static_ptr = call_site_static_ptr(-1).
 dummy_call_site_dynamic_ptr = call_site_dynamic_ptr(-1).
-dummy_clique_ptr = clique_ptr(-1).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 valid_clique_ptr(Deep, clique_ptr(CliqueNum)) :-
     CliqueNum > 0,
@@ -615,7 +615,7 @@ valid_call_site_static_ptr(Deep, call_site_static_ptr(CSSI)) :-
     CSSI > 0,
     array.in_bounds(Deep ^ call_site_statics, CSSI).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 valid_proc_dynamic_ptr_raw(ProcDynamics, proc_dynamic_ptr(PDI)) :-
     PDI > 0,
@@ -634,14 +634,14 @@ valid_call_site_static_ptr_raw(CallSiteStatics, call_site_static_ptr(CSSI)) :-
     CSSI > 0,
     array.in_bounds(CallSiteStatics, CSSI).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 lookup_call_site_dynamics(CallSiteDynamics, CSDPtr, CSD) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
     ( if CSDI > 0, array.in_bounds(CallSiteDynamics, CSDI) then
         array.lookup(CallSiteDynamics, CSDI, CSD)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_call_site_statics(CallSiteStatics, CSSPtr, CSS) :-
@@ -649,7 +649,7 @@ lookup_call_site_statics(CallSiteStatics, CSSPtr, CSS) :-
     ( if CSSI > 0, array.in_bounds(CallSiteStatics, CSSI) then
         array.lookup(CallSiteStatics, CSSI, CSS)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_proc_dynamics(ProcDynamics, PDPtr, PD) :-
@@ -657,7 +657,7 @@ lookup_proc_dynamics(ProcDynamics, PDPtr, PD) :-
     ( if PDI > 0, array.in_bounds(ProcDynamics, PDI) then
         array.lookup(ProcDynamics, PDI, PD)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_proc_statics(ProcStatics, PSPtr, PS) :-
@@ -665,7 +665,7 @@ lookup_proc_statics(ProcStatics, PSPtr, PS) :-
     ( if PSI > 0, array.in_bounds(ProcStatics, PSI) then
         array.lookup(ProcStatics, PSI, PS)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_clique_index(CliqueIndex, PDPtr, CliquePtr) :-
@@ -673,7 +673,7 @@ lookup_clique_index(CliqueIndex, PDPtr, CliquePtr) :-
     ( if PDI > 0, array.in_bounds(CliqueIndex, PDI) then
         array.lookup(CliqueIndex, PDI, CliquePtr)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_clique_members(CliqueMembers, CliquePtr, PDPtrs) :-
@@ -681,7 +681,7 @@ lookup_clique_members(CliqueMembers, CliquePtr, PDPtrs) :-
     ( if array.in_bounds(CliqueMembers, CI) then
         array.lookup(CliqueMembers, CI, PDPtrs)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_clique_parents(CliqueParents, CliquePtr, CSDPtr) :-
@@ -689,7 +689,7 @@ lookup_clique_parents(CliqueParents, CliquePtr, CSDPtr) :-
     ( if array.in_bounds(CliqueParents, CI) then
         array.lookup(CliqueParents, CI, CSDPtr)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_clique_maybe_child(CliqueMaybeChild, CSDPtr, MaybeCliquePtr) :-
@@ -697,7 +697,7 @@ lookup_clique_maybe_child(CliqueMaybeChild, CSDPtr, MaybeCliquePtr) :-
     ( if CSDI > 0, array.in_bounds(CliqueMaybeChild, CSDI) then
         array.lookup(CliqueMaybeChild, CSDI, MaybeCliquePtr)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_proc_callers(ProcCallers, PSPtr, Callers) :-
@@ -705,7 +705,7 @@ lookup_proc_callers(ProcCallers, PSPtr, Callers) :-
     ( if PSI > 0, array.in_bounds(ProcCallers, PSI) then
         array.lookup(ProcCallers, PSI, Callers)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_call_site_static_map(CallSiteStaticMap, CSDPtr, CSSPtr) :-
@@ -713,7 +713,7 @@ lookup_call_site_static_map(CallSiteStaticMap, CSDPtr, CSSPtr) :-
     ( if CSDI > 0, array.in_bounds(CallSiteStaticMap, CSDI) then
         array.lookup(CallSiteStaticMap, CSDI, CSSPtr)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_call_site_calls(CallSiteCalls, CSSPtr, Calls) :-
@@ -721,7 +721,7 @@ lookup_call_site_calls(CallSiteCalls, CSSPtr, Calls) :-
     ( if CSSI > 0, array.in_bounds(CallSiteCalls, CSSI) then
         array.lookup(CallSiteCalls, CSSI, Calls)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_pd_own(PDOwns, PDPtr, PDOwn) :-
@@ -729,7 +729,7 @@ lookup_pd_own(PDOwns, PDPtr, PDOwn) :-
     ( if PDI > 0, array.in_bounds(PDOwns, PDI) then
         array.lookup(PDOwns, PDI, PDOwn)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_pd_desc(PDDescs, PDPtr, PDDesc) :-
@@ -737,7 +737,7 @@ lookup_pd_desc(PDDescs, PDPtr, PDDesc) :-
     ( if PDI > 0, array.in_bounds(PDDescs, PDI) then
         array.lookup(PDDescs, PDI, PDDesc)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_csd_own(CSDOwns, CSDPtr, CSDOwn) :-
@@ -745,7 +745,7 @@ lookup_csd_own(CSDOwns, CSDPtr, CSDOwn) :-
     ( if CSDI > 0, array.in_bounds(CSDOwns, CSDI) then
         array.lookup(CSDOwns, CSDI, CSDOwn)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_csd_desc(CSDDescs, CSDPtr, CSDDesc) :-
@@ -753,7 +753,7 @@ lookup_csd_desc(CSDDescs, CSDPtr, CSDDesc) :-
     ( if CSDI > 0, array.in_bounds(CSDDescs, CSDI) then
         array.lookup(CSDDescs, CSDI, CSDDesc)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_ps_own(PSOwns, PSPtr, PSOwn) :-
@@ -761,7 +761,7 @@ lookup_ps_own(PSOwns, PSPtr, PSOwn) :-
     ( if PSI > 0, array.in_bounds(PSOwns, PSI) then
         array.lookup(PSOwns, PSI, PSOwn)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_ps_desc(PSDescs, PSPtr, PSDesc) :-
@@ -769,7 +769,7 @@ lookup_ps_desc(PSDescs, PSPtr, PSDesc) :-
     ( if PSI > 0, array.in_bounds(PSDescs, PSI) then
         array.lookup(PSDescs, PSI, PSDesc)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_css_own(CSSOwns, CSSPtr, CSSOwn) :-
@@ -777,7 +777,7 @@ lookup_css_own(CSSOwns, CSSPtr, CSSOwn) :-
     ( if CSSI > 0, array.in_bounds(CSSOwns, CSSI) then
         array.lookup(CSSOwns, CSSI, CSSOwn)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_css_desc(CSSDescs, CSSPtr, CSSDesc) :-
@@ -785,7 +785,7 @@ lookup_css_desc(CSSDescs, CSSPtr, CSSDesc) :-
     ( if CSSI > 0, array.in_bounds(CSSDescs, CSSI) then
         array.lookup(CSSDescs, CSSI, CSSDesc)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_pd_comp_table(PDCompTables, PDPtr, CompTable) :-
@@ -793,7 +793,7 @@ lookup_pd_comp_table(PDCompTables, PDPtr, CompTable) :-
     ( if PDI > 0, array.in_bounds(PDCompTables, PDI) then
         array.lookup(PDCompTables, PDI, CompTable)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_csd_comp_table(CSDCompTables, CSDPtr, CompTable) :-
@@ -801,7 +801,7 @@ lookup_csd_comp_table(CSDCompTables, CSDPtr, CompTable) :-
     ( if CSDI > 0, array.in_bounds(CSDCompTables, CSDI) then
         array.lookup(CSDCompTables, CSDI, CompTable)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
 lookup_ps_coverage(PSCoverageArrays, PSPtr, PSCoverageArray) :-
@@ -809,10 +809,10 @@ lookup_ps_coverage(PSCoverageArrays, PSPtr, PSCoverageArray) :-
     ( if PSI > 0, array.in_bounds(PSCoverageArrays, PSI) then
         array.lookup(PSCoverageArrays, PSI, PSCoverageArray)
     else
-        unexpected($module, $pred, "bounds error")
+        unexpected($pred, "bounds error")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD) :-
     lookup_call_site_dynamics(Deep ^ call_site_dynamics, CSDPtr, CSD).
@@ -859,7 +859,7 @@ deep_lookup_pd_comp_table(Deep, PDPtr, CompTable) :-
 deep_lookup_csd_comp_table(Deep, CSDPtr, CompTable) :-
     lookup_csd_comp_table(Deep ^ csd_comp_table, CSDPtr, CompTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 deep_lookup_pd_own(Deep, PDPtr, Own) :-
     PDPtr = proc_dynamic_ptr(PDI),
@@ -904,7 +904,7 @@ deep_lookup_ps_coverage(Deep, PSPtr, Coverage) :-
         Coverage = zero_static_coverage
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 update_call_site_dynamics(CSDPtr, CSD, !CallSiteDynamics) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
@@ -950,7 +950,7 @@ update_ps_coverage(PSPtr, Coverage, !Coverages) :-
     PSPtr = proc_static_ptr(PSI),
     array.set(PSI, Coverage, !Coverages).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 deep_update_csd_desc(CSDPtr, CSDDesc, !Deep) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
@@ -977,7 +977,7 @@ deep_update_csd_comp_table(CSDPtr, CompTable, !Deep) :-
     array.set(CSDI, CompTable, u(!.Deep ^ csd_comp_table), CSDCompTables),
     !Deep ^ csd_comp_table := CSDCompTables.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 extract_pd_sites(PD, PD ^ pd_sites).
 
@@ -1029,7 +1029,7 @@ extract_init_proc_statics(InitDeep, InitDeep ^ init_proc_statics).
 
 extract_init_root(InitDeep, InitDeep ^ init_root).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 deep_extract_csdptr_caller(Deep, CSDPtr, CallerPDPtr) :-
     lookup_call_site_dynamics(Deep ^ call_site_dynamics, CSDPtr, CSD),
@@ -1039,11 +1039,11 @@ deep_extract_csdptr_callee(Deep, CSDPtr, CalleePDPtr) :-
     lookup_call_site_dynamics(Deep ^ call_site_dynamics, CSDPtr, CSD),
     CalleePDPtr = CSD ^ csd_callee.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 wrap_proc_static_ptr(PSI) = proc_static_ptr(PSI).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 root_total_info(Deep) = RootTotal :-
     deep_lookup_pd_own(Deep, Deep ^ root, RootOwn),
@@ -1056,7 +1056,7 @@ root_desc_info(Deep) = RootDesc :-
 root_own_info(Deep) = RootOwn :-
     deep_lookup_pd_own(Deep, Deep ^ root, RootOwn).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 deep_get_progrep_det(Deep, ProgRep) :-
     deep_get_maybe_progrep(Deep, MaybeProgRep),
@@ -1064,7 +1064,7 @@ deep_get_progrep_det(Deep, ProgRep) :-
         MaybeProgRep = ok(ProgRep)
     ;
         MaybeProgRep = error(Error),
-        unexpected($module, $pred, Error)
+        unexpected($pred, Error)
     ).
 
 deep_get_maybe_progrep(Deep, MaybeProgRep) :-
@@ -1082,6 +1082,6 @@ deep_get_maybe_progrep(Deep, MaybeProgRep) :-
         MaybeProgRep = ok(ProgRep)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module profile.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

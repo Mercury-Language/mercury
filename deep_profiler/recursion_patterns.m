@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: recursion_patterns.m.
 % Authors: pbone.
@@ -12,7 +12,7 @@
 % This module contains code that analysis the recursive structures of cliques.
 % It is intended for use on the automatic parallelisation analysis.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module recursion_patterns.
 :- interface.
@@ -23,7 +23,7 @@
 
 :- import_module maybe.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_clique_recursion_costs_report(deep::in, clique_ptr::in,
     maybe_error(clique_recursion_report)::out) is det.
@@ -31,7 +31,7 @@
 :- pred create_recursion_types_frequency_report(deep::in,
     maybe_error(recursion_types_frequency_report)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred recursion_type_get_maybe_avg_max_depth(recursion_type,
     maybe(recursion_depth)).
@@ -39,8 +39,8 @@
     out(maybe_yes(ground))) is det.
 :- mode recursion_type_get_maybe_avg_max_depth(in, out) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -66,7 +66,7 @@
 :- import_module string.
 :- import_module unit.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 create_clique_recursion_costs_report(Deep, CliquePtr,
         MaybeCliqueRecursionReport) :-
@@ -261,7 +261,7 @@ single_rec_average_recursion_cost(BaseCost, RecCost, AvgMaxDepth) = Cost :-
     Sum = 0.5 * RecCost * ((AvgMaxDepth * AvgMaxDepth) + AvgMaxDepth),
     Cost = BaseCost + ((Sum) / (AvgMaxDepth + 1.0)).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type recursion_data
     --->    no_recursion_data_dead_proc
@@ -793,7 +793,7 @@ simple_recursion_data(Cost, Calls) =
 error_to_string(re_unhandled_determinism(Detism)) =
     format("%s code is not handled", [s(string(Detism))]).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 create_recursion_types_frequency_report(Deep, MaybeReport) :-
     % This report is impossible without procrep data, but we don't use it
@@ -1012,8 +1012,8 @@ finalize_histogram_proc_rec_type(Deep, NumCliques, _PSPtr,
     ProfInfo = own_and_inherit_prof_info(Own, Inherit),
     own_and_inherit_to_perf_row_data(Deep, ProcDesc, Own, Inherit, Summary).
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 recursion_type_get_maybe_avg_max_depth(rt_not_recursive,
     yes(recursion_depth_from_float(0.0))).
@@ -1024,6 +1024,6 @@ recursion_type_get_maybe_avg_max_depth(rt_mutual_recursion(_), no).
 recursion_type_get_maybe_avg_max_depth(rt_other(_), no).
 recursion_type_get_maybe_avg_max_depth(rt_errors(_), no).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module recursion_patterns.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

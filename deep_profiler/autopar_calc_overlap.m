@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: autopar_calc_overlap.m
 % Author: pbone.
@@ -12,7 +12,7 @@
 % This module contains the code that calculates the likely overlap
 % between conjuncts in a parallelized conjunction.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdprof_fb.automatic_parallelism.autopar_calc_overlap.
 :- interface.
@@ -30,8 +30,8 @@
     incomplete_parallelisation::in, incomplete_parallelisation::out,
     parallelisation_cost_data::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -56,7 +56,7 @@
 :- import_module set.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 calculate_parallel_cost(Info, !Parallelisation, CostData) :-
     ParConj = ip_get_par_conjs(!.Parallelisation),
@@ -624,4 +624,4 @@ var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
     ),
     Time = TimeBefore + UseTime.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

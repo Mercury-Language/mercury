@@ -1,24 +1,24 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: html_format.m.
 % Author: zs, pbone.
 %
 % This module contains code that sets the format of the HTML tables
 % we generate for individual queries.
-
+%
 % This module appends many strings. Since string.append takes time that is
 % linear over the length of both input strings, building a long string
 % from many short strings would take quadratic time. This is why we represent
 % HTML as a cord of strings instead. This cord is then converted to a list of
 % strings and then a single string just before being given to the browser.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module html_format.
 :- interface.
@@ -27,15 +27,7 @@
 :- import_module query.
 :- import_module display.
 
-:- import_module cord.
-
-%-----------------------------------------------------------------------------%
-
-:- type html == cord(string).
-
-:- func html_to_string(html) = string.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Construct a complete HTML page from the given display structure.
     %
@@ -43,9 +35,9 @@
     % profile, for example the name of the Deep.data file to build the URLs
     % from.
     %
-:- func htmlize_display(deep, preferences, display) = html.
+:- func htmlize_display(deep, preferences, display) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Convert any special characters in a string into appropriate HTML
     % escapes.
@@ -60,14 +52,15 @@
 :- func escape_break_html_string(string) = string.
 :- func escape_break_html_attr_string(attr_string) = string.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module char.
-:- import_module list.
+:- import_module cord.
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -77,9 +70,13 @@
 
 :- import_module measurement_units.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-htmlize_display(Deep, Prefs, Display) = HTML :-
+:- type html == cord(string).
+
+%---------------------------------------------------------------------------%
+
+htmlize_display(Deep, Prefs, Display) = HTMLStr :-
     Display = display(MaybeTitle, Items),
     MainTitle = str_to_html("Mercury Deep Profile for ") ++
         str_to_html(Deep ^ data_file_name),
@@ -105,7 +102,8 @@ htmlize_display(Deep, Prefs, Display) = HTML :-
         wrap_tags("<html>\n", "</html>\n",
             wrap_tags("<head>\n", "</head>\n", HeadTitleHTML ++ StyleHTML) ++
             wrap_tags("<body>\n", "</body>\n", HeadingHTML ++ ItemsHTML)
-        ).
+        ),
+    HTMLStr = string.append_list(cord.list(HTML)).
 
 :- func doc_type_html = html.
 
@@ -114,7 +112,7 @@ doc_type_html =
         "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\n" ++
         "\"http://www.w3.org/TR/html4/strict.dtd\">\n").
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- func css_style_html(style_control_map) = html.
 
@@ -145,7 +143,7 @@ style_control_to_html(Control - StyleElementMap) = HTML :-
 style_element_to_html(style_element(ElementName) - Value) =
     str_to_html(string.format("\t\t%s: %s;\n", [s(ElementName), s(Value)])).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
     % Convert a display item into a HTML snippet.
     %
@@ -213,7 +211,7 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Table htmlization.
 %
@@ -228,7 +226,7 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
     %
 :- type column_class_map == map(int, string).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Create a HTML table entity from the given table description.
     %
@@ -285,7 +283,7 @@ table_to_html(FormatInfo, !StyleControlMap, Table, HTML) :-
     HTML = wrap_tags(TableStartTag, TableEndTag,
         WrappedHeaderHTML ++ WrappedBodyHTML).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the HTML entity for a table header cell.
     %
@@ -322,7 +320,7 @@ table_header_group_to_html_row_1(FormatInfo, HeaderNumRows, !StyleControlMap,
     EndTag = "</th>\n",
     HTML = wrap_tags(StartTag, EndTag, ContentsHTML).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred table_header_group_to_html_row_2(format_info::in,
     style_control_map::in, style_control_map::out,
@@ -340,7 +338,7 @@ table_header_group_to_html_row_2(FormatInfo, !StyleControlMap,
             !StyleControlMap, SubTitleCells, HTML)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred table_data_to_th_html(format_info::in, table_column_class::in,
     style_control_map::in, style_control_map::out,
@@ -354,7 +352,7 @@ table_data_to_th_html(FormatInfo, ColumnClass, !StyleControlMap,
     EndTag = "</th>\n",
     HTML = wrap_tags(StartTag, EndTag, TableDataHTML).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Determine how many rows the table header requires, and set up a map
     % from column numbers to classes. Update the style control map for
@@ -437,7 +435,7 @@ update_style_control_map(ColumnClassStr, !HeaderGroupNumber,
     ),
     !:HeaderGroupNumber = !.HeaderGroupNumber + 1.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Build a row of a HTML table from the table_row type.
     %
@@ -476,7 +474,7 @@ table_row_to_html(FormatInfo, MaybeColClassMap, NumColumns, !StyleControlMap,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred table_cell_to_html(format_info::in, maybe(column_class_map)::in,
     style_control_map::in, style_control_map::out,
@@ -527,7 +525,7 @@ table_cell_to_html(FormatInfo, MaybeClassMap, !StyleControlMap, !ColumnNum,
         HTML = wrap_tags(StartTag, EndTag, CellHTML)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func table_data_to_html(format_info, table_data) = html.
 
@@ -604,7 +602,7 @@ table_class_to_string(FormatInfo, Class) = ClassStr :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A style element is a variable you can set for a given control.
     % Examples include "text-align" and "background".
@@ -726,7 +724,7 @@ default_style_control_map =
         )
     ]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Transform a list of items into HTML.
     %
@@ -788,7 +786,7 @@ list_to_html(FormatInfo, !StyleControlMap, Class, MaybeTitle, Items, HTML) :-
         InnerItemsHTML),
     HTML = TitleHTML ++ PostTitleHTML ++ ItemsHTML.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Transform a deep link into HTML.
     %
@@ -826,7 +824,7 @@ pseudo_link_to_html(_FormatInfo, PseudoLink) = HTML :-
     ),
     HTML = str_to_html(HTMLStr).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The information we need to create various parts of the HTML.
     %
@@ -851,7 +849,7 @@ init_format_info(Deep, Prefs) = FormatInfo :-
         Prefs ^ pref_developer_mode,
         Deep ^ server_name_port, Deep ^ script_name, Deep ^ data_file_name).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return a URL for the deep structure and command.
     %
@@ -866,13 +864,10 @@ deep_cmd_to_url(FormatInfo, Cmd, MaybePrefs, URL) :-
     string.format("http://%s%s?%s",
         [s(HostAndPort), s(Script), s(query_to_string(DeepQuery))], URL).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Generic HTML helper predicates.
 %
-
-html_to_string(HTML) = Str :-
-    string.append_list(cord.list(HTML), Str).
 
 :- func append_htmls(list(html)) = html.
 
@@ -891,7 +886,7 @@ empty_html = cord.empty.
 
 str_to_html(Str) = cord.singleton(Str).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % For each A, MapPred(!StyleControlMap, A, S), and concatenate all Ss.
     %
@@ -976,7 +971,7 @@ sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap, !.ColumnNum,
     sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap,
         !.ColumnNum, Tail, !HTML).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 escape_html_string(String) =
     replace_special_chars(special_html_char, String).
@@ -1062,6 +1057,6 @@ special_html_char_or_break(':', ":" ++ zero_width_space).
 % zero_width_space = "&#8203;".
 zero_width_space = "<wbr />".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module html_format.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

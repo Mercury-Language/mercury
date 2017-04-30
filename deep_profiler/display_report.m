@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: display_report.m.
 % Author: pbone.
@@ -12,7 +12,7 @@
 % This module contains code to create a display data structure from a deep
 % profiling report.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module display_report.
 :- interface.
@@ -27,11 +27,11 @@
 % the whole of query.
 :- import_module query.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func report_to_display(deep, preferences, deep_report) = display.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -60,7 +60,7 @@
 :- import_module string.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_to_display(Deep, Prefs, Report) = Display :-
     (
@@ -240,7 +240,7 @@ report_to_display(Deep, Prefs, Report) = Display :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display menu report.
 %
@@ -415,7 +415,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
         display_paragraph_break, MenuRestartQuitControls,
         display_paragraph_break, OptionsControls]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display a clique report.
 %
@@ -708,7 +708,7 @@ clique_call_site_callee_to_row(MaybeCurModuleName, ModuleQual, Prefs,
     Cells = [EmptyCell, CalleeProcCell] ++ PerfCells,
     Row = table_row(Cells).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display a clique recursion report.
 %
@@ -1035,7 +1035,7 @@ display_report_recursion_type_simple(rts_total_error_instances,
         "Total errors").
 display_report_recursion_type_simple(rts_error(Error), "Error: " ++ Error).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display a program_modules report.
 %
@@ -1115,7 +1115,7 @@ avoid_sort_self_and_desc(Prefs) = SortPrefs :-
         SortPrefs = Prefs
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display a module report.
 %
@@ -1206,7 +1206,7 @@ active_proc(ProcRowData) :-
     ProcActive = ProcRowData ^ perf_row_subject,
     ProcActive ^ pa_is_active = proc_is_active.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display a module_getter_setters report.
 %
@@ -1330,7 +1330,7 @@ display_field_getter_setters(Prefs, ModuleName, FieldName - FieldInfo, Rows,
     ),
     !:Rank = !.Rank + 1.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display a module_rep report.
 %
@@ -1358,7 +1358,7 @@ display_report_module_rep(Prefs, Report, Display) :-
 
     Display = display(yes(Title), [BodyItem | Controls]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display a top procedures report.
 %
@@ -1443,7 +1443,7 @@ cost_kind_to_description(cost_words)    = "words allocated".
 scope_to_description(per_call) = "per call".
 scope_to_description(overall) = "overall".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display a procedure report.
 %
@@ -1633,7 +1633,7 @@ report_proc_call_site_callee(MaybeCurModuleName, ModuleQual,
     Cells = [EmptyCell, ProcCell] ++ PerfCells,
     Row = table_row(Cells).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display a procedure callers report.
 %
@@ -2069,7 +2069,7 @@ make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum, BunchSize,
     Link = deep_link(Cmd, yes(Prefs), attr_str([], Label), link_class_control),
     Item = display_link(Link).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display procrep_coverage information.
 %
@@ -2129,7 +2129,7 @@ coverage_to_cord_string(_, Coverage, singleton(singleton(String))) :-
     ),
     String = "Coverage: " ++ String0.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to display proc_static and proc_dynamic dumps.
 %
@@ -2471,7 +2471,7 @@ format_var_uses([VarUse | VarUses], RowNum, [Row | Rows]) :-
     Row = table_row([HeaderCell, NameCell, TypeCell, PercentCell, TimeCell]),
     format_var_uses(VarUses, RowNum + 1, Rows).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Common column header strings.
 %
@@ -2504,7 +2504,7 @@ override_order_criteria_header_data(Cmd, Prefs0, Criteria, Label)
 
 dummy_order_criteria_header_data(_, _, Label) = td_s(Label).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The predicates in this section build
 %
@@ -3219,7 +3219,7 @@ perf_table_header_memory(TotalsMeaningful, Prefs, MakeHeaderData,
         HeaderGroups = [HeaderGroup]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Describes whether a table should be ranked or not,  This means that each
     % item has an ordinal number associated with it in an initial column
@@ -3286,7 +3286,7 @@ maybe_ranked_subject_perf_table_row(Prefs, Ranked, TotalsMeaningful,
     Cells = RankCells ++ SubjectCells ++ PerfCells,
     Row = table_row(Cells).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Some utility procedures.
 %
@@ -3314,7 +3314,7 @@ call_site_desc_clique_proc_cell(MaybeCurModuleName, ModuleQual,
         link_class_link),
     Cell = table_cell(td_l(Link)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The basic predicates for creating the controls at the bottoms of pages.
 %
@@ -3456,7 +3456,7 @@ make_prefs_control_item(Prefs0, Cmd, Label - PrefMaker, Items) :-
         Items = [Item]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control how the top_procs command selects what is "top".
 %
@@ -3581,7 +3581,7 @@ set_top_procs_incl_desc(InclDesc, DisplayLimit, CostKind, _InclDesc, Scope,
 set_top_procs_scope(Scope, DisplayLimit, CostKind, InclDesc, _Scope, Cmd) :-
     Cmd = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control how the proc command displays the procedure's callers.
 %
@@ -3665,7 +3665,7 @@ set_proc_callers_contour_excl(ContourExcl, PSPtr, CallerGroups, BunchSize,
     Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, BunchSize,
         ContourExcl).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control how the rows in procedure displays are sorted.
 %
@@ -3770,7 +3770,7 @@ sort_memory_toggles = [
 set_sort_criteria(SortCriteria, !Prefs) :-
     !Prefs ^ pref_criteria := SortCriteria.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control whether we summarize the info from callees at multi call sites.
 %
@@ -3800,7 +3800,7 @@ summarize_toggles = [
 set_summarize(Summarize, !Prefs) :-
     !Prefs ^ pref_summarize := Summarize.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control whether we display call sites that do not get any calls.
 %
@@ -3832,7 +3832,7 @@ module_qual_toggles = [
 set_module_qual(ModuleQual, !Prefs) :-
     !Prefs ^ pref_module_qual := ModuleQual.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control how pages are displayed.
 %
@@ -3872,7 +3872,7 @@ set_colour_column_groups(Colour, !Prefs) :-
 set_box_tables(Box, !Prefs) :-
     !Prefs ^ pref_box := Box.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Controls for related procedure and clique reports.
 %
@@ -3926,7 +3926,7 @@ make_controls(Prefs, NotCmd, [Maker | Makers], Items) :-
         Items = [Control | TailItems]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control whether we display inactive modules.
 %
@@ -3957,7 +3957,7 @@ inactive_module_toggles = [
 set_inactive_modules(Status, !Prefs) :-
     !Prefs ^ pref_inactive ^ inactive_modules := Status.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control whether we display inactive procedures.
 %
@@ -3988,7 +3988,7 @@ inactive_proc_toggles = [
 set_inactive_procs(Status, !Prefs) :-
     !Prefs ^ pref_inactive ^ inactive_procs := Status.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control whether we display inactive call sites.
 %
@@ -4019,7 +4019,7 @@ inactive_call_site_toggles = [
 set_inactive_call_sites(Status, !Prefs) :-
     !Prefs ^ pref_inactive ^ inactive_call_sites := Status.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control how many ancestors we display.
 %
@@ -4081,7 +4081,7 @@ ancestor_toggles_yes(CurrentLimit) = [
 set_ancestor_limit(MaybeAncestorLimit, !Prefs) :-
     !Prefs ^ pref_anc := MaybeAncestorLimit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Control the set of displayed fields.
 %
@@ -4217,7 +4217,7 @@ set_memory_fields(MemoryFields, !Prefs) :-
     Fields = Fields0 ^ memory_fields := MemoryFields,
     !Prefs ^ pref_fields := Fields.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Links to the basic commands.
 %
@@ -4259,7 +4259,7 @@ general_options_controls(Cmd, Prefs) = ControlsItem :-
     ControlsItem = display_list(list_class_horizontal_except_title,
         yes("General options:"), List).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Convert procedure, call site and clique descriptions into table cells.
 %
@@ -4386,7 +4386,7 @@ clique_desc_to_non_self_link_proc_name_cell(MaybeCurModuleName, ModuleQual,
         Cell = table_cell(td_l(Link))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Utility predicates.
 %
@@ -4426,7 +4426,7 @@ make_control(MaybePrefs, Cmd, Label, Developer, Item) :-
         Item = Item0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort procedures in a clique by the preferred criteria of performance.
 %
@@ -4487,7 +4487,7 @@ compare_clique_procs_by_cost(CostKind, InclDesc, Scope,
     compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope,
         ProcRowDataA, ProcRowDataB, Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort proc_dynamics in a clique by the preferred criteria of performance.
 %
@@ -4528,7 +4528,7 @@ compare_clique_proc_dynamics_by_cost(CostKind, InclDesc, Scope,
     compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope,
         ProcDynamicRowDataA, ProcDynamicRowDataB, Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort clique_call_site_reports by the preferred criteria of performance.
 %
@@ -4596,7 +4596,7 @@ compare_clique_call_site_reports_by_cost(CostKind, InclDesc, Scope,
     compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope, PerfA, PerfB,
         Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort call_site_perfs by the preferred criteria of performance.
 %
@@ -4655,7 +4655,7 @@ compare_call_site_perfs_by_cost(CostKind, InclDesc, Scope,
     compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope, PerfA, PerfB,
         Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort perf_data_rows of call_site_descs by the preferred criteria.
 %
@@ -4706,7 +4706,7 @@ compare_call_site_desc_rows_by_name(MaybeCurModuleName, ModuleQual,
     compare_call_site_descs_by_name(MaybeCurModuleName, ModuleQual,
         CallSiteDescA, CallSiteDescB, Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort perf_data_rows of proc_descs by the preferred criteria.
 %
@@ -4756,7 +4756,7 @@ compare_proc_desc_rows_by_name(MaybeCurModuleName, ModuleQual,
     compare_proc_descs_by_name(MaybeCurModuleName, ModuleQual,
         ProcDescA, ProcDescB, Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort perf_data_rows of proc_actives by the preferred criteria.
 %
@@ -4805,7 +4805,7 @@ compare_proc_active_rows_by_name(MaybeCurModuleName, ModuleQual,
     compare_proc_descs_by_name(MaybeCurModuleName, ModuleQual,
         ProcDescA, ProcDescB, Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort perf_data_rows of module_getter_setters by the preferred criteria.
 %
@@ -4880,7 +4880,7 @@ representative_field_perf_row(FieldInfo) = Perf :-
         FieldInfo = gs_field_both(_, _, Perf)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort perf_data_rows of module_actives by the preferred criteria.
 %
@@ -4919,7 +4919,7 @@ compare_module_active_rows_by_name(ModuleRowDataA, ModuleRowDataB, Result) :-
     ModuleNameB = ModuleDescB ^ ma_module_name,
     compare(Result, ModuleNameA, ModuleNameB).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort perf_data_rows of module names by the preferred criteria.
 %
@@ -4955,7 +4955,7 @@ compare_module_name_rows_by_name(ModuleRowDataA, ModuleRowDataB, Result) :-
     ModuleNameB = ModuleRowDataB ^ perf_row_subject,
     compare(Result, ModuleNameA, ModuleNameB).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort perf_data_rows of cliques by the preferred criteria.
 %
@@ -5006,7 +5006,7 @@ compare_clique_rows_by_first_proc_name(CliqueRowDataA, CliqueRowDataB,
     EntryProcDescB = CliqueDescB ^ cdesc_entry_member,
     compare_proc_descs_by_context(EntryProcDescA, EntryProcDescB, Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort call_site_descs and proc_descs by context and by name.
 %
@@ -5098,7 +5098,7 @@ compare_proc_descs_by_name(MaybeCurModuleName, ModuleQual,
         proc_desc_get_refined_id(MaybeCurModuleName, ModuleQual, ProcDescB),
     compare(Result, NameA, NameB).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Sort perf_row_datas by a criterion of performance.
 %
@@ -5321,7 +5321,7 @@ compare_perf_row_datas_by_words(InclDesc, Scope, PerfA, PerfB, Result) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func proc_desc_get_refined_id(maybe(string), module_qual, proc_desc)
     = string.
@@ -5376,6 +5376,6 @@ call_site_desc_get_caller_refined_id(MaybeCurModuleName, ModuleQual,
         Name = CallSiteDesc ^ csdesc_caller_q_refined_name
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module display_report.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

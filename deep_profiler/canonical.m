@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: canonical.m.
 % Authors: conway, zs.
@@ -12,7 +12,7 @@
 % This module contains code for recursively merging sets of ProcDynamic and
 % CallSiteDynamic nodes.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module canonical.
 :- interface.
@@ -21,8 +21,8 @@
 
 :- pred canonicalize_cliques(initial_deep::in, initial_deep::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -42,7 +42,7 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type merge_info
     --->    merge_info(
@@ -659,7 +659,7 @@ set_csd_redirect(CallSiteRedirect0, CSDPtr, NewRedirect, CallSiteRedirect) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
     array.set(CSDI, NewRedirect, CallSiteRedirect0, CallSiteRedirect).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred deref_call_site_dynamic(redirect::in, call_site_dynamic_ptr::in,
     call_site_dynamic_ptr::out) is det.
@@ -685,7 +685,7 @@ deref_proc_dynamic(Redirect, !PDPtr) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred compact_dynamics(redirect::in, int::in, int::in,
     initial_deep::in, initial_deep::out) is det.
@@ -776,7 +776,7 @@ subst_in_slot(Redirect, slot_multi(IsZeroed, CSDPtrs0),
     array.map(lookup_csd_redirect(Redirect ^ csd_redirect),
         u(CSDPtrs0), CSDPtrs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred merge_profiles(list(initial_deep)::in, maybe_error(initial_deep)::out)
     is det.
@@ -983,7 +983,7 @@ concat_proc_dynamic_ptr(PrevMaxPD, !PDPtr) :-
         !:PDPtr = proc_dynamic_ptr(PDI0 + PrevMaxPD)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % array_match_elements(Min, Max, BaseArray, OtherArrays):
     %
@@ -1020,6 +1020,6 @@ match_element(TestElement, Index, [Array | Arrays]) :-
 int_add(A, B, C) :-
     C = A + B.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module canonical.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

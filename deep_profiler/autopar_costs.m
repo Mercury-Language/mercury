@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: autopar_costs.m
 % Authors: pbone, zs.
@@ -12,7 +12,7 @@
 % This module contains the code for computing costs of goals, as well as
 % costs up to the time of the production or first consumption of a variable.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdprof_fb.automatic_parallelism.autopar_costs.
 :- interface.
@@ -30,7 +30,7 @@
 :- import_module map.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred conj_calc_cost(list(pard_goal_detail)::in, int::in,
     goal_cost_csq::out) is det.
@@ -44,7 +44,7 @@
 :- pred ite_calc_cost(pard_goal_detail::in, pard_goal_detail::in,
     pard_goal_detail::in, goal_cost_csq::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred atomic_goal_build_use_map(atomic_goal_rep::in,
     reverse_goal_path::in, implicit_parallelism_info::in,
@@ -52,7 +52,12 @@
     map(var_rep, lazy(var_use_info))::in,
     map(var_rep, lazy(var_use_info))::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred implicit_par_info_intermodule_var_use(implicit_parallelism_info::in,
+    intermodule_var_use::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- pred recursion_type_get_interesting_parallelisation_depth(
     recursion_type, maybe(recursion_depth)).
@@ -61,13 +66,8 @@
 :- mode recursion_type_get_interesting_parallelisation_depth(
     in, out) is det.
 
-%-----------------------------------------------------------------------------%
-
-:- pred implicit_par_info_intermodule_var_use(implicit_parallelism_info::in,
-    intermodule_var_use::out) is det.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -88,7 +88,7 @@
 :- import_module set.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 conj_calc_cost([], Calls, simple_goal_cost(Calls)).
 conj_calc_cost([Conjunct | Conjuncts], _, Cost) :-
@@ -181,7 +181,7 @@ simple_goal_cost(Calls) = Cost :-
         Cost = atomic_goal_cost(Calls)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 atomic_goal_build_use_map(AtomicGoal, RevGoalPath, Info, VarUseType, Var,
         !Map) :-
@@ -341,7 +341,7 @@ compute_var_use_2(Info, RecursionType, MaybeCurDepth, VarUseType, Cost,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 implicit_par_info_intermodule_var_use(Info, FollowCallsAcrossModules) :-
     IntermoduleVarUse = Info ^ ipi_opts ^ cpcp_intermodule_var_use,
@@ -357,7 +357,7 @@ implicit_par_info_intermodule_var_use(Info, FollowCallsAcrossModules) :-
         FollowCallsAcrossModules = follow_calls_into_module(Module)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 recursion_type_get_interesting_parallelisation_depth(RecursionType,
         MaybeDepth) :-
@@ -380,4 +380,4 @@ recursion_type_get_interesting_parallelisation_depth(RecursionType,
         MaybeDepth = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

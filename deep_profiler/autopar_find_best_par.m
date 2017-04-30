@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: autopar_find_best_par.m
 % Author: pbone.
@@ -15,7 +15,7 @@
 % The following compile-time flags may introduce trace goals:
 %   debug_branch_and_bound
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdprof_fb.automatic_parallelism.autopar_find_best_par.
 :- interface.
@@ -44,8 +44,8 @@
     maybe(full_parallelisation)::out,
     cord(message)::in, cord(message)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -80,7 +80,7 @@ find_best_parallelisation(Info, Location, Goals, MaybeBestParallelisation,
         MaybeBestParallelisation = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type alg_for_finding_best_par_simple
     --->    affbps_complete(maybe(int))
@@ -112,7 +112,7 @@ choose_algorithm(Info, ConjunctionSize, Algorithm) :-
         Algorithm = affbps_greedy
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type goal_group(T)
     --->    gg_single(
@@ -160,7 +160,7 @@ gg_get_details(gg_multiple(Index, Num, P), Index, Num, P).
 %     --->    can_split_group
 %     ;       cannot_split_group.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type goal_classification
     --->    gc_cheap_goals
@@ -253,7 +253,7 @@ preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
             !Messages)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred build_dependency_graphs(list(pard_goal_detail)::in,
     dependency_graphs::out) is det.
@@ -300,7 +300,7 @@ build_dependency_graph([PG | PGs], ConjNum, !VarDepMap, !Graph) :-
 
     build_dependency_graph(PGs, ConjNum + 1, !VarDepMap, !Graph).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred goal_accumulate_detism(int::in, pard_goal_detail::in,
     detism_rep::in, detism_rep::out) is det.
@@ -378,7 +378,7 @@ preprocess_conjunction_into_groups(Index, Goal, !RevGoalGroups) :-
     GoalGroup = gg_single(Index, GoalClassification),
     !:RevGoalGroups = [GoalGroup | !.RevGoalGroups].
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Find the best parallelisation using the branch and bound algorithm.
     %
@@ -858,7 +858,7 @@ full_parallelisation_cost(FullParallelisation) = Cost :-
     FullMetrics = FullParallelisation ^ fp_par_exec_metrics,
     Cost = full_parallelisation_metrics_cost(FullMetrics).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % XXX
 % :- semipure pred add_goals_into_first_par_conj(
@@ -906,7 +906,7 @@ full_parallelisation_cost(FullParallelisation) = Cost :-
 %         true
 %     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_one_goal_into_first_par_conj(incomplete_parallelisation::in,
     incomplete_parallelisation::out) is det.
@@ -928,7 +928,7 @@ add_one_goal_into_last_par_conj(!Parallelisation) :-
     !Parallelisation ^ ip_maybe_goals_after_cost := no,
     !Parallelisation ^ ip_maybe_par_cost_data := no.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred foldl_sub_array(pred(int, T, A, A), array(T), int, int, A, A).
 :- mode foldl_sub_array(pred(in, in, in, out) is det,
@@ -943,4 +943,4 @@ foldl_sub_array(Pred, Array, Index, Last, !Acc) :-
         true
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

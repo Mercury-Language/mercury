@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Authors: pbone, zs.
 %
@@ -14,7 +14,7 @@
 % This module can be compiled with the following trace flag to enable
 % debugging: debug_first_var_use. See Mercury.options in this directory.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module var_use_analysis.
 
@@ -63,7 +63,7 @@
     ;       var_use_other.
             % The variable is used in some other way.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func average_var_use(list(var_use_info)) = var_use_info.
 
@@ -75,7 +75,7 @@
 :- pred pessimistic_var_use_time(var_use_type::in, float::in, float::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % get_call_site_dynamic_var_use_info(Deep, CSDPtr, ArgNum, RT, VarUseType,
     %   MaybeVarUseInfo):
@@ -126,7 +126,7 @@
     float::in, set(proc_dynamic_ptr)::in, var_use_options::in,
     maybe_error(var_use_info)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Find the first use of a variable in an arbitrary goal.
     %
@@ -138,7 +138,7 @@
     goal_rep(goal_id)::in, reverse_goal_path::in, float::in, var_rep::in,
     var_use_options::in, var_use_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -154,7 +154,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 average_var_use(Uses) = var_use_info(CostUntilUse, AvgProcCost, Type) :-
     (
@@ -184,7 +184,7 @@ sum_use_info_costs(var_use_info(Cost, ProcCost, _), !AccCost, !AccProcCost) :-
     !:AccCost = !.AccCost + Cost,
     !:AccProcCost = !.AccProcCost + ProcCost.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 var_mode_to_var_use_type(var_mode_rep(InitialInst, FinalInst), VarUseType) :-
     ( if
@@ -201,7 +201,7 @@ var_mode_to_var_use_type(var_mode_rep(InitialInst, FinalInst), VarUseType) :-
         VarUseType = var_use_other
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pessimistic_var_use_info(VarUseType, ProcCost, VarUseInfo) :-
     pessimistic_var_use_time(VarUseType, ProcCost, CostUntilUse),
@@ -218,7 +218,7 @@ pessimistic_var_use_time(VarUseType, ProcCost, CostUntilUse) :-
         CostUntilUse = ProcCost
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_call_site_dynamic_var_use_info(CSDPtr, ArgNum, RecursionType, Cost,
         VarUseOptions, MaybeVarUseInfo) :-
@@ -584,7 +584,7 @@ prepare_for_proc_var_first_use(CliquePtr, PDPtr, ArgNum, RecursionType, Depth,
         Info = error(Error)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The actual first use analysis code.
 %
@@ -1229,7 +1229,7 @@ ite_var_first_use(RevGoalPath, Cond, Then, Else, StaticInfo,
 ffu_to_float(Default, have_not_found_first_use, Default).
 ffu_to_float(_, found_first_use(UseTime), UseTime).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Goal var first use analysis for the base and recursive cases of a recursive
 % procedure.
@@ -1616,7 +1616,7 @@ adjust_weight_for_recursion(RecCase, RecProb, !Weight) :-
     ),
     !:Weight = !.Weight * probability_to_float(Prob).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Give the probability that this goal leads to a recursion.
     %
@@ -1784,7 +1784,7 @@ ite_rec_prob(Cond, Then, Else, RecCalls, Info, Prob, !ProbArray) :-
     ThenElseProb = or(ThenProb, ElseProb),
     Prob = or(CondProb, ThenElseProb).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred goal_var_first_use_wrapper(clique_ptr::in, set(proc_dynamic_ptr)::in,
     containing_goal_map::in, goal_attr_array(coverage_info)::in,
@@ -1844,7 +1844,7 @@ found_first_use_to_use_info(FoundFirstUse, Cost, VarUseType, VarUseInfo) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred intermodule_var_use_should_follow_csd(var_use_options::in,
     call_site_dynamic_ptr::in) is semidet.
@@ -1886,4 +1886,4 @@ intermodule_var_use_should_follow_pd_2(Deep, Module, PDPtr) :-
     ; Label = str_special_proc_label(_, _, Module, _, _, _)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

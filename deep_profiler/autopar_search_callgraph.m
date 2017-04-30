@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: autopar_search_callgraph.m
 % Author: pbone.
@@ -13,7 +13,7 @@
 % in order to determine how best to automatically parallelise the program.
 % This code is used by the mdprof_create_feedback tool.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdprof_fb.automatic_parallelism.autopar_search_callgraph.
 :- interface.
@@ -26,7 +26,7 @@
 
 :- import_module cord.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Build the candidate parallel conjunctions feedback information used for
     % implicit parallelism.
@@ -35,8 +35,8 @@
     deep::in, cord(message)::out, feedback_info::in, feedback_info::out)
     is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -69,7 +69,7 @@
 :- import_module set.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The code in this section has some trace goals that can be enabled with:
 %
@@ -105,7 +105,7 @@ candidate_parallel_conjunctions(Params, Deep, Messages, !Feedback) :-
     add_feedback_candidate_parallel_conjunctions(ProfiledProgramName,
         CandidateInfo, !Feedback).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Recurse the call graph searching for parallelisation opportunities.
 %
@@ -494,7 +494,7 @@ extract_from_push_map(GoalPathStr, Triple, !Pushes) :-
         set.to_sorted_list(TargetGoalPathStrSet)),
     !:Pushes = [Push | !.Pushes].
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Search for parallelisation opportunities within a procedure.
 %
@@ -636,7 +636,7 @@ build_candidate_par_conjunction_maps(ProcLabel, VarNameTable, Candidate,
         CPCs),
     map.set(ProcLabel, CandidateProc, !Map).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred pardgoal_consumed_vars_accum(pard_goal_detail::in,
     set(var_rep)::in, set(var_rep)::out) is det.
@@ -645,7 +645,7 @@ pardgoal_consumed_vars_accum(Goal, !Vars) :-
     RefedVars = Goal ^ goal_annotation ^ pgd_inst_map_info ^ im_consumed_vars,
     set.union(RefedVars, !Vars).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Useful utility predicates.
 %
@@ -675,4 +675,4 @@ debug_cliques_exceeded_parallelism(Clique, !IO) :-
         "no more parallelisation resources available at this context\n\n",
         [i(CliqueNum)], !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
