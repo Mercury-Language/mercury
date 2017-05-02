@@ -13,7 +13,7 @@
     %
 :- type shade_of_white
     --->    anti_flash_white
-    ;       anitque_white
+    ;       antique_white
     ;       beige
     ;       blond
     ;       cornsilk

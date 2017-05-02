@@ -1,0 +1,7 @@
+bug436.m:017: In `:- pragma foreign_enum' declaration for type `bug436.foo'/0:
+bug436.m:017:   error: the following symbol is not a constructor of the type:
+bug436.m:017:       `bar'.
+bug436.m:023: In `:- pragma foreign_enum' declaration for type `bug436.bar'/0:
+bug436.m:023:   error: the following symbols are not constructors of the type:
+bug436.m:023:       `baaz2',
+bug436.m:023:       `baaz1'.

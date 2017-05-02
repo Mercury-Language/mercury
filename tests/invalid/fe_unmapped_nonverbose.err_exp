@@ -21,7 +21,6 @@ fe_unmapped_nonverbose.m:085: In `:- pragma foreign_enum' declaration for type
 fe_unmapped_nonverbose.m:085:   `fe_unmapped_nonverbose.shade_of_white'/0:
 fe_unmapped_nonverbose.m:085:   error: the following constructors do not have a
 fe_unmapped_nonverbose.m:085:   foreign value:
-fe_unmapped_nonverbose.m:085:       `anitque_white',
 fe_unmapped_nonverbose.m:085:       `blond',
 fe_unmapped_nonverbose.m:085:       `cornsilk',
 fe_unmapped_nonverbose.m:085:       `cosmic_latte',
@@ -30,6 +29,7 @@ fe_unmapped_nonverbose.m:085:       `eggshell',
 fe_unmapped_nonverbose.m:085:       `floral_white',
 fe_unmapped_nonverbose.m:085:       `ghost_white',
 fe_unmapped_nonverbose.m:085:       `honeydew',
-fe_unmapped_nonverbose.m:085:       `isabelline', ...
-fe_unmapped_nonverbose.m:085:   and 17 more.
+fe_unmapped_nonverbose.m:085:       `isabelline',
+fe_unmapped_nonverbose.m:085:       `ivory', ...
+fe_unmapped_nonverbose.m:085:   and 16 more.
 For more information, recompile with `-E'.

@@ -86,6 +86,7 @@ SINGLEMODULE= \
 	bug278 \
 	bug363 \
 	bug415 \
+	bug436 \
 	bug83 \
 	builtin_int \
 	builtin_proc \

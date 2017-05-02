@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,6 +37,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
+:- import_module set_tree234.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -428,9 +429,10 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                     % XXX We should also check that this type is not
                     % the subject of a reserved tag pragma.
                     DuTypeKind = du_type_kind_foreign_enum(Lang),
+                    list.foldl(gather_ctor_name, Ctors, set_tree234.init, CtorNameSet),
                     build_foreign_enum_tag_map(Context, ContextPieces,
-                        TypeName, ForeignTagValues, MaybeForeignTagMap,
-                        !Specs),
+                        CtorNameSet, TypeName, ForeignTagValues,
+                        MaybeForeignTagMap, !Specs),
                     ( if
                         LangForForeignEnums = Lang,
                         MaybeForeignTagMap = yes(ForeignTagMap)
@@ -516,13 +518,21 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
+:- pred gather_ctor_name(constructor::in,
+    set_tree234(string)::in, set_tree234(string)::out) is det.
+
+gather_ctor_name(Constructor, !CtorNameSet) :-
+    CtorSymName = Constructor ^ cons_name,
+    Name = unqualify_name(CtorSymName),
+    set_tree234.insert(Name, !CtorNameSet).
+
 :- pred build_foreign_enum_tag_map(prog_context::in, format_components::in,
-    sym_name::in, assoc_list(sym_name, string)::in,
+    set_tree234(string)::in, sym_name::in, assoc_list(sym_name, string)::in,
     maybe(map(sym_name, string))::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-build_foreign_enum_tag_map(Context, ContextPieces, TypeName, ForeignTagValues0,
-        MaybeForeignTagMap, !Specs) :-
+build_foreign_enum_tag_map(Context, ContextPieces, CtorNameSet, TypeName,
+        ForeignTagValues0, MaybeForeignTagMap, !Specs) :-
     (
         TypeName = qualified(TypeModuleName, _)
     ;
@@ -530,10 +540,18 @@ build_foreign_enum_tag_map(Context, ContextPieces, TypeName, ForeignTagValues0,
         unexpected($module, $pred,
             "unqualified type name while processing foreign tags.")
     ),
-    list.map_foldl(fixup_foreign_tag_val_qualification(TypeModuleName),
-        ForeignTagValues0, ForeignTagValues1, [], BadCtors),
+    list.map_foldl2(fixup_foreign_tag_val_qualification(CtorNameSet, TypeModuleName),
+        ForeignTagValues0, ForeignTagValues1, [], BadCtors, [], UnknownCtors),
     (
+        UnknownCtors = []
+    ;
+        UnknownCtors = [_ | _],
+        add_unknown_ctors_error(Context, ContextPieces, UnknownCtors, !Specs)
+    ),
+    ( if
         BadCtors = [],
+        UnknownCtors = []
+    then
         ( if bimap.from_assoc_list(ForeignTagValues1, ForeignTagValues) then
             ForeignTagMap = ForeignTagValues ^ forward_map,
             MaybeForeignTagMap = yes(ForeignTagMap)
@@ -541,8 +559,7 @@ build_foreign_enum_tag_map(Context, ContextPieces, TypeName, ForeignTagValues0,
             add_foreign_enum_bijection_error(Context, ContextPieces, !Specs),
             MaybeForeignTagMap = no
         )
-    ;
-        BadCtors = [_ | _],
+    else
         MaybeForeignTagMap = no
     ).
 
@@ -551,12 +568,14 @@ build_foreign_enum_tag_map(Context, ContextPieces, TypeName, ForeignTagValues0,
     %
     % XXX module_qual.m should really be doing this rather than add_pragma.m.
     %
-:- pred fixup_foreign_tag_val_qualification(module_name::in,
+:- pred fixup_foreign_tag_val_qualification(set_tree234(string)::in,
+    module_name::in,
     pair(sym_name, string)::in, pair(sym_name, string)::out,
+    list(sym_name)::in, list(sym_name)::out,
     list(sym_name)::in, list(sym_name)::out) is det.
 
-fixup_foreign_tag_val_qualification(TypeModuleName, !NamesAndTags,
-        !BadCtors) :-
+fixup_foreign_tag_val_qualification(CtorNameSet, TypeModuleName, !NamesAndTags,
+        !BadCtors, !UnknownCtors) :-
     !.NamesAndTags = CtorSymName0 - ForeignTag,
     (
         CtorSymName0 = unqualified(Name),
@@ -569,6 +588,11 @@ fixup_foreign_tag_val_qualification(TypeModuleName, !NamesAndTags,
             !:BadCtors = [CtorSymName0 | !.BadCtors],
             CtorSymName = CtorSymName0
         )
+    ),
+    ( if CtorNameSet `set_tree234.contains` Name then
+        true
+    else
+        !:UnknownCtors = [CtorSymName0 | !.UnknownCtors]
     ),
     !:NamesAndTags = CtorSymName - ForeignTag.
 
@@ -659,6 +683,21 @@ unqual_ctor_to_format_component(SymName) = [unqual_sym_name(SymName)].
 
 %-----------------------------------------------------------------------------%
 
+:- pred add_unknown_ctors_error(prog_context::in, format_components::in,
+    list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
+    IsOrAre = choose_number(Ctors, "symbol is not a constructor",
+        "symbols are not constructors"),
+    ErrorPieces = [words("error: the following"), words(IsOrAre),
+        words("of the type:"), nl_indent_delta(2)] ++
+        unqual_ctors_to_line_pieces(Ctors, [suffix(".")]),
+    Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+%-----------------------------------------------------------------------------%
+
 :- pred add_foreign_enum_bijection_error(prog_context::in,
     format_components::in, list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -681,7 +720,7 @@ add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
     ErrorPieces = [words("Error: "),
         pragma_decl("foreign_enum"), words("declaration for"),
         qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-        words("in module interface."), nl ],
+        words("in module interface."), nl],
     Msg = simple_msg(Context, [always(ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     list.cons(Spec, !Specs).
