@@ -161,7 +161,7 @@
 %
 % In fact, the string version is still not as efficient as I would like.
 % The compiler ought to (but currently doesn't) unfold all the instances
-% of the `posn' type.  We could do this type unfolding by hand, but
+% of the `posn' type. We could do this type unfolding by hand, but
 % it would be very tedious and it would make the code less readable.
 % If and when there is compiler support for this, we should also think about
 % moving the `String' and `Len' arguments into the posn (or making a new
@@ -866,26 +866,6 @@ special_token('}', close_curly).
 special_token('|', ht_sep).
 special_token(',', comma).
 special_token(';', name(";")).
-
-% The list of characters here is duplicated in lookup_token_action above.
-graphic_token_char('!').
-graphic_token_char('#').
-graphic_token_char('$').
-graphic_token_char('&').
-graphic_token_char('*').
-graphic_token_char('+').
-graphic_token_char('-').
-graphic_token_char('.').
-graphic_token_char('/').
-graphic_token_char(':').
-graphic_token_char('<').
-graphic_token_char('=').
-graphic_token_char('>').
-graphic_token_char('?').
-graphic_token_char('@').
-graphic_token_char('^').
-graphic_token_char('~').
-graphic_token_char('\\').
 
 %---------------------------------------------------------------------------%
 
@@ -2188,7 +2168,7 @@ get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
 string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
     %
     % The last character we saw _may_ be the last digit (or underscore) in the
-    % token; save its position as LastDigitPosn.  In the event that the next
+    % token; save its position as LastDigitPosn. In the event that the next
     % character is the beginning of a signedness / size suffix, Posn1 to
     % LastDigitPosn will define the substring that needs to passed to the
     % integer conversion procedure.
@@ -3256,5 +3236,26 @@ base_to_int_and_prefix(base_8, 8, "0o").
 base_to_int_and_prefix(base_10, 10, "").
 base_to_int_and_prefix(base_16, 16, "0x").
 
+%---------------------------------------------------------------------------%
+
+% The list of characters here is duplicated in lookup_token_action above.
+graphic_token_char('!').
+graphic_token_char('#').
+graphic_token_char('$').
+graphic_token_char('&').
+graphic_token_char('*').
+graphic_token_char('+').
+graphic_token_char('-').
+graphic_token_char('.').
+graphic_token_char('/').
+graphic_token_char(':').
+graphic_token_char('<').
+graphic_token_char('=').
+graphic_token_char('>').
+graphic_token_char('?').
+graphic_token_char('@').
+graphic_token_char('^').
+graphic_token_char('~').
+graphic_token_char('\\').
 
 %---------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -42,17 +42,24 @@
 
 %---------------------------------------------------------------------------%
 
-    % Our type_info and type_ctor_info implementations are both
-    % abstract types.
+:- pred generic_unify(T::in, T::in) is semidet.
+
+:- pred generic_compare(comparison_result::out, T::in, T::in) is det.
+
+%---------------------------------------------------------------------------%
+
+    % Our type_info, pseudo_type_info and type_ctor_info implementations
+    % are all abstract types.
 :- type type_info.
 :- type type_ctor_info.
 :- type pseudo_type_info.
 
+%---------------------------------------------------------------------------%
+%
+% Operations on type_infos.
+%
+
 :- func get_type_info(T::unused) = (type_info::out) is det.
-
-:- pred generic_unify(T::in, T::in) is semidet.
-
-:- pred generic_compare(comparison_result::out, T::in, T::in) is det.
 
 :- pred compare_type_infos(comparison_result::out,
     type_info::in, type_info::in) is det.
@@ -62,8 +69,32 @@
 :- pred type_ctor_and_args(type_info::in, type_ctor_info::out,
     list(type_info)::out) is det.
 
+:- pred type_info_num_functors(type_info::in, int::out) is semidet.
+
+:- pred type_info_get_functor(type_info::in, int::in, string::out, int::out,
+    list(pseudo_type_info)::out) is semidet.
+
+:- pred type_info_get_functor_with_names(type_info::in, int::in, string::out,
+    int::out, list(pseudo_type_info)::out, list(string)::out) is semidet.
+
+:- pred type_info_get_functor_ordinal(type_info::in, int::in, int::out)
+    is semidet.
+
+:- pred type_info_get_functor_lex(type_info::in, int::in, int::out)
+    is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Operations on type_ctor_infos.
+%
+
 :- pred type_ctor_name_and_arity(type_ctor_info::in,
     string::out, string::out, int::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Operations on pseudo_type_infos.
+%
 
 :- pred pseudo_type_ctor_and_args(pseudo_type_info::in,
     type_ctor_info::out, list(pseudo_type_info)::out) is semidet.
@@ -71,9 +102,19 @@
 :- pred is_univ_pseudo_type_info(pseudo_type_info::in, int::out) is semidet.
 :- pred is_exist_pseudo_type_info(pseudo_type_info::in, int::out) is semidet.
 
+%---------------------------------------------------------------------------%
+%
+% Constructing terms.
+%
+
 :- func construct(type_info, int, list(univ)) = univ is semidet.
 
 :- func construct_tuple_2(list(univ), list(type_info), int) = univ.
+
+%---------------------------------------------------------------------------%
+%
+% Deconstructing terms.
+%
 
 :- pred deconstruct(T, noncanon_handling, string, int, int, list(univ)).
 :- mode deconstruct(in, in(do_not_allow), out, out, out, out) is det.
@@ -90,24 +131,6 @@
 :- mode univ_named_arg(in, in(canonicalize), in, out) is semidet.
 :- mode univ_named_arg(in, in(include_details_cc), in, out)
     is semidet. % conceptually committed-choice
-
-%---------------------------------------------------------------------------%
-%
-% Implementations for use from construct.
-
-:- pred type_info_num_functors(type_info::in, int::out) is semidet.
-
-:- pred type_info_get_functor(type_info::in, int::in, string::out, int::out,
-    list(pseudo_type_info)::out) is semidet.
-
-:- pred type_info_get_functor_with_names(type_info::in, int::in, string::out,
-    int::out, list(pseudo_type_info)::out, list(string)::out) is semidet.
-
-:- pred type_info_get_functor_ordinal(type_info::in, int::in, int::out)
-    is semidet.
-
-:- pred type_info_get_functor_lex(type_info::in, int::in, int::out)
-    is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -242,14 +265,594 @@
 ").
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-%
-% Implementation of the interface to construct.
-%
 
-    % See MR_get_num_functors in runtime/mercury_construct.c
-    %
+generic_unify(X, Y) :-
+    TypeInfo = get_type_info(X),
+    TypeCtorInfo = get_type_ctor_info(TypeInfo),
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    ( if
+        TypeCtorRep = tcr_tuple
+    then
+        unify_tuple(TypeInfo, X, Y)
+    else if
+        ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
+    then
+        unexpected($module, $pred, "unimplemented: higher order unification")
+    else
+        Arity = TypeCtorInfo ^ type_ctor_arity,
+        UnifyPred = TypeCtorInfo ^ type_ctor_unify_pred,
+        ( if Arity = 0 then
+            semidet_call_3(UnifyPred, X, Y)
+        else if Arity = 1 then
+            semidet_call_4(UnifyPred,
+                type_info_index_as_ti(TypeInfo, 1),
+                X, Y)
+        else if Arity = 2 then
+            semidet_call_5(UnifyPred,
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                X, Y)
+        else if Arity = 3 then
+            semidet_call_6(UnifyPred,
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                X, Y)
+        else if Arity = 4 then
+            semidet_call_7(UnifyPred,
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 4),
+                X, Y)
+        else if Arity = 5 then
+            semidet_call_8(UnifyPred,
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 4),
+                type_info_index_as_ti(TypeInfo, 5),
+                X, Y)
+        else
+            error("unify/2: type arity > 5 not supported")
+        )
+    ).
+
+generic_compare(Res, X, Y) :-
+    TypeInfo = get_type_info(X),
+    TypeCtorInfo = get_type_ctor_info(TypeInfo),
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    ( if
+        TypeCtorRep = tcr_tuple
+    then
+        compare_tuple(TypeInfo, Res, X, Y)
+    else if
+        ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
+    then
+        unexpected($module, $pred, "unimplemented: higher order comparisons")
+    else
+        Arity = TypeCtorInfo ^ type_ctor_arity,
+        ComparePred = TypeCtorInfo ^ type_ctor_compare_pred,
+        ( if Arity = 0 then
+            result_call_4(ComparePred, Res, X, Y)
+        else if Arity = 1 then
+            result_call_5(ComparePred, Res,
+                type_info_index_as_ti(TypeInfo, 1), X, Y)
+        else if Arity = 2 then
+            result_call_6(ComparePred, Res,
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                X, Y)
+        else if Arity = 3 then
+            result_call_7(ComparePred, Res,
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                X, Y)
+        else if Arity = 4 then
+            result_call_8(ComparePred, Res,
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 4),
+                X, Y)
+        else if Arity = 5 then
+            result_call_9(ComparePred, Res,
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 4),
+                type_info_index_as_ti(TypeInfo, 5),
+                X, Y)
+        else
+            error("compare/3: type arity > 5 not supported")
+        )
+    ).
+
+%---------------------%
+
+:- pred unify_tuple(type_info::in, T::in, T::in) is semidet.
+
+unify_tuple(TypeInfo, TermA, TermB) :-
+    Arity = get_var_arity_typeinfo_arity(TypeInfo),
+    unify_tuple_pos(1, Arity, TypeInfo, TermA, TermB).
+
+:- pred unify_tuple_pos(int::in, int::in, type_info::in, T::in, T::in)
+    is semidet.
+
+unify_tuple_pos(Loc, TupleArity, TypeInfo, TermA, TermB) :-
+    ( if Loc > TupleArity then
+        true
+    else
+        ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
+
+        SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
+        SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
+
+        private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
+        generic_unify(SubTermA, CastSubTermB),
+
+        unify_tuple_pos(Loc + 1, TupleArity, TypeInfo, TermA, TermB)
+    ).
+
+%---------------------%
+
+:- pred compare_tuple(type_info::in, comparison_result::out, T::in, T::in)
+    is det.
+
+compare_tuple(TypeInfo, Result, TermA, TermB) :-
+    Arity = get_var_arity_typeinfo_arity(TypeInfo),
+    compare_tuple_pos(1, Arity, TypeInfo, Result, TermA, TermB).
+
+:- pred compare_tuple_pos(int::in, int::in, type_info::in,
+    comparison_result::out, T::in, T::in) is det.
+
+compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
+    ( if Loc > TupleArity then
+        Result = (=)
+    else
+        ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
+
+        SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
+        SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
+
+        private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
+        generic_compare(SubResult, SubTermA, CastSubTermB),
+        (
+            SubResult = (=),
+            compare_tuple_pos(Loc + 1, TupleArity, TypeInfo, Result,
+                TermA, TermB)
+        ;
+            ( SubResult = (<)
+            ; SubResult = (>)
+            ),
+            Result = SubResult
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("Java",
+    get_type_info(_T::unused) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeInfo = TypeInfo_for_T;
+").
+
+:- pragma foreign_proc("C#",
+    get_type_info(_T::unused) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeInfo = TypeInfo_for_T;
+").
+
+:- pragma foreign_proc("C",
+    get_type_info(_T::unused) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeInfo = TypeInfo_for_T;
+").
+
+get_type_info(_) = _ :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    private_builtin.sorry("get_type_info").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_export("C#", compare_type_infos(out, in, in),
+    "ML_compare_type_infos").
+:- pragma foreign_export("Java", compare_type_infos(out, in, in),
+    "ML_compare_type_infos").
+
+compare_type_infos(Res, TypeInfo1, TypeInfo2) :-
+    ( if same_pointer_value(TypeInfo1, TypeInfo2) then
+        Res = (=)
+    else
+        NewTypeInfo1 = collapse_equivalences(TypeInfo1),
+        NewTypeInfo2 = collapse_equivalences(TypeInfo2),
+        ( if same_pointer_value(NewTypeInfo1, NewTypeInfo2) then
+            Res = (=)
+        else
+            compare_collapsed_type_infos(Res, NewTypeInfo1, NewTypeInfo2)
+        )
+    ).
+
+:- pred compare_collapsed_type_infos(comparison_result::out,
+    type_info::in, type_info::in) is det.
+
+compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
+    TypeCtorInfo1 = get_type_ctor_info(TypeInfo1),
+    TypeCtorInfo2 = get_type_ctor_info(TypeInfo2),
+
+    % cf. MR_compare_type_info
+    compare(ModNameRes, TypeCtorInfo1 ^ type_ctor_module_name,
+        TypeCtorInfo2 ^ type_ctor_module_name),
+    (
+        ModNameRes = (=),
+        compare(NameRes, TypeCtorInfo1 ^ type_ctor_name,
+            TypeCtorInfo2 ^ type_ctor_name),
+        (
+            NameRes = (=),
+            ( if type_ctor_is_variable_arity(TypeCtorInfo1) then
+                Arity1 = get_var_arity_typeinfo_arity(TypeInfo1),
+                Arity2 = get_var_arity_typeinfo_arity(TypeInfo2),
+                compare(ArityRes, Arity1, Arity2),
+                (
+                    ArityRes = (=),
+                    compare_var_arity_type_info_args(1, Arity1, Res,
+                        TypeInfo1, TypeInfo2)
+                ;
+                    ( ArityRes = (<)
+                    ; ArityRes = (>)
+                    ),
+                    Res = ArityRes
+                )
+            else
+                Arity1 = type_ctor_arity(TypeCtorInfo1),
+                Arity2 = type_ctor_arity(TypeCtorInfo2),
+                compare(ArityRes, Arity1, Arity2),
+                (
+                    ArityRes = (=),
+                    compare_type_info_args(1, Arity1, Res,
+                        TypeInfo1, TypeInfo2)
+                ;
+                    ( ArityRes = (<)
+                    ; ArityRes = (>)
+                    ),
+                    Res = ArityRes
+                )
+            )
+        ;
+            ( NameRes = (<)
+            ; NameRes = (>)
+            ),
+            Res = NameRes
+        )
+    ;
+        ( ModNameRes = (<)
+        ; ModNameRes = (>)
+        ),
+        Res = ModNameRes
+    ).
+
+:- pred compare_type_ctor_infos(comparison_result::out,
+    type_ctor_info::in, type_ctor_info::in) is det.
+
+:- pragma foreign_export("C#", compare_type_ctor_infos(out, in, in),
+    "ML_compare_type_ctor_infos").
+:- pragma foreign_export("Java", compare_type_ctor_infos(out, in, in),
+    "ML_compare_type_ctor_infos").
+
+compare_type_ctor_infos(Res, TypeCtorInfo1, TypeCtorInfo2) :-
+    % cf. MR_compare_type_ctor_info
+    compare(ModNameRes,
+        TypeCtorInfo1 ^ type_ctor_module_name,
+        TypeCtorInfo2 ^ type_ctor_module_name),
+    (
+        ModNameRes = (=),
+        compare(NameRes,
+            TypeCtorInfo1 ^ type_ctor_name,
+            TypeCtorInfo2 ^ type_ctor_name),
+        (
+            NameRes = (=),
+            Arity1 = type_ctor_arity(TypeCtorInfo1),
+            Arity2 = type_ctor_arity(TypeCtorInfo2),
+            compare(Res, Arity1, Arity2)
+        ;
+            ( NameRes = (<)
+            ; NameRes = (>)
+            ),
+            Res = NameRes
+        )
+    ;
+        ( ModNameRes = (<)
+        ; ModNameRes = (>)
+        ),
+        Res = ModNameRes
+    ).
+
+:- pred compare_type_info_args(int::in, int::in, comparison_result::out,
+    type_info::in, type_info::in) is det.
+
+compare_type_info_args(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
+    ( if Loc > Arity then
+        Result = (=)
+    else
+        SubTypeInfoA = type_info_index_as_ti(TypeInfoA, Loc),
+        SubTypeInfoB = type_info_index_as_ti(TypeInfoB, Loc),
+
+        compare_collapsed_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
+        (
+            SubResult = (=),
+            compare_type_info_args(Loc + 1, Arity, Result,
+                TypeInfoA, TypeInfoB)
+        ;
+            ( SubResult = (<)
+            ; SubResult = (>)
+            ),
+            Result = SubResult
+        )
+    ).
+
+:- pred compare_var_arity_type_info_args(int::in, int::in,
+    comparison_result::out, type_info::in, type_info::in) is det.
+
+compare_var_arity_type_info_args(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
+    ( if Loc > Arity then
+        Result = (=)
+    else
+        SubTypeInfoA = var_arity_type_info_index_as_ti(TypeInfoA, Loc),
+        SubTypeInfoB = var_arity_type_info_index_as_ti(TypeInfoB, Loc),
+
+        compare_collapsed_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
+        (
+            SubResult = (=),
+            compare_var_arity_type_info_args(Loc + 1, Arity, Result,
+                TypeInfoA, TypeInfoB)
+        ;
+            ( SubResult = (<)
+            ; SubResult = (>)
+            ),
+            Result = SubResult
+        )
+    ).
+
+:- pred type_ctor_is_variable_arity(type_ctor_info::in) is semidet.
+
+type_ctor_is_variable_arity(TypeCtorInfo) :-
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    ( TypeCtorRep = tcr_pred
+    ; TypeCtorRep = tcr_func
+    ; TypeCtorRep = tcr_tuple
+    ).
+
+:- pred compare_pseudo_type_infos(comparison_result::out,
+    pseudo_type_info::in, pseudo_type_info::in) is det.
+:- pragma consider_used(compare_pseudo_type_infos/3).
+
+:- pragma foreign_export("C#", compare_pseudo_type_infos(out, in, in),
+    "ML_compare_pseudo_type_infos").
+:- pragma foreign_export("Java", compare_pseudo_type_infos(out, in, in),
+    "ML_compare_pseudo_type_infos").
+
+compare_pseudo_type_infos(Res, PTI1, PTI2) :-
+    % Try to optimize a common case:
+    % If type_info addresses are equal, they must represent the same type.
+    ( if same_pointer_value(PTI1, PTI2) then
+        Res = (=)
+    else
+        % Otherwise, we need to expand equivalence types, if any.
+        NewPTI1 = collapse_equivalences_pseudo(PTI1),
+        NewPTI2 = collapse_equivalences_pseudo(PTI2),
+
+        % Perhaps they are equal now...
+        ( if same_pointer_value(NewPTI1, NewPTI2) then
+            Res = (=)
+        else
+            % Handle the comparison if either pseudo_type_info is a variable.
+            % Any non-variable is greater than a variable.
+            ( if
+                pseudo_type_info_is_variable(NewPTI1, VarNum1),
+                pseudo_type_info_is_variable(NewPTI2, VarNum2)
+            then
+                compare(Res, VarNum1, VarNum2)
+            else if
+                pseudo_type_info_is_variable(NewPTI1, _)
+            then
+                Res = (<)
+            else if
+                pseudo_type_info_is_variable(NewPTI2, _)
+            then
+                Res = (>)
+            else if
+                % Otherwise find the type_ctor_infos, and compare those.
+                pseudo_type_ctor_and_args(NewPTI1, TypeCtorInfo1, Args1),
+                pseudo_type_ctor_and_args(NewPTI2, TypeCtorInfo2, Args2)
+            then
+                compare_type_ctor_infos(ResTCI, TypeCtorInfo1, TypeCtorInfo2),
+                (
+                    ResTCI = (<),
+                    Res = (<)
+                ;
+                    ResTCI = (>),
+                    Res = (>)
+                ;
+                    ResTCI = (=),
+                    list.length(Args1, NumArgs1),
+                    list.length(Args2, NumArgs2),
+                    compare(ResNumArgs, NumArgs1, NumArgs2),
+                    (
+                        ResNumArgs = (<),
+                        Res = (<)
+                    ;
+                        ResNumArgs = (>),
+                        Res = (>)
+                    ;
+                        ResNumArgs = (=),
+                        compare_pseudo_type_info_args(Res, Args1, Args2)
+                    )
+                )
+            else
+                unexpected($module, $pred, "impossible pseudo_type_infos")
+            )
+        )
+    ).
+
+:- pred compare_pseudo_type_info_args(comparison_result::out,
+    list(pseudo_type_info)::in, list(pseudo_type_info)::in) is det.
+
+compare_pseudo_type_info_args(Res, Args1, Args2) :-
+    (
+        Args1 = [],
+        Args2 = [],
+        Res = (=)
+    ;
+        Args1 = [H1 | T1],
+        Args2 = [H2 | T2],
+        compare_pseudo_type_infos(ResPTI, H1, H2),
+        (
+            ResPTI = (<),
+            Res = (<)
+        ;
+            ResPTI = (>),
+            Res = (>)
+        ;
+            ResPTI = (=),
+            compare_pseudo_type_info_args(Res, T1, T2)
+        )
+    ;
+        Args1 = [_ | _],
+        Args2 = [],
+        unexpected($module, $pred, "argument list mismatch")
+    ;
+        Args1 = [],
+        Args2 = [_ | _],
+        unexpected($module, $pred, "argument list mismatch")
+    ).
+
+%---------------------%
+
+:- func collapse_equivalences(type_info) = type_info.
+:- pragma foreign_export("C#", collapse_equivalences(in) = out,
+    "ML_collapse_equivalences").
+:- pragma foreign_export("Java", collapse_equivalences(in) = out,
+    "ML_collapse_equivalences").
+
+collapse_equivalences(TypeInfo) = NewTypeInfo :-
+    TypeCtorInfo = get_type_ctor_info(TypeInfo),
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    ( if
+        % Look past equivalences.
+        ( TypeCtorRep = tcr_equiv_ground
+        ; TypeCtorRep = tcr_equiv
+        )
+    then
+        TypeLayout = get_type_layout(TypeCtorInfo),
+        EquivTypeInfo = get_layout_equiv(TypeLayout),
+        NewTypeInfo = collapse_equivalences(EquivTypeInfo)
+    else
+        NewTypeInfo = TypeInfo
+    ).
+
+:- func collapse_equivalences_pseudo(pseudo_type_info) = pseudo_type_info.
+
+collapse_equivalences_pseudo(PTI) = NewPTI :-
+    ( if
+        pseudo_type_ctor_and_args(PTI, TypeCtorInfo, _Args),
+        TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+        % Look past equivalences.
+        ( TypeCtorRep = tcr_equiv_ground
+        ; TypeCtorRep = tcr_equiv
+        )
+    then
+        TypeLayout = get_type_layout(TypeCtorInfo),
+        EquivTypeInfo = get_layout_equiv(TypeLayout),
+        NewPTI0 = create_pseudo_type_info(EquivTypeInfo, PTI),
+        NewPTI = collapse_equivalences_pseudo(NewPTI0)
+    else
+        NewPTI = PTI
+    ).
+
+:- func get_layout_equiv(type_layout) = type_info.
+
+:- pragma foreign_proc("C#",
+    get_layout_equiv(TypeLayout::in) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    runtime.PseudoTypeInfo pti = TypeLayout.layout_equiv();
+    TypeInfo = runtime.TypeInfo_Struct.maybe_new(pti);
+").
+
+:- pragma foreign_proc("Java",
+    get_layout_equiv(TypeLayout::in) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.PseudoTypeInfo pti = TypeLayout.layout_equiv();
+    TypeInfo = jmercury.runtime.TypeInfo_Struct.maybe_new(pti);
+").
+
+get_layout_equiv(_) = _ :-
+    private_builtin.sorry("get_layout_equiv").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C#",
+    get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+#if MR_HIGHLEVEL_DATA
+    TypeCtorInfo = TypeInfo.type_ctor;
+#else
+    try {
+        TypeCtorInfo = (object[]) TypeInfo[0];
+    } catch (System.InvalidCastException) {
+        TypeCtorInfo = TypeInfo;
+    }
+#endif
+").
+
+:- pragma foreign_proc("Java",
+    get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeCtorInfo = TypeInfo.type_ctor;
+").
+
+:- pragma foreign_proc("C",
+    get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeCtorInfo = (MR_Word) MR_TYPEINFO_GET_TYPE_CTOR_INFO(
+        (MR_TypeInfo) TypeInfo);
+").
+
+get_type_ctor_info(_) = _ :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    private_builtin.sorry("get_type_ctor_info").
+
+%---------------------------------------------------------------------------%
+
+type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
+    TypeInfo = collapse_equivalences(TypeInfo0),
+    TypeCtorInfo = get_type_ctor_info(TypeInfo),
+    ( if
+        type_ctor_is_variable_arity(TypeCtorInfo)
+    then
+        Arity = get_var_arity_typeinfo_arity(TypeInfo),
+        TypeArgs = iterate(1, Arity, var_arity_type_info_index_as_ti(TypeInfo))
+    else
+        Arity = type_ctor_arity(TypeCtorInfo),
+        TypeArgs = iterate(1, Arity, type_info_index_as_ti(TypeInfo))
+    ).
+
+%---------------------------------------------------------------------------%
+
 type_info_num_functors(TypeInfo, NumFunctors) :-
+    % See MR_get_num_functors in runtime/mercury_construct.c
+
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     require_complete_switch [TypeCtorRep]
@@ -321,6 +924,8 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
         TypeCtorRep = tcr_unknown,
         unexpected($module, $pred, "unknown type_ctor_rep")
     ).
+
+%---------------------------------------------------------------------------%
 
 type_info_get_functor(TypeInfo, FunctorNumber, FunctorName, Arity,
         PseudoTypeInfoList) :-
@@ -425,6 +1030,8 @@ get_functor_impl(TypeInfo, FunctorNumber,
         unexpected($module, $pred, "unknown type_ctor_rep")
     ).
 
+%---------------------%
+
 :- pred get_functor_du(type_ctor_rep::in(du), type_info::in,
     type_ctor_info::in, int::in, string::out, int::out,
     list(pseudo_type_info)::out, list(string)::out) is det.
@@ -449,6 +1056,65 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
     else
         Names = list.duplicate(Arity, null_string)
     ).
+
+:- pred get_functor_enum(type_ctor_rep::in(enum), type_ctor_info::in, int::in,
+    string::out, int::out, list(pseudo_type_info)::out, list(string)::out)
+    is det.
+
+get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
+        PseudoTypeInfoList, Names) :-
+    TypeFunctors = get_type_functors(TypeCtorInfo),
+    EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, FunctorNumber,
+        TypeFunctors),
+
+    FunctorName = EnumFunctorDesc ^ enum_functor_name,
+    Arity = 0,
+    PseudoTypeInfoList = [],
+    Names = [].
+
+:- pred get_functor_notag(type_ctor_rep::in(notag), type_ctor_info::in,
+    int::in, string::out, int::out, list(pseudo_type_info)::out,
+    list(string)::out) is det.
+
+get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
+        PseudoTypeInfoList, Names) :-
+    TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
+    NoTagFunctorDesc = TypeFunctors ^
+        notag_functor_desc(TypeCtorRep, FunctorNumber),
+
+    FunctorName = NoTagFunctorDesc ^ notag_functor_name,
+    Arity = 1,
+
+    ArgType = NoTagFunctorDesc ^ notag_functor_arg_type,
+    ArgName = NoTagFunctorDesc ^ notag_functor_arg_name,
+
+    PseudoTypeInfoList = [ArgType],
+    Names = [ArgName].
+
+%---------------------%
+
+:- func get_var_arity_typeinfo_arity(type_info) = int.
+
+:- pragma foreign_proc("Java",
+    get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Arity = TypeInfo.args.length;
+").
+
+:- pragma foreign_proc("C#",
+    get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+#if MR_HIGHLEVEL_DATA
+    Arity = TypeInfo.args.Length;
+#else
+    Arity = (int) TypeInfo[(int) var_arity_ti.arity];
+#endif
+").
+
+get_var_arity_typeinfo_arity(_) = _ :-
+    private_builtin.sorry("get_var_arity_typeinfo_arity").
 
 %---------------------------------------------------------------------------%
 
@@ -511,42 +1177,6 @@ create_pseudo_type_info(TypeInfo, PseudoTypeInfo) = ArgPseudoTypeInfo :-
 
 make_type_info(_, _, _) = _ :-
    private_builtin.sorry("make_type_info/3").
-
-%---------------------------------------------------------------------------%
-
-:- pred get_functor_enum(type_ctor_rep::in(enum), type_ctor_info::in, int::in,
-    string::out, int::out, list(pseudo_type_info)::out, list(string)::out)
-    is det.
-
-get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
-        PseudoTypeInfoList, Names) :-
-    TypeFunctors = get_type_functors(TypeCtorInfo),
-    EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, FunctorNumber,
-        TypeFunctors),
-
-    FunctorName = EnumFunctorDesc ^ enum_functor_name,
-    Arity = 0,
-    PseudoTypeInfoList = [],
-    Names = [].
-
-:- pred get_functor_notag(type_ctor_rep::in(notag), type_ctor_info::in,
-    int::in, string::out, int::out, list(pseudo_type_info)::out,
-    list(string)::out) is det.
-
-get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
-        PseudoTypeInfoList, Names) :-
-    TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
-    NoTagFunctorDesc = TypeFunctors ^
-        notag_functor_desc(TypeCtorRep, FunctorNumber),
-
-    FunctorName = NoTagFunctorDesc ^ notag_functor_name,
-    Arity = 1,
-
-    ArgType = NoTagFunctorDesc ^ notag_functor_arg_type,
-    ArgName = NoTagFunctorDesc ^ notag_functor_arg_name,
-
-    PseudoTypeInfoList = [ArgType],
-    Names = [ArgName].
 
 %---------------------------------------------------------------------------%
 
@@ -633,220 +1263,6 @@ type_info_get_functor_lex(TypeInfo0, Ordinal, FunctorNumber) :-
     TypeInfo = collapse_equivalences(TypeInfo0),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal, FunctorNumber).
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_proc("Java",
-    get_type_info(_T::unused) = (TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeInfo = TypeInfo_for_T;
-").
-
-:- pragma foreign_proc("C#",
-    get_type_info(_T::unused) = (TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeInfo = TypeInfo_for_T;
-").
-
-:- pragma foreign_proc("C",
-    get_type_info(_T::unused) = (TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeInfo = TypeInfo_for_T;
-").
-
-get_type_info(_) = _ :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    private_builtin.sorry("get_type_info").
-
-:- func get_var_arity_typeinfo_arity(type_info) = int.
-
-:- pragma foreign_proc("Java",
-    get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Arity = TypeInfo.args.length;
-").
-
-:- pragma foreign_proc("C#",
-    get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-#if MR_HIGHLEVEL_DATA
-    Arity = TypeInfo.args.Length;
-#else
-    Arity = (int) TypeInfo[(int) var_arity_ti.arity];
-#endif
-").
-
-get_var_arity_typeinfo_arity(_) = _ :-
-    private_builtin.sorry("get_var_arity_typeinfo_arity").
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-generic_compare(Res, X, Y) :-
-    TypeInfo = get_type_info(X),
-    TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
-    ( if
-        TypeCtorRep = tcr_tuple
-    then
-        compare_tuple(TypeInfo, Res, X, Y)
-    else if
-        ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
-    then
-        unexpected($module, $pred, "unimplemented: higher order comparisons")
-    else
-        Arity = TypeCtorInfo ^ type_ctor_arity,
-        ComparePred = TypeCtorInfo ^ type_ctor_compare_pred,
-        ( if Arity = 0 then
-            result_call_4(ComparePred, Res, X, Y)
-        else if Arity = 1 then
-            result_call_5(ComparePred, Res,
-                type_info_index_as_ti(TypeInfo, 1), X, Y)
-        else if Arity = 2 then
-            result_call_6(ComparePred, Res,
-                type_info_index_as_ti(TypeInfo, 1),
-                type_info_index_as_ti(TypeInfo, 2),
-                X, Y)
-        else if Arity = 3 then
-            result_call_7(ComparePred, Res,
-                type_info_index_as_ti(TypeInfo, 1),
-                type_info_index_as_ti(TypeInfo, 2),
-                type_info_index_as_ti(TypeInfo, 3),
-                X, Y)
-        else if Arity = 4 then
-            result_call_8(ComparePred, Res,
-                type_info_index_as_ti(TypeInfo, 1),
-                type_info_index_as_ti(TypeInfo, 2),
-                type_info_index_as_ti(TypeInfo, 3),
-                type_info_index_as_ti(TypeInfo, 4),
-                X, Y)
-        else if Arity = 5 then
-            result_call_9(ComparePred, Res,
-                type_info_index_as_ti(TypeInfo, 1),
-                type_info_index_as_ti(TypeInfo, 2),
-                type_info_index_as_ti(TypeInfo, 3),
-                type_info_index_as_ti(TypeInfo, 4),
-                type_info_index_as_ti(TypeInfo, 5),
-                X, Y)
-        else
-            error("compare/3: type arity > 5 not supported")
-        )
-    ).
-
-generic_unify(X, Y) :-
-    TypeInfo = get_type_info(X),
-    TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
-    ( if
-        TypeCtorRep = tcr_tuple
-    then
-        unify_tuple(TypeInfo, X, Y)
-    else if
-        ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
-    then
-        unexpected($module, $pred, "unimplemented: higher order unification")
-    else
-        Arity = TypeCtorInfo ^ type_ctor_arity,
-        UnifyPred = TypeCtorInfo ^ type_ctor_unify_pred,
-        ( if Arity = 0 then
-            semidet_call_3(UnifyPred, X, Y)
-        else if Arity = 1 then
-            semidet_call_4(UnifyPred,
-                type_info_index_as_ti(TypeInfo, 1),
-                X, Y)
-        else if Arity = 2 then
-            semidet_call_5(UnifyPred,
-                type_info_index_as_ti(TypeInfo, 1),
-                type_info_index_as_ti(TypeInfo, 2),
-                X, Y)
-        else if Arity = 3 then
-            semidet_call_6(UnifyPred,
-                type_info_index_as_ti(TypeInfo, 1),
-                type_info_index_as_ti(TypeInfo, 2),
-                type_info_index_as_ti(TypeInfo, 3),
-                X, Y)
-        else if Arity = 4 then
-            semidet_call_7(UnifyPred,
-                type_info_index_as_ti(TypeInfo, 1),
-                type_info_index_as_ti(TypeInfo, 2),
-                type_info_index_as_ti(TypeInfo, 3),
-                type_info_index_as_ti(TypeInfo, 4),
-                X, Y)
-        else if Arity = 5 then
-            semidet_call_8(UnifyPred,
-                type_info_index_as_ti(TypeInfo, 1),
-                type_info_index_as_ti(TypeInfo, 2),
-                type_info_index_as_ti(TypeInfo, 3),
-                type_info_index_as_ti(TypeInfo, 4),
-                type_info_index_as_ti(TypeInfo, 5),
-                X, Y)
-        else
-            error("unify/2: type arity > 5 not supported")
-        )
-    ).
-
-:- pred unify_tuple(type_info::in, T::in, T::in) is semidet.
-
-unify_tuple(TypeInfo, TermA, TermB) :-
-    Arity = get_var_arity_typeinfo_arity(TypeInfo),
-    unify_tuple_pos(1, Arity, TypeInfo, TermA, TermB).
-
-:- pred unify_tuple_pos(int::in, int::in,
-        type_info::in, T::in, T::in) is semidet.
-
-unify_tuple_pos(Loc, TupleArity, TypeInfo, TermA, TermB) :-
-    ( if Loc > TupleArity then
-        true
-    else
-        ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
-
-        SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
-        SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
-
-        private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
-        generic_unify(SubTermA, CastSubTermB),
-
-        unify_tuple_pos(Loc + 1, TupleArity, TypeInfo, TermA, TermB)
-    ).
-
-:- pred compare_tuple(type_info::in, comparison_result::out, T::in, T::in)
-    is det.
-
-compare_tuple(TypeInfo, Result, TermA, TermB) :-
-    Arity = get_var_arity_typeinfo_arity(TypeInfo),
-    compare_tuple_pos(1, Arity, TypeInfo, Result, TermA, TermB).
-
-:- pred compare_tuple_pos(int::in, int::in, type_info::in,
-    comparison_result::out, T::in, T::in) is det.
-
-compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
-    ( if Loc > TupleArity then
-        Result = (=)
-    else
-        ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
-
-        SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
-        SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
-
-        private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
-        generic_compare(SubResult, SubTermA, CastSubTermB),
-        (
-            SubResult = (=),
-            compare_tuple_pos(Loc + 1, TupleArity, TypeInfo, Result,
-                TermA, TermB)
-        ;
-            ( SubResult = (<)
-            ; SubResult = (>)
-            ),
-            Result = SubResult
-        )
-    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1139,371 +1555,10 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C#", compare_type_infos(out, in, in),
-    "ML_compare_type_infos").
-:- pragma foreign_export("Java", compare_type_infos(out, in, in),
-    "ML_compare_type_infos").
-
-compare_type_infos(Res, TypeInfo1, TypeInfo2) :-
-    ( if same_pointer_value(TypeInfo1, TypeInfo2) then
-        Res = (=)
-    else
-        NewTypeInfo1 = collapse_equivalences(TypeInfo1),
-        NewTypeInfo2 = collapse_equivalences(TypeInfo2),
-        ( if same_pointer_value(NewTypeInfo1, NewTypeInfo2) then
-            Res = (=)
-        else
-            compare_collapsed_type_infos(Res, NewTypeInfo1, NewTypeInfo2)
-        )
-    ).
-
-:- pred compare_collapsed_type_infos(comparison_result::out,
-    type_info::in, type_info::in) is det.
-
-compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
-    TypeCtorInfo1 = get_type_ctor_info(TypeInfo1),
-    TypeCtorInfo2 = get_type_ctor_info(TypeInfo2),
-
-    % cf. MR_compare_type_info
-    compare(ModNameRes, TypeCtorInfo1 ^ type_ctor_module_name,
-        TypeCtorInfo2 ^ type_ctor_module_name),
-    (
-        ModNameRes = (=),
-        compare(NameRes, TypeCtorInfo1 ^ type_ctor_name,
-            TypeCtorInfo2 ^ type_ctor_name),
-        (
-            NameRes = (=),
-            ( if type_ctor_is_variable_arity(TypeCtorInfo1) then
-                Arity1 = get_var_arity_typeinfo_arity(TypeInfo1),
-                Arity2 = get_var_arity_typeinfo_arity(TypeInfo2),
-                compare(ArityRes, Arity1, Arity2),
-                (
-                    ArityRes = (=),
-                    compare_var_arity_type_info_args(1, Arity1, Res,
-                        TypeInfo1, TypeInfo2)
-                ;
-                    ( ArityRes = (<)
-                    ; ArityRes = (>)
-                    ),
-                    Res = ArityRes
-                )
-            else
-                Arity1 = type_ctor_arity(TypeCtorInfo1),
-                Arity2 = type_ctor_arity(TypeCtorInfo2),
-                compare(ArityRes, Arity1, Arity2),
-                (
-                    ArityRes = (=),
-                    compare_type_info_args(1, Arity1, Res,
-                        TypeInfo1, TypeInfo2)
-                ;
-                    ( ArityRes = (<)
-                    ; ArityRes = (>)
-                    ),
-                    Res = ArityRes
-                )
-            )
-        ;
-            ( NameRes = (<)
-            ; NameRes = (>)
-            ),
-            Res = NameRes
-        )
-    ;
-        ( ModNameRes = (<)
-        ; ModNameRes = (>)
-        ),
-        Res = ModNameRes
-    ).
-
-:- pred compare_type_ctor_infos(comparison_result::out,
-    type_ctor_info::in, type_ctor_info::in) is det.
-
-:- pragma foreign_export("C#", compare_type_ctor_infos(out, in, in),
-    "ML_compare_type_ctor_infos").
-:- pragma foreign_export("Java", compare_type_ctor_infos(out, in, in),
-    "ML_compare_type_ctor_infos").
-
-compare_type_ctor_infos(Res, TypeCtorInfo1, TypeCtorInfo2) :-
-    % cf. MR_compare_type_ctor_info
-    compare(ModNameRes,
-        TypeCtorInfo1 ^ type_ctor_module_name,
-        TypeCtorInfo2 ^ type_ctor_module_name),
-    (
-        ModNameRes = (=),
-        compare(NameRes,
-            TypeCtorInfo1 ^ type_ctor_name,
-            TypeCtorInfo2 ^ type_ctor_name),
-        (
-            NameRes = (=),
-            Arity1 = type_ctor_arity(TypeCtorInfo1),
-            Arity2 = type_ctor_arity(TypeCtorInfo2),
-            compare(Res, Arity1, Arity2)
-        ;
-            ( NameRes = (<)
-            ; NameRes = (>)
-            ),
-            Res = NameRes
-        )
-    ;
-        ( ModNameRes = (<)
-        ; ModNameRes = (>)
-        ),
-        Res = ModNameRes
-    ).
-
-:- pred compare_type_info_args(int::in, int::in, comparison_result::out,
-    type_info::in, type_info::in) is det.
-
-compare_type_info_args(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
-    ( if Loc > Arity then
-        Result = (=)
-    else
-        SubTypeInfoA = type_info_index_as_ti(TypeInfoA, Loc),
-        SubTypeInfoB = type_info_index_as_ti(TypeInfoB, Loc),
-
-        compare_collapsed_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
-        (
-            SubResult = (=),
-            compare_type_info_args(Loc + 1, Arity, Result,
-                TypeInfoA, TypeInfoB)
-        ;
-            ( SubResult = (<)
-            ; SubResult = (>)
-            ),
-            Result = SubResult
-        )
-    ).
-
-:- pred compare_var_arity_type_info_args(int::in, int::in,
-    comparison_result::out, type_info::in, type_info::in) is det.
-
-compare_var_arity_type_info_args(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
-    ( if Loc > Arity then
-        Result = (=)
-    else
-        SubTypeInfoA = var_arity_type_info_index_as_ti(TypeInfoA, Loc),
-        SubTypeInfoB = var_arity_type_info_index_as_ti(TypeInfoB, Loc),
-
-        compare_collapsed_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
-        (
-            SubResult = (=),
-            compare_var_arity_type_info_args(Loc + 1, Arity, Result,
-                TypeInfoA, TypeInfoB)
-        ;
-            ( SubResult = (<)
-            ; SubResult = (>)
-            ),
-            Result = SubResult
-        )
-    ).
-
-:- pred type_ctor_is_variable_arity(type_ctor_info::in) is semidet.
-
-type_ctor_is_variable_arity(TypeCtorInfo) :-
-    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
-    ( TypeCtorRep = tcr_pred
-    ; TypeCtorRep = tcr_func
-    ; TypeCtorRep = tcr_tuple
-    ).
-
-:- pred compare_pseudo_type_infos(comparison_result::out,
-    pseudo_type_info::in, pseudo_type_info::in) is det.
-
-:- pragma foreign_export("C#", compare_pseudo_type_infos(out, in, in),
-    "ML_compare_pseudo_type_infos").
-:- pragma foreign_export("Java", compare_pseudo_type_infos(out, in, in),
-    "ML_compare_pseudo_type_infos").
-
-compare_pseudo_type_infos(Res, PTI1, PTI2) :-
-    % Try to optimize a common case:
-    % If type_info addresses are equal, they must represent the same type.
-    ( if same_pointer_value(PTI1, PTI2) then
-        Res = (=)
-    else
-        % Otherwise, we need to expand equivalence types, if any.
-        NewPTI1 = collapse_equivalences_pseudo(PTI1),
-        NewPTI2 = collapse_equivalences_pseudo(PTI2),
-
-        % Perhaps they are equal now...
-        ( if same_pointer_value(NewPTI1, NewPTI2) then
-            Res = (=)
-        else
-            % Handle the comparison if either pseudo_type_info is a variable.
-            % Any non-variable is greater than a variable.
-            ( if
-                pseudo_type_info_is_variable(NewPTI1, VarNum1),
-                pseudo_type_info_is_variable(NewPTI2, VarNum2)
-            then
-                compare(Res, VarNum1, VarNum2)
-            else if
-                pseudo_type_info_is_variable(NewPTI1, _)
-            then
-                Res = (<)
-            else if
-                pseudo_type_info_is_variable(NewPTI2, _)
-            then
-                Res = (>)
-            else if
-                % Otherwise find the type_ctor_infos, and compare those.
-                pseudo_type_ctor_and_args(NewPTI1, TypeCtorInfo1, Args1),
-                pseudo_type_ctor_and_args(NewPTI2, TypeCtorInfo2, Args2)
-            then
-                compare_type_ctor_infos(ResTCI, TypeCtorInfo1, TypeCtorInfo2),
-                (
-                    ResTCI = (<),
-                    Res = (<)
-                ;
-                    ResTCI = (>),
-                    Res = (>)
-                ;
-                    ResTCI = (=),
-                    list.length(Args1, NumArgs1),
-                    list.length(Args2, NumArgs2),
-                    compare(ResNumArgs, NumArgs1, NumArgs2),
-                    (
-                        ResNumArgs = (<),
-                        Res = (<)
-                    ;
-                        ResNumArgs = (>),
-                        Res = (>)
-                    ;
-                        ResNumArgs = (=),
-                        compare_pseudo_type_info_args(Res, Args1, Args2)
-                    )
-                )
-            else
-                unexpected($module, $pred, "impossible pseudo_type_infos")
-            )
-        )
-    ).
-
-:- pred compare_pseudo_type_info_args(comparison_result::out,
-    list(pseudo_type_info)::in, list(pseudo_type_info)::in) is det.
-
-compare_pseudo_type_info_args(Res, Args1, Args2) :-
-    (
-        Args1 = [],
-        Args2 = [],
-        Res = (=)
-    ;
-        Args1 = [H1 | T1],
-        Args2 = [H2 | T2],
-        compare_pseudo_type_infos(ResPTI, H1, H2),
-        (
-            ResPTI = (<),
-            Res = (<)
-        ;
-            ResPTI = (>),
-            Res = (>)
-        ;
-            ResPTI = (=),
-            compare_pseudo_type_info_args(Res, T1, T2)
-        )
-    ;
-        Args1 = [_ | _],
-        Args2 = [],
-        unexpected($module, $pred, "argument list mismatch")
-    ;
-        Args1 = [],
-        Args2 = [_ | _],
-        unexpected($module, $pred, "argument list mismatch")
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- func collapse_equivalences(type_info) = type_info.
-:- pragma foreign_export("C#", collapse_equivalences(in) = out,
-    "ML_collapse_equivalences").
-:- pragma foreign_export("Java", collapse_equivalences(in) = out,
-    "ML_collapse_equivalences").
-
-collapse_equivalences(TypeInfo) = NewTypeInfo :-
-    TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
-    ( if
-        % Look past equivalences.
-        ( TypeCtorRep = tcr_equiv_ground
-        ; TypeCtorRep = tcr_equiv
-        )
-    then
-        TypeLayout = get_type_layout(TypeCtorInfo),
-        EquivTypeInfo = get_layout_equiv(TypeLayout),
-        NewTypeInfo = collapse_equivalences(EquivTypeInfo)
-    else
-        NewTypeInfo = TypeInfo
-    ).
-
-:- func collapse_equivalences_pseudo(pseudo_type_info) = pseudo_type_info.
-
-collapse_equivalences_pseudo(PTI) = NewPTI :-
-    ( if
-        pseudo_type_ctor_and_args(PTI, TypeCtorInfo, _Args),
-        TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
-        % Look past equivalences.
-        ( TypeCtorRep = tcr_equiv_ground
-        ; TypeCtorRep = tcr_equiv
-        )
-    then
-        TypeLayout = get_type_layout(TypeCtorInfo),
-        EquivTypeInfo = get_layout_equiv(TypeLayout),
-        NewPTI0 = create_pseudo_type_info(EquivTypeInfo, PTI),
-        NewPTI = collapse_equivalences_pseudo(NewPTI0)
-    else
-        NewPTI = PTI
-    ).
-
-:- func get_layout_equiv(type_layout) = type_info.
-
-:- pragma foreign_proc("C#",
-    get_layout_equiv(TypeLayout::in) = (TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    runtime.PseudoTypeInfo pti = TypeLayout.layout_equiv();
-    TypeInfo = runtime.TypeInfo_Struct.maybe_new(pti);
-").
-
-:- pragma foreign_proc("Java",
-    get_layout_equiv(TypeLayout::in) = (TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.PseudoTypeInfo pti = TypeLayout.layout_equiv();
-    TypeInfo = jmercury.runtime.TypeInfo_Struct.maybe_new(pti);
-").
-
-get_layout_equiv(_) = _ :-
-    private_builtin.sorry("get_layout_equiv").
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
 type_ctor_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
     ModuleName = type_ctor_module_name(TypeCtorInfo),
     Name = type_ctor_name(TypeCtorInfo),
     Arity = type_ctor_arity(TypeCtorInfo).
-
-type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
-    TypeInfo = collapse_equivalences(TypeInfo0),
-    TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    ( if
-        type_ctor_is_variable_arity(TypeCtorInfo)
-    then
-        Arity = get_var_arity_typeinfo_arity(TypeInfo),
-        TypeArgs = iterate(1, Arity, var_arity_type_info_index_as_ti(TypeInfo))
-    else
-        Arity = type_ctor_arity(TypeCtorInfo),
-        TypeArgs = iterate(1, Arity, type_info_index_as_ti(TypeInfo))
-    ).
-
-:- func iterate(int, int, (func(int) = T)) = list(T).
-
-iterate(Start, Max, Func) = Results :-
-    ( if Start =< Max then
-        Res = Func(Start),
-        Results = [Res | iterate(Start + 1, Max, Func)]
-    else
-        Results = []
-    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3517,8 +3572,8 @@ public static final int first_exist_quant_varnum = 513;
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-%
-% XXX we have only implemented the .NET backend for the low-level data case.
+
+% XXX We have only implemented the .NET backend for the low-level data case.
 
 :- pragma foreign_code("C#", "
 #if !MR_HIGHLEVEL_DATA
@@ -3586,41 +3641,6 @@ public static final int first_exist_quant_varnum = 513;
 
 #endif
 ").
-
-:- pragma foreign_proc("C#",
-    get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-#if MR_HIGHLEVEL_DATA
-    TypeCtorInfo = TypeInfo.type_ctor;
-#else
-    try {
-        TypeCtorInfo = (object[]) TypeInfo[0];
-    } catch (System.InvalidCastException) {
-        TypeCtorInfo = TypeInfo;
-    }
-#endif
-").
-
-:- pragma foreign_proc("Java",
-    get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeCtorInfo = TypeInfo.type_ctor;
-").
-
-:- pragma foreign_proc("C",
-    get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeCtorInfo = (MR_Word) MR_TYPEINFO_GET_TYPE_CTOR_INFO(
-        (MR_TypeInfo) TypeInfo);
-").
-
-get_type_ctor_info(_) = _ :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    private_builtin.sorry("get_type_ctor_info").
 
 :- pred same_pointer_value(T::in, T::in) is semidet.
 :- pred same_pointer_value_untyped(T::in, U::in) is semidet.
@@ -5228,6 +5248,18 @@ unsafe_get_foreign_enum_value(_) = _ :-
     % matching foreign_proc version.
     private_builtin.sorry(
         "rtti_implementation.unsafe_get_foreign_enum_value/1").
+
+%---------------------------------------------------------------------------%
+
+:- func iterate(int, int, (func(int) = T)) = list(T).
+
+iterate(Start, Max, Func) = Results :-
+    ( if Start =< Max then
+        Res = Func(Start),
+        Results = [Res | iterate(Start + 1, Max, Func)]
+    else
+        Results = []
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

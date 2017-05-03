@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001, 2003-2006, 2010-2012 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
@@ -54,6 +54,8 @@
 :- type hash_pred(K) == ( pred(K, int) ).
 :- inst hash_pred    == ( pred(in, out) is det ).
 
+%---------------------------------------------------------------------------%
+
     % init(HashPred, N, MaxOccupancy):
     %
     % Constructs a new hash table whose initial size is 2 ^ N, and whose
@@ -87,18 +89,12 @@
 :- func new_default(hash_pred(K)) = hash_table(K, V).
 :- mode new_default(in(hash_pred)) = hash_table_uo is det.
 
+%---------------------------------------------------------------------------%
+
     % Retrieve the hash_pred associated with a hash table.
     %
 :- func hash_pred(hash_table(K, V)) = hash_pred(K).
 :- mode hash_pred(hash_table_ui) = out(hash_pred) is det.
-
-    % Default hash_preds for ints and strings and everything (buwahahaha!)
-    %
-:- pred int_hash(int::in, int::out) is det.
-:- pred string_hash(string::in, int::out) is det.
-:- pred char_hash(char::in, int::out) is det.
-:- pred float_hash(float::in, int::out) is det.
-:- pred generic_hash(T::in, int::out) is det.
 
     % Returns the number of buckets in a hash table.
     %
@@ -111,6 +107,8 @@
 :- func num_occupants(hash_table(K, V)) = int.
 :- mode num_occupants(hash_table_ui) = out is det.
 % :- mode num_occupants(in) = out is det.
+
+%---------------------------------------------------------------------------%
 
     % Copy the hash table.
     %
@@ -162,8 +160,21 @@
 :- pred delete(K::in,
     hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo) is det.
 
-    % Lookup the value associated with the given key. Throw an exception
-    % if there is no entry for the key.
+%---------------------------------------------------------------------------%
+
+    % Lookup the value associated with the given key.
+    % Fail if there is no entry for the key.
+    %
+:- func search(hash_table(K, V), K) = V.
+:- mode search(hash_table_ui, in) = out is semidet.
+% :- mode search(in, in, out) is semidet.
+
+:- pred search(hash_table(K, V), K, V).
+:- mode search(hash_table_ui, in, out) is semidet.
+% :- mode search(in, in, out) is semidet.
+
+    % Lookup the value associated with the given key.
+    % Throw an exception if there is no entry for the key.
     %
 :- func lookup(hash_table(K, V), K) = V.
 :- mode lookup(hash_table_ui, in) = out is det.
@@ -176,15 +187,7 @@
 :- mode elem(in, hash_table_ui) = out is det.
 % :- mode elem(in, in) = out is det.
 
-    % Like lookup, but just fails if there is no entry for the key.
-    %
-:- func search(hash_table(K, V), K) = V.
-:- mode search(hash_table_ui, in) = out is semidet.
-% :- mode search(in, in, out) is semidet.
-
-:- pred search(hash_table(K, V), K, V).
-:- mode search(hash_table_ui, in, out) is semidet.
-% :- mode search(in, in, out) is semidet.
+%---------------------------------------------------------------------------%
 
     % Convert a hash table into an association list.
     %
@@ -259,6 +262,16 @@
     hash_table_ui, in, out, in, out, di, uo) is semidet.
 
 %---------------------------------------------------------------------------%
+
+    % Default hash_preds for ints and strings and everything (buwahahaha!)
+    %
+:- pred int_hash(int::in, int::out) is det.
+:- pred float_hash(float::in, int::out) is det.
+:- pred char_hash(char::in, int::out) is det.
+:- pred string_hash(string::in, int::out) is det.
+:- pred generic_hash(T::in, int::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -292,6 +305,8 @@
     %
 :- type hash_table_alist(K, V).
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
     % We use a custom association list representation for better performance.
@@ -300,7 +315,7 @@
     %
     % Array bounds checks may be omitted in this module because the array
     % indices are computed by: hash(Key) mod size(Array)
-
+    %
 :- type buckets(K, V) == array(hash_table_alist(K, V)).
 
     % Assuming a decent hash function, there should be few collisions,
@@ -343,7 +358,62 @@ new_default(HashPred) = init(HashPred, 7, 0.9).
 
 num_buckets(HT) = size(HT ^ buckets).
 
+% num_occupants is generated automatically, as a field get function.
+
 %---------------------------------------------------------------------------%
+
+copy(Orig) = Copy :-
+    Orig = ht(NumOccupants, MaxOccupants, HashPred, Buckets0),
+    array.copy(Buckets0, Buckets),
+    Copy = ht(NumOccupants, MaxOccupants, HashPred, Buckets).
+
+%---------------------------------------------------------------------------%
+
+set(HT0, K, V) = HT :-
+    set(K, V, HT0, HT).
+
+set(K, V, HT0, HT) :-
+    H = find_slot(HT0, K),
+    HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0),
+    array.unsafe_lookup(Buckets0, H, AL0),
+    (
+        AL0 = ht_nil,
+        AL = ht_single(K, V),
+        MayExpand = yes
+    ;
+        AL0 = ht_single(K0, _V0),
+        ( if K0 = K then
+            AL = ht_single(K0, V),
+            MayExpand = no
+        else
+            AL = ht_cons(K, V, AL0),
+            MayExpand = yes
+        )
+    ;
+        AL0 = ht_cons(_, _, _),
+        ( if alist_replace(AL0, K, V, AL1) then
+            AL = AL1,
+            MayExpand = no
+        else
+            AL = ht_cons(K, V, AL0),
+            MayExpand = yes
+        )
+    ),
+    array.unsafe_set(H, AL, Buckets0, Buckets),
+    (
+        MayExpand = no,
+        HT = ht(NumOccupants0, MaxOccupants, HashPred, Buckets)
+    ;
+        MayExpand = yes,
+        NumOccupants = NumOccupants0 + 1,
+        ( if NumOccupants > MaxOccupants then
+            HT = expand(NumOccupants, MaxOccupants, HashPred, Buckets)
+        else
+            HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
+        )
+    ).
+
+'elem :='(K, HT, V) = set(HT, K, V).
 
 :- func find_slot(hash_table(K, V), K) = int.
 :- mode find_slot(hash_table_ui, in) = out is det.
@@ -362,60 +432,6 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
     % Since NumBuckets is a power of two we can avoid mod.
     H = Hash /\ (NumBuckets - 1).
 
-%---------------------------------------------------------------------------%
-
-copy(Orig) = Copy :-
-    Orig = ht(NumOccupants, MaxOccupants, HashPred, Buckets0),
-    array.copy(Buckets0, Buckets),
-    Copy = ht(NumOccupants, MaxOccupants, HashPred, Buckets).
-
-%---------------------------------------------------------------------------%
-
-set(HT0, K, V) = HT :-
-    H = find_slot(HT0, K),
-    HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0),
-    array.unsafe_lookup(Buckets0, H, AL0),
-    (
-        AL0 = ht_nil,
-        AL = ht_single(K, V),
-        MayExpand = yes
-    ;
-        AL0 = ht_single(K0, _V0),
-        ( if K0 = K then
-            AL = ht_single(K0, V),
-            MayExpand = no
-          else
-            AL = ht_cons(K, V, AL0),
-            MayExpand = yes
-        )
-    ;
-        AL0 = ht_cons(_, _, _),
-        ( if alist_replace(AL0, K, V, AL1) then
-            AL = AL1,
-            MayExpand = no
-          else
-            AL = ht_cons(K, V, AL0),
-            MayExpand = yes
-        )
-    ),
-    array.unsafe_set(H, AL, Buckets0, Buckets),
-    (
-        MayExpand = no,
-        HT = ht(NumOccupants0, MaxOccupants, HashPred, Buckets)
-    ;
-        MayExpand = yes,
-        NumOccupants = NumOccupants0 + 1,
-        ( NumOccupants > MaxOccupants ->
-            HT = expand(NumOccupants, MaxOccupants, HashPred, Buckets)
-        ;
-            HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
-        )
-    ).
-
-'elem :='(K, HT, V) = set(HT, K, V).
-
-set(K, V, HT, set(HT, K, V)).
-
 :- pred alist_replace(hash_table_alist(K, V)::in, K::in, V::in,
     hash_table_alist(K, V)::out) is semidet.
 
@@ -431,36 +447,9 @@ alist_replace(AL0, K, V, AL) :-
         AL0 = ht_cons(K0, V0, T0),
         ( if K0 = K then
             AL = ht_cons(K0, V, T0)
-          else
+        else
             alist_replace(T0, K, V, T),
             AL = ht_cons(K0, V0, T)
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-search(HT, K, search(HT, K)).
-
-search(HT, K) = V :-
-    H = find_slot(HT, K),
-    array.unsafe_lookup(HT ^ buckets, H, AL),
-    alist_search(AL, K, V).
-
-:- pred alist_search(hash_table_alist(K, V)::in, K::in, V::out) is semidet.
-
-alist_search(AL, K, V) :-
-    require_complete_switch [AL]
-    (
-        AL = ht_nil,
-        fail
-    ;
-        AL = ht_single(K, V)
-    ;
-        AL = ht_cons(HK, HV, T),
-        ( if HK = K then
-            HV = V
-          else
-            alist_search(T, K, V)
         )
     ).
 
@@ -480,15 +469,15 @@ det_insert(HT0, K, V) = HT :-
         ( if alist_search(AL0, K, _) then
             throw(software_error(
                 "hash_table.det_insert: key already present"))
-          else
+        else
             AL = ht_cons(K, V, AL0)
         )
     ),
     array.unsafe_set(H, AL, Buckets0, Buckets),
     NumOccupants = NumOccupants0 + 1,
-    ( NumOccupants > MaxOccupants ->
+    ( if NumOccupants > MaxOccupants then
         HT = expand(NumOccupants, MaxOccupants, HashPred, Buckets)
-    ;
+    else
         HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
     ).
 
@@ -502,23 +491,13 @@ det_update(!.HT, K, V) = !:HT :-
     array.unsafe_lookup(Buckets0, H, AL0),
     ( if alist_replace(AL0, K, V, AL1) then
         AL = AL1
-      else
+    else
         throw(software_error("hash_table.det_update: key not found"))
     ),
     array.unsafe_set(H, AL, Buckets0, Buckets),
     !HT ^ buckets := Buckets.
 
 det_update(K, V, HT, det_update(HT, K, V)).
-
-%---------------------------------------------------------------------------%
-
-lookup(HT, K) =
-    ( if V = search(HT, K)
-      then V
-      else throw(software_error("hash_table.lookup: key not found"))
-    ).
-
-elem(K, HT) = lookup(HT, K).
 
 %---------------------------------------------------------------------------%
 
@@ -530,7 +509,7 @@ delete(HT0, K) = HT :-
         array.unsafe_set(H, AL, Buckets0, Buckets),
         NumOccupants = NumOccupants0 - 1,
         HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
-      else
+    else
         HT = HT0
     ).
 
@@ -552,11 +531,49 @@ alist_remove(AL0, K, AL) :-
         AL0 = ht_cons(K0, V0, T0),
         ( if K0 = K then
             AL = T0
-          else
+        else
             alist_remove(T0, K, T),
             AL = ht_cons(K0, V0, T)
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+search(HT, K) = V :-
+    H = find_slot(HT, K),
+    array.unsafe_lookup(HT ^ buckets, H, AL),
+    alist_search(AL, K, V).
+
+search(HT, K, search(HT, K)).
+
+:- pred alist_search(hash_table_alist(K, V)::in, K::in, V::out) is semidet.
+
+alist_search(AL, K, V) :-
+    require_complete_switch [AL]
+    (
+        AL = ht_nil,
+        fail
+    ;
+        AL = ht_single(K, V)
+    ;
+        AL = ht_cons(HK, HV, T),
+        ( if HK = K then
+            HV = V
+        else
+            alist_search(T, K, V)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+lookup(HT, K) =
+    ( if V = search(HT, K) then
+        V
+    else
+        throw(software_error("hash_table.lookup: key not found"))
+    ).
+
+elem(K, HT) = lookup(HT, K).
 
 %---------------------------------------------------------------------------%
 
@@ -590,7 +607,7 @@ from_assoc_list(HashPred, AList) = HT :-
 
 from_assoc_list_2([], !HT).
 from_assoc_list_2([K - V | T], !HT) :-
-    !HT ^ elem(K) := V,
+    set(K, V, !HT),
     from_assoc_list_2(T, !HT).
 
 %---------------------------------------------------------------------------%
@@ -607,7 +624,6 @@ from_assoc_list_2([K - V | T], !HT) :-
     %
 :- func expand(int::in, int::in, hash_pred(K)::in(hash_pred),
     buckets(K, V)::in) = (hash_table(K, V)::hash_table_uo) is det.
-
 :- pragma no_inline(expand/4).
 
 expand(NumOccupants, MaxOccupants0, HashPred, Buckets0) = HT :-
@@ -625,7 +641,7 @@ expand(NumOccupants, MaxOccupants0, HashPred, Buckets0) = HT :-
 reinsert_bindings(I, OldBuckets, HashPred, NumBuckets, !Buckets) :-
     ( if I >= size(OldBuckets) then
         true
-      else
+    else
         array.unsafe_lookup(OldBuckets, I, AL),
         reinsert_alist(AL, HashPred, NumBuckets, !Buckets),
         reinsert_bindings(I + 1, OldBuckets, HashPred, NumBuckets, !Buckets)
@@ -662,105 +678,6 @@ unsafe_insert(K, V, HashPred, NumBuckets, !Buckets) :-
         AL = ht_cons(K, V, AL0)
     ),
     array.unsafe_set(H, AL, !Buckets).
-
-%---------------------------------------------------------------------------%
-
-    % There are almost certainly better ones out there...
-    %
-int_hash(N, N).
-
-    % From http://www.concentric.net/~Ttwang/tech/inthash.htm
-    %   public int hash32shift(int key)
-    %   public long hash64shift(long key)
-    %
-:- pragma foreign_proc("C",
-    int_hash(N::in, H::out),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    const int c2 = 0x27d4eb2d; /* a prime or an odd constant */
-    MR_Unsigned key;
-
-    key = N;
-
-    if (sizeof(MR_Word) == 4) {
-        key = (key ^ 61) ^ (key >> 16);
-        key = key + (key << 3);
-        key = key ^ (key >> 4);
-        key = key * c2;
-        key = key ^ (key >> 15);
-    } else {
-        key = (~key) + (key << 21); /* key = (key << 21) - key - 1; */
-        key = key ^ (key >> 24);
-        key = (key + (key << 3)) + (key << 8); /* key * 265 */
-        key = key ^ (key >> 14);
-        key = (key + (key << 2)) + (key << 4); /* key * 21 */
-        key = key ^ (key >> 28);
-        key = key + (key << 31);
-    }
-
-    H = key;
-").
-
-%---------------------------------------------------------------------------%
-
-    % There are almost certainly better ones out there...
-    %
-string_hash(S, string.hash(S)).
-
-%---------------------------------------------------------------------------%
-
-    % There are almost certainly better ones out there...
-    %
-float_hash(F, float.hash(F)).
-
-%---------------------------------------------------------------------------%
-
-    % There are almost certainly better ones out there...
-    %
-char_hash(C, H) :-
-    int_hash(char.to_int(C), H).
-
-%---------------------------------------------------------------------------%
-
-generic_hash(T, H) :-
-    % This, again, is straight off the top of [rafe's] head.
-    %
-    ( if dynamic_cast(T, Int) then
-        int_hash(Int, H)
-    else if dynamic_cast(T, String) then
-        string_hash(String, H)
-    else if dynamic_cast(T, Float) then
-        float_hash(Float, H)
-    else if dynamic_cast(T, Char) then
-        char_hash(Char, H)
-    else if dynamic_cast(T, Univ) then
-        generic_hash(univ_value(Univ), H)
-    else if dynamic_cast_to_array(T, Array) then
-        H = array.foldl(
-            ( func(X, HA0) = HA :-
-                generic_hash(X, HX),
-                munge(HX, HA0) = HA
-            ),
-            Array, 0)
-    else
-        deconstruct(T, canonicalize, FunctorName, Arity, Args),
-        string_hash(FunctorName, H0),
-        munge(Arity, H0) = H1,
-        list.foldl(
-            ( pred(U::in, HA0::in, HA::out) is det :-
-                generic_hash(U, HUA),
-                munge(HUA, HA0) = HA
-            ),
-            Args, H1, H)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- func munge(int, int) = int.
-
-munge(N, X) =
-    (X `unchecked_left_shift` N) `xor`
-    (X `unchecked_right_shift` (int.bits_per_int - N)).
 
 %---------------------------------------------------------------------------%
 
@@ -869,6 +786,94 @@ fold3_p(P, List, !A, !B, !C) :-
         P(K, V, !A, !B, !C),
         fold3_p(P, KVs, !A, !B, !C)
     ).
+
+%---------------------------------------------------------------------------%
+
+    % From http://www.concentric.net/~Ttwang/tech/inthash.htm
+    %   public int hash32shift(int key)
+    %   public long hash64shift(long key)
+    %
+:- pragma foreign_proc("C",
+    int_hash(N::in, H::out),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    const int c2 = 0x27d4eb2d; /* a prime or an odd constant */
+    MR_Unsigned key;
+
+    key = N;
+
+    if (sizeof(MR_Word) == 4) {
+        key = (key ^ 61) ^ (key >> 16);
+        key = key + (key << 3);
+        key = key ^ (key >> 4);
+        key = key * c2;
+        key = key ^ (key >> 15);
+    } else {
+        key = (~key) + (key << 21); /* key = (key << 21) - key - 1; */
+        key = key ^ (key >> 24);
+        key = (key + (key << 3)) + (key << 8); /* key * 265 */
+        key = key ^ (key >> 14);
+        key = (key + (key << 2)) + (key << 4); /* key * 21 */
+        key = key ^ (key >> 28);
+        key = key + (key << 31);
+    }
+
+    H = key;
+").
+
+int_hash(N, N).
+    % For use on non-C backends.
+    % There are almost certainly better ones out there...
+
+float_hash(F, float.hash(F)).
+    % There are almost certainly better ones out there...
+
+char_hash(C, H) :-
+    % There are almost certainly better ones out there...
+    int_hash(char.to_int(C), H).
+
+string_hash(S, string.hash(S)).
+    % There are almost certainly better ones out there...
+
+%---------------------------------------------------------------------------%
+
+generic_hash(T, H) :-
+    % This, again, is straight off the top of [rafe's] head.
+    %
+    ( if dynamic_cast(T, Int) then
+        int_hash(Int, H)
+    else if dynamic_cast(T, String) then
+        string_hash(String, H)
+    else if dynamic_cast(T, Float) then
+        float_hash(Float, H)
+    else if dynamic_cast(T, Char) then
+        char_hash(Char, H)
+    else if dynamic_cast(T, Univ) then
+        generic_hash(univ_value(Univ), H)
+    else if dynamic_cast_to_array(T, Array) then
+        H = array.foldl(
+            ( func(X, HA0) = HA :-
+                generic_hash(X, HX),
+                munge(HX, HA0) = HA
+            ),
+            Array, 0)
+    else
+        deconstruct(T, canonicalize, FunctorName, Arity, Args),
+        string_hash(FunctorName, H0),
+        munge(Arity, H0) = H1,
+        list.foldl(
+            ( pred(U::in, HA0::in, HA::out) is det :-
+                generic_hash(U, HUA),
+                munge(HUA, HA0) = HA
+            ),
+            Args, H1, H)
+    ).
+
+:- func munge(int, int) = int.
+
+munge(N, X) =
+    (X `unchecked_left_shift` N) `xor`
+    (X `unchecked_right_shift` (int.bits_per_int - N)).
 
 %---------------------------------------------------------------------------%
 :- end_module hash_table.

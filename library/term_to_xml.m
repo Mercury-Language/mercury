@@ -176,6 +176,16 @@
     maybe_dtd::in(non_embedded_dtd), State::di, State::uo) is det
     <= (xmlable(T), stream.writer(Stream, string, State)).
 
+    % write_xml_header(Stream, MaybeEncoding, !State):
+    %
+    % Write an XML header (i.e. `<?xml version="1.0"?>) to the
+    % current file output stream.
+    % If MaybeEncoding is yes(Encoding), then include `encoding="Encoding"'
+    % in the header.
+    %
+:- pred write_xml_header(Stream::in, maybe(string)::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
+
     % write_xml_element(Stream, Indent, Term, !State):
     %
     % Write Term out as XML to the given stream, using Indent as the
@@ -186,16 +196,6 @@
 :- pred write_xml_element(Stream::in, int::in, T::in,
     State::di, State::uo) is det
     <= (xmlable(T), stream.writer(Stream, string, State)).
-
-    % write_xml_header(Stream, MaybeEncoding, !State):
-    %
-    % Write an XML header (i.e. `<?xml version="1.0"?>) to the
-    % current file output stream.
-    % If MaybeEncoding is yes(Encoding), then include `encoding="Encoding"'
-    % in the header.
-    %
-:- pred write_xml_header(Stream::in, maybe(string)::in,
-    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
 %---------------------------------------------------------------------------%
 %
@@ -394,6 +394,31 @@
     maybe_dtd::in, dtd_generation_result::out, State::di, State::uo)
     is cc_multi <= stream.writer(Stream, string, State).
 
+    % write_xml_element_general(Stream, NonCanon, MakeElement, IndentLevel,
+    %   Term, !State):
+    %
+    % Write XML elements for the given term and all its descendents, using
+    % IndentLevel as the initial indentation level (each indentation level
+    % is one tab character) and using the MakeElement predicate to map
+    % functors to elements. No <?xml ... ?> header will be written.
+    % Non-canonical terms will be handled according to the value of NonCanon.
+    % See the deconstruct module in the standard library for more information
+    % on this argument.
+    %
+:- pred write_xml_element_general(Stream, deconstruct.noncanon_handling,
+    element_mapping, int, T, State, State)
+    <= stream.writer(Stream, string, State).
+:- mode write_xml_element_general(in, in(do_not_allow), in(element_mapping),
+    in, in, di, uo) is det.
+:- mode write_xml_element_general(in, in(canonicalize), in(element_mapping),
+    in, in, di, uo) is det.
+:- mode write_xml_element_general(in, in(include_details_cc),
+    in(element_mapping), in, in, di, uo) is cc_multi.
+:- mode write_xml_element_general(in, in, in(element_mapping),
+    in, in, di, uo) is cc_multi.
+
+%---------------------------------------------------------------------------%
+
     % can_generate_dtd(ElementMapping, Type) = Result:
     %
     % Check if a DTD can be generated for the given Type using the
@@ -429,29 +454,6 @@
 :- pred write_dtd_from_type(Stream::in, type_desc::in,
     element_mapping::in(element_mapping), dtd_generation_result::out,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
-
-    % write_xml_element_general(Stream, NonCanon, MakeElement, IndentLevel,
-    %   Term, !State):
-    %
-    % Write XML elements for the given term and all its descendents, using
-    % IndentLevel as the initial indentation level (each indentation level
-    % is one tab character) and using the MakeElement predicate to map
-    % functors to elements. No <?xml ... ?> header will be written.
-    % Non-canonical terms will be handled according to the value of NonCanon.
-    % See the deconstruct module in the standard library for more information
-    % on this argument.
-    %
-:- pred write_xml_element_general(Stream, deconstruct.noncanon_handling,
-    element_mapping, int, T, State, State)
-    <= stream.writer(Stream, string, State).
-:- mode write_xml_element_general(in, in(do_not_allow), in(element_mapping),
-    in, in, di, uo) is det.
-:- mode write_xml_element_general(in, in(canonicalize), in(element_mapping),
-    in, in, di, uo) is det.
-:- mode write_xml_element_general(in, in(include_details_cc),
-    in(element_mapping), in, in, di, uo) is cc_multi.
-:- mode write_xml_element_general(in, in, in(element_mapping),
-    in, in, di, uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -490,6 +492,20 @@ write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD, !State) :-
         ChildrenFormat = format
     ),
     write_xml_element_format(Stream, ChildrenFormat, 0, Root, !State).
+
+write_xml_header(Stream, MaybeEncoding, !State) :-
+    put(Stream, "<?xml version=""1.0""", !State),
+    (
+        MaybeEncoding = yes(Encoding),
+        put(Stream, " encoding=""", !State),
+        put(Stream, Encoding, !State),
+        put(Stream, """?>\n", !State)
+    ;
+        MaybeEncoding = no,
+        put(Stream, "?>\n", !State)
+    ).
+
+%---------------------------------------------------------------------------%
 
 write_xml_element(Stream, Indent, Term, !State) :-
     Root = to_xml(Term),
@@ -546,21 +562,7 @@ write_xml_element_general(Stream, NonCanon, ElementMapping, IndentLevel, Term,
     write_xml_element_univ(Stream, NonCanon, MakeElement, IndentLevel, Univ,
         [], _, !State).
 
-write_dtd(Stream, Term, ElementMapping, DTDResult, !State) :-
-    type_of(Term) = TypeDesc,
-    write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State).
-
-write_xml_header(Stream, MaybeEncoding, !State) :-
-    put(Stream, "<?xml version=""1.0""", !State),
-    (
-        MaybeEncoding = yes(Encoding),
-        put(Stream, " encoding=""", !State),
-        put(Stream, Encoding, !State),
-        put(Stream, """?>\n", !State)
-    ;
-        MaybeEncoding = no,
-        put(Stream, "?>\n", !State)
-    ).
+%---------------------------------------------------------------------------%
 
 :- pred write_stylesheet_ref(Stream::in, maybe_stylesheet::in,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
@@ -1324,38 +1326,6 @@ xml_predefined_entity(('\''), "&apos;").
 xml_predefined_entity(('\"'), "&quot;").
 
 %---------------------------------------------------------------------------%
-%
-% Predicates to write the DTD for a type.
-%
-
-write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
-    DTDResult = can_generate_dtd(ElementMapping, TypeDesc),
-    (
-        DTDResult = ok,
-        get_element_pred(ElementMapping, MakeElement),
-        ( if
-            get_elements_and_args(MakeElement, TypeDesc,
-                [RootElement], [_], [_], [PseudoArgTypes], _)
-        then
-            ArgTypes = list.map(det_ground_pseudo_type_desc_to_type_desc,
-                PseudoArgTypes),
-            put(Stream, "<!DOCTYPE ", !State),
-            put(Stream, RootElement, !State),
-            put(Stream, " [\n\n", !State),
-            write_dtd_types(Stream, MakeElement, [TypeDesc | ArgTypes],
-                map.init, !State),
-            put(Stream, "\n]>", !State),
-            DTDResult = ok
-        else
-            unexpected($module, $pred, "not ok to generate DTD")
-        )
-    ;
-        ( DTDResult = multiple_functors_for_root
-        ; DTDResult = duplicate_elements(_, _)
-        ; DTDResult = unsupported_dtd_type(_)
-        ; DTDResult = type_not_ground(_)
-        )
-    ).
 
 can_generate_dtd(ElementMapping, TypeDesc) =  Result :-
     get_element_pred(ElementMapping, MakeElement),
@@ -1428,6 +1398,44 @@ can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc | PseudoTypeDescs],
         )
     else
         Result = type_not_ground(PseudoTypeDesc)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Predicates to write the DTD for a type.
+%
+
+write_dtd(Stream, Term, ElementMapping, DTDResult, !State) :-
+    type_of(Term) = TypeDesc,
+    write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State).
+
+write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
+    DTDResult = can_generate_dtd(ElementMapping, TypeDesc),
+    (
+        DTDResult = ok,
+        get_element_pred(ElementMapping, MakeElement),
+        ( if
+            get_elements_and_args(MakeElement, TypeDesc,
+                [RootElement], [_], [_], [PseudoArgTypes], _)
+        then
+            ArgTypes = list.map(det_ground_pseudo_type_desc_to_type_desc,
+                PseudoArgTypes),
+            put(Stream, "<!DOCTYPE ", !State),
+            put(Stream, RootElement, !State),
+            put(Stream, " [\n\n", !State),
+            write_dtd_types(Stream, MakeElement, [TypeDesc | ArgTypes],
+                map.init, !State),
+            put(Stream, "\n]>", !State),
+            DTDResult = ok
+        else
+            unexpected($module, $pred, "not ok to generate DTD")
+        )
+    ;
+        ( DTDResult = multiple_functors_for_root
+        ; DTDResult = duplicate_elements(_, _)
+        ; DTDResult = unsupported_dtd_type(_)
+        ; DTDResult = type_not_ground(_)
+        )
     ).
 
     % Write out the DTD entries for all the given types and add the written
@@ -1520,8 +1528,9 @@ write_dtd_attlist(Stream, Element, MaybeFunctor, MaybeArity, TypeDesc,
 
 write_dtd_attlists(Stream, Element, AttrFromSources, MaybeFunctor, MaybeArity,
         TypeDesc, !State) :-
-    list.foldl(write_dtd_attlist(Stream, Element, MaybeFunctor, MaybeArity,
-        TypeDesc), AttrFromSources, !State).
+    list.foldl(
+        write_dtd_attlist(Stream, Element, MaybeFunctor, MaybeArity, TypeDesc),
+        AttrFromSources, !State).
 
     % Write DTD entries for all the functors for a type.
     %
@@ -1532,8 +1541,7 @@ write_dtd_attlists(Stream, Element, AttrFromSources, MaybeFunctor, MaybeArity,
 write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes,
         !State) :-
     get_elements_and_args(MakeElement, TypeDesc, Elements,
-        MaybeFunctors, MaybeArities, ArgPseudoTypeLists,
-        AttributeLists),
+        MaybeFunctors, MaybeArities, ArgPseudoTypeLists, AttributeLists),
     ArgTypeLists = list.map(list.map(
         det_ground_pseudo_type_desc_to_type_desc), ArgPseudoTypeLists),
     list.condense(ArgTypeLists, ChildArgTypes),
@@ -1543,14 +1551,14 @@ write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes,
     write_dtd_entries(Stream, MakeElement, TypeDesc, Elements, MaybeFunctors,
         MaybeArities, ArgTypeLists, AttributeLists, !State).
 
+    % Write all the given DTD entries.
+    %
 :- pred write_dtd_entries(Stream::in, element_pred::in(element_pred),
     type_desc::in, list(string)::in, list(maybe(string))::in,
     list(maybe(int))::in, list(list(type_desc))::in,
     list(list(attr_from_source))::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
-    % Write all the given DTD entries.
-    %
 write_dtd_entries(_, _, _, [], _, _, _, _, !State).
 write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
         MaybeFunctorList, MaybeArityList, ArgTypeListList, AttributeListList,
@@ -1568,11 +1576,11 @@ write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
     put(Stream, Element, !State),
     put(Stream, " ", !State),
     ( if is_primitive_type(TypeDesc, _) then
-        put(Stream, "(#PCDATA)>\n", !State)
+        put(Stream, "(#PCDATA)", !State)
     else
         (
             ArgTypeList = [],
-            put(Stream, "EMPTY>\n", !State)
+            put(Stream, "EMPTY", !State)
         ;
             ArgTypeList = [Head | Tail],
             (
@@ -1614,11 +1622,11 @@ write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
                 put(Stream, "*)", !State)
             else
                 true
-            ),
-
-            put(Stream, ">\n", !State)
+            )
         )
     ),
+    put(Stream, ">\n", !State),
+
     write_dtd_attlists(Stream, Element, AttributeList, MaybeFunctor,
         MaybeArity, TypeDesc, !State),
     put(Stream, "\n", !State),

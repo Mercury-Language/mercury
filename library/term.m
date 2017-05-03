@@ -764,10 +764,6 @@ create_var(var(V), var_supply(V0), var_supply(V)) :-
     % We number variables using sequential integers.
     V = V0 + 1.
 
-var_supply_max_var(var_supply(V)) = var(V).
-
-var_supply_num_allocated(var_supply(V)) = V.
-
 %---------------------------------------------------------------------------%
 
 :- instance enum(var(_)) where [
@@ -1364,17 +1360,22 @@ get_term_context(Term) = Context :-
     ; Term = variable(_, Context)
     ).
 
-context_line(context(_, LineNumber)) = LineNumber.
-context_line(context(_, LineNumber), LineNumber).
-
-context_file(context(FileName, _)) = FileName.
-context_file(context(FileName, _), FileName).
-
 context_init = context("", 0).
 context_init(context("", 0)).
 
 context_init(File, LineNumber) = context(File, LineNumber).
 context_init(File, LineNumber, context(File, LineNumber)).
 
+context_line(context(_, LineNumber)) = LineNumber.
+context_line(context(_, LineNumber), LineNumber).
+
+context_file(context(FileName, _)) = FileName.
+context_file(context(FileName, _), FileName).
+
 %---------------------------------------------------------------------------%
 
+var_supply_max_var(var_supply(V)) = var(V).
+
+var_supply_num_allocated(var_supply(V)) = V.
+
+%---------------------------------------------------------------------------%
