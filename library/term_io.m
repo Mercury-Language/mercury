@@ -318,7 +318,7 @@ write_term_with_op_table(Ops, VarSet, Term, !IO) :-
     write_term_with_op_table(OutStream, Ops, VarSet, Term, !IO).
 
 write_term_with_op_table(OutStream, Ops, VarSet, Term, !IO) :-
-    term_io.write_term_2(OutStream, Ops, Term, VarSet, _, 0, _, !IO).
+    write_term_anon_vars(OutStream, Ops, Term, VarSet, _, 0, _, !IO).
 
 %---------------------%
 
@@ -340,207 +340,209 @@ write_term_nl_with_op_table(OutStream, Ops, VarSet, Term, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred term_io.write_term_2(io.text_output_stream::in, Ops::in,
+:- pred write_term_anon_vars(io.text_output_stream::in, Ops::in,
     term(T)::in, varset(T)::in, varset(T)::out, int::in, int::out,
     io::di, io::uo) is det <= op_table(Ops).
 
-write_term_2(OutStream, Ops, Term, !VarSet, !N, !IO) :-
-    term_io.write_term_3(OutStream, Ops, Term, ops.max_priority(Ops) + 1,
+write_term_anon_vars(OutStream, Ops, Term, !VarSet, !N, !IO) :-
+    write_term_prio_anon_vars(OutStream, Ops, Term, ops.max_priority(Ops) + 1,
         !VarSet, !N, !IO).
 
-:- pred term_io.write_term_3(io.text_output_stream::in, Ops::in,
+:- pred write_term_prio_anon_vars(io.text_output_stream::in, Ops::in,
     term(T)::in, ops.priority::in, varset(T)::in, varset(T)::out,
     int::in, int::out, io::di, io::uo) is det <= op_table(Ops).
 
-write_term_3(OutStream, Ops, term.variable(Id, _), _, !VarSet, !N, !IO) :-
-    term_io.write_variable_2(OutStream, Ops, Id, !VarSet, !N, !IO).
-write_term_3(OutStream, Ops, term.functor(Functor, Args, _), Priority,
-        !VarSet, !N, !IO) :-
-    ( if
-        Functor = term.atom("[|]"),
-        Args = [ListHead, ListTail]
-    then
-        io.write_char(OutStream, '[', !IO),
-        term_io.write_arg_term(OutStream, Ops, ListHead, !VarSet, !N, !IO),
-        term_io.write_list_tail(OutStream, Ops, ListTail, !VarSet, !N, !IO),
-        io.write_char(OutStream, ']', !IO)
-    else if
-        Functor = term.atom("[]"),
-        Args = []
-    then
-        io.write_string(OutStream, "[]", !IO)
-    else if
-        Functor = term.atom("{}"),
-        Args = [BracedTerm]
-    then
-        io.write_string(OutStream, "{ ", !IO),
-        term_io.write_term_2(OutStream, Ops, BracedTerm, !VarSet, !N, !IO),
-        io.write_string(OutStream, " }", !IO)
-    else if
-        Functor = term.atom("{}"),
-        Args = [BracedHead | BracedTail]
-    then
-        io.write_char(OutStream, '{', !IO),
-        term_io.write_arg_term(OutStream, Ops, BracedHead, !VarSet, !N, !IO),
-        term_io.write_term_args(OutStream, Ops, BracedTail, !VarSet, !N, !IO),
-        io.write_char(OutStream, '}', !IO)
-    else if
-        % The empty functor '' is used for higher-order syntax: Var(Arg, ...)
-        % gets parsed as ''(Var, Arg). When writing it out, we want to use
-        % the nice syntax.
-        Functor = term.atom(""),
-        Args = [term.variable(Var, _), FirstArg | OtherArgs]
-    then
-        term_io.write_variable_2(OutStream, Ops, Var, !VarSet, !N, !IO),
-        io.write_char(OutStream, '(', !IO),
-        term_io.write_arg_term(OutStream, Ops, FirstArg, !VarSet, !N, !IO),
-        term_io.write_term_args(OutStream, Ops, OtherArgs, !VarSet, !N, !IO),
-        io.write_char(OutStream, ')', !IO)
-    else if
-        Args = [PrefixArg],
-        Functor = term.atom(OpName),
-        ops.lookup_prefix_op(Ops, OpName, OpPriority, OpAssoc)
-    then
-        % ZZZ io.output_stream(Stream, !IO),
-        maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-        term_io.write_constant(OutStream, Functor, !IO),
-        io.write_char(OutStream, ' ', !IO),
-        adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
-        term_io.write_term_3(OutStream, Ops, PrefixArg, NewPriority,
-            !VarSet, !N, !IO),
-        maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
-    else if
-        Args = [PostfixArg],
-        Functor = term.atom(OpName),
-        ops.lookup_postfix_op(Ops, OpName, OpPriority, OpAssoc)
-    then
-        % ZZZ io.output_stream(OutStream, !IO),
-        maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-        adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
-        term_io.write_term_3(OutStream, Ops, PostfixArg, NewPriority,
-            !VarSet, !N, !IO),
-        io.write_char(OutStream, ' ', !IO),
-        term_io.write_constant(OutStream, Functor, !IO),
-        maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
-    else if
-        Args = [Arg1, Arg2],
-        Functor = term.atom(OpName),
-        ops.lookup_infix_op(Ops, OpName, OpPriority, LeftAssoc, RightAssoc)
-    then
-        % ZZZ io.output_stream(OutStream, !IO),
-        maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-        adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
-        term_io.write_term_3(OutStream, Ops, Arg1, LeftPriority,
-            !VarSet, !N, !IO),
-        ( if OpName = "," then
-            io.write_string(OutStream, ", ", !IO)
-        else if OpName = "." then
-            % If the operator is '.'/2, then we must not put spaces around it
-            % (or at the very least, we should not put spaces afterwards)
-            % because that would make it appear as the end-of-term token.
-            % However, we do have to quote it if the right hand side
-            % can begin with a digit.
-            ( if starts_with_digit(Arg2) then
-                Dot = "'.'"
-            else
-                Dot = "."
-            ),
-            io.write_string(OutStream, Dot, !IO)
-        else
-            io.write_char(OutStream, ' ', !IO),
-            term_io.write_constant(OutStream, Functor, !IO),
-            io.write_char(OutStream, ' ', !IO)
-        ),
-        adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
-        term_io.write_term_3(OutStream, Ops, Arg2, RightPriority,
-            !VarSet, !N, !IO),
-        maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
-    else if
-        Args = [Arg1, Arg2],
-        Functor = term.atom(OpName),
-        ops.lookup_binary_prefix_op(Ops, OpName, OpPriority,
-            FirstAssoc, SecondAssoc)
-    then
-        % ZZZ io.output_stream(OutStream, !IO),
-        maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-        term_io.write_constant(OutStream, Functor, !IO),
-        io.write_char(OutStream, ' ', !IO),
-        adjust_priority_for_assoc(OpPriority, FirstAssoc, FirstPriority),
-        term_io.write_term_3(OutStream, Ops, Arg1, FirstPriority,
-            !VarSet, !N, !IO),
-        io.write_char(OutStream, ' ', !IO),
-        adjust_priority_for_assoc(OpPriority, SecondAssoc, SecondPriority),
-        term_io.write_term_3(OutStream, Ops, Arg2, SecondPriority,
-            !VarSet, !N, !IO),
-        maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
-    else
+write_term_prio_anon_vars(OutStream, Ops, Term, Priority, !VarSet, !N, !IO) :-
+    (
+        Term = term.variable(Var, _),
+        write_variable_anon_vars(OutStream, Ops, Var, !VarSet, !N, !IO)
+    ;
+        Term = term.functor(Functor, Args, _),
         ( if
-            Args = [],
-            Functor = term.atom(Op),
-            ops.lookup_op(Ops, Op),
-            Priority =< ops.max_priority(Ops)
+            Functor = term.atom("[|]"),
+            Args = [ListHead, ListTail]
         then
-            io.write_char(OutStream, '(', !IO),
-            term_io.write_constant(OutStream, Functor, !IO),
-            io.write_char(OutStream, ')', !IO)
-        else
-            term_io.write_constant(OutStream, Functor,
-                maybe_adjacent_to_graphic_token, !IO)
-        ),
-        (
-            Args = [X | Xs],
-            io.write_char(OutStream, '(', !IO),
-            term_io.write_arg_term(OutStream, Ops, X, !VarSet, !N, !IO),
-            term_io.write_term_args(OutStream, Ops, Xs, !VarSet, !N, !IO),
-            io.write_char(OutStream, ')', !IO)
-        ;
+            io.write_char(OutStream, '[', !IO),
+            write_term_arg(OutStream, Ops, ListHead, !VarSet, !N, !IO),
+            write_later_list_elements(OutStream, Ops, ListTail,
+                !VarSet, !N, !IO),
+            io.write_char(OutStream, ']', !IO)
+        else if
+            Functor = term.atom("[]"),
             Args = []
+        then
+            io.write_string(OutStream, "[]", !IO)
+        else if
+            Functor = term.atom("{}"),
+            Args = [BracedTerm]
+        then
+            io.write_string(OutStream, "{ ", !IO),
+            write_term_anon_vars(OutStream, Ops, BracedTerm,
+                !VarSet, !N, !IO),
+            io.write_string(OutStream, " }", !IO)
+        else if
+            Functor = term.atom("{}"),
+            Args = [BracedHead | BracedTail]
+        then
+            io.write_char(OutStream, '{', !IO),
+            write_term_arg(OutStream, Ops, BracedHead, !VarSet, !N, !IO),
+            write_term_later_args(OutStream, Ops, BracedTail,
+                !VarSet, !N, !IO),
+            io.write_char(OutStream, '}', !IO)
+        else if
+            % The empty functor '' is used for higher-order syntax:
+            % Var(Arg, ...) gets parsed as ''(Var, Arg). When writing it out,
+            % we want to use the nice syntax.
+            Functor = term.atom(""),
+            Args = [term.variable(Var, _), FirstArg | OtherArgs]
+        then
+            write_variable_anon_vars(OutStream, Ops, Var, !VarSet, !N, !IO),
+            io.write_char(OutStream, '(', !IO),
+            write_term_arg(OutStream, Ops, FirstArg, !VarSet, !N, !IO),
+            write_term_later_args(OutStream, Ops, OtherArgs, !VarSet, !N, !IO),
+            io.write_char(OutStream, ')', !IO)
+        else if
+            Args = [PrefixArg],
+            Functor = term.atom(OpName),
+            ops.lookup_prefix_op(Ops, OpName, OpPriority, OpAssoc)
+        then
+            maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+            write_constant(OutStream, Functor, !IO),
+            io.write_char(OutStream, ' ', !IO),
+            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+            write_term_prio_anon_vars(OutStream, Ops, PrefixArg, NewPriority,
+                !VarSet, !N, !IO),
+            maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+        else if
+            Args = [PostfixArg],
+            Functor = term.atom(OpName),
+            ops.lookup_postfix_op(Ops, OpName, OpPriority, OpAssoc)
+        then
+            maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+            write_term_prio_anon_vars(OutStream, Ops, PostfixArg, NewPriority,
+                !VarSet, !N, !IO),
+            io.write_char(OutStream, ' ', !IO),
+            write_constant(OutStream, Functor, !IO),
+            maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+        else if
+            Args = [Arg1, Arg2],
+            Functor = term.atom(OpName),
+            ops.lookup_infix_op(Ops, OpName, OpPriority, LeftAssoc, RightAssoc)
+        then
+            maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+            adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
+            write_term_prio_anon_vars(OutStream, Ops, Arg1, LeftPriority,
+                !VarSet, !N, !IO),
+            ( if OpName = "," then
+                io.write_string(OutStream, ", ", !IO)
+            else if OpName = "." then
+                % If the operator is '.'/2, then we must not put spaces
+                % around it (or at the very least, we should not put spaces
+                % afterwards) because that would make it appear as the
+                % end-of-term token. However, we do have to quote it
+                % if the right hand side can begin with a digit.
+                ( if starts_with_digit(Arg2) then
+                    Dot = "'.'"
+                else
+                    Dot = "."
+                ),
+                io.write_string(OutStream, Dot, !IO)
+            else
+                io.write_char(OutStream, ' ', !IO),
+                write_constant(OutStream, Functor, !IO),
+                io.write_char(OutStream, ' ', !IO)
+            ),
+            adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
+            write_term_prio_anon_vars(OutStream, Ops, Arg2, RightPriority,
+                !VarSet, !N, !IO),
+            maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+        else if
+            Args = [Arg1, Arg2],
+            Functor = term.atom(OpName),
+            ops.lookup_binary_prefix_op(Ops, OpName, OpPriority,
+                FirstAssoc, SecondAssoc)
+        then
+            maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+            write_constant(OutStream, Functor, !IO),
+            io.write_char(OutStream, ' ', !IO),
+            adjust_priority_for_assoc(OpPriority, FirstAssoc, FirstPriority),
+            write_term_prio_anon_vars(OutStream, Ops, Arg1, FirstPriority,
+                !VarSet, !N, !IO),
+            io.write_char(OutStream, ' ', !IO),
+            adjust_priority_for_assoc(OpPriority, SecondAssoc, SecondPriority),
+            write_term_prio_anon_vars(OutStream, Ops, Arg2, SecondPriority,
+                !VarSet, !N, !IO),
+            maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+        else
+            ( if
+                Args = [],
+                Functor = term.atom(Op),
+                ops.lookup_op(Ops, Op),
+                Priority =< ops.max_priority(Ops)
+            then
+                io.write_char(OutStream, '(', !IO),
+                write_constant(OutStream, Functor, !IO),
+                io.write_char(OutStream, ')', !IO)
+            else
+                write_constant(OutStream, Functor,
+                    maybe_adjacent_to_graphic_token, !IO)
+            ),
+            (
+                Args = [X | Xs],
+                io.write_char(OutStream, '(', !IO),
+                write_term_arg(OutStream, Ops, X, !VarSet, !N, !IO),
+                write_term_later_args(OutStream, Ops, Xs, !VarSet, !N, !IO),
+                io.write_char(OutStream, ')', !IO)
+            ;
+                Args = []
+            )
         )
     ).
 
-:- pred term_io.write_arg_term(io.text_output_stream::in, Ops::in,
+:- pred write_term_arg(io.text_output_stream::in, Ops::in,
     term(T)::in, varset(T)::in, varset(T)::out, int::in, int::out,
     io::di, io::uo) is det <= op_table(Ops).
 
-write_arg_term(OutStream, Ops, Term, !VarSet, !N, !IO) :-
-    term_io.write_term_3(OutStream, Ops, Term, ops.arg_priority(Ops),
+write_term_arg(OutStream, Ops, Term, !VarSet, !N, !IO) :-
+    write_term_prio_anon_vars(OutStream, Ops, Term, ops.arg_priority(Ops),
         !VarSet, !N, !IO).
 
     % Write the remaining arguments.
     %
-:- pred term_io.write_term_args(io.text_output_stream::in, Ops::in,
+:- pred write_term_later_args(io.text_output_stream::in, Ops::in,
     list(term(T))::in, varset(T)::in, varset(T)::out, int::in, int::out,
     io::di, io::uo) is det <= op_table(Ops).
 
-write_term_args(_, _, [], !VarSet, !N, !IO).
-write_term_args(OutStream, Ops, [X | Xs], !VarSet, !N, !IO) :-
+write_term_later_args(_, _, [], !VarSet, !N, !IO).
+write_term_later_args(OutStream, Ops, [X | Xs], !VarSet, !N, !IO) :-
     io.write_string(OutStream, ", ", !IO),
-    term_io.write_arg_term(OutStream, Ops, X, !VarSet, !N, !IO),
-    term_io.write_term_args(OutStream, Ops, Xs, !VarSet, !N, !IO).
+    write_term_arg(OutStream, Ops, X, !VarSet, !N, !IO),
+    write_term_later_args(OutStream, Ops, Xs, !VarSet, !N, !IO).
 
-:- pred term_io.write_list_tail(io.text_output_stream::in, Ops::in,
+:- pred write_later_list_elements(io.text_output_stream::in, Ops::in,
     term(T)::in, varset(T)::in, varset(T)::out, int::in, int::out,
     io::di, io::uo) is det <= op_table(Ops).
 
-write_list_tail(OutStream, Ops, Term, !VarSet, !N, !IO) :-
+write_later_list_elements(OutStream, Ops, Term, !VarSet, !N, !IO) :-
     ( if
-        Term = term.variable(Id, _),
-        varset.search_var(!.VarSet, Id, Val)
+        Term = term.variable(Var, _),
+        varset.search_var(!.VarSet, Var, Value)
     then
-        term_io.write_list_tail(OutStream, Ops, Val, !VarSet, !N, !IO)
+        write_later_list_elements(OutStream, Ops, Value, !VarSet, !N, !IO)
     else if
         Term = term.functor(term.atom("[|]"), [ListHead, ListTail], _)
     then
         io.write_string(OutStream, ", ", !IO),
-        term_io.write_arg_term(OutStream, Ops, ListHead, !VarSet, !N, !IO),
-        term_io.write_list_tail(OutStream, Ops, ListTail, !VarSet, !N, !IO)
+        write_term_arg(OutStream, Ops, ListHead, !VarSet, !N, !IO),
+        write_later_list_elements(OutStream, Ops, ListTail, !VarSet, !N, !IO)
     else if
         Term = term.functor(term.atom("[]"), [], _)
     then
         true
     else
         io.write_string(OutStream, " | ", !IO),
-        term_io.write_term_2(OutStream, Ops, Term, !VarSet, !N, !IO)
+        write_term_anon_vars(OutStream, Ops, Term, !VarSet, !N, !IO)
     ).
 
     % Succeeds iff outputting the given term would start with a digit.
@@ -568,10 +570,10 @@ write_constant(Const, !IO) :-
     write_constant(OutStream, Const, !IO).
 
 write_constant(OutStream, Const, !IO) :-
-    term_io.write_constant(OutStream, Const,
+    write_constant(OutStream, Const,
         not_adjacent_to_graphic_token, !IO).
 
-:- pred term_io.write_constant(io.text_output_stream::in, const::in,
+:- pred write_constant(io.text_output_stream::in, const::in,
     adjacent_to_graphic_token::in, io::di, io::uo) is det.
 
 write_constant(OutStream, Const, AdjacentToGraphicToken, !IO) :-
@@ -638,61 +640,72 @@ integer_signedness_and_size_suffix(unsigned, size_32_bit) = "u32".
 integer_signedness_and_size_suffix(unsigned, size_64_bit) = "u64".
 
 %---------------------------------------------------------------------------%
-%
-% Write a variable.
-%
-% There are two ways we could choose to write unnamed variables.
-%
-% 1 Convert the variable to an integer representation and write
-%   `_N' where N is that integer representation. This has the
-%   advantage that such variables get printed in a canonical
-%   way, so rearranging terms containing such variables will
-%   not effect the way they are numbered (this includes breaking
-%   up a term and printing the pieces separately).
-%
-% 2 Number the unnamed variables from 0 and write `_N' where
-%   N is the number in the sequence of such variables. This has
-%   the advantage that such variables can be visually scanned
-%   rather more easily (for example in error messages).
-%
-% An ideal solution would be to provide both, and a flag to choose
-% between the two. At the moment we provide only the first, though
-% the infrastructure for the second is present in the code.
-%
 
-write_variable(Variable, VarSet, !IO) :-
+write_variable(Var, VarSet, !IO) :-
     io.output_stream(OutStream, !IO),
-    write_variable(OutStream, Variable, VarSet, !IO).
+    write_variable(OutStream, Var, VarSet, !IO).
 
-write_variable(OutStream, Variable, VarSet, !IO) :-
+write_variable(OutStream, Var, VarSet, !IO) :-
     io.get_op_table(Ops, !IO),
-    term_io.write_variable_with_op_table(OutStream, Ops, Variable, VarSet,
-        !IO).
+    term_io.write_variable_with_op_table(OutStream, Ops, Var, VarSet, !IO).
 
-write_variable_with_op_table(Ops, Variable, VarSet, !IO) :-
+write_variable_with_op_table(Ops, Var, VarSet, !IO) :-
     io.output_stream(OutStream, !IO),
-    write_variable_with_op_table(OutStream, Ops, Variable, VarSet, !IO).
+    write_variable_with_op_table(OutStream, Ops, Var, VarSet, !IO).
 
-write_variable_with_op_table(OutStream, Ops, Variable, VarSet, !IO) :-
-    term_io.write_variable_2(OutStream, Ops, Variable, VarSet, _, 0, _, !IO).
+write_variable_with_op_table(OutStream, Ops, Var, VarSet, !IO) :-
+    write_variable_anon_vars(OutStream, Ops, Var, VarSet, _, 0, _, !IO).
 
-:- pred term_io.write_variable_2(io.text_output_stream::in, Ops::in,
+    % Write a variable.
+    %
+    % There are two ways we could choose to write unnamed variables.
+    %
+    % 1 Convert the variable to the integer that represents it and write
+    %   `_N' where N is that integer. This has the advantage that
+    %    such variables get printed in a canonical way, so rearranging terms
+    %    containing such variables will not effect the way they are numbered
+    %    (this includes breaking up a term and printing the pieces separately).
+    %
+    % 2 Number the unnamed variables from 0 and write `_N' where
+    %   N is the next number in the sequence of such variables.
+    %   This has the advantage that such variables can be visually scanned
+    %   rather more easily (for example in error messages).
+    %
+    % An ideal solution would be to provide both, and a flag to choose
+    % between the two. At the moment we provide only the first, though
+    % the infrastructure for the second is present in the code.
+    % That infrastructure is the threading of the (as yet unused)
+    % !N state variables through the code that writes terms.
+    %
+:- pred write_variable_anon_vars(io.text_output_stream::in, Ops::in,
     var(T)::in, varset(T)::in, varset(T)::out, int::in, int::out,
     io::di, io::uo) is det <= op_table(Ops).
 
-write_variable_2(OutStream, Ops, Id, !VarSet, !N, !IO) :-
-    ( if varset.search_var(!.VarSet, Id, Val) then
-        term_io.write_term_2(OutStream, Ops, Val, !VarSet, !N, !IO)
-    else if varset.search_name(!.VarSet, Id, Name) then
+write_variable_anon_vars(OutStream, Ops, Var, !VarSet, !N, !IO) :-
+    ( if varset.search_var(!.VarSet, Var, Value) then
+        write_term_anon_vars(OutStream, Ops, Value, !VarSet, !N, !IO)
+    else if varset.search_name(!.VarSet, Var, Name) then
         io.write_string(OutStream, Name, !IO)
     else
-        % XXX The names we generate here *could* clash with the name
-        % of an explicit-named variable.
-        term.var_to_int(Id, VarNum),
-        string.int_to_string(VarNum, Num),
-        string.append("_", Num, VarName),
-        varset.name_var(Id, VarName, !VarSet),
-        !:N = !.N + 1,
+        % XXX The names we generate here, with either approach,
+        % *could* clash with the name of an explicit-named variable.
+
+        % This code implements the first approach described above.
+        term.var_to_int(Var, VarNum),
+
+        % This code would implement the second approach described above.
+        % VarNum = !.N,
+        % !:N = !.N + 1,
+
+        string.int_to_string(VarNum, VarNumStr),
+        VarName = "_" ++ VarNumStr,
+
+        % Recording the name we have given Var in !VarSet is needed
+        % only with the second approach. The first would give the same
+        % name to the same variable even without it, but since it would
+        % allocate memory on *every* occurrence of the variable rather than
+        % on just the first one, we record the name anyway.
+        varset.name_var(Var, VarName, !VarSet),
         io.write_string(OutStream, VarName, !IO)
     ).
 
@@ -713,8 +726,8 @@ write_escaped_char(Char, !IO) :-
     term_io.write_escaped_char(Stream, Char, !IO).
 
 write_escaped_char(Stream, Char, !State) :-
-    % Note: the code of add_escaped_char and write_escaped_char should be
-    % kept in sync. The code of both is similar to code in
+    % Note: the code of add_escaped_char and write_escaped_char
+    % should be kept in sync. The code of both is similar to code in
     % compiler/mercury_to_mercury.m; any changes here may require
     % similar changes there.
     ( if mercury_escape_special_char(Char, QuoteChar) then
@@ -797,13 +810,13 @@ write_escaped_string(Stream, String, !State) :-
 
 escaped_string(String) =
     string.append_list(
-        list.reverse(string.foldl(term_io.add_escaped_char, String, []))).
+        list.reverse(string.foldl(add_escaped_char, String, []))).
 
-:- func term_io.add_escaped_char(char, list(string)) = list(string).
+:- func add_escaped_char(char, list(string)) = list(string).
 
 add_escaped_char(Char, Strings0) = Strings :-
-    % Note: the code of add_escaped_char and write_escaped_char should be
-    % kept in sync. The code of both is similar to code in
+    % Note: the code of add_escaped_char and write_escaped_char
+    % should be kept in sync. The code of both is similar to code in
     % compiler/mercury_to_mercury.m; any changes here may require
     % similar changes there.
     ( if mercury_escape_special_char(Char, QuoteChar) then
