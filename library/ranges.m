@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2009 The University of Melbourne.
 % Copyright (C) 2013-2016 Opturion Pty Ltd.
@@ -24,7 +24,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Range lists represent sets of integers.  Each contiguous block
+    % Range lists represent sets of integers. Each contiguous block
     % of integers in the set is stored as an range which specifies
     % the bounds of the block, and these ranges are kept in a list-like
     % structure.
@@ -46,7 +46,7 @@
 :- pred is_non_empty(ranges::in) is semidet.
 
     % universe returns the largest set that can be handled by this module.
-    % This is the set of integers (min_int+1)..max_int.  Note that min_int
+    % This is the set of integers (min_int+1)..max_int. Note that min_int
     % cannot be represented in any set.
     %
 :- func universe = ranges.
@@ -80,7 +80,7 @@
     %
 :- func size(ranges) = int.
 
-    % Returns the median value of the set.  In case of a tie, returns
+    % Returns the median value of the set. In case of a tie, returns
     % the lower of the two options.
     %
 :- func median(ranges) = int.
@@ -147,15 +147,17 @@
 :- func restrict_range(int, int, ranges) = ranges.
 
     % prune_to_next_non_member(A0, A, N0, N):
+    %
     % N is the smallest integer larger than or equal to N0 which is not
-    % in A0.  A is the set A0 restricted to values greater than N.
+    % in A0. A is the set A0 restricted to values greater than N.
     %
 :- pred prune_to_next_non_member(ranges::in, ranges::out,
     int::in, int::out) is det.
 
     % prune_to_prev_non_member(A0, A, N0, N):
+    %
     % N is the largest integer smaller than or equal to N0 which is not
-    % in A0.  A is the set A0 restricted to values less than N.
+    % in A0. A is the set A0 restricted to values less than N.
     %
 :- pred prune_to_prev_non_member(ranges::in, ranges::out,
     int::in, int::out) is det.
@@ -327,8 +329,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Values of this type represent finite sets of integers.  They are
-    % interpreted in the following way.
+    % Values of this type represent finite sets of integers.
+    % They are interpreted in the following way.
     %
     %     S[[ nil ]]                        = {}
     %     S[[ range(L, H, Rest) ]]       = {N | L < N =< H} \/ S[[ Rest ]]
@@ -834,32 +836,38 @@ contraction_0(L0, H0, range(L1, H1, As), C) = Result :-
         Result = range(L0, H0, contraction_0(L1N, H1N, As, C))
     ).
 
-   % 0 < B.  Round up.
+   % 0 < B. Round up.
+   %
 :- func div_up_xp(int::in, int::in) = (int::out) is det.
 
-div_up_xp(A, B)   = (A > 0 -> div_up_pp(A, B) ; div_up_np(A, B)).
+div_up_xp(A, B) = (A > 0 -> div_up_pp(A, B) ; div_up_np(A, B)).
 
-    % 0 < A,B.   Round up.
+    % 0 < A,B. Round up.
+    %
 :- func div_up_pp(int::in, int::in) = (int::out) is det.
 
-div_up_pp(A, B)   = int.unchecked_quotient(A + B - 1, B).
+div_up_pp(A, B) = int.unchecked_quotient(A + B - 1, B).
 
-   % A < 0 < B.  Round up.
+   % A < 0 < B. Round up.
+   %
 :- func div_up_np(int::in, int::in) = (int::out) is det.
 
-div_up_np(A, B)   = int.unchecked_quotient(A, B).
+div_up_np(A, B) = int.unchecked_quotient(A, B).
 
-   % 0 < B.  Round down.
+   % 0 < B. Round down.
+   %
 :- func div_down_xp(int::in, int::in) = (int::out) is det.
 
 div_down_xp(A, B) = (A > 0 -> div_down_pp(A, B) ; div_down_np(A, B)).
 
-    % 0 < A,B.    Round down.
+    % 0 < A,B. Round down.
+    %
 :- func div_down_pp(int::in, int::in) = (int::out) is det.
 
 div_down_pp(A, B) = int.unchecked_quotient(A, B).
 
-    % A < 0 < B.  Round down.
+    % A < 0 < B. Round down.
+    %
 :- func div_down_np(int::in, int::in) = (int::out) is det.
 
 div_down_np(A, B) = int.unchecked_quotient(A - B + 1, B).
@@ -873,9 +881,10 @@ to_sorted_list(range(L, H, Rest)) =
 :- func to_sorted_list_2(int, int, list(int)) = list(int).
 
 to_sorted_list_2(L, H, Ints) =
-    ( if   H = L
-      then Ints
-      else to_sorted_list_2(L, H-1, [H | Ints])
+    ( if   H = L then
+        Ints
+    else
+        to_sorted_list_2(L, H-1, [H | Ints])
     ).
 
 from_list(List) =

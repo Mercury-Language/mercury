@@ -713,7 +713,7 @@ to_doc(Depth, Priority, X) =
 
 generic_term_to_doc(Depth, Priority, X) = Doc :-
     ( if
-    	Depth =< 0
+        Depth =< 0
       then
         functor(X, canonicalize, Name, Arity),
         Doc = ( if Arity = 0 then text(Name) else Name ++ "/" ++ Arity )
