@@ -170,8 +170,12 @@
     get_device_offset(Surface::in, X::out, Y::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
+    double  x, y;
+
     cairo_surface_get_device_offset(
-        ((MCAIRO_surface *)Surface)->mcairo_raw_surface, &X, &Y);
+        ((MCAIRO_surface *)Surface)->mcairo_raw_surface, &x, &y);
+    X = x;
+    Y = y;
 ").
 
 :- pragma foreign_proc("C",
@@ -206,8 +210,12 @@
     get_fallback_resolution(Surface::in, X::out, Y::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
+    double  x, y;
+
     cairo_surface_get_fallback_resolution(
-        ((MCAIRO_surface *)Surface)->mcairo_raw_surface, &X, &Y);
+        ((MCAIRO_surface *)Surface)->mcairo_raw_surface, &x, &y);
+    X = x;
+    Y = y;
 ").
 
 :- pragma foreign_proc("C",

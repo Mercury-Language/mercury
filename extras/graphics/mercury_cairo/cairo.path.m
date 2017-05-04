@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
+% Copyright (C) 2015-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -219,7 +220,11 @@
     get_current_point(Ctxt::in, X::out, Y::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    cairo_get_current_point(Ctxt->mcairo_raw_context, &X, &Y);
+    double  x, y;
+
+    cairo_get_current_point(Ctxt->mcairo_raw_context, &x, &y);
+    X = x;
+    Y = y;
 ").
 
 :- pragma foreign_proc("C",
@@ -399,7 +404,13 @@ rel_move_to(Ctxt, Dx, Dy, !IO) :-
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    cairo_path_extents(Ctxt->mcairo_raw_context, &X1, &Y1, &X2, &Y2);
+    double  x1, y1, x2, y2;
+
+    cairo_path_extents(Ctxt->mcairo_raw_context, &x1, &y1, &x2, &y2);
+    X1 = x1;
+    Y1 = y1;
+    X2 = x2;
+    Y2 = y2;
 ").
 
 %---------------------------------------------------------------------------%

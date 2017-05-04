@@ -1219,8 +1219,13 @@ set_dash(Context, Dashes, OffSet, !IO) :-
        _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    cairo_clip_extents(Ctxt->mcairo_raw_context,
-        &X1, &Y1, &X2, &Y2);
+    double  x1, y1, x2, y2;
+
+    cairo_clip_extents(Ctxt->mcairo_raw_context, &x1, &y1, &x2, &y2);
+    X1 = x1;
+    Y1 = y1;
+    X2 = x2;
+    Y2 = y2;
 ").
 
 :- pragma foreign_proc("C",
@@ -1260,8 +1265,13 @@ set_dash(Context, Dashes, OffSet, !IO) :-
             _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    cairo_fill_extents(Ctxt->mcairo_raw_context,
-        &X1, &Y1, &X2, &Y2);
+    double  x1, y1, x2, y2;
+
+    cairo_fill_extents(Ctxt->mcairo_raw_context, &x1, &y1, &x2, &y2);
+    X1 = x1;
+    Y1 = y1;
+    X2 = x2;
+    Y2 = y2;
 ").
 
 :- pragma foreign_proc("C",
@@ -1325,7 +1335,13 @@ set_dash(Context, Dashes, OffSet, !IO) :-
         _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    cairo_stroke_extents(Ctxt->mcairo_raw_context, &X1, &Y1, &X2, &Y2);
+    double  x1, y1, x2, y2;
+
+    cairo_stroke_extents(Ctxt->mcairo_raw_context, &x1, &y1, &x2, &y2);
+    X1 = x1;
+    Y1 = y1;
+    X2 = x2;
+    Y2 = y2;
 ").
 
 :- pragma foreign_proc("C",
