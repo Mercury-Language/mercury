@@ -81,8 +81,30 @@
 
 :- func unchecked_rem(uint::in, uint::in) = (uint::uo) is det.
 
+    % Left shift.
+    % X << Y returns X "left shifted" by Y bits.
+    % The bit positions vacated by the shift are filled by zeros.
+    % Throws an exception if Y is not in [0, bits_per_uint).
+    %
+:- func (uint::in) << (int::in) = (uint::uo) is det.
+
+    % unchecked_lift_shift(X, Y) is the same as X << Y except that the
+    % behaviour is undefined if Y is not in [0, bits_per_uint).
+    % It will typically be be implemented more efficiently than X << Y.
+    %
 :- func unchecked_left_shift(uint::in, int::in) = (uint::uo) is det.
 
+    % Right shift.
+    % X >> Y returns X "right shifted" by Y bits.
+    % The bit positions vacated by the shift are filled by zeros.
+    % Throws an exception if Y is not in [0, bits_per_uint).
+    %
+:- func (uint::in) >> (int::in) = (uint::uo) is det.
+
+    % unchecked_right_shift(X, Y) is the same as X >> Y except that the
+    % behaviour is undefined if Y is not in [0, bits_per_uint).
+    % It will typically be implemented more efficiently than X >> Y.
+    %
 :- func unchecked_right_shift(uint::in, int::in) = (uint::uo) is det.
 
     % even(X) is equivalent to (X mod 2 = 0).
@@ -126,6 +148,8 @@
 
 :- implementation.
 
+:- import_module exception.
+:- import_module math.
 :- import_module require.
 :- import_module string.
 
@@ -217,6 +241,24 @@ cast_from_int(_) = _ :-
 
 cast_to_int(_) = _ :-
     sorry($module, "uint.cast_to_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+X << Y = Result :-
+    ( if cast_from_int(Y) < cast_from_int(bits_per_uint) then
+        Result = unchecked_left_shift(X, Y)
+    else
+        Msg = "uint.(<<): second operand is out of range",
+        throw(math.domain_error(Msg))
+    ).
+
+X >> Y = Result :-
+    ( if cast_from_int(Y) < cast_from_int(bits_per_uint) then
+        Result = unchecked_right_shift(X, Y)
+    else
+        Msg = "uint.(>>): second operand is out of range",
+        throw(math.domain_error(Msg))
+    ).
 
 %---------------------------------------------------------------------------%
 
