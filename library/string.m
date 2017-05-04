@@ -851,6 +851,13 @@
     %
 :- func chomp(string) = string.
 
+    % strip(String):
+    %
+    % Returns `String' minus any initial and trailing whitespace characters
+    % in the ASCII range.
+    %
+:- func strip(string) = string.
+
     % lstrip(String):
     %
     % Return `String' minus any initial whitespace characters
@@ -864,13 +871,6 @@
     % in the ASCII range.
     %
 :- func rstrip(string) = string.
-
-    % strip(String):
-    %
-    % Returns `String' minus any initial and trailing whitespace characters
-    % in the ASCII range.
-    %
-:- func strip(string) = string.
 
     % lstrip_pred(Pred, String):
     %
@@ -1382,11 +1382,13 @@
     % that module instead?)
     %
     % Like base_string_to_int/3, but allow for an arbitrary number of
-    % underscores between the other characters.  Leading and trailing
+    % underscores between the other characters. Leading and trailing
     % underscores are allowed.
     %
 :- pred base_string_to_int_underscore(int::in, string::in, int::out)
     is semidet.
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -2817,11 +2819,6 @@ count_utf8_code_units_2(Char, !Length) :-
     }
 ").
 
-codepoint_offset(String, N, Index) :-
-    % Note: we do not define what happens with unpaired surrogates.
-    %
-    codepoint_offset(String, 0, N, Index).
-
 codepoint_offset(String, StartOffset, N, Index) :-
     StartOffset >= 0,
     Length = length(String),
@@ -2840,6 +2837,13 @@ codepoint_offset_loop(String, Offset, Length, N, Index) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+codepoint_offset(String, N, Index) :-
+    % Note: we do not define what happens with unpaired surrogates.
+    %
+    codepoint_offset(String, 0, N, Index).
+
+%---------------------------------------------------------------------------%
 %
 % Computing hashes of strings.
 %
@@ -2849,10 +2853,10 @@ codepoint_offset_loop(String, Offset, Length, N, Index) :-
 % The corresponding definitions must be kept identical.
 %
 
-hash(String, HashVal) :-
-    HashVal = hash(String).
-
 hash(String) = HashVal :-
+    hash(String, HashVal).
+
+hash(String, HashVal) :-
     length(String, Length),
     hash_loop(String, 0, Length, 0, HashVal1),
     HashVal = HashVal1 `xor` Length.
@@ -3361,8 +3365,6 @@ sub_string_search_start_loop(String, SubString, I, Len, SubLen, Index) :-
 append(S1, S2) = S3 :-
     append(S1, S2, S3).
 
-S1 ++ S2 = append(S1, S2).
-
 :- pragma promise_equivalent_clauses(append/3).
 
 append(S1::in, S2::in, S3::in) :-
@@ -3575,6 +3577,8 @@ mercury_append(X, Y, Z) :-
     to_char_list(Y, YList),
     to_char_list(Z, ZList),
     list.append(XList, YList, ZList).
+
+S1 ++ S2 = append(S1, S2).
 
 %---------------------%
 %
@@ -4883,13 +4887,13 @@ strip(S0) = S :-
     R = suffix_length(is_whitespace, S0),
     S = between(S0, L, length(S0) - R).
 
-rstrip(S) = rstrip_pred(is_whitespace, S).
-
 lstrip(S) = lstrip_pred(is_whitespace, S).
 
-rstrip_pred(P, S) = left(S, length(S) - suffix_length(P, S)).
+rstrip(S) = rstrip_pred(is_whitespace, S).
 
 lstrip_pred(P, S) = right(S, length(S) - prefix_length(P, S)).
+
+rstrip_pred(P, S) = left(S, length(S) - suffix_length(P, S)).
 
 %---------------------%
 
@@ -5077,14 +5081,14 @@ foldl2(Closure, String, !Acc1, !Acc2) :-
     length(String, Length),
     foldl2_between(Closure, String, 0, Length, !Acc1, !Acc2).
 
+foldl_between(F, S, Start, End, A) = B :-
+    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    foldl_between(P, S, Start, End, A, B).
+
 foldl_between(Closure, String, Start0, End0, !Acc) :-
     Start = max(0, Start0),
     End = min(End0, length(String)),
     foldl_between_2(Closure, String, Start, End, !Acc).
-
-foldl_between(F, S, Start, End, A) = B :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    foldl_between(P, S, Start, End, A, B).
 
 foldl2_between(Closure, String, Start0, End0, !Acc1, !Acc2) :-
     Start = max(0, Start0),
@@ -5707,21 +5711,21 @@ det_to_float(FloatString) = Float :-
 % Converting values of builtin types to strings.
 %
 
-char_to_string(Char, String) :-
-    to_char_list(String, [Char]).
-
 char_to_string(C) = S1 :-
     char_to_string(C, S1).
+
+char_to_string(Char, String) :-
+    to_char_list(String, [Char]).
 
 from_char(Char) = char_to_string(Char).
 
 %---------------------%
 
-int_to_string(N, Str) :-
-    int_to_base_string(N, 10, Str).
-
 int_to_string(N) = S1 :-
     int_to_string(N, S1).
+
+int_to_string(N, Str) :-
+    int_to_base_string(N, 10, Str).
 
 from_int(N) = int_to_string(N).
 
@@ -5863,6 +5867,9 @@ uint_to_string(_) = _ :-
 
 %---------------------%
 
+float_to_string(Float) = S2 :-
+    float_to_string(Float, S2).
+
 :- pragma foreign_proc("C",
     float_to_string(Flt::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -5958,9 +5965,6 @@ min_precision = 15.
 
 max_precision = min_precision + 2.
 
-float_to_string(Float) = S2 :-
-    float_to_string(Float, S2).
-
 from_float(Float) = float_to_string(Float).
 
 %---------------------%
@@ -6017,10 +6021,10 @@ string_ops_noncanon(NonCanon, OpsTable, X, String) :-
 % Converting values to strings based on a format string.
 %
 
-format(FormatString, PolyList, String) :-
-    format.format_impl(FormatString, PolyList, String).
-
 format(S1, PT) = S2 :-
     format(S1, PT, S2).
+
+format(FormatString, PolyList, String) :-
+    format.format_impl(FormatString, PolyList, String).
 
 %---------------------------------------------------------------------------%

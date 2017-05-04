@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -32,6 +32,8 @@
 
 :- instance enum(int).
 
+%---------------------------------------------------------------------------%
+
     % Less than.
     %
 :- pred (int::in) < (int::in) is semidet.
@@ -48,6 +50,8 @@
     %
 :- pred (int::in) >= (int::in) is semidet.
 
+%---------------------------------------------------------------------------%
+
     % Absolute value.
     %
 :- func abs(int) = int.
@@ -63,20 +67,15 @@
 :- func min(int, int) = int.
 :- pred min(int::in, int::in, int::out) is det.
 
-    % Exponentiation.
-    % pow(X, Y, Z): Z is X raised to the Yth power.
-    % Throws a `math.domain_error' exception if Y is negative.
-    %
-:- func pow(int, int) = int.
-:- pred pow(int::in, int::in, int::out) is det.
+%---------------------------------------------------------------------------%
 
-    % Base 2 logarithm.
-    % log2(X) = N is the least integer such that 2 to the power N
-    % is greater than or equal to X.
-    % Throws a `math.domain_error' exception if X is not positive.
+    % Unary plus.
     %
-:- func log2(int) = int.
-:- pred log2(int::in, int::out) is det.
+:- func + (int::in) = (int::uo) is det.
+
+    % Unary minus.
+    %
+:- func - (int::in) = (int::uo) is det.
 
     % Addition.
     %
@@ -87,11 +86,6 @@
 
 :- func plus(int, int) = int.
 
-    % Multiplication.
-    %
-:- func (int::in) * (int::in) = (int::uo) is det.
-:- func times(int, int) = int.
-
     % Subtraction.
     %
 :- func int - int = int.
@@ -100,6 +94,11 @@
 :- mode in  - uo  = in  is det.
 
 :- func minus(int, int) = int.
+
+    % Multiplication.
+    %
+:- func (int::in) * (int::in) = (int::uo) is det.
+:- func times(int, int) = int.
 
     % Flooring integer division.
     % Truncates towards minus infinity, e.g. (-10) div 3 = (-4).
@@ -152,6 +151,31 @@
     %
 :- func unchecked_rem(int::in, int::in) = (int::uo) is det.
 
+    % even(X) is equivalent to (X mod 2 = 0).
+    %
+:- pred even(int::in) is semidet.
+
+    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2 = 1).
+    %
+:- pred odd(int::in) is semidet.
+
+    % Exponentiation.
+    % pow(X, Y, Z): Z is X raised to the Yth power.
+    % Throws a `math.domain_error' exception if Y is negative.
+    %
+:- func pow(int, int) = int.
+:- pred pow(int::in, int::in, int::out) is det.
+
+    % Base 2 logarithm.
+    % log2(X) = N is the least integer such that 2 to the power N
+    % is greater than or equal to X.
+    % Throws a `math.domain_error' exception if X is not positive.
+    %
+:- func log2(int) = int.
+:- pred log2(int::in, int::out) is det.
+
+%---------------------------------------------------------------------------%
+
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % To be precise, if Y is negative, the result is
@@ -180,13 +204,11 @@
     %
 :- func unchecked_right_shift(int::in, int::in) = (int::uo) is det.
 
-    % even(X) is equivalent to (X mod 2 = 0).
-    %
-:- pred even(int::in) is semidet.
+%---------------------------------------------------------------------------%
 
-    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2 = 1).
+    % Bitwise complement.
     %
-:- pred odd(int::in) is semidet.
+:- func \ (int::in) = (int::uo) is det.
 
     % Bitwise and.
     %
@@ -203,17 +225,7 @@
 :- mode xor(in, uo) = in is det.
 :- mode xor(uo, in) = in is det.
 
-    % Bitwise complement.
-    %
-:- func \ (int::in) = (int::uo) is det.
-
-    % Unary plus.
-    %
-:- func + (int::in) = (int::uo) is det.
-
-    % Unary minus.
-    %
-:- func - (int::in) = (int::uo) is det.
+%---------------------------------------------------------------------------%
 
     % is/2, for backwards compatibility with Prolog.
     %
@@ -221,6 +233,8 @@
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.
 :- pragma obsolete(is/2).
+
+%---------------------------------------------------------------------------%
 
     % max_int is the maximum value of an int on this machine.
     %
@@ -236,6 +250,14 @@
     %
 :- func bits_per_int = int.
 :- pred bits_per_int(int::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % fold_up(F, Low, High, Acc) <=> list.foldl(F, Low .. High, Acc)
+    %
+    % NOTE: fold_up/4 is undefined if High = max_int.
+    %
+:- func fold_up(func(int, T) = T, int, int, T) = T.
 
     % fold_up(F, Low, High, !Acc) <=> list.foldl(F, Low .. High, !Acc)
     %
@@ -262,43 +284,6 @@
 :- mode fold_up(pred(in, in, out) is cc_multi, in, in, in, out)
     is cc_multi.
 
-    % fold_up(F, Low, High, Acc) <=> list.foldl(F, Low .. High, Acc)
-    %
-    % NOTE: fold_up/4 is undefined if High = max_int.
-    %
-:- func fold_up(func(int, T) = T, int, int, T) = T.
-
-    % fold_down(F, Low, High, !Acc) <=> list.foldr(F, Low .. High, !Acc)
-    %
-    % NOTE: fold_down/5 is undefined if Low min_int.
-    %
-:- pred fold_down(pred(int, T, T), int, int, T, T).
-:- mode fold_down(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode fold_down(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
-:- mode fold_down(pred(in, di, uo) is det, in, in, di, uo) is det.
-:- mode fold_down(pred(in, array_di, array_uo) is det, in, in,
-    array_di, array_uo) is det.
-:- mode fold_down(pred(in, in, out) is semidet, in, in, in, out)
-    is semidet.
-:- mode fold_down(pred(in, mdi, muo) is semidet, in, in, mdi, muo)
-    is semidet.
-:- mode fold_down(pred(in, di, uo) is semidet, in, in, di, uo)
-    is semidet.
-:- mode fold_down(pred(in, in, out) is nondet, in, in, in, out)
-    is nondet.
-:- mode fold_down(pred(in, mdi, muo) is nondet, in, in, mdi, muo)
-    is nondet.
-:- mode fold_down(pred(in, in, out) is cc_multi, in, in, in, out)
-    is cc_multi.
-:- mode fold_down(pred(in, di, uo) is cc_multi, in, in, di, uo)
-    is cc_multi.
-
-    % fold_down(F, Low, High, Acc) <=> list.foldr(F, Low .. High, Acc)
-    %
-    % NOTE: fold_down/4 is undefined if Low = min_int.
-    %
-:- func fold_down(func(int, T) = T, int, int, T) = T.
-
     % fold_up2(F, Low, High, !Acc1, Acc2) <=>
     %   list.foldl2(F, Low .. High, !Acc1, !Acc2)
     %
@@ -324,31 +309,6 @@
 :- mode fold_up2(pred(in, in, out, in, out) is nondet, in, in,
     in, out, in, out) is nondet.
 :- mode fold_up2(pred(in, in, out, mdi, muo) is nondet, in, in,
-    in, out, mdi, muo) is nondet.
-
-    % fold_down2(F, Low, High, !Acc1, !Acc2) <=>
-    %   list.foldr2(F, Low .. High, !Acc1, Acc2).
-    %
-    % NOTE: fold_down2/7 is undefined if Low = min_int.
-    %
-:- pred fold_down2(pred(int, T, T, U, U), int, int, T, T, U, U).
-:- mode fold_down2(pred(in, in, out, in, out) is det, in, in, in, out,
-    in, out) is det.
-:- mode fold_down2(pred(in, in, out, mdi, muo) is det, in, in, in, out,
-    mdi, muo) is det.
-:- mode fold_down2(pred(in, in, out, di, uo) is det, in, in, in, out,
-    di, uo) is det.
-:- mode fold_down2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
-    di, uo) is det.
-:- mode fold_down2(pred(in, in, out, array_di, array_uo) is det, in, in,
-    in, out, array_di, array_uo) is det.
-:- mode fold_down2(pred(in, in, out, in, out) is semidet, in, in,
-    in, out, in, out) is semidet.
-:- mode fold_down2(pred(in, in, out, di, uo) is semidet, in, in,
-    in, out, di, uo) is semidet.
-:- mode fold_down2(pred(in, in, out, in, out) is nondet, in, in,
-    in, out, in, out) is nondet.
-:- mode fold_down2(pred(in, in, out, mdi, muo) is nondet, in, in,
     in, out, mdi, muo) is nondet.
 
     % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
@@ -378,6 +338,62 @@
 :- mode fold_up3(pred(in, in, out, in, out, mdi, muo) is nondet,
     in, in, in, out, in, out, mdi, muo) is nondet.
 
+    % fold_down(F, Low, High, Acc) <=> list.foldr(F, Low .. High, Acc)
+    %
+    % NOTE: fold_down/4 is undefined if Low = min_int.
+    %
+:- func fold_down(func(int, T) = T, int, int, T) = T.
+
+    % fold_down(F, Low, High, !Acc) <=> list.foldr(F, Low .. High, !Acc)
+    %
+    % NOTE: fold_down/5 is undefined if Low min_int.
+    %
+:- pred fold_down(pred(int, T, T), int, int, T, T).
+:- mode fold_down(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode fold_down(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
+:- mode fold_down(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode fold_down(pred(in, array_di, array_uo) is det, in, in,
+    array_di, array_uo) is det.
+:- mode fold_down(pred(in, in, out) is semidet, in, in, in, out)
+    is semidet.
+:- mode fold_down(pred(in, mdi, muo) is semidet, in, in, mdi, muo)
+    is semidet.
+:- mode fold_down(pred(in, di, uo) is semidet, in, in, di, uo)
+    is semidet.
+:- mode fold_down(pred(in, in, out) is nondet, in, in, in, out)
+    is nondet.
+:- mode fold_down(pred(in, mdi, muo) is nondet, in, in, mdi, muo)
+    is nondet.
+:- mode fold_down(pred(in, in, out) is cc_multi, in, in, in, out)
+    is cc_multi.
+:- mode fold_down(pred(in, di, uo) is cc_multi, in, in, di, uo)
+    is cc_multi.
+
+    % fold_down2(F, Low, High, !Acc1, !Acc2) <=>
+    %   list.foldr2(F, Low .. High, !Acc1, Acc2).
+    %
+    % NOTE: fold_down2/7 is undefined if Low = min_int.
+    %
+:- pred fold_down2(pred(int, T, T, U, U), int, int, T, T, U, U).
+:- mode fold_down2(pred(in, in, out, in, out) is det, in, in, in, out,
+    in, out) is det.
+:- mode fold_down2(pred(in, in, out, mdi, muo) is det, in, in, in, out,
+    mdi, muo) is det.
+:- mode fold_down2(pred(in, in, out, di, uo) is det, in, in, in, out,
+    di, uo) is det.
+:- mode fold_down2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
+    di, uo) is det.
+:- mode fold_down2(pred(in, in, out, array_di, array_uo) is det, in, in,
+    in, out, array_di, array_uo) is det.
+:- mode fold_down2(pred(in, in, out, in, out) is semidet, in, in,
+    in, out, in, out) is semidet.
+:- mode fold_down2(pred(in, in, out, di, uo) is semidet, in, in,
+    in, out, di, uo) is semidet.
+:- mode fold_down2(pred(in, in, out, in, out) is nondet, in, in,
+    in, out, in, out) is nondet.
+:- mode fold_down2(pred(in, in, out, mdi, muo) is nondet, in, in,
+    in, out, mdi, muo) is nondet.
+
     % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
     %   list.foldr3(F, Low .. High, !Acc1, !Acc2, !Acc3)
     %
@@ -405,6 +421,8 @@
 :- mode fold_down3(pred(in, in, out, in, out, mdi, muo) is nondet,
     in, in, in, out, in, out, mdi, muo) is nondet.
 
+%---------------------------------------------------------------------------%
+
     % nondet_int_in_range(Low, High, I):
     %
     % On successive successes, set I to every integer from Low to High.
@@ -418,6 +436,8 @@
     %
 :- pred all_true_in_range(pred(int)::in(pred(in) is semidet),
     int::in, int::in) is semidet.
+
+%---------------------------------------------------------------------------%
 
     % Convert an int to a pretty_printer.doc for formatting.
     %
@@ -489,46 +509,15 @@
     from_int(X) = X
 ].
 
-% Most of the arithmetic and comparison operators are recognized by
-% the compiler as builtins, so we don't need to define them here.
+%---------------------------------------------------------------------------%
 
-X div Y = Div :-
-    Trunc = X // Y,
-    ( if
-        ( X >= 0, Y >= 0
-        ; X < 0, Y < 0
-        ; X rem Y = 0
-        )
-    then
-        Div = Trunc
-    else
-        Div = Trunc - 1
-    ).
+:- pragma foreign_decl("C", "
+    #include <limits.h>
 
-:- pragma inline('//'/2).
-X // Y = Div :-
-    ( if
-        int_domain_checks,
-        Y = 0
-    then
-        throw(math.domain_error("int.'//': division by zero"))
-    else
-        Div = unchecked_quotient(X, Y)
-    ).
+    #define ML_BITS_PER_INT     (sizeof(MR_Integer) * CHAR_BIT)
+").
 
-:- pragma inline('/'/2).
-X / Y = X // Y.
-
-:- pragma inline(rem/2).
-X rem Y = Rem :-
-    ( if
-        int_domain_checks,
-        Y = 0
-    then
-        throw(math.domain_error("int.rem: division by zero"))
-    else
-        Rem = unchecked_rem(X, Y)
-    ).
+%---------------------------------------------------------------------------%
 
     % This code is included here rather than just calling the version
     % in math.m because we currently don't do transitive inter-module
@@ -572,60 +561,8 @@ X rem Y = Rem :-
     SUCCESS_INDICATOR = true
 ").
 
-:- pragma inline(floor_to_multiple_of_bits_per_int/1).
-
-floor_to_multiple_of_bits_per_int(X) = Floor :-
-    Trunc = quot_bits_per_int(X),
-    Floor0 = times_bits_per_int(Trunc),
-    ( if Floor0 > X then
-        Floor = Floor0 - bits_per_int
-    else
-        Floor = Floor0
-    ).
-
-X mod Y = X - (X div Y) * Y.
-
-X << Y = Z :-
-    bits_per_int(IntBits),
-    ( if Y >= 0 then
-        ( if Y >= IntBits then
-            Z = 0
-        else
-            Z = unchecked_left_shift(X, Y)
-        )
-    else
-        ( if Y =< -IntBits then
-            Z = (if X >= 0 then 0 else -1)
-        else
-            Z = unchecked_right_shift(X, -Y)
-        )
-    ).
-
-    % Note: this assumes two's complement arithmetic.
-    % tests/hard_coded/shift_test.m will fail if this is not the case.
-X >> Y = Z :-
-    bits_per_int(IntBits),
-    ( if Y >= 0 then
-        ( if Y >= IntBits then
-            Z = (if X >= 0 then 0 else -1)
-        else
-            Z = unchecked_right_shift(X, Y)
-        )
-    else
-        ( if Y =< -IntBits then
-            Z = 0
-        else
-            Z = unchecked_left_shift(X, -Y)
-        )
-    ).
-
-:- pragma inline(even/1).
-even(X) :-
-    (X /\ 1) = 0.
-
-:- pragma inline(odd/1).
-odd(X) :-
-    (X /\ 1) \= 0.
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 abs(Num) = Abs :-
     abs(Num, Abs).
@@ -656,6 +593,59 @@ min(X, Y, Min) :-
     else
         Min = Y
     ).
+
+%---------------------------------------------------------------------------%
+
+% Most of the arithmetic and comparison operators are recognized by
+% the compiler as builtins, so we don't need to define them here.
+
+X div Y = Div :-
+    Trunc = X // Y,
+    ( if
+        ( X >= 0, Y >= 0
+        ; X < 0, Y < 0
+        ; X rem Y = 0
+        )
+    then
+        Div = Trunc
+    else
+        Div = Trunc - 1
+    ).
+
+:- pragma inline('//'/2).
+X // Y = Div :-
+    ( if
+        int_domain_checks,
+        Y = 0
+    then
+        throw(math.domain_error("int.'//': division by zero"))
+    else
+        Div = unchecked_quotient(X, Y)
+    ).
+
+:- pragma inline('/'/2).
+X / Y = X // Y.
+
+X mod Y = X - (X div Y) * Y.
+
+:- pragma inline(rem/2).
+X rem Y = Rem :-
+    ( if
+        int_domain_checks,
+        Y = 0
+    then
+        throw(math.domain_error("int.rem: division by zero"))
+    else
+        Rem = unchecked_rem(X, Y)
+    ).
+
+:- pragma inline(even/1).
+even(X) :-
+    (X /\ 1) = 0.
+
+:- pragma inline(odd/1).
+odd(X) :-
+    (X /\ 1) \= 0.
 
 pow(Base, Exp) = Result :-
     pow(Base, Exp, Result).
@@ -707,21 +697,48 @@ log2_loop(CurX, CurLogXSoFar, CeilLogX) :-
 
 %---------------------------------------------------------------------------%
 
+X << Y = Z :-
+    bits_per_int(IntBits),
+    ( if Y >= 0 then
+        ( if Y >= IntBits then
+            Z = 0
+        else
+            Z = unchecked_left_shift(X, Y)
+        )
+    else
+        ( if Y =< -IntBits then
+            Z = (if X >= 0 then 0 else -1)
+        else
+            Z = unchecked_right_shift(X, -Y)
+        )
+    ).
+
+X >> Y = Z :-
+    % Note: this assumes two's complement arithmetic.
+    % tests/hard_coded/shift_test.m will fail if this is not the case.
+    bits_per_int(IntBits),
+    ( if Y >= 0 then
+        ( if Y >= IntBits then
+            Z = (if X >= 0 then 0 else -1)
+        else
+            Z = unchecked_right_shift(X, Y)
+        )
+    else
+        ( if Y =< -IntBits then
+            Z = 0
+        else
+            Z = unchecked_left_shift(X, -Y)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
 % is/2 is replaced with `=' in the parser, but the following is useful
 % in case you should take the address of `is' or something weird like that.
 
 is(X, X).
 
 %---------------------------------------------------------------------------%
-
-:- pragma foreign_decl("C", "
-    #include <limits.h>
-
-    #define ML_BITS_PER_INT     (sizeof(MR_Integer) * CHAR_BIT)
-").
-
-max_int = X :-
-    max_int(X).
 
 :- pragma foreign_proc("C",
     max_int(Max::out),
@@ -741,8 +758,32 @@ max_int = X :-
     }
 ").
 
-min_int = X :-
-    min_int(X).
+:- pragma foreign_proc("C#",
+    max_int(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Max = System.Int32.MaxValue;
+").
+
+:- pragma foreign_proc("Java",
+    max_int(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Max = java.lang.Integer.MAX_VALUE;
+").
+
+:- pragma foreign_proc("Erlang",
+    max_int(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX Erlang ints are actually arbitrary precision.
+    Max = (1 bsl 31) - 1
+").
+
+max_int = X :-
+    max_int(X).
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     min_int(Min::out),
@@ -762,8 +803,32 @@ min_int = X :-
     }
 ").
 
-bits_per_int = X :-
-    bits_per_int(X).
+:- pragma foreign_proc("C#",
+    min_int(Min::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Min = System.Int32.MinValue;
+").
+
+:- pragma foreign_proc("Java",
+    min_int(Min::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Min = java.lang.Integer.MIN_VALUE;
+").
+
+:- pragma foreign_proc("Erlang",
+    min_int(Min::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    % XXX Erlang ints are actually arbitrary precision.
+    Min = -(1 bsl 31)
+").
+
+min_int = X :-
+    min_int(X).
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     bits_per_int(Bits::out),
@@ -771,44 +836,6 @@ bits_per_int = X :-
         does_not_affect_liveness],
 "
     Bits = ML_BITS_PER_INT;
-").
-
-:- pragma foreign_proc("C",
-    quot_bits_per_int(Int::in) = (Div::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Div = Int / ML_BITS_PER_INT;
-").
-
-:- pragma foreign_proc("C",
-    times_bits_per_int(Int::in) = (Result::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Result = Int * ML_BITS_PER_INT;
-").
-
-:- pragma foreign_proc("C",
-    rem_bits_per_int(Int::in) = (Rem::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Rem = Int % ML_BITS_PER_INT;
-").
-
-:- pragma foreign_proc("C#",
-    max_int(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Max = System.Int32.MaxValue;
-").
-
-:- pragma foreign_proc("C#",
-    min_int(Min::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Min = System.Int32.MinValue;
 ").
 
 :- pragma foreign_proc("C#",
@@ -821,41 +848,11 @@ bits_per_int = X :-
 ").
 
 :- pragma foreign_proc("Java",
-    max_int(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Max = java.lang.Integer.MAX_VALUE;
-").
-
-:- pragma foreign_proc("Java",
-    min_int(Min::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Min = java.lang.Integer.MIN_VALUE;
-").
-
-:- pragma foreign_proc("Java",
     bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // Java ints are 32 bits.
     Bits = 32;
-").
-
-:- pragma foreign_proc("Erlang",
-    max_int(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX Erlang ints are actually arbitrary precision.
-    Max = (1 bsl 31) - 1
-").
-
-:- pragma foreign_proc("Erlang",
-    min_int(Min::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX Erlang ints are actually arbitrary precision.
-    Min = -(1 bsl 31)
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -866,16 +863,17 @@ bits_per_int = X :-
     Bits = 32
 ").
 
-quot_bits_per_int(Int::in) = (Result::out) :-
-    Result = Int // bits_per_int.
-
-times_bits_per_int(Int::in) = (Result::out) :-
-    Result = Int * bits_per_int.
-
-rem_bits_per_int(Int::in) = (Result::out) :-
-    Result = Int rem bits_per_int.
+bits_per_int = X :-
+    bits_per_int(X).
 
 %---------------------------------------------------------------------------%
+
+fold_up(F, Lo, Hi, A) =
+    ( if Lo =< Hi then
+        fold_up(F, Lo + 1, Hi, F(Lo, A))
+    else
+        A
+    ).
 
 fold_up(P, Lo, Hi, !A) :-
     ( if Lo =< Hi then
@@ -884,9 +882,6 @@ fold_up(P, Lo, Hi, !A) :-
     else
         true
     ).
-
-fold_up(F, Lo, Hi, A) =
-    ( if Lo =< Hi then fold_up(F, Lo + 1, Hi, F(Lo, A)) else A ).
 
 fold_up2(P, Lo, Hi, !A, !B) :-
     ( if Lo =< Hi then
@@ -906,6 +901,13 @@ fold_up3(P, Lo, Hi, !A, !B, !C) :-
 
 %---------------------------------------------------------------------------%
 
+fold_down(F, Lo, Hi, A) =
+    ( if Lo =< Hi then
+        fold_down(F, Lo, Hi - 1, F(Hi, A))
+    else
+        A
+    ).
+
 fold_down(P, Lo, Hi, !A) :-
     ( if Lo =< Hi then
         P(Hi, !A),
@@ -913,9 +915,6 @@ fold_down(P, Lo, Hi, !A) :-
     else
         true
     ).
-
-fold_down(F, Lo, Hi, A) =
-    ( if Lo =< Hi then fold_down(F, Lo, Hi - 1, F(Hi, A)) else A ).
 
 fold_down2(P, Lo, Hi, !A, !B) :-
     ( if Lo =< Hi then
@@ -962,6 +961,52 @@ all_true_in_range(P, Lo, Hi) :-
 %---------------------------------------------------------------------------%
 
 int_to_doc(X) = str(string.int_to_string(X)).
+
+%---------------------------------------------------------------------------%
+
+:- pragma inline(floor_to_multiple_of_bits_per_int/1).
+
+floor_to_multiple_of_bits_per_int(X) = Floor :-
+    Trunc = quot_bits_per_int(X),
+    Floor0 = times_bits_per_int(Trunc),
+    ( if Floor0 > X then
+        Floor = Floor0 - bits_per_int
+    else
+        Floor = Floor0
+    ).
+
+:- pragma foreign_proc("C",
+    quot_bits_per_int(Int::in) = (Div::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Div = Int / ML_BITS_PER_INT;
+").
+
+quot_bits_per_int(Int::in) = (Result::out) :-
+    Result = Int // bits_per_int.
+
+:- pragma foreign_proc("C",
+    times_bits_per_int(Int::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Result = Int * ML_BITS_PER_INT;
+").
+
+times_bits_per_int(Int::in) = (Result::out) :-
+    Result = Int * bits_per_int.
+
+:- pragma foreign_proc("C",
+    rem_bits_per_int(Int::in) = (Rem::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Rem = Int % ML_BITS_PER_INT;
+").
+
+rem_bits_per_int(Int::in) = (Result::out) :-
+    Result = Int rem bits_per_int.
 
 %---------------------------------------------------------------------------%
 :- end_module int.
