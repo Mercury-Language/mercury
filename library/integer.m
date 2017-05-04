@@ -31,182 +31,6 @@
 
 :- type integer.
 
-    % X < Y: Succeed if and only if X is less than Y.
-    %
-:- pred '<'(integer::in, integer::in) is semidet.
-
-    % X > Y: Succeed if and only if X is greater than Y.
-    %
-:- pred '>'(integer::in, integer::in) is semidet.
-
-    % X =< Y: Succeed if and only if X is less than or equal to Y.
-    %
-:- pred '=<'(integer::in, integer::in) is semidet.
-
-    % X >= Y: Succeed if and only if X is greater than or equal to Y.
-    %
-:- pred '>='(integer::in, integer::in) is semidet.
-
-    % Convert int to integer.
-    %
-:- func integer(int) = integer.
-
-    % Convert a uint to an integer.
-    %
-:- func from_uint(uint) = integer.
-
-    % Convert an integer to a string (in base 10).
-    %
-:- func to_string(integer) = string.
-
-    % to_base_string(Integer, Base) = String:
-    %
-    % Convert an integer to a string in a given Base.
-    %
-    % Base must be between 2 and 36, both inclusive; if it is not,
-    % the predicate will throw an exception.
-    %
-:- func to_base_string(integer, int) = string.
-
-    % Convert a string to an integer. The string must contain only digits
-    % [0-9], optionally preceded by a plus or minus sign. If the string does
-    % not match this syntax, then the predicate fails.
-    %
-:- pred from_string(string::in, integer::out) is semidet.
-
-:- func from_string(string::in) = (integer::out) is semidet.
-:- pragma obsolete(from_string/1).
-
-    % As above, but throws an exception rather than failing.
-    %
-:- func det_from_string(string) = integer.
-
-    % Convert a string in the specified base (2-36) to an integer.
-    % The string must contain one or more digits in the specified base,
-    % optionally preceded by a plus or minus sign. For bases > 10, digits
-    % 10 to 35 are represented by the letters A-Z or a-z. If the string
-    % does not match this syntax, then the predicate fails.
-    %
-:- pred from_base_string(int::in, string::in, integer::out) is semidet.
-
-:- func from_base_string(int, string) = integer is semidet.
-:- pragma obsolete(from_base_string/2).
-
-    % As above, but throws an exception rather than failing.
-    %
-:- func det_from_base_string(int, string) = integer.
-
-    % Unary plus.
-    %
-:- func '+'(integer) = integer.
-
-    % Unary minus.
-    %
-:- func '-'(integer) = integer.
-
-    % Addition.
-    %
-:- func integer + integer = integer.
-
-    % Subtraction.
-    %
-:- func integer - integer = integer.
-
-    % Multiplication.
-    %
-:- func integer * integer = integer.
-
-    % Truncating integer division.
-    % Behaves as int.(//).
-    %
-:- func integer // integer = integer.
-
-    % Flooring integer division.
-    % Behaves as int.div.
-    %
-:- func integer div integer = integer.
-
-    % Remainder.
-    % Behaves as int.rem.
-    %
-:- func integer rem integer = integer.
-
-    % Modulus.
-    % Behaves as int.mod.
-    %
-:- func integer mod integer = integer.
-
-    % divide_with_rem(X, Y, Q, R) where Q = X // Y and R = X rem Y
-    % where both answers are calculated at the same time.
-    %
-:- pred divide_with_rem(integer::in, integer::in,
-    integer::out, integer::out) is det.
-
-    % Left shift.
-    % Behaves as int.(<<).
-    %
-:- func integer << int = integer.
-
-    % Right shift.
-    % Behaves as int.(>>).
-    %
-:- func integer >> int = integer.
-
-    % Bitwise and.
-    %
-:- func integer /\ integer = integer.
-
-    % Bitwise or.
-    %
-:- func integer \/ integer = integer.
-
-    % Bitwise exclusive or (xor).
-    %
-:- func integer `xor` integer = integer.
-
-    % Bitwise complement.
-    %
-:- func \ integer = integer.
-
-    % Absolute value.
-    %
-:- func abs(integer) = integer.
-
-    % Exponentiation.
-    % pow(X, Y) = Z: Z is X raised to the Yth power.
-    % Throws a `math.domain_error' exception if Y is negative.
-    %
-:- func pow(integer, integer) = integer.
-
-    % Convert an integer to a float.
-    %
-:- func float(integer) = float.
-
-    % Convert an integer to an int.
-    % Fails if the integer is not in the range [min_int, max_int].
-    %
-:- pred to_int(integer::in, int::out) is semidet.
-
-    % As above, but throws an exception rather than failing.
-    %
-:- func det_to_int(integer) = int.
-
-    % Convert an integer to a uint.
-    % Fails if the integer is not in the range [0, max_uint].
-    %
-:- pred to_uint(integer::in, uint::out) is semidet.
-
-    % As above, but throws an exception rather than failing.
-    %
-:- func det_to_uint(integer) = uint.
-
-:- func int(integer) = int.
-:- pragma obsolete(int/1).
-
-    % True if the argument is equal to integer.zero.
-    %
-:- pred is_zero(integer::in) is semidet.
-
 %---------------------------------------------------------------------------%
 %
 % Constants.
@@ -231,6 +55,198 @@
     % Equivalent to integer(10).
     %
 :- func ten = integer.
+
+%---------------------------------------------------------------------------%
+
+    % X < Y: Succeed if and only if X is less than Y.
+    %
+:- pred '<'(integer::in, integer::in) is semidet.
+
+    % X > Y: Succeed if and only if X is greater than Y.
+    %
+:- pred '>'(integer::in, integer::in) is semidet.
+
+    % X =< Y: Succeed if and only if X is less than or equal to Y.
+    %
+:- pred '=<'(integer::in, integer::in) is semidet.
+
+    % X >= Y: Succeed if and only if X is greater than or equal to Y.
+    %
+:- pred '>='(integer::in, integer::in) is semidet.
+
+    % Absolute value.
+    %
+:- func abs(integer) = integer.
+
+    % True if the argument is equal to integer.zero.
+    %
+:- pred is_zero(integer::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
+    % Unary plus.
+    %
+:- func '+'(integer) = integer.
+
+    % Unary minus.
+    %
+:- func '-'(integer) = integer.
+
+    % Addition.
+    %
+:- func integer + integer = integer.
+
+    % Subtraction.
+    %
+:- func integer - integer = integer.
+
+    % Multiplication.
+    %
+:- func integer * integer = integer.
+
+    % Flooring integer division.
+    % Behaves as int.div.
+    %
+:- func integer div integer = integer.
+
+    % Truncating integer division.
+    % Behaves as int.(//).
+    %
+:- func integer // integer = integer.
+
+    % Modulus.
+    % Behaves as int.mod.
+    %
+:- func integer mod integer = integer.
+
+    % Remainder.
+    % Behaves as int.rem.
+    %
+:- func integer rem integer = integer.
+
+    % divide_with_rem(X, Y, Q, R) where Q = X // Y and R = X rem Y
+    % where both answers are calculated at the same time.
+    %
+:- pred divide_with_rem(integer::in, integer::in,
+    integer::out, integer::out) is det.
+
+    % Exponentiation.
+    % pow(X, Y) = Z: Z is X raised to the Yth power.
+    % Throws a `math.domain_error' exception if Y is negative.
+    %
+:- func pow(integer, integer) = integer.
+
+%---------------------------------------------------------------------------%
+
+    % Left shift.
+    % Behaves as int.(<<).
+    %
+:- func integer << int = integer.
+
+    % Right shift.
+    % Behaves as int.(>>).
+    %
+:- func integer >> int = integer.
+
+%---------------------------------------------------------------------------%
+
+    % Bitwise complement.
+    %
+:- func \ integer = integer.
+
+    % Bitwise and.
+    %
+:- func integer /\ integer = integer.
+
+    % Bitwise or.
+    %
+:- func integer \/ integer = integer.
+
+    % Bitwise exclusive or (xor).
+    %
+:- func integer `xor` integer = integer.
+
+%---------------------------------------------------------------------------%
+
+    % Convert an integer to an int.
+    % Fails if the integer is not in the range [min_int, max_int].
+    %
+:- pred to_int(integer::in, int::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_int(integer) = int.
+
+:- func int(integer) = int.
+:- pragma obsolete(int/1).
+
+%---------------------%
+
+    % Convert an integer to a uint.
+    % Fails if the integer is not in the range [0, max_uint].
+    %
+:- pred to_uint(integer::in, uint::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_uint(integer) = uint.
+
+%---------------------%
+
+    % Convert an integer to a float.
+    %
+:- func float(integer) = float.
+
+%---------------------%
+
+    % Convert an integer to a string (in base 10).
+    %
+:- func to_string(integer) = string.
+
+    % to_base_string(Integer, Base) = String:
+    %
+    % Convert an integer to a string in a given Base.
+    %
+    % Base must be between 2 and 36, both inclusive; if it is not,
+    % the predicate will throw an exception.
+    %
+:- func to_base_string(integer, int) = string.
+
+%---------------------------------------------------------------------------%
+
+    % Convert int to integer.
+    %
+:- func integer(int) = integer.
+
+    % Convert a uint to an integer.
+    %
+:- func from_uint(uint) = integer.
+
+    % Convert a string to an integer. The string must contain only digits
+    % [0-9], optionally preceded by a plus or minus sign. If the string does
+    % not match this syntax, then the predicate fails.
+    %
+:- func from_string(string::in) = (integer::out) is semidet.
+:- pragma obsolete(from_string/1).
+:- pred from_string(string::in, integer::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_from_string(string) = integer.
+
+    % Convert a string in the specified base (2-36) to an integer.
+    % The string must contain one or more digits in the specified base,
+    % optionally preceded by a plus or minus sign. For bases > 10, digits
+    % 10 to 35 are represented by the letters A-Z or a-z. If the string
+    % does not match this syntax, then the predicate fails.
+    %
+:- func from_base_string(int, string) = integer is semidet.
+:- pragma obsolete(from_base_string/2).
+:- pred from_base_string(int::in, string::in, integer::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_from_base_string(int, string) = integer.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -335,6 +351,141 @@ log2base = 14.
 
 basemask = 16383.
 
+%---------------------------------------------------------------------------%
+
+:- func length(integer) = int.
+
+length(i(L, _)) = L.
+
+:- func integer_signum(integer) = int.
+
+integer_signum(i(Sign, _)) = signum(Sign).
+
+:- func signum(int) = int.
+
+signum(N) = Sign :-
+    ( if N < 0 then
+        Sign = -1
+    else if N = 0 then
+        Sign = 0
+    else
+        Sign = 1
+    ).
+
+:- pred big_isnegative(integer::in) is semidet.
+
+big_isnegative(i(Sign, _)) :-
+    Sign < 0.
+
+%---------------------%
+
+:- func decap(integer) = integer.
+
+decap(i(_, [])) = integer.zero.
+decap(i(L, [H | T])) = Result :-
+    ( if H = 0 then
+        Result = decap(i(L - 1, T))
+    else
+        Result = i(L, [H | T])
+    ).
+
+%---------------------%
+
+:- pred chop(int::in, digit::out, digit::out) is det.
+
+chop(N, Div, Mod) :-
+    % The unchecked shifts here and in the uint case below
+    % are safe since log2base is 14.
+    Div = N `int.unchecked_right_shift` log2base,    % i.e. Div = N div base
+    Mod = N /\ basemask.                             % i.e. Mod = N mod base
+
+:- pred chop_uint(uint::in, uint::out, uint::out) is det.
+
+chop_uint(N, Div, Mod) :-
+    % See the comments in chop/3.
+    Div = N `uint.unchecked_right_shift` log2base,
+    Mod = N /\ cast_from_int(basemask).
+
+%---------------------%
+
+:- func det_first(integer) = digit.
+
+det_first(i(_, Digits)) = First :-
+    (
+        Digits = [],
+        unexpected($module, $pred, "empty list")
+    ;
+        Digits = [First | _]
+    ).
+
+:- func det_second(integer) = digit.
+
+det_second(i(_, Digits)) = Second :-
+    (
+        Digits = [],
+        unexpected($module, $pred, "empty list")
+    ;
+        Digits = [_],
+        unexpected($module, $pred, "short list")
+    ;
+        Digits = [_, Second | _]
+    ).
+
+:- func det_tail(integer) = integer.
+
+det_tail(i(Len, Digits)) = I :-
+    (
+        Digits = [],
+        unexpected($module, $pred, "empty list")
+    ;
+        Digits = [_ | T],
+        I = i(Len - 1, T)
+    ).
+
+%---------------------%
+
+    % XXX What is the intended semantic difference between
+    % big_cmp and res_cmp?
+    %
+:- func big_cmp(integer, integer) = comparison_result.
+
+big_cmp(X, Y) = Result :-
+    compare(Result, X, Y).
+
+:- func pos_cmp(integer, integer) = comparison_result.
+
+pos_cmp(X, Y) = Result :-
+    compare(Result, X, Y).
+
+:- pred pos_lt(integer::in, integer::in) is semidet.
+
+pos_lt(X, Y) :-
+    Result = pos_cmp(X, Y),
+    Result = (<).
+
+:- pred pos_geq(integer::in, integer::in) is semidet.
+
+pos_geq(X, Y) :-
+    Result = pos_cmp(X, Y),
+    ( Result = (>)
+    ; Result = (=)
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+negative_one = i(-1, [-1]).
+
+zero = i(0, []).
+
+one = i(1, [1]).
+
+two = i(1, [2]).
+
+ten = i(1, [10]).
+
+%---------------------------------------------------------------------------%
+
 '<'(X, Y) :-
     big_cmp(X, Y) = C,
     C = (<).
@@ -351,6 +502,34 @@ basemask = 16383.
     big_cmp(X, Y) = C,
     ( C = (>) ; C = (=)).
 
+abs(N) = big_abs(N).
+
+is_zero(i(0, [])).
+
+%---------------------%
+
+:- func big_abs(integer) = integer.
+
+big_abs(i(Sign, Ds)) = Result :-
+    ( if Sign < 0 then
+        Result = big_neg(i(Sign, Ds))
+    else
+        Result = i(Sign, Ds)
+    ).
+
+:- func big_neg(integer) = integer.
+
+big_neg(i(S, Digits0)) = i(-S, Digits) :-
+    neg_list(Digits0, Digits).
+
+:- pred neg_list(list(int)::in, list(int)::out) is det.
+
+neg_list([], []).
+neg_list([H | T], [-H | NT]) :-
+    neg_list(T, NT).
+
+%---------------------------------------------------------------------------%
+
 '+'(X) = X.
 
 '-'(X) = big_neg(X).
@@ -365,348 +544,21 @@ X div Y = big_div(X, Y).
 
 X // Y = big_quot(X, Y).
 
-X rem Y = big_rem(X, Y).
-
 X mod Y = big_mod(X, Y).
+
+X rem Y = big_rem(X, Y).
 
 divide_with_rem(X, Y, Quotient, Remainder) :-
     big_quot_rem(X, Y, Quotient, Remainder).
 
-X << I = Result :-
-    ( if I > 0 then
-        Result = big_left_shift(X, I)
-    else if I < 0 then
-        Result = X >> -I
+pow(A, N) = P :-
+    ( if big_isnegative(N) then
+        throw(math.domain_error("integer.pow: negative exponent"))
     else
-        Result = X
+        P = big_pow(A, N)
     ).
 
-X >> I = Result :-
-    ( if I < 0 then
-        Result = X << -I
-    else if I > 0 then
-        Result = big_right_shift(X, I)
-    else
-        Result = X
-    ).
-
-X /\ Y = Result :-
-    ( if big_isnegative(X) then
-        ( if big_isnegative(Y) then
-            Result = \ big_or(\ X, \ Y)
-        else
-            Result = big_and_not(Y, \ X)
-        )
-    else if big_isnegative(Y) then
-        Result = big_and_not(X, \ Y)
-    else
-        Result = big_and(X, Y)
-    ).
-
-X \/ Y = Result :-
-    ( if big_isnegative(X) then
-        ( if big_isnegative(Y) then
-            Result = \ big_and(\ X, \ Y)
-        else
-            Result = \ big_and_not(\ X, Y)
-        )
-    else if big_isnegative(Y) then
-        Result = \ big_and_not(\ Y, X)
-    else
-        Result = big_or(X, Y)
-    ).
-
-X `xor` Y = Result :-
-    ( if big_isnegative(X) then
-        ( if big_isnegative(Y) then
-            Result = big_xor(\ X, \ Y)
-        else
-            Result = big_xor_not(Y, \ X)
-        )
-    else if big_isnegative(Y) then
-        Result = big_xor_not(X, \ Y)
-    else
-        Result = big_xor(X, Y)
-    ).
-
-\ X = big_neg(big_plus(X, integer.one)).
-
-abs(N) = big_abs(N).
-
-:- func big_abs(integer) = integer.
-
-big_abs(i(Sign, Ds)) = Result :-
-    ( if Sign < 0 then
-        Result = big_neg(i(Sign, Ds))
-    else
-        Result = i(Sign, Ds)
-    ).
-
-:- pred neg_list(list(int)::in, list(int)::out) is det.
-
-neg_list([], []).
-neg_list([H | T], [-H | NT]) :-
-    neg_list(T, NT).
-
-:- pred big_isnegative(integer::in) is semidet.
-
-big_isnegative(i(Sign, _)) :-
-    Sign < 0.
-
-:- func big_neg(integer) = integer.
-
-big_neg(i(S, Digits0)) = i(-S, Digits) :-
-    neg_list(Digits0, Digits).
-
-:- func big_mul(integer, integer) = integer.
-
-big_mul(X, Y) = Result :-
-    Sign = integer_signum(X) * integer_signum(Y),
-    Value = pos_mul(big_abs(X), big_abs(Y)),
-    Result = big_sign(Sign, Value).
-
-:- func big_sign(int, integer) = integer.
-
-big_sign(Sign, In) = Result :-
-    ( if Sign < 0 then
-        Result = big_neg(In)
-    else
-        Result = In
-    ).
-
-:- func big_quot(integer, integer) = integer.
-
-big_quot(X, Y) = Quot :-
-    big_quot_rem(X, Y, Quot, _Rem).
-
-:- func big_rem(integer, integer) = integer.
-
-big_rem(X, Y) = Rem :-
-    big_quot_rem(X, Y, _Quot, Rem).
-
-:- func big_div(integer, integer) = integer.
-
-big_div(X, Y) = Div :-
-    big_quot_rem(X, Y, Trunc, Rem),
-    ( if integer_signum(Y) * integer_signum(Rem) < 0 then
-        Div = Trunc - integer.one
-    else
-        Div = Trunc
-    ).
-
-:- func big_mod(integer, integer) = integer.
-
-big_mod(X, Y) = Mod :-
-    big_quot_rem(X, Y, _Trunc, Rem),
-    ( if integer_signum(Y) * integer_signum(Rem) < 0 then
-        Mod = Rem + Y
-    else
-        Mod = Rem
-    ).
-
-:- func big_right_shift(integer, int) = integer.
-
-big_right_shift(X, I) = Result :-
-    ( if is_zero(X) then
-        Result = X
-    else if big_isnegative(X) then
-        Result = \ pos_right_shift(\ X, I)
-    else
-        Result = pos_right_shift(X, I)
-    ).
-
-:- func pos_right_shift(integer, int) = integer.
-
-pos_right_shift(i(Len, Digits), I) = Integer :-
-    Div = I div log2base,
-    ( if Div < Len then
-        Mod = I mod log2base,
-        Integer = decap(rightshift(Mod, log2base - Mod,
-            i(Len - Div, Digits), 0))
-    else
-        Integer = integer.zero
-    ).
-
-:- func rightshift(int, int, integer, int) = integer.
-
-rightshift(_Mod, _InvMod, i(_Len, []), _Carry) = integer.zero.
-rightshift(Mod, InvMod, i(Len, [H | T]), Carry) = Integer :-
-    ( if Len =< 0 then
-        Integer = integer.zero
-    else
-        NewH = Carry \/ (H >> Mod),
-        NewCarry = (H /\ (basemask >> InvMod)) << InvMod,
-        i(TailLen, NewTail) = rightshift(Mod, InvMod, i(Len - 1, T),
-            NewCarry),
-        Integer = i(TailLen + 1, [NewH | NewTail])
-    ).
-
-:- func big_left_shift(integer, int) = integer.
-
-big_left_shift(X, I) = Result :-
-    ( if is_zero(X) then
-        Result = X
-    else if big_isnegative(X) then
-        Result = big_neg(pos_left_shift(big_neg(X), I))
-    else
-        Result = pos_left_shift(X, I)
-    ).
-
-:- func pos_left_shift(integer, int) = integer.
-
-pos_left_shift(i(Len, Digits), I) = Integer :-
-    Div = I div log2base,
-    Mod = I mod log2base,
-    NewLen = Len + Div,
-    leftshift(Mod, log2base - Mod, NewLen, Digits, Carry, NewDigits),
-    ( if Carry = 0 then
-        Integer = i(NewLen, NewDigits)
-    else
-        Integer = i(NewLen + 1, [Carry | NewDigits])
-    ).
-
-:- pred leftshift(int::in, int::in, int::in, list(digit)::in,
-    int::out, list(digit)::out) is det.
-
-leftshift(_Mod, _InvMod, Len, [], Carry, DigitsOut) :-
-    Carry = 0,
-    zeros(Len, [], DigitsOut).
-leftshift(Mod, InvMod, Len, [H | T], Carry, DigitsOut) :-
-    ( if Len =< 0 then
-        Carry = 0,
-        DigitsOut = []
-    else
-        Carry = (H /\ (basemask << InvMod)) >> InvMod,
-        leftshift(Mod, InvMod, Len - 1, T, TailCarry, Tail),
-        DigitsOut = [TailCarry \/ ((H << Mod) /\ basemask) | Tail]
-    ).
-
-:- pred zeros(int::in, list(digit)::in, list(digit)::out) is det.
-
-zeros(Len, Digits0, Digits) :-
-    ( if Len > 0 then
-        zeros(Len - 1, Digits0, Digits1),
-        Digits = [0 | Digits1]
-    else
-        Digits = Digits0
-    ).
-
-:- func big_or(integer, integer) = integer.
-
-big_or(X, Y) = decap(or_pairs(X, Y)).
-
-:- func or_pairs(integer, integer) = integer.
-
-or_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    ( if L1 = L2 then
-        Integer = i(L1, or_pairs_equal(D1, D2))
-    else if L1 < L2, D2 = [H2 | T2] then
-        i(_, DsT) = or_pairs(i(L1, D1), i(L2 - 1, T2)),
-        Integer = i(L2, [H2 | DsT])
-    else if L1 > L2, D1 = [H1 | T1] then
-        i(_, DsT) = or_pairs(i(L1 - 1, T1), i(L2, D2)),
-        Integer = i(L1, [H1 | DsT])
-    else
-        unexpected($module, $pred, "invalid integer")
-    ).
-
-:- func or_pairs_equal(list(digit), list(digit)) = list(digit).
-
-or_pairs_equal([], _) = [].
-or_pairs_equal([_ | _], []) = [].
-or_pairs_equal([X | Xs], [Y | Ys]) = [X \/ Y | or_pairs_equal(Xs, Ys)].
-
-:- func big_xor(integer, integer) = integer.
-
-big_xor(X, Y) = decap(xor_pairs(X, Y)).
-
-:- func xor_pairs(integer, integer) = integer.
-
-xor_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    ( if L1 = L2 then
-        Integer = i(L1, xor_pairs_equal(D1, D2))
-    else if L1 < L2, D2 = [H2 | T2] then
-        i(_, DsT) = xor_pairs(i(L1, D1), i(L2 - 1, T2)),
-        Integer = i(L2, [H2 | DsT])
-    else if L1 > L2, D1 = [H1 | T1] then
-        i(_, DsT) = xor_pairs(i(L1 - 1, T1), i(L2, D2)),
-        Integer = i(L1, [H1 | DsT])
-    else
-        unexpected($module, $pred, "invalid integer")
-    ).
-
-:- func xor_pairs_equal(list(digit), list(digit)) = list(digit).
-
-xor_pairs_equal([], _) = [].
-xor_pairs_equal([_ | _], []) = [].
-xor_pairs_equal([X | Xs], [Y | Ys]) =
-    [int.xor(X, Y) | xor_pairs_equal(Xs, Ys)].
-
-:- func big_and(integer, integer) = integer.
-
-big_and(X, Y) = decap(and_pairs(X, Y)).
-
-:- func and_pairs(integer, integer) = integer.
-
-and_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    ( if L1 = L2 then
-        Integer = i(L1, and_pairs_equal(D1, D2))
-    else if L1 < L2, D2 = [_ | T2] then
-        i(_, DsT) = and_pairs(i(L1, D1), i(L2 - 1, T2)),
-        Integer = i(L1, DsT)
-    else if L1 > L2, D1 = [_ | T1] then
-        i(_, DsT) = and_pairs(i(L1 - 1, T1), i(L2, D2)),
-        Integer = i(L2, DsT)
-    else
-        unexpected($module, $pred, "invalid integer")
-    ).
-
-:- func and_pairs_equal(list(digit), list(digit)) = list(digit).
-
-and_pairs_equal([], _) = [].
-and_pairs_equal([_ | _], []) = [].
-and_pairs_equal([X | Xs], [Y | Ys]) = [X /\ Y | and_pairs_equal(Xs, Ys)].
-
-:- func big_and_not(integer, integer) = integer.
-
-big_and_not(X, Y) = decap(and_not_pairs(X, Y)).
-
-:- func and_not_pairs(integer, integer) = integer.
-
-and_not_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    ( if L1 = L2 then
-        Integer = i(L1, and_not_pairs_equal(D1, D2))
-    else if L1 < L2, D2 = [_ | T2] then
-        i(_, DsT) = and_not_pairs(i(L1, D1), i(L2 - 1, T2)),
-        Integer = i(L1, DsT)
-    else if L1 > L2, D1 = [H1 | T1] then
-        i(_, DsT) = and_not_pairs(i(L1 - 1, T1), i(L2, D2)),
-        Integer = i(L1, [H1 | DsT])
-    else
-        unexpected($module, $pred, "invalid integer")
-    ).
-
-:- func and_not_pairs_equal(list(digit), list(digit)) = list(digit).
-
-and_not_pairs_equal([], _) = [].
-and_not_pairs_equal([_ | _], []) = [].
-and_not_pairs_equal([X | Xs], [Y | Ys]) =
-    [X /\ \ Y | and_not_pairs_equal(Xs, Ys)].
-
-:- func big_xor_not(integer, integer) = integer.
-
-big_xor_not(X1, NotX2) =
-    \ big_and_not(big_or(X1, NotX2), big_and(X1, NotX2)).
-
-:- func big_cmp(integer, integer) = comparison_result.
-
-big_cmp(X, Y) = Result :-
-    compare(Result, X, Y).
-
-:- func pos_cmp(integer, integer) = comparison_result.
-
-pos_cmp(X, Y) = Result :-
-    compare(Result, X, Y).
+%---------------------%
 
 :- func big_plus(integer, integer) = integer.
 
@@ -736,148 +588,6 @@ big_plus(X, Y) = Sum :-
             )
         )
     ).
-
-integer(N) = int_to_integer(N).
-
-% Note: Since most machines use 2's complement arithmetic,
-% INT_MIN is usually -INT_MAX-1, hence -INT_MIN will cause int overflow.
-% We handle overflow below.
-% We don't check for a negative result from abs(), which would indicate
-% overflow, since we may trap int overflow instead.
-%
-% XXX: What about machines that aren't 2's complement?
-
-:- func int_to_integer(int) = integer.
-
-int_to_integer(D) = Int :-
-    ( if D = 0 then
-        Int = integer.zero
-    else if D > 0, D < base then
-        Int = i(1, [D])
-    else if D < 0, D > -base then
-        Int = i(-1, [D])
-    else
-        ( if int.min_int(D) then
-            % Were we to call int.abs, int overflow might occur.
-            Int = integer(D + 1) - integer.one
-        else
-            Int = big_sign(D, pos_int_to_digits(int.abs(D)))
-        )
-    ).
-
-from_uint(U) = Integer :-
-    % XXX UINT use uint literals here when we have them.
-    ( if U = cast_from_int(0) then
-        Integer = integer.zero
-    else if U < cast_from_int(base) then
-        Integer = i(1, [cast_to_int(U)])
-    else
-        Integer = uint_to_digits(U)
-    ).
-
-:- func shortint_to_integer(int) = integer.
-
-shortint_to_integer(D) = Result :-
-    ( if D = 0 then
-        Result = integer.zero
-    else if D > 0 then
-        Result = i(1, [D])
-    else
-        Result = i(-1, [D])
-    ).
-
-:- func signum(int) = int.
-
-signum(N) = Sign :-
-    ( if N < 0 then
-        Sign = -1
-    else if N = 0 then
-        Sign = 0
-    else
-        Sign = 1
-    ).
-
-:- func integer_signum(integer) = int.
-
-integer_signum(i(Sign, _)) = signum(Sign).
-
-:- func pos_int_to_digits(int) = integer.
-
-pos_int_to_digits(D) = pos_int_to_digits_2(D, integer.zero).
-
-:- func pos_int_to_digits_2(int, integer) = integer.
-
-pos_int_to_digits_2(D, Tail) = Result :-
-    ( if D = 0 then
-        Result = Tail
-    else
-        Tail = i(Length, Digits),
-        chop(D, Div, Mod),
-        Result = pos_int_to_digits_2(Div, i(Length + 1, [Mod | Digits]))
-    ).
-
-:- func uint_to_digits(uint) = integer.
-
-uint_to_digits(U) = uint_to_digits_2(U, integer.zero).
-
-:- func uint_to_digits_2(uint, integer) = integer.
-
-uint_to_digits_2(U, Tail) = Result :-
-    ( if U = cast_from_int(0) then
-        Result = Tail
-    else
-        Tail = i(Length, Digits),
-        chop_uint(U, Div, Mod),
-        Result = uint_to_digits_2(Div, i(Length + 1, [cast_to_int(Mod) | Digits]))
-    ).
-
-:- func mul_base(integer) = integer.
-
-mul_base(i(Len, Digits)) = Result :-
-    (
-        Digits = [],
-        Result = integer.zero
-    ;
-        Digits = [_ | _],
-        Result = i(Len + 1, mul_base_2(Digits))
-    ).
-
-:- func mul_base_2(list(digit)) = list(digit).
-
-mul_base_2([]) = [0].
-mul_base_2([H | T]) = [H | mul_base_2(T)].
-
-:- func mul_by_digit(digit, integer) = integer.
-
-mul_by_digit(Digit, i(Len, Digits0)) = Out :-
-    mul_by_digit_2(Digit, Mod, Digits0, Digits),
-    ( if Mod = 0 then
-        Out = i(Len, Digits)
-    else
-        Out = i(Len + 1, [Mod | Digits])
-    ).
-
-:- pred mul_by_digit_2(digit::in, digit::out, list(digit)::in,
-    list(digit)::out) is det.
-
-mul_by_digit_2(_, 0, [], []).
-mul_by_digit_2(D, Div, [X | Xs], [Mod | NewXs]) :-
-    mul_by_digit_2(D, DivXs, Xs, NewXs),
-    chop(D * X + DivXs, Div, Mod).
-
-:- pred chop(int::in, digit::out, digit::out) is det.
-
-chop(N, Div, Mod) :-
-    % The unchecked shifts here and in the uint case below are safe since
-    % log2base is 14.
-    Div = N `int.unchecked_right_shift` log2base,    % i.e. Div = N div base
-    Mod = N /\ basemask.                             % i.e. Mod = N mod base
-
-:- pred chop_uint(uint::in, uint::out, uint::out) is det.
-
-chop_uint(N, Div, Mod) :-
-    Div = N `uint.unchecked_right_shift` log2base,
-    Mod = N /\ cast_from_int(basemask).
 
 :- func pos_plus(integer, integer) = integer.
 
@@ -959,6 +669,15 @@ diff_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
     diff_pairs_equal(DivTail, Xs, Ys, TailDs),
     chop(X - Y + DivTail, Div, Mod).
 
+%---------------------%
+
+:- func big_mul(integer, integer) = integer.
+
+big_mul(X, Y) = Result :-
+    Sign = integer_signum(X) * integer_signum(Y),
+    Value = pos_mul(big_abs(X), big_abs(Y)),
+    Result = big_sign(Sign, Value).
+
 :- func pos_mul(integer, integer) = integer.
 
 pos_mul(i(L1, Ds1), i(L2, Ds2)) =
@@ -1015,12 +734,79 @@ pos_mul_karatsuba(i(L1, Ds1), i(L2, Ds2)) = Res :-
               big_left_shift(Res1 - (Res2 + Res0), Middle*log2base) + Res0
     ).
 
-
 :- func pos_mul_list(list(digit), integer, integer) = integer.
 
 pos_mul_list([], Carry, _Y) = Carry.
 pos_mul_list([X | Xs], Carry, Y) =
     pos_mul_list(Xs, pos_plus(mul_base(Carry), mul_by_digit(X, Y)), Y).
+
+:- func mul_base(integer) = integer.
+
+mul_base(i(Len, Digits)) = Result :-
+    (
+        Digits = [],
+        Result = integer.zero
+    ;
+        Digits = [_ | _],
+        Result = i(Len + 1, mul_base_2(Digits))
+    ).
+
+:- func mul_base_2(list(digit)) = list(digit).
+
+mul_base_2([]) = [0].
+mul_base_2([H | T]) = [H | mul_base_2(T)].
+
+:- func mul_by_digit(digit, integer) = integer.
+
+mul_by_digit(Digit, i(Len, Digits0)) = Out :-
+    mul_by_digit_2(Digit, Mod, Digits0, Digits),
+    ( if Mod = 0 then
+        Out = i(Len, Digits)
+    else
+        Out = i(Len + 1, [Mod | Digits])
+    ).
+
+:- pred mul_by_digit_2(digit::in, digit::out, list(digit)::in,
+    list(digit)::out) is det.
+
+mul_by_digit_2(_, 0, [], []).
+mul_by_digit_2(D, Div, [X | Xs], [Mod | NewXs]) :-
+    mul_by_digit_2(D, DivXs, Xs, NewXs),
+    chop(D * X + DivXs, Div, Mod).
+
+%---------------------%
+
+:- func big_div(integer, integer) = integer.
+
+big_div(X, Y) = Div :-
+    big_quot_rem(X, Y, Trunc, Rem),
+    ( if integer_signum(Y) * integer_signum(Rem) < 0 then
+        Div = Trunc - integer.one
+    else
+        Div = Trunc
+    ).
+
+:- func big_quot(integer, integer) = integer.
+
+big_quot(X, Y) = Quot :-
+    big_quot_rem(X, Y, Quot, _Rem).
+
+:- func big_rem(integer, integer) = integer.
+
+big_rem(X, Y) = Rem :-
+    big_quot_rem(X, Y, _Quot, Rem).
+
+:- func big_mod(integer, integer) = integer.
+
+big_mod(X, Y) = Mod :-
+    big_quot_rem(X, Y, _Trunc, Rem),
+    ( if integer_signum(Y) * integer_signum(Rem) < 0 then
+        Mod = Rem + Y
+    else
+        Mod = Rem
+    ).
+
+%---------------------%
 
 :- pred big_quot_rem(integer::in, integer::in, integer::out, integer::out)
     is det.
@@ -1046,7 +832,7 @@ big_quot_rem(X, Y, Quot, Rem) :-
 %
 % If the first digit of V is less than base/2, then we scale both
 % the numerator and denominator. This way, we can use Knuth's[*] nifty trick
-% for finding an accurate approximation to Q. That's all we use from Knuth;
+% for finding an accurate approximation to Q. That is all we use from Knuth;
 % his MIX algorithm is fugly.
 %
 % [*] Knuth, Semi-numerical algorithms.
@@ -1115,63 +901,6 @@ quot_rem_2(Ur, U, V, Quot, Rem) :-
         )
     ).
 
-:- func length(integer) = int.
-
-length(i(L, _)) = L.
-
-:- func decap(integer) = integer.
-
-decap(i(_, [])) = integer.zero.
-decap(i(L, [H | T])) = Result :-
-    ( if H = 0 then
-        Result = decap(i(L - 1, T))
-    else
-        Result = i(L, [H | T])
-    ).
-
-:- func det_first(integer) = digit.
-
-det_first(i(_, Digits)) = First :-
-    (
-        Digits = [],
-        unexpected($module, $pred, "empty list")
-    ;
-        Digits = [First | _]
-    ).
-
-:- func det_second(integer) = digit.
-
-det_second(i(_, Digits)) = Second :-
-    (
-        Digits = [],
-        unexpected($module, $pred, "empty list")
-    ;
-        Digits = [_],
-        unexpected($module, $pred, "short list")
-    ;
-        Digits = [_, Second | _]
-    ).
-
-:- func det_tail(integer) = integer.
-
-det_tail(i(Len, Digits)) = I :-
-    (
-        Digits = [],
-        unexpected($module, $pred, "empty list")
-    ;
-        Digits = [_ | T],
-        I = i(Len - 1, T)
-    ).
-
-:- func integer_append(integer, digit) = integer.
-
-integer_append(i(L, List), Digit) = i(L + 1, NewList) :-
-    list.append(List, [Digit], NewList).
-
-:- func integer_prepend(digit, integer) = integer.
-
-integer_prepend(Digit, i(L, List)) = i(L + 1, [Digit | List]).
-
 :- func div_by_digit(digit, integer) = integer.
 
 div_by_digit(_, i(_, [])) = integer.zero.
@@ -1201,25 +930,38 @@ div_by_digit_2(X, [], D) = i(1, [X div D]).
 div_by_digit_2(X, [H | T], D) = i(Len + 1, [X div D | Tail]) :-
     i(Len, Tail) = div_by_digit_2((X rem D) * base + H, T, D).
 
-:- pred pos_lt(integer::in, integer::in) is semidet.
+:- func integer_append(integer, digit) = integer.
 
-pos_lt(Xs, Ys) :-
-    (<) = pos_cmp(Xs, Ys).
+integer_append(i(L, List), Digit) = i(L + 1, NewList) :-
+    list.append(List, [Digit], NewList).
 
-:- pred pos_geq(integer::in, integer::in) is semidet.
+:- func integer_prepend(digit, integer) = integer.
 
-pos_geq(Xs, Ys) :-
-    C = pos_cmp(Xs, Ys),
-    ( C = (>)
-    ; C = (=)
-    ).
+integer_prepend(Digit, i(L, List)) = i(L + 1, [Digit | List]).
 
-pow(A, N) = P :-
-    ( if big_isnegative(N) then
-        throw(math.domain_error("integer.pow: negative exponent"))
+%---------------------%
+
+:- func shortint_to_integer(int) = integer.
+
+shortint_to_integer(D) = Result :-
+    ( if D = 0 then
+        Result = integer.zero
+    else if D > 0 then
+        Result = i(1, [D])
     else
-        P = big_pow(A, N)
+        Result = i(-1, [D])
     ).
+
+:- func big_sign(int, integer) = integer.
+
+big_sign(Sign, In) = Result :-
+    ( if Sign < 0 then
+        Result = big_neg(In)
+    else
+        Result = In
+    ).
+
+%---------------------%
 
 :- func big_pow(integer, integer) = integer.
 
@@ -1257,19 +999,292 @@ big_pow_sqmul(A, N) = Result :-
         )
     ).
 
-float(i(_, List)) = float_list(float.float(base), 0.0, List).
+%---------------------------------------------------------------------------%
 
-:- func float_list(float, float, list(int)) = float.
+X << I = Result :-
+    ( if I > 0 then
+        Result = big_left_shift(X, I)
+    else if I < 0 then
+        Result = X >> -I
+    else
+        Result = X
+    ).
 
-float_list(_, Accum, []) = Accum.
-float_list(FBase, Accum, [H | T]) =
-    float_list(FBase, Accum * FBase + float.float(H), T).
+:- func big_left_shift(integer, int) = integer.
+
+big_left_shift(X, I) = Result :-
+    ( if is_zero(X) then
+        Result = X
+    else if big_isnegative(X) then
+        Result = big_neg(pos_left_shift(big_neg(X), I))
+    else
+        Result = pos_left_shift(X, I)
+    ).
+
+:- func pos_left_shift(integer, int) = integer.
+
+pos_left_shift(i(Len, Digits), I) = Integer :-
+    Div = I div log2base,
+    Mod = I mod log2base,
+    NewLen = Len + Div,
+    leftshift(Mod, log2base - Mod, NewLen, Digits, Carry, NewDigits),
+    ( if Carry = 0 then
+        Integer = i(NewLen, NewDigits)
+    else
+        Integer = i(NewLen + 1, [Carry | NewDigits])
+    ).
+
+:- pred leftshift(int::in, int::in, int::in, list(digit)::in,
+    int::out, list(digit)::out) is det.
+
+leftshift(_Mod, _InvMod, Len, [], Carry, DigitsOut) :-
+    Carry = 0,
+    zeros(Len, [], DigitsOut).
+leftshift(Mod, InvMod, Len, [H | T], Carry, DigitsOut) :-
+    ( if Len =< 0 then
+        Carry = 0,
+        DigitsOut = []
+    else
+        Carry = (H /\ (basemask << InvMod)) >> InvMod,
+        leftshift(Mod, InvMod, Len - 1, T, TailCarry, Tail),
+        DigitsOut = [TailCarry \/ ((H << Mod) /\ basemask) | Tail]
+    ).
+
+:- pred zeros(int::in, list(digit)::in, list(digit)::out) is det.
+
+zeros(Len, Digits0, Digits) :-
+    ( if Len > 0 then
+        zeros(Len - 1, Digits0, Digits1),
+        Digits = [0 | Digits1]
+    else
+        Digits = Digits0
+    ).
+
+%---------------------%
+
+X >> I = Result :-
+    ( if I < 0 then
+        Result = X << -I
+    else if I > 0 then
+        Result = big_right_shift(X, I)
+    else
+        Result = X
+    ).
+
+:- func big_right_shift(integer, int) = integer.
+
+big_right_shift(X, I) = Result :-
+    ( if is_zero(X) then
+        Result = X
+    else if big_isnegative(X) then
+        Result = \ pos_right_shift(\ X, I)
+    else
+        Result = pos_right_shift(X, I)
+    ).
+
+:- func pos_right_shift(integer, int) = integer.
+
+pos_right_shift(i(Len, Digits), I) = Integer :-
+    Div = I div log2base,
+    ( if Div < Len then
+        Mod = I mod log2base,
+        Integer = decap(rightshift(Mod, log2base - Mod,
+            i(Len - Div, Digits), 0))
+    else
+        Integer = integer.zero
+    ).
+
+:- func rightshift(int, int, integer, int) = integer.
+
+rightshift(_Mod, _InvMod, i(_Len, []), _Carry) = integer.zero.
+rightshift(Mod, InvMod, i(Len, [H | T]), Carry) = Integer :-
+    ( if Len =< 0 then
+        Integer = integer.zero
+    else
+        NewH = Carry \/ (H >> Mod),
+        NewCarry = (H /\ (basemask >> InvMod)) << InvMod,
+        i(TailLen, NewTail) = rightshift(Mod, InvMod, i(Len - 1, T),
+            NewCarry),
+        Integer = i(TailLen + 1, [NewH | NewTail])
+    ).
+
+%---------------------------------------------------------------------------%
+
+\ X = big_neg(big_plus(X, integer.one)).
+
+%---------------------%
+
+X /\ Y = Result :-
+    ( if big_isnegative(X) then
+        ( if big_isnegative(Y) then
+            Result = \ big_or(\ X, \ Y)
+        else
+            Result = big_and_not(Y, \ X)
+        )
+    else if big_isnegative(Y) then
+        Result = big_and_not(X, \ Y)
+    else
+        Result = big_and(X, Y)
+    ).
+
+X \/ Y = Result :-
+    ( if big_isnegative(X) then
+        ( if big_isnegative(Y) then
+            Result = \ big_and(\ X, \ Y)
+        else
+            Result = \ big_and_not(\ X, Y)
+        )
+    else if big_isnegative(Y) then
+        Result = \ big_and_not(\ Y, X)
+    else
+        Result = big_or(X, Y)
+    ).
+
+X `xor` Y = Result :-
+    ( if big_isnegative(X) then
+        ( if big_isnegative(Y) then
+            Result = big_xor(\ X, \ Y)
+        else
+            Result = big_xor_not(Y, \ X)
+        )
+    else if big_isnegative(Y) then
+        Result = big_xor_not(X, \ Y)
+    else
+        Result = big_xor(X, Y)
+    ).
+
+%---------------------%
+
+:- func big_and(integer, integer) = integer.
+
+big_and(X, Y) = decap(and_pairs(X, Y)).
+
+:- func and_pairs(integer, integer) = integer.
+
+and_pairs(i(L1, D1), i(L2, D2)) = Integer :-
+    ( if L1 = L2 then
+        Integer = i(L1, and_pairs_equal(D1, D2))
+    else if L1 < L2, D2 = [_ | T2] then
+        i(_, DsT) = and_pairs(i(L1, D1), i(L2 - 1, T2)),
+        Integer = i(L1, DsT)
+    else if L1 > L2, D1 = [_ | T1] then
+        i(_, DsT) = and_pairs(i(L1 - 1, T1), i(L2, D2)),
+        Integer = i(L2, DsT)
+    else
+        unexpected($module, $pred, "invalid integer")
+    ).
+
+:- func and_pairs_equal(list(digit), list(digit)) = list(digit).
+
+and_pairs_equal([], _) = [].
+and_pairs_equal([_ | _], []) = [].
+and_pairs_equal([X | Xs], [Y | Ys]) = [X /\ Y | and_pairs_equal(Xs, Ys)].
+
+%---------------------%
+
+:- func big_or(integer, integer) = integer.
+
+big_or(X, Y) = decap(or_pairs(X, Y)).
+
+:- func or_pairs(integer, integer) = integer.
+
+or_pairs(i(L1, D1), i(L2, D2)) = Integer :-
+    ( if L1 = L2 then
+        Integer = i(L1, or_pairs_equal(D1, D2))
+    else if L1 < L2, D2 = [H2 | T2] then
+        i(_, DsT) = or_pairs(i(L1, D1), i(L2 - 1, T2)),
+        Integer = i(L2, [H2 | DsT])
+    else if L1 > L2, D1 = [H1 | T1] then
+        i(_, DsT) = or_pairs(i(L1 - 1, T1), i(L2, D2)),
+        Integer = i(L1, [H1 | DsT])
+    else
+        unexpected($module, $pred, "invalid integer")
+    ).
+
+:- func or_pairs_equal(list(digit), list(digit)) = list(digit).
+
+or_pairs_equal([], _) = [].
+or_pairs_equal([_ | _], []) = [].
+or_pairs_equal([X | Xs], [Y | Ys]) = [X \/ Y | or_pairs_equal(Xs, Ys)].
+
+%---------------------%
+
+:- func big_xor(integer, integer) = integer.
+
+big_xor(X, Y) = decap(xor_pairs(X, Y)).
+
+:- func xor_pairs(integer, integer) = integer.
+
+xor_pairs(i(L1, D1), i(L2, D2)) = Integer :-
+    ( if L1 = L2 then
+        Integer = i(L1, xor_pairs_equal(D1, D2))
+    else if L1 < L2, D2 = [H2 | T2] then
+        i(_, DsT) = xor_pairs(i(L1, D1), i(L2 - 1, T2)),
+        Integer = i(L2, [H2 | DsT])
+    else if L1 > L2, D1 = [H1 | T1] then
+        i(_, DsT) = xor_pairs(i(L1 - 1, T1), i(L2, D2)),
+        Integer = i(L1, [H1 | DsT])
+    else
+        unexpected($module, $pred, "invalid integer")
+    ).
+
+:- func xor_pairs_equal(list(digit), list(digit)) = list(digit).
+
+xor_pairs_equal([], _) = [].
+xor_pairs_equal([_ | _], []) = [].
+xor_pairs_equal([X | Xs], [Y | Ys]) =
+    [int.xor(X, Y) | xor_pairs_equal(Xs, Ys)].
+
+%---------------------%
+
+:- func big_and_not(integer, integer) = integer.
+
+big_and_not(X, Y) = decap(and_not_pairs(X, Y)).
+
+:- func and_not_pairs(integer, integer) = integer.
+
+and_not_pairs(i(L1, D1), i(L2, D2)) = Integer :-
+    ( if L1 = L2 then
+        Integer = i(L1, and_not_pairs_equal(D1, D2))
+    else if L1 < L2, D2 = [_ | T2] then
+        i(_, DsT) = and_not_pairs(i(L1, D1), i(L2 - 1, T2)),
+        Integer = i(L1, DsT)
+    else if L1 > L2, D1 = [H1 | T1] then
+        i(_, DsT) = and_not_pairs(i(L1 - 1, T1), i(L2, D2)),
+        Integer = i(L1, [H1 | DsT])
+    else
+        unexpected($module, $pred, "invalid integer")
+    ).
+
+:- func and_not_pairs_equal(list(digit), list(digit)) = list(digit).
+
+and_not_pairs_equal([], _) = [].
+and_not_pairs_equal([_ | _], []) = [].
+and_not_pairs_equal([X | Xs], [Y | Ys]) =
+    [X /\ \ Y | and_not_pairs_equal(Xs, Ys)].
+
+%---------------------%
+
+:- func big_xor_not(integer, integer) = integer.
+
+big_xor_not(X1, NotX2) =
+    \ big_and_not(big_or(X1, NotX2), big_and(X1, NotX2)).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+%---------------------------------------------------------------------------%
 
 to_int(Integer, Int) :-
     Integer >= integer(int.min_int),
     Integer =< integer(int.max_int),
     Integer = i(_Sign, Digits),
     Int = int_list(Digits, 0).
+
+:- func int_list(list(int), int) = int.
+
+int_list([], Accum) = Accum.
+int_list([H | T], Accum) = int_list(T, Accum * base + H).
 
 det_to_int(Integer) = Int :-
     ( if integer.to_int(Integer, IntPrime) then
@@ -1280,11 +1295,6 @@ det_to_int(Integer) = Int :-
     ).
 
 int(Integer) = integer.det_to_int(Integer).
-
-:- func int_list(list(int), int) = int.
-
-int_list([], Accum) = Accum.
-int_list([H | T], Accum) = int_list(T, Accum * base + H).
 
 %---------------------------------------------------------------------------%
 
@@ -1310,75 +1320,13 @@ det_to_uint(Integer) = UInt :-
 
 %---------------------------------------------------------------------------%
 
-is_zero(i(0, [])).
+float(i(_, List)) = float_list(float.float(base), 0.0, List).
 
-%---------------------------------------------------------------------------%
-%
-% Constants.
-%
+:- func float_list(float, float, list(int)) = float.
 
-negative_one = i(-1, [-1]).
-
-zero = i(0, []).
-
-one = i(1, [1]).
-
-two = i(1, [2]).
-
-ten = i(1, [10]).
-
-%---------------------------------------------------------------------------%
-%
-% Converting strings to integers.
-%
-
-from_string(S) = Big :-
-    integer.from_string(S, Big).
-
-from_string(S, Big) :-
-    string.to_char_list(S, Cs),
-    string_to_integer(Cs, Big).
-
-det_from_string(S) = I :-
-    ( if integer.from_string(S, IPrime) then
-        I = IPrime
-    else
-        unexpected($module, $pred, "conversion failed")
-    ).
-
-:- pred string_to_integer(list(char)::in, integer::out) is semidet.
-
-string_to_integer(Chars, Integer) :-
-    Chars = [HeadChar | TailChars],
-    ( if HeadChar = ('-') then
-        TailChars = [_ | _], % Don't accept just "-" as an integer.
-        string_to_integer_acc(TailChars, integer.zero, PosInteger),
-        Integer = big_sign(-1, PosInteger)
-    else if HeadChar = ('+') then
-        TailChars = [_ | _], % Don't accept just "+" as an integer.
-        string_to_integer_acc(TailChars, integer.zero, Integer)
-    else
-        string_to_integer_acc(Chars, integer.zero, Integer)
-    ).
-
-:- pred string_to_integer_acc(list(char)::in, integer::in, integer::out)
-    is semidet.
-
-string_to_integer_acc([], !Integer).
-string_to_integer_acc([C | Cs], !Integer) :-
-    % The if-then-else here is acting as a sequential conjunction.
-    % It is needed to guarantee termination with --reorder-conj.
-    % Without it, the value of `Digit0 - Z' might be negative and
-    % then the call to pos_int_to_digits/1 may not terminate.
-    ( if char.is_digit(C) then
-        Digit0 = char.to_int(C),
-        Z = char.to_int('0'),
-        Digit = pos_int_to_digits(Digit0 - Z),
-        !:Integer = pos_plus(Digit, mul_by_digit(10, !.Integer)),
-        string_to_integer_acc(Cs, !Integer)
-    else
-        fail
-    ).
+float_list(_, Accum, []) = Accum.
+float_list(FBase, Accum, [H | T]) =
+    float_list(FBase, Accum * FBase + float.float(H), T).
 
 %---------------------------------------------------------------------------%
 %
@@ -1563,6 +1511,141 @@ printbase_pos_mul_list(Base, [X | Xs], Carry, Y) =
             printbase_mul_by_digit(Base, X, Y)), Y).
 
 %---------------------------------------------------------------------------%
+%
+% Converting ints to integers.
+%
+
+integer(N) = int_to_integer(N).
+
+% Note: Since most machines use 2's complement arithmetic,
+% INT_MIN is usually -INT_MAX-1, hence -INT_MIN will cause int overflow.
+% We handle overflow below.
+% We don't check for a negative result from abs(), which would indicate
+% overflow, since we may trap int overflow instead.
+%
+% XXX: What about machines that aren't 2's complement?
+
+:- func int_to_integer(int) = integer.
+
+int_to_integer(D) = Int :-
+    ( if D = 0 then
+        Int = integer.zero
+    else if D > 0, D < base then
+        Int = i(1, [D])
+    else if D < 0, D > -base then
+        Int = i(-1, [D])
+    else
+        ( if int.min_int(D) then
+            % Were we to call int.abs, int overflow might occur.
+            Int = integer(D + 1) - integer.one
+        else
+            Int = big_sign(D, pos_int_to_digits(int.abs(D)))
+        )
+    ).
+
+:- func pos_int_to_digits(int) = integer.
+
+pos_int_to_digits(D) = pos_int_to_digits_2(D, integer.zero).
+
+:- func pos_int_to_digits_2(int, integer) = integer.
+
+pos_int_to_digits_2(D, Tail) = Result :-
+    ( if D = 0 then
+        Result = Tail
+    else
+        Tail = i(Length, Digits),
+        chop(D, Div, Mod),
+        Result = pos_int_to_digits_2(Div, i(Length + 1, [Mod | Digits]))
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Converting uints to integers.
+%
+
+from_uint(U) = Integer :-
+    % XXX UINT use uint literals here when we have them.
+    ( if U = cast_from_int(0) then
+        Integer = integer.zero
+    else if U < cast_from_int(base) then
+        Integer = i(1, [cast_to_int(U)])
+    else
+        Integer = uint_to_digits(U)
+    ).
+
+:- func uint_to_digits(uint) = integer.
+
+uint_to_digits(U) = uint_to_digits_2(U, integer.zero).
+
+:- func uint_to_digits_2(uint, integer) = integer.
+
+uint_to_digits_2(U, Tail) = Result :-
+    ( if U = cast_from_int(0) then
+        Result = Tail
+    else
+        Tail = i(Length, Digits),
+        chop_uint(U, Div, Mod),
+        Result = uint_to_digits_2(Div,
+            i(Length + 1, [cast_to_int(Mod) | Digits]))
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Converting strings to integers.
+%
+
+from_string(S) = Big :-
+    integer.from_string(S, Big).
+
+from_string(S, Big) :-
+    string.to_char_list(S, Cs),
+    string_to_integer(Cs, Big).
+
+:- pred string_to_integer(list(char)::in, integer::out) is semidet.
+
+string_to_integer(Chars, Integer) :-
+    Chars = [HeadChar | TailChars],
+    ( if HeadChar = ('-') then
+        TailChars = [_ | _], % Don't accept just "-" as an integer.
+        string_to_integer_acc(TailChars, integer.zero, PosInteger),
+        Integer = big_sign(-1, PosInteger)
+    else if HeadChar = ('+') then
+        TailChars = [_ | _], % Don't accept just "+" as an integer.
+        string_to_integer_acc(TailChars, integer.zero, Integer)
+    else
+        string_to_integer_acc(Chars, integer.zero, Integer)
+    ).
+
+:- pred string_to_integer_acc(list(char)::in, integer::in, integer::out)
+    is semidet.
+
+string_to_integer_acc([], !Integer).
+string_to_integer_acc([C | Cs], !Integer) :-
+    % The if-then-else here is acting as a sequential conjunction.
+    % It is needed to guarantee termination with --reorder-conj.
+    % Without it, the value of `Digit0 - Z' might be negative and
+    % then the call to pos_int_to_digits/1 may not terminate.
+    ( if char.is_digit(C) then
+        Digit0 = char.to_int(C),
+        Z = char.to_int('0'),
+        Digit = pos_int_to_digits(Digit0 - Z),
+        !:Integer = pos_plus(Digit, mul_by_digit(10, !.Integer)),
+        string_to_integer_acc(Cs, !Integer)
+    else
+        fail
+    ).
+
+det_from_string(S) = I :-
+    ( if integer.from_string(S, IPrime) then
+        I = IPrime
+    else
+        unexpected($module, $pred, "conversion failed")
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Converting base strings to integers.
+%
 
 from_base_string(Base, String) = Integer :-
     integer.from_base_string(Base, String, Integer).
@@ -1598,8 +1681,6 @@ det_from_base_string(Base, String) = Integer :-
     else
         unexpected($module, $pred, "conversion failed")
     ).
-
-%---------------------------------------------------------------------------%
 
 from_base_string_underscore(Base, String, Integer) :-
     string.index(String, 0, Char),
