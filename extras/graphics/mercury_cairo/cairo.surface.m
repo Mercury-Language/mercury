@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,6 +65,19 @@
     % Return the device offsets set by the above.
     %
 :- pred get_device_offset(S::in, float::out, float::out,
+    io::di, io::uo) is det <= surface(S).
+
+    % surface.set_device_scale(Surface, XScale, YScale, !IO):
+    % Sets a scale that is multiplied to the device coordinates determined by
+    % the current transformation matrix when drawing to Surface.
+    %
+:- pred set_device_scale(S::in, float::in, float::in,
+    io::di, io::uo) is det <= surface(S).
+
+    % surface.get_device_scale(Surface, XScale, YScale, !IO):
+    % Return the previous device scale set by the above.
+    %
+:- pred get_device_scale(S::in, float::out, float::out,
     io::di, io::uo) is det <= surface(S).
 
     % surface.set_fallback_resolution(Surface, X, Y, !IO):
@@ -158,6 +172,26 @@
 "
     cairo_surface_get_device_offset(
         ((MCAIRO_surface *)Surface)->mcairo_raw_surface, &X, &Y);
+").
+
+:- pragma foreign_proc("C",
+    set_device_scale(Surface::in, XScale::in, YScale::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    cairo_surface_set_device_scale(
+        ((MCAIRO_surface *)Surface)->mcairo_raw_surface, XScale, YScale);
+").
+
+:- pragma foreign_proc("C",
+    get_device_scale(Surface::in, XScale::out, YScale::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    double  x_scale, y_scale;
+
+    cairo_surface_get_device_scale(
+        ((MCAIRO_surface *)Surface)->mcairo_raw_surface, &x_scale, &y_scale);
+    XScale = x_scale;
+    YScale = y_scale;
 ").
 
 :- pragma foreign_proc("C",
