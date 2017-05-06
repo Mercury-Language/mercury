@@ -446,6 +446,12 @@ Changes to the Mercury standard library:
   - return_sccs_in_from_to_order/1
   - return_sccs_in_to_from_order/1
 
+* We have added the following predicates and function to the bag module:
+
+  - insert_duplicates/4
+  - det_insert_duplicates/4
+  - det_insert_duplicates/3
+
 Changes to the Mercury compiler:
 
 * We have added a new option --warn-dead-preds. While the existing option

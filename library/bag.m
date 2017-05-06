@@ -83,6 +83,17 @@
 :- func insert_list(bag(T), list(T)) = bag(T).
 :- pred insert_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
 
+    % Insert N copies of a particular value into a bag.
+    % Fails if N < 0.
+    %
+:- pred insert_duplicates(int::in, T::in, bag(T)::in, bag(T)::out)
+    is semidet.
+
+    % As above, but throws an exception if N < 0.
+    %
+:- func det_insert_duplicates(bag(T), int, T) = bag(T).
+:- pred det_insert_duplicates(int::in, T::in, bag(T)::in, bag(T)::out) is det.
+
     % Insert a set of values into a bag.
     %
 :- func insert_set(bag(T), set(T)) = bag(T).
@@ -432,6 +443,32 @@ insert_list([], !Bag).
 insert_list([Item | Items], !Bag) :-
     bag.insert(Item, !Bag),
     bag.insert_list(Items, !Bag).
+
+insert_duplicates(N, Item, bag(!.Map), bag(!:Map)) :-
+    compare(CmpResult, N, 0),
+    (
+        CmpResult = (>),
+        ( if map.search(!.Map, Item, Count) then
+            map.det_update(Item, Count + N, !Map)
+        else
+            map.det_insert(Item, N, !Map)
+        )
+    ;
+        CmpResult = (=)
+    ;
+        CmpResult = (<),
+        fail
+    ).
+
+det_insert_duplicates(!.Bag, N, Item) = !:Bag :-
+    det_insert_duplicates(N, Item, !Bag).
+
+det_insert_duplicates(N, Item, !Bag) :-
+    ( if insert_duplicates(N, Item, !Bag) then
+        true
+    else
+        error("bag.det_insert_duplicates: number of items is negative")
+    ).
 
 insert_set(!.Bag, Xs) = !:Bag :-
     bag.insert_set(Xs, !Bag).
