@@ -381,69 +381,69 @@
 
 %---------------------------------------------------------------------------%
 
-bag.init = Bag :-
+init = Bag :-
     bag.init(Bag).
 
-bag.init(bag(Map)) :-
+init(bag(Map)) :-
     map.init(Map).
 
-bag.is_empty(bag(Map)) :-
+is_empty(bag(Map)) :-
     map.is_empty(Map).
 
 %---------------------------------------------------------------------------%
 
-bag.contains(bag(Map), X) :-
+contains(bag(Map), X) :-
     map.contains(Map, X).
 
-bag.count_value(Bag, X) = N :-
+count_value(Bag, X) = N :-
     bag.count_value(Bag, X, N).
 
-bag.count_value(bag(Map), X, N) :-
+count_value(bag(Map), X, N) :-
     ( if map.search(Map, X, NPrime) then
         N = NPrime
     else
         N = 0
     ).
 
-bag.member(X, bag(Map)) :-
+member(X, bag(Map)) :-
     map.search(Map, X, _N).
 
-bag.member(X, !Bag) :-
+member(X, !Bag) :-
     Xs = bag.to_list(!.Bag),
     list.member(X, Xs),
     bag.det_remove(X, !Bag).
 
 %---------------------------------------------------------------------------%
 
-bag.insert(!.Bag, X) = !:Bag :-
+insert(!.Bag, X) = !:Bag :-
     bag.insert(X, !Bag).
 
-bag.insert(Item, bag(!.Map), bag(!:Map)) :-
+insert(Item, bag(!.Map), bag(!:Map)) :-
     ( if map.search(!.Map, Item, Count) then
         map.det_update(Item, Count + 1, !Map)
     else
         map.det_insert(Item, 1, !Map)
     ).
 
-bag.insert_list(!.Bag, Xs) = !:Bag :-
+insert_list(!.Bag, Xs) = !:Bag :-
     bag.insert_list(Xs, !Bag).
 
-bag.insert_list([], !Bag).
-bag.insert_list([Item | Items], !Bag) :-
+insert_list([], !Bag).
+insert_list([Item | Items], !Bag) :-
     bag.insert(Item, !Bag),
     bag.insert_list(Items, !Bag).
 
-bag.insert_set(!.Bag, Xs) = !:Bag :-
+insert_set(!.Bag, Xs) = !:Bag :-
     bag.insert_set(Xs, !Bag).
 
-bag.insert_set(Set, !Bag) :-
+insert_set(Set, !Bag) :-
     set.to_sorted_list(Set, List),
     % XXX We should exploit the sortedness of List.
     bag.insert_list(List, !Bag).
 
 %---------------------------------------------------------------------------%
 
-bag.remove_smallest(X, bag(!.Map), bag(!:Map)) :-
+remove_smallest(X, bag(!.Map), bag(!:Map)) :-
     map.remove_smallest(X, N, !Map),
     ( if N > 1 then
         map.det_insert(X, N - 1, !Map)
@@ -451,7 +451,7 @@ bag.remove_smallest(X, bag(!.Map), bag(!:Map)) :-
         true
     ).
 
-bag.remove(X, bag(!.Map), bag(!:Map)) :-
+remove(X, bag(!.Map), bag(!:Map)) :-
     map.search(!.Map, X, N),
     ( if N > 1 then
         map.det_update(X, N - 1, !Map)
@@ -459,48 +459,48 @@ bag.remove(X, bag(!.Map), bag(!:Map)) :-
         map.delete(X, !Map)
     ).
 
-bag.det_remove(!.Bag, X) = !:Bag :-
+det_remove(!.Bag, X) = !:Bag :-
     bag.det_remove(X, !Bag).
 
-bag.det_remove(X, !Bag) :-
+det_remove(X, !Bag) :-
     ( if bag.remove(X, !Bag) then
         true
     else
         unexpected($module, $pred, "item not in bag")
     ).
 
-bag.remove_list([], !Bag).
-bag.remove_list([X | Xs], !Bag) :-
+remove_list([], !Bag).
+remove_list([X | Xs], !Bag) :-
     bag.remove(X, !Bag),
     bag.remove_list(Xs, !Bag).
 
-bag.det_remove_list(!.Bag, Xs) = !:Bag :-
+det_remove_list(!.Bag, Xs) = !:Bag :-
     bag.det_remove_list(Xs, !Bag).
 
-bag.det_remove_list(Xs, !Bag) :-
+det_remove_list(Xs, !Bag) :-
     ( if bag.remove_list(Xs, !Bag) then
         true
     else
         unexpected($module, $pred, "some item not in bag")
     ).
 
-bag.remove_set(Set, !Bag) :-
+remove_set(Set, !Bag) :-
     set.to_sorted_list(Set, Xs),
     % XXX We should exploit the sortedness of Xs.
     bag.remove_list(Xs, !Bag).
 
-bag.det_remove_set(!.Bag, Set) = !:Bag :-
+det_remove_set(!.Bag, Set) = !:Bag :-
     bag.det_remove_set(Set, !Bag).
 
-bag.det_remove_set(Set, !Bag) :-
+det_remove_set(Set, !Bag) :-
     set.to_sorted_list(Set, Xs),
     % XXX We should exploit the sortedness of List.
     bag.det_remove_list(Xs, !Bag).
 
-bag.delete(!.Bag, X) = !:Bag :-
+delete(!.Bag, X) = !:Bag :-
     bag.delete(X, !Bag).
 
-bag.delete(X, bag(!.Map), bag(!:Map)) :-
+delete(X, bag(!.Map), bag(!:Map)) :-
     ( if map.search(!.Map, X, N) then
         ( if N > 1 then
             map.det_update(X, N - 1, !Map)
@@ -511,40 +511,40 @@ bag.delete(X, bag(!.Map), bag(!:Map)) :-
         true
     ).
 
-bag.remove_all(X, bag(!.Map), bag(!:Map)) :-
+remove_all(X, bag(!.Map), bag(!:Map)) :-
     % This is semidet.
     map.remove(X, _N, !Map).
 
-bag.delete_all(!.Bag, X) = !:Bag :-
+delete_all(!.Bag, X) = !:Bag :-
     bag.delete_all(X, !Bag).
 
-bag.delete_all(X, bag(!.Map), bag(!:Map)) :-
+delete_all(X, bag(!.Map), bag(!:Map)) :-
     % This is det.
     map.delete(X, !Map).
 
 %---------------------------------------------------------------------------%
 
-bag.bag(Xs) = bag.from_list(Xs).
+bag(Xs) = bag.from_list(Xs).
 
-bag.from_list(Xs) = Bag :-
+from_list(Xs) = Bag :-
     bag.from_list(Xs, Bag).
 
-bag.from_list(Xs, Bag) :-
+from_list(Xs, Bag) :-
     bag.init(Bag0),
     bag.insert_list(Xs, Bag0, Bag).
 
-bag.from_sorted_list(Xs) = Bag :-
+from_sorted_list(Xs) = Bag :-
     bag.from_sorted_list(Xs, Bag).
 
-bag.from_sorted_list(Xs, Bag) :-
+from_sorted_list(Xs, Bag) :-
     bag.init(Bag0),
     % XXX We should exploit the sortedness of Xs.
     bag.insert_list(Xs, Bag0, Bag).
 
-bag.from_set(Set) = Bag :-
+from_set(Set) = Bag :-
     bag.from_set(Set, Bag).
 
-bag.from_set(Set, Bag) :-
+from_set(Set, Bag) :-
     set.to_sorted_list(Set, Xs),
     bag.init(Bag0),
     % XXX We should exploit the sortedness of List.
@@ -552,10 +552,10 @@ bag.from_set(Set, Bag) :-
 
 %---------------------------------------------------------------------------%
 
-bag.to_list(Bag) = Xs :-
+to_list(Bag) = Xs :-
     bag.to_list(Bag, Xs).
 
-bag.to_list(bag(Map), Xs) :-
+to_list(bag(Map), Xs) :-
     map.foldl(prepend_n_xs, Map, [], RevXs),
     list.reverse(RevXs, Xs).
 
@@ -569,22 +569,22 @@ prepend_n_xs(X, N, !RevXs) :-
         prepend_n_xs(X, N - 1, !RevXs)
     ).
 
-bag.to_assoc_list(Bag) = XNs :-
+to_assoc_list(Bag) = XNs :-
     bag.to_assoc_list(Bag, XNs).
 
-bag.to_assoc_list(bag(Map), XNs) :-
+to_assoc_list(bag(Map), XNs) :-
     map.to_assoc_list(Map, XNs).
 
-bag.to_list_without_duplicates(Bag) = Xs :-
+to_list_without_duplicates(Bag) = Xs :-
     bag.to_list_without_duplicates(Bag, Xs).
 
-bag.to_list_without_duplicates(bag(Map), Xs) :-
+to_list_without_duplicates(bag(Map), Xs) :-
     map.keys(Map, Xs).
 
-bag.to_list_only_duplicates(Bag) = Xs :-
+to_list_only_duplicates(Bag) = Xs :-
     bag.to_list_only_duplicates(Bag, Xs).
 
-bag.to_list_only_duplicates(bag(Map), DupXs) :-
+to_list_only_duplicates(bag(Map), DupXs) :-
     map.to_assoc_list(Map, XNs),
     list.filter_map(is_duplicated, XNs, DupXs).
 
@@ -593,21 +593,21 @@ bag.to_list_only_duplicates(bag(Map), DupXs) :-
 is_duplicated(X - XN, X) :-
     XN > 1.
 
-bag.to_set(bag(Map)) = Set :-
+to_set(bag(Map)) = Set :-
     map.keys(Map, Xs),
     set.sorted_list_to_set(Xs, Set).
 
-bag.to_set_without_duplicates(Bag) = bag.to_set(Bag).
+to_set_without_duplicates(Bag) = bag.to_set(Bag).
 
-bag.to_set_without_duplicates(Bag, Set) :-
+to_set_without_duplicates(Bag, Set) :-
     Set = bag.to_set(Bag).
 
 %---------------------------------------------------------------------------%
 
-bag.subtract(BagA, BagB) = BagAmB :-
+subtract(BagA, BagB) = BagAmB :-
     bag.subtract(BagA, BagB, BagAmB).
 
-bag.subtract(bag(MapA), bag(MapB), bag(MapAmB)) :-
+subtract(bag(MapA), bag(MapB), bag(MapAmB)) :-
     map.to_assoc_list(MapA, AXNs),
     map.to_assoc_list(MapB, BXNs),
     bag.subtract_loop(AXNs, BXNs, [], RevAmBXNs),
@@ -620,7 +620,7 @@ bag.subtract(bag(MapA), bag(MapB), bag(MapAmB)) :-
 :- mode subtract_loop(in, in(empty_list), in, out) is det.
 :- mode subtract_loop(in, in, in, out) is det.
 
-bag.subtract_loop(AXNs, BXNs, !RevAmBXNs) :-
+subtract_loop(AXNs, BXNs, !RevAmBXNs) :-
     (
         AXNs = []
         % There is nothing left to subtract.
@@ -657,16 +657,16 @@ bag.subtract_loop(AXNs, BXNs, !RevAmBXNs) :-
         )
     ).
 
-bag.subtract_small(BagA, BagB) = BagAmB :-
+subtract_small(BagA, BagB) = BagAmB :-
     bag.subtract_small(BagA, BagB, BagAmB).
 
-bag.subtract_small(bag(MapA), bag(MapB), bag(MapAmB)) :-
+subtract_small(bag(MapA), bag(MapB), bag(MapAmB)) :-
     bag.subtract_small_loop(MapA, MapB, MapAmB).
 
 :- pred subtract_small_loop(map(T, int)::in, map(T, int)::in, map(T, int)::out)
     is det.
 
-bag.subtract_small_loop(MapA, MapB, MapAmB) :-
+subtract_small_loop(MapA, MapB, MapAmB) :-
     ( if map.remove_smallest(X, BXN, MapB, NextMapB) then
         ( if map.search(MapA, X, AXN) then
             XN = AXN - BXN,
@@ -685,10 +685,10 @@ bag.subtract_small_loop(MapA, MapB, MapAmB) :-
 
 %---------------------%
 
-bag.least_upper_bound(BagA, BagB) = BagAlubB :-
+least_upper_bound(BagA, BagB) = BagAlubB :-
     bag.least_upper_bound(BagA, BagB, BagAlubB).
 
-bag.least_upper_bound(bag(MapA), bag(MapB), bag(MapAlubB)) :-
+least_upper_bound(bag(MapA), bag(MapB), bag(MapAlubB)) :-
     map.to_assoc_list(MapA, AXNs),
     map.to_assoc_list(MapB, BXNs),
     bag.least_upper_bound_loop(AXNs, BXNs, [], RevAlubBXNs),
@@ -702,7 +702,7 @@ bag.least_upper_bound(bag(MapA), bag(MapB), bag(MapAlubB)) :-
 :- mode least_upper_bound_loop(in, in(empty_list), in, out) is det.
 :- mode least_upper_bound_loop(in, in, in, out) is det.
 
-bag.least_upper_bound_loop(AXNs, BXNs, !RevAlubBXNs) :-
+least_upper_bound_loop(AXNs, BXNs, !RevAlubBXNs) :-
     (
         AXNs = [],
         BXNs = []
@@ -741,16 +741,16 @@ bag.least_upper_bound_loop(AXNs, BXNs, !RevAlubBXNs) :-
         )
     ).
 
-bag.least_upper_bound_small(BagA, BagB) = BagAlubB :-
+least_upper_bound_small(BagA, BagB) = BagAlubB :-
     bag.least_upper_bound_small(BagA, BagB, BagAlubB).
 
-bag.least_upper_bound_small(bag(MapA), bag(MapB), bag(MapAlubB)) :-
+least_upper_bound_small(bag(MapA), bag(MapB), bag(MapAlubB)) :-
     bag.least_upper_bound_small_loop(MapA, MapB, MapAlubB).
 
 :- pred bag.least_upper_bound_small_loop(map(T, int)::in, map(T, int)::in,
     map(T, int)::out) is det.
 
-bag.least_upper_bound_small_loop(MapA, MapB, MapAlubB) :-
+least_upper_bound_small_loop(MapA, MapB, MapAlubB) :-
     ( if map.remove_smallest(X, BXN, MapB, NextMapB) then
         ( if map.search(MapA, X, AXN) then
             int.max(AXN, BXN, XN),
@@ -765,10 +765,10 @@ bag.least_upper_bound_small_loop(MapA, MapB, MapAlubB) :-
 
 %---------------------%
 
-bag.union(BagA, BagB) = BagAuB :-
+union(BagA, BagB) = BagAuB :-
     bag.union(BagA, BagB, BagAuB).
 
-bag.union(bag(MapA), bag(MapB), bag(MapAuB)) :-
+union(bag(MapA), bag(MapB), bag(MapAuB)) :-
     map.to_assoc_list(MapA, AXNs),
     map.to_assoc_list(MapB, BXNs),
     bag.union_loop(AXNs, BXNs, [], RevAuBXNs),
@@ -782,7 +782,7 @@ bag.union(bag(MapA), bag(MapB), bag(MapAuB)) :-
 :- mode union_loop(in, in(empty_list), in, out) is det.
 :- mode union_loop(in, in, in, out) is det.
 
-bag.union_loop(AXNs, BXNs, !RevAuBXNs) :-
+union_loop(AXNs, BXNs, !RevAuBXNs) :-
     (
         AXNs = [],
         BXNs = []
@@ -821,16 +821,16 @@ bag.union_loop(AXNs, BXNs, !RevAuBXNs) :-
         )
     ).
 
-bag.union_small(BagA, BagB) = BagAuB :-
+union_small(BagA, BagB) = BagAuB :-
     bag.union_small(BagA, BagB, BagAuB).
 
-bag.union_small(bag(MapA), bag(MapB), bag(MapAuB)) :-
+union_small(bag(MapA), bag(MapB), bag(MapAuB)) :-
     bag.union_small_loop(MapA, MapB, MapAuB).
 
 :- pred union_small_loop(map(T, int)::in, map(T, int)::in, map(T, int)::out)
     is det.
 
-bag.union_small_loop(MapA, MapB, MapAuB) :-
+union_small_loop(MapA, MapB, MapAuB) :-
     ( if map.remove_smallest(X, BXN, MapB, NextMapB) then
         ( if map.search(MapA, X, AXN) then
             XN = AXN + BXN,
@@ -845,10 +845,10 @@ bag.union_small_loop(MapA, MapB, MapAuB) :-
 
 %---------------------%
 
-bag.intersect(BagA, BagB) = BagAiB :-
+intersect(BagA, BagB) = BagAiB :-
     bag.intersect(BagA, BagB, BagAiB).
 
-bag.intersect(bag(MapA), bag(MapB), bag(MapAiB)) :-
+intersect(bag(MapA), bag(MapB), bag(MapAiB)) :-
     map.to_assoc_list(MapA, AXNs),
     map.to_assoc_list(MapB, BXNs),
     bag.intersect_loop(AXNs, BXNs, [], RevAiBXNs),
@@ -862,7 +862,7 @@ bag.intersect(bag(MapA), bag(MapB), bag(MapAiB)) :-
 :- mode intersect_loop(in, in(empty_list), in, out) is det.
 :- mode intersect_loop(in, in, in, out) is det.
 
-bag.intersect_loop(AXNs, BXNs, !RevAuBXNs) :-
+intersect_loop(AXNs, BXNs, !RevAuBXNs) :-
     (
         AXNs = [],
         BXNs = []
@@ -898,17 +898,17 @@ bag.intersect_loop(AXNs, BXNs, !RevAuBXNs) :-
         )
     ).
 
-bag.intersect_small(BagA, BagB) = BagAiB :-
+intersect_small(BagA, BagB) = BagAiB :-
     bag.intersect_small(BagA, BagB, BagAiB).
 
-bag.intersect_small(bag(MapA), bag(MapB), bag(MapAiB)) :-
+intersect_small(bag(MapA), bag(MapB), bag(MapAiB)) :-
     map.init(MapAiB0),
     bag.intersect_small_loop(MapA, MapB, MapAiB0, MapAiB).
 
 :- pred bag.intersect_small_loop(map(T, int)::in, map(T, int)::in,
     map(T, int)::in, map(T, int)::out) is det.
 
-bag.intersect_small_loop(MapA, MapB, !MapAiB) :-
+intersect_small_loop(MapA, MapB, !MapAiB) :-
     ( if map.remove_smallest(X, AXN, MapA, NextMapA) then
         ( if map.search(MapB, X, BXN) then
             int.min(AXN, BXN, XN),
@@ -921,7 +921,7 @@ bag.intersect_small_loop(MapA, MapB, !MapAiB) :-
         true
     ).
 
-bag.intersect(bag(MapA), bag(MapB)) :-
+intersect(bag(MapA), bag(MapB)) :-
     map.remove_smallest(X, _N, MapA, NextMapA),
     ( if map.contains(MapB, X) then
         true
@@ -931,13 +931,13 @@ bag.intersect(bag(MapA), bag(MapB)) :-
 
 %---------------------------------------------------------------------------%
 
-bag.is_subbag(BagA, BagB) :-
+is_subbag(BagA, BagB) :-
     bag.subset_compare(Res, BagA, BagB),
     ( Res = (<)
     ; Res = (=)
     ).
 
-bag.subset_compare(Res, bag(MapA), bag(MapB)) :-
+subset_compare(Res, bag(MapA), bag(MapB)) :-
     map.to_assoc_list(MapA, AXNs),
     map.to_assoc_list(MapB, BXNs),
     bag.subset_compare_loop(Res, AXNs, BXNs).
@@ -945,7 +945,7 @@ bag.subset_compare(Res, bag(MapA), bag(MapB)) :-
 :- pred subset_compare_loop(comparison_result::out,
     assoc_list(T, int)::in, assoc_list(T, int)::in) is semidet.
 
-bag.subset_compare_loop(Res, AXNs, BXNs) :-
+subset_compare_loop(Res, AXNs, BXNs) :-
     % Go down both AXNs and BXNs until we find a difference.
     % If and when we find one, switch over to subset_compare_verify_le
     % to verify that the rest of two lists has differences only in
@@ -1058,17 +1058,17 @@ subset_compare_verify_le(AXNs, BXNs) :-
 
 %---------------------------------------------------------------------------%
 
-bag.foldl(Pred, bag(Map), !Acc) :-
+foldl(Pred, bag(Map), !Acc) :-
     map.foldl(Pred, Map, !Acc).
 
-bag.foldl2(Pred, bag(Map), !Acc1, !Acc2) :-
+foldl2(Pred, bag(Map), !Acc1, !Acc2) :-
     map.foldl2(Pred, Map, !Acc1, !Acc2).
 
 %---------------------------------------------------------------------------%
 
-bag.count(bag(Map)) = list.foldl(int.plus, map.values(Map), 0).
+count(bag(Map)) = list.foldl(int.plus, map.values(Map), 0).
 
-bag.count_unique(bag(Map)) = map.count(Map).
+count_unique(bag(Map)) = map.count(Map).
 
 %---------------------------------------------------------------------------%
 :- end_module bag.
