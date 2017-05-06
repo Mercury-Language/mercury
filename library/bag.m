@@ -33,6 +33,10 @@
 :- func init = bag(T).
 :- pred init(bag(T)::out) is det.
 
+    % Create a bag containing the given item.
+    %
+:- func singleton(T) = bag(T).
+
     % Check whether a bag is empty.
     %
 :- pred is_empty(bag(T)::in) is semidet.
@@ -397,6 +401,9 @@ init = Bag :-
 
 init(bag(Map)) :-
     map.init(Map).
+
+singleton(Item) = bag(Map) :-
+    Map = map.singleton(Item, 1).
 
 is_empty(bag(Map)) :-
     map.is_empty(Map).

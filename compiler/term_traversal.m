@@ -158,9 +158,8 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             )
         ;
             Unification = assign(OutVar, InVar),
-            bag.init(Empty),
-            bag.insert(InVar, Empty, InVars),
-            bag.insert(OutVar, Empty, OutVars),
+            InVars = bag.singleton(InVar),
+            OutVars = bag.singleton(OutVar),
             record_change(InVars, OutVars, 0, [], !Info)
         ;
             Unification = simple_test(_InVar1, _InVar2)

@@ -446,8 +446,9 @@ Changes to the Mercury standard library:
   - return_sccs_in_from_to_order/1
   - return_sccs_in_to_from_order/1
 
-* We have added the following predicates and function to the bag module:
+* We have added the following predicates and functions to the bag module:
 
+  - singleton/1
   - insert_duplicates/4
   - det_insert_duplicates/4
   - det_insert_duplicates/3
