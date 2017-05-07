@@ -8,7 +8,7 @@
 %
 % This module provides a bunch of parsing combinators directed towards
 % parsing text (in some encoding or bunch of encodings). The parsing state
-% that gets threadded through is polymorphic in the type of the result
+% that gets threaded through is polymorphic in the type of the result
 % stored in it. This can cause problems if you construct a big combinator
 % expression (particularly using the "or" combinator) where the type
 % of this result in the initial parsing state is unbound and is inherited
