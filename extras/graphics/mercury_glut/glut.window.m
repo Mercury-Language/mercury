@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,9 +27,9 @@
 :- type window.window.
 
     % window.create(Name, !IO).
-    % Create a new top-level window.  
+    % Create a new top-level window.
     % Sets the current window to this newly created window.
-    % 
+    %
 :- pred window.create(string::in, io::di, io::uo) is det.
 
     % window.create(Name, WindowId, !IO).
@@ -42,10 +43,10 @@
     %
 %:- pred window.create_subwindow(window::in, int::in, int::in, int::in,
 %   int::in, window::out, io::di, io::uo) is det.
-    
-    % Destroy the specified window.  Does nothing if the 
+
+    % Destroy the specified window.  Does nothing if the
     % specified window does not exist.
-    % 
+    %
 :- pred window.destroy(window::in, io::di, io::uo) is det.
 
     % Mark the current window as needing to be redisplayed.
@@ -102,7 +103,7 @@
     %
 :- pred window.iconify(io::di, io::uo) is det.
 
-    % Show the current window.  
+    % Show the current window.
     % (It may not be visible if obscured by other shown windows).
     %
 :- pred window.show(io::di, io::uo) is det.
@@ -137,7 +138,7 @@
     ;       top_right_corner    % Arrow pointing to top right corner.
     ;       bottom_right_corner % Arrow pointing to bottom right corner.
     ;       bottom_left_corner  % Arrow pointing to bottom left corner.
-    ;       full_crosshair      
+    ;       full_crosshair
                         % Full screen cross hair cursor (if possible)
                         % Otherwise the same as `crosshair'.
 
@@ -162,11 +163,11 @@
 %:- pred window.num_children(int::out, io::di, io::uo) is det.
 
     % Returns `yes' if the current window is double buffered and `no'
-    % otherwise. 
+    % otherwise.
     %
 :- pred window.is_double_buffered(bool::out, io::di, io::uo) is det.
 
-    % Returns `yes' if the current layer of the current window is stereo; 
+    % Returns `yes' if the current layer of the current window is stereo;
     % `no' otherwise.
     %
 :- pred window.is_stereo(bool::out, io::di, io::uo) is det.
@@ -201,30 +202,30 @@
 %
 
 :- type window.state
-    --->    x               
-            % Current X location in pixels. 
+    --->    x
+            % Current X location in pixels.
 
-    ;       y                  
+    ;       y
             % Current Y location in pixels.
 
-    ;       window_width       
+    ;       window_width
             % Width of the current window in pixels.
 
     ;       window_height
             % Height of the current window in pixels.
 
-    ;       buffer_size        
+    ;       buffer_size
             % Number of bits in the current layer of
-            % the current window's color buffer.  
+            % the current window's color buffer.
 
-    ;       stencil_size        
+    ;       stencil_size
             % Number of bits in the current layer of
             % the current window's stencil buffer.
 
     ;       depth_size
             % Number of bits in the current layer of
             % the current window's depth buffer.
- 
+
     ;       red_size
             % Number of bits of red stored in the current
             % layer of the current window's color buffer.
@@ -238,26 +239,26 @@
 
     ;       alpha_size
             % As above but the number of alpha bits.
- 
+
     ;       accum_red_size
             % Number of bits of red in the accumulation
             % buffer of the current layer of the current
             % window.  Zero if in color index mode.
 
     ;       accum_green_size
-            % As above but the number of green bits.    
-    
+            % As above but the number of green bits.
+
     ;       accum_blue_size
             % As above but the number of blue bits.
 
     ;       accum_alpha_size
             % As above but the number of alpha bits.
- 
+
     ;       colormap_size
-            % Size of the color index colormap of the 
+            % Size of the color index colormap of the
             % current layer of the current window.
             % Zero if in RGBA mode.
- 
+
     ;       number_samples
             % Number of samples for multisampling for the
             % current layer of the current window.
@@ -297,156 +298,138 @@ window.create(Name, !IO) :-
     window.create(Name, _, !IO).
 
 :- pragma foreign_proc("C",
-    window.create(Name::in, Win::out, IO0::di, IO::uo),
+    window.create(Name::in, Win::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
-" 
+"
     Win = (MR_Integer) glutCreateWindow((char *) Name);
-    IO = IO0;
 ").
 
     % XXX This will not work properly until we can handle callbacks
-    % for multiple windows.  
+    % for multiple windows.
 %:- pragma foreign_proc("C",
 %   create_subwindow(Parent::in, X::in, Y::in, W::in, H::in, Child::out,
-%       IO0::di, IO::uo),
+%       _IO0::di, _IO::uo),
 %   [will_not_call_mercury, promise_pure],
 %"
 %   Child = (MR_Integer) glutCreateSubWindow((int)Parent, (int)X, (int)Y,
 %       (int)W, (int)H);
-%   IO = IO0;
 %").
 
 :- pragma foreign_proc("C",
-    window.destroy(Window::in, IO0::di, IO::uo), 
+    window.destroy(Window::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutDestroyWindow(Window);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.post_redisplay(IO0::di, IO::uo), 
+    window.post_redisplay(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutPostRedisplay();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.post_redisplay(Id::in, IO0::di, IO::uo),
+    window.post_redisplay(Id::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutPostWindowRedisplay((int) Id);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.swap_buffers(IO0::di, IO::uo), 
+    window.swap_buffers(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSwapBuffers();
-    IO = IO0;
 ").
 
 window.id(MaybeWindow, !IO) :-
-    window.id_2(Window, !IO), 
+    window.id_2(Window, !IO),
     MaybeWindow = ( if Window = 0 then no else yes(Window) ).
 
 :- pred window.id_2(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    window.id_2(Win::out, IO0::di, IO::uo),
+    window.id_2(Win::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Win = (MR_Integer) glutGetWindow();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.set(Window::in, IO0::di, IO::uo),
+    window.set(Window::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSetWindow((int) Window);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.title(Title::in, IO0::di, IO::uo),
+    window.title(Title::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSetWindowTitle(Title);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.icon_title(Title::in, IO0::di, IO::uo),
+    window.icon_title(Title::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSetIconTitle((char *) Title);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.position(X::in, Y::in, IO0::di, IO::uo),
+    window.position(X::in, Y::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutPositionWindow((int) X, (int) Y);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.reshape(W::in, H::in, IO0::di, IO::uo), 
+    window.reshape(W::in, H::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutReshapeWindow(W, H);
-    IO = IO0;
 ").
 
 %:- pragma foreign_proc("C",
-%   window.pop(IO0::di, IO::uo),
+%   window.pop(_IO0::di, _IO::uo),
 %   [will_not_call_mercury, tabled_for_io, promise_pure],
 %"
 %   glutPopWindow();
-%   IO = IO0;
 %").
 
 %:- pragma foreign_proc("C",
-%   window.push(IO0::di, IO::uo),
+%   window.push(_IO0::di, _IO::uo),
 %   [will_not_call_mercury, tabled_for_io, promise_pure],
 %"
 %   glutPushWindow();
-%   IO = IO0;
 %").
 
 :- pragma foreign_proc("C",
-    window.iconify(IO0::di, IO::uo),
+    window.iconify(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutIconifyWindow();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.show(IO0::di, IO::uo),
+    window.show(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutShowWindow();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.hide(IO0::di, IO::uo),
+    window.hide(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutHideWindow();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.full_screen(IO0::di, IO::uo),
+    window.full_screen(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutFullScreen();
-    IO = IO0;
 ").
 
     % NOTE: we don't use a foreign enumeration for this type because we
@@ -478,153 +461,153 @@ cursor_to_int(none)    = glut_cursor_none.
 cursor_to_int(inherit) = glut_cursor_inherit.
 
 :- func glut_cursor_right_arrow = int.
-:- pragma foreign_proc("C", glut_cursor_right_arrow = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_right_arrow = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_RIGHT_ARROW;
 ").
 
 :- func glut_cursor_left_arrow = int.
-:- pragma foreign_proc("C", glut_cursor_left_arrow = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_left_arrow = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_LEFT_ARROW;
 ").
 
 :- func glut_cursor_info = int.
-:- pragma foreign_proc("C", glut_cursor_info = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_info = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_INFO;
 ").
 
 :- func glut_cursor_destroy = int.
-:- pragma foreign_proc("C", glut_cursor_destroy = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_destroy = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_DESTROY;
 ").
 
 :- func glut_cursor_help = int.
-:- pragma foreign_proc("C", glut_cursor_help = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_help = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_HELP;
 ").
 
 :- func glut_cursor_cycle = int.
-:- pragma foreign_proc("C", glut_cursor_cycle = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_cycle = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_CYCLE;
 ").
 :- func glut_cursor_wait = int.
-:- pragma foreign_proc("C", glut_cursor_wait = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_wait = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_WAIT;
 ").
 
 :- func glut_cursor_text = int.
-:- pragma foreign_proc("C", glut_cursor_text = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_text = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_TEXT;
 ").
 
 :- func glut_cursor_crosshair = int.
-:- pragma foreign_proc("C", glut_cursor_crosshair = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_crosshair = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_CROSSHAIR;
 ").
 
 :- func glut_cursor_up_down = int.
-:- pragma foreign_proc("C", glut_cursor_up_down = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_up_down = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_UP_DOWN;
 ").
 
 :- func glut_cursor_left_right = int.
-:- pragma foreign_proc("C", glut_cursor_left_right = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_left_right = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_LEFT_RIGHT;
 ").
 
 :- func glut_cursor_top_side = int.
-:- pragma foreign_proc("C", glut_cursor_top_side = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_top_side = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_TOP_SIDE;
 ").
 
 :- func glut_cursor_bottom_side = int.
-:- pragma foreign_proc("C", glut_cursor_bottom_side = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_bottom_side = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_BOTTOM_SIDE;
 ").
 
 :- func glut_cursor_left_side = int.
-:- pragma foreign_proc("C", glut_cursor_left_side = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_left_side = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_LEFT_SIDE;
 ").
 
 :- func glut_cursor_right_side = int.
-:- pragma foreign_proc("C", glut_cursor_right_side = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_right_side = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_RIGHT_SIDE;
 ").
 
 :- func glut_cursor_top_left_corner = int.
-:- pragma foreign_proc("C", glut_cursor_top_left_corner = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_top_left_corner = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_TOP_LEFT_CORNER;
 ").
 
 :- func glut_cursor_top_right_corner = int.
-:- pragma foreign_proc("C", glut_cursor_top_right_corner = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_top_right_corner = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_TOP_RIGHT_CORNER;
 ").
 
 :- func glut_cursor_bottom_right_corner = int.
-:- pragma foreign_proc("C", glut_cursor_bottom_right_corner = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_bottom_right_corner = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_BOTTOM_RIGHT_CORNER;
 ").
 
 :- func glut_cursor_bottom_left_corner = int.
-:- pragma foreign_proc("C", glut_cursor_bottom_left_corner = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_bottom_left_corner = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_BOTTOM_LEFT_CORNER;
 ").
 
 :- func glut_cursor_full_crosshair = int.
-:- pragma foreign_proc("C", glut_cursor_full_crosshair = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_full_crosshair = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_FULL_CROSSHAIR;
 ").
 
 :- func glut_cursor_none = int.
-:- pragma foreign_proc("C", glut_cursor_none = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_none = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_NONE;
 ").
 
 :- func glut_cursor_inherit = int.
-:- pragma foreign_proc("C", glut_cursor_inherit = (V::out), 
+:- pragma foreign_proc("C", glut_cursor_inherit = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     V = (MR_Integer) GLUT_CURSOR_INHERIT;
@@ -635,19 +618,17 @@ window.set_cursor(Cursor, !IO) :-
 
 :- pred window.set_cursor_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    window.set_cursor_2(Cursor::in, IO0::di, IO::uo),
+    window.set_cursor_2(Cursor::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSetCursor((int) Cursor);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.warp_pointer(X::in, Y::in, IO0::di, IO::uo),
+    window.warp_pointer(X::in, Y::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWarpPointer(X, Y);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -658,23 +639,21 @@ window.set_cursor(Cursor, !IO) :-
 %
 %:- pred get_parent_2(int::out, io::di, io::uo) is det.
 %:- pragma foreign_proc("C",
-%   get_parent_2(Result::out, IO0::di, IO::uo),
+%   get_parent_2(Result::out, _IO0::di, _IO::uo),
 %   [will_not_call_mercury, promise_pure],
 %"
 %   Result = (MR_Integer) glutGet(GLUT_WINDOW_PARENT);
-%   IO = IO0;
 %").
 
 %:- pragma foreign_proc("C",
-%   window.num_children(Result::out, IO0::di, IO::uo),
+%   window.num_children(Result::out, _IO0::di, _IO::uo),
 %   [will_not_call_mercury, promise_pure],
 %"
 %   Result = (MR_Integer) glutGet(GLUT_WINDOW_NUM_CHILDREN);
-%   IO = IO0;
 %").
 
 :- pragma foreign_proc("C",
-    window.is_double_buffered(DB::out, IO0::di, IO::uo),
+    window.is_double_buffered(DB::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if (glutGet(GLUT_WINDOW_DOUBLEBUFFER)) {
@@ -682,11 +661,10 @@ window.set_cursor(Cursor, !IO) :-
     } else {
         DB = MR_NO;
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.is_stereo(Stereo::out, IO0::di, IO::uo),
+    window.is_stereo(Stereo::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if (glutGet(GLUT_WINDOW_STEREO)) {
@@ -694,11 +672,10 @@ window.set_cursor(Cursor, !IO) :-
     } else {
         Stereo = MR_NO;
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    window.is_rgba(RGBA::out, IO0::di, IO::uo),
+    window.is_rgba(RGBA::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if (glutGet(GLUT_WINDOW_RGBA)) {
@@ -706,7 +683,6 @@ window.set_cursor(Cursor, !IO) :-
     } else {
         RGBA = MR_NO;
     }
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -732,9 +708,9 @@ window.set_cursor(Cursor, !IO) :-
     number_samples      - "GLUT_WINDOW_NUM_SAMPLES",
     format_id           - "GLUT_WINDOW_FORMAT_ID"
 ]).
- 
+
 :- pragma foreign_proc("C",
-    window.get(State::in, Value::out, _IO0::di, _IO::uo),
+    window.get(State::in, Value::out, __IO0::di, __IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Value = (MR_Integer) glutGet((GLenum) State);
@@ -743,7 +719,7 @@ window.set_cursor(Cursor, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    window.has_overlay(Result::out, _IO0::di, _IO::uo),
+    window.has_overlay(Result::out, __IO0::di, __IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if (glutLayerGet(GLUT_HAS_OVERLAY)) {
@@ -764,7 +740,7 @@ window.set_cursor(Cursor, !IO) :-
 
 %:- pred leave_full_screen_2(io::di, io::uo) is det.
 %:- pragma foreign_proc("C",
-%    leave_full_screen_2(_IO0::di, _IO::uo),
+%    leave_full_screen_2(__IO0::di, __IO::uo),
 %    [promise_pure, will_not_call_mercury],
 %"
 %#if defined(FREEGLUT)
@@ -778,10 +754,10 @@ window.full_screen_toggle(!IO) :-
     else
         error("glut.window.full_screen_toggle/2: freeglut required")
     ).
-    
+
 :- pred full_screen_toggle_2(io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    full_screen_toggle_2(_IO0::di, _IO::uo),
+    full_screen_toggle_2(__IO0::di, __IO::uo),
     [promise_pure, will_not_call_mercury],
 "
 #if defined(FREEGLUT)

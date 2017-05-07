@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -74,7 +75,7 @@
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     V = (MR_Float) glutGetColor((int) I, (int) C);
-"). 
+").
 
 :- pragma foreign_enum("C", component/0,
 [

@@ -2,10 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: glut.m.
 % Author: juliensf.
 %
@@ -66,14 +67,14 @@
 
     % Set the initial display mode.
     % (See the glutInit() man page for the way that this works)
-    % 
+    %
 :- pred glut.init_display_mode(list(display_mode)::in, io::di, io::uo) is det.
 
     % Set the initial display mode via a string.
     % (See man glutInitDisplayString for details).
     %
 :- pred glut.init_display_string(string::in, io::di, io::uo) is det.
-    
+
     % glut.init_window_position(X, Y, !IO).
     % Set the initial window position.  `X' and `Y' are the window
     % location in pixels.
@@ -106,7 +107,7 @@
 % ====================
 
     % Perform a single iteration of the GLUT event processing loop.
-    % 
+    %
 :- pred glut.main_loop_event(io::di, io::uo) is det.
 
     % Halt the GLUT event processing loop.
@@ -123,31 +124,31 @@
     %
 :- pred glut.elapsed_time(int::out, io::di, io::uo) is det.
 
-    % Returns `yes' if the current display mode is supported; 
+    % Returns `yes' if the current display mode is supported;
     % `no' otherwise.
     %
 :- pred glut.display_mode_possible(bool::out, io::di, io::uo) is det.
 
 :- type glut.state
     --->    screen_width
-            % Width of the screen in pixels.  
+            % Width of the screen in pixels.
             % Zero indicates the width is unknown or unavailable.
-            
+
     ;       screen_height
             % Height of the screen in pixels.
             % Zero indicates the height is unknown or unavailable.
-            
+
     ;       screen_width_mm
             % Width of the screen in millimetres.
             % Zero indicates the width is unknown or unavailable.
-            
+
     ;       screen_height_mm
             % Height of the screen in millimetres.
             % Zero indicates the height is unknown or unavailable.
 
     ;       init_window_x
             % The X value of the initial window position.
-            
+
     ;       init_window_y.
             % The Y value of the initial window position.
 
@@ -214,17 +215,17 @@
 ").
 
 %-----------------------------------------------------------------------------%
-    
+
 :- pred glut.init(io::di, io::uo) is det.
 
-:- pragma foreign_proc("C", 
-    glut.init(_IO0::di, _IO::uo), 
+:- pragma foreign_proc("C",
+    glut.init(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     int argc;
 
     argc = mercury_argc + 1;
-    
+
     glutInit(&argc, (char **) (mercury_argv - 1));
 ").
 
@@ -235,7 +236,7 @@ glut.init_display_mode(Flags0, !IO) :-
     init_display_mode_2(Flags, !IO).
 
 :- pred glut.init_display_mode_2(int::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     glut.init_display_mode_2(Flags::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
@@ -251,13 +252,13 @@ display_mode_to_int(double)      = glut_double.
 display_mode_to_int(accum)       = glut_accum.
 display_mode_to_int(alpha)       = glut_alpha.
 display_mode_to_int(depth)       = glut_depth.
-display_mode_to_int(stencil)     = glut_stencil. 
+display_mode_to_int(stencil)     = glut_stencil.
 display_mode_to_int(multisample) = glut_multisample.
 display_mode_to_int(stereo)      = glut_stereo.
 display_mode_to_int(luminance)   = glut_luminance.
 
 :- func glut_rgba = int.
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     glut_rgba = (Value::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -373,7 +374,7 @@ display_mode_to_int(luminance)   = glut_luminance.
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     glut.quit(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
@@ -435,7 +436,7 @@ glut.leave_main_loop(!IO) :-
 ").
 
 %-----------------------------------------------------------------------------%
-    
+
 :- pragma foreign_enum("C", glut.device/0, [
     keyboard            - "GLUT_HAS_KEYBOARD",
     mouse               - "GLUT_HAS_MOUSE",
@@ -450,7 +451,7 @@ glut.leave_main_loop(!IO) :-
     [will_not_call_mercury, promise_pure],
 "
     if(glutDeviceGet((GLenum) Device)) {
-        Res = MR_YES; 
+        Res = MR_YES;
     } else {
         Res = MR_NO;
     }
@@ -499,7 +500,7 @@ glut.full_screen(FullScreen, !IO) :-
 #else
     FullScreen = MR_NO;
 #endif
-        
+
 ").
 
 %-----------------------------------------------------------------------------%

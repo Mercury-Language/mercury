@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +18,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% Most of the predicates in this module come in two flavours. 
+% Most of the predicates in this module come in two flavours.
 % The model.wire_* ones draw a wireframe object.  The corresponding
 % model.solid_* predicate draws a solid version of the same model.
 % None of these predicates make use of display lists.
@@ -34,7 +35,7 @@
     %
 :- pred model.wire_sphere(float::in, int::in, int::in, io::di, io::uo) is det.
 :- pred model.solid_sphere(float::in, int::in, int::in, io::di, io::uo) is det.
-    
+
     % model.*_torus(Inner, Outer, Sides, Rings, !IO).
     % `Inner' is the inner radius of the torus.
     % `Outer' is the outer radius of the torus.
@@ -138,59 +139,59 @@
 
 :- pragma foreign_proc("C",
     glut.model.wire_torus(InRad::in, OutRad::in, Sides::in, Rings::in,
-        _IO0::di, _IO::uo), 
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
-    glutWireTorus((GLdouble) InRad, (GLdouble) OutRad, (GLint) Sides, 
+    glutWireTorus((GLdouble) InRad, (GLdouble) OutRad, (GLint) Sides,
         (GLint) Rings);
 ").
 
 :- pragma foreign_proc("C",
     glut.model.solid_torus(InRad::in, OutRad::in, Sides::in, Rings::in,
-        _IO0::di, _IO::uo), 
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
-    glutSolidTorus((GLdouble) InRad, (GLdouble) OutRad, (GLint) Sides, 
+    glutSolidTorus((GLdouble) InRad, (GLdouble) OutRad, (GLint) Sides,
         (GLint) Rings);
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.wire_icosahedron(_IO0::di, _IO::uo), 
+    glut.model.wire_icosahedron(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireIcosahedron();
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_icosahedron(_IO0::di, _IO::uo), 
+    glut.model.solid_icosahedron(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidIcosahedron();
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.wire_octahedron(_IO0::di, _IO::uo), 
+    glut.model.wire_octahedron(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireOctahedron();
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_octahedron(_IO0::di, _IO::uo), 
+    glut.model.solid_octahedron(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidOctahedron();
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.wire_tetrahedron(_IO0::di, _IO::uo), 
+    glut.model.wire_tetrahedron(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireTetrahedron();
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_tetrahedron(_IO0::di, _IO::uo), 
+    glut.model.solid_tetrahedron(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidTetrahedron();
@@ -215,7 +216,7 @@
         _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
-    glutWireCone((GLdouble) Base, (GLdouble) Height, (GLint) Slices, 
+    glutWireCone((GLdouble) Base, (GLdouble) Height, (GLint) Slices,
         (GLint) Stacks);
 ").
 
@@ -224,7 +225,7 @@
         _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
-    glutSolidCone((GLdouble) Base, (GLdouble) Height, (GLint) Slices, 
+    glutSolidCone((GLdouble) Base, (GLdouble) Height, (GLint) Slices,
         (GLint) Stacks);
 ").
 

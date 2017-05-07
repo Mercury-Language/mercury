@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2012 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,14 +19,14 @@
 :- interface.
 
 %----------------------------------------------------------------------------%
-% 
+%
 % Bitmap fonts
 %
 
 :- type bitmap_font
-    --->    bitmap_8_by_13  
-    ;       bitmap_9_by_15  
-    ;       times_roman_10  
+    --->    bitmap_8_by_13
+    ;       bitmap_9_by_15
+    ;       times_roman_10
     ;       times_roman_24
     ;       helvetica_10
     ;       helvetica_12
@@ -62,7 +63,7 @@
 :- pred font.stroke_character(stroke_font::in, char::in, io::di,
     io::uo) is det.
 
-    % Return the width of the character in pixels when rendered 
+    % Return the width of the character in pixels when rendered
     % using the specified font.
     %
 :- func font.stroke_width(stroke_font, char) = int.
@@ -214,7 +215,7 @@ font.stroke_width(Font, Char) = Width :-
     stroke_width_2(stroke_font_to_ptr(Font), Char, Width).
 
 :- pred stroke_width_2(font_ptr::in, char::in, int::out) is det.
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     stroke_width_2(StrokeFntPtr::in, C::in, Width::out),
     [will_not_call_mercury, promise_pure],
 "

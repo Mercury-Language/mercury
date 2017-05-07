@@ -31,8 +31,8 @@
 :- pred overlay.possible(bool::out, io::di, io::uo) is det.
 
     % Establish an overlay for the current window.  Returns `ok'
-    % if an overlay was established or error otherwise.  
-    % 
+    % if an overlay was established or error otherwise.
+    %
 :- pred overlay.establish(maybe_error::out, io::di, io::uo) is det.
 
     % Establish an overlay for the current window.
@@ -45,9 +45,9 @@
     %
 :- pred overlay.remove(io::di, io::uo) is det.
 
-    % Mark the overlay of the current window as needing to be 
+    % Mark the overlay of the current window as needing to be
     % redisplayed.
-    % 
+    %
 :- pred overlay.post_redisplay(io::di, io::uo) is det.
 
     % Mark the overlay of the specified window as needing to be
@@ -73,7 +73,7 @@
 
     % Returns `yes' if the normal plane of the current window
     % has been damaged since the last display callback.
-    % 
+    %
 :- pred overlay.normal_damaged(bool::out, io::di, io::uo) is det.
 
     % Returns `no' if the current window has no overlay.
@@ -84,7 +84,7 @@
 :- pred overlay.overlay_damaged(maybe(bool)::out, io::di, io::uo) is det.
 
     % Returns `no' if the current window has no overlay.
-    % Otherwise returns `yes(Index)' where `Index' is the 
+    % Otherwise returns `yes(Index)' where `Index' is the
     % transparent color index for the overlay of the current window.
     %
 :- pred overlay.transparent_index(maybe(int)::out, io::di, io::uo) is det.
@@ -114,7 +114,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    overlay.possible(Result::out, IO0::di, IO::uo),
+    overlay.possible(Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if (glutLayerGet(GLUT_OVERLAY_POSSIBLE)) {
@@ -122,7 +122,6 @@
     } else {
         Result = MR_NO;
     }
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -133,7 +132,7 @@ overlay.establish(Result, !IO) :-
 
 :- pred overlay.establish_2(bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    overlay.establish_2(Result::out, IO0::di, IO::uo),
+    overlay.establish_2(Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if (glutLayerGet(GLUT_OVERLAY_POSSIBLE)) {
@@ -142,47 +141,42 @@ overlay.establish(Result, !IO) :-
     } else {
         Result = MR_NO;
     }
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    overlay.unsafe_establish(IO0::di, IO::uo),
+    overlay.unsafe_establish(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutEstablishOverlay();
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    overlay.remove(IO0::di, IO::uo),
+    overlay.remove(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutRemoveOverlay();
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    overlay.post_redisplay(IO0::di, IO::uo),
+    overlay.post_redisplay(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     glutPostOverlayRedisplay();
-    IO = IO0;
 ").
-    
+
 :- pragma foreign_proc("C",
-    overlay.post_redisplay(Window::in, IO0::di, IO::uo),
+    overlay.post_redisplay(Window::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     glutPostWindowOverlayRedisplay((int) Window);
-    IO = IO0;
 ").
-    
+
 %-----------------------------------------------------------------------------%
 
 overlay.use_layer(Layer, Result, !IO) :-
@@ -194,7 +188,7 @@ overlay.use_layer(Layer, Result, !IO) :-
 
 :- pred overlay.use_layer_2(layer::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    overlay.use_layer_2(Layer::in, Result::out, IO0::di, IO::uo),
+    overlay.use_layer_2(Layer::in, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if ((GLenum) Layer == GLUT_NORMAL) {
@@ -208,43 +202,39 @@ overlay.use_layer(Layer, Result, !IO) :-
             Result = 0;
         }
     }
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    overlay.layer_in_use(Layer::out, IO0::di, IO::uo),
+    overlay.layer_in_use(Layer::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Layer = (MR_Integer) glutLayerGet(GLUT_LAYER_IN_USE);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    overlay.show(IO0::di, IO::uo),
+    overlay.show(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutShowOverlay();
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    overlay.hide(IO0::di, IO::uo),
+    overlay.hide(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutHideOverlay();
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    overlay.normal_damaged(Result::out, IO0::di, IO::uo),
+    overlay.normal_damaged(Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if (glutLayerGet(GLUT_NORMAL_DAMAGED)) {
@@ -252,7 +242,6 @@ overlay.use_layer(Layer, Result, !IO) :-
     } else {
         Result = MR_NO;
     }
-    IO = IO0;
 ").
 
 overlay.overlay_damaged(Result, !IO) :-
@@ -269,7 +258,7 @@ overlay.overlay_damaged(Result, !IO) :-
     %
 :- pred overlay.overlay_damaged_2(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    overlay.overlay_damaged_2(Result::out, IO0::di, IO::uo),
+    overlay.overlay_damaged_2(Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     MR_Integer r;
@@ -283,7 +272,6 @@ overlay.overlay_damaged(Result, !IO) :-
     } else {
         Result = 2;
     }
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -297,11 +285,10 @@ overlay.transparent_index(MaybeIndex, !IO) :-
 
 :- pred overlay.transparent_index_2(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    overlay.transparent_index_2(Index::out, IO0::di, IO::uo),
+    overlay.transparent_index_2(Index::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Index = (MR_Integer) glutLayerGet(GLUT_TRANSPARENT_INDEX);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
