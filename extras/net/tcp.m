@@ -158,7 +158,7 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
 /*  setsockopt(sock->socket, SOL_SOCKET, SO_LINGER,
             &sockets_linger, sizeof(sockets_linger));*/
 
-    errno=0;      
+    errno=0;
     if (close(((int)sock->socket)) == SOCKET_ERROR) {
         ML_throw_tcp_exception((MR_String) ""tcp.shutdown failed (close)"");
     }
@@ -224,10 +224,10 @@ void ML_tcp_init(void)
 
     WORD    wVersionRequested;
     WSADATA wsaData;
-    int     err; 
+    int     err;
 
     if (!initialiased) {
-        wVersionRequested = MAKEWORD( 2, 2 ); 
+        wVersionRequested = MAKEWORD( 2, 2 );
         err = WSAStartup(wVersionRequested, &wsaData);
 
         if ( err != 0 ) {
@@ -250,7 +250,7 @@ void ML_tcp_init(void)
 
 :- pragma foreign_proc("C",
     handle_connect(Host::in, Port::in, TCP::out, Errno::out,
-        _IO0::di, _IO::uo), 
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
     ML_tcp              *sock;
@@ -358,7 +358,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 
 :- pragma foreign_proc("C",
     handle_accept(Socket::in, Addr::in, TCP::out, Errno::out,
-        _IO0::di, _IO::uo), 
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
     ML_tcp              *sock;
@@ -371,7 +371,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     #if defined(MR_WIN32)
         int size = sizeof(struct sockaddr_in);
     #else
-        socklen_t size = sizeof(struct sockaddr_in); 
+        socklen_t size = sizeof(struct sockaddr_in);
     #endif
 
     sock = MR_GC_NEW(ML_tcp);
@@ -650,7 +650,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
            sockets__timeout = &sockets__timeout_struct;
            sockets__timeout->tv_sec = ((int)Wait * 60);
            sockets__timeout->tv_usec = 0;
-        } else { 
+        } else {
            sockets__timeout = NULL;
         }
 
@@ -660,11 +660,11 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
         FD_SET(sock->socket,&readfds);
         if ( sockets__timeout != NULL ) {
             /* Do a select to see if something is available......... */
-            selres = select(0, &readfds, &writefds, &exceptfds, 
+            selres = select(0, &readfds, &writefds, &exceptfds,
                 sockets__timeout);
             if ( selres == 0 ) {
                 Int = -1;
-            } else { 
+            } else {
                 if ( selres == SOCKET_ERROR ) {
                     Int = -2;
                 } else {
