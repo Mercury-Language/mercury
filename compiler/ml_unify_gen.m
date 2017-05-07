@@ -1051,7 +1051,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % Convert mercury_types for user-defined types to the corresponding
             % `mlds_class_type'. This is needed because these types get
             % mapped to `mlds_ptr_type(mlds_class_type(...))', but when
-            % declarating static constants we want just the class type,
+            % declaring static constants we want just the class type,
             % not the pointer type.
             MLDS_Type = mercury_type(MercuryType, ctor_cat_user(_), _),
             type_to_ctor(MercuryType, TypeCtor)

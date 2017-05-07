@@ -562,7 +562,7 @@ ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) :-
     % Figuring out the correct GC code here is difficult, since doing that
     % requires knowing the HLDS types, but here we only have the MLDS types.
     % So here we just leave it blank. The caller of ml_gen_cont_param has the
-    % reponsibility of fillling this in properly if needed.
+    % responsibility of filling this in properly if needed.
     GCStatement = gc_no_stmt,
     Argument = mlds_argument(ArgName, Type, GCStatement),
     ml_gen_cont_params_2(Types, ArgNum + 1, Arguments).
