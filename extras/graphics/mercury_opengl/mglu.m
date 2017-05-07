@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997, 2003-2006 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,8 +50,8 @@
 :- type quadric.
 
 :- type quadric_normals
-    --->    smooth 
-    ;       flat 
+    --->    smooth
+    ;       flat
     ;       none.
 
 :- type quadric_draw_style
@@ -98,7 +99,7 @@
 :- pragma foreign_decl("C", "
     #include <math.h>
 
-    #if defined(__APPLE__) && (__MACH__)    
+    #if defined(__APPLE__) && (__MACH__)
         #include <OpenGL/glu.h>
     #else
         #include <GL/glu.h>
@@ -110,34 +111,31 @@
 % Viewing transformations
 %
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     look_at(Ex::in, Ey::in, Ez::in, Cx::in, Cy::in, Cz::in, Ux::in, Uy::in,
-        Uz::in, IO0::di, IO::uo), 
+        Uz::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluLookAt((GLdouble) Ex, (GLdouble) Ey, (GLdouble) Ez,
         (GLdouble) Cx, (GLdouble) Cy, (GLdouble) Cz,
         (GLdouble) Ux, (GLdouble) Uy, (GLdouble) Uz);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    perspective(Fovy::in, Asp::in, N::in, F::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    perspective(Fovy::in, Asp::in, N::in, F::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluPerspective((GLdouble) Fovy, (GLdouble) Asp,
         (GLdouble) N, (GLdouble) F);
-    IO = IO0;
 ").
 
 
 :- pragma foreign_proc("C",
-    ortho_2d(Left::in, Right::in, Bottom::in, Top::in, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure], 
+    ortho_2d(Left::in, Right::in, Bottom::in, Top::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
-    gluOrtho2D((GLdouble) Left, (GLdouble) Right, (GLdouble) Bottom, 
+    gluOrtho2D((GLdouble) Left, (GLdouble) Right, (GLdouble) Bottom,
         (GLdouble) Top);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -171,13 +169,12 @@
 bool_to_int(yes) = 1.
 bool_to_int(no) = 0.
 
-:- pragma foreign_proc("C", 
-    new_quadric(Q::out, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    new_quadric(Q::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Q = gluNewQuadric();
-    gluQuadricCallback(Q, GLU_ERROR, (void *)MGLU_quadric_error_callback);  
-    IO = IO0;
+    gluQuadricCallback(Q, GLU_ERROR, (void *)MGLU_quadric_error_callback);
 ").
 
 :- pragma foreign_decl("C",
@@ -189,85 +186,76 @@ void MGLU_quadric_error_callback(GLenum error_code)
 {
     fprintf(stderr, ""mglu: %s\\n"", gluErrorString(error_code));
     fflush(NULL);
-    
+
     exit(EXIT_FAILURE);
 }").
 
-:- pragma foreign_proc("C", 
-    delete_quadric(Q::in, IO0::di, IO::uo), 
-    [will_not_call_mercury, tabled_for_io, promise_pure], 
+:- pragma foreign_proc("C",
+    delete_quadric(Q::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluDeleteQuadric(Q);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    quadric_draw_style(Q::in, Style::in, IO0::di, IO::uo), 
-    [will_not_call_mercury, tabled_for_io, promise_pure], 
+:- pragma foreign_proc("C",
+    quadric_draw_style(Q::in, Style::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluQuadricDrawStyle(Q, (GLenum) Style);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    quadric_orientation(Q::in, Orientation::in, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure], 
+:- pragma foreign_proc("C",
+    quadric_orientation(Q::in, Orientation::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluQuadricOrientation(Q, (GLenum) Orientation);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    quadric_normals(Q::in, Normals::in, IO0::di, IO::uo), 
-    [will_not_call_mercury, tabled_for_io, promise_pure], 
+:- pragma foreign_proc("C",
+    quadric_normals(Q::in, Normals::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluQuadricNormals(Q, (GLenum) Normals);
-    IO = IO0;
 ").
 
 quadric_texture(Q, B, !IO) :-
     quadric_texture2(Q, bool_to_int(B), !IO).
 
 :- pred quadric_texture2(quadric::in, int::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    quadric_texture2(Q::in, B::in, IO0::di, IO::uo), 
-    [will_not_call_mercury, tabled_for_io, promise_pure], 
+:- pragma foreign_proc("C",
+    quadric_texture2(Q::in, B::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluQuadricTexture(Q, B);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    cylinder(Q::in, BR::in, TR::in, H::in, SL::in, ST::in, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure], 
+:- pragma foreign_proc("C",
+    cylinder(Q::in, BR::in, TR::in, H::in, SL::in, ST::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluCylinder(Q, BR, TR, H, SL, ST);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    sphere(Q::in, R::in, SL::in, ST::in, IO0::di, IO::uo), 
-    [will_not_call_mercury, tabled_for_io, promise_pure], 
+:- pragma foreign_proc("C",
+    sphere(Q::in, R::in, SL::in, ST::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluSphere(Q, R, SL, ST);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    disk(Q::in, IR::in, OR::in, S::in, L::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    disk(Q::in, IR::in, OR::in, S::in, L::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluDisk(Q, IR, OR, S, L);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    partial_disk(Q::in, IR::in, OR::in, S::in, L::in, STA::in, SWA::in, 
-        IO0::di, IO::uo), 
-    [will_not_call_mercury, tabled_for_io, promise_pure], 
+:- pragma foreign_proc("C",
+    partial_disk(Q::in, IR::in, OR::in, S::in, L::in, STA::in, SWA::in,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     gluPartialDisk(Q, IR, OR, S, L, STA, SWA);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%

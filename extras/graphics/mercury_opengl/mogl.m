@@ -2,13 +2,14 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997, 2003-2007 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mogl.m.
 % Main authors: conway, juliensf.
-% 
+%
 % This file provides a binding to OpenGL 1.1. (It won't work with OpenGL 1.0.)
 %
 % It will work with OpenGL 1.2 - 1.5 but it doesn't (currently)
@@ -42,7 +43,7 @@
 % GL errors
 %
 
-:- type mogl.error  
+:- type mogl.error
     --->    no_error
     ;       invalid_enum
     ;       invalid_value
@@ -58,7 +59,7 @@
 % Begin/End objects
 %
 
-:- type block_mode  
+:- type block_mode
     --->    points
     ;       line_strip
     ;       line_loop
@@ -163,9 +164,9 @@
 
 :- type clip_plane
     --->    clip(
-                clip_x :: float, 
-                clip_y :: float, 
-                clip_z :: float, 
+                clip_x :: float,
+                clip_y :: float,
+                clip_z :: float,
                 clip_w :: float
             ).
 
@@ -191,8 +192,8 @@
 :- type face_direction ---> cw ; ccw.
 
 :- type face_side
-    --->    front 
-    ;       back 
+    --->    front
+    ;       back
     ;       front_and_back.
 
 :- type material
@@ -311,7 +312,7 @@
 :- pred pixel_store(pixel_store_parameter::in, io::di, io::uo) is det.
 
 :- pred pixel_zoom(float::in, float::in, io::di, io::uo) is det.
-    
+
 :- type pixel_transfer_mode
     --->    map_color(bool)
     ;       map_stencil(bool)
@@ -334,7 +335,7 @@
     ;       stencil
     ;       depth.
 
-:- pred copy_pixels(int::in, int::in, int::in, int::in, copy_type::in, 
+:- pred copy_pixels(int::in, int::in, int::in, int::in, copy_type::in,
     io::di, io::uo) is det.
 
 :- type pixel_format
@@ -399,7 +400,7 @@
 
 :- type texture_target
     --->    texture_1d
-    ;       proxy_texture_1d        
+    ;       proxy_texture_1d
     ;       texture_2d
     ;       proxy_texture_2d.
 
@@ -410,11 +411,11 @@
 :- inst non_proxy_texture_target ---> texture_1d ; texture_2d.
 
 :- type texture_format
-   
+
     %
     % Base formats.
     %
-    
+
     --->    alpha
     ;       luminance
     ;       luminance_alpha
@@ -425,7 +426,7 @@
     %
     % Sized formats.
     %
-    
+
     ;       alpha4
     ;       alpha8
     ;       alpha12
@@ -500,13 +501,13 @@
 
 :- type texture_env_target ---> texture_env.
 
-:- type texture_function 
+:- type texture_function
     --->    decal
     ;       replace
     ;       modulate
     ;       blend.
 
-:- type texture_env_parameter 
+:- type texture_env_parameter
     --->    texture_env_mode(texture_function)
     ;       texture_env_color(float, float, float, float).
 
@@ -559,7 +560,7 @@
 %------------------------------------------------------------------------------%
 %
 % Fog
-% 
+%
 
 :- type fog_parameter
     --->    fog_mode(fog_mode)
@@ -766,7 +767,7 @@
     % and allows you to override the `stride' and `order'
     % parameters.
     %
-:- pred unsafe_map1(eval_target::in, float::in, float::in, 
+:- pred unsafe_map1(eval_target::in, float::in, float::in,
     maybe(int)::in, maybe(int)::in, curve_points::in,
     io::di, io::uo) is det.
 
@@ -851,7 +852,7 @@
 % Display lists
 %
 
-:- type display_list_mode 
+:- type display_list_mode
     --->    compile
     ;       compile_and_execute.
 
@@ -936,8 +937,8 @@
     ;   map2_texture_coord_1
     ;   map2_texture_coord_2
     ;   map2_texture_coord_3
-    ;   map2_texture_coord_4.   
-    
+    ;   map2_texture_coord_4.
+
 
 :- pred enable(control_flag::in, io::di, io::uo) is det.
 
@@ -1133,7 +1134,7 @@
     % MaybeResult is yes(Result) where Result is a string containing
     % the requested information.  If the requested information is
     % not available then MaybeResult is no.
-    % 
+    %
 :- pred get_string(string_name::in, maybe(string)::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -1174,7 +1175,7 @@
 %
 % Client attribute stack
 %
-    
+
     % There are others but these are the only two that can be pushed
     % onto the client attribute stack.
     %
@@ -1205,7 +1206,7 @@
     #include <stdio.h>
     #include <math.h>
     #include <assert.h>
-    
+
     #if defined(__APPLE__) && defined(__MACH__)
         #include <OpenGL/gl.h>
     #else
@@ -1228,13 +1229,12 @@
     out_of_memory     - "GL_OUT_OF_MEMORY"
 ]).
 
-:- pragma foreign_proc("C", 
-    get_error(Err::out, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    get_error(Err::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     Err = (MR_Integer) glGetError();
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -1255,22 +1255,20 @@
     quads          - "GL_QUADS"
 ]).
 
-:- pragma foreign_proc("C", 
-    begin(Mode::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    begin(Mode::in, __IO0::di, __IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glBegin((GLenum) Mode);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    end(IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    end(__IO0::di, __IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glEnd();
-    IO = IO0;
 ").
 
 edge_flag(no, !IO) :-
@@ -1279,13 +1277,12 @@ edge_flag(yes, !IO) :-
     edge_flag_2(1, !IO).
 
 :- pred edge_flag_2(int::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    edge_flag_2(F::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    edge_flag_2(F::in, __IO0::di, __IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glEdgeFlag((GLboolean) F);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -1293,8 +1290,8 @@ edge_flag(yes, !IO) :-
 % Vertex specification
 %
 
-:- pragma foreign_proc("C", 
-    vertex2(X::in, Y::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    vertex2(X::in, Y::in, __IO0::di, __IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1303,11 +1300,10 @@ edge_flag(yes, !IO) :-
     } else {
         glVertex2d((GLdouble) X, (GLdouble) Y);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    vertex3(X::in, Y::in, Z::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    vertex3(X::in, Y::in, Z::in, __IO0::di, __IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1316,11 +1312,10 @@ edge_flag(yes, !IO) :-
     } else {
         glVertex3d((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    vertex4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    vertex4(X::in, Y::in, Z::in, W::in, __IO0::di, __IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1330,27 +1325,25 @@ edge_flag(yes, !IO) :-
         glVertex4d((GLdouble) X, (GLdouble) Y, (GLdouble) Z,
             (GLdouble) W);
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    rect(X1::in, Y1::in, X2::in, Y2::in, IO0::di, IO::uo),
+    rect(X1::in, Y1::in, X2::in, Y2::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     if (sizeof(MR_Float) == sizeof(GLfloat)) {
         glRectf((GLfloat) X1, (GLfloat) Y1, (GLfloat) X2, (GLfloat) Y2);
     } else {
-        glRectd((GLdouble) X1, (GLdouble) Y1, (GLdouble) X2, 
+        glRectd((GLdouble) X1, (GLdouble) Y1, (GLdouble) X2,
             (GLdouble) Y2);
     }
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C", 
-    tex_coord1(X::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    tex_coord1(X::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1359,11 +1352,10 @@ edge_flag(yes, !IO) :-
     } else {
         glTexCoord1d((GLdouble) X);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    tex_coord2(X::in, Y::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    tex_coord2(X::in, Y::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1372,11 +1364,10 @@ edge_flag(yes, !IO) :-
     } else {
         glTexCoord2d((GLdouble) X, (GLdouble) Y);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    tex_coord3(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    tex_coord3(X::in, Y::in, Z::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1385,11 +1376,10 @@ edge_flag(yes, !IO) :-
     } else {
         glTexCoord3d((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    tex_coord4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    tex_coord4(X::in, Y::in, Z::in, W::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1400,13 +1390,12 @@ edge_flag(yes, !IO) :-
         glTexCoord4d((GLdouble) X, (GLdouble) Y, (GLdouble) Z,
             (GLdouble) W);
     }
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C", 
-    normal3(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    normal3(X::in, Y::in, Z::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1415,13 +1404,12 @@ edge_flag(yes, !IO) :-
     } else {
         glNormal3d((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
     }
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C", 
-    color3(R::in, G::in, B::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    color3(R::in, G::in, B::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1430,11 +1418,10 @@ edge_flag(yes, !IO) :-
     } else {
         glColor3d((GLdouble) R, (GLdouble) G, (GLdouble) B);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    color4(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    color4(R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1444,11 +1431,10 @@ edge_flag(yes, !IO) :-
         glColor4d((GLdouble) R, (GLdouble) G, (GLdouble) B,
             (GLdouble) A);
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    index(I::in, IO0::di, IO::uo),
+    index(I::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1457,7 +1443,6 @@ edge_flag(yes, !IO) :-
     } else {
         glIndexd((GLdouble) I);
     }
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -1465,22 +1450,20 @@ edge_flag(yes, !IO) :-
 % Coordinate transformations
 %
 
-:- pragma foreign_proc("C", 
-    depth_range(Near::in, Far::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    depth_range(Near::in, Far::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glDepthRange((GLclampd) Near, (GLclampd) Far);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    viewport(X::in, Y::in, Wdth::in, Hght::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    viewport(X::in, Y::in, Wdth::in, Hght::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glViewport((GLint) X, (GLint) Y, (GLsizei) Wdth, (GLsizei) Hght);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -1491,17 +1474,16 @@ edge_flag(yes, !IO) :-
     projection - "GL_PROJECTION"
 ]).
 
-:- pragma foreign_proc("C", 
-    matrix_mode(MatrixMode::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    matrix_mode(MatrixMode::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glMatrixMode((GLenum) MatrixMode);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    get_matrix_mode(MatrixMode::out, IO0::di, IO::uo),
+    get_matrix_mode(MatrixMode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1509,7 +1491,6 @@ edge_flag(yes, !IO) :-
 
     glGetIntegerv(GL_MATRIX_MODE, &v);
     MatrixMode = (MR_Integer) v;
-    IO = IO0;
 ").
 
 load_matrix(Matrix, !IO) :-
@@ -1528,11 +1509,11 @@ load_matrix(Matrix, !IO) :-
     float::in, float::in, float::in, float::in,
     float::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     load_matrix_2(A1::in, A2::in, A3::in, A4::in,
         A5::in, A6::in, A7::in, A8::in,
         A9::in, A10::in, A11::in, A12::in,
-        A13::in, A14::in, A15::in, A16::in, IO0::di, IO::uo), 
+        A13::in, A14::in, A15::in, A16::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1561,7 +1542,6 @@ load_matrix(Matrix, !IO) :-
         a[14] = (GLdouble) A15; a[15] = (GLdouble) A16;
         glLoadMatrixd(a);
     }
-    IO = IO0;
 ").
 
 mult_matrix(Matrix, !IO) :-
@@ -1584,7 +1564,7 @@ mult_matrix(Matrix, !IO) :-
     mult_matrix2(A1::in, A2::in, A3::in, A4::in,
         A5::in, A6::in, A7::in, A8::in,
         A9::in, A10::in, A11::in, A12::in,
-        A13::in, A14::in, A15::in, A16::in, IO0::di, IO::uo), 
+        A13::in, A14::in, A15::in, A16::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1602,7 +1582,7 @@ mult_matrix(Matrix, !IO) :-
         glMultMatrixf(a);
     } else {
         GLdouble a[16];
-        
+
         a[0] = (GLdouble) A1; a[1] = (GLdouble) A2;
         a[2] = (GLdouble) A3; a[3] = (GLdouble) A4;
         a[4] = (GLdouble) A5; a[5] = (GLdouble) A6;
@@ -1613,20 +1593,18 @@ mult_matrix(Matrix, !IO) :-
         a[14] = (GLdouble) A15; a[15] = (GLdouble) A16;
         glMultMatrixd(a);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    load_identity(IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    load_identity(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLoadIdentity();
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    rotate(Theta::in, X::in, Y::in, Z::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    rotate(Theta::in, X::in, Y::in, Z::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1637,11 +1615,10 @@ mult_matrix(Matrix, !IO) :-
         glRotated((GLdouble) Theta,
             (GLdouble) X, (GLdouble) Y, (GLdouble) Z);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    translate(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    translate(X::in, Y::in, Z::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1650,11 +1627,10 @@ mult_matrix(Matrix, !IO) :-
     } else {
         glTranslated((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    scale(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    scale(X::in, Y::in, Z::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1663,45 +1639,40 @@ mult_matrix(Matrix, !IO) :-
     } else {
         glScaled((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    frustum(L::in, R::in, B::in, T::in, N::in, F::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    frustum(L::in, R::in, B::in, T::in, N::in, F::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glFrustum((GLdouble) L, (GLdouble) R, (GLdouble) B,
         (GLdouble) T, (GLdouble) N, (GLdouble) F);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    ortho(L::in, R::in, B::in, T::in, N::in, F::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    ortho(L::in, R::in, B::in, T::in, N::in, F::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glOrtho((GLdouble) L, (GLdouble) R, (GLdouble) B,
         (GLdouble) T, (GLdouble) N, (GLdouble) F);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    push_matrix(IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    push_matrix(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPushMatrix();
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    pop_matrix(IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    pop_matrix(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPopMatrix();
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -1714,8 +1685,8 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
 
 :- pred clip_plane_2(int::in, float::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    clip_plane_2(I::in, X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    clip_plane_2(I::in, X::in, Y::in, Z::in, W::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1726,7 +1697,6 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
     p[2] = (GLdouble) Z;
     p[3] = (GLdouble) W;
     glClipPlane(GL_CLIP_PLANE0+I, p);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -1734,37 +1704,35 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
 % Current raster position
 %
 
-:- pragma foreign_proc("C", 
-    raster_pos2(X::in, Y::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    raster_pos2(X::in, Y::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
-" 
+"
     if (sizeof(MR_Float) == sizeof(GLfloat)) {
         glRasterPos2f((GLfloat) X, (GLfloat) Y);
     } else {
         glRasterPos2d((GLdouble) X, (GLdouble) Y);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    raster_pos3(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    raster_pos3(X::in, Y::in, Z::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
-" 
+"
     if (sizeof(MR_Float) == sizeof(GLfloat)) {
         glRasterPos3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
     } else {
         glRasterPos3d((GLdouble) X, (GLdouble) Y, (GLfloat) Z);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    raster_pos4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    raster_pos4(X::in, Y::in, Z::in, W::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
-" 
+"
     if (sizeof(MR_Float) == sizeof(GLfloat)) {
         glRasterPos4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z,
             (GLfloat) W);
@@ -1772,7 +1740,6 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
         glRasterPos4d((GLdouble) X, (GLdouble) Y, (GLfloat) Z,
             (GLdouble) W);
     }
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -1804,20 +1771,19 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
     flat   - "GL_FLAT"
 ]).
 
-:- pragma foreign_proc("C", 
-    front_face(F::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    front_face(F::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glFrontFace((GLenum) F);
-    IO = IO0;
 ").
 
 material(Face, ambient(R, G, B, A), !IO) :-
     material_ambient(Face, R, G, B, A, !IO).
 material(Face, diffuse(R, G, B, A), !IO)  :-
     material_diffuse(Face, R, G, B, A, !IO).
-material(Face, ambient_and_diffuse(R, G, B, A), !IO) :- 
+material(Face, ambient_and_diffuse(R, G, B, A), !IO) :-
     material_ambient_and_diffuse(Face, R, G, B, A, !IO).
 material(Face, specular(R, G, B, A), !IO) :-
     material_specular(Face, R, G, B, A, !IO).
@@ -1830,8 +1796,8 @@ material(Face, color_indexes(R, G, B), !IO) :-
 
 :- pred material_ambient(face_side::in, float::in, float::in, float::in,
     float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    material_ambient(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    material_ambient(F::in, R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1842,13 +1808,12 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
     glMaterialfv((GLenum) F, GL_AMBIENT, params);
-    IO = IO0;
 ").
 
 :- pred material_diffuse(face_side::in, float::in, float::in, float::in,
     float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    material_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    material_diffuse(F::in, R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1859,14 +1824,13 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
     glMaterialfv((GLenum) F, GL_DIFFUSE, params);
-    IO = IO0;
 ").
 
 :- pred material_ambient_and_diffuse(face_side::in, float::in, float::in,
     float::in, float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    material_ambient_and_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di,
-        IO::uo), 
+:- pragma foreign_proc("C",
+    material_ambient_and_diffuse(F::in, R::in, G::in, B::in, A::in, _IO0::di,
+        _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1877,13 +1841,12 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
     glMaterialfv((GLenum) F, GL_AMBIENT_AND_DIFFUSE, params);
-    IO = IO0;
 ").
 
 :- pred material_specular(face_side::in, float::in, float::in, float::in,
     float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    material_specular(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    material_specular(F::in, R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1894,13 +1857,12 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
     glMaterialfv((GLenum) F, GL_SPECULAR, params);
-    IO = IO0;
 ").
 
 :- pred material_emission(face_side::in, float::in, float::in, float::in,
     float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    material_emission(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    material_emission(F::in, R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1911,23 +1873,21 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
     glMaterialfv((GLenum) F, GL_EMISSION, params);
-    IO = IO0;
 ").
 
 :- pred material_shininess(face_side::in, float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    material_shininess(F::in, S::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    material_shininess(F::in, S::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glMaterialf((GLenum) F, GL_SHININESS, (GLfloat) S);
-    IO = IO0;
 ").
 
 :- pred material_color_indexes(face_side::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    material_color_indexes(F::in, R::in, G::in, B::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    material_color_indexes(F::in, R::in, G::in, B::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1937,7 +1897,6 @@ material(Face, color_indexes(R, G, B), !IO) :-
     params[1] = (GLfloat) G;
     params[2] = (GLfloat) B;
     glMaterialfv((GLenum) F, GL_COLOR_INDEXES, params);
-    IO = IO0;
 ").
 
 light(Num, ambient(R, G, B, A), !IO) :-
@@ -1946,7 +1905,7 @@ light(Num, diffuse(R, G, B, A), !IO) :-
     light_diffuse(Num, R, G, B, A, !IO).
 light(Num, specular(R, G, B, A), !IO) :-
     light_specular(Num, R, G, B, A, !IO).
-light(Num, position(X, Y, Z, W), !IO) :- 
+light(Num, position(X, Y, Z, W), !IO) :-
     light_position(Num, X, Y, Z, W, !IO).
 light(Num, spot_direction(I, J, K), !IO) :-
     light_spot_direction(Num, I, J, K, !IO).
@@ -1963,8 +1922,8 @@ light(Num, quadratic_attenuation(K), !IO) :-
 
 :- pred light_ambient(int::in, float::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    light_ambient(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    light_ambient(F::in, R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1975,13 +1934,12 @@ light(Num, quadratic_attenuation(K), !IO) :-
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
     glLightfv(F + GL_LIGHT0, GL_AMBIENT, params);
-    IO = IO0;
 ").
 
 :- pred light_diffuse(int::in, float::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    light_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    light_diffuse(F::in, R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -1992,13 +1950,12 @@ light(Num, quadratic_attenuation(K), !IO) :-
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
     glLightfv(F + GL_LIGHT0, GL_DIFFUSE, params);
-    IO = IO0;
 ").
 
 :- pred light_specular(int::in, float::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    light_specular(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    light_specular(F::in, R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -2009,13 +1966,12 @@ light(Num, quadratic_attenuation(K), !IO) :-
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
     glLightfv(F + GL_LIGHT0, GL_SPECULAR, params);
-    IO = IO0;
 ").
 
 :- pred light_position(int::in, float::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    light_position(F::in, X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    light_position(F::in, X::in, Y::in, Z::in, W::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -2026,13 +1982,12 @@ light(Num, quadratic_attenuation(K), !IO) :-
     params[2] = (GLfloat) Z;
     params[3] = (GLfloat) W;
     glLightfv(F + GL_LIGHT0, GL_POSITION, params);
-    IO = IO0;
 ").
 
 :- pred light_spot_direction(int::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    light_spot_direction(F::in, I::in, J::in, K::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    light_spot_direction(F::in, I::in, J::in, K::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -2042,58 +1997,52 @@ light(Num, quadratic_attenuation(K), !IO) :-
     params[1] = (GLfloat) J;
     params[2] = (GLfloat) K;
     glLightfv(F + GL_LIGHT0, GL_SPOT_DIRECTION, params);
-    IO = IO0;
 ").
 
 :- pred light_spot_exponent(int::in, float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    light_spot_exponent(F::in, E::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    light_spot_exponent(F::in, E::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLightf(F + GL_LIGHT0, GL_SPOT_EXPONENT, (GLfloat) E);
-    IO = IO0;
 ").
 
 :- pred light_spot_cutoff(int::in, float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    light_spot_cutoff(F::in, E::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    light_spot_cutoff(F::in, E::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLightf(F + GL_LIGHT0, GL_SPOT_CUTOFF, (GLfloat) E);
-    IO = IO0;
 ").
 
 :- pred light_constant_attenuation(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    light_constant_attenuation(F::in, E::in, IO0::di, IO::uo), 
+    light_constant_attenuation(F::in, E::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLightf(F + GL_LIGHT0, GL_CONSTANT_ATTENUATION, (GLfloat) E);
-    IO = IO0;
 ").
 
 :- pred light_linear_attenuation(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    light_linear_attenuation(F::in, E::in, IO0::di, IO::uo),
+    light_linear_attenuation(F::in, E::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLightf(F + GL_LIGHT0, GL_LINEAR_ATTENUATION, (GLfloat) E);
-    IO = IO0;
 ").
 
 :- pred light_quadratic_attenuation(int::in, float::in, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    light_quadratic_attenuation(F::in, E::in, IO0::di, IO::uo),
+    light_quadratic_attenuation(F::in, E::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLightf(F + GL_LIGHT0, GL_QUADRATIC_ATTENUATION, (GLfloat) E);
-    IO = IO0;
 ").
 
 :- func bool_to_int(bool) = int.
@@ -2111,7 +2060,7 @@ light_model(light_model_two_side(Bool), !IO) :-
 :- pred light_model_ambient(float::in, float::in, float::in, float::in, io::di,
     io::uo) is det.
 :- pragma foreign_proc("C",
-    light_model_ambient(R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+    light_model_ambient(R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -2122,57 +2071,51 @@ light_model(light_model_two_side(Bool), !IO) :-
     params[2] = (GLfloat) B;
     params[3] = (GLfloat) A;
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, params);
-    IO = IO0;
 ").
 
 :- pred light_model_local_viewer(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    light_model_local_viewer(F::in, IO0::di, IO::uo),
+    light_model_local_viewer(F::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, (GLint) F);
-    IO = IO0;
 ").
 
 :- pred light_model_two_side(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    light_model_two_side(F::in, IO0::di, IO::uo), 
+    light_model_two_side(F::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, (GLint) F);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    color_material(Face::in, Mode::in, IO0::di, IO::uo), 
+    color_material(Face::in, Mode::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glColorMaterial((GLenum) Face, (GLenum) Mode);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    shade_model(Model::in, IO0::di, IO::uo), 
+    shade_model(Model::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glShadeModel((GLenum) Model);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    get_shade_model(Value::out, IO0::di, IO::uo),
+    get_shade_model(Value::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLint v;
-    
+
     glGetIntegerv(GL_SHADE_MODEL, &v);
     Value = (MR_Integer) v;
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -2181,12 +2124,11 @@ light_model(light_model_two_side(Bool), !IO) :-
 %
 
 :- pragma foreign_proc("C",
-    point_size(Size::in, IO0::di, IO::uo),
+    point_size(Size::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPointSize((GLfloat) Size);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -2195,21 +2137,19 @@ light_model(light_model_two_side(Bool), !IO) :-
 %
 
 :- pragma foreign_proc("C",
-    line_width(Size::in, IO0::di, IO::uo),
+    line_width(Size::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLineWidth((GLfloat) Size);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    line_stipple(Fac::in, Pat::in, IO0::di, IO::uo),
+    line_stipple(Fac::in, Pat::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLineStipple((GLint) Fac, (GLushort) Pat);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -2224,39 +2164,35 @@ light_model(light_model_two_side(Bool), !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    cull_face(F::in, IO0::di, IO::uo),
+    cull_face(F::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glCullFace((GLenum) F);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    polygon_stipple(Mask::bitmap_ui, IO0::di, IO::uo),
+    polygon_stipple(Mask::bitmap_ui, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPolygonStipple((GLubyte *) Mask->elements);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    polygon_mode(Face::in, Mode::in, IO0::di, IO::uo), 
+    polygon_mode(Face::in, Mode::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPolygonMode((GLenum) Face, (GLenum) Mode);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    polygon_offset(Fac::in, Units::in, IO0::di, IO::uo), 
+    polygon_offset(Fac::in, Units::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPolygonOffset((GLfloat) Fac, (GLfloat) Units);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -2315,21 +2251,19 @@ pixel_store(Param, !IO) :-
 
 :- pred pixel_store_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    pixel_store_2(PName::in, Param::in, IO0::di, IO::uo),
+    pixel_store_2(PName::in, Param::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPixelStorei(pixel_store_parameter_flags[PName], (GLint) Param);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    pixel_zoom(X::in, Y::in, IO0::di, IO::uo),
+    pixel_zoom(X::in, Y::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io,  promise_pure,
         does_not_affect_liveness],
 "
     glPixelZoom((GLfloat) X, (GLfloat) Y);
-    IO = IO0;
 ").
 
 :- pragma foreign_decl("C", "
@@ -2353,7 +2287,7 @@ pixel_store(Param, !IO) :-
         GL_DEPTH_BIAS
     };
 ").
-    
+
     % The magic numbers below are indicies into the
     % `pixel_transfer_mode_flags' array.
 pixel_transfer(map_color(Bool), !IO) :-
@@ -2363,7 +2297,7 @@ pixel_transfer(map_stencil(Bool), !IO) :-
 pixel_transfer(index_shift(Shift), !IO) :-
     pixel_transferi(2, Shift, !IO).
 pixel_transfer(index_offset(Offset), !IO) :-
-    pixel_transferi(3, Offset, !IO). 
+    pixel_transferi(3, Offset, !IO).
 pixel_transfer(red_scale(Factor), !IO) :-
     pixel_transferf(4, Factor, !IO).
 pixel_transfer(green_scale(Factor), !IO) :-
@@ -2385,22 +2319,20 @@ pixel_transfer(depth_bias(Bias), !IO) :-
 
 :- pred pixel_transferi(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    pixel_transferi(Pname::in, Param::in, IO0::di, IO::uo),
+    pixel_transferi(Pname::in, Param::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPixelTransferi(pixel_transfer_mode_flags[Pname], Param);
-    IO = IO0;
 ").
 
 :- pred pixel_transferf(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    pixel_transferf(Pname::in, Param::in, IO0::di, IO::uo),
+    pixel_transferf(Pname::in, Param::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPixelTransferf(pixel_transfer_mode_flags[Pname], (GLfloat) Param);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", copy_type/0, [
@@ -2410,13 +2342,12 @@ pixel_transfer(depth_bias(Bias), !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    copy_pixels(X::in, Y::in, W::in, H::in, WhatFlag::in, IO0::di, IO::uo),
+    copy_pixels(X::in, Y::in, W::in, H::in, WhatFlag::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glCopyPixels((GLint) X, (GLint) Y, (GLsizei) W, (GLsizei) H,
         (GLenum) WhatFlag);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", pixel_format/0, [
@@ -2456,12 +2387,11 @@ read_buffer(Buffer, !IO) :-
 
 :- pred read_buffer_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    read_buffer_2(BufferFlag::in, Offset::in, IO0::di, IO::uo),
+    read_buffer_2(BufferFlag::in, Offset::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glReadBuffer(buffer_flags[BufferFlag] + Offset);
-    IO = IO0;
 ").
     % The draw and read buffer types both map
     % into the same array - hence the indices here
@@ -2499,15 +2429,13 @@ mogl.bitmap(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO) :-
 
 :- pragma foreign_proc("C",
     bitmap_2(Width::in, Height::in, XOrig::in, YOrig::in,
-        XMove::in, YMove::in, Bitmap::bitmap_ui, IO0::di, IO::uo),
+        XMove::in, YMove::in, Bitmap::bitmap_ui, __IO0::di, __IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
-
     glBitmap((GLsizei) Width, (GLsizei) Height, (GLfloat) XOrig,
         (GLfloat) YOrig, (GLfloat) XMove, (GLfloat) YMove,
         (GLubyte *)  Bitmap->elements);
-    IO = IO0; 
 ").
 
 %------------------------------------------------------------------------------%
@@ -2534,14 +2462,13 @@ mogl.bitmap(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO) :-
     alpha12             - "GL_ALPHA12",
     alpha16             - "GL_ALPHA16",
     luminance4          - "GL_LUMINANCE4",
-    luminance5          - "GL_LUMINANCE5",
     luminance8          - "GL_LUMINANCE8",
     luminance12         - "GL_LUMINANCE12",
     luminance16         - "GL_LUMINANCE16",
     luminance4_alpha4   - "GL_LUMINANCE4_ALPHA4",
     luminance6_alpha2   - "GL_LUMINANCE6_ALPHA2",
     luminance8_alpha8   - "GL_LUMINANCE8_ALPHA8",
-    luminance12_alpha4  - "GL_LUMINANCE12_ALPHA4", 
+    luminance12_alpha4  - "GL_LUMINANCE12_ALPHA4",
     luminance12_alpha12 - "GL_LUMINANCE12_ALPHA12",
     luminance16_alpha16 - "GL_LUMINANCE16_ALPHA16",
     intensity4          - "GL_INTENSITY4",
@@ -2598,7 +2525,7 @@ mogl.bitmap(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO) :-
     % NOTE: the magic numbers below are indicies into the
     % texture_parameter_flags array.
     %
-tex_parameter(Target, wrap_s(WrapMode), !IO) :- 
+tex_parameter(Target, wrap_s(WrapMode), !IO) :-
     tex_parameter_wrap(Target, texture_wrap_s, WrapMode, !IO).
 tex_parameter(Target, wrap_t(WrapMode), !IO) :-
     tex_parameter_wrap(Target, texture_wrap_t, WrapMode, !IO).
@@ -2613,42 +2540,39 @@ tex_parameter(Target, priority(Priority), !IO) :-
 
 :- pred tex_parameter_wrap(texture_target::in, texture_parameter_flag::in,
     wrap_mode::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    tex_parameter_wrap(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    tex_parameter_wrap(Target::in, Pname::in, Param::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glTexParameteri((GLenum) Target, (GLenum) Pname, (GLenum) Param);
-    IO = IO0;
 ").
 
 :- pred tex_parameter_min_filter(texture_target::in, min_filter_method::in,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    tex_parameter_min_filter(Target::in, Param::in, IO0::di, IO::uo),
+    tex_parameter_min_filter(Target::in, Param::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glTexParameteri((GLenum) Target, GL_TEXTURE_MIN_FILTER, (GLenum) Param);
-    IO = IO0;
 ").
 
 :- pred tex_parameter_mag_filter(texture_target::in, mag_filter_method::in,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    tex_parameter_mag_filter(Target::in, Param::in, IO0::di, IO::uo),
+    tex_parameter_mag_filter(Target::in, Param::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glTexParameteri((GLenum) Target, GL_TEXTURE_MAG_FILTER, (GLenum) Param);
-    IO = IO0;
 ").
 
 :- pred tex_parameter_border_color(texture_target::in,
     float::in, float::in, float::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     tex_parameter_border_color(Target::in, Red::in, Blue::in, Green::in,
-        Alpha::in, IO0::di, IO::uo),
+        Alpha::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -2660,28 +2584,25 @@ tex_parameter(Target, priority(Priority), !IO) :-
     };
 
     glTexParameterfv((GLenum) Target, GL_TEXTURE_BORDER_COLOR, border_color);
-    IO = IO0;
 ").
 
 :- pred tex_parameter_priority(texture_target::in, float::in,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    tex_parameter_priority(Target::in, Priority::in, IO0::di, IO::uo),
+    tex_parameter_priority(Target::in, Priority::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glTexParameterf((GLenum) Target, GL_TEXTURE_PRIORITY, (GLfloat) Priority);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     bind_texture(Target::in(non_proxy_texture_target), TexName::in,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glBindTexture((GLenum) Target, (GLuint) TexName);
-    IO = IO0;
 ").
 
 delete_textures([], !IO).
@@ -2691,8 +2612,8 @@ delete_textures(Textures @ [_ | _], !IO) :-
 
 :- pred delete_textures_2(list(texture_name)::in, int::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    delete_textures_2(Textures::in, NumTextures::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    delete_textures_2(Textures::in, NumTextures::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
         will_not_throw_exception],
 "
@@ -2708,14 +2629,12 @@ delete_textures(Textures @ [_ | _], !IO) :-
 
     glDeleteTextures((GLsizei) NumTextures, textures);
     assert(glGetError() == GL_NO_ERROR);
-    
-    MR_GC_free(textures);
 
-    IO = IO0;
-").    
+    MR_GC_free(textures);
+").
 
 :- pragma foreign_proc("C",
-    gen_textures(Num::in, Textures::out, IO0::di, IO::uo),
+    gen_textures(Num::in, Textures::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
         will_not_throw_exception],
 "
@@ -2723,32 +2642,29 @@ delete_textures(Textures @ [_ | _], !IO) :-
     int i;
 
     new_textures = MR_GC_NEW_ARRAY(GLuint, Num);
-    
+
     glGenTextures((GLsizei) Num, new_textures);
     assert(glGetError() == GL_NO_ERROR);
 
     Textures = MR_list_empty();
-    
+
     for (i = 0; i < Num; i++) {
         Textures = MR_list_cons(new_textures[i], Textures);
     }
 
     MR_GC_free(new_textures);
-    
-    IO = IO0;
 ").
-    
+
 :- pragma foreign_proc("C",
-    is_texture(Name::in, IsTexture::out, IO0::di, IO::uo),
+    is_texture(Name::in, IsTexture::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     if (glIsTexture(Name)) {
         IsTexture = MR_YES;
     } else {
         IsTexture = MR_NO;
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", texture_function/0, [
@@ -2764,31 +2680,29 @@ tex_env(_, texture_env_color(R, G, B, A), !IO) :-
     tex_env_color(R, G, B, A, !IO).
 
 :- pred tex_env_mode(texture_function::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    tex_env_mode(Param::in, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure, 
-        does_not_affect_liveness], 
+:- pragma foreign_proc("C",
+    tex_env_mode(Param::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure,
+        does_not_affect_liveness],
 "
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, (GLenum) Param);
-    IO = IO0;
 ").
 
 :- pred tex_env_color(float::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    tex_env_color(Red::in, Green::in, Blue::in, Alpha::in, IO0::di, IO::uo),
+    tex_env_color(Red::in, Green::in, Blue::in, Alpha::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     GLfloat env_color[] = {
-        (GLfloat) Red, 
-        (GLfloat) Green, 
-        (GLfloat) Blue, 
-        (GLfloat) Alpha 
+        (GLfloat) Red,
+        (GLfloat) Green,
+        (GLfloat) Blue,
+        (GLfloat) Alpha
     };
 
     glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, env_color);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", texture_coord/0, [
@@ -2814,20 +2728,19 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
 
 :- pred tex_geni(texture_coord::in, texture_gen_function::in,
     io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    tex_geni(Coord::in, TexGenFunc::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    tex_geni(Coord::in, TexGenFunc::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glTexGeni((GLenum) Coord, GL_TEXTURE_GEN_MODE, (GLenum) TexGenFunc);
-    IO = IO0;
 ").
 
 :- pred tex_genf_object_plane(texture_coord::in, float::in, float::in,
     float::in, float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    tex_genf_object_plane(Coord::in, X::in, Y::in, Z::in, W::in, IO0::di,
-        IO::uo), 
+:- pragma foreign_proc("C",
+    tex_genf_object_plane(Coord::in, X::in, Y::in, Z::in, W::in, _IO0::di,
+        _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -2850,17 +2763,16 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
 
         glTexGendv((GLenum) Coord, GL_OBJECT_PLANE, coefficients);
     }
-    IO = IO0;
 ").
 
 :- pred tex_genf_eye_plane(texture_coord::in, float::in, float::in, float::in,
     float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    tex_genf_eye_plane(Coord::in, X::in, Y::in, Z::in, W::in, IO0::di,
-        IO::uo),
+:- pragma foreign_proc("C",
+    tex_genf_eye_plane(Coord::in, X::in, Y::in, Z::in, W::in, _IO0::di,
+        _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
-" 
+"
     if (sizeof(MR_Float) == sizeof(GLfloat)) {
         GLfloat coefficients[] = {
             (GLfloat) X,
@@ -2868,7 +2780,7 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
             (GLfloat) Z,
             (GLfloat) W
         };
-        
+
         glTexGenfv((GLenum) Coord, GL_EYE_PLANE, coefficients);
     } else {
         GLdouble coefficients[] = {
@@ -2880,35 +2792,32 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
 
         glTexGendv((GLenum) Coord, GL_EYE_PLANE, coefficients);
     }
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     tex_image_1d(Target::in(texture_1d), Level::in, InternalFormat::in,
         Width::in, Border::in(border),
         Format::in(pixel_format_non_stencil_or_depth), Type::in,
-        Pixels::bitmap_ui, IO0::di, IO::uo),
+        Pixels::bitmap_ui, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glTexImage1D((GLenum) Target, Level,
         (GLenum) InternalFormat, Width, Border,
         (GLenum) Format, (GLenum) Type, Pixels->elements);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     tex_image_2d(Target::in(texture_2d), Level::in, InternalFormat::in,
         Width::in, Height::in, Border::in(border),
         Format::in(pixel_format_non_stencil_or_depth), Type::in,
-        Pixels::bitmap_ui, IO0::di, IO::uo),
+        Pixels::bitmap_ui, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glTexImage2D((GLenum) Target, Level,
         (GLenum) InternalFormat, Width, Height, Border,
         (GLenum) Format, (GLenum)Type, Pixels->elements);
-    IO = IO0;
 ").
 
 % Requires OpenGL 1.2
@@ -2919,43 +2828,40 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
 %     tex_image_3d_2(TargetInt, Level, InternalFormatInt, Width, Height, Depth,
 %         Border, pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels,
 %         !IO).
-% 
+%
 % :- pred tex_image_3d_2(int::in, int::in, int::in, int::in, int::in, int::in,
 %     int::in, int::in, int::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
-% :- pragma foreign_proc("C", 
+% :- pragma foreign_proc("C",
 %     tex_image_3d_2(Target::in, Level::in, InternalFormat::in,
 %         Width::in, Height::in, Depth::in, Border::in, Format::in, Type::in,
-%         Pixels::in, IO0::di, IO::uo),
+%         Pixels::in, _IO0::di, _IO::uo),
 %     [will_not_call_mercury, tabled_for_io, promise_pure],
 % "
 %     glTexImage3D(texture_target_flags[Target], Level,
 %         texture_format_flags[InternalFormat], Width, Height, Depth, Border,
 %         pixel_format_flags[Format], pixel_type_flags[Type], Pixels);
-%     IO = IO0;
 % ").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     copy_tex_image_1d(Target::in(bound(texture_1d)), Level::in,
         InternalFormat::in, X::in, Y::in, Width::in,
-        Border::in(border), IO0::di, IO::uo),
+        Border::in(border), _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glCopyTexImage1D((GLenum) Target, Level, (GLenum) InternalFormat,
         X, Y, Width, Border);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     copy_tex_image_2d(Target::in(bound(texture_2d)), Level::in,
         InternalFormat::in, X::in, Y::in, Width::in, Height::in,
-        Border::in(border), IO0::di, IO::uo),
+        Border::in(border), _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glCopyTexImage2D((GLenum) Target, Level, (GLenum) InternalFormat,
         X, Y, Width, Height, Border);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -2984,69 +2890,63 @@ fog(fog_color(R, G, B, A), !IO) :-
 
 :- pred fog_mode(fog_mode::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    fog_mode(M::in, IO0::di, IO::uo), 
+    fog_mode(M::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glFogi(GL_FOG_MODE, (GLint) M);
-    IO = IO0;
 ").
 
 :- pred fog_density(float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    fog_density(P::in, IO0::di, IO::uo), 
+    fog_density(P::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glFogf(GL_FOG_DENSITY, (GLfloat) P);
-    IO = IO0;
 ").
 
 :- pred fog_start(float::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    fog_start(P::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+    fog_start(P::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glFogf(GL_FOG_START, (GLfloat) P);
-    IO = IO0;
 ").
 
 :- pred fog_end(float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    fog_end(P::in, IO0::di, IO::uo), 
+    fog_end(P::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glFogf(GL_FOG_END, (GLfloat) P);
-    IO = IO0;
 ").
 
 :- pred fog_index(float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    fog_index(I::in, IO0::di, IO::uo),
+    fog_index(I::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glFogf(GL_FOG_INDEX, (GLfloat) I);
-    IO = IO0;
 ").
 
 :- pred fog_color(float::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    fog_color(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
+    fog_color(R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLfloat fog_color[] = {R, G, B, A};
-    
-    glFogfv(GL_FOG_COLOR, fog_color); 
-    IO = IO0;
+
+    glFogfv(GL_FOG_COLOR, fog_color);
 ").
 
-:- pragma foreign_proc("C", 
-    get_fog_mode(Mode::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    get_fog_mode(Mode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -3054,7 +2954,6 @@ fog(fog_color(R, G, B, A), !IO) :-
 
     glGetIntegerv(GL_FOG_MODE, &mode);
     Mode = (MR_Integer) mode;
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -3062,13 +2961,12 @@ fog(fog_color(R, G, B, A), !IO) :-
 % Per-fragment operations
 %
 
-:- pragma foreign_proc("C", 
-    scissor(X::in, Y::in, Width::in, Height::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    scissor(X::in, Y::in, Width::in, Height::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glScissor((GLint)X, (GLint)Y, (GLsizei)Width, (GLsizei)Height);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", test_func/0, [
@@ -3082,23 +2980,21 @@ fog(fog_color(R, G, B, A), !IO) :-
     not_equal   - "GL_NOTEQUAL"
 ]).
 
-:- pragma foreign_proc("C", 
-    alpha_func(TestFunc::in, Ref::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    alpha_func(TestFunc::in, Ref::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     glAlphaFunc((GLenum) TestFunc, (GLclampf) Ref);
-    IO = IO0;
 
 ").
 
 :- pragma foreign_proc("C",
-    stencil_func(TestFunc::in, Ref::in, Mask::in, IO0::di, IO::uo),
+    stencil_func(TestFunc::in, Ref::in, Mask::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     glStencilFunc((GLenum) TestFunc, (GLint) Ref, (GLuint) Mask);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", stencil_op/0, [
@@ -3108,24 +3004,22 @@ fog(fog_color(R, G, B, A), !IO) :-
     incr        - "GL_INCR",
     decr        - "GL_DECR",
     invert      - "GL_INVERT"
-]).    
+]).
 
-:- pragma foreign_proc("C", 
-    stencil_op(Fail::in, ZFail::in, ZPass::in, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure, 
-        does_not_affect_liveness], 
+:- pragma foreign_proc("C",
+    stencil_op(Fail::in, ZFail::in, ZPass::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure,
+        does_not_affect_liveness],
 "
     glStencilOp((GLenum) Fail, (GLenum) ZFail, (GLenum) ZPass);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    depth_func(TestFunc::in, IO0::di, IO::uo),
+    depth_func(TestFunc::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     glDepthFunc((GLenum) TestFunc);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", blend_src/0, [
@@ -3151,13 +3045,12 @@ fog(fog_color(R, G, B, A), !IO) :-
     one_minus_dst_alpha - "GL_ONE_MINUS_DST_ALPHA"
 ]).
 
-:- pragma foreign_proc("C", 
-    blend_func(Src::in, Dst::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    blend_func(Src::in, Dst::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     glBlendFunc((GLenum) Src, (GLenum) Dst);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", logic_op/0, [
@@ -3179,13 +3072,12 @@ fog(fog_color(R, G, B, A), !IO) :-
     set           - "GL_SET"
 ]).
 
-:- pragma foreign_proc("C", 
-    logic_op(LogicOp::in, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure, 
-        does_not_affect_liveness], 
+:- pragma foreign_proc("C",
+    logic_op(LogicOp::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure,
+        does_not_affect_liveness],
 "
     glLogicOp((GLenum) LogicOp);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -3195,7 +3087,7 @@ fog(fog_color(R, G, B, A), !IO) :-
 
 :- pred buffer_to_int_and_offset(draw_buffer::in, int::out, int::out) is det.
 
-buffer_to_int_and_offset(none, 0, 0).   
+buffer_to_int_and_offset(none, 0, 0).
 buffer_to_int_and_offset(front_left, 1, 0).
 buffer_to_int_and_offset(front_right, 2, 0).
 buffer_to_int_and_offset(back_left, 3, 0).
@@ -3205,7 +3097,7 @@ buffer_to_int_and_offset(back, 6, 0).
 buffer_to_int_and_offset(left, 7, 0).
 buffer_to_int_and_offset(right, 8, 0).
 buffer_to_int_and_offset(front_and_back, 9, 0).
-buffer_to_int_and_offset(aux(I), 10, I).    
+buffer_to_int_and_offset(aux(I), 10, I).
 
 :- pragma foreign_decl("C", "
     extern const GLenum buffer_flags[];
@@ -3233,21 +3125,19 @@ draw_buffer(Buffer, !IO) :-
 
 :- pred draw_buffer_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    draw_buffer_2(BufferFlag::in, Offset::in, IO0::di, IO::uo), 
+    draw_buffer_2(BufferFlag::in, Offset::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     glDrawBuffer(buffer_flags[BufferFlag] + Offset);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    index_mask(I::in, IO0::di, IO::uo), 
+    index_mask(I::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     glIndexMask((GLuint) I);
-    IO = IO0;
 ").
 
 color_mask(A, B, C, D, !IO) :-
@@ -3257,12 +3147,11 @@ color_mask(A, B, C, D, !IO) :-
 :- pred color_mask_2(int::in, int::in, int::in, int::in, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    color_mask_2(A::in, B::in, C::in, D::in, IO0::di, IO::uo), 
+    color_mask_2(A::in, B::in, C::in, D::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     glColorMask((GLboolean) A, (GLboolean) B, (GLboolean) C, (GLboolean) D);
-    IO = IO0;
 ").
 
 depth_mask(Bool, !IO) :-
@@ -3270,21 +3159,19 @@ depth_mask(Bool, !IO) :-
 
 :- pred depth_mask_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    depth_mask_2(M::in, IO0::di, IO::uo), 
+    depth_mask_2(M::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     glDepthMask((GLboolean) M);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    stencil_mask(M::in, IO0::di, IO::uo), 
+    stencil_mask(M::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
-        does_not_affect_liveness], 
+        does_not_affect_liveness],
 "
     glStencilMask((GLuint) M);
-    IO = IO0;
 ").
 
 clear(BitList, !IO) :-
@@ -3308,7 +3195,7 @@ buffer_bit_to_int(accum)   = 3.
 
 :- pragma foreign_proc("C",
     lookup_buffer_bit(F::in) = (B::out),
-    [will_not_call_mercury, promise_pure, does_not_affect_liveness], 
+    [will_not_call_mercury, promise_pure, does_not_affect_liveness],
 "
     static GLbitfield a[] = {
         GL_COLOR_BUFFER_BIT,
@@ -3323,57 +3210,51 @@ buffer_bit_to_int(accum)   = 3.
 :- pred clear2(int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    clear2(Mask::in, IO0::di, IO::uo), 
+    clear2(Mask::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glClear(Mask);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    clear_color(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
+    clear_color(R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glClearColor((GLclampf) R, (GLclampf) G, (GLclampf) B, (GLclampf) A);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    clear_index(I::in, IO0::di, IO::uo),
+    clear_index(I::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glClearIndex((GLfloat) I);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    clear_depth(I::in, IO0::di, IO::uo), 
+    clear_depth(I::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glClearDepth((GLfloat) I);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    clear_stencil(I::in, IO0::di, IO::uo), 
+    clear_stencil(I::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glClearStencil((GLint) I);
-    IO = IO0;
 ").
 
-:- pragma foreign_proc("C", 
-    clear_accum(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    clear_accum(R::in, G::in, B::in, A::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glClearAccum((GLfloat) R, (GLfloat) G, (GLfloat) B, (GLfloat) A);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", accum_op/0, [
@@ -3385,12 +3266,11 @@ buffer_bit_to_int(accum)   = 3.
 ]).
 
 :- pragma foreign_proc("C",
-    accum(AccumOp::in, Value::in, IO0::di, IO::uo), 
+    accum(AccumOp::in, Value::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glAccum((GLenum) AccumOp, Value);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -3399,8 +3279,8 @@ buffer_bit_to_int(accum)   = 3.
 %
 
 map1(Target, U1, U2, curve(Stride, Order, CtrlPoints), !IO) :-
-    ( target_matches_stride_1d(Target, Stride) ->   
-        map1_2(eval_1d_to_int(Target), U1, U2, Stride, Order, 
+    ( target_matches_stride_1d(Target, Stride) ->
+        map1_2(eval_1d_to_int(Target), U1, U2, Stride, Order,
             CtrlPoints, !IO)
     ;
         throw(software_error("mogl.map_1/6: bad data dimension."))
@@ -3434,19 +3314,18 @@ unsafe_map1(Target, U1, U2, MaybeAltStride, MaybeAltOrder,
 
 :- pragma foreign_proc("C",
     map1_2(CtrlFlagIndex::in, U1::in, U2::in, Stride::in, Order::in,
-        Points::in, IO0::di, IO::uo),
+        Points::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     if (sizeof(MR_Float) == sizeof(GLfloat)) {
         glMap1f(control_flag_flags[CtrlFlagIndex], U1, U2,
-            Stride, Order, (const GLfloat *) Points); 
+            Stride, Order, (const GLfloat *) Points);
     } else {
         glMap1d(control_flag_flags[CtrlFlagIndex], U1, U2,
             Stride, Order, (const GLdouble *) Points);
     }
-    
-    IO = IO0;
+
 ").
 
     % NOTE: we just reuse the control_flag_flags array
@@ -3461,19 +3340,19 @@ eval_1d_to_int(color_4)  = 28.
 eval_1d_to_int(normal)   = 29.
 eval_1d_to_int(texture_coord_1) = 30.
 eval_1d_to_int(texture_coord_2) = 31.
-eval_1d_to_int(texture_coord_3) = 32. 
+eval_1d_to_int(texture_coord_3) = 32.
 eval_1d_to_int(texture_coord_4) = 33.
 
 :- type curve_points
     --->    curve(
-                stride          :: int, 
+                stride          :: int,
                 order           :: int,
                 curve_ctrl_pts  :: ctrl_points
             ).
 
 :- type ctrl_points.
 :- pragma foreign_type("C", ctrl_points, "const GLvoid *",
-    [can_pass_as_mercury_type]). 
+    [can_pass_as_mercury_type]).
 
 make_curve(one(Verticies)) = curve(1, Order, CtrlPts) :-
     Order   = list.length(Verticies),
@@ -3486,18 +3365,18 @@ make_curve(three(Verticies)) = curve(3, Order, CtrlPts) :-
     CtrlPts = pack_ctrl_pts3_1d(Order, Verticies).
 make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
     Order   = list.length(Verticies),
-    CtrlPts = pack_ctrl_pts4_1d(Order, Verticies).  
+    CtrlPts = pack_ctrl_pts4_1d(Order, Verticies).
 
 
 :- pragma foreign_decl("C", "
-/* 
+/*
 ** The following macros create and manipulate control point arrays.
 ** These macros abstract away the differences that occur
 ** when we use arrays of GLfloat as opposed to GLdouble (which in turn
 ** depends upon whether MR_Float is single or double-precision).
-*/ 
+*/
 
-/* 
+/*
 ** The MOGL_make_ctrl_point_array() macro allocates an array large
 ** enough to hold `size' control points of the specified dimension.
 */
@@ -3515,7 +3394,7 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
 /*
 ** The MGOGL_set_ctrl_point() macro sets the value of a particular
 ** index in a control point array.
-*/ 
+*/
 #define MOGL_set_ctrl_point(array, address, value)          \
     do {                                    \
         if (sizeof(MR_Float) == sizeof(GLfloat)) {      \
@@ -3523,7 +3402,7 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
         } else {                        \
             ((GLdouble *) (array))[(address)] = (value);    \
         }                           \
-    } while(0)      
+    } while(0)
 ").
 
 :- func pack_ctrl_pts1_1d(int, list(float)) = ctrl_points.
@@ -3535,13 +3414,13 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
     int i = 0;
 
     MOGL_make_ctrl_point_array(Points, Order, 1);
-    
+
     while (!MR_list_is_empty(Verticies)) {
 
-        MOGL_set_ctrl_point(Points, i, MR_list_head(Verticies));    
+        MOGL_set_ctrl_point(Points, i, MR_list_head(Verticies));
         Verticies = MR_list_tail(Verticies);
         i++;
-    }           
+    }
 ").
 
 :- func pack_ctrl_pts2_1d(int, list({float, float})) = ctrl_points.
@@ -3554,9 +3433,9 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
     int i = 0;
 
     MOGL_make_ctrl_point_array(Points, Order, 2);
-    
+
     while (!MR_list_is_empty(Verticies)) {
-        
+
         MOGL_deconstruct_double((MR_Tuple) MR_list_head(Verticies), &x, &y);
 
         MOGL_set_ctrl_point(Points, i, x);
@@ -3579,16 +3458,16 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
     MOGL_make_ctrl_point_array(Points, Order, 3);
 
     while (!MR_list_is_empty(Verticies)) {
-        
+
         MOGL_deconstruct_triple((MR_Tuple) MR_list_head(Verticies),
             &x, &y, &z);
 
         MOGL_set_ctrl_point(Points, i,     x);
         MOGL_set_ctrl_point(Points, i + 1, y);
         MOGL_set_ctrl_point(Points, i + 2, z);
-        
+
         Verticies = MR_list_tail(Verticies);
-        i += 3; 
+        i += 3;
     }
 ").
 
@@ -3610,18 +3489,18 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
 
         MOGL_deconstruct_quadruple((MR_Tuple) MR_list_head(Verticies),
             &x, &y, &z, &w);
-    
+
         MOGL_set_ctrl_point(Points, i, x);
         MOGL_set_ctrl_point(Points, i + 1, y);
         MOGL_set_ctrl_point(Points, i + 2, z);
         MOGL_set_ctrl_point(Points, i + 3, w);
-        
+
         Verticies = MR_list_tail(Verticies);
         i += 4;
     }
 ").
 
-:- pragma foreign_export("C", deconstruct_double(in, out, out), 
+:- pragma foreign_export("C", deconstruct_double(in, out, out),
     "MOGL_deconstruct_double").
 :- pred deconstruct_double({float, float}::in, float::out, float::out) is det.
 
@@ -3637,7 +3516,7 @@ deconstruct_triple({A, B, C}, A, B, C).
 :- pragma foreign_export("C",
     deconstruct_quadruple(in, out, out, out, out),
     "MOGL_deconstruct_quadruple").
-:- pred deconstruct_quadruple({float, float, float, float}::in, 
+:- pred deconstruct_quadruple({float, float, float, float}::in,
     float::out, float::out, float::out, float::out) is det.
 
 deconstruct_quadruple({A, B, C, D}, A, B, C, D).
@@ -3649,10 +3528,10 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
                 vstride :: int,
                 vorder  :: int,
                 surface_ctrl_points :: ctrl_points
-            ).  
+            ).
 
 :- pragma foreign_proc("C",
-    eval_coord1(U::in, IO0::di, IO::uo),
+    eval_coord1(U::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -3661,11 +3540,10 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
     } else {
         glEvalCoord1d((GLdouble) U);
     }
-    IO = IO0;
 ").
-    
+
 :- pragma foreign_proc("C",
-    eval_coord2(U::in, V::in, IO0::di, IO::uo),
+    eval_coord2(U::in, V::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -3674,7 +3552,6 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
     } else {
         glEvalCoord2d((GLdouble) U, (GLdouble) V);
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", mesh_mode/0, [
@@ -3684,25 +3561,23 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
 ]).
 
 :- pragma foreign_proc("C",
-    eval_mesh1(MeshFlag::in(mesh_mode_1d), P1::in, P2::in, IO0::di, IO::uo),
+    eval_mesh1(MeshFlag::in(mesh_mode_1d), P1::in, P2::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glEvalMesh1((GLenum) MeshFlag, (GLint) P1, (GLint) P2);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    eval_mesh2(MeshFlag::in, P1::in, P2::in, Q1::in, Q2::in, IO0::di, IO::uo),
+    eval_mesh2(MeshFlag::in, P1::in, P2::in, Q1::in, Q2::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glEvalMesh2((GLenum) MeshFlag, P1, P2, Q1, Q2);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    map_grid1(N::in, U1::in, U2::in, IO0::di, IO::uo),
+    map_grid1(N::in, U1::in, U2::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -3711,21 +3586,19 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
     } else {
         glMapGrid1d(N, U1, U2);
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    eval_point1(I::in, IO0::di, IO::uo),
+    eval_point1(I::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glEvalPoint1((GLint) I);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
     map_grid2(Nu::in, U1::in, U2::in, Nv::in, V1::in, V2::in,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -3734,16 +3607,14 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
     } else {
         glMapGrid2d(Nu, U1, U2, Nv, V1, V2);
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    eval_point2(I::in, J::in, IO0::di, IO::uo),
+    eval_point2(I::in, J::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glEvalPoint2((GLint) I, (GLint) J);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -3752,12 +3623,11 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
 %
 
 :- pragma foreign_proc("C",
-    pass_through(Token::in, IO0::di, IO::uo),
+    pass_through(Token::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPassThrough((GLfloat) Token);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -3766,39 +3636,35 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
 %
 
 :- pragma foreign_proc("C",
-    init_names(IO0::di, IO::uo),
+    init_names(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glInitNames();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    pop_name(IO0::di, IO::uo),
+    pop_name(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPopName();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    push_name(Name::in, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure, 
+    push_name(Name::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPushName((GLuint)Name);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    load_name(Name::in, IO0::di, IO::uo),
+    load_name(Name::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glLoadName((GLuint)Name);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", render_mode/0, [
@@ -3807,19 +3673,18 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
     feedback - "GL_FEEDBACK"
 ]).
 
-:- pragma foreign_proc("C", 
-    render_mode(RenderMode::in, Output::out, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure, 
+:- pragma foreign_proc("C",
+    render_mode(RenderMode::in, Output::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     Output = (MR_Integer) glRenderMode((GLenum) RenderMode);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 %
 % Display lists
-% 
+%
 
 :- pragma foreign_enum("C", display_list_mode/0, [
     compile             - "GL_COMPILE",
@@ -3827,52 +3692,47 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
 ]).
 
 :- pragma foreign_proc("C",
-    new_list(N::in, M::in, IO0::di, IO::uo), 
+    new_list(N::in, M::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glNewList((GLuint) N, (GLenum) M);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    end_list(IO0::di, IO::uo), 
+    end_list(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glEndList();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    call_list(N::in, IO0::di, IO::uo), 
+    call_list(N::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glCallList((GLuint) N);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    gen_lists(N::in, M::out, IO0::di, IO::uo), 
+    gen_lists(N::in, M::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     M = (MR_Integer) glGenLists((GLsizei) N);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    delete_lists(N::in, M::in, IO0::di, IO::uo), 
+    delete_lists(N::in, M::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glDeleteLists((GLuint) N, (GLsizei) M);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    is_list(L::in, R::out, IO0::di, IO::uo),
+    is_list(L::in, R::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -3881,37 +3741,33 @@ deconstruct_quadruple({A, B, C, D}, A, B, C, D).
     } else {
         R = MR_NO;
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    list_base(Base::in, IO0::di, IO::uo),
+    list_base(Base::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glListBase((GLuint) Base);
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    flush(IO0::di, IO::uo), 
+    flush(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glFlush();
-    IO = IO0;
     assert(glGetError() == GL_NO_ERROR);
 ").
 
 :- pragma foreign_proc("C",
-    finish(IO0::di, IO::uo), 
+    finish(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glFinish();
-    IO = IO0;
     assert(glGetError() == GL_NO_ERROR);
 ").
 
@@ -3948,7 +3804,7 @@ control_flag_to_int_and_offset(scissor_test,         21, 0).
 control_flag_to_int_and_offset(stencil_test,         22, 0).
 control_flag_to_int_and_offset(texture_1d,           23, 0).
 control_flag_to_int_and_offset(texture_2d,           24, 0).
-control_flag_to_int_and_offset(map1_vertex_3,        25, 0).    
+control_flag_to_int_and_offset(map1_vertex_3,        25, 0).
 control_flag_to_int_and_offset(map1_vertex_4,        26, 0).
 control_flag_to_int_and_offset(map1_index,           27, 0).
 control_flag_to_int_and_offset(map1_color_4,         28, 0).
@@ -3965,7 +3821,7 @@ control_flag_to_int_and_offset(map2_normal,          38, 0).
 control_flag_to_int_and_offset(map2_texture_coord_1, 39, 0).
 control_flag_to_int_and_offset(map2_texture_coord_2, 40, 0).
 control_flag_to_int_and_offset(map2_texture_coord_3, 41, 0).
-control_flag_to_int_and_offset(map2_texture_coord_4, 42, 0).    
+control_flag_to_int_and_offset(map2_texture_coord_4, 42, 0).
 
 :- pragma foreign_decl("C", "
     extern const GLenum control_flag_flags[];
@@ -4025,12 +3881,11 @@ enable(Flag, !IO) :-
 
 :- pred enable_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    enable_2(FlagVal::in, Offset::in, IO0::di, IO::uo), 
+    enable_2(FlagVal::in, Offset::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glEnable(control_flag_flags[FlagVal] + Offset);
-    IO = IO0;
 ").
 
 disable(Flag, !IO) :-
@@ -4039,12 +3894,11 @@ disable(Flag, !IO) :-
 
 :- pred disable_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    disable_2(FlagVal::in, Offset::in, IO0::di, IO::uo), 
+    disable_2(FlagVal::in, Offset::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glDisable(control_flag_flags[FlagVal] + Offset);
-    IO = IO0;
 ").
 
 is_enabled(Flag, IsEnabled, !IO) :-
@@ -4053,7 +3907,7 @@ is_enabled(Flag, IsEnabled, !IO) :-
 
 :- pred is_enabled_2(int::in, int::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    is_enabled_2(FlagVal::in, Offset::in, R::out, IO0::di, IO::uo), 
+    is_enabled_2(FlagVal::in, Offset::in, R::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -4062,7 +3916,6 @@ is_enabled(Flag, IsEnabled, !IO) :-
     } else {
         R = MR_NO;
     }
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -4083,25 +3936,23 @@ is_enabled(Flag, IsEnabled, !IO) :-
     nicest      - "GL_NICEST",
     do_not_care - "GL_DONT_CARE"
 ]).
-    
+
 :- pragma foreign_proc("C",
-    hint(HintTarget::in, HintMode::in, IO0::di, IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure, 
+    hint(HintTarget::in, HintMode::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glHint((GLenum) HintTarget, (GLenum) HintMode);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    get_hint(HintTarget::in, HintMode::out, IO0::di, IO::uo),
+    get_hint(HintTarget::in, HintMode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLint mode;
     glGetIntegerv((GLenum) HintTarget, &mode);
     HintMode = (MR_Integer) mode;
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -4112,18 +3963,18 @@ is_enabled(Flag, IsEnabled, !IO) :-
 get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
     get_clip_plane_2(I, X, Y, Z, W, !IO).
 
-:- pred get_clip_plane_2(int::in, float::out, float::out, float::out,   
+:- pred get_clip_plane_2(int::in, float::out, float::out, float::out,
     float::out, io::di, io::uo) is det.
-:- pragma foreign_proc("C", 
-    get_clip_plane_2(I::in, X::out, Y::out, Z::out, W::out, IO0::di,
-        IO::uo),
+:- pragma foreign_proc("C",
+    get_clip_plane_2(I::in, X::out, Y::out, Z::out, W::out, _IO0::di,
+        _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLdouble equation[4];
-    
+
     assert(GL_CLIP_PLANE0 + I < GL_MAX_CLIP_PLANES);
-    
+
     glGetClipPlane(GL_CLIP_PLANE0 + I, equation);
 
     X = (MR_Float) equation[0];
@@ -4131,7 +3982,6 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
     Z = (MR_Float) equation[2];
     W = (MR_Float) equation[3];
 
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", single_boolean_state/0, [
@@ -4153,21 +4003,19 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    get_boolean(Param::in, Value::out, IO0::di, IO::uo),
+    get_boolean(Param::in, Value::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLboolean value;
 
     glGetBooleanv((GLenum) Param, &value);
-    
+
     if (value == GL_TRUE) {
         Value = MR_YES;
     } else {
         Value = MR_NO;
     }
-
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", quad_boolean_state/0, [
@@ -4176,7 +4024,7 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
 
 :- pragma foreign_proc("C",
     get_boolean(Param::in, V0::out, V1::out, V2::out, V3::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -4189,30 +4037,28 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
     } else {
         V0 = MR_NO;
     }
-    
+
     if (values[1] == GL_TRUE) {
         V1 = MR_YES;
     } else {
         V1 = MR_NO;
     }
-    
+
     if (values[2] == GL_TRUE) {
         V2 = MR_YES;
     } else {
         V2 = MR_NO;
     }
-    
+
     if (values[3] == GL_TRUE) {
         V3 = MR_YES;
     } else {
         V3 = MR_NO;
     }
-
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", single_integer_state/0, [
-    accum_alpha_bits              - "GL_ACCUM_ALPHA_BITS",   
+    accum_alpha_bits              - "GL_ACCUM_ALPHA_BITS",
     accum_blue_bits               - "GL_ACCUM_BLUE_BITS",
     accum_green_bits              - "GL_ACCUM_GREEN_BITS",
     accum_red_bits                - "GL_ACCUM_RED_BITS",
@@ -4273,15 +4119,14 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    get_integer(Param::in, Value::out, IO0::di, IO::uo),
+    get_integer(Param::in, Value::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLint value;
-    
+
     glGetIntegerv((GLenum) Param, &value);
     Value = (MR_Integer) value;
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", single_float_state/0, [
@@ -4315,7 +4160,7 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    get_float(Param::in, V::out, IO0::di, IO::uo),
+    get_float(Param::in, V::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -4323,7 +4168,6 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
 
     glGetFloatv((GLenum) Param, &value);
     V = (MR_Float) value;
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", double_integer_state/0, [
@@ -4331,7 +4175,7 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    get_integer(Param::in, V0::out, V1::out, IO0::di, IO::uo),
+    get_integer(Param::in, V0::out, V1::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -4340,7 +4184,6 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
     glGetIntegerv((GLenum) Param, values);
     V0 = (MR_Integer) values[0];
     V1 = (MR_Integer) values[1];
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", double_float_state/0, [
@@ -4350,8 +4193,8 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
     map2_grid_segments       - "GL_MAP2_GRID_SEGMENTS"
 ]).
 
-:- pragma foreign_proc("C", 
-    get_float(Param::in, V0::out, V1::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    get_float(Param::in, V0::out, V1::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -4360,26 +4203,24 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
     glGetFloatv((GLenum) Param, values);
     V0 = (MR_Float) values[0];
     V1 = (MR_Float) values[1];
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", triple_float_state/0, [
     current_normal - "GL_CURRENT_NORMAL"
 ]).
 
-:- pragma foreign_proc("C", 
-    get_float(Param::in, V0::out, V1::out, V2::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    get_float(Param::in, V0::out, V1::out, V2::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     GLfloat value[3];
-    
+
     glGetFloatv((GLenum) Param, value);
 
     V0 = (MR_Float) value[0];
     V1 = (MR_Float) value[1];
     V2 = (MR_Float) value[2];
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", quad_float_state/0, [
@@ -4393,7 +4234,7 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    get_float(Param::in, V0::out, V1::out, V2::out, V3::out, IO0::di, IO::uo),
+    get_float(Param::in, V0::out, V1::out, V2::out, V3::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
@@ -4404,7 +4245,6 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
     V1 = (MR_Float) values[1];
     V2 = (MR_Float) values[2];
     V3 = (MR_Float) values[3];
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -4417,7 +4257,7 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    get_string(StrFlag::in, Result::out, IO0::di, IO::uo),
+    get_string(StrFlag::in, Result::out, _IO0::di, _IO::uo),
     [may_call_mercury, tabled_for_io, promise_pure, terminates,
         will_not_throw_exception],
 "
@@ -4430,10 +4270,8 @@ get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
         Result = MOGL_get_string_no();
     } else {
         MR_make_aligned_string_copy(mer_str, c_str);
-        Result = MOGL_get_string_yes(mer_str);              
-    }       
-    
-    IO = IO0;
+        Result = MOGL_get_string_yes(mer_str);
+    }
 ").
 
 :- func get_string_no = maybe(string).
@@ -4500,22 +4338,21 @@ server_attrib_group_to_int(transform) = 17.
 server_attrib_group_to_int(viewport) = 18.
 
 :- pragma foreign_proc("C",
-    push_attrib(IO0::di, IO::uo),
+    push_attrib(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPushAttrib(GL_ALL_ATTRIB_BITS);
-    IO = IO0;
 ").
 
 push_attrib([], _, _) :- error("No server attribute groups specified.").
 push_attrib(Groups @ [_ | _], !IO) :-
     Mask = list.foldr((\/), list.map(server_attrib_group_to_bit, Groups), 0),
     push_attrib_2(Mask, !IO).
-    
+
 :- func server_attrib_group_to_bit(server_attrib_group) = int.
 
-server_attrib_group_to_bit(Flag) = 
+server_attrib_group_to_bit(Flag) =
     lookup_server_attrib_group_bit(server_attrib_group_to_int(Flag)).
 
 :- func lookup_server_attrib_group_bit(int) = int.
@@ -4528,21 +4365,19 @@ server_attrib_group_to_bit(Flag) =
 
 :- pred push_attrib_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    push_attrib_2(Mask::in, IO0::di, IO::uo),
+    push_attrib_2(Mask::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPushAttrib((GLbitfield) Mask);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    pop_attrib(IO0::di, IO::uo),
+    pop_attrib(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPopAttrib();
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
@@ -4567,18 +4402,17 @@ client_attrib_group_to_int(vertex_array) = 0.
 client_attrib_group_to_int(pixel_store) = 1.
 
 :- pragma foreign_proc("C",
-    push_client_attrib(IO0::di, IO::uo),
+    push_client_attrib(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     /*
-    ** Some OpenGL implementations don't define 
+    ** Some OpenGL implementations don't define
     ** GL_ALL_CLIENT_ATTRIB_BITS, so we fake its
     ** effect here.
     */
     glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
     glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
-    IO = IO0;
 ").
 
 push_client_attrib([], !IO) :- error("No client attribute groups specified.").
@@ -4588,7 +4422,7 @@ push_client_attrib(Groups @ [_ | _], !IO) :-
 
 :- func client_attrib_group_to_bit(client_attrib_group) = int.
 
-client_attrib_group_to_bit(Flag) = 
+client_attrib_group_to_bit(Flag) =
     lookup_client_attrib_group_bit(client_attrib_group_to_int(Flag)).
 
 :- func lookup_client_attrib_group_bit(int) = int.
@@ -4597,25 +4431,23 @@ client_attrib_group_to_bit(Flag) =
     [will_not_call_mercury, promise_pure, does_not_affect_liveness],
 "
     Mask = client_attrib_group_flags[Flag];
-"). 
+").
 
 :- pred push_client_attrib_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    push_client_attrib_2(Mask::in, IO0::di, IO::uo),
+    push_client_attrib_2(Mask::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPushClientAttrib((GLbitfield) Mask);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    pop_client_attrib(IO0::di, IO::uo),
+    pop_client_attrib(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure,
         does_not_affect_liveness],
 "
     glPopClientAttrib();
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
