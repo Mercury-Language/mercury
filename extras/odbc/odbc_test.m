@@ -33,7 +33,7 @@
 
 main(!IO) :-
     odbc.data_sources(SourceResult - SourceMessages, !IO),
-    ( 
+    (
         SourceResult = ok(Sources),
         io.write_string("Available data source names:", !IO),
         io.nl(!IO),
@@ -46,7 +46,7 @@ main(!IO) :-
     ),
     io.write_list(SourceMessages, "\n", io.write, !IO),
     io.nl(!IO),
-    odbc.transaction("test", "", "", odbc.tables(any, any, any), 
+    odbc.transaction("test", "", "", odbc.tables(any, any, any),
         TableResult - TableMessages, !IO),
     (
         TableResult = ok(Tables),
@@ -62,9 +62,9 @@ main(!IO) :-
     io.write_list(TableMessages, "\n", io.write, !IO),
     io.nl(!IO),
 
-    odbc.transaction("test", "", "", test_trans, 
+    odbc.transaction("test", "", "", test_trans,
         TransResult - TransMessages, !IO),
-    ( 
+    (
         TransResult = ok(Results),
         io.write_string("transaction ok: ", !IO),
         list.length(Results, NumRows),
@@ -108,8 +108,8 @@ test_trans_2(Results, !DB) :-
     odbc.solutions("select * from test", Results, !DB),
     ( semidet_succeed ->
         throw("exception in test_trans_2")
-    ;   
-        true 
+    ;
+        true
     ).
 
 :- pred output_results(list(odbc.row)::in, io::di, io::uo) is det.
