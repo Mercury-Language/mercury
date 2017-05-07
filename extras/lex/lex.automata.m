@@ -4,12 +4,13 @@
 % lex.automata.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2002, 2010 The University of Melbourne
+% Copyright (C) 2017 The Mercury team.
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %
 % Fri Aug 18 15:48:09 BST 2000
-% 
+%
 % Basic types and insts etc. for DFAs and NFAs over chars.
 %
 %   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
@@ -25,7 +26,7 @@
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
-    
+
     % States are labelled with non-negative integers.
     %
 :- type state_no == int.

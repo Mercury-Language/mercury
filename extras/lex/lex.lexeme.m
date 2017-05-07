@@ -1,15 +1,15 @@
 %----------------------------------------------------------------------------
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 %
-%
 % lex.lexeme.m
 % Sat Aug 19 08:22:32 BST 2000
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-% Copyright (C) 2001 The Rationalizer Intelligent Software AG
-%   The changes made by Rationalizer are contributed under the terms 
+% Copyright (C) 2001 The Rationalizer Intelligent Software AG.
+%   The changes made by Rationalizer are contributed under the terms
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
-% Copyright (C) 2002, 2010-2011 The University of Melbourne
+% Copyright (C) 2002, 2010-2011 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -50,14 +50,14 @@
     %
 :- type row == array(packed_transition).
 
-    % A packed_transition combines a target state_no 
+    % A packed_transition combines a target state_no
     % and the transition char codepoint for which the
     % transition is valid.
     %
 :- type packed_transition
      ---> packed_transition(btr_state :: state_no, char :: char).
 
-:- type packed_transitions 
+:- type packed_transitions
     == list(packed_transition).
 
 :- func compile_lexeme(lexeme(T)) = compiled_lexeme(T).

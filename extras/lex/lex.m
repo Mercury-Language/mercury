@@ -14,11 +14,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %
-% This module puts everything together, compiling a list of lexemes
-% into state machines and turning the input stream into a token stream.
+% This module puts everything together, compiling a list of lexemes into state
+% machines and turning the input stream into a token stream.
 %
-% Note that the astral charaters (in unicode) are not included in the range
-% of unicode characters, as the astral planes are very sparsely assigned.
+% Note that the astral characters (in Unicode) are not included in the range of
+% Unicode characters, as the astral planes are very sparsely assigned.
 %
 %-----------------------------------------------------------------------------%
 

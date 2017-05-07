@@ -6,7 +6,7 @@
 % Fri Aug 18 06:43:09 BST 2000
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2001 The Rationalizer Intelligent Software AG
-%   The changes made by Rationalizer are contributed under the terms 
+%   The changes made by Rationalizer are contributed under the terms
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2010 The University of Melbourne

@@ -3,7 +3,8 @@
 %-----------------------------------------------------------------------------%
 % lex.buf.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-% Copyright (C) 2002, 2010 The University of Melbourne
+% Copyright (C) 2002, 2010 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -25,7 +26,7 @@
 %   +---------------------------------------------------+
 %   |.|.|.|.|.|a|b|c|d|e|f|g|h|i|j|k|l| | | | | | | | | |
 %   +---------------------------------------------------+
-%    ^         ^           ^           ^                 ^ 
+%    ^         ^           ^           ^                 ^
 %    |         |           |           |                 |
 %    origin    start       cursor      end        terminus
 %
@@ -191,7 +192,7 @@ initial_buf_size = 1024.
     % %
 % :- func low_water_mark = int.
 % low_water_mark = 16.
-% 
+%
 % :- func initial_buf_size = int.
 % initial_buf_size = 32.
 
