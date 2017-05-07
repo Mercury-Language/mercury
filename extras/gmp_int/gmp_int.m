@@ -227,11 +227,12 @@
 :- func \ gmp_int = gmp_int.
 
     % Convert gmp_int to int.
-    % Fails if value does not fit in signed long.
+    % Fails if value does not fit into a signed long.
     %
 :- pred to_int(gmp_int::in, int::out) is semidet.
 
-    % As above, but throws exception if value doesn not fit into signed long.
+    % As above, but throws an exception if value does not fit into a signed
+    % long.
     %
 :- func det_to_int(gmp_int) = int.
 
