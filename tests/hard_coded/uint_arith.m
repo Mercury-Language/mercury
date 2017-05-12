@@ -29,8 +29,10 @@ main(!IO) :-
     run_binop_test((func(X, Y) = X - Y), "-", !IO),
     io.nl(!IO),
     run_binop_test((func(X, Y) = X * Y), "*", !IO),
-    io.nl(!IO).
-    %run_binop_test(uint.(/), "/", !IO).   % NYI.
+    io.nl(!IO),
+    run_binop_test(uint.(/), "/", !IO),
+    io.nl(!IO),
+    run_binop_test(uint.(rem), "rem", !IO).
 
 :- pred run_binop_test((func(uint, uint) = uint)::in, string::in,
     io::di, io::uo) is cc_multi.

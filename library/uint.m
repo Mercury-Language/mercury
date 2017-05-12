@@ -77,8 +77,44 @@
     %
 :- func min(uint, uint) = uint.
 
+    % Truncating integer division.
+    %
+    % Throws a `math.domain_error' exception if the right operand is zero.
+    %
+:- func (uint::in) div (uint::in) = (uint::uo) is det.
+
+    % Truncating integer division.
+    %
+    % Throws a `math.domain_error' exception if the right operand is zero.
+    %
+:- func (uint::in) // (uint::in) = (uint::uo) is det.
+
+    % (/)/2 is a synonym for (//)/2.
+    %
+:- func (uint::in) / (uint::in) = (uint::uo) is det.
+
+    % unchecked_quotient(X, Y) is the same as X // Y, but the behaviour
+    % is undefined if the right operand is zero.
+    %
 :- func unchecked_quotient(uint::in, uint::in) = (uint::uo) is det.
 
+    % Modulus.
+    % X mod Y = X - (X div Y) * Y
+    %
+    % Throws a `math.domain_error' exception if the right operand is zero.
+    %
+:- func (uint::in) mod (uint::in) = (uint::uo) is det.
+
+    % Remainder.
+    % X rem Y = X - (X // Y) * Y.
+    %
+    % Throws a `math.domain_error/` exception if the right operand is zero.
+    %
+:- func (uint::in) rem (uint::in) = (uint::uo) is det.
+
+    % unchecked_rem(X, Y) is the same as X rem Y, but the behaviour is
+    % undefined if the right operand is zero.
+    %
 :- func unchecked_rem(uint::in, uint::in) = (uint::uo) is det.
 
     % Left shift.
@@ -241,6 +277,31 @@ cast_from_int(_) = _ :-
 
 cast_to_int(_) = _ :-
     sorry($module, "uint.cast_to_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+X div Y = X // Y.
+
+:- pragma inline('//'/2).
+X // Y = Div :-
+    ( if Y = cast_from_int(0) then
+        throw(math.domain_error("uint.'//': division by zero"))
+    else
+        Div = unchecked_quotient(X, Y)
+    ).
+
+:- pragma inline('/'/2).
+X / Y = X // Y.
+
+X mod Y = X rem Y.
+
+:- pragma inline(rem/2).
+X rem Y = Rem :-
+    ( if Y = cast_from_int(0) then
+        throw(math.domain_error("uint.rem: division by zero"))
+    else
+        Rem = unchecked_rem(X, Y)
+    ).
 
 %---------------------------------------------------------------------------%
 
