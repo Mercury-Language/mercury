@@ -32,6 +32,7 @@
 :- include_module int_emu.
 :- include_module md4.
 :- include_module pickle.
+:- include_module uint_emu.
 
 % OS interfaces not provided by the standard library.
 :- include_module process_util.

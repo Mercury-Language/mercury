@@ -52,6 +52,7 @@
 :- import_module hlds.make_goal.
 :- import_module libs.int_emu.
 :- import_module libs.options.
+:- import_module libs.uint_emu.
 
 :- import_module bool.
 :- import_module float.
@@ -59,6 +60,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -149,6 +151,10 @@ evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
             ModuleName = "int",
             evaluate_det_call_int_1(Globals, ProcName, ModeNum, X,
                 OutputArg, OutputArgVal)
+        ;
+            ModuleName = "uint",
+            evaluate_det_call_uint_1(Globals, ProcName, ModeNum, X,
+                OutputArg, OutputArgVal)
         )
     ;
         Args = [X, Y],
@@ -156,6 +162,10 @@ evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
         (
             ModuleName = "int",
             evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
+                OutputArg, OutputArgVal)
+        ;
+            ModuleName = "uint",
+            evaluate_det_call_uint_2(Globals, ProcName, ModeNum, X, Y,
                 OutputArg, OutputArgVal)
         ;
             ModuleName = "float",
@@ -172,6 +182,10 @@ evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
         (
             ModuleName = "int",
             evaluate_det_call_int_3(Globals, ProcName, ModeNum, X, Y, Z,
+                OutputArg, OutputArgVal)
+        ;
+            ModuleName = "uint",
+            evaluate_det_call_uint_3(Globals, ProcName, ModeNum, X, Y ,Z,
                 OutputArg, OutputArgVal)
         ;
             ModuleName = "float",
@@ -195,6 +209,20 @@ evaluate_det_call_int_1(Globals, ProcName, ModeNum, X,
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         target_bits_per_int(Globals, bits_per_int(OutputArgVal))
+    ).
+
+:- pred evaluate_det_call_uint_1(globals::in, string::in, int::in,
+    arg_hlds_info::in, arg_hlds_info::out, cons_id::out) is semidet.
+
+evaluate_det_call_uint_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
+    (
+        ProcName = "bits_per_uint",
+        ModeNum = 0,
+        OutputArg = X,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        target_bits_per_uint(Globals, bits_per_uint(OutputArgVal)),
+        % NOTE: this returns an int not a uint.
+        ConsId = int_const(OutputArgVal)
     ).
 
 :- pred evaluate_det_call_int_2(globals::in, string::in, int::in,
@@ -256,6 +284,20 @@ evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         int_emu.target_bits_per_int(Globals, BitsPerInt),
         int_emu.rem_bits_per_int(XVal, BitsPerInt, OutputArgVal)
+    ).
+
+:- pred evaluate_det_call_uint_2(globals::in, string::in, int::in,
+    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out, cons_id::out)
+    is semidet.
+
+evaluate_det_call_uint_2(_Globals, ProcName, ModeNum, X, Y,
+        OutputArg, uint_const(OutputArgVal)) :-
+    (
+        ProcName = "\\",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = \ XVal
     ).
 
 :- pred evaluate_det_call_float_2(globals::in, string::in, int::in,
@@ -496,6 +538,174 @@ evaluate_det_call_int_3(Globals, ProcName, ModeNum, X, Y, Z,
         OutputArgVal = xor(XVal, YVal)
     ).
 
+:- pred evaluate_det_call_uint_3(globals::in, string::in, int::in,
+    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
+    arg_hlds_info::out, cons_id::out) is semidet.
+
+evaluate_det_call_uint_3(Globals, ProcName, ModeNum, X, Y, Z,
+        OutputArg, uint_const(OutputArgVal)) :-
+    (
+        ProcName = "+",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.plus(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "+",
+        ModeNum = 1,
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        OutputArg = X,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.minus(BitsPerUInt, ZVal, YVal, OutputArgVal)
+    ;
+        ProcName = "+",
+        ModeNum = 2,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        OutputArg = Y,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.minus(BitsPerUInt, ZVal, XVal, OutputArgVal)
+    ;
+        ProcName = "-",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.minus(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "-",
+        ModeNum = 1,
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        OutputArg = X,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.plus(BitsPerUInt, YVal, ZVal, OutputArgVal)
+    ;
+        ProcName = "-",
+        ModeNum = 2,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        OutputArg = Y,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.minus(BitsPerUInt, XVal, ZVal, OutputArgVal)
+    ;
+        ProcName = "*",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.times(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "//",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        YVal \= cast_from_int(0),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.quotient(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "mod",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        YVal \= cast_from_int(0),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.mod(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "rem",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        YVal \= cast_from_int(0),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.rem(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "unchecked_rem",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        YVal \= cast_from_int(0),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.unchecked_rem(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "unchecked_left_shift",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.unchecked_left_shift(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "<<",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.left_shift(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "unchecked_right_shift",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.unchecked_right_shift(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = ">>",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        uint_emu.right_shift(BitsPerUInt, XVal, YVal, OutputArgVal)
+    ;
+        ProcName = "/\\",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal /\ YVal
+    ;
+        ProcName = "\\/",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal \/ YVal
+    ;
+        ProcName = "xor",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = xor(XVal, YVal)
+    ).
+
 :- pred evaluate_det_call_float_3(globals::in, string::in, int::in,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
@@ -609,6 +819,45 @@ evaluate_test("int", ">=", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+    ( if XVal >= YVal then
+        Result = yes
+    else
+        Result = no
+    ).
+
+    % Unsigned integer comparisons.
+
+evaluate_test("uint", "<", 0, Args, Result) :-
+    Args = [X, Y],
+    X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+    ( if XVal < YVal then
+        Result = yes
+    else
+        Result = no
+    ).
+evaluate_test("uint", "=<", 0, Args, Result) :-
+    Args = [X, Y],
+    X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+    ( if XVal =< YVal then
+        Result = yes
+    else
+        Result = no
+    ).
+evaluate_test("uint", ">", 0, Args, Result) :-
+    Args = [X, Y],
+    X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+    ( if XVal > YVal then
+        Result = yes
+    else
+        Result = no
+    ).
+evaluate_test("uint", ">=", 0, Args, Result) :-
+    Args = [X, Y],
+    X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
     ( if XVal >= YVal then
         Result = yes
     else

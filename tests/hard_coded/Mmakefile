@@ -899,22 +899,12 @@ constant_prop_1.c: constant_prop_1.c_date
 	grep foobar $@
 	grep 1234 $@
 	grep '5678\.0' $@
-constant_prop_1.s: constant_prop_1.s_date
-	grep foobar $@
-	grep 1234 $@
-	grep '5678\.0' $@
-constant_prop_1.pic_s: constant_prop_1.pic_s_date
-	grep foobar $@
-	grep 1234 $@
-	grep '5678\.0' $@
+	grep 2468U $@
 constant_prop_1.java: constant_prop_1.java_date
 	grep foobar $@
 	grep 1234 $@
 	grep '5678\.0' $@
-constant_prop_1.il: constant_prop_1.il_date
-	grep foobar $@
-	grep 1234 $@
-	grep '5678\.0' $@
+	grep 2468 $@
 
 # Force intermod_unused_args2.m to be compiled and analysed before
 # intermod_unused_args.m.
