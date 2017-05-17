@@ -2582,11 +2582,11 @@ Furthermore, different platforms often have their own natural orderings
 which are not necessarily consistent with each other.
 As such, the standard ordering for most types is not fully defined.
 
-For the builtin type @code{int},
+For the primitive type @code{int},
 the standard ordering is the usual numerical ordering.
 Implementations should reject code containing overflowing integer literals.
 
-For the builtin type @code{float},
+For the primitive type @code{float},
 the standard ordering approximates the usual numerical ordering.
 If the result of @code{builtin.compare/3} is @code{(<)} or @code{(>)}
 then this relation holds in the numerical ordering,
@@ -2599,10 +2599,10 @@ and negative infinity is less than all finite values.
 Implementations must throw an exception when comparing
 a ``not a number'' (NaN) value.
 
-For the builtin type @code{char}, the standard ordering is
+For the primitive type @code{char}, the standard ordering is
 the numerical ordering of the Unicode code point values.
 
-For the builtin type @code{string},
+For the primitive type @code{string},
 the standard ordering is implementation dependent.
 The current implementation performs string comparison using
 the C @code{strcmp()} function,
@@ -7115,10 +7115,15 @@ to the foreign language's parameter passing convention.
 @node C data passing conventions
 @subsection C data passing conventions
 
-For each of the Mercury types @code{int}, @code{float}, @code{char},
-and @code{string}, there is a C typedef for the corresponding type in C:
-@code{MR_Integer}, @code{MR_Float}, @code{MR_Char},
-and @code{MR_String} respectively.
+The Mercury primitive types are mapped to the following C types:
+
+@multitable {Mercury_type} {MR_Integer}
+@headitem Mercury type @tab C type
+@item @code{int}    @tab @code{MR_Integer}
+@item @code{float}  @tab @code{MR_Float}
+@item @code{char}   @tab @code{MR_Char}
+@item @code{string} @tab @code{MR_String}
+@end multitable
 
 In the current implementation, @code{MR_Integer} is a typedef for a signed
 integral type whose size is the same size as a pointer of type @samp{void *};
@@ -7127,9 +7132,8 @@ Mercury library was compiled with @samp{--single-prec-float}, in which case it
 is a typedef for @code{float}); @code{MR_Char} is a typedef for a signed
 32-bit integral type and @code{MR_String} is a typedef for @samp{char *}.
 
-Mercury variables of type @code{int}, @code{float}, @code{char}, or
-@code{string} are passed to and from C as C variables whose type is
-given by the corresponding typedef. 
+Mercury variables of primitive type are passed to and from C as C variables of
+the corresponding C type.
 
 For the Mercury standard library type @samp{bool.bool}, there is a 
 corresponding C type, @code{MR_Bool}.  C code can refer to the boolean 
@@ -7198,13 +7202,19 @@ than @samp{sizeof(MR_Word)}.
 @node C# data passing conventions
 @subsection C# data passing conventions
 
-The Mercury types @code{int}, @code{float},
-and @code{string} are mapped to the Common Language Infrastructure (CLI) types
-@code{System.Int32}, @code{System.Double}, and
-@code{System.String} respectively, which correspond to the C# types
-@code{int}, @code{double}, and @code{string}.
-The Mercury type @code{char} is mapped like @code{int}; @emph{not} to the CLI
-type @code{System.Char} because that only holds 16-bit numeric values.
+The Mercury primitive types are mapped to the following Common Language
+Infrastructure (CLI) and C# types:
+
+@multitable {Mercury_type} {System_String} {double}
+  @headitem Mercury type @tab CLI type @tab C# type
+  @item @code{int}    @tab @code{System.Int32}  @tab @code{int}
+  @item @code{float}  @tab @code{System.Double} @tab @code{double}
+  @item @code{char}   @tab @code{System.Int32}  @tab @code{int}
+  @item @code{string} @tab @code{System.String} @tab @code{string}
+@end multitable
+
+Note that the Mercury type @code{char} is mapped like @code{int}; @emph{not} to
+the CLI type @code{System.Char} because that only holds 16-bit numeric values.
 
 For the Mercury standard library type @samp{bool.bool}, there is a
 corresponding C# type, @code{mr_bool.Bool_0}.  C# code can refer to the
@@ -7316,12 +7326,17 @@ List_1    list.cons(object head, List_1 tail)
 @node Java data passing conventions
 @subsection Java data passing conventions
 
-The Mercury types @code{int}, @code{float},
-and @code{string} are mapped to the Java types 
-@code{int}, @code{double}, and
-@code{java.lang.String} respectively.
-The Mercury type @code{char} is mapped like @code{int}; @emph{not} to the Java
-type @code{char} because that only holds 16-bit numeric values.
+The Mercury primitive types are mapped to the following Java types:
+@multitable {Mercury_type} {java_lang_String}
+@headitem Mercury type @tab Java type
+@item @code{int} @tab @code{int}
+@item @code{float} @tab @code{double}
+@item @code{char} @tab @code{int}
+@item @code{string} @tab @code{java.lang.String}
+@end multitable
+
+Note that the Mercury type @code{char} is mapped like @code{int}; @emph{not} to
+the Java type @code{char} because that only holds 16-bit numeric values.
 
 For the Mercury standard library type @samp{bool.bool}, there is a
 corresponding Java type, @code{bool.Bool_0}.  Java code can refer to the
