@@ -120,7 +120,7 @@ into another language, under the above conditions for modified versions.
 @node Introduction
 @chapter Introduction
 
-Mercury is a new general-purpose programming language, designed
+Mercury is a general-purpose programming language, originally designed
 and implemented by a small group of researchers at the University
 of Melbourne, Australia.  Mercury is based on the paradigm of
 purely declarative programming, and was designed to be
