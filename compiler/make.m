@@ -60,7 +60,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
-:- import_module hlds.
 :- import_module libs.
 :- import_module libs.handle_options.
 :- import_module libs.md4.
@@ -75,13 +74,9 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
-:- import_module top_level.                      % XXX unwanted dependency
-:- import_module top_level.mercury_compile_main. % XXX unwanted dependency
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
-:- import_module int.
 :- import_module getopt_io.
 :- import_module map.
 :- import_module maybe.
@@ -90,7 +85,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module sparse_bitset.
 :- import_module version_array.
 :- import_module version_hash_table.
 

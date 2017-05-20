@@ -354,6 +354,7 @@
 :- import_module char.
 :- import_module dir.
 :- import_module getopt_io.
+:- import_module int.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.

@@ -73,19 +73,6 @@ MCFLAGS-libs.md4                          = --no-warn-unused-imports
 MCFLAGS-libs.process_util                 = --no-warn-unused-imports
 MCFLAGS-libs.timestamp                    = --no-warn-unused-imports
 
-# In these packages, some imports are needed only by some submodules.
-MCFLAGS-erl_backend                       = --no-warn-unused-imports
-MCFLAGS-hlds                              = --no-warn-unused-imports
-MCFLAGS-ll_backend                        = --no-warn-unused-imports
-MCFLAGS-make                              = --no-warn-unused-imports
-MCFLAGS-ml_backend                        = --no-warn-unused-imports
-MCFLAGS-parse_tree                        = --no-warn-unused-imports
-MCFLAGS-recompilation                     = --no-warn-unused-imports
-MCFLAGS-top_level                         = --no-warn-unused-imports
-MCFLAGS-transform_hlds                    = --no-warn-unused-imports
-MCFLAGS-transform_hlds.ctgc.structure_reuse   = --no-warn-unused-imports
-MCFLAGS-transform_hlds.ctgc.structure_sharing = --no-warn-unused-imports
-
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
 MGNUCFLAGS-libs.process_util              = --no-ansi

@@ -191,6 +191,7 @@
 
 :- import_module assoc_list.
 :- import_module cord.
+:- import_module int.
 :- import_module dir.
 
 %-----------------------------------------------------------------------------%

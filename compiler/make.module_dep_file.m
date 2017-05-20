@@ -57,7 +57,6 @@
 :- import_module parse_tree.split_parse_tree_src.
 :- import_module parse_tree.write_module_interface_files.
 
-:- import_module assoc_list.
 :- import_module cord.
 :- import_module dir.
 :- import_module getopt_io.

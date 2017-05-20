@@ -296,19 +296,8 @@
 
 :- implementation.
 
-:- import_module hlds.
-:- import_module hlds.passes_aux.
-:- import_module libs.globals.
-:- import_module libs.options.
-:- import_module parse_tree.modules.
-:- import_module parse_tree.prog_util.
-
-:- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module require.
-:- import_module string.
-:- import_module time.
 
 %-----------------------------------------------------------------------------%
 

@@ -17,6 +17,7 @@
 :- module recompilation.usage.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
@@ -86,7 +87,6 @@
 :- implementation.
 
 :- import_module hlds.hlds_data.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -108,7 +108,6 @@
 :- import_module list.
 :- import_module queue.
 :- import_module require.
-:- import_module string.
 
 write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
     module_info_get_maybe_recompilation_info(ModuleInfo, MaybeRecompInfo),

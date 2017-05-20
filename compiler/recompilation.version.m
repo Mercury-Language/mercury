@@ -79,10 +79,10 @@
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_util.
 :- import_module parse_tree.parse_tree_to_term.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module cord.
 :- import_module list.
 :- import_module map.

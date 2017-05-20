@@ -86,12 +86,16 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.
+:- import_module top_level.                      % XXX unwanted dependency
+:- import_module top_level.mercury_compile_main. % XXX unwanted dependency
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module dir.
+:- import_module int.
 :- import_module float.
 :- import_module require.
+:- import_module sparse_bitset.
 
 %-----------------------------------------------------------------------------%
 
@@ -173,8 +177,8 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
 
                 deps_set_foldl3_maybe_stop_at_error(!.Info ^ keep_going,
                     union_deps(target_dependencies(Globals, FileType)),
-                    Globals, ModulesToCheckSet, DepsSuccess, init, DepFiles0,
-                    !Info, !IO),
+                    Globals, ModulesToCheckSet, DepsSuccess,
+                    sparse_bitset.init, DepFiles0, !Info, !IO),
                 dependency_file_index_set_to_plain_set(!.Info, DepFiles0,
                     DepFilesSet0),
                 ( if
