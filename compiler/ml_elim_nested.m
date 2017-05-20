@@ -48,14 +48,16 @@
 %
 % We transform code of the form e.g.
 %
-%   <OuterRet> outer(<OuterArgs>) {
+%   <OuterRet>
+%   outer(<OuterArgs>) {
 %       <OuterLocals>
 %
-%       <Inner1Ret> inner(<Inner1Args>, void *env_ptr_arg) {
+%       <Inner1Ret>
+%       inner(<Inner1Args>, void *env_ptr_arg) {
 %           <Inner1Locals>
 %
-%           <NestedInnerRet> nested_inner(<NestedInnerArgs>,
-%                       void *env_ptr_arg)
+%           <NestedInnerRet>
+%           nested_inner(<NestedInnerArgs>, void *env_ptr_arg)
 %           {
 %               <NestedInnerLocals>
 %
@@ -65,7 +67,8 @@
 %           <Inner1Code>
 %       }
 %
-%       <Inner2Ret> inner(<Inner2Args>, void *env_ptr_arg) {
+%       <Inner2Ret>
+%       inner(<Inner2Args>, void *env_ptr_arg) {
 %           <Inner2Locals>
 %
 %           <Inner2Code>
@@ -82,27 +85,31 @@
 %       <Inner1Locals>
 %   };
 %
-%   <NestedInnerRet> nested_inner(<NestedInnerArgs>, void *env_ptr_arg) {
+%   <NestedInnerRet>
+%   nested_inner(<NestedInnerArgs>, void *env_ptr_arg) {
 %       OuterLocals *env_ptr = env_ptr_arg;
 %       <NestedInnerLocals>
 %
 %       <NestedInnerCode'>
 %   }
 %
-%   <Inner1Ret> inner(<Inner1Args>, void *env_ptr_arg) {
+%   <Inner1Ret>
+%   inner(<Inner1Args>, void *env_ptr_arg) {
 %       OuterLocals *env_ptr = env_ptr_arg;
 %
 %       <Inner1Code'>
 %   }
 %
-%   <Inner2Ret> inner(<Inner2Args>, void *env_ptr_arg) {
+%   <Inner2Ret>
+%   inner(<Inner2Args>, void *env_ptr_arg) {
 %       OuterLocals *env_ptr = env_ptr_arg;
 %       <Inner2Locals>
 %
 %       <Inner2Code'>
 %   }
 %
-%   <OuterRet> outer(<OuterArgs>) {
+%   <OuterRet>
+%   outer(<OuterArgs>) {
 %       OuterLocals env;
 %       OuterLocals *env_ptr = &env;
 %
@@ -112,17 +119,17 @@
 %
 % where <Inner1Code'>, <Inner2Code'> and <NestedInnerCode'> are the
 % same as <Inner1Code>, <Inner2Code> and <NestedInnerCode> (respectively)
-% except that any references to a local variable <Var> declared in
-% outer() are replaced with `env_ptr -> <Var>',
-% and likewise <OuterCode'> is the same as <OuterCode> with references to
-% local variables replaced with `env_ptr->foo'.  In the latter
-% case it could (depending on how smart the C compiler is) potentially
-% be more efficient to generate `env.foo', but currently we don't do that.
+% except that any references to a local variable <Var> declared in outer()
+% are replaced with `env_ptr -> <Var>', and likewise <OuterCode'> is
+% the same as <OuterCode> with references to local variables replaced with
+% `env_ptr->foo'. In the latter % case it could (depending on how smart
+% the C compiler is) potentially be more efficient to generate `env.foo',
+% but currently we don't do that.
 %
 % Actually the description above is slightly over-simplified: not all local
-% variables need to be put in the environment struct.  Only those local
+% variables need to be put in the environment struct. Only those local
 % variables which are referenced by nested functions need to be
-% put in the environment struct.  Also, if none of the nested functions
+% put in the environment struct. Also, if none of the nested functions
 % refer to the locals in the outer function, we don't need to create
 % an environment struct at all, we just need to hoist the definitions
 % of the nested functions out to the top level.
@@ -140,8 +147,7 @@
 % SUMMARY
 %
 % This is an MLDS-to-MLDS transformation that transforms the MLDS code
-% to add the information needed to do accurate GC when compiling to C
-% (or to assembler).
+% to add the information needed to do accurate GC when compiling to C.
 %
 % Basically what we do is to put all local variables that might contain
 % pointers in structs, with one struct for each stack frame, and chain
@@ -154,17 +160,19 @@
 %   "Accurate garbage collection in an uncooperative environment".
 %   International Symposium on Memory Management, Berlin, Germany, 2002.
 %
-% In theory accurate GC is now fully implemented, i.e. it should support
+% In theory, accurate GC is now fully implemented, i.e. it should support
 % the whole Mercury language, modulo the caveats below.
 %
 % TODO:
+% (The "I" below is fjh).
+%
 % - XXX Need to test the GC tracing code for type class methods.
-%  This code in theory ought to work, I think, but it has not really been
-%  tested.
+%   This code in theory ought to work, I think, but it has not really been
+%   tested.
 %
 % - XXX The garbage collector should resize the heap if/when it fills up.
 %   We should allocate a large amount of virtual memory for each heap,
-%   but we should collect when we've allocated a small part of it.
+%   but we should collect when we have allocated a small part of it.
 %
 % - Heap reclamation on failure is not yet supported.
 %   One difficulty is that when resetting the heap, we need to also reset
@@ -202,7 +210,7 @@
 %
 % - XXX We need to handle `pragma foreign_export'.
 %
-%  The C interface in general is a bit problematic for GC. But for code which
+%   The C interface in general is a bit problematic for GC. But for code which
 %   does not call back to Mercury, the way we currently handle it is fairly
 %   safe even if the C code uses pointers to the Mercury heap or allocates
 %   on the Mercury heap, because such code will not invoke the GC. So the worst
@@ -457,6 +465,7 @@
 :- import_module ml_backend.ml_util.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module counter.
 :- import_module int.
 :- import_module list.
@@ -474,7 +483,8 @@ ml_elim_nested(Action, Globals, MLDS0, MLDS) :-
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     OuterVars = [],
     ml_elim_nested_defns_list(Action, MLDS_ModuleName, Globals, OuterVars,
-        Defns0, Defns),
+        Defns0, cord.init, DefnsCord),
+    Defns = cord.to_list(DefnsCord),
     % Flat global data structures do not need to be processed here; that is
     % what makes them "flat".
     ml_global_data_get_global_defns(GlobalData0,
@@ -482,30 +492,30 @@ ml_elim_nested(Action, Globals, MLDS0, MLDS) :-
         _RevFlatCellDefns, _RevFlatRttiDefns, RevNonFlatDefns0),
     list.reverse(RevNonFlatDefns0, NonFlatDefns0),
     ml_elim_nested_defns_list(Action, MLDS_ModuleName, Globals, OuterVars,
-        NonFlatDefns0, NonFlatDefns),
-    list.reverse(NonFlatDefns, RevNonFlatDefns),
+        NonFlatDefns0, cord.init, NonFlatDefnsCord),
+    RevNonFlatDefns = cord.to_rev_list(NonFlatDefnsCord),
     ml_global_data_set_rev_maybe_nonflat_defns(RevNonFlatDefns,
         GlobalData0, GlobalData),
     MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData, Defns,
         InitPreds, FinalPreds, ExportedEnums).
 
 :- pred ml_elim_nested_defns_list(action, mlds_module_name, globals, outervars,
-    list(mlds_defn), list(mlds_defn)).
-:- mode ml_elim_nested_defns_list(in(hoist), in, in, in, in, out) is det.
-:- mode ml_elim_nested_defns_list(in(chain), in, in, in, in, out) is det.
+    list(mlds_defn), cord(mlds_defn), cord(mlds_defn)).
+:- mode ml_elim_nested_defns_list(in(hoist), in, in, in, in, in, out) is det.
+:- mode ml_elim_nested_defns_list(in(chain), in, in, in, in, in, out) is det.
 
-ml_elim_nested_defns_list(_, _, _, _, [], []).
+ml_elim_nested_defns_list(_, _, _, _, [], !DefnsCord).
 ml_elim_nested_defns_list(Action, ModuleName, Globals, OuterVars,
-        [Defn0 | Defns0], Defns) :-
+        [Defn0 | Defns0], !DefnsCord) :-
     ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0,
-        HeadDefns),
+        !DefnsCord),
     ml_elim_nested_defns_list(Action, ModuleName, Globals, OuterVars, Defns0,
-        TailDefns),
-    Defns = HeadDefns ++ TailDefns.
+        !DefnsCord).
 
     % Either eliminated nested functions:
     % Hoist out any nested function occurring in a single mlds_defn.
-    % Return a list of mlds_defns that contains no nested functions.
+    % Return a list of mlds_defns that contains no nested functions,
+    % by adding them to the tail of !DefnsCord, in their desired order.
     %
     % Or handle accurate GC: put all variables that might contain pointers
     % in structs and chain these structs together into a "shadow stack".
@@ -513,11 +523,12 @@ ml_elim_nested_defns_list(Action, ModuleName, Globals, OuterVars,
     % whose address is stored in the shadow stack frame.
     %
 :- pred ml_elim_nested_defns(action, mlds_module_name, globals, outervars,
-    mlds_defn, list(mlds_defn)).
-:- mode ml_elim_nested_defns(in(hoist), in, in, in, in, out) is det.
-:- mode ml_elim_nested_defns(in(chain), in, in, in, in, out) is det.
+    mlds_defn, cord(mlds_defn), cord(mlds_defn)).
+:- mode ml_elim_nested_defns(in(hoist), in, in, in, in, in, out) is det.
+:- mode ml_elim_nested_defns(in(chain), in, in, in, in, in, out) is det.
 
-ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
+ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0,
+        !DefnsCord) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     ( if
         DefnBody0 = mlds_function(PredProcId, Params0,
@@ -574,15 +585,16 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
                 GCTraceFuncDefns),
             list.map_foldl(
                 ml_insert_init_env(Action, EnvTypeName, ModuleName, Globals),
-                    NestedFuncs0, NestedFuncs, no, InsertedEnv),
+                    NestedFuncs0, NestedFuncs,
+                    have_not_inserted_env, InsertedEnv),
 
             % Hoist out the nested functions.
             HoistedDefns0 = GCTraceFuncDefns ++ NestedFuncs,
 
             % When hoisting nested functions, it is possible that none of the
             % nested functions reference the arguments or locals of the parent
-            % function. In that case, there's no need to create an environment,
-            % we just need to flatten the functions.
+            % function. In that case, there is no need to create an
+            % environment, we just need to flatten the functions.
             %
             % Note that we don't generate the env_ptr_args in this module
             % (instead they are generated when the nested functions are
@@ -591,7 +603,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
             % that generates these arguments needs them.
             ( if
                 Action = hoist_nested_funcs,
-                InsertedEnv = no
+                InsertedEnv = have_not_inserted_env
             then
                 FuncBody = FuncBody1,
                 HoistedDefns = HoistedDefns0
@@ -661,10 +673,12 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
             body_defined_here(FuncBody), Attributes, EnvVarNames,
             MaybeRequiretailrecInfo),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
-        Defns = list.append(HoistedDefns, [Defn])
+
+        !:DefnsCord = !.DefnsCord ++ cord.from_list(HoistedDefns),
+        !:DefnsCord = cord.snoc(!.DefnsCord, Defn)
     else
         % Leave definitions of things other than functions unchanged.
-        Defns = [Defn0]
+        !:DefnsCord = cord.snoc(!.DefnsCord, Defn0)
     ).
 
 :- func strip_gc_statement(mlds_argument) = mlds_argument.
@@ -1101,6 +1115,10 @@ convert_local_to_field(Defn0) = Defn :-
         Defn = Defn0
     ).
 
+:- type inserted_env
+    --->    have_not_inserted_env
+    ;       have_inserted_env.
+
     % ml_insert_init_env:
     %
     % If the definition is a nested function definition, and its body makes
@@ -1108,21 +1126,26 @@ convert_local_to_field(Defn0) = Defn :-
     % and initialize the environment pointer.
     %
     % We transform code of the form
-    %   <Ret> <Func>(<Args>) {
+    %   <Ret>
+    %   <Func>(<Args>) {
     %       <Body>
     %   }
+    %
     % to
-    %   <Ret> <Func>(<Args>) {
+    %
+    %   <Ret>
+    %   <Func>(<Args>) {
     %       struct <EnvClassName> *env_ptr;
     %       env_ptr = (<EnvClassName> *) env_ptr_arg;
     %       <Body>
     %   }
     %
-    % If we perform this transformation, set !:InsertedEnv to "yes",
-    % otherwise leave it unchanged.
+    % If we perform this transformation, set !:InsertedEnv to
+    % have_inserted_env, otherwise leave it unchanged.
     %
 :- pred ml_insert_init_env(action::in, mlds_type::in, mlds_module_name::in,
-    globals::in, mlds_defn::in, mlds_defn::out, bool::in, bool::out) is det.
+    globals::in, mlds_defn::in, mlds_defn::out,
+    inserted_env::in, inserted_env::out) is det.
 
 ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
         !InsertedEnv) :-
@@ -1152,7 +1175,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
             body_defined_here(FuncBody), Attributes, EnvVarNames,
             MaybeRequiretailrecInfo),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
-        !:InsertedEnv = yes
+        !:InsertedEnv = have_inserted_env
     else
         Defn = Defn0
     ).
@@ -1423,26 +1446,18 @@ flatten_statements(Action, [Statement0 | Statements0],
 
 flatten_statement(Action, Statement0, Statement, !Info) :-
     Statement0 = statement(Stmt0, Context),
-    flatten_stmt(Action, Stmt0, Stmt, !Info),
-    Statement = statement(Stmt, Context).
-
-:- pred flatten_stmt(action, mlds_stmt, mlds_stmt, elim_info, elim_info).
-:- mode flatten_stmt(in(hoist), in, out, in, out) is det.
-:- mode flatten_stmt(in(chain), in, out, in, out) is det.
-
-flatten_stmt(Action, Stmt0, Stmt, !Info) :-
     (
-        Stmt0 = ml_stmt_block(Defns0, Statements0),
-        flatten_nested_defns(Action, Defns0, Statements0, Defns,
+        Stmt0 = ml_stmt_block(Defns0, SubStatements0),
+        flatten_nested_defns(Action, Defns0, SubStatements0, Defns,
             InitStatements, !Info),
-        flatten_statements(Action, InitStatements ++ Statements0, Statements,
-            !Info),
-        Stmt = ml_stmt_block(Defns, Statements)
+        flatten_statements(Action,
+            InitStatements ++ SubStatements0, SubStatements, !Info),
+        Stmt = ml_stmt_block(Defns, SubStatements)
     ;
-        Stmt0 = ml_stmt_while(Kind, Rval0, Statement0),
+        Stmt0 = ml_stmt_while(Kind, Rval0, SubStatement0),
         fixup_rval(Action, !.Info, Rval0, Rval),
-        flatten_statement(Action, Statement0, Statement, !Info),
-        Stmt = ml_stmt_while(Kind, Rval, Statement)
+        flatten_statement(Action, SubStatement0, SubStatement, !Info),
+        Stmt = ml_stmt_while(Kind, Rval, SubStatement)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0),
         fixup_rval(Action, !.Info, Cond0, Cond),
@@ -1482,11 +1497,11 @@ flatten_stmt(Action, Stmt0, Stmt, !Info) :-
         fixup_rval(Action, !.Info, Ref0, Ref),
         Stmt = ml_stmt_do_commit(Ref)
     ;
-        Stmt0 = ml_stmt_try_commit(Ref0, Statement0, Handler0),
+        Stmt0 = ml_stmt_try_commit(Ref0, SubStatement0, Handler0),
         fixup_lval(Action, !.Info, Ref0, Ref),
-        flatten_statement(Action, Statement0, Statement1, !Info),
+        flatten_statement(Action, SubStatement0, SubStatement, !Info),
         flatten_statement(Action, Handler0, Handler1, !Info),
-        Stmt1 = ml_stmt_try_commit(Ref, Statement1, Handler1),
+        Stmt1 = ml_stmt_try_commit(Ref, SubStatement, Handler1),
         (
             Action = chain_gc_stack_frames,
             save_and_restore_stack_chain(Stmt1, Stmt, !Info)
@@ -1498,7 +1513,8 @@ flatten_stmt(Action, Stmt0, Stmt, !Info) :-
         Stmt0 = ml_stmt_atomic(AtomicStmt0),
         fixup_atomic_stmt(Action, !.Info, AtomicStmt0, AtomicStmt),
         Stmt = ml_stmt_atomic(AtomicStmt)
-    ).
+    ),
+    Statement = statement(Stmt, Context).
 
 :- pred flatten_cases(action, list(mlds_switch_case), list(mlds_switch_case),
     elim_info, elim_info).
@@ -1675,8 +1691,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
             % Hoist ordinary local variables.
             Name = entity_data(DataName),
             DataName = mlds_data_var(VarName),
-            ml_should_add_local_data(Action, !.Info,
-                DataName, GCStatement0,
+            ml_should_add_local_data(Action, !.Info, DataName, GCStatement0,
                 FollowingDefns, FollowingStatements)
         then
             % We need to strip out the initializer (if any) and convert it
@@ -1719,8 +1734,8 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
 
     % Succeed iff we should add the definition of this variable to the
     % local_data field of the elim_info, meaning that it should be added
-    % to the environment struct (if it's a variable) or hoisted out to the
-    % top level (if it's a static const).
+    % to the environment struct (if it is a variable) or hoisted out to the
+    % top level (if it is a static const).
     %
 :- pred ml_should_add_local_data(action, elim_info, mlds_data_name,
     mlds_gc_statement, list(mlds_defn), list(statement)).
@@ -1731,10 +1746,8 @@ ml_should_add_local_data(Action, Info, DataName, GCStatement,
         FollowingDefns, FollowingStatements) :-
     (
         Action = chain_gc_stack_frames,
-        (
-            GCStatement = gc_trace_code(_)
-        ;
-            GCStatement = gc_initialiser(_)
+        ( GCStatement = gc_trace_code(_)
+        ; GCStatement = gc_initialiser(_)
         )
     ;
         Action = hoist_nested_funcs,
@@ -1745,8 +1758,7 @@ ml_should_add_local_data(Action, Info, DataName, GCStatement,
 
     % This checks for a nested function definition.
     %
-    % XXX Do we need to check for references from the GCStatement
-    % fields here?
+    % XXX Do we need to check for references from the GCStatement fields here?
     %
     % XXX This algorithm is quadratic. For a block with N defs, each of which
     % is referenced in a later definition, we do N^2 tests.
@@ -2260,6 +2272,7 @@ statement_contains_matching_defn(Filter, Statement) :-
     pred(mlds_defn)::in(pred(in) is semidet), mlds_stmt::in) is semidet.
 
 stmt_contains_matching_defn(Filter, Stmt) :-
+    require_complete_switch [Stmt]
     (
         Stmt = ml_stmt_block(Defns, Statements),
         ( defns_contains_matching_defn(Filter, Defns)
@@ -2534,7 +2547,7 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
     %
     %   stack_chain = stack_chain->prev;
     %
-    % Actually, it is not quite as simple as that.  The global `stack_chain'
+    % Actually, it is not quite as simple as that. The global `stack_chain'
     % has type `void *', rather than `MR_StackChain *', and the MLDS has
     % no way of representing the `struct MR_StackChain' type (which we would
     % need to cast it to) or of accessing an unqualified field name

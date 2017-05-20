@@ -2498,8 +2498,8 @@ mlds_output_param_type(Opts, Arg, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_fully_qualified_name(QualifiedName, !IO) :-
-    QualifiedName = qual(_ModuleName, _QualKind, Name),
     ( if
+        QualifiedName = qual(_ModuleName, _QualKind, Name),
         (
             % Don't module-qualify main/2.
             Name = entity_function(PredLabel, _, _, _),
@@ -2554,9 +2554,9 @@ mlds_output_module_name(ModuleName, !IO) :-
 
 :- pred mlds_output_name(mlds_entity_name::in, io::di, io::uo) is det.
 
+mlds_output_name(EntityName, !IO) :-
     % XXX We should avoid appending the arity, modenum, and seqnum
     % if they are not needed.
-mlds_output_name(EntityName, !IO) :-
     (
         EntityName = entity_type(Name, Arity),
         MangledName = name_mangle(Name),
@@ -2789,7 +2789,7 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
             % We can't just use the enumeration type, since the enumeration
             % type's definition is not guaranteed to be in scope at this point.
             % (Fixing that would be somewhat complicated; it would require
-            % writing enum definitions to a separate header file.) Also
+            % writing enum definitions to a separate header file.) Also,
             % the enumeration might not be word-sized, which would cause
             % problems for e.g. `std_util.arg/2'. So we just use `MR_Integer',
             % and output the actual enumeration type as a comment.
