@@ -175,16 +175,16 @@ SINGLEMODULE= \
 	instance_var_bug \
 	invalid_binary_literal \
 	invalid_decimal_literal \
-	invalid_float_literal \
-	invalid_hex_literal \
-	invalid_octal_literal \
 	invalid_event \
 	invalid_export_detism \
+	invalid_float_literal \
+	invalid_hex_literal \
 	invalid_instance_declarations \
 	invalid_int \
 	invalid_main \
 	invalid_mllibs \
 	invalid_new \
+	invalid_octal_literal \
 	invalid_pragma \
 	invalid_typeclass \
 	invalid_uint_inst \
@@ -215,6 +215,7 @@ SINGLEMODULE= \
 	multimode_dcg \
 	multimode_missing_impure \
 	multimode_syntax \
+	multiply_star \
 	multisoln_func \
 	nested_impl_in_int \
 	no_exports \

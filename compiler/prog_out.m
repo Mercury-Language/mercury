@@ -87,6 +87,23 @@
 
 :- pred write_class_id(class_id::in, io::di, io::uo) is det.
 
+    % Convert a cons_id to a string.
+    %
+    % The maybe_quoted_cons_id_and_arity_to_string version is for use
+    % in error messages, while the cons_id_and_arity_to_string version
+    % is for use when generating target language code. The differences are
+    % that
+    %
+    % - the former puts quotation marks around user-defined cons_ids
+    %   (i.e. those that are represented by cons/3), as opposed to
+    %   builtin cons_ids such as integers, while the latter does not, and
+    %
+    % - the latter mangles user-defined cons_ids to ensure that they
+    %   are acceptable in our target languages e.g. in comments,
+    %   while the former does no mangling.
+    %
+    % The difference in the names refers to the first distinction above.
+    %
 :- func maybe_quoted_cons_id_and_arity_to_string(cons_id) = string.
 :- func cons_id_and_arity_to_string(cons_id) = string.
 
@@ -291,37 +308,51 @@ write_class_id(class_id(Name, Arity), !IO) :-
 %-----------------------------------------------------------------------------%
 
 maybe_quoted_cons_id_and_arity_to_string(ConsId) =
-    cons_id_and_arity_to_string_maybe_quoted(quote_cons, ConsId).
+    cons_id_and_arity_to_string_maybe_quoted(dont_mangle_cons, quote_cons,
+        ConsId).
 
 cons_id_and_arity_to_string(ConsId) =
-    cons_id_and_arity_to_string_maybe_quoted(dont_quote_cons, ConsId).
+    cons_id_and_arity_to_string_maybe_quoted(mangle_cons, dont_quote_cons,
+        ConsId).
 
 :- type maybe_quote_cons
     --->    dont_quote_cons
     ;       quote_cons.
 
-:- func cons_id_and_arity_to_string_maybe_quoted(maybe_quote_cons, cons_id)
-    = string.
+:- type maybe_mangle_cons
+    --->    dont_mangle_cons
+    ;       mangle_cons.
 
-cons_id_and_arity_to_string_maybe_quoted(QuoteCons, ConsId) = String :-
+:- func cons_id_and_arity_to_string_maybe_quoted(maybe_mangle_cons,
+    maybe_quote_cons, cons_id) = string.
+
+cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
+        = String :-
     (
         ConsId = cons(SymName, Arity, _TypeCtor),
         SymNameString0 = sym_name_to_string(SymName),
-        ( if string.contains_char(SymNameString0, '*') then
-            % We need to protect against the * appearing next to a /.
-            Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
-                ( if Char = ('*') then
-                    string.append(Str0, "star", Str)
-                else
-                    string.char_to_string(Char, CharStr),
-                    string.append(Str0, CharStr, Str)
-                )
+        (
+            MangleCons = dont_mangle_cons,
+            SymNameString = SymNameString0
+        ;
+            MangleCons = mangle_cons,
+            ( if string.contains_char(SymNameString0, '*') then
+                % We need to protect against the * appearing next to a /.
+                Stuff =
+                    ( pred(Char::in, Str0::in, Str::out) is det :-
+                        ( if Char = ('*') then
+                            string.append(Str0, "star", Str)
+                        else
+                            string.char_to_string(Char, CharStr),
+                            string.append(Str0, CharStr, Str)
+                        )
+                    ),
+                string.foldl(Stuff, SymNameString0, "", SymNameString1)
+            else
+                SymNameString1 = SymNameString0
             ),
-            string.foldl(Stuff, SymNameString0, "", SymNameString1)
-        else
-            SymNameString1 = SymNameString0
+            SymNameString = term_io.escaped_string(SymNameString1)
         ),
-        SymNameString = term_io.escaped_string(SymNameString1),
         string.int_to_string(Arity, ArityString),
         (
             QuoteCons = dont_quote_cons,
