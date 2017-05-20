@@ -487,14 +487,12 @@ ml_elim_nested(Action, Globals, MLDS0, MLDS) :-
     Defns = cord.to_list(DefnsCord),
     % Flat global data structures do not need to be processed here; that is
     % what makes them "flat".
-    ml_global_data_get_global_defns(GlobalData0,
-        _ScalarCellGroupMap, _VectorCellGroupMap,
-        _RevFlatCellDefns, _RevFlatRttiDefns, RevNonFlatDefns0),
-    list.reverse(RevNonFlatDefns0, NonFlatDefns0),
+    ml_global_data_get_maybe_nonflat_defns(GlobalData0,
+        NonFlatDefnsCord0),
+    NonFlatDefns0 = cord.to_list(NonFlatDefnsCord0),
     ml_elim_nested_defns_list(Action, MLDS_ModuleName, Globals, OuterVars,
         NonFlatDefns0, cord.init, NonFlatDefnsCord),
-    RevNonFlatDefns = cord.to_rev_list(NonFlatDefnsCord),
-    ml_global_data_set_rev_maybe_nonflat_defns(RevNonFlatDefns,
+    ml_global_data_set_maybe_nonflat_defns(NonFlatDefnsCord,
         GlobalData0, GlobalData),
     MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData, Defns,
         InitPreds, FinalPreds, ExportedEnums).
