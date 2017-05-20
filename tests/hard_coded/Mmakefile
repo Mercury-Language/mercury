@@ -172,7 +172,6 @@ ORDINARY_PROGS =	\
 	intermod_multimode_main \
 	intermod_poly_mode \
 	intermod_pragma_clause \
-	intermod_try_goal \
 	intermod_type_qual \
 	intermod_unused_args \
 	java_rtti_bug \
@@ -622,6 +621,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		dir_test \
 		final_excp \
 		init_excp \
+		intermod_try_goal \
 		io_globals_deadlock \
 		map_merge_test \
 		mutable_excp \
