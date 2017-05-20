@@ -24,6 +24,8 @@
 :- import_module require.
 :- import_module string.
 
+:- pragma foreign_import_module("C", uint). % For ML_BITS_PER_UINT.
+
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
