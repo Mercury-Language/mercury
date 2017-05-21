@@ -560,6 +560,35 @@
 
 :- type mlds_func_sequence_num == int.
 
+:- type mlds_data_defn
+    --->    mlds_data_defn(
+                mlds_type,
+                mlds_initializer,
+                % If accurate GC is enabled, we associate with each variable
+                % the code needed to initialise or trace that variable when
+                % doing GC (in the compiler-generated gc trace functions).
+                mlds_gc_statement
+            ).
+
+:- type mlds_function_defn
+    --->    mlds_function_defn(
+                % Identifies the original Mercury procedure, if any.
+                maybe(pred_proc_id),
+
+                % The arguments & return types.
+                mlds_func_params,
+
+                mlds_function_body,
+                list(mlds_attribute),
+
+                % The set of environment variables referred to
+                % by the function body.
+                set(string),
+
+                % Information used to generate tail recursion errors.
+                maybe(require_tail_recursion)
+            ).
+
     % This specifies information about some entity being defined
     % The entity may be any of the following:
     %   constant or variable
@@ -573,28 +602,11 @@
 :- type mlds_entity_defn
     --->    mlds_data(
                 % Represents a constant or variable.
-
-                mlds_type,
-                mlds_initializer,
-                % If accurate GC is enabled, we associate with each variable
-                % the code needed to initialise or trace that variable when
-                % doing GC (in the compiler-generated gc trace functions).
-                mlds_gc_statement
+                mlds_data_defn
             )
     ;       mlds_function(
                 % Represents functions.
-
-                maybe(pred_proc_id),        % Identifies the original
-                                            % Mercury procedure, if any.
-                mlds_func_params,           % The arguments & return types.
-                mlds_function_body,         % The function body.
-                list(mlds_attribute),       % Attributes.
-                set(string),                % The set of environment
-                                            % variables referred to by the
-                                            % function body.
-                maybe(require_tail_recursion)
-                                            % Information used to generate
-                                            % tail recursion errors.
+                mlds_function_defn
             )
     ;       mlds_class(
                 % Represents packages, classes, interfaces, structs, enums.

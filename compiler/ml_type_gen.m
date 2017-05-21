@@ -321,7 +321,8 @@ ml_gen_hld_enum_value_member(Context) =
     mlds_defn(entity_data(mlds_data_var(mlds_comp_var(mcv_mr_value))),
         mlds_make_context(Context),
         ml_gen_member_decl_flags,
-        mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)).
+        mlds_data(mlds_data_defn(mlds_native_int_type, no_initializer,
+            gc_no_stmt))).
 
 :- func ml_gen_hld_enum_constant(prog_context, type_ctor, cons_tag_values,
     mlds_type, constructor) = mlds_defn.
@@ -372,7 +373,8 @@ ml_gen_hld_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
         entity_data(mlds_data_var(VarName)),
         mlds_make_context(Context),
         ml_gen_enum_constant_decl_flags,
-        mlds_data(mlds_native_int_type, init_obj(ConstValue), gc_no_stmt)).
+        mlds_data(mlds_data_defn(mlds_native_int_type, init_obj(ConstValue),
+            gc_no_stmt))).
 
 %-----------------------------------------------------------------------------%
 %
@@ -486,7 +488,8 @@ ml_gen_hld_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
             entity_data(mlds_data_var(mlds_comp_var(mcv_data_tag))),
             mlds_make_context(Context),
             ml_gen_member_decl_flags,
-            mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)),
+            mlds_data(mlds_data_defn(mlds_native_int_type, no_initializer,
+                gc_no_stmt))),
         TagConstMembers = [],
         % XXX we don't yet bother with these;
         % mlds_to_c.m doesn't support static (one_copy) members.
@@ -589,7 +592,8 @@ ml_gen_hld_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
             entity_data(mlds_data_var(VarName)),
             mlds_make_context(Context),
             ml_gen_enum_constant_decl_flags,
-            mlds_data(mlds_native_int_type, init_obj(ConstValue), gc_no_stmt)),
+            mlds_data(mlds_data_defn(mlds_native_int_type,
+                init_obj(ConstValue), gc_no_stmt))),
         Defns = [Defn]
     else
         Defns = []
@@ -727,8 +731,8 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             % never point into the heap; they can point only to other static
             % constants.
             GCStatement = gc_no_stmt,
-            EntityDefn = mlds_data(SecondaryTagClassId, no_initializer,
-                GCStatement),
+            EntityDefn = mlds_data(mlds_data_defn(SecondaryTagClassId,
+                no_initializer, GCStatement)),
             DeclFlags = mlds.set_access(ml_static_const_decl_flags,
                 acc_public),
             MLDS_ReservedObjDefn = mlds_defn(MLDS_ReservedObjEntityName,
@@ -971,8 +975,9 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
     Stmt = statement(ml_stmt_block([], InitMembers), Context),
     Attributes = [],
     EnvVarNames = set.init,
-    Ctor = mlds_function(no, mlds_func_params(Args, ReturnValues),
+    FunctionDefn = mlds_function_defn(no, mlds_func_params(Args, ReturnValues),
         body_defined_here(Stmt), Attributes, EnvVarNames, no),
+    Ctor = mlds_function(FunctionDefn),
     CtorFlags = init_decl_flags(acc_public, per_instance, non_virtual,
         overridable, modifiable, concrete),
 
@@ -1094,7 +1099,7 @@ ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, MaybeFieldName, Type, Width,
     Name = entity_data(DataName),
     % We only need GC tracing code for top-level variables, not for fields.
     GcStmt = gc_no_stmt,
-    EntityDefn = mlds_data(MLDS_Type, no_initializer, GcStmt),
+    EntityDefn = mlds_data(mlds_data_defn(MLDS_Type, no_initializer, GcStmt)),
     DeclFlags = ml_gen_public_field_decl_flags,
     MLDS_Context = mlds_make_context(Context),
     Defn = mlds_defn(Name, MLDS_Context, DeclFlags, EntityDefn),

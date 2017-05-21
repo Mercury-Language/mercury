@@ -463,7 +463,8 @@ ml_gen_plain_static_defn(ConstVarKind, ConstType,
     % The GC never needs to trace static constants, because they can never
     % point into the heap; they can point only to other static constants.
     GCStatement = gc_no_stmt,
-    EntityDefn = mlds_data(ConstType, Initializer, GCStatement),
+    EntityDefn =
+        mlds_data(mlds_data_defn(ConstType, Initializer, GCStatement)),
     DeclFlags = mlds.set_access(ml_static_const_decl_flags, acc_private),
     MLDS_Context = mlds_make_context(Context),
     Defn = mlds_defn(EntityName, MLDS_Context, DeclFlags, EntityDefn),
@@ -699,7 +700,8 @@ ml_gen_vector_cell_field_types(MLDS_Context, Flags, TypeRawNum, FieldNum,
         [FieldDefn | FieldDefns], [FieldInfo | FieldInfos]) :-
     FieldVarName = mlds_comp_var(mcv_global_data_field(TypeRawNum, FieldNum)),
     FieldEntityName = entity_data(mlds_data_var(FieldVarName)),
-    FieldEntityDefn = mlds_data(Type, no_initializer, gc_no_stmt),
+    FieldEntityDefn =
+        mlds_data(mlds_data_defn(Type, no_initializer, gc_no_stmt)),
     FieldDefn = mlds_defn(FieldEntityName, MLDS_Context, Flags,
         FieldEntityDefn),
     FieldInfo = mlds_field_info(FieldVarName, Type, gc_no_stmt, MLDS_Context),

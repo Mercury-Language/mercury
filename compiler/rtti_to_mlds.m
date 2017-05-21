@@ -133,7 +133,7 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
 
     % Generate the declaration body, i.e. the type and the initializer.
     MLDS_Type = mlds_rtti_type(item_type(RttiId)),
-    DefnBody = mlds_data(MLDS_Type, Initializer, GCStatement),
+    DefnBody = mlds_data(mlds_data_defn(MLDS_Type, Initializer, GCStatement)),
     Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody),
 
     ml_global_data_add_flat_rtti_defn(Defn, !GlobalData).
@@ -1791,7 +1791,7 @@ add_rtti_defn_arcs(Defn, !Graph) :-
     Defn = mlds_defn(EntityName, _, _, EntityDefn),
     ( if
         EntityName = entity_data(DefnDataName),
-        EntityDefn = mlds_data(Type, Initializer, _GCStatement),
+        EntityDefn = mlds_data(mlds_data_defn(Type, Initializer, _GCStmt)),
         Type = mlds_rtti_type(_)
     then
         add_rtti_defn_arcs_initializer(DefnDataName, Initializer, !Graph)

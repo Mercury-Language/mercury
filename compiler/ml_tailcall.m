@@ -242,7 +242,8 @@ mark_tailcalls_in_defn(ModuleInfo, ModuleName, WarnTailCalls,
         Defn0, Defn, !Specs) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        DefnBody0 = mlds_function(MaybePredProcId, Params, FuncBody0,
+        DefnBody0 = mlds_function(FunctionDefn0),
+        FunctionDefn0 = mlds_function_defn(MaybePredProcId, Params, FuncBody0,
             Attributes, EnvVarNames, MaybeRequireTailrecInfo),
         % Compute the initial values of the `Locals' and `AtTail' arguments.
         Params = mlds_func_params(Args, RetTypes),
@@ -266,11 +267,12 @@ mark_tailcalls_in_defn(ModuleInfo, ModuleName, WarnTailCalls,
             MaybePredInfo, Locals, WarnTailCalls, MaybeRequireTailrecInfo),
         mark_tailcalls_in_function_body(TCallInfo, AtTail,
             FuncBody0, FuncBody, !Specs),
-        DefnBody = mlds_function(MaybePredProcId, Params, FuncBody,
+        FunctionDefn = mlds_function_defn(MaybePredProcId, Params, FuncBody,
             Attributes, EnvVarNames, MaybeRequireTailrecInfo),
+        DefnBody = mlds_function(FunctionDefn),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ;
-        DefnBody0 = mlds_data(_, _, _),
+        DefnBody0 = mlds_data(_),
         Defn = Defn0
     ;
         DefnBody0 = mlds_class(ClassDefn0),

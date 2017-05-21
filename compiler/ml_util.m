@@ -658,8 +658,9 @@ has_foreign_languages(Statement, Langs) :-
 %
 
 defn_contains_foreign_code(NativeTargetLang, Defn) :-
-    Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_function(_, _, body_defined_here(FunctionBody), _, _, _),
+    Defn = mlds_defn(_Name, _Context, _Flags, mlds_function(FunctionDefn)),
+    FunctionDefn = mlds_function_defn(_, _, body_defined_here(FunctionBody),
+        _, _, _),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     (
@@ -670,8 +671,9 @@ defn_contains_foreign_code(NativeTargetLang, Defn) :-
     ).
 
 defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
-    Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_function(_, _, body_defined_here(FunctionBody), _, _, _),
+    Defn = mlds_defn(_Name, _Context, _Flags, mlds_function(FunctionDefn)),
+    FunctionDefn = mlds_function_defn(_, _, body_defined_here(FunctionBody),
+        _, _, _),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     Stmt = ml_stmt_atomic(outline_foreign_proc(ForeignLang, _, _, _)).
@@ -686,14 +688,14 @@ defn_is_function(Defn) :-
 
 defn_is_type_ctor_info(Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_data(Type, _, _),
+    Body = mlds_data(mlds_data_defn(Type, _, _)),
     Type = mlds_rtti_type(item_type(RttiId)),
     RttiId = ctor_rtti_id(_, RttiName),
     RttiName = type_ctor_type_ctor_info.
 
 defn_is_commit_type_var(Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_data(Type, _, _),
+    Body = mlds_data(mlds_data_defn(Type, _, _)),
     Type = mlds_commit_type.
 
 defn_is_public(Defn) :-
@@ -729,11 +731,12 @@ defn_contains_var(Defn, DataName) = ContainsVar :-
 
 defn_body_contains_var(DefnBody, DataName) = ContainsVar :-
     (
-        DefnBody = mlds_data(_Type, Initializer, _GCStatement),
+        DefnBody = mlds_data(mlds_data_defn(_Type, Initializer, _GCStatement)),
         % XXX Should we include variables in the GCStatement field here?
         ContainsVar = initializer_contains_var(Initializer, DataName)
     ;
-        DefnBody = mlds_function(_PredProcId, _Params, FunctionBody,
+        DefnBody = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(_PredProcId, _Params, FunctionBody,
             _Attrs, _EnvVarNames, _MaybeRequireTailrecInfo),
         ContainsVar = function_body_contains_var(FunctionBody, DataName)
     ;

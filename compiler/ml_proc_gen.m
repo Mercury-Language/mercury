@@ -480,8 +480,9 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
     attributes_to_attribute_list(Attributes, AttributeList),
     MLDS_Attributes =
         attributes_to_mlds_attributes(!.ModuleInfo, AttributeList),
-    EntityBody = mlds_function(MaybePredProcId, MLDS_Params,
+    FunctionDefn = mlds_function_defn(MaybePredProcId, MLDS_Params,
         FunctionBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfo),
+    EntityBody = mlds_function(FunctionDefn),
     ProcDefn = mlds_defn(EntityName, MLDS_ProcContext, DeclFlags, EntityBody),
     !:Defns = ExtraDefns ++ [ProcDefn | !.Defns].
 
@@ -948,7 +949,7 @@ tabling_name_and_init_to_defn(ProcLabel, MLDS_Context, Constness, Id,
     GCStatement = gc_no_stmt,
     MLDS_Type = mlds_tabling_type(Id),
     Flags = tabling_data_decl_flags(Constness),
-    DefnBody = mlds_data(MLDS_Type, Initializer, GCStatement),
+    DefnBody = mlds_data(mlds_data_defn(MLDS_Type, Initializer, GCStatement)),
     Name = entity_data(mlds_tabling_ref(ProcLabel, Id)),
     Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody).
 

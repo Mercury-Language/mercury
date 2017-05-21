@@ -529,7 +529,8 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0,
         !DefnsCord) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     ( if
-        DefnBody0 = mlds_function(PredProcId, Params0,
+        DefnBody0 = mlds_function(FunctionDefn0),
+        FunctionDefn0 = mlds_function_defn(PredProcId, Params0,
             body_defined_here(FuncBody0), Attributes, EnvVarNames,
             MaybeRequiretailrecInfo),
         % Don't add GC tracing code to the gc_trace/1 primitive!
@@ -667,9 +668,10 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0,
             Arguments = Arguments0
         ),
         Params = mlds_func_params(Arguments, RetValues),
-        DefnBody = mlds_function(PredProcId, Params,
+        FunctionDefn = mlds_function_defn(PredProcId, Params,
             body_defined_here(FuncBody), Attributes, EnvVarNames,
             MaybeRequiretailrecInfo),
+        DefnBody = mlds_function(FunctionDefn),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
 
         !:DefnsCord = !.DefnsCord ++ cord.from_list(HoistedDefns),
@@ -882,7 +884,8 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     EnvVarName = env_var(Action),
     EnvVarEntityName = entity_data(mlds_data_var(EnvVarName)),
     EnvVarFlags = ml_gen_local_var_decl_flags,
-    EnvVarDefnBody = mlds_data(EnvTypeName, EnvInitializer, GCStatementEnv),
+    EnvVarDefnBody =
+        mlds_data(mlds_data_defn(EnvTypeName, EnvInitializer, GCStatementEnv)),
     EnvVarDecl = mlds_defn(EnvVarEntityName, Context, EnvVarFlags,
         EnvVarDefnBody),
 
@@ -960,14 +963,16 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     PrevFieldName = entity_data(mlds_data_var(mlds_comp_var(mcv_prev))),
     PrevFieldFlags = ml_gen_public_field_decl_flags,
     PrevFieldType = ml_stack_chain_type,
-    PrevFieldDefnBody = mlds_data(PrevFieldType, no_initializer, gc_no_stmt),
+    PrevFieldDefnBody =
+        mlds_data(mlds_data_defn(PrevFieldType, no_initializer, gc_no_stmt)),
     PrevFieldDecl = mlds_defn(PrevFieldName, Context, PrevFieldFlags,
         PrevFieldDefnBody),
 
     TraceFieldName = entity_data(mlds_data_var(mlds_comp_var(mcv_trace))),
     TraceFieldFlags = ml_gen_public_field_decl_flags,
     TraceFieldType = mlds_func_type(GCTraceFuncParams),
-    TraceFieldDefnBody = mlds_data(TraceFieldType, no_initializer, gc_no_stmt),
+    TraceFieldDefnBody =
+        mlds_data(mlds_data_defn(TraceFieldType, no_initializer, gc_no_stmt)),
     TraceFieldDecl = mlds_defn(TraceFieldName, Context, TraceFieldFlags,
         TraceFieldDefnBody),
 
@@ -1056,8 +1061,8 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
     MaybePredProcId = no,
     Attributes = [],
     EnvVarNames = set.init,
-    FuncDefn = mlds_function(MaybePredProcId, FuncParams,
-        body_defined_here(Statement), Attributes, EnvVarNames, no),
+    FuncDefn = mlds_function(mlds_function_defn(MaybePredProcId, FuncParams,
+        body_defined_here(Statement), Attributes, EnvVarNames, no)),
     GCTraceFuncDefn = mlds_defn(GCTraceFuncName, Context, DeclFlags,
         FuncDefn).
 
@@ -1080,17 +1085,31 @@ ml_gen_gc_trace_func_decl_flags = MLDS_DeclFlags :-
 
 extract_gc_statements(Defn0, Defn, GCInitStmts, GCTraceStmts) :-
     Defn0 = mlds_defn(Name, Context, Flags, Body0),
-    ( if Body0 = mlds_data(Type, Init, gc_trace_code(GCTraceStmt)) then
-        Body = mlds_data(Type, Init, gc_no_stmt),
-        GCInitStmts = [],
-        GCTraceStmts = [GCTraceStmt],
-        Defn = mlds_defn(Name, Context, Flags, Body)
-    else if Body0 = mlds_data(Type, Init, gc_initialiser(GCInitStmt)) then
-        Body = mlds_data(Type, Init, gc_no_stmt),
-        GCInitStmts = [GCInitStmt],
-        GCTraceStmts = [],
-        Defn = mlds_defn(Name, Context, Flags, Body)
-    else
+    (
+        Body0 = mlds_data(DataDefn0),
+        DataDefn0 = mlds_data_defn(Type, Init, GCStmt),
+        (
+            GCStmt = gc_trace_code(GCTraceStmt),
+            DataDefn = mlds_data_defn(Type, Init, gc_no_stmt),
+            Defn = mlds_defn(Name, Context, Flags, mlds_data(DataDefn)),
+            GCInitStmts = [],
+            GCTraceStmts = [GCTraceStmt]
+        ;
+            GCStmt = gc_initialiser(GCInitStmt),
+            DataDefn = mlds_data_defn(Type, Init, gc_no_stmt),
+            Defn = mlds_defn(Name, Context, Flags, mlds_data(DataDefn)),
+            GCInitStmts = [GCInitStmt],
+            GCTraceStmts = []
+        ;
+            GCStmt = gc_no_stmt,
+            Defn = Defn0,
+            GCInitStmts = [],
+            GCTraceStmts = []
+        )
+    ;
+        ( Body0 = mlds_function(_)
+        ; Body0 = mlds_class(_)
+        ),
         Defn = Defn0,
         GCInitStmts = [],
         GCTraceStmts = []
@@ -1149,7 +1168,8 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
         !InsertedEnv) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     ( if
-        DefnBody0 = mlds_function(PredProcId, Params,
+        DefnBody0 = mlds_function(FunctionDefn0),
+        FunctionDefn0 = mlds_function_defn(PredProcId, Params,
             body_defined_here(FuncBody0), Attributes, EnvVarNames,
             MaybeRequiretailrecInfo),
         statement_contains_var(FuncBody0, qual(ModuleName, module_qual,
@@ -1169,9 +1189,10 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
             ModuleName, Globals, EnvPtrDecl, InitEnvPtr),
         FuncBody = statement(ml_stmt_block([EnvPtrDecl],
             [InitEnvPtr, FuncBody0]), Context),
-        DefnBody = mlds_function(PredProcId, Params,
+        FunctionDefn = mlds_function_defn(PredProcId, Params,
             body_defined_here(FuncBody), Attributes, EnvVarNames,
             MaybeRequiretailrecInfo),
+        DefnBody = mlds_function(FunctionDefn),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         !:InsertedEnv = have_inserted_env
     else
@@ -1205,8 +1226,8 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     % The env_ptr never needs to be traced by the GC, since the environment
     % that it points to will always be on the stack, not into the heap.
     GCStatement = gc_no_stmt,
-    EnvPtrVarDefnBody = mlds_data(EnvPtrVarType, no_initializer,
-        GCStatement),
+    EnvPtrVarDefnBody =
+        mlds_data(mlds_data_defn(EnvPtrVarType, no_initializer, GCStatement)),
     EnvPtrVarDecl = mlds_defn(EnvPtrVarEntityName, Context,
         EnvPtrVarFlags, EnvPtrVarDefnBody),
 
@@ -1232,7 +1253,7 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 ml_conv_arg_to_var(Context, Arg, LocalVar) :-
     Arg = mlds_argument(VarName, Type, GCStatement),
     Flags = ml_gen_local_var_decl_flags,
-    DefnBody = mlds_data(Type, no_initializer, GCStatement),
+    DefnBody = mlds_data(mlds_data_defn(Type, no_initializer, GCStatement)),
     LocalVar = mlds_defn(entity_data(mlds_data_var(VarName)), Context, Flags,
         DefnBody).
 
@@ -1641,8 +1662,9 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
         Defns, InitStatements, !Info) :-
     Defn0 = mlds_defn(Name, Context, Flags0, DefnBody0),
     (
-        DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
-            EnvVarNames, MaybeRequiretailrecInfo),
+        DefnBody0 = mlds_function(FunctionDefn0),
+        FunctionDefn0 = mlds_function_defn(PredProcId, Params, FuncBody0,
+            Attributes, EnvVarNames, MaybeRequiretailrecInfo),
         % Recursively flatten the nested function.
         flatten_function_body(Action, FuncBody0, FuncBody, !Info),
 
@@ -1657,8 +1679,9 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
             Action = chain_gc_stack_frames,
             Flags = Flags0
         ),
-        DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
-            EnvVarNames, MaybeRequiretailrecInfo),
+        FunctionDefn = mlds_function_defn(PredProcId, Params, FuncBody,
+            Attributes, EnvVarNames, MaybeRequiretailrecInfo),
+        DefnBody = mlds_function(FunctionDefn),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         (
             Action = hoist_nested_funcs,
@@ -1682,7 +1705,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
         ),
         InitStatements = []
     ;
-        DefnBody0 = mlds_data(Type, Init0, GCStatement0),
+        DefnBody0 = mlds_data(mlds_data_defn(Type, Init0, GCStatement0)),
         % For local variable definitions, if they are referenced by any nested
         % functions, then strip them out and store them in the elim_info.
         ( if
@@ -1700,7 +1723,8 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
                 % work, because it doesn't handle the case when initializers in
                 % FollowingDefns reference this variable.
                 Init1 = no_initializer,
-                DefnBody1 = mlds_data(Type, Init1, GCStatement0),
+                DefnBody1 =
+                    mlds_data(mlds_data_defn(Type, Init1, GCStatement0)),
                 Defn1 = mlds_defn(Name, Context, Flags0, DefnBody1),
                 ModuleName = elim_info_get_module_name(!.Info),
                 VarLval = ml_var(qual(ModuleName, module_qual, VarName), Type),
@@ -1714,7 +1738,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
             Defns = []
         else
             fixup_initializer(Action, !.Info, Init0, Init),
-            DefnBody = mlds_data(Type, Init, GCStatement0),
+            DefnBody = mlds_data(mlds_data_defn(Type, Init, GCStatement0)),
             Defn = mlds_defn(Name, Context, Flags0, DefnBody),
             Defns = [Defn],
             InitStatements = []
@@ -1777,7 +1801,7 @@ ml_need_to_hoist(ModuleName, DataName, FollowingDefns, FollowingStatements) :-
     mlds_defn::in) is semidet.
 
 ml_need_to_hoist_defn(QualDataName, FollowingDefn) :-
-    FollowingDefn = mlds_defn(_, _, _, mlds_function(_, _, _, _, _, _)),
+    FollowingDefn = mlds_defn(_, _, _, mlds_function(_)),
     defn_contains_var(FollowingDefn, QualDataName) = yes.
 
 %-----------------------------------------------------------------------------%
@@ -2093,10 +2117,10 @@ fixup_gc_statements_defns(_, [], !Info).
 fixup_gc_statements_defns(Action, [Defn0 | Defns], !Info) :-
     ( if
         Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
-        DefnBody0 = mlds_data(Type, Init, GCStatement0)
+        DefnBody0 = mlds_data(mlds_data_defn(Type, Init, GCStatement0))
     then
         flatten_gc_statement(Action, GCStatement0, GCStatement, !Info),
-        DefnBody = mlds_data(Type, Init, GCStatement),
+        DefnBody = mlds_data(mlds_data_defn(Type, Init, GCStatement)),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         elim_info_remove_local_data(Defn0, !Info),
         elim_info_add_local_data(Defn, !Info)
@@ -2128,8 +2152,9 @@ fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
         IsLocalVar =
             ( pred(VarType::out) is nondet :-
                 list.member(Var, Locals),
-                Var = mlds_defn(entity_data(mlds_data_var(ThisVarName)), _, _,
-                    mlds_data(VarType, _, _))
+                Var = mlds_defn(EntityName, _, _, EntityDefn),
+                EntityName = entity_data(mlds_data_var(ThisVarName)),
+                EntityDefn = mlds_data(mlds_data_defn(VarType, _, _))
             ),
         solutions.solutions(IsLocalVar, [FieldType])
     then
@@ -2353,8 +2378,9 @@ defn_contains_matching_defn(Filter, Defn) :-
     ;
         Defn = mlds_defn(_Name, _Context, _Flags, DefnBody),
         (
-            DefnBody = mlds_function(_PredProcId, _Params, FunctionBody,
-                _Attrs, _EnvVarNames, _MaybeRequiretailrecInfo),
+            DefnBody = mlds_function(FunctionDefn),
+            FunctionDefn = mlds_function_defn(_PredProcId, _Params,
+                FunctionBody, _Attrs, _EnvVarNames, _MaybeRequiretailrecInfo),
             FunctionBody = body_defined_here(Statement),
             statement_contains_matching_defn(Filter, Statement)
         ;
@@ -2367,7 +2393,7 @@ defn_contains_matching_defn(Filter, Defn) :-
                 defns_contains_matching_defn(Filter, CtorDefns)
             )
         ;
-            DefnBody = mlds_data(_, _, _),
+            DefnBody = mlds_data(_),
             % Data entities contain no definitions.
             fail
         )
@@ -2581,7 +2607,7 @@ gen_saved_stack_chain_var(Id, Context) = Defn :-
     % The saved stack chain never needs to be traced by the GC,
     % since it will always point to the stack, not into the heap.
     GCStatement = gc_no_stmt,
-    DefnBody = mlds_data(Type, Initializer, GCStatement),
+    DefnBody = mlds_data(mlds_data_defn(Type, Initializer, GCStatement)),
     Defn = mlds_defn(Name, Context, Flags, DefnBody).
 
     % Generate a statement to save the stack chain pointer:

@@ -469,7 +469,8 @@ mlds_get_env_var_names(Defns) = EnvVarNameSet :-
     is semidet.
 
 mlds_get_env_var_names_from_defn(Defn, EnvVarNameSet) :-
-    Defn = mlds_defn(_, _, _, mlds_function(_, _, _, _, EnvVarNameSet, _)).
+    Defn = mlds_defn(_, _, _, mlds_function(FunctionDefn)),
+    FunctionDefn = mlds_function_defn(_, _, _, _, EnvVarNameSet, _).
 
 :- pred mlds_output_env_var_decl(string::in, io::di, io::uo) is det.
 
@@ -501,7 +502,7 @@ mlds_output_hdr_start(Opts, Indent, ModuleName, !IO) :-
     io.nl(!IO),
     io.nl(!IO),
 
-    % If we're outputting C (rather than C++), then add a conditional
+    % If we are outputting C (rather than C++), then add a conditional
     % `extern "C"' wrapper around the header file, so that the header file
     % can be #included by C++ programs.
 
@@ -1507,7 +1508,7 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     ( if
         % ANSI C does not permit forward declarations of enumeration types.
-        % So we just skip those. Currently they're not needed since we don't
+        % So we just skip those. Currently they are not needed since we don't
         % actually use the enum types.
 
         DefnBody = mlds_class(ClassDefn),
@@ -1515,7 +1516,7 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
     then
         true
     else
-        % If we're using --high-level-data, then for function declarations,
+        % If we are using --high-level-data, then for function declarations,
         % we need to ensure that we forward-declare any types used in the
         % function parameters. This is because otherwise, for any struct names
         % whose first occurrence is in the function parameters, the scope of
@@ -1532,7 +1533,7 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
         HighLevelData = Opts ^ m2co_highlevel_data,
         ( if
             HighLevelData = yes,
-            DefnBody = mlds_function(_, Params, _, _, _, _)
+            DefnBody = mlds_function(mlds_function_defn(_, Params, _, _, _, _))
         then
             Params = mlds_func_params(Arguments, _RetTypes),
             ParamTypes = mlds_get_arg_types(Arguments),
@@ -1879,12 +1880,12 @@ mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
 mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     (
-        ( DefnBody = mlds_function(_, _, _, _, _, _)
+        ( DefnBody = mlds_function(_)
         ; DefnBody = mlds_class(_)
         ),
         io.nl(!IO)
     ;
-        DefnBody = mlds_data(_, _, _),
+        DefnBody = mlds_data(_),
         (
             Separate = yes,
             io.nl(!IO)
@@ -1904,11 +1905,12 @@ mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
 
 mlds_output_decl_body(Opts, Indent, Name, Context, DefnBody, !IO) :-
     (
-        DefnBody = mlds_data(Type, Initializer, _GCStatement),
+        DefnBody = mlds_data(mlds_data_defn(Type, Initializer, _GCStatement)),
         mlds_output_data_decl(Opts, Name, Type,
             get_initializer_array_size(Initializer), !IO)
     ;
-        DefnBody = mlds_function(MaybePredProcId, Signature,
+        DefnBody = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(MaybePredProcId, Signature,
             _MaybeBody, _Attrs, _EnvVarNames, _MaybeRequireTailrecInfo),
         mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id(Opts),
             !IO),
@@ -1925,11 +1927,12 @@ mlds_output_decl_body(Opts, Indent, Name, Context, DefnBody, !IO) :-
 
 mlds_output_defn_body(Opts, Indent, Name, Context, DefnBody, !IO) :-
     (
-        DefnBody = mlds_data(Type, Initializer, GCStatement),
+        DefnBody = mlds_data(mlds_data_defn(Type, Initializer, GCStatement)),
         mlds_output_data_defn(Opts, Name, Type, Initializer, !IO),
         mlds_output_gc_statement(Opts, Indent, Name, GCStatement, "", !IO)
     ;
-        DefnBody = mlds_function(MaybePredProcId, Signature,
+        DefnBody = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(MaybePredProcId, Signature,
             MaybeBody, _Attributes, _EnvVarNames, _MaybeRequireTailrecInfo),
         mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id(Opts),
             !IO),
@@ -2104,7 +2107,7 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
     GCStatement = gc_no_stmt,
     MLDS_Defn = mlds_defn(entity_data(mlds_data_var(BaseVarName)), Context,
         ml_gen_public_field_decl_flags,
-        mlds_data(Type, no_initializer, GCStatement)),
+        mlds_data(mlds_data_defn(Type, no_initializer, GCStatement))),
     BaseNum = BaseNum0 + 1.
 
     % Output the definitions of the enumeration constants
@@ -2138,14 +2141,14 @@ is_enum_const(Defn) :-
 mlds_output_enum_constant(Opts, Indent, EnumModuleName, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, _Flags, DefnBody),
     (
-        DefnBody = mlds_data(Type, Initializer, _GCStatement),
+        DefnBody = mlds_data(mlds_data_defn(Type, Initializer, _GCStatement)),
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         mlds_indent(Indent, !IO),
         mlds_output_fully_qualified_name(
             qual(EnumModuleName, type_qual, Name), !IO),
         mlds_output_initializer(Opts, Type, Initializer, !IO)
     ;
-        ( DefnBody = mlds_function(_, _, _, _, _, _)
+        ( DefnBody = mlds_function(_)
         ; DefnBody = mlds_class(_)
         ),
         unexpected($module, $pred, "constant is not data")
@@ -3133,7 +3136,8 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody,
         % Don't output "static" for functions that don't have a body.
         % This can happen for Mercury procedures that have
         % a `:- pragma external_{pred/func}'
-        DefnBody \= mlds_function(_, _, body_external, _, _, _)
+        DefnBody \=
+            mlds_function(mlds_function_defn(_, _, body_external, _, _, _))
     then
         io.write_string("static ", !IO)
     else if
@@ -3969,7 +3973,7 @@ mlds_output_target_code_component(Opts, Context, TargetCode, !IO) :-
     ;
         % Note: `target_code_name(Name)' target_code_components are used to
         % generate the #define for `MR_PROC_LABEL'.
-        % The fact that they're used in a #define means that we can't do
+        % The fact that they are used in a #define means that we can't do
         % an output_context(Context) here, since #line directives
         % aren't allowed inside #defines.
         % Similarly, all the target_code_components except user_target_code

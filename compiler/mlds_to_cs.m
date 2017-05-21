@@ -111,7 +111,7 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
 
 defn_is_rtti_data(Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_data(Type, _, _),
+    Body = mlds_data(mlds_data_defn(Type, _, _)),
     Type = mlds_rtti_type(_).
 
     % Succeeds iff this definition is a data definition.
@@ -120,7 +120,7 @@ defn_is_rtti_data(Defn) :-
 
 defn_is_data(Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_data(_, _, _).
+    Body = mlds_data(_).
 
     % Succeeds iff a given string matches the unqualified interface name
     % of a interface in Mercury's C# runtime system.
@@ -473,8 +473,9 @@ find_pointer_addressed_methods_in_scalars(Cord, !CodeAddrs) :-
 
 method_ptrs_in_entity_defn(Defn, !CodeAddrs) :-
     (
-        Defn = mlds_function(_MaybeID, _Params, Body, _Attributes, _EnvVars,
-            _MaybeRequireTailrecInfo),
+        Defn = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(_MaybeID, _Params, Body,
+            _Attributes, _EnvVars, _MaybeRequireTailrecInfo),
         (
             Body = body_defined_here(Statement),
             method_ptrs_in_statement(Statement, !CodeAddrs)
@@ -482,7 +483,7 @@ method_ptrs_in_entity_defn(Defn, !CodeAddrs) :-
             Body = body_external
         )
     ;
-        Defn = mlds_data(_Type, Initializer, _GCStatement),
+        Defn = mlds_data(mlds_data_defn(_Type, Initializer, _GCStatement)),
         method_ptrs_in_initializer(Initializer, !CodeAddrs)
     ;
         Defn = mlds_class(ClassDefn),
@@ -747,9 +748,10 @@ output_env_vars(Indent, NonRttiDefns, !IO) :-
 collect_env_var_names(Defn, !EnvVarNames) :-
     Defn = mlds_defn(_, _, _, EntityDefn),
     (
-        EntityDefn = mlds_data(_, _, _)
+        EntityDefn = mlds_data(_)
     ;
-        EntityDefn = mlds_function(_, _, _, _, EnvVarNames, _),
+        EntityDefn = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(_, _, _, _, EnvVarNames, _),
         set.union(EnvVarNames, !EnvVarNames)
     ;
         EntityDefn = mlds_class(_)
@@ -940,46 +942,59 @@ output_defns(Info, Indent, OutputAux, Defns, !IO) :-
 output_defn(Info, Indent, OutputAux, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     indent_line(Indent, !IO),
-    ( if DefnBody = mlds_function(_, _, body_external, _, _, _) then
-        % This is just a function declaration, with no body.
-        % C# doesn't support separate declarations and definitions,
-        % so just output the declaration as a comment.
-        % (Note that the actual definition of an external procedure
-        % must be given in `pragma foreign_code' in the same module.)
-        io.write_string("/* external:\n", !IO),
-        output_decl_flags(Info, Flags, !IO),
-        output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
-            !IO),
-        io.write_string("*/\n", !IO)
-    else
-        ( if
-            DefnBody = mlds_class(ClassDefn),
-            Kind = ClassDefn ^ mcd_kind,
+    % XXX MLDS_DEFN
+    (
+        DefnBody = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(_, _, Body, _, _, _),
+        (
+            Body = body_external,
+            % This is just a function declaration, with no body.
+            % C# doesn't support separate declarations and definitions,
+            % so just output the declaration as a comment.
+            % (Note that the actual definition of an external procedure
+            % must be given in `pragma foreign_code' in the same module.)
+            io.write_string("/* external:\n", !IO),
+            output_decl_flags(Info, Flags, !IO),
+            output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
+                !IO),
+            io.write_string("*/\n", !IO)
+        ;
+            Body = body_defined_here(_),
+            output_decl_flags(Info, Flags, !IO),
+            output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
+                !IO)
+        )
+    ;
+        DefnBody = mlds_class(ClassDefn),
+        Kind = ClassDefn ^ mcd_kind,
+        (
             (
                 % `static' keyword not allowed on enumerations.
                 Kind = mlds_enum
             ;
                 % `static' not wanted on classes generated for Mercury types.
                 Kind = mlds_class
-            )
-        then
+            ),
             OverrideFlags = set_per_instance(Flags, per_instance),
             io.write_string("[System.Serializable]\n", !IO),
             indent_line(Indent, !IO)
-        else if
+        ;
             % `static' and `sealed' not wanted or allowed on structs.
-            DefnBody = mlds_class(ClassDefn),
-            Kind = ClassDefn ^ mcd_kind,
-            Kind = mlds_struct
-        then
+            Kind = mlds_struct,
             OverrideFlags0 = set_per_instance(Flags, per_instance),
             OverrideFlags = set_overridability(OverrideFlags0, overridable)
-        else
+        ;
+            ( Kind = mlds_package
+            ; Kind = mlds_interface
+            ),
             OverrideFlags = Flags
         ),
         output_decl_flags(Info, OverrideFlags, !IO),
-        output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
-            !IO)
+        output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody, !IO)
+    ;
+        DefnBody = mlds_data(_),
+        output_decl_flags(Info, Flags, !IO),
+        output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody, !IO)
     ).
 
 :- pred output_defn_body(csharp_out_info::in, indent::in, mlds_entity_name::in,
@@ -988,12 +1003,13 @@ output_defn(Info, Indent, OutputAux, Defn, !IO) :-
 
 output_defn_body(Info, Indent, UnqualName, OutputAux, Context, Entity, !IO) :-
     (
-        Entity = mlds_data(Type, Initializer, _),
+        Entity = mlds_data(mlds_data_defn(Type, Initializer, _)),
         output_data_defn(Info, UnqualName, OutputAux, Type, Initializer,
             !IO)
     ;
-        Entity = mlds_function(MaybePredProcId, Signature, MaybeBody,
-            _Attributes, _EnvVarNames, _MaybeRequireTailrecInfo),
+        Entity = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(MaybePredProcId, Signature,
+            MaybeBody, _Attributes, _EnvVarNames, _MaybeRequireTailrecInfo),
         output_maybe(MaybePredProcId, output_pred_proc_id(Info), !IO),
         output_func(Info, Indent, UnqualName, OutputAux, Context,
             Signature, MaybeBody, !IO)
@@ -1185,7 +1201,8 @@ output_enum_constants(Info, Indent, EnumName, EnumConsts, !IO) :-
 
 output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
-    ( if DefnBody = mlds_data(_Type, Initializer, _GCStatement) then
+    (
+        DefnBody = mlds_data(mlds_data_defn(_Type, Initializer, _GCStmt)),
         (
             Initializer = init_obj(Rval),
             % The name might require mangling.
@@ -1214,7 +1231,10 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
             ),
             unexpected($module, $pred, string(Initializer))
         )
-    else
+    ;
+        ( DefnBody = mlds_function(_)
+        ; DefnBody = mlds_class(_)
+        ),
         unexpected($module, $pred, "definition body was not data")
     ).
 
@@ -1229,7 +1249,8 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
 output_data_decls(_, _, [], !IO).
 output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, Flags, DefnBody),
-    ( if DefnBody = mlds_data(Type, _Initializer, _GCStatement) then
+    (
+        DefnBody = mlds_data(mlds_data_defn(Type, _Initializer, _GCStmt)),
         indent_line(Indent, !IO),
         % We can't honour `readonly' here as the variable is assigned
         % separately.
@@ -1237,7 +1258,10 @@ output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
         output_decl_flags(Info, NonReadonlyFlags, !IO),
         output_data_decl(Info, Name, Type, !IO),
         io.write_string(";\n", !IO)
-    else
+    ;
+        ( DefnBody = mlds_function(_)
+        ; DefnBody = mlds_class(_)
+        ),
         unexpected($module, $pred, "not data")
     ),
     output_data_decls(Info, Indent, Defns, !IO).
@@ -1266,12 +1290,16 @@ output_init_data_method(Info, Indent, Defns, !IO) :-
 output_init_data_statements(_, _, [], !IO).
 output_init_data_statements(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
-    ( if DefnBody = mlds_data(Type, Initializer, _GCStatement) then
+    (
+        DefnBody = mlds_data(mlds_data_defn(Type, Initializer, _GCStmt)),
         indent_line(Indent, !IO),
         output_entity_name_for_csharp(Name, !IO),
         output_initializer(Info, none, Type, Initializer, !IO),
         io.write_string(";\n", !IO)
-    else
+    ;
+        ( DefnBody = mlds_function(_)
+        ; DefnBody = mlds_class(_)
+        ),
         unexpected($module, $pred, "not mlds_data")
     ),
     output_init_data_statements(Info, Indent, Defns, !IO).
@@ -1756,10 +1784,10 @@ output_rtti_defns_assignments(Info, Indent, Defns, !IO) :-
 output_rtti_defn_assignments(Info, Indent, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
-        DefnBody = mlds_data(_Type, Initializer, _),
+        DefnBody = mlds_data(mlds_data_defn(_Type, Initializer, _)),
         output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO)
     ;
-        ( DefnBody = mlds_function(_, _, _, _, _, _)
+        ( DefnBody = mlds_function(_)
         ; DefnBody = mlds_class(_)
         ),
         unexpected($module, $pred, "expected mlds_data")

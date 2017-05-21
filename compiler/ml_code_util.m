@@ -723,10 +723,10 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
     MaybePredProcId = no,
     Attributes = [],
     EnvVarNames = set.init,
-    FuncDefn = mlds_function(MaybePredProcId, FuncParams,
+    FuncDefn = mlds_function_defn(MaybePredProcId, FuncParams,
         body_defined_here(Statement), Attributes, EnvVarNames, no),
     Func = mlds_defn(FuncName, mlds_make_context(Context), DeclFlags,
-        FuncDefn).
+        mlds_function(FuncDefn)).
 
     % Return the declaration flags appropriate for a label func (a label func
     % is a function used as a continuation when generating nondet code).
@@ -1312,7 +1312,8 @@ ml_gen_mlds_var_decl(DataName, MLDS_Type, GCStatement, Context) =
 ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
         Context) = Defn :-
     Name = entity_data(DataName),
-    EntityDefn = mlds_data(MLDS_Type, Initializer, GCStatement),
+    EntityDefn =
+        mlds_data(mlds_data_defn(MLDS_Type, Initializer, GCStatement)),
     DeclFlags = ml_gen_local_var_decl_flags,
     Defn = mlds_defn(Name, Context, DeclFlags, EntityDefn).
 
