@@ -743,6 +743,23 @@ ml_gen_label_func_decl_flags = DeclFlags :-
     DeclFlags = init_decl_flags(Access, PerInstance, Virtuality,
         Overridability, Constness, Abstractness).
 
+ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    pred_info_is_pred_or_func(PredInfo) = pf_function,
+    proc_info_interface_code_model(ProcInfo) = model_det,
+
+    proc_info_get_argmodes(ProcInfo, Modes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    proc_info_get_headvars(ProcInfo, ArgVars),
+    modes_to_top_functor_modes(ModuleInfo, Modes, ArgTypes, TopFunctorModes),
+    pred_args_to_func_args(TopFunctorModes,
+        _InputTopFunctorModes, RetTopFunctorMode),
+    pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
+    pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
+
+    RetTopFunctorMode = top_out,
+    check_dummy_type(ModuleInfo, RetArgType) = is_not_dummy_type.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for generating expressions.
@@ -1059,23 +1076,6 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
     ),
     FuncArg = mlds_argument(Var, MLDS_ArgType, GCStatement).
 
-ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
-    pred_info_is_pred_or_func(PredInfo) = pf_function,
-    proc_info_interface_code_model(ProcInfo) = model_det,
-
-    proc_info_get_argmodes(ProcInfo, Modes),
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    proc_info_get_headvars(ProcInfo, ArgVars),
-    modes_to_top_functor_modes(ModuleInfo, Modes, ArgTypes, TopFunctorModes),
-    pred_args_to_func_args(TopFunctorModes,
-        _InputTopFunctorModes, RetTopFunctorMode),
-    pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
-    pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
-
-    RetTopFunctorMode = top_out,
-    check_dummy_type(ModuleInfo, RetArgType) = is_not_dummy_type.
-
 %-----------------------------------------------------------------------------%
 %
 % Code for generating mlds_entity_names.
@@ -1317,8 +1317,8 @@ ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
     DeclFlags = ml_gen_local_var_decl_flags,
     Defn = mlds_defn(Name, Context, DeclFlags, EntityDefn).
 
-ml_gen_public_field_decl_flags = DeclFlags :-
-    Access = acc_public,
+ml_gen_local_var_decl_flags = DeclFlags :-
+    Access = acc_local,
     PerInstance = per_instance,
     Virtuality = non_virtual,
     Overridability = overridable,
@@ -1327,8 +1327,8 @@ ml_gen_public_field_decl_flags = DeclFlags :-
     DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Overridability, Constness, Abstractness).
 
-ml_gen_local_var_decl_flags = DeclFlags :-
-    Access = acc_local,
+ml_gen_public_field_decl_flags = DeclFlags :-
+    Access = acc_public,
     PerInstance = per_instance,
     Virtuality = non_virtual,
     Overridability = overridable,

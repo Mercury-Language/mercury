@@ -2209,6 +2209,254 @@
 
 mlds_get_module_name(MLDS) = MLDS ^ mlds_name.
 
+% For Java:
+% The "package_name" is really the name of the Mercury module, and the
+% "module_name" is the "package_name" plus additional qualifiers (if any).
+% For example, a type `c' in module `a.b' would have package_name == `a.b'
+% and module_name == `a.b.c'.
+% XXX clean this up
+%
+% Note that modules in the Mercury standard library map get a `mercury'
+% prefix e.g. `mercury.builtin', `mercury.io', `mercury.univ', etc.,
+% when mapped to MLDS package names.
+
+:- type mlds_module_name
+    --->    mlds_module_name(
+                mmn_package_name    :: mdbcomp.sym_name.module_name,
+                mmn_module_name     :: mdbcomp.sym_name.module_name
+            ).
+
+mercury_module_name_to_mlds(MercuryModule) = Name :-
+    ( if mercury_std_library_module_name(MercuryModule) then
+        MLDS_Package = add_outermost_qualifier("mercury", MercuryModule)
+    else
+        MLDS_Package = MercuryModule
+    ),
+    Name = mlds_module_name(MLDS_Package, MLDS_Package).
+
+mercury_module_and_package_name_to_mlds(MLDS_Package, MercuryModule)
+    = mlds_module_name(MLDS_Package, MercuryModule).
+
+mlds_module_name_to_sym_name(Module) = Module ^ mmn_module_name.
+
+mlds_module_name_to_package_name(Module) = Module ^ mmn_package_name.
+
+is_std_lib_module(Module, Name) :-
+    Name0 = Module ^ mmn_module_name,
+    strip_outermost_qualifier(Name0, "mercury", Name),
+    mercury_std_library_module_name(Name).
+
+%-----------------------------------------------------------------------------%
+
+mlds_append_class_qualifier(Target, mlds_module_name(Package, Module),
+        QualKind, ClassName, ClassArity) = Name :-
+    % For the Java back-end, we flip the initial case of an type qualifiers,
+    % in order to match the usual Java conventions.
+    ( if
+        Target = target_java,
+        QualKind = type_qual
+    then
+        AdjustedModule = flip_initial_case_of_final_part(Module)
+    else
+        AdjustedModule = Module
+    ),
+    string.format("%s_%d", [s(ClassName), i(ClassArity)], ClassQualifier),
+    Name = mlds_module_name(Package,
+        qualified(AdjustedModule, ClassQualifier)).
+
+mlds_append_wrapper_class(Name) = mlds_append_name(Name, wrapper_class_name).
+
+mlds_append_name(mlds_module_name(Package, Module), Name)
+    = mlds_module_name(Package, qualified(Module, Name)).
+
+wrapper_class_name = "mercury_code".
+
+%-----------------------------------------------------------------------------%
+
+get_initializer_array_size(no_initializer) = no_size.
+get_initializer_array_size(init_obj(_)) = no_size.
+get_initializer_array_size(init_struct(_, _)) = no_size.
+get_initializer_array_size(init_array(Elems)) = array_size(list.length(Elems)).
+
+%-----------------------------------------------------------------------------%
+
+mlds_get_arg_types(Parameters) = ArgTypes :-
+    GetArgType = (func(mlds_argument(_, Type, _)) = Type),
+    ArgTypes = list.map(GetArgType, Parameters).
+
+mlds_get_func_signature(mlds_func_params(Parameters, RetTypes)) =
+        mlds_func_signature(ParamTypes, RetTypes) :-
+    ParamTypes = mlds_get_arg_types(Parameters).
+
+%-----------------------------------------------------------------------------%
+
+% There is some special-case handling for arrays, foreign types and some
+% other types here, but apart from that, currently we return mlds_types
+% that are just the same as Mercury types, except that we also store the type
+% category, so that we can tell if the type is an enumeration or not, without
+% needing to refer to the HLDS type_table.
+% XXX It might be a better idea to get rid of the mercury_type/2 MLDS type
+% and instead fully convert all Mercury types to MLDS types.
+
+mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
+    ( if type_to_ctor_and_args(Type, TypeCtor, TypeArgs) then
+        ( if
+            TypeCtor = type_ctor(qualified(unqualified("array"), "array"), 1),
+            TypeArgs = [ElemType]
+        then
+            MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
+            MLDSType = mlds_mercury_array_type(MLDSElemType)
+        else if
+            TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
+                "store_at_ref_type"), 1),
+            TypeArgs = [RefType]
+        then
+            MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.get_target(Globals, Target),
+            (
+                Target = target_csharp,
+                % `mlds_ptr_type' confuses the C# backend because it is also
+                % used for `out' parameters. `store_at_ref_type' is not
+                % applicable on that backend anyway.
+                MLDSType = MLDSRefType
+            ;
+                ( Target = target_c
+                ; Target = target_java
+                ; Target = target_erlang
+                ),
+                MLDSType = mlds_ptr_type(MLDSRefType)
+            )
+        else
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
+                hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+                ( if TypeBody = hlds_foreign_type(ForeignTypeBody) then
+                    MLDSType = foreign_type_to_mlds_type(ModuleInfo,
+                        ForeignTypeBody)
+                else if TypeBody = hlds_abstract_type(_) then
+                    Category = classify_type_ctor(ModuleInfo, TypeCtor),
+                    ExportedType = non_foreign_type(Type),
+                    MLDSType = mercury_type(Type, Category, ExportedType)
+                else
+                    Category = classify_type_defn_body(TypeBody),
+                    ExportedType = non_foreign_type(Type),
+                    MLDSType = mercury_type(Type, Category, ExportedType)
+                )
+            else
+                Category = classify_type_ctor(ModuleInfo, TypeCtor),
+                ExportedType = non_foreign_type(Type),
+                MLDSType = mercury_type(Type, Category, ExportedType)
+            )
+        )
+    else
+        Category = ctor_cat_variable,
+        ExportedType = non_foreign_type(Type),
+        MLDSType = mercury_type(Type, Category, ExportedType)
+    ).
+
+:- func foreign_type_to_mlds_type(module_info, foreign_type_body) = mlds_type.
+
+foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
+    % The body of this function is very similar to the function
+    % foreign_type_body_to_exported_type in foreign.m.
+    % Any changes here may require changes there as well.
+
+    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
+        MaybeCSharp, _MaybeErlang),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        (
+            MaybeC = yes(Data),
+            Data = foreign_type_lang_data(CForeignType, _, _),
+            ForeignType = c(CForeignType)
+        ;
+            MaybeC = no,
+            % This is checked by check_foreign_type in make_hlds.
+            unexpected($module, $pred, "no C foreign type")
+        )
+    ;
+        Target = target_csharp,
+        (
+            MaybeCSharp = yes(Data),
+            Data = foreign_type_lang_data(CSharpForeignType, _, _),
+            ForeignType = csharp(CSharpForeignType)
+        ;
+            MaybeCSharp = no,
+            % This is checked by check_foreign_type in make_hlds.
+            unexpected($module, $pred, "no C# foreign type")
+        )
+    ;
+        Target = target_java,
+        (
+            MaybeJava = yes(Data),
+            Data = foreign_type_lang_data(JavaForeignType, _, _),
+            ForeignType = java(JavaForeignType)
+        ;
+            MaybeJava = no,
+            % This is checked by check_foreign_type in make_hlds.
+            unexpected($module, $pred, "no Java foreign type")
+        )
+    ;
+        Target = target_erlang,
+        unexpected($module, $pred, "target erlang")
+    ),
+    MLDSType = mlds_foreign_type(ForeignType).
+
+%-----------------------------------------------------------------------------%
+
+    % The compiler can pack all the enumeration arguments together,
+    % though a cell will still be allocated.
+    %
+:- type mlds_decl_flags
+    --->    mlds_decl_flags(
+                mdf_access          :: access,
+                mdf_per_instance    :: per_instance,
+                mdf_virtuality      :: virtuality,
+                mdf_overridability  :: overridability,
+                mdf_constness       :: constness,
+                mdf_abstractness    :: abstractness
+            ).
+
+access(Flags) = Flags ^ mdf_access.
+per_instance(Flags) = Flags ^ mdf_per_instance.
+virtuality(Flags) = Flags ^ mdf_virtuality.
+overridability(Flags) = Flags ^ mdf_overridability.
+constness(Flags) = Flags ^ mdf_constness.
+abstractness(Flags) = Flags ^ mdf_abstractness.
+
+set_access(Flags, Access) =
+    Flags ^ mdf_access := Access.
+set_per_instance(Flags, PerInstance) =
+    Flags ^ mdf_per_instance := PerInstance.
+set_virtuality(Flags, Virtuality) =
+    Flags ^ mdf_virtuality := Virtuality.
+set_overridability(Flags, Overridability) =
+    Flags ^ mdf_overridability := Overridability.
+set_constness(Flags, Constness) =
+    Flags ^ mdf_constness := Constness.
+set_abstractness(Flags, Abstractness) =
+    Flags ^ mdf_abstractness := Abstractness.
+
+init_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
+        Abstractness) =
+    mlds_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
+        Abstractness).
+
+ml_static_const_decl_flags = DeclFlags :-
+    % Note that rtti_data_decl_flags, in rtti_to_mlds.m,
+    % must be the same as this apart from the access.
+    Access = acc_local,
+    PerInstance = one_copy,
+    Virtuality = non_virtual,
+    Overridability = overridable,
+    Constness = const,
+    Abstractness = concrete,
+    DeclFlags = init_decl_flags(Access, PerInstance,
+        Virtuality, Overridability, Constness, Abstractness).
+
 %-----------------------------------------------------------------------------%
 
     % Currently mlds_contexts just contain a prog_context.
@@ -2477,198 +2725,6 @@ ml_var_name_to_string(Var) = Str :-
 
 %-----------------------------------------------------------------------------%
 
-% There is some special-case handling for arrays, foreign types and some
-% other types here, but apart from that, currently we return mlds_types
-% that are just the same as Mercury types, except that we also store the type
-% category, so that we can tell if the type is an enumeration or not, without
-% needing to refer to the HLDS type_table.
-% XXX It might be a better idea to get rid of the mercury_type/2 MLDS type
-% and instead fully convert all Mercury types to MLDS types.
-
-mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
-    ( if type_to_ctor_and_args(Type, TypeCtor, TypeArgs) then
-        ( if
-            TypeCtor = type_ctor(qualified(unqualified("array"), "array"), 1),
-            TypeArgs = [ElemType]
-        then
-            MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
-            MLDSType = mlds_mercury_array_type(MLDSElemType)
-        else if
-            TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
-                "store_at_ref_type"), 1),
-            TypeArgs = [RefType]
-        then
-            MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.get_target(Globals, Target),
-            (
-                Target = target_csharp,
-                % `mlds_ptr_type' confuses the C# backend because it is also
-                % used for `out' parameters. `store_at_ref_type' is not
-                % applicable on that backend anyway.
-                MLDSType = MLDSRefType
-            ;
-                ( Target = target_c
-                ; Target = target_java
-                ; Target = target_erlang
-                ),
-                MLDSType = mlds_ptr_type(MLDSRefType)
-            )
-        else
-            module_info_get_type_table(ModuleInfo, TypeTable),
-            ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
-                hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-                ( if TypeBody = hlds_foreign_type(ForeignTypeBody) then
-                    MLDSType = foreign_type_to_mlds_type(ModuleInfo,
-                        ForeignTypeBody)
-                else if TypeBody = hlds_abstract_type(_) then
-                    Category = classify_type_ctor(ModuleInfo, TypeCtor),
-                    ExportedType = non_foreign_type(Type),
-                    MLDSType = mercury_type(Type, Category, ExportedType)
-                else
-                    Category = classify_type_defn_body(TypeBody),
-                    ExportedType = non_foreign_type(Type),
-                    MLDSType = mercury_type(Type, Category, ExportedType)
-                )
-            else
-                Category = classify_type_ctor(ModuleInfo, TypeCtor),
-                ExportedType = non_foreign_type(Type),
-                MLDSType = mercury_type(Type, Category, ExportedType)
-            )
-        )
-    else
-        Category = ctor_cat_variable,
-        ExportedType = non_foreign_type(Type),
-        MLDSType = mercury_type(Type, Category, ExportedType)
-    ).
-
-:- func foreign_type_to_mlds_type(module_info, foreign_type_body) = mlds_type.
-
-foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
-    % The body of this function is very similar to the function
-    % foreign_type_body_to_exported_type in foreign.m.
-    % Any changes here may require changes there as well.
-
-    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
-        MaybeCSharp, _MaybeErlang),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    (
-        Target = target_c,
-        (
-            MaybeC = yes(Data),
-            Data = foreign_type_lang_data(CForeignType, _, _),
-            ForeignType = c(CForeignType)
-        ;
-            MaybeC = no,
-            % This is checked by check_foreign_type in make_hlds.
-            unexpected($module, $pred, "no C foreign type")
-        )
-    ;
-        Target = target_csharp,
-        (
-            MaybeCSharp = yes(Data),
-            Data = foreign_type_lang_data(CSharpForeignType, _, _),
-            ForeignType = csharp(CSharpForeignType)
-        ;
-            MaybeCSharp = no,
-            % This is checked by check_foreign_type in make_hlds.
-            unexpected($module, $pred, "no C# foreign type")
-        )
-    ;
-        Target = target_java,
-        (
-            MaybeJava = yes(Data),
-            Data = foreign_type_lang_data(JavaForeignType, _, _),
-            ForeignType = java(JavaForeignType)
-        ;
-            MaybeJava = no,
-            % This is checked by check_foreign_type in make_hlds.
-            unexpected($module, $pred, "no Java foreign type")
-        )
-    ;
-        Target = target_erlang,
-        unexpected($module, $pred, "target erlang")
-    ),
-    MLDSType = mlds_foreign_type(ForeignType).
-
-%-----------------------------------------------------------------------------%
-
-get_initializer_array_size(no_initializer) = no_size.
-get_initializer_array_size(init_obj(_)) = no_size.
-get_initializer_array_size(init_struct(_, _)) = no_size.
-get_initializer_array_size(init_array(Elems)) = array_size(list.length(Elems)).
-
-mlds_get_func_signature(mlds_func_params(Parameters, RetTypes)) =
-        mlds_func_signature(ParamTypes, RetTypes) :-
-    ParamTypes = mlds_get_arg_types(Parameters).
-
-mlds_get_arg_types(Parameters) = ArgTypes :-
-    GetArgType = (func(mlds_argument(_, Type, _)) = Type),
-    ArgTypes = list.map(GetArgType, Parameters).
-
-%-----------------------------------------------------------------------------%
-
-% For Java:
-% The "package_name" is really the name of the Mercury module, and the
-% "module_name" is the "package_name" plus additional qualifiers (if any).
-% For example, a type `c' in module `a.b' would have package_name == `a.b'
-% and module_name == `a.b.c'.
-% XXX clean this up
-%
-% Note that modules in the Mercury standard library map get a `mercury'
-% prefix e.g. `mercury.builtin', `mercury.io', `mercury.univ', etc.,
-% when mapped to MLDS package names.
-
-:- type mlds_module_name
-    --->    mlds_module_name(
-                mmn_package_name    :: mdbcomp.sym_name.module_name,
-                mmn_module_name     :: mdbcomp.sym_name.module_name
-            ).
-
-mercury_module_and_package_name_to_mlds(MLDS_Package, MercuryModule)
-    = mlds_module_name(MLDS_Package, MercuryModule).
-
-mercury_module_name_to_mlds(MercuryModule) = Name :-
-    ( if mercury_std_library_module_name(MercuryModule) then
-        MLDS_Package = add_outermost_qualifier("mercury", MercuryModule)
-    else
-        MLDS_Package = MercuryModule
-    ),
-    Name = mlds_module_name(MLDS_Package, MLDS_Package).
-
-is_std_lib_module(Module, Name) :-
-    Name0 = Module ^ mmn_module_name,
-    strip_outermost_qualifier(Name0, "mercury", Name),
-    mercury_std_library_module_name(Name).
-
-mlds_module_name_to_sym_name(Module) = Module ^ mmn_module_name.
-
-mlds_module_name_to_package_name(Module) = Module ^ mmn_package_name.
-
-mlds_append_class_qualifier(Target, mlds_module_name(Package, Module),
-        QualKind, ClassName, ClassArity) = Name :-
-    % For the Java back-end, we flip the initial case of an type qualifiers,
-    % in order to match the usual Java conventions.
-    ( if
-        Target = target_java,
-        QualKind = type_qual
-    then
-        AdjustedModule = flip_initial_case_of_final_part(Module)
-    else
-        AdjustedModule = Module
-    ),
-    string.format("%s_%d", [s(ClassName), i(ClassArity)], ClassQualifier),
-    Name = mlds_module_name(Package,
-        qualified(AdjustedModule, ClassQualifier)).
-
-mlds_append_wrapper_class(Name) = mlds_append_name(Name, wrapper_class_name).
-
-mlds_append_name(mlds_module_name(Package, Module), Name)
-    = mlds_module_name(Package, qualified(Module, Name)).
-
-wrapper_class_name = "mercury_code".
-
 mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
     % We standardize the parts of PredLabel0 that aren't computable from
     % the tabling pragma, because the code that creates the reset predicate
@@ -2685,58 +2741,6 @@ mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
         unexpected($module, $pred, "mlds_special_pred_label")
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId).
-
-%-----------------------------------------------------------------------------%
-
-    % The compiler can pack all the enumeration arguments together,
-    % though a cell will still be allocated.
-    %
-:- type mlds_decl_flags
-    --->    mlds_decl_flags(
-                mdf_access          :: access,
-                mdf_per_instance    :: per_instance,
-                mdf_virtuality      :: virtuality,
-                mdf_overridability  :: overridability,
-                mdf_constness       :: constness,
-                mdf_abstractness    :: abstractness
-            ).
-
-access(Flags) = Flags ^ mdf_access.
-per_instance(Flags) = Flags ^ mdf_per_instance.
-virtuality(Flags) = Flags ^ mdf_virtuality.
-overridability(Flags) = Flags ^ mdf_overridability.
-constness(Flags) = Flags ^ mdf_constness.
-abstractness(Flags) = Flags ^ mdf_abstractness.
-
-set_access(Flags, Access) =
-    Flags ^ mdf_access := Access.
-set_per_instance(Flags, PerInstance) =
-    Flags ^ mdf_per_instance := PerInstance.
-set_virtuality(Flags, Virtuality) =
-    Flags ^ mdf_virtuality := Virtuality.
-set_overridability(Flags, Overridability) =
-    Flags ^ mdf_overridability := Overridability.
-set_constness(Flags, Constness) =
-    Flags ^ mdf_constness := Constness.
-set_abstractness(Flags, Abstractness) =
-    Flags ^ mdf_abstractness := Abstractness.
-
-init_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
-        Abstractness) =
-    mlds_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
-        Abstractness).
-
-ml_static_const_decl_flags = DeclFlags :-
-    % Note that rtti_data_decl_flags, in rtti_to_mlds.m,
-    % must be the same as this apart from the access.
-    Access = acc_local,
-    PerInstance = one_copy,
-    Virtuality = non_virtual,
-    Overridability = overridable,
-    Constness = const,
-    Abstractness = concrete,
-    DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.mlds.

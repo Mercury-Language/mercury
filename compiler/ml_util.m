@@ -155,27 +155,27 @@
 %
 % This handles arrays, maybe, null pointers, strings, ints, and builtin enums.
 
+:- func gen_init_bool(bool) = mlds_initializer.
+
+:- func gen_init_int(int) = mlds_initializer.
+
+:- func gen_init_boxed_int(int) = mlds_initializer.
+
+:- func gen_init_string(string) = mlds_initializer.
+
 :- func gen_init_builtin_const(string) = mlds_initializer.
 
-:- func gen_init_array(func(T) = mlds_initializer, list(T)) = mlds_initializer.
+:- func gen_init_foreign(foreign_language, string) = mlds_initializer.
+
+:- func gen_init_null_pointer(mlds_type) = mlds_initializer.
+
+:- func gen_init_reserved_address(module_info, reserved_address) =
+    mlds_initializer.
 
 :- func gen_init_maybe(mlds_type, func(T) = mlds_initializer, maybe(T)) =
     mlds_initializer.
 
-:- func gen_init_null_pointer(mlds_type) = mlds_initializer.
-
-:- func gen_init_string(string) = mlds_initializer.
-
-:- func gen_init_foreign(foreign_language, string) = mlds_initializer.
-
-:- func gen_init_int(int) = mlds_initializer.
-
-:- func gen_init_bool(bool) = mlds_initializer.
-
-:- func gen_init_boxed_int(int) = mlds_initializer.
-
-:- func gen_init_reserved_address(module_info, reserved_address) =
-    mlds_initializer.
+:- func gen_init_array(func(T) = mlds_initializer, list(T)) = mlds_initializer.
 
 :- func wrap_init_obj(mlds_rval) = mlds_initializer.
 
@@ -919,6 +919,16 @@ lval_contains_var(Lval, DataName) = ContainsVar :-
 
 %-----------------------------------------------------------------------------%
 
+gen_init_bool(no) = init_obj(ml_const(mlconst_false)).
+gen_init_bool(yes) = init_obj(ml_const(mlconst_true)).
+
+gen_init_int(Int) = init_obj(ml_const(mlconst_int(Int))).
+
+gen_init_boxed_int(Int) =
+    init_obj(ml_unop(box(mlds_native_int_type), ml_const(mlconst_int(Int)))).
+
+gen_init_string(String) = init_obj(ml_const(mlconst_string(String))).
+
 gen_init_builtin_const(Name) = init_obj(Rval) :-
     PrivateBuiltin = mercury_private_builtin_module,
     MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
@@ -929,30 +939,20 @@ gen_init_builtin_const(Name) = init_obj(Rval) :-
     Type = mlds_native_int_type,
     Rval = ml_lval(ml_var(qual(MLDS_Module, module_qual, VarName), Type)).
 
-gen_init_array(Conv, List) = init_array(list.map(Conv, List)).
-
-gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
-gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
-
-gen_init_null_pointer(Type) = init_obj(ml_const(mlconst_null(Type))).
-
-gen_init_string(String) = init_obj(ml_const(mlconst_string(String))).
-
-gen_init_int(Int) = init_obj(ml_const(mlconst_int(Int))).
-
 gen_init_foreign(Lang, String) =
     init_obj(ml_const(mlconst_foreign(Lang, String, mlds_native_int_type))).
 
-gen_init_bool(no) = init_obj(ml_const(mlconst_false)).
-gen_init_bool(yes) = init_obj(ml_const(mlconst_true)).
-
-gen_init_boxed_int(Int) =
-    init_obj(ml_unop(box(mlds_native_int_type), ml_const(mlconst_int(Int)))).
+gen_init_null_pointer(Type) = init_obj(ml_const(mlconst_null(Type))).
 
 gen_init_reserved_address(ModuleInfo, ReservedAddress) =
     % XXX using `mlds_generic_type' here is probably wrong
     init_obj(ml_gen_reserved_address(ModuleInfo, ReservedAddress,
         mlds_generic_type)).
+
+gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
+gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
+
+gen_init_array(Conv, List) = init_array(list.map(Conv, List)).
 
 wrap_init_obj(Rval) = init_obj(Rval).
 

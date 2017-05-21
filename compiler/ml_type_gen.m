@@ -47,6 +47,22 @@
     %
 :- pred ml_gen_types(module_info::in, list(mlds_defn)::out) is det.
 
+%-----------------------------------------------------------------------------%
+
+    % Generate a constructor function to initialise the given fields in a
+    % class representing a compiler generated data structure.
+    %
+    % The input we take as the description of each field is a bespoke type,
+    % mlds_field_info, not the field's mlds_defn. This is because not all
+    % mlds_defns define fields, and we don't want this predicate to have to
+    % test whether the data it is given makes sense.
+    %
+:- func ml_gen_constructor_function(compilation_target, mlds_class_id,
+    mlds_type, mlds_module_name, mlds_class_id, maybe(int),
+    list(mlds_field_info), mlds_context) = mlds_defn.
+
+%-----------------------------------------------------------------------------%
+
     % Given an HLDS type_ctor, generate the MLDS class name and arity
     % for the corresponding MLDS type.
     %
@@ -62,13 +78,11 @@
 :- func ml_gen_du_ctor_name_unqual_type(compilation_target, string, int,
     sym_name, int) = string.
 
+%-----------------------------------------------------------------------------%
+
     % Return the declaration flags appropriate for a type.
     %
 :- func ml_gen_type_decl_flags = mlds_decl_flags.
-
-    % Return the declaration flags appropriate for an enumeration constant.
-    %
-:- func ml_gen_enum_constant_decl_flags = mlds_decl_flags.
 
     % Return the declaration flags appropriate for a member variable.
     %
@@ -78,6 +92,12 @@
     % which is read-only after initialisation.
     %
 :- func ml_gen_const_member_decl_flags = mlds_decl_flags.
+
+    % Return the declaration flags appropriate for an enumeration constant.
+    %
+:- func ml_gen_enum_constant_decl_flags = mlds_decl_flags.
+
+%-----------------------------------------------------------------------------%
 
     % ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag):
     % Check if this constructor uses a secondary tag,
@@ -123,18 +143,6 @@
                 % such minor differences don't really matter.
                 mlds_context
             ).
-
-    % Generate a constructor function to initialise the given fields in a
-    % class representing a compiler generated data structure.
-    %
-    % The input we take as the description of each field is a bespoke type,
-    % mlds_field_info, not the field's mlds_defn. This is because not all
-    % mlds_defns define fields, and we don't want this predicate to have to
-    % test whether the data it is given makes sense.
-    %
-:- func ml_gen_constructor_function(compilation_target, mlds_class_id,
-    mlds_type, mlds_module_name, mlds_class_id, maybe(int),
-    list(mlds_field_info), mlds_context) = mlds_defn.
 
     % Exported enumeration info in the HLDS is converted into an MLDS
     % specific representation. The target specific code generators may
@@ -200,13 +208,16 @@ ml_gen_hld_type_defn_if_local(ModuleInfo, TypeCtor - TypeDefn, !Defns) :-
 ml_gen_hld_type_defn(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
-        TypeBody = hlds_abstract_type(_)
+        ( TypeBody = hlds_abstract_type(_)
+        ; TypeBody = hlds_foreign_type(_)
+        ; TypeBody = hlds_solver_type(_, _)
+        )
     ;
         TypeBody = hlds_eqv_type(_EqvType)
         % XXX Fixme!
         % For a description of the problems with equivalence types,
         % see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
-        % The same issue arises for some of the cases below.
+        % The same issue arises for some of the other kinds of types.
     ;
         TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest, DuTypeKind,
             MaybeUserEqComp, _MaybeDirectArgCtors, _ReservedTag, _, _),
@@ -232,13 +243,9 @@ ml_gen_hld_type_defn(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
             ( DuTypeKind = du_type_kind_notag(_, _, _)
             ; DuTypeKind = du_type_kind_general
             ),
-            ml_gen_hld_du_parent_type(ModuleInfo, TypeCtor, TypeDefn,
+            ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn,
                 Ctors, TagValues, MaybeEqualityMembers, !Defns)
         )
-    ;
-        TypeBody = hlds_foreign_type(_)
-    ;
-        TypeBody = hlds_solver_type(_, _)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -455,22 +462,21 @@ ml_gen_hld_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
     %
     %   };
     %
-    %
     % If there is only one constructor which is not represented
-    % as a reserved_object, then we don't generate a nested derived
-    % class for that constructor, instead we just allocate the fields
+    % as a reserved_object, then we don't generate a nested derived class
+    % for that constructor, instead we just allocate the fields
     % in the base class.
     %
-:- pred ml_gen_hld_du_parent_type(module_info::in, type_ctor::in,
+:- pred ml_gen_hld_du_type(module_info::in, type_ctor::in,
     hlds_type_defn::in, list(constructor)::in, cons_tag_values::in,
     list(mlds_defn)::in, list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
-ml_gen_hld_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
+ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         MaybeEqualityMembers, !Defns) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     MLDS_Context = mlds_make_context(Context),
 
-    % generate the class name
+    % Generate the class name.
     ml_gen_type_name(TypeCtor, QualBaseClassName, BaseClassArity),
     BaseClassId = mlds_class_type(QualBaseClassName, BaseClassArity,
         mlds_class),
@@ -570,15 +576,38 @@ ml_num_ctors_that_need_secondary_tag(TypeCtor, TagValues, [Ctor | Ctors],
     ml_num_ctors_that_need_secondary_tag(TypeCtor, TagValues, Ctors,
         !NumCtors, !NumSecTagCtors).
 
+    % Check if this constructor needs a secondary tag. This is true if its
+    % representation uses a secondary tag, obviously. But it is also true
+    % if its representation is the address of a reserved object; in that case,
+    % for some back-ends (e.g. C) we need a field of some kind to ensure
+    % that the reserved object had non-zero size, which in turn is needed
+    % to ensure that its address is distinct from the address of any other
+    % reserved object for the same type.
+    %
+:- pred ml_needs_secondary_tag(type_ctor::in, cons_tag_values::in,
+    constructor::in) is semidet.
+
+ml_needs_secondary_tag(TypeCtor, TagValues, Ctor) :-
+    TagVal = get_tagval(TypeCtor, TagValues, Ctor),
+    ( get_secondary_tag(TagVal) = yes(_)
+    ; tagval_is_reserved_addr(TagVal, reserved_object(_, _, _))
+    ).
+
+:- func get_tagval(type_ctor, cons_tag_values, constructor) = cons_tag.
+
+get_tagval(TypeCtor, ConsTagValues, Ctor) = TagVal :-
+    Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, Arity, _Ctxt),
+    map.lookup(ConsTagValues, cons(Name, Arity, TypeCtor), TagVal).
+
+%-----------------------------------------------------------------------------%
+
 :- func ml_gen_hld_tag_constant(prog_context, type_ctor, cons_tag_values,
     constructor) = list(mlds_defn).
 :- pragma consider_used(ml_gen_hld_tag_constant/4).
 
 ml_gen_hld_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
     % Check if this constructor uses a secondary tag.
-    ( if
-        ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag)
-    then
+    ( if ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag) then
         % Generate an MLDS definition for this secondary tag constant.
         % We do this mainly for readability and interoperability. Note that
         % we don't do the same thing for primary tags, so this is most useful
@@ -599,43 +628,7 @@ ml_gen_hld_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
         Defns = []
     ).
 
-    % Check if this constructor's representation uses a secondary tag,
-    % and if so, return the secondary tag value.
-    % BEWARE that this is not the same as ml_needs_secondary_tag, below.
-    %
-ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag) :-
-    TagVal = get_tagval(TypeCtor, ConsTagValues, Ctor),
-    get_secondary_tag(TagVal) = yes(SecondaryTag).
-
-    % Check if this constructor needs a secondary tag. This is true if its
-    % representation uses a secondary tag, obviously. But it is also true
-    % if its representation is the address of a reserved object; in that case,
-    % for some back-ends (e.g. C) we need a field of some kind to ensure
-    % that the reserved object had non-zero size, which in turn is needed
-    % to ensure that its address is distinct from any other reserved objects
-    % for the same type.
-    %
-:- pred ml_needs_secondary_tag(type_ctor::in, cons_tag_values::in,
-    constructor::in) is semidet.
-
-ml_needs_secondary_tag(TypeCtor, TagValues, Ctor) :-
-    TagVal = get_tagval(TypeCtor, TagValues, Ctor),
-    ( get_secondary_tag(TagVal) = yes(_)
-    ; tagval_is_reserved_addr(TagVal, reserved_object(_, _, _))
-    ).
-
-:- pred tagval_is_reserved_addr(cons_tag::in, reserved_address::out)
-    is semidet.
-
-tagval_is_reserved_addr(reserved_address_tag(RA), RA).
-tagval_is_reserved_addr(shared_with_reserved_addresses_tag(_, TagVal), RA) :-
-    tagval_is_reserved_addr(TagVal, RA).
-
-:- func get_tagval(type_ctor, cons_tag_values, constructor) = cons_tag.
-
-get_tagval(TypeCtor, ConsTagValues, Ctor) = TagVal :-
-    Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, Arity, _Ctxt),
-    map.lookup(ConsTagValues, cons(Name, Arity, TypeCtor), TagVal).
+%-----------------------------------------------------------------------------%
 
     % Generate a definition for the class used for the secondary tag type.
     % This is needed for discriminated unions for which some but not all
@@ -887,48 +880,12 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
         )
     ).
 
-% A constructor is represented using the base class rather than a derived
-% class if there is only a single functor, or if there is a single
-% functor and some constants represented using reserved addresses.
-ml_tag_uses_base_class(Tag) = UsesBaseClass :-
-    (
-        Tag = single_functor_tag,
-        UsesBaseClass = tag_uses_base_class
-    ;
-        Tag = shared_with_reserved_addresses_tag(_RAs, SubTag),
-        UsesBaseClass = ml_tag_uses_base_class(SubTag)
-    ;
-        Tag = ground_term_const_tag(_ConstNum, SubTag),
-        UsesBaseClass = ml_tag_uses_base_class(SubTag)
-    ;
-        ( Tag = string_tag(_)
-        ; Tag = float_tag(_)
-        ; Tag = int_tag(_)
-        ; Tag = uint_tag(_)
-        ; Tag = foreign_tag(_, _)
-        ; Tag = closure_tag(_, _, _)
-        ; Tag = type_ctor_info_tag(_, _, _)
-        ; Tag = base_typeclass_info_tag(_, _, _)
-        ; Tag = type_info_const_tag(_)
-        ; Tag = typeclass_info_const_tag(_)
-        ; Tag = tabling_info_tag(_, _)
-        ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_entry_tag(_, _)
-        ; Tag = unshared_tag(_)
-        ; Tag = direct_arg_tag(_)
-        ; Tag = shared_remote_tag(_, _)
-        ; Tag = shared_local_tag(_, _)
-        ; Tag = no_tag
-        ; Tag = reserved_address_tag(_)
-        ),
-        UsesBaseClass = tag_does_not_use_base_class
-    ).
+:- pred tagval_is_reserved_addr(cons_tag::in, reserved_address::out)
+    is semidet.
 
-ml_target_uses_constructors(target_c) = no.
-ml_target_uses_constructors(target_csharp) = yes.
-ml_target_uses_constructors(target_java) = yes.
-ml_target_uses_constructors(target_erlang) =
-    unexpected($module, $pred, "target erlang").
+tagval_is_reserved_addr(reserved_address_tag(RA), RA).
+tagval_is_reserved_addr(shared_with_reserved_addresses_tag(_, TagVal), RA) :-
+    tagval_is_reserved_addr(TagVal, RA).
 
 :- func target_uses_empty_base_classes(compilation_target) = bool.
 
@@ -936,22 +893,6 @@ target_uses_empty_base_classes(target_c) = no.
 target_uses_empty_base_classes(target_csharp) = no.
 target_uses_empty_base_classes(target_java) = yes.
 target_uses_empty_base_classes(target_erlang) =
-    unexpected($module, $pred, "target erlang").
-
-    % This should return yes if references to function parameters in
-    % constructor functions must be qualified with the module name,
-    % not the class name.
-    % We need to do this for the Java back-end, since MLDS names which
-    % are qualified with the module name get unqualified when output
-    % as Java, and parameter names must all be unqualified.
-    % XXX perhaps we should do the same for all back-ends?
-    %
-:- func target_requires_module_qualified_params(compilation_target) = bool.
-
-target_requires_module_qualified_params(target_c) = no.
-target_requires_module_qualified_params(target_csharp) = yes.
-target_requires_module_qualified_params(target_java) = yes.
-target_requires_module_qualified_params(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
 ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
@@ -1025,6 +966,22 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, FieldInfo)
             % fixup_class_qualifiers doesn't work.
         Type, BaseClassId),
     Statement = statement(ml_stmt_atomic(assign(Field, Param)), Context).
+
+    % This should return yes if references to function parameters in
+    % constructor functions must be qualified with the module name,
+    % not the class name.
+    % We need to do this for the Java back-end, since MLDS names which
+    % are qualified with the module name get unqualified when output
+    % as Java, and parameter names must all be unqualified.
+    % XXX perhaps we should do the same for all back-ends?
+    %
+:- func target_requires_module_qualified_params(compilation_target) = bool.
+
+target_requires_module_qualified_params(target_c) = no.
+target_requires_module_qualified_params(target_csharp) = yes.
+target_requires_module_qualified_params(target_java) = yes.
+target_requires_module_qualified_params(target_erlang) =
+    unexpected($module, $pred, "target erlang").
 
     % Generate "this->data_tag = <TagVal>;".
     %
@@ -1204,6 +1161,59 @@ ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Overridability, Constness, Abstractness).
+
+%----------------------------------------------------------------------------%
+
+ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag) :-
+    % BEWARE that this is NOT the same as ml_needs_secondary_tag.
+    %
+    TagVal = get_tagval(TypeCtor, ConsTagValues, Ctor),
+    get_secondary_tag(TagVal) = yes(SecondaryTag).
+
+%----------------------------------------------------------------------------%
+
+% A constructor is represented using the base class rather than a derived
+% class if there is only a single functor, or if there is a single
+% functor and some constants represented using reserved addresses.
+ml_tag_uses_base_class(Tag) = UsesBaseClass :-
+    (
+        Tag = single_functor_tag,
+        UsesBaseClass = tag_uses_base_class
+    ;
+        Tag = shared_with_reserved_addresses_tag(_RAs, SubTag),
+        UsesBaseClass = ml_tag_uses_base_class(SubTag)
+    ;
+        Tag = ground_term_const_tag(_ConstNum, SubTag),
+        UsesBaseClass = ml_tag_uses_base_class(SubTag)
+    ;
+        ( Tag = string_tag(_)
+        ; Tag = float_tag(_)
+        ; Tag = int_tag(_)
+        ; Tag = uint_tag(_)
+        ; Tag = foreign_tag(_, _)
+        ; Tag = closure_tag(_, _, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = type_info_const_tag(_)
+        ; Tag = typeclass_info_const_tag(_)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_entry_tag(_, _)
+        ; Tag = unshared_tag(_)
+        ; Tag = direct_arg_tag(_)
+        ; Tag = shared_remote_tag(_, _)
+        ; Tag = shared_local_tag(_, _)
+        ; Tag = no_tag
+        ; Tag = reserved_address_tag(_)
+        ),
+        UsesBaseClass = tag_does_not_use_base_class
+    ).
+
+ml_target_uses_constructors(target_c) = no.
+ml_target_uses_constructors(target_csharp) = yes.
+ml_target_uses_constructors(target_java) = yes.
+ml_target_uses_constructors(target_erlang) =
+    unexpected($module, $pred, "target erlang").
 
 %----------------------------------------------------------------------------%
 
