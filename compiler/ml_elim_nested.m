@@ -122,9 +122,9 @@
 % except that any references to a local variable <Var> declared in outer()
 % are replaced with `env_ptr -> <Var>', and likewise <OuterCode'> is
 % the same as <OuterCode> with references to local variables replaced with
-% `env_ptr->foo'. In the latter % case it could (depending on how smart
-% the C compiler is) potentially be more efficient to generate `env.foo',
-% but currently we don't do that.
+% `env_ptr->foo'. In the latter case it could (depending on how smart the C
+% compiler is) potentially be more efficient to generate `env.foo', but
+% currently we don't do that.
 %
 % Actually the description above is slightly over-simplified: not all local
 % variables need to be put in the environment struct. Only those local
