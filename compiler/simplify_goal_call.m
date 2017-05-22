@@ -103,6 +103,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -675,6 +676,10 @@ simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
         ModuleName = "int",
         simplify_improve_int_call(InstMap0, PredName, ModeNum, Args,
             ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info)
+    ;
+        ModuleName = "uint",
+        simplify_improve_uint_call(InstMap0, PredName, ModeNum, Args,
+            ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info)
     ),
     simplify_info_set_should_requantify(!Info).
 
@@ -930,6 +935,83 @@ simplify_make_int_binary_op_goal_expr(Info, Op, IsBuiltin, X, Y, Z,
         GoalExpr) :-
     IntModuleSymName = mercury_std_lib_module_name(unqualified("int")),
     OpSymName = qualified(IntModuleSymName, Op),
+    simplify_info_get_module_info(Info, ModuleInfo),
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    predicate_table_lookup_func_sym_arity(PredTable, is_fully_qualified,
+        OpSymName, 2, OpPredIds),
+    ( if OpPredIds = [OpPredIdPrime] then
+        OpPredId = OpPredIdPrime
+    else
+        unexpected($module, $pred, "cannot find " ++ Op)
+    ),
+    OpProcIdInt = 0,
+    proc_id_to_int(OpProcId, OpProcIdInt),
+    OpArgs = [X, Y, Z],
+    MaybeUnifyContext = no,
+    GoalExpr = plain_call(OpPredId, OpProcId, OpArgs, IsBuiltin,
+        MaybeUnifyContext, OpSymName).
+
+:- pred simplify_improve_uint_call(instmap::in, string::in, int::in,
+    list(prog_var)::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out) is semidet.
+
+simplify_improve_uint_call(InstMap0, PredName, _ModeNum, Args, ImprovedGoalExpr,
+        !GoalInfo, !Info) :-
+    simplify_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, pregenerated_dist, no),
+    target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
+    (
+        ( PredName = "/"
+        ; PredName = "//"
+        ),
+        Args = [X, Y, Z],
+        instmap_lookup_var(InstMap0, Y, InstY),
+        InstY = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        YVal \= cast_from_int(0),
+        Op = "unchecked_quotient",
+        simplify_make_uint_binary_op_goal_expr(!.Info, Op, inline_builtin,
+            X, Y, Z, ImprovedGoalExpr)
+    ;
+        PredName = "rem",
+        Args = [X, Y, Z],
+        instmap_lookup_var(InstMap0, Y, InstY),
+        InstY = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        YVal \= cast_from_int(0),
+        Op = "unchecked_rem",
+        simplify_make_uint_binary_op_goal_expr(!.Info, Op, inline_builtin,
+            X, Y, Z, ImprovedGoalExpr)
+    ;
+        PredName = "<<",
+        Args = [X, Y, Z],
+        instmap_lookup_var(InstMap0, Y, InstY),
+        InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        YVal >= 0,
+        YVal < TargetBitsPerInt,
+        Op = "unchecked_left_shift",
+        simplify_make_uint_binary_op_goal_expr(!.Info, Op, inline_builtin,
+            X, Y, Z, ImprovedGoalExpr)
+    ;
+        PredName = ">>",
+        Args = [X, Y, Z],
+        instmap_lookup_var(InstMap0, Y, InstY),
+        InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        YVal >= 0,
+        YVal < TargetBitsPerInt,
+        Op = "unchecked_right_shift",
+        simplify_make_uint_binary_op_goal_expr(!.Info, Op, inline_builtin,
+            X, Y, Z, ImprovedGoalExpr)
+    ).
+
+:- pred simplify_make_uint_binary_op_goal_expr(simplify_info::in,
+    string::in, builtin_state::in,
+    prog_var::in, prog_var::in, prog_var::in, hlds_goal_expr::out) is det.
+
+simplify_make_uint_binary_op_goal_expr(Info, Op, IsBuiltin, X, Y, Z,
+        GoalExpr) :-
+    UIntModuleSymName = mercury_std_lib_module_name(unqualified("uint")),
+    OpSymName = qualified(UIntModuleSymName, Op),
     simplify_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredTable),
     predicate_table_lookup_func_sym_arity(PredTable, is_fully_qualified,
