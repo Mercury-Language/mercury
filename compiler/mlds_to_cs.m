@@ -76,6 +76,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
+:- import_module assoc_list.
 :- import_module cord.
 :- import_module digraph.
 :- import_module int.
@@ -83,6 +84,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -147,16 +149,16 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     % Find all methods which would have their addresses taken to be used as a
     % function pointer.
-    some [!CodeAddrs] (
-        !:CodeAddrs = code_addr_map(0, map.init),
-        find_pointer_addressed_methods(Defns, !CodeAddrs),
+    some [!CodeAddrsInConsts] (
+        !:CodeAddrsInConsts = init_code_addrs_in_consts,
+        method_ptrs_in_defns(Defns, !CodeAddrsInConsts),
 
         map.values(ScalarCellGroupMap, ScalarCellGroups),
         ScalarCellRows = list.map(func(G) = G ^ mscg_rows, ScalarCellGroups),
-        list.foldl(find_pointer_addressed_methods_in_scalars,
-            ScalarCellRows, !CodeAddrs),
+        list.foldl(method_ptrs_in_scalars, ScalarCellRows, !CodeAddrsInConsts),
+        !.CodeAddrsInConsts = code_addrs_in_consts(_, _, RevSeqNumCodeAddrs),
 
-        !.CodeAddrs = code_addr_map(_, CodeAddrs)
+        make_code_addr_map(RevSeqNumCodeAddrs, map.init, CodeAddrs)
     ),
 
     % Get the foreign code for C#
@@ -221,6 +223,15 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         FinalPreds, !IO),
 
     output_src_end(Indent, ModuleName, !IO).
+
+:- pred make_code_addr_map(assoc_list(int, mlds_code_addr)::in,
+    map(mlds_code_addr, string)::in, map(mlds_code_addr, string)::out) is det.
+
+make_code_addr_map([], !CodeAddrMap).
+make_code_addr_map([SeqNum - CodeAddr | SeqNumsCodeAddrs], !CodeAddrMap) :-
+    Name = "MR_method_ptr_" ++ string.from_int(SeqNum),
+    map.det_insert(CodeAddr, Name, !CodeAddrMap),
+    make_code_addr_map(SeqNumsCodeAddrs, !CodeAddrMap).
 
 %-----------------------------------------------------------------------------%
 %
@@ -380,7 +391,8 @@ is_out_argument(mlds_argument(_, Type, _)) :-
     list(mlds_argument)::in, io::di, io::uo) is det.
 
 write_export_call(MLDS_Name, Parameters, !IO) :-
-    output_fully_qualified_thing(MLDS_Name, output_entity_name_for_csharp, !IO),
+    output_fully_qualified_thing(MLDS_Name, output_entity_name_for_csharp,
+        !IO),
     io.write_char('(', !IO),
     io.write_list(Parameters, ", ", write_argument_name, !IO),
     io.write_string(");\n", !IO).
@@ -443,264 +455,6 @@ output_exported_enum_constant(Info, Indent, MLDS_Type, ExportedConstant,
     io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
-%
-% Code to search MLDS for all uses of function pointers.
-%
-
-:- type code_addr_map
-    --->    code_addr_map(
-                ca_counter  :: int,
-                ca_map      :: map(mlds_code_addr, string)
-            ).
-
-:- pred find_pointer_addressed_methods(list(mlds_defn)::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-find_pointer_addressed_methods([], !CodeAddrs).
-find_pointer_addressed_methods([Defn | Defns], !CodeAddrs) :-
-    Defn  = mlds_defn(_Name, _Context, _Flags, Body),
-    method_ptrs_in_entity_defn(Body, !CodeAddrs),
-    find_pointer_addressed_methods(Defns, !CodeAddrs).
-
-:- pred find_pointer_addressed_methods_in_scalars(cord(mlds_initializer)::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-find_pointer_addressed_methods_in_scalars(Cord, !CodeAddrs) :-
-    cord.foldl_pred(method_ptrs_in_initializer, Cord, !CodeAddrs).
-
-:- pred method_ptrs_in_entity_defn(mlds_entity_defn::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_entity_defn(Defn, !CodeAddrs) :-
-    (
-        Defn = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(_MaybeID, _Params, Body,
-            _Attributes, _EnvVars, _MaybeRequireTailrecInfo),
-        (
-            Body = body_defined_here(Statement),
-            method_ptrs_in_statement(Statement, !CodeAddrs)
-        ;
-            Body = body_external
-        )
-    ;
-        Defn = mlds_data(mlds_data_defn(_Type, Initializer, _GCStatement)),
-        method_ptrs_in_initializer(Initializer, !CodeAddrs)
-    ;
-        Defn = mlds_class(ClassDefn),
-        ClassDefn = mlds_class_defn(_, _, _, _, _, Ctors, Members),
-        method_ptrs_in_defns(Ctors, !CodeAddrs),
-        method_ptrs_in_defns(Members, !CodeAddrs)
-    ).
-
-:- pred method_ptrs_in_statements(list(statement)::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_statements([], !CodeAddrs).
-method_ptrs_in_statements([Statement | Statements], !CodeAddrs) :-
-    method_ptrs_in_statement(Statement, !CodeAddrs),
-    method_ptrs_in_statements(Statements, !CodeAddrs).
-
-:- pred method_ptrs_in_statement(statement::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_statement(statement(Stmt, _Context), !CodeAddrs) :-
-    method_ptrs_in_stmt(Stmt, !CodeAddrs).
-
-:- pred method_ptrs_in_stmt(mlds_stmt::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_stmt(ml_stmt_block(Defns, Statements), !CodeAddrs) :-
-    method_ptrs_in_defns(Defns, !CodeAddrs),
-    method_ptrs_in_statements(Statements, !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_while(_Kind, Rval, Statement), !CodeAddrs) :-
-    method_ptrs_in_rval(Rval, !CodeAddrs),
-    method_ptrs_in_statement(Statement, !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_if_then_else(Rval, StatementThen,
-        MaybeStatementElse), !CodeAddrs) :-
-    method_ptrs_in_rval(Rval, !CodeAddrs),
-    method_ptrs_in_statement(StatementThen, !CodeAddrs),
-    (
-        MaybeStatementElse = yes(StatementElse),
-        method_ptrs_in_statement(StatementElse, !CodeAddrs)
-    ;
-        MaybeStatementElse = no
-    ).
-method_ptrs_in_stmt(ml_stmt_switch(_Type, Rval, _Range, Cases, Default),
-        !CodeAddrs) :-
-    method_ptrs_in_rval(Rval, !CodeAddrs),
-    method_ptrs_in_switch_cases(Cases, !CodeAddrs),
-    method_ptrs_in_switch_default(Default, !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_label(_), _, _) :-
-    % XXX We are generating C#, not Java.
-    unexpected($module, $pred, "labels not supported in Java.").
-method_ptrs_in_stmt(ml_stmt_goto(goto_break), !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_goto(goto_continue), !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_goto(goto_label(_)), _, _) :-
-    % XXX We are generating C#, not Java.
-    unexpected($module, $pred, "goto label not supported in Java.").
-method_ptrs_in_stmt(ml_stmt_computed_goto(_, _), _, _) :-
-    % XXX We are generating C#, not Java.
-    unexpected($module, $pred, "computed gotos not supported in Java.").
-method_ptrs_in_stmt(ml_stmt_try_commit(_Lval, StatementGoal,
-        StatementHandler), !CodeAddrs) :-
-    % We don't check "_Lval" here as we expect it to be a local variable
-    % of type mlds_commit_type.
-    method_ptrs_in_statement(StatementGoal, !CodeAddrs),
-    method_ptrs_in_statement(StatementHandler, !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_do_commit(_Rval), !CodeAddrs).
-    % We don't check "_Rval" here as we expect it to be a local variable
-    % of type mlds_commit_type.
-method_ptrs_in_stmt(ml_stmt_return(Rvals), !CodeAddrs) :-
-    method_ptrs_in_rvals(Rvals, !CodeAddrs).
-method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
-    CallStmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
-        _IsTailCall, _Markers),
-    % We don't check "_Rval" - it may be a code address but is a
-    % standard call rather than a function pointer use.
-    method_ptrs_in_rvals(Rvals, !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_atomic(AtomicStatement), !CodeAddrs) :-
-    ( if
-        AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
-            _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic,
-            _AllocId)
-    then
-        % We don't need to check "_MemRval" since this just stores
-        % the amount of memory needed for the new object.
-        method_ptrs_in_lval(Lval, !CodeAddrs),
-        method_ptrs_in_rvals(Rvals, !CodeAddrs)
-    else if
-        AtomicStatement = assign(Lval, Rval)
-    then
-        method_ptrs_in_lval(Lval, !CodeAddrs),
-        method_ptrs_in_rval(Rval, !CodeAddrs)
-    else
-        true
-    ).
-
-:- pred method_ptrs_in_switch_default(mlds_switch_default::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_switch_default(default_is_unreachable, !CodeAddrs).
-method_ptrs_in_switch_default(default_do_nothing, !CodeAddrs).
-method_ptrs_in_switch_default(default_case(Statement), !CodeAddrs) :-
-    method_ptrs_in_statement(Statement, !CodeAddrs).
-
-:- pred method_ptrs_in_switch_cases(list(mlds_switch_case)::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_switch_cases([], !CodeAddrs).
-method_ptrs_in_switch_cases([Case | Cases], !CodeAddrs) :-
-    Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
-    method_ptrs_in_statement(Statement, !CodeAddrs),
-    method_ptrs_in_switch_cases(Cases, !CodeAddrs).
-
-:- pred method_ptrs_in_defns(list(mlds_defn)::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_defns([], !CodeAddrs).
-method_ptrs_in_defns([Defn | Defns], !CodeAddrs) :-
-    method_ptrs_in_defn(Defn, !CodeAddrs),
-    method_ptrs_in_defns(Defns, !CodeAddrs).
-
-:- pred method_ptrs_in_defn(mlds_defn::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_defn(mlds_defn(_Name, _Context, _Flags, Body), !CodeAddrs) :-
-    method_ptrs_in_entity_defn(Body, !CodeAddrs).
-
-:- pred method_ptrs_in_initializer(mlds_initializer::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_initializer(no_initializer, !CodeAddrs).
-method_ptrs_in_initializer(init_struct(_Type, Initializers), !CodeAddrs) :-
-    method_ptrs_in_initializers(Initializers, !CodeAddrs).
-method_ptrs_in_initializer(init_array(Initializers), !CodeAddrs) :-
-    method_ptrs_in_initializers(Initializers, !CodeAddrs).
-method_ptrs_in_initializer(init_obj(Rval), !CodeAddrs) :-
-    method_ptrs_in_rval(Rval, !CodeAddrs).
-
-:- pred method_ptrs_in_initializers(list(mlds_initializer)::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_initializers([], !CodeAddrs).
-method_ptrs_in_initializers([Initializer | Initializers], !CodeAddrs) :-
-    method_ptrs_in_initializer(Initializer, !CodeAddrs),
-    method_ptrs_in_initializers(Initializers, !CodeAddrs).
-
-:- pred method_ptrs_in_rvals(list(mlds_rval)::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_rvals([], !CodeAddrs).
-method_ptrs_in_rvals([Rval | Rvals], !CodeAddrs) :-
-    method_ptrs_in_rval(Rval, !CodeAddrs),
-    method_ptrs_in_rvals(Rvals, !CodeAddrs).
-
-:- pred method_ptrs_in_rval(mlds_rval::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-method_ptrs_in_rval(Rval, !CodeAddrs) :-
-    (
-        Rval = ml_lval(Lval),
-        method_ptrs_in_lval(Lval, !CodeAddrs)
-    ;
-        Rval = ml_mkword(_Tag, SubRval),
-        method_ptrs_in_rval(SubRval, !CodeAddrs)
-    ;
-        Rval = ml_const(RvalConst),
-        (
-            RvalConst = mlconst_code_addr(CodeAddr),
-            !.CodeAddrs = code_addr_map(Counter, Map0),
-            ( if map.contains(Map0, CodeAddr) then
-                true
-            else
-                Name = "MR_method_ptr_" ++ string.from_int(Counter),
-                map.det_insert(CodeAddr, Name, Map0, Map),
-                !:CodeAddrs = code_addr_map(Counter + 1, Map)
-            )
-        ;
-            ( RvalConst = mlconst_true
-            ; RvalConst = mlconst_false
-            ; RvalConst = mlconst_int(_)
-            ; RvalConst = mlconst_uint(_)
-            ; RvalConst = mlconst_char(_)
-            ; RvalConst = mlconst_enum(_, _)
-            ; RvalConst = mlconst_foreign(_, _, _)
-            ; RvalConst = mlconst_float(_)
-            ; RvalConst = mlconst_string(_)
-            ; RvalConst = mlconst_multi_string(_)
-            ; RvalConst = mlconst_named_const(_)
-            ; RvalConst = mlconst_data_addr(_)
-            ; RvalConst = mlconst_null(_)
-            )
-        )
-    ;
-        Rval = ml_unop(_UnaryOp, SubRval),
-        method_ptrs_in_rval(SubRval, !CodeAddrs)
-    ;
-        Rval = ml_binop(_BinaryOp, SubRvalA, SubRvalB),
-        method_ptrs_in_rval(SubRvalA, !CodeAddrs),
-        method_ptrs_in_rval(SubRvalB, !CodeAddrs)
-    ;
-        Rval = ml_vector_common_row(_, RowRval),
-        method_ptrs_in_rval(RowRval, !CodeAddrs)
-    ;
-        ( Rval = ml_scalar_common(_)
-        ; Rval = ml_mem_addr(_Address)
-        ; Rval = ml_self(_Type)
-        )
-    ).
-
-:- pred method_ptrs_in_lval(mlds_lval::in,
-    code_addr_map::in, code_addr_map::out) is det.
-
-    % Here, "_Rval" is the address of a variable so we don't check it.
-method_ptrs_in_lval(ml_mem_ref(_Rval, _Type), !CodeAddrs).
-    % Here, "_Rval" is a pointer to a cell on the heap, and doesn't need
-    % to be considered.
-method_ptrs_in_lval(ml_field(_MaybeTag, _Rval, _FieldId, _FieldType, _PtrType),
-        !CodeAddrs).
-method_ptrs_in_lval(ml_var(_Variable, _Type), !CodeAddrs).
-method_ptrs_in_lval(ml_global_var_ref(_), !CodeAddrs).
 
 :- pred output_method_ptr_constants(csharp_out_info::in, indent::in,
     map(mlds_code_addr, string)::in, io::di, io::uo) is det.
@@ -2565,10 +2319,12 @@ type_category_is_array(CtorCat) = IsArray :-
 hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims) :-
     require_complete_switch [CtorCat] (
         CtorCat = ctor_cat_system(TypeCtorCatSystem),
-        hand_defined_system_type_info(TypeCtorCatSystem, SubstituteName, ArrayDims)
+        hand_defined_system_type_info(TypeCtorCatSystem, SubstituteName,
+            ArrayDims)
     ;
         CtorCat = ctor_cat_user(TypeCtorCatUser),
-        hand_defined_user_type(TypeCtorCatUser, Type, SubstituteName, ArrayDims)
+        hand_defined_user_type(TypeCtorCatUser, Type, SubstituteName,
+            ArrayDims)
     ;
         ( CtorCat = ctor_cat_builtin(_)
         ; CtorCat = ctor_cat_builtin_dummy

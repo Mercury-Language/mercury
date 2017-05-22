@@ -23,9 +23,13 @@
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
 
+:- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
+:- import_module counter.
 :- import_module list.
 :- import_module maybe.
+:- import_module set_tree234.
 
 %-----------------------------------------------------------------------------%
 
@@ -180,6 +184,40 @@
 :- func wrap_init_obj(mlds_rval) = mlds_initializer.
 
 %-----------------------------------------------------------------------------%
+
+:- type code_addrs_in_consts
+    --->    code_addrs_in_consts(
+                % The set of code addresses we have seen so far
+                % as arguments of ml_const rvals.
+                set_tree234(mlds_code_addr),
+
+                % The sequence number we will assign to the next mlds_code_addr
+                % we will see as the argument of an ml_const rval.
+                counter,
+
+                % A list of the mlds_code_addrs we have seen so far
+                % as the arguments of ml_const rvals, each with its
+                % order-of-first-occurrence sequence number.
+                % The list is ordered in reverse: if seqnumA > seqnumB,
+                % then seqnumA, and its code address, will appear *before*
+                % seqnumB in the list. This is to adding a new code address
+                % and its sequence number an O(1) operation.
+                assoc_list(int, mlds_code_addr)
+            ).
+
+:- func init_code_addrs_in_consts = code_addrs_in_consts.
+
+    % Accumulate the method pointers (mlds_code_addrs stored in ml_const
+    % rvals) in definitions or initializers.
+    %
+    % These predicates expect MLDS generated for C# or Java.
+    %
+:- pred method_ptrs_in_defns(list(mlds_defn)::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+:- pred method_ptrs_in_scalars(cord(mlds_initializer)::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -191,6 +229,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_unify_gen.
 
+:- import_module pair.
+:- import_module require.
 :- import_module solutions.
 
 %-----------------------------------------------------------------------------%
@@ -955,6 +995,266 @@ gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
 gen_init_array(Conv, List) = init_array(list.map(Conv, List)).
 
 wrap_init_obj(Rval) = init_obj(Rval).
+
+%-----------------------------------------------------------------------------%
+
+init_code_addrs_in_consts =
+    code_addrs_in_consts(set_tree234.init, counter.init(0), []).
+
+method_ptrs_in_defns([], !CodeAddrsInConsts).
+method_ptrs_in_defns([Defn | Defns], !CodeAddrsInConsts) :-
+    method_ptrs_in_defn(Defn, !CodeAddrsInConsts),
+    method_ptrs_in_defns(Defns, !CodeAddrsInConsts).
+
+:- pred method_ptrs_in_defn(mlds_defn::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_defn(Defn, !CodeAddrsInConsts) :-
+    Defn = mlds_defn(_Name, _Context, _Flags, EntityDefn),
+    (
+        EntityDefn = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(_MaybeID, _Params, Body,
+            _Attributes, _EnvVars, _MaybeRequireTailrecInfo),
+        (
+            Body = body_defined_here(Statement),
+            method_ptrs_in_statement(Statement, !CodeAddrsInConsts)
+        ;
+            Body = body_external
+        )
+    ;
+        EntityDefn = mlds_data(DataDefn),
+        DataDefn = mlds_data_defn(_Type, Initializer, _GCStatement),
+        method_ptrs_in_initializer(Initializer, !CodeAddrsInConsts)
+    ;
+        EntityDefn = mlds_class(ClassDefn),
+        ClassDefn = mlds_class_defn(_, _, _, _, _, Ctors, Members),
+        method_ptrs_in_defns(Ctors, !CodeAddrsInConsts),
+        method_ptrs_in_defns(Members, !CodeAddrsInConsts)
+    ).
+
+:- pred method_ptrs_in_statements(list(statement)::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_statements([], !CodeAddrsInConsts).
+method_ptrs_in_statements([Statement | Statements], !CodeAddrsInConsts) :-
+    method_ptrs_in_statement(Statement, !CodeAddrsInConsts),
+    method_ptrs_in_statements(Statements, !CodeAddrsInConsts).
+
+:- pred method_ptrs_in_statement(statement::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_statement(Statement, !CodeAddrsInConsts) :-
+    Statement = statement(Stmt, _Context),
+    (
+        Stmt = ml_stmt_block(Defns, SubStatements),
+        method_ptrs_in_defns(Defns, !CodeAddrsInConsts),
+        method_ptrs_in_statements(SubStatements, !CodeAddrsInConsts)
+    ;
+        Stmt = ml_stmt_while(_Kind, Rval, SubStatement),
+        method_ptrs_in_rval(Rval, !CodeAddrsInConsts),
+        method_ptrs_in_statement(SubStatement, !CodeAddrsInConsts)
+    ;
+        Stmt = ml_stmt_if_then_else(SubRval,
+            StatementThen, MaybeStatementElse),
+        method_ptrs_in_rval(SubRval, !CodeAddrsInConsts),
+        method_ptrs_in_statement(StatementThen, !CodeAddrsInConsts),
+        (
+            MaybeStatementElse = yes(StatementElse),
+            method_ptrs_in_statement(StatementElse, !CodeAddrsInConsts)
+        ;
+            MaybeStatementElse = no
+        )
+    ;
+        Stmt = ml_stmt_switch(_Type, SubRval, _Range, Cases, Default),
+        method_ptrs_in_rval(SubRval, !CodeAddrsInConsts),
+        method_ptrs_in_switch_cases(Cases, !CodeAddrsInConsts),
+        method_ptrs_in_switch_default(Default, !CodeAddrsInConsts)
+    ;
+        Stmt = ml_stmt_label(_),
+        unexpected($pred, "labels are not supported in C# or Java.")
+    ;
+        Stmt = ml_stmt_goto(Target),
+        (
+            ( Target = goto_break
+            ; Target = goto_continue
+            )
+        ;
+            Target = goto_label(_),
+            unexpected($pred, "goto label is not supported in C# or Java.")
+        )
+    ;
+        Stmt = ml_stmt_computed_goto(_, _),
+        unexpected($pred, "computed gotos are not supported in C# or Java.")
+    ;
+        Stmt = ml_stmt_try_commit(_Lval, StatementGoal, StatementHandler),
+        % We don't check "_Lval" here as we expect it to be a local variable
+        % of type mlds_commit_type.
+        method_ptrs_in_statement(StatementGoal, !CodeAddrsInConsts),
+        method_ptrs_in_statement(StatementHandler, !CodeAddrsInConsts)
+    ;
+        Stmt = ml_stmt_do_commit(_Rval)
+        % We don't check "_Rval" here as we expect it to be a local variable
+        % of type mlds_commit_type.
+    ;
+        Stmt = ml_stmt_return(Rvals),
+        method_ptrs_in_rvals(Rvals, !CodeAddrsInConsts)
+    ;
+        Stmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
+            _IsTailCall, _Markers),
+        % We don't check "_Rval" - it may be a code address but is a
+        % standard call rather than a function pointer use.
+        method_ptrs_in_rvals(Rvals, !CodeAddrsInConsts)
+    ;
+        Stmt = ml_stmt_atomic(AtomicStatement),
+        ( if
+            AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
+                _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic,
+                _AllocId)
+        then
+            % We don't need to check "_MemRval" since this just stores
+            % the amount of memory needed for the new object.
+            method_ptrs_in_lval(Lval, !CodeAddrsInConsts),
+            method_ptrs_in_rvals(Rvals, !CodeAddrsInConsts)
+        else if
+            AtomicStatement = assign(Lval, Rval)
+        then
+            method_ptrs_in_lval(Lval, !CodeAddrsInConsts),
+            method_ptrs_in_rval(Rval, !CodeAddrsInConsts)
+        else
+            true
+        )
+    ).
+
+:- pred method_ptrs_in_switch_default(mlds_switch_default::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_switch_default(Default, !CodeAddrsInConsts) :-
+    (
+        ( Default = default_is_unreachable
+        ; Default = default_do_nothing
+        )
+    ;
+        Default = default_case(Statement),
+        method_ptrs_in_statement(Statement, !CodeAddrsInConsts)
+    ).
+
+:- pred method_ptrs_in_switch_cases(list(mlds_switch_case)::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_switch_cases([], !CodeAddrsInConsts).
+method_ptrs_in_switch_cases([Case | Cases], !CodeAddrsInConsts) :-
+    Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
+    method_ptrs_in_statement(Statement, !CodeAddrsInConsts),
+    method_ptrs_in_switch_cases(Cases, !CodeAddrsInConsts).
+
+method_ptrs_in_scalars(Cord, !CodeAddrsInConsts) :-
+    cord.foldl_pred(method_ptrs_in_initializer, Cord, !CodeAddrsInConsts).
+
+:- pred method_ptrs_in_initializer(mlds_initializer::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_initializer(Initializer, !CodeAddrsInConsts) :-
+    (
+        Initializer = no_initializer
+    ;
+        Initializer = init_struct(_Type, SubInitializers),
+        method_ptrs_in_initializers(SubInitializers, !CodeAddrsInConsts)
+    ;
+        Initializer = init_array(SubInitializers),
+        method_ptrs_in_initializers(SubInitializers, !CodeAddrsInConsts)
+    ;
+        Initializer = init_obj(Rval),
+        method_ptrs_in_rval(Rval, !CodeAddrsInConsts)
+    ).
+
+:- pred method_ptrs_in_initializers(list(mlds_initializer)::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_initializers([], !CodeAddrsInConsts).
+method_ptrs_in_initializers([Initializer | Initializers],
+        !CodeAddrsInConsts) :-
+    method_ptrs_in_initializer(Initializer, !CodeAddrsInConsts),
+    method_ptrs_in_initializers(Initializers, !CodeAddrsInConsts).
+
+:- pred method_ptrs_in_rvals(list(mlds_rval)::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_rvals([], !CodeAddrsInConsts).
+method_ptrs_in_rvals([Rval | Rvals], !CodeAddrsInConsts) :-
+    method_ptrs_in_rval(Rval, !CodeAddrsInConsts),
+    method_ptrs_in_rvals(Rvals, !CodeAddrsInConsts).
+
+:- pred method_ptrs_in_rval(mlds_rval::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_rval(Rval, !CodeAddrsInConsts) :-
+    (
+        Rval = ml_lval(Lval),
+        method_ptrs_in_lval(Lval, !CodeAddrsInConsts)
+    ;
+        Rval = ml_mkword(_Tag, SubRval),
+        method_ptrs_in_rval(SubRval, !CodeAddrsInConsts)
+    ;
+        Rval = ml_const(RvalConst),
+        (
+            RvalConst = mlconst_code_addr(CodeAddr),
+            !.CodeAddrsInConsts = code_addrs_in_consts(Seen0, Counter0, Rev0),
+            ( if set_tree234.insert_new(CodeAddr, Seen0, Seen) then
+                counter.allocate(SeqNum, Counter0, Counter),
+                Rev = [SeqNum - CodeAddr | Rev0],
+                !:CodeAddrsInConsts = code_addrs_in_consts(Seen, Counter, Rev)
+            else
+                true
+            )
+        ;
+            ( RvalConst = mlconst_true
+            ; RvalConst = mlconst_false
+            ; RvalConst = mlconst_int(_)
+            ; RvalConst = mlconst_uint(_)
+            ; RvalConst = mlconst_char(_)
+            ; RvalConst = mlconst_enum(_, _)
+            ; RvalConst = mlconst_foreign(_, _, _)
+            ; RvalConst = mlconst_float(_)
+            ; RvalConst = mlconst_string(_)
+            ; RvalConst = mlconst_multi_string(_)
+            ; RvalConst = mlconst_named_const(_)
+            ; RvalConst = mlconst_data_addr(_)
+            ; RvalConst = mlconst_null(_)
+            )
+        )
+    ;
+        Rval = ml_unop(_UnaryOp, SubRval),
+        method_ptrs_in_rval(SubRval, !CodeAddrsInConsts)
+    ;
+        Rval = ml_binop(_BinaryOp, SubRvalA, SubRvalB),
+        method_ptrs_in_rval(SubRvalA, !CodeAddrsInConsts),
+        method_ptrs_in_rval(SubRvalB, !CodeAddrsInConsts)
+    ;
+        Rval = ml_vector_common_row(_, RowRval),
+        method_ptrs_in_rval(RowRval, !CodeAddrsInConsts)
+    ;
+        ( Rval = ml_scalar_common(_)
+        ; Rval = ml_mem_addr(_Address)
+        ; Rval = ml_self(_Type)
+        )
+    ).
+
+:- pred method_ptrs_in_lval(mlds_lval::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_lval(Lval, !CodeAddrsInConsts) :-
+    (
+        Lval = ml_mem_ref(_Rval, _Type)
+        % Here, "_Rval" is the address of a variable so we don't check it.
+    ;
+        Lval = ml_field(_MaybeTag, _Rval, _FieldId, _FieldType, _PtrType)
+        % Here, "_Rval" is a pointer to a cell on the heap, and doesn't need
+        % to be considered.
+    ;
+        ( Lval = ml_var(_Variable, _Type)
+        ; Lval = ml_global_var_ref(_)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_util.
