@@ -28,7 +28,7 @@
 :- import_module list.
 
     % This is the main entry point for the Mercury compiler.
-    % It is called from top_level.main.
+    % It is called from mercury_compile.main.
     %
 :- pred real_main(io::di, io::uo) is det.
 
