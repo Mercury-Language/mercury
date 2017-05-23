@@ -601,6 +601,9 @@ ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
             Rval = ml_const(mlconst_enum(Int, MLDS_Type))
         )
     ;
+        Tag = uint_tag(UInt),
+        Rval = ml_const(mlconst_uint(UInt))
+    ;
         Tag = string_tag(String),
         Rval = ml_const(mlconst_string(String))
     ;
@@ -608,7 +611,6 @@ ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
         Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_Type))
     ;
         ( Tag = float_tag(_)
-        ; Tag = uint_tag(_)
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)

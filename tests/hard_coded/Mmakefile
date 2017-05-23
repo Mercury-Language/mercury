@@ -356,6 +356,7 @@ ORDINARY_PROGS =	\
 	type_to_term \
 	type_to_term_bug \
 	uc_export_enum \
+ 	uint_switch_test \
 	unicode_test \
 	unify_existq_cons \
 	unify_expression \
