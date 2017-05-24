@@ -873,8 +873,8 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
 
     (
         Action = chain_gc_stack_frames,
-        ml_chain_stack_frames(Fields1, GC_Statements, EnvTypeName,
-            Context, FuncName, ModuleName, Globals, Fields, EnvInitializer,
+        ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
+            GC_Statements, EnvTypeName, Fields1, Fields, EnvInitializer,
             LinkStackChain, GCTraceFuncDefns),
         GCStatementEnv = gc_no_stmt
     ;
@@ -941,16 +941,14 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     EnvDecls = [EnvVarDecl, EnvPtrVarDecl],
     InitEnv = NewObj ++ [InitEnv0] ++ LinkStackChain.
 
-:- pred ml_chain_stack_frames(list(mlds_data_defn)::in, list(statement)::in,
-    mlds_type::in, mlds_context::in, mlds_entity_name::in,
-    mlds_module_name::in, globals::in,
-    list(mlds_data_defn)::out, mlds_initializer::out,
+:- pred ml_chain_stack_frames(globals::in, mlds_module_name::in,
+    mlds_entity_name::in, mlds_context::in, list(statement)::in, mlds_type::in,
+    list(mlds_data_defn)::in, list(mlds_data_defn)::out, mlds_initializer::out,
     list(statement)::out, list(mlds_function_defn)::out) is det.
 
-ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
-        FuncName, ModuleName, Globals, Fields,
-        EnvInitializer, LinkStackChain, GCTraceFuncDefns) :-
-    % XXX arg order
+ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
+        GCTraceStatements, EnvTypeName, Fields0, Fields, EnvInitializer,
+        LinkStackChain, GCTraceFuncDefns) :-
     % Generate code to declare and initialize the environment pointer
     % for the GC trace function from that function's `this_frame' parameter:
     %
