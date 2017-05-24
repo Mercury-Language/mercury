@@ -1530,8 +1530,10 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         mlds_indent(Indent, !IO),
 
-        DataDefn = mlds_data_defn(Name, Context, Flags, Type, Initializer,
+        DataDefn = mlds_data_defn(DataName, Context, Flags, Type, Initializer,
             _GCStatement),
+        Name = entity_data(DataName),
+        % XXX MLDS_DEFN
         mlds_output_decl_flags(Opts, Flags, forward_decl, Name,
             is_not_external_func, !IO),
         QualName = qual(ModuleName, module_qual, Name),
@@ -1941,8 +1943,9 @@ mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
 mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
     (
         Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(Name, Context, Flags,
+        DataDefn = mlds_data_defn(DataName, Context, Flags,
             Type, Initializer, GCStatement),
+        Name = entity_data(DataName),
         (
             Separate = yes,
             io.nl(!IO)
@@ -1951,6 +1954,7 @@ mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
         ),
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         mlds_indent(Indent, !IO),
+        % XXX MLDS_DEFN
         mlds_output_decl_flags(Opts, Flags, definition, Name,
             is_not_external_func, !IO),
         mlds_output_data_defn(Opts, QualName, Type, Initializer, !IO),
@@ -2160,10 +2164,8 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
     % We only need GC tracing code for top-level variables,
     % not for base classes.
     GCStatement = gc_no_stmt,
-    MLDS_Defn = mlds_data(mlds_data_defn(
-        entity_data(mlds_data_var(BaseVarName)), Context,
-        ml_gen_public_field_decl_flags,
-        Type, no_initializer, GCStatement)),
+    MLDS_Defn = mlds_data(mlds_data_defn(mlds_data_var(BaseVarName), Context,
+        ml_gen_public_field_decl_flags, Type, no_initializer, GCStatement)),
     BaseNum = BaseNum0 + 1.
 
     % Output the definitions of the enumeration constants
@@ -2198,10 +2200,12 @@ is_enum_const(Defn) :-
 mlds_output_enum_constant(Opts, Indent, EnumModuleName, Defn, !IO) :-
     (
         Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(Name, Context, _Flags,
+        DataDefn = mlds_data_defn(DataName, Context, _Flags,
             Type, Initializer, _GCStatement),
+        Name = entity_data(DataName),
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         mlds_indent(Indent, !IO),
+        % XXX MLDS_DEFN
         QualName = qual(EnumModuleName, type_qual, Name),
         mlds_output_fully_qualified_name(QualName, !IO),
         mlds_output_initializer(Opts, Type, Initializer, !IO)

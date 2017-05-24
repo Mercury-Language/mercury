@@ -907,9 +907,9 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     %   struct <EnvClassName> env; // = { ... }
     %
     EnvVarName = env_var(Action),
-    EnvVarEntityName = entity_data(mlds_data_var(EnvVarName)),
+    EnvVarDataName = mlds_data_var(EnvVarName),
     EnvVarFlags = ml_gen_local_var_decl_flags,
-    EnvVarDecl = mlds_data_defn(EnvVarEntityName, Context,
+    EnvVarDecl = mlds_data_defn(EnvVarDataName, Context,
         EnvVarFlags, EnvTypeName, EnvInitializer, GCStatementEnv),
 
     % Declare the `env_ptr' var, and initialize the `env_ptr' with the
@@ -982,13 +982,13 @@ ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
     %   void *prev;
     %   void (*trace)(...);
     %
-    PrevFieldName = entity_data(mlds_data_var(mlds_comp_var(mcv_prev))),
+    PrevFieldName = mlds_data_var(mlds_comp_var(mcv_prev)),
     PrevFieldFlags = ml_gen_public_field_decl_flags,
     PrevFieldType = ml_stack_chain_type,
     PrevFieldDecl = mlds_data_defn(PrevFieldName, Context,
         PrevFieldFlags, PrevFieldType, no_initializer, gc_no_stmt),
 
-    TraceFieldName = entity_data(mlds_data_var(mlds_comp_var(mcv_trace))),
+    TraceFieldName = mlds_data_var(mlds_comp_var(mcv_trace)),
     TraceFieldFlags = ml_gen_public_field_decl_flags,
     TraceFieldType = mlds_func_type(GCTraceFuncParams),
     TraceFieldDecl = mlds_data_defn(TraceFieldName, Context,
@@ -1227,13 +1227,13 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     %   <EnvTypeName> *env_ptr;
     %
     EnvPtrVarName = env_ptr_var(Action),
-    EnvPtrVarEntityName = entity_data(mlds_data_var(EnvPtrVarName)),
+    EnvPtrVarDataName = mlds_data_var(EnvPtrVarName),
     EnvPtrVarFlags = ml_gen_local_var_decl_flags,
     EnvPtrVarType = ml_make_env_ptr_type(Globals, EnvTypeName),
     % The env_ptr never needs to be traced by the GC, since the environment
     % that it points to will always be on the stack, not into the heap.
     GCStatement = gc_no_stmt,
-    EnvPtrVarDecl = mlds_data_defn(EnvPtrVarEntityName, Context,
+    EnvPtrVarDecl = mlds_data_defn(EnvPtrVarDataName, Context,
         EnvPtrVarFlags, EnvPtrVarType, no_initializer, GCStatement),
 
     % Generate the following statement:
@@ -1258,7 +1258,7 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 ml_conv_arg_to_var(Context, Arg, LocalVar) :-
     Arg = mlds_argument(VarName, Type, GCStatement),
     Flags = ml_gen_local_var_decl_flags,
-    LocalVar = mlds_data_defn(entity_data(mlds_data_var(VarName)), Context,
+    LocalVar = mlds_data_defn(mlds_data_var(VarName), Context,
         Flags, Type, no_initializer, GCStatement).
 
     % Return the declaration flags appropriate for an environment struct
@@ -1711,13 +1711,12 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
         InitStatements = []
     ;
         Defn0 = mlds_data(DataDefn0),
-        DataDefn0 = mlds_data_defn(Name, Context, Flags0,
+        DataDefn0 = mlds_data_defn(DataName, Context, Flags0,
             Type, Init0, GCStatement0),
         % For local variable definitions, if they are referenced by any nested
         % functions, then strip them out and store them in the elim_info.
         ( if
             % Hoist ordinary local variables.
-            Name = entity_data(DataName),
             DataName = mlds_data_var(VarName),
             ml_should_add_local_data(Action, !.Info, DataName, GCStatement0,
                 FollowingDefns, FollowingStatements)
@@ -1730,7 +1729,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
                 % work, because it doesn't handle the case when initializers in
                 % FollowingDefns reference this variable.
                 Init1 = no_initializer,
-                DataDefn1 = mlds_data_defn(Name, Context, Flags0,
+                DataDefn1 = mlds_data_defn(DataName, Context, Flags0,
                     Type, Init1, GCStatement0),
                 ModuleName = elim_info_get_module_name(!.Info),
                 VarLval = ml_var(qual(ModuleName, module_qual, VarName), Type),
@@ -1744,7 +1743,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
             Defns = []
         else
             fixup_initializer(Action, !.Info, Init0, Init),
-            Defn = mlds_data(mlds_data_defn(Name, Context, Flags0,
+            Defn = mlds_data(mlds_data_defn(DataName, Context, Flags0,
                 Type, Init, GCStatement0)),
             Defns = [Defn],
             InitStatements = []
@@ -2154,8 +2153,8 @@ fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
         IsLocalVar =
             ( pred(VarType::out) is nondet :-
                 cord.member(Var, Locals),
-                Var = mlds_data_defn(EntityName, _, _, VarType, _, _),
-                EntityName = entity_data(mlds_data_var(ThisVarName))
+                Var = mlds_data_defn(DataName, _, _, VarType, _, _),
+                DataName = mlds_data_var(ThisVarName)
             ),
         solutions.solutions(IsLocalVar, [FieldType])
     then
@@ -2602,8 +2601,7 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 :- func gen_saved_stack_chain_var(int, mlds_context) = mlds_data_defn.
 
 gen_saved_stack_chain_var(Id, Context) = Defn :-
-    Name =
-        entity_data(mlds_data_var(mlds_comp_var(mcv_saved_stack_chain(Id)))),
+    Name = mlds_data_var(mlds_comp_var(mcv_saved_stack_chain(Id))),
     Flags = ml_gen_local_var_decl_flags,
     Type = ml_stack_chain_type,
     Initializer = no_initializer,

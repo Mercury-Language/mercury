@@ -1312,9 +1312,8 @@ ml_gen_mlds_var_decl(DataName, MLDS_Type, GCStatement, Context) =
 
 ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
         Context) = Defn :-
-    Name = entity_data(DataName),
     DeclFlags = ml_gen_local_var_decl_flags,
-    Defn = mlds_data_defn(Name, Context, DeclFlags,
+    Defn = mlds_data_defn(DataName, Context, DeclFlags,
         MLDS_Type, Initializer, GCStatement).
 
 ml_gen_local_var_decl_flags = DeclFlags :-

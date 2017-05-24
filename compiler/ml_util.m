@@ -742,7 +742,8 @@ defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
 defn_entity_name(Defn) = Name :-
     % XXX MLDS_DEFN
     (
-        Defn = mlds_data(mlds_data_defn(Name, _, _, _, _, _))
+        Defn = mlds_data(mlds_data_defn(DataName, _, _, _, _, _)),
+        Name = entity_data(DataName)
     ;
         Defn = mlds_function(mlds_function_defn(Name, _, _,
             _, _, _, _, _, _))

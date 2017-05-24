@@ -329,7 +329,7 @@ ml_gen_hld_enum_value_member(Context) =
     % XXX MLDS_DEFN
     mlds_data(
         mlds_data_defn(
-            entity_data(mlds_data_var(mlds_comp_var(mcv_mr_value))),
+            mlds_data_var(mlds_comp_var(mcv_mr_value)),
             mlds_make_context(Context),
             ml_gen_member_decl_flags,
             mlds_native_int_type,
@@ -384,7 +384,7 @@ ml_gen_hld_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
     % XXX MLDS_DEFN
     Defn = mlds_data(
         mlds_data_defn(
-            entity_data(mlds_data_var(VarName)),
+            mlds_data_var(VarName),
             mlds_make_context(Context),
             ml_gen_enum_constant_decl_flags,
             mlds_native_int_type,
@@ -502,7 +502,7 @@ ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         % XXX MLDS_DEFN
         TagDataMember = mlds_data(
             mlds_data_defn(
-                entity_data(mlds_data_var(mlds_comp_var(mcv_data_tag))),
+                mlds_data_var(mlds_comp_var(mcv_data_tag)),
                 mlds_make_context(Context),
                 ml_gen_member_decl_flags,
                 mlds_native_int_type,
@@ -632,7 +632,7 @@ ml_gen_hld_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
         VarName = mlds_comp_var(mcv_sectag_const(UnqualifiedName)),
         ConstValue = ml_const(mlconst_int(SecondaryTag)),
         Defn = mlds_data_defn(
-            entity_data(mlds_data_var(VarName)),
+            mlds_data_var(VarName),
             mlds_make_context(Context),
             ml_gen_enum_constant_decl_flags,
             mlds_native_int_type,
@@ -733,8 +733,7 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 
             MLDS_ReservedObjName = mlds_comp_var(
                 mcv_reserved_obj_name(UnqualCtorName, CtorArity)),
-            MLDS_ReservedObjEntityName =
-                entity_data(mlds_data_var(MLDS_ReservedObjName)),
+            MLDS_ReservedObjDataName = mlds_data_var(MLDS_ReservedObjName),
             % The GC never needs to trace static constants, because they can
             % never point into the heap; they can point only to other static
             % constants.
@@ -743,7 +742,7 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
                 acc_public),
             % XXX MLDS_DEFN
             MLDS_ReservedObjDefn = mlds_data(mlds_data_defn(
-                MLDS_ReservedObjEntityName, MLDS_Context, DeclFlags,
+                MLDS_ReservedObjDataName, MLDS_Context, DeclFlags,
                 SecondaryTagClassId, no_initializer, GCStatement)),
             MLDS_Members = [MLDS_ReservedObjDefn | MLDS_Members0]
         else
@@ -1063,7 +1062,6 @@ ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, MaybeFieldName, Type, Width,
     FieldName = ml_gen_hld_field_name(MaybeFieldName, !.ArgNum),
     FieldVarName = mlds_comp_var(mcv_du_ctor_field_hld(FieldName)),
     DataName = mlds_data_var(FieldVarName),
-    Name = entity_data(DataName),
     MLDS_Context = mlds_make_context(Context),
     DeclFlags = ml_gen_public_field_decl_flags,
     ( if ml_must_box_field_type(ModuleInfo, Type, Width) then
@@ -1074,7 +1072,7 @@ ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, MaybeFieldName, Type, Width,
     % We only need GC tracing code for top-level variables, not for fields.
     GcStmt = gc_no_stmt,
     % XXX MLDS_DEFN
-    Defn = mlds_data(mlds_data_defn(Name, MLDS_Context, DeclFlags,
+    Defn = mlds_data(mlds_data_defn(DataName, MLDS_Context, DeclFlags,
         MLDS_Type, no_initializer, GcStmt)),
 
     FieldInfo = mlds_field_info(FieldVarName, MLDS_Type, GcStmt, MLDS_Context),

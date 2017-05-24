@@ -957,7 +957,7 @@ tabling_name_and_init_to_defn(ProcLabel, MLDS_Context, Constness, Id,
     GCStatement = gc_no_stmt,
     MLDS_Type = mlds_tabling_type(Id),
     Flags = tabling_data_decl_flags(Constness),
-    Name = entity_data(mlds_tabling_ref(ProcLabel, Id)),
+    Name = mlds_tabling_ref(ProcLabel, Id),
     DataDefn = mlds_data_defn(Name, MLDS_Context, Flags,
         MLDS_Type, Initializer, GCStatement).
 

@@ -110,10 +110,10 @@ rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer, !GlobalData) :-
     ml_global_data::in, ml_global_data::out) is det.
 
 rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData) :-
-    Name = entity_data(mlds_rtti(RttiId)),
+    Name = mlds_rtti(RttiId),
     rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData).
 
-:- pred rtti_entity_name_and_init_to_defn(mlds_entity_name::in, rtti_id::in,
+:- pred rtti_entity_name_and_init_to_defn(mlds_data_name::in, rtti_id::in,
     mlds_initializer::in, ml_global_data::in, ml_global_data::out) is det.
 
 rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
@@ -169,7 +169,7 @@ rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
 
 gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
     rtti_data_to_id(RttiData, RttiId),
-    Name = entity_data(mlds_rtti(RttiId)),
+    Name = mlds_rtti(RttiId),
     (
         RttiData = rtti_data_base_typeclass_info(_InstanceModule, _ClassId,
             _InstanceStr, BaseTypeClassInfo),
@@ -261,7 +261,7 @@ gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
 %-----------------------------------------------------------------------------%
 
 :- pred gen_type_class_decl_defn(module_info::in, tc_decl::in,
-    mlds_entity_name::in, rtti_id::in,
+    mlds_data_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_type_class_decl_defn(ModuleInfo, TCDecl, Name, RttiId, !GlobalData) :-
@@ -364,7 +364,7 @@ gen_tc_id_method_id(TCName, MethodId) = Initializer :-
 %-----------------------------------------------------------------------------%
 
 :- pred gen_type_class_instance_defn(module_info::in, tc_instance::in,
-    mlds_entity_name::in, rtti_id::in,
+    mlds_data_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_type_class_instance_defn(ModuleInfo, Instance, Name, RttiId,
@@ -413,7 +413,7 @@ make_instance_constr_id(TCName, Types, TCNum, Arity, RttiId) :-
 %-----------------------------------------------------------------------------%
 
 :- pred gen_type_info_defn(module_info::in, rtti_type_info::in,
-    mlds_entity_name::in, rtti_id::in,
+    mlds_data_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
@@ -505,7 +505,7 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
     ).
 
 :- pred gen_pseudo_type_info_defn(module_info::in, rtti_pseudo_type_info::in,
-    mlds_entity_name::in, rtti_id::in,
+    mlds_data_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
@@ -1774,30 +1774,17 @@ order_mlds_rtti_defns(Defns) = OrdDefns :-
     map(mlds_data_name, mlds_data_defn)::out) is det.
 
 add_rtti_defn_nodes(DataDefn, !Graph, !NameMap) :-
-    Name = DataDefn ^ mdd_entity_name,
-    (
-        Name = entity_data(DataName),
-        digraph.add_vertex(DataName, _, !Graph),
-        map.det_insert(DataName, DataDefn, !NameMap)
-    ;
-        ( Name = entity_type(_, _)
-        ; Name = entity_function(_, _, _, _)
-        ; Name = entity_export(_)
-        ),
-        % XXX MLDS_DEFN
-        unexpected($module, $pred, "expected entity_data")
-    ).
+    DataName = DataDefn ^ mdd_data_name,
+    digraph.add_vertex(DataName, _, !Graph),
+    map.det_insert(DataName, DataDefn, !NameMap).
 
 :- pred add_rtti_defn_arcs(mlds_data_defn::in,
     digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
 
 add_rtti_defn_arcs(DataDefn, !Graph) :-
-    DataDefn = mlds_data_defn(EntityName, _, _, Type, Initializer, _GCStmt),
-    ( if
-        EntityName = entity_data(DefnDataName),
-        Type = mlds_rtti_type(_)
-    then
-        add_rtti_defn_arcs_initializer(DefnDataName, Initializer, !Graph)
+    DataDefn = mlds_data_defn(DataName, _, _, Type, Initializer, _GCStmt),
+    ( if Type = mlds_rtti_type(_) then
+        add_rtti_defn_arcs_initializer(DataName, Initializer, !Graph)
     else
         unexpected($module, $pred, "expected rtti entity_data")
     ).

@@ -580,7 +580,7 @@
 
 :- type mlds_data_defn
     --->    mlds_data_defn(
-                mdd_entity_name         :: mlds_entity_name,
+                mdd_data_name           :: mlds_data_name,
                 mdd_context             :: mlds_context,
                 mdd_decl_flags          :: mlds_decl_flags,
 

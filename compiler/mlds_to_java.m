@@ -773,10 +773,9 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
 
         % Create the member variable.
         CtorArgName = mlds_comp_var(mcv_ptr_num),
-        DataDefn = mlds_data_defn(
-            entity_data(mlds_data_var(CtorArgName)),
-            Context, ml_gen_const_member_decl_flags,
-            mlds_native_int_type, no_initializer, gc_no_stmt),
+        DataDefn = mlds_data_defn(mlds_data_var(CtorArgName), Context,
+            ml_gen_const_member_decl_flags, mlds_native_int_type,
+            no_initializer, gc_no_stmt),
         DataDefns = [DataDefn],
 
         % Create the constructor function.
@@ -967,12 +966,12 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Statement) :-
         ReturnVarType = mlds_array_type(mlds_generic_type)
     ),
     ReturnLval = ml_var(ReturnVar, ReturnVarType),
-    ReturnEntityName = entity_data(mlds_data_var(ReturnVarName)),
+    ReturnDataName = mlds_data_var(ReturnVarName),
 
     Context = mlds_make_context(term.context_init),
     ReturnDecFlags = ml_gen_local_var_decl_flags,
     GCStatement = gc_no_stmt,  % The Java back-end does its own GC.
-    ReturnVarDefn = mlds_data_defn(ReturnEntityName, Context, ReturnDecFlags,
+    ReturnVarDefn = mlds_data_defn(ReturnDataName, Context, ReturnDecFlags,
         ReturnVarType, no_initializer, GCStatement),
 
     % Create the call to the original method.
@@ -1929,7 +1928,9 @@ output_data_defn(Info, Indent, OutputAux, DataDefn, !IO) :-
     indent_line(Info ^ joi_line_numbers, marker_comment, Context, Indent, !IO),
     output_decl_flags(Info, Flags, !IO),
     % XXX MLDS_DEFN
-    output_data_defn(Info, Name, OutputAux, Type, Initializer, !IO).
+    output_data_decl(Info, Name, Type, !IO),
+    output_initializer(Info, OutputAux, Type, Initializer, !IO),
+    io.write_string(";\n", !IO).
 
 :- pred output_function_defn(java_out_info::in, indent::in, output_aux::in,
     mlds_function_defn::in, io::di, io::uo) is det.
@@ -2199,7 +2200,7 @@ output_enum_constant(_Info, Indent, EnumName, Defn, !IO) :-
                 io.format("(%d); ", [i(N)], !IO),
 
                 io.write_string(" /* ", !IO),
-                output_entity_name_for_java(Name, !IO),
+                output_data_name_for_java(Name, !IO),
                 io.write_string(" */", !IO)
             else
                 unexpected($module, $pred, "not mlconst_enum")
@@ -2237,13 +2238,13 @@ output_data_decls(Info, Indent, [DataDefn | DataDefns], !IO) :-
     io.write_string(";\n", !IO),
     output_data_decls(Info, Indent, DataDefns, !IO).
 
-:- pred output_data_decl(java_out_info::in, mlds_entity_name::in,
+:- pred output_data_decl(java_out_info::in, mlds_data_name::in,
     mlds_type::in, io::di, io::uo) is det.
 
 output_data_decl(Info, Name, Type, !IO) :-
     output_type_for_java(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_entity_name_for_java(Name, !IO).
+    output_data_name_for_java(Name, !IO).
 
 :- pred output_data_assignments(java_out_info::in, indent::in,
     list(mlds_data_defn)::in, io::di, io::uo) is det.
@@ -2281,7 +2282,7 @@ output_init_data_statements(Info, Indent, [DataDefn | DataDefns], !IO) :-
     DataDefn = mlds_data_defn(Name, _Context, _Flags,
         Type, Initializer, _GCStatement),
     indent_line(Indent, !IO),
-    output_entity_name_for_java(Name, !IO),
+    output_data_name_for_java(Name, !IO),
     output_initializer(Info, oa_none, Type, Initializer, !IO),
     io.write_string(";\n", !IO),
     output_init_data_statements(Info, Indent, DataDefns, !IO).
@@ -2292,15 +2293,6 @@ output_init_data_statements(Info, Indent, [DataDefn | DataDefns], !IO) :-
 output_call_init_data_method(Indent, I, !IO) :-
     indent_line(Indent, !IO),
     io.format("MR_init_data_%d();\n", [i(I)], !IO).
-
-:- pred output_data_defn(java_out_info::in, mlds_entity_name::in,
-    output_aux::in, mlds_type::in, mlds_initializer::in, io::di, io::uo)
-    is det.
-
-output_data_defn(Info, Name, OutputAux, Type, Initializer, !IO) :-
-    output_data_decl(Info, Name, Type, !IO),
-    output_initializer(Info, OutputAux, Type, Initializer, !IO),
-    io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2784,7 +2776,7 @@ output_rtti_defn_assignments(Info, Indent, DataDefn, !IO) :-
         (
             IsArray = not_array,
             indent_line(Indent, !IO),
-            output_entity_name_for_java(Name, !IO),
+            output_data_name_for_java(Name, !IO),
             io.write_string(".init(", !IO),
             output_initializer_body_list(Info, FieldInits, !IO),
             io.write_string(");\n", !IO)
@@ -2800,13 +2792,13 @@ output_rtti_defn_assignments(Info, Indent, DataDefn, !IO) :-
     ).
 
 :- pred output_rtti_array_assignments(java_out_info::in, indent::in,
-    mlds_entity_name::in, mlds_initializer::in, int::in, int::out,
+    mlds_data_name::in, mlds_initializer::in, int::in, int::out,
     io::di, io::uo) is det.
 
 output_rtti_array_assignments(Info, Indent, Name, ElementInit,
         Index, Index + 1, !IO) :-
     indent_line(Indent, !IO),
-    output_entity_name_for_java(Name, !IO),
+    output_data_name_for_java(Name, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
     io.write_string("] = ", !IO),

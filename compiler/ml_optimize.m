@@ -942,9 +942,8 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
             [_VarDefn | FollowingDefns]),
         Filter =
             ( pred(OtherDefn::in) is semidet :-
-                OtherDefn = mlds_data(mlds_data_defn(EntityName, _, _, 
+                OtherDefn = mlds_data(mlds_data_defn(OtherVarName, _, _, 
                     _Type, OtherInitializer, _GC)),
-                EntityName = entity_data(OtherVarName),
                 (
                     QualOtherVar = qual(Qualifier, QualKind, OtherVarName),
                     rval_contains_var(RHS, QualOtherVar) = yes
@@ -985,7 +984,7 @@ set_initializer(VarName, Rval, [Defn0 | Defns0], [Defn | Defns]) :-
         Defn0 = mlds_data(DataDefn0),
         DataDefn0 = mlds_data_defn(Name, Context, Flags, Type,
             _OldInitializer, GCStatement),
-        Name = entity_data(mlds_data_var(VarName))
+        Name = mlds_data_var(VarName)
     then
         DataDefn = mlds_data_defn(Name, Context, Flags, Type,
             init_obj(Rval), GCStatement),
@@ -1074,7 +1073,7 @@ try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Statements) :-
         _Type, Initializer, _GCStatement),
 
     % Check if this definition is a local variable definition...
-    Name = entity_data(mlds_data_var(VarName)),
+    Name = mlds_data_var(VarName),
     Flags = ml_gen_local_var_decl_flags,
 
     % ... with a known initial value.

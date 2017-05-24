@@ -704,7 +704,9 @@ output_data_defn(Info, Indent, OutputAux, DataDefn, !IO) :-
     indent_line(Indent, !IO),
     DataDefn = mlds_data_defn(Name, _Context, Flags, Type, Initializer, _),
     output_decl_flags(Info, Flags, !IO),
-    output_data_defn(Info, Name, OutputAux, Type, Initializer, !IO).
+    output_data_decl(Info, Name, Type, !IO),
+    output_initializer(Info, OutputAux, Type, Initializer, !IO),
+    io.write_string(";\n", !IO).
 
 :- pred output_function_defn(csharp_out_info::in, indent::in, output_aux::in,
     mlds_function_defn::in, io::di, io::uo) is det.
@@ -962,7 +964,7 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
             Initializer = init_obj(Rval),
             % The name might require mangling.
             indent_line(Indent, !IO),
-            output_entity_name_for_csharp(Name, !IO),
+            output_data_name_for_csharp(Name, !IO),
             io.write_string(" = ", !IO),
             ( if
                 Rval = ml_const(mlconst_enum(N, _))
@@ -1015,13 +1017,13 @@ output_data_decls(Info, Indent, [DataDefn | DataDefns], !IO) :-
     io.write_string(";\n", !IO),
     output_data_decls(Info, Indent, DataDefns, !IO).
 
-:- pred output_data_decl(csharp_out_info::in, mlds_entity_name::in,
+:- pred output_data_decl(csharp_out_info::in, mlds_data_name::in,
     mlds_type::in, io::di, io::uo) is det.
 
 output_data_decl(Info, Name, Type, !IO) :-
     output_type(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_entity_name_for_csharp(Name, !IO).
+    output_data_name_for_csharp(Name, !IO).
 
 :- pred output_init_data_method(csharp_out_info::in, indent::in,
     list(mlds_data_defn)::in, io::di, io::uo) is det.
@@ -1041,19 +1043,10 @@ output_init_data_statements(Info, Indent, [DataDefn | DataDefns], !IO) :-
     DataDefn = mlds_data_defn(Name, _Context, _Flags,
         Type, Initializer, _GCStmt),
     indent_line(Indent, !IO),
-    output_entity_name_for_csharp(Name, !IO),
+    output_data_name_for_csharp(Name, !IO),
     output_initializer(Info, oa_none, Type, Initializer, !IO),
     io.write_string(";\n", !IO),
     output_init_data_statements(Info, Indent, DataDefns, !IO).
-
-:- pred output_data_defn(csharp_out_info::in, mlds_entity_name::in,
-    output_aux::in, mlds_type::in, mlds_initializer::in, io::di, io::uo)
-    is det.
-
-output_data_defn(Info, Name, OutputAux, Type, Initializer, !IO) :-
-    output_data_decl(Info, Name, Type, !IO),
-    output_initializer(Info, OutputAux, Type, Initializer, !IO),
-    io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1536,7 +1529,7 @@ output_rtti_defn_assignments(Info, Indent, DataDefn, !IO) :-
         (
             IsArray = not_array,
             indent_line(Indent, !IO),
-            output_entity_name_for_csharp(Name, !IO),
+            output_data_name_for_csharp(Name, !IO),
             io.write_string(".init(", !IO),
             output_initializer_body_list(Info, FieldInits, !IO),
             io.write_string(");\n", !IO)
@@ -1552,13 +1545,13 @@ output_rtti_defn_assignments(Info, Indent, DataDefn, !IO) :-
     ).
 
 :- pred output_rtti_array_assignments(csharp_out_info::in, indent::in,
-    mlds_entity_name::in, mlds_initializer::in, int::in, int::out,
+    mlds_data_name::in, mlds_initializer::in, int::in, int::out,
     io::di, io::uo) is det.
 
 output_rtti_array_assignments(Info, Indent, Name, ElementInit,
         Index, Index + 1, !IO) :-
     indent_line(Indent, !IO),
-    output_entity_name_for_csharp(Name, !IO),
+    output_data_name_for_csharp(Name, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
     io.write_string("] = ", !IO),
@@ -1798,6 +1791,13 @@ qual_class_name_to_string_for_csharp(QualName, Arity, String) :-
         unqual_class_name_to_string_for_csharp(ClassName, Arity, UnqualString),
         String = QualString ++ "." ++ UnqualString
     ).
+
+:- pred output_data_name_for_csharp(mlds_data_name::in, io::di, io::uo)
+    is det.
+
+output_data_name_for_csharp(DataName, !IO) :-
+    data_name_to_string_for_csharp(DataName, DataNameStr),
+    write_identifier_string_for_csharp(DataNameStr, !IO).
 
 :- pred output_entity_name_for_csharp(mlds_entity_name::in, io::di, io::uo)
     is det.
