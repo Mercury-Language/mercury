@@ -71,10 +71,10 @@
             ).
 
 mlds_optimize(Globals, !MLDS) :-
-    Defns0 = !.MLDS ^ mlds_defns,
+    Defns0 = !.MLDS ^ mlds_proc_defns,
     ModuleName = mercury_module_name_to_mlds(!.MLDS ^ mlds_name),
     optimize_in_defns(Globals, ModuleName, Defns0, Defns),
-    !MLDS ^ mlds_defns := Defns.
+    !MLDS ^ mlds_proc_defns := Defns.
 
 :- pred optimize_in_defns(globals::in, mlds_module_name::in,
     list(mlds_defn)::in, list(mlds_defn)::out) is det.
@@ -86,33 +86,34 @@ optimize_in_defns(Globals, ModuleName, !Defns) :-
     mlds_defn::in, mlds_defn::out) is det.
 
 optimize_in_defn(ModuleName, Globals, Defn0, Defn) :-
-    Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        DefnBody0 = mlds_function(FunctionDefn0),
-        FunctionDefn0 = mlds_function_defn(PredProcId, Params, FuncBody0,
-            Attributes, EnvVarNames, MaybeRequireTailrecInfo),
+        Defn0 = mlds_data(_),
+        Defn = Defn0
+    ;
+        Defn0 = mlds_function(FunctionDefn0),
+        FunctionDefn0 = mlds_function_defn(Name, Context, Flags,
+            PredProcId, Params, FuncBody0, Attributes, EnvVarNames,
+            MaybeRequireTailrecInfo),
         OptInfo = opt_info(Globals, ModuleName, Name, Params, Context),
 
         optimize_func(OptInfo, FuncBody0, FuncBody1),
         optimize_in_function_body(OptInfo, FuncBody1, FuncBody),
 
-        FunctionDefn = mlds_function_defn(PredProcId, Params, FuncBody,
-            Attributes, EnvVarNames, MaybeRequireTailrecInfo),
-        DefnBody = mlds_function(FunctionDefn),
-        Defn = mlds_defn(Name, Context, Flags, DefnBody)
+        FunctionDefn = mlds_function_defn(Name, Context, Flags,
+            PredProcId, Params, FuncBody, Attributes, EnvVarNames,
+            MaybeRequireTailrecInfo),
+        Defn = mlds_function(FunctionDefn)
     ;
-        DefnBody0 = mlds_data(_),
-        Defn = Defn0
-    ;
-        DefnBody0 = mlds_class(ClassDefn0),
-        ClassDefn0 = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
+        Defn0 = mlds_class(ClassDefn0),
+        ClassDefn0 = mlds_class_defn(Name, Context, Flags, Kind,
+            Imports, BaseClasses, Implements,
             TypeParams, CtorDefns0, MemberDefns0),
         optimize_in_defns(Globals, ModuleName, MemberDefns0, MemberDefns),
         optimize_in_defns(Globals, ModuleName, CtorDefns0, CtorDefns),
-        ClassDefn = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
+        ClassDefn = mlds_class_defn(Name, Context, Flags, Kind,
+            Imports, BaseClasses, Implements,
             TypeParams, CtorDefns, MemberDefns),
-        DefnBody = mlds_class(ClassDefn),
-        Defn = mlds_defn(Name, Context, Flags, DefnBody)
+        Defn = mlds_class(ClassDefn)
     ).
 
 :- pred optimize_in_function_body(opt_info::in,
@@ -260,8 +261,10 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
         OptInfo ^ oi_func_params = mlds_func_params(FuncArgs, _RetTypes),
         generate_assign_args(OptInfo, FuncArgs, CallArgs,
             AssignStatements, AssignDefns),
-        AssignVarsStatement = statement(ml_stmt_block(AssignDefns,
-            AssignStatements), Context),
+        % XXX MLDS_DEFN
+        AssignVarsStatement = statement(ml_stmt_block(
+            list.map(wrap_data_defn, AssignDefns), AssignStatements),
+            Context),
 
         CallReplaceStatements = [CommentStatement, AssignVarsStatement,
             GotoStatement],
@@ -332,7 +335,8 @@ tailcall_loop_label_name = "loop_top".
     % This is used as part of tail recursion optimization (see above).
     %
 :- pred generate_assign_args(opt_info::in, list(mlds_argument)::in,
-    list(mlds_rval)::in, list(statement)::out, list(mlds_defn)::out) is det.
+    list(mlds_rval)::in, list(statement)::out, list(mlds_data_defn)::out)
+    is det.
 
 generate_assign_args(_, [], [], [], []).
 generate_assign_args(_, [_|_], [], [], []) :-
@@ -938,10 +942,9 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
             [_VarDefn | FollowingDefns]),
         Filter =
             ( pred(OtherDefn::in) is semidet :-
-                OtherDefn = mlds_defn(EntityName, _, _, EntityDefn),
+                OtherDefn = mlds_data(mlds_data_defn(EntityName, _, _, 
+                    _Type, OtherInitializer, _GC)),
                 EntityName = entity_data(OtherVarName),
-                EntityDefn =
-                    mlds_data(mlds_data_defn(_Type, OtherInitializer, _GC)),
                 (
                     QualOtherVar = qual(Qualifier, QualKind, OtherVarName),
                     rval_contains_var(RHS, QualOtherVar) = yes
@@ -965,7 +968,7 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
 :- pred var_defn(mlds_var_name::in, mlds_defn::in) is semidet.
 
 var_defn(VarName, Defn) :-
-    Defn = mlds_defn(entity_data(mlds_data_var(VarName)), _, _, _).
+    defn_entity_name(Defn) = entity_data(mlds_data_var(VarName)).
 
     % set_initializer(VarName, Rval, Defns0, Defns):
     %
@@ -978,15 +981,15 @@ var_defn(VarName, Defn) :-
 set_initializer(_, _, [], _) :-
     unexpected($module, $pred, "var not found").
 set_initializer(VarName, Rval, [Defn0 | Defns0], [Defn | Defns]) :-
-    Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     ( if
-        Name = entity_data(mlds_data_var(VarName)),
-        DefnBody0 =
-            mlds_data(mlds_data_defn(Type, _OldInitializer, GCStatement))
+        Defn0 = mlds_data(DataDefn0),
+        DataDefn0 = mlds_data_defn(Name, Context, Flags, Type,
+            _OldInitializer, GCStatement),
+        Name = entity_data(mlds_data_var(VarName))
     then
-        DefnBody =
-            mlds_data(mlds_data_defn(Type, init_obj(Rval), GCStatement)),
-        Defn = mlds_defn(Name, Context, Flags, DefnBody),
+        DataDefn = mlds_data_defn(Name, Context, Flags, Type,
+            init_obj(Rval), GCStatement),
+        Defn = mlds_data(DataDefn),
         Defns = Defns0
     else
         Defn = Defn0,
@@ -1066,12 +1069,13 @@ eliminate_locals(OptInfo, [Defn0 | Defns0], Defns, !Statements) :-
     list(statement)::in, list(statement)::out) is semidet.
 
 try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Statements) :-
-    Defn0 = mlds_defn(Name, _Context, Flags, DefnBody),
+    Defn0 = mlds_data(DataDefn0),
+    DataDefn0 = mlds_data_defn(Name, _Context, Flags,
+        _Type, Initializer, _GCStatement),
 
     % Check if this definition is a local variable definition...
     Name = entity_data(mlds_data_var(VarName)),
     Flags = ml_gen_local_var_decl_flags,
-    DefnBody = mlds_data(mlds_data_defn(_Type, Initializer, _GCStatement)),
 
     % ... with a known initial value.
     QualVarName = qual(OptInfo ^ oi_module_name, module_qual, VarName),
@@ -1325,26 +1329,28 @@ eliminate_var_in_defns(!Defns, !VarElimInfo) :-
     var_elim_info::in, var_elim_info::out) is det.
 
 eliminate_var_in_defn(Defn0, Defn, !VarElimInfo) :-
-    Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        DefnBody0 = mlds_data(mlds_data_defn(Type, Initializer0, GCStatement)),
+        Defn0 = mlds_data(DataDefn0),
+        DataDefn0 = mlds_data_defn(Name, Context, Flags,
+            Type, Initializer0, GCStatement),
         eliminate_var_in_initializer(Initializer0, Initializer, !VarElimInfo),
-        DefnBody = mlds_data(mlds_data_defn(Type, Initializer, GCStatement))
+        DataDefn = mlds_data_defn(Name, Context, Flags,
+            Type, Initializer, GCStatement),
+        Defn = mlds_data(DataDefn)
     ;
-        DefnBody0 = mlds_class(_),
+        Defn0 = mlds_class(_),
         % We assume that nested classes don't refer to local variables
         % in the containing scope.
-        DefnBody = DefnBody0
+        Defn = Defn0
     ;
-        DefnBody0 = mlds_function(FunctionDefn0),
-        FunctionDefn0 = mlds_function_defn(Id, Params, Body0, Attributes,
-            EnvVarNames, MaybeRequireTailrecInfo),
+        Defn0 = mlds_function(FunctionDefn0),
+        FunctionDefn0 = mlds_function_defn(Name, Context, Flags, Id, Params,
+            Body0, Attributes, EnvVarNames, MaybeRequireTailrecInfo),
         eliminate_var_in_function_body(Body0, Body, !VarElimInfo),
-        FunctionDefn = mlds_function_defn(Id, Params, Body, Attributes,
-            EnvVarNames, MaybeRequireTailrecInfo),
-        DefnBody = mlds_function(FunctionDefn)
-    ),
-    Defn = mlds_defn(Name, Context, Flags, DefnBody).
+        FunctionDefn = mlds_function_defn(Name, Context, Flags, Id, Params,
+            Body, Attributes, EnvVarNames, MaybeRequireTailrecInfo),
+        Defn = mlds_function(FunctionDefn)
+    ).
 
 :- pred eliminate_var_in_function_body(
     mlds_function_body::in, mlds_function_body::out,

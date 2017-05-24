@@ -507,7 +507,7 @@
     % Generate declarations for a list of local variables.
     %
 :- pred ml_gen_local_var_decls(prog_varset::in, vartypes::in,
-    prog_context::in, prog_vars::in, list(mlds_defn)::out,
+    prog_context::in, prog_vars::in, list(mlds_data_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -584,7 +584,8 @@ ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info) :-
     ml_gen_maybe_convert_goal_code_model(CodeModel, GoalCodeModel, Context,
         GoalStatements0, GoalStatements, !Info),
 
-    Decls = VarDecls ++ GoalDecls,
+    % XXX MLDS_DEFN
+    Decls = list.map(wrap_data_defn, VarDecls) ++ GoalDecls,
     Statements = GoalStatements.
 
 %-----------------------------------------------------------------------------%
@@ -637,11 +638,14 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
             MaybeTraceRuntimeCond = no,
             ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
                 PredId, ProcId, Args, ExtraArgs, ForeignCode,
-                ContextToUse, Decls, Statements, !Info)
+                ContextToUse, DataDecls, Statements, !Info),
+            % XXX MLDS_DEFN
+            Decls = list.map(wrap_data_defn, DataDecls)
         ;
             MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
             ml_gen_trace_runtime_cond(TraceRuntimeCond, ContextToUse,
-                Decls, Statements, !Info)
+                Statements, !Info),
+            Decls = []
         )
     ;
         GoalExpr = conj(_ConjType, Goals),
@@ -655,7 +659,9 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
     ;
         GoalExpr = switch(Var, CanFail, CasesList),
         ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context, GoalInfo,
-            Decls, Statements, !Info)
+            DataDecls, Statements, !Info),
+        % XXX MLDS_DEFN
+        Decls = list.map(wrap_data_defn, DataDecls)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
         ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements,
@@ -996,7 +1002,9 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         IfStatement = statement(IfStmt, MLDS_Context),
 
         % Package it all up in the right order.
-        Decls = [CondVarDecl | CondDecls] ++ [ThenFunc],
+        % XXX MLDS_DEFN
+        Decls = [mlds_data(CondVarDecl) | CondDecls] ++
+            [mlds_function(ThenFunc)],
         Statements = [SetCondFalse | CondStatements] ++ [IfStatement]
     ).
 

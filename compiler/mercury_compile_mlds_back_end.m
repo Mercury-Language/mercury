@@ -87,7 +87,7 @@
 
 mlds_has_main(MLDS) =
     ( if
-        Defns = MLDS ^ mlds_defns,
+        Defns = MLDS ^ mlds_proc_defns,
         defns_contain_main(Defns)
     then
         has_main
@@ -347,11 +347,9 @@ mlds_gen_rtti_data(HLDS, !MLDS) :-
     generate_type_class_info_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
     RttiDatas = TypeCtorRtti ++ TypeClassInfoRtti ++ NewTypeClassInfoRttiData,
-    !.MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData0, Defns,
-        InitPreds, FinalPreds, ExportedEnums),
+    GlobalData0 = !.MLDS ^ mlds_global_defns,
     add_rtti_datas_to_mlds(HLDS, RttiDatas, GlobalData0, GlobalData),
-    !:MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData, Defns,
-        InitPreds, FinalPreds, ExportedEnums).
+    !MLDS ^ mlds_global_defns := GlobalData.
 
 %---------------------------------------------------------------------------%
 %

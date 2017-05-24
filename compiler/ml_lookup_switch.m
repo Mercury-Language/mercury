@@ -91,7 +91,7 @@
     mlds_type::in, mlds_type::in, mlds_field_id::in, mlds_field_id::in,
     list(mlds_field_id)::in, list(mlds_field_id)::in,
     mlds_vector_common::in, mlds_vector_common::in, need_bit_vec_check::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- type ml_several_soln_lookup_vars
@@ -101,7 +101,7 @@
                 msslv_limit_var                 :: mlds_lval,
                 msslv_limit_assign_statement    :: statement,
                 msslv_incr_later_slot_statement :: statement,
-                msslv_denfs                     :: list(mlds_defn)
+                msslv_denfs                     :: list(mlds_data_defn)
             ).
 
 :- pred make_several_soln_lookup_vars(mlds_context::in,
@@ -467,7 +467,9 @@ ml_gen_several_soln_atomic_lookup_switch(IndexRval, OutVars, OutTypes,
         FirstSolnOutFieldIds, LaterSolnOutFieldIds,
         FirstSolnVectorCommon, LaterSolnVectorCommon, NeedBitVecCheck,
         MatchDefns, InRangeStatements, !Info),
-    InRangeStmt = ml_stmt_block(MatchDefns, InRangeStatements),
+    % XXX MLDS_DEFN
+    InRangeStmt = ml_stmt_block(list.map(wrap_data_defn, MatchDefns),
+        InRangeStatements),
     InRangeStatement = statement(InRangeStmt, MLDS_Context),
 
     (

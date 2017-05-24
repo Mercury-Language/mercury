@@ -107,23 +107,6 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
 % Utility predicates for various purposes.
 %
 
-    % Succeeds iff this definition is a data definition which defines RTTI.
-    %
-:- pred defn_is_rtti_data(mlds_defn::in) is semidet.
-
-defn_is_rtti_data(Defn) :-
-    Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_data(mlds_data_defn(Type, _, _)),
-    Type = mlds_rtti_type(_).
-
-    % Succeeds iff this definition is a data definition.
-    %
-:- pred defn_is_data(mlds_defn::in) is semidet.
-
-defn_is_data(Defn) :-
-    Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_data(_).
-
     % Succeeds iff a given string matches the unqualified interface name
     % of a interface in Mercury's C# runtime system.
     %
@@ -141,11 +124,19 @@ interface_is_special("MercuryType").
 
 output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
-    MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData, Defns0,
+    MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData,
+        TypeDefns, TableStructDefns, ProcDefns,
         InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
-        ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap, GlobalDefns),
-    Defns = GlobalDefns ++ Defns0,
+        ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
+        FlatRttiDefns, MaybeNonFlatDefns, FlatCellDefns),
+    % XXX MLDS_DEFN
+    Defns = list.map(wrap_data_defn, FlatRttiDefns) ++
+        MaybeNonFlatDefns ++
+        list.map(wrap_data_defn, FlatCellDefns) ++
+        list.map(wrap_class_defn, TypeDefns) ++
+        list.map(wrap_data_defn, TableStructDefns) ++
+        ProcDefns,
 
     % Find all methods which would have their addresses taken to be used as a
     % function pointer.
@@ -178,13 +169,14 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     output_pragma_warning_disable(!IO),
 
-    list.filter(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
+    list.filter_map(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
 
     io.write_string("\n// RttiDefns\n", !IO),
-    output_defns(Info, Indent + 1, alloc_only, RttiDefns, !IO),
+    list.foldl(output_data_defn(Info, Indent + 1, oa_alloc_only),
+        RttiDefns, !IO),
     output_rtti_assignments(Info, Indent + 1, RttiDefns, !IO),
 
-    list.filter(defn_is_data, NonRttiDefns, DataDefns, NonDataDefns),
+    list.filter_map(defn_is_data, NonRttiDefns, DataDefns, NonDataDefns),
     io.write_string("\n// DataDefns\n", !IO),
     output_data_decls(Info, Indent + 1, DataDefns, !IO),
     output_init_data_method(Info, Indent + 1, DataDefns, !IO),
@@ -201,7 +193,7 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_method_ptr_constants(Info, Indent + 1, CodeAddrs, !IO),
 
     io.write_string("\n// NonDataDefns\n", !IO),
-    output_defns(Info, Indent + 1, none, NonDataDefns, !IO),
+    output_defns(Info, Indent + 1, oa_none, NonDataDefns, !IO),
 
     io.write_string("\n// ExportDefns\n", !IO),
     output_exports(Info, Indent + 1, ExportDefns, !IO),
@@ -500,15 +492,14 @@ output_env_vars(Indent, NonRttiDefns, !IO) :-
     set(string)::in, set(string)::out) is det.
 
 collect_env_var_names(Defn, !EnvVarNames) :-
-    Defn = mlds_defn(_, _, _, EntityDefn),
     (
-        EntityDefn = mlds_data(_)
+        Defn = mlds_data(_)
     ;
-        EntityDefn = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(_, _, _, _, EnvVarNames, _),
+        Defn = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(_, _, _, _, _, _, _, EnvVarNames, _),
         set.union(EnvVarNames, !EnvVarNames)
     ;
-        EntityDefn = mlds_class(_)
+        Defn = mlds_class(_)
     ).
 
 :- pred output_env_var_definition(indent::in, string::in, io::di, io::uo)
@@ -667,20 +658,20 @@ output_auto_gen_comment(Info, !IO)  :-
     % Options to adjust the behaviour of the output predicates.
     %
 :- type output_aux
-    --->    none
+    --->    oa_none
             % Nothing special.
 
-    ;       cname(mlds_entity_name)
+    ;       oa_cname(mlds_entity_name)
             % Pass down the class name if a definition is a constructor; this
             % is needed since the class name is not available for a constructor
             % in the MLDS.
 
-    ;       alloc_only
+    ;       oa_alloc_only
             % When writing out RTTI structure definitions, initialise members
             % with allocated top-level structures but don't fill in the fields
             % yet.
 
-    ;       force_init.
+    ;       oa_force_init.
             % Used to force local variables to be initialised even if an
             % initialiser is not provided.
 
@@ -694,93 +685,104 @@ output_defns(Info, Indent, OutputAux, Defns, !IO) :-
     mlds_defn::in, io::di, io::uo) is det.
 
 output_defn(Info, Indent, OutputAux, Defn, !IO) :-
-    Defn = mlds_defn(Name, Context, Flags, DefnBody),
-    indent_line(Indent, !IO),
     % XXX MLDS_DEFN
     (
-        DefnBody = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(_, _, Body, _, _, _),
-        (
-            Body = body_external,
-            % This is just a function declaration, with no body.
-            % C# doesn't support separate declarations and definitions,
-            % so just output the declaration as a comment.
-            % (Note that the actual definition of an external procedure
-            % must be given in `pragma foreign_code' in the same module.)
-            io.write_string("/* external:\n", !IO),
-            output_decl_flags(Info, Flags, !IO),
-            output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
-                !IO),
-            io.write_string("*/\n", !IO)
-        ;
-            Body = body_defined_here(_),
-            output_decl_flags(Info, Flags, !IO),
-            output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
-                !IO)
-        )
+        Defn = mlds_data(DataDefn),
+        output_data_defn(Info, Indent, OutputAux, DataDefn, !IO)
     ;
-        DefnBody = mlds_class(ClassDefn),
-        Kind = ClassDefn ^ mcd_kind,
-        (
-            (
-                % `static' keyword not allowed on enumerations.
-                Kind = mlds_enum
-            ;
-                % `static' not wanted on classes generated for Mercury types.
-                Kind = mlds_class
-            ),
-            OverrideFlags = set_per_instance(Flags, per_instance),
-            io.write_string("[System.Serializable]\n", !IO),
-            indent_line(Indent, !IO)
-        ;
-            % `static' and `sealed' not wanted or allowed on structs.
-            Kind = mlds_struct,
-            OverrideFlags0 = set_per_instance(Flags, per_instance),
-            OverrideFlags = set_overridability(OverrideFlags0, overridable)
-        ;
-            ( Kind = mlds_package
-            ; Kind = mlds_interface
-            ),
-            OverrideFlags = Flags
-        ),
-        output_decl_flags(Info, OverrideFlags, !IO),
-        output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody, !IO)
+        Defn = mlds_function(FunctionDefn),
+        output_function_defn(Info, Indent, OutputAux, FunctionDefn, !IO)
     ;
-        DefnBody = mlds_data(_),
-        output_decl_flags(Info, Flags, !IO),
-        output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody, !IO)
+        Defn = mlds_class(ClassDefn),
+        output_class_defn(Info, Indent, OutputAux, ClassDefn, !IO)
     ).
 
-:- pred output_defn_body(csharp_out_info::in, indent::in, mlds_entity_name::in,
-    output_aux::in, mlds_context::in, mlds_entity_defn::in, io::di, io::uo)
-    is det.
+:- pred output_data_defn(csharp_out_info::in, indent::in, output_aux::in,
+    mlds_data_defn::in, io::di, io::uo) is det.
 
-output_defn_body(Info, Indent, UnqualName, OutputAux, Context, Entity, !IO) :-
+output_data_defn(Info, Indent, OutputAux, DataDefn, !IO) :-
+    indent_line(Indent, !IO),
+    DataDefn = mlds_data_defn(Name, _Context, Flags, Type, Initializer, _),
+    output_decl_flags(Info, Flags, !IO),
+    output_data_defn(Info, Name, OutputAux, Type, Initializer, !IO).
+
+:- pred output_function_defn(csharp_out_info::in, indent::in, output_aux::in,
+    mlds_function_defn::in, io::di, io::uo) is det.
+
+output_function_defn(Info, Indent, OutputAux, FunctionDefn, !IO) :-
+    indent_line(Indent, !IO),
+    FunctionDefn = mlds_function_defn(UnqualName, Context, Flags,
+        MaybePredProcId, Params, MaybeBody, _Attributes, _EnvVarNames,
+        _MaybeRequireTailrecInfo),
     (
-        Entity = mlds_data(mlds_data_defn(Type, Initializer, _)),
-        output_data_defn(Info, UnqualName, OutputAux, Type, Initializer,
-            !IO)
+        MaybeBody = body_external,
+        % This is just a function declaration, with no body.
+        % C# doesn't support separate declarations and definitions,
+        % so just output the declaration as a comment.
+        % (Note that the actual definition of an external procedure
+        % must be given in `pragma foreign_code' in the same module.)
+        PreStr = "/* external:\n",
+        PostStr = "*/\n"
     ;
-        Entity = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(MaybePredProcId, Signature,
-            MaybeBody, _Attributes, _EnvVarNames, _MaybeRequireTailrecInfo),
-        output_maybe(MaybePredProcId, output_pred_proc_id(Info), !IO),
-        output_func(Info, Indent, UnqualName, OutputAux, Context,
-            Signature, MaybeBody, !IO)
+        MaybeBody = body_defined_here(_),
+        PreStr = "",
+        PostStr = ""
+    ),
+    io.write_string(PreStr, !IO),
+    output_decl_flags(Info, Flags, !IO),
+    (
+        MaybePredProcId = no
     ;
-        Entity = mlds_class(ClassDefn),
-        output_class(Info, Indent, UnqualName, ClassDefn, !IO)
-    ).
+        MaybePredProcId = yes(PredProcId),
+        output_pred_proc_id(Info, PredProcId, !IO)
+    ),
+    output_func(Info, Indent, UnqualName, OutputAux, Context,
+        Params, MaybeBody, !IO),
+    io.write_string(PostStr, !IO).
+
+:- pred output_class_defn(csharp_out_info::in, indent::in, output_aux::in,
+    mlds_class_defn::in, io::di, io::uo) is det.
+
+output_class_defn(Info, Indent, _OutputAux, ClassDefn, !IO) :-
+    indent_line(Indent, !IO),
+    Flags = ClassDefn ^ mcd_decl_flags,
+    Kind = ClassDefn ^ mcd_kind,
+    (
+        (
+            % `static' keyword not allowed on enumerations.
+            Kind = mlds_enum
+        ;
+            % `static' not wanted on classes generated for Mercury types.
+            Kind = mlds_class
+        ),
+        OverrideFlags = set_per_instance(Flags, per_instance),
+        io.write_string("[System.Serializable]\n", !IO),
+        indent_line(Indent, !IO)
+    ;
+        % `static' and `sealed' not wanted or allowed on structs.
+        Kind = mlds_struct,
+        OverrideFlags0 = set_per_instance(Flags, per_instance),
+        OverrideFlags = set_overridability(OverrideFlags0, overridable)
+    ;
+        ( Kind = mlds_package
+        ; Kind = mlds_interface
+        ),
+        OverrideFlags = Flags
+    ),
+    output_decl_flags(Info, OverrideFlags, !IO),
+    output_class(Info, Indent, ClassDefn, !IO).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to output classes.
 %
 
-:- pred output_class(csharp_out_info::in, indent::in, mlds_entity_name::in,
+:- pred output_class(csharp_out_info::in, indent::in,
     mlds_class_defn::in, io::di, io::uo) is det.
 
-output_class(!.Info, Indent, UnqualName, ClassDefn, !IO) :-
+output_class(!.Info, Indent, ClassDefn, !IO) :-
+    ClassDefn = mlds_class_defn(UnqualName, _Context, _Flags, Kind,
+        _Imports, BaseClasses, Implements, TypeParams, Ctors, AllMembers),
     (
         UnqualName = entity_type(ClassNamePrime, ArityPrime),
         ClassName = ClassNamePrime,
@@ -792,8 +794,6 @@ output_class(!.Info, Indent, UnqualName, ClassDefn, !IO) :-
         ),
         unexpected($module, $pred, "name is not entity_type.")
     ),
-    ClassDefn = mlds_class_defn(Kind, _Imports, BaseClasses, Implements,
-        TypeParams, Ctors, AllMembers),
 
     !Info ^ oi_univ_tvars := TypeParams,
 
@@ -813,7 +813,7 @@ output_class(!.Info, Indent, UnqualName, ClassDefn, !IO) :-
     io.write_string("{\n", !IO),
     output_class_body(!.Info, Indent + 1, Kind, UnqualName, AllMembers, !IO),
     io.nl(!IO),
-    output_defns(!.Info, Indent + 1, cname(UnqualName), Ctors, !IO),
+    output_defns(!.Info, Indent + 1, oa_cname(UnqualName), Ctors, !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n\n", !IO).
 
@@ -921,7 +921,7 @@ output_class_body(Info, Indent, Kind, UnqualName, AllMembers, !IO) :-
         ; Kind = mlds_interface
         ; Kind = mlds_struct
         ),
-        output_defns(Info, Indent, none, AllMembers, !IO)
+        output_defns(Info, Indent, oa_none, AllMembers, !IO)
     ;
         Kind = mlds_package,
         unexpected($module, $pred, "cannot use package as a type")
@@ -939,7 +939,7 @@ output_class_body(Info, Indent, Kind, UnqualName, AllMembers, !IO) :-
 :- pred defn_is_const(mlds_defn::in) is semidet.
 
 defn_is_const(Defn) :-
-    Defn = mlds_defn(_Name, _Context, Flags, _DefnBody),
+    Flags = defn_decl_flags(Defn),
     constness(Flags) = const.
 
 :- pred output_enum_constants(csharp_out_info::in, indent::in,
@@ -954,9 +954,10 @@ output_enum_constants(Info, Indent, EnumName, EnumConsts, !IO) :-
     mlds_entity_name::in, mlds_defn::in, io::di, io::uo) is det.
 
 output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
-    Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
-        DefnBody = mlds_data(mlds_data_defn(_Type, Initializer, _GCStmt)),
+        Defn = mlds_data(DataDefn),
+        DataDefn = mlds_data_defn(Name, _Context, _Flags,
+            _Type, Initializer, _GCStmt),
         (
             Initializer = init_obj(Rval),
             % The name might require mangling.
@@ -986,9 +987,10 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
             unexpected($module, $pred, string(Initializer))
         )
     ;
-        ( DefnBody = mlds_function(_)
-        ; DefnBody = mlds_class(_)
+        ( Defn = mlds_function(_)
+        ; Defn = mlds_class(_)
         ),
+        % XXX MLDS_DEFN
         unexpected($module, $pred, "definition body was not data")
     ).
 
@@ -997,28 +999,21 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
 % Code to output data declarations/definitions.
 %
 
-:- pred output_data_decls(csharp_out_info::in, indent::in, list(mlds_defn)::in,
-    io::di, io::uo) is det.
+:- pred output_data_decls(csharp_out_info::in, indent::in,
+    list(mlds_data_defn)::in, io::di, io::uo) is det.
 
 output_data_decls(_, _, [], !IO).
-output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
-    Defn = mlds_defn(Name, _Context, Flags, DefnBody),
-    (
-        DefnBody = mlds_data(mlds_data_defn(Type, _Initializer, _GCStmt)),
-        indent_line(Indent, !IO),
-        % We can't honour `readonly' here as the variable is assigned
-        % separately.
-        NonReadonlyFlags = set_constness(Flags, modifiable),
-        output_decl_flags(Info, NonReadonlyFlags, !IO),
-        output_data_decl(Info, Name, Type, !IO),
-        io.write_string(";\n", !IO)
-    ;
-        ( DefnBody = mlds_function(_)
-        ; DefnBody = mlds_class(_)
-        ),
-        unexpected($module, $pred, "not data")
-    ),
-    output_data_decls(Info, Indent, Defns, !IO).
+output_data_decls(Info, Indent, [DataDefn | DataDefns], !IO) :-
+    DataDefn = mlds_data_defn(Name, _Context, Flags,
+        Type, _Initializer, _GCStmt),
+    indent_line(Indent, !IO),
+    % We can't honour `readonly' here as the variable is assigned
+    % separately.
+    NonReadonlyFlags = set_constness(Flags, modifiable),
+    output_decl_flags(Info, NonReadonlyFlags, !IO),
+    output_data_decl(Info, Name, Type, !IO),
+    io.write_string(";\n", !IO),
+    output_data_decls(Info, Indent, DataDefns, !IO).
 
 :- pred output_data_decl(csharp_out_info::in, mlds_entity_name::in,
     mlds_type::in, io::di, io::uo) is det.
@@ -1029,34 +1024,27 @@ output_data_decl(Info, Name, Type, !IO) :-
     output_entity_name_for_csharp(Name, !IO).
 
 :- pred output_init_data_method(csharp_out_info::in, indent::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
+    list(mlds_data_defn)::in, io::di, io::uo) is det.
 
-output_init_data_method(Info, Indent, Defns, !IO) :-
+output_init_data_method(Info, Indent, DataDefns, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("private static void MR_init_data() {\n", !IO),
-    output_init_data_statements(Info, Indent + 1, Defns, !IO),
+    output_init_data_statements(Info, Indent + 1, DataDefns, !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO).
 
 :- pred output_init_data_statements(csharp_out_info::in, indent::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
+    list(mlds_data_defn)::in, io::di, io::uo) is det.
 
 output_init_data_statements(_, _, [], !IO).
-output_init_data_statements(Info, Indent, [Defn | Defns], !IO) :-
-    Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
-    (
-        DefnBody = mlds_data(mlds_data_defn(Type, Initializer, _GCStmt)),
-        indent_line(Indent, !IO),
-        output_entity_name_for_csharp(Name, !IO),
-        output_initializer(Info, none, Type, Initializer, !IO),
-        io.write_string(";\n", !IO)
-    ;
-        ( DefnBody = mlds_function(_)
-        ; DefnBody = mlds_class(_)
-        ),
-        unexpected($module, $pred, "not mlds_data")
-    ),
-    output_init_data_statements(Info, Indent, Defns, !IO).
+output_init_data_statements(Info, Indent, [DataDefn | DataDefns], !IO) :-
+    DataDefn = mlds_data_defn(Name, _Context, _Flags,
+        Type, Initializer, _GCStmt),
+    indent_line(Indent, !IO),
+    output_entity_name_for_csharp(Name, !IO),
+    output_initializer(Info, oa_none, Type, Initializer, !IO),
+    io.write_string(";\n", !IO),
+    output_init_data_statements(Info, Indent, DataDefns, !IO).
 
 :- pred output_data_defn(csharp_out_info::in, mlds_entity_name::in,
     output_aux::in, mlds_type::in, mlds_initializer::in, io::di, io::uo)
@@ -1249,7 +1237,7 @@ output_vector_cell_decl(Info, Indent, TypeNum, CellGroup, !IO) :-
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldIds, _NextRow,
         _RowInits),
-    output_defn(Info, Indent, none, ClassDefn, !IO),
+    output_defn(Info, Indent, oa_none, ClassDefn, !IO),
 
     indent_line(Indent, !IO),
     io.write_string("private static /* readonly */ ", !IO),
@@ -1387,26 +1375,26 @@ output_initializer(Info, OutputAux, Type, Initializer, !IO) :-
         % then we output an initializer to allocate a structure without filling
         % in the fields.
         (
-            ( OutputAux = none
-            ; OutputAux = cname(_)
-            ; OutputAux = force_init
+            ( OutputAux = oa_none
+            ; OutputAux = oa_cname(_)
+            ; OutputAux = oa_force_init
             ),
             output_initializer_body(Info, Initializer, yes(Type), !IO)
         ;
-            OutputAux = alloc_only,
+            OutputAux = oa_alloc_only,
             output_initializer_alloc_only(Info, Initializer, yes(Type), !IO)
         )
     ;
         NeedsInit = no,
         (
-            OutputAux = force_init,
+            OutputAux = oa_force_init,
             % Local variables need to be initialised to avoid warnings.
             io.write_string(" = ", !IO),
             io.write_string(get_type_initializer(Info, Type), !IO)
         ;
-            ( OutputAux = none
-            ; OutputAux = cname(_)
-            ; OutputAux = alloc_only
+            ( OutputAux = oa_none
+            ; OutputAux = oa_cname(_)
+            ; OutputAux = oa_alloc_only
             )
         )
     ).
@@ -1511,7 +1499,7 @@ output_initializer_body_list(Info, Inits, !IO) :-
 %
 
 :- pred output_rtti_assignments(csharp_out_info::in, indent::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
+    list(mlds_data_defn)::in, io::di, io::uo) is det.
 
 output_rtti_assignments(Info, Indent, Defns, !IO) :-
     indent_line(Indent, !IO),
@@ -1523,34 +1511,19 @@ output_rtti_assignments(Info, Indent, Defns, !IO) :-
     io.write_string("}\n", !IO).
 
 :- pred output_rtti_defns_assignments(csharp_out_info::in, indent::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
+    list(mlds_data_defn)::in, io::di, io::uo) is det.
 
 output_rtti_defns_assignments(Info, Indent, Defns, !IO) :-
     % Separate cliques.
     indent_line(Indent, !IO),
     io.write_string("//\n", !IO),
-    list.foldl(output_rtti_defn_assignments(Info, Indent),
-        Defns, !IO).
+    list.foldl(output_rtti_defn_assignments(Info, Indent), Defns, !IO).
 
 :- pred output_rtti_defn_assignments(csharp_out_info::in, indent::in,
-    mlds_defn::in, io::di, io::uo) is det.
+    mlds_data_defn::in, io::di, io::uo) is det.
 
-output_rtti_defn_assignments(Info, Indent, Defn, !IO) :-
-    Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
-    (
-        DefnBody = mlds_data(mlds_data_defn(_Type, Initializer, _)),
-        output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO)
-    ;
-        ( DefnBody = mlds_function(_)
-        ; DefnBody = mlds_class(_)
-        ),
-        unexpected($module, $pred, "expected mlds_data")
-    ).
-
-:- pred output_rtti_defn_assignments_2(csharp_out_info::in, indent::in,
-    mlds_entity_name::in, mlds_initializer::in, io::di, io::uo) is det.
-
-output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO) :-
+output_rtti_defn_assignments(Info, Indent, DataDefn, !IO) :-
+    DataDefn = mlds_data_defn(Name, _Context, _Flags, _Type, Initializer, _),
     (
         Initializer = no_initializer
     ;
@@ -1642,7 +1615,7 @@ output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
 output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
     Signature = mlds_func_params(Parameters, RetTypes),
     ( if
-        OutputAux = cname(CtorName),
+        OutputAux = oa_cname(CtorName),
         Name = entity_export("<constructor>")
     then
         output_entity_name_for_csharp(CtorName, !IO),
@@ -2572,7 +2545,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         io.write_string("{\n", !IO),
         (
             Defns = [_ | _],
-            output_defns(Info, Indent + 1, force_init, Defns, !IO),
+            output_defns(Info, Indent + 1, oa_force_init, Defns, !IO),
             io.write_string("\n", !IO)
         ;
             Defns = []

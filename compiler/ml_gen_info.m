@@ -78,7 +78,7 @@
     map(int, ml_ground_term)::out) is det.
 
 :- pred ml_gen_info_get_closure_wrapper_defns(ml_gen_info::in,
-    list(mlds_defn)::out) is det.
+    list(mlds_function_defn)::out) is det.
 :- pred ml_gen_info_get_env_var_names(ml_gen_info::in, set(string)::out)
     is det.
 :- pred ml_gen_info_get_disabled_warnings(ml_gen_info::in,
@@ -254,7 +254,7 @@
     % Insert an extra definition at the start of the list of extra
     % definitions.
     %
-:- pred ml_gen_info_add_closure_wrapper_defn(mlds_defn::in,
+:- pred ml_gen_info_add_closure_wrapper_defn(mlds_function_defn::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Add the given string as the name of an environment variable used by
@@ -350,7 +350,7 @@
 
 /* 12 */        mgsi_const_struct_map   :: map(int, ml_ground_term),
 
-/* 13 */        mgsi_closure_wrapper_defns :: list(mlds_defn),
+/* 13 */        mgsi_closure_wrapper_defns :: list(mlds_function_defn),
 
                 % A partial mapping from vars to lvals, used to override
                 % the normal lval that we use for a variable.
@@ -492,7 +492,7 @@ ml_gen_info_get_disabled_warnings(Info, X) :-
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_success_cont_stack(stack(success_cont)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
-:- pred ml_gen_info_set_closure_wrapper_defns(list(mlds_defn)::in,
+:- pred ml_gen_info_set_closure_wrapper_defns(list(mlds_function_defn)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_env_var_names(set(string)::in,
     ml_gen_info::in, ml_gen_info::out) is det.

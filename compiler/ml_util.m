@@ -93,6 +93,14 @@
 :- pred defn_contains_outline_foreign_proc(foreign_language::in,
     mlds_defn::in) is semidet.
 
+%-----------------------------------------------------------------------------%
+
+:- func defn_entity_name(mlds_defn) = mlds_entity_name.
+:- func defn_context(mlds_defn) = mlds_context.
+:- func defn_decl_flags(mlds_defn) = mlds_decl_flags.
+
+%-----------------------------------------------------------------------------%
+
     % Succeeds iff this definition is a type definition.
     %
 :- pred defn_is_type(mlds_defn::in) is semidet.
@@ -116,6 +124,16 @@
     %
 :- pred defn_is_public(mlds_defn::in) is semidet.
 
+    % Succeeds iff this definition is a data definition.
+    %
+:- pred defn_is_data(mlds_defn::in, mlds_data_defn::out) is semidet.
+
+    % Succeeds iff this definition is a data definition which defines RTTI.
+    %
+:- pred defn_is_rtti_data(mlds_defn::in, mlds_data_defn::out) is semidet.
+
+%-----------------------------------------------------------------------------%
+
     % Says whether these definitions contains a reference to
     % the specified variable.
     %
@@ -125,6 +143,7 @@
     % the specified variable.
     %
 :- func defn_contains_var(mlds_defn, mlds_data) = bool.
+:- func function_defn_contains_var(mlds_function_defn, mlds_data) = bool.
 
 %-----------------------------------------------------------------------------%
 %
@@ -237,7 +256,7 @@
 
 defns_contain_main([Defn | Defns]) :-
     ( if
-        Defn = mlds_defn(Name, _, _, _),
+        Name = defn_entity_name(Defn),
         Name = entity_function(FuncName, _, _, _),
         FuncName = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _)
     then
@@ -698,9 +717,9 @@ has_foreign_languages(Statement, Langs) :-
 %
 
 defn_contains_foreign_code(NativeTargetLang, Defn) :-
-    Defn = mlds_defn(_Name, _Context, _Flags, mlds_function(FunctionDefn)),
-    FunctionDefn = mlds_function_defn(_, _, body_defined_here(FunctionBody),
-        _, _, _),
+    % XXX MLDS_DEFN
+    Defn = mlds_function(FunctionDefn),
+    FunctionDefn ^ mfd_body = body_defined_here(FunctionBody),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     (
@@ -711,36 +730,84 @@ defn_contains_foreign_code(NativeTargetLang, Defn) :-
     ).
 
 defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
-    Defn = mlds_defn(_Name, _Context, _Flags, mlds_function(FunctionDefn)),
-    FunctionDefn = mlds_function_defn(_, _, body_defined_here(FunctionBody),
-        _, _, _),
+    % XXX MLDS_DEFN
+    Defn = mlds_function(FunctionDefn),
+    FunctionDefn ^ mfd_body = body_defined_here(FunctionBody),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     Stmt = ml_stmt_atomic(outline_foreign_proc(ForeignLang, _, _, _)).
 
+%-----------------------------------------------------------------------------%
+
+defn_entity_name(Defn) = Name :-
+    % XXX MLDS_DEFN
+    (
+        Defn = mlds_data(mlds_data_defn(Name, _, _, _, _, _))
+    ;
+        Defn = mlds_function(mlds_function_defn(Name, _, _,
+            _, _, _, _, _, _))
+    ;
+        Defn = mlds_class(mlds_class_defn(Name, _, _,
+            _, _, _, _, _, _, _))
+    ).
+
+defn_context(Defn) = Context :-
+    % XXX MLDS_DEFN
+    (
+        Defn = mlds_data(mlds_data_defn(_, Context, _, _, _, _))
+    ;
+        Defn = mlds_function(mlds_function_defn(_, Context, _,
+            _, _, _, _, _, _))
+    ;
+        Defn = mlds_class(mlds_class_defn(_, Context, _,
+            _, _, _, _, _, _, _))
+    ).
+
+defn_decl_flags(Defn) = Flags :-
+    % XXX MLDS_DEFN
+    (
+        Defn = mlds_data(mlds_data_defn(_, _, Flags, _, _, _))
+    ;
+        Defn = mlds_function(mlds_function_defn(_, _, Flags,
+            _, _, _, _, _, _))
+    ;
+        Defn = mlds_class(mlds_class_defn(_, _, Flags,
+            _, _, _, _, _, _, _))
+    ).
+
+%-----------------------------------------------------------------------------%
+
 defn_is_type(Defn) :-
-    Defn = mlds_defn(Name, _Context, _Flags, _Body),
-    Name = entity_type(_, _).
+    % XXX MLDS_DEFN
+    defn_entity_name(Defn) = entity_type(_, _).
 
 defn_is_function(Defn) :-
-    Defn = mlds_defn(Name, _Context, _Flags, _Body),
-    Name = entity_function(_, _, _, _).
+    % XXX MLDS_DEFN
+    defn_entity_name(Defn) = entity_function(_, _, _, _).
 
 defn_is_type_ctor_info(Defn) :-
-    Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_data(mlds_data_defn(Type, _, _)),
+    % XXX MLDS_DEFN
+    Defn = mlds_data(mlds_data_defn(_Name, _Context, _Flags, Type, _, _)),
     Type = mlds_rtti_type(item_type(RttiId)),
     RttiId = ctor_rtti_id(_, RttiName),
     RttiName = type_ctor_type_ctor_info.
 
 defn_is_commit_type_var(Defn) :-
-    Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_data(mlds_data_defn(Type, _, _)),
-    Type = mlds_commit_type.
+    % XXX MLDS_DEFN
+    Defn = mlds_data(DataDefn),
+    DataDefn ^ mdd_type = mlds_commit_type.
 
 defn_is_public(Defn) :-
-    Defn = mlds_defn(_Name, _Context, Flags, _Body),
+    % XXX MLDS_DEFN
+    Flags = defn_decl_flags(Defn),
     access(Flags) = acc_public.
+
+defn_is_data(Defn, DataDefn) :-
+    Defn = mlds_data(DataDefn).
+
+defn_is_rtti_data(Defn, DataDefn) :-
+    Defn = mlds_data(DataDefn),
+    DataDefn ^ mdd_type = mlds_rtti_type(_).
 
 %-----------------------------------------------------------------------------%
 %
@@ -764,24 +831,19 @@ defns_contains_var([Defn | Defns], DataName) = ContainsVar :-
     ).
 
 defn_contains_var(Defn, DataName) = ContainsVar :-
-    Defn = mlds_defn(_Name, _Context, _Flags, DefnBody),
-    ContainsVar = defn_body_contains_var(DefnBody, DataName).
-
-:- func defn_body_contains_var(mlds_entity_defn, mlds_data) = bool.
-
-defn_body_contains_var(DefnBody, DataName) = ContainsVar :-
     (
-        DefnBody = mlds_data(mlds_data_defn(_Type, Initializer, _GCStatement)),
+        Defn = mlds_data(DataDefn),
+        DataDefn = mlds_data_defn(_Name, _Ctxt, _Flags,
+            _Type, Initializer, _GCStatement),
         % XXX Should we include variables in the GCStatement field here?
         ContainsVar = initializer_contains_var(Initializer, DataName)
     ;
-        DefnBody = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(_PredProcId, _Params, FunctionBody,
-            _Attrs, _EnvVarNames, _MaybeRequireTailrecInfo),
-        ContainsVar = function_body_contains_var(FunctionBody, DataName)
+        Defn = mlds_function(FunctionDefn),
+        ContainsVar = function_defn_contains_var(FunctionDefn, DataName)
     ;
-        DefnBody = mlds_class(ClassDefn),
-        ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits, _Implements,
+        Defn = mlds_class(ClassDefn),
+        ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags,
+            _Kind, _Imports, _Inherits, _Implements,
             _TypeParams, CtorDefns, FieldDefns),
         FieldDefnsContainVar = defns_contains_var(FieldDefns, DataName),
         (
@@ -792,6 +854,12 @@ defn_body_contains_var(DefnBody, DataName) = ContainsVar :-
             ContainsVar = defns_contains_var(CtorDefns, DataName)
         )
     ).
+
+function_defn_contains_var(FunctionDefn, DataName) = ContainsVar :-
+    FunctionDefn = mlds_function_defn(_Name, _Ctxt, _Flags,
+        _PredProcId, _Params, FunctionBody, _Attrs,
+        _EnvVarNames, _MaybeRequireTailrecInfo),
+    ContainsVar = function_body_contains_var(FunctionBody, DataName).
 
 :- func function_body_contains_var(mlds_function_body, mlds_data) = bool.
 
@@ -1010,10 +1078,13 @@ method_ptrs_in_defns([Defn | Defns], !CodeAddrsInConsts) :-
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
 
 method_ptrs_in_defn(Defn, !CodeAddrsInConsts) :-
-    Defn = mlds_defn(_Name, _Context, _Flags, EntityDefn),
     (
-        EntityDefn = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(_MaybeID, _Params, Body,
+        Defn = mlds_data(DataDefn),
+        DataDefn = mlds_data_defn(_, _, _, _Type, Initializer, _GCStatement),
+        method_ptrs_in_initializer(Initializer, !CodeAddrsInConsts)
+    ;
+        Defn = mlds_function(FunctionDefn),
+        FunctionDefn = mlds_function_defn(_, _, _, _MaybeID, _Params, Body,
             _Attributes, _EnvVars, _MaybeRequireTailrecInfo),
         (
             Body = body_defined_here(Statement),
@@ -1022,12 +1093,8 @@ method_ptrs_in_defn(Defn, !CodeAddrsInConsts) :-
             Body = body_external
         )
     ;
-        EntityDefn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(_Type, Initializer, _GCStatement),
-        method_ptrs_in_initializer(Initializer, !CodeAddrsInConsts)
-    ;
-        EntityDefn = mlds_class(ClassDefn),
-        ClassDefn = mlds_class_defn(_, _, _, _, _, Ctors, Members),
+        Defn = mlds_class(ClassDefn),
+        ClassDefn = mlds_class_defn(_, _, _, _, _, _, _, _, Ctors, Members),
         method_ptrs_in_defns(Ctors, !CodeAddrsInConsts),
         method_ptrs_in_defns(Members, !CodeAddrsInConsts)
     ).

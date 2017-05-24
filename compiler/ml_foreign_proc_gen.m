@@ -26,13 +26,13 @@
 :- import_module list.
 
 :- pred ml_gen_trace_runtime_cond(trace_expr(trace_runtime)::in,
-    prog_context::in, list(mlds_defn)::out, list(statement)::out,
+    prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_gen_ordinary_pragma_foreign_proc(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_defn)::out, list(statement)::out,
+    prog_context::in, list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -64,9 +64,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-ml_gen_trace_runtime_cond(TraceRuntimeCond, Context, Decls, Statements,
-        !Info) :-
-    Decls = [],
+ml_gen_trace_runtime_cond(TraceRuntimeCond, Context, Statements, !Info) :-
     MLDSContext = mlds_make_context(Context),
     ml_success_lval(!.Info, SuccessLval),
     ml_generate_runtime_cond_code(TraceRuntimeCond, CondRval, !Info),
@@ -175,7 +173,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
     mlds_target_lang::in(java_or_csharp), ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_defn)::out, list(statement)::out,
+    prog_context::in, list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
@@ -283,7 +281,7 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
 :- pred ml_gen_ordinary_pragma_managed_proc(ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_defn)::out, list(statement)::out,
+    prog_context::in, list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pragma consider_used(ml_gen_ordinary_pragma_managed_proc/12).
 
@@ -429,7 +427,7 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
 :- pred ml_gen_ordinary_pragma_c_proc(ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_defn)::out, list(statement)::out,
+    prog_context::in, list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
@@ -885,7 +883,7 @@ input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
 
 :- pred ml_gen_pragma_csharp_java_output_arg_list(mutable_special_case::in,
     list(foreign_arg)::in, prog_context::in, list(statement)::out,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_csharp_java_output_arg_list(_, [], _, [], [], [], !Info).
@@ -905,7 +903,7 @@ ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, [JavaArg | JavaArgs],
     %
 :- pred ml_gen_pragma_csharp_java_output_arg(mutable_special_case::in,
     foreign_arg::in, prog_context::in, list(statement)::out,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
@@ -956,7 +954,7 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
 
 :- pred ml_gen_pragma_c_output_arg_list(list(foreign_arg)::in,
     prog_context::in, list(target_code_component)::out,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_output_arg_list([], _, [], [], [], !Info).
@@ -975,7 +973,7 @@ ml_gen_pragma_c_output_arg_list([ForeignArg | ForeignArgs], Context,
     %
 :- pred ml_gen_pragma_c_output_arg(foreign_arg::in,
     prog_context::in, list(target_code_component)::out,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
@@ -1001,7 +999,7 @@ ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
 :- pred ml_gen_pragma_c_gen_output_arg(prog_var::in,
     string::in, mer_type::in, box_policy::in, prog_context::in,
     list(target_code_component)::out,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,

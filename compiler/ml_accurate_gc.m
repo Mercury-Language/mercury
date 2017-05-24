@@ -103,6 +103,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module counter.
 :- import_module int.
 :- import_module list.
@@ -359,7 +360,9 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     MLDS_NonLocalVarDecls = list.map(GenLocalVarDecl, NonLocalVarList),
 
     % Combine the MLDS code fragments together.
-    GC_TraceCode = ml_gen_block(MLDS_NewobjLocals ++ MLDS_NonLocalVarDecls,
+    % XXX MLDS_DEFN
+    GC_TraceCode = ml_gen_block(
+        list.map(wrap_data_defn, MLDS_NewobjLocals ++ MLDS_NonLocalVarDecls),
         [MLDS_TypeInfoStatement, MLDS_TraceStatement], Context).
 
     % ml_gen_trace_var(VarName, DeclType, TypeInfo, Context, Code):
@@ -442,7 +445,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
                 fnoi_context        :: mlds_context,
 
                 % The local variable declarations accumulated so far.
-                fnoi_locals         :: list(mlds_defn),
+                fnoi_locals         :: cord(mlds_data_defn),
 
                 % A counter used to allocate variable names.
                 fnoi_next_id        :: counter
@@ -454,14 +457,14 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     % allocation.
     %
 :- pred fixup_newobj(statement::in, mlds_module_name::in,
-     statement::out, list(mlds_defn)::out) is det.
+     statement::out, list(mlds_data_defn)::out) is det.
 
 fixup_newobj(Statement0, ModuleName, Statement, Defns) :-
     Statement0 = statement(Stmt0, Context),
-    Info0 = fixup_newobj_info(ModuleName, Context, [], counter.init(0)),
+    Info0 = fixup_newobj_info(ModuleName, Context, cord.init, counter.init(0)),
     fixup_newobj_in_stmt(Stmt0, Stmt, Info0, Info),
     Statement = statement(Stmt, Context),
-    Defns = Info ^ fnoi_locals.
+    Defns = cord.to_list(Info ^ fnoi_locals).
 
 :- pred fixup_newobj_in_statement(statement::in, statement::out,
     fixup_newobj_info::in, fixup_newobj_info::out) is det.
@@ -581,9 +584,12 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         VarDecl = ml_gen_mlds_var_decl_init(mlds_data_var(VarName), VarType,
             Initializer, GCStatement, Context),
         !Fixup ^ fnoi_next_id := NextId,
+
         % XXX We should keep a more structured representation of the local
         % variables, such as a map from variable names.
-        !Fixup ^ fnoi_locals := !.Fixup ^ fnoi_locals ++ [VarDecl],
+        Locals0 = !.Fixup ^ fnoi_locals,
+        Locals = cord.snoc(Locals0, VarDecl),
+        !Fixup ^ fnoi_locals := Locals,
 
         % Generate code to initialize the variable.
         %

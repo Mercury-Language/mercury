@@ -38,14 +38,15 @@
 :- pred add_rtti_data_to_mlds(module_info::in, rtti_data::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-    % Given a list of MLDS RTTI data definitions (only), return the definitions
+    % Given a list of MLDS RTTI data definitions, return the definitions
     % such that if X appears in the initialiser for Y then X appears earlier in
     % the list than Y.
     %
     % This function returns a list of cliques so that problems with ordering
     % within cliques, if any, may be easier to discover.
     %
-:- func order_mlds_rtti_defns(list(mlds_defn)) = list(list(mlds_defn)).
+:- func order_mlds_rtti_defns(list(mlds_data_defn)) =
+    list(list(mlds_data_defn)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -133,10 +134,10 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
 
     % Generate the declaration body, i.e. the type and the initializer.
     MLDS_Type = mlds_rtti_type(item_type(RttiId)),
-    DefnBody = mlds_data(mlds_data_defn(MLDS_Type, Initializer, GCStatement)),
-    Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody),
+    DataDefn = mlds_data_defn(Name, MLDS_Context, Flags,
+        MLDS_Type, Initializer, GCStatement),
 
-    ml_global_data_add_flat_rtti_defn(Defn, !GlobalData).
+    ml_global_data_add_flat_rtti_defn(DataDefn, !GlobalData).
 
     % Return the declaration flags appropriate for an rtti_data.
     %
@@ -1665,9 +1666,11 @@ gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
         term.context_init(Context),
         ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumExtra, Context,
             WrapperFuncRval, WrapperFuncType, !Info),
-        ml_gen_info_get_closure_wrapper_defns(!.Info, ExtraDefns),
+        ml_gen_info_get_closure_wrapper_defns(!.Info, ClosureWrapperDefns),
         ml_gen_info_get_global_data(!.Info, !:GlobalData),
-        ml_global_data_add_maybe_nonflat_defns(ExtraDefns, !GlobalData),
+        ml_global_data_add_maybe_nonflat_defns(
+            list.map(wrap_function_defn, ClosureWrapperDefns),
+            !GlobalData),
 
         % The initializer for the wrapper is just the wrapper function's
         % address, converted to mlds_generic_type (by boxing).
@@ -1765,33 +1768,33 @@ order_mlds_rtti_defns(Defns) = OrdDefns :-
     list.map(set.to_sorted_list, OrdSets, OrdLists),
     list.map(list.filter_map(map.search(NameMap)), OrdLists, OrdDefns).
 
-:- pred add_rtti_defn_nodes(mlds_defn::in,
+:- pred add_rtti_defn_nodes(mlds_data_defn::in,
     digraph(mlds_data_name)::in, digraph(mlds_data_name)::out,
-    map(mlds_data_name, mlds_defn)::in, map(mlds_data_name, mlds_defn)::out)
-    is det.
+    map(mlds_data_name, mlds_data_defn)::in,
+    map(mlds_data_name, mlds_data_defn)::out) is det.
 
-add_rtti_defn_nodes(Defn, !Graph, !NameMap) :-
-    Name = Defn ^ md_entity_name,
+add_rtti_defn_nodes(DataDefn, !Graph, !NameMap) :-
+    Name = DataDefn ^ mdd_entity_name,
     (
         Name = entity_data(DataName),
         digraph.add_vertex(DataName, _, !Graph),
-        map.det_insert(DataName, Defn, !NameMap)
+        map.det_insert(DataName, DataDefn, !NameMap)
     ;
         ( Name = entity_type(_, _)
         ; Name = entity_function(_, _, _, _)
         ; Name = entity_export(_)
         ),
+        % XXX MLDS_DEFN
         unexpected($module, $pred, "expected entity_data")
     ).
 
-:- pred add_rtti_defn_arcs(mlds_defn::in,
+:- pred add_rtti_defn_arcs(mlds_data_defn::in,
     digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
 
-add_rtti_defn_arcs(Defn, !Graph) :-
-    Defn = mlds_defn(EntityName, _, _, EntityDefn),
+add_rtti_defn_arcs(DataDefn, !Graph) :-
+    DataDefn = mlds_data_defn(EntityName, _, _, Type, Initializer, _GCStmt),
     ( if
         EntityName = entity_data(DefnDataName),
-        EntityDefn = mlds_data(mlds_data_defn(Type, Initializer, _GCStmt)),
         Type = mlds_rtti_type(_)
     then
         add_rtti_defn_arcs_initializer(DefnDataName, Initializer, !Graph)

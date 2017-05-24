@@ -257,10 +257,13 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         ml_combine_conj(CodeModel, Context, DoGenCall,
             DoGenConvOutputAndSucceed, CallAndConvOutputDecls,
             CallAndConvOutputStatements, !Info),
-        Decls0 = ConvArgDecls ++ CallAndConvOutputDecls,
+        % XXX MLDS_DEFN
+        Decls0 = list.map(wrap_data_defn, ConvArgDecls) ++
+            CallAndConvOutputDecls,
         Statements0 = CallAndConvOutputStatements
     ),
-    Decls = [FuncVarDecl | Decls0],
+    % XXX MLDS_DEFN
+    Decls = [mlds_data(FuncVarDecl) | Decls0],
     Statements = [AssignFuncVar | Statements0].
 
     % Generate MLDS code for a cast. The list of argument variables
@@ -400,7 +403,9 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
         ml_combine_conj(CodeModel, Context, DoGenCall,
             DoGenConvOutputAndSucceed, CallAndConvOutputDecls,
             CallAndConvOutputStatements, !Info),
-        Decls = ConvArgDecls ++ CallAndConvOutputDecls,
+        % XXX MLDS_DEFN
+        Decls = list.map(wrap_data_defn, ConvArgDecls) ++
+            CallAndConvOutputDecls,
         Statements = CallAndConvOutputStatements
     ).
 
@@ -461,7 +466,8 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
             NondetCopyOut = no,
             RetLvals = RetLvals0
         ),
-        Decls = ContDecls
+        % XXX MLDS_DEFN
+        Decls = list.map(wrap_function_defn, ContDecls)
     ;
         CodeModel = model_semi,
         % Return a bool indicating whether or not it succeeded.
@@ -498,7 +504,7 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
     Statements = [Statement].
 
 :- pred ml_gen_success_cont(list(mlds_type)::in, list(mlds_lval)::in,
-    prog_context::in, success_cont::out, list(mlds_defn)::out,
+    prog_context::in, success_cont::out, list(mlds_function_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
@@ -618,7 +624,7 @@ ml_gen_copy_args_to_locals_loop(_Info, [_ | _], [], _, _, _) :-
     list(mer_type)::in, list(mer_type)::in, list(mer_mode)::in,
     pred_or_func::in, code_model::in, prog_context::in, bool::in, int::in,
     list(mlds_rval)::out, list(mlds_lval)::out, list(mlds_type)::out,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,

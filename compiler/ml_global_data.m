@@ -102,7 +102,8 @@
 :- pred ml_global_data_get_all_global_defns(ml_global_data::in,
     ml_scalar_cell_map::out, ml_vector_cell_map::out,
     assoc_list(mlds_alloc_id, ml_alloc_site_data)::out,
-    list(mlds_defn)::out) is det.
+    list(mlds_data_defn)::out, list(mlds_defn)::out,
+    list(mlds_data_defn)::out) is det.
 
     % This type maps the names of rtti data structures that have already been
     % generated to the rval that refers to that data structure, and its type.
@@ -154,9 +155,9 @@
     % definitions (definitions for which ml_elim_nested is an identity
     % operation), while some have no such guarantee.
     %
-:- pred ml_global_data_add_flat_rtti_defn(mlds_defn::in,
+:- pred ml_global_data_add_flat_rtti_defn(mlds_data_defn::in,
     ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_add_flat_rtti_defns(list(mlds_defn)::in,
+:- pred ml_global_data_add_flat_rtti_defns(list(mlds_data_defn)::in,
     ml_global_data::in, ml_global_data::out) is det.
 :- pred ml_global_data_add_maybe_nonflat_defns(list(mlds_defn)::in,
     ml_global_data::in, ml_global_data::out) is det.
@@ -237,8 +238,14 @@
                 mgd_use_common_cells            :: use_common_cells,
                 mgd_have_unboxed_floats         :: have_unboxed_floats,
                 mgd_const_counter               :: counter,
-                mgd_flat_cell_defns             :: cord(mlds_defn),
-                mgd_flat_rtti_defns             :: cord(mlds_defn),
+
+                mgd_flat_cell_defns             :: cord(mlds_data_defn),
+                mgd_flat_rtti_defns             :: cord(mlds_data_defn),
+                % The only nonflat definitions added to the global data
+                % during code generation are wrapper functions,
+                % but ml_elim_nested can hoist other kinds of entities,
+                % such as classes, out of them, and it will put them
+                % back into this field.
                 mgd_maybe_nonflat_defns         :: cord(mlds_defn),
 
                 mgd_cell_type_counter           :: counter,
@@ -265,10 +272,11 @@ ml_global_data_have_unboxed_floats(GlobalData) =
     GlobalData ^ mgd_have_unboxed_floats.
 
 ml_global_data_get_all_global_defns(GlobalData,
-        ScalarCellGroupMap, VectorCellGroupMap, AllocIds, Defns) :-
+        ScalarCellGroupMap, VectorCellGroupMap, AllocIds,
+        FlatRttiDefns, MaybeNonFlatDefns, FlatCellDefns) :-
     GlobalData = ml_global_data(_PDupRvalTypeMap, _UseCommonCells,
         _HaveUnboxedFloats, _ConstCounter,
-        FlatCellDefns, FlatRttiDefns, MaybeNonFlatDefns,
+        FlatCellDefnsCord, FlatRttiDefnsCord, MaybeNonFlatDefnsCord,
         _TypeNumCounter,
         _ScalarTypeNumMap, ScalarCellGroupMap,
         _VectorTypeNumMap, VectorCellGroupMap,
@@ -281,7 +289,15 @@ ml_global_data_get_all_global_defns(GlobalData,
     % FlatCellDefns can refer to either of the previous two groups,
     % which cannot refer back, so FlatCellDefns should definitely be listed
     % last.
-    Defns = cord.to_list(FlatRttiDefns ++ MaybeNonFlatDefns ++ FlatCellDefns).
+    %
+    % Defns = cord.to_list(FlatRttiDefns ++ MaybeNonFlatDefns ++ FlatCellDefns)
+    %
+    % XXX The MaybeNonFlatDefns contain wrapper functions, NOT type_infos
+    % and pseudo_type_infos.
+
+    FlatRttiDefns = cord.to_list(FlatRttiDefnsCord),
+    MaybeNonFlatDefns = cord.to_list(MaybeNonFlatDefnsCord),
+    FlatCellDefns = cord.to_list(FlatCellDefnsCord).
 
 %-----------------------------------------------------------------------------%
 %
@@ -291,17 +307,17 @@ ml_global_data_get_all_global_defns(GlobalData,
 :- pred ml_global_data_get_const_counter(ml_global_data::in,
     counter::out) is det.
 :- pred ml_global_data_get_flat_cell_defns(ml_global_data::in,
-    cord(mlds_defn)::out) is det.
+    cord(mlds_data_defn)::out) is det.
 :- pred ml_global_data_get_flat_rtti_defns(ml_global_data::in,
-    cord(mlds_defn)::out) is det.
+    cord(mlds_data_defn)::out) is det.
 
 :- pred ml_global_data_set_pdup_rval_type_map(ml_rtti_rval_type_map::in,
     ml_global_data::in, ml_global_data::out) is det.
 :- pred ml_global_data_set_const_counter(counter::in,
     ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_set_flat_cell_defns(cord(mlds_defn)::in,
+:- pred ml_global_data_set_flat_cell_defns(cord(mlds_data_defn)::in,
     ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_set_flat_rtti_defns(cord(mlds_defn)::in,
+:- pred ml_global_data_set_flat_rtti_defns(cord(mlds_data_defn)::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 ml_global_data_get_pdup_rval_type_map(GlobalData, X) :-
@@ -463,14 +479,13 @@ ml_gen_plain_static_defn(ConstVarKind, ConstType,
     % The GC never needs to trace static constants, because they can never
     % point into the heap; they can point only to other static constants.
     GCStatement = gc_no_stmt,
-    EntityDefn =
-        mlds_data(mlds_data_defn(ConstType, Initializer, GCStatement)),
     DeclFlags = mlds.set_access(ml_static_const_decl_flags, acc_private),
     MLDS_Context = mlds_make_context(Context),
-    Defn = mlds_defn(EntityName, MLDS_Context, DeclFlags, EntityDefn),
+    DataDefn = mlds_data_defn(EntityName, MLDS_Context, DeclFlags,
+        ConstType, Initializer, GCStatement),
 
     ml_global_data_get_flat_cell_defns(!.GlobalData, FlatCellDefns0),
-    FlatCellDefns = cord.snoc(FlatCellDefns0, Defn),
+    FlatCellDefns = cord.snoc(FlatCellDefns0, DataDefn),
     ml_global_data_set_flat_cell_defns(FlatCellDefns, !GlobalData).
 
 :- pred ml_maybe_specialize_generic_array_type(mlds_type::in, mlds_type::out,
@@ -661,17 +676,18 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
             unexpected($module, $pred, "unsupported target language")
         ),
 
-        ClassDefn = mlds_class_defn(ClassKind, [], [], [], [], CtorDefns,
-            FieldDefns),
         StructTypeName = "vector_common_type_" ++ TypeRawNumStr,
         StructTypeEntityName = entity_type(StructTypeName, 0),
-        StructTypeEntityDefn = mlds_class(ClassDefn),
         % The "modifiable" is only to shut up a gcc warning about constant
         % fields.
         StructTypeFlags = init_decl_flags(acc_private, one_copy,
             non_virtual, sealed, modifiable, concrete),
-        StructTypeDefn = mlds_defn(StructTypeEntityName, MLDS_Context,
-            StructTypeFlags, StructTypeEntityDefn),
+        % XXX MLDS_DEFN
+        ClassDefn = mlds_class_defn(StructTypeEntityName, MLDS_Context,
+            StructTypeFlags, ClassKind, [], [], [], [], CtorDefns,
+            list.map(wrap_data_defn, FieldDefns)),
+        StructTypeDefn = mlds_class(ClassDefn),
+
         QualStructTypeName =
             qual(MLDS_ModuleName, module_qual, StructTypeName),
         StructType = mlds_class_type(QualStructTypeName, 0, mlds_struct),
@@ -691,22 +707,20 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
 
 :- pred ml_gen_vector_cell_field_types(mlds_context::in, mlds_decl_flags::in,
     int::in, int::in, list(mlds_type)::in,
-    list(mlds_var_name)::out, list(mlds_defn)::out, list(mlds_field_info)::out)
-    is det.
+    list(mlds_var_name)::out, list(mlds_data_defn)::out,
+    list(mlds_field_info)::out) is det.
 
 ml_gen_vector_cell_field_types(_, _, _, _, [], [], [], []).
 ml_gen_vector_cell_field_types(MLDS_Context, Flags, TypeRawNum, FieldNum,
         [Type | Types], [FieldVarName | FieldVarNames],
-        [FieldDefn | FieldDefns], [FieldInfo | FieldInfos]) :-
+        [FieldDataDefn | FieldDataDefns], [FieldInfo | FieldInfos]) :-
     FieldVarName = mlds_comp_var(mcv_global_data_field(TypeRawNum, FieldNum)),
     FieldEntityName = entity_data(mlds_data_var(FieldVarName)),
-    FieldEntityDefn =
-        mlds_data(mlds_data_defn(Type, no_initializer, gc_no_stmt)),
-    FieldDefn = mlds_defn(FieldEntityName, MLDS_Context, Flags,
-        FieldEntityDefn),
+    FieldDataDefn = mlds_data_defn(FieldEntityName, MLDS_Context, Flags,
+        Type, no_initializer, gc_no_stmt),
     FieldInfo = mlds_field_info(FieldVarName, Type, gc_no_stmt, MLDS_Context),
     ml_gen_vector_cell_field_types(MLDS_Context, Flags, TypeRawNum,
-        FieldNum + 1, Types, FieldVarNames, FieldDefns, FieldInfos).
+        FieldNum + 1, Types, FieldVarNames, FieldDataDefns, FieldInfos).
 
 :- pred make_named_fields(mlds_module_name::in, mlds_type::in,
     list(mlds_var_name)::in, list(mlds_field_id)::out) is det.

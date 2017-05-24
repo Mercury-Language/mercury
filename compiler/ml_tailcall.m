@@ -104,7 +104,7 @@
 %-----------------------------------------------------------------------------%
 
 ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
-    Defns0 = !.MLDS ^ mlds_defns,
+    Defns0 = !.MLDS ^ mlds_proc_defns,
     ModuleName = mercury_module_name_to_mlds(!.MLDS ^ mlds_name),
     globals.lookup_bool_option(Globals, warn_non_tail_recursion_self,
         WarnTailCallsBool),
@@ -117,7 +117,7 @@ ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
     ),
     mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
         Defns0, Defns, [], Specs),
-    !MLDS ^ mlds_defns := Defns.
+    !MLDS ^ mlds_proc_defns := Defns.
 
 %-----------------------------------------------------------------------------%
 
@@ -240,11 +240,14 @@ mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
 
 mark_tailcalls_in_defn(ModuleInfo, ModuleName, WarnTailCalls,
         Defn0, Defn, !Specs) :-
-    Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        DefnBody0 = mlds_function(FunctionDefn0),
-        FunctionDefn0 = mlds_function_defn(MaybePredProcId, Params, FuncBody0,
-            Attributes, EnvVarNames, MaybeRequireTailrecInfo),
+        Defn0 = mlds_data(_),
+        Defn = Defn0
+    ;
+        Defn0 = mlds_function(FunctionDefn0),
+        FunctionDefn0 = mlds_function_defn(Name, Context, Flags,
+            MaybePredProcId, Params, FuncBody0, Attributes,
+            EnvVarNames, MaybeRequireTailrecInfo),
         % Compute the initial values of the `Locals' and `AtTail' arguments.
         Params = mlds_func_params(Args, RetTypes),
         Locals = [local_params(Args)],
@@ -267,25 +270,23 @@ mark_tailcalls_in_defn(ModuleInfo, ModuleName, WarnTailCalls,
             MaybePredInfo, Locals, WarnTailCalls, MaybeRequireTailrecInfo),
         mark_tailcalls_in_function_body(TCallInfo, AtTail,
             FuncBody0, FuncBody, !Specs),
-        FunctionDefn = mlds_function_defn(MaybePredProcId, Params, FuncBody,
-            Attributes, EnvVarNames, MaybeRequireTailrecInfo),
-        DefnBody = mlds_function(FunctionDefn),
-        Defn = mlds_defn(Name, Context, Flags, DefnBody)
+        FunctionDefn = mlds_function_defn(Name, Context, Flags,
+            MaybePredProcId, Params, FuncBody, Attributes,
+            EnvVarNames, MaybeRequireTailrecInfo),
+        Defn = mlds_function(FunctionDefn)
     ;
-        DefnBody0 = mlds_data(_),
-        Defn = Defn0
-    ;
-        DefnBody0 = mlds_class(ClassDefn0),
-        ClassDefn0 = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
+        Defn0 = mlds_class(ClassDefn0),
+        ClassDefn0 = mlds_class_defn(Name, Context, Flags, Kind,
+            Imports, BaseClasses, Implements,
             TypeParams, CtorDefns0, MemberDefns0),
         mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
             CtorDefns0, CtorDefns, !Specs),
         mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
             MemberDefns0, MemberDefns, !Specs),
-        ClassDefn = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
+        ClassDefn = mlds_class_defn(Name, Context, Flags, Kind,
+            Imports, BaseClasses, Implements,
             TypeParams, CtorDefns, MemberDefns),
-        DefnBody = mlds_class(ClassDefn),
-        Defn = mlds_defn(Name, Context, Flags, DefnBody)
+        Defn = mlds_class(ClassDefn)
     ).
 
 :- pred mark_tailcalls_in_function_body(tailcall_info::in, at_tail::in,
@@ -960,7 +961,7 @@ locals_member(Name, LocalsList) :-
     (
         Locals = local_defns(Defns),
         list.member(Defn, Defns),
-        Defn = mlds_defn(Name, _, _, _)
+        Name = defn_entity_name(Defn)
     ;
         Locals = local_params(Params),
         list.member(Param, Params),

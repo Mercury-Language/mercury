@@ -51,35 +51,35 @@
 
 :- pred ml_generate_string_trie_jump_switch(mlds_rval::in,
     list(tagged_case)::in, code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_trie_lookup_switch(mlds_rval::in,
     list(tagged_case)::in, ml_lookup_switch_info::in,
     code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_hash_jump_switch(mlds_rval::in,
     list(tagged_case)::in, code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_hash_lookup_switch(mlds_rval::in,
     list(tagged_case)::in, ml_lookup_switch_info::in,
     code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_binary_jump_switch(mlds_rval::in,
     list(tagged_case)::in, code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_binary_lookup_switch(mlds_rval::in,
     list(tagged_case)::in, ml_lookup_switch_info::in,
     code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -168,7 +168,8 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         CaseNumDefault),
     CaseSwitchStatement = statement(CaseSwitchStmt, MLDS_Context),
 
-    Stmt = ml_stmt_block([CaseNumVarDefn],
+    % XXX MLDS_DEFN
+    Stmt = ml_stmt_block([mlds_data(CaseNumVarDefn)],
         [InitCaseNumVarStatement, GetCaseNumSwitchStatement,
         CaseSwitchStatement]),
     Statements = [statement(Stmt, MLDS_Context)],
@@ -208,11 +209,11 @@ ml_generate_string_trie_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred ml_generate_string_trie_simple_lookup_switch(int::in,
-    mlds_lval::in, mlds_defn::in, statement::in, statement::in,
+    mlds_lval::in, mlds_data_defn::in, statement::in, statement::in,
     assoc_list(case_id, list(mlds_rval))::in,
     list(prog_var)::in, list(mlds_type)::in,
     code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
@@ -289,7 +290,7 @@ ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
         ResultStatement = statement(ResultStmt, MLDS_Context)
     ),
 
-    Stmt = ml_stmt_block([CaseNumVarDefn],
+    Stmt = ml_stmt_block([mlds_data(CaseNumVarDefn)],
         [InitCaseNumVarStatement, GetCaseNumSwitchStatement, ResultStatement]),
     Statements = [statement(Stmt, MLDS_Context)],
     Defns = [].
@@ -316,10 +317,10 @@ ml_gen_string_trie_simple_lookup_slots(StructType,
 %-----------------------------------------------------------------------------%
 
 :- pred ml_generate_string_trie_several_soln_lookup_switch(int::in,
-    mlds_lval::in, mlds_defn::in, statement::in, statement::in,
+    mlds_lval::in, mlds_data_defn::in, statement::in, statement::in,
     assoc_list(case_id, soln_consts(mlds_rval))::in,
     list(prog_var)::in, list(mlds_type)::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
@@ -376,7 +377,9 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
         FirstSolnOutFieldIds, LaterSolnOutFieldIds,
         FirstSolnVectorCommon, LaterSolnVectorCommon, dont_need_bit_vec_check,
         MatchDefns, SuccessStatements, !Info),
-    SuccessBlockStmt = ml_stmt_block(MatchDefns, SuccessStatements),
+    % XXX MLDS_DEFN
+    SuccessBlockStmt = ml_stmt_block(list.map(wrap_data_defn, MatchDefns),
+        SuccessStatements),
     SuccessBlockStatement = statement(SuccessBlockStmt, MLDS_Context),
     (
         CanFail = can_fail,
@@ -389,7 +392,7 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
         CanFail = cannot_fail,
         ResultStatement = SuccessBlockStatement
     ),
-    Stmt = ml_stmt_block([CaseNumVarDefn],
+    Stmt = ml_stmt_block([mlds_data(CaseNumVarDefn)],
         [InitCaseNumVarStatement, GetCaseNumSwitchStatement, ResultStatement]),
     Statements = [statement(Stmt, MLDS_Context)],
     Defns = [].
@@ -475,7 +478,7 @@ ml_gen_string_trie_several_soln_lookup_slots(
             ).
 
 :- pred create_nested_switch_trie(list(tagged_case)::in, mlds_context::in,
-    mlds_rval::in, int::out, mlds_lval::out, mlds_defn::out,
+    mlds_rval::in, int::out, mlds_lval::out, mlds_data_defn::out,
     statement::out, statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 create_nested_switch_trie(TaggedCases, MLDS_Context, VarRval, MaxCaseNum,
@@ -587,7 +590,7 @@ insert_case_into_trie_choice(InsertMatched, InsertNotYetMatched, InsertCaseId,
     %   int         case_num = -1;
     %
 :- pred ml_gen_trie_case_num_var_and_init(mlds_context::in,
-    mlds_lval::out, mlds_defn::out, statement::out,
+    mlds_lval::out, mlds_data_defn::out, statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_trie_case_num_var_and_init(MLDS_Context, CaseNumVarLval, CaseNumVarDefn,
@@ -1057,7 +1060,7 @@ ml_generate_string_hash_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
 :- pred ml_generate_string_hash_simple_lookup_switch(mlds_rval::in,
     assoc_list(string, list(mlds_rval))::in, code_model::in, can_fail::in,
     list(prog_var)::in, list(mlds_type)::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
@@ -1207,7 +1210,7 @@ ml_gen_string_hash_simple_lookup_slot(Slot, StructType, HashSlotMap,
     assoc_list(string, soln_consts(mlds_rval))::in,
     code_model::in, can_fail::in,
     list(prog_var)::in, list(mlds_type)::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
@@ -1413,7 +1416,7 @@ ml_gen_string_hash_several_soln_lookup_slot(Slot, HashSlotMap,
                 mhsi_string_var                 :: mlds_lval,
                 mhsi_stop_loop_var              :: maybe(mlds_lval),
                 mhsi_fail_statements            :: list(statement),
-                mhsi_defns                      :: list(mlds_defn)
+                mhsi_defns                      :: list(mlds_data_defn)
             ).
 
 :- pred ml_gen_string_hash_switch_search_vars(code_model::in, can_fail::in,
@@ -1460,7 +1463,7 @@ ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
     ml_hash_search_info::in, unary_op::in,
     mlds_vector_common::in, mlds_type::in,
     mlds_field_id::in, maybe(mlds_field_id)::in, int::in,
-    list(mlds_defn)::in, list(statement)::in, list(statement)::out,
+    list(mlds_data_defn)::in, list(statement)::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_string_hash_switch_search(MLDS_Context, InitialComment,
@@ -1732,7 +1735,7 @@ ml_generate_string_binary_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
     assoc_list(string, list(mlds_rval))::in, code_model::in, can_fail::in,
     list(prog_var)::in, list(mlds_type)::in,
     prog_context::in, mlds_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_string_binary_simple_lookup_switch(VarRval, CaseValues0,
@@ -1818,7 +1821,7 @@ ml_gen_string_binary_simple_lookup_initializers([Str - Rvals | StrRvals],
     code_model::in, can_fail::in,
     list(prog_var)::in, list(mlds_type)::in,
     prog_context::in, mlds_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns0,
@@ -1954,7 +1957,7 @@ ml_gen_string_binary_several_lookup_initializers([Str - Solns | StrSolns],
                 mbsi_result_var             :: mlds_lval,
                 mbsi_stop_loop_var          :: maybe(mlds_lval),
                 mbsi_fail_statements        :: list(statement),
-                mbsi_defns                  :: list(mlds_defn)
+                mbsi_defns                  :: list(mlds_data_defn)
             ).
 
 :- pred ml_gen_string_binary_switch_search_vars(code_model::in, can_fail::in,
@@ -2010,7 +2013,7 @@ ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
 
 :- pred ml_gen_string_binary_switch_search(mlds_context::in, string::in,
     ml_binary_search_info::in, mlds_vector_common::in, int::in, mlds_type::in,
-    mlds_field_id::in, list(mlds_defn)::in, list(statement)::in,
+    mlds_field_id::in, list(mlds_data_defn)::in, list(statement)::in,
     list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_string_binary_switch_search(MLDS_Context, InitialComment,
@@ -2124,7 +2127,7 @@ ml_gen_string_binary_switch_search(MLDS_Context, InitialComment,
 %
 
 :- pred ml_should_use_stop_loop(mlds_context::in, bool::in,
-    maybe(mlds_lval)::out, list(mlds_defn)::out,
+    maybe(mlds_lval)::out, list(mlds_data_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_should_use_stop_loop(MLDS_Context, LoopPresent,
@@ -2214,7 +2217,7 @@ ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, FailStatements,
     % on a match.
     %
 :- pred ml_wrap_loop_break(code_model::in, bool::in, mlds_context::in,
-    maybe(mlds_lval)::in, list(mlds_defn)::in, list(statement)::in,
+    maybe(mlds_lval)::in, list(mlds_data_defn)::in, list(statement)::in,
     list(statement)::in,
     list(statement)::out, statement::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -2255,8 +2258,11 @@ ml_wrap_loop_break(CodeModel, LoopPresent, MLDS_Context, MaybeStopLoopVarLval,
             LoopPresent = no,
             OnlyFailAfterStatements = []
         then
+            % XXX MLDS_DEFN
             BodyStatement =
-                statement(ml_stmt_block(MatchDefns, MatchStatements),
+                statement(
+                    ml_stmt_block(list.map(wrap_data_defn, MatchDefns),
+                        MatchStatements),
                     MLDS_Context),
             AfterStatements = []
         else
@@ -2275,7 +2281,9 @@ ml_wrap_loop_break(CodeModel, LoopPresent, MLDS_Context, MaybeStopLoopVarLval,
                 BreakStatement =
                     statement(ml_stmt_goto(goto_break), MLDS_Context),
                 BodyStatement =
-                    statement(ml_stmt_block(MatchDefns,
+                    % XXX MLDS_DEFN
+                    statement(ml_stmt_block(
+                        list.map(wrap_data_defn, MatchDefns),
                         MatchStatements ++
                             [BreakCommentStatement, BreakStatement]),
                         MLDS_Context),
@@ -2287,8 +2295,10 @@ ml_wrap_loop_break(CodeModel, LoopPresent, MLDS_Context, MaybeStopLoopVarLval,
                 GotoEndStatement =
                     statement(ml_stmt_goto(goto_label(EndLabel)),
                         MLDS_Context),
+                % XXX MLDS_DEFN
                 BodyStatement =
-                    statement(ml_stmt_block(MatchDefns,
+                    statement(ml_stmt_block(
+                        list.map(wrap_data_defn, MatchDefns),
                         MatchStatements ++
                             [GotoCommentStatement, GotoEndStatement]),
                         MLDS_Context),
@@ -2304,16 +2314,19 @@ ml_wrap_loop_break(CodeModel, LoopPresent, MLDS_Context, MaybeStopLoopVarLval,
             LoopPresent = no,
             OnlyFailAfterStatements = []
         then
+            % XXX MLDS_DEFN
             BodyStatement =
-                statement(ml_stmt_block(MatchDefns, MatchStatements),
+                statement(ml_stmt_block(list.map(wrap_data_defn, MatchDefns),
+                    MatchStatements),
                     MLDS_Context)
         else
             SetStopLoopStatement =
                 statement(ml_stmt_atomic(
                     assign(StopLoopVarLval, ml_const(mlconst_int(1)))),
                     MLDS_Context),
+            % XXX MLDS_DEFN
             BodyStatement =
-                statement(ml_stmt_block(MatchDefns,
+                statement(ml_stmt_block(list.map(wrap_data_defn, MatchDefns),
                     MatchStatements ++ [SetStopLoopStatement]),
                     MLDS_Context)
         ),

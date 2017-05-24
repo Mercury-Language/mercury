@@ -274,10 +274,11 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
                 Context)
         ),
         TryCommitStatement = statement(TryCommitStmt, MLDS_Context),
-        CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc],
+        CommitFuncLocalDecls =
+            [mlds_data(CommitRefDecl), mlds_function(SuccessFunc)],
         maybe_put_commit_in_own_func(CommitFuncLocalDecls,
             [TryCommitStatement], Context, CommitFuncDecls, Statements, !Info),
-        Decls = LocalVarDecls ++ CommitFuncDecls,
+        Decls = list.map(wrap_data_defn, LocalVarDecls) ++ CommitFuncDecls,
 
         ml_gen_info_set_var_lvals(OrigVarLvalMap, !Info)
     else if
@@ -343,10 +344,11 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
         TryCommitStmt = ml_stmt_try_commit(CommitRefLval, GoalStatement,
             ml_gen_block([], CopyLocalsToOutputArgs, Context)),
         TryCommitStatement = statement(TryCommitStmt, MLDS_Context),
-        CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc],
+        CommitFuncLocalDecls =
+            [mlds_data(CommitRefDecl), mlds_function(SuccessFunc)],
         maybe_put_commit_in_own_func(CommitFuncLocalDecls,
             [TryCommitStatement], Context, CommitFuncDecls, Statements, !Info),
-        Decls = LocalVarDecls ++ CommitFuncDecls,
+        Decls = list.map(wrap_data_defn, LocalVarDecls) ++ CommitFuncDecls,
         ml_gen_info_set_var_lvals(OrigVarLvalMap, !Info)
     else
         % No commit required.
@@ -426,7 +428,7 @@ maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
         CallStatement = statement(CallStmt, mlds_make_context(Context)),
         % Package it all up.
         Statements = [CallStatement],
-        Decls = [CommitFunc]
+        Decls = [mlds_function(CommitFunc)]
     ;
         PutCommitInOwnFunc = no,
         Statements = TryCommitStatements,
@@ -441,7 +443,7 @@ maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
     % we will copy the local variables into the output arguments.
     %
 :- pred ml_gen_maybe_make_locals_for_output_args(hlds_goal_info::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(statement)::out,
     map(prog_var, mlds_lval)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -467,7 +469,7 @@ ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
     ).
 
 :- pred ml_gen_make_locals_for_output_args(list(prog_var)::in,
-    prog_context::in, list(mlds_defn)::out, list(statement)::out,
+    prog_context::in, list(mlds_data_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_make_locals_for_output_args([], _, [], [], !Info).
@@ -491,7 +493,7 @@ ml_gen_make_locals_for_output_args([Var | Vars], Context,
     ).
 
 :- pred ml_gen_make_local_for_output_arg(prog_var::in, mer_type::in,
-    prog_context::in, mlds_defn::out, statement::out,
+    prog_context::in, mlds_data_defn::out, statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
@@ -521,7 +523,7 @@ ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
 
     % Generate the declaration for the `commit' variable.
     %
-:- func ml_gen_commit_var_decl(mlds_context, mlds_var_name) = mlds_defn.
+:- func ml_gen_commit_var_decl(mlds_context, mlds_var_name) = mlds_data_defn.
 
 ml_gen_commit_var_decl(Context, VarName) =
     ml_gen_mlds_var_decl(mlds_data_var(VarName), mlds_commit_type, gc_no_stmt,

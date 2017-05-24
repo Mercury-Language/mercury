@@ -381,9 +381,20 @@
 
                 mlds_global_defns       :: ml_global_data,
 
-                % Definitions of code and non-global data.
-                % XXX Is there any non-global data?
-                mlds_defns              :: list(mlds_defn),
+                % Definitions of the classes that represent types
+                % with high level data.
+                mlds_type_defns         :: list(mlds_class_defn),
+
+                % Definitions of the structures that hold the tables
+                % of tabled procedures.
+                mlds_table_struct_defns :: list(mlds_data_defn),
+
+                % Definitions of the translated procedures.
+                % After code generation, this will contain only
+                % function definitions, but after ml_elim_nested,
+                % it may also contain the definitions of the types
+                % of environments.
+                mlds_proc_defns         :: list(mlds_defn),
 
                 % The names of init and final preds.
                 mlds_init_preds         :: list(string),
@@ -492,27 +503,6 @@
     %
 :- func wrapper_class_name = string.
 
-:- type mlds_defn
-    --->    mlds_defn(
-                % The name of the entity being declared.
-                md_entity_name          :: mlds_entity_name,
-
-                % The source location.
-                md_context              :: mlds_context,
-
-                % these contain the following:
-                % access,               % public/private/protected
-                % member_type,          % static/per_instance
-                % virtuality,           % virtual/non_virtual
-                % overridability,       % sealed/overridable (class/funcs only)
-                % constness,            % const/modifiable  (data only)
-                % is_abstract,          % abstract/concrete
-                % etc.
-                md_decl_flags           :: mlds_decl_flags,
-
-                md_entity_defn          :: mlds_entity_defn
-            ).
-
     % An mlds name may contain arbitrary characters.
     % If the target language has restrictions on what names can be used
     % in identifiers, then it is the responsibility of the target language
@@ -560,35 +550,6 @@
 
 :- type mlds_func_sequence_num == int.
 
-:- type mlds_data_defn
-    --->    mlds_data_defn(
-                mlds_type,
-                mlds_initializer,
-                % If accurate GC is enabled, we associate with each variable
-                % the code needed to initialise or trace that variable when
-                % doing GC (in the compiler-generated gc trace functions).
-                mlds_gc_statement
-            ).
-
-:- type mlds_function_defn
-    --->    mlds_function_defn(
-                % Identifies the original Mercury procedure, if any.
-                maybe(pred_proc_id),
-
-                % The arguments & return types.
-                mlds_func_params,
-
-                mlds_function_body,
-                list(mlds_attribute),
-
-                % The set of environment variables referred to
-                % by the function body.
-                set(string),
-
-                % Information used to generate tail recursion errors.
-                maybe(require_tail_recursion)
-            ).
-
     % This specifies information about some entity being defined
     % The entity may be any of the following:
     %   constant or variable
@@ -599,7 +560,7 @@
     %       struct (value class)
     %       enum
     %
-:- type mlds_entity_defn
+:- type mlds_defn
     --->    mlds_data(
                 % Represents a constant or variable.
                 mlds_data_defn
@@ -611,6 +572,48 @@
     ;       mlds_class(
                 % Represents packages, classes, interfaces, structs, enums.
                 mlds_class_defn
+            ).
+
+:- func wrap_data_defn(mlds_data_defn) = mlds_defn.
+:- func wrap_function_defn(mlds_function_defn) = mlds_defn.
+:- func wrap_class_defn(mlds_class_defn) = mlds_defn.
+
+:- type mlds_data_defn
+    --->    mlds_data_defn(
+                mdd_entity_name         :: mlds_entity_name,
+                mdd_context             :: mlds_context,
+                mdd_decl_flags          :: mlds_decl_flags,
+
+                mdd_type                :: mlds_type,
+                mdd_init                :: mlds_initializer,
+
+                % If accurate GC is enabled, we associate with each variable
+                % the code needed to initialise or trace that variable when
+                % doing GC (in the compiler-generated gc trace functions).
+                mdd_gc                  :: mlds_gc_statement
+            ).
+
+:- type mlds_function_defn
+    --->    mlds_function_defn(
+                mfd_entity_name         :: mlds_entity_name,
+                mfd_context             :: mlds_context,
+                mfd_decl_flags          :: mlds_decl_flags,
+
+                % Identifies the original Mercury procedure, if any.
+                mfd_orig_proc           :: maybe(pred_proc_id),
+
+                % The arguments & return types.
+                mfd_param               :: mlds_func_params,
+
+                mfd_body                :: mlds_function_body,
+                mfd_attributes          :: list(mlds_attribute),
+
+                % The set of environment variables referred to
+                % by the function body.
+                mfd_env_vars            :: set(string),
+
+                % Information used to generate tail recursion errors.
+                mfd_tail_rec            :: maybe(require_tail_recursion)
             ).
 
     % If accurate GC is enabled, we associate with each variable
@@ -717,22 +720,26 @@
     %
 :- type mlds_class_defn
     --->    mlds_class_defn(
-                mcd_kind        :: mlds_class_kind,
+                mcd_entity_name     :: mlds_entity_name,
+                mcd_context         :: mlds_context,
+                mcd_decl_flags      :: mlds_decl_flags,
+
+                mcd_kind            :: mlds_class_kind,
 
                 % Imports these classes (or modules, packages, ...).
-                mcd_imports     :: mlds_imports,
+                mcd_imports         :: mlds_imports,
 
                 % Inherits these base classes.
-                mcd_inherits    :: list(mlds_class_id),
+                mcd_inherits        :: list(mlds_class_id),
 
                 % Implements these interfaces.
-                mcd_implements  :: list(mlds_interface_id),
+                mcd_implements      :: list(mlds_interface_id),
 
                 % Type parameters.
-                mcd_tparams     :: list(type_param),
+                mcd_tparams         :: list(type_param),
 
                 % Has these constructors.
-                mcd_ctors       :: list(mlds_defn),
+                mcd_ctors           :: list(mlds_defn),
 
                 % Contains these members.
                 mcd_members     :: list(mlds_defn)
@@ -2280,6 +2287,12 @@ get_initializer_array_size(init_array(Elems)) = array_size(list.length(Elems)).
 
 %-----------------------------------------------------------------------------%
 
+wrap_data_defn(DataDefn) = mlds_data(DataDefn).
+wrap_function_defn(FunctionDefn) = mlds_function(FunctionDefn).
+wrap_class_defn(ClassDefn) = mlds_class(ClassDefn).
+
+%-----------------------------------------------------------------------------%
+
 mlds_get_arg_types(Parameters) = ArgTypes :-
     GetArgType = (func(mlds_argument(_, Type, _)) = Type),
     ArgTypes = list.map(GetArgType, Parameters).
@@ -2407,7 +2420,19 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
 
 %-----------------------------------------------------------------------------%
 
-    % The compiler can pack all the enumeration arguments together,
+    % The flags contain the following information:
+    %
+    % access,               % public/private/protected
+    % member_type,          % static/per_instance
+    % virtuality,           % virtual/non_virtual
+    % overridability,       % sealed/overridable (class/funcs only)
+    % constness,            % const/modifiable  (data only)
+    % is_abstract,          % abstract/concrete
+    %
+    % XXX MLDS_DEFN What subset of these choices is appropriate for
+    % a definition depends on what kind of entity is being defined.
+    %
+    % Note that The compiler can pack all the enumeration arguments together,
     % though a cell will still be allocated.
     %
 :- type mlds_decl_flags

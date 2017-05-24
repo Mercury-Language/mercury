@@ -492,11 +492,10 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
         unexpected($module, $pred, "unsorted tvars")
     ).
 
-    % ml_gen_closure_wrapper:
-    %   see comment in interface section for details.
-    %
-    % This is used to create wrappers both for ordinary closures and
-    % also for type class methods.
+ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
+        Context, WrapperFuncRval, WrapperFuncType, !Info) :-
+    % This predicate creates wrappers both for ordinary closures and
+    % for type class methods.
     %
     % The generated function will look something like this:
     %
@@ -668,8 +667,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
     %           foo_1);
     % #endif
     %
-ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
-        Context, WrapperFuncRval, WrapperFuncType, !Info) :-
+
     % Grab the relevant information about the called procedure.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
@@ -861,7 +859,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % Insert the stuff to declare and initialize the closure.
     (
         MaybeClosureB = yes({ClosureDecl1, InitClosure1}),
-        Decls1 = [ClosureDecl1 | Decls0],
+        Decls1 = [mlds_data(ClosureDecl1) | Decls0],
         Statements1 = [InitClosure1 | Statements0]
     ;
         MaybeClosureB = no,
@@ -878,7 +876,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ;
         CodeModel = model_semi,
         SucceededVarDecl = ml_gen_succeeded_var_decl(MLDS_Context),
-        Decls2 = [SucceededVarDecl | Decls1]
+        Decls2 = [mlds_data(SucceededVarDecl) | Decls1]
     ),
 
     % Add an appropriate `return' statement.
@@ -901,7 +899,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % Insert the local declarations of the wrapper's output arguments,
     % if any (this is needed for functions and for `--(non)det-copy-out'),
     % and the `type_params' variable used by the GC code.
-    Decls = GC_Decls ++ WrapperHeadVarDecls ++ Decls2,
+    Decls = list.map(wrap_data_defn, GC_Decls) ++
+        list.map(wrap_data_defn, WrapperHeadVarDecls) ++ Decls2,
 
     % If the wrapper function was model_non, then pop the success continuation
     % that we pushed.
@@ -962,16 +961,22 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
         Context, ClosureGCStatement, !Info).
 
 :- pred ml_gen_wrapper_func(ml_label_func::in, mlds_func_params::in,
-    prog_context::in, statement::in, mlds_defn::out,
+    prog_context::in, statement::in, mlds_function_defn::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Statement, Func, !Info) :-
+ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Statement, FunctionDefn,
+        !Info) :-
+    % XXX MLDS_DEFN: pass the needed flags to ml_gen_label_func
     ml_gen_label_func(!.Info, FuncLabel, FuncParams, Context, Statement,
-        Func0),
-    Func0 = mlds_defn(Name, Ctxt, DeclFlags0, Defn),
+        FunctionDefn0),
+    FunctionDefn0 = mlds_function_defn(Name, Ctxt, DeclFlags0,
+        MaybePredProcId, DefnFuncParams, Body, Attributes,
+        EnvVarNames, TailRec),
     DeclFlags1 = set_per_instance(DeclFlags0, one_copy),
     DeclFlags = set_access(DeclFlags1, acc_private),
-    Func = mlds_defn(Name, Ctxt, DeclFlags, Defn).
+    FunctionDefn = mlds_function_defn(Name, Ctxt, DeclFlags,
+        MaybePredProcId, DefnFuncParams, Body, Attributes,
+        EnvVarNames, TailRec).
 
 :- func ml_gen_wrapper_head_var_names(int, int) = list(mlds_var_name).
 
@@ -993,7 +998,7 @@ ml_gen_wrapper_head_var_names(Num, Max) = VarNames :-
     %
 :- pred ml_gen_wrapper_arg_lvals(list(mlds_var_name)::in, list(mer_type)::in,
     list(mer_mode)::in, pred_or_func::in, code_model::in, prog_context::in,
-    int::in, list(mlds_defn)::out, list(mlds_lval)::out,
+    int::in, list(mlds_data_defn)::out, list(mlds_lval)::out,
     list(mlds_lval)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
@@ -1089,7 +1094,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
     %
 :- pred ml_gen_closure_wrapper_gc_decls(closure_kind::in, mlds_var_name::in,
     mlds_type::in, pred_id::in, proc_id::in, prog_context::in,
-    list(mlds_defn)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_data_defn)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         PredId, ProcId, Context, GC_Decls, !Info) :-

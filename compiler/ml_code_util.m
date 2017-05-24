@@ -79,19 +79,19 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Given a function label and the statement which will comprise
-    % the function body for that function, generate an mlds_defn
+    % the function body for that function, generate an mlds_function_defn
     % which defines that function.
     %
 :- pred ml_gen_nondet_label_func(ml_gen_info::in, ml_label_func::in,
-    prog_context::in, statement::in, mlds_defn::out) is det.
+    prog_context::in, statement::in, mlds_function_defn::out) is det.
 
     % Given a function label, the function parameters, and the statement
     % which will comprise the function body for that function,
-    % generate an mlds_defn which defines that function.
+    % generate an mlds_function_defn which defines that function.
     %
 :- pred ml_gen_label_func(ml_gen_info::in, ml_label_func::in,
     mlds_func_params::in, prog_context::in, statement::in,
-    mlds_defn::out) is det.
+    mlds_function_defn::out) is det.
 
     % Test to see if the procedure is a model_det function whose function
     % result has an output mode (whose type is not a dummy argument type
@@ -278,20 +278,20 @@
     % Generate a declaration for an MLDS variable, given its HLDS type.
     %
 :- pred ml_gen_var_decl(mlds_var_name::in, mer_type::in, prog_context::in,
-    mlds_defn::out, ml_gen_info::in, ml_gen_info::out) is det.
+    mlds_data_defn::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate a declaration for an MLDS variable, given its MLDS type
     % and the code to trace it for accurate GC (if needed).
     %
 :- func ml_gen_mlds_var_decl(mlds_data_name, mlds_type,
-    mlds_gc_statement, mlds_context) = mlds_defn.
+    mlds_gc_statement, mlds_context) = mlds_data_defn.
 
     % Generate a declaration for an MLDS variable, given its MLDS type
     % and initializer, and given the code to trace it for accurate GC
     % (if needed).
     %
 :- func ml_gen_mlds_var_decl_init(mlds_data_name, mlds_type, mlds_initializer,
-    mlds_gc_statement, mlds_context) = mlds_defn.
+    mlds_gc_statement, mlds_context) = mlds_data_defn.
 
     % Generate declaration flags for a local variable.
     %
@@ -351,7 +351,7 @@
     %
 :- pred ml_gen_box_or_unbox_lval(mer_type::in, mer_type::in, box_policy::in,
     mlds_lval::in, mlds_var_name::in, prog_context::in, bool::in, int::in,
-    mlds_lval::out, list(mlds_defn)::out,
+    mlds_lval::out, list(mlds_data_defn)::out,
     list(statement)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -364,7 +364,7 @@
     % the ArgNum-th entry in `type_params'.
     %
 :- pred ml_gen_local_for_output_arg(mlds_var_name::in, mer_type::in, int::in,
-    prog_context::in, mlds_defn::out,
+    prog_context::in, mlds_data_defn::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -386,7 +386,7 @@
     % (`succeeded' is a boolean variable used to record
     % the success or failure of model_semi procedures.)
     %
-:- func ml_gen_succeeded_var_decl(mlds_context) = mlds_defn.
+:- func ml_gen_succeeded_var_decl(mlds_context) = mlds_data_defn.
 
     % Return the lval for the `succeeded' flag.
     % (`succeeded' is a boolean variable used to record
@@ -409,7 +409,7 @@
     % (`cond' variables are boolean variables used to record
     % the success or failure of model_non conditions of if-then-elses.)
     %
-:- func ml_gen_cond_var_decl(cond_seq, mlds_context) = mlds_defn.
+:- func ml_gen_cond_var_decl(cond_seq, mlds_context) = mlds_data_defn.
 
     % Return the lval for the specified `cond' flag.
     % (`cond' variables are boolean variables used to record
@@ -695,7 +695,8 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         ml_gen_nondet_label_func(!.Info, RestFuncLabel, Context,
             RestStatement, RestFunc),
 
-        Decls = FirstDecls ++ [RestFunc],
+        % XXX MLDS_DEFN
+        Decls = FirstDecls ++ [mlds_function(RestFunc)],
         Statements = FirstStatements
     ).
 
@@ -719,14 +720,14 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
     FuncName = ml_gen_nondet_label(ModuleInfo, PredId, ProcId, FuncLabel),
 
     % Compute the function definition.
+    MLDSContext = mlds_make_context(Context),
     DeclFlags = ml_gen_label_func_decl_flags,
     MaybePredProcId = no,
+    Body = body_defined_here(Statement),
     Attributes = [],
     EnvVarNames = set.init,
-    FuncDefn = mlds_function_defn(MaybePredProcId, FuncParams,
-        body_defined_here(Statement), Attributes, EnvVarNames, no),
-    Func = mlds_defn(FuncName, mlds_make_context(Context), DeclFlags,
-        mlds_function(FuncDefn)).
+    Func = mlds_function_defn(FuncName, MLDSContext, DeclFlags,
+        MaybePredProcId, FuncParams, Body, Attributes, EnvVarNames, no).
 
     % Return the declaration flags appropriate for a label func (a label func
     % is a function used as a continuation when generating nondet code).
@@ -1312,10 +1313,9 @@ ml_gen_mlds_var_decl(DataName, MLDS_Type, GCStatement, Context) =
 ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
         Context) = Defn :-
     Name = entity_data(DataName),
-    EntityDefn =
-        mlds_data(mlds_data_defn(MLDS_Type, Initializer, GCStatement)),
     DeclFlags = ml_gen_local_var_decl_flags,
-    Defn = mlds_defn(Name, Context, DeclFlags, EntityDefn).
+    Defn = mlds_data_defn(Name, Context, DeclFlags,
+        MLDS_Type, Initializer, GCStatement).
 
 ml_gen_local_var_decl_flags = DeclFlags :-
     Access = acc_local,
@@ -1680,10 +1680,8 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
         Context, GCStatement0, !Info),
 
     (
-        (
-            GCStatement0 = gc_trace_code(CallTraceFuncCode)
-        ;
-            GCStatement0 = gc_initialiser(CallTraceFuncCode)
+        ( GCStatement0 = gc_trace_code(CallTraceFuncCode)
+        ; GCStatement0 = gc_initialiser(CallTraceFuncCode)
         ),
         MakeTypeInfoCode = ml_stmt_atomic(inline_target_code(ml_target_c, [
             raw_target_code("{\n"),
@@ -1703,7 +1701,8 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
             raw_target_code("MR_deallocate(allocated_mem);\n"),
             raw_target_code("}\n")
         ])),
-        GCTraceCode = ml_stmt_block([TypeInfoDecl], [
+        % XXX MLDS_DEFN
+        GCTraceCode = ml_stmt_block([mlds_data(TypeInfoDecl)], [
             statement(MakeTypeInfoCode, MLDS_Context),
             CallTraceFuncCode,
             statement(DeallocateCode, MLDS_Context)

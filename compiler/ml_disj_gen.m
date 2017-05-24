@@ -360,7 +360,9 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Statements, !Info) :-
     LoopStmt = ml_stmt_while(loop_at_least_once, LoopCond, LoopBodyStatement),
     LoopStatement = statement(LoopStmt, MLDS_Context),
 
-    Stmt = ml_stmt_block([SlotVarDefn], [InitSlotVarStatement, LoopStatement]),
+    % XXX MLDS_DEFN
+    Stmt = ml_stmt_block([mlds_data(SlotVarDefn)],
+        [InitSlotVarStatement, LoopStatement]),
     Statement = statement(Stmt, MLDS_Context),
     Statements = [Statement].
 
