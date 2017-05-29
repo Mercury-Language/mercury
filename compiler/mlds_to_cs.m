@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: mlds_to_cs.m.
 % Main authors: wangp.
@@ -24,7 +24,7 @@
 % input arguments.  That way we don't need to declare delegates with all
 % possible permutations of in/out parameters.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_cs.
 :- interface.
@@ -36,13 +36,13 @@
 :- import_module bool.
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred output_csharp_mlds(module_info::in, mlds::in, bool::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -65,6 +65,7 @@
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
+:- import_module ml_backend.mlds_to_target_util.
 :- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
@@ -80,7 +81,6 @@
 :- import_module cord.
 :- import_module digraph.
 :- import_module int.
-:- import_module library.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -89,9 +89,8 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -102,7 +101,7 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     output_to_file(Globals, SourceFile,
         output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Utility predicates for various purposes.
 %
@@ -110,11 +109,11 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     % Succeeds iff a given string matches the unqualified interface name
     % of a interface in Mercury's C# runtime system.
     %
-:- pred interface_is_special(string::in) is semidet.
+:- pred interface_is_special_for_csharp(string::in) is semidet.
 
-interface_is_special("MercuryType").
+interface_is_special_for_csharp("MercuryType").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to generate the `.cs' file.
 %
@@ -149,7 +148,7 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         list.foldl(method_ptrs_in_scalars, ScalarCellRows, !CodeAddrsInConsts),
         !.CodeAddrsInConsts = code_addrs_in_consts(_, _, RevSeqNumCodeAddrs),
 
-        make_code_addr_map(RevSeqNumCodeAddrs, map.init, CodeAddrs)
+        make_code_addr_map_for_csharp(RevSeqNumCodeAddrs, map.init, CodeAddrs)
     ),
 
     % Get the foreign code for C#
@@ -162,8 +161,8 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_source_filename(Globals, ModuleName, SourceFileName, !IO),
     Info = init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs),
-    output_src_start(Info, Indent, ModuleName, Imports, ForeignDeclCodes,
-        Defns, !IO),
+    output_src_start_for_csharp(Info, Indent, ModuleName, Imports,
+        ForeignDeclCodes, Defns, !IO),
     io.write_list(ForeignBodyCodes, "\n",
         output_csharp_body_code(Info, Indent), !IO),
 
@@ -172,37 +171,39 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     list.filter_map(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
 
     io.write_string("\n// RttiDefns\n", !IO),
-    list.foldl(output_data_defn(Info, Indent + 1, oa_alloc_only),
+    list.foldl(output_data_defn_for_csharp(Info, Indent + 1, oa_alloc_only),
         RttiDefns, !IO),
-    output_rtti_assignments(Info, Indent + 1, RttiDefns, !IO),
+    output_rtti_assignments_for_csharp(Info, Indent + 1, RttiDefns, !IO),
 
     list.filter_map(defn_is_data, NonRttiDefns, DataDefns, NonDataDefns),
     io.write_string("\n// DataDefns\n", !IO),
-    output_data_decls(Info, Indent + 1, DataDefns, !IO),
-    output_init_data_method(Info, Indent + 1, DataDefns, !IO),
+    output_data_decls_for_csharp(Info, Indent + 1, DataDefns, !IO),
+    output_init_data_method_for_csharp(Info, Indent + 1, DataDefns, !IO),
 
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.
     io.write_string("\n// Scalar common data\n", !IO),
-    output_scalar_common_data(Info, Indent + 1, ScalarCellGroupMap, !IO),
+    output_scalar_common_data_for_csharp(Info, Indent + 1,
+        ScalarCellGroupMap, !IO),
 
     io.write_string("\n// Vector common data\n", !IO),
-    output_vector_common_data(Info, Indent + 1, VectorCellGroupMap, !IO),
+    output_vector_common_data_for_csharp(Info, Indent + 1,
+        VectorCellGroupMap, !IO),
 
     io.write_string("\n// Method pointers\n", !IO),
     output_method_ptr_constants(Info, Indent + 1, CodeAddrs, !IO),
 
     io.write_string("\n// NonDataDefns\n", !IO),
-    output_defns(Info, Indent + 1, oa_none, NonDataDefns, !IO),
+    output_defns_for_csharp(Info, Indent + 1, oa_none, NonDataDefns, !IO),
 
     io.write_string("\n// ExportDefns\n", !IO),
-    output_exports(Info, Indent + 1, ExportDefns, !IO),
+    output_exports_for_csharp(Info, Indent + 1, ExportDefns, !IO),
 
     io.write_string("\n// ExportedEnums\n", !IO),
-    output_exported_enums(Info, Indent + 1, ExportedEnums, !IO),
+    output_exported_enums_for_csharp(Info, Indent + 1, ExportedEnums, !IO),
 
     io.write_string("\n// EnvVarNames\n", !IO),
-    output_env_vars(Indent + 1, NonRttiDefns, !IO),
+    output_env_vars_for_csharp(Indent + 1, NonRttiDefns, !IO),
 
     StaticCtorCalls = [
         "MR_init_rtti",
@@ -214,18 +215,19 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_static_constructor(ModuleName, Indent + 1, StaticCtorCalls,
         FinalPreds, !IO),
 
-    output_src_end(Indent, ModuleName, !IO).
+    output_src_end_for_csharp(Indent, ModuleName, !IO).
 
-:- pred make_code_addr_map(assoc_list(int, mlds_code_addr)::in,
+:- pred make_code_addr_map_for_csharp(assoc_list(int, mlds_code_addr)::in,
     map(mlds_code_addr, string)::in, map(mlds_code_addr, string)::out) is det.
 
-make_code_addr_map([], !CodeAddrMap).
-make_code_addr_map([SeqNum - CodeAddr | SeqNumsCodeAddrs], !CodeAddrMap) :-
+make_code_addr_map_for_csharp([], !CodeAddrMap).
+make_code_addr_map_for_csharp([SeqNum - CodeAddr | SeqNumsCodeAddrs],
+        !CodeAddrMap) :-
     Name = "MR_method_ptr_" ++ string.from_int(SeqNum),
     map.det_insert(CodeAddr, Name, !CodeAddrMap),
-    make_code_addr_map(SeqNumsCodeAddrs, !CodeAddrMap).
+    make_code_addr_map_for_csharp(SeqNumsCodeAddrs, !CodeAddrMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for working with `foreign_code'.
 %
@@ -244,7 +246,7 @@ output_csharp_decl(Info, Indent, DeclCode, !IO) :-
         ; Lang = lang_java
         ; Lang = lang_erlang
         ),
-        sorry($module, $pred, "foreign decl other than C#")
+        sorry($pred, "foreign decl other than C#")
     ).
 
 :- pred output_csharp_body_code(csharp_out_info::in, indent::in,
@@ -262,7 +264,7 @@ output_csharp_body_code(Info, Indent, ForeignBodyCode, !IO) :-
         ; Lang = lang_java
         ; Lang = lang_erlang
         ),
-        sorry($module, $pred, "foreign code other than C#")
+        sorry($pred, "foreign code other than C#")
     ).
 
 :- pred output_csharp_foreign_literal_or_include(csharp_out_info::in,
@@ -273,19 +275,19 @@ output_csharp_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
         Context, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
-        indent_line_prog_context(Info ^ oi_foreign_line_numbers, Context,
+        indent_line_prog_context(Info ^ csoi_foreign_line_numbers, Context,
             Indent, !IO),
         io.write_string(Code, !IO)
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
-        SourceFileName = Info ^ oi_source_filename,
+        SourceFileName = Info ^ csoi_source_filename,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-        cs_output_context(Info ^ oi_foreign_line_numbers,
+        cs_output_context(Info ^ csoi_foreign_line_numbers,
             context(IncludePath, 1), !IO),
         write_include_file_contents_cur_stream(IncludePath, !IO)
     ),
     io.nl(!IO),
-    cs_output_default_context(Info ^ oi_foreign_line_numbers, !IO).
+    cs_output_default_context(Info ^ csoi_foreign_line_numbers, !IO).
 
 :- func mlds_get_csharp_foreign_code(map(foreign_language, mlds_foreign_code))
     = mlds_foreign_code.
@@ -297,7 +299,7 @@ mlds_get_csharp_foreign_code(AllForeignCode) = ForeignCode :-
         ForeignCode = mlds_foreign_code([], [], [], [])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for handling `pragma foreign_export'.
 %
@@ -309,46 +311,46 @@ mlds_get_csharp_foreign_code(AllForeignCode) = ForeignCode :-
     % be referred to within foreign_procs that are inlined across module
     % boundaries.
     %
-:- pred output_exports(csharp_out_info::in, indent::in,
+:- pred output_exports_for_csharp(csharp_out_info::in, indent::in,
     list(mlds_pragma_export)::in, io::di, io::uo) is det.
 
-output_exports(Info, Indent, Exports, !IO) :-
-    list.foldl(output_export(Info, Indent), Exports, !IO).
+output_exports_for_csharp(Info, Indent, Exports, !IO) :-
+    list.foldl(output_export_for_csharp(Info, Indent), Exports, !IO).
 
-:- pred output_export(csharp_out_info::in, indent::in, mlds_pragma_export::in,
-    io::di, io::uo) is det.
+:- pred output_export_for_csharp(csharp_out_info::in, indent::in,
+    mlds_pragma_export::in, io::di, io::uo) is det.
 
-output_export(Info, Indent, Export, !IO) :-
+output_export_for_csharp(Info, Indent, Export, !IO) :-
     Export = ml_pragma_export(Lang, ExportName, MLDS_Name, MLDS_Signature,
         _UnivQTVars, _),
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
-    expect(unify(Lang, lang_csharp), $module, $pred,
+    expect(unify(Lang, lang_csharp), $pred,
         "foreign_export for language other than C#."),
 
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("public static ", !IO),
     % XXX C# has generics
     % output_generic_tvars(UnivQTVars, !IO),
     io.nl(!IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
 
     (
         ReturnTypes = [],
         io.write_string("void ", !IO)
     ;
         ReturnTypes = [RetType],
-        output_type(Info, RetType, !IO),
+        output_type_for_csharp(Info, RetType, !IO),
         io.write_string(" ", !IO)
     ;
         ReturnTypes = [_, _ | _],
-        unexpected($module, $pred, "multiple return values in export method")
+        unexpected($pred, "multiple return values in export method")
     ),
     io.write_string(ExportName, !IO),
-    output_params(Info, Indent + 1, Parameters, !IO),
+    output_params_for_csharp(Info, Indent + 1, Parameters, !IO),
     io.nl(!IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
-    indent_line(Indent + 1, !IO),
+    output_n_indents(Indent + 1, !IO),
     list.filter(is_out_argument, Parameters, OutArgs, InArgs),
     (
         ReturnTypes = [],
@@ -366,12 +368,12 @@ output_export(Info, Indent, Export, !IO) :-
         % The cast is required when the exported method uses generics but the
         % underlying method does not use generics (i.e. returns Object).
         io.write_string("return (", !IO),
-        output_type(Info, RetTypeB, !IO),
+        output_type_for_csharp(Info, RetTypeB, !IO),
         io.write_string(") ", !IO),
         RestOutArgs = OutArgs
     ),
-    write_export_call(MLDS_Name, InArgs ++ RestOutArgs, !IO),
-    indent_line(Indent, !IO),
+    write_export_call_for_csharp(MLDS_Name, InArgs ++ RestOutArgs, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
 :- pred is_out_argument(mlds_argument::in) is semidet.
@@ -379,19 +381,20 @@ output_export(Info, Indent, Export, !IO) :-
 is_out_argument(mlds_argument(_, Type, _)) :-
     Type = mlds_ptr_type(_).
 
-:- pred write_export_call(mlds_qualified_entity_name::in,
+:- pred write_export_call_for_csharp(mlds_qualified_entity_name::in,
     list(mlds_argument)::in, io::di, io::uo) is det.
 
-write_export_call(MLDS_Name, Parameters, !IO) :-
-    output_fully_qualified_thing(MLDS_Name, output_entity_name_for_csharp,
-        !IO),
+write_export_call_for_csharp(MLDS_Name, Parameters, !IO) :-
+    output_fully_qualified_thing_for_csharp(MLDS_Name,
+        output_entity_name_for_csharp, !IO),
     io.write_char('(', !IO),
-    io.write_list(Parameters, ", ", write_argument_name, !IO),
+    io.write_list(Parameters, ", ", write_argument_name_for_csharp, !IO),
     io.write_string(");\n", !IO).
 
-:- pred write_argument_name(mlds_argument::in, io::di, io::uo) is det.
+:- pred write_argument_name_for_csharp(mlds_argument::in,
+    io::di, io::uo) is det.
 
-write_argument_name(Arg, !IO) :-
+write_argument_name_for_csharp(Arg, !IO) :-
     Arg = mlds_argument(Name, Type, _),
     ( if Type = mlds_ptr_type(_) then
         io.write_string("out ", !IO)
@@ -400,21 +403,22 @@ write_argument_name(Arg, !IO) :-
     ),
     output_var_name_for_csharp(Name, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for handling `pragma foreign_export_enum'.
 %
 
-:- pred output_exported_enums(csharp_out_info::in, indent::in,
+:- pred output_exported_enums_for_csharp(csharp_out_info::in, indent::in,
     list(mlds_exported_enum)::in, io::di, io::uo) is det.
 
-output_exported_enums(Info, Indent, ExportedEnums, !IO) :-
-    list.foldl(output_exported_enum(Info, Indent), ExportedEnums, !IO).
+output_exported_enums_for_csharp(Info, Indent, ExportedEnums, !IO) :-
+    list.foldl(output_exported_enum_for_csharp(Info, Indent),
+        ExportedEnums, !IO).
 
-:- pred output_exported_enum(csharp_out_info::in, indent::in,
+:- pred output_exported_enum_for_csharp(csharp_out_info::in, indent::in,
     mlds_exported_enum::in, io::di, io::uo) is det.
 
-output_exported_enum(Info, Indent, ExportedEnum, !IO) :-
+output_exported_enum_for_csharp(Info, Indent, ExportedEnum, !IO) :-
     ExportedEnum = mlds_exported_enum(Lang, _, TypeCtor, ExportedConstants0),
     (
         Lang = lang_csharp,
@@ -422,7 +426,8 @@ output_exported_enum(Info, Indent, ExportedEnum, !IO) :-
         MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum),
         % We reverse the list so the constants are printed out in order.
         list.reverse(ExportedConstants0, ExportedConstants),
-        list.foldl(output_exported_enum_constant(Info, Indent, MLDS_Type),
+        list.foldl(
+            output_exported_enum_constant_for_csharp(Info, Indent, MLDS_Type),
             ExportedConstants, !IO)
     ;
         ( Lang = lang_c
@@ -431,22 +436,23 @@ output_exported_enum(Info, Indent, ExportedEnum, !IO) :-
         )
     ).
 
-:- pred output_exported_enum_constant(csharp_out_info::in, indent::in,
-    mlds_type::in, mlds_exported_enum_constant::in, io::di, io::uo) is det.
+:- pred output_exported_enum_constant_for_csharp(csharp_out_info::in,
+    indent::in, mlds_type::in, mlds_exported_enum_constant::in,
+    io::di, io::uo) is det.
 
-output_exported_enum_constant(Info, Indent, MLDS_Type, ExportedConstant,
-        !IO) :-
+output_exported_enum_constant_for_csharp(Info, Indent, MLDS_Type,
+        ExportedConstant, !IO) :-
     ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("public static readonly ", !IO),
-    output_type(Info, MLDS_Type, !IO),
+    output_type_for_csharp(Info, MLDS_Type, !IO),
     io.write_string(" ", !IO),
     io.write_string(Name, !IO),
     io.write_string(" = ", !IO),
-    output_initializer_body(Info, Initializer, no, !IO),
+    output_initializer_body_for_csharp(Info, Initializer, no, !IO),
     io.write_string(";\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred output_method_ptr_constants(csharp_out_info::in, indent::in,
     map(mlds_code_addr, string)::in, io::di, io::uo) is det.
@@ -463,77 +469,63 @@ output_method_ptr_constant(Info, Indent, CodeAddr, Name, !IO) :-
     ),
     Sig = mlds_func_signature(ArgTypes, RetTypes),
     TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.format("private static readonly %s %s = ",
         [s(TypeString), s(Name)], !IO),
     IsCall = no,
-    mlds_output_code_addr(Info, CodeAddr, IsCall, !IO),
+    mlds_output_code_addr_for_csharp(Info, CodeAddr, IsCall, !IO),
     io.write_string(";\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output globals for environment variables.
 %
 
-:- pred output_env_vars(indent::in, list(mlds_defn)::in, io::di, io::uo)
-    is det.
+:- pred output_env_vars_for_csharp(indent::in, list(mlds_defn)::in,
+    io::di, io::uo) is det.
 
-output_env_vars(Indent, NonRttiDefns, !IO) :-
-    list.foldl(collect_env_var_names, NonRttiDefns, set.init, EnvVarNamesSet),
-    EnvVarNames = set.to_sorted_list(EnvVarNamesSet),
+output_env_vars_for_csharp(Indent, NonRttiDefns, !IO) :-
+    collect_env_var_names(NonRttiDefns, EnvVarNames),
     (
         EnvVarNames = []
     ;
         EnvVarNames = [_ | _],
-        list.foldl(output_env_var_definition(Indent), EnvVarNames, !IO)
+        list.foldl(output_env_var_definition_for_csharp(Indent),
+            EnvVarNames, !IO)
     ).
 
-:- pred collect_env_var_names(mlds_defn::in,
-    set(string)::in, set(string)::out) is det.
+:- pred output_env_var_definition_for_csharp(indent::in, string::in,
+    io::di, io::uo) is det.
 
-collect_env_var_names(Defn, !EnvVarNames) :-
-    (
-        Defn = mlds_data(_)
-    ;
-        Defn = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(_, _, _, _, _, _, _, EnvVarNames, _),
-        set.union(EnvVarNames, !EnvVarNames)
-    ;
-        Defn = mlds_class(_)
-    ).
-
-:- pred output_env_var_definition(indent::in, string::in, io::di, io::uo)
-    is det.
-
-output_env_var_definition(Indent, EnvVarName, !IO) :-
+output_env_var_definition_for_csharp(Indent, EnvVarName, !IO) :-
     % We use int because the generated code compares against zero, and changing
     % that is more trouble than it's worth as it affects the C backends.
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("private static int mercury_envvar_", !IO),
     io.write_string(EnvVarName, !IO),
     io.write_string(" =\n", !IO),
-    indent_line(Indent + 1, !IO),
+    output_n_indents(Indent + 1, !IO),
     io.write_string("System.Environment.GetEnvironmentVariable(\"", !IO),
     io.write_string(EnvVarName, !IO),
     io.write_string("\") == null ? 0 : 1;\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output the start and end of a source file.
 %
 
-:- pred output_src_start(csharp_out_info::in, indent::in,
+:- pred output_src_start_for_csharp(csharp_out_info::in, indent::in,
     mercury_module_name::in, mlds_imports::in, list(foreign_decl_code)::in,
     list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_src_start(Info, Indent, MercuryModuleName, _Imports, ForeignDecls,
-        Defns, !IO) :-
-    output_auto_gen_comment(Info, !IO),
-    indent_line(Indent, !IO),
+output_src_start_for_csharp(Info, Indent, MercuryModuleName, _Imports,
+        ForeignDecls, Defns, !IO) :-
+    output_auto_gen_comment(Info ^ csoi_source_filename, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("/* :- module ", !IO),
     prog_out.write_sym_name(MercuryModuleName, !IO),
     io.write_string(". */\n", !IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("namespace mercury {\n\n", !IO),
 
     io.write_list(ForeignDecls, "\n", output_csharp_decl(Info, Indent), !IO),
@@ -547,7 +539,7 @@ output_src_start(Info, Indent, MercuryModuleName, _Imports, ForeignDecls,
     % a `main' method in the resulting source file that calls the `main'
     % predicate.
     ( if defns_contain_main(Defns) then
-        write_main_driver(Indent + 1, ClassName, !IO)
+        write_main_driver_for_csharp(Indent + 1, ClassName, !IO)
     else
         true
     ).
@@ -560,36 +552,37 @@ output_src_start(Info, Indent, MercuryModuleName, _Imports, ForeignDecls,
 
 output_static_constructor(MercuryModuleName, Indent, StaticConstructors,
         FinalPreds, !IO) :-
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("static ", !IO),
     mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
         ClassName),
     io.write_string(ClassName, !IO),
     io.write_string("() {\n", !IO),
     WriteCall = (pred(MethodName::in, !.IO::di, !:IO::uo) is det :-
-        indent_line(Indent + 1, !IO),
+        output_n_indents(Indent + 1, !IO),
         io.write_string(MethodName, !IO),
         io.write_string("();\n", !IO)
     ),
     list.foldl(WriteCall, StaticConstructors, !IO),
     WriteFinal = (pred(FinalPred::in, !.IO::di, !:IO::uo) is det :-
-        indent_line(Indent + 1, !IO),
+        output_n_indents(Indent + 1, !IO),
         list.foldl(io.write_string, [
             "System.AppDomain.CurrentDomain.ProcessExit += ",
             "(sender, ev) => ", FinalPred, "();\n"
         ], !IO)
     ),
     list.foldl(WriteFinal, FinalPreds, !IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred write_main_driver(indent::in, string::in, io::di, io::uo) is det.
+:- pred write_main_driver_for_csharp(indent::in, string::in,
+    io::di, io::uo) is det.
 
-write_main_driver(Indent, ClassName, !IO) :-
-    indent_line(Indent, !IO),
+write_main_driver_for_csharp(Indent, ClassName, !IO) :-
+    output_n_indents(Indent, !IO),
     io.write_string("public static void Main", !IO),
     io.write_string("(string[] args)\n", !IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
     Body = [
         "try {",
@@ -607,112 +600,65 @@ write_main_driver(Indent, ClassName, !IO) :-
         "}"
     ],
     list.foldl(write_indented_line(Indent + 1), Body, !IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred write_indented_line(indent::in, string::in, io::di, io::uo) is det.
+:- pred output_src_end_for_csharp(indent::in, mercury_module_name::in,
+    io::di, io::uo) is det.
 
-write_indented_line(Indent, Line, !IO) :-
-    indent_line(Indent, !IO),
-    io.write_string(Line, !IO),
-    io.nl(!IO).
-
-:- pred output_src_end(indent::in, mercury_module_name::in, io::di, io::uo)
-    is det.
-
-output_src_end(Indent, ModuleName, !IO) :-
+output_src_end_for_csharp(Indent, ModuleName, !IO) :-
     io.write_string("}\n\n", !IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("// :- end_module ", !IO),
     prog_out.write_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO).
-
-    % Output a comment saying that the file was automatically
-    % generated and give details such as the compiler version.
-    %
-:- pred output_auto_gen_comment(csharp_out_info::in, io::di, io::uo) is det.
-
-output_auto_gen_comment(Info, !IO)  :-
-    library.version(Version, Fullarch),
-    SourceFileName = Info ^ oi_source_filename,
-    io.write_string("//\n//\n// Automatically generated from ", !IO),
-    io.write_string(SourceFileName, !IO),
-    io.write_string(" by the Mercury Compiler,\n", !IO),
-    io.write_string("// version ", !IO),
-    io.write_string(Version, !IO),
-    io.nl(!IO),
-    io.write_string("// configured for ", !IO),
-    io.write_string(Fullarch, !IO),
-    io.nl(!IO),
-    io.write_string("//\n", !IO),
-    io.write_string("//\n", !IO),
-    io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to output declarations and definitions.
 %
 
-    % Options to adjust the behaviour of the output predicates.
-    %
-:- type output_aux
-    --->    oa_none
-            % Nothing special.
-
-    ;       oa_cname(mlds_entity_name)
-            % Pass down the class name if a definition is a constructor; this
-            % is needed since the class name is not available for a constructor
-            % in the MLDS.
-
-    ;       oa_alloc_only
-            % When writing out RTTI structure definitions, initialise members
-            % with allocated top-level structures but don't fill in the fields
-            % yet.
-
-    ;       oa_force_init.
-            % Used to force local variables to be initialised even if an
-            % initialiser is not provided.
-
-:- pred output_defns(csharp_out_info::in, indent::in, output_aux::in,
+:- pred output_defns_for_csharp(csharp_out_info::in, indent::in, output_aux::in,
     list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_defns(Info, Indent, OutputAux, Defns, !IO) :-
-    list.foldl(output_defn(Info, Indent, OutputAux), Defns, !IO).
+output_defns_for_csharp(Info, Indent, OutputAux, Defns, !IO) :-
+    list.foldl(output_defn_for_csharp(Info, Indent, OutputAux), Defns, !IO).
 
-:- pred output_defn(csharp_out_info::in, indent::in, output_aux::in,
+:- pred output_defn_for_csharp(csharp_out_info::in, indent::in, output_aux::in,
     mlds_defn::in, io::di, io::uo) is det.
 
-output_defn(Info, Indent, OutputAux, Defn, !IO) :-
+output_defn_for_csharp(Info, Indent, OutputAux, Defn, !IO) :-
     % XXX MLDS_DEFN
     (
         Defn = mlds_data(DataDefn),
-        output_data_defn(Info, Indent, OutputAux, DataDefn, !IO)
+        output_data_defn_for_csharp(Info, Indent, OutputAux, DataDefn, !IO)
     ;
         Defn = mlds_function(FunctionDefn),
-        output_function_defn(Info, Indent, OutputAux, FunctionDefn, !IO)
+        output_function_defn_for_csharp(Info, Indent, OutputAux,
+            FunctionDefn, !IO)
     ;
         Defn = mlds_class(ClassDefn),
-        output_class_defn(Info, Indent, OutputAux, ClassDefn, !IO)
+        output_class_defn_for_csharp(Info, Indent, OutputAux, ClassDefn, !IO)
     ).
 
-:- pred output_data_defn(csharp_out_info::in, indent::in, output_aux::in,
-    mlds_data_defn::in, io::di, io::uo) is det.
+:- pred output_data_defn_for_csharp(csharp_out_info::in, indent::in,
+    output_aux::in, mlds_data_defn::in, io::di, io::uo) is det.
 
-output_data_defn(Info, Indent, OutputAux, DataDefn, !IO) :-
-    indent_line(Indent, !IO),
+output_data_defn_for_csharp(Info, Indent, OutputAux, DataDefn, !IO) :-
+    output_n_indents(Indent, !IO),
     DataDefn = mlds_data_defn(Name, _Context, Flags, Type, Initializer, _),
-    output_decl_flags(Info, Flags, !IO),
-    output_data_decl(Info, Name, Type, !IO),
-    output_initializer(Info, OutputAux, Type, Initializer, !IO),
+    output_decl_flags_for_csharp(Info, Flags, !IO),
+    output_data_decl_for_csharp(Info, Name, Type, !IO),
+    output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).
 
-:- pred output_function_defn(csharp_out_info::in, indent::in, output_aux::in,
-    mlds_function_defn::in, io::di, io::uo) is det.
+:- pred output_function_defn_for_csharp(csharp_out_info::in, indent::in,
+    output_aux::in, mlds_function_defn::in, io::di, io::uo) is det.
 
-output_function_defn(Info, Indent, OutputAux, FunctionDefn, !IO) :-
-    indent_line(Indent, !IO),
+output_function_defn_for_csharp(Info, Indent, OutputAux, FunctionDefn, !IO) :-
+    output_n_indents(Indent, !IO),
     FunctionDefn = mlds_function_defn(UnqualName, Context, Flags,
         MaybePredProcId, Params, MaybeBody, _Attributes, _EnvVarNames,
         _MaybeRequireTailrecInfo),
@@ -731,24 +677,29 @@ output_function_defn(Info, Indent, OutputAux, FunctionDefn, !IO) :-
         PostStr = ""
     ),
     io.write_string(PreStr, !IO),
-    output_decl_flags(Info, Flags, !IO),
+    output_decl_flags_for_csharp(Info, Flags, !IO),
     (
         MaybePredProcId = no
     ;
         MaybePredProcId = yes(PredProcId),
-        output_pred_proc_id(Info, PredProcId, !IO)
+        maybe_output_pred_proc_id_comment(Info ^ csoi_auto_comments, PredProcId, !IO)
     ),
-    output_func(Info, Indent, UnqualName, OutputAux, Context,
+    output_func_for_csharp(Info, Indent, UnqualName, OutputAux, Context,
         Params, MaybeBody, !IO),
     io.write_string(PostStr, !IO).
 
-:- pred output_class_defn(csharp_out_info::in, indent::in, output_aux::in,
-    mlds_class_defn::in, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
+%
+% Code to output classes.
+%
 
-output_class_defn(Info, Indent, _OutputAux, ClassDefn, !IO) :-
-    indent_line(Indent, !IO),
-    Flags = ClassDefn ^ mcd_decl_flags,
-    Kind = ClassDefn ^ mcd_kind,
+:- pred output_class_defn_for_csharp(csharp_out_info::in, indent::in,
+    output_aux::in, mlds_class_defn::in, io::di, io::uo) is det.
+
+output_class_defn_for_csharp(!.Info, Indent, _OutputAux, ClassDefn, !IO) :-
+    output_n_indents(Indent, !IO),
+    ClassDefn = mlds_class_defn(UnqualName, _Context, Flags, Kind,
+        _Imports, BaseClasses, Implements, TypeParams, Ctors, AllMembers),
     (
         (
             % `static' keyword not allowed on enumerations.
@@ -759,7 +710,7 @@ output_class_defn(Info, Indent, _OutputAux, ClassDefn, !IO) :-
         ),
         OverrideFlags = set_per_instance(Flags, per_instance),
         io.write_string("[System.Serializable]\n", !IO),
-        indent_line(Indent, !IO)
+        output_n_indents(Indent, !IO)
     ;
         % `static' and `sealed' not wanted or allowed on structs.
         Kind = mlds_struct,
@@ -771,20 +722,7 @@ output_class_defn(Info, Indent, _OutputAux, ClassDefn, !IO) :-
         ),
         OverrideFlags = Flags
     ),
-    output_decl_flags(Info, OverrideFlags, !IO),
-    output_class(Info, Indent, ClassDefn, !IO).
-
-%-----------------------------------------------------------------------------%
-%
-% Code to output classes.
-%
-
-:- pred output_class(csharp_out_info::in, indent::in,
-    mlds_class_defn::in, io::di, io::uo) is det.
-
-output_class(!.Info, Indent, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(UnqualName, _Context, _Flags, Kind,
-        _Imports, BaseClasses, Implements, TypeParams, Ctors, AllMembers),
+    output_decl_flags_for_csharp(!.Info, OverrideFlags, !IO),
     (
         UnqualName = entity_type(ClassNamePrime, ArityPrime),
         ClassName = ClassNamePrime,
@@ -794,14 +732,14 @@ output_class(!.Info, Indent, ClassDefn, !IO) :-
         ; UnqualName = entity_function(_, _, _, _)
         ; UnqualName = entity_export(_)
         ),
-        unexpected($module, $pred, "name is not entity_type.")
+        unexpected($pred, "name is not entity_type.")
     ),
 
-    !Info ^ oi_univ_tvars := TypeParams,
+    !Info ^ csoi_univ_tvars := TypeParams,
 
-    output_class_kind(Kind, !IO),
+    output_class_kind_for_csharp(Kind, !IO),
     output_unqual_class_name_for_csharp(ClassName, Arity, !IO),
-    OutputGenerics = !.Info ^ oi_output_generics,
+    OutputGenerics = !.Info ^ csoi_output_generics,
     (
         OutputGenerics = do_output_generics,
         output_generic_tvars(TypeParams, !IO)
@@ -811,17 +749,20 @@ output_class(!.Info, Indent, ClassDefn, !IO) :-
     io.nl(!IO),
 
     output_supers_list(!.Info, Indent + 1, BaseClasses, Implements, !IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
-    output_class_body(!.Info, Indent + 1, Kind, UnqualName, AllMembers, !IO),
+    output_class_body_for_csharp(!.Info, Indent + 1, Kind, UnqualName,
+        AllMembers, !IO),
     io.nl(!IO),
-    output_defns(!.Info, Indent + 1, oa_cname(UnqualName), Ctors, !IO),
-    indent_line(Indent, !IO),
+    output_defns_for_csharp(!.Info, Indent + 1, oa_cname(UnqualName),
+        Ctors, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("}\n\n", !IO).
 
-:- pred output_class_kind(mlds_class_kind::in, io::di, io::uo) is det.
+:- pred output_class_kind_for_csharp(mlds_class_kind::in,
+    io::di, io::uo) is det.
 
-output_class_kind(Kind, !IO) :-
+output_class_kind_for_csharp(Kind, !IO) :-
     (
         Kind = mlds_interface,
         io.write_string("interface ", !IO)
@@ -838,29 +779,6 @@ output_class_kind(Kind, !IO) :-
         io.write_string("enum ", !IO)
     ).
 
-:- pred output_generic_tvars(list(tvar)::in, io::di, io::uo) is det.
-
-output_generic_tvars(Vars, !IO) :-
-    (
-        Vars = []
-    ;
-        Vars = [_ | _],
-        io.write_string("<", !IO),
-        io.write_list(Vars, ", ", output_generic_tvar, !IO),
-        io.write_string(">", !IO)
-    ).
-
-:- pred output_generic_tvar(tvar::in, io::di, io::uo) is det.
-
-output_generic_tvar(Var, !IO) :-
-    generic_tvar_to_string(Var, VarName),
-    io.write_string(VarName, !IO).
-
-:- pred generic_tvar_to_string(tvar::in, string::out) is det.
-
-generic_tvar_to_string(Var, VarName) :-
-    varset.lookup_name(varset.init, Var, "MR_tvar_", VarName).
-
     % Output superclass that this class extends and interfaces implemented.
     % C# does not support multiple inheritance, so more than one superclass is
     % an error.
@@ -876,17 +794,18 @@ output_supers_list(Info, Indent, BaseClasses, Interfaces, !IO) :-
         Strings = Strings0
     ;
         BaseClasses = [BaseClass],
-        type_to_string(Info, BaseClass, BaseClassString, _ArrayDims),
+        type_to_string_for_csharp(Info, BaseClass, BaseClassString,
+            _ArrayDims),
         Strings = [BaseClassString | Strings0]
     ;
         BaseClasses = [_, _ | _],
-        unexpected($module, $pred, "multiple inheritance not supported")
+        unexpected($pred, "multiple inheritance not supported")
     ),
     (
         Strings = []
     ;
         Strings = [_ | _],
-        indent_line(Indent, !IO),
+        output_n_indents(Indent, !IO),
         io.write_string(": ", !IO),
         io.write_list(Strings, ", ", io.write_string, !IO),
         io.nl(!IO)
@@ -904,58 +823,54 @@ interface_to_string(Interface, String) :-
 
         % Check if the interface is one of the ones in the runtime system.
         % If it is, we don't need to output the arity.
-        ( if interface_is_special(Name) then
+        ( if interface_is_special_for_csharp(Name) then
             String = string.format("%s.%s", [s(ModuleName), s(Name)])
         else
             String = string.format("%s.%s%d", [s(ModuleName), s(Name),
                 i(Arity)])
         )
     else
-        unexpected($module, $pred, "interface was not a class")
+        unexpected($pred, "interface was not a class")
     ).
 
-:- pred output_class_body(csharp_out_info::in, indent::in, mlds_class_kind::in,
-    mlds_entity_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
+:- pred output_class_body_for_csharp(csharp_out_info::in, indent::in,
+    mlds_class_kind::in, mlds_entity_name::in, list(mlds_defn)::in,
+    io::di, io::uo) is det.
 
-output_class_body(Info, Indent, Kind, UnqualName, AllMembers, !IO) :-
+output_class_body_for_csharp(Info, Indent, Kind, UnqualName, AllMembers, !IO) :-
     (
         ( Kind = mlds_class
         ; Kind = mlds_interface
         ; Kind = mlds_struct
         ),
-        output_defns(Info, Indent, oa_none, AllMembers, !IO)
+        output_defns_for_csharp(Info, Indent, oa_none, AllMembers, !IO)
     ;
         Kind = mlds_package,
-        unexpected($module, $pred, "cannot use package as a type")
+        unexpected($pred, "cannot use package as a type")
     ;
         Kind = mlds_enum,
         list.filter(defn_is_const, AllMembers, EnumConsts),
-        output_enum_constants(Info, Indent + 1, UnqualName, EnumConsts, !IO)
+        output_enum_constants_for_csharp(Info, Indent + 1, UnqualName,
+            EnumConsts, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Additional code for generating enumerations.
 %
 
-:- pred defn_is_const(mlds_defn::in) is semidet.
-
-defn_is_const(Defn) :-
-    Flags = defn_decl_flags(Defn),
-    constness(Flags) = const.
-
-:- pred output_enum_constants(csharp_out_info::in, indent::in,
+:- pred output_enum_constants_for_csharp(csharp_out_info::in, indent::in,
     mlds_entity_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_enum_constants(Info, Indent, EnumName, EnumConsts, !IO) :-
+output_enum_constants_for_csharp(Info, Indent, EnumName, EnumConsts, !IO) :-
     io.write_list(EnumConsts, "\n",
-        output_enum_constant(Info, Indent, EnumName), !IO),
+        output_enum_constant_for_csharp(Info, Indent, EnumName), !IO),
     io.nl(!IO).
 
-:- pred output_enum_constant(csharp_out_info::in, indent::in,
+:- pred output_enum_constant_for_csharp(csharp_out_info::in, indent::in,
     mlds_entity_name::in, mlds_defn::in, io::di, io::uo) is det.
 
-output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
+output_enum_constant_for_csharp(Info, Indent, _EnumName, Defn, !IO) :-
     (
         Defn = mlds_data(DataDefn),
         DataDefn = mlds_data_defn(Name, _Context, _Flags,
@@ -963,7 +878,7 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
         (
             Initializer = init_obj(Rval),
             % The name might require mangling.
-            indent_line(Indent, !IO),
+            output_n_indents(Indent, !IO),
             output_data_name_for_csharp(Name, !IO),
             io.write_string(" = ", !IO),
             ( if
@@ -974,11 +889,11 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
                 Rval = ml_const(mlconst_foreign(lang_csharp, String, Type))
             then
                 io.write_string("(", !IO),
-                output_type(Info, Type, !IO),
+                output_type_for_csharp(Info, Type, !IO),
                 io.write_string(") ", !IO),
                 io.write_string(String, !IO)
             else
-                unexpected($module, $pred, string(Rval))
+                unexpected($pred, string(Rval))
             ),
             io.write_string(",", !IO)
         ;
@@ -986,277 +901,186 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
             ; Initializer = init_struct(_, _)
             ; Initializer = init_array(_)
             ),
-            unexpected($module, $pred, string(Initializer))
+            unexpected($pred, string(Initializer))
         )
     ;
         ( Defn = mlds_function(_)
         ; Defn = mlds_class(_)
         ),
         % XXX MLDS_DEFN
-        unexpected($module, $pred, "definition body was not data")
+        unexpected($pred, "definition body was not data")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output data declarations/definitions.
 %
 
-:- pred output_data_decls(csharp_out_info::in, indent::in,
+:- pred output_data_decls_for_csharp(csharp_out_info::in, indent::in,
     list(mlds_data_defn)::in, io::di, io::uo) is det.
 
-output_data_decls(_, _, [], !IO).
-output_data_decls(Info, Indent, [DataDefn | DataDefns], !IO) :-
+output_data_decls_for_csharp(_, _, [], !IO).
+output_data_decls_for_csharp(Info, Indent, [DataDefn | DataDefns], !IO) :-
     DataDefn = mlds_data_defn(Name, _Context, Flags,
         Type, _Initializer, _GCStmt),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     % We can't honour `readonly' here as the variable is assigned
     % separately.
     NonReadonlyFlags = set_constness(Flags, modifiable),
-    output_decl_flags(Info, NonReadonlyFlags, !IO),
-    output_data_decl(Info, Name, Type, !IO),
+    output_decl_flags_for_csharp(Info, NonReadonlyFlags, !IO),
+    output_data_decl_for_csharp(Info, Name, Type, !IO),
     io.write_string(";\n", !IO),
-    output_data_decls(Info, Indent, DataDefns, !IO).
+    output_data_decls_for_csharp(Info, Indent, DataDefns, !IO).
 
-:- pred output_data_decl(csharp_out_info::in, mlds_data_name::in,
+:- pred output_data_decl_for_csharp(csharp_out_info::in, mlds_data_name::in,
     mlds_type::in, io::di, io::uo) is det.
 
-output_data_decl(Info, Name, Type, !IO) :-
-    output_type(Info, Type, !IO),
+output_data_decl_for_csharp(Info, Name, Type, !IO) :-
+    output_type_for_csharp(Info, Type, !IO),
     io.write_char(' ', !IO),
     output_data_name_for_csharp(Name, !IO).
 
-:- pred output_init_data_method(csharp_out_info::in, indent::in,
+:- pred output_init_data_method_for_csharp(csharp_out_info::in, indent::in,
     list(mlds_data_defn)::in, io::di, io::uo) is det.
 
-output_init_data_method(Info, Indent, DataDefns, !IO) :-
-    indent_line(Indent, !IO),
+output_init_data_method_for_csharp(Info, Indent, DataDefns, !IO) :-
+    output_n_indents(Indent, !IO),
     io.write_string("private static void MR_init_data() {\n", !IO),
-    output_init_data_statements(Info, Indent + 1, DataDefns, !IO),
-    indent_line(Indent, !IO),
+    output_init_data_statements_for_csharp(Info, Indent + 1, DataDefns, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred output_init_data_statements(csharp_out_info::in, indent::in,
+:- pred output_init_data_statements_for_csharp(csharp_out_info::in, indent::in,
     list(mlds_data_defn)::in, io::di, io::uo) is det.
 
-output_init_data_statements(_, _, [], !IO).
-output_init_data_statements(Info, Indent, [DataDefn | DataDefns], !IO) :-
+output_init_data_statements_for_csharp(_, _, [], !IO).
+output_init_data_statements_for_csharp(Info, Indent, [DataDefn | DataDefns],
+        !IO) :-
     DataDefn = mlds_data_defn(Name, _Context, _Flags,
         Type, Initializer, _GCStmt),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     output_data_name_for_csharp(Name, !IO),
-    output_initializer(Info, oa_none, Type, Initializer, !IO),
+    output_initializer_for_csharp(Info, oa_none, Type, Initializer, !IO),
     io.write_string(";\n", !IO),
-    output_init_data_statements(Info, Indent, DataDefns, !IO).
+    output_init_data_statements_for_csharp(Info, Indent, DataDefns, !IO).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to output common data.
 %
 
-:- pred output_scalar_common_data(csharp_out_info::in, indent::in,
+:- pred output_scalar_common_data_for_csharp(csharp_out_info::in, indent::in,
     ml_scalar_cell_map::in, io::di, io::uo) is det.
 
-output_scalar_common_data(Info, Indent, ScalarCellGroupMap, !IO) :-
+output_scalar_common_data_for_csharp(Info, Indent, ScalarCellGroupMap, !IO) :-
     % Elements of scalar data arrays may reference elements in higher-numbered
     % arrays, or elements of the same array, so we must initialise them
     % separately in a static initialisation block, and we must ensure that
     % elements which are referenced by other elements are initialised first.
-    map.foldl3(output_scalar_defns(Info, Indent), ScalarCellGroupMap,
-        digraph.init, Graph, map.init, Map, !IO),
+    map.foldl3(output_scalar_defns_for_csharp(Info, Indent),
+        ScalarCellGroupMap, digraph.init, Graph, map.init, Map, !IO),
 
     ( if digraph.tsort(Graph, SortedScalars0) then
-        indent_line(Indent, !IO),
+        output_n_indents(Indent, !IO),
         io.write_string("private static void MR_init_scalar_common_data() {\n",
             !IO),
         list.reverse(SortedScalars0, SortedScalars),
-        list.foldl(output_scalar_init(Info, Indent + 1, Map),
+        list.foldl(output_scalar_init_for_csharp(Info, Indent + 1, Map),
             SortedScalars, !IO),
-        indent_line(Indent, !IO),
+        output_n_indents(Indent, !IO),
         io.write_string("}\n", !IO)
     else
-        unexpected($module, $pred, "digraph.tsort failed")
+        unexpected($pred, "digraph.tsort failed")
     ).
 
-:- pred output_scalar_defns(csharp_out_info::in, indent::in,
+:- pred output_scalar_defns_for_csharp(csharp_out_info::in, indent::in,
     ml_scalar_common_type_num::in, ml_scalar_cell_group::in,
     digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out,
     map(mlds_scalar_common, mlds_initializer)::in,
     map(mlds_scalar_common, mlds_initializer)::out, io::di, io::uo) is det.
 
-output_scalar_defns(Info, Indent, TypeNum, CellGroup, !Graph, !Map, !IO) :-
+output_scalar_defns_for_csharp(Info, Indent, TypeNum, CellGroup,
+        !Graph, !Map, !IO) :-
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
     CellGroup = ml_scalar_cell_group(Type, _InitArraySize, _Counter, _Members,
         RowInitsCord),
     ArrayType = mlds_array_type(Type),
     RowInits = cord.list(RowInitsCord),
 
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("private static readonly ", !IO),
-    output_type(Info, Type, !IO),
+    output_type_for_csharp(Info, Type, !IO),
     io.format("[] MR_scalar_common_%d = ", [i(TypeRawNum)], !IO),
-    output_initializer_alloc_only(Info, init_array(RowInits), yes(ArrayType),
-        !IO),
+    output_initializer_alloc_only_for_csharp(Info, init_array(RowInits),
+        yes(ArrayType), !IO),
     io.write_string(";\n", !IO),
 
-    MLDS_ModuleName = Info ^ oi_module_name,
+    MLDS_ModuleName = Info ^ csoi_module_name,
     list.foldl3(add_scalar_inits(MLDS_ModuleName, Type, TypeNum),
         RowInits, 0, _, !Graph, !Map).
 
-:- pred add_scalar_inits(mlds_module_name::in, mlds_type::in,
-    ml_scalar_common_type_num::in, mlds_initializer::in, int::in, int::out,
-    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out,
-    map(mlds_scalar_common, mlds_initializer)::in,
-    map(mlds_scalar_common, mlds_initializer)::out) is det.
-
-add_scalar_inits(MLDS_ModuleName, Type, TypeNum, Initializer,
-        RowNum, RowNum + 1, !Graph, !Map) :-
-    Scalar = ml_scalar_common(MLDS_ModuleName, Type, TypeNum, RowNum),
-    map.det_insert(Scalar, Initializer, !Map),
-    digraph.add_vertex(Scalar, _Key, !Graph),
-    add_scalar_deps(Scalar, Initializer, !Graph).
-
-:- pred add_scalar_deps(mlds_scalar_common::in, mlds_initializer::in,
-    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
-
-add_scalar_deps(FromScalar, Initializer, !Graph) :-
-    (
-        Initializer = init_obj(Rval),
-        add_scalar_deps_rval(FromScalar, Rval, !Graph)
-    ;
-        Initializer = init_struct(_Type, Initializers),
-        list.foldl(add_scalar_deps(FromScalar), Initializers, !Graph)
-    ;
-        Initializer = init_array(Initializers),
-        list.foldl(add_scalar_deps(FromScalar), Initializers, !Graph)
-    ;
-        Initializer = no_initializer
-    ).
-
-:- pred add_scalar_deps_rval(mlds_scalar_common::in, mlds_rval::in,
-    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
-
-add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
-    (
-        ( Rval = ml_mkword(_, SubRvalA)
-        ; Rval = ml_unop(_, SubRvalA)
-        ; Rval = ml_vector_common_row(_, SubRvalA)
-        ),
-        add_scalar_deps_rval(FromScalar, SubRvalA, !Graph)
-    ;
-        Rval = ml_binop(_, SubRvalA, SubRvalB),
-        add_scalar_deps_rval(FromScalar, SubRvalA, !Graph),
-        add_scalar_deps_rval(FromScalar, SubRvalB, !Graph)
-    ;
-        Rval = ml_const(RvalConst),
-        add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph)
-    ;
-        Rval = ml_scalar_common(ToScalar),
-        digraph.add_vertices_and_edge(FromScalar, ToScalar, !Graph)
-    ;
-        Rval = ml_self(_)
-    ;
-        ( Rval = ml_lval(_Lval)
-        ; Rval = ml_mem_addr(_Lval)
-        ),
-        unexpected($module, $pred, "lval")
-    ).
-
-:- pred add_scalar_deps_rval_const(mlds_scalar_common::in, mlds_rval_const::in,
-    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
-
-add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph) :-
-    (
-        RvalConst = mlconst_data_addr(data_addr(_, DataName)),
-        (
-            DataName = mlds_scalar_common_ref(ToScalar),
-            digraph.add_vertices_and_edge(FromScalar, ToScalar, !Graph)
-        ;
-            ( DataName = mlds_data_var(_)
-            ; DataName = mlds_rtti(_)
-            ; DataName = mlds_module_layout
-            ; DataName = mlds_proc_layout(_)
-            ; DataName = mlds_internal_layout(_, _)
-            ; DataName = mlds_tabling_ref(_, _)
-            )
-        )
-    ;
-        ( RvalConst = mlconst_true
-        ; RvalConst = mlconst_false
-        ; RvalConst = mlconst_int(_)
-        ; RvalConst = mlconst_uint(_)
-        ; RvalConst = mlconst_enum(_, _)
-        ; RvalConst = mlconst_char(_)
-        ; RvalConst = mlconst_float(_)
-        ; RvalConst = mlconst_string(_)
-        ; RvalConst = mlconst_multi_string(_)
-        ; RvalConst = mlconst_foreign(_, _, _)
-        ; RvalConst = mlconst_named_const(_)
-        ; RvalConst = mlconst_code_addr(_)
-        ; RvalConst = mlconst_null(_)
-        )
-    ).
-
-:- pred output_scalar_init(csharp_out_info::in, indent::in,
+:- pred output_scalar_init_for_csharp(csharp_out_info::in, indent::in,
     map(mlds_scalar_common, mlds_initializer)::in, mlds_scalar_common::in,
     io::di, io::uo) is det.
 
-output_scalar_init(Info, Indent, Map, Scalar, !IO) :-
+output_scalar_init_for_csharp(Info, Indent, Map, Scalar, !IO) :-
     map.lookup(Map, Scalar, Initializer),
     Scalar = ml_scalar_common(_, Type, TypeNum, RowNum),
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.format("MR_scalar_common_%d[%d] = ", [i(TypeRawNum), i(RowNum)], !IO),
-    output_initializer_body(Info, Initializer, yes(Type), !IO),
+    output_initializer_body_for_csharp(Info, Initializer, yes(Type), !IO),
     io.write_string(";\n", !IO).
 
-:- pred output_vector_common_data(csharp_out_info::in, indent::in,
+:- pred output_vector_common_data_for_csharp(csharp_out_info::in, indent::in,
     ml_vector_cell_map::in, io::di, io::uo) is det.
 
-output_vector_common_data(Info, Indent, VectorCellGroupMap, !IO) :-
-    map.foldl(output_vector_cell_decl(Info, Indent), VectorCellGroupMap, !IO),
-    indent_line(Indent, !IO),
+output_vector_common_data_for_csharp(Info, Indent, VectorCellGroupMap, !IO) :-
+    map.foldl(output_vector_cell_decl_for_csharp(Info, Indent),
+        VectorCellGroupMap, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("private static void MR_init_vector_common_data() {\n",
         !IO),
-    map.foldl(output_vector_cell_init(Info, Indent + 1), VectorCellGroupMap,
-        !IO),
-    indent_line(Indent, !IO),
+    map.foldl(output_vector_cell_init_for_csharp(Info, Indent + 1),
+        VectorCellGroupMap, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred output_vector_cell_decl(csharp_out_info::in, indent::in,
+:- pred output_vector_cell_decl_for_csharp(csharp_out_info::in, indent::in,
     ml_vector_common_type_num::in, ml_vector_cell_group::in,
     io::di, io::uo) is det.
 
-output_vector_cell_decl(Info, Indent, TypeNum, CellGroup, !IO) :-
+output_vector_cell_decl_for_csharp(Info, Indent, TypeNum, CellGroup, !IO) :-
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldIds, _NextRow,
         _RowInits),
-    output_defn(Info, Indent, oa_none, ClassDefn, !IO),
+    output_defn_for_csharp(Info, Indent, oa_none, ClassDefn, !IO),
 
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("private static /* readonly */ ", !IO),
-    output_type(Info, Type, !IO),
+    output_type_for_csharp(Info, Type, !IO),
     io.format("[] MR_vector_common_%d;\n", [i(TypeRawNum)], !IO).
 
-:- pred output_vector_cell_init(csharp_out_info::in, indent::in,
+:- pred output_vector_cell_init_for_csharp(csharp_out_info::in, indent::in,
     ml_vector_common_type_num::in, ml_vector_cell_group::in,
     io::di, io::uo) is det.
 
-output_vector_cell_init(Info, Indent, TypeNum, CellGroup, !IO) :-
+output_vector_cell_init_for_csharp(Info, Indent, TypeNum, CellGroup, !IO) :-
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, _ClassDefn, _FieldIds, _NextRow,
         RowInits),
 
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.format("MR_vector_common_%d = new ", [i(TypeRawNum)], !IO),
-    output_type(Info, Type, !IO),
+    output_type_for_csharp(Info, Type, !IO),
     io.write_string("[] {\n", !IO),
-    indent_line(Indent + 1, !IO),
-    output_initializer_body_list(Info, cord.list(RowInits), !IO),
+    output_n_indents(Indent + 1, !IO),
+    output_initializer_body_list_for_csharp(Info, cord.list(RowInits), !IO),
     io.nl(!IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("};\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We need to provide initializers for local variables to avoid problems
     % with undefined variables.
@@ -1291,7 +1115,7 @@ get_type_initializer(Info, Type) = Initializer :-
             ; CtorCat = ctor_cat_user(_)
             ; CtorCat = ctor_cat_builtin_dummy
             ),
-            type_to_string(Info, Type, TypeString, _),
+            type_to_string_for_csharp(Info, Type, TypeString, _),
             Initializer = "default(" ++ TypeString ++ ")"
         )
     ;
@@ -1335,33 +1159,24 @@ get_type_initializer(Info, Type) = Initializer :-
             ; ForeignType = java(_)
             ; ForeignType = erlang(_)
             ),
-            unexpected($module, $pred, "wrong foreign language type")
+            unexpected($pred, "wrong foreign language type")
         )
     ;
         Type = mlds_unknown_type,
-        unexpected($module, $pred, "variable has unknown_type")
+        unexpected($pred, "variable has unknown_type")
     ).
 
-:- pred output_maybe(maybe(T)::in,
-    pred(T, io, io)::pred(in, di, uo) is det, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
 
-output_maybe(MaybeValue, OutputAction, !IO) :-
+:- pred output_initializer_for_csharp(csharp_out_info::in, output_aux::in,
+    mlds_type::in, mlds_initializer::in, io::di, io::uo) is det.
+
+output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO) :-
     (
-        MaybeValue = yes(Value),
-        OutputAction(Value, !IO)
-    ;
-        MaybeValue = no
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred output_initializer(csharp_out_info::in, output_aux::in, mlds_type::in,
-    mlds_initializer::in, io::di, io::uo) is det.
-
-output_initializer(Info, OutputAux, Type, Initializer, !IO) :-
-    NeedsInit = needs_initialization(Initializer),
-    (
-        NeedsInit = yes,
+        ( Initializer = init_obj(_)
+        ; Initializer = init_struct(_, _)
+        ; Initializer = init_array(_)
+        ),
         io.write_string(" = ", !IO),
         % Due to cyclic references, we need to separate the allocation and
         % initialisation steps of RTTI structures.  If InitStyle is alloc_only
@@ -1372,13 +1187,15 @@ output_initializer(Info, OutputAux, Type, Initializer, !IO) :-
             ; OutputAux = oa_cname(_)
             ; OutputAux = oa_force_init
             ),
-            output_initializer_body(Info, Initializer, yes(Type), !IO)
+            output_initializer_body_for_csharp(Info, Initializer,
+                yes(Type), !IO)
         ;
             OutputAux = oa_alloc_only,
-            output_initializer_alloc_only(Info, Initializer, yes(Type), !IO)
+            output_initializer_alloc_only_for_csharp(Info, Initializer,
+                yes(Type), !IO)
         )
     ;
-        NeedsInit = no,
+        Initializer = no_initializer,
         (
             OutputAux = oa_force_init,
             % Local variables need to be initialised to avoid warnings.
@@ -1392,23 +1209,16 @@ output_initializer(Info, OutputAux, Type, Initializer, !IO) :-
         )
     ).
 
-:- func needs_initialization(mlds_initializer) = bool.
-
-needs_initialization(no_initializer) = no.
-needs_initialization(init_obj(_)) = yes.
-needs_initialization(init_struct(_, _)) = yes.
-needs_initialization(init_array(_)) = yes.
-
-:- pred output_initializer_alloc_only(csharp_out_info::in,
+:- pred output_initializer_alloc_only_for_csharp(csharp_out_info::in,
     mlds_initializer::in, maybe(mlds_type)::in, io::di, io::uo) is det.
 
-output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
+output_initializer_alloc_only_for_csharp(Info, Initializer, MaybeType, !IO) :-
     (
         Initializer = no_initializer,
-        unexpected($module, $pred, "no_initializer")
+        unexpected($pred, "no_initializer")
     ;
         Initializer = init_obj(_),
-        unexpected($module, $pred, "init_obj")
+        unexpected($pred, "init_obj")
     ;
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
@@ -1419,7 +1229,7 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
             Size = list.length(FieldInits),
             io.format("object[%d]", [i(Size)], !IO)
         else
-            output_type(Info, StructType, !IO),
+            output_type_for_csharp(Info, StructType, !IO),
             io.write_string("()", !IO)
         )
     ;
@@ -1428,13 +1238,13 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
         io.write_string("new ", !IO),
         (
             MaybeType = yes(Type),
-            type_to_string(Info, Type, String, ArrayDims),
+            type_to_string_for_csharp(Info, Type, String, ArrayDims),
             io.write_string(String, !IO),
             % Replace the innermost array dimension by the known size.
             ( if list.split_last(ArrayDims, Heads, 0) then
                 output_array_dimensions(Heads ++ [Size], !IO)
             else
-                unexpected($module, $pred, "missing array dimension")
+                unexpected($pred, "missing array dimension")
             )
         ;
             MaybeType = no,
@@ -1443,169 +1253,156 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
         )
     ).
 
-:- pred output_initializer_body(csharp_out_info::in, mlds_initializer::in,
-    maybe(mlds_type)::in, io::di, io::uo) is det.
+:- pred output_initializer_body_for_csharp(csharp_out_info::in,
+    mlds_initializer::in, maybe(mlds_type)::in, io::di, io::uo) is det.
 
-output_initializer_body(Info, Initializer, MaybeType, !IO) :-
+output_initializer_body_for_csharp(Info, Initializer, MaybeType, !IO) :-
     (
         Initializer = no_initializer,
-        unexpected($module, $pred, "no_initializer")
+        unexpected($pred, "no_initializer")
     ;
         Initializer = init_obj(Rval),
-        output_rval(Info, Rval, !IO)
+        output_rval_for_csharp(Info, Rval, !IO)
     ;
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
-        output_type(Info, StructType, !IO),
-        IsArray = type_is_array(StructType),
+        output_type_for_csharp(Info, StructType, !IO),
+        IsArray = type_is_array_for_csharp(StructType),
         io.write_string(if IsArray = is_array then " {" else "(", !IO),
-        output_initializer_body_list(Info, FieldInits, !IO),
+        output_initializer_body_list_for_csharp(Info, FieldInits, !IO),
         io.write_char(if IsArray = is_array then '}' else ')', !IO)
     ;
         Initializer = init_array(ElementInits),
         io.write_string("new ", !IO),
         (
             MaybeType = yes(Type),
-            output_type(Info, Type, !IO)
+            output_type_for_csharp(Info, Type, !IO)
         ;
             MaybeType = no,
             % XXX we need to know the type here
             io.write_string("/* XXX init_array */ object[]", !IO)
         ),
         io.write_string(" {\n\t\t", !IO),
-        output_initializer_body_list(Info, ElementInits, !IO),
+        output_initializer_body_list_for_csharp(Info, ElementInits, !IO),
         io.write_string("}", !IO)
     ).
 
-:- pred output_initializer_body_list(csharp_out_info::in,
+:- pred output_initializer_body_list_for_csharp(csharp_out_info::in,
     list(mlds_initializer)::in, io::di, io::uo) is det.
 
-output_initializer_body_list(Info, Inits, !IO) :-
+output_initializer_body_list_for_csharp(Info, Inits, !IO) :-
     io.write_list(Inits, ",\n\t\t",
         (pred(Init::in, !.IO::di, !:IO::uo) is det :-
-            output_initializer_body(Info, Init, no, !IO)),
+            output_initializer_body_for_csharp(Info, Init, no, !IO)),
         !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output RTTI data assignments.
 %
 
-:- pred output_rtti_assignments(csharp_out_info::in, indent::in,
+:- pred output_rtti_assignments_for_csharp(csharp_out_info::in, indent::in,
     list(mlds_data_defn)::in, io::di, io::uo) is det.
 
-output_rtti_assignments(Info, Indent, Defns, !IO) :-
-    indent_line(Indent, !IO),
+output_rtti_assignments_for_csharp(Info, Indent, Defns, !IO) :-
+    output_n_indents(Indent, !IO),
     io.write_string("static void MR_init_rtti() {\n", !IO),
     OrderedDefns = order_mlds_rtti_defns(Defns),
-    list.foldl(output_rtti_defns_assignments(Info, Indent + 1),
+    list.foldl(output_rtti_defns_assignments_for_csharp(Info, Indent + 1),
         OrderedDefns, !IO),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred output_rtti_defns_assignments(csharp_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+:- pred output_rtti_defns_assignments_for_csharp(csharp_out_info::in,
+    indent::in, list(mlds_data_defn)::in, io::di, io::uo) is det.
 
-output_rtti_defns_assignments(Info, Indent, Defns, !IO) :-
+output_rtti_defns_assignments_for_csharp(Info, Indent, Defns, !IO) :-
     % Separate cliques.
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.write_string("//\n", !IO),
-    list.foldl(output_rtti_defn_assignments(Info, Indent), Defns, !IO).
+    list.foldl(output_rtti_defn_assignments_for_csharp(Info, Indent),
+        Defns, !IO).
 
-:- pred output_rtti_defn_assignments(csharp_out_info::in, indent::in,
-    mlds_data_defn::in, io::di, io::uo) is det.
+:- pred output_rtti_defn_assignments_for_csharp(csharp_out_info::in,
+    indent::in, mlds_data_defn::in, io::di, io::uo) is det.
 
-output_rtti_defn_assignments(Info, Indent, DataDefn, !IO) :-
+output_rtti_defn_assignments_for_csharp(Info, Indent, DataDefn, !IO) :-
     DataDefn = mlds_data_defn(Name, _Context, _Flags, _Type, Initializer, _),
     (
         Initializer = no_initializer
     ;
         Initializer = init_obj(_),
         % Not encountered in practice.
-        unexpected($module, $pred, "init_obj")
+        unexpected($pred, "init_obj")
     ;
         Initializer = init_struct(StructType, FieldInits),
-        IsArray = type_is_array(StructType),
+        IsArray = type_is_array_for_csharp(StructType),
         (
             IsArray = not_array,
-            indent_line(Indent, !IO),
+            output_n_indents(Indent, !IO),
             output_data_name_for_csharp(Name, !IO),
             io.write_string(".init(", !IO),
-            output_initializer_body_list(Info, FieldInits, !IO),
+            output_initializer_body_list_for_csharp(Info, FieldInits, !IO),
             io.write_string(");\n", !IO)
         ;
             IsArray = is_array,
             % Not encountered in practice.
-            unexpected($module, $pred, "is_array")
+            unexpected($pred, "is_array")
         )
     ;
         Initializer = init_array(ElementInits),
-        list.foldl2(output_rtti_array_assignments(Info, Indent, Name),
+        list.foldl2(
+            output_rtti_array_assignments_for_csharp(Info, Indent, Name),
             ElementInits, 0, _Index, !IO)
     ).
 
-:- pred output_rtti_array_assignments(csharp_out_info::in, indent::in,
-    mlds_data_name::in, mlds_initializer::in, int::in, int::out,
+:- pred output_rtti_array_assignments_for_csharp(csharp_out_info::in,
+    indent::in, mlds_data_name::in, mlds_initializer::in, int::in, int::out,
     io::di, io::uo) is det.
 
-output_rtti_array_assignments(Info, Indent, Name, ElementInit,
+output_rtti_array_assignments_for_csharp(Info, Indent, Name, ElementInit,
         Index, Index + 1, !IO) :-
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     output_data_name_for_csharp(Name, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
     io.write_string("] = ", !IO),
-    output_initializer_body(Info, ElementInit, no, !IO),
+    output_initializer_body_for_csharp(Info, ElementInit, no, !IO),
     io.write_string(";\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output function declarations/definitions.
 %
 
-:- pred output_pred_proc_id(csharp_out_info::in, pred_proc_id::in,
-    io::di, io::uo) is det.
-
-output_pred_proc_id(Info, proc(PredId, ProcId), !IO) :-
-    AutoComments = Info ^ oi_auto_comments,
-    (
-        AutoComments = yes,
-        io.write_string("// pred_id: ", !IO),
-        pred_id_to_int(PredId, PredIdNum),
-        io.write_int(PredIdNum, !IO),
-        io.write_string(", proc_id: ", !IO),
-        proc_id_to_int(ProcId, ProcIdNum),
-        io.write_int(ProcIdNum, !IO),
-        io.nl(!IO)
-    ;
-        AutoComments = no
-    ).
-
-:- pred output_func(csharp_out_info::in, indent::in, mlds_entity_name::in,
-    output_aux::in, mlds_context::in,
+:- pred output_func_for_csharp(csharp_out_info::in, indent::in,
+    mlds_entity_name::in, output_aux::in, mlds_context::in,
     mlds_func_params::in, mlds_function_body::in, io::di, io::uo) is det.
 
-output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
-        !IO) :-
+output_func_for_csharp(Info, Indent, Name, OutputAux, Context, Signature,
+        MaybeBody, !IO) :-
     (
         MaybeBody = body_defined_here(Body),
-        output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO),
+        output_func_decl_for_csharp(Info, Indent, Name, OutputAux,
+            Signature, !IO),
         io.write_string("\n", !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("{\n", !IO),
-        FuncInfo = func_info(Signature),
-        output_statement(Info, Indent + 1, FuncInfo, Body, _ExitMethods, !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        FuncInfo = func_info_csj(Signature),
+        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Body,
+            _ExitMethods, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("}\n", !IO),    % end the function
-        cs_output_default_context(Info ^ oi_line_numbers, !IO)
+        cs_output_default_context(Info ^ csoi_line_numbers, !IO)
     ;
         MaybeBody = body_external
     ).
 
-:- pred output_func_decl(csharp_out_info::in, indent::in, mlds_entity_name::in,
-    output_aux::in, mlds_func_params::in, io::di, io::uo) is det.
+:- pred output_func_decl_for_csharp(csharp_out_info::in, indent::in,
+    mlds_entity_name::in, output_aux::in, mlds_func_params::in,
+    io::di, io::uo) is det.
 
-output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
+output_func_decl_for_csharp(Info, Indent, Name, OutputAux, Signature, !IO) :-
     Signature = mlds_func_params(Parameters, RetTypes),
     ( if
         OutputAux = oa_cname(CtorName),
@@ -1614,12 +1411,12 @@ output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
         output_entity_name_for_csharp(CtorName, !IO),
         OutParams = []
     else
-        output_return_types(Info, RetTypes, RestRetTypes, !IO),
+        output_return_types_for_csharp(Info, RetTypes, RestRetTypes, !IO),
         io.write_char(' ', !IO),
         output_entity_name_for_csharp(Name, !IO),
         list.map_foldl(make_out_param, RestRetTypes, OutParams, 2, _)
     ),
-    output_params(Info, Indent, Parameters ++ OutParams, !IO).
+    output_params_for_csharp(Info, Indent, Parameters ++ OutParams, !IO).
 
 :- pred make_out_param(mlds_type::in, mlds_argument::out, int::in, int::out)
     is det.
@@ -1628,10 +1425,10 @@ make_out_param(Type, Argument, Num, Num + 1) :-
     VarName = mlds_comp_var(mcv_out_param(Num)),
     Argument = mlds_argument(VarName, mlds_ptr_type(Type), gc_no_stmt).
 
-:- pred output_return_types(csharp_out_info::in, mlds_return_types::in,
-    list(mlds_type)::out, io::di, io::uo) is det.
+:- pred output_return_types_for_csharp(csharp_out_info::in,
+    mlds_return_types::in, list(mlds_type)::out, io::di, io::uo) is det.
 
-output_return_types(Info, RetTypes, OutParams, !IO) :-
+output_return_types_for_csharp(Info, RetTypes, OutParams, !IO) :-
     (
         RetTypes = [],
         io.write_string("void", !IO),
@@ -1640,39 +1437,40 @@ output_return_types(Info, RetTypes, OutParams, !IO) :-
         RetTypes = [RetType | OutParams],
         % The first return value is returned directly.  Any further return
         % values are returned via out parameters.
-        output_type(Info, RetType, !IO)
+        output_type_for_csharp(Info, RetType, !IO)
     ).
 
-:- pred output_params(csharp_out_info::in, indent::in, mlds_arguments::in,
-    io::di, io::uo) is det.
+:- pred output_params_for_csharp(csharp_out_info::in, indent::in,
+    list(mlds_argument)::in, io::di, io::uo) is det.
 
-output_params(Info, Indent, Parameters, !IO) :-
+output_params_for_csharp(Info, Indent, Parameters, !IO) :-
     io.write_char('(', !IO),
     (
         Parameters = []
     ;
         Parameters = [_ | _],
         io.nl(!IO),
-        io.write_list(Parameters, ",\n", output_param(Info, Indent + 1), !IO)
+        io.write_list(Parameters, ",\n",
+            output_param_for_csharp(Info, Indent + 1), !IO)
     ),
     io.write_char(')', !IO).
 
-:- pred output_param(csharp_out_info::in, indent::in, mlds_argument::in,
-    io::di, io::uo) is det.
+:- pred output_param_for_csharp(csharp_out_info::in, indent::in,
+    mlds_argument::in, io::di, io::uo) is det.
 
-output_param(Info, Indent, Arg, !IO) :-
+output_param_for_csharp(Info, Indent, Arg, !IO) :-
     Arg = mlds_argument(Name, Type, _GCStatement),
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     ( if Type = mlds_ptr_type(_) then
         io.write_string("out ", !IO)
     else
         true
     ),
-    output_type(Info, Type, !IO),
+    output_type_for_csharp(Info, Type, !IO),
     io.write_char(' ', !IO),
     output_var_name_for_csharp(Name, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output names of various entities.
 %
@@ -1688,28 +1486,29 @@ output_maybe_qualified_name(Info, QualifiedName, !IO) :-
     % This avoids unnecessary verbosity, and is also necessary in the case
     % of local variables and function parameters, which must not be qualified.
     QualifiedName = qual(ModuleName, _QualKind, Name),
-    CurrentModuleName = Info ^ oi_module_name,
+    CurrentModuleName = Info ^ csoi_module_name,
     ( if ModuleName = CurrentModuleName then
         output_entity_name_for_csharp(Name, !IO)
     else
-        output_fully_qualified_thing(QualifiedName,
+        output_fully_qualified_thing_for_csharp(QualifiedName,
             output_entity_name_for_csharp, !IO)
     ).
 
-:- pred output_fully_qualified_thing(mlds_fully_qualified_name(T)::in,
+:- pred output_fully_qualified_thing_for_csharp(
+    mlds_fully_qualified_name(T)::in,
     pred(T, io, io)::pred(in, di, uo) is det, io::di, io::uo) is det.
 
-output_fully_qualified_thing(QualName, OutputFunc, !IO) :-
+output_fully_qualified_thing_for_csharp(QualName, OutputFunc, !IO) :-
     QualName = qual(MLDS_ModuleName, QualKind, UnqualName),
-    qualifier_to_string(MLDS_ModuleName, QualKind, QualifierString),
+    qualifier_to_string_for_csharp(MLDS_ModuleName, QualKind, QualifierString),
     io.write_string(QualifierString, !IO),
     io.write_string(".", !IO),
     OutputFunc(UnqualName, !IO).
 
-:- pred qualifier_to_string(mlds_module_name::in, mlds_qual_kind::in,
-    string::out) is det.
+:- pred qualifier_to_string_for_csharp(mlds_module_name::in,
+    mlds_qual_kind::in, string::out) is det.
 
-qualifier_to_string(MLDS_ModuleName, QualKind, String) :-
+qualifier_to_string_for_csharp(MLDS_ModuleName, QualKind, String) :-
     mlds_module_name_to_package_name(MLDS_ModuleName) = OuterName,
     mlds_module_name_to_sym_name(MLDS_ModuleName) = InnerName,
 
@@ -1729,35 +1528,13 @@ qualifier_to_string(MLDS_ModuleName, QualKind, String) :-
     ( if OuterName = InnerName then
         MangledSuffix = ""
     else
-        remove_sym_name_prefixes(InnerName, OuterName, Suffix),
+        remove_sym_name_prefix(InnerName, OuterName, Suffix),
         mangle_sym_name_for_csharp(Suffix, convert_qual_kind(QualKind), ".",
             MangledSuffix0),
         MangledSuffix = "." ++ MangledSuffix0
     ),
 
     String = MangledOuterName ++ MangledSuffix.
-
-:- pred remove_sym_name_prefixes(sym_name::in, sym_name::in, sym_name::out)
-    is det.
-
-remove_sym_name_prefixes(SymName0, Prefix, SymName) :-
-    (
-        SymName0 = qualified(Qual, Name),
-        ( if Qual = Prefix then
-            SymName = unqualified(Name)
-        else
-            remove_sym_name_prefixes(Qual, Prefix, SymName1),
-            SymName = qualified(SymName1, Name)
-        )
-    ;
-        SymName0 = unqualified(_),
-        unexpected($module, $pred, "prefix not found")
-    ).
-
-:- func convert_qual_kind(mlds_qual_kind) = csj_qual_kind.
-
-convert_qual_kind(module_qual) = module_qual.
-convert_qual_kind(type_qual) = type_qual.
 
 :- pred output_unqual_class_name_for_csharp(mlds_class_name::in, arity::in,
     io::di, io::uo) is det.
@@ -1787,7 +1564,7 @@ qual_class_name_to_string_for_csharp(QualName, Arity, String) :-
         % Don't mangle runtime class names.
         String = "runtime." ++ ClassName
     else
-        qualifier_to_string(MLDS_ModuleName, QualKind, QualString),
+        qualifier_to_string_for_csharp(MLDS_ModuleName, QualKind, QualString),
         unqual_class_name_to_string_for_csharp(ClassName, Arity, UnqualString),
         String = QualString ++ "." ++ UnqualString
     ).
@@ -1923,16 +1700,16 @@ data_name_to_string_for_csharp(DataName, String) :-
         String = RttiAddrName
     ;
         DataName = mlds_module_layout,
-        unexpected($module, $pred, "NYI: mlds_module_layout")
+        unexpected($pred, "NYI: mlds_module_layout")
     ;
         DataName = mlds_proc_layout(_ProcLabel),
-        unexpected($module, $pred, "NYI: mlds_proc_layout")
+        unexpected($pred, "NYI: mlds_proc_layout")
     ;
         DataName = mlds_internal_layout(_ProcLabel, _FuncSeqNum),
-        unexpected($module, $pred, "NYI: mlds_internal_layout")
+        unexpected($pred, "NYI: mlds_internal_layout")
     ;
         DataName = mlds_tabling_ref(_ProcLabel, _Id),
-        unexpected($module, $pred, "NYI: mlds_tabling_ref")
+        unexpected($pred, "NYI: mlds_tabling_ref")
     ).
 
 :- pred var_name_to_string_for_csharp(mlds_var_name::in, string::out) is det.
@@ -1942,33 +1719,28 @@ var_name_to_string_for_csharp(VarName, String) :-
     MangledString = name_mangle(RawString),
     String = make_valid_csharp_symbol_name(MangledString).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output types.
 %
 
-:- pred output_type(csharp_out_info::in, mlds_type::in, io::di, io::uo) is det.
-
-output_type(Info, MLDS_Type, !IO) :-
-    output_type(Info, MLDS_Type, [], !IO).
-
-:- pred output_type(csharp_out_info::in, mlds_type::in, list(int)::in,
+:- pred output_type_for_csharp(csharp_out_info::in, mlds_type::in,
     io::di, io::uo) is det.
 
-output_type(Info, MLDS_Type, ArrayDims0, !IO) :-
-    type_to_string(Info, MLDS_Type, String, ArrayDims),
+output_type_for_csharp(Info, MLDS_Type, !IO) :-
+    output_type_for_csharp_dims(Info, MLDS_Type, [], !IO).
+
+:- pred output_type_for_csharp_dims(csharp_out_info::in, mlds_type::in,
+    list(int)::in, io::di, io::uo) is det.
+
+output_type_for_csharp_dims(Info, MLDS_Type, ArrayDims0, !IO) :-
+    type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims),
     io.write_string(String, !IO),
     output_array_dimensions(ArrayDims ++ ArrayDims0, !IO).
 
-:- pred output_array_dimensions(list(int)::in, io::di, io::uo) is det.
-
-output_array_dimensions(ArrayDims, !IO) :-
-    list.map(array_dimension_to_string, ArrayDims, Strings),
-    list.foldr(io.write_string, Strings, !IO).
-
-    % type_to_string(Info, MLDS_Type, String, ArrayDims)
+    % type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims)
     %
-    % Generate the Java name for a type.  ArrayDims are the array dimensions to
+    % Generate the Java name for a type. ArrayDims are the array dimensions to
     % be written after the type name, if any, in reverse order to that of Java
     % syntax where a non-zero integer represents a known array size and zero
     % represents an unknown array size.
@@ -1978,17 +1750,18 @@ output_array_dimensions(ArrayDims, !IO) :-
     %
     % XXX yet to check this for C#
     %
-:- pred type_to_string(csharp_out_info::in, mlds_type::in,
+:- pred type_to_string_for_csharp(csharp_out_info::in, mlds_type::in,
     string::out, list(int)::out) is det.
 
-type_to_string(Info, MLDS_Type, String, ArrayDims) :-
+type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
     (
         MLDS_Type = mercury_type(Type, CtorCat, _),
         ( if
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
             % in private_builtin.
-            hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims0)
+            hand_defined_type_for_csharp(Type, CtorCat,
+                SubstituteName, ArrayDims0)
         then
             String = SubstituteName,
             ArrayDims = ArrayDims0
@@ -2008,7 +1781,8 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
             String = "/* c_pointer */ object",
             ArrayDims = []
         else
-            mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims)
+            mercury_type_to_string_for_csharp(Info, Type, CtorCat, String,
+                ArrayDims)
         )
     ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
@@ -2024,7 +1798,8 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
             % That doesn't work if the representative element is of a foreign
             % type, and has the value null.
             ( if csharp_builtin_type(ElementType, _) then
-                type_to_string(Info, ElementType, String, ArrayDims0),
+                type_to_string_for_csharp(Info, ElementType, String,
+                    ArrayDims0),
                 ArrayDims = [0 | ArrayDims0]
             else
                 String = "object",
@@ -2059,13 +1834,13 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
             ArrayDims = []
         ;
             ForeignType = c(_),
-            unexpected($module, $pred, "c foreign_type")
+            unexpected($pred, "c foreign_type")
         ;
             ForeignType = java(_),
-            unexpected($module, $pred, "java foreign_type")
+            unexpected($pred, "java foreign_type")
         ;
             ForeignType = erlang(_),
-            unexpected($module, $pred, "erlang foreign_type")
+            unexpected($pred, "erlang foreign_type")
         )
     ;
         MLDS_Type = mlds_class_type(Name, Arity, _ClassKind),
@@ -2075,15 +1850,15 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         MLDS_Type = mlds_ptr_type(Type),
         % XXX Should we report an error here, if the type pointed to
         % is not a class type?
-        type_to_string(Info, Type, String, ArrayDims)
+        type_to_string_for_csharp(Info, Type, String, ArrayDims)
     ;
         MLDS_Type = mlds_array_type(Type),
-        type_to_string(Info, Type, String, ArrayDims0),
+        type_to_string_for_csharp(Info, Type, String, ArrayDims0),
         ArrayDims = [0 | ArrayDims0]
     ;
         MLDS_Type = mlds_mostly_generic_array_type(_),
         Type = mlds_generic_type,
-        type_to_string(Info, Type, String, ArrayDims0),
+        type_to_string_for_csharp(Info, Type, String, ArrayDims0),
         ArrayDims = [0 | ArrayDims0]
     ;
         MLDS_Type = mlds_func_type(mlds_func_params(Args, RetTypes)),
@@ -2138,13 +1913,13 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         )
     ;
         MLDS_Type = mlds_unknown_type,
-        unexpected($module, $pred, "unknown type")
+        unexpected($pred, "unknown type")
     ).
 
-:- pred mercury_type_to_string(csharp_out_info::in, mer_type::in,
+:- pred mercury_type_to_string_for_csharp(csharp_out_info::in, mer_type::in,
     type_ctor_category::in, string::out, list(int)::out) is det.
 
-mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
+mercury_type_to_string_for_csharp(Info, Type, CtorCat, String, ArrayDims) :-
     (
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         % C# `char' not large enough for code points so we must use `int'.
@@ -2185,20 +1960,21 @@ mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
         ArrayDims = [0]
     ;
         CtorCat = ctor_cat_system(_),
-        mercury_type_to_string(Info, Type, ctor_cat_user(cat_user_general),
-            String, ArrayDims)
+        mercury_type_to_string_for_csharp(Info, Type,
+            ctor_cat_user(cat_user_general), String, ArrayDims)
     ;
         ( CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_user(_)
         ; CtorCat = ctor_cat_builtin_dummy
         ),
-        mercury_user_type_to_string(Info, Type, CtorCat, String, ArrayDims)
+        mercury_user_type_to_string_csharp(Info, Type, CtorCat, String,
+            ArrayDims)
     ).
 
-:- pred mercury_user_type_to_string(csharp_out_info::in, mer_type::in,
+:- pred mercury_user_type_to_string_csharp(csharp_out_info::in, mer_type::in,
     type_ctor_category::in, string::out, list(int)::out) is det.
 
-mercury_user_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
+mercury_user_type_to_string_csharp(Info, Type, CtorCat, String, ArrayDims) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
     ( if CtorCat = ctor_cat_enum(_) then
@@ -2206,31 +1982,34 @@ mercury_user_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
     else
         MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
     ),
-    type_to_string(Info, MLDS_Type, TypeString, ArrayDims),
-    OutputGenerics = Info ^ oi_output_generics,
+    type_to_string_for_csharp(Info, MLDS_Type, TypeString, ArrayDims),
+    OutputGenerics = Info ^ csoi_output_generics,
     (
         OutputGenerics = do_output_generics,
-        generic_args_types_to_string(Info, ArgsTypes, GenericsString),
+        generic_args_types_to_string_for_csharp(Info, ArgsTypes,
+            GenericsString),
         String = TypeString ++ GenericsString
     ;
         OutputGenerics = do_not_output_generics,
         String = TypeString
     ).
 
-:- pred generic_args_types_to_string(csharp_out_info::in, list(mer_type)::in,
-    string::out) is det.
+:- pred generic_args_types_to_string_for_csharp(csharp_out_info::in,
+    list(mer_type)::in, string::out) is det.
 
-generic_args_types_to_string(Info, ArgsTypes, String) :-
+generic_args_types_to_string_for_csharp(Info, ArgsTypes, String) :-
     (
         ArgsTypes = [],
         String = ""
     ;
         ArgsTypes = [_ | _],
-        ToString = (pred(ArgType::in, ArgTypeString::out) is det :-
-            ModuleInfo = Info ^ oi_module_info,
-            MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-            boxed_type_to_string(Info, MLDS_ArgType, ArgTypeString)
-        ),
+        ToString =
+            ( pred(ArgType::in, ArgTypeString::out) is det :-
+                ModuleInfo = Info ^ csoi_module_info,
+                MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+                boxed_type_to_string_for_csharp(Info, MLDS_ArgType,
+                    ArgTypeString)
+            ),
         list.map(ToString, ArgsTypes, ArgsTypesStrings),
         ArgsTypesString = string.join_list(", ", ArgsTypesStrings),
         String = "<" ++ ArgsTypesString ++ ">"
@@ -2238,9 +2017,9 @@ generic_args_types_to_string(Info, ArgsTypes, String) :-
 
     % Return is_array if the corresponding C# type is an array type.
     %
-:- func type_is_array(mlds_type) = is_array.
+:- func type_is_array_for_csharp(mlds_type) = is_array.
 
-type_is_array(Type) = IsArray :-
+type_is_array_for_csharp(Type) = IsArray :-
     ( if Type = mlds_array_type(_) then
         IsArray = is_array
     else if Type = mlds_mostly_generic_array_type(_) then
@@ -2256,48 +2035,56 @@ type_is_array(Type) = IsArray :-
         IsArray = not_array
     ).
 
-    % Return is_array if the corresponding C# type is an array type.
-    %
-:- func type_category_is_array(type_ctor_category) = is_array.
-
-type_category_is_array(CtorCat) = IsArray :-
-    (
-        ( CtorCat = ctor_cat_builtin(_)
-        ; CtorCat = ctor_cat_enum(_)
-        ; CtorCat = ctor_cat_builtin_dummy
-        ; CtorCat = ctor_cat_variable
-        ; CtorCat = ctor_cat_system(cat_system_type_info)
-        ; CtorCat = ctor_cat_system(cat_system_type_ctor_info)
-        ; CtorCat = ctor_cat_void
-        ; CtorCat = ctor_cat_user(_)
-        ),
-        IsArray = not_array
-    ;
-        ( CtorCat = ctor_cat_higher_order
-        ; CtorCat = ctor_cat_tuple
-        ; CtorCat = ctor_cat_system(cat_system_typeclass_info)
-        ; CtorCat = ctor_cat_system(cat_system_base_typeclass_info)
-        ),
-        IsArray = is_array
-    ).
-
-    % hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims):
+    % hand_defined_type_for_csharp(Type, CtorCat, SubstituteName, ArrayDims):
     %
     % We need to handle type_info (etc.) types specially -- they get mapped
     % to types in the runtime rather than in private_builtin.
     %
-:- pred hand_defined_type(mer_type::in, type_ctor_category::in, string::out,
-    list(int)::out) is semidet.
+:- pred hand_defined_type_for_csharp(mer_type::in, type_ctor_category::in,
+    string::out, list(int)::out) is semidet.
 
-hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims) :-
-    require_complete_switch [CtorCat] (
-        CtorCat = ctor_cat_system(TypeCtorCatSystem),
-        hand_defined_system_type_info(TypeCtorCatSystem, SubstituteName,
-            ArrayDims)
+hand_defined_type_for_csharp(Type, CtorCat, SubstituteName, ArrayDims) :-
+    require_complete_switch [CtorCat]
+    (
+        CtorCat = ctor_cat_system(CtorCatSystem),
+        (
+            CtorCatSystem = cat_system_type_info,
+            SubstituteName = "runtime.TypeInfo_Struct",
+            ArrayDims = []
+        ;
+            CtorCatSystem = cat_system_type_ctor_info,
+            SubstituteName = "runtime.TypeCtorInfo_Struct",
+            ArrayDims = []
+        ;
+            CtorCatSystem = cat_system_typeclass_info,
+            SubstituteName = "/* typeclass_info */ object",
+            ArrayDims = [0]
+        ;
+            CtorCatSystem = cat_system_base_typeclass_info,
+            SubstituteName = "/* base_typeclass_info */ object",
+            ArrayDims = [0]
+        )
     ;
-        CtorCat = ctor_cat_user(TypeCtorCatUser),
-        hand_defined_user_type(TypeCtorCatUser, Type, SubstituteName,
-            ArrayDims)
+        CtorCat = ctor_cat_user(CtorCatUser),
+        require_complete_switch [CtorCatUser]
+        (
+            CtorCatUser = cat_user_general,
+            ( if Type = type_desc_type then
+                SubstituteName = "runtime.TypeInfo_Struct"
+            else if Type = pseudo_type_desc_type then
+                SubstituteName = "runtime.PseudoTypeInfo"
+            else if Type = type_ctor_desc_type then
+                SubstituteName = "runtime.TypeCtorInfo_Struct"
+            else
+                fail
+            ),
+            ArrayDims = []
+        ;
+            ( CtorCatUser = cat_user_direct_dummy
+            ; CtorCatUser = cat_user_notag
+            ),
+            fail
+        )
     ;
         ( CtorCat = ctor_cat_builtin(_)
         ; CtorCat = ctor_cat_builtin_dummy
@@ -2310,88 +2097,35 @@ hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims) :-
         fail
     ).
 
-:- pred hand_defined_system_type_info(type_ctor_cat_system::in, string::out,
-    list(int)::out) is det.
+:- pred boxed_type_to_string_for_csharp(csharp_out_info::in, mlds_type::in,
+    string::out) is det.
 
-hand_defined_system_type_info(TypeCtorCatSystem, SubstituteName, ArrayDims) :-
-    (
-        TypeCtorCatSystem = cat_system_type_info,
-        SubstituteName = "runtime.TypeInfo_Struct",
-        ArrayDims = []
-    ;
-        TypeCtorCatSystem = cat_system_type_ctor_info,
-        SubstituteName = "runtime.TypeCtorInfo_Struct",
-        ArrayDims = []
-    ;
-        TypeCtorCatSystem = cat_system_typeclass_info,
-        SubstituteName = "/* typeclass_info */ object",
-        ArrayDims = [0]
-    ;
-        TypeCtorCatSystem = cat_system_base_typeclass_info,
-        SubstituteName = "/* base_typeclass_info */ object",
-        ArrayDims = [0]
-    ).
-
-:- pred hand_defined_user_type(type_ctor_cat_user::in, mer_type::in,
-    string::out, list(int)::out) is semidet.
-
-hand_defined_user_type(TypeCtorCatUser, Type, SubstituteName, ArrayDims) :-
-    require_complete_switch [TypeCtorCatUser] (
-        TypeCtorCatUser = cat_user_general,
-        ( if Type = type_desc_type then
-            SubstituteName = "runtime.TypeInfo_Struct"
-        else if Type = pseudo_type_desc_type then
-            SubstituteName = "runtime.PseudoTypeInfo"
-        else if Type = type_ctor_desc_type then
-            SubstituteName = "runtime.TypeCtorInfo_Struct"
-        else
-            fail
-        ),
-        ArrayDims = []
-    ;
-        ( TypeCtorCatUser = cat_user_direct_dummy
-        ; TypeCtorCatUser = cat_user_notag
-        ),
-        fail
-    ).
-
-:- pred boxed_type_to_string(csharp_out_info::in, mlds_type::in, string::out)
-    is det.
-
-boxed_type_to_string(Info, Type, String) :-
-    type_to_string(Info, Type, String0, ArrayDims),
+boxed_type_to_string_for_csharp(Info, Type, String) :-
+    type_to_string_for_csharp(Info, Type, String0, ArrayDims),
     list.map(array_dimension_to_string, ArrayDims, RevBrackets),
     list.reverse(RevBrackets, Brackets),
     string.append_list([String0 | Brackets], String).
 
-:- pred array_dimension_to_string(int::in, string::out) is det.
-
-array_dimension_to_string(N, String) :-
-    ( if N = 0 then
-        String = "[]"
-    else
-        String = string.format("[%d]", [i(N)])
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output declaration specifiers.
 %
 
-:- pred output_decl_flags(csharp_out_info::in, mlds_decl_flags::in,
+:- pred output_decl_flags_for_csharp(csharp_out_info::in, mlds_decl_flags::in,
     io::di, io::uo) is det.
 
-output_decl_flags(Info, Flags, !IO) :-
-    output_access(Info, access(Flags), !IO),
-    output_per_instance(per_instance(Flags), !IO),
-    output_virtuality(virtuality(Flags), !IO),
-    output_overridability(overridability(Flags), !IO),
-    output_constness(constness(Flags), !IO),
-    output_abstractness(abstractness(Flags), !IO).
+output_decl_flags_for_csharp(Info, Flags, !IO) :-
+    output_access_for_csharp(Info, access(Flags), !IO),
+    output_per_instance_for_csharp(per_instance(Flags), !IO),
+    output_virtuality_for_csharp(virtuality(Flags), !IO),
+    output_overridability_for_csharp(overridability(Flags), !IO),
+    output_constness_for_csharp(constness(Flags), !IO),
+    output_abstractness_for_csharp(abstractness(Flags), !IO).
 
-:- pred output_access(csharp_out_info::in, access::in, io::di, io::uo) is det.
+:- pred output_access_for_csharp(csharp_out_info::in, access::in,
+    io::di, io::uo) is det.
 
-output_access(Info, Access, !IO) :-
+output_access_for_csharp(Info, Access, !IO) :-
     (
         Access = acc_public,
         io.write_string("public ", !IO)
@@ -2403,14 +2137,14 @@ output_access(Info, Access, !IO) :-
         io.write_string("protected ", !IO)
     ;
         Access = acc_default,
-        maybe_output_comment(Info, "default", !IO)
+        maybe_output_comment_for_csharp(Info, "default", !IO)
     ;
         Access = acc_local
     ).
 
-:- pred output_per_instance(per_instance::in, io::di, io::uo) is det.
+:- pred output_per_instance_for_csharp(per_instance::in, io::di, io::uo) is det.
 
-output_per_instance(PerInstance, !IO) :-
+output_per_instance_for_csharp(PerInstance, !IO) :-
     (
         PerInstance = per_instance
     ;
@@ -2418,9 +2152,9 @@ output_per_instance(PerInstance, !IO) :-
         io.write_string("static ", !IO)
     ).
 
-:- pred output_virtuality(virtuality::in, io::di, io::uo) is det.
+:- pred output_virtuality_for_csharp(virtuality::in, io::di, io::uo) is det.
 
-output_virtuality(Virtual, !IO) :-
+output_virtuality_for_csharp(Virtual, !IO) :-
     (
         Virtual = virtual,
         % In C#, methods are non-virtual by default.
@@ -2429,9 +2163,10 @@ output_virtuality(Virtual, !IO) :-
         Virtual = non_virtual
     ).
 
-:- pred output_overridability(overridability::in, io::di, io::uo) is det.
+:- pred output_overridability_for_csharp(overridability::in,
+    io::di, io::uo) is det.
 
-output_overridability(Overridability, !IO) :-
+output_overridability_for_csharp(Overridability, !IO) :-
     (
         Overridability = sealed,
         io.write_string("sealed ", !IO)
@@ -2439,9 +2174,9 @@ output_overridability(Overridability, !IO) :-
         Overridability = overridable
     ).
 
-:- pred output_constness(constness::in, io::di, io::uo) is det.
+:- pred output_constness_for_csharp(constness::in, io::di, io::uo) is det.
 
-output_constness(Constness, !IO) :-
+output_constness_for_csharp(Constness, !IO) :-
     (
         Constness = const,
         io.write_string("readonly ", !IO)
@@ -2449,9 +2184,10 @@ output_constness(Constness, !IO) :-
         Constness = modifiable
     ).
 
-:- pred output_abstractness(abstractness::in, io::di, io::uo) is det.
+:- pred output_abstractness_for_csharp(abstractness::in,
+    io::di, io::uo) is det.
 
-output_abstractness(Abstractness, !IO) :-
+output_abstractness_for_csharp(Abstractness, !IO) :-
     (
         Abstractness = abstract,
         io.write_string("abstract ", !IO)
@@ -2459,11 +2195,11 @@ output_abstractness(Abstractness, !IO) :-
         Abstractness = concrete
     ).
 
-:- pred maybe_output_comment(csharp_out_info::in, string::in,
+:- pred maybe_output_comment_for_csharp(csharp_out_info::in, string::in,
     io::di, io::uo) is det.
 
-maybe_output_comment(Info, Comment, !IO) :-
-    AutoComments = Info ^ oi_auto_comments,
+maybe_output_comment_for_csharp(Info, Comment, !IO) :-
+    AutoComments = Info ^ csoi_auto_comments,
     (
         AutoComments = yes,
         io.write_string("/* ", !IO),
@@ -2473,45 +2209,23 @@ maybe_output_comment(Info, Comment, !IO) :-
         AutoComments = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output statements.
 %
 
-    % These types are used by many of the output_stmt style predicates to
-    % return information about the statement's control flow,
-    % i.e. about the different ways in which the statement can exit.
-    % In general we only output the current statement if the previous
-    % statement could complete normally (fall through).
-    % We keep a set of exit methods since some statements (like an
-    % if-then-else) could potentially break, and also fall through.
-:- type exit_methods == set.set(exit_method).
+:- pred output_statements_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, list(statement)::in, exit_methods::out,
+    io::di, io::uo) is det.
 
-:- type exit_method
-    --->    can_break
-    ;       can_continue
-    ;       can_return
-    ;       can_throw
-    ;       can_fall_through.   % Where the instruction can complete
-                                % normally and execution can continue
-                                % with the following statement.
-
-:- type func_info
-    --->    func_info(
-                func_info_params    :: mlds_func_params
-            ).
-
-:- pred output_statements(csharp_out_info::in, indent::in, func_info::in,
-    list(statement)::in, exit_methods::out, io::di, io::uo) is det.
-
-output_statements(_, _, _, [], ExitMethods, !IO) :-
+output_statements_for_csharp(_, _, _, [], ExitMethods, !IO) :-
     ExitMethods = set.make_singleton_set(can_fall_through).
-output_statements(Info, Indent, FuncInfo, [Statement | Statements],
+output_statements_for_csharp(Info, Indent, FuncInfo, [Statement | Statements],
         ExitMethods, !IO) :-
-    output_statement(Info, Indent, FuncInfo, Statement,
+    output_statement_for_csharp(Info, Indent, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( if set.member(can_fall_through, StmtExitMethods) then
-        output_statements(Info, Indent, FuncInfo, Statements,
+        output_statements_for_csharp(Info, Indent, FuncInfo, Statements,
             StmtsExitMethods, !IO),
         ExitMethods0 = StmtExitMethods `set.union` StmtsExitMethods,
         ( if set.member(can_fall_through, StmtsExitMethods) then
@@ -2527,64 +2241,68 @@ output_statements(Info, Indent, FuncInfo, [Statement | Statements],
         ExitMethods = StmtExitMethods
     ).
 
-:- pred output_statement(csharp_out_info::in, indent::in,
-    func_info::in, statement::in, exit_methods::out, io::di, io::uo) is det.
+:- pred output_statement_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, statement::in, exit_methods::out, io::di, io::uo) is det.
 
-output_statement(Info, Indent, FuncInfo,
+output_statement_for_csharp(Info, Indent, FuncInfo,
         statement(Statement, Context), ExitMethods, !IO) :-
-    output_stmt(Info, Indent, FuncInfo, Statement, Context,
+    % ZZZ inline
+    output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
         ExitMethods, !IO).
 
-:- pred output_stmt(csharp_out_info::in, indent::in, func_info::in,
+:- pred output_stmt_for_csharp(csharp_out_info::in, indent::in, func_info_csj::in,
     mlds_stmt::in, mlds_context::in, exit_methods::out, io::di, io::uo) is det.
 
-output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
+output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
+        ExitMethods, !IO) :-
     (
         Statement = ml_stmt_block(Defns, Statements),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("{\n", !IO),
         (
             Defns = [_ | _],
-            output_defns(Info, Indent + 1, oa_force_init, Defns, !IO),
+            output_defns_for_csharp(Info, Indent + 1, oa_force_init,
+                Defns, !IO),
             io.write_string("\n", !IO)
         ;
             Defns = []
         ),
-        output_statements(Info, Indent + 1, FuncInfo, Statements,
+        output_statements_for_csharp(Info, Indent + 1, FuncInfo, Statements,
             ExitMethods, !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_while(Kind, Cond, BodyStatement),
         Kind = may_loop_zero_times,
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("while (", !IO),
-        output_rval(Info, Cond, !IO),
+        output_rval_for_csharp(Info, Cond, !IO),
         io.write_string(")\n", !IO),
         % The contained statement is reachable iff the while statement is
         % reachable and the condition expression is not a constant expression
         % whose value is false.
         ( if Cond = ml_const(mlconst_false) then
-            indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+                Indent, !IO),
             io.write_string("{  /* Unreachable code */  }\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         else
-            output_statement(Info, Indent + 1, FuncInfo, BodyStatement,
-                StmtExitMethods, !IO),
-            ExitMethods = while_exit_methods(Cond, StmtExitMethods)
+            output_statement_for_csharp(Info, Indent + 1, FuncInfo,
+                BodyStatement, StmtExitMethods, !IO),
+            ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
         )
     ;
         Statement = ml_stmt_while(Kind, Cond, BodyStatement),
         Kind = loop_at_least_once,
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("do\n", !IO),
-        output_statement(Info, Indent + 1, FuncInfo, BodyStatement,
+        output_statement_for_csharp(Info, Indent + 1, FuncInfo, BodyStatement,
             StmtExitMethods, !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("while (", !IO),
-        output_rval(Info, Cond, !IO),
+        output_rval_for_csharp(Info, Cond, !IO),
         io.write_string(");\n", !IO),
-        ExitMethods = while_exit_methods(Cond, StmtExitMethods)
+        ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
     ;
         Statement = ml_stmt_if_then_else(Cond, Then0, MaybeElse),
         % We need to take care to avoid problems caused by the dangling else
@@ -2609,17 +2327,18 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             Then = Then0
         ),
 
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("if (", !IO),
-        output_rval(Info, Cond, !IO),
+        output_rval_for_csharp(Info, Cond, !IO),
         io.write_string(")\n", !IO),
-        output_statement(Info, Indent + 1, FuncInfo, Then,
+        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Then,
             ThenExitMethods, !IO),
         (
             MaybeElse = yes(Else),
-            indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+                Indent, !IO),
             io.write_string("else\n", !IO),
-            output_statement(Info, Indent + 1, FuncInfo, Else,
+            output_statement_for_csharp(Info, Indent + 1, FuncInfo, Else,
                 ElseExitMethods, !IO),
             % An if-then-else statement can complete normally iff the
             % then-statement can complete normally or the else-statement
@@ -2633,49 +2352,50 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         )
     ;
         Statement = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("switch (", !IO),
-        output_rval(Info, Val, !IO),
+        output_rval_for_csharp(Info, Val, !IO),
         io.write_string(") {\n", !IO),
-        output_switch_cases(Info, Indent + 1, FuncInfo, Context, Cases,
-            Default, ExitMethods, !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        output_switch_cases_for_csharp(Info, Indent + 1, FuncInfo, Context,
+            Cases, Default, ExitMethods, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_label(_),
         % XXX C# is not Java
-        unexpected($module, $pred, "labels not supported in Java.")
+        unexpected($pred, "labels not supported in Java.")
     ;
         Statement = ml_stmt_goto(goto_label(_)),
         % XXX C# is not Java
-        unexpected($module, $pred, "gotos not supported in Java.")
+        unexpected($pred, "gotos not supported in Java.")
     ;
         Statement = ml_stmt_goto(goto_break),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = set.make_singleton_set(can_break)
     ;
         Statement = ml_stmt_goto(goto_continue),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("continue;\n", !IO),
         ExitMethods = set.make_singleton_set(can_continue)
     ;
         Statement = ml_stmt_computed_goto(_, _),
         % XXX C# is not Java
-        unexpected($module, $pred, "computed gotos not supported in Java.")
+        unexpected($pred, "computed gotos not supported in Java.")
     ;
         Statement = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
             Results, IsTailCall, _Markers),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent + 1, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent + 1,
+            !IO),
         (
             Results = [],
             OutArgs = []
         ;
             Results = [Lval | Lvals],
-            output_lval(Info, Lval, !IO),
+            output_lval_for_csharp(Info, Lval, !IO),
             io.write_string(" = ", !IO),
             OutArgs = list.map(func(X) = ml_mem_addr(X), Lvals)
         ),
@@ -2690,15 +2410,16 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         ),
         (
             MaybeObject = yes(Object),
-            output_bracketed_rval(Info, Object, !IO),
+            output_bracketed_rval_for_csharp(Info, Object, !IO),
             io.write_string(".", !IO)
         ;
             MaybeObject = no
         ),
-        output_call_rval(Info, FuncRval, !IO),
+        output_call_rval_for_csharp(Info, FuncRval, !IO),
         io.write_string(CloseBracket, !IO),
         io.write_string("(", !IO),
-        io.write_list(CallArgs ++ OutArgs, ", ", output_rval(Info), !IO),
+        io.write_list(CallArgs ++ OutArgs, ", ",
+            output_rval_for_csharp(Info), !IO),
         io.write_string(");\n", !IO),
 
         % This is to tell the C# compiler that a call to an erroneous procedure
@@ -2709,18 +2430,20 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             IsTailCall = tail_call
         ;
             IsTailCall = no_return_call,
-            indent_line(Info ^ oi_line_numbers, Context, Indent  + 1, !IO),
+            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+                Indent  + 1, !IO),
             io.write_string("throw new runtime.UnreachableDefault();\n", !IO)
         ),
 
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("}\n", !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
         Statement = ml_stmt_return(Results),
         (
             Results = [],
-            indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+                Indent, !IO),
             io.write_string("return;\n", !IO)
         ;
             Results = [Rval | Rvals],
@@ -2728,58 +2451,61 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             % Subsequent return values are assigned to out parameters.
             list.foldl2(output_assign_out_params(Info, Indent),
                 Rvals, 2, _, !IO),
-            indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+                Indent, !IO),
             io.write_string("return ", !IO),
-            output_rval(Info, Rval, !IO),
+            output_rval_for_csharp(Info, Rval, !IO),
             io.write_string(";\n", !IO)
         ),
         ExitMethods = set.make_singleton_set(can_return)
     ;
         Statement = ml_stmt_do_commit(Ref),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
-        output_rval(Info, Ref, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+        output_rval_for_csharp(Info, Ref, !IO),
         io.write_string(" = new runtime.Commit();\n", !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("throw ", !IO),
-        output_rval(Info, Ref, !IO),
+        output_rval_for_csharp(Info, Ref, !IO),
         io.write_string(";\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
     ;
         Statement = ml_stmt_try_commit(_Ref, Stmt, Handler),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("try\n", !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("{\n", !IO),
-        output_statement(Info, Indent + 1, FuncInfo, Stmt,
+        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Stmt,
             TryExitMethods0, !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("}\n", !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("catch (runtime.Commit commit_variable)\n",
             !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent + 1, !IO),
-        output_statement(Info, Indent + 1, FuncInfo, Handler,
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent + 1,
+            !IO),
+        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Handler,
             CatchExitMethods, !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
         io.write_string("}\n", !IO),
         ExitMethods = (TryExitMethods0 `set.delete` can_throw)
             `set.union`  CatchExitMethods
     ;
         Statement = ml_stmt_atomic(AtomicStatement),
-        output_atomic_stmt(Info, Indent, AtomicStatement, Context, !IO),
+        output_atomic_stmt_for_csharp(Info, Indent, AtomicStatement,
+            Context, !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Extra code for handling while-loops.
 %
 
-:- func while_exit_methods(mlds_rval, exit_methods) = exit_methods.
+:- func while_exit_methods_for_csharp(mlds_rval, exit_methods) = exit_methods.
 
-while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
+while_exit_methods_for_csharp(Cond, BlockExitMethods) = ExitMethods :-
     % A while statement cannot complete normally if its condition
     % expression is a constant expression with value true, and it
     % doesn't contain a reachable break statement that exits the
@@ -2799,7 +2525,7 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
     ExitMethods = (ExitMethods0 `set.delete` can_continue)
         `set.delete` can_break.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for handling multiple return values.
 %
@@ -2808,30 +2534,30 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
     mlds_rval::in, int::in, int::out, io::di, io::uo) is det.
 
 output_assign_out_params(Info, Indent, Rval, Num, Num + 1, !IO) :-
-    indent_line(Indent, !IO),
+    output_n_indents(Indent, !IO),
     io.format("out_param_%d = ", [i(Num)], !IO),
-    output_rval(Info, Rval, !IO),
+    output_rval_for_csharp(Info, Rval, !IO),
     io.write_string(";\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Extra code for outputting switch statements.
 %
 
-:- pred output_switch_cases(csharp_out_info::in, indent::in, func_info::in,
-    mlds_context::in, list(mlds_switch_case)::in, mlds_switch_default::in,
-    exit_methods::out, io::di, io::uo) is det.
+:- pred output_switch_cases_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_context::in, list(mlds_switch_case)::in,
+    mlds_switch_default::in, exit_methods::out, io::di, io::uo) is det.
 
-output_switch_cases(Info, Indent, FuncInfo, Context,
+output_switch_cases_for_csharp(Info, Indent, FuncInfo, Context,
         [], Default, ExitMethods, !IO) :-
-    output_switch_default(Info, Indent, FuncInfo, Context, Default,
+    output_switch_default_for_csharp(Info, Indent, FuncInfo, Context, Default,
         ExitMethods, !IO).
-output_switch_cases(Info, Indent, FuncInfo, Context,
+output_switch_cases_for_csharp(Info, Indent, FuncInfo, Context,
         [Case | Cases], Default, ExitMethods, !IO) :-
-    output_switch_case(Info, Indent, FuncInfo, Context, Case,
+    output_switch_case_for_csharp(Info, Indent, FuncInfo, Context, Case,
         CaseExitMethods0, !IO),
-    output_switch_cases(Info, Indent, FuncInfo, Context, Cases, Default,
-        CasesExitMethods, !IO),
+    output_switch_cases_for_csharp(Info, Indent, FuncInfo, Context, Cases,
+        Default, CasesExitMethods, !IO),
     ( if set.member(can_break, CaseExitMethods0) then
         CaseExitMethods = (CaseExitMethods0 `set.delete` can_break)
             `set.insert` can_fall_through
@@ -2840,18 +2566,21 @@ output_switch_cases(Info, Indent, FuncInfo, Context,
     ),
     ExitMethods = CaseExitMethods `set.union` CasesExitMethods.
 
-:- pred output_switch_case(csharp_out_info::in, indent::in, func_info::in,
-    mlds_context::in, mlds_switch_case::in, exit_methods::out,
-    io::di, io::uo) is det.
+:- pred output_switch_case_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_context::in, mlds_switch_case::in,
+    exit_methods::out, io::di, io::uo) is det.
 
-output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
+output_switch_case_for_csharp(Info, Indent, FuncInfo, Context, Case,
+        ExitMethods, !IO) :-
     Case = mlds_switch_case(FirstCond, LaterConds, Statement),
-    output_case_cond(Info, Indent, Context, FirstCond, !IO),
-    list.foldl(output_case_cond(Info, Indent, Context), LaterConds, !IO),
-    output_statement(Info, Indent + 1, FuncInfo, Statement,
+    output_case_cond_for_csharp(Info, Indent, Context, FirstCond, !IO),
+    list.foldl(output_case_cond_for_csharp(Info, Indent, Context), LaterConds,
+        !IO),
+    output_statement_for_csharp(Info, Indent + 1, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( if set.member(can_fall_through, StmtExitMethods) then
-        indent_line(Info ^ oi_line_numbers, Context, Indent + 1, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            Indent + 1, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = (StmtExitMethods `set.insert` can_break)
             `set.delete` can_fall_through
@@ -2860,231 +2589,239 @@ output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
         ExitMethods = StmtExitMethods
     ).
 
-:- pred output_case_cond(csharp_out_info::in, indent::in, mlds_context::in,
-    mlds_case_match_cond::in, io::di, io::uo) is det.
+:- pred output_case_cond_for_csharp(csharp_out_info::in, indent::in,
+    mlds_context::in, mlds_case_match_cond::in, io::di, io::uo) is det.
 
-output_case_cond(Info, Indent, Context, Match, !IO) :-
+output_case_cond_for_csharp(Info, Indent, Context, Match, !IO) :-
     (
         Match = match_value(Val),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
         io.write_string("case ", !IO),
-        output_rval(Info, Val, !IO),
+        output_rval_for_csharp(Info, Val, !IO),
         io.write_string(":\n", !IO)
     ;
         Match = match_range(_, _),
-        unexpected($module, $pred, "cannot match ranges in C# cases")
+        unexpected($pred, "cannot match ranges in C# cases")
     ).
 
-:- pred output_switch_default(csharp_out_info::in, indent::in, func_info::in,
-    mlds_context::in, mlds_switch_default::in, exit_methods::out,
-    io::di, io::uo) is det.
+:- pred output_switch_default_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_context::in, mlds_switch_default::in,
+    exit_methods::out, io::di, io::uo) is det.
 
-output_switch_default(Info, Indent, FuncInfo, Context, Default,
+output_switch_default_for_csharp(Info, Indent, FuncInfo, Context, Default,
         ExitMethods, !IO) :-
     (
         Default = default_do_nothing,
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
         Default = default_case(Statement),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
         io.write_string("default:\n", !IO),
-        output_statement(Info, Indent + 1, FuncInfo, Statement, ExitMethods,
-            !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Statement,
+            ExitMethods, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
         io.write_string("break;\n", !IO)
     ;
         Default = default_is_unreachable,
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
         io.write_string("default: /*NOTREACHED*/\n", !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent + 1, !IO),
-        io.write_string("throw new runtime.UnreachableDefault();\n",
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent + 1,
             !IO),
+        io.write_string("throw new runtime.UnreachableDefault();\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for outputting atomic statements.
 %
 
-:- pred output_atomic_stmt(csharp_out_info::in, indent::in,
+:- pred output_atomic_stmt_for_csharp(csharp_out_info::in, indent::in,
     mlds_atomic_statement::in, mlds_context::in, io::di, io::uo) is det.
 
-output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
+output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
     (
         AtomicStmt = comment(Comment),
         % XXX We should escape any "*/"'s in the Comment. We should also split
         % the comment into lines and indent each line appropriately.
-        indent_line(Indent, !IO),
+        output_n_indents(Indent, !IO),
         io.write_string("/* ", !IO),
         io.write_string(Comment, !IO),
         io.write_string(" */\n", !IO)
     ;
         AtomicStmt = assign(Lval, Rval),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
-        output_lval(Info, Lval, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
+        output_lval_for_csharp(Info, Lval, !IO),
         io.write_string(" = ", !IO),
-        output_rval(Info, Rval, !IO),
+        output_rval_for_csharp(Info, Rval, !IO),
         io.write_string(";\n", !IO)
     ;
         AtomicStmt = assign_if_in_heap(_, _),
-        sorry($module, $pred, "assign_if_in_heap")
+        sorry($pred, "assign_if_in_heap")
     ;
         AtomicStmt = delete_object(_Lval),
-        unexpected($module, $pred, "delete_object not supported in C#.")
+        unexpected($pred, "delete_object not supported in C#.")
     ;
         AtomicStmt = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
             _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic,
             _AllocId),
         (
             ExplicitSecTag = yes,
-            unexpected($module, $pred, "explicit secondary tag")
+            unexpected($pred, "explicit secondary tag")
         ;
             ExplicitSecTag = no
         ),
 
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Info ^ oi_line_numbers, Context, Indent + 1, !IO),
-        output_lval(Info, Target, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            Indent + 1, !IO),
+        output_lval_for_csharp(Info, Target, !IO),
         io.write_string(" = new ", !IO),
         % Generate class constructor name.
         ( if
             MaybeCtorName = yes(QualifiedCtorId),
             not (
                 Type = mercury_type(MerType, CtorCat, _),
-                hand_defined_type(MerType, CtorCat, _, _)
+                hand_defined_type_for_csharp(MerType, CtorCat, _, _)
             )
         then
-            output_type(Info, Type, !IO),
+            output_type_for_csharp(Info, Type, !IO),
             io.write_char('.', !IO),
             QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
             output_unqual_class_name_for_csharp(CtorName, CtorArity, !IO)
         else
-            output_type(Info, Type, !IO)
+            output_type_for_csharp(Info, Type, !IO)
         ),
-        IsArray = type_is_array(Type),
+        IsArray = type_is_array_for_csharp(Type),
         (
             IsArray = is_array,
             % The new object will be an array, so we need to initialise it
             % using array literals syntax.
             io.write_string(" {", !IO),
-            output_init_args(Info, Args, ArgTypes, !IO),
+            output_init_args_for_csharp(Info, Args, ArgTypes, !IO),
             io.write_string("};\n", !IO)
         ;
             IsArray = not_array,
             % Generate constructor arguments.
             io.write_string("(", !IO),
-            output_init_args(Info, Args, ArgTypes, !IO),
+            output_init_args_for_csharp(Info, Args, ArgTypes, !IO),
             io.write_string(");\n", !IO)
         ),
-        indent_line(Info ^ oi_line_numbers, Context, Indent, !IO),
+        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         AtomicStmt = gc_check,
-        unexpected($module, $pred, "gc_check not implemented.")
+        unexpected($pred, "gc_check not implemented.")
     ;
         AtomicStmt = mark_hp(_Lval),
-        unexpected($module, $pred, "mark_hp not implemented.")
+        unexpected($pred, "mark_hp not implemented.")
     ;
         AtomicStmt = restore_hp(_Rval),
-        unexpected($module, $pred, "restore_hp not implemented.")
+        unexpected($pred, "restore_hp not implemented.")
     ;
         AtomicStmt = trail_op(_TrailOp),
-        unexpected($module, $pred, "trail_ops not implemented.")
+        unexpected($pred, "trail_ops not implemented.")
     ;
         AtomicStmt = inline_target_code(TargetLang, Components),
         (
             TargetLang = ml_target_csharp,
             output_pragma_warning_restore(!IO),
-            list.foldl(output_target_code_component(Info), Components, !IO),
+            list.foldl(output_target_code_component_for_csharp(Info),
+                Components, !IO),
             output_pragma_warning_disable(!IO)
         ;
             ( TargetLang = ml_target_c
             ; TargetLang = ml_target_gnu_c
             ; TargetLang = ml_target_java
             ),
-            unexpected($module, $pred,
-                "inline_target_code only works for lang_java")
+            unexpected($pred, "inline_target_code only works for lang_java")
         )
     ;
         AtomicStmt = outline_foreign_proc(_TargetLang, _Vs, _Lvals, _Code),
-        unexpected($module, $pred,
-            "foreign language interfacing not implemented")
+        unexpected($pred, "foreign language interfacing not implemented")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred output_target_code_component(csharp_out_info::in,
+:- pred output_target_code_component_for_csharp(csharp_out_info::in,
     target_code_component::in, io::di, io::uo) is det.
 
-output_target_code_component(Info, TargetCode, !IO) :-
+output_target_code_component_for_csharp(Info, TargetCode, !IO) :-
     (
         TargetCode = user_target_code(CodeString, MaybeUserContext),
         io.write_string("{\n", !IO),
         (
             MaybeUserContext = yes(ProgContext),
-            cs_output_context(Info ^ oi_foreign_line_numbers,
+            cs_output_context(Info ^ csoi_foreign_line_numbers,
                 ProgContext, !IO)
         ;
             MaybeUserContext = no
         ),
         io.write_string(CodeString, !IO),
         io.write_string("}\n", !IO),
-        cs_output_default_context(Info ^ oi_foreign_line_numbers, !IO)
+        cs_output_default_context(Info ^ csoi_foreign_line_numbers, !IO)
     ;
         TargetCode = raw_target_code(CodeString),
         io.write_string(CodeString, !IO)
     ;
         TargetCode = target_code_input(Rval),
-        output_rval(Info, Rval, !IO)
+        output_rval_for_csharp(Info, Rval, !IO)
     ;
         TargetCode = target_code_output(Lval),
-        output_lval(Info, Lval, !IO)
+        output_lval_for_csharp(Info, Lval, !IO)
     ;
         TargetCode = target_code_type(Type),
         % XXX enable generics here
-        output_type(Info, Type, !IO)
+        output_type_for_csharp(Info, Type, !IO)
     ;
         TargetCode = target_code_name(Name),
         output_maybe_qualified_name(Info, Name, !IO)
     ;
         TargetCode = target_code_alloc_id(_),
-        unexpected($module, $pred, "target_code_alloc_id not implemented")
+        unexpected($pred, "target_code_alloc_id not implemented")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Output initial values of an object's fields as arguments for the
     % object's class constructor.
     %
-:- pred output_init_args(csharp_out_info::in, list(mlds_rval)::in,
+:- pred output_init_args_for_csharp(csharp_out_info::in, list(mlds_rval)::in,
     list(mlds_type)::in, io::di, io::uo) is det.
 
-output_init_args(_, [], [], !IO).
-output_init_args(_, [_ | _], [], _, _) :-
-    unexpected($module, $pred, "length mismatch.").
-output_init_args(_, [], [_ | _], _, _) :-
-    unexpected($module, $pred, "length mismatch.").
-output_init_args(Info, [Arg | Args], [_ArgType | ArgTypes], !IO) :-
-    output_rval(Info, Arg, !IO),
+output_init_args_for_csharp(_, [], [], !IO).
+output_init_args_for_csharp(_, [_ | _], [], _, _) :-
+    unexpected($pred, "length mismatch.").
+output_init_args_for_csharp(_, [], [_ | _], _, _) :-
+    unexpected($pred, "length mismatch.").
+output_init_args_for_csharp(Info, [Arg | Args], [_ArgType | ArgTypes], !IO) :-
+    output_rval_for_csharp(Info, Arg, !IO),
     (
         Args = []
     ;
         Args = [_ | _],
         io.write_string(", ", !IO)
     ),
-    output_init_args(Info, Args, ArgTypes, !IO).
+    output_init_args_for_csharp(Info, Args, ArgTypes, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output expressions.
 %
 
-:- pred output_lval(csharp_out_info::in, mlds_lval::in, io::di, io::uo) is det.
+:- pred output_lval_for_csharp(csharp_out_info::in, mlds_lval::in,
+    io::di, io::uo) is det.
 
-output_lval(Info, Lval, !IO) :-
+output_lval_for_csharp(Info, Lval, !IO) :-
     (
         Lval = ml_field(_MaybeTag, PtrRval, FieldId, FieldType, _),
         (
@@ -3098,14 +2835,14 @@ output_lval(Info, Lval, !IO) :-
             else
                 % The field type for field(_, _, offset(_), _, _) lvals
                 % must be something that maps to MR_Box.
-                unexpected($module, $pred, "unexpected field type")
+                unexpected($pred, "unexpected field type")
             ),
             % XXX We shouldn't need this cast here, but there are cases where
             % it is needed and the MLDS doesn't seem to generate it.
             io.write_string("((object[]) ", !IO),
-            output_rval(Info, PtrRval, !IO),
+            output_rval_for_csharp(Info, PtrRval, !IO),
             io.write_string(")[", !IO),
-            output_rval(Info, OffsetRval, !IO),
+            output_rval_for_csharp(Info, OffsetRval, !IO),
             io.write_string("]", !IO)
         ;
             FieldId = ml_field_named(FieldName, CtorType),
@@ -3115,7 +2852,7 @@ output_lval(Info, Lval, !IO) :-
             then
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.
-                output_bracketed_rval(Info, PtrRval, !IO),
+                output_bracketed_rval_for_csharp(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
             else if
                 PtrRval = ml_self(_)
@@ -3123,7 +2860,7 @@ output_lval(Info, Lval, !IO) :-
                 % Suppress type cast on `this' keyword.  This makes a
                 % difference when assigning to `final' member variables in
                 % constructor functions.
-                output_rval(Info, PtrRval, !IO),
+                output_rval_for_csharp(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
             else
                 % Otherwise the field we are trying to access may be
@@ -3131,9 +2868,9 @@ output_lval(Info, Lval, !IO) :-
                 % of their base class, so we need to downcast to the derived
                 % class to access some fields.
                 io.write_string("((", !IO),
-                output_type(Info, CtorType, !IO),
+                output_type_for_csharp(Info, CtorType, !IO),
                 io.write_string(") ", !IO),
-                output_bracketed_rval(Info, PtrRval, !IO),
+                output_bracketed_rval_for_csharp(Info, PtrRval, !IO),
                 io.write_string(").", !IO)
             ),
             FieldName = qual(_, _, UnqualFieldName),
@@ -3141,7 +2878,7 @@ output_lval(Info, Lval, !IO) :-
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
-        output_bracketed_rval(Info, Rval, !IO)
+        output_bracketed_rval_for_csharp(Info, Rval, !IO)
     ;
         Lval = ml_global_var_ref(GlobalVarRef),
         GlobalVarRef = env_var_ref(EnvVarName),
@@ -3190,99 +2927,101 @@ output_valid_mangled_name_for_csharp(Name, !IO) :-
     ValidName = make_valid_csharp_symbol_name(MangledName),
     write_identifier_string_for_csharp(ValidName, !IO).
 
-:- pred output_call_rval(csharp_out_info::in, mlds_rval::in, io::di, io::uo)
-    is det.
+:- pred output_call_rval_for_csharp(csharp_out_info::in, mlds_rval::in,
+    io::di, io::uo) is det.
 
-output_call_rval(Info, Rval, !IO) :-
+output_call_rval_for_csharp(Info, Rval, !IO) :-
     ( if
         Rval = ml_const(Const),
         Const = mlconst_code_addr(CodeAddr)
     then
         IsCall = yes,
-        mlds_output_code_addr(Info, CodeAddr, IsCall, !IO)
+        mlds_output_code_addr_for_csharp(Info, CodeAddr, IsCall, !IO)
     else
-        output_bracketed_rval(Info, Rval, !IO)
+        output_bracketed_rval_for_csharp(Info, Rval, !IO)
     ).
 
-:- pred output_bracketed_rval(csharp_out_info::in, mlds_rval::in,
+:- pred output_bracketed_rval_for_csharp(csharp_out_info::in, mlds_rval::in,
     io::di, io::uo) is det.
 
-output_bracketed_rval(Info, Rval, !IO) :-
+output_bracketed_rval_for_csharp(Info, Rval, !IO) :-
     ( if
-        % If it's just a variable name, then we don't need parentheses.
+        % If it is just a variable name, then we don't need parentheses.
         ( Rval = ml_lval(ml_var(_,_))
         ; Rval = ml_const(mlconst_code_addr(_))
         )
     then
-        output_rval(Info, Rval, !IO)
+        output_rval_for_csharp(Info, Rval, !IO)
     else
         io.write_char('(', !IO),
-        output_rval(Info, Rval, !IO),
+        output_rval_for_csharp(Info, Rval, !IO),
         io.write_char(')', !IO)
     ).
 
-:- pred output_rval(csharp_out_info::in, mlds_rval::in, io::di, io::uo) is det.
+:- pred output_rval_for_csharp(csharp_out_info::in, mlds_rval::in,
+    io::di, io::uo) is det.
 
-output_rval(Info, Rval, !IO) :-
+output_rval_for_csharp(Info, Rval, !IO) :-
     (
         Rval = ml_lval(Lval),
-        output_lval(Info, Lval, !IO)
+        output_lval_for_csharp(Info, Lval, !IO)
     ;
         Rval = ml_mkword(_, _),
-        unexpected($module, $pred, "tags not supported in C#")
+        unexpected($pred, "tags not supported in C#")
     ;
         Rval = ml_const(Const),
-        output_rval_const(Info, Const, !IO)
+        output_rval_const_for_csharp(Info, Const, !IO)
     ;
         Rval = ml_unop(Op, RvalA),
-        output_unop(Info, Op, RvalA, !IO)
+        output_unop_for_csharp(Info, Op, RvalA, !IO)
     ;
         Rval = ml_binop(Op, RvalA, RvalB),
-        output_binop(Info, Op, RvalA, RvalB, !IO)
+        output_binop_for_csharp(Info, Op, RvalA, RvalB, !IO)
     ;
         Rval = ml_mem_addr(Lval),
         io.write_string("out ", !IO),
-        output_lval(Info, Lval, !IO)
+        output_lval_for_csharp(Info, Lval, !IO)
     ;
         Rval = ml_scalar_common(_),
         % This reference is not the same as a mlds_data_addr const.
-        unexpected($module, $pred, "ml_scalar_common")
+        unexpected($pred, "ml_scalar_common")
     ;
         Rval = ml_vector_common_row(VectorCommon, RowRval),
-        output_vector_common_row_rval(Info, VectorCommon, RowRval, !IO)
+        output_vector_common_row_rval_for_csharp(Info, VectorCommon, RowRval,
+            !IO)
     ;
         Rval = ml_self(_),
         io.write_string("this", !IO)
     ).
 
-:- pred output_unop(csharp_out_info::in, mlds_unary_op::in, mlds_rval::in,
-    io::di, io::uo) is det.
+:- pred output_unop_for_csharp(csharp_out_info::in, mlds_unary_op::in,
+    mlds_rval::in, io::di, io::uo) is det.
 
-output_unop(Info, Unop, Expr, !IO) :-
+output_unop_for_csharp(Info, Unop, Expr, !IO) :-
     (
         Unop = cast(Type),
-        output_cast_rval(Info, Type, Expr, !IO)
+        output_cast_rval_for_csharp(Info, Type, Expr, !IO)
     ;
         Unop = box(Type),
         ( if Type = mercury_type(comparison_result_type, _, _) then
             io.write_string("builtin.comparison_result_object[(int) ", !IO),
-            output_rval(Info, Expr, !IO),
+            output_rval_for_csharp(Info, Expr, !IO),
             io.write_string("]", !IO)
         else
-            output_boxed_rval(Info, Type, Expr, !IO)
+            output_boxed_rval_for_csharp(Info, Type, Expr, !IO)
         )
     ;
         Unop = unbox(Type),
-        output_unboxed_rval(Info, Type, Expr, !IO)
+        output_unboxed_rval_for_csharp(Info, Type, Expr, !IO)
     ;
         Unop = std_unop(StdUnop),
-        output_std_unop(Info, StdUnop, Expr, !IO)
+        output_std_unop_for_csharp(Info, StdUnop, Expr, !IO)
     ).
 
-:- pred output_cast_rval(csharp_out_info::in, mlds_type::in, mlds_rval::in,
-    io::di, io::uo) is det.
+:- pred output_cast_rval_for_csharp(csharp_out_info::in, mlds_type::in,
+    mlds_rval::in, io::di, io::uo) is det.
 
-output_cast_rval(Info, Type, Expr, !IO) :-
+output_cast_rval_for_csharp(Info, Type, Expr, !IO) :-
     % rtti_to_mlds.m generates casts from int to runtime.PseudoTypeInfo, but
     % for C# we need to treat these as constructions, not casts.
     % Similarly for conversions from TypeCtorInfo to TypeInfo.
@@ -3290,13 +3029,13 @@ output_cast_rval(Info, Type, Expr, !IO) :-
         Type = mlds_pseudo_type_info_type,
         Expr = ml_const(mlconst_int(N))
     then
-        maybe_output_comment(Info, "cast", !IO),
-        ( if have_preallocated_pseudo_type_var(N) then
+        maybe_output_comment_for_csharp(Info, "cast", !IO),
+        ( if have_preallocated_pseudo_type_var_for_csharp(N) then
             io.write_string("runtime.PseudoTypeInfo.K", !IO),
             io.write_int(N, !IO)
         else
             io.write_string("new runtime.PseudoTypeInfo(", !IO),
-            output_rval(Info, Expr, !IO),
+            output_rval_for_csharp(Info, Expr, !IO),
             io.write_string(")", !IO)
         )
     else if
@@ -3308,36 +3047,36 @@ output_cast_rval(Info, Type, Expr, !IO) :-
         % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
         % be rather difficult as the compiler doesn't keep track of where
         % type_ctor_infos are acting as type_infos properly.
-        maybe_output_comment(Info, "cast", !IO),
+        maybe_output_comment_for_csharp(Info, "cast", !IO),
         io.write_string("runtime.TypeInfo_Struct.maybe_new(",
             !IO),
-        output_rval(Info, Expr, !IO),
+        output_rval_for_csharp(Info, Expr, !IO),
         io.write_string(")", !IO)
     else if
         csharp_builtin_type(Type, "int")
     then
         io.write_string("(int) ", !IO),
-        output_rval(Info, Expr, !IO)
+        output_rval_for_csharp(Info, Expr, !IO)
     else
         io.write_string("(", !IO),
-        output_type(Info, Type, !IO),
+        output_type_for_csharp(Info, Type, !IO),
         io.write_string(") ", !IO),
-        output_rval(Info, Expr, !IO)
+        output_rval_for_csharp(Info, Expr, !IO)
     ).
 
-:- pred have_preallocated_pseudo_type_var(int::in) is semidet.
+:- pred have_preallocated_pseudo_type_var_for_csharp(int::in) is semidet.
 
-have_preallocated_pseudo_type_var(N) :-
+have_preallocated_pseudo_type_var_for_csharp(N) :-
     % Corresponds to static members in class PseudoTypeInfo.
     N >= 1,
     N =< 5.
 
-:- pred output_boxed_rval(csharp_out_info::in, mlds_type::in, mlds_rval::in,
-     io::di, io::uo) is det.
+:- pred output_boxed_rval_for_csharp(csharp_out_info::in, mlds_type::in,
+    mlds_rval::in, io::di, io::uo) is det.
 
-output_boxed_rval(Info, _Type, Expr, !IO) :-
+output_boxed_rval_for_csharp(Info, _Type, Expr, !IO) :-
     % C# does implicit boxing.
-    output_rval(Info, Expr, !IO).
+    output_rval_for_csharp(Info, Expr, !IO).
     /*
     ( if csharp_builtin_type(Type, _JavaName, JavaBoxedName, _) then
         % valueOf may return cached instances instead of creating new objects.
@@ -3352,14 +3091,14 @@ output_boxed_rval(Info, _Type, Expr, !IO) :-
     ).
     */
 
-:- pred output_unboxed_rval(csharp_out_info::in, mlds_type::in, mlds_rval::in,
-    io::di, io::uo) is det.
+:- pred output_unboxed_rval_for_csharp(csharp_out_info::in, mlds_type::in,
+    mlds_rval::in, io::di, io::uo) is det.
 
-output_unboxed_rval(Info, Type, Expr, !IO) :-
+output_unboxed_rval_for_csharp(Info, Type, Expr, !IO) :-
     io.write_string("((", !IO),
-    output_type(Info, Type, !IO),
+    output_type_for_csharp(Info, Type, !IO),
     io.write_string(") ", !IO),
-    output_rval(Info, Expr, !IO),
+    output_rval_for_csharp(Info, Expr, !IO),
     io.write_string(")", !IO).
 
 :- pred csharp_builtin_type(mlds_type::in, string::out) is semidet.
@@ -3451,13 +3190,13 @@ csharp_builtin_type(Type, TargetType) :-
         unexpected($file, $pred, "unknown typed")
     ).
 
-:- pred output_std_unop(csharp_out_info::in, builtin_ops.unary_op::in,
-    mlds_rval::in, io::di, io::uo) is det.
+:- pred output_std_unop_for_csharp(csharp_out_info::in,
+    builtin_ops.unary_op::in, mlds_rval::in, io::di, io::uo) is det.
 
-    % There are no tags, so all the tagging operators are no-ops, except for
-    % `tag', which always returns zero (a tag of zero means there's no tag).
-    %
-output_std_unop(Info, UnaryOp, Expr, !IO) :-
+output_std_unop_for_csharp(Info, UnaryOp, Expr, !IO) :-
+    % For the C# backend, there are no tags, so all the tagging operators
+    % are no-ops, except for `tag', which always returns zero (a tag of zero
+    % means there is no tag).
     (
         UnaryOp = tag ,
         io.write_string("/* tag */  0", !IO)
@@ -3479,25 +3218,25 @@ output_std_unop(Info, UnaryOp, Expr, !IO) :-
         ),
         io.write_string(UnaryOpStr, !IO),
         io.write_string("(", !IO),
-        output_rval(Info, Expr, !IO),
+        output_rval_for_csharp(Info, Expr, !IO),
         io.write_string(")", !IO)
     ).
 
-:- pred output_binop(csharp_out_info::in, binary_op::in, mlds_rval::in,
-    mlds_rval::in, io::di, io::uo) is det.
+:- pred output_binop_for_csharp(csharp_out_info::in, binary_op::in,
+    mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
 
-output_binop(Info, Op, X, Y, !IO) :-
+output_binop_for_csharp(Info, Op, X, Y, !IO) :-
     (
         Op = array_index(_Type),
-        output_bracketed_rval(Info, X, !IO),
+        output_bracketed_rval_for_csharp(Info, X, !IO),
         io.write_string("[", !IO),
-        output_rval(Info, Y, !IO),
+        output_rval_for_csharp(Info, Y, !IO),
         io.write_string("]", !IO)
     ;
         Op = str_eq,
-        output_rval(Info, X, !IO),
+        output_rval_for_csharp(Info, X, !IO),
         io.write_string(".Equals(", !IO),
-        output_rval(Info, Y, !IO),
+        output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
     ;
         ( Op = str_ne, OpStr = "!="
@@ -3507,25 +3246,25 @@ output_binop(Info, Op, X, Y, !IO) :-
         ; Op = str_ge, OpStr = ">="
         ),
         io.write_string("(", !IO),
-        output_rval(Info, X, !IO),
+        output_rval_for_csharp(Info, X, !IO),
         io.write_string(".CompareOrdinal(", !IO),
-        output_rval(Info, Y, !IO),
+        output_rval_for_csharp(Info, Y, !IO),
         io.write_string(") ", !IO),
         io.write_string(OpStr, !IO),
         io.write_string(" 0)", !IO)
     ;
         Op = str_cmp,
         io.write_string("(", !IO),
-        output_rval(Info, X, !IO),
+        output_rval_for_csharp(Info, X, !IO),
         io.write_string(".CompareOrdinal(", !IO),
-        output_rval(Info, Y, !IO),
+        output_rval_for_csharp(Info, Y, !IO),
         io.write_string("))", !IO)
     ;
         Op = pointer_equal_conservative,
         io.write_string("System.Object.ReferenceEquals(", !IO),
-        output_rval(Info, X, !IO),
+        output_rval_for_csharp(Info, X, !IO),
         io.write_string(", ", !IO),
-        output_rval(Info, Y, !IO),
+        output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
     ;
         % XXX Should we abort for some of these?
@@ -3583,17 +3322,17 @@ output_binop(Info, Op, X, Y, !IO) :-
         ; Op = compound_lt
         ),
         io.write_string("(", !IO),
-        output_rval(Info, X, !IO),
+        output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
-        output_binary_op(Op, !IO),
+        output_binary_op_for_csharp(Op, !IO),
         io.write_string(" ", !IO),
-        output_rval(Info, Y, !IO),
+        output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
     ).
 
-:- pred output_binary_op(binary_op::in, io::di, io::uo) is det.
+:- pred output_binary_op_for_csharp(binary_op::in, io::di, io::uo) is det.
 
-output_binary_op(Op, !IO) :-
+output_binary_op_for_csharp(Op, !IO) :-
     (
         ( Op = int_add, OpStr = "+"
         ; Op = int_sub, OpStr = "-"
@@ -3664,13 +3403,13 @@ output_binary_op(Op, !IO) :-
         ; Op = compound_eq
         ; Op = compound_lt
         ),
-        unexpected($module, $pred, "invalid binary operator")
+        unexpected($pred, "invalid binary operator")
     ).
 
-:- pred output_rval_const(csharp_out_info::in, mlds_rval_const::in,
+:- pred output_rval_const_for_csharp(csharp_out_info::in, mlds_rval_const::in,
     io::di, io::uo) is det.
 
-output_rval_const(Info, Const, !IO) :-
+output_rval_const_for_csharp(Info, Const, !IO) :-
     (
         Const = mlconst_true,
         io.write_string("true", !IO)
@@ -3679,26 +3418,26 @@ output_rval_const(Info, Const, !IO) :-
         io.write_string("false", !IO)
     ;
         Const = mlconst_int(N),
-        output_int_const(N, !IO)
+        output_int_const_for_csharp(N, !IO)
     ;
         Const = mlconst_uint(U),
-        output_uint_const(U, !IO)
+        output_uint_const_for_csharp(U, !IO)
     ;
         Const = mlconst_char(N),
         io.write_string("( ", !IO),
-        output_int_const(N, !IO),
+        output_int_const_for_csharp(N, !IO),
         io.write_string(")", !IO)
     ;
         Const = mlconst_enum(N, EnumType),
         % Explicit cast required.
-        output_cast_rval(Info, EnumType, ml_const(mlconst_int(N)), !IO)
+        output_cast_rval_for_csharp(Info, EnumType, ml_const(mlconst_int(N)),
+            !IO)
     ;
         Const = mlconst_foreign(Lang, Value, Type),
-        expect(unify(Lang, lang_csharp), $module, $pred,
-            "language other than C#."),
+        expect(unify(Lang, lang_csharp), $pred, "language other than C#."),
         % XXX Should we parenthesize this?
         io.write_string("(", !IO),
-        output_type(Info, Type, !IO),
+        output_type_for_csharp(Info, Type, !IO),
         io.write_string(") ", !IO),
         io.write_string(Value, !IO)
     ;
@@ -3721,7 +3460,7 @@ output_rval_const(Info, Const, !IO) :-
         io.write_string(NamedConst, !IO)
     ;
         Const = mlconst_code_addr(CodeAddr),
-        map.lookup(Info ^ oi_code_addrs, CodeAddr, Name),
+        map.lookup(Info ^ csoi_code_addrs, CodeAddr, Name),
         io.write_string(Name, !IO)
     ;
         Const = mlconst_data_addr(DataAddr),
@@ -3732,9 +3471,9 @@ output_rval_const(Info, Const, !IO) :-
         io.write_string(Initializer, !IO)
     ).
 
-:- pred output_int_const(int::in, io::di, io::uo) is det.
+:- pred output_int_const_for_csharp(int::in, io::di, io::uo) is det.
 
-output_int_const(N, !IO) :-
+output_int_const_for_csharp(N, !IO) :-
     ( if
         N < 0
     then
@@ -3751,28 +3490,28 @@ output_int_const(N, !IO) :-
         io.write_int(N, !IO)
     ).
 
-:- pred output_uint_const(uint::in, io::di, io::uo) is det.
+:- pred output_uint_const_for_csharp(uint::in, io::di, io::uo) is det.
 
-output_uint_const(U, !IO) :-
+output_uint_const_for_csharp(U, !IO) :-
     io.write_uint(U, !IO),
     io.write_string("U", !IO).
 
-:- pred output_vector_common_row_rval(csharp_out_info::in,
+:- pred output_vector_common_row_rval_for_csharp(csharp_out_info::in,
     mlds_vector_common::in, mlds_rval::in, io::di, io::uo) is det.
 
-output_vector_common_row_rval(Info, VectorCommon, RowRval, !IO) :-
+output_vector_common_row_rval_for_csharp(Info, VectorCommon, RowRval, !IO) :-
     VectorCommon = ml_vector_common(_ModuleName, _Type,
         ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
     io.format("MR_vector_common_%d[%d + ", [i(TypeNum), i(StartRowNum)], !IO),
-    output_rval(Info, RowRval, !IO),
+    output_rval_for_csharp(Info, RowRval, !IO),
     io.write_string("]", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred mlds_output_code_addr(csharp_out_info::in, mlds_code_addr::in,
-    bool::in, io::di, io::uo) is det.
+:- pred mlds_output_code_addr_for_csharp(csharp_out_info::in,
+    mlds_code_addr::in, bool::in, io::di, io::uo) is det.
 
-mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
+mlds_output_code_addr_for_csharp(Info, CodeAddr, IsCall, !IO) :-
     ( CodeAddr = code_addr_proc(_, Sig)
     ; CodeAddr = code_addr_internal(_, _, Sig)
     ),
@@ -3793,7 +3532,8 @@ mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
         CodeAddr = code_addr_internal(Label, SeqNum, _Sig),
         string.format("_%d", [i(SeqNum)], Suffix)
     ),
-    output_fully_qualified_thing(Label, mlds_output_proc_label(Suffix), !IO).
+    output_fully_qualified_thing_for_csharp(Label,
+        mlds_output_proc_label(Suffix), !IO).
 
 :- func method_ptr_type_to_string(csharp_out_info, mlds_arg_types,
     mlds_return_types) = string.
@@ -3801,8 +3541,8 @@ mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
 method_ptr_type_to_string(Info, ArgTypes, RetTypes) = String :-
     Arity = list.length(ArgTypes),
     NumRets = list.length(RetTypes),
-    list.map(boxed_type_to_string(Info), ArgTypes, ArgTypesStrings),
-    list.map(boxed_type_to_string(Info), RetTypes, RetTypesStrings),
+    list.map(boxed_type_to_string_for_csharp(Info), ArgTypes, ArgTypesStrings),
+    list.map(boxed_type_to_string_for_csharp(Info), RetTypes, RetTypesStrings),
     TypesString = string.join_list(", ", ArgTypesStrings ++ RetTypesStrings),
     string.format("runtime.MethodPtr%d_r%d<%s>",
         [i(Arity), i(NumRets), s(TypesString)], String).
@@ -3832,7 +3572,7 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
     data_name_to_string_for_csharp(DataName, DataNameStr),
     write_identifier_string_for_csharp(DataNameStr, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Miscellaneous stuff to handle indentation and generation of
 % source context annotations.
@@ -3857,6 +3597,20 @@ cs_output_context(OutputLineNumbers, Context, !IO) :-
         OutputLineNumbers = no
     ).
 
+:- pred indent_line_mlds_context(bool::in, mlds_context::in, indent::in,
+    io::di, io::uo) is det.
+
+indent_line_mlds_context(OutputLineNumbers, Context, N, !IO) :-
+    ProgContext = mlds_get_prog_context(Context),
+    indent_line_prog_context(OutputLineNumbers, ProgContext, N, !IO).
+
+:- pred indent_line_prog_context(bool::in, prog_context::in,
+    indent::in, io::di, io::uo) is det.
+
+indent_line_prog_context(OutputLineNumbers, Context, N, !IO) :-
+    cs_output_context(OutputLineNumbers, Context, !IO),
+    output_n_indents(N, !IO).
+
 :- pred cs_output_default_context(bool::in, io::di, io::uo) is det.
 
 cs_output_default_context(OutputLineNumbers, !IO) :-
@@ -3865,36 +3619,6 @@ cs_output_default_context(OutputLineNumbers, !IO) :-
         io.write_string("#line default\n", !IO)
     ;
         OutputLineNumbers = no
-    ).
-
-:- pred indent_line_prog_context(bool::in, prog_context::in,
-    indent::in, io::di, io::uo) is det.
-
-indent_line_prog_context(OutputLineNumbers, Context, N, !IO) :-
-    cs_output_context(OutputLineNumbers, Context, !IO),
-    indent_line(N, !IO).
-
-:- pred indent_line(bool::in, mlds_context::in, indent::in,
-    io::di, io::uo) is det.
-
-indent_line(OutputLineNumbers, Context, N, !IO) :-
-    ProgContext = mlds_get_prog_context(Context),
-    indent_line_prog_context(OutputLineNumbers, ProgContext, N, !IO).
-
-    % A value of type `indent' records the number of levels of indentation
-    % to indent the next piece of code. Currently we output two spaces
-    % for each level of indentation.
-    % XXX There is a small amount of code duplication with mlds_to_c.m here.
-:- type indent == int.
-
-:- pred indent_line(indent::in, io::di, io::uo) is det.
-
-indent_line(N, !IO) :-
-    ( if N =< 0 then
-        true
-    else
-        io.write_string("  ", !IO),
-        indent_line(N - 1, !IO)
     ).
 
 :- pred output_pragma_warning_disable(io::di, io::uo) is det.
@@ -3912,27 +3636,23 @@ output_pragma_warning_disable(!IO) :-
 output_pragma_warning_restore(!IO) :-
     io.write_string("#pragma warning restore\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type csharp_out_info
     --->    csharp_out_info(
                 % These are static.
-                oi_module_info              :: module_info,
-                oi_auto_comments            :: bool,
-                oi_line_numbers             :: bool,
-                oi_foreign_line_numbers     :: bool,
-                oi_module_name              :: mlds_module_name,
-                oi_source_filename          :: string,
-                oi_code_addrs               :: map(mlds_code_addr, string),
+                csoi_module_info            :: module_info,
+                csoi_auto_comments          :: bool,
+                csoi_line_numbers           :: bool,
+                csoi_foreign_line_numbers   :: bool,
+                csoi_module_name            :: mlds_module_name,
+                csoi_source_filename        :: string,
+                csoi_code_addrs             :: map(mlds_code_addr, string),
 
                 % These are dynamic.
-                oi_output_generics          :: output_generics,
-                oi_univ_tvars               :: list(tvar)
+                csoi_output_generics        :: output_generics,
+                csoi_univ_tvars             :: list(tvar)
             ).
-
-:- type output_generics
-    --->    do_output_generics
-    ;       do_not_output_generics.
 
 :- func init_csharp_out_info(module_info, string, map(mlds_code_addr, string))
     = csharp_out_info.
@@ -3949,6 +3669,6 @@ init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs) = Info :-
         LineNumbers, ForeignLineNumbers, MLDS_ModuleName, SourceFileName,
         CodeAddrs, do_not_output_generics, []).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -67,6 +67,9 @@
 % MLDS->C# back-end.
 :- include_module mlds_to_cs.
 
+% Utility predicates that are useful for more than one MLDS->? back-end.
+:- include_module mlds_to_target_util.
+
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.
 %-----------------------------------------------------------------------------%

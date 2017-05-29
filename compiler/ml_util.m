@@ -119,10 +119,15 @@
     %
 :- pred defn_is_commit_type_var(mlds_defn::in) is semidet.
 
-    % Succeeds iff this definition has `public' in the access
-    % field in its decl_flags.
+    % Succeeds iff this definition has `public' in the access field
+    % in its decl_flags.
     %
 :- pred defn_is_public(mlds_defn::in) is semidet.
+
+    % Succeeds iff this definition has `const' in the constness field
+    % in its decl_flags.
+    %
+:- pred defn_is_const(mlds_defn::in) is semidet.
 
     % Succeeds iff this definition is a data definition.
     %
@@ -802,6 +807,10 @@ defn_is_public(Defn) :-
     % XXX MLDS_DEFN
     Flags = defn_decl_flags(Defn),
     access(Flags) = acc_public.
+
+defn_is_const(Defn) :-
+    Flags = defn_decl_flags(Defn),
+    constness(Flags) = const.
 
 defn_is_data(Defn, DataDefn) :-
     Defn = mlds_data(DataDefn).

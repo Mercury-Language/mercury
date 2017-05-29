@@ -2107,14 +2107,14 @@ and one generates C#.
 
 <ul>
 <li>
-    mlds_to_c.m converts MLDS to C/C++ code.
+mlds_to_c.m converts MLDS to C/C++ code.
 </ul>
 
 <p>
 
-The MLDS-&gt;Java backend is broken into two submodules.
 <ul>
-<li> mlds_to_java.m converts MLDS to Java and writes it to a .java file.
+<li>
+mlds_to_java.m converts MLDS to Java and writes it to a .java file.
 </ul>
 
 After the Java code has been emitted, a Java compiler (normally javac)
@@ -2123,11 +2123,15 @@ is invoked to turn the .java file into a .class file containing Java bytecodes.
 <p>
 
 <ul>
-<li>mlds_to_cs.m converts MLDS to C# code.
+<li>
+mlds_to_cs.m converts MLDS to C# code.
 </ul>
 
 After the C# code has been emitted, a C# compiler is invoked to turn the .cs
 file into a .dll or .exe.
+
+The mlds_to_target_util.m module contains types, functions and predicates
+that are needed by more than one of these MLDS backends.
 
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
