@@ -967,7 +967,9 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
 :- pred var_defn(mlds_var_name::in, mlds_defn::in) is semidet.
 
 var_defn(VarName, Defn) :-
-    defn_entity_name(Defn) = entity_data(mlds_data_var(VarName)).
+    Defn = mlds_data(DataDefn),
+    DataDefn = mlds_data_defn(DataName, _, _, _, _, _),
+    DataName = mlds_data_var(VarName).
 
     % set_initializer(VarName, Rval, Defns0, Defns):
     %
@@ -1681,7 +1683,7 @@ eliminate_var_in_target_code_component(Component0, Component, !VarElimInfo) :-
         ( Component0 = raw_target_code(_Code)
         ; Component0 = user_target_code(_Code, _Context)
         ; Component0 = target_code_type(_Type)
-        ; Component0 = target_code_entity_name(_Name)
+        ; Component0 = target_code_function_name(_Name)
         ; Component0 = target_code_alloc_id(_AllocId)
         ),
         Component = Component0

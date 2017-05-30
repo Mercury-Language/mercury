@@ -1472,21 +1472,37 @@ output_param_for_csharp(Info, Indent, Arg, !IO) :-
 % names properly.
 %
 
-:- pred output_maybe_qualified_name(csharp_out_info::in,
-    mlds_qualified_entity_name::in, io::di, io::uo) is det.
+:- pred output_maybe_qualified_data_name_for_csharp(csharp_out_info::in,
+    mlds_qualified_data_name::in, io::di, io::uo) is det.
 
-output_maybe_qualified_name(Info, QualifiedName, !IO) :-
+output_maybe_qualified_data_name_for_csharp(Info, QualDataName, !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity, and is also necessary in the case
     % of local variables and function parameters, which must not be qualified.
-    QualifiedName = qual(ModuleName, _QualKind, Name),
+    QualDataName = qual(ModuleName, _QualKind, DataName),
     CurrentModuleName = Info ^ csoi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_cs(QualifiedName, _, !IO)
+        output_qual_name_prefix_cs(QualDataName, _, !IO)
     ),
-    output_entity_name_for_csharp(Name, !IO).
+    output_data_name_for_csharp(DataName, !IO).
+
+:- pred output_maybe_qualified_function_name_for_csharp(csharp_out_info::in,
+    mlds_qualified_function_name::in, io::di, io::uo) is det.
+
+output_maybe_qualified_function_name_for_csharp(Info, QualFuncName, !IO) :-
+    % Don't module qualify names which are defined in the current module.
+    % This avoids unnecessary verbosity, and is also necessary in the case
+    % of local variables and function parameters, which must not be qualified.
+    QualFuncName = qual(ModuleName, _QualKind, FuncName),
+    CurrentModuleName = Info ^ csoi_module_name,
+    ( if ModuleName = CurrentModuleName then
+        true
+    else
+        output_qual_name_prefix_cs(QualFuncName, _, !IO)
+    ),
+    output_function_name_for_csharp(FuncName, !IO).
 
 :- pred output_qual_name_prefix_cs(mlds_fully_qualified_name(T)::in, T::out,
     io::di, io::uo) is det.
@@ -1561,13 +1577,6 @@ qual_class_name_to_string_for_csharp(QualName, Arity, String) :-
         String = QualString ++ "." ++ UnqualString
     ).
 
-:- pred output_entity_name_for_csharp(mlds_entity_name::in, io::di, io::uo)
-    is det.
-
-output_entity_name_for_csharp(EntityName, !IO) :-
-    entity_name_to_string_for_csharp(EntityName, EntityNameStr),
-    write_identifier_string_for_csharp(EntityNameStr, !IO).
-
 :- pred output_data_name_for_csharp(mlds_data_name::in, io::di, io::uo)
     is det.
 
@@ -1610,21 +1619,6 @@ write_identifier_string_for_csharp(String, !IO) :-
         io.format("%s_%08x_%s", [s(Left), i(Hash), s(Right)], !IO)
     else
         io.write_string(String, !IO)
-    ).
-
-:- pred entity_name_to_string_for_csharp(mlds_entity_name::in, string::out)
-    is det.
-
-entity_name_to_string_for_csharp(EntityName, String) :-
-    (
-        EntityName = entity_type(TypeName),
-        type_name_to_string_for_csharp(TypeName, String)
-    ;
-        EntityName = entity_data(DataName),
-        data_name_to_string_for_csharp(DataName, String)
-    ;
-        EntityName = entity_function(FunctionName),
-        function_name_to_string_for_csharp(FunctionName, String)
     ).
 
 :- pred type_name_to_string_for_csharp(mlds_type_name::in, string::out) is det.
@@ -2829,8 +2823,8 @@ output_target_code_component_for_csharp(Info, TargetCode, !IO) :-
         % XXX enable generics here
         output_type_for_csharp(Info, Type, !IO)
     ;
-        TargetCode = target_code_entity_name(EntityName),
-        output_maybe_qualified_name(Info, EntityName, !IO)
+        TargetCode = target_code_function_name(FuncName),
+        output_maybe_qualified_function_name_for_csharp(Info, FuncName, !IO)
     ;
         TargetCode = target_code_alloc_id(_),
         unexpected($pred, "target_code_alloc_id not implemented")
@@ -2954,14 +2948,14 @@ output_lval_for_csharp(Info, Lval, !IO) :-
             else if NameStr = "MR_FUNCTION" then
                 io.write_string("runtime.Constants.MR_FUNCTION", !IO)
             else
-                QualName = qual(ModName, QualKind,
-                    entity_data(mlds_data_var(Name))),
-                output_maybe_qualified_name(Info, QualName, !IO)
+                QualDataName = qual(ModName, QualKind, mlds_data_var(Name)),
+                output_maybe_qualified_data_name_for_csharp(Info,
+                    QualDataName, !IO)
             )
         else
-            QualName = qual(ModName, QualKind,
-                entity_data(mlds_data_var(Name))),
-            output_maybe_qualified_name(Info, QualName, !IO)
+            QualDataName = qual(ModName, QualKind, mlds_data_var(Name)),
+            output_maybe_qualified_data_name_for_csharp(Info,
+                QualDataName, !IO)
         )
     ).
 

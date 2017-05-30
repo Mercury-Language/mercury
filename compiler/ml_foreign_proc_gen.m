@@ -613,8 +613,8 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
     ml_gen_info_get_proc_id(Info, ProcId),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, Module, PlainFuncName),
     HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
-        target_code_entity_name(qual(Module, module_qual,
-            entity_function(mlds_function_name(PlainFuncName)))),
+        target_code_function_name(qual(Module, module_qual,
+            mlds_function_name(PlainFuncName))),
         raw_target_code("\n")].
 
 %---------------------------------------------------------------------------%

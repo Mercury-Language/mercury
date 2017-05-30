@@ -1533,7 +1533,7 @@
     ;       target_code_input(mlds_rval)
     ;       target_code_output(mlds_lval)
     ;       target_code_type(mlds_type)
-    ;       target_code_entity_name(mlds_qualified_entity_name)
+    ;       target_code_function_name(mlds_qualified_function_name)
     ;       target_code_alloc_id(mlds_alloc_id).
 
 :- type mlds_alloc_id

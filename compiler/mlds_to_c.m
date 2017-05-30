@@ -298,11 +298,11 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
     % whether the order is important in MLDS grades that use high-level data.
 
     list.filter(defn_is_public, Defns, PublicDefns),
-    list.filter(defn_is_type, PublicDefns,
+    list.filter_map(defn_is_type, PublicDefns,
         PublicTypeDefns, PublicNonTypeDefns),
     list.sort(PublicNonTypeDefns, SortedPublicNonTypeDefns),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    mlds_output_defns(Opts, Indent, yes, MLDS_ModuleName,
+    list.foldl(mlds_output_class_defn(Opts, Indent, MLDS_ModuleName),
         PublicTypeDefns, !IO),
     io.nl(!IO),
     StdOpts = Opts ^ m2co_std_func_decl := yes,
@@ -432,15 +432,15 @@ mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
 
     % XXX MLDS_DEFN could do the following better
     list.filter(defn_is_public, Defns, _PublicDefns, PrivateDefns),
-    list.filter(defn_is_type, PrivateDefns, PrivateTypeDefns,
-        PrivateNonTypeDefns),
-    list.filter(defn_is_type, Defns, _TypeDefns, NonTypeDefns),
-    list.filter(defn_is_function, NonTypeDefns, FuncDefns),
-    list.filter(defn_is_type_ctor_info, GlobalDefns, TypeCtorInfoDefns),
+    list.filter_map(defn_is_type, PrivateDefns,
+        PrivateTypeDefns, PrivateNonTypeDefns),
+    list.filter_map(defn_is_type, Defns, _TypeDefns, NonTypeDefns),
+    list.filter_map(defn_is_function, NonTypeDefns, FuncDefns),
+    list.filter_map(defn_is_type_ctor_info, GlobalDefns, TypeCtorInfoDefns),
 
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    mlds_output_defns(Opts, Indent, yes, MLDS_ModuleName, PrivateTypeDefns,
-        !IO),
+    list.foldl(mlds_output_class_defn(Opts, Indent, MLDS_ModuleName),
+        PrivateTypeDefns, !IO),
     io.nl(!IO),
     mlds_output_decls(Opts, Indent, MLDS_ModuleName, PrivateNonTypeDefns, !IO),
     io.nl(!IO),
@@ -755,7 +755,7 @@ mlds_output_init_fn_decls(ModuleName, InitPreds, FinalPreds, !IO) :-
     io.write_string(";\n", !IO).
 
 :- pred mlds_output_init_fn_defns(mlds_to_c_opts::in, mlds_module_name::in,
-    list(mlds_defn)::in, list(mlds_defn)::in,
+    list(mlds_function_defn)::in, list(mlds_data_defn)::in,
     assoc_list(mlds_alloc_id, ml_alloc_site_data)::in,
     list(string)::in, list(string)::in, io::di, io::uo) is det.
 
@@ -887,15 +887,14 @@ output_grade_check_fn_name(ModuleName, !IO) :-
     % Generate calls to MR_init_entry() for the specified functions.
     %
 :- pred mlds_output_calls_to_init_entry(mlds_module_name::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
+    list(mlds_function_defn)::in, io::di, io::uo) is det.
 
 mlds_output_calls_to_init_entry(_ModuleName, [], !IO).
 mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns], !IO) :-
-    % XXX MLDS_DEFN
-    EntityName = defn_entity_name(FuncDefn),
+    FuncName = FuncDefn ^ mfd_function_name,
     io.write_string("\tMR_init_entry(", !IO),
-    mlds_output_fully_qualified_name(qual(ModuleName, module_qual, EntityName),
-        !IO),
+    mlds_output_fully_qualified_function_name(
+        qual(ModuleName, module_qual, FuncName), !IO),
     io.write_string(");\n", !IO),
     mlds_output_calls_to_init_entry(ModuleName, FuncDefns, !IO).
 
@@ -903,16 +902,15 @@ mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns], !IO) :-
     % type_ctor_infos.
     %
 :- pred mlds_output_calls_to_register_tci(mlds_module_name::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
+    list(mlds_data_defn)::in, io::di, io::uo) is det.
 
 mlds_output_calls_to_register_tci(_ModuleName, [], !IO).
 mlds_output_calls_to_register_tci(ModuleName,
         [TypeCtorInfoDefn | TypeCtorInfoDefns], !IO) :-
-    % XXX MLDS_DEFN
-    EntityName = defn_entity_name(TypeCtorInfoDefn),
+    DataName = TypeCtorInfoDefn ^ mdd_data_name,
     io.write_string("\tMR_register_type_ctor_info(&", !IO),
-    mlds_output_fully_qualified_name(qual(ModuleName, module_qual, EntityName),
-        !IO),
+    mlds_output_fully_qualified_data_name(
+        qual(ModuleName, module_qual, DataName), !IO),
     io.write_string(");\n", !IO),
     mlds_output_calls_to_register_tci(ModuleName, TypeCtorInfoDefns, !IO).
 
@@ -1531,91 +1529,108 @@ mlds_output_decls(Opts, Indent, ModuleName, [Defn | Defns], !IO) :-
 mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
     (
         Defn = mlds_data(DataDefn),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-
-        DataDefn = mlds_data_defn(DataName, Context, Flags, Type, Initializer,
-            _GCStatement),
-        Name = entity_data(DataName),
-        % XXX MLDS_DEFN
-        mlds_output_decl_flags(Opts, Flags, forward_decl, Name,
-            is_not_external_func, !IO),
-        QualName = qual(ModuleName, module_qual, Name),
-        mlds_output_data_decl(Opts, QualName, Type,
-            get_initializer_array_size(Initializer), !IO),
-        io.write_string(";\n", !IO)
+        mlds_output_data_decl_opts(Opts, Indent, ModuleName, DataDefn, !IO)
     ;
         Defn = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
-            MaybePredProcId, Params, MaybeBody, _Attrs,
-            _EnvVarNames, _MaybeRequireTailrecInfo),
+        mlds_output_function_decl_opts(Opts, Indent, ModuleName,
+            FunctionDefn, !IO)
+    ;
+        Defn = mlds_class(ClassDefn),
+        mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO)
+    ).
 
-        % If we are using --high-level-data, then for function declarations,
-        % we need to ensure that we forward-declare any types used in the
-        % function parameters. This is because otherwise, for any struct names
-        % whose first occurrence is in the function parameters, the scope of
-        % such struct names is just that function declaration, which is never
-        % right.
-        %
-        % We generate such forward declarations here, rather than generating
-        % type declarations in a header file and #including that header file,
-        % because doing the latter would significantly complicate the
-        % dependencies (to avoid cyclic #includes, you'd need to generate
-        % the type declarations in a different header file than the function
-        % declarations).
-        HighLevelData = Opts ^ m2co_highlevel_data,
-        (
-            HighLevelData = yes,
-            Params = mlds_func_params(Arguments, _RetTypes),
-            ParamTypes = mlds_get_arg_types(Arguments),
-            mlds_output_type_forward_decls(Opts, Indent, ParamTypes, !IO)
-        ;
-            HighLevelData = no
-        ),
-        (
-            MaybeBody = body_defined_here(_),
-            IsExternalFunc = is_not_external_func
-        ;
-            MaybeBody = body_external,
-            IsExternalFunc = is_external_func
-        ),
+:- pred mlds_output_data_decl_opts(mlds_to_c_opts::in, indent::in,
+    mlds_module_name::in, mlds_data_defn::in, io::di, io::uo) is det.
 
+mlds_output_data_decl_opts(Opts, Indent, ModuleName, DataDefn, !IO) :-
+    DataDefn = mlds_data_defn(DataName, Context, Flags, Type, Initializer,
+        _GCStatement),
+    Name = entity_data(DataName),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    % XXX MLDS_DEFN
+    mlds_output_decl_flags(Opts, Flags, forward_decl, Name,
+        is_not_external_func, !IO),
+    QualName = qual(ModuleName, module_qual, Name),
+    mlds_output_data_decl(Opts, QualName, Type,
+        get_initializer_array_size(Initializer), !IO),
+    io.write_string(";\n", !IO).
+
+:- pred mlds_output_function_decl_opts(mlds_to_c_opts::in, indent::in,
+    mlds_module_name::in, mlds_function_defn::in, io::di, io::uo) is det.
+
+mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
+    FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
+        MaybePredProcId, Params, MaybeBody, _Attrs,
+        _EnvVarNames, _MaybeRequireTailrecInfo),
+
+    % If we are using --high-level-data, then for function declarations,
+    % we need to ensure that we forward-declare any types used in the
+    % function parameters. This is because otherwise, for any struct names
+    % whose first occurrence is in the function parameters, the scope of
+    % such struct names is just that function declaration, which is never
+    % right.
+    %
+    % We generate such forward declarations here, rather than generating
+    % type declarations in a header file and #including that header file,
+    % because doing the latter would significantly complicate the
+    % dependencies (to avoid cyclic #includes, you'd need to generate
+    % the type declarations in a different header file than the function
+    % declarations).
+    HighLevelData = Opts ^ m2co_highlevel_data,
+    (
+        HighLevelData = yes,
+        Params = mlds_func_params(Arguments, _RetTypes),
+        ParamTypes = mlds_get_arg_types(Arguments),
+        mlds_output_type_forward_decls(Opts, Indent, ParamTypes, !IO)
+    ;
+        HighLevelData = no
+    ),
+    (
+        MaybeBody = body_defined_here(_),
+        IsExternalFunc = is_not_external_func
+    ;
+        MaybeBody = body_external,
+        IsExternalFunc = is_external_func
+    ),
+
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    mlds_output_decl_flags(Opts, Flags, forward_decl,
+        entity_function(FuncName), IsExternalFunc, !IO),
+    QualFuncName = qual(ModuleName, module_qual, FuncName),
+
+    (
+        MaybePredProcId = no
+    ;
+        MaybePredProcId = yes(PredProcId),
+        mlds_output_pred_proc_id(Opts, PredProcId, !IO)
+    ),
+    mlds_output_func_decl(Opts, Indent, QualFuncName, Context, Params, !IO),
+    io.write_string(";\n", !IO).
+
+:- pred mlds_output_class_decl_opts(mlds_to_c_opts::in, indent::in,
+    mlds_module_name::in, mlds_class_defn::in, io::di, io::uo) is det.
+
+mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
+    ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
+        _Imports, _BaseClasses, _Implements,
+        _TypeParams, _Ctors, _Members),
+
+    % ANSI C does not permit forward declarations of enumeration types.
+    % So we just skip those. Currently they are not needed since we don't
+    % actually use the enum types.
+
+    ( if Kind = mlds_enum then
+        true
+    else
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
         mlds_output_decl_flags(Opts, Flags, forward_decl,
-            entity_function(FuncName), IsExternalFunc, !IO),
-        QualFuncName = qual(ModuleName, module_qual, FuncName),
-
-        (
-            MaybePredProcId = no
-        ;
-            MaybePredProcId = yes(PredProcId),
-            mlds_output_pred_proc_id(Opts, PredProcId, !IO)
-        ),
-        mlds_output_func_decl(Opts, Indent, QualFuncName, Context, Params,
-            !IO),
+            entity_type(TypeName), is_not_external_func, !IO),
+        QualTypeName = qual(ModuleName, module_qual, TypeName),
+        mlds_output_class_decl(Indent, QualTypeName, ClassDefn, !IO),
         io.write_string(";\n", !IO)
-    ;
-        Defn = mlds_class(ClassDefn),
-        ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
-            _Imports, _BaseClasses, _Implements,
-            _TypeParams, _Ctors, _Members),
-
-        % ANSI C does not permit forward declarations of enumeration types.
-        % So we just skip those. Currently they are not needed since we don't
-        % actually use the enum types.
-
-        ( if Kind = mlds_enum then
-            true
-        else
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent, !IO),
-            mlds_output_decl_flags(Opts, Flags, forward_decl,
-                entity_type(TypeName), is_not_external_func, !IO),
-            QualTypeName = qual(ModuleName, module_qual, TypeName),
-            mlds_output_class_decl(Indent, QualTypeName, ClassDefn, !IO),
-            io.write_string(";\n", !IO)
-        )
     ).
 
 :- pred mlds_output_scalar_cell_group_decls(mlds_to_c_opts::in, indent::in,
@@ -1948,61 +1963,79 @@ mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
 mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
     (
         Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(DataName, Context, Flags,
-            Type, Initializer, GCStatement),
-        Name = entity_data(DataName),
-        (
-            Separate = yes,
-            io.nl(!IO)
-        ;
-            Separate = no
-        ),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        % XXX MLDS_DEFN
-        mlds_output_decl_flags(Opts, Flags, definition, Name,
-            is_not_external_func, !IO),
-        QualName = qual(ModuleName, module_qual, Name),
-        mlds_output_data_defn(Opts, QualName, Type, Initializer, !IO),
-        mlds_output_gc_statement(Opts, Indent, GCStatement, "", !IO)
+        mlds_output_data_defn(Opts, Indent, Separate, ModuleName,
+            DataDefn, !IO)
     ;
         Defn = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
-            MaybePredProcId, Params, MaybeBody, _Attributes,
-            _EnvVarNames, _MaybeRequireTailrecInfo),
-        (
-            MaybeBody = body_defined_here(_),
-            IsExternalFunc = is_not_external_func
-        ;
-            MaybeBody = body_external,
-            IsExternalFunc = is_external_func
-        ),
-        io.nl(!IO),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        mlds_output_decl_flags(Opts, Flags, definition,
-            entity_function(FuncName), IsExternalFunc, !IO),
-        (
-            MaybePredProcId = no
-        ;
-            MaybePredProcId = yes(PredProcId),
-            mlds_output_pred_proc_id(Opts, PredProcId, !IO)
-        ),
-        QualFuncName = qual(ModuleName, module_qual, FuncName),
-        mlds_output_func(Opts, Indent, QualFuncName, Context, Params,
-            MaybeBody, !IO)
+        mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO)
     ;
         Defn = mlds_class(ClassDefn),
-        ClassDefn = mlds_class_defn(TypeName, Context, Flags, _Kind,
-            _Imports, _BaseClasses, _Implements,
-            _TypeParams, _Ctors, _Members),
-        io.nl(!IO),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        mlds_output_decl_flags(Opts, Flags, definition, entity_type(TypeName),
-            is_not_external_func, !IO),
-        mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO)
+        mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO)
     ).
+
+:- pred mlds_output_data_defn(mlds_to_c_opts::in, indent::in, bool::in,
+    mlds_module_name::in, mlds_data_defn::in, io::di, io::uo) is det.
+
+mlds_output_data_defn(Opts, Indent, Separate, ModuleName, DataDefn, !IO) :-
+    DataDefn = mlds_data_defn(DataName, Context, Flags,
+        Type, Initializer, GCStatement),
+    Name = entity_data(DataName),
+    (
+        Separate = yes,
+        io.nl(!IO)
+    ;
+        Separate = no
+    ),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    % XXX MLDS_DEFN
+    mlds_output_decl_flags(Opts, Flags, definition, Name,
+        is_not_external_func, !IO),
+    QualName = qual(ModuleName, module_qual, Name),
+    mlds_output_data_defn(Opts, QualName, Type, Initializer, !IO),
+    mlds_output_gc_statement(Opts, Indent, GCStatement, "", !IO).
+
+:- pred mlds_output_function_defn(mlds_to_c_opts::in, indent::in,
+    mlds_module_name::in, mlds_function_defn::in, io::di, io::uo) is det.
+
+mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
+    FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
+        MaybePredProcId, Params, MaybeBody, _Attributes,
+        _EnvVarNames, _MaybeRequireTailrecInfo),
+    (
+        MaybeBody = body_defined_here(_),
+        IsExternalFunc = is_not_external_func
+    ;
+        MaybeBody = body_external,
+        IsExternalFunc = is_external_func
+    ),
+    io.nl(!IO),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    mlds_output_decl_flags(Opts, Flags, definition,
+        entity_function(FuncName), IsExternalFunc, !IO),
+    (
+        MaybePredProcId = no
+    ;
+        MaybePredProcId = yes(PredProcId),
+        mlds_output_pred_proc_id(Opts, PredProcId, !IO)
+    ),
+    QualFuncName = qual(ModuleName, module_qual, FuncName),
+    mlds_output_func(Opts, Indent, QualFuncName, Context, Params,
+        MaybeBody, !IO).
+
+:- pred mlds_output_class_defn(mlds_to_c_opts::in, indent::in,
+    mlds_module_name::in, mlds_class_defn::in, io::di, io::uo) is det.
+
+mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO) :-
+    ClassDefn = mlds_class_defn(TypeName, Context, Flags, _Kind,
+        _Imports, _BaseClasses, _Implements, _TypeParams, _Ctors, _Members),
+    io.nl(!IO),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    mlds_output_decl_flags(Opts, Flags, definition, entity_type(TypeName),
+        is_not_external_func, !IO),
+    mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO).
 
 :- pred mlds_output_gc_statement(mlds_to_c_opts::in, indent::in,
     mlds_gc_statement::in, string::in, io::di, io::uo) is det.
@@ -2146,10 +2179,11 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
 
 is_static_member(Defn) :-
     % XXX MLDS_DEFN
-    Name = defn_entity_name(Defn),
-    Flags = defn_decl_flags(Defn),
-    ( Name = entity_type(_)
-    ; per_instance(Flags) = one_copy
+    (
+        Defn = mlds_class(_ClassDefn)
+    ;
+        Flags = defn_decl_flags(Defn),
+        per_instance(Flags) = one_copy
     ).
 
     % Convert a base class class_id into a member variable
@@ -3346,10 +3380,12 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
 
             % Output forward declarations for any nested functions defined in
             % this block, in case they are referenced before they are defined.
-            list.filter(defn_is_function, Defns, NestedFuncDefns),
+            list.filter_map(defn_is_function, Defns, NestedFuncDefns),
             (
                 NestedFuncDefns = [_ | _],
-                mlds_output_decls(Opts, Indent + 1, ModuleName,
+                list.foldl(
+                    mlds_output_function_decl_opts(Opts, Indent + 1,
+                        ModuleName),
                     NestedFuncDefns, !IO),
                 io.write_string("\n", !IO)
             ;
@@ -4113,8 +4149,8 @@ mlds_output_target_code_component(Opts, Context, TargetCode, !IO) :-
         % allowed inside macro invocations in standard C
         % (although some compilers, e.g. gcc 3.2, do allow it).
 
-        TargetCode = target_code_entity_name(EntityName),
-        mlds_output_fully_qualified_name(EntityName, !IO),
+        TargetCode = target_code_function_name(FuncName),
+        mlds_output_fully_qualified_function_name(FuncName, !IO),
         io.write_string("\n", !IO)
     ;
         TargetCode = target_code_alloc_id(AllocId),

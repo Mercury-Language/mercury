@@ -1050,8 +1050,9 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStatements,
     %
     % To compute the name, we just take the name of the original function
     % and add 100000 to the original function's sequence number.
-    % XXX This is a bit of a hack; maybe we should add
-    % another field to the `function' ctor for mlds_entity_name.
+    % XXX This is a bit of a hack; maybe we should add another field
+    % to the `mlds_plain_func_name' function symbol to hold the desired
+    % GCTracePlainFuncName.
 
     (
         FuncName = mlds_function_name(PlainFuncName),
@@ -1972,7 +1973,7 @@ fixup_target_code_component(Action, Info, Component0, Component) :-
         ( Component0 = raw_target_code(_Code)
         ; Component0 = user_target_code(_Code, _Context)
         ; Component0 = target_code_type(_Type)
-        ; Component0 = target_code_entity_name(_Name)
+        ; Component0 = target_code_function_name(_Name)
         ; Component0 = target_code_alloc_id(_AllocId)
         ),
         Component = Component0

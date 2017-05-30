@@ -95,24 +95,26 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func defn_entity_name(mlds_defn) = mlds_entity_name.
-:- func defn_context(mlds_defn) = mlds_context.
 :- func defn_decl_flags(mlds_defn) = mlds_decl_flags.
 
 %-----------------------------------------------------------------------------%
 
+    % Succeeds iff this definition is a data definition.
+    %
+:- pred defn_is_data(mlds_defn::in, mlds_data_defn::out) is semidet.
+
     % Succeeds iff this definition is a type definition.
     %
-:- pred defn_is_type(mlds_defn::in) is semidet.
+:- pred defn_is_type(mlds_defn::in, mlds_class_defn::out) is semidet.
 
     % Succeeds iff this definition is a function definition.
     %
-:- pred defn_is_function(mlds_defn::in) is semidet.
+:- pred defn_is_function(mlds_defn::in, mlds_function_defn::out) is semidet.
 
     % Succeeds iff this definition is a data definition which
     % defines a type_ctor_info constant.
     %
-:- pred defn_is_type_ctor_info(mlds_defn::in) is semidet.
+:- pred defn_is_type_ctor_info(mlds_defn::in, mlds_data_defn::out) is semidet.
 
     % Succeeds iff this definition is a data definition which
     % defines a variable whose type is mlds_commit_type.
@@ -128,10 +130,6 @@
     % in its decl_flags.
     %
 :- pred defn_is_const(mlds_defn::in) is semidet.
-
-    % Succeeds iff this definition is a data definition.
-    %
-:- pred defn_is_data(mlds_defn::in, mlds_data_defn::out) is semidet.
 
     % Succeeds iff this definition is a data definition which defines RTTI.
     %
@@ -261,8 +259,8 @@
 
 defns_contain_main([Defn | Defns]) :-
     ( if
-        Name = defn_entity_name(Defn),
-        Name = entity_function(FuncName),
+        Defn = mlds_function(FuncDefn),
+        FuncDefn = mlds_function_defn(FuncName, _, _, _, _, _, _, _, _),
         FuncName = mlds_function_name(PlainFuncName),
         PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
         PredLabel = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _)
@@ -660,6 +658,7 @@ target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
         ; TargetCode = raw_target_code(_)
         ; TargetCode = target_code_type(_)
         ; TargetCode = target_code_alloc_id(_)
+        ; TargetCode = target_code_function_name(_)
         ),
         ContainsVar = no
     ;
@@ -668,17 +667,6 @@ target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
     ;
         TargetCode = target_code_output(Lval),
         ContainsVar = lval_contains_var(Lval, DataName)
-    ;
-        TargetCode = target_code_entity_name(EntityName),
-        EntityName = qual(ModuleName, QualKind, UnqualEntityName),
-        ( if
-            UnqualEntityName = entity_data(UnqualDataName),
-            DataName = qual(ModuleName, QualKind, UnqualDataName)
-        then
-            ContainsVar = yes
-        else
-            ContainsVar = no
-        )
     ).
 
 :- func outline_args_contains_var(list(outline_arg), mlds_data) = bool.
@@ -747,33 +735,6 @@ defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
 
 %-----------------------------------------------------------------------------%
 
-defn_entity_name(Defn) = Name :-
-    % XXX MLDS_DEFN
-    (
-        Defn = mlds_data(mlds_data_defn(DataName, _, _, _, _, _)),
-        Name = entity_data(DataName)
-    ;
-        Defn = mlds_function(mlds_function_defn(FuncName, _, _,
-            _, _, _, _, _, _)),
-        Name = entity_function(FuncName)
-    ;
-        Defn = mlds_class(mlds_class_defn(ClassName, _, _,
-            _, _, _, _, _, _, _)),
-        Name = entity_type(ClassName)
-    ).
-
-defn_context(Defn) = Context :-
-    % XXX MLDS_DEFN
-    (
-        Defn = mlds_data(mlds_data_defn(_, Context, _, _, _, _))
-    ;
-        Defn = mlds_function(mlds_function_defn(_, Context, _,
-            _, _, _, _, _, _))
-    ;
-        Defn = mlds_class(mlds_class_defn(_, Context, _,
-            _, _, _, _, _, _, _))
-    ).
-
 defn_decl_flags(Defn) = Flags :-
     % XXX MLDS_DEFN
     (
@@ -788,17 +749,19 @@ defn_decl_flags(Defn) = Flags :-
 
 %-----------------------------------------------------------------------------%
 
-defn_is_type(Defn) :-
-    % XXX MLDS_DEFN
-    defn_entity_name(Defn) = entity_type(_).
+defn_is_data(Defn, DataDefn) :-
+    Defn = mlds_data(DataDefn).
 
-defn_is_function(Defn) :-
-    % XXX MLDS_DEFN
-    defn_entity_name(Defn) = entity_function(_).
+defn_is_type(Defn, ClassDefn) :-
+    Defn = mlds_class(ClassDefn).
 
-defn_is_type_ctor_info(Defn) :-
+defn_is_function(Defn, FuncDefn) :-
+    Defn = mlds_function(FuncDefn).
+
+defn_is_type_ctor_info(Defn, DataDefn) :-
     % XXX MLDS_DEFN
-    Defn = mlds_data(mlds_data_defn(_Name, _Context, _Flags, Type, _, _)),
+    Defn = mlds_data(DataDefn),
+    DataDefn = mlds_data_defn(_Name, _Context, _Flags, Type, _, _),
     Type = mlds_rtti_type(item_type(RttiId)),
     RttiId = ctor_rtti_id(_, RttiName),
     RttiName = type_ctor_type_ctor_info.
@@ -816,9 +779,6 @@ defn_is_public(Defn) :-
 defn_is_const(Defn) :-
     Flags = defn_decl_flags(Defn),
     constness(Flags) = const.
-
-defn_is_data(Defn, DataDefn) :-
-    Defn = mlds_data(DataDefn).
 
 defn_is_rtti_data(Defn, DataDefn) :-
     Defn = mlds_data(DataDefn),

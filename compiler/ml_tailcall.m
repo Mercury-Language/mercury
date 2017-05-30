@@ -924,8 +924,8 @@ var_is_local(Var, Locals) :-
     % XXX we ignore the ModuleName -- that is safe, but overly conservative.
     Var = qual(_ModuleName, _QualKind, VarName),
     some [Local] (
-        locals_member(Local, Locals),
-        Local = entity_data(mlds_data_var(VarName))
+        locals_member_data(LocalDataName, Locals),
+        LocalDataName = mlds_data_var(VarName)
     ).
 
     % Check whether the specified function is defined locally (i.e. as a
@@ -946,30 +946,46 @@ function_is_local(CodeAddr, Locals) :-
     QualifiedProcLabel = qual(_ModuleName, _QualKind, ProcLabel),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     some [Local] (
-        locals_member(Local, Locals),
-        Local = entity_function(mlds_function_name(PlainFuncName)),
+        locals_member_func(LocalFuncName, Locals),
+        LocalFuncName = mlds_function_name(PlainFuncName),
         PlainFuncName =
             mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _PredId)
     ).
 
-    % locals_member(Name, Locals):
+    % locals_member_data(Name, Locals):
     %
-    % Nondeterministically enumerates the names of all the entities in Locals.
+    % Nondeterministically enumerates the names of all the
+    % data entities in Locals.
     %
-:- pred locals_member(mlds_entity_name::out, locals::in) is nondet.
+:- pred locals_member_data(mlds_data_name::out, locals::in) is nondet.
 
-locals_member(Name, LocalsList) :-
+locals_member_data(DataName, LocalsList) :-
     list.member(Locals, LocalsList),
     (
         Locals = local_defns(Defns),
         list.member(Defn, Defns),
-        Name = defn_entity_name(Defn)
+        Defn = mlds_data(DataDefn),
+        DataName = DataDefn ^ mdd_data_name
     ;
         Locals = local_params(Params),
         list.member(Param, Params),
         Param = mlds_argument(VarName, _, _),
-        Name = entity_data(mlds_data_var(VarName))
+        DataName = mlds_data_var(VarName)
     ).
+
+    % locals_member_func(FuncName, Locals):
+    %
+    % Nondeterministically enumerates the names of all the
+    % function entities in Locals.
+    %
+:- pred locals_member_func(mlds_function_name::out, locals::in) is nondet.
+
+locals_member_func(FuncName, LocalsList) :-
+    list.member(Locals, LocalsList),
+    Locals = local_defns(Defns),
+    list.member(Defn, Defns),
+    Defn = mlds_function(FuncDefn),
+    FuncName = FuncDefn ^ mfd_function_name.
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_tailcall.

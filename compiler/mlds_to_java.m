@@ -1596,11 +1596,11 @@ rename_class_names_unary_op(Renaming, !Op) :-
 
 rename_class_names_target_code_component(Renaming, !Component) :-
     (
-        !.Component = user_target_code(_, _)
-    ;
-        !.Component = raw_target_code(_)
-    ;
-        !.Component = target_code_alloc_id(_)
+        ( !.Component = user_target_code(_, _)
+        ; !.Component = raw_target_code(_)
+        ; !.Component = target_code_alloc_id(_)
+        ; !.Component = target_code_function_name(_)
+        )
     ;
         !.Component = target_code_input(Rval0),
         rename_class_names_rval(Renaming, Rval0, Rval),
@@ -1613,28 +1613,6 @@ rename_class_names_target_code_component(Renaming, !Component) :-
         !.Component = target_code_type(Type0),
         rename_class_names_type(Renaming, Type0, Type),
         !:Component = target_code_type(Type)
-    ;
-        !.Component = target_code_entity_name(QualEntityName0),
-        QualEntityName0 = qual(ModuleName, Kind, EntityName0),
-        (
-            EntityName0 = entity_type(TypeName0),
-            TypeName0 = mlds_type_name(ClassName0, Arity),
-            ( if
-                Renaming = class_name_renaming(ModuleName, RenamingMap),
-                map.search(RenamingMap, ClassName0, ClassName)
-            then
-                TypeName = mlds_type_name(ClassName, Arity),
-                EntityName = entity_type(TypeName),
-                QualEntityName = qual(ModuleName, Kind, EntityName),
-                !:Component = target_code_entity_name(QualEntityName)
-            else
-                true
-            )
-        ;
-            ( EntityName0 = entity_function(_)
-            ; EntityName0 = entity_data(_)
-            )
-        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -2706,21 +2684,37 @@ output_param(Info, Indent, Arg, !IO) :-
 % names properly.
 %
 
-:- pred output_maybe_qualified_name_for_java(java_out_info::in,
-    mlds_qualified_entity_name::in, io::di, io::uo) is det.
+:- pred output_maybe_qualified_data_name_for_java(java_out_info::in,
+    mlds_qualified_data_name::in, io::di, io::uo) is det.
 
-output_maybe_qualified_name_for_java(Info, QualifiedName, !IO) :-
+output_maybe_qualified_data_name_for_java(Info, QualDataName, !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity, and is also necessary in the case
     % of local variables and function parameters, which must not be qualified.
-    QualifiedName = qual(ModuleName, _QualKind, Name),
+    QualDataName = qual(ModuleName, _QualKind, DataName),
     CurrentModuleName = Info ^ joi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_java(QualifiedName, _, !IO)
+        output_qual_name_prefix_java(QualDataName, _, !IO)
     ),
-    output_entity_name_for_java(Name, !IO).
+    output_data_name_for_java(DataName, !IO).
+
+:- pred output_maybe_qualified_function_name_for_java(java_out_info::in,
+    mlds_qualified_function_name::in, io::di, io::uo) is det.
+
+output_maybe_qualified_function_name_for_java(Info, QualFuncName, !IO) :-
+    % Don't module qualify names which are defined in the current module.
+    % This avoids unnecessary verbosity, and is also necessary in the case
+    % of local variables and function parameters, which must not be qualified.
+    QualFuncName = qual(ModuleName, _QualKind, FuncName),
+    CurrentModuleName = Info ^ joi_module_name,
+    ( if ModuleName = CurrentModuleName then
+        true
+    else
+        output_qual_name_prefix_java(QualFuncName, _, !IO)
+    ),
+    output_function_name_for_java(FuncName, !IO).
 
 :- pred output_qual_name_prefix_java(mlds_fully_qualified_name(T)::in, T::out,
     io::di, io::uo) is det.
@@ -2789,21 +2783,6 @@ qual_class_name_to_string_for_java(QualName, Arity, String) :-
         qualifier_to_string_for_java(MLDS_ModuleName, QualKind, QualString),
         unqual_class_name_to_string_for_java(ClassName, Arity, UnqualString),
         String = QualString ++ "." ++ UnqualString
-    ).
-
-:- pred output_entity_name_for_java(mlds_entity_name::in, io::di, io::uo)
-    is det.
-
-output_entity_name_for_java(EntityName, !IO) :-
-    (
-        EntityName = entity_type(TypeName),
-        output_type_name_for_java(TypeName, !IO)
-    ;
-        EntityName = entity_data(DataName),
-        output_data_name_for_java(DataName, !IO)
-    ;
-        EntityName = entity_function(FunctionName),
-        output_function_name_for_java(FunctionName, !IO)
     ).
 
 :- pred output_type_name_for_java(mlds_type_name::in, io::di, io::uo) is det.
@@ -4131,8 +4110,8 @@ output_target_code_component_for_java(Info, TargetCode, !IO) :-
         InfoGenerics = Info ^ joi_output_generics := do_output_generics,
         output_type_for_java(InfoGenerics, Type, !IO)
     ;
-        TargetCode = target_code_entity_name(EntityName),
-        output_maybe_qualified_name_for_java(Info, EntityName, !IO)
+        TargetCode = target_code_function_name(FuncName),
+        output_maybe_qualified_function_name_for_java(Info, FuncName, !IO)
     ;
         TargetCode = target_code_alloc_id(_),
         unexpected($pred, "target_code_alloc_id not implemented")
@@ -4234,8 +4213,8 @@ output_lval_for_java(Info, Lval, !IO) :-
         io.write_string(EnvVarName, !IO)
     ;
         Lval = ml_var(qual(ModName, QualKind, Name), _),
-        QualName = qual(ModName, QualKind, entity_data(mlds_data_var(Name))),
-        output_maybe_qualified_name_for_java(Info, QualName, !IO)
+        QualDataName = qual(ModName, QualKind, mlds_data_var(Name)),
+        output_maybe_qualified_data_name_for_java(Info, QualDataName, !IO)
     ).
 
 :- pred output_mangled_name_for_java(string::in, io::di, io::uo) is det.
