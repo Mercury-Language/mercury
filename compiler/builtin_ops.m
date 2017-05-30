@@ -432,7 +432,6 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ; PredName = "unchecked_rem", ArithOp = uint_mod
             ; PredName = "/\\", ArithOp = uint_bitwise_and
             ; PredName = "\\/", ArithOp = uint_bitwise_or
-            ; PredName = "xor", ArithOp = uint_bitwise_xor
             ; PredName = "unchecked_left_shift",
                 ArithOp = uint_unchecked_left_shift
             ; PredName = "unchecked_right_shift",
@@ -441,6 +440,19 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ProcNum = 0,
             Args = [X, Y, Z],
             Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))
+        ;
+            PredName = "xor",
+            Args = [X, Y, Z],
+            (
+                ProcNum = 0,
+                Code = assign(Z, binary(uint_bitwise_xor, leaf(X), leaf(Y)))
+            ;
+                ProcNum = 1,
+                Code = assign(Y, binary(uint_bitwise_xor, leaf(X), leaf(Z)))
+            ;
+                ProcNum = 2,
+                Code = assign(X, binary(uint_bitwise_xor, leaf(Y), leaf(Z)))
+            )
         ;
             ( PredName = ">", CompareOp = uint_gt
             ; PredName = "<", CompareOp = uint_lt
