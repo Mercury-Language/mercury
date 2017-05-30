@@ -1144,8 +1144,9 @@ extract_gc_statements(DataDefn0, DataDefn, GCInitStmts, GCTraceStmts) :-
 
 convert_local_to_field(Defn0) = Defn :-
     Flags0 = Defn0 ^ mdd_decl_flags,
-    ( if access(Flags0) = acc_local then
-        Flags = set_access(Flags0, acc_public),
+    Access0 = get_data_access(Flags0),
+    ( if Access0 = acc_local then
+        set_data_access(acc_public, Flags0, Flags),
         Defn = Defn0 ^ mdd_decl_flags := Flags
     else
         Defn = Defn0
@@ -1685,8 +1686,8 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
         % top level.
         (
             Action = hoist_nested_funcs,
-            Flags1 = set_access(Flags0, acc_private),
-            Flags = set_per_instance(Flags1, one_copy)
+            set_access(acc_private, Flags0, Flags1),
+            set_per_instance(one_copy, Flags1, Flags)
         ;
             Action = chain_gc_stack_frames,
             Flags = Flags0

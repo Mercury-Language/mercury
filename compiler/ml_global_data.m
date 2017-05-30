@@ -479,7 +479,8 @@ ml_gen_plain_static_defn(ConstVarKind, ConstType,
     % The GC never needs to trace static constants, because they can never
     % point into the heap; they can point only to other static constants.
     GCStatement = gc_no_stmt,
-    DeclFlags = mlds.set_access(ml_static_const_decl_flags, acc_private),
+    DeclFlags0 = ml_static_const_decl_flags,
+    set_data_access(acc_private, DeclFlags0, DeclFlags),
     MLDS_Context = mlds_make_context(Context),
     DataDefn = mlds_data_defn(DataName, MLDS_Context, DeclFlags,
         ConstType, Initializer, GCStatement),
@@ -650,8 +651,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         map.det_insert(ArgTypes, TypeNum, TypeNumMap0, TypeNumMap),
         !GlobalData ^ mgd_vector_type_num_map := TypeNumMap,
 
-        FieldFlags = init_decl_flags(acc_public, per_instance, non_virtual,
-            overridable, const, concrete),
+        FieldFlags = init_data_decl_flags(acc_public, per_instance, const),
         ml_gen_vector_cell_field_types(MLDS_Context, FieldFlags,
             TypeRawNum, 0, ArgTypes, FieldNames, FieldDefns, FieldInfos),
 
@@ -705,8 +705,8 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         !GlobalData ^ mgd_vector_cell_group_map := CellGroupMap
     ).
 
-:- pred ml_gen_vector_cell_field_types(mlds_context::in, mlds_decl_flags::in,
-    int::in, int::in, list(mlds_type)::in,
+:- pred ml_gen_vector_cell_field_types(mlds_context::in,
+    mlds_data_decl_flags::in, int::in, int::in, list(mlds_type)::in,
     list(mlds_var_name)::out, list(mlds_data_defn)::out,
     list(mlds_field_info)::out) is det.
 

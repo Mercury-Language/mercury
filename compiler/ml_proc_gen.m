@@ -964,16 +964,12 @@ tabling_name_and_init_to_defn(ProcLabel, MLDS_Context, Constness, Id,
 
     % Return the declaration flags appropriate for a tabling data structure.
     %
-:- func tabling_data_decl_flags(constness) = mlds_decl_flags.
+:- func tabling_data_decl_flags(constness) = mlds_data_decl_flags.
 
-tabling_data_decl_flags(Constness) = MLDS_DeclFlags :-
+tabling_data_decl_flags(Constness) = DeclFlags :-
     Access = acc_private,
     PerInstance = one_copy,
-    Virtuality = non_virtual,
-    Overridability = sealed,
-    Abstractness = concrete,
-    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
 
 %-----------------------------------------------------------------------------%
 %

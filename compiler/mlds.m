@@ -602,7 +602,7 @@
     --->    mlds_data_defn(
                 mdd_data_name           :: mlds_data_name,
                 mdd_context             :: mlds_context,
-                mdd_decl_flags          :: mlds_decl_flags,
+                mdd_decl_flags          :: mlds_data_decl_flags,
 
                 mdd_type                :: mlds_type,
                 mdd_init                :: mlds_initializer,
@@ -921,8 +921,6 @@
 % Declaration flags.
 %
 
-:- type mlds_decl_flags.
-
 :- type access
     % The following used for class members (this includes globals,
     % which are actually members of the top-level package)
@@ -971,27 +969,55 @@
     --->    concrete
     ;       abstract.
 
-:- func access(mlds_decl_flags) = access.
-:- func per_instance(mlds_decl_flags) = per_instance.
-:- func virtuality(mlds_decl_flags) = virtuality.
-:- func overridability(mlds_decl_flags) = overridability.
-:- func constness(mlds_decl_flags) = constness.
-:- func abstractness(mlds_decl_flags) = abstractness.
+%-----------%
 
-:- func set_access(mlds_decl_flags, access) = mlds_decl_flags.
-:- func set_per_instance(mlds_decl_flags, per_instance) = mlds_decl_flags.
-:- func set_virtuality(mlds_decl_flags, virtuality) = mlds_decl_flags.
-:- func set_overridability(mlds_decl_flags, overridability) = mlds_decl_flags.
-:- func set_constness(mlds_decl_flags, constness) = mlds_decl_flags.
-:- func set_abstractness(mlds_decl_flags, abstractness) = mlds_decl_flags.
+:- type mlds_decl_flags.
 
 :- func init_decl_flags(access, per_instance, virtuality, overridability,
     constness, abstractness) = mlds_decl_flags.
 
+:- func get_access(mlds_decl_flags) = access.
+:- func get_per_instance(mlds_decl_flags) = per_instance.
+:- func get_virtuality(mlds_decl_flags) = virtuality.
+:- func get_overridability(mlds_decl_flags) = overridability.
+:- func get_constness(mlds_decl_flags) = constness.
+:- func get_abstractness(mlds_decl_flags) = abstractness.
+
+:- pred set_access(access::in,
+    mlds_decl_flags::in, mlds_decl_flags::out) is det.
+:- pred set_per_instance(per_instance::in,
+    mlds_decl_flags::in, mlds_decl_flags::out) is det.
+:- pred set_virtuality(virtuality::in,
+    mlds_decl_flags::in, mlds_decl_flags::out) is det.
+:- pred set_overridability(overridability::in,
+    mlds_decl_flags::in, mlds_decl_flags::out) is det.
+:- pred set_constness(constness::in,
+    mlds_decl_flags::in, mlds_decl_flags::out) is det.
+:- pred set_abstractness(abstractness::in,
+    mlds_decl_flags::in, mlds_decl_flags::out) is det.
+
+%-----------%
+
+:- type mlds_data_decl_flags.
+
+:- func init_data_decl_flags(access, per_instance, constness)
+    = mlds_data_decl_flags.
+
+:- func get_data_access(mlds_data_decl_flags) = access.
+:- func get_data_per_instance(mlds_data_decl_flags) = per_instance.
+:- func get_data_constness(mlds_data_decl_flags) = constness.
+
+:- pred set_data_access(access::in,
+    mlds_data_decl_flags::in, mlds_data_decl_flags::out) is det.
+:- pred set_data_per_instance(per_instance::in,
+    mlds_data_decl_flags::in, mlds_data_decl_flags::out) is det.
+:- pred set_data_constness(constness::in,
+    mlds_data_decl_flags::in, mlds_data_decl_flags::out) is det.
+
     % Return the declaration flags appropriate for an initialized
     % local static constant.
     %
-:- func ml_static_const_decl_flags = mlds_decl_flags.
+:- func ml_static_const_decl_flags = mlds_data_decl_flags.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2465,42 +2491,70 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
                 mdf_abstractness    :: abstractness
             ).
 
-access(Flags) = Flags ^ mdf_access.
-per_instance(Flags) = Flags ^ mdf_per_instance.
-virtuality(Flags) = Flags ^ mdf_virtuality.
-overridability(Flags) = Flags ^ mdf_overridability.
-constness(Flags) = Flags ^ mdf_constness.
-abstractness(Flags) = Flags ^ mdf_abstractness.
-
-set_access(Flags, Access) =
-    Flags ^ mdf_access := Access.
-set_per_instance(Flags, PerInstance) =
-    Flags ^ mdf_per_instance := PerInstance.
-set_virtuality(Flags, Virtuality) =
-    Flags ^ mdf_virtuality := Virtuality.
-set_overridability(Flags, Overridability) =
-    Flags ^ mdf_overridability := Overridability.
-set_constness(Flags, Constness) =
-    Flags ^ mdf_constness := Constness.
-set_abstractness(Flags, Abstractness) =
-    Flags ^ mdf_abstractness := Abstractness.
-
 init_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
         Abstractness) =
     mlds_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
         Abstractness).
+
+get_access(Flags) = X :-
+    X = Flags ^ mdf_access.
+get_per_instance(Flags) = X :-
+    X = Flags ^ mdf_per_instance.
+get_virtuality(Flags) = X :-
+    X = Flags ^ mdf_virtuality.
+get_overridability(Flags) = X :-
+    X = Flags ^ mdf_overridability.
+get_constness(Flags) = X :-
+    X = Flags ^ mdf_constness.
+get_abstractness(Flags) = X :-
+    X = Flags ^ mdf_abstractness.
+
+set_access(Access, !Flags) :-
+    !Flags ^ mdf_access := Access.
+set_per_instance(PerInstance, !Flags) :-
+    !Flags ^ mdf_per_instance := PerInstance.
+set_virtuality(Virtuality, !Flags) :-
+    !Flags ^ mdf_virtuality := Virtuality.
+set_overridability(Overridability, !Flags) :-
+    !Flags ^ mdf_overridability := Overridability.
+set_constness(Constness, !Flags) :-
+    !Flags ^ mdf_constness := Constness.
+set_abstractness(Abstractness, !Flags) :-
+    !Flags ^ mdf_abstractness := Abstractness.
+
+%-----------------------------------------------------------------------------%
+
+:- type mlds_data_decl_flags
+    --->    mlds_data_decl_flags(
+                mddf_access          :: access,
+                mddf_per_instance    :: per_instance,
+                mddf_constness       :: constness
+            ).
+
+init_data_decl_flags(Access, PerInstance, Constness) =
+    mlds_data_decl_flags(Access, PerInstance, Constness).
+
+get_data_access(Flags) = X :-
+    X = Flags ^ mddf_access.
+get_data_per_instance(Flags) = X :-
+    X = Flags ^ mddf_per_instance.
+get_data_constness(Flags) = X :-
+    X = Flags ^ mddf_constness.
+
+set_data_access(Access, !Flags) :-
+    !Flags ^ mddf_access := Access.
+set_data_per_instance(PerInstance, !Flags) :-
+    !Flags ^ mddf_per_instance := PerInstance.
+set_data_constness(Constness, !Flags) :-
+    !Flags ^ mddf_constness := Constness.
 
 ml_static_const_decl_flags = DeclFlags :-
     % Note that rtti_data_decl_flags, in rtti_to_mlds.m,
     % must be the same as this apart from the access.
     Access = acc_local,
     PerInstance = one_copy,
-    Virtuality = non_virtual,
-    Overridability = overridable,
     Constness = const,
-    Abstractness = concrete,
-    DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
 
 %-----------------------------------------------------------------------------%
 

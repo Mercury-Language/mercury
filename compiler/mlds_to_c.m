@@ -1296,6 +1296,8 @@ mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
     % Generate the final statement to unbox and return the return value,
     % if needed.
     (
+        RetTypes = []
+    ;
         RetTypes = [RetType3],
         ( if RetType3 = mlds_foreign_type(c(_)) then
             io.write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
@@ -1306,8 +1308,6 @@ mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
         ),
         io.write_string("\treturn ret_value;\n", !IO)
     ;
-        RetTypes = []
-    ;
         RetTypes = [_, _ | _]
     ).
 
@@ -1317,13 +1317,13 @@ mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
 mlds_output_pragma_input_arg(ModuleName, Arg, !IO) :-
     Arg = mlds_argument(VarName, Type, _GCStatement),
     qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        UnboxedEntityName, BoxedEntityName),
+        UnboxedDataName, BoxedDataName),
     io.write_string("\tMR_MAYBE_BOX_FOREIGN_TYPE(", !IO),
     mlds_output_pragma_export_type_prefix_suffix(Type, !IO),
     io.write_string(", ", !IO),
-    mlds_output_fully_qualified_name(UnboxedEntityName, !IO),
+    mlds_output_fully_qualified_data_name(UnboxedDataName, !IO),
     io.write_string(", ", !IO),
-    mlds_output_fully_qualified_name(BoxedEntityName, !IO),
+    mlds_output_fully_qualified_data_name(BoxedDataName, !IO),
     io.write_string(");\n", !IO).
 
 :- pred mlds_output_pragma_output_arg(mlds_module_name::in, mlds_argument::in,
@@ -1332,13 +1332,13 @@ mlds_output_pragma_input_arg(ModuleName, Arg, !IO) :-
 mlds_output_pragma_output_arg(ModuleName, Arg, !IO) :-
     Arg = mlds_argument(VarName, Type, _GCStatement),
     qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        UnboxedEntityName, BoxedEntityName),
+        UnboxedDataName, BoxedDataName),
     io.write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
     mlds_output_pragma_export_type_prefix_suffix(pointed_to_type(Type), !IO),
     io.write_string(", ", !IO),
-    mlds_output_fully_qualified_name(BoxedEntityName, !IO),
+    mlds_output_fully_qualified_data_name(BoxedDataName, !IO),
     io.write_string(", *", !IO),
-    mlds_output_fully_qualified_name(UnboxedEntityName, !IO),
+    mlds_output_fully_qualified_data_name(UnboxedDataName, !IO),
     io.write_string(");\n", !IO).
 
 :- pred mlds_output_pragma_export_input_defns(mlds_to_c_opts::in,
@@ -1348,10 +1348,10 @@ mlds_output_pragma_export_input_defns(Opts, ModuleName, Arg, !IO) :-
     Arg = mlds_argument(VarName, Type, _GCStatement),
     io.write_string("\t", !IO),
     qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        _UnboxedEntityName, BoxedEntityName),
+        _UnboxedDataName, BoxedDataName),
     mlds_output_data_decl_ho(Opts,
         mlds_output_type_prefix, mlds_output_type_suffix_no_size,
-        BoxedEntityName, Type, !IO),
+        BoxedDataName, Type, !IO),
     io.write_string(";\n", !IO).
 
 :- pred mlds_output_pragma_export_output_defns(mlds_to_c_opts::in,
@@ -1361,10 +1361,10 @@ mlds_output_pragma_export_output_defns(Opts, ModuleName, Arg, !IO) :-
     Arg = mlds_argument(VarName, Type, _GCStatement),
     io.write_string("\t", !IO),
     qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        _UnboxedEntityName, BoxedEntityName),
+        _UnboxedDataName, BoxedDataName),
     mlds_output_data_decl_ho(Opts,
         mlds_output_type_prefix, mlds_output_type_suffix_no_size,
-        BoxedEntityName, pointed_to_type(Type), !IO),
+        BoxedDataName, pointed_to_type(Type), !IO),
     io.write_string(";\n", !IO).
 
 :- func pointed_to_type(mlds_type) = mlds_type.
@@ -1378,21 +1378,18 @@ pointed_to_type(PtrType) =
 
 :- pred qualified_unboxed_and_boxed_entity_names(mlds_module_name::in,
     mlds_var_name::in,
-    mlds_qualified_entity_name::out, mlds_qualified_entity_name::out) is det.
+    mlds_qualified_data_name::out, mlds_qualified_data_name::out) is det.
 
 qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        UnboxedEntityName, BoxedEntityName) :-
+        UnboxedDataName, BoxedDataName) :-
     ( if VarName = mlds_prog_var(Name, Seq) then
         BoxedVarName = mlds_prog_var_boxed(Name, Seq)
     else
         NameStr = ml_var_name_to_string(VarName),
         BoxedVarName = mlds_comp_var(mcv_non_prog_var_boxed(NameStr))
     ),
-    % XXX MLDS_DEFN
-    UnboxedEntityName = qual(ModuleName, module_qual,
-        entity_data(mlds_data_var(VarName))),
-    BoxedEntityName = qual(ModuleName, module_qual,
-        entity_data(mlds_data_var(BoxedVarName))).
+    UnboxedDataName = qual(ModuleName, module_qual, mlds_data_var(VarName)),
+    BoxedDataName = qual(ModuleName, module_qual, mlds_data_var(BoxedVarName)).
 
 :- pred mlds_output_pragma_export_call(mlds_to_c_opts::in,
     mlds_module_name::in, mlds_qualified_function_name::in, mlds_arguments::in,
@@ -1413,20 +1410,20 @@ mlds_output_pragma_export_call(Opts, ModuleName, FuncName, Parameters, !IO) :-
 mlds_output_pragma_export_arg(Opts, ModuleName, Arg, !IO) :-
     Arg = mlds_argument(VarName, Type, _GCStatement),
     qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        UnboxedEntityName, BoxedEntityName),
+        UnboxedDataName, BoxedDataName),
     ( if Type = mlds_foreign_type(c(_)) then
         % This is a foreign_type input. Pass in the already-boxed value.
-        mlds_output_fully_qualified_name(BoxedEntityName, !IO)
+        mlds_output_fully_qualified_data_name(BoxedDataName, !IO)
     else if Type = mlds_ptr_type(mlds_foreign_type(c(_))) then
         % This is a foreign_type output. Pass in the address of the
         % local variable which will hold the boxed value.
         io.write_string("&", !IO),
-        mlds_output_fully_qualified_name(BoxedEntityName, !IO)
+        mlds_output_fully_qualified_data_name(BoxedDataName, !IO)
     else
         % Otherwise, no boxing or unboxing is needed.
         % Just cast the argument to the right type.
         mlds_output_cast(Opts, Type, !IO),
-        mlds_output_fully_qualified_name(UnboxedEntityName, !IO)
+        mlds_output_fully_qualified_data_name(UnboxedDataName, !IO)
     ).
 
 :- pred mlds_output_export_enums(mlds_to_c_opts::in, indent::in,
@@ -1545,14 +1542,11 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
 mlds_output_data_decl_opts(Opts, Indent, ModuleName, DataDefn, !IO) :-
     DataDefn = mlds_data_defn(DataName, Context, Flags, Type, Initializer,
         _GCStatement),
-    Name = entity_data(DataName),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    % XXX MLDS_DEFN
-    mlds_output_decl_flags(Opts, Flags, forward_decl, Name,
-        is_not_external_func, !IO),
-    QualName = qual(ModuleName, module_qual, Name),
-    mlds_output_data_decl(Opts, QualName, Type,
+    mlds_output_data_decl_flags(Opts, Flags, forward_decl, !IO),
+    QualDataName = qual(ModuleName, module_qual, DataName),
+    mlds_output_data_decl(Opts, QualDataName, Type,
         get_initializer_array_size(Initializer), !IO),
     io.write_string(";\n", !IO).
 
@@ -1588,16 +1582,15 @@ mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     ),
     (
         MaybeBody = body_defined_here(_),
-        IsExternalFunc = is_not_external_func
+        DefnKind = dk_func_not_external
     ;
         MaybeBody = body_external,
-        IsExternalFunc = is_external_func
+        DefnKind = dk_func_external
     ),
 
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_decl_flags(Opts, Flags, forward_decl,
-        entity_function(FuncName), IsExternalFunc, !IO),
+    mlds_output_decl_flags(Opts, Flags, forward_decl, DefnKind, !IO),
     QualFuncName = qual(ModuleName, module_qual, FuncName),
 
     (
@@ -1626,8 +1619,7 @@ mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     else
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
-        mlds_output_decl_flags(Opts, Flags, forward_decl,
-            entity_type(TypeName), is_not_external_func, !IO),
+        mlds_output_decl_flags(Opts, Flags, forward_decl, dk_type, !IO),
         QualTypeName = qual(ModuleName, module_qual, TypeName),
         mlds_output_class_decl(Indent, QualTypeName, ClassDefn, !IO),
         io.write_string(";\n", !IO)
@@ -1979,7 +1971,6 @@ mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
 mlds_output_data_defn(Opts, Indent, Separate, ModuleName, DataDefn, !IO) :-
     DataDefn = mlds_data_defn(DataName, Context, Flags,
         Type, Initializer, GCStatement),
-    Name = entity_data(DataName),
     (
         Separate = yes,
         io.nl(!IO)
@@ -1988,11 +1979,12 @@ mlds_output_data_defn(Opts, Indent, Separate, ModuleName, DataDefn, !IO) :-
     ),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    % XXX MLDS_DEFN
-    mlds_output_decl_flags(Opts, Flags, definition, Name,
-        is_not_external_func, !IO),
-    QualName = qual(ModuleName, module_qual, Name),
-    mlds_output_data_defn(Opts, QualName, Type, Initializer, !IO),
+    mlds_output_data_decl_flags(Opts, Flags, definition, !IO),
+    QualDataName = qual(ModuleName, module_qual, DataName),
+    mlds_output_data_decl(Opts, QualDataName, Type,
+        get_initializer_array_size(Initializer), !IO),
+    mlds_output_initializer(Opts, Type, Initializer, !IO),
+    io.write_string(";\n", !IO),
     mlds_output_gc_statement(Opts, Indent, GCStatement, "", !IO).
 
 :- pred mlds_output_function_defn(mlds_to_c_opts::in, indent::in,
@@ -2004,16 +1996,15 @@ mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
         _EnvVarNames, _MaybeRequireTailrecInfo),
     (
         MaybeBody = body_defined_here(_),
-        IsExternalFunc = is_not_external_func
+        DefnKind = dk_func_not_external
     ;
         MaybeBody = body_external,
-        IsExternalFunc = is_external_func
+        DefnKind = dk_func_external
     ),
     io.nl(!IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_decl_flags(Opts, Flags, definition,
-        entity_function(FuncName), IsExternalFunc, !IO),
+    mlds_output_decl_flags(Opts, Flags, definition, DefnKind, !IO),
     (
         MaybePredProcId = no
     ;
@@ -2028,13 +2019,12 @@ mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     mlds_module_name::in, mlds_class_defn::in, io::di, io::uo) is det.
 
 mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(TypeName, Context, Flags, _Kind,
+    ClassDefn = mlds_class_defn(_TypeName, Context, Flags, _Kind,
         _Imports, _BaseClasses, _Implements, _TypeParams, _Ctors, _Members),
     io.nl(!IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_decl_flags(Opts, Flags, definition, entity_type(TypeName),
-        is_not_external_func, !IO),
+    mlds_output_decl_flags(Opts, Flags, definition, dk_type, !IO),
     mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO).
 
 :- pred mlds_output_gc_statement(mlds_to_c_opts::in, indent::in,
@@ -2180,10 +2170,15 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
 is_static_member(Defn) :-
     % XXX MLDS_DEFN
     (
-        Defn = mlds_class(_ClassDefn)
+        Defn = mlds_data(DataDefn),
+        Flags = DataDefn ^ mdd_decl_flags,
+        get_data_per_instance(Flags) = one_copy
     ;
-        Flags = defn_decl_flags(Defn),
-        per_instance(Flags) = one_copy
+        Defn = mlds_function(FuncDefn),
+        Flags = FuncDefn ^ mfd_decl_flags,
+        get_per_instance(Flags) = one_copy
+    ;
+        Defn = mlds_class(_ClassDefn)
     ).
 
     % Convert a base class class_id into a member variable
@@ -2211,45 +2206,24 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
 mlds_output_enum_constants(Opts, Indent, EnumModuleName, Members, !IO) :-
     % Select the enumeration constants from the list of members
     % for this enumeration type, and output them.
-    EnumConsts = list.filter(is_enum_const, Members),
+    list.filter_map(defn_is_enum_const, Members, EnumConsts),
     io.write_list(EnumConsts, ",\n",
         mlds_output_enum_constant(Opts, Indent, EnumModuleName), !IO),
     io.nl(!IO).
 
-    % Test whether one of the members of an mlds_enum class
-    % is an enumeration constant.
-    %
-:- pred is_enum_const(mlds_defn::in) is semidet.
-
-is_enum_const(Defn) :-
-    Flags = defn_decl_flags(Defn),
-    % XXX Should also test for mlds_data.
-    constness(Flags) = const.
-
     % Output the definition of a single enumeration constant.
     %
 :- pred mlds_output_enum_constant(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, mlds_defn::in, io::di, io::uo) is det.
+    mlds_module_name::in, mlds_data_defn::in, io::di, io::uo) is det.
 
-mlds_output_enum_constant(Opts, Indent, EnumModuleName, Defn, !IO) :-
-    (
-        Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(DataName, Context, _Flags,
-            Type, Initializer, _GCStatement),
-        Name = entity_data(DataName),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        % XXX MLDS_DEFN
-        QualName = qual(EnumModuleName, type_qual, Name),
-        mlds_output_fully_qualified_name(QualName, !IO),
-        mlds_output_initializer(Opts, Type, Initializer, !IO)
-    ;
-        ( Defn = mlds_function(_)
-        ; Defn = mlds_class(_)
-        ),
-        % XXX MLDS_DEFN
-        unexpected($module, $pred, "constant is not data")
-    ).
+mlds_output_enum_constant(Opts, Indent, EnumModuleName, DataDefn, !IO) :-
+    DataDefn = mlds_data_defn(DataName, Context, _Flags,
+        Type, Initializer, _GCStatement),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    QualDataName = qual(EnumModuleName, type_qual, DataName),
+    mlds_output_fully_qualified_data_name(QualDataName, !IO),
+    mlds_output_initializer(Opts, Type, Initializer, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -2257,12 +2231,12 @@ mlds_output_enum_constant(Opts, Indent, EnumModuleName, Defn, !IO) :-
 %
 
 :- pred mlds_output_data_decl(mlds_to_c_opts::in,
-    mlds_qualified_entity_name::in, mlds_type::in, initializer_array_size::in,
+    mlds_qualified_data_name::in, mlds_type::in, initializer_array_size::in,
     io::di, io::uo) is det.
 
-mlds_output_data_decl(Opts, Name, Type, InitializerSize, !IO) :-
+mlds_output_data_decl(Opts, DataName, Type, InitializerSize, !IO) :-
     mlds_output_data_decl_ho(Opts, mlds_output_type_prefix,
-        mlds_output_data_decl_2(InitializerSize), Name, Type, !IO).
+        mlds_output_data_decl_2(InitializerSize), DataName, Type, !IO).
 
 :- pred mlds_output_data_decl_2(initializer_array_size::in, mlds_to_c_opts::in,
     mlds_type::in, io::di, io::uo) is det.
@@ -2272,34 +2246,14 @@ mlds_output_data_decl_2(InitializerSize, Opts, Type, !IO) :-
 
 :- pred mlds_output_data_decl_ho(mlds_to_c_opts::in,
     output_type::in(output_type), output_type::in(output_type),
-    mlds_qualified_entity_name::in, mlds_type::in, io::di, io::uo) is det.
+    mlds_qualified_data_name::in, mlds_type::in, io::di, io::uo) is det.
 
-mlds_output_data_decl_ho(Opts, OutputPrefix, OutputSuffix, Name, Type, !IO) :-
+mlds_output_data_decl_ho(Opts, OutputPrefix, OutputSuffix, DataName,
+        Type, !IO) :-
     OutputPrefix(Opts, Type, !IO),
     io.write_char(' ', !IO),
-    mlds_output_fully_qualified_name(Name, !IO),
+    mlds_output_fully_qualified_data_name(DataName, !IO),
     OutputSuffix(Opts, Type, !IO).
-
-:- pred mlds_output_data_defn(mlds_to_c_opts::in,
-    mlds_qualified_entity_name::in, mlds_type::in, mlds_initializer::in,
-    io::di, io::uo) is det.
-
-mlds_output_data_defn(Opts, Name, Type, Initializer, !IO) :-
-    mlds_output_data_decl(Opts, Name, Type,
-        get_initializer_array_size(Initializer), !IO),
-    mlds_output_initializer(Opts, Type, Initializer, !IO),
-    io.write_string(";\n", !IO).
-
-:- pred mlds_output_maybe(maybe(T)::in,
-    pred(T, io, io)::in(pred(in, di, uo) is det), io::di, io::uo) is det.
-
-mlds_output_maybe(MaybeValue, OutputAction, !IO) :-
-    (
-        MaybeValue = yes(Value),
-        OutputAction(Value, !IO)
-    ;
-        MaybeValue = no
-    ).
 
 :- pred mlds_output_initializer(mlds_to_c_opts::in, mlds_type::in,
     mlds_initializer::in, io::di, io::uo) is det.
@@ -2533,7 +2487,7 @@ mlds_output_params(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
 mlds_output_param(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
         Context, Arg, !IO) :-
     Arg = mlds_argument(VarName, Type, GCStatement),
-    Name = entity_data(mlds_data_var(VarName)),
+    Name = mlds_data_var(VarName),
     QualName = qual(ModuleName, module_qual, Name),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
@@ -3230,32 +3184,50 @@ mlds_output_array_type_suffix(array_size(Size0), !IO) :-
     ;       definition.
 
 :- pred mlds_output_decl_flags(mlds_to_c_opts::in, mlds_decl_flags::in,
-    decl_or_defn::in, mlds_entity_name::in, is_external_func::in,
-    io::di, io::uo) is det.
+    decl_or_defn::in, defn_kind::in, io::di, io::uo) is det.
 
-mlds_output_decl_flags(Opts, Flags, DeclOrDefn, Name, IsExternalFunc, !IO) :-
-    % mlds_output_extern_or_static handles both the `access' and the
-    % `per_instance' fields of the mlds_decl_flags. We have to handle them
-    % together because C overloads `static' to mean both `private' and
-    % `one_copy', rather than having separate keywords for each. To make it
-    % clear which MLDS construct each `static' keyword means, we precede the
-    % `static' without (optionally-enabled) comments saying whether it is
-    % `private', `one_copy', or both.
+mlds_output_decl_flags(Opts, Flags, DeclOrDefn, DefnKind, !IO) :-
+    Access = get_access(Flags),
+    PerInstance = get_per_instance(Flags),
+    Virtuality = get_virtuality(Flags),
+    Overridability = get_overridability(Flags),
+    Constness = get_constness(Flags),
+    Abstractness = get_abstractness(Flags),
 
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
-        mlds_output_access_comment(access(Flags), !IO),
-        mlds_output_per_instance_comment(per_instance(Flags), !IO)
+        mlds_output_access_comment(Access, !IO),
+        mlds_output_per_instance_comment(PerInstance, !IO)
     ;
         Comments = no
     ),
-    mlds_output_extern_or_static(access(Flags), per_instance(Flags),
-        DeclOrDefn, Name, IsExternalFunc, !IO),
-    mlds_output_virtuality(virtuality(Flags), !IO),
-    mlds_output_overridability(overridability(Flags), !IO),
-    mlds_output_constness(constness(Flags), !IO),
-    mlds_output_abstractness(abstractness(Flags), !IO).
+    mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind,
+        !IO),
+    mlds_output_virtuality(Virtuality, !IO),
+    mlds_output_overridability(Overridability, !IO),
+    mlds_output_constness(Constness, !IO),
+    mlds_output_abstractness(Abstractness, !IO).
+
+:- pred mlds_output_data_decl_flags(mlds_to_c_opts::in,
+    mlds_data_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
+
+mlds_output_data_decl_flags(Opts, Flags, DeclOrDefn, !IO) :-
+    Access = get_data_access(Flags),
+    PerInstance = get_data_per_instance(Flags),
+    Constness = get_data_constness(Flags),
+
+    Comments = Opts ^ m2co_auto_comments,
+    (
+        Comments = yes,
+        mlds_output_access_comment(Access, !IO),
+        mlds_output_per_instance_comment(PerInstance, !IO)
+    ;
+        Comments = no
+    ),
+    mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, dk_data,
+        !IO),
+    mlds_output_constness(Constness, !IO).
 
 :- pred mlds_output_access_comment(access::in, io::di, io::uo) is det.
 
@@ -3277,16 +3249,26 @@ mlds_output_per_instance_comment(per_instance, !IO).
 mlds_output_per_instance_comment(one_copy, !IO) :-
     io.write_string("/* one_copy */ ", !IO).
 
-:- type is_external_func
-    --->    is_not_external_func
-    ;       is_external_func.
+:- type defn_kind
+    --->    dk_data
+    ;       dk_func_not_external
+    ;       dk_func_external
+    ;       dk_type.
 
+    % mlds_output_extern_or_static handles both the `access' and the
+    % `per_instance' fields of the mlds_decl_flags. We have to handle them
+    % together because C overloads `static' to mean both `private' and
+    % `one_copy', rather than having separate keywords for each. To make it
+    % clear which MLDS construct each `static' keyword means, our caller
+    % should precede the call to this predicate with (optionally-enabled)
+    % comments saying whether it is `private', `one_copy', or both.
+    %
 :- pred mlds_output_extern_or_static(access::in, per_instance::in,
-    decl_or_defn::in, mlds_entity_name::in, is_external_func::in,
-    io::di, io::uo) is det.
+    decl_or_defn::in, defn_kind::in, io::di, io::uo) is det.
 
-mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name,
-        IsExternalFunc, !IO) :-
+mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
+    % XXX MLDS_DEFN This would be clearer as a nested switch
+    % on DefnKind, DeclOrDefn and then Access and PerInstance.
     ( if
         (
             Access = acc_private
@@ -3294,23 +3276,29 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name,
             Access = acc_local,
             PerInstance = one_copy
         ),
-        Name \= entity_type(_),
-        % Don't output "static" for functions that don't have a body.
-        % This can happen for Mercury procedures that have
-        % a `:- pragma external_{pred/func}'
-        IsExternalFunc = is_not_external_func
+        % Don't output "static" on types.
+        % Don't output "static" for functions that don't have a body,
+        % which can happen for Mercury procedures that have a
+        % `:- pragma external_{pred/func}'
+        % These are the only two kinds of definitions we *can* put
+        % a "static" in front of.
+        ( DefnKind = dk_data
+        ; DefnKind = dk_func_not_external
+        )
     then
         io.write_string("static ", !IO)
     else if
         DeclOrDefn = forward_decl,
-        Name = entity_data(_)
+        DefnKind = dk_data
     then
         io.write_string("extern ", !IO)
     else if
         % Forward declarations for GNU C nested functions need to be prefixed
         % with "auto".
         DeclOrDefn = forward_decl,
-        Name = entity_function(_),
+        ( DefnKind = dk_func_not_external
+        ; DefnKind = dk_func_external
+        ),
         Access = acc_local
     then
         io.write_string("auto ", !IO)

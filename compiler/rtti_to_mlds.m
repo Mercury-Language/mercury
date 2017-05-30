@@ -141,9 +141,9 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
 
     % Return the declaration flags appropriate for an rtti_data.
     %
-:- func rtti_data_decl_flags(bool) = mlds_decl_flags.
+:- func rtti_data_decl_flags(bool) = mlds_data_decl_flags.
 
-rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
+rtti_data_decl_flags(Exported) = DeclFlags :-
     (
         Exported = yes,
         Access = acc_public
@@ -152,12 +152,8 @@ rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
         Access = acc_private
     ),
     PerInstance = one_copy,
-    Virtuality = non_virtual,
-    Overridability = overridable,
     Constness = const,
-    Abstractness = concrete,
-    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
 
 %-----------------------------------------------------------------------------%
 

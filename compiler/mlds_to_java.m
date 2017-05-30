@@ -778,7 +778,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         % Create the member variable.
         CtorArgName = mlds_comp_var(mcv_ptr_num),
         DataDefn = mlds_data_defn(mlds_data_var(CtorArgName), Context,
-            ml_gen_const_member_decl_flags, mlds_native_int_type,
+            ml_gen_const_member_data_decl_flags, mlds_native_int_type,
             no_initializer, gc_no_stmt),
         DataDefns = [DataDefn],
 
@@ -1113,7 +1113,7 @@ maybe_shorten_long_class_name(!Defn, !Renaming) :-
         !.Defn = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(TypeName0, _Context, Flags, _ClassKind,
             _Imports, _Inherits, _Implements, _TypeParams, _Ctors0, _Members0),
-        Access = access(Flags),
+        Access = get_access(Flags),
         (
             % We only rename private classes for now.
             Access = acc_private,
@@ -1846,7 +1846,7 @@ output_data_defn_for_java(Info, Indent, OutputAux, DataDefn, !IO) :-
     DataDefn = mlds_data_defn(Name, Context, Flags, Type, Initializer, _),
     indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
-    output_decl_flags_for_java(Info, Flags, !IO),
+    output_data_decl_flags_for_java(Info, Flags, !IO),
     % XXX MLDS_DEFN
     output_data_decl_for_java(Info, Name, Type, !IO),
     output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
@@ -2024,7 +2024,7 @@ output_class_body_for_java(Info, Indent, Kind, TypeName, AllMembers, !IO) :-
         unexpected($pred, "structs not supported in Java")
     ;
         Kind = mlds_enum,
-        list.filter(defn_is_const, AllMembers, EnumConsts),
+        list.filter_map(defn_is_enum_const, AllMembers, EnumConsts),
         output_enum_constants_for_java(Info, Indent + 1, TypeName,
             EnumConsts, !IO),
         io.nl(!IO),
@@ -2057,7 +2057,7 @@ output_enum_ctor_for_java(Indent, TypeName, !IO) :-
     io.write_string("}\n", !IO).
 
 :- pred output_enum_constants_for_java(java_out_info::in, indent::in,
-    mlds_type_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
+    mlds_type_name::in, list(mlds_data_defn)::in, io::di, io::uo) is det.
 
 output_enum_constants_for_java(Info, Indent, EnumName, EnumConsts, !IO) :-
     io.write_list(EnumConsts, "\n",
@@ -2065,46 +2065,37 @@ output_enum_constants_for_java(Info, Indent, EnumName, EnumConsts, !IO) :-
     io.nl(!IO).
 
 :- pred output_enum_constant_for_java(java_out_info::in, indent::in,
-    mlds_type_name::in, mlds_defn::in, io::di, io::uo) is det.
+    mlds_type_name::in, mlds_data_defn::in, io::di, io::uo) is det.
 
-output_enum_constant_for_java(_Info, Indent, EnumName, Defn, !IO) :-
+output_enum_constant_for_java(_Info, Indent, EnumName, DataDefn, !IO) :-
+    DataDefn = mlds_data_defn(Name, _Context, _Flags,
+        _Type, Initializer, _GCStatement),
+    % Make a static instance of the constant. The MLDS doesn't retain enum
+    % constructor names (that shouldn't be hard to change now) so it is
+    % easier to derive the name of the constant later by naming them after
+    % the integer values.
     (
-        Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(Name, _Context, _Flags,
-            _Type, Initializer, _GCStatement),
-        % Make a static instance of the constant. The MLDS doesn't retain enum
-        % constructor names (that shouldn't be hard to change now) so it is
-        % easier to derive the name of the constant later by naming them after
-        % the integer values.
-        (
-            Initializer = init_obj(Rval),
-            ( if Rval = ml_const(mlconst_enum(N, _)) then
-                output_n_indents(Indent, !IO),
-                io.write_string("public static final ", !IO),
-                output_type_name_for_java(EnumName, !IO),
-                io.format(" K%d = new ", [i(N)], !IO),
-                output_type_name_for_java(EnumName, !IO),
-                io.format("(%d); ", [i(N)], !IO),
+        Initializer = init_obj(Rval),
+        ( if Rval = ml_const(mlconst_enum(N, _)) then
+            output_n_indents(Indent, !IO),
+            io.write_string("public static final ", !IO),
+            output_type_name_for_java(EnumName, !IO),
+            io.format(" K%d = new ", [i(N)], !IO),
+            output_type_name_for_java(EnumName, !IO),
+            io.format("(%d); ", [i(N)], !IO),
 
-                io.write_string(" /* ", !IO),
-                output_data_name_for_java(Name, !IO),
-                io.write_string(" */", !IO)
-            else
-                unexpected($pred, "not mlconst_enum")
-            )
-        ;
-            ( Initializer = no_initializer
-            ; Initializer = init_struct(_, _)
-            ; Initializer = init_array(_)
-            ),
+            io.write_string(" /* ", !IO),
+            output_data_name_for_java(Name, !IO),
+            io.write_string(" */", !IO)
+        else
             unexpected($pred, "not mlconst_enum")
         )
     ;
-        % XXX MLDS_DEFN
-        ( Defn = mlds_function(_)
-        ; Defn = mlds_class(_)
+        ( Initializer = no_initializer
+        ; Initializer = init_struct(_, _)
+        ; Initializer = init_array(_)
         ),
-        unexpected($pred, "definition body was not data")
+        unexpected($pred, "not mlconst_enum")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2120,7 +2111,7 @@ output_data_decls_for_java(Info, Indent, [DataDefn | DataDefns], !IO) :-
     DataDefn = mlds_data_defn(Name, _Context, Flags,
         Type, _Initializer, _GCStatement),
     output_n_indents(Indent, !IO),
-    output_decl_flags_for_java(Info, Flags, !IO),
+    output_data_decl_flags_for_java(Info, Flags, !IO),
     output_data_decl_for_java(Info, Name, Type, !IO),
     io.write_string(";\n", !IO),
     output_data_decls_for_java(Info, Indent, DataDefns, !IO).
@@ -3295,16 +3286,25 @@ boxed_type_to_string_for_java(Info, Type, String) :-
 % Code to output declaration specifiers.
 %
 
-:- pred output_decl_flags_for_java(java_out_info::in, mlds_decl_flags::in,
-    io::di, io::uo) is det.
+:- pred output_decl_flags_for_java(java_out_info::in,
+    mlds_decl_flags::in, io::di, io::uo) is det.
 
 output_decl_flags_for_java(Info, Flags, !IO) :-
-    output_access_for_java(Info, access(Flags), !IO),
-    output_per_instance_for_java(per_instance(Flags), !IO),
-    output_virtuality_for_java(Info, virtuality(Flags), !IO),
+    output_access_for_java(Info, get_access(Flags), !IO),
+    output_per_instance_for_java(get_per_instance(Flags), !IO),
+    output_virtuality_for_java(Info, get_virtuality(Flags), !IO),
     output_overridability_constness_for_java(
-        overridability(Flags), constness(Flags), !IO),
-    output_abstractness_for_java(abstractness(Flags), !IO).
+        get_overridability(Flags), get_constness(Flags), !IO),
+    output_abstractness_for_java(get_abstractness(Flags), !IO).
+
+:- pred output_data_decl_flags_for_java(java_out_info::in,
+    mlds_data_decl_flags::in, io::di, io::uo) is det.
+
+output_data_decl_flags_for_java(Info, Flags, !IO) :-
+    output_access_for_java(Info, get_data_access(Flags), !IO),
+    output_per_instance_for_java(get_data_per_instance(Flags), !IO),
+    output_overridability_constness_for_java(overridable,
+        get_data_constness(Flags), !IO).
 
 :- pred output_access_for_java(java_out_info::in, access::in,
     io::di, io::uo) is det.

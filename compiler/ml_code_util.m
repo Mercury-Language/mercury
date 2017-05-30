@@ -295,12 +295,12 @@
 
     % Generate declaration flags for a local variable.
     %
-:- func ml_gen_local_var_decl_flags = mlds_decl_flags.
+:- func ml_gen_local_var_decl_flags = mlds_data_decl_flags.
 
     % Return the declaration flags appropriate for a public field
     % in the derived constructor class of a discriminated union.
     %
-:- func ml_gen_public_field_decl_flags = mlds_decl_flags.
+:- func ml_gen_public_field_decl_flags = mlds_data_decl_flags.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1314,22 +1314,14 @@ ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
 ml_gen_local_var_decl_flags = DeclFlags :-
     Access = acc_local,
     PerInstance = per_instance,
-    Virtuality = non_virtual,
-    Overridability = overridable,
     Constness = modifiable,
-    Abstractness = concrete,
-    DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
 
 ml_gen_public_field_decl_flags = DeclFlags :-
     Access = acc_public,
     PerInstance = per_instance,
-    Virtuality = non_virtual,
-    Overridability = overridable,
     Constness = modifiable,
-    Abstractness = concrete,
-    DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
 
 %-----------------------------------------------------------------------------%
 %

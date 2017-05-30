@@ -87,15 +87,17 @@
     % Return the declaration flags appropriate for a member variable.
     %
 :- func ml_gen_member_decl_flags = mlds_decl_flags.
+:- func ml_gen_member_data_decl_flags = mlds_data_decl_flags.
 
     % Return the declaration flags appropriate for a member variable
     % which is read-only after initialisation.
     %
 :- func ml_gen_const_member_decl_flags = mlds_decl_flags.
+:- func ml_gen_const_member_data_decl_flags = mlds_data_decl_flags.
 
     % Return the declaration flags appropriate for an enumeration constant.
     %
-:- func ml_gen_enum_constant_decl_flags = mlds_decl_flags.
+:- func ml_gen_enum_constant_data_decl_flags = mlds_data_decl_flags.
 
 %-----------------------------------------------------------------------------%
 
@@ -331,7 +333,7 @@ ml_gen_hld_enum_value_member(Context) =
         mlds_data_defn(
             mlds_data_var(mlds_comp_var(mcv_mr_value)),
             mlds_make_context(Context),
-            ml_gen_member_decl_flags,
+            ml_gen_member_data_decl_flags,
             mlds_native_int_type,
             no_initializer,
             gc_no_stmt)).
@@ -386,7 +388,7 @@ ml_gen_hld_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
         mlds_data_defn(
             mlds_data_var(VarName),
             mlds_make_context(Context),
-            ml_gen_enum_constant_decl_flags,
+            ml_gen_enum_constant_data_decl_flags,
             mlds_native_int_type,
             init_obj(ConstValue),
             gc_no_stmt)).
@@ -504,7 +506,7 @@ ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
             mlds_data_defn(
                 mlds_data_var(mlds_comp_var(mcv_data_tag)),
                 mlds_make_context(Context),
-                ml_gen_member_decl_flags,
+                ml_gen_member_data_decl_flags,
                 mlds_native_int_type,
                 no_initializer,
                 gc_no_stmt)),
@@ -634,7 +636,7 @@ ml_gen_hld_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
         Defn = mlds_data_defn(
             mlds_data_var(VarName),
             mlds_make_context(Context),
-            ml_gen_enum_constant_decl_flags,
+            ml_gen_enum_constant_data_decl_flags,
             mlds_native_int_type,
             init_obj(ConstValue),
             gc_no_stmt),
@@ -738,8 +740,8 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             % never point into the heap; they can point only to other static
             % constants.
             GCStatement = gc_no_stmt,
-            DeclFlags = mlds.set_access(ml_static_const_decl_flags,
-                acc_public),
+            DeclFlags0 = ml_static_const_decl_flags,
+            set_data_access(acc_public, DeclFlags0, DeclFlags),
             % XXX MLDS_DEFN
             MLDS_ReservedObjDefn = mlds_data(mlds_data_defn(
                 MLDS_ReservedObjDataName, MLDS_Context, DeclFlags,
@@ -1136,7 +1138,7 @@ ml_gen_equality_members(_, []).
 % Routines for generating declaration flags.
 %
 
-ml_gen_type_decl_flags = MLDS_DeclFlags :-
+ml_gen_type_decl_flags = DeclFlags :-
     % XXX are these right?
     Access = acc_public,
     PerInstance = one_copy,
@@ -1144,38 +1146,46 @@ ml_gen_type_decl_flags = MLDS_DeclFlags :-
     Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
-    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+    DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Overridability, Constness, Abstractness).
 
-ml_gen_member_decl_flags = MLDS_DeclFlags :-
+ml_gen_member_decl_flags = DeclFlags :-
     Access = acc_public,
     PerInstance = per_instance,
     Virtuality = non_virtual,
     Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
-    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+    DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Overridability, Constness, Abstractness).
 
-ml_gen_const_member_decl_flags = MLDS_DeclFlags :-
+ml_gen_member_data_decl_flags = DeclFlags :-
+    Access = acc_public,
+    PerInstance = per_instance,
+    Constness = modifiable,
+    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
+
+ml_gen_const_member_decl_flags = DeclFlags :-
     Access = acc_public,
     PerInstance = per_instance,
     Virtuality = non_virtual,
     Overridability = overridable,
     Constness = const,
     Abstractness = concrete,
-    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+    DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Overridability, Constness, Abstractness).
 
-ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
+ml_gen_const_member_data_decl_flags = DeclFlags :-
+    Access = acc_public,
+    PerInstance = per_instance,
+    Constness = const,
+    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
+
+ml_gen_enum_constant_data_decl_flags = DeclFlags :-
     Access = acc_public,
     PerInstance = one_copy,
-    Virtuality = non_virtual,
-    Overridability = overridable,
     Constness = const,
-    Abstractness = concrete,
-    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
 
 %----------------------------------------------------------------------------%
 

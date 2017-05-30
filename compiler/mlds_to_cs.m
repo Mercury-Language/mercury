@@ -649,7 +649,7 @@ output_defn_for_csharp(Info, Indent, OutputAux, Defn, !IO) :-
 output_data_defn_for_csharp(Info, Indent, OutputAux, DataDefn, !IO) :-
     output_n_indents(Indent, !IO),
     DataDefn = mlds_data_defn(Name, _Context, Flags, Type, Initializer, _),
-    output_decl_flags_for_csharp(Info, Flags, !IO),
+    output_data_decl_flags_for_csharp(Info, Flags, !IO),
     output_data_decl_for_csharp(Info, Name, Type, !IO),
     output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).
@@ -709,14 +709,15 @@ output_class_defn_for_csharp(!.Info, Indent, _OutputAux, ClassDefn, !IO) :-
             % `static' not wanted on classes generated for Mercury types.
             Kind = mlds_class
         ),
-        OverrideFlags = set_per_instance(Flags, per_instance),
+        set_per_instance(per_instance, Flags, OverrideFlags),
         io.write_string("[System.Serializable]\n", !IO),
         output_n_indents(Indent, !IO)
     ;
         % `static' and `sealed' not wanted or allowed on structs.
+        % XXX MLDS_DEFN
         Kind = mlds_struct,
-        OverrideFlags0 = set_per_instance(Flags, per_instance),
-        OverrideFlags = set_overridability(OverrideFlags0, overridable)
+        set_per_instance(per_instance, Flags, OverrideFlags0),
+        set_overridability(overridable, OverrideFlags0, OverrideFlags)
     ;
         ( Kind = mlds_package
         ; Kind = mlds_interface
@@ -840,7 +841,7 @@ output_class_body_for_csharp(Info, Indent, Kind, TypeName, AllMembers, !IO) :-
         unexpected($pred, "cannot use package as a type")
     ;
         Kind = mlds_enum,
-        list.filter(defn_is_const, AllMembers, EnumConsts),
+        list.filter_map(defn_is_enum_const, AllMembers, EnumConsts),
         output_enum_constants_for_csharp(Info, Indent + 1, TypeName,
             EnumConsts, !IO)
     ).
@@ -851,7 +852,7 @@ output_class_body_for_csharp(Info, Indent, Kind, TypeName, AllMembers, !IO) :-
 %
 
 :- pred output_enum_constants_for_csharp(csharp_out_info::in, indent::in,
-    mlds_type_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
+    mlds_type_name::in, list(mlds_data_defn)::in, io::di, io::uo) is det.
 
 output_enum_constants_for_csharp(Info, Indent, EnumName, EnumConsts, !IO) :-
     io.write_list(EnumConsts, "\n",
@@ -859,47 +860,38 @@ output_enum_constants_for_csharp(Info, Indent, EnumName, EnumConsts, !IO) :-
     io.nl(!IO).
 
 :- pred output_enum_constant_for_csharp(csharp_out_info::in, indent::in,
-    mlds_type_name::in, mlds_defn::in, io::di, io::uo) is det.
+    mlds_type_name::in, mlds_data_defn::in, io::di, io::uo) is det.
 
-output_enum_constant_for_csharp(Info, Indent, _EnumName, Defn, !IO) :-
+output_enum_constant_for_csharp(Info, Indent, _EnumName, DataDefn, !IO) :-
+    DataDefn = mlds_data_defn(Name, _Context, _Flags,
+        _Type, Initializer, _GCStmt),
     (
-        Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(Name, _Context, _Flags,
-            _Type, Initializer, _GCStmt),
-        (
-            Initializer = init_obj(Rval),
-            % The name might require mangling.
-            output_n_indents(Indent, !IO),
-            output_data_name_for_csharp(Name, !IO),
-            io.write_string(" = ", !IO),
-            ( if
-                Rval = ml_const(mlconst_enum(N, _))
-            then
-                io.write_int(N, !IO)
-            else if
-                Rval = ml_const(mlconst_foreign(lang_csharp, String, Type))
-            then
-                io.write_string("(", !IO),
-                output_type_for_csharp(Info, Type, !IO),
-                io.write_string(") ", !IO),
-                io.write_string(String, !IO)
-            else
-                unexpected($pred, string(Rval))
-            ),
-            io.write_string(",", !IO)
-        ;
-            ( Initializer = no_initializer
-            ; Initializer = init_struct(_, _)
-            ; Initializer = init_array(_)
-            ),
-            unexpected($pred, string(Initializer))
-        )
-    ;
-        ( Defn = mlds_function(_)
-        ; Defn = mlds_class(_)
+        Initializer = init_obj(Rval),
+        % The name might require mangling.
+        output_n_indents(Indent, !IO),
+        output_data_name_for_csharp(Name, !IO),
+        io.write_string(" = ", !IO),
+        ( if
+            Rval = ml_const(mlconst_enum(N, _))
+        then
+            io.write_int(N, !IO)
+        else if
+            Rval = ml_const(mlconst_foreign(lang_csharp, String, Type))
+        then
+            io.write_string("(", !IO),
+            output_type_for_csharp(Info, Type, !IO),
+            io.write_string(") ", !IO),
+            io.write_string(String, !IO)
+        else
+            unexpected($pred, string(Rval))
         ),
-        % XXX MLDS_DEFN
-        unexpected($pred, "definition body was not data")
+        io.write_string(",", !IO)
+    ;
+        ( Initializer = no_initializer
+        ; Initializer = init_struct(_, _)
+        ; Initializer = init_array(_)
+        ),
+        unexpected($pred, string(Initializer))
     ).
 
 %---------------------------------------------------------------------------%
@@ -917,8 +909,8 @@ output_data_decls_for_csharp(Info, Indent, [DataDefn | DataDefns], !IO) :-
     output_n_indents(Indent, !IO),
     % We can't honour `readonly' here as the variable is assigned
     % separately.
-    NonReadonlyFlags = set_constness(Flags, modifiable),
-    output_decl_flags_for_csharp(Info, NonReadonlyFlags, !IO),
+    set_data_constness(modifiable, Flags, NonReadonlyFlags),
+    output_data_decl_flags_for_csharp(Info, NonReadonlyFlags, !IO),
     output_data_decl_for_csharp(Info, Name, Type, !IO),
     io.write_string(";\n", !IO),
     output_data_decls_for_csharp(Info, Indent, DataDefns, !IO).
@@ -2128,16 +2120,24 @@ boxed_type_to_string_for_csharp(Info, Type, String) :-
 % Code to output declaration specifiers.
 %
 
-:- pred output_decl_flags_for_csharp(csharp_out_info::in, mlds_decl_flags::in,
-    io::di, io::uo) is det.
+:- pred output_decl_flags_for_csharp(csharp_out_info::in,
+    mlds_decl_flags::in, io::di, io::uo) is det.
 
 output_decl_flags_for_csharp(Info, Flags, !IO) :-
-    output_access_for_csharp(Info, access(Flags), !IO),
-    output_per_instance_for_csharp(per_instance(Flags), !IO),
-    output_virtuality_for_csharp(virtuality(Flags), !IO),
-    output_overridability_for_csharp(overridability(Flags), !IO),
-    output_constness_for_csharp(constness(Flags), !IO),
-    output_abstractness_for_csharp(abstractness(Flags), !IO).
+    output_access_for_csharp(Info, get_access(Flags), !IO),
+    output_per_instance_for_csharp(get_per_instance(Flags), !IO),
+    output_virtuality_for_csharp(get_virtuality(Flags), !IO),
+    output_overridability_for_csharp(get_overridability(Flags), !IO),
+    output_constness_for_csharp(get_constness(Flags), !IO),
+    output_abstractness_for_csharp(get_abstractness(Flags), !IO).
+
+:- pred output_data_decl_flags_for_csharp(csharp_out_info::in,
+    mlds_data_decl_flags::in, io::di, io::uo) is det.
+
+output_data_decl_flags_for_csharp(Info, Flags, !IO) :-
+    output_access_for_csharp(Info, get_data_access(Flags), !IO),
+    output_per_instance_for_csharp(get_data_per_instance(Flags), !IO),
+    output_constness_for_csharp(get_data_constness(Flags), !IO).
 
 :- pred output_access_for_csharp(csharp_out_info::in, access::in,
     io::di, io::uo) is det.

@@ -95,10 +95,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func defn_decl_flags(mlds_defn) = mlds_decl_flags.
-
-%-----------------------------------------------------------------------------%
-
     % Succeeds iff this definition is a data definition.
     %
 :- pred defn_is_data(mlds_defn::in, mlds_data_defn::out) is semidet.
@@ -126,10 +122,10 @@
     %
 :- pred defn_is_public(mlds_defn::in) is semidet.
 
-    % Succeeds iff this definition has `const' in the constness field
-    % in its decl_flags.
+    % Test whether one of the members of an mlds_enum class
+    % is an enumeration constant.
     %
-:- pred defn_is_const(mlds_defn::in) is semidet.
+:- pred defn_is_enum_const(mlds_defn::in, mlds_data_defn::out) is semidet.
 
     % Succeeds iff this definition is a data definition which defines RTTI.
     %
@@ -735,20 +731,6 @@ defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
 
 %-----------------------------------------------------------------------------%
 
-defn_decl_flags(Defn) = Flags :-
-    % XXX MLDS_DEFN
-    (
-        Defn = mlds_data(mlds_data_defn(_, _, Flags, _, _, _))
-    ;
-        Defn = mlds_function(mlds_function_defn(_, _, Flags,
-            _, _, _, _, _, _))
-    ;
-        Defn = mlds_class(mlds_class_defn(_, _, Flags,
-            _, _, _, _, _, _, _))
-    ).
-
-%-----------------------------------------------------------------------------%
-
 defn_is_data(Defn, DataDefn) :-
     Defn = mlds_data(DataDefn).
 
@@ -772,13 +754,25 @@ defn_is_commit_type_var(Defn) :-
     DataDefn ^ mdd_type = mlds_commit_type.
 
 defn_is_public(Defn) :-
-    % XXX MLDS_DEFN
-    Flags = defn_decl_flags(Defn),
-    access(Flags) = acc_public.
+    (
+        Defn = mlds_data(DataDefn),
+        DataDefn = mlds_data_defn(_, _, DataFlags, _, _, _),
+        get_data_access(DataFlags) = acc_public
+    ;
+        (
+            Defn = mlds_function(FuncDefns),
+            FuncDefns = mlds_function_defn(_, _, Flags, _, _, _, _, _, _)
+        ;
+            Defn = mlds_class(ClassDefn),
+            ClassDefn = mlds_class_defn(_, _, Flags, _, _, _, _, _, _, _)
+        ),
+        get_access(Flags) = acc_public
+    ).
 
-defn_is_const(Defn) :-
-    Flags = defn_decl_flags(Defn),
-    constness(Flags) = const.
+defn_is_enum_const(Defn, DataDefn) :-
+    Defn = mlds_data(DataDefn),
+    Flags = DataDefn ^ mdd_decl_flags,
+    get_data_constness(Flags) = const.
 
 defn_is_rtti_data(Defn, DataDefn) :-
     Defn = mlds_data(DataDefn),
