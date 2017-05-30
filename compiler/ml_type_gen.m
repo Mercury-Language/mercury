@@ -315,7 +315,7 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
     get_type_defn_tparams(TypeDefn, TypeVars),
 
     % Put it all together.
-    MLDS_TypeName = entity_type(MLDS_ClassName, MLDS_ClassArity),
+    MLDS_TypeName = mlds_type_name(MLDS_ClassName, MLDS_ClassArity),
     MLDS_TypeFlags = ml_gen_type_decl_flags,
     MLDS_TypeDefn = mlds_class_defn(MLDS_TypeName, MLDS_Context,
         MLDS_TypeFlags, mlds_enum, Imports, Inherits, Implements,
@@ -562,7 +562,7 @@ ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
 
     % Put it all together.
     Members = MaybeEqualityMembers ++ TagMembers ++ CtorMembers,
-    MLDS_TypeName = entity_type(BaseClassName, BaseClassArity),
+    MLDS_TypeName = mlds_type_name(BaseClassName, BaseClassArity),
     MLDS_TypeFlags = ml_gen_type_decl_flags,
     % XXX MLDS_DEFN
     Defn = mlds_class_defn(MLDS_TypeName, MLDS_Context,
@@ -684,7 +684,7 @@ ml_gen_hld_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId,
     TypeParams = [],
 
     % Put it all together.
-    MLDS_TypeName = entity_type(UnqualClassName, ClassArity),
+    MLDS_TypeName = mlds_type_name(UnqualClassName, ClassArity),
     MLDS_TypeFlags = ml_gen_type_decl_flags,
     % XXX MLDS_DEFN
     MLDS_TypeDefn = mlds_class(mlds_class_defn(MLDS_TypeName, MLDS_Context,
@@ -883,7 +883,7 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             get_type_defn_tparams(TypeDefn, TypeParams),
 
             % Put it all together.
-            MLDS_TypeName = entity_type(UnqualCtorName, CtorArity),
+            MLDS_TypeName = mlds_type_name(UnqualCtorName, CtorArity),
             MLDS_TypeFlags = ml_gen_type_decl_flags,
             % XXX MLDS_DEFN
             MLDS_TypeDefn = mlds_class(mlds_class_defn(MLDS_TypeName,
@@ -930,7 +930,7 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
 
     % Note that the name of constructor is determined by the backend
     % convention.
-    EntityName = entity_export("<constructor>"),
+    FunctionName = mlds_function_export("<constructor>"),
     CtorFlags = init_decl_flags(acc_public, per_instance, non_virtual,
         overridable, modifiable, concrete),
     Params = mlds_func_params(Args, ReturnValues),
@@ -938,8 +938,9 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
     Attributes = [],
     EnvVarNames = set.init,
     % XXX MLDS_DEFN
-    CtorDefn = mlds_function(mlds_function_defn(EntityName, Context, CtorFlags,
-        no, Params, body_defined_here(Stmt), Attributes, EnvVarNames, no)).
+    CtorDefn = mlds_function(mlds_function_defn(FunctionName, Context,
+        CtorFlags, no, Params, body_defined_here(Stmt), Attributes,
+        EnvVarNames, no)).
 
     % Get the name and type from the field description, for use as a
     % constructor argument name and type.

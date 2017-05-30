@@ -41,7 +41,7 @@
     --->    oa_none
             % Nothing special.
 
-    ;       oa_cname(mlds_entity_name)
+    ;       oa_cname(mlds_type_name)
             % Pass down the class name if a definition is a constructor; this
             % is needed since the class name is not available for a constructor
             % in the MLDS.

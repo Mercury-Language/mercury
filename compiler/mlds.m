@@ -509,6 +509,12 @@
     % generator to mangle these names accordingly.
 :- type mlds_qualified_entity_name
     ==  mlds_fully_qualified_name(mlds_entity_name).
+:- type mlds_qualified_data_name
+    ==  mlds_fully_qualified_name(mlds_data_name).
+:- type mlds_qualified_function_name
+    ==  mlds_fully_qualified_name(mlds_function_name).
+:- type mlds_qualified_type_name
+    ==  mlds_fully_qualified_name(mlds_type_name).
 
 :- type mlds_fully_qualified_name(T)
     --->    qual(mlds_module_name, mlds_qual_kind, T).
@@ -521,19 +527,23 @@
     --->    module_qual
     ;       type_qual.
 
-:- type mlds_entity_name
-    --->    entity_type(mlds_class_name, arity)   % Name, arity.
-    ;       entity_data(mlds_data_name)
-    ;       entity_function(
-                % Identifies the source code predicate or function.
-                ef_pred_label       :: mlds_pred_label,
+:- type mlds_type_name
+    --->    mlds_type_name(
+                mlds_class_name,
+                arity
+            ).
 
-                ef_proc_id          :: proc_id,
+:- type mlds_plain_func_name
+    --->    mlds_plain_func_name(
+                % Identifies the source code predicate or function.
+                pfn_pred_label      :: mlds_pred_label,
+
+                pfn_proc_id         :: proc_id,
 
                 % A sequence number used to distinguish different MLDS
                 % functions when compiling a single HLDS predicate into
                 % multiple MLDS functions (e.g. to handle backtracking).
-                ef_maybe_func_seq   :: maybe(mlds_func_sequence_num),
+                pfn_maybe_func_seq  :: maybe(mlds_func_sequence_num),
 
                 % Specifies the HLDS pred_id.
                 % This should generally not be needed much, since all the
@@ -541,14 +551,24 @@
                 % and/or in the mlds_entity_defn. However, the target
                 % generator may want to refer to the HLDS for additional
                 % information.
-                ef_pred_id          :: pred_id
+                pfn_pred_id         :: pred_id
+            ).
+
+:- type mlds_func_sequence_num == int.
+
+:- type mlds_function_name
+    --->    mlds_function_name(
+                mlds_plain_func_name
             )
-    ;       entity_export(
+    ;       mlds_function_export(
                 % A pragma foreign_export name.
                 string
             ).
 
-:- type mlds_func_sequence_num == int.
+:- type mlds_entity_name
+    --->    entity_data(mlds_data_name)
+    ;       entity_function(mlds_function_name)
+    ;       entity_type(mlds_type_name).
 
     % This specifies information about some entity being defined
     % The entity may be any of the following:
@@ -595,7 +615,7 @@
 
 :- type mlds_function_defn
     --->    mlds_function_defn(
-                mfd_entity_name         :: mlds_entity_name,
+                mfd_function_name       :: mlds_function_name,
                 mfd_context             :: mlds_context,
                 mfd_decl_flags          :: mlds_decl_flags,
 
@@ -720,7 +740,7 @@
     %
 :- type mlds_class_defn
     --->    mlds_class_defn(
-                mcd_entity_name     :: mlds_entity_name,
+                mcd_type_name       :: mlds_type_name,
                 mcd_context         :: mlds_context,
                 mcd_decl_flags      :: mlds_decl_flags,
 
@@ -997,7 +1017,7 @@
     --->    ml_pragma_export(
                 foreign_language,
                 string,                        % Exported name
-                mlds_qualified_entity_name,    % MLDS name for exported entity
+                mlds_qualified_function_name,  % MLDS name for exported entity
                 mlds_func_params,              % MLDS function parameters
                 list(tvar),                    % Universally quantified type
                                                % variables.
@@ -1513,7 +1533,7 @@
     ;       target_code_input(mlds_rval)
     ;       target_code_output(mlds_lval)
     ;       target_code_type(mlds_type)
-    ;       target_code_name(mlds_qualified_entity_name)
+    ;       target_code_entity_name(mlds_qualified_entity_name)
     ;       target_code_alloc_id(mlds_alloc_id).
 
 :- type mlds_alloc_id

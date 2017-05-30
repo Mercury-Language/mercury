@@ -586,9 +586,9 @@ ml_gen_hash_define_mr_alloc_id(C_Codes, Context, HashDefine, HashUndef,
         ml_gen_info_get_pred_id(!.Info, PredId),
         ml_gen_info_get_proc_id(!.Info, ProcId),
         ml_gen_info_get_global_data(!.Info, GlobalData0),
-        ml_gen_proc_label(ModuleInfo, PredId, ProcId, ProcLabel, _Module),
-        ml_gen_alloc_site(ProcLabel, no, 0, Context, AllocId,
-            GlobalData0, GlobalData),
+        ml_gen_proc_label(ModuleInfo, PredId, ProcId, _Module, ProcLabel),
+        ml_gen_alloc_site(mlds_function_name(ProcLabel), no, 0, Context,
+            AllocId, GlobalData0, GlobalData),
         ml_gen_info_set_global_data(GlobalData, !Info),
         HashDefine = [
             raw_target_code("#define MR_ALLOC_ID "),
@@ -611,9 +611,10 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
     % has been inlined and the original definition optimized away.
     ml_gen_info_get_pred_id(Info, PredId),
     ml_gen_info_get_proc_id(Info, ProcId),
-    ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, Module),
+    ml_gen_proc_label(ModuleInfo, PredId, ProcId, Module, PlainFuncName),
     HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
-        target_code_name(qual(Module, module_qual, Name)),
+        target_code_entity_name(qual(Module, module_qual,
+            entity_function(mlds_function_name(PlainFuncName)))),
         raw_target_code("\n")].
 
 %---------------------------------------------------------------------------%

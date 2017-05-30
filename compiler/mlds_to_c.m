@@ -1104,13 +1104,14 @@ mlds_output_pragma_export_func_name(Opts, ModuleName, Indent, Export, !IO) :-
         _UnivQTVars, Context),
     expect(unify(Lang, lang_c), $module, $pred,
         "export to language other than C."),
-    Name = qual(ModuleName, module_qual, entity_export(ExportName)),
+    FuncName = mlds_function_export(ExportName),
+    QualFuncName = qual(ModuleName, module_qual, FuncName),
     c_output_context(Opts ^ m2co_foreign_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
     % For functions exported using `pragma foreign_export',
     % we use the default C calling convention.
     CallingConvention = "",
-    mlds_output_func_decl_ho(Opts, Indent, Name, Context,
+    mlds_output_func_decl_ho(Opts, Indent, QualFuncName, Context,
         CallingConvention, Signature,
         mlds_output_pragma_export_type_ignore_opts(prefix),
         mlds_output_pragma_export_type_ignore_opts(suffix), !IO).
@@ -1210,18 +1211,19 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
     % Output the definition body for a pragma foreign_export.
     %
 :- pred mlds_output_pragma_export_defn_body(mlds_to_c_opts::in,
-    mlds_module_name::in, mlds_qualified_entity_name::in, mlds_func_params::in,
-    io::di, io::uo) is det.
+    mlds_module_name::in, mlds_qualified_function_name::in,
+    mlds_func_params::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
         !IO) :-
     Signature = mlds_func_params(Parameters, RetTypes),
 
     % Declare local variables corresponding to any foreign_type parameters.
-    IsCForeignType = (pred(Arg::in) is semidet :-
-        Arg = mlds_argument(_Name, Type, _GCStatement),
-        Type = mlds_foreign_type(c(_))
-    ),
+    IsCForeignType =
+        ( pred(Arg::in) is semidet :-
+            Arg = mlds_argument(_Name, Type, _GCStatement),
+            Type = mlds_foreign_type(c(_))
+        ),
     IsCForeignTypePtr = (pred(Arg::in) is semidet :-
         Arg = mlds_argument(_Name, Type, _GCStatement),
         Type = mlds_ptr_type(mlds_foreign_type(c(_)))
@@ -1388,17 +1390,18 @@ qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
         NameStr = ml_var_name_to_string(VarName),
         BoxedVarName = mlds_comp_var(mcv_non_prog_var_boxed(NameStr))
     ),
+    % XXX MLDS_DEFN
     UnboxedEntityName = qual(ModuleName, module_qual,
         entity_data(mlds_data_var(VarName))),
     BoxedEntityName = qual(ModuleName, module_qual,
         entity_data(mlds_data_var(BoxedVarName))).
 
 :- pred mlds_output_pragma_export_call(mlds_to_c_opts::in,
-    mlds_module_name::in, mlds_qualified_entity_name::in, mlds_arguments::in,
+    mlds_module_name::in, mlds_qualified_function_name::in, mlds_arguments::in,
     io::di, io::uo) is det.
 
 mlds_output_pragma_export_call(Opts, ModuleName, FuncName, Parameters, !IO) :-
-    mlds_output_fully_qualified_name(FuncName, !IO),
+    mlds_output_fully_qualified_function_name(FuncName, !IO),
     io.write_string("(", !IO),
     io.write_list(Parameters, ", ",
         mlds_output_pragma_export_arg(Opts, ModuleName), !IO),
@@ -1543,7 +1546,7 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
         io.write_string(";\n", !IO)
     ;
         Defn = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(Name, Context, Flags,
+        FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
             MaybePredProcId, Params, MaybeBody, _Attrs,
             _EnvVarNames, _MaybeRequireTailrecInfo),
 
@@ -1579,9 +1582,9 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
 
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
-        mlds_output_decl_flags(Opts, Flags, forward_decl, Name,
-            IsExternalFunc, !IO),
-        QualName = qual(ModuleName, module_qual, Name),
+        mlds_output_decl_flags(Opts, Flags, forward_decl,
+            entity_function(FuncName), IsExternalFunc, !IO),
+        QualFuncName = qual(ModuleName, module_qual, FuncName),
 
         (
             MaybePredProcId = no
@@ -1589,11 +1592,12 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
             MaybePredProcId = yes(PredProcId),
             mlds_output_pred_proc_id(Opts, PredProcId, !IO)
         ),
-        mlds_output_func_decl(Opts, Indent, QualName, Context, Params, !IO),
+        mlds_output_func_decl(Opts, Indent, QualFuncName, Context, Params,
+            !IO),
         io.write_string(";\n", !IO)
     ;
         Defn = mlds_class(ClassDefn),
-        ClassDefn = mlds_class_defn(Name, Context, Flags, Kind,
+        ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
             _Imports, _BaseClasses, _Implements,
             _TypeParams, _Ctors, _Members),
 
@@ -1606,10 +1610,10 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
         else
             c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
             output_n_indents(Indent, !IO),
-            mlds_output_decl_flags(Opts, Flags, forward_decl, Name,
-                is_not_external_func, !IO),
-            QualName = qual(ModuleName, module_qual, Name),
-            mlds_output_class_decl(Indent, QualName, ClassDefn, !IO),
+            mlds_output_decl_flags(Opts, Flags, forward_decl,
+                entity_type(TypeName), is_not_external_func, !IO),
+            QualTypeName = qual(ModuleName, module_qual, TypeName),
+            mlds_output_class_decl(Indent, QualTypeName, ClassDefn, !IO),
             io.write_string(";\n", !IO)
         )
     ).
@@ -1866,7 +1870,7 @@ mlds_output_alloc_site_defn(_Opts, Indent, MLDS_ModuleName,
     term.context_line(Context, LineNumber),
     output_n_indents(Indent, !IO),
     io.write_string("{ ", !IO),
-    mlds_output_fully_qualified_name(QualProcLabel, !IO),
+    mlds_output_fully_qualified_function_name(QualProcLabel, !IO),
     io.write_string(", """, !IO),
     c_util.output_quoted_string_cur_stream(FileName, !IO),
     io.write_string(""", ", !IO),
@@ -1958,12 +1962,12 @@ mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
         % XXX MLDS_DEFN
         mlds_output_decl_flags(Opts, Flags, definition, Name,
             is_not_external_func, !IO),
-        mlds_output_data_defn(Opts, QualName, Type, Initializer, !IO),
         QualName = qual(ModuleName, module_qual, Name),
-        mlds_output_gc_statement(Opts, Indent, QualName, GCStatement, "", !IO)
+        mlds_output_data_defn(Opts, QualName, Type, Initializer, !IO),
+        mlds_output_gc_statement(Opts, Indent, GCStatement, "", !IO)
     ;
         Defn = mlds_function(FunctionDefn),
-        FunctionDefn = mlds_function_defn(Name, Context, Flags,
+        FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
             MaybePredProcId, Params, MaybeBody, _Attributes,
             _EnvVarNames, _MaybeRequireTailrecInfo),
         (
@@ -1976,35 +1980,34 @@ mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
         io.nl(!IO),
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
-        mlds_output_decl_flags(Opts, Flags, definition, Name, IsExternalFunc,
-            !IO),
+        mlds_output_decl_flags(Opts, Flags, definition,
+            entity_function(FuncName), IsExternalFunc, !IO),
         (
             MaybePredProcId = no
         ;
             MaybePredProcId = yes(PredProcId),
             mlds_output_pred_proc_id(Opts, PredProcId, !IO)
         ),
-        QualName = qual(ModuleName, module_qual, Name),
-        mlds_output_func(Opts, Indent, QualName, Context, Params, MaybeBody,
-            !IO)
+        QualFuncName = qual(ModuleName, module_qual, FuncName),
+        mlds_output_func(Opts, Indent, QualFuncName, Context, Params,
+            MaybeBody, !IO)
     ;
         Defn = mlds_class(ClassDefn),
-        ClassDefn = mlds_class_defn(Name, Context, Flags, _Kind,
+        ClassDefn = mlds_class_defn(TypeName, Context, Flags, _Kind,
             _Imports, _BaseClasses, _Implements,
             _TypeParams, _Ctors, _Members),
         io.nl(!IO),
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
-        mlds_output_decl_flags(Opts, Flags, definition, Name,
+        mlds_output_decl_flags(Opts, Flags, definition, entity_type(TypeName),
             is_not_external_func, !IO),
         mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO)
     ).
 
 :- pred mlds_output_gc_statement(mlds_to_c_opts::in, indent::in,
-    mlds_qualified_entity_name::in, mlds_gc_statement::in,
-    string::in, io::di, io::uo) is det.
+    mlds_gc_statement::in, string::in, io::di, io::uo) is det.
 
-mlds_output_gc_statement(Opts, Indent, Name, GCStatement, MaybeNewLine, !IO) :-
+mlds_output_gc_statement(Opts, Indent, GCStatement, MaybeNewLine, !IO) :-
     (
         GCStatement = gc_no_stmt
     ;
@@ -2019,7 +2022,10 @@ mlds_output_gc_statement(Opts, Indent, Name, GCStatement, MaybeNewLine, !IO) :-
         io.write_string(Label, !IO),
         % XXX This value for FuncInfo is bogus. However, this output is only
         % for debugging anyway, so it doesn't really matter.
-        FuncInfo = func_info_c(Name, mlds_func_signature([], [])),
+        ModuleName = mercury_module_name_to_mlds(unqualified("")),
+        FuncName = mlds_function_export("dummy"),
+        QualFuncName = qual(ModuleName, module_qual, FuncName),
+        FuncInfo = func_info_c(QualFuncName, mlds_func_signature([], [])),
         mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO),
         io.write_string("#endif\n", !IO)
     ).
@@ -2029,15 +2035,16 @@ mlds_output_gc_statement(Opts, Indent, Name, GCStatement, MaybeNewLine, !IO) :-
 % Code to output type declarations/definitions
 %
 
-:- pred mlds_output_class_decl(indent::in, mlds_qualified_entity_name::in,
+:- pred mlds_output_class_decl(indent::in, mlds_qualified_type_name::in,
     mlds_class_defn::in, io::di, io::uo) is det.
 
-mlds_output_class_decl(_Indent, Name, ClassDefn, !IO) :-
+mlds_output_class_decl(_Indent, QualTypeName, ClassDefn, !IO) :-
     ClassKind = ClassDefn ^ mcd_kind,
     (
         ClassKind = mlds_enum,
         io.write_string("enum ", !IO),
-        mlds_output_fully_qualified_name(Name, !IO),
+        output_qual_name_prefix_c(QualTypeName, TypeName, !IO),
+        mlds_output_type_name(TypeName, !IO),
         io.write_string("_e", !IO)
     ;
         ( ClassKind = mlds_class
@@ -2046,7 +2053,8 @@ mlds_output_class_decl(_Indent, Name, ClassDefn, !IO) :-
         ; ClassKind = mlds_struct
         ),
         io.write_string("struct ", !IO),
-        mlds_output_fully_qualified_name(Name, !IO),
+        output_qual_name_prefix_c(QualTypeName, TypeName, !IO),
+        mlds_output_type_name(TypeName, !IO),
         io.write_string("_s", !IO)
     ).
 
@@ -2055,7 +2063,7 @@ mlds_output_class_decl(_Indent, Name, ClassDefn, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(UnqualName, Context, _Flags,
+    ClassDefn = mlds_class_defn(TypeName, Context, _Flags,
         Kind, _Imports, BaseClasses, _Implements, _TypeParams, Ctors, Members),
 
     % To avoid name clashes, we need to qualify the names of the member
@@ -2063,20 +2071,10 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     % enumeration constants and for the nested classes that we generate for
     % constructors of discriminated union types.) Here we compute the
     % appropriate qualifier.
-    QualName = qual(ModuleName, module_qual, UnqualName),
-    (
-        UnqualName = entity_type(ClassName, ClassArity),
-        Target = Opts ^ m2co_target,
-        ClassModuleName = mlds_append_class_qualifier(Target, ModuleName,
-            module_qual, ClassName, ClassArity)
-    ;
-        % XXX MLDS_DEFN
-        ( UnqualName = entity_data(_)
-        ; UnqualName = entity_function(_, _, _, _)
-        ; UnqualName = entity_export(_)
-        ),
-        unexpected($module, $pred, "unexpected entity")
-    ),
+    TypeName = mlds_type_name(ClassName, ClassArity),
+    Target = Opts ^ m2co_target,
+    ClassModuleName = mlds_append_class_qualifier(Target, ModuleName,
+        module_qual, ClassName, ClassArity),
 
     % Hoist out static members, since plain old C doesn't support
     % static members in structs (except for enumeration constants).
@@ -2123,7 +2121,8 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     % `target_uses_empty_base_classes' before generating empty structs.)
     % Hence we don't need to check for empty structs here.
 
-    mlds_output_class_decl(Indent, QualName, ClassDefn, !IO),
+    QualTypeName = qual(ModuleName, module_qual, TypeName),
+    mlds_output_class_decl(Indent, QualTypeName, ClassDefn, !IO),
     io.write_string(" {\n", !IO),
     (
         Kind = mlds_enum,
@@ -2149,7 +2148,7 @@ is_static_member(Defn) :-
     % XXX MLDS_DEFN
     Name = defn_entity_name(Defn),
     Flags = defn_decl_flags(Defn),
-    ( Name = entity_type(_, _)
+    ( Name = entity_type(_)
     ; per_instance(Flags) = one_copy
     ).
 
@@ -2373,11 +2372,12 @@ mlds_output_pred_proc_id(Opts, proc(PredId, ProcId), !IO) :-
     ).
 
 :- pred mlds_output_func(mlds_to_c_opts::in, indent::in,
-    mlds_qualified_entity_name::in, mlds_context::in,
+    mlds_qualified_function_name::in, mlds_context::in,
     mlds_func_params::in, mlds_function_body::in, io::di, io::uo) is det.
 
-mlds_output_func(Opts, Indent, Name, Context, Params, FunctionBody, !IO) :-
-    mlds_output_func_decl(Opts, Indent, Name, Context, Params, !IO),
+mlds_output_func(Opts, Indent, QualFuncName, Context, Params,
+        FunctionBody, !IO) :-
+    mlds_output_func_decl(Opts, Indent, QualFuncName, Context, Params, !IO),
     (
         FunctionBody = body_external,
         io.write_string(";\n", !IO)
@@ -2389,11 +2389,11 @@ mlds_output_func(Opts, Indent, Name, Context, Params, FunctionBody, !IO) :-
         output_n_indents(Indent, !IO),
         io.write_string("{\n", !IO),
 
-        mlds_maybe_output_time_profile_instr(Opts, Context, Indent + 1, Name,
-            !IO),
+        mlds_maybe_output_time_profile_instr(Opts, Context, Indent + 1,
+            QualFuncName, !IO),
 
         Signature = mlds_get_func_signature(Params),
-        FuncInfo = func_info_c(Name, Signature),
+        FuncInfo = func_info_c(QualFuncName, Signature),
         mlds_output_statement(Opts, Indent + 1, FuncInfo, Body, !IO),
 
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
@@ -2402,7 +2402,7 @@ mlds_output_func(Opts, Indent, Name, Context, Params, FunctionBody, !IO) :-
     ).
 
 :- pred mlds_output_func_decl(mlds_to_c_opts::in, indent::in,
-    mlds_qualified_entity_name::in, mlds_context::in, mlds_func_params::in,
+    mlds_qualified_function_name::in, mlds_context::in, mlds_func_params::in,
     io::di, io::uo) is det.
 
 mlds_output_func_decl(Opts, Indent, QualifiedName, Context, Signature, !IO) :-
@@ -2412,7 +2412,7 @@ mlds_output_func_decl(Opts, Indent, QualifiedName, Context, Signature, !IO) :-
         mlds_output_type_prefix, mlds_output_type_suffix_no_size, !IO).
 
 :- pred mlds_output_func_decl_ho(mlds_to_c_opts::in, indent::in,
-    mlds_qualified_entity_name::in, mlds_context::in, string::in,
+    mlds_qualified_function_name::in, mlds_context::in, string::in,
     mlds_func_params::in,
     output_type::in(output_type), output_type::in(output_type),
     io::di, io::uo) is det.
@@ -2434,7 +2434,7 @@ mlds_output_func_decl_ho(Opts, Indent, QualifiedName, Context,
     io.write_char(' ', !IO),
     io.write_string(CallingConvention, !IO),
     io.nl(!IO),
-    mlds_output_fully_qualified_name(QualifiedName, !IO),
+    mlds_output_fully_qualified_function_name(QualifiedName, !IO),
     QualifiedName = qual(ModuleName, _, _),
     StdDecl = Opts ^ m2co_std_func_decl,
     (
@@ -2505,7 +2505,7 @@ mlds_output_param(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
     output_n_indents(Indent, !IO),
     mlds_output_data_decl_ho(Opts, OutputPrefix, OutputSuffix, QualName, Type,
         !IO),
-    mlds_output_gc_statement(Opts, Indent, QualName, GCStatement, "\n", !IO).
+    mlds_output_gc_statement(Opts, Indent, GCStatement, "\n", !IO).
 
 :- pred mlds_output_func_type_prefix(mlds_to_c_opts::in, mlds_func_params::in,
     io::di, io::uo) is det.
@@ -2561,56 +2561,110 @@ mlds_output_param_type(Opts, Arg, !IO) :-
 % Code to output names of various entities.
 %
 
+    % XXX MLDS_DEFN
+    %
 :- pred mlds_output_fully_qualified_name(mlds_qualified_entity_name::in,
     io::di, io::uo) is det.
 
 mlds_output_fully_qualified_name(QualifiedName, !IO) :-
+    QualifiedName = qual(_ModuleName, _QualKind, Name),
     ( if
-        QualifiedName = qual(_ModuleName, _QualKind, Name),
         (
-            % Don't module-qualify main/2.
-            Name = entity_function(PredLabel, _, _, _),
-            PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
-                model_det, no)
+            Name = entity_function(FuncName),
+            (
+                % Don't module-qualify main/2.
+                FuncName = mlds_function_name(PlainFuncName),
+                PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
+                PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
+                    model_det, no)
+            ;
+                % We don't module qualify pragma foreign_export names.
+                FuncName = mlds_function_export(_)
+            )
         ;
             Name = entity_data(mlds_rtti(RttiId)),
             module_qualify_name_of_rtti_id(RttiId) = no
-        ;
-            % We don't module qualify pragma foreign_export names.
-            Name = entity_export(_)
         )
     then
-        mlds_output_name(Name, !IO)
+        true
     else
-        mlds_output_fully_qualified(QualifiedName, mlds_output_name, !IO)
+        output_qual_name_prefix_c(QualifiedName, _, !IO)
+    ),
+    (
+        Name = entity_type(TypeName),
+        mlds_output_type_name(TypeName, !IO)
+    ;
+        Name = entity_data(DataName),
+        mlds_output_data_name(DataName, !IO)
+    ;
+        Name = entity_function(FunctionName),
+        mlds_output_function_name(FunctionName, !IO)
     ).
+
+:- pred mlds_output_fully_qualified_function_name(
+    mlds_qualified_function_name::in, io::di, io::uo) is det.
+
+mlds_output_fully_qualified_function_name(QualifiedFuncName, !IO) :-
+    QualifiedFuncName = qual(_ModuleName, _QualKind, FuncName),
+    ( if
+        (
+            % Don't module-qualify main/2.
+            FuncName = mlds_function_name(PlainFuncName),
+            PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
+            PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
+                model_det, no)
+        ;
+            % We don't module qualify pragma foreign_export names.
+            FuncName = mlds_function_export(_)
+        )
+    then
+        true
+    else
+        output_qual_name_prefix_c(QualifiedFuncName, _, !IO)
+    ),
+    mlds_output_function_name(FuncName, !IO).
+
+:- pred mlds_output_fully_qualified_data_name(mlds_qualified_data_name::in,
+    io::di, io::uo) is det.
+
+mlds_output_fully_qualified_data_name(QualifiedDataName, !IO) :-
+    QualifiedDataName = qual(_ModuleName, _QualKind, DataName),
+    ( if
+        DataName = mlds_rtti(RttiId),
+        module_qualify_name_of_rtti_id(RttiId) = no
+    then
+        true
+    else
+        output_qual_name_prefix_c(QualifiedDataName, _, !IO)
+    ),
+    mlds_output_data_name(DataName, !IO).
 
 :- pred mlds_output_fully_qualified_proc_label(mlds_qualified_proc_label::in,
     io::di, io::uo) is det.
 
 mlds_output_fully_qualified_proc_label(QualifiedName, !IO) :-
+    QualifiedName = qual(_ModuleName, _QualKind, Name),
+    Name = mlds_proc_label(PredLabel, _ProcId),
     ( if
         % Don't module-qualify main/2.
-        QualifiedName = qual(_ModuleName, _QualKind, Name),
-        Name = mlds_proc_label(PredLabel, _ProcId),
         PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
             model_det, no)
     then
-        mlds_output_proc_label(Name, !IO)
+        true
     else
-        mlds_output_fully_qualified(QualifiedName, mlds_output_proc_label, !IO)
-    ).
+        output_qual_name_prefix_c(QualifiedName, _, !IO)
+    ),
+    mlds_output_proc_label(Name, !IO).
 
-:- pred mlds_output_fully_qualified(mlds_fully_qualified_name(T)::in,
-    pred(T, io, io)::in(pred(in, di, uo) is det), io::di, io::uo) is det.
+:- pred output_qual_name_prefix_c(mlds_fully_qualified_name(T)::in,
+    T::out, io::di, io::uo) is det.
 
-mlds_output_fully_qualified(QualName, OutputFunc, !IO) :-
+output_qual_name_prefix_c(QualName, Name, !IO) :-
     QualName = qual(ModuleName, _QualKind, Name),
     SymName = mlds_module_name_to_sym_name(ModuleName),
     MangledModuleName = sym_name_mangle(SymName),
     io.write_string(MangledModuleName, !IO),
-    io.write_string("__", !IO),
-    OutputFunc(Name, !IO).
+    io.write_string("__", !IO).
 
 :- pred mlds_output_module_name(mercury_module_name::in, io::di, io::uo)
     is det.
@@ -2619,22 +2673,26 @@ mlds_output_module_name(ModuleName, !IO) :-
     MangledModuleName = sym_name_mangle(ModuleName),
     io.write_string(MangledModuleName, !IO).
 
-:- pred mlds_output_name(mlds_entity_name::in, io::di, io::uo) is det.
+:- pred mlds_output_type_name(mlds_type_name::in, io::di, io::uo) is det.
 
-mlds_output_name(EntityName, !IO) :-
-    % XXX We should avoid appending the arity, modenum, and seqnum
+mlds_output_type_name(TypeName, !IO) :-
+    % XXX We should avoid appending the arity if it is not needed.
+    TypeName = mlds_type_name(Name, Arity),
+    MangledName = name_mangle(Name),
+    io.write_string(MangledName, !IO),
+    io.write_char('_', !IO),
+    io.write_int(Arity, !IO).
+
+:- pred mlds_output_function_name(mlds_function_name::in,
+    io::di, io::uo) is det.
+
+mlds_output_function_name(FunctionName, !IO) :-
+    % XXX We should avoid appending the modenum, and seqnum
     % if they are not needed.
     (
-        EntityName = entity_type(Name, Arity),
-        MangledName = name_mangle(Name),
-        io.write_string(MangledName, !IO),
-        io.write_char('_', !IO),
-        io.write_int(Arity, !IO)
-    ;
-        EntityName = entity_data(DataName),
-        mlds_output_data_name(DataName, !IO)
-    ;
-        EntityName = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+        FunctionName = mlds_function_name(PlainFuncName),
+        PlainFuncName = mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum,
+            _PredId),
         mlds_output_pred_label(PredLabel, !IO),
         proc_id_to_int(ProcId, ModeNum),
         io.write_char('_', !IO),
@@ -2647,7 +2705,7 @@ mlds_output_name(EntityName, !IO) :-
             MaybeSeqNum = no
         )
     ;
-        EntityName = entity_export(Name),
+        FunctionName = mlds_function_export(Name),
         io.write_string(Name, !IO)
     ).
 
@@ -2850,7 +2908,7 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
         % XXX target asm no longer exists, so no longer need to do this.
         io.write_string("MR_Box", !IO)
     ;
-        MLDS_Type = mlds_class_type(Name, Arity, ClassKind),
+        MLDS_Type = mlds_class_type(QualName, Arity, ClassKind),
         (
             ClassKind = mlds_enum,
             % We can't just use the enumeration type, since the enumeration
@@ -2861,7 +2919,8 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
             % problems for e.g. `std_util.arg/2'. So we just use `MR_Integer',
             % and output the actual enumeration type as a comment.
             io.write_string("MR_Integer /* actually `enum ", !IO),
-            mlds_output_fully_qualified(Name, mlds_output_mangled_name, !IO),
+            output_qual_name_prefix_c(QualName, Name, !IO),
+            mlds_output_mangled_name(Name, !IO),
             io.write_char('_', !IO),
             io.write_int(Arity, !IO),
             io.write_string("_e' */", !IO)
@@ -2871,10 +2930,11 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
             ; ClassKind = mlds_interface
             ; ClassKind = mlds_struct
             ),
-            % For struct types it's OK to output an incomplete type, since
-            % don't use these types directly, we only use pointers to them.
+            % For struct types, it is OK to output an incomplete type, since
+            % don't use these types directly; we only use pointers to them.
             io.write_string("struct ", !IO),
-            mlds_output_fully_qualified(Name, mlds_output_mangled_name, !IO),
+            output_qual_name_prefix_c(QualName, Name, !IO),
+            mlds_output_mangled_name(Name, !IO),
             io.write_char('_', !IO),
             io.write_int(Arity, !IO),
             io.write_string("_s", !IO)
@@ -3200,7 +3260,7 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name,
             Access = acc_local,
             PerInstance = one_copy
         ),
-        Name \= entity_type(_, _),
+        Name \= entity_type(_),
         % Don't output "static" for functions that don't have a body.
         % This can happen for Mercury procedures that have
         % a `:- pragma external_{pred/func}'
@@ -3216,7 +3276,7 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name,
         % Forward declarations for GNU C nested functions need to be prefixed
         % with "auto".
         DeclOrDefn = forward_decl,
-        Name = entity_function(_, _, _, _),
+        Name = entity_function(_),
         Access = acc_local
     then
         io.write_string("auto ", !IO)
@@ -3254,7 +3314,7 @@ mlds_output_abstractness(concrete, !IO).
 %
 
 :- type func_info_c
-    --->    func_info_c(mlds_qualified_entity_name, mlds_func_signature).
+    --->    func_info_c(mlds_qualified_function_name, mlds_func_signature).
 
 :- pred mlds_output_statements(mlds_to_c_opts::in, indent::in, func_info_c::in,
     list(statement)::in, io::di, io::uo) is det.
@@ -3748,7 +3808,7 @@ mlds_output_switch_default(Opts, Indent, FuncInfo, Context, Default, !IO) :-
     %
 :- pred mlds_maybe_output_call_profile_instr(mlds_to_c_opts::in,
     mlds_context::in, indent::in, mlds_rval::in,
-    mlds_qualified_entity_name::in, io::di, io::uo) is det.
+    mlds_qualified_function_name::in, io::di, io::uo) is det.
 
 mlds_maybe_output_call_profile_instr(Opts, Context, Indent,
         CalleeFuncRval, CallerName, !IO) :-
@@ -3760,7 +3820,7 @@ mlds_maybe_output_call_profile_instr(Opts, Context, Indent,
         io.write_string("MR_prof_call_profile(", !IO),
         mlds_output_bracketed_rval(Opts, CalleeFuncRval, !IO),
         io.write_string(", ", !IO),
-        mlds_output_fully_qualified_name(CallerName, !IO),
+        mlds_output_fully_qualified_function_name(CallerName, !IO),
         io.write_string(");\n", !IO)
     ;
         ProfileCalls = no
@@ -3770,17 +3830,18 @@ mlds_maybe_output_call_profile_instr(Opts, Context, Indent,
     % the runtime which procedure we are currently located in.
     %
 :- pred mlds_maybe_output_time_profile_instr(mlds_to_c_opts::in,
-    mlds_context::in, indent::in, mlds_qualified_entity_name::in,
+    mlds_context::in, indent::in, mlds_qualified_function_name::in,
     io::di, io::uo) is det.
 
-mlds_maybe_output_time_profile_instr(Opts, Context, Indent, Name, !IO) :-
+mlds_maybe_output_time_profile_instr(Opts, Context, Indent,
+        QualFuncName, !IO) :-
     ProfileTime = Opts ^ m2co_profile_time,
     (
         ProfileTime = yes,
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
         io.write_string("MR_set_prof_current_proc(", !IO),
-        mlds_output_fully_qualified_name(Name, !IO),
+        mlds_output_fully_qualified_function_name(QualFuncName, !IO),
         io.write_string(");\n", !IO)
     ;
         ProfileTime = no
@@ -4052,8 +4113,8 @@ mlds_output_target_code_component(Opts, Context, TargetCode, !IO) :-
         % allowed inside macro invocations in standard C
         % (although some compilers, e.g. gcc 3.2, do allow it).
 
-        TargetCode = target_code_name(Name),
-        mlds_output_fully_qualified_name(Name, !IO),
+        TargetCode = target_code_entity_name(EntityName),
+        mlds_output_fully_qualified_name(EntityName, !IO),
         io.write_string("\n", !IO)
     ;
         TargetCode = target_code_alloc_id(AllocId),
@@ -4187,7 +4248,7 @@ mlds_output_lval(Opts, Lval, !IO) :-
                 unexpected($module, $pred, "unexpected field type")
             )
         ;
-            FieldId = ml_field_named(FieldName, CtorType),
+            FieldId = ml_field_named(QualFieldName, CtorType),
             io.write_string("(", !IO),
             ( if MaybeTag = yes(0) then
                 ( if PtrType = CtorType then
@@ -4217,8 +4278,8 @@ mlds_output_lval(Opts, Lval, !IO) :-
                 ),
                 io.write_string("))->", !IO)
             ),
-            mlds_output_fully_qualified(FieldName, mlds_output_mangled_name,
-                !IO)
+            output_qual_name_prefix_c(QualFieldName, FieldName, !IO),
+            mlds_output_mangled_name(FieldName, !IO)
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
@@ -4242,8 +4303,9 @@ global_var_name(env_var_ref(EnvVarName)) = "mercury_envvar_" ++ EnvVarName.
 
 :- pred mlds_output_var(mlds_var::in, io::di, io::uo) is det.
 
-mlds_output_var(VarName, !IO) :-
-    mlds_output_fully_qualified(VarName, mlds_output_var_name, !IO).
+mlds_output_var(QualVarName, !IO) :-
+    output_qual_name_prefix_c(QualVarName, VarName, !IO),
+    mlds_output_var_name(VarName, !IO).
 
 :- pred mlds_output_var_name(mlds_var_name::in, io::di, io::uo) is det.
 

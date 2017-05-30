@@ -191,7 +191,7 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
     --->    tailcall_info(
                 tci_module_info             :: module_info,
                 tci_module_name             :: mlds_module_name,
-                tci_function_name           :: mlds_entity_name,
+                tci_function_name           :: mlds_function_name,
                 tci_maybe_pred_info         :: maybe(pred_info),
                 tci_locals                  :: locals,
                 tci_warn_tail_calls         :: warn_tail_calls,
@@ -947,7 +947,9 @@ function_is_local(CodeAddr, Locals) :-
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     some [Local] (
         locals_member(Local, Locals),
-        Local = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId)
+        Local = entity_function(mlds_function_name(PlainFuncName)),
+        PlainFuncName =
+            mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _PredId)
     ).
 
     % locals_member(Name, Locals):

@@ -196,18 +196,18 @@
 % Routines for generating labels and entity names.
 %
 
-    % Generate the mlds_entity_name and module name for the entry point
+    % Generate the mlds_function_name and module name for the entry point
     % function corresponding to a given procedure.
     %
 :- pred ml_gen_proc_label(module_info::in, pred_id::in, proc_id::in,
-    mlds_entity_name::out, mlds_module_name::out) is det.
+    mlds_module_name::out, mlds_plain_func_name::out) is det.
 
-    % Generate an mlds_entity_name for a continuation function with the
+    % Generate an mlds_function_name for a continuation function with the
     % given sequence number. The pred_id and proc_id specify the procedure
     % that this continuation function is part of.
     %
 :- func ml_gen_nondet_label(module_info, pred_id, proc_id, ml_label_func)
-    = mlds_entity_name.
+    = mlds_plain_func_name.
 
     % Allocate a new function label and return an rval containing the
     % function's address. If parameters are not given, we assume it is
@@ -726,8 +726,9 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
     Body = body_defined_here(Statement),
     Attributes = [],
     EnvVarNames = set.init,
-    Func = mlds_function_defn(FuncName, MLDSContext, DeclFlags,
-        MaybePredProcId, FuncParams, Body, Attributes, EnvVarNames, no).
+    Func = mlds_function_defn(mlds_function_name(FuncName), MLDSContext,
+        DeclFlags, MaybePredProcId, FuncParams, Body, Attributes,
+        EnvVarNames, no).
 
     % Return the declaration flags appropriate for a label func (a label func
     % is a function used as a continuation when generating nondet code).
@@ -1079,33 +1080,27 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for generating mlds_entity_names.
+% Code for generating mlds_function_names.
 %
 
-    % Generate the mlds_entity_name and module name for the entry point
-    % function corresponding to a given procedure.
-    %
-ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name, MLDS_ModuleName) :-
-    ml_gen_func_label(ModuleInfo, PredId, ProcId, no, MLDS_Name,
-        MLDS_ModuleName).
+ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_ModuleName, MLDS_Name) :-
+    ml_gen_func_label(ModuleInfo, PredId, ProcId, no, MLDS_ModuleName,
+        MLDS_Name).
 
-    % Generate an mlds_entity_name for a continuation function with the given
-    % sequence number. The pred_id and proc_id specify the procedure that this
-    % continuation function is part of.
-    %
 ml_gen_nondet_label(ModuleInfo, PredId, ProcId, SeqNum) = MLDS_Name :-
     ml_gen_func_label(ModuleInfo, PredId, ProcId, yes(SeqNum),
-        MLDS_Name, _MLDS_ModuleName).
+        _MLDS_ModuleName, MLDS_Name).
 
 :- pred ml_gen_func_label(module_info::in, pred_id::in, proc_id::in,
-    maybe(ml_label_func)::in, mlds_entity_name::out,
-    mlds_module_name::out) is det.
+    maybe(ml_label_func)::in, mlds_module_name::out, mlds_plain_func_name::out)
+    is det.
 
 ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeSeqNum,
-        MLDS_Name, MLDS_ModuleName) :-
+        MLDS_ModuleName, MLDS_Name) :-
     ml_gen_pred_label(ModuleInfo, PredId, ProcId,
         MLDS_PredLabel, MLDS_ModuleName),
-    MLDS_Name = entity_function(MLDS_PredLabel, ProcId, MaybeSeqNum, PredId).
+    MLDS_Name =
+        mlds_plain_func_name(MLDS_PredLabel, ProcId, MaybeSeqNum, PredId).
 
     % Allocate a new function label and return an rval containing
     % the function's address.

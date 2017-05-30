@@ -77,7 +77,7 @@
 
 :- type ml_alloc_site_data
     --->    ml_alloc_site_data(
-                masd_proc_label     :: mlds_entity_name,
+                masd_proc_label     :: mlds_function_name,
                 masd_context        :: prog_context,
                 masd_type           :: string,
                 masd_size           :: int
@@ -200,7 +200,7 @@
 
     % Generate or look up an allocation site.
     %
-:- pred ml_gen_alloc_site(mlds_entity_name::in, maybe(cons_id)::in, int::in,
+:- pred ml_gen_alloc_site(mlds_function_name::in, maybe(cons_id)::in, int::in,
     prog_context::in, mlds_alloc_id::out,
     ml_global_data::in, ml_global_data::out) is det.
 
@@ -677,13 +677,13 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         ),
 
         StructTypeName = "vector_common_type_" ++ TypeRawNumStr,
-        StructTypeEntityName = entity_type(StructTypeName, 0),
+        StructTypeClassName = mlds_type_name(StructTypeName, 0),
         % The "modifiable" is only to shut up a gcc warning about constant
         % fields.
         StructTypeFlags = init_decl_flags(acc_private, one_copy,
             non_virtual, sealed, modifiable, concrete),
         % XXX MLDS_DEFN
-        ClassDefn = mlds_class_defn(StructTypeEntityName, MLDS_Context,
+        ClassDefn = mlds_class_defn(StructTypeClassName, MLDS_Context,
             StructTypeFlags, ClassKind, [], [], [], [], CtorDefns,
             list.map(wrap_data_defn, FieldDefns)),
         StructTypeDefn = mlds_class(ClassDefn),

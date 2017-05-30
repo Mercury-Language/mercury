@@ -732,9 +732,9 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
         ml_gen_info_get_pred_id(!.Info, PredId),
         ml_gen_info_get_proc_id(!.Info, ProcId),
         ml_gen_info_get_global_data(!.Info, GlobalData0),
-        ml_gen_proc_label(ModuleInfo, PredId, ProcId, ProcLabel, _Module),
-        ml_gen_alloc_site(ProcLabel, MaybeConsId, Size, Context, AllocId,
-            GlobalData0, GlobalData),
+        ml_gen_proc_label(ModuleInfo, PredId, ProcId, _Module, ProcLabel),
+        ml_gen_alloc_site(mlds_function_name(ProcLabel), MaybeConsId, Size,
+            Context, AllocId, GlobalData0, GlobalData),
         ml_gen_info_set_global_data(GlobalData, !Info),
         MaybeAllocId = yes(AllocId)
     ;

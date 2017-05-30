@@ -527,7 +527,8 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0,
         % Don't add GC tracing code to the gc_trace/1 primitive!
         % (Doing so would just slow things down unnecessarily.)
         ( if
-            Name = entity_function(PredLabel, _, _, _),
+            Name = mlds_function_name(PlainFuncName),
+            PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
             PredLabel = mlds_user_pred_label(_, _, "gc_trace", 1, _, _),
             PrivateBuiltin = mercury_private_builtin_module,
             ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
@@ -828,7 +829,7 @@ ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
     %
 :- pred ml_create_env(action::in, mlds_class_name::in, mlds_type::in,
     list(mlds_data_defn)::in, mlds_context::in, mlds_module_name::in,
-    mlds_entity_name::in, globals::in, mlds_class_defn::out,
+    mlds_function_name::in, globals::in, mlds_class_defn::out,
     list(mlds_data_defn)::out, list(statement)::out,
     list(mlds_function_defn)::out) is det.
 
@@ -861,7 +862,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         EnvTypeKind = mlds_struct,
         BaseClasses = []
     ),
-    EnvTypeEntityName = entity_type(EnvClassName, 0),
+    EnvTypeClassName = mlds_type_name(EnvClassName, 0),
     EnvTypeFlags = env_type_decl_flags,
     Fields0 = list.map(convert_local_to_field, LocalVars),
 
@@ -898,7 +899,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     TypeParams = [],
     Ctors = [],
     % XXX MLDS_DEFN
-    EnvTypeDefn = mlds_class_defn(EnvTypeEntityName, Context,
+    EnvTypeDefn = mlds_class_defn(EnvTypeClassName, Context,
         EnvTypeFlags, EnvTypeKind, Imports, BaseClasses, Interfaces,
         TypeParams, Ctors, list.map(wrap_data_defn, Fields)),
 
@@ -942,9 +943,10 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     InitEnv = NewObj ++ [InitEnv0] ++ LinkStackChain.
 
 :- pred ml_chain_stack_frames(globals::in, mlds_module_name::in,
-    mlds_entity_name::in, mlds_context::in, list(statement)::in, mlds_type::in,
-    list(mlds_data_defn)::in, list(mlds_data_defn)::out, mlds_initializer::out,
-    list(statement)::out, list(mlds_function_defn)::out) is det.
+    mlds_function_name::in, mlds_context::in, list(statement)::in,
+    mlds_type::in, list(mlds_data_defn)::in, list(mlds_data_defn)::out,
+    mlds_initializer::out, list(statement)::out,
+    list(mlds_function_defn)::out) is det.
 
 ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
         GCTraceStatements, EnvTypeName, Fields0, Fields, EnvInitializer,
@@ -972,7 +974,7 @@ ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
     %       <GCTraceStatements>
     %   }
     %
-    gen_gc_trace_func(FuncName, ModuleName, FramePtrDecl,
+    gen_gc_trace_func(ModuleName, FuncName, FramePtrDecl,
         [InitFramePtr | GCTraceStatements], Context, GCTraceFuncAddr,
         GCTraceFuncParams, GCTraceFuncDefn),
     GCTraceFuncDefns = [GCTraceFuncDefn],
@@ -1030,12 +1032,12 @@ ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
     AssignToStackChain = assign(StackChain, EnvPtr),
     LinkStackChain = [statement(ml_stmt_atomic(AssignToStackChain), Context)].
 
-:- pred gen_gc_trace_func(mlds_entity_name::in, mlds_module_name::in,
+:- pred gen_gc_trace_func(mlds_module_name::in, mlds_function_name::in,
     mlds_data_defn::in, list(statement)::in, mlds_context::in,
     mlds_code_addr::out, mlds_func_params::out, mlds_function_defn::out)
     is det.
 
-gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
+gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStatements,
         Context, GCTraceFuncAddr, FuncParams, GCTraceFuncDefn) :-
     % Compute the signature of the GC tracing function
     ArgVarName = mlds_comp_var(mcv_this_frame),
@@ -1050,8 +1052,11 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
     % and add 100000 to the original function's sequence number.
     % XXX This is a bit of a hack; maybe we should add
     % another field to the `function' ctor for mlds_entity_name.
+
     (
-        FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, PredId),
+        FuncName = mlds_function_name(PlainFuncName),
+        PlainFuncName =
+            mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, PredId),
         (
             MaybeSeqNum = yes(SeqNum)
         ;
@@ -1059,18 +1064,21 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
             SeqNum = 0
         ),
         NewSeqNum = SeqNum + 100000,
-        GCTraceFuncName = entity_function(PredLabel, ProcId, yes(NewSeqNum),
-            PredId),
+        GCTracePlainFuncName =
+            mlds_plain_func_name(PredLabel, ProcId, yes(NewSeqNum), PredId),
+        GCTraceFuncName = mlds_function_name(GCTracePlainFuncName),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
         QualProcLabel = qual(PredModule, module_qual, ProcLabel),
         GCTraceFuncAddr =
             code_addr_internal(QualProcLabel, NewSeqNum, Signature)
     ;
-        ( FuncName = entity_type(_, _)
-        ; FuncName = entity_data(_)
-        ; FuncName = entity_export(_)
-        ),
-        unexpected($module, $pred, "not a function")
+        FuncName = mlds_function_export(_),
+        % XXX I (zs) think that this abort is wrong for two reasons.
+        % First, a function with an exported name is still a function,
+        % so the text of the abort message is misleading. Second,
+        % I see no reasoning that guarantees that our caller will
+        % never call here with an exported function.
+        unexpected($pred, "not a function")
     ),
 
     % Construct the function definition.
@@ -1320,17 +1328,13 @@ ml_stack_chain_type = mlds_generic_env_ptr_type.
     % Compute the name to use for the environment struct
     % for the specified function.
     %
-:- func ml_env_name(mlds_entity_name, action) = mlds_class_name.
+:- func ml_env_name(mlds_function_name, action) = mlds_class_name.
 
-ml_env_name(EntityName, Action) = ClassName :-
+ml_env_name(FunctionName, Action) = ClassName :-
     (
-        EntityName = entity_type(_, _),
-        unexpected($pred, "expected function, got type")
-    ;
-        EntityName = entity_data(_),
-        unexpected($pred, "expected function, got data")
-    ;
-        EntityName = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+        FunctionName = mlds_function_name(PlainFuncName),
+        PlainFuncName =
+            mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _PredId),
         Base = env_name_base(Action),
         PredLabelStr = ml_pred_label_name(PredLabel),
         proc_id_to_int(ProcId, ModeNum),
@@ -1344,7 +1348,9 @@ ml_env_name(EntityName, Action) = ClassName :-
                 [s(PredLabelStr), i(ModeNum), s(Base)], ClassName)
         )
     ;
-        EntityName = entity_export(_),
+        FunctionName = mlds_function_export(_),
+        % XXX I (zs) think that this abort here is a bug, and that
+        % our caller can legitimately give us an exported function.
         unexpected($pred, "expected function, got export")
     ).
 
@@ -1966,7 +1972,7 @@ fixup_target_code_component(Action, Info, Component0, Component) :-
         ( Component0 = raw_target_code(_Code)
         ; Component0 = user_target_code(_Code, _Context)
         ; Component0 = target_code_type(_Type)
-        ; Component0 = target_code_name(_Name)
+        ; Component0 = target_code_entity_name(_Name)
         ; Component0 = target_code_alloc_id(_AllocId)
         ),
         Component = Component0
@@ -2259,7 +2265,7 @@ ml_env_module_name(Target, ClassType) = EnvModuleName :-
         EnvModuleName = mlds_append_class_qualifier(Target, ClassModule,
             QualKind, ClassName, Arity)
     else
-        unexpected($module, $pred, "ClassType is not a class")
+        unexpected($pred, "ClassType is not a class")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2733,7 +2739,7 @@ elim_info_remove_local_data(LocalVar, !ElimInfo) :-
     ( if list.delete_first(LocalVars0, LocalVar, LocalVars) then
         !ElimInfo ^ ei_local_data := cord.from_list(LocalVars)
     else
-        unexpected($module, $pred, "not found")
+        unexpected($pred, "not found")
     ).
 
 :- pred elim_info_allocate_saved_stack_chain_id(int::out,

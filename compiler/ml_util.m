@@ -46,7 +46,7 @@
     % would call qual(ModuleName, module_qual, FuncName).
     %
 :- pred code_address_is_for_this_function(mlds_code_addr::in,
-    mlds_module_name::in, mlds_entity_name::in) is semidet.
+    mlds_module_name::in, mlds_function_name::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -262,8 +262,10 @@
 defns_contain_main([Defn | Defns]) :-
     ( if
         Name = defn_entity_name(Defn),
-        Name = entity_function(FuncName, _, _, _),
-        FuncName = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _)
+        Name = entity_function(FuncName),
+        FuncName = mlds_function_name(PlainFuncName),
+        PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
+        PredLabel = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _)
     then
         true
     else
@@ -285,7 +287,8 @@ code_address_is_for_this_function(CodeAddr, ModuleName, FuncName) :-
 
     % Check that the function name (PredLabel, ProcId, MaybeSeqNum) matches.
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, _).
+    FuncName = mlds_function_name(
+        mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -666,10 +669,10 @@ target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
         TargetCode = target_code_output(Lval),
         ContainsVar = lval_contains_var(Lval, DataName)
     ;
-        TargetCode = target_code_name(EntityName),
+        TargetCode = target_code_entity_name(EntityName),
+        EntityName = qual(ModuleName, QualKind, UnqualEntityName),
         ( if
-            EntityName = qual(ModuleName, QualKind,
-                entity_data(UnqualDataName)),
+            UnqualEntityName = entity_data(UnqualDataName),
             DataName = qual(ModuleName, QualKind, UnqualDataName)
         then
             ContainsVar = yes
@@ -750,11 +753,13 @@ defn_entity_name(Defn) = Name :-
         Defn = mlds_data(mlds_data_defn(DataName, _, _, _, _, _)),
         Name = entity_data(DataName)
     ;
-        Defn = mlds_function(mlds_function_defn(Name, _, _,
-            _, _, _, _, _, _))
+        Defn = mlds_function(mlds_function_defn(FuncName, _, _,
+            _, _, _, _, _, _)),
+        Name = entity_function(FuncName)
     ;
-        Defn = mlds_class(mlds_class_defn(Name, _, _,
-            _, _, _, _, _, _, _))
+        Defn = mlds_class(mlds_class_defn(ClassName, _, _,
+            _, _, _, _, _, _, _)),
+        Name = entity_type(ClassName)
     ).
 
 defn_context(Defn) = Context :-
@@ -785,11 +790,11 @@ defn_decl_flags(Defn) = Flags :-
 
 defn_is_type(Defn) :-
     % XXX MLDS_DEFN
-    defn_entity_name(Defn) = entity_type(_, _).
+    defn_entity_name(Defn) = entity_type(_).
 
 defn_is_function(Defn) :-
     % XXX MLDS_DEFN
-    defn_entity_name(Defn) = entity_function(_, _, _, _).
+    defn_entity_name(Defn) = entity_function(_).
 
 defn_is_type_ctor_info(Defn) :-
     % XXX MLDS_DEFN

@@ -221,8 +221,8 @@ ml_gen_init_common_data(ModuleInfo, GlobalData) :-
 ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
     PragmaExportedProc = pragma_exported_proc(Lang, PredId, ProcId,
         ExportName, ProgContext),
-    ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, ModuleName),
-    MLDS_Name = qual(ModuleName, module_qual, Name),
+    ml_gen_proc_label(ModuleInfo, PredId, ProcId, ModuleName, PlainName),
+    MLDS_Name = qual(ModuleName, module_qual, mlds_function_name(PlainName)),
     ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_univ_quant_tvars(PredInfo, UnivQTVars),
@@ -474,7 +474,8 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
     ),
 
     proc_info_get_context(ProcInfo0, ProcContext),
-    ml_gen_proc_label(!.ModuleInfo, PredId, ProcId, EntityName, _ModuleName),
+    ml_gen_proc_label(!.ModuleInfo, PredId, ProcId,
+        _ModuleName, PlainFuncName),
     MLDS_ProcContext = mlds_make_context(ProcContext),
     DeclFlags = ml_gen_proc_decl_flags(!.ModuleInfo, PredId, ProcId),
     MaybePredProcId = yes(proc(PredId, ProcId)),
@@ -484,9 +485,9 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
     attributes_to_attribute_list(Attributes, AttributeList),
     MLDS_Attributes =
         attributes_to_mlds_attributes(!.ModuleInfo, AttributeList),
-    FunctionDefn = mlds_function_defn(EntityName, MLDS_ProcContext, DeclFlags,
-        MaybePredProcId, MLDS_Params, FunctionBody, MLDS_Attributes,
-        EnvVarNames, MaybeRequireTailrecInfo),
+    FunctionDefn = mlds_function_defn(mlds_function_name(PlainFuncName),
+        MLDS_ProcContext, DeclFlags, MaybePredProcId, MLDS_Params,
+        FunctionBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfo),
     !:FunctionDefns = ExtraDefns ++ [FunctionDefn | !.FunctionDefns].
 
     % Return the declaration flags appropriate for a procedure definition.

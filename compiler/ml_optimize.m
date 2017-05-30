@@ -65,7 +65,7 @@
     --->    opt_info(
                 oi_globals          :: globals,
                 oi_module_name      :: mlds_module_name,
-                oi_entity_name      :: mlds_entity_name,
+                oi_func_name        :: mlds_function_name,
                 oi_func_params      :: mlds_func_params,
                 oi_context          :: mlds_context
             ).
@@ -248,9 +248,9 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
     ( if
         OptTailCalls = yes,
         ModuleName = OptInfo ^ oi_module_name,
-        EntityName = OptInfo ^ oi_entity_name,
+        FunctionName = OptInfo ^ oi_func_name,
         stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName,
-            EntityName, Stmt0)
+            FunctionName, Stmt0)
     then
         Context = OptInfo ^ oi_context,
         CommentStatement = statement(
@@ -442,12 +442,12 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
         % is not expensive enough to warrant testing whether using the flag
         % would be faster.
         ModuleName = OptInfo ^ oi_module_name,
-        EntityName = OptInfo ^ oi_entity_name,
+        FunctionName = OptInfo ^ oi_func_name,
         some [Call] (
             stmt_contains_statement(Stmt0, SubStatement),
             SubStatement = statement(SubStmt, _),
             stmt_is_self_recursive_call_replaceable_with_jump_to_top(
-                ModuleName, EntityName, SubStmt)
+                ModuleName, FunctionName, SubStmt)
         )
     then
         Comment = ml_stmt_atomic(comment("tailcall optimized into a loop")),
@@ -507,7 +507,7 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
     % into a jump back to the start of the function.
     %
 :- pred stmt_is_self_recursive_call_replaceable_with_jump_to_top(
-    mlds_module_name::in, mlds_entity_name::in, mlds_stmt::in) is semidet.
+    mlds_module_name::in, mlds_function_name::in, mlds_stmt::in) is semidet.
 
 stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
         Stmt) :-
@@ -1681,7 +1681,7 @@ eliminate_var_in_target_code_component(Component0, Component, !VarElimInfo) :-
         ( Component0 = raw_target_code(_Code)
         ; Component0 = user_target_code(_Code, _Context)
         ; Component0 = target_code_type(_Type)
-        ; Component0 = target_code_name(_Name)
+        ; Component0 = target_code_entity_name(_Name)
         ; Component0 = target_code_alloc_id(_AllocId)
         ),
         Component = Component0
