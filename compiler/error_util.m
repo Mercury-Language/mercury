@@ -1360,7 +1360,7 @@ do_write_error_pieces_params(Stream, TreatAsFirst, MaybeContext, FixedIndent,
             ),
             divide_paragraphs_into_lines(TreatAsFirst, FirstIndent, Paragraphs,
                 MaybeRemain, Lines),
-            write_lines(Stream, Lines, MaybeContext, FixedIndent, !IO)
+            write_msg_lines(Stream, Lines, MaybeContext, FixedIndent, !IO)
         )
     ).
 
@@ -1392,11 +1392,11 @@ line_number_is_in_a_range([Range | Ranges], LineNumber) = IsInARange :-
 
 indent_increment = 2.
 
-:- pred write_lines(io.text_output_stream::in, list(error_line)::in,
+:- pred write_msg_lines(io.text_output_stream::in, list(error_line)::in,
     maybe(prog_context)::in, int::in, io::di, io::uo) is det.
 
-write_lines(_Stream, [], _, _, !IO).
-write_lines(Stream, [Line | Lines], MaybeContext, FixedIndent, !IO) :-
+write_msg_lines(_Stream, [], _, _, !IO).
+write_msg_lines(Stream, [Line | Lines], MaybeContext, FixedIndent, !IO) :-
     (
         MaybeContext = yes(Context),
         prog_out.write_context(Stream, Context, !IO)
@@ -1407,28 +1407,27 @@ write_lines(Stream, [Line | Lines], MaybeContext, FixedIndent, !IO) :-
     Indent = FixedIndent + LineIndent * indent_increment,
     string.pad_left("", ' ', Indent, IndentStr),
     io.write_string(Stream, IndentStr, !IO),
-    error_util.write_line(Stream, LineWords, !IO),
-    write_lines(Stream, Lines, MaybeContext, FixedIndent, !IO).
+    error_util.write_msg_line(Stream, LineWords, !IO),
+    write_msg_lines(Stream, Lines, MaybeContext, FixedIndent, !IO).
 
-% ZZZ rename to avoid ambiguity
-:- pred write_line(io.text_output_stream::in, list(string)::in,
+:- pred write_msg_line(io.text_output_stream::in, list(string)::in,
     io::di, io::uo) is det.
 
-write_line(Stream, [], !IO) :-
+write_msg_line(Stream, [], !IO) :-
     io.write_char(Stream, '\n', !IO).
-write_line(Stream, [Word | Words], !IO) :-
+write_msg_line(Stream, [Word | Words], !IO) :-
     io.write_string(Stream, Word, !IO),
-    write_line_rest(Stream, Words, !IO),
+    write_msg_line_rest(Stream, Words, !IO),
     io.write_char(Stream, '\n', !IO).
 
-:- pred write_line_rest(io.text_output_stream::in, list(string)::in,
+:- pred write_msg_line_rest(io.text_output_stream::in, list(string)::in,
     io::di, io::uo) is det.
 
-write_line_rest(_Stream, [], !IO).
-write_line_rest(Stream, [Word | Words], !IO) :-
+write_msg_line_rest(_Stream, [], !IO).
+write_msg_line_rest(Stream, [Word | Words], !IO) :-
     io.write_char(Stream, ' ', !IO),
     io.write_string(Stream, Word, !IO),
-    write_line_rest(Stream, Words, !IO).
+    write_msg_line_rest(Stream, Words, !IO).
 
 error_pieces_to_string(Components) =
     error_pieces_to_string_2(first_in_msg, Components).
