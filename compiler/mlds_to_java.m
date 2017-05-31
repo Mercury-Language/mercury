@@ -802,8 +802,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
             ml_stmt_atomic(assign(FieldLval, CtorArgRval)), Context),
 
         CtorFunctionName = mlds_function_export("<constructor>"),
-        CtorFlags = init_function_decl_flags(acc_public, per_instance,
-            non_virtual, overridable, modifiable, concrete),
+        CtorFlags = init_function_decl_flags(acc_public, per_instance),
         Params = mlds_func_params(CtorArgs, CtorReturnValues),
         Attributes = [],
         EnvVarNames = set.init,
@@ -3291,13 +3290,10 @@ output_data_decl_flags_for_java(Info, Flags, !IO) :-
     mlds_function_decl_flags::in, io::di, io::uo) is det.
 
 output_function_decl_flags_for_java(Info, Flags, !IO) :-
-    output_access_for_java(Info, get_function_access(Flags), !IO),
-    output_per_instance_for_java(get_function_per_instance(Flags), !IO),
-    output_virtuality_for_java(Info, get_function_virtuality(Flags), !IO),
-    output_overridability_constness_for_java(
-        get_function_overridability(Flags), get_function_constness(Flags),
-        !IO),
-    output_abstractness_for_java(get_function_abstractness(Flags), !IO).
+    Access = get_function_access(Flags),
+    PerInstance = get_function_per_instance(Flags),
+    output_access_for_java(Info, Access, !IO),
+    output_per_instance_for_java(PerInstance, !IO).
 
 :- pred output_class_decl_flags_for_java(java_out_info::in,
     mlds_class_decl_flags::in, io::di, io::uo) is det.
@@ -3311,19 +3307,19 @@ output_class_decl_flags_for_java(_Info, Flags, !IO) :-
 :- pred output_access_for_java(java_out_info::in, access::in,
     io::di, io::uo) is det.
 
-output_access_for_java(Info, Access, !IO) :-
+output_access_for_java(_Info, Access, !IO) :-
     (
         Access = acc_public,
         io.write_string("public ", !IO)
     ;
         Access = acc_private,
         io.write_string("private ", !IO)
-    ;
-        Access = acc_protected,
-        io.write_string("protected ", !IO)
-    ;
-        Access = acc_default,
-        maybe_output_comment_for_java(Info, "default", !IO)
+%   ;
+%       Access = acc_protected,
+%       io.write_string("protected ", !IO)
+%   ;
+%       Access = acc_default,
+%       maybe_output_comment_for_java(Info, "default", !IO)
     ;
         Access = acc_local
     ).
@@ -3349,16 +3345,16 @@ output_per_instance_for_java(PerInstance, !IO) :-
         io.write_string("static ", !IO)
     ).
 
-:- pred output_virtuality_for_java(java_out_info::in, virtuality::in,
-    io::di, io::uo) is det.
-
-output_virtuality_for_java(Info, Virtual, !IO) :-
-    (
-        Virtual = virtual,
-        maybe_output_comment_for_java(Info, "virtual", !IO)
-    ;
-        Virtual = non_virtual
-    ).
+% :- pred output_virtuality_for_java(java_out_info::in, virtuality::in,
+%     io::di, io::uo) is det.
+% 
+% output_virtuality_for_java(Info, Virtual, !IO) :-
+%     (
+%         Virtual = virtual,
+%         maybe_output_comment_for_java(Info, "virtual", !IO)
+%     ;
+%         Virtual = non_virtual
+%     ).
 
 :- pred output_overridability_constness_for_java(overridability::in,
     constness::in, io::di, io::uo) is det.
@@ -3374,15 +3370,15 @@ output_overridability_constness_for_java(Overridability, Constness, !IO) :-
         true
     ).
 
-:- pred output_abstractness_for_java(abstractness::in, io::di, io::uo) is det.
-
-output_abstractness_for_java(Abstractness, !IO) :-
-    (
-        Abstractness = abstract,
-        io.write_string("abstract ", !IO)
-    ;
-        Abstractness = concrete
-    ).
+% :- pred output_abstractness_for_java(abstractness::in, io::di, io::uo) is det.
+% 
+% output_abstractness_for_java(Abstractness, !IO) :-
+%     (
+%         Abstractness = abstract,
+%         io.write_string("abstract ", !IO)
+%     ;
+%         Abstractness = concrete
+%     ).
 
 :- pred maybe_output_comment_for_java(java_out_info::in, string::in,
     io::di, io::uo) is det.

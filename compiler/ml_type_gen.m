@@ -92,7 +92,6 @@
     % Return the declaration flags appropriate for a member variable
     % which is read-only after initialisation.
     %
-:- func ml_gen_const_member_decl_flags = mlds_function_decl_flags.
 :- func ml_gen_const_member_data_decl_flags = mlds_data_decl_flags.
 
     % Return the declaration flags appropriate for an enumeration constant.
@@ -933,8 +932,7 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
     % Note that the name of constructor is determined by the backend
     % convention.
     FunctionName = mlds_function_export("<constructor>"),
-    CtorFlags = init_function_decl_flags(acc_public, per_instance, non_virtual,
-        overridable, modifiable, concrete),
+    CtorFlags = init_function_decl_flags(acc_public, per_instance),
     Params = mlds_func_params(Args, ReturnValues),
     Stmt = statement(ml_stmt_block([], InitMembers), Context),
     Attributes = [],
@@ -1148,28 +1146,13 @@ ml_gen_type_decl_flags = DeclFlags :-
 ml_gen_member_decl_flags = DeclFlags :-
     Access = acc_public,
     PerInstance = per_instance,
-    Virtuality = non_virtual,
-    Overridability = overridable,
-    Constness = modifiable,
-    Abstractness = concrete,
-    DeclFlags = init_function_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_function_decl_flags(Access, PerInstance).
 
 ml_gen_member_data_decl_flags = DeclFlags :-
     Access = acc_public,
     PerInstance = per_instance,
     Constness = modifiable,
     DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
-
-ml_gen_const_member_decl_flags = DeclFlags :-
-    Access = acc_public,
-    PerInstance = per_instance,
-    Virtuality = non_virtual,
-    Overridability = overridable,
-    Constness = const,
-    Abstractness = concrete,
-    DeclFlags = init_function_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
 
 ml_gen_const_member_data_decl_flags = DeclFlags :-
     Access = acc_public,

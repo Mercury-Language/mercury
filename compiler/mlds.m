@@ -927,13 +927,15 @@
 
     --->    acc_public
             % Accessible to anyone.
-    ;       acc_protected
-            % Only accessible to the class and to derived classes.
     ;       acc_private
             % Only accessible to the class.
-    ;       acc_default
+    % ;     acc_protected
+            % Only accessible to the class and to derived classes.
+            % We don't generate protected members.
+    % ;     acc_default
             % Java "default" access or .NET assembly access:
             % accessible to anything defined in the same package.
+            % We don't generate default members.
 
     % The following is used for entities defined in a block/2 statement,
     % i.e. local variables and nested functions.
@@ -957,9 +959,10 @@
             % I.e. "auto" local variable in function, or non-static
             % member of class.
 
-:- type virtuality
-    --->    non_virtual
-    ;       virtual.
+% We don't actually need this type (yet).
+% :- type virtuality
+%     --->    non_virtual
+%     ;       virtual.
 
 :- type overridability
     --->    overridable
@@ -970,9 +973,10 @@
     --->    modifiable
     ;       const.
 
-:- type abstractness
-    --->    concrete
-    ;       abstract.
+% We don't actually need this type (yet).
+% :- type abstractness
+%     --->    concrete
+%     ;       abstract.
 
 %---------------------%
 
@@ -1001,27 +1005,15 @@
 
 :- type mlds_function_decl_flags.
 
-:- func init_function_decl_flags(access, per_instance, virtuality,
-    overridability, constness, abstractness) = mlds_function_decl_flags.
+:- func init_function_decl_flags(access, per_instance)
+    = mlds_function_decl_flags.
 
 :- func get_function_access(mlds_function_decl_flags) = access.
 :- func get_function_per_instance(mlds_function_decl_flags) = per_instance.
-:- func get_function_virtuality(mlds_function_decl_flags) = virtuality.
-:- func get_function_overridability(mlds_function_decl_flags) = overridability.
-:- func get_function_constness(mlds_function_decl_flags) = constness.
-:- func get_function_abstractness(mlds_function_decl_flags) = abstractness.
 
 :- pred set_function_access(access::in,
     mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
 :- pred set_function_per_instance(per_instance::in,
-    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
-:- pred set_function_virtuality(virtuality::in,
-    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
-:- pred set_function_overridability(overridability::in,
-    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
-:- pred set_function_constness(constness::in,
-    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
-:- pred set_function_abstractness(abstractness::in,
     mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
 
 %---------------------%
@@ -2541,43 +2533,21 @@ ml_static_const_decl_flags = DeclFlags :-
 :- type mlds_function_decl_flags
     --->    mlds_function_decl_flags(
                 mfdf_access         :: access,
-                mfdf_per_instance   :: per_instance,
-                mfdf_virtuality     :: virtuality,
-                mfdf_overridability :: overridability,
-                mfdf_constness      :: constness,
-                mfdf_abstractness   :: abstractness
+                mfdf_per_instance   :: per_instance
             ).
 
-init_function_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness) =
-    mlds_function_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+init_function_decl_flags(Access, PerInstance) =
+    mlds_function_decl_flags(Access, PerInstance).
 
 get_function_access(Flags) = X :-
     X = Flags ^ mfdf_access.
 get_function_per_instance(Flags) = X :-
     X = Flags ^ mfdf_per_instance.
-get_function_virtuality(Flags) = X :-
-    X = Flags ^ mfdf_virtuality.
-get_function_overridability(Flags) = X :-
-    X = Flags ^ mfdf_overridability.
-get_function_constness(Flags) = X :-
-    X = Flags ^ mfdf_constness.
-get_function_abstractness(Flags) = X :-
-    X = Flags ^ mfdf_abstractness.
 
 set_function_access(Access, !Flags) :-
     !Flags ^ mfdf_access := Access.
 set_function_per_instance(PerInstance, !Flags) :-
     !Flags ^ mfdf_per_instance := PerInstance.
-set_function_virtuality(Virtuality, !Flags) :-
-    !Flags ^ mfdf_virtuality := Virtuality.
-set_function_overridability(Overridability, !Flags) :-
-    !Flags ^ mfdf_overridability := Overridability.
-set_function_constness(Constness, !Flags) :-
-    !Flags ^ mfdf_constness := Constness.
-set_function_abstractness(Abstractness, !Flags) :-
-    !Flags ^ mfdf_abstractness := Abstractness.
 
 %---------------------------------------------------------------------------%
 

@@ -738,12 +738,7 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
 ml_gen_label_func_decl_flags = DeclFlags :-
     Access = acc_local,
     PerInstance = per_instance,
-    Virtuality = non_virtual,
-    Overridability = overridable,
-    Constness = modifiable,
-    Abstractness = concrete,
-    DeclFlags = init_function_decl_flags(Access, PerInstance, Virtuality,
-        Overridability, Constness, Abstractness).
+    DeclFlags = init_function_decl_flags(Access, PerInstance).
 
 ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),

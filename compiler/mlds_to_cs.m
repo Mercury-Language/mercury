@@ -2125,12 +2125,10 @@ output_data_decl_flags_for_csharp(Info, Flags, !IO) :-
     mlds_function_decl_flags::in, io::di, io::uo) is det.
 
 output_function_decl_flags_for_csharp(Info, Flags, !IO) :-
-    output_access_for_csharp(Info, get_function_access(Flags), !IO),
-    output_per_instance_for_csharp(get_function_per_instance(Flags), !IO),
-    output_virtuality_for_csharp(get_function_virtuality(Flags), !IO),
-    output_overridability_for_csharp(get_function_overridability(Flags), !IO),
-    output_constness_for_csharp(get_function_constness(Flags), !IO),
-    output_abstractness_for_csharp(get_function_abstractness(Flags), !IO).
+    Access = get_function_access(Flags),
+    PerInstance = get_function_per_instance(Flags),
+    output_access_for_csharp(Info, Access, !IO),
+    output_per_instance_for_csharp(PerInstance, !IO).
 
 :- pred output_class_decl_flags_for_csharp(csharp_out_info::in,
     mlds_class_decl_flags::in, mlds_class_kind::in, io::di, io::uo) is det.
@@ -2168,19 +2166,19 @@ output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
 :- pred output_access_for_csharp(csharp_out_info::in, access::in,
     io::di, io::uo) is det.
 
-output_access_for_csharp(Info, Access, !IO) :-
+output_access_for_csharp(_Info, Access, !IO) :-
     (
         Access = acc_public,
         io.write_string("public ", !IO)
     ;
         Access = acc_private,
         io.write_string("private ", !IO)
-    ;
-        Access = acc_protected,
-        io.write_string("protected ", !IO)
-    ;
-        Access = acc_default,
-        maybe_output_comment_for_csharp(Info, "default", !IO)
+%   ;
+%       Access = acc_protected,
+%       io.write_string("protected ", !IO)
+%   ;
+%       Access = acc_default,
+%       maybe_output_comment_for_csharp(Info, "default", !IO)
     ;
         Access = acc_local
     ).
@@ -2208,16 +2206,16 @@ output_per_instance_for_csharp(PerInstance, !IO) :-
         io.write_string("static ", !IO)
     ).
 
-:- pred output_virtuality_for_csharp(virtuality::in, io::di, io::uo) is det.
-
-output_virtuality_for_csharp(Virtual, !IO) :-
-    (
-        Virtual = virtual,
-        % In C#, methods are non-virtual by default.
-        io.write_string("virtual ", !IO)
-    ;
-        Virtual = non_virtual
-    ).
+% :- pred output_virtuality_for_csharp(virtuality::in, io::di, io::uo) is det.
+% 
+% output_virtuality_for_csharp(Virtual, !IO) :-
+%     (
+%         Virtual = virtual,
+%         % In C#, methods are non-virtual by default.
+%         io.write_string("virtual ", !IO)
+%     ;
+%         Virtual = non_virtual
+%     ).
 
 :- pred output_overridability_for_csharp(overridability::in,
     io::di, io::uo) is det.
@@ -2240,16 +2238,16 @@ output_constness_for_csharp(Constness, !IO) :-
         Constness = modifiable
     ).
 
-:- pred output_abstractness_for_csharp(abstractness::in,
-    io::di, io::uo) is det.
-
-output_abstractness_for_csharp(Abstractness, !IO) :-
-    (
-        Abstractness = abstract,
-        io.write_string("abstract ", !IO)
-    ;
-        Abstractness = concrete
-    ).
+% :- pred output_abstractness_for_csharp(abstractness::in,
+%     io::di, io::uo) is det.
+% 
+% output_abstractness_for_csharp(Abstractness, !IO) :-
+%     (
+%         Abstractness = abstract,
+%         io.write_string("abstract ", !IO)
+%     ;
+%         Abstractness = concrete
+%     ).
 
 :- pred maybe_output_comment_for_csharp(csharp_out_info::in, string::in,
     io::di, io::uo) is det.

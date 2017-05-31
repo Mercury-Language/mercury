@@ -3196,11 +3196,6 @@ mlds_output_data_decl_flags(Opts, Flags, DeclOrDefn, !IO) :-
 mlds_output_function_decl_flags(Opts, Flags, DeclOrDefn, MaybeBody, !IO) :-
     Access = get_function_access(Flags),
     PerInstance = get_function_per_instance(Flags),
-    Virtuality = get_function_virtuality(Flags),
-    Overridability = get_function_overridability(Flags),
-    Constness = get_function_constness(Flags),
-    Abstractness = get_function_abstractness(Flags),
-
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
@@ -3217,11 +3212,7 @@ mlds_output_function_decl_flags(Opts, Flags, DeclOrDefn, MaybeBody, !IO) :-
         DefnKind = dk_func_external
     ),
     mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind,
-        !IO),
-    mlds_output_virtuality(Virtuality, !IO),
-    mlds_output_overridability(Overridability, !IO),
-    mlds_output_constness(Constness, !IO),
-    mlds_output_abstractness(Abstractness, !IO).
+        !IO).
 
 :- pred mlds_output_class_decl_flags(mlds_to_c_opts::in,
     mlds_class_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
@@ -3248,10 +3239,10 @@ mlds_output_access_comment(acc_public, !IO) :-
     io.write_string("/* public: */ ", !IO).
 mlds_output_access_comment(acc_private, !IO) :-
     io.write_string("/* private: */ ", !IO).
-mlds_output_access_comment(acc_protected, !IO) :-
-    io.write_string("/* protected: */ ", !IO).
-mlds_output_access_comment(acc_default, !IO) :-
-    io.write_string("/* default access */ ", !IO).
+% mlds_output_access_comment(acc_protected, !IO) :-
+%     io.write_string("/* protected: */ ", !IO).
+% mlds_output_access_comment(acc_default, !IO) :-
+%     io.write_string("/* default access */ ", !IO).
 mlds_output_access_comment(acc_local, !IO) :-
     io.write_string("/* local: */ ", !IO).
 
@@ -3327,11 +3318,11 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
         true
     ).
 
-:- pred mlds_output_virtuality(virtuality::in, io::di, io::uo) is det.
-
-mlds_output_virtuality(virtual, !IO) :-
-    io.write_string("virtual ", !IO).
-mlds_output_virtuality(non_virtual, !IO).
+% :- pred mlds_output_virtuality(virtuality::in, io::di, io::uo) is det.
+% 
+% mlds_output_virtuality(virtual, !IO) :-
+%     io.write_string("virtual ", !IO).
+% mlds_output_virtuality(non_virtual, !IO).
 
 :- pred mlds_output_overridability(overridability::in, io::di, io::uo) is det.
 
@@ -3345,11 +3336,11 @@ mlds_output_constness(const, !IO) :-
     io.write_string("const ", !IO).
 mlds_output_constness(modifiable, !IO).
 
-:- pred mlds_output_abstractness(abstractness::in, io::di, io::uo) is det.
-
-mlds_output_abstractness(abstract, !IO) :-
-    io.write_string("/* abstract */ ", !IO).
-mlds_output_abstractness(concrete, !IO).
+% :- pred mlds_output_abstractness(abstractness::in, io::di, io::uo) is det.
+% 
+% mlds_output_abstractness(abstract, !IO) :-
+%     io.write_string("/* abstract */ ", !IO).
+% mlds_output_abstractness(concrete, !IO).
 
 %---------------------------------------------------------------------------%
 %

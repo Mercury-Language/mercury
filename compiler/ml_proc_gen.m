@@ -503,12 +503,7 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
         Access = acc_private
     ),
     PerInstance = one_copy,
-    Virtuality = non_virtual,
-    Overridability = overridable,
-    Constness = modifiable,
-    Abstractness = concrete,
-    DeclFlags = init_function_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_function_decl_flags(Access, PerInstance).
 
     % For model_det and model_semi procedures, figure out which output
     % variables are returned by value (rather than being passed by reference)

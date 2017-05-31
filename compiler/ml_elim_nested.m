@@ -1102,12 +1102,7 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStatements,
 ml_gen_gc_trace_func_decl_flags = DeclFlags :-
     Access = acc_private,
     PerInstance = one_copy,
-    Virtuality = non_virtual,
-    Overridability = overridable,
-    Constness = modifiable,
-    Abstractness = concrete,
-    DeclFlags = init_function_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_function_decl_flags(Access, PerInstance).
 
 :- pred extract_gc_statements(mlds_data_defn::in, mlds_data_defn::out,
     list(statement)::out, list(statement)::out) is det.
