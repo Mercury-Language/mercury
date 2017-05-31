@@ -756,17 +756,16 @@ defn_is_commit_type_var(Defn) :-
 defn_is_public(Defn) :-
     (
         Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(_, _, DataFlags, _, _, _),
+        DataFlags = DataDefn ^ mdd_decl_flags,
         get_data_access(DataFlags) = acc_public
     ;
-        (
-            Defn = mlds_function(FuncDefns),
-            FuncDefns = mlds_function_defn(_, _, Flags, _, _, _, _, _, _)
-        ;
-            Defn = mlds_class(ClassDefn),
-            ClassDefn = mlds_class_defn(_, _, Flags, _, _, _, _, _, _, _)
-        ),
-        get_access(Flags) = acc_public
+        Defn = mlds_function(FuncDefn),
+        FuncFlags = FuncDefn ^ mfd_decl_flags,
+        get_function_access(FuncFlags) = acc_public
+    ;
+        Defn = mlds_class(ClassDefn),
+        ClassFlags = ClassDefn ^ mcd_decl_flags,
+        get_class_access(ClassFlags) = class_public
     ).
 
 defn_is_enum_const(Defn, DataDefn) :-

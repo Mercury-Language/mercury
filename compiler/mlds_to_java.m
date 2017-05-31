@@ -802,8 +802,8 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
             ml_stmt_atomic(assign(FieldLval, CtorArgRval)), Context),
 
         CtorFunctionName = mlds_function_export("<constructor>"),
-        CtorFlags = init_decl_flags(acc_public, per_instance, non_virtual,
-            overridable, modifiable, concrete),
+        CtorFlags = init_function_decl_flags(acc_public, per_instance,
+            non_virtual, overridable, modifiable, concrete),
         Params = mlds_func_params(CtorArgs, CtorReturnValues),
         Attributes = [],
         EnvVarNames = set.init,
@@ -1031,17 +1031,13 @@ generate_call_method_args_from_array([Type | Types], ArrayVar, Counter,
     generate_call_method_args_from_array(Types, ArrayVar, Counter + 1,
         Args1, Args).
 
-:- func addr_wrapper_decl_flags = mlds_decl_flags.
+:- func addr_wrapper_decl_flags = mlds_class_decl_flags.
 
-addr_wrapper_decl_flags = MLDS_DeclFlags :-
-    Access = acc_private,
-    PerInstance = one_copy,
-    Virtuality = non_virtual,
+addr_wrapper_decl_flags = DeclFlags :-
+    Access = class_private,
     Overridability = sealed,
     Constness = const,
-    Abstractness = concrete,
-    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_class_decl_flags(Access, Overridability, Constness).
 
 :- pred add_to_address_map(string::in, list(mlds_code_addr)::in,
     map(mlds_code_addr, code_addr_wrapper)::in,
@@ -1113,10 +1109,10 @@ maybe_shorten_long_class_name(!Defn, !Renaming) :-
         !.Defn = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(TypeName0, _Context, Flags, _ClassKind,
             _Imports, _Inherits, _Implements, _TypeParams, _Ctors0, _Members0),
-        Access = get_access(Flags),
+        Access = get_class_access(Flags),
         (
             % We only rename private classes for now.
-            Access = acc_private,
+            Access = class_private,
             TypeName0 = mlds_type_name(ClassName0, Arity),
             ClassName = shorten_class_name(ClassName0),
             ( if ClassName = ClassName0 then
@@ -1129,11 +1125,7 @@ maybe_shorten_long_class_name(!Defn, !Renaming) :-
                 map.det_insert(ClassName0, ClassName, !Renaming)
             )
         ;
-            ( Access = acc_public
-            ; Access = acc_protected
-            ; Access = acc_default
-            ; Access = acc_local
-            )
+            Access = class_public
         )
     ).
 
@@ -1876,7 +1868,7 @@ output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
         PostStr = ""
     ),
     io.write_string(PreStr, !IO),
-    output_decl_flags_for_java(Info, Flags, !IO),
+    output_function_decl_flags_for_java(Info, Flags, !IO),
     (
         MaybePredProcId = no
     ;
@@ -1901,7 +1893,7 @@ output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
         _Imports, BaseClasses, Implements, TypeParams, Ctors, AllMembers),
     indent_line_mlds_context(!.Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
-    output_decl_flags_for_java(!.Info, Flags, !IO),
+    output_class_decl_flags_for_java(!.Info, Flags, !IO),
 
     !Info ^ joi_univ_tvars := TypeParams,
 
@@ -3286,17 +3278,6 @@ boxed_type_to_string_for_java(Info, Type, String) :-
 % Code to output declaration specifiers.
 %
 
-:- pred output_decl_flags_for_java(java_out_info::in,
-    mlds_decl_flags::in, io::di, io::uo) is det.
-
-output_decl_flags_for_java(Info, Flags, !IO) :-
-    output_access_for_java(Info, get_access(Flags), !IO),
-    output_per_instance_for_java(get_per_instance(Flags), !IO),
-    output_virtuality_for_java(Info, get_virtuality(Flags), !IO),
-    output_overridability_constness_for_java(
-        get_overridability(Flags), get_constness(Flags), !IO),
-    output_abstractness_for_java(get_abstractness(Flags), !IO).
-
 :- pred output_data_decl_flags_for_java(java_out_info::in,
     mlds_data_decl_flags::in, io::di, io::uo) is det.
 
@@ -3305,6 +3286,27 @@ output_data_decl_flags_for_java(Info, Flags, !IO) :-
     output_per_instance_for_java(get_data_per_instance(Flags), !IO),
     output_overridability_constness_for_java(overridable,
         get_data_constness(Flags), !IO).
+
+:- pred output_function_decl_flags_for_java(java_out_info::in,
+    mlds_function_decl_flags::in, io::di, io::uo) is det.
+
+output_function_decl_flags_for_java(Info, Flags, !IO) :-
+    output_access_for_java(Info, get_function_access(Flags), !IO),
+    output_per_instance_for_java(get_function_per_instance(Flags), !IO),
+    output_virtuality_for_java(Info, get_function_virtuality(Flags), !IO),
+    output_overridability_constness_for_java(
+        get_function_overridability(Flags), get_function_constness(Flags),
+        !IO),
+    output_abstractness_for_java(get_function_abstractness(Flags), !IO).
+
+:- pred output_class_decl_flags_for_java(java_out_info::in,
+    mlds_class_decl_flags::in, io::di, io::uo) is det.
+
+output_class_decl_flags_for_java(_Info, Flags, !IO) :-
+    output_class_access_for_java(get_class_access(Flags), !IO),
+    output_per_instance_for_java(one_copy, !IO),
+    output_overridability_constness_for_java(
+        get_class_overridability(Flags), get_class_constness(Flags), !IO).
 
 :- pred output_access_for_java(java_out_info::in, access::in,
     io::di, io::uo) is det.
@@ -3324,6 +3326,17 @@ output_access_for_java(Info, Access, !IO) :-
         maybe_output_comment_for_java(Info, "default", !IO)
     ;
         Access = acc_local
+    ).
+
+:- pred output_class_access_for_java(class_access::in, io::di, io::uo) is det.
+
+output_class_access_for_java(Access, !IO) :-
+    (
+        Access = class_public,
+        io.write_string("public ", !IO)
+    ;
+        Access = class_private,
+        io.write_string("private ", !IO)
     ).
 
 :- pred output_per_instance_for_java(per_instance::in, io::di, io::uo) is det.

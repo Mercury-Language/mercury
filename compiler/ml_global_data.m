@@ -680,8 +680,8 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         StructTypeClassName = mlds_type_name(StructTypeName, 0),
         % The "modifiable" is only to shut up a gcc warning about constant
         % fields.
-        StructTypeFlags = init_decl_flags(acc_private, one_copy,
-            non_virtual, sealed, modifiable, concrete),
+        StructTypeFlags =
+            init_class_decl_flags(class_private, sealed, modifiable),
         % XXX MLDS_DEFN
         ClassDefn = mlds_class_defn(StructTypeClassName, MLDS_Context,
             StructTypeFlags, ClassKind, [], [], [], [], CtorDefns,

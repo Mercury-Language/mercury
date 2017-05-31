@@ -1580,17 +1580,10 @@ mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     ;
         HighLevelData = no
     ),
-    (
-        MaybeBody = body_defined_here(_),
-        DefnKind = dk_func_not_external
-    ;
-        MaybeBody = body_external,
-        DefnKind = dk_func_external
-    ),
 
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_decl_flags(Opts, Flags, forward_decl, DefnKind, !IO),
+    mlds_output_function_decl_flags(Opts, Flags, forward_decl, MaybeBody, !IO),
     QualFuncName = qual(ModuleName, module_qual, FuncName),
 
     (
@@ -1619,7 +1612,7 @@ mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     else
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
-        mlds_output_decl_flags(Opts, Flags, forward_decl, dk_type, !IO),
+        mlds_output_class_decl_flags(Opts, Flags, forward_decl, !IO),
         QualTypeName = qual(ModuleName, module_qual, TypeName),
         mlds_output_class_decl(Indent, QualTypeName, ClassDefn, !IO),
         io.write_string(";\n", !IO)
@@ -1994,17 +1987,10 @@ mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
         MaybePredProcId, Params, MaybeBody, _Attributes,
         _EnvVarNames, _MaybeRequireTailrecInfo),
-    (
-        MaybeBody = body_defined_here(_),
-        DefnKind = dk_func_not_external
-    ;
-        MaybeBody = body_external,
-        DefnKind = dk_func_external
-    ),
     io.nl(!IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_decl_flags(Opts, Flags, definition, DefnKind, !IO),
+    mlds_output_function_decl_flags(Opts, Flags, definition, MaybeBody, !IO),
     (
         MaybePredProcId = no
     ;
@@ -2024,7 +2010,7 @@ mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     io.nl(!IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_decl_flags(Opts, Flags, definition, dk_type, !IO),
+    mlds_output_class_decl_flags(Opts, Flags, definition, !IO),
     mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO).
 
 :- pred mlds_output_gc_statement(mlds_to_c_opts::in, indent::in,
@@ -2176,7 +2162,7 @@ is_static_member(Defn) :-
     ;
         Defn = mlds_function(FuncDefn),
         Flags = FuncDefn ^ mfd_decl_flags,
-        get_per_instance(Flags) = one_copy
+        get_function_per_instance(Flags) = one_copy
     ;
         Defn = mlds_class(_ClassDefn)
     ).
@@ -3183,32 +3169,6 @@ mlds_output_array_type_suffix(array_size(Size0), !IO) :-
     --->    forward_decl
     ;       definition.
 
-:- pred mlds_output_decl_flags(mlds_to_c_opts::in, mlds_decl_flags::in,
-    decl_or_defn::in, defn_kind::in, io::di, io::uo) is det.
-
-mlds_output_decl_flags(Opts, Flags, DeclOrDefn, DefnKind, !IO) :-
-    Access = get_access(Flags),
-    PerInstance = get_per_instance(Flags),
-    Virtuality = get_virtuality(Flags),
-    Overridability = get_overridability(Flags),
-    Constness = get_constness(Flags),
-    Abstractness = get_abstractness(Flags),
-
-    Comments = Opts ^ m2co_auto_comments,
-    (
-        Comments = yes,
-        mlds_output_access_comment(Access, !IO),
-        mlds_output_per_instance_comment(PerInstance, !IO)
-    ;
-        Comments = no
-    ),
-    mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind,
-        !IO),
-    mlds_output_virtuality(Virtuality, !IO),
-    mlds_output_overridability(Overridability, !IO),
-    mlds_output_constness(Constness, !IO),
-    mlds_output_abstractness(Abstractness, !IO).
-
 :- pred mlds_output_data_decl_flags(mlds_to_c_opts::in,
     mlds_data_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
 
@@ -3229,6 +3189,59 @@ mlds_output_data_decl_flags(Opts, Flags, DeclOrDefn, !IO) :-
         !IO),
     mlds_output_constness(Constness, !IO).
 
+:- pred mlds_output_function_decl_flags(mlds_to_c_opts::in,
+    mlds_function_decl_flags::in, decl_or_defn::in, mlds_function_body::in,
+    io::di, io::uo) is det.
+
+mlds_output_function_decl_flags(Opts, Flags, DeclOrDefn, MaybeBody, !IO) :-
+    Access = get_function_access(Flags),
+    PerInstance = get_function_per_instance(Flags),
+    Virtuality = get_function_virtuality(Flags),
+    Overridability = get_function_overridability(Flags),
+    Constness = get_function_constness(Flags),
+    Abstractness = get_function_abstractness(Flags),
+
+    Comments = Opts ^ m2co_auto_comments,
+    (
+        Comments = yes,
+        mlds_output_access_comment(Access, !IO),
+        mlds_output_per_instance_comment(PerInstance, !IO)
+    ;
+        Comments = no
+    ),
+    (
+        MaybeBody = body_defined_here(_),
+        DefnKind = dk_func_not_external
+    ;
+        MaybeBody = body_external,
+        DefnKind = dk_func_external
+    ),
+    mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind,
+        !IO),
+    mlds_output_virtuality(Virtuality, !IO),
+    mlds_output_overridability(Overridability, !IO),
+    mlds_output_constness(Constness, !IO),
+    mlds_output_abstractness(Abstractness, !IO).
+
+:- pred mlds_output_class_decl_flags(mlds_to_c_opts::in,
+    mlds_class_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
+
+mlds_output_class_decl_flags(Opts, Flags, _DeclOrDefn, !IO) :-
+    Access = get_class_access(Flags),
+    Overridability = get_class_overridability(Flags),
+    Constness = get_class_constness(Flags),
+
+    Comments = Opts ^ m2co_auto_comments,
+    (
+        Comments = yes,
+        mlds_output_class_access_comment(Access, !IO),
+        mlds_output_per_instance_comment(one_copy, !IO)
+    ;
+        Comments = no
+    ),
+    mlds_output_overridability(Overridability, !IO),
+    mlds_output_constness(Constness, !IO).
+
 :- pred mlds_output_access_comment(access::in, io::di, io::uo) is det.
 
 mlds_output_access_comment(acc_public, !IO) :-
@@ -3241,6 +3254,14 @@ mlds_output_access_comment(acc_default, !IO) :-
     io.write_string("/* default access */ ", !IO).
 mlds_output_access_comment(acc_local, !IO) :-
     io.write_string("/* local: */ ", !IO).
+
+:- pred mlds_output_class_access_comment(class_access::in,
+    io::di, io::uo) is det.
+
+mlds_output_class_access_comment(class_public, !IO) :-
+    io.write_string("/* public: */ ", !IO).
+mlds_output_class_access_comment(class_private, !IO) :-
+    io.write_string("/* private: */ ", !IO).
 
 :- pred mlds_output_per_instance_comment(per_instance::in, io::di, io::uo)
     is det.

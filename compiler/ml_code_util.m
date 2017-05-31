@@ -733,7 +733,7 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
     % Return the declaration flags appropriate for a label func (a label func
     % is a function used as a continuation when generating nondet code).
     %
-:- func ml_gen_label_func_decl_flags = mlds_decl_flags.
+:- func ml_gen_label_func_decl_flags = mlds_function_decl_flags.
 
 ml_gen_label_func_decl_flags = DeclFlags :-
     Access = acc_local,
@@ -742,7 +742,7 @@ ml_gen_label_func_decl_flags = DeclFlags :-
     Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
-    DeclFlags = init_decl_flags(Access, PerInstance, Virtuality,
+    DeclFlags = init_function_decl_flags(Access, PerInstance, Virtuality,
         Overridability, Constness, Abstractness).
 
 ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-

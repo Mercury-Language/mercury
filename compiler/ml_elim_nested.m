@@ -1097,16 +1097,16 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStatements,
 
     % Return the declaration flags appropriate for a procedure definition.
     %
-:- func ml_gen_gc_trace_func_decl_flags = mlds_decl_flags.
+:- func ml_gen_gc_trace_func_decl_flags = mlds_function_decl_flags.
 
-ml_gen_gc_trace_func_decl_flags = MLDS_DeclFlags :-
+ml_gen_gc_trace_func_decl_flags = DeclFlags :-
     Access = acc_private,
     PerInstance = one_copy,
     Virtuality = non_virtual,
     Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
-    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+    DeclFlags = init_function_decl_flags(Access, PerInstance,
         Virtuality, Overridability, Constness, Abstractness).
 
 :- pred extract_gc_statements(mlds_data_defn::in, mlds_data_defn::out,
@@ -1274,17 +1274,13 @@ ml_conv_arg_to_var(Context, Arg, LocalVar) :-
     % Return the declaration flags appropriate for an environment struct
     % type declaration.
     %
-:- func env_type_decl_flags = mlds_decl_flags.
+:- func env_type_decl_flags = mlds_class_decl_flags.
 
-env_type_decl_flags = MLDS_DeclFlags :-
-    Access = acc_private,
-    PerInstance = one_copy,
-    Virtuality = non_virtual,
+env_type_decl_flags = DeclFlags :-
+    Access = class_private,
     Overridability = overridable,
     Constness = modifiable,
-    Abstractness = concrete,
-    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Overridability, Constness, Abstractness).
+    DeclFlags = init_class_decl_flags(Access, Overridability, Constness).
 
     % Generate a block statement, i.e. `{ <Decls>; <Statements>; }'.
     % But if the block consists only of a single statement with no
@@ -1686,8 +1682,8 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
         % top level.
         (
             Action = hoist_nested_funcs,
-            set_access(acc_private, Flags0, Flags1),
-            set_per_instance(one_copy, Flags1, Flags)
+            set_function_access(acc_private, Flags0, Flags1),
+            set_function_per_instance(one_copy, Flags1, Flags)
         ;
             Action = chain_gc_stack_frames,
             Flags = Flags0

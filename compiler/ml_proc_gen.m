@@ -493,7 +493,7 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
     % Return the declaration flags appropriate for a procedure definition.
     %
 :- func ml_gen_proc_decl_flags(module_info, pred_id, proc_id)
-    = mlds_decl_flags.
+    = mlds_function_decl_flags.
 
 ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -507,7 +507,7 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
     Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
-    DeclFlags = init_decl_flags(Access, PerInstance,
+    DeclFlags = init_function_decl_flags(Access, PerInstance,
         Virtuality, Overridability, Constness, Abstractness).
 
     % For model_det and model_semi procedures, figure out which output

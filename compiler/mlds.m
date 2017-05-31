@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: mlds.m.
 % Main author: fjh.
@@ -40,7 +40,7 @@
 % MLDS code in the first place or run some extra simplification passes over
 % the MLDS code before invoking the MLDS->target compiler.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Mapping Mercury names to MLDS names
 %
@@ -201,7 +201,7 @@
 % the MLDS interface for `foo' -- instead, there will be a new MLDS type
 % for `instance foo(bar)' which implements that interface.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Mapping MLDS names to the target language.
 %
@@ -277,7 +277,7 @@
 % names, i.e. the regular expression `.*_[0-9]+',
 % should always be qualified (even if not overloaded).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Notes on garbage collection and liveness.
 %
@@ -325,7 +325,7 @@
 % calculation in the MLDS target back-end, so in such cases we do need
 % to handle it in the HLDS->MLDS code generator.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.mlds.
 :- interface.
@@ -358,7 +358,7 @@
 :- import_module maybe.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type mercury_module_name == sym_name.module_name.
 
@@ -617,7 +617,7 @@
     --->    mlds_function_defn(
                 mfd_function_name       :: mlds_function_name,
                 mfd_context             :: mlds_context,
-                mfd_decl_flags          :: mlds_decl_flags,
+                mfd_decl_flags          :: mlds_function_decl_flags,
 
                 % Identifies the original Mercury procedure, if any.
                 mfd_orig_proc           :: maybe(pred_proc_id),
@@ -742,7 +742,7 @@
     --->    mlds_class_defn(
                 mcd_type_name       :: mlds_type_name,
                 mcd_context         :: mlds_context,
-                mcd_decl_flags      :: mlds_decl_flags,
+                mcd_decl_flags      :: mlds_class_decl_flags,
 
                 mcd_kind            :: mlds_class_kind,
 
@@ -916,7 +916,7 @@
 :- type mlds_class_id == mlds_type.
 :- type mlds_interface_id == mlds_type.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Declaration flags.
 %
@@ -941,6 +941,11 @@
     ;       acc_local.
             % Only accessible within the block in which the entity
             % (variable or nested function) is defined.
+
+    % The accessibility of classes themselves.
+:- type class_access
+    --->    class_public
+    ;       class_private.
 
 :- type per_instance
     --->    one_copy
@@ -969,34 +974,7 @@
     --->    concrete
     ;       abstract.
 
-%-----------%
-
-:- type mlds_decl_flags.
-
-:- func init_decl_flags(access, per_instance, virtuality, overridability,
-    constness, abstractness) = mlds_decl_flags.
-
-:- func get_access(mlds_decl_flags) = access.
-:- func get_per_instance(mlds_decl_flags) = per_instance.
-:- func get_virtuality(mlds_decl_flags) = virtuality.
-:- func get_overridability(mlds_decl_flags) = overridability.
-:- func get_constness(mlds_decl_flags) = constness.
-:- func get_abstractness(mlds_decl_flags) = abstractness.
-
-:- pred set_access(access::in,
-    mlds_decl_flags::in, mlds_decl_flags::out) is det.
-:- pred set_per_instance(per_instance::in,
-    mlds_decl_flags::in, mlds_decl_flags::out) is det.
-:- pred set_virtuality(virtuality::in,
-    mlds_decl_flags::in, mlds_decl_flags::out) is det.
-:- pred set_overridability(overridability::in,
-    mlds_decl_flags::in, mlds_decl_flags::out) is det.
-:- pred set_constness(constness::in,
-    mlds_decl_flags::in, mlds_decl_flags::out) is det.
-:- pred set_abstractness(abstractness::in,
-    mlds_decl_flags::in, mlds_decl_flags::out) is det.
-
-%-----------%
+%---------------------%
 
 :- type mlds_data_decl_flags.
 
@@ -1019,7 +997,52 @@
     %
 :- func ml_static_const_decl_flags = mlds_data_decl_flags.
 
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+:- type mlds_function_decl_flags.
+
+:- func init_function_decl_flags(access, per_instance, virtuality,
+    overridability, constness, abstractness) = mlds_function_decl_flags.
+
+:- func get_function_access(mlds_function_decl_flags) = access.
+:- func get_function_per_instance(mlds_function_decl_flags) = per_instance.
+:- func get_function_virtuality(mlds_function_decl_flags) = virtuality.
+:- func get_function_overridability(mlds_function_decl_flags) = overridability.
+:- func get_function_constness(mlds_function_decl_flags) = constness.
+:- func get_function_abstractness(mlds_function_decl_flags) = abstractness.
+
+:- pred set_function_access(access::in,
+    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
+:- pred set_function_per_instance(per_instance::in,
+    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
+:- pred set_function_virtuality(virtuality::in,
+    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
+:- pred set_function_overridability(overridability::in,
+    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
+:- pred set_function_constness(constness::in,
+    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
+:- pred set_function_abstractness(abstractness::in,
+    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
+
+%---------------------%
+
+:- type mlds_class_decl_flags.
+
+:- func init_class_decl_flags(class_access, overridability, constness)
+    = mlds_class_decl_flags.
+
+:- func get_class_access(mlds_class_decl_flags) = class_access.
+:- func get_class_overridability(mlds_class_decl_flags) = overridability.
+:- func get_class_constness(mlds_class_decl_flags) = constness.
+
+:- pred set_class_access(class_access::in,
+    mlds_class_decl_flags::in, mlds_class_decl_flags::out) is det.
+:- pred set_class_overridability(overridability::in,
+    mlds_class_decl_flags::in, mlds_class_decl_flags::out) is det.
+:- pred set_class_constness(constness::in,
+    mlds_class_decl_flags::in, mlds_class_decl_flags::out) is det.
+
+%---------------------------------------------------------------------------%
 %
 % Foreign code interfacing.
 %
@@ -1050,7 +1073,7 @@
                 mlds_context
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Attributes.
 %
@@ -1060,7 +1083,7 @@
                 mlds_type
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Contexts (i.e. source code locations).
 %
@@ -1073,7 +1096,7 @@
 
 :- func mlds_get_prog_context(mlds_context) = prog_context.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Statements.
 %
@@ -1241,7 +1264,7 @@
     --->    ml_stmt_call(ground, ground, ground, ground, ground,
                 ground, ground).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Extra info for switches.
 %
@@ -1293,7 +1316,7 @@
     ;       default_case(statement).
             % The default is to execute the specified statement.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Extra info for labels.
 %
@@ -1314,7 +1337,7 @@
             % loop, just like a C/C++/Java/C# `continue' statement.
             % Not supported by all target languages.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Extra info for calls.
 %
@@ -1351,7 +1374,7 @@
             % see the comment at the top of ml_tailcall.m (which generates
             % such warnings during compilations that target the MLDS backend).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Extra info for exception handling.
 %
@@ -1372,7 +1395,7 @@
                 % If `no', then exception value will not be used.
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     %
     % atomic statements
@@ -1583,7 +1606,7 @@
     ;       prune_tickets_to(mlds_rval).
 %   ;       discard_tickets_to(mlds_rval).  % used only by the library
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % An mlds_field_id represents some data within an object.
     %
@@ -1987,7 +2010,7 @@
 :- type global_var_ref
     --->    env_var_ref(string).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Expressions.
 %
@@ -2157,7 +2180,7 @@
             % used to implement memoization, loopcheck or minimal model
             % semantics for the given procedure.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Note: the types `tag' and `reset_trail_reason' here are all defined
 % exactly the same as the ones in llds.m. The definitions are duplicated here
@@ -2179,7 +2202,7 @@
     ;       exception
     ;       gc.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type mlds_qualified_proc_label
     ==  mlds_fully_qualified_name(mlds_proc_label).
@@ -2224,7 +2247,7 @@
 
 :- func mlds_std_tabling_proc_label(mlds_proc_label) = mlds_proc_label.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type mlds_exported_enums == list(mlds_exported_enum).
 
@@ -2243,8 +2266,8 @@
                 exported_enum_constant_value    :: mlds_initializer
             ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -2258,7 +2281,7 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mlds_get_module_name(MLDS) = MLDS ^ mlds_name.
 
@@ -2299,7 +2322,7 @@ is_std_lib_module(Module, Name) :-
     strip_outermost_qualifier(Name0, "mercury", Name),
     mercury_std_library_module_name(Name).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mlds_append_class_qualifier(Target, mlds_module_name(Package, Module),
         QualKind, ClassName, ClassArity) = Name :-
@@ -2324,20 +2347,20 @@ mlds_append_name(mlds_module_name(Package, Module), Name)
 
 wrapper_class_name = "mercury_code".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_initializer_array_size(no_initializer) = no_size.
 get_initializer_array_size(init_obj(_)) = no_size.
 get_initializer_array_size(init_struct(_, _)) = no_size.
 get_initializer_array_size(init_array(Elems)) = array_size(list.length(Elems)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 wrap_data_defn(DataDefn) = mlds_data(DataDefn).
 wrap_function_defn(FunctionDefn) = mlds_function(FunctionDefn).
 wrap_class_defn(ClassDefn) = mlds_class(ClassDefn).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mlds_get_arg_types(Parameters) = ArgTypes :-
     GetArgType = (func(mlds_argument(_, Type, _)) = Type),
@@ -2347,7 +2370,7 @@ mlds_get_func_signature(mlds_func_params(Parameters, RetTypes)) =
         mlds_func_signature(ParamTypes, RetTypes) :-
     ParamTypes = mlds_get_arg_types(Parameters).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % There is some special-case handling for arrays, foreign types and some
 % other types here, but apart from that, currently we return mlds_types
@@ -2464,65 +2487,22 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
     ),
     MLDSType = mlds_foreign_type(ForeignType).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% The flags contain the following information:
+%
+% access,               % public/private/protected
+% member_type,          % static/per_instance
+% virtuality,           % virtual/non_virtual
+% overridability,       % sealed/overridable (class/funcs only)
+% constness,            % const/modifiable  (data only)
+% is_abstract,          % abstract/concrete
+%
+% Note that the compiler can pack all the enumeration arguments together,
+% though a cell will still be allocated.
+%
 
-    % The flags contain the following information:
-    %
-    % access,               % public/private/protected
-    % member_type,          % static/per_instance
-    % virtuality,           % virtual/non_virtual
-    % overridability,       % sealed/overridable (class/funcs only)
-    % constness,            % const/modifiable  (data only)
-    % is_abstract,          % abstract/concrete
-    %
-    % XXX MLDS_DEFN What subset of these choices is appropriate for
-    % a definition depends on what kind of entity is being defined.
-    %
-    % Note that The compiler can pack all the enumeration arguments together,
-    % though a cell will still be allocated.
-    %
-:- type mlds_decl_flags
-    --->    mlds_decl_flags(
-                mdf_access          :: access,
-                mdf_per_instance    :: per_instance,
-                mdf_virtuality      :: virtuality,
-                mdf_overridability  :: overridability,
-                mdf_constness       :: constness,
-                mdf_abstractness    :: abstractness
-            ).
-
-init_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
-        Abstractness) =
-    mlds_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
-        Abstractness).
-
-get_access(Flags) = X :-
-    X = Flags ^ mdf_access.
-get_per_instance(Flags) = X :-
-    X = Flags ^ mdf_per_instance.
-get_virtuality(Flags) = X :-
-    X = Flags ^ mdf_virtuality.
-get_overridability(Flags) = X :-
-    X = Flags ^ mdf_overridability.
-get_constness(Flags) = X :-
-    X = Flags ^ mdf_constness.
-get_abstractness(Flags) = X :-
-    X = Flags ^ mdf_abstractness.
-
-set_access(Access, !Flags) :-
-    !Flags ^ mdf_access := Access.
-set_per_instance(PerInstance, !Flags) :-
-    !Flags ^ mdf_per_instance := PerInstance.
-set_virtuality(Virtuality, !Flags) :-
-    !Flags ^ mdf_virtuality := Virtuality.
-set_overridability(Overridability, !Flags) :-
-    !Flags ^ mdf_overridability := Overridability.
-set_constness(Constness, !Flags) :-
-    !Flags ^ mdf_constness := Constness.
-set_abstractness(Abstractness, !Flags) :-
-    !Flags ^ mdf_abstractness := Abstractness.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type mlds_data_decl_flags
     --->    mlds_data_decl_flags(
@@ -2556,7 +2536,76 @@ ml_static_const_decl_flags = DeclFlags :-
     Constness = const,
     DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type mlds_function_decl_flags
+    --->    mlds_function_decl_flags(
+                mfdf_access         :: access,
+                mfdf_per_instance   :: per_instance,
+                mfdf_virtuality     :: virtuality,
+                mfdf_overridability :: overridability,
+                mfdf_constness      :: constness,
+                mfdf_abstractness   :: abstractness
+            ).
+
+init_function_decl_flags(Access, PerInstance,
+        Virtuality, Overridability, Constness, Abstractness) =
+    mlds_function_decl_flags(Access, PerInstance,
+        Virtuality, Overridability, Constness, Abstractness).
+
+get_function_access(Flags) = X :-
+    X = Flags ^ mfdf_access.
+get_function_per_instance(Flags) = X :-
+    X = Flags ^ mfdf_per_instance.
+get_function_virtuality(Flags) = X :-
+    X = Flags ^ mfdf_virtuality.
+get_function_overridability(Flags) = X :-
+    X = Flags ^ mfdf_overridability.
+get_function_constness(Flags) = X :-
+    X = Flags ^ mfdf_constness.
+get_function_abstractness(Flags) = X :-
+    X = Flags ^ mfdf_abstractness.
+
+set_function_access(Access, !Flags) :-
+    !Flags ^ mfdf_access := Access.
+set_function_per_instance(PerInstance, !Flags) :-
+    !Flags ^ mfdf_per_instance := PerInstance.
+set_function_virtuality(Virtuality, !Flags) :-
+    !Flags ^ mfdf_virtuality := Virtuality.
+set_function_overridability(Overridability, !Flags) :-
+    !Flags ^ mfdf_overridability := Overridability.
+set_function_constness(Constness, !Flags) :-
+    !Flags ^ mfdf_constness := Constness.
+set_function_abstractness(Abstractness, !Flags) :-
+    !Flags ^ mfdf_abstractness := Abstractness.
+
+%---------------------------------------------------------------------------%
+
+:- type mlds_class_decl_flags
+    --->    mlds_class_decl_flags(
+                mcdf_access         :: class_access,
+                mcdf_overridability :: overridability,
+                mcdf_constness      :: constness
+            ).
+
+init_class_decl_flags(Access, Overridability, Constness) =
+    mlds_class_decl_flags(Access, Overridability, Constness).
+
+get_class_access(Flags) = X :-
+    X = Flags ^ mcdf_access.
+get_class_overridability(Flags) = X :-
+    X = Flags ^ mcdf_overridability.
+get_class_constness(Flags) = X :-
+    X = Flags ^ mcdf_constness.
+
+set_class_access(Access, !Flags) :-
+    !Flags ^ mcdf_access := Access.
+set_class_overridability(Overridability, !Flags) :-
+    !Flags ^ mcdf_overridability := Overridability.
+set_class_constness(Constness, !Flags) :-
+    !Flags ^ mcdf_constness := Constness.
+
+%---------------------------------------------------------------------------%
 
     % Currently mlds_contexts just contain a prog_context.
 :- type mlds_context
@@ -2566,7 +2615,7 @@ mlds_make_context(Context) = mlds_context(Context).
 
 mlds_get_prog_context(mlds_context(Context)) = Context.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_var_name_to_string(Var) = Str :-
     (
@@ -2822,7 +2871,7 @@ ml_var_name_to_string(Var) = Str :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
     % We standardize the parts of PredLabel0 that aren't computable from
@@ -2841,6 +2890,6 @@ mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
