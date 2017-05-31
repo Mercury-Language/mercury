@@ -158,7 +158,7 @@
     %
     % Pred is a closure with one input argument.
     % For each member X of Cord,
-    % - Pred(X) is true, then X is included in TrueCord.
+    % - if Pred(X) is true, then X is included in TrueCord.
     %
 :- pred filter(pred(T)::in(pred(in) is semidet),
     cord(T)::in, cord(T)::out) is det.
@@ -167,8 +167,8 @@
     %
     % Pred is a closure with one input argument.
     % For each member X of Cord,
-    % - Pred(X) is true, then X is included in TrueCord.
-    % - Pred(X) is false, then X is included in FalseCord.
+    % - if Pred(X) is true, then X is included in TrueCord.
+    % - if Pred(X) is false, then X is included in FalseCord.
     %
 :- pred filter(pred(T)::in(pred(in) is semidet),
     cord(T)::in, cord(T)::out, cord(T)::out) is det.
@@ -228,6 +228,13 @@
     in(pred(in, out, in, out, in, out, in, out) is det),
     cord(A)::in, cord(B)::out, C::in, C::out, D::in, D::out, E::in, E::out)
     is det.
+
+    % find_first_match(Pred, List, FirstMatch) takes a closure with one
+    % input argument. It returns the first element X of the cord (if any)
+    % for which Pred(X) is true.
+    %
+:- pred find_first_match(pred(X)::in(pred(in) is semidet),
+    cord(X)::in, X::out) is semidet.
 
     % equal(CA, CB)  <=>  list(CA) = list(CB).
     % An O(n) operation where n = length(CA) + length(CB).
@@ -856,6 +863,38 @@ map_foldl3_node(P, list_node(XH, XT), list_node(YH, YT), !A, !B, !C) :-
 map_foldl3_node(P, branch_node(XA, XB), branch_node(YA, YB), !A, !B, !C) :-
     map_foldl3_node(P, XA, YA, !A, !B, !C),
     map_foldl3_node(P, XB, YB, !A, !B, !C).
+
+%---------------------------------------------------------------------------%
+
+find_first_match(P, nonempty_cord(NX), FirstMatch) :-
+    find_first_match_node(P, NX, FirstMatch).
+
+:- pred find_first_match_node(pred(X)::in(pred(in) is semidet),
+    cord_node(X)::in, X::out) is semidet.
+
+find_first_match_node(P, Node, FirstMatch) :-
+    (
+        Node = unit_node(X),
+        ( if P(X) then
+            FirstMatch = X
+        else
+            fail
+        )
+    ;
+        Node = list_node(XH, XT),
+        ( if P(XH) then
+            FirstMatch = XH
+        else
+            list.find_first_match(P, XT, FirstMatch)
+        )
+    ;
+        Node = branch_node(XA, XB),
+        ( if find_first_match_node(P, XA, FirstMatchPrime) then
+            FirstMatch = FirstMatchPrime
+        else
+            find_first_match_node(P, XB, FirstMatch)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

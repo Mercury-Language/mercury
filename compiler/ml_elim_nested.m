@@ -472,7 +472,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -2149,14 +2148,13 @@ fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
         % Check for references to local variables that are used by
         % nested functions, and replace them with `env_ptr->foo'.
         ThisVarModuleName = ModuleName,
-        IsLocalVar =
-            ( pred(VarType::out) is nondet :-
-                cord.member(Var, Locals),
-                Var = mlds_data_defn(DataName, _, _, VarType, _, _),
-                DataName = mlds_data_var(ThisVarName)
+        DefnIsThisVar =
+            ( pred(Defn::in) is semidet :-
+                Defn ^ mdd_data_name = mlds_data_var(ThisVarName)
             ),
-        solutions.solutions(IsLocalVar, [FieldType])
+        cord.find_first_match(DefnIsThisVar, Locals, ThisVarDefn)
     then
+        FieldType = ThisVarDefn ^ mdd_type,
         EnvPtr = ml_lval(ml_var(
             qual(ModuleName, QualKind, env_ptr_var(Action)), EnvPtrVarType)),
         globals.get_target(Globals, Target),
@@ -2277,46 +2275,37 @@ statements_contains_matching_defn(Filter, [Statement | Statements]) :-
         statements_contains_matching_defn(Filter, Statements)
     ).
 
-:- pred maybe_statement_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), maybe(statement)::in) is semidet.
-
-maybe_statement_contains_matching_defn(Filter, yes(Statement)) :-
-    statement_contains_matching_defn(Filter, Statement).
-
 :- pred statement_contains_matching_defn(
     pred(mlds_defn)::in(pred(in) is semidet), statement::in) is semidet.
 
 statement_contains_matching_defn(Filter, Statement) :-
     Statement = statement(Stmt, _Context),
-    stmt_contains_matching_defn(Filter, Stmt).
-
-:- pred stmt_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), mlds_stmt::in) is semidet.
-
-stmt_contains_matching_defn(Filter, Stmt) :-
     require_complete_switch [Stmt]
     (
-        Stmt = ml_stmt_block(Defns, Statements),
-        ( defns_contains_matching_defn(Filter, Defns)
-        ; statements_contains_matching_defn(Filter, Statements)
+        Stmt = ml_stmt_block(SubDefns, SubStatements),
+        ( defns_contains_matching_defn(Filter, SubDefns)
+        ; statements_contains_matching_defn(Filter, SubStatements)
         )
     ;
-        Stmt = ml_stmt_while(_Kind, _Rval, Statement),
-        statement_contains_matching_defn(Filter, Statement)
+        Stmt = ml_stmt_while(_Kind, _Rval, SubStatement),
+        statement_contains_matching_defn(Filter, SubStatement)
     ;
-        Stmt = ml_stmt_if_then_else(_Cond, Then, MaybeElse),
-        ( statement_contains_matching_defn(Filter, Then)
-        ; maybe_statement_contains_matching_defn(Filter, MaybeElse)
+        Stmt = ml_stmt_if_then_else(_Cond, SubThen, MaybeSubElse),
+        (
+            statement_contains_matching_defn(Filter, SubThen)
+        ;
+            MaybeSubElse = yes(SubElse),
+            statement_contains_matching_defn(Filter, SubElse)
         )
     ;
-        Stmt = ml_stmt_switch(_Type, _Val, _Range, Cases, Default),
-        ( cases_contains_matching_defn(Filter, Cases)
-        ; default_contains_matching_defn(Filter, Default)
+        Stmt = ml_stmt_switch(_Type, _Val, _Range, SubCases, SubDefault),
+        ( cases_contains_matching_defn(Filter, SubCases)
+        ; default_contains_matching_defn(Filter, SubDefault)
         )
     ;
-        Stmt = ml_stmt_try_commit(_Ref, Statement, Handler),
-        ( statement_contains_matching_defn(Filter, Statement)
-        ; statement_contains_matching_defn(Filter, Handler)
+        Stmt = ml_stmt_try_commit(_Ref, SubStatement, SubHandler),
+        ( statement_contains_matching_defn(Filter, SubStatement)
+        ; statement_contains_matching_defn(Filter, SubHandler)
         )
     ;
         ( Stmt = ml_stmt_label(_Label)

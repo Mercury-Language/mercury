@@ -391,6 +391,7 @@ Changes to the Mercury standard library:
    - to_rev_list/1 (synonym for the existing rev_list/1 function)
    - cons/3
    - snoc/3
+   - find_first_match/3
 
 * The following function has been added to the array2d module
 
