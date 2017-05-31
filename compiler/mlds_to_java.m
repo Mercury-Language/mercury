@@ -4226,12 +4226,6 @@ output_lval_for_java(Info, Lval, !IO) :-
         output_maybe_qualified_data_name_for_java(Info, QualDataName, !IO)
     ).
 
-:- pred output_mangled_name_for_java(string::in, io::di, io::uo) is det.
-
-output_mangled_name_for_java(Name, !IO) :-
-    MangledName = name_mangle(Name),
-    io.write_string(MangledName, !IO).
-
 :- pred output_valid_mangled_name_for_java(string::in, io::di, io::uo) is det.
 
 output_valid_mangled_name_for_java(Name, !IO) :-

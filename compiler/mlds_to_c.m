@@ -301,6 +301,7 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
     list.filter_map(defn_is_type, PublicDefns,
         PublicTypeDefns, PublicNonTypeDefns),
     list.sort(PublicNonTypeDefns, SortedPublicNonTypeDefns),
+
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     list.foldl(mlds_output_class_defn(Opts, Indent, MLDS_ModuleName),
         PublicTypeDefns, !IO),
@@ -2534,46 +2535,6 @@ mlds_output_param_type(Opts, Arg, !IO) :-
 %
 % Code to output names of various entities.
 %
-
-    % XXX MLDS_DEFN
-    %
-:- pred mlds_output_fully_qualified_name(mlds_qualified_entity_name::in,
-    io::di, io::uo) is det.
-
-mlds_output_fully_qualified_name(QualifiedName, !IO) :-
-    QualifiedName = qual(_ModuleName, _QualKind, Name),
-    ( if
-        (
-            Name = entity_function(FuncName),
-            (
-                % Don't module-qualify main/2.
-                FuncName = mlds_function_name(PlainFuncName),
-                PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
-                PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
-                    model_det, no)
-            ;
-                % We don't module qualify pragma foreign_export names.
-                FuncName = mlds_function_export(_)
-            )
-        ;
-            Name = entity_data(mlds_rtti(RttiId)),
-            module_qualify_name_of_rtti_id(RttiId) = no
-        )
-    then
-        true
-    else
-        output_qual_name_prefix_c(QualifiedName, _, !IO)
-    ),
-    (
-        Name = entity_type(TypeName),
-        mlds_output_type_name(TypeName, !IO)
-    ;
-        Name = entity_data(DataName),
-        mlds_output_data_name(DataName, !IO)
-    ;
-        Name = entity_function(FunctionName),
-        mlds_output_function_name(FunctionName, !IO)
-    ).
 
 :- pred mlds_output_fully_qualified_function_name(
     mlds_qualified_function_name::in, io::di, io::uo) is det.
