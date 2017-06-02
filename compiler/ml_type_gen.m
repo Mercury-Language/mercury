@@ -724,7 +724,8 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 
     TagVal = get_tagval(TypeCtor, ConsTagValues, Ctor),
     ( if tagval_is_reserved_addr(TagVal, ReservedAddr) then
-        ( if ReservedAddr = reserved_object(_, _, _) then
+        (
+            ReservedAddr = reserved_object(_, _, _),
             % Generate a reserved object for this constructor.
             % Note that we use the SecondaryTagClassId for the type of this
             % reserved object; we can't use the BaseClassId because for some
@@ -746,7 +747,10 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
                 MLDS_ReservedObjDataName, MLDS_Context, DeclFlags,
                 SecondaryTagClassId, no_initializer, GCStatement)),
             MLDS_Members = [MLDS_ReservedObjDefn | MLDS_Members0]
-        else
+        ;
+            ( ReservedAddr = null_pointer
+            ; ReservedAddr = small_pointer(_)
+            ),
             % For reserved numeric addresses, we don't need to generate
             % any objects or types.
             MLDS_Members = MLDS_Members0
