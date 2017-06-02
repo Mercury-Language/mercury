@@ -762,7 +762,7 @@
                 mcd_ctors           :: list(mlds_defn),
 
                 % Contains these members.
-                mcd_members     :: list(mlds_defn)
+                mcd_members         :: list(mlds_defn)
             ).
 
 :- type mlds_type
