@@ -558,10 +558,6 @@ ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Generate MLDS code for the specified goal in the specified code model.
-    % Return the result as two lists, one containing the necessary declarations
-    % and the other containing the generated statements.
-    %
 ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
