@@ -163,8 +163,8 @@
     %
 :- func xor(uint, uint) = uint.
 :- mode xor(in, in) = uo is det.
-%:- mode xor(in, uo) = in is det.
-%:- mode xor(uo, in) = in is det.
+:- mode xor(in, uo) = in is det.
+:- mode xor(uo, in) = in is det.
 
     % Bitwise complement.
     %
