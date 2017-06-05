@@ -774,10 +774,9 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             io.write_strings(FileStream, [
                 "#ifndef ", decl_guard(ModuleName), "\n",
                 "#define ", decl_guard(ModuleName), "\n"], !IO),
-            module_info_get_type_table(ModuleInfo, TypeTable),
             list.foldl(
                 output_exported_c_enum(FileStream, MaybeSetLineNumbers,
-                    MaybeThisFileName, TypeTable),
+                    MaybeThisFileName),
                 CExportedEnums, !IO),
             list.foldl(
                 output_foreign_decl(FileStream, MaybeSetLineNumbers,
@@ -891,56 +890,30 @@ output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
 :- pred exported_enum_is_for_c(exported_enum_info::in) is semidet.
 
 exported_enum_is_for_c(ExportedEnumInfo) :-
-    ExportedEnumInfo = exported_enum_info(Lang, _, _, _),
+    ExportedEnumInfo = exported_enum_info(Lang, _, _, _, _, _),
     Lang = lang_c.
 
 :- pred output_exported_c_enum(io.text_output_stream::in,
     maybe_set_line_numbers::in, maybe(string)::in,
-    type_table::in, exported_enum_info::in, io::di, io::uo) is det.
+    exported_enum_info::in, io::di, io::uo) is det.
 
 output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
-        TypeTable, ExportedEnumInfo, !IO) :-
+        ExportedEnumInfo, !IO) :-
     ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor,
-        NameMapping),
+        NameMapping, Ctors, TagValues),
     expect(unify(Lang, lang_c), $module, $pred, "Lang != lang_c"),
-    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    get_type_defn_body(TypeDefn, TypeBody),
-    (
-        ( TypeBody = hlds_eqv_type(_)
-        ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_solver_type(_, _)
-        ; TypeBody = hlds_abstract_type(_)
-        ),
-        unexpected($module, $pred, "invalid type for foreign_export_enum")
-    ;
-        TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
-            DuTypeKind, _MaybeUserEq, _MaybeDirectArgCtors,
-            _ReservedTag, _ReservedAddr, _IsForeignType),
-        (
-            ( DuTypeKind = du_type_kind_general
-            ; DuTypeKind = du_type_kind_notag(_, _, _)
-            ),
-            unexpected($module, $pred, "d.u. is not an enumeration.")
-        ;
-            ( DuTypeKind = du_type_kind_mercury_enum
-            ; DuTypeKind = du_type_kind_foreign_enum(_)
-            ; DuTypeKind = du_type_kind_direct_dummy
-            ),
-            list.foldl(
-                foreign_const_name_and_tag(TypeCtor, NameMapping, TagValues),
-                Ctors, cord.init, ForeignNamesAndTagsCord),
-            ForeignNamesAndTags = cord.list(ForeignNamesAndTagsCord),
-            term.context_file(Context, File),
-            term.context_line(Context, Line),
-            c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line,
-                !IO),
-            io.write_list(Stream, ForeignNamesAndTags, "\n",
-                output_exported_enum_constname_tag, !IO),
-            io.nl(Stream, !IO),
-            c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers,
-                MaybeThisFileName, !IO)
-        )
-    ).
+    list.foldl(
+        foreign_const_name_and_tag(TypeCtor, NameMapping, TagValues),
+        Ctors, cord.init, ForeignNamesAndTagsCord),
+    ForeignNamesAndTags = cord.list(ForeignNamesAndTagsCord),
+    term.context_file(Context, File),
+    term.context_line(Context, Line),
+    c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO),
+    io.write_list(Stream, ForeignNamesAndTags, "\n",
+        output_exported_enum_constname_tag, !IO),
+    io.nl(Stream, !IO),
+    c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers,
+        MaybeThisFileName, !IO).
 
     % The tags for exported enumerations will either be integers (for normal
     % enumerations) or strings (for foreign enumerations.)
@@ -973,10 +946,10 @@ foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
     map.lookup(TagValues, ConsId, TagVal),
     (
         TagVal = int_tag(IntTag),
-        Tag    = ee_tag_rep_int(IntTag)
+        Tag = ee_tag_rep_int(IntTag)
     ;
         TagVal = foreign_tag(_ForeignLang, ForeignTag),
-        Tag    = ee_tag_rep_string(ForeignTag)
+        Tag = ee_tag_rep_string(ForeignTag)
     ;
         ( TagVal = string_tag(_)
         ; TagVal = uint_tag(_)

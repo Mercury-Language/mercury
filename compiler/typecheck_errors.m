@@ -611,7 +611,7 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
             Symbol = overloaded_func(ConsId, Sources0),
             list.sort(Sources0, Sources),
             StartPieces = [words("The function symbol"),
-                cons_id_and_maybe_arity(ConsId), suffix("."), nl,
+                qual_cons_id_and_maybe_arity(ConsId), suffix("."), nl,
                 words("The possible matches are:"), nl_indent_delta(1)],
             SourcePiecesList = list.map(
                 describe_cons_type_info_source(ModuleInfo), Sources),
@@ -619,7 +619,7 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                 [suffix(".")]),
             FirstPieces = StartPieces ++ SourcePieces,
             LaterPieces = [words("The function symbol"),
-                cons_id_and_maybe_arity(ConsId),
+                qual_cons_id_and_maybe_arity(ConsId),
                 words("is also overloaded here.")]
         ),
         FirstMsg = simple_msg(FirstContext, [always(FirstPieces)]),
@@ -1400,7 +1400,7 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
         ReportConsErrors = yes
     else
         Pieces1 = [words("error: undefined symbol"),
-            cons_id_and_maybe_arity(Functor)],
+            qual_cons_id_and_maybe_arity(Functor)],
         ( if
             Functor = cons(Constructor, _, _),
             Constructor = qualified(ModQual, _)
@@ -1612,7 +1612,7 @@ report_cons_error(Context, ConsError) = Msgs :-
         Pieces3 = [words("in the types of field"), unqual_sym_name(FieldName),
             words("and some other field"),
             words("in definition of constructor"),
-            cons_id_and_maybe_arity(ConsId), suffix("."), nl],
+            qual_cons_id_and_maybe_arity(ConsId), suffix("."), nl],
         Pieces = Pieces1 ++ Pieces2 ++ Pieces3,
         Msgs = [simple_msg(DefnContext, [always(Pieces)])]
     ;
@@ -1811,7 +1811,7 @@ functor_name_to_pieces(Functor, Arity) = Pieces :-
         Pieces = [words("higher-order term (with arity"),
             int_fixed(Arity - 1), suffix(")")]
     else
-        Pieces = [words("functor"), cons_id_and_maybe_arity(Functor)]
+        Pieces = [words("functor"), qual_cons_id_and_maybe_arity(Functor)]
     ).
 
 :- func type_of_var_to_pieces(type_assign_set, prog_var)

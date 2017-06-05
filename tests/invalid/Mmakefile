@@ -130,6 +130,7 @@ SINGLEMODULE= \
 	errors1 \
 	errors2 \
 	exist_foreign_error \
+	exported_foreign_enum \
 	exported_mode \
 	ext_type \
 	ext_type_bug \

@@ -6,13 +6,16 @@ ee_invalid.m:043:   error: undefined type `undefined_type'/0.
 ee_invalid.m:047: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:047:   `ee_invalid.foo'/1:
 ee_invalid.m:047:   error: `ee_invalid.foo'/1 is not an enumeration type. It
-ee_invalid.m:047:   has one or more non-zero arity constructors.
+ee_invalid.m:047:   has this non-zero arity constructor:
+ee_invalid.m:047:   `foo'/1.
 ee_invalid.m:051: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:051:   `ee_invalid.bar'/0:
-ee_invalid.m:051:   error: `ee_invalid.bar'/0 is not an enumeration type.
+ee_invalid.m:051:   error: `ee_invalid.bar'/0 is not an enumeration type; it is
+ee_invalid.m:051:   an equivalence type.
 ee_invalid.m:058: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:058:   `ee_invalid.baz'/0:
-ee_invalid.m:058:   error: `ee_invalid.baz'/0 is not an enumeration type.
+ee_invalid.m:058:   error: `ee_invalid.baz'/0 is not an enumeration type; it is
+ee_invalid.m:058:   a foreign type.
 ee_invalid.m:063: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:063:   `ee_invalid.alphabet'/0:
 ee_invalid.m:063:   error: the following constructor does not match any of the

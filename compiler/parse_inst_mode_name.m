@@ -848,7 +848,8 @@ find_duplicate_cons_id_bound_insts(Prev, [Cur | Next], Duplicates) :-
     Prev = bound_functor(PrevConsId, _),
     Cur = bound_functor(CurConsId, _),
     ( if PrevConsId = CurConsId then
-        Duplicates = [cons_id_and_maybe_arity(CurConsId) | DuplicatesTail]
+        Duplicates =
+            [unqual_cons_id_and_maybe_arity(CurConsId) | DuplicatesTail]
     else
         Duplicates = DuplicatesTail
     ).

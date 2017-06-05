@@ -157,6 +157,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         ItemInstDefns, ItemModeDefns, ItemPredDecls, ItemModeDecls,
         ItemPromises, ItemTypeclasses, ItemInstances,
         ItemInitialises, ItemFinalises, ItemMutables,
+        ItemReserveTagPragmas, ItemForeignEnumPragmas,
         ItemPragmas2, ItemPragmas3, ItemClauses),
 
     % The old pass 1.
@@ -203,7 +204,15 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
             !ModuleInfo, !FoundInvalidType, !Specs,
             !SolverAuxPredInfos, !SolverItemMutables),
         SolverAuxPredInfos = !.SolverAuxPredInfos,
-        SolverItemMutables = !.SolverItemMutables
+        SolverItemMutables = !.SolverItemMutables,
+
+        % NOTE We loop over ItemReserveTagPragmas and ItemReserveTagPragmas
+        % with a bespoke predicate, not list.foldl2, because list.foldl2
+        % doesn't (yet) know how to preserve their subtype insts.
+        add_reserve_tag_pragmas(ItemReserveTagPragmas,
+            !ModuleInfo, !Specs),
+        add_foreign_enum_pragmas(ItemForeignEnumPragmas,
+            !ModuleInfo, !Specs)
     ),
 
     % We process inst definitions after all type definitions because
@@ -287,7 +296,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     %
     % We also add some kinds of pragmas that don't have to be added
     % at any specific time, such as pragma_foreign_decl, pragma_foreign_code
-    % pragma_require_feature_set.
+    % and pragma_require_feature_set.
     %
     % NOTE We loop over ItemPragmas2 with a bespoke predicate, not list.foldl2,
     % because list.foldl2 doesn't (yet) know how to preserve the subtype inst

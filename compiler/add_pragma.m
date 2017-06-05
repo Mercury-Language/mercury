@@ -19,10 +19,16 @@
 
 %-----------------------------------------------------------------------------%
 
-:- inst item_pragma_info(I)     % XXX for item_pragma_info/0
+:- inst item_pragma_info_inst(I) for item_pragma_info/0
     --->    item_pragma_info(I, ground, ground, ground).
 
-:- inst pragma_pass_2           % XXX for pragma_type/0
+:- inst pragma_reserve_tag_inst for pragma_type/0
+    --->    pragma_reserve_tag(ground).
+
+:- inst pragma_foreign_enum_inst for pragma_type/0
+    --->    pragma_foreign_enum(ground).
+
+:- inst pragma_pass_2_inst for pragma_type/0
     --->    pragma_foreign_decl(ground)
     ;       pragma_foreign_code(ground)
     ;       pragma_foreign_import_module(ground)
@@ -45,15 +51,13 @@
     ;       pragma_check_termination(ground)
     ;       pragma_mode_check_clauses(ground)
     ;       pragma_require_feature_set(ground)
-    ;       pragma_foreign_enum(ground)
     ;       pragma_foreign_export_enum(ground).
 
-:- inst pragma_pass_3           % XXX for pragma_type/0
+:- inst pragma_pass_3_inst for pragma_type/0
     --->    pragma_foreign_proc(ground)
     ;       pragma_type_spec(ground)
     ;       pragma_tabled(ground)
     ;       pragma_fact_table(ground)
-    ;       pragma_reserve_tag(ground)
     ;       pragma_oisu(ground)
     ;       pragma_foreign_proc_export(ground)
     ;       pragma_termination_info(ground)
@@ -61,18 +65,34 @@
     ;       pragma_structure_sharing(ground)
     ;       pragma_structure_reuse(ground).
 
-:- inst ims_pragma_2 == ims_item(item_pragma_info(pragma_pass_2)).
-:- inst ims_pragma_3 == ims_item(item_pragma_info(pragma_pass_3)).
+:- inst ims_pragma_reserve_tag ==
+    ims_item(item_pragma_info_inst(pragma_reserve_tag_inst)).
+:- inst ims_pragma_foreign_enum ==
+    ims_item(item_pragma_info_inst(pragma_foreign_enum_inst)).
+:- inst ims_pragma_pass_2 ==
+    ims_item(item_pragma_info_inst(pragma_pass_2_inst)).
+:- inst ims_pragma_pass_3 ==
+    ims_item(item_pragma_info_inst(pragma_pass_3_inst)).
 
 %-----------------------------------------------------------------------------%
 
+:- pred add_reserve_tag_pragmas(
+    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_reserve_tag)),
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_foreign_enum_pragmas(
+    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_foreign_enum)),
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 :- pred add_pass_2_pragmas(
-    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_2)),
+    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_pass_2)),
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pass_3_pragmas(
-    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_3)),
+    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_pass_3)),
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -123,6 +143,16 @@
 
 %-----------------------------------------------------------------------------%
 
+add_reserve_tag_pragmas([], !ModuleInfo, !Specs).
+add_reserve_tag_pragmas([SectionItem | SectionItems], !ModuleInfo, !Specs) :-
+    add_reserve_tag_pragma(SectionItem, !ModuleInfo, !Specs),
+    add_reserve_tag_pragmas(SectionItems, !ModuleInfo, !Specs).
+
+add_foreign_enum_pragmas([], !ModuleInfo, !Specs).
+add_foreign_enum_pragmas([SectionItem | SectionItems], !ModuleInfo, !Specs) :-
+    add_foreign_enum_pragma(SectionItem, !ModuleInfo, !Specs),
+    add_foreign_enum_pragmas(SectionItems, !ModuleInfo, !Specs).
+
 add_pass_2_pragmas([], !ModuleInfo, !Specs).
 add_pass_2_pragmas([SectionItem | SectionItems], !ModuleInfo, !Specs) :-
     add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs),
@@ -136,38 +166,78 @@ add_pass_3_pragmas([SectionItem | SectionItems],
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pass_2_pragma(ims_item(item_pragma_info)::in(ims_pragma_2),
+    % Check for invalid pragmas in the `interface' section.
+    %
+:- pred report_if_pragma_is_wrongly_in_interface(item_mercury_status::in,
+    item_pragma_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pragma inline(report_if_pragma_is_wrongly_in_interface/4).
+
+report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
+        !Specs) :-
+    ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, _SeqNum),
+    ( if
+        % Is the pragma in the interface?
+        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+        ItemExport = item_export_anywhere,
+
+        % Is the pragma *wrongly* in the interface?
+        pragma_allowed_in_interface(Pragma) = no,
+
+        % Is there any point in generating an error message about the pragma?
+        % If the pragma was created by the compiler, then the *real* problem
+        % is whatever bug in the compiler caused it to *create* this pragma,
+        % and the user cannot do anything about that bug.
+        MaybeAttrs = item_origin_user
+    then
+        ContextPieces = pragma_context_pieces(Pragma),
+        error_is_exported(Context, ContextPieces, !Specs)
+    else
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_reserve_tag_pragma(
+    ims_item(item_pragma_info)::in(ims_pragma_reserve_tag),
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_reserve_tag_pragma(SectionItem, !ModuleInfo, !Specs) :-
+    SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
+    ItemPragmaInfo = item_pragma_info(Pragma, _MaybeAttrs, Context, _SeqNum),
+    Pragma = pragma_reserve_tag(TypeCtor),
+    item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
+    add_pragma_reserve_tag(TypeCtor, TypeStatus, Context,
+        !ModuleInfo, !Specs).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_foreign_enum_pragma(
+    ims_item(item_pragma_info)::in(ims_pragma_foreign_enum),
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_foreign_enum_pragma(SectionItem, !ModuleInfo, !Specs) :-
+    SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
+    report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
+        !Specs),
+    ItemPragmaInfo = item_pragma_info(Pragma, _MaybeAttrs, Context, _SeqNum),
+    Pragma = pragma_foreign_enum(FEInfo),
+    item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
+    add_pragma_foreign_enum(FEInfo, TypeStatus, Context,
+        !ModuleInfo, !Specs).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pass_2_pragma(ims_item(item_pragma_info)::in(ims_pragma_pass_2),
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
     SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
-    ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, _SeqNum),
-    % Check for invalid pragmas in the `interface' section.
-    Allowed = pragma_allowed_in_interface(Pragma),
-    (
-        Allowed = no,
-        (
-            MaybeAttrs = item_origin_user,
-            ( if
-                ItemMercuryStatus = item_defined_in_this_module(ItemExport),
-                ItemExport = item_export_anywhere
-            then
-                MaybeAttrs = item_origin_user,
-                ContextPieces = pragma_context_pieces(Pragma),
-                error_is_exported(Context, ContextPieces, !Specs)
-            else
-                true
-            )
-        ;
-            MaybeAttrs = item_origin_compiler(_)
-            % We don't report this as an error. The *real* error is whatever
-            % bug in the compiler caused it to *create* this pragma, and
-            % the user cannot do anything about that bug.
-        )
-    ;
-        Allowed = yes
-    ),
+    report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
+        !Specs),
+    ItemPragmaInfo = item_pragma_info(Pragma, _MaybeAttrs, Context, _SeqNum),
     (
         Pragma = pragma_foreign_decl(FDInfo),
         % XXX STATUS Check ItemMercuryStatus
@@ -387,11 +457,6 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
         Pragma = pragma_foreign_export_enum(FEEInfo),
         item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
         add_pragma_foreign_export_enum(FEEInfo, TypeStatus, Context,
-            !ModuleInfo, !Specs)
-    ;
-        Pragma = pragma_foreign_enum(FEInfo),
-        item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
-        add_pragma_foreign_enum(FEInfo, TypeStatus, Context,
             !ModuleInfo, !Specs)
     ).
 
@@ -978,7 +1043,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred add_pass_3_pragma(ims_item(item_pragma_info)::in(ims_pragma_3),
+:- pred add_pass_3_pragma(ims_item(item_pragma_info)::in(ims_pragma_pass_3),
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1022,11 +1087,6 @@ add_pass_3_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs) :-
         Pragma = pragma_fact_table(FTInfo),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs)
-    ;
-        Pragma = pragma_reserve_tag(TypeCtor),
-        item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
-        add_pragma_reserve_tag(TypeCtor, TypeStatus, Context,
-            !ModuleInfo, !Specs)
     ;
         Pragma = pragma_oisu(OISUInfo),
         add_pragma_oisu(OISUInfo, ItemMercuryStatus, Context,
@@ -1230,7 +1290,7 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         hlds_data.get_type_defn_status(TypeDefn0, TypeStatus),
         ( if
-            not (
+            (
                 TypeStatus = PragmaStatus
             ;
                 TypeStatus = type_status(status_abstract_exported),
@@ -1239,11 +1299,6 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                 )
             )
         then
-            ErrorPieces = [words("error:"), pragma_decl("reserve_tag"),
-                words("declaration must have"),
-                words("the same visibility as the type definition.")],
-            MaybeError = yes({severity_error, ErrorPieces})
-        else
             (
                 TypeBody0 = hlds_du_type(Body, _CtorTags0, _CheaperTagTest,
                     _DuTypeKind, MaybeUserEqComp, MaybeDirectArgCtors,
@@ -1287,6 +1342,11 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                     words("is not a discriminated union type."), nl],
                 MaybeError = yes({severity_error, ErrorPieces})
             )
+        else
+            ErrorPieces = [words("error:"), pragma_decl("reserve_tag"),
+                words("declaration must have"),
+                words("the same visibility as the type definition.")],
+            MaybeError = yes({severity_error, ErrorPieces})
         )
     else
         ErrorPieces = [words("error: undefined type"),

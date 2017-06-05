@@ -43,110 +43,113 @@
 %-----------------------------------------------------------------------------%
 
 add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
-        !ModuleInfo, !Specs) :-
+        !ModuleInfo, Specs0, Specs) :-
     FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
         Attributes, Overrides),
     TypeCtor = type_ctor(TypeName, TypeArity),
-    module_info_get_type_table(!.ModuleInfo, TypeTable),
     ContextPieces = [words("In"), pragma_decl("foreign_export_enum"),
         words("declaration for type"),
         qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
         suffix(":"), nl],
-    ( if
-        % Emit an error message for foreign_export_enum pragmas for the
-        % builtin atomic types.
-        TypeArity = 0,
-        is_builtin_type_sym_name(TypeName)
-    then
-        ErrorPieces = [words("error: "),
-            unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            words("is a builtin type."), nl],
-        MaybeError = yes({severity_error, ErrorPieces})
-    else
+    some [!ErrorSeveritiesPieces, !Specs] (
+        !:ErrorSeveritiesPieces = [],
+        !:Specs = [],
+        report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces),
+
+        module_info_get_type_table(!.ModuleInfo, TypeTable),
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
             get_type_defn_body(TypeDefn, TypeBody),
             (
-                ( TypeBody = hlds_eqv_type(_)
-                ; TypeBody = hlds_abstract_type(_)
-                ; TypeBody = hlds_solver_type(_, _)
-                ; TypeBody = hlds_foreign_type(_)
+                (
+                    TypeBody = hlds_eqv_type(_),
+                    NonDu = "an equivalence type"
+                ;
+                    TypeBody = hlds_abstract_type(_),
+                    NonDu = "an abstract type"
+                ;
+                    TypeBody = hlds_solver_type(_, _),
+                    NonDu = "a solver type"
+                ;
+                    TypeBody = hlds_foreign_type(_),
+                    NonDu = "a foreign type"
                 ),
-                ErrorPieces = [words("error: "),
-                    qual_sym_name_and_arity(
-                        sym_name_arity(TypeName, TypeArity)),
-                    words("is not an enumeration type."), nl],
-                MaybeError = yes({severity_error, ErrorPieces})
+                report_not_enum_type(TypeName, TypeArity,
+                    not_enum_non_du(NonDu), !ErrorSeveritiesPieces)
             ;
                 % XXX How should we handle IsForeignType here?
-                TypeBody = hlds_du_type(Ctors, _TagValues, _CheaperTagTest,
+                TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
                     DuTypeKind, _MaybeUserEq, _MaybeDirectArgCtors,
-                    _ReservedTag, _ReservedAddr, _IsForeignType),
+                    ReservedTag, _ReservedAddr, _IsForeignType),
+                report_if_reserved_tag(TypeName, TypeArity, ReservedTag,
+                    !ErrorSeveritiesPieces),
+                find_enum_nonenum_cons_ids(map.keys(TagValues),
+                    [], _EnumSymNames, [], NonEnumConsIds),
                 (
+                    ( DuTypeKind = du_type_kind_general
+                    ; DuTypeKind = du_type_kind_notag(_, _, _)
+                    ),
+                    report_not_enum_type(TypeName, TypeArity,
+                        not_enum_du(ReservedTag, NonEnumConsIds),
+                        !ErrorSeveritiesPieces)
+                ;
                     ( DuTypeKind = du_type_kind_mercury_enum
                     ; DuTypeKind = du_type_kind_foreign_enum(_)
                     ; DuTypeKind = du_type_kind_direct_dummy
-                    ),
-                    Attributes = export_enum_attributes(MaybePrefix,
-                        MakeUpperCase),
+                    )
+                ),
+
+                Attributes = export_enum_attributes(MaybePrefix, MakeUpperCase),
+                (
+                    MaybePrefix = yes(Prefix)
+                ;
+                    MaybePrefix = no,
+                    Prefix = ""
+                ),
+                build_export_enum_overrides_map(TypeName, Context,
+                    ContextPieces, Overrides, MaybeOverridesMap, !Specs),
+                (
+                    MaybeOverridesMap = yes(OverridesMap),
+                    build_export_enum_name_map(ContextPieces, Lang,
+                        TypeName, TypeArity, Context, Prefix,
+                        MakeUpperCase, OverridesMap, Ctors, MaybeMapping,
+                        !Specs),
                     (
-                        MaybePrefix = yes(Prefix)
-                    ;
-                        MaybePrefix = no,
-                        Prefix = ""
-                    ),
-                    build_export_enum_overrides_map(TypeName, Context,
-                        ContextPieces, Overrides, MaybeOverridesMap, !Specs),
-                    (
-                        MaybeOverridesMap = yes(OverridesMap),
-                        build_export_enum_name_map(ContextPieces, Lang,
-                            TypeName, TypeArity, Context, Prefix,
-                            MakeUpperCase, OverridesMap, Ctors, MaybeMapping,
-                            !Specs),
-                        (
-                            MaybeMapping = yes(Mapping),
-                            ExportedEnum = exported_enum_info(Lang, Context,
-                                TypeCtor, Mapping),
+                        MaybeMapping = yes(Mapping),
+                        ExportedEnum = exported_enum_info(Lang, Context,
+                            TypeCtor, Mapping, Ctors, TagValues),
+                        ( if
+                            !.ErrorSeveritiesPieces = [],
+                            !.Specs = []
+                        then
                             module_info_get_exported_enums(!.ModuleInfo,
                                 ExportedEnums0),
                             ExportedEnums = [ExportedEnum | ExportedEnums0],
                             module_info_set_exported_enums(ExportedEnums,
                                 !ModuleInfo)
-                        ;
-                            MaybeMapping = no
+                        else
+                            true
                         )
                     ;
-                        MaybeOverridesMap = no
-                    ),
-                    MaybeError = no
+                        MaybeMapping = no
+                    )
                 ;
-                    ( DuTypeKind = du_type_kind_general
-                    ; DuTypeKind = du_type_kind_notag(_, _, _)
-                    ),
-                    % XXX Maybe we should add a verbose component
-                    % that identifies the non-zero arity constructors.
-                    ErrorPieces = [words("error: "),
-                        qual_sym_name_and_arity(
-                            sym_name_arity(TypeName, TypeArity)),
-                        words("is not an enumeration type."),
-                        words("It has one or more non-zero arity"),
-                        words("constructors."), nl],
-                    MaybeError = yes({severity_error, ErrorPieces})
+                    MaybeOverridesMap = no
                 )
             )
         else
             % This case corresponds to an undefined type. We do not issue
             % an error message for it here, since module qualification
             % will have already done so.
-            MaybeError = no
-        )
-    ),
-    (
-        MaybeError = no
-    ;
-        MaybeError = yes({Severity, MaybeErrorPieces}),
-        Msg = simple_msg(Context, [always(ContextPieces ++ MaybeErrorPieces)]),
-        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
+            true
+        ),
+        (
+            !.ErrorSeveritiesPieces = [_ | _],
+            list.foldl(add_error_severity_pieces(Context, ContextPieces),
+                !.ErrorSeveritiesPieces, !Specs)
+        ;
+            !.ErrorSeveritiesPieces = []
+        ),
+        Specs = !.Specs ++ Specs0
     ).
 
 :- pred build_export_enum_overrides_map(sym_name::in, prog_context::in,
@@ -166,19 +169,20 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
     % Strip off module qualifiers that match those of the type being exported.
     % We leave those that do not match so that they can be reported as errors
     % later.
-    StripQualifiers = (func(Name0) = Name :-
-        (
-            Name0 = qualified(ModuleQualifier, UnqualName),
-            ( if ModuleQualifier = ModuleName then
-                Name = unqualified(UnqualName)
-            else
+    StripQualifiers =
+        ( func(Name0) = Name :-
+            (
+                Name0 = qualified(ModuleQualifier, UnqualName),
+                ( if ModuleQualifier = ModuleName then
+                    Name = unqualified(UnqualName)
+                else
+                    Name = Name0
+                )
+            ;
+                Name0 = unqualified(_),
                 Name = Name0
             )
-        ;
-            Name0 = unqualified(_),
-            Name = Name0
-        )
-    ),
+        ),
     OverridesList = assoc_list.map_keys_only(StripQualifiers,
         OverridesList0),
     ( if bimap.from_assoc_list(OverridesList, OverridesMap0) then
@@ -362,160 +366,178 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
     ).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
+add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo,
+        Specs0, Specs) :-
     FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignTagValues),
     TypeCtor = type_ctor(TypeName, TypeArity),
-    module_info_get_type_table(!.ModuleInfo, TypeTable0),
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
         words("declaration for type"),
         qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
         suffix(":"), nl],
-    ( if
-        % Emit an error message for foreign_enum pragmas for the
-        % builtin atomic types.
-        TypeArity = 0,
-        is_builtin_type_sym_name(TypeName)
-    then
-        ErrorPieces = [words("error: "),
-            unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            words("is a builtin type."), nl],
-        MaybeError = yes({severity_error, ErrorPieces})
-    else if
-        search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0)
-    then
-        get_type_defn_body(TypeDefn0, TypeBody0),
-        (
-            ( TypeBody0 = hlds_eqv_type(_)
-            ; TypeBody0 = hlds_abstract_type(_)
-            ; TypeBody0 = hlds_solver_type(_, _)
-            ; TypeBody0 = hlds_foreign_type(_)
-            ),
-            ErrorPieces = [words("error: "),
-                qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-                words("is not an enumeration type."), nl],
-            MaybeError = yes({severity_error, ErrorPieces})
-        ;
-            TypeBody0 = hlds_du_type(Ctors, OldTagValues, CheaperTagTest,
-                DuTypeKind0, MaybeUserEq, MaybeDirectArgCtors,
-                ReservedTag, ReservedAddr, IsForeignType),
-            % Work out what language's foreign_enum pragma we should be
-            % looking at for the current compilation target language.
-            module_info_get_globals(!.ModuleInfo, Globals),
-            globals.get_target(Globals, TargetLanguage),
-            LangForForeignEnums =
-                target_lang_to_foreign_enum_lang(TargetLanguage),
-            (
-                ( DuTypeKind0 = du_type_kind_direct_dummy
-                ; DuTypeKind0 = du_type_kind_mercury_enum
-                ),
-                get_type_defn_status(TypeDefn0, TypeStatus),
-                % Either both the type and the pragma are defined in this
-                % module or they are both imported. Any other combination
-                % is illegal.
-                IsTypeLocal = type_status_defined_in_this_module(TypeStatus),
-                ( if
-                    (
-                        IsTypeLocal = yes,
-                        ( PragmaStatus = type_status(status_local)
-                        ; PragmaStatus =
-                            type_status(status_exported_to_submodules)
-                        )
-                    ;
-                        IsTypeLocal = no,
-                        type_status_is_imported(PragmaStatus) = yes
+
+    some [!ErrorSeveritiesPieces, !Specs] (
+        !:ErrorSeveritiesPieces = [],
+        !:Specs = [],
+        report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces),
+
+        module_info_get_type_table(!.ModuleInfo, TypeTable0),
+        ( if search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0) then
+            get_type_defn_status(TypeDefn0, TypeStatus),
+            % Either both the type and the pragma are defined in this module,
+            % or they are both imported. Any other combination is illegal.
+            IsTypeLocal = type_status_defined_in_this_module(TypeStatus),
+            ( if
+                (
+                    IsTypeLocal = yes,
+                    ( PragmaStatus = type_status(status_local)
+                    ; PragmaStatus =
+                        type_status(status_exported_to_submodules)
                     )
-                then
-                    % XXX We should also check that this type is not
-                    % the subject of a reserved tag pragma.
-                    DuTypeKind = du_type_kind_foreign_enum(Lang),
-                    list.foldl(gather_ctor_name, Ctors, set_tree234.init, CtorNameSet),
-                    build_foreign_enum_tag_map(Context, ContextPieces,
-                        CtorNameSet, TypeName, ForeignTagValues,
-                        MaybeForeignTagMap, !Specs),
-                    ( if
-                        LangForForeignEnums = Lang,
-                        MaybeForeignTagMap = yes(ForeignTagMap)
-                    then
-                        map.foldl2(make_foreign_tag(Lang, ForeignTagMap),
-                            OldTagValues, map.init, TagValues, [],
-                            UnmappedCtors),
-                        (
-                            UnmappedCtors = [],
-                            TypeBody = hlds_du_type(Ctors, TagValues,
-                                CheaperTagTest, DuTypeKind, MaybeUserEq,
-                                MaybeDirectArgCtors, ReservedTag, ReservedAddr,
-                                IsForeignType),
-                            set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
-                            replace_type_ctor_defn(TypeCtor, TypeDefn,
-                                TypeTable0, TypeTable),
-                            module_info_set_type_table(TypeTable, !ModuleInfo)
-                        ;
-                            UnmappedCtors = [_ | _],
-                            add_foreign_enum_unmapped_ctors_error(Context,
-                                ContextPieces, UnmappedCtors, !Specs)
-                        )
-                    else
-                        % If there are no matching foreign_enum pragmas for
-                        % this target language, then don't do anything.
-                        true
-                    ),
-                    MaybeError = no
-                else if
-                    PragmaStatus = type_status(status_exported)
-                then
-                    add_foreign_enum_pragma_in_interface_error(Context,
-                        TypeName, TypeArity, !Specs),
-                    MaybeError = no
-                else
-                    ErrorPieces = [words("error: "),
-                        qual_sym_name_and_arity(
-                            sym_name_arity(TypeName, TypeArity)),
-                        words("is not defined in this module.")],
-                    MaybeError = yes({severity_error, ErrorPieces})
+                ;
+                    IsTypeLocal = no,
+                    type_status_is_imported(PragmaStatus) = yes
                 )
-            ;
-                DuTypeKind0 = du_type_kind_foreign_enum(_),
-                ( if
-                    ( LangForForeignEnums \= Lang
-                    ; PragmaStatus = type_status(status_opt_imported)
-                    )
-                then
-                    MaybeError = no
-                else
-                    % XXX appending ContextPieces (as below) makes this
-                    % read awkwardly -- also we should report the location
-                    % of the duplicate foreign_enum pragmas.
-                    ErrorPieces = [words("error: "),
-                        qual_sym_name_and_arity(
-                            sym_name_arity(TypeName, TypeArity)),
-                        words("has multiple foreign_enum pragmas.")],
-                    MaybeError = yes({severity_error, ErrorPieces})
-                )
-            ;
-                ( DuTypeKind0 = du_type_kind_general
-                ; DuTypeKind0 = du_type_kind_notag(_, _, _)
-                ),
-                ErrorPieces = [words("error: "),
+            then
+                true
+            else if
+                PragmaStatus = type_status(status_exported)
+            then
+                add_foreign_enum_pragma_in_interface_error(Context,
+                    TypeName, TypeArity, !Specs)
+            else
+                NotThisModuleErrorPieces = [words("error: "),
                     qual_sym_name_and_arity(
                         sym_name_arity(TypeName, TypeArity)),
-                    words("is not an enumeration type."), nl],
-                MaybeError = yes({severity_error, ErrorPieces})
+                    words("is not defined in this module.")],
+                !:ErrorSeveritiesPieces =
+                    [{severity_error, NotThisModuleErrorPieces} |
+                        !.ErrorSeveritiesPieces]
+            ),
+
+            get_type_defn_body(TypeDefn0, TypeBody0),
+            (
+                (
+                    TypeBody0 = hlds_eqv_type(_),
+                    NonDu = "an equivalence type"
+                ;
+                    TypeBody0 = hlds_abstract_type(_),
+                    NonDu = "an abstract type"
+                ;
+                    TypeBody0 = hlds_solver_type(_, _),
+                    NonDu = "a solver type"
+                ;
+                    TypeBody0 = hlds_foreign_type(_),
+                    NonDu = "a foreign type"
+                ),
+                report_not_enum_type(TypeName, TypeArity,
+                    not_enum_non_du(NonDu), !ErrorSeveritiesPieces)
+            ;
+                TypeBody0 = hlds_du_type(Ctors, OldTagValues, CheaperTagTest,
+                    DuTypeKind0, MaybeUserEq, MaybeDirectArgCtors,
+                    ReservedTag, ReservedAddr, IsForeignType),
+                report_if_reserved_tag(TypeName, TypeArity, ReservedTag,
+                    !ErrorSeveritiesPieces),
+                find_enum_nonenum_cons_ids(map.keys(OldTagValues),
+                    [], EnumSymNames, [], NonEnumConsIds),
+
+                % Work out what language's foreign_enum pragma we should be
+                % looking at for the current compilation target language.
+                module_info_get_globals(!.ModuleInfo, Globals),
+                globals.get_target(Globals, TargetLanguage),
+                LangForForeignEnums =
+                    target_lang_to_foreign_enum_lang(TargetLanguage),
+                (
+                    ( DuTypeKind0 = du_type_kind_general
+                    ; DuTypeKind0 = du_type_kind_notag(_, _, _)
+                    ),
+                    report_not_enum_type(TypeName, TypeArity,
+                        not_enum_du(ReservedTag, NonEnumConsIds),
+                        !ErrorSeveritiesPieces)
+                ;
+                    DuTypeKind0 = du_type_kind_foreign_enum(_),
+                    ( if
+                        ( LangForForeignEnums \= Lang
+                        ; PragmaStatus = type_status(status_opt_imported)
+                        )
+                    then
+                        true
+                    else
+                        % XXX appending ContextPieces (as below) makes this
+                        % read awkwardly -- also we should report the location
+                        % of the duplicate foreign_enum pragmas.
+                        MultiplePragmasErrorPieces = [words("error: "),
+                            qual_sym_name_and_arity(
+                                sym_name_arity(TypeName, TypeArity)),
+                            words("has multiple foreign_enum pragmas.")],
+                        !:ErrorSeveritiesPieces =
+                            [{severity_error, MultiplePragmasErrorPieces} |
+                                !.ErrorSeveritiesPieces]
+                    )
+                ;
+                    ( DuTypeKind0 = du_type_kind_direct_dummy
+                    ; DuTypeKind0 = du_type_kind_mercury_enum
+                    ),
+                    expect(unify(NonEnumConsIds, []), $pred,
+                        "direct_dummy or mercury_enum with non-enum cons_id(s)")
+                ),
+
+                DuTypeKind = du_type_kind_foreign_enum(Lang),
+                list.foldl(gather_ctor_name, Ctors,
+                    set_tree234.init, CtorNameSet),
+                build_foreign_enum_tag_map(Context, ContextPieces,
+                    CtorNameSet, TypeName, ForeignTagValues,
+                    MaybeForeignTagMap, !Specs),
+                ( if
+                    LangForForeignEnums = Lang,
+                    MaybeForeignTagMap = yes(ForeignTagMap)
+                then
+                    list.foldl2(
+                        make_foreign_tag(TypeCtor, Lang, ForeignTagMap),
+                        EnumSymNames, map.init, TagValues, [], UnmappedCtors),
+                    (
+                        UnmappedCtors = []
+                    ;
+                        UnmappedCtors = [_ | _],
+                        add_foreign_enum_unmapped_ctors_error(Context,
+                            ContextPieces, UnmappedCtors, !Specs)
+                    ),
+                    ( if
+                        !.ErrorSeveritiesPieces = [],
+                        !.Specs = []
+                    then
+                        TypeBody = hlds_du_type(Ctors, TagValues,
+                            CheaperTagTest, DuTypeKind, MaybeUserEq,
+                            MaybeDirectArgCtors, ReservedTag, ReservedAddr,
+                            IsForeignType),
+                        set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
+                        replace_type_ctor_defn(TypeCtor, TypeDefn,
+                            TypeTable0, TypeTable),
+                        module_info_set_type_table(TypeTable, !ModuleInfo)
+                    else
+                        true
+                    )
+                else
+                    % If there are no matching foreign_enum pragmas for
+                    % this target language, then don't do anything.
+                    true
+                )
             )
-        )
-    else
-        % This else-branch corresponds to an undefined type. We do not
-        % issue an error message for it here, since module qualification
-        % will have already done so.
-        MaybeError = no
-    ),
-    (
-        MaybeError = no
-    ;
-        MaybeError = yes({Severity, MaybeErrorPieces}),
-        Msg = simple_msg(Context, [always(ContextPieces ++ MaybeErrorPieces)]),
-        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
+        else
+            % This else-branch corresponds to an undefined type. We do not
+            % issue an error message for it here, since module qualification
+            % will have already done so.
+            true
+        ),
+        (
+            !.ErrorSeveritiesPieces = [_ | _],
+            list.foldl(add_error_severity_pieces(Context, ContextPieces),
+                !.ErrorSeveritiesPieces, !Specs)
+        ;
+            !.ErrorSeveritiesPieces = []
+        ),
+        Specs = !.Specs ++ Specs0
     ).
 
 :- pred gather_ctor_name(constructor::in,
@@ -540,7 +562,8 @@ build_foreign_enum_tag_map(Context, ContextPieces, CtorNameSet, TypeName,
         unexpected($module, $pred,
             "unqualified type name while processing foreign tags.")
     ),
-    list.map_foldl2(fixup_foreign_tag_val_qualification(CtorNameSet, TypeModuleName),
+    list.map_foldl2(
+        fixup_foreign_tag_val_qualification(CtorNameSet, TypeModuleName),
         ForeignTagValues0, ForeignTagValues1, [], BadCtors, [], UnknownCtors),
     (
         UnknownCtors = []
@@ -607,20 +630,30 @@ target_lang_to_foreign_enum_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_enum_lang(target_java) = lang_java.
 target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
 
-:- pred make_foreign_tag(foreign_language::in, map(sym_name, string)::in,
-    cons_id::in, cons_tag::in,
+:- pred find_enum_nonenum_cons_ids(list(cons_id)::in,
+    list(sym_name)::in, list(sym_name)::out,
+    list(cons_id)::in, list(cons_id)::out) is det.
+
+find_enum_nonenum_cons_ids([], !EnumSymNames, !NonEnumConsIds).
+find_enum_nonenum_cons_ids([ConsId | ConsIds],
+        !EnumSymNames, !NonEnumConsIds) :-
+    ( if ConsId = cons(ConsSymName, 0, _) then
+        !:EnumSymNames = [ConsSymName | !.EnumSymNames]
+    else
+        !:NonEnumConsIds = [ConsId | !.NonEnumConsIds]
+    ),
+    find_enum_nonenum_cons_ids(ConsIds, !EnumSymNames, !NonEnumConsIds).
+
+:- pred make_foreign_tag(type_ctor::in, foreign_language::in,
+    map(sym_name, string)::in, sym_name::in,
     cons_tag_values::in, cons_tag_values::out,
     list(sym_name)::in, list(sym_name)::out) is det.
 
-make_foreign_tag(ForeignLanguage, ForeignTagMap, ConsId, _, !ConsTagValues,
-        !UnmappedCtors) :-
-    ( if ConsId = cons(ConsSymName0, 0, _) then
-        ConsSymName = ConsSymName0
-    else
-        unexpected($module, $pred, "non arity zero enumeration constant.")
-    ),
+make_foreign_tag(TypeCtor, ForeignLanguage, ForeignTagMap, ConsSymName,
+        !ConsTagValues, !UnmappedCtors) :-
     ( if map.search(ForeignTagMap, ConsSymName, ForeignTagValue) then
         ForeignTag = foreign_tag(ForeignLanguage, ForeignTagValue),
+        ConsId = cons(ConsSymName, 0, TypeCtor),
         map.set(ConsId, ForeignTag, !ConsTagValues)
     else
         !:UnmappedCtors = [ConsSymName | !.UnmappedCtors]
@@ -668,7 +701,7 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
     Msg = simple_msg(Context,
         [always(PrefixPieces), CtorsComponent]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-    list.cons(Spec, !Specs).
+    !:Specs = [Spec | !.Specs].
 
 :- func unqual_ctors_to_line_pieces(list(sym_name), list(format_component))
     = list(format_component).
@@ -707,7 +740,7 @@ add_foreign_enum_bijection_error(Context, ContextPieces, !Specs) :-
         words("foreign values does not form a bijection."), nl],
     Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-    list.cons(Spec, !Specs).
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 
@@ -723,7 +756,120 @@ add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
         words("in module interface."), nl],
     Msg = simple_msg(Context, [always(ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-    list.cons(Spec, !Specs).
+    !:Specs = [Spec | !.Specs].
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_error_severity_pieces(prog_context::in, list(format_component)::in,
+    {error_severity, list(format_component)}::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_error_severity_pieces(Context, ContextPieces, {Severity, ErrorPieces},
+        !Specs) :-
+    Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+%----------------------------------------------------------------------------%
+
+:- pred report_if_builtin_type(sym_name::in, arity::in,
+    list({error_severity, list(format_component)})::in,
+    list({error_severity, list(format_component)})::out) is det.
+
+report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces) :-
+    ( if
+        % Emit an error message for foreign_enum and foreign_export_enum
+        % pragmas for the builtin atomic types.
+        TypeArity = 0,
+        is_builtin_type_sym_name(TypeName)
+    then
+        BuiltinErrorPieces = [words("error: "),
+            unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            words("is a builtin type."), nl],
+        !:ErrorSeveritiesPieces = [{severity_error, BuiltinErrorPieces} |
+            !.ErrorSeveritiesPieces]
+    else
+        true
+    ).
+
+:- pred report_if_reserved_tag(sym_name::in, arity::in, uses_reserved_tag::in,
+    list({error_severity, list(format_component)})::in,
+    list({error_severity, list(format_component)})::out) is det.
+
+report_if_reserved_tag(TypeName, TypeArity, ReservedTag,
+        !ErrorSeveritiesPieces) :-
+    (
+        ReservedTag = does_not_use_reserved_tag
+    ;
+        ReservedTag = uses_reserved_tag,
+        ReservedTagErrorPieces = [words("error: "),
+            words("this pragma conflicts with"),
+            words("the reserve_tag pragma on "),
+            unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            suffix("."), nl],
+        !:ErrorSeveritiesPieces =
+            [{severity_error, ReservedTagErrorPieces} | !.ErrorSeveritiesPieces]
+    ).
+
+:- type not_enum_info
+    --->    not_enum_du(
+                % Does the type have a reserved tag?
+                uses_reserved_tag,
+
+                % The non-enum cons_ids.
+                list(cons_id)
+            )
+    ;       not_enum_non_du(
+                % What kind of non-du type is it?
+                string
+            ).
+
+:- pred report_not_enum_type(sym_name::in, arity::in, not_enum_info::in,
+    list({error_severity, list(format_component)})::in,
+    list({error_severity, list(format_component)})::out) is det.
+
+report_not_enum_type(TypeName, TypeArity, NotEnumInfo,
+        !ErrorSeveritiesPieces) :-
+    (
+        NotEnumInfo = not_enum_non_du(TypeKind),
+        ErrorPieces = [words("error: "),
+            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            words("is not an enumeration type;"),
+            words("it is"), words(TypeKind), suffix("."), nl],
+        !:ErrorSeveritiesPieces =
+            [{severity_error, ErrorPieces} | !.ErrorSeveritiesPieces]
+    ;
+        NotEnumInfo = not_enum_du(ReservedTag, NonEnumConsIds),
+        list.sort_and_remove_dups(NonEnumConsIds, SortedNonEnumConsIds),
+        (
+            SortedNonEnumConsIds = [],
+            expect(unify(ReservedTag, uses_reserved_tag), $pred,
+                "no non-enum cons_ids, but no reserved tag")
+            % We don't want to generate an error saying "not an enumeration
+            % type" here, because the type would have been an enumeration
+            % type before the reservation of a tag made that impossible.
+        ;
+            SortedNonEnumConsIds = [_ | _],
+            ConsIdPieces =
+                component_list_to_pieces(
+                    list.map(wrap_unqual_cons_id_and_maybe_arity,
+                        SortedNonEnumConsIds)),
+            ItHasThese = choose_number(SortedNonEnumConsIds,
+                words("It has this non-zero arity constructor:"),
+                words("It has these non-zero arity constructors:")),
+            ErrorPieces = [words("error: "),
+                qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+                words("is not an enumeration type."), ItHasThese, nl] ++
+                ConsIdPieces ++ [suffix("."), nl],
+            !:ErrorSeveritiesPieces =
+                [{severity_error, ErrorPieces} | !.ErrorSeveritiesPieces]
+        )
+    ).
+
+:- func wrap_unqual_cons_id_and_maybe_arity(cons_id) = format_component.
+
+wrap_unqual_cons_id_and_maybe_arity(ConsId) =
+    unqual_cons_id_and_maybe_arity(ConsId).
 
 %----------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_pragma.add_foreign_enum.

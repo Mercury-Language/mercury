@@ -166,7 +166,9 @@
                 foreign_language,
                 prog_context,
                 type_ctor,
-                map(sym_name, string)
+                map(sym_name, string),
+                list(constructor),
+                cons_tag_values
             ).
 
 :- type proc_analysis_kind

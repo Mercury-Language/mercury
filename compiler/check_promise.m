@@ -238,7 +238,8 @@ check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS, Context,
         DefinedInImpl = type_status_defined_in_impl_section(TypeStatus),
         (
             DefinedInImpl = yes,
-            IdPieces = [words("constructor"), cons_id_and_maybe_arity(ConsId)],
+            IdPieces = [words("constructor"),
+                qual_cons_id_and_maybe_arity(ConsId)],
             report_assertion_interface_error(ModuleInfo, Context, IdPieces,
                 !Specs)
         ;

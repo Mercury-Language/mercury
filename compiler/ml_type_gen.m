@@ -1227,39 +1227,23 @@ ml_target_uses_constructors(target_erlang) =
 
 ml_gen_exported_enums(ModuleInfo, MLDS_ExportedEnums) :-
      module_info_get_exported_enums(ModuleInfo, ExportedEnumInfo),
-     module_info_get_type_table(ModuleInfo, TypeTable),
-     list.map(ml_gen_exported_enum(ModuleInfo, TypeTable),
-        ExportedEnumInfo, MLDS_ExportedEnums).
+     list.map(ml_gen_exported_enum, ExportedEnumInfo, MLDS_ExportedEnums).
 
-:- pred ml_gen_exported_enum(module_info::in, type_table::in,
-    exported_enum_info::in, mlds_exported_enum::out) is det.
+:- pred ml_gen_exported_enum(exported_enum_info::in,
+    mlds_exported_enum::out) is det.
 
-ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
-        MLDS_ExportedEnum) :-
-    ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor, Mapping),
-    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    get_type_defn_body(TypeDefn, TypeBody),
-    (
-        ( TypeBody = hlds_eqv_type(_)
-        ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_solver_type(_, _)
-        ; TypeBody = hlds_abstract_type(_)
-        ),
-        unexpected($module, $pred, "invalid type")
-    ;
-        TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
-            _IsEnumOrDummy, _MaybeUserEq, _MaybeDirectArgCtors,
-            _ReservedTag, _ReservedAddr, _IsForeignType),
-        ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
-        MLDS_Type = mlds_class_type(QualifiedClassName, MLDS_ClassArity,
-            mlds_enum),
-        list.foldl(
-            generate_foreign_enum_constant(TypeCtor, Mapping, TagValues,
-                MLDS_Type),
-            Ctors, [], ExportConstants),
-        MLDS_ExportedEnum = mlds_exported_enum(Lang, Context, TypeCtor,
-            ExportConstants)
-    ).
+ml_gen_exported_enum(ExportedEnumInfo, MLDS_ExportedEnum) :-
+    ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor, Mapping,
+        Ctors, TagValues),
+    ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
+    MLDS_Type = mlds_class_type(QualifiedClassName, MLDS_ClassArity,
+        mlds_enum),
+    list.foldl(
+        generate_foreign_enum_constant(TypeCtor, Mapping, TagValues,
+            MLDS_Type),
+        Ctors, [], ExportConstants),
+    MLDS_ExportedEnum = mlds_exported_enum(Lang, Context, TypeCtor,
+        ExportConstants).
 
 :- pred generate_foreign_enum_constant(type_ctor::in,
     map(sym_name, string)::in, cons_tag_values::in, mlds_type::in,

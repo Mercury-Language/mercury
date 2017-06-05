@@ -119,7 +119,7 @@
 
 assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         !:CtorTags, ReservedAddr, DuTypeKind) :-
-    % Work out how many tag bits and reserved addresses we've got to play with.
+    % Work out how many tag bits and reserved addresses we have available.
     globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
     globals.lookup_int_option(Globals, num_reserved_addresses,
         NumReservedAddresses),
@@ -198,9 +198,8 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
                 % Assign shared_with_reserved_address(...) representations
                 % for the remaining constructors.
                 RemainingCtors = LeftOverConstants ++ Functors,
-                GetRA = (func(reserved_address_tag(RA)) = RA is semidet),
-                ReservedAddresses = list.filter_map(GetRA,
-                    map.values(!.CtorTags)),
+                list.filter_map(is_reserved_address_tag,
+                    map.values(!.CtorTags), ReservedAddresses),
                 assign_unshared_tags(TypeCtor, RemainingCtors, 0, 0,
                     ReservedAddresses, !CtorTags)
             else
@@ -214,6 +213,11 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
             )
         )
     ).
+
+:- pred is_reserved_address_tag(cons_tag::in, reserved_address::out)
+    is semidet.
+
+is_reserved_address_tag(reserved_address_tag(RA), RA).
 
 :- pred assign_enum_constants(type_ctor::in, list(constructor)::in, int::in,
     cons_tag_values::in, cons_tag_values::out) is det.
@@ -290,7 +294,7 @@ assign_reserved_symbolic_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
     int::in, int::out, cons_tag_values::in, cons_tag_values::out) is det.
 
 assign_constant_tags(TypeCtor, Constants, InitTag, NextTag, !CtorTags) :-
-    % If there's no constants, don't do anything. Otherwise, allocate the
+    % If there are no constants, don't do anything. Otherwise, allocate the
     % first tag for the constants, and give them all shared local tags
     % with that tag as the primary tag, and different secondary tags
     % starting from zero.
@@ -316,9 +320,9 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         !CtorTags) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
     ConsId = cons(Name, Arity, TypeCtor),
-    % If there's only one functor, give it the "single_functor" (untagged)
-    % representation, rather than giving it unshared_tag(0).
     ( if
+        % If there is only one functor, give it the "single_functor" (untagged)
+        % representation, rather than giving it unshared_tag(0).
         Val = 0,
         Ctors = []
     then
@@ -329,7 +333,7 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         % the compiler.
         map.set(ConsId, Tag, !CtorTags)
     else if
-        % If we're about to run out of unshared tags, start assigning
+        % If we are about to run out of unshared tags, start assigning
         % shared remote tags instead.
         Val = MaxTag,
         Ctors = [_ | _]

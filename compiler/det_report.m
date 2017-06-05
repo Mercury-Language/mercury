@@ -1745,8 +1745,7 @@ cons_id_list_to_pieces(ConsId1, ConsIds2Plus, EndCommaPieces) = Pieces :-
     % they will know which module defined it, and hence which modules defined
     % its function symbols. Repeating the name of that module for each cons_id
     % is much more likely to be distracting clutter than helpful information.
-    strip_module_qualifier_from_cons_id(ConsId1, ConsIdToUse1),
-    ConsIdPiece1 = cons_id_and_maybe_arity(ConsIdToUse1),
+    ConsIdPiece1 = unqual_cons_id_and_maybe_arity(ConsId1),
     (
         ConsIds2Plus = [ConsId2 | ConsIds3Plus],
         (
@@ -1974,7 +1973,7 @@ failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
         FailingGoal = deconstruct_goal(Var, ConsId),
         VarStr = mercury_var_to_name_only(VarSet, Var),
         Pieces = [words("Unification of"), fixed(VarStr), words("with"),
-            cons_id_and_maybe_arity(ConsId), words("can fail.")]
+            qual_cons_id_and_maybe_arity(ConsId), words("can fail.")]
     ;
         FailingGoal = call_goal(PredId, _ProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),

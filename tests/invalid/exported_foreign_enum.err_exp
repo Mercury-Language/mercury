@@ -1,0 +1,30 @@
+exported_foreign_enum.m:052: In `:- pragma foreign_export_enum' declaration for
+exported_foreign_enum.m:052:   type `exported_foreign_enum.foo'/0:
+exported_foreign_enum.m:052:   error: this pragma conflicts with the
+exported_foreign_enum.m:052:   reserve_tag pragma on `foo'/0.
+exported_foreign_enum.m:052: In `:- pragma foreign_export_enum' declaration for
+exported_foreign_enum.m:052:   type `exported_foreign_enum.foo'/0:
+exported_foreign_enum.m:052:   error: `exported_foreign_enum.foo'/0 is not an
+exported_foreign_enum.m:052:   enumeration type. It has this non-zero arity
+exported_foreign_enum.m:052:   constructor:
+exported_foreign_enum.m:052:   `foo'/1.
+exported_foreign_enum.m:054: In `:- pragma foreign_enum' declaration for type
+exported_foreign_enum.m:054:   `exported_foreign_enum.foo'/0:
+exported_foreign_enum.m:054:   error: this pragma conflicts with the
+exported_foreign_enum.m:054:   reserve_tag pragma on `foo'/0.
+exported_foreign_enum.m:054: In `:- pragma foreign_enum' declaration for type
+exported_foreign_enum.m:054:   `exported_foreign_enum.foo'/0:
+exported_foreign_enum.m:054:   error: `exported_foreign_enum.foo'/0 is not an
+exported_foreign_enum.m:054:   enumeration type. It has this non-zero arity
+exported_foreign_enum.m:054:   constructor:
+exported_foreign_enum.m:054:   `foo'/1.
+exported_foreign_enum.m:073: In `:- pragma foreign_enum' declaration for type
+exported_foreign_enum.m:073:   `exported_foreign_enum.t1'/0:
+exported_foreign_enum.m:073:   error: `exported_foreign_enum.t1'/0 is not an
+exported_foreign_enum.m:073:   enumeration type. It has this non-zero arity
+exported_foreign_enum.m:073:   constructor:
+exported_foreign_enum.m:073:   `f13'/1.
+exported_foreign_enum.m:100: In `:- pragma foreign_enum' declaration for type
+exported_foreign_enum.m:100:   `exported_foreign_enum.t3'/0:
+exported_foreign_enum.m:100:   error: `exported_foreign_enum.t3'/0 is not an
+exported_foreign_enum.m:100:   enumeration type; it is an equivalence type.

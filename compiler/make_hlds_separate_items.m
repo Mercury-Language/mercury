@@ -49,8 +49,10 @@
     ims_list(item_initialise_info)::out,
     ims_list(item_finalise_info)::out,
     sec_list(item_mutable_info)::out,
-    ims_list(item_pragma_info)::out(list_skel(ims_pragma_2)),
-    ims_list(item_pragma_info)::out(list_skel(ims_pragma_3)),
+    ims_list(item_pragma_info)::out(list_skel(ims_pragma_reserve_tag)),
+    ims_list(item_pragma_info)::out(list_skel(ims_pragma_foreign_enum)),
+    ims_list(item_pragma_info)::out(list_skel(ims_pragma_pass_2)),
+    ims_list(item_pragma_info)::out(list_skel(ims_pragma_pass_3)),
     ims_list(item_clause_info)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -62,6 +64,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
         ItemInstDefns, ItemModeDefns, ItemPredDecls, ItemModeDecls,
         ItemPromises, ItemTypeclasses, ItemInstances,
         ItemInitialises, ItemFinalises, ItemMutables,
+        ItemReserveTags, ItemForeignEnums,
         ItemPragmas2, ItemPragmas3, ItemClauses) :-
     AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
         _ModuleVersionNumbers, SrcItemBlocks,
@@ -78,6 +81,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
         !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
         !RevItemTypeclasses, !RevItemInstances,
         !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+        !RevItemReserveTags, !RevItemForeignEnums,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses]
     (
         !:RevItemAvailLists = [],
@@ -94,6 +98,8 @@ separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
         !:RevItemInitialises = [],
         !:RevItemFinalises = [],
         !:RevItemMutables = [],
+        !:RevItemReserveTags = [],
+        !:RevItemForeignEnums = [],
         !:RevItemPragmas2 = [],
         !:RevItemPragmas3 = [],
         !:RevItemClauses = [],
@@ -106,6 +112,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
             !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
             !RevItemTypeclasses, !RevItemInstances,
             !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+            !RevItemReserveTags, !RevItemForeignEnums,
             !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses),
         separate_items_in_blocks(DirectIntItemBlocks,
             int_module_section_status,
@@ -115,6 +122,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
             !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
             !RevItemTypeclasses, !RevItemInstances,
             !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+            !RevItemReserveTags, !RevItemForeignEnums,
             !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses),
         separate_items_in_blocks(IndirectIntItemBlocks,
             int_module_section_status,
@@ -124,6 +132,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
             !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
             !RevItemTypeclasses, !RevItemInstances,
             !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+            !RevItemReserveTags, !RevItemForeignEnums,
             !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses),
         separate_items_in_blocks(IntForOptItemBlocks,
             int_for_opt_module_section_status,
@@ -133,6 +142,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
             !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
             !RevItemTypeclasses, !RevItemInstances,
             !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+            !RevItemReserveTags, !RevItemForeignEnums,
             !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses),
         separate_items_in_blocks(OptItemBlocks,
             opt_module_section_status,
@@ -142,6 +152,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
             !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
             !RevItemTypeclasses, !RevItemInstances,
             !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+            !RevItemReserveTags, !RevItemForeignEnums,
             !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses),
 
         list.reverse(!.RevItemAvailLists, ItemAvailLists),
@@ -158,6 +169,8 @@ separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
         list.reverse(!.RevItemInitialises, ItemInitialises),
         list.reverse(!.RevItemFinalises, ItemFinalises),
         list.reverse(!.RevItemMutables, ItemMutables),
+        ItemReserveTags = inst_preserving_reverse(!.RevItemReserveTags),
+        ItemForeignEnums = inst_preserving_reverse(!.RevItemForeignEnums),
         ItemPragmas2 = inst_preserving_reverse(!.RevItemPragmas2),
         ItemPragmas3 = inst_preserving_reverse(!.RevItemPragmas3),
         list.reverse(!.RevItemClauses, ItemClauses)
@@ -249,10 +262,14 @@ int_for_opt_module_section_status(IntForOptSection, SectionInfo) :-
     ims_list(item_initialise_info)::in, ims_list(item_initialise_info)::out,
     ims_list(item_finalise_info)::in, ims_list(item_finalise_info)::out,
     sec_list(item_mutable_info)::in, sec_list(item_mutable_info)::out,
-    ims_list(item_pragma_info)::in(list_skel(ims_pragma_2)),
-        ims_list(item_pragma_info)::out(list_skel(ims_pragma_2)),
-    ims_list(item_pragma_info)::in(list_skel(ims_pragma_3)),
-        ims_list(item_pragma_info)::out(list_skel(ims_pragma_3)),
+    ims_list(item_pragma_info)::in(list_skel(ims_pragma_reserve_tag)),
+        ims_list(item_pragma_info)::out(list_skel(ims_pragma_reserve_tag)),
+    ims_list(item_pragma_info)::in(list_skel(ims_pragma_foreign_enum)),
+        ims_list(item_pragma_info)::out(list_skel(ims_pragma_foreign_enum)),
+    ims_list(item_pragma_info)::in(list_skel(ims_pragma_pass_2)),
+        ims_list(item_pragma_info)::out(list_skel(ims_pragma_pass_2)),
+    ims_list(item_pragma_info)::in(list_skel(ims_pragma_pass_3)),
+        ims_list(item_pragma_info)::out(list_skel(ims_pragma_pass_3)),
     ims_list(item_clause_info)::in, ims_list(item_clause_info)::out) is det.
 
 separate_items_in_blocks([], _MakeSectionInfo,
@@ -263,6 +280,7 @@ separate_items_in_blocks([], _MakeSectionInfo,
         !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
         !RevItemTypeclasses, !RevItemInstances,
         !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+        !RevItemReserveTags, !RevItemForeignEnums,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses).
 separate_items_in_blocks([ItemBlock | ItemBlocks], MakeSectionInfo,
         !RevItemAvailLists,
@@ -272,6 +290,7 @@ separate_items_in_blocks([ItemBlock | ItemBlocks], MakeSectionInfo,
         !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
         !RevItemTypeclasses, !RevItemInstances,
         !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+        !RevItemReserveTags, !RevItemForeignEnums,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses) :-
     ItemBlock = item_block(Section, _, _Incls, Avails, Items),
     MakeSectionInfo(Section, SectionInfo),
@@ -285,6 +304,7 @@ separate_items_in_blocks([ItemBlock | ItemBlocks], MakeSectionInfo,
         !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
         !RevItemTypeclasses, !RevItemInstances,
         !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+        !RevItemReserveTags, !RevItemForeignEnums,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses),
     separate_items_in_blocks(ItemBlocks, MakeSectionInfo,
         !RevItemAvailLists, !RevItemTypeDefnsAbstract,
@@ -293,6 +313,7 @@ separate_items_in_blocks([ItemBlock | ItemBlocks], MakeSectionInfo,
         !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
         !RevItemTypeclasses, !RevItemInstances,
         !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+        !RevItemReserveTags, !RevItemForeignEnums,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses).
 
 :- pred separate_items(list(item)::in, sec_info::in,
@@ -309,10 +330,14 @@ separate_items_in_blocks([ItemBlock | ItemBlocks], MakeSectionInfo,
     ims_list(item_initialise_info)::in, ims_list(item_initialise_info)::out,
     ims_list(item_finalise_info)::in, ims_list(item_finalise_info)::out,
     sec_list(item_mutable_info)::in, sec_list(item_mutable_info)::out,
-    ims_list(item_pragma_info)::in(list_skel(ims_pragma_2)),
-        ims_list(item_pragma_info)::out(list_skel(ims_pragma_2)),
-    ims_list(item_pragma_info)::in(list_skel(ims_pragma_3)),
-        ims_list(item_pragma_info)::out(list_skel(ims_pragma_3)),
+    ims_list(item_pragma_info)::in(list_skel(ims_pragma_reserve_tag)),
+        ims_list(item_pragma_info)::out(list_skel(ims_pragma_reserve_tag)),
+    ims_list(item_pragma_info)::in(list_skel(ims_pragma_foreign_enum)),
+        ims_list(item_pragma_info)::out(list_skel(ims_pragma_foreign_enum)),
+    ims_list(item_pragma_info)::in(list_skel(ims_pragma_pass_2)),
+        ims_list(item_pragma_info)::out(list_skel(ims_pragma_pass_2)),
+    ims_list(item_pragma_info)::in(list_skel(ims_pragma_pass_3)),
+        ims_list(item_pragma_info)::out(list_skel(ims_pragma_pass_3)),
     ims_list(item_clause_info)::in, ims_list(item_clause_info)::out) is det.
 
 separate_items([], _SectionInfo,
@@ -322,6 +347,7 @@ separate_items([], _SectionInfo,
         !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
         !RevItemTypeclasses, !RevItemInstances,
         !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+        !RevItemReserveTags, !RevItemForeignEnums,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses).
 separate_items([Item | Items], SectionInfo,
         !RevItemTypeDefnsAbstract, !RevItemTypeDefnsMercury,
@@ -330,6 +356,7 @@ separate_items([Item | Items], SectionInfo,
         !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
         !RevItemTypeclasses, !RevItemInstances,
         !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+        !RevItemReserveTags, !RevItemForeignEnums,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses) :-
     (
         Item = item_clause(ItemClauseInfo),
@@ -392,8 +419,7 @@ separate_items([Item | Items], SectionInfo,
     ;
         Item = item_initialise(ItemInitialiseInfo),
         SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
-        InitialiseStatusItem =
-            ims_item(ItemMercuryStatus, ItemInitialiseInfo),
+        InitialiseStatusItem = ims_item(ItemMercuryStatus, ItemInitialiseInfo),
         !:RevItemInitialises = [InitialiseStatusItem | !.RevItemInitialises]
     ;
         Item = item_finalise(ItemFinaliseInfo),
@@ -410,6 +436,19 @@ separate_items([Item | Items], SectionInfo,
             Context, SeqNum),
         SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
         (
+            PragmaType = pragma_reserve_tag(_),
+            ItemPragmaInfo = item_pragma_info(PragmaType, MaybeAttrs,
+                Context, SeqNum),
+            PragmaRTStatusItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
+            !:RevItemReserveTags = [PragmaRTStatusItem | !.RevItemReserveTags]
+        ;
+            PragmaType = pragma_foreign_enum(_),
+            ItemPragmaInfo = item_pragma_info(PragmaType, MaybeAttrs,
+                Context, SeqNum),
+            PragmaFEStatusItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
+            !:RevItemForeignEnums =
+                [PragmaFEStatusItem | !.RevItemForeignEnums]
+        ;
             ( PragmaType = pragma_foreign_decl(_)
             ; PragmaType = pragma_foreign_code(_)
             ; PragmaType = pragma_foreign_import_module(_)
@@ -438,7 +477,6 @@ separate_items([Item | Items], SectionInfo,
 
             ; PragmaType = pragma_require_feature_set(_)
 
-            ; PragmaType = pragma_foreign_enum(_)
             ; PragmaType = pragma_foreign_export_enum(_)
             ),
             ItemPragmaInfo = item_pragma_info(PragmaType, MaybeAttrs,
@@ -451,7 +489,6 @@ separate_items([Item | Items], SectionInfo,
             ; PragmaType = pragma_tabled(_)
             ; PragmaType = pragma_fact_table(_)
 
-            ; PragmaType = pragma_reserve_tag(_)
             ; PragmaType = pragma_oisu(_)
 
             ; PragmaType = pragma_foreign_proc_export(_)
@@ -476,6 +513,7 @@ separate_items([Item | Items], SectionInfo,
         !RevItemPredDecls, !RevItemModeDecls, !RevItemPromises,
         !RevItemTypeclasses, !RevItemInstances,
         !RevItemInitialises, !RevItemFinalises, !RevItemMutables,
+        !RevItemReserveTags, !RevItemForeignEnums,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses).
 
 %---------------------------------------------------------------------------%
