@@ -35,11 +35,15 @@ main(!IO) :-
     io.nl(!IO),
     run_binop_test(uint.(\/), "\\/", !IO),
     io.nl(!IO),
-    run_binop_test(uint.(xor), "xor", !IO),
+    run_binop_test(uint_xor_proxy, "xor", !IO),
     io.nl(!IO),
     run_shift_test(uint.(>>), ">>", !IO),
     io.nl(!IO),
     run_shift_test(uint.(<<), "<<", !IO).
+
+:- func uint_xor_proxy(uint, uint) = uint.
+
+uint_xor_proxy(A, B) = uint.xor(A, B).
 
 %---------------------------------------------------------------------------%
 
