@@ -310,10 +310,19 @@ A hexadecimal literal is @samp{0x} followed by any sequence of hexadecimal
 digits.
 A character-code literal is @samp{0'} followed by any single character.
 
+Decimal, binary, octal and hexadecimal literals may be optionally terminated by
+a suffix that indicates whether the literal represents a signed or unsigned
+integer.
+The suffix @samp{i} indicates that the literal is a signed integer.
+The suffix @samp{u} indicates that the literal is an unsigned integer.
+Integer literals without such a terminating suffix are considered to be signed.
+
 For decimal, binary, octal and hexadecimal literals, an arbitrary number of
 underscores (@samp{_}) may be inserted between the digits.  An arbitrary number
 of underscores may also be inserted between the radix prefix (i.e. @samp{0b},
 @samp{0o} and @samp{0x}) and the initial digit.
+Similarly, an arbitrary number of underscores may be inserted between the final
+digit and the signedness suffix.
 The purpose of the underscores is to improve readability and they do not affect
 the numeric value of the literal.
 
@@ -1982,8 +1991,8 @@ type classes (@pxref{Type classes}), and existentially quantified types
 Certain special types are builtin, or are defined in the Mercury library:
 
 @table @asis
-@item Primitive types: @code{char}, @code{int}, @code{float}, @code{string}.
-There is a special syntax for constants of type @code{int}, @code{float},
+@item Primitive types: @code{char}, @code{int}, @code{uint}, @code{float}, @code{string}.
+There is a special syntax for constants of type @code{int}, @code{uint}, @code{float},
 and @code{string}.  (For @code{char}, the standard syntax suffices.)
 
 @item Predicate types: @code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
@@ -2582,8 +2591,8 @@ Furthermore, different platforms often have their own natural orderings
 which are not necessarily consistent with each other.
 As such, the standard ordering for most types is not fully defined.
 
-For the primitive type @code{int},
-the standard ordering is the usual numerical ordering.
+For the primitive types @code{int} and @code{uint} the standard ordering is the
+usual numerical ordering.
 Implementations should reject code containing overflowing integer literals.
 
 For the primitive type @code{float},
@@ -5233,11 +5242,12 @@ the mutable variable as an external variable called @var{Name}.
 For the low-level C backend, e.g. the asm_fast grades, the type of this
 variable will be @code{MR_Word}.
 For the high-level C backend, e.g. the hlc grades, the type of this variable
-depends upon the Mercury type of the mutable.  For mutables of the Mercury
-types @code{int}, @code{float}, @code{char} and @code{string}, the
-corresponding C types will be @code{MR_Integer}, @code{MR_Float},
-@code{MR_Char} and @code{MR_String} respectively.  For mutables of any other
-type the corresponding C type will be @code{MR_Word}.
+depends upon the Mercury type of the mutable.
+For mutables of the Mercury types @code{int}, @code{uint}, @code{float},
+@code{char} and @code{string}, the corresponding C types will be
+@code{MR_Integer}, @code{MR_Unsigned}, @code{MR_Float}, @code{MR_Char} and
+@code{MR_String} respectively.
+For mutables of any other type the corresponding C type will be @code{MR_Word}.
 
 This attribute is not currently implemented for the non-C backends.
 
@@ -7117,16 +7127,19 @@ to the foreign language's parameter passing convention.
 
 The Mercury primitive types are mapped to the following C types:
 
-@multitable {Mercury_type} {MR_Integer}
+@multitable {Mercury_type} {MR_Unsigned}
 @headitem Mercury type @tab C type
-@item @code{int}    @tab @code{MR_Integer}
-@item @code{float}  @tab @code{MR_Float}
-@item @code{char}   @tab @code{MR_Char}
-@item @code{string} @tab @code{MR_String}
+  @item @code{int}    @tab @code{MR_Integer}
+  @item @code{uint}   @tab @code{MR_Unsigned}
+  @item @code{float}  @tab @code{MR_Float}
+  @item @code{char}   @tab @code{MR_Char}
+  @item @code{string} @tab @code{MR_String}
 @end multitable
 
 In the current implementation, @code{MR_Integer} is a typedef for a signed
-integral type whose size is the same size as a pointer of type @samp{void *};
+integral type which is the same size as a pointer of type @samp{void *};
+@code{MR_Unsigned} is a typedef for an unsigned integral type which is the
+same size as a pointer of type @samp{void *};
 @code{MR_Float} is a typedef for @code{double} (unless the program and the
 Mercury library was compiled with @samp{--single-prec-float}, in which case it
 is a typedef for @code{float}); @code{MR_Char} is a typedef for a signed
@@ -7208,6 +7221,7 @@ Infrastructure (CLI) and C# types:
 @multitable {Mercury_type} {System_String} {double}
   @headitem Mercury type @tab CLI type @tab C# type
   @item @code{int}    @tab @code{System.Int32}  @tab @code{int}
+  @item @code{uint}   @tab @code{System.UInt32} @tab @code{uint}
   @item @code{float}  @tab @code{System.Double} @tab @code{double}
   @item @code{char}   @tab @code{System.Int32}  @tab @code{int}
   @item @code{string} @tab @code{System.String} @tab @code{string}
@@ -7328,15 +7342,20 @@ List_1    list.cons(object head, List_1 tail)
 
 The Mercury primitive types are mapped to the following Java types:
 @multitable {Mercury_type} {java_lang_String}
-@headitem Mercury type @tab Java type
-@item @code{int} @tab @code{int}
-@item @code{float} @tab @code{double}
-@item @code{char} @tab @code{int}
-@item @code{string} @tab @code{java.lang.String}
+  @headitem Mercury type @tab Java type
+  @item @code{int}    @tab @code{int}
+  @item @code{uint}   @tab @code{int}
+  @item @code{float}  @tab @code{double}
+  @item @code{char}   @tab @code{int}
+  @item @code{string} @tab @code{java.lang.String}
 @end multitable
 
-Note that the Mercury type @code{char} is mapped like @code{int}; @emph{not} to
-the Java type @code{char} because that only holds 16-bit numeric values.
+Note that since Java lacks unsigned integer types, Mercury's @code{uint} type
+corresponds to the Java type @code{int}.
+
+Also, note that the Mercury type @code{char} is mapped like @code{int};
+@emph{not} to the Java type @code{char} because that only holds 16-bit numeric
+values.
 
 For the Mercury standard library type @samp{bool.bool}, there is a
 corresponding Java type, @code{bool.Bool_0}.  Java code can refer to the
