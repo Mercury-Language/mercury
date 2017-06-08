@@ -37,6 +37,7 @@
 :- import_module bag.
 :- import_module bool.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
@@ -144,6 +145,8 @@
                 par_conj_bound      :: set_of_progvar
             ).
 
+:- type pred_var_multimode_map == map(prog_var, pred_var_multimode_pred_error).
+
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_module_info(mode_info::in, module_info::out) is det.
@@ -195,6 +198,8 @@
     make_ground_terms_unique::out) is det.
 :- pred mode_info_get_in_dupl_for_switch(mode_info::in,
     in_dupl_for_switch::out) is det.
+:- pred mode_info_get_pred_var_multimode_map(mode_info::in,
+    pred_var_multimode_map::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -257,6 +262,8 @@
 :- pred mode_info_set_make_ground_terms_unique(make_ground_terms_unique::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_in_dupl_for_switch(in_dupl_for_switch::in,
+    mode_info::in, mode_info::out) is det.
+:- pred mode_info_set_pred_var_multimode_map(pred_var_multimode_map::in,
     mode_info::in, mode_info::out) is det.
 
     % We keep track of the live variables and the nondet-live variables
@@ -334,7 +341,6 @@
 :- import_module libs.options.
 
 :- import_module int.
-:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module term.
@@ -486,7 +492,26 @@
 
                 % Set to `yes' if we are inside a goal with a
                 % duplicate_for_switch feature.
-                msi_in_dupl_for_switch      :: in_dupl_for_switch
+                msi_in_dupl_for_switch      :: in_dupl_for_switch,
+
+                % This field maps variables for which we have generated
+                % a mode_error_unify_var_multimode_pred to the rest of the
+                % fields in that mode error. If this variable is later found
+                % to be insufficiently instantiated, we will want to print
+                % the mode_error_unify_var_multimode_pred as a possible
+                % explanation of that error.
+                %
+                % Any code that creates a mode_error_unify_var_multimode_pred
+                % should include the information in that error in this map.
+                %
+                % Since this information is valid only in straight-line
+                % conjunctions, entries added to this map must be thrown away
+                % when the code that added them is backtracked over.
+                % The simplest way to make this happen is to take a snapshot
+                % of the value of this map at the start of each branched
+                % control structure, and to reset it to that snapshot
+                % at the start of each branch.
+                msi_pred_var_multimode_map  :: pred_var_multimode_map
             ).
 
 %-----------------------------------------------------------------------------%
@@ -531,13 +556,15 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     HadFromGroundTerm = did_not_have_from_ground_term_scope,
     MakeGroundTermsUnique = do_not_make_ground_terms_unique,
     InDuplForSwitch = not_in_dupl_for_switch,
+    map.init(PredVarMultiModeMap),
 
     ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes, Debug,
         LockedVars, LiveVarsBag, InstVarSet, ParallelVars, HowToCheck,
         MayChangeProc, LastCheckpointInstMap, Changed,
         CheckingExtraGoals, InstMap0, HeadInstVars, WarningList,
         NeedToRequantify, InPromisePurityScope, InFromGroundTerm,
-        HadFromGroundTerm, MakeGroundTermsUnique, InDuplForSwitch),
+        HadFromGroundTerm, MakeGroundTermsUnique, InDuplForSwitch,
+        PredVarMultiModeMap),
 
     mode_context_init(ModeContext),
     delay_info_init(DelayInfo),
@@ -620,6 +647,8 @@ mode_info_get_make_ground_terms_unique(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_make_ground_terms_unique.
 mode_info_get_in_dupl_for_switch(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_in_dupl_for_switch.
+mode_info_get_pred_var_multimode_map(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_pred_var_multimode_map.
 
 mode_info_set_module_info(X, !MI) :-
     ( if private_builtin.pointer_equal(X, !.MI ^ mi_module_info) then
@@ -711,6 +740,15 @@ mode_info_set_make_ground_terms_unique(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_make_ground_terms_unique := X.
 mode_info_set_in_dupl_for_switch(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_in_dupl_for_switch := X.
+mode_info_set_pred_var_multimode_map(X, !MI) :-
+    ( if
+        private_builtin.pointer_equal(X,
+            !.MI ^ mi_sub_info ^ msi_pred_var_multimode_map)
+    then
+        true
+    else
+        !MI ^ mi_sub_info ^ msi_pred_var_multimode_map := X
+    ).
 
 %-----------------------------------------------------------------------------%
 

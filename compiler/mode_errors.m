@@ -31,6 +31,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
+:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -50,6 +51,14 @@
                 mode_error_info,    % The reason the goal can't be scheduled.
                 hlds_goal           % The goal itself.
             ).
+
+:- type var_multimode_pred_error
+    --->    no_matching_mode(list(prog_var))
+    ;       more_than_one_matching_mode(list(prog_var))
+    ;       some_ho_args_non_ground(list(prog_var)).
+
+:- type pred_var_multimode_pred_error
+    --->    pred_var_multimode_pred_error(pred_id, var_multimode_pred_error).
 
 :- type mode_error
     --->    mode_error_disj(merge_context, merge_errors)
@@ -75,7 +84,8 @@
             % Call to a predicate which will clobber its argument,
             % but the argument is still live.
 
-    ;       mode_error_var_has_inst(prog_var, mer_inst, mer_inst)
+    ;       mode_error_var_has_inst(prog_var, mer_inst, mer_inst,
+                maybe(pred_var_multimode_pred_error))
             % Call to a predicate with an insufficiently
             % instantiated variable (for preds with one mode).
 
@@ -124,14 +134,10 @@
             % Some sort of error in attempt to unify a variable with lambda
             % expression.
 
-    ;       mode_error_unify_var_multimode_pred(prog_var, pred_id)
+    ;       mode_error_unify_var_multimode_pred(prog_var, pred_id,
+                var_multimode_pred_error)
             % Some sort of error in attempt to take address of a multi-moded
             % predicate.
-
-    ;       mode_error_unify_var_multimode_pred_undetermined(prog_var,
-                pred_id)
-            % Attempt to take address of a multi-moded predicate where we
-            % could not uniquely determine the mode to use.
 
     ;       mode_error_conj(list(delayed_goal), schedule_culprit)
             % A conjunction contains one or more unscheduleable goals;
@@ -265,7 +271,6 @@
 :- import_module int.
 :- import_module io.            % used only for a typeclass instance
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -305,8 +310,9 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         ModeError = mode_error_var_is_live(Var),
         Spec = mode_error_var_is_live_to_spec(ModeInfo, Var)
     ;
-        ModeError = mode_error_var_has_inst(Var, InstA, InstB),
-        Spec = mode_error_var_has_inst_to_spec(ModeInfo, Var, InstA, InstB)
+        ModeError = mode_error_var_has_inst(Var, InstA, InstB, MaybeMultiMode),
+        Spec = mode_error_var_has_inst_to_spec(ModeInfo, Var, InstA, InstB,
+            MaybeMultiMode)
     ;
         ModeError = mode_error_unify_pred(Var, RHS, Type, PredOrFunc),
         Spec = mode_error_unify_pred_to_spec(ModeInfo, Var, RHS, Type,
@@ -333,14 +339,10 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         Spec = mode_error_unify_var_lambda_to_spec(ModeInfo, VarA,
             InstA, InstB)
     ;
-        ModeError = mode_error_unify_var_multimode_pred(VarA, PredId),
+        ModeError = mode_error_unify_var_multimode_pred(VarA, PredId,
+            MultiModeError),
         Spec = mode_error_unify_var_multimode_pred_to_spec(ModeInfo, VarA,
-            PredId)
-    ;
-        ModeError = mode_error_unify_var_multimode_pred_undetermined(VarA,
-            PredId),
-        Spec = mode_error_unify_var_multimode_pred_undetermined_to_spec(
-            ModeInfo, VarA, PredId)
+            PredId, MultiModeError)
     ;
         ModeError = mode_error_unify_var_functor(Var, Name, Args, Inst,
             ArgInsts),
@@ -906,17 +908,33 @@ mode_error_var_is_live_to_spec(ModeInfo, Var) = Spec :-
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 :- func mode_error_var_has_inst_to_spec(mode_info, prog_var,
-    mer_inst, mer_inst) = error_spec.
+    mer_inst, mer_inst, maybe(pred_var_multimode_pred_error)) = error_spec.
 
-mode_error_var_has_inst_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
+mode_error_var_has_inst_to_spec(ModeInfo, Var, VarInst, Inst,
+        MaybeMultiModeError) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    Pieces = [words("mode error: variable"),
+    MainPieces = [words("mode error: variable"),
         quote(mercury_var_to_name_only(VarSet, Var)) |
         has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
-    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
+    MainMsgs = [simple_msg(Context, [always(Preamble ++ MainPieces)])],
+    (
+        MaybeMultiModeError = no,
+        Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+            MainMsgs)
+    ;
+        MaybeMultiModeError = yes(MultiModeError),
+        ConnectPieces = [words("This may have been caused by"),
+            words("the following error."), nl],
+        ConnectMsgs = [simple_msg(Context, [always(ConnectPieces)])],
+        MultiModeError = pred_var_multimode_pred_error(PredId, MultiMode),
+        SubSpec = mode_error_unify_var_multimode_pred_to_spec(ModeInfo,
+            Var, PredId, MultiMode),
+        SubSpec = error_spec(_SubSeverity, _SubPhase, SubMsgs),
+        Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+            MainMsgs ++ ConnectMsgs ++ SubMsgs)
+    ).
 
 :- func mode_error_implied_mode_to_spec(mode_info, prog_var,
     mer_inst, mer_inst) = error_spec.
@@ -1040,9 +1058,10 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_multimode_pred_to_spec(mode_info, prog_var,
-    pred_id) = error_spec.
+    pred_id, var_multimode_pred_error) = error_spec.
 
-mode_error_unify_var_multimode_pred_to_spec(ModeInfo, X, PredId) = Spec :-
+mode_error_unify_var_multimode_pred_to_spec(ModeInfo, X, PredId,
+        MultiModeError) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
@@ -1054,40 +1073,62 @@ mode_error_unify_var_multimode_pred_to_spec(ModeInfo, X, PredId) = Spec :-
     QualifiedName = qualified(PredModule, PredName),
     Arity = pred_info_orig_arity(PredInfo),
     adjust_func_arity(PredOrFunc, FuncArity, Arity),
-    Pieces = [words("mode error in unification of"),
+    StartPieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarSet, X)),
         words("and higher-order term based on multi-moded"),
         p_or_f(PredOrFunc),
         qual_sym_name_and_arity(sym_name_arity(QualifiedName, FuncArity)),
         suffix("."), nl],
+    (
+        MultiModeError = some_ho_args_non_ground(NonGroundArgVars),
+        VarOrVars = choose_number(NonGroundArgVars, "variable", "variables"),
+        NonGroundArgVarPieces =
+            named_and_unnamed_vars_to_pieces(VarSet, NonGroundArgVars),
+        DetailPieces = [words("The higher order argument"),
+            words(VarOrVars)] ++ NonGroundArgVarPieces ++
+            [words("should be ground, but are not."), nl]
+    ;
+        (
+            MultiModeError = no_matching_mode(ArgVars),
+            MatchPieces = [words(choose_number(ArgVars, "does", "do")),
+                words("not match any")]
+        ;
+            MultiModeError = more_than_one_matching_mode(ArgVars),
+            MatchPieces = [words(choose_number(ArgVars, "matches", "match")),
+                words("more than one")]
+        ),
+        ModeOrModes = choose_number(ArgVars, "mode", "modes"),
+        VarOrVars = choose_number(ArgVars, "variable", "variables"),
+        ArgVarPieces = named_and_unnamed_vars_to_pieces(VarSet, ArgVars),
+        DetailPieces = [words("The"), words(ModeOrModes),
+            words("of the argument"), words(VarOrVars)] ++ ArgVarPieces ++
+            MatchPieces ++ [words("of the called"),
+            p_or_f(PredOrFunc), suffix("'s"), words("modes."), nl]
+    ),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
+        [simple_msg(Context,
+            [always(Preamble ++ StartPieces ++ DetailPieces)])]).
 
-:- func mode_error_unify_var_multimode_pred_undetermined_to_spec(mode_info,
-    prog_var, pred_id) = error_spec.
+:- func named_and_unnamed_vars_to_pieces(prog_varset, list(prog_var)) =
+    list(format_component).
 
-mode_error_unify_var_multimode_pred_undetermined_to_spec(ModeInfo, X, PredId)
-        = Spec :-
-    Preamble = mode_info_context_preamble(ModeInfo),
-    mode_info_get_context(ModeInfo, Context),
-    mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    PredModule = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    QualifiedName = qualified(PredModule, PredName),
-    Arity = pred_info_orig_arity(PredInfo),
-    adjust_func_arity(PredOrFunc, FuncArity, Arity),
-    Pieces = [words("In unification of"),
-        quote(mercury_var_to_name_only(VarSet, X)),
-        words("and higher-order term."),
-        words("Could not determine the mode of"),
-        p_or_f(PredOrFunc),
-        qual_sym_name_and_arity(sym_name_arity(QualifiedName, FuncArity)),
-        words("by the insts of the higher-order arguments only."), nl],
-    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
+named_and_unnamed_vars_to_pieces(VarSet, Vars) = Pieces :-
+    list.filter_map(varset.search_name(VarSet), Vars,
+        NamedVarNames, UnnamedVars),
+    (
+        NamedVarNames = [],
+        Pieces = []
+    ;
+        NamedVarNames = [_ | _],
+        NamedVarPieces = list_to_pieces(NamedVarNames),
+        (
+            UnnamedVars = [],
+            Pieces = NamedVarPieces
+        ;
+            UnnamedVars = [_ | _],
+            Pieces = [words("including") | NamedVarPieces]
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -1,0 +1,18 @@
+currying_multimode_func.m:022: In clause for `main(di, uo)':
+currying_multimode_func.m:022:   in argument 1 of call to predicate
+currying_multimode_func.m:022:   `currying_multimode_func.run_binop_test'/3:
+currying_multimode_func.m:022:   mode error: variable `V_6' has
+currying_multimode_func.m:022:   instantiatedness `free',
+currying_multimode_func.m:022:   expected instantiatedness was
+currying_multimode_func.m:022:   `(func(in, in) = out is det)'.
+currying_multimode_func.m:022:   This may have been caused by the following
+currying_multimode_func.m:022:   error.
+currying_multimode_func.m:022:   In clause for `main(di, uo)':
+currying_multimode_func.m:022:   in argument 1 of call to predicate
+currying_multimode_func.m:022:   `currying_multimode_func.run_binop_test'/3:
+currying_multimode_func.m:022:   mode error in unification of `V_6' and
+currying_multimode_func.m:022:   higher-order term based on multi-moded
+currying_multimode_func.m:022:   function `uint.xor'/2.
+currying_multimode_func.m:022:   The modes of the argument variables match more
+currying_multimode_func.m:022:   than one of the called function's modes.
+For more information, recompile with `-E'.

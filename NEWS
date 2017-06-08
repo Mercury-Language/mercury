@@ -343,9 +343,10 @@ Changes to the Mercury standard library:
 * The lexer module now returns integer literals that are too large for ints
   as arbitrary-precision integers, and the base of that literal.
 
-* We have added a constructor big_integer/2 to the term.const type.
+* We have added parameters to the term.integer constructor
+  in the term.const type.
 
-* The parser module passes through big_integer tokens as big_integer terms.
+  We have added a predicate named is_dummy_context to the term module.
 
 * The following predicates and functions have been added to the list module:
 

@@ -710,10 +710,15 @@
     % Initialize the term context when reading in (or otherwise constructing)
     % a term.
     %
-:- func context_init = context.
-:- pred context_init(context::out) is det.
 :- func context_init(string, int) = context.
 :- pred context_init(string::in, int::in, context::out) is det.
+
+    % Return a dummy term context.
+    %
+:- func context_init = context.
+:- pred context_init(context::out) is det.
+
+:- pred is_dummy_context(context::in) is semidet.
 
     % Given a term context, return the source line number.
     %
@@ -1360,11 +1365,14 @@ get_term_context(Term) = Context :-
     ; Term = variable(_, Context)
     ).
 
+context_init(File, LineNumber) = context(File, LineNumber).
+context_init(File, LineNumber, context(File, LineNumber)).
+
 context_init = context("", 0).
 context_init(context("", 0)).
 
-context_init(File, LineNumber) = context(File, LineNumber).
-context_init(File, LineNumber, context(File, LineNumber)).
+is_dummy_context(Context) :-
+    Context = context("", 0).
 
 context_line(context(_, LineNumber)) = LineNumber.
 context_line(context(_, LineNumber), LineNumber).

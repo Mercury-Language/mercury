@@ -1,11 +1,16 @@
 multimode_addr_problems.m:027: In clause for `main(di, uo)':
-multimode_addr_problems.m:027:   In unification of `Abs' and higher-order term.
-multimode_addr_problems.m:027:   Could not determine the mode of predicate
-multimode_addr_problems.m:027:   `multimode_addr_problems.absolute'/2 by the
-multimode_addr_problems.m:027:   insts of the higher-order arguments only.
+multimode_addr_problems.m:027:   mode error in unification of `Abs' and
+multimode_addr_problems.m:027:   higher-order term based on multi-moded
+multimode_addr_problems.m:027:   predicate
+multimode_addr_problems.m:027:   `multimode_addr_problems.absolute'/2.
+multimode_addr_problems.m:027:   The modes of the argument variables match more
+multimode_addr_problems.m:027:   than one of the called predicate's modes.
 multimode_addr_problems.m:052: In clause for `my_foldl(in((func(in, in) = out
 multimode_addr_problems.m:052:   is det)), in, in) = out':
 multimode_addr_problems.m:052:   mode error in unification of `P' and
 multimode_addr_problems.m:052:   higher-order term based on multi-moded
 multimode_addr_problems.m:052:   predicate `multimode_addr_problems.f2p'/4.
+multimode_addr_problems.m:052:   The modes of the argument variables including
+multimode_addr_problems.m:052:   TypeInfo_for_L, TypeInfo_for_A and F do not
+multimode_addr_problems.m:052:   match any of the called predicate's modes.
 For more information, recompile with `-E'.

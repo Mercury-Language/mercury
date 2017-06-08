@@ -80,6 +80,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
@@ -541,15 +542,27 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
         mode_info_get_instmap(!.ModeInfo, InstMap),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        match_modes_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
+        match_modes_by_higher_order_insts(ModuleInfo, VarTypes, InstMap,
             ArgVars, PredInfo, MatchResult),
         (
-            ( MatchResult = possible_modes([])
-            ; MatchResult = ho_arg_not_ground
+            (
+                MatchResult = some_ho_args_not_ground(NonGroundArgVars),
+                MultiModeError = no_matching_mode(NonGroundArgVars)
+            ;
+                MatchResult = possible_modes([]),
+                MultiModeError = no_matching_mode(ArgVars)
+            ;
+                MatchResult = possible_modes([_, _ | _]),
+                MultiModeError = more_than_one_matching_mode(ArgVars)
             ),
             WaitingVars = set_of_var.make_singleton(X),
-            ModeError = mode_error_unify_var_multimode_pred(X, PredId),
+            ModeError =
+                mode_error_unify_var_multimode_pred(X, PredId, MultiModeError),
             mode_info_error(WaitingVars, ModeError, !ModeInfo),
+            mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap0),
+            map.set(X, pred_var_multimode_pred_error(PredId, MultiModeError),
+                MultiModeMap0, MultiModeMap),
+            mode_info_set_pred_var_multimode_map(MultiModeMap, !ModeInfo),
             % Return any old garbage.
             Goal = true_goal_expr
         ;
@@ -565,18 +578,9 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
                     UnifyContext, GoalInfo, Goal, !ModeInfo)
             ;
                 MaybeRHS = error1(_),
-                unexpected($module, $pred,
-                    "could not fix up lambda goal; " ++
+                unexpected($pred, "could not fix up lambda goal; " ++
                     "polymorphism.m should have stopped us getting here")
             )
-        ;
-            MatchResult = possible_modes([_, _ | _]),
-            WaitingVars = set_of_var.make_singleton(X),
-            ModeError =
-                mode_error_unify_var_multimode_pred_undetermined(X, PredId),
-            mode_info_error(WaitingVars, ModeError, !ModeInfo),
-            % Return any old garbage.
-            Goal = true_goal_expr
         )
     else
         unexpected($module, $pred, "expecting single call")
@@ -1473,83 +1477,93 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
 
 :- type match_modes_result
     --->    possible_modes(list(proc_id))
-    ;       ho_arg_not_ground.
+    ;       some_ho_args_not_ground(list(prog_var)).
+
+:- pred match_modes_by_higher_order_insts(module_info::in,
+    vartypes::in, instmap::in, prog_vars::in, pred_info::in,
+    match_modes_result::out) is det.
+
+match_modes_by_higher_order_insts(ModuleInfo, VarTypes, InstMap, ArgVars,
+        CalleePredInfo, Result) :-
+    CalleeProcIds = pred_info_procids(CalleePredInfo),
+    match_modes_by_higher_order_insts_2(ModuleInfo, VarTypes, InstMap,
+        ArgVars, CalleePredInfo, CalleeProcIds, [], [], Result).
+
+:- pred match_modes_by_higher_order_insts_2(module_info::in,
+    vartypes::in, instmap::in, prog_vars::in, pred_info::in,
+    list(proc_id)::in, list(proc_id)::in, list(prog_var)::in,
+    match_modes_result::out) is det.
+
+match_modes_by_higher_order_insts_2(_, _, _, _, _, [],
+        !.RevMatchedProcIds, !.NonGroundNonLocals, Result) :-
+    (
+        !.NonGroundNonLocals = [],
+        Result = possible_modes(list.reverse(!.RevMatchedProcIds))
+    ;
+        !.NonGroundNonLocals = [_ | _],
+        !:NonGroundNonLocals = list.sort_and_remove_dups(!.NonGroundNonLocals),
+        Result = some_ho_args_not_ground(!.NonGroundNonLocals)
+    ).
+match_modes_by_higher_order_insts_2(ModuleInfo, VarTypes, InstMap,
+        ArgVars, CalleePredInfo, [ProcId | ProcIds],
+        !.RevMatchedProcIds, !.NonGroundNonLocals, Result) :-
+    pred_info_proc_info(CalleePredInfo, ProcId, CalleeProcInfo),
+    proc_info_get_argmodes(CalleeProcInfo, ArgModes),
+    match_mode_by_higher_order_insts(ModuleInfo, VarTypes, InstMap, ArgVars,
+        ArgModes, ProcNonGroundNonLocals, ProcResult),
+    !:NonGroundNonLocals = ProcNonGroundNonLocals ++ !.NonGroundNonLocals,
+    (
+        ProcResult = ho_insts_match,
+        !:RevMatchedProcIds = [ProcId | !.RevMatchedProcIds]
+    ;
+        ProcResult = ho_insts_do_not_match
+    ),
+    match_modes_by_higher_order_insts_2(ModuleInfo, VarTypes, InstMap,
+        ArgVars, CalleePredInfo, ProcIds,
+        !.RevMatchedProcIds, !.NonGroundNonLocals, Result).
 
 :- type match_mode_result
     --->    ho_insts_match
-    ;       ho_insts_do_not_match
-    ;       ho_arg_not_ground.
+    ;       ho_insts_do_not_match.
 
-:- pred match_modes_by_higher_order_insts(module_info::in, instmap::in,
-    vartypes::in, prog_vars::in, pred_info::in, match_modes_result::out)
-    is det.
+:- pred match_mode_by_higher_order_insts(module_info::in,
+    vartypes::in, instmap::in, prog_vars::in, list(mer_mode)::in,
+    list(prog_var)::out, match_mode_result::out) is det.
 
-match_modes_by_higher_order_insts(ModuleInfo, InstMap, VarTypes, ArgVars,
-        CalleePredInfo, Result) :-
-    CalleeProcIds = pred_info_procids(CalleePredInfo),
-    match_modes_by_higher_order_insts_2(ModuleInfo, InstMap, VarTypes,
-        ArgVars, CalleePredInfo, CalleeProcIds, [], Result).
-
-:- pred match_modes_by_higher_order_insts_2(module_info::in, instmap::in,
-    vartypes::in, prog_vars::in, pred_info::in, list(proc_id)::in,
-    list(proc_id)::in, match_modes_result::out) is det.
-
-match_modes_by_higher_order_insts_2(_, _, _, _, _,
-        [], RevMatchedProcIds, Result) :-
-    Result = possible_modes(list.reverse(RevMatchedProcIds)).
-match_modes_by_higher_order_insts_2(ModuleInfo, InstMap, VarTypes,
-        ArgVars, PredInfo, [ProcId | ProcIds], RevMatchedProcIds, Result) :-
-    pred_info_proc_info(PredInfo, ProcId, ProcInfo),
-    proc_info_get_argmodes(ProcInfo, ArgModes),
-    match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes, ArgVars,
-        ArgModes, ProcResult),
-    (
-        ProcResult = ho_insts_match,
-        match_modes_by_higher_order_insts_2(ModuleInfo, InstMap,
-            VarTypes, ArgVars, PredInfo, ProcIds, [ProcId | RevMatchedProcIds],
-            Result)
-    ;
-        ProcResult = ho_insts_do_not_match,
-        match_modes_by_higher_order_insts_2(ModuleInfo, InstMap, VarTypes,
-            ArgVars, PredInfo, ProcIds, RevMatchedProcIds, Result)
-    ;
-        ProcResult = ho_arg_not_ground,
-        Result = ho_arg_not_ground
-    ).
-
-:- pred match_mode_by_higher_order_insts(module_info::in, instmap::in,
-    vartypes::in, prog_vars::in, list(mer_mode)::in, match_mode_result::out)
-    is det.
-
-match_mode_by_higher_order_insts(_ModuleInfo, _InstMap, _VarTypes,
-        [], _, ho_insts_match).
-match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
-        [Arg | Args], ArgModesList, Result) :-
+match_mode_by_higher_order_insts(_ModuleInfo, _VarTypes, _InstMap,
+        [], _, [], ho_insts_match).
+match_mode_by_higher_order_insts(ModuleInfo, VarTypes, InstMap,
+        [ArgVar | ArgVars], ArgModesList, NonGroundArgVars, Result) :-
     (
         ArgModesList = [ArgMode | ArgModes]
     ;
         ArgModesList = [],
         unexpected($module, $pred, "too many arguments")
     ),
+    match_mode_by_higher_order_insts(ModuleInfo, VarTypes, InstMap,
+        ArgVars, ArgModes, TailNonGroundArgVars, TailResult),
 
     % For arguments with higher order initial insts, check if the variable in
-    % that position has a matching inst. If the variable is free then we need
+    % that position has a matching inst. If the variable is free, then we need
     % to delay the goal.
     Initial = mode_get_initial_inst(ModuleInfo, ArgMode),
     ( if Initial = ground(_, higher_order(_)) then
-        instmap_lookup_var(InstMap, Arg, ArgInst),
-        lookup_var_type(VarTypes, Arg, ArgType),
+        instmap_lookup_var(InstMap, ArgVar, ArgInst),
+        lookup_var_type(VarTypes, ArgVar, ArgType),
         ( if inst_matches_initial(ArgInst, Initial, ArgType, ModuleInfo) then
-            match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
-                Args, ArgModes, Result)
-        else if inst_is_ground(ModuleInfo, ArgInst) then
-            Result = ho_insts_do_not_match
+            NonGroundArgVars = TailNonGroundArgVars,
+            Result = TailResult
         else
-            Result = ho_arg_not_ground
+            ( if inst_is_ground(ModuleInfo, ArgInst) then
+                NonGroundArgVars = TailNonGroundArgVars
+            else
+                NonGroundArgVars = [ArgVar | TailNonGroundArgVars]
+            ),
+            Result = ho_insts_do_not_match
         )
     else
-        match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes, Args,
-            ArgModes, Result)
+        NonGroundArgVars = TailNonGroundArgVars,
+        Result = TailResult
     ).
 
 %-----------------------------------------------------------------------------%

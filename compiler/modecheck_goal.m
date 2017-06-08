@@ -161,7 +161,7 @@ modecheck_goal(Goal0, Goal, !ModeInfo) :-
 
     % Store the current context in the mode_info.
     Context = goal_info_get_context(GoalInfo0),
-    ( if Context = term.context_init then
+    ( if is_dummy_context(Context) then
         true
     else
         mode_info_set_context(Context, !ModeInfo)
@@ -177,7 +177,6 @@ modecheck_goal(Goal0, Goal, !ModeInfo) :-
 
 :- pred modecheck_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, mode_info::in, mode_info::out) is det.
-
 :- pragma inline(modecheck_goal_2/5).
 
 modecheck_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo) :-
@@ -289,9 +288,11 @@ modecheck_goal_disj(Disjuncts0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % If you modify this code, you may also need to modify
         % modecheck_clause_disj or the code that calls it.
         Disjuncts0 = [_ | _],
+        mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        modecheck_disj_list(Disjuncts0, Disjuncts1, InstMaps,
-            NonLocals, LargeFlatConstructs, !ModeInfo),
+        LargeFlatConstructs0 = NonLocals,
+        modecheck_disj_list(MultiModeMap0, Disjuncts0, Disjuncts1, InstMaps,
+            LargeFlatConstructs0, LargeFlatConstructs, !ModeInfo),
         merge_disj_branches(NonLocals, LargeFlatConstructs,
             Disjuncts1, Disjuncts2, InstMaps, !ModeInfo),
         % Since merge_disj_branches depends on each disjunct in Disjuncts2
@@ -302,20 +303,22 @@ modecheck_goal_disj(Disjuncts0, GoalInfo0, GoalExpr, !ModeInfo) :-
     ),
     mode_checkpoint(exit, "disj", !ModeInfo).
 
-:- pred modecheck_disj_list(list(hlds_goal)::in, list(hlds_goal)::out,
-    list(instmap)::out, set_of_progvar::in, set_of_progvar::out,
+:- pred modecheck_disj_list(pred_var_multimode_map::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, list(instmap)::out,
+    set_of_progvar::in, set_of_progvar::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_disj_list([], [], [], !LargeFlatConstructs, !ModeInfo).
-modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps],
-        !LargeFlatConstructs, !ModeInfo) :-
+modecheck_disj_list(_, [], [], [], !LargeFlatConstructs, !ModeInfo).
+modecheck_disj_list(MultiModeMap0, [Goal0 | Goals0], [Goal | Goals],
+        [InstMap | InstMaps], !LargeFlatConstructs, !ModeInfo) :-
+    mode_info_set_pred_var_multimode_map(MultiModeMap0, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     modecheck_goal(Goal0, Goal, !ModeInfo),
     accumulate_large_flat_constructs(Goal, !LargeFlatConstructs),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    modecheck_disj_list(Goals0, Goals, InstMaps, !LargeFlatConstructs,
-        !ModeInfo).
+    modecheck_disj_list(MultiModeMap0, Goals0, Goals, InstMaps,
+        !LargeFlatConstructs, !ModeInfo).
 
 :- pred merge_disj_branches(set_of_progvar::in, set_of_progvar::in,
     list(hlds_goal)::in, list(hlds_goal)::out, list(instmap)::in,
@@ -377,22 +380,26 @@ modecheck_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % If you modify this code, you may also need to modify
         % modecheck_clause_switch or the code that calls it.
         Cases0 = [_ | _],
+        mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        modecheck_case_list(Cases0, Var, Cases1, InstMaps,
-            NonLocals, LargeFlatConstructs, !ModeInfo),
+        LargeFlatConstructs0 = NonLocals,
+        modecheck_case_list(MultiModeMap0, Var, Cases0, Cases1, InstMaps,
+            LargeFlatConstructs0, LargeFlatConstructs, !ModeInfo),
         merge_switch_branches(NonLocals, LargeFlatConstructs,
             Cases1, Cases, InstMaps, !ModeInfo)
     ),
     GoalExpr = switch(Var, CanFail, Cases),
     mode_checkpoint(exit, "switch", !ModeInfo).
 
-:- pred modecheck_case_list(list(case)::in, prog_var::in, list(case)::out,
-    list(instmap)::out, set_of_progvar::in, set_of_progvar::out,
+:- pred modecheck_case_list(pred_var_multimode_map::in, prog_var::in,
+    list(case)::in, list(case)::out, list(instmap)::out,
+    set_of_progvar::in, set_of_progvar::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_case_list([], _Var, [], [], !LargeFlatConstructs, !ModeInfo).
-modecheck_case_list([Case0 | Cases0], Var, [Case | Cases],
+modecheck_case_list(_, _, [], [], [], !LargeFlatConstructs, !ModeInfo).
+modecheck_case_list(MultiModeMap0, Var, [Case0 | Cases0], [Case | Cases],
         [InstMap | InstMaps], !LargeFlatConstructs, !ModeInfo) :-
+    mode_info_set_pred_var_multimode_map(MultiModeMap0, !ModeInfo),
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
@@ -419,8 +426,8 @@ modecheck_case_list([Case0 | Cases0], Var, [Case | Cases],
     Case = case(MainConsId, OtherConsIds, Goal),
     accumulate_large_flat_constructs(Goal, !LargeFlatConstructs),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    modecheck_case_list(Cases0, Var, Cases, InstMaps, !LargeFlatConstructs,
-        !ModeInfo).
+    modecheck_case_list(MultiModeMap0, Var, Cases0, Cases, InstMaps,
+        !LargeFlatConstructs, !ModeInfo).
 
 :- pred merge_switch_branches(set_of_progvar::in, set_of_progvar::in,
     list(case)::in, list(case)::out, list(instmap)::in,
@@ -642,6 +649,7 @@ set_large_flat_constructs_to_ground_in_case(LargeFlatConstructs,
 modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
         !ModeInfo) :-
     mode_checkpoint(enter, "if-then-else", !ModeInfo),
+    mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap0),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
     ThenVars = goal_get_nonlocals(Then0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -665,6 +673,7 @@ modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
         Then = true_goal,
         InstMapThen = InstMapCond
     ),
+    mode_info_set_pred_var_multimode_map(MultiModeMap0, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     modecheck_goal(Else0, Else, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapElse),
@@ -698,6 +707,7 @@ modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
 
 modecheck_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_checkpoint(enter, "not", !ModeInfo),
+    mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap0),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
@@ -729,6 +739,7 @@ modecheck_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         InPromisePurityScope = in_promise_purity_scope
     ),
     GoalExpr = negation(SubGoal),
+    mode_info_set_pred_var_multimode_map(MultiModeMap0, !ModeInfo),
     mode_checkpoint(exit, "not", !ModeInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1420,6 +1431,7 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % These calls are removed when atomic goals are expanded.
 
         mode_checkpoint(enter, "atomic", !ModeInfo),
+        mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap0),
         AtomicGoalList0 = [MainGoal0 | OrElseGoals0],
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
 
@@ -1430,8 +1442,8 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % inner variables are enforced by these calls anyway.
 
         % mode_info_lock_vars(var_lock_atomic_goal, OuterVars, !ModeInfo),
-        modecheck_orelse_list(AtomicGoalList0, AtomicGoalList, InstMapList,
-            !ModeInfo),
+        modecheck_orelse_list(MultiModeMap0, AtomicGoalList0, AtomicGoalList,
+            InstMapList, !ModeInfo),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         % mode_info_unlock_vars(var_lock_atomic_goal, OuterVars, !ModeInfo),
 
@@ -1484,7 +1496,9 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
     ;
         ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
         mode_checkpoint(enter, "try", !ModeInfo),
-        modecheck_goal(SubGoal0, SubGoal, !ModeInfo),
+        mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap0),
+         modecheck_goal(SubGoal0, SubGoal, !ModeInfo),
+        mode_info_set_pred_var_multimode_map(MultiModeMap0, !ModeInfo),
         ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
         GoalExpr = shorthand(ShortHand),
         mode_checkpoint(exit, "try", !ModeInfo)
@@ -1494,17 +1508,19 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         unexpected($module, $pred, "bi_implication")
     ).
 
-:- pred modecheck_orelse_list(list(hlds_goal)::in, list(hlds_goal)::out,
-    list(instmap)::out, mode_info::in, mode_info::out) is det.
+:- pred modecheck_orelse_list(pred_var_multimode_map::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, list(instmap)::out,
+    mode_info::in, mode_info::out) is det.
 
-modecheck_orelse_list([], [], [], !ModeInfo).
-modecheck_orelse_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps],
-        !ModeInfo) :-
+modecheck_orelse_list(_, [], [], [], !ModeInfo).
+modecheck_orelse_list(MultiModeMap0, [Goal0 | Goals0], [Goal | Goals],
+        [InstMap | InstMaps], !ModeInfo) :-
+    mode_info_set_pred_var_multimode_map(MultiModeMap0, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     modecheck_goal(Goal0, Goal, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    modecheck_orelse_list(Goals0, Goals, InstMaps, !ModeInfo).
+    modecheck_orelse_list(MultiModeMap0, Goals0, Goals, InstMaps, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 %

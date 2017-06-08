@@ -103,7 +103,6 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         ArgVars0, ArgVars, _GoalInfo, ExtraGoals, !ModeInfo) :-
     mode_info_get_may_change_called_proc(!.ModeInfo, MayChangeCalledProc),
     mode_info_get_preds(!.ModeInfo, Preds),
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, Procs),
     (
@@ -146,6 +145,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         % Check that `ArgsVars0' have livenesses which match the
         % expected livenesses.
         %
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
         modecheck_var_list_is_live_no_exact_match(ArgVars0, ProcArgLives0,
             ArgOffset, !ModeInfo),
@@ -447,19 +447,19 @@ modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset,
         NeverSucceeds = no
     ).
 
-:- pred insert_new_mode(pred_id::in, list(prog_var)::in,
-    maybe(determinism)::in, proc_id::out,
-    mode_info::in, mode_info::out) is det.
-
     % Insert a new inferred mode for a predicate.
     % The initial insts are determined by using a normalised
     % version of the call pattern (i.e. the insts of the arg vars).
     % The final insts are initially just assumed to be all `not_reached'.
     % The determinism for this mode will be inferred.
     %
+:- pred insert_new_mode(pred_id::in, list(prog_var)::in,
+    maybe(determinism)::in, proc_id::out,
+    mode_info::in, mode_info::out) is det.
+
 insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, !ModeInfo) :-
-    % figure out the values of all the variables we need to
-    % create a new mode for this predicate
+    % Figure out the values of all the variables we need
+    % to create a new mode for this predicate.
     get_var_insts_and_lives(ArgVars, !.ModeInfo, InitialInsts, ArgLives),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     module_info_get_preds(ModuleInfo0, Preds0),

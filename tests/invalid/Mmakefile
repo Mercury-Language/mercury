@@ -113,6 +113,7 @@ SINGLEMODULE= \
 	constrained_poly_insts2 \
 	constraint_proof_bug_lib \
 	constructor_warning \
+	currying_multimode_func \
 	cyclic_typeclass \
 	cyclic_typeclass_2 \
 	cyclic_typeclass_3 \

@@ -514,8 +514,15 @@ modecheck_var_has_inst_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     then
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     else
+        mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap),
+        ( if map.search(MultiModeMap, Var, MultiModeError) then
+            MaybeMultiModeError = yes(MultiModeError)
+        else
+            MaybeMultiModeError = no
+        ),
         WaitingVars = set_of_var.make_singleton(Var),
-        ModeError = mode_error_var_has_inst(Var, VarInst, Inst),
+        ModeError = mode_error_var_has_inst(Var, VarInst, Inst,
+            MaybeMultiModeError),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
@@ -537,8 +544,15 @@ modecheck_var_has_inst_no_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     then
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     else
+        mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap),
+        ( if map.search(MultiModeMap, Var, MultiModeError) then
+            MaybeMultiModeError = yes(MultiModeError)
+        else
+            MaybeMultiModeError = no
+        ),
         WaitingVars = set_of_var.make_singleton(Var),
-        ModeError = mode_error_var_has_inst(Var, VarInst, Inst),
+        ModeError = mode_error_var_has_inst(Var, VarInst, Inst,
+            MaybeMultiModeError),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
@@ -554,7 +568,7 @@ modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     else
         WaitingVars = set_of_var.make_singleton(Var),
-        ModeError = mode_error_var_has_inst(Var, VarInst, Inst),
+        ModeError = mode_error_var_has_inst(Var, VarInst, Inst, no),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
