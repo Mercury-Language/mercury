@@ -100,6 +100,9 @@ MCFLAGS-make.util                         = --no-ansi-c
 MCFLAGS-transform_hlds.pd_debug           = --no-warn-unknown-format-calls
 MCFLAGS-parse_tree.parse_tree_out_info    = --no-warn-unknown-format-calls
 
+MCFLAGS-libs.mmakefiles                   = --warn-implicit-stream-calls
+MCFLAGS-parse_tree.write_deps_file        = --warn-implicit-stream-calls
+
 # Bug workarounds.
 
 # This works around bug 48 in Mantis.

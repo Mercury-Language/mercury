@@ -23,6 +23,9 @@
 % Error handling.
 :- include_module compiler_util.
 
+% Representation of mmakefile fragments.
+:- include_module mmakefiles.
+
 % Generic algorithms and data structures that are not quite useful enough
 % or otherwise aren't in the standard library.
 % :- include_module atsort.       % currently unused

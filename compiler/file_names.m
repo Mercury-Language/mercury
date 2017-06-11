@@ -1,16 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: file_name.m.
 %
 % This module deals with the connections between module names and files.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.file_names.
 :- interface.
@@ -23,7 +23,7 @@
 
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Succeeds iff the module referred to by the module name is one
     % of the modules in the standard library.
@@ -37,7 +37,37 @@
     %
 :- func qualify_mercury_std_library_module_name(module_name) = module_name.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% XXX This interface should be improved in two ways.
+%
+% - First, the argument order
+%
+%       module_name_to_file_name(Globals, Mkdir, Extension,
+%           Module, FileName, !IO)
+%
+%   would make it possible to use list.map_foldl to convert a list of
+%   module names to file names with a single call.
+%   DONE, with the _ho variants.
+%
+% - Second, the implementation of this predicate effectively divides
+%   the set of possible values of Extension into classes of extensions,
+%   treating every extension in a given class the same way.
+%
+%   We should replace the simple string Extension argument with a more
+%   structured specification of the extension, one that puts a wrapper
+%   around the actual suffix indicating what class the extension falls in,
+%   as in e.g. ec_library(".dylib"). For some classes, maybe the majority,
+%   the list of member extensions may be fixed; for these, it would
+%   make sense to specify each member of the class by a value in an
+%   extension-class-specific enum type, not by string.
+%
+%   While the code handling some of classes accesses the filesystem,
+%   the code handling some other classes does not. If we put the wrappers
+%   for these two kinds of classes into two separate types, we could
+%   have a version of this predicate for each type, one with and one
+%   without an I/O state pair.
+%
 
 :- type maybe_create_dirs
     --->    do_create_dirs
@@ -50,6 +80,8 @@
 
     % module_name_to_file_name(Globals, Module, Extension, Mkdir, FileName,
     %   !IO):
+    % module_name_to_file_name_ho(Globals, Extension, Mkdir, Module, FileName,
+    %   !IO):
     %
     % Convert a module name and file extension to the corresponding file name.
     % If `MkDir' is do_create_dirs, then create any directories needed.
@@ -61,38 +93,16 @@
     % Note that this predicate is also used to create some "phony" Makefile
     % targets that do not have corresponding files, e.g. `<foo>.clean'.
     %
-    % XXX This interface should be improved in two ways.
-    %
-    % - First, the argument order
-    %
-    %       module_name_to_file_name(Globals, Mkdir, Extension,
-    %           Module, FileName, !IO)
-    %
-    %   would make it possible to use list.map_foldl to convert a list of
-    %   module names to file names with a single call.
-    %
-    % - Second, the implementation of this predicate effectively divides
-    %   the set of possible values of Extension into classes of extensions,
-    %   treating every extension in a given class the same way.
-    %
-    %   We should replace the simple string Extension argument with a more
-    %   structured specification of the extension, one that puts a wrapper
-    %   around the actual suffix indicating what class the extension falls in,
-    %   as in e.g. ec_library(".dylib"). For some classes, maybe the majority,
-    %   the list of member extensions may be fixed; for these, it would
-    %   make sense to specify each member of the class by a value in an
-    %   extension-class-specific enum type, not by string.
-    %
-    %   While the code handling some of classes accesses the filesystem,
-    %   the code handling some other classes does not. If we put the wrappers
-    %   for these two kinds of classes into two separate types, we could
-    %   have a version of this predicate for each type, one with and one
-    %   without an I/O state pair.
-    %
-:- pred module_name_to_file_name(globals::in, module_name::in, string::in,
-    maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
+:- pred module_name_to_file_name(globals::in,
+    module_name::in, string::in, maybe_create_dirs::in, file_name::out,
+    io::di, io::uo) is det.
+:- pred module_name_to_file_name_ho(globals::in,
+    string::in, maybe_create_dirs::in, module_name::in, file_name::out,
+    io::di, io::uo) is det.
 
     % module_name_to_search_file_name(Globals, Module, XExtension, FileName,
+    %   !IO):
+    % module_name_to_search_file_name_ho(Globals, XExtension, Module, FileName,
     %   !IO):
     %
     % As above, but for a file which might be in an installed library,
@@ -110,8 +120,10 @@
     % `Mercury/<grade>/<arch>/Mercury/mihs/<module>.mihs',
     % which would be used when writing or removing the `.mih' file.
     %
-:- pred module_name_to_search_file_name(globals::in, module_name::in,
-    string::in, file_name::out, io::di, io::uo) is det.
+:- pred module_name_to_search_file_name(globals::in,
+    module_name::in, string::in, file_name::out, io::di, io::uo) is det.
+:- pred module_name_to_search_file_name_ho(globals::in,
+    string::in, module_name::in, file_name::out, io::di, io::uo) is det.
 
 :- type maybe_search
     --->    do_search
@@ -159,20 +171,20 @@
     %
 :- pred module_name_to_make_var_name(module_name::in, string::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the name of the directory containing Java `.class' files.
     %
 :- pred get_class_dir_name(globals::in, string::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Convert an include_file reference to a filesystem path.
     %
 :- pred make_include_file_path(string::in, string::in, string::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -188,7 +200,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mercury_std_library_module_name(unqualified(Name)) :-
     mercury_std_library_module(Name).
@@ -207,19 +219,31 @@ qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
         QualModuleName = ModuleName
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 module_source_filename(Globals, ModuleName, SourceFileName, !IO) :-
     module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
         SourceFileName, !IO).
 
+%---------------------%
+
 module_name_to_file_name(Globals, ModuleName, Ext, MkDir, FileName, !IO) :-
     module_name_to_file_name_general(Globals, ModuleName, Ext,
         do_not_search, MkDir, FileName, !IO).
 
+module_name_to_file_name_ho(Globals, Ext, MkDir, ModuleName, FileName, !IO) :-
+    module_name_to_file_name(Globals, ModuleName, Ext, MkDir, FileName, !IO).
+
+%---------------------%
+
 module_name_to_search_file_name(Globals, ModuleName, Ext, FileName, !IO) :-
     module_name_to_file_name_general(Globals, ModuleName, Ext,
         do_search, do_not_create_dirs, FileName, !IO).
+
+module_name_to_search_file_name_ho(Globals, Ext, ModuleName, FileName, !IO) :-
+    module_name_to_search_file_name(Globals, ModuleName, Ext, FileName, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- pred module_name_to_file_name_general(globals::in, module_name::in,
     string::in, maybe_search::in, maybe_create_dirs::in, file_name::out,
@@ -618,7 +642,7 @@ file_is_arch_or_grade_dependent_2("_init.$O").
 file_is_arch_or_grade_dependent_2("_init.erl").
 file_is_arch_or_grade_dependent_2("_init.beam").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_class_dir_name(Globals, ClassDirName) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
@@ -639,7 +663,7 @@ get_class_dir_name(Globals, ClassDirName) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
     ( if path_name_is_absolute(OrigFileName) then
@@ -651,6 +675,6 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
         Path = dirname(ModuleSourceFileName) / OrigFileName
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.file_names.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
