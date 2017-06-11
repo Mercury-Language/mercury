@@ -66,7 +66,6 @@
 
 :- import_module int.
 :- import_module integer.
-:- import_module uint.
 
 :- import_module libs.options.
 
@@ -104,7 +103,7 @@ quotient(BitsPerUInt, X, Y, Z) :-
         Z).
 
 unchecked_quotient(BitsPerUInt, X, Y, Z) :-
-    Y \= cast_from_int(0),
+    Y \= 0u,
     quotient(BitsPerUInt, X, Y, Z).
 
 mod(BitsPerUInt, X, Y, Z) :-
@@ -116,7 +115,7 @@ rem(BitsPerUInt, X, Y, Z) :-
         Z).
 
 unchecked_rem(BitsPerUInt, X, Y, Z) :-
-    Y \= cast_from_int(0),
+    Y \= 0u,
     rem(BitsPerUInt, X, Y, Z).
 
 left_shift(BitsPerUInt, X, Y, Z) :-

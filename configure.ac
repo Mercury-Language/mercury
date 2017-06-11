@@ -362,7 +362,7 @@ then
 
         :- implementation.
 
-        :- import_module bool, char, string, int, list, univ.
+        :- import_module bool, char, string, int, list, uint, univ.
 
         :- mutable(global_var,
             int,
@@ -406,7 +406,10 @@ then
         :- type bear ---> brown ; black ; teddy.
         :- pragma foreign_export_enum("Java", bear/0).
 
-        :- type my_uint ---> my_uint(uint).
+        :- pred my_uint_xor(uint::in, uint::out) is det.
+
+        my_uint_xor(A, B) :-
+            561u = uint.xor(A, B).
 
         :- pred p(t::out) is det.
 

@@ -103,7 +103,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -969,7 +968,7 @@ simplify_improve_uint_call(InstMap0, PredName, _ModeNum, Args, ImprovedGoalExpr,
         Args = [X, Y, Z],
         instmap_lookup_var(InstMap0, Y, InstY),
         InstY = bound(_, _, [bound_functor(uint_const(YVal), [])]),
-        YVal \= cast_from_int(0),
+        YVal \= 0u,
         Op = "unchecked_quotient",
         simplify_make_uint_binary_op_goal_expr(!.Info, Op, inline_builtin,
             X, Y, Z, ImprovedGoalExpr)
@@ -978,7 +977,7 @@ simplify_improve_uint_call(InstMap0, PredName, _ModeNum, Args, ImprovedGoalExpr,
         Args = [X, Y, Z],
         instmap_lookup_var(InstMap0, Y, InstY),
         InstY = bound(_, _, [bound_functor(uint_const(YVal), [])]),
-        YVal \= cast_from_int(0),
+        YVal \= 0u,
         Op = "unchecked_rem",
         simplify_make_uint_binary_op_goal_expr(!.Info, Op, inline_builtin,
             X, Y, Z, ImprovedGoalExpr)

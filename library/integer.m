@@ -1302,7 +1302,7 @@ to_uint(Integer, UInt) :-
     Integer >= integer.zero,
     Integer =< integer.from_uint(uint.max_uint),
     Integer = i(_Sign, Digits),
-    UInt = uint_list(Digits, cast_from_int(0)).
+    UInt = uint_list(Digits, 0u).
 
 :- func uint_list(list(int), uint) = uint.
 
@@ -1564,8 +1564,7 @@ pos_int_to_digits_2(D, Tail) = Result :-
 %
 
 from_uint(U) = Integer :-
-    % XXX UINT use uint literals here when we have them.
-    ( if U = cast_from_int(0) then
+    ( if U = 0u then
         Integer = integer.zero
     else if U < cast_from_int(base) then
         Integer = i(1, [cast_to_int(U)])
@@ -1580,7 +1579,7 @@ uint_to_digits(U) = uint_to_digits_2(U, integer.zero).
 :- func uint_to_digits_2(uint, integer) = integer.
 
 uint_to_digits_2(U, Tail) = Result :-
-    ( if U = cast_from_int(0) then
+    ( if U = 0u then
         Result = Tail
     else
         Tail = i(Length, Digits),
