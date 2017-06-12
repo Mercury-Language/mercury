@@ -171,7 +171,7 @@ Changes to the Mercury standard library:
 * We have added a new module, uint, that exports basic operations on the new
   uint type.
 
-  The following predicates and functions have been made to other standard
+  The following predicates and functions have been added to other standard
   library modules in order to support the uint type:
 
   - integer.to_uint/2
