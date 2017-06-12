@@ -170,13 +170,13 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
     % leading to an infinite loop. Just using module_name_to_file_name
     % will fail if the module name doesn't match the file name, but
     % that case is handled below.
-    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
-        SourceFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".m",
+        ModuleName, SourceFileName, !IO),
     get_file_timestamp([dir.this_directory], SourceFileName,
         MaybeSourceFileTimestamp, !Info, !IO),
 
-    module_name_to_file_name(Globals, ModuleName,
-        make_module_dep_file_extension, do_not_create_dirs, DepFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs,
+        make_module_dep_file_extension, ModuleName, DepFileName, !IO),
     globals.lookup_accumulating_option(Globals, search_directories,
         SearchDirs),
     get_file_timestamp(SearchDirs, DepFileName, MaybeDepFileTimestamp,
@@ -322,8 +322,8 @@ convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
 
 do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     ModuleName = ModuleAndImports ^ mai_module_name,
-    module_name_to_file_name(Globals, ModuleName,
-        make_module_dep_file_extension, do_create_dirs, ProgDepFile, !IO),
+    module_name_to_file_name(Globals, do_create_dirs,
+        make_module_dep_file_extension, ModuleName, ProgDepFile, !IO),
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
         ProgDepResult = ok(ProgDepStream),
@@ -491,8 +491,8 @@ read_module_dependencies_no_search(Globals, RebuildModuleDeps, ModuleName,
 
 read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         !Info, !IO) :-
-    module_name_to_search_file_name(Globals, ModuleName,
-        make_module_dep_file_extension, ModuleDepFile, !IO),
+    module_name_to_search_file_name(Globals, make_module_dep_file_extension,
+        ModuleName, ModuleDepFile, !IO),
     search_for_file_returning_dir_and_stream(SearchDirs, ModuleDepFile,
         MaybeDirAndStream, !IO),
     (
@@ -844,8 +844,8 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 Globals, UnredirectGlobals),
             unredirect_output(UnredirectGlobals, ModuleName, ErrorStream,
                 !Info, !IO),
-            module_name_to_file_name(Globals, ModuleName, ".err",
-                do_not_create_dirs, ErrFileName, !IO),
+            module_name_to_file_name(Globals, do_not_create_dirs, ".err",
+                ModuleName, ErrFileName, !IO),
             io.remove_file(ErrFileName, _, !IO),
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_update?

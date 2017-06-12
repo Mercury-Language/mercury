@@ -637,8 +637,8 @@ make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
 
-        module_name_to_file_name(Globals, ModuleName, ".track_flags",
-            do_create_dirs, HashFileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".track_flags",
+            ModuleName, HashFileName, !IO),
         compare_hash_file(Globals, HashFileName, Hash, Same, !IO),
         (
             Same = yes,

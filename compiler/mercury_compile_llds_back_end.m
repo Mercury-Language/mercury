@@ -829,8 +829,8 @@ make_foreign_import_header_code(Globals, ForeignImportModule, Include, !IO) :-
     ForeignImportModule = foreign_import_module_info(Lang, ModuleName),
     (
         Lang = lang_c,
-        module_name_to_search_file_name(Globals, ModuleName, ".mh",
-            HeaderFileName, !IO),
+        module_name_to_search_file_name(Globals, ".mh",
+            ModuleName, HeaderFileName, !IO),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
             floi_literal(IncludeString), term.context_init)
@@ -879,10 +879,10 @@ llds_c_to_obj(Globals, ErrorStream, ModuleName, Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(Globals, PIC, Obj),
-    module_name_to_file_name(Globals, ModuleName, ".c", do_not_create_dirs,
-        C_File, !IO),
-    module_name_to_file_name(Globals, ModuleName, Obj, do_create_dirs,
-        O_File, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".c",
+        ModuleName, C_File, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, Obj,
+        ModuleName, O_File, !IO),
     compile_target_code.do_compile_c_file(Globals, ErrorStream, PIC,
         C_File, O_File, Succeeded, !IO).
 

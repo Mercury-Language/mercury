@@ -78,9 +78,7 @@
 :- pred module_source_filename(globals::in, module_name::in, file_name::out,
     io::di, io::uo) is det.
 
-    % module_name_to_file_name(Globals, Module, Extension, Mkdir, FileName,
-    %   !IO):
-    % module_name_to_file_name_ho(Globals, Extension, Mkdir, Module, FileName,
+    % module_name_to_file_name(Globals, Mkdir, Extension, Module, FileName,
     %   !IO):
     %
     % Convert a module name and file extension to the corresponding file name.
@@ -93,16 +91,10 @@
     % Note that this predicate is also used to create some "phony" Makefile
     % targets that do not have corresponding files, e.g. `<foo>.clean'.
     %
-:- pred module_name_to_file_name(globals::in,
-    module_name::in, string::in, maybe_create_dirs::in, file_name::out,
-    io::di, io::uo) is det.
-:- pred module_name_to_file_name_ho(globals::in,
-    string::in, maybe_create_dirs::in, module_name::in, file_name::out,
-    io::di, io::uo) is det.
+:- pred module_name_to_file_name(globals::in, maybe_create_dirs::in,
+    string::in, module_name::in, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_search_file_name(Globals, Module, XExtension, FileName,
-    %   !IO):
-    % module_name_to_search_file_name_ho(Globals, XExtension, Module, FileName,
+    % module_name_to_search_file_name(Globals, Extension, Module, FileName,
     %   !IO):
     %
     % As above, but for a file which might be in an installed library,
@@ -121,8 +113,6 @@
     % which would be used when writing or removing the `.mih' file.
     %
 :- pred module_name_to_search_file_name(globals::in,
-    module_name::in, string::in, file_name::out, io::di, io::uo) is det.
-:- pred module_name_to_search_file_name_ho(globals::in,
     string::in, module_name::in, file_name::out, io::di, io::uo) is det.
 
 :- type maybe_search
@@ -222,35 +212,29 @@ qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
 %---------------------------------------------------------------------------%
 
 module_source_filename(Globals, ModuleName, SourceFileName, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
-        SourceFileName, !IO).
+    module_name_to_file_name(Globals, do_not_create_dirs,
+        ".m", ModuleName, SourceFileName, !IO).
 
 %---------------------%
 
-module_name_to_file_name(Globals, ModuleName, Ext, MkDir, FileName, !IO) :-
-    module_name_to_file_name_general(Globals, ModuleName, Ext,
-        do_not_search, MkDir, FileName, !IO).
-
-module_name_to_file_name_ho(Globals, Ext, MkDir, ModuleName, FileName, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, Ext, MkDir, FileName, !IO).
+module_name_to_file_name(Globals, MkDir, Ext, ModuleName, FileName, !IO) :-
+    module_name_to_file_name_general(Globals, do_not_search, MkDir,
+        Ext, ModuleName, FileName, !IO).
 
 %---------------------%
 
-module_name_to_search_file_name(Globals, ModuleName, Ext, FileName, !IO) :-
-    module_name_to_file_name_general(Globals, ModuleName, Ext,
-        do_search, do_not_create_dirs, FileName, !IO).
-
-module_name_to_search_file_name_ho(Globals, Ext, ModuleName, FileName, !IO) :-
-    module_name_to_search_file_name(Globals, ModuleName, Ext, FileName, !IO).
+module_name_to_search_file_name(Globals, Ext, ModuleName, FileName, !IO) :-
+    module_name_to_file_name_general(Globals, do_search, do_not_create_dirs,
+        Ext, ModuleName, FileName, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred module_name_to_file_name_general(globals::in, module_name::in,
-    string::in, maybe_search::in, maybe_create_dirs::in, file_name::out,
-    io::di, io::uo) is det.
+:- pred module_name_to_file_name_general(globals::in,
+    maybe_search::in, maybe_create_dirs::in, string::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
 
-module_name_to_file_name_general(Globals, ModuleName, Ext, Search, MkDir,
-        FileName, !IO) :-
+module_name_to_file_name_general(Globals, Search, MkDir, Ext,
+        ModuleName, FileName, !IO) :-
     ( if
         Ext = ".m"
     then

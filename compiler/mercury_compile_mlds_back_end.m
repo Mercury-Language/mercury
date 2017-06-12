@@ -411,8 +411,8 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
     then
         maybe_write_string(Verbose, "% Dumping out raw MLDS...\n", !IO),
         ModuleName = mlds_get_module_name(MLDS),
-        module_name_to_file_name(Globals, ModuleName, ".mlds_dump",
-            do_create_dirs, BaseFileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".mlds_dump",
+            ModuleName, BaseFileName, !IO),
         DumpFile = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName,
         dump_mlds(Globals, DumpFile, MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)

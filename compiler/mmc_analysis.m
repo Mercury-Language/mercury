@@ -121,7 +121,7 @@
 
 mmc_module_name_to_read_file_name(Globals, ModuleName, Ext, MaybeFileName,
         !IO) :-
-    module_name_to_search_file_name(Globals, ModuleName, Ext, FileName0, !IO),
+    module_name_to_search_file_name(Globals, Ext, ModuleName, FileName0, !IO),
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
     search_for_file(Dirs, FileName0, MaybeFileName, !IO).
 
@@ -129,8 +129,8 @@ mmc_module_name_to_read_file_name(Globals, ModuleName, Ext, MaybeFileName,
     string::in, string::out, io::di, io::uo) is det.
 
 mmc_module_name_to_write_file_name(Globals, ModuleName, Ext, FileName, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, Ext,
-        do_create_dirs, FileName, !IO).
+    module_name_to_file_name(Globals, do_create_dirs, Ext,
+        ModuleName, FileName, !IO).
 
 module_name_func_id(ModuleInfo, proc(PredId, ProcId), PredModule, FuncId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),

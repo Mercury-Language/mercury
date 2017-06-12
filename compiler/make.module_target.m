@@ -534,19 +534,19 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, _Imports,
         compile_c_file(Globals, ErrorStream, PIC, ModuleName, Succeeded, !IO)
     ;
         Target = target_java,
-        module_name_to_file_name(Globals, ModuleName, ".java", do_create_dirs,
-            JavaFile, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".java",
+            ModuleName, JavaFile, !IO),
         compile_java_files(Globals, ErrorStream, [JavaFile], Succeeded, !IO)
     ;
         Target = target_csharp,
-        module_name_to_file_name(Globals, ModuleName, ".cs", do_create_dirs,
-            CsharpFile, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".cs",
+            ModuleName, CsharpFile, !IO),
         compile_target_code.link(Globals, ErrorStream, csharp_library,
             ModuleName, [CsharpFile], Succeeded, !IO)
     ;
         Target = target_erlang,
-        module_name_to_file_name(Globals, ModuleName, ".erl", do_create_dirs,
-            ErlangFile, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".erl",
+            ModuleName, ErlangFile, !IO),
         compile_erlang_file(Globals, ErrorStream, ErlangFile, Succeeded, !IO)
     ).
 
@@ -600,10 +600,10 @@ get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
         unexpected($module, $pred, "unsupported foreign language")
     ),
     ObjExt = get_object_extension(Globals, PIC),
-    module_name_to_file_name(Globals, ForeignModName, SrcExt, do_create_dirs,
-        SrcFileName, !IO),
-    module_name_to_file_name(Globals, ForeignModName, ObjExt, do_create_dirs,
-        ObjFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, SrcExt,
+        ForeignModName, SrcFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ObjExt,
+        ForeignModName, ObjFileName, !IO),
     ForeignCodeFile = foreign_code_file(Lang, SrcFileName, ObjFileName).
 
 :- pred fact_table_foreign_code_file(globals::in, module_name::in, pic::in,
@@ -1024,8 +1024,8 @@ gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
         !TimestampFileNames, !IO) :-
     TouchedTargetFile = target_file(TargetModuleName, TargetFileType),
     ( if timestamp_extension(TargetFileType, TimestampExt) then
-        module_name_to_file_name(Globals, TargetModuleName, TimestampExt,
-            do_not_create_dirs, TimestampFile, !IO),
+        module_name_to_file_name(Globals, do_not_create_dirs, TimestampExt,
+            TargetModuleName, TimestampFile, !IO),
         list.cons(TimestampFile, !TimestampFileNames)
     else
         true

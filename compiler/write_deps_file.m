@@ -133,8 +133,8 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
     % parallel makes, we first create the file with a temporary name,
     % and then rename it to the desired name when we have finished.
     ModuleName = ModuleAndImports ^ mai_module_name,
-    module_name_to_file_name(Globals, ModuleName, ".d",
-        do_create_dirs, DependencyFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".d",
+        ModuleName, DependencyFileName, !IO),
     io.make_temp_file(dir.dirname(DependencyFileName), "tmp_d",
         "", TmpDependencyFileNameRes, !IO),
     (
@@ -233,8 +233,8 @@ do_write_dependency_file(DepStream, Globals, ModuleAndImports,
     set.delete(ModuleName, ShortDeps1, ShortDeps),
     list.sort_and_remove_dups(FactDeps0, FactDeps),
 
-    module_name_to_file_name(Globals, ModuleName, ".trans_opt_date",
-        do_not_create_dirs, TransOptDateFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".trans_opt_date",
+        ModuleName, TransOptDateFileName, !IO),
     (
         MaybeTransOptDeps = yes(TransOptDeps0),
         set.intersect(set.list_to_set(TransOptDeps0), LongDeps,
@@ -300,20 +300,20 @@ do_write_dependency_file(DepStream, Globals, ModuleAndImports,
         unexpected($pred, "source file name doesn't end in `.m'")
     ),
 
-    module_name_to_file_name(Globals, ModuleName, ".optdate",
-        do_not_create_dirs, OptDateFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".c_date",
-        do_not_create_dirs, CDateFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".$O",
-        do_not_create_dirs, ObjFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".java_date",
-        do_not_create_dirs, JavaDateFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".optdate",
+        ModuleName, OptDateFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".c_date",
+        ModuleName, CDateFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".$O",
+        ModuleName, ObjFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".java_date",
+        ModuleName, JavaDateFileName, !IO),
     % XXX Why is the extension hardcoded to .pic_o here?  That looks wrong.
     % It should probably be .$(EXT_FOR_PIC_OBJECT) - juliensf.
-    module_name_to_file_name(Globals, ModuleName, ".pic_o",
-        do_not_create_dirs, PicObjFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".int0",
-        do_not_create_dirs, Int0FileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".pic_o",
+        ModuleName, PicObjFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".int0",
+        ModuleName, Int0FileName, !IO),
 
     some [TargetGroup, TargetGroups, !SourceGroups] (
     io.write_strings(DepStream, ["\n\n",
@@ -620,12 +620,12 @@ do_write_dependency_file(DepStream, Globals, ModuleAndImports,
     % file won't actually be built (e.g. LLDS grades for modules not containing
     % `:- pragma export' declarations), but this rule won't do any harm.
 
-    module_name_to_file_name(Globals, ModuleName, ".c",
-        do_not_create_dirs, CFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".mh",
-        do_not_create_dirs, MhHeaderFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".mih",
-        do_not_create_dirs, MihHeaderFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".c",
+        ModuleName, CFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".mh",
+        ModuleName, MhHeaderFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".mih",
+        ModuleName, MihHeaderFileName, !IO),
     io.write_strings(DepStream, [
         "\n\n",
         MhHeaderFileName, " ", MihHeaderFileName, " : ", CFileName, "\n\n"
@@ -641,11 +641,10 @@ do_write_dependency_file(DepStream, Globals, ModuleAndImports,
     % The `.module_dep' file is made as a side effect of
     % creating the `.c', `.s', or `.java'.
 
-    module_name_to_file_name(Globals, ModuleName, ".java",
-        do_not_create_dirs, JavaFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName,
-        make_module_dep_file_extension, do_not_create_dirs,
-        ModuleDepFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".java",
+        ModuleName, JavaFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs,
+        make_module_dep_file_extension, ModuleName, ModuleDepFileName, !IO),
     io.write_strings(DepStream, [
         "\n\n",
         "ifeq ($(findstring java,$(GRADE)),java)\n",
@@ -682,10 +681,10 @@ do_write_dependency_file(DepStream, Globals, ModuleAndImports,
     % modules, mmc will process the modules in outermost to innermost order
     % so as to produce each `.int0' file before it is needed.
 
-    module_name_to_file_name(Globals, ModuleName, ".date",
-        do_not_create_dirs, DateFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".date0",
-        do_not_create_dirs, Date0FileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".date",
+        ModuleName, DateFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".date0",
+        ModuleName, Date0FileName, !IO),
 
     io.write_strings(DepStream, ["\n\n", DateFileName, " ", Date0FileName],
         !IO),
@@ -836,14 +835,14 @@ do_write_dependency_file(DepStream, Globals, ModuleAndImports,
             ForeignImportExt = ".cs"
         ;
             Target = target_java,
-            module_name_to_file_name(Globals, ModuleName, ".class",
-                do_not_create_dirs, ClassFileName, !IO),
+            module_name_to_file_name(Globals, do_not_create_dirs, ".class",
+                ModuleName, ClassFileName, !IO),
             ForeignImportTargets = [ClassFileName],
             ForeignImportExt = ".java"
         ;
             Target = target_erlang,
-            module_name_to_file_name(Globals, ModuleName, ".beam",
-                do_not_create_dirs, BeamFileName, !IO),
+            module_name_to_file_name(Globals, do_not_create_dirs, ".beam",
+                ModuleName, BeamFileName, !IO),
             ForeignImportTargets = [BeamFileName],
             ForeignImportExt = ".hrl"
         ;
@@ -865,18 +864,18 @@ do_write_dependency_file(DepStream, Globals, ModuleAndImports,
             !MmakeFile, !IO)
     ),
 
-    module_name_to_file_name(Globals, ModuleName, ".int",
-        do_not_create_dirs, IntFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".int2",
-        do_not_create_dirs, Int2FileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".int3",
-        do_not_create_dirs, Int3FileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".opt",
-        do_not_create_dirs, OptFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".trans_opt",
-        do_not_create_dirs, TransOptFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".date3",
-        do_not_create_dirs, Date3FileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".int",
+        ModuleName, IntFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".int2",
+        ModuleName, Int2FileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".int3",
+        ModuleName, Int3FileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".opt",
+        ModuleName, OptFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".trans_opt",
+        ModuleName, TransOptFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".date3",
+        ModuleName, Date3FileName, !IO),
 
     % We add some extra dependencies to the generated `.d' files, so that
     % local `.int', `.opt', etc. files shadow the installed versions properly
@@ -1020,8 +1019,8 @@ do_write_dependency_file(DepStream, Globals, ModuleAndImports,
 
 write_nested_deps(DepStream, Globals, ModuleName, NestedDeps, Ext, MmakeRule,
         !IO) :-
-    module_name_to_file_name(Globals, ModuleName, Ext,
-        do_not_create_dirs, ExtName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+        ModuleName, ExtName, !IO),
     io.write_strings(DepStream, ["\n", ExtName, " : "], !IO),
     write_dependencies_list(Globals, DepStream, Ext, NestedDeps, !IO),
     io.write_string(DepStream, "\n\n", !IO),
@@ -1079,8 +1078,8 @@ write_dependencies_set(Globals, DepStream, Suffix, Modules, !IO) :-
 
 write_dependencies_list(_, _, _, [], !IO).
 write_dependencies_list(Globals, DepStream, Suffix, [Module | Modules], !IO) :-
-    module_name_to_file_name(Globals, Module, Suffix, do_not_create_dirs,
-        FileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, Suffix,
+        Module, FileName, !IO),
     io.write_string(DepStream, " \\\n\t", !IO),
     io.write_string(DepStream, FileName, !IO),
     write_dependencies_list(Globals, DepStream, Suffix, Modules, !IO).
@@ -1094,7 +1093,7 @@ write_dependencies_list(Globals, DepStream, Suffix, [Module | Modules], !IO) :-
 make_module_file_names_with_suffix(Globals, Suffix,
         Modules, FileNames, !IO) :-
     list.map_foldl(
-        module_name_to_file_name_ho(Globals, Suffix, do_not_create_dirs),
+        module_name_to_file_name(Globals, do_not_create_dirs, Suffix),
         Modules, FileNames, !IO).
 
 :- pred make_module_file_name_group_with_suffix(globals::in, string::in,
@@ -1104,7 +1103,7 @@ make_module_file_names_with_suffix(Globals, Suffix,
 make_module_file_name_group_with_suffix(Globals, GroupName, Suffix,
         Modules, Groups, !IO) :-
     list.map_foldl(
-        module_name_to_file_name_ho(Globals, Suffix, do_not_create_dirs),
+        module_name_to_file_name(Globals, do_not_create_dirs, Suffix),
         set.to_sorted_list(Modules), FileNames, !IO),
     Groups = make_file_name_group(GroupName, FileNames).
 
@@ -1221,8 +1220,8 @@ write_file_dependencies_list(DepStream, Suffix, [FileName | FileNames], !IO) :-
 write_subdirs_shorthand_rule(Globals, DepStream, ModuleName, Ext, MmakeRule,
         !IO) :-
     module_name_to_file_name_stem(ModuleName, ModuleStr),
-    module_name_to_file_name(Globals, ModuleName, Ext, do_not_create_dirs,
-        Target, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+        ModuleName, Target, !IO),
     ShorthandTarget = ModuleStr ++ Ext,
     io.write_string(DepStream, ".PHONY: ", !IO),
     io.write_string(DepStream, ShorthandTarget, !IO),
@@ -1362,8 +1361,8 @@ get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
 generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
         DepsMap, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    module_name_to_file_name(Globals, ModuleName, ".dv", do_create_dirs,
-        DvFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".dv",
+        ModuleName, DvFileName, !IO),
     maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
     maybe_write_string(Verbose, DvFileName, !IO),
     maybe_write_string(Verbose, "'...\n", !IO),
@@ -1389,8 +1388,8 @@ generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
 generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
         DepsMap, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    module_name_to_file_name(Globals, ModuleName, ".dep", do_create_dirs,
-        DepFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".dep",
+        ModuleName, DepFileName, !IO),
     maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
     maybe_write_string(Verbose, DepFileName, !IO),
     maybe_write_string(Verbose, "'...\n", !IO),
@@ -1529,7 +1528,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
 
     MakeFileName =
         ( pred(M - E::in, F::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(Globals, M, E, do_create_dirs, F0,
+            module_name_to_file_name(Globals, do_create_dirs, E, M, F0,
                 IO0, IO),
             F = "$(os_subdir)" ++ F0
         ),
@@ -2137,14 +2136,14 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
-    module_name_to_file_name(Globals, ModuleName, ".init",
-        do_create_dirs, InitFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, "_init.c",
-        do_create_dirs, InitCFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, "_init.$O",
-        do_create_dirs, InitObjFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, "_init.pic_o",
-        do_create_dirs, InitPicObjFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".init",
+        ModuleName, InitFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, "_init.c",
+        ModuleName, InitCFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, "_init.$O",
+        ModuleName, InitObjFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, "_init.pic_o",
+        ModuleName, InitPicObjFileName, !IO),
 
     globals.lookup_bool_option(Globals, generate_mmc_make_module_dependencies,
         MmcMakeDeps),
@@ -2219,8 +2218,8 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
         MaybeOptsVarPair, MaybeTransOptsVarPair,
         ExeFileName, JarFileName, LibFileName, SharedLibFileName,
         !MmakeFile, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, "",
-        do_not_create_dirs, ExeFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, "",
+        ModuleName, ExeFileName, !IO),
 
     io.write_strings(DepStream, [
         "ifneq ($(EXT_FOR_EXE),)\n",
@@ -2314,8 +2313,8 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     module_name_to_lib_file_name(Globals, "lib", ModuleName,
         ".$(EXT_FOR_SHARED_LIB)", do_not_create_dirs, MaybeSharedLibFileName,
         !IO),
-    module_name_to_file_name(Globals, ModuleName, ".jar",
-        do_not_create_dirs, JarFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".jar",
+        ModuleName, JarFileName, !IO),
 
     % Set up the installed name for shared libraries.
 
@@ -2442,10 +2441,10 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
 generate_dep_file_init_targets(Globals, DepStream,
         ModuleName, ModuleMakeVarName, InitCFileName, InitFileName,
         DepFileName, DvFileName, !MmakeFile, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, ".dep",
-        do_not_create_dirs, DepFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".dv",
-        do_not_create_dirs, DvFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".dep",
+        ModuleName, DepFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".dv",
+        ModuleName, DvFileName, !IO),
 
     ModuleMakeVarNameCs = "$(" ++ ModuleMakeVarName ++ ".cs)",
     InitAction1 = "echo > " ++ InitFileName,
@@ -2884,8 +2883,8 @@ generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
 
 generate_dep_file_collective_target(Globals, DepStream, ModuleName,
         ModuleMakeVarName, Extension - VarExtension, !MmakeFile, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, Extension,
-        do_not_create_dirs, TargetName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, Extension,
+        ModuleName, TargetName, !IO),
     io.write_strings(DepStream, [
         ".PHONY : ", TargetName, "\n",
         TargetName, " : $(", ModuleMakeVarName, VarExtension, ")\n\n"
@@ -2911,10 +2910,10 @@ generate_dep_file_clean_targets(Globals, DepStream,
     % If you change the clean targets below, please also update the
     % documentation in doc/user_guide.texi.
 
-    module_name_to_file_name(Globals, ModuleName, ".clean",
-        do_not_create_dirs, CleanTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".realclean",
-        do_not_create_dirs, RealCleanTargetName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".clean",
+        ModuleName, CleanTargetName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".realclean",
+        ModuleName, RealCleanTargetName, !IO),
 
     io.write_strings(DepStream, [
         "clean_local : ", CleanTargetName, "\n"
@@ -3060,8 +3059,8 @@ maybe_output_module_order(Globals, Module, DepsOrdering, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         Order = yes,
-        module_name_to_file_name(Globals, Module, ".order",
-            do_create_dirs, OrdFileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".order",
+            Module, OrdFileName, !IO),
         maybe_write_string(Verbose, "% Creating module order file `", !IO),
         maybe_write_string(Verbose, OrdFileName, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -3134,8 +3133,8 @@ get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, [Dep | Deps],
     ),
     (
         Found = no,
-        module_name_to_file_name(Globals, Dep, ".opt",
-            do_not_create_dirs, OptName, !IO),
+        module_name_to_file_name(Globals, do_not_create_dirs, ".opt",
+            Dep, OptName, !IO),
         search_for_file_returning_dir(IntermodDirs, OptName, MaybeOptDir, !IO),
         (
             MaybeOptDir = ok(_),
@@ -3143,8 +3142,8 @@ get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, [Dep | Deps],
         ;
             MaybeOptDir = error(_)
         ),
-        module_name_to_file_name(Globals, Dep, ".trans_opt",
-            do_not_create_dirs, TransOptName, !IO),
+        module_name_to_file_name(Globals, do_not_create_dirs, ".trans_opt",
+            Dep, TransOptName, !IO),
         search_for_file_returning_dir(IntermodDirs, TransOptName,
             MaybeTransOptDir, !IO),
         (
@@ -3180,7 +3179,7 @@ get_opt_deps(Globals, BuildOptFiles, IntermodDirs, Suffix, [Dep | Deps],
     ),
     (
         Found = no,
-        module_name_to_search_file_name(Globals, Dep, Suffix, OptName, !IO),
+        module_name_to_search_file_name(Globals, Suffix, Dep, OptName, !IO),
         search_for_file(IntermodDirs, OptName, MaybeOptDir, !IO),
         (
             MaybeOptDir = ok(_),

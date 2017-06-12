@@ -1090,8 +1090,8 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
     io.open_input(TmpErrorFileName, TmpErrorInputRes, !IO),
     (
         TmpErrorInputRes = ok(TmpErrorInputStream),
-        module_name_to_file_name(Globals, ModuleName, ".err", do_create_dirs,
-            ErrorFileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".err",
+            ModuleName, ErrorFileName, !IO),
         ( if set.member(ModuleName, !.Info ^ error_file_modules) then
             io.open_append(ErrorFileName, ErrorFileRes, !IO)
         else
@@ -1190,11 +1190,11 @@ write_error_creating_temp_file(ErrorMessage, !IO) :-
 get_timestamp_file_timestamp(Globals, target_file(ModuleName, FileType),
         MaybeTimestamp, !Info, !IO) :-
     ( if timestamp_extension(FileType, TimestampExt) then
-        module_name_to_file_name(Globals, ModuleName, TimestampExt,
-            do_not_create_dirs, FileName, !IO)
+        module_name_to_file_name(Globals, do_not_create_dirs, TimestampExt,
+            ModuleName, FileName, !IO)
     else
-        module_target_to_file_name(Globals, ModuleName, FileType,
-            do_not_create_dirs, FileName, !IO)
+        module_target_to_file_name(Globals, do_not_create_dirs, FileType,
+            ModuleName, FileName, !IO)
     ),
 
     % We should only ever look for timestamp files in the current directory.
@@ -1330,8 +1330,8 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
 
             % Something has gone wrong generating the dependencies,
             % so just take a punt (which probably won't work).
-            module_name_to_file_name(Globals, ModuleName, ".m",
-                do_not_create_dirs, FileName, !IO)
+            module_name_to_file_name(Globals, do_not_create_dirs, ".m",
+                ModuleName, FileName, !IO)
         )
     else
         MaybeExt = target_extension(Globals, FileType),
@@ -1339,32 +1339,32 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
             MaybeExt = yes(Ext),
             (
                 Search = do_search,
-                module_name_to_search_file_name_cache(Globals, ModuleName, Ext,
-                    FileName, !Info, !IO)
+                module_name_to_search_file_name_cache(Globals, Ext,
+                    ModuleName, FileName, !Info, !IO)
             ;
                 Search = do_not_search,
                 % Not common enough to cache.
-                module_name_to_file_name(Globals, ModuleName, Ext,
-                    do_not_create_dirs, FileName, !IO)
+                module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+                    ModuleName, FileName, !IO)
             )
         ;
             MaybeExt = no,
-            module_target_to_file_name_maybe_search(Globals, ModuleName,
-                FileType, do_not_create_dirs, Search, FileName, !IO)
+            module_target_to_file_name_maybe_search(Globals, Search,
+                do_not_create_dirs, FileType, ModuleName, FileName, !IO)
         )
     ).
 
-:- pred module_name_to_search_file_name_cache(globals::in, module_name::in,
-    string::in, string::out, make_info::in, make_info::out, io::di, io::uo)
-    is det.
+:- pred module_name_to_search_file_name_cache(globals::in, string::in,
+    module_name::in, string::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
-module_name_to_search_file_name_cache(Globals, ModuleName, Ext, FileName,
+module_name_to_search_file_name_cache(Globals, Ext, ModuleName, FileName,
         !Info, !IO) :-
     Key = ModuleName - Ext,
     ( if map.search(!.Info ^ search_file_name_cache, Key, FileName0) then
         FileName = FileName0
     else
-        module_name_to_search_file_name(Globals, ModuleName, Ext, FileName,
+        module_name_to_search_file_name(Globals, Ext, ModuleName, FileName,
             !IO),
         !Info ^ search_file_name_cache ^ elem(Key) := FileName
     ).
@@ -1423,8 +1423,8 @@ make_remove_target_file(Globals, VerboseOption, Target, !Info, !IO) :-
 
 make_remove_target_file_by_name(Globals, VerboseOption, ModuleName, FileType,
         !Info, !IO) :-
-    module_target_to_file_name(Globals, ModuleName, FileType,
-        do_not_create_dirs, FileName, !IO),
+    module_target_to_file_name(Globals, do_not_create_dirs, FileType,
+        ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO),
     ( if timestamp_extension(FileType, TimestampExt) then
         make_remove_module_file(Globals, VerboseOption, ModuleName,
@@ -1434,8 +1434,8 @@ make_remove_target_file_by_name(Globals, VerboseOption, ModuleName, FileType,
     ).
 
 make_remove_module_file(Globals, VerboseOption, ModuleName, Ext, !Info, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, Ext,
-        do_not_create_dirs, FileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+        ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO).
 
 make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
@@ -1499,8 +1499,8 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
     (
         TargetType = executable,
         globals.lookup_string_option(Globals, executable_file_extension, Ext),
-        module_name_to_file_name(Globals, ModuleName, Ext,
-            do_not_create_dirs, FileName, !IO)
+        module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+            ModuleName, FileName, !IO)
     ;
         TargetType = static_library,
         globals.lookup_string_option(Globals, library_extension, Ext),
@@ -1513,57 +1513,57 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
             do_not_create_dirs, FileName, !IO)
     ;
         TargetType = csharp_executable,
-        module_name_to_file_name(Globals, ModuleName, ".exe",
-            do_not_create_dirs, FileName, !IO)
+        module_name_to_file_name(Globals, do_not_create_dirs, ".exe",
+            ModuleName, FileName, !IO)
     ;
         TargetType = csharp_library,
-        module_name_to_file_name(Globals, ModuleName, ".dll",
-            do_not_create_dirs, FileName, !IO)
+        module_name_to_file_name(Globals, do_not_create_dirs, ".dll",
+            ModuleName, FileName, !IO)
     ;
         TargetType = erlang_launcher,
         % These are shell scripts.
         % XXX Shouldn't the extension be ".bat" when --target-env-type
         % is windows?
-        module_name_to_file_name(Globals, ModuleName, "",
-            do_not_create_dirs, FileName, !IO)
+        module_name_to_file_name(Globals, do_not_create_dirs, "",
+            ModuleName, FileName, !IO)
     ;
         ( TargetType = java_archive
         ; TargetType = java_executable
         ),
-        module_name_to_file_name(Globals, ModuleName, ".jar",
-            do_not_create_dirs, FileName, !IO)
+        module_name_to_file_name(Globals, do_not_create_dirs, ".jar",
+            ModuleName, FileName, !IO)
     ;
         TargetType = erlang_archive,
         module_name_to_lib_file_name(Globals, "lib", ModuleName, ".beams",
             do_not_create_dirs, FileName, !IO)
     ).
 
-:- pred module_target_to_file_name(globals::in, module_name::in,
-    module_target_type::in, maybe_create_dirs::in, file_name::out,
+:- pred module_target_to_file_name(globals::in, maybe_create_dirs::in,
+    module_target_type::in, module_name::in, file_name::out,
     io::di, io::uo) is det.
 
-module_target_to_file_name(Globals, ModuleName, TargetType, MkDir, FileName,
+module_target_to_file_name(Globals, MkDir, TargetType, ModuleName, FileName,
         !IO) :-
-    module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
-        MkDir, do_not_search, FileName, !IO).
+    module_target_to_file_name_maybe_search(Globals, do_not_search, MkDir,
+        TargetType, ModuleName, FileName, !IO).
 
-:- pred module_target_to_file_name_maybe_search(globals::in, module_name::in,
-    module_target_type::in, maybe_create_dirs::in, maybe_search::in,
-    file_name::out, io::di, io::uo) is det.
+:- pred module_target_to_file_name_maybe_search(globals::in,
+    maybe_search::in, maybe_create_dirs::in, module_target_type::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
 
-module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
-        MkDir, Search, FileName, !IO) :-
+module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
+        ModuleName, FileName, !IO) :-
     target_extension(Globals, TargetType) = MaybeExt,
     (
         MaybeExt = yes(Ext),
         (
             Search = do_search,
-            module_name_to_search_file_name(Globals, ModuleName, Ext, FileName,
-                !IO)
+            module_name_to_search_file_name(Globals, Ext,
+                ModuleName, FileName, !IO)
         ;
             Search = do_not_search,
-            module_name_to_file_name(Globals, ModuleName, Ext, MkDir,
-                FileName, !IO)
+            module_name_to_file_name(Globals, MkDir, Ext,
+                ModuleName, FileName, !IO)
         )
     ;
         MaybeExt = no,
@@ -1574,8 +1574,8 @@ module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
                     foreign_language_module_name(ModuleName, Lang)
             then
                 module_target_to_file_name_maybe_search(Globals,
-                    ForeignModuleName, module_target_object_code(PIC), MkDir,
-                    Search, FileName, !IO)
+                    Search, MkDir, module_target_object_code(PIC),
+                    ForeignModuleName, FileName, !IO)
             else
                 unexpected($module, $pred, "object test failed")
             )
@@ -1779,8 +1779,8 @@ make_write_target_file(Globals, TargetFile, !IO) :-
 
 make_write_target_file_wrapped(Globals, Prefix, TargetFile, Suffix, !IO) :-
     TargetFile = target_file(ModuleName, FileType),
-    module_target_to_file_name(Globals, ModuleName, FileType,
-        do_not_create_dirs, FileName, !IO),
+    module_target_to_file_name(Globals, do_not_create_dirs, FileType,
+        ModuleName, FileName, !IO),
     ( if
         Prefix = "",
         Suffix = ""

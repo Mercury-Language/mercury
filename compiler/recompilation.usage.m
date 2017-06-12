@@ -122,8 +122,8 @@ write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
             !IO),
 
         module_info_get_name(ModuleInfo, ModuleName),
-        module_name_to_file_name(Globals, ModuleName, ".used",
-            do_create_dirs, FileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".used",
+            ModuleName, FileName, !IO),
         io.open_output(FileName, FileResult, !IO),
         (
             FileResult = ok(Stream0),

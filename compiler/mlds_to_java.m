@@ -137,8 +137,8 @@ output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     % that's why we don't call mercury_module_name_to_mlds here.
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(Globals, ModuleName, ".java", do_create_dirs,
-        JavaSourceFile, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".java",
+        ModuleName, JavaSourceFile, !IO),
     Indent = 0,
     output_to_file(Globals, JavaSourceFile,
         output_java_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).

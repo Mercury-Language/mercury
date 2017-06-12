@@ -95,8 +95,8 @@
 output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(Globals, ModuleName, ".cs", do_create_dirs,
-        SourceFile, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".cs",
+        ModuleName, SourceFile, !IO),
     Indent = 0,
     output_to_file(Globals, SourceFile,
         output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).

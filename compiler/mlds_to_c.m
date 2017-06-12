@@ -211,8 +211,8 @@ output_c_mlds(MLDS, Globals, Suffix, Succeeded, !IO) :-
 output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
-    module_name_to_file_name(Globals, ModuleName, ".c" ++ Suffix,
-        do_create_dirs, SourceFile, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".c" ++ Suffix,
+        ModuleName, SourceFile, !IO),
     Indent = 0,
     output_to_file(Globals, SourceFile,
         mlds_output_src_file(Opts, Indent, MLDS), Succeeded, !IO).
@@ -228,10 +228,10 @@ output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
 
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
-    module_name_to_file_name(Globals, ModuleName, ".mih" ++ Suffix ++ ".tmp",
-        do_create_dirs, TmpHeaderFile, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".mih" ++ Suffix,
-        do_create_dirs, HeaderFile, !IO),
+    module_name_to_file_name(Globals, do_create_dirs,
+        ".mih" ++ Suffix ++ ".tmp", ModuleName, TmpHeaderFile, !IO),
+    module_name_to_file_name(Globals, do_create_dirs,
+        ".mih" ++ Suffix, ModuleName, HeaderFile, !IO),
     globals.lookup_bool_option(Globals, line_numbers_for_c_headers,
         LineNumbersForCHdrs),
     HdrOpts = ((Opts
@@ -368,7 +368,7 @@ mlds_output_src_import(Opts, _Indent, Import, !IO) :-
     ),
 
     Globals = Opts ^ m2co_all_globals,
-    module_name_to_search_file_name(Globals, ModuleName, HeaderExt, HeaderFile,
+    module_name_to_search_file_name(Globals, HeaderExt, ModuleName, HeaderFile,
         !IO),
     io.write_strings(["#include """, HeaderFile, """\n"], !IO).
 
@@ -683,8 +683,8 @@ mlds_output_src_end(Indent, ModuleName, !IO) :-
 mlds_output_auto_gen_comment(Opts, ModuleName, !IO) :-
     library.version(Version, Fullarch),
     Globals = Opts ^ m2co_all_globals,
-    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
-        SourceFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".m",
+        ModuleName, SourceFileName, !IO),
     output_c_file_intro_and_grade(Globals, SourceFileName, Version,
         Fullarch, !IO),
     io.nl(!IO).

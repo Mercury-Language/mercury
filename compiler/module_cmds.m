@@ -513,8 +513,8 @@ make_symlink_or_copy_dir(Globals, SourceDirName, DestinationDirName,
 %-----------------------------------------------------------------------------%
 
 touch_interface_datestamp(Globals, ModuleName, Ext, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, Ext, do_create_dirs,
-        OutputFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, Ext,
+        ModuleName, OutputFileName, !IO),
     touch_datestamp(Globals, OutputFileName, !IO).
 
 touch_datestamp(Globals, OutputFileName, !IO) :-
@@ -783,8 +783,8 @@ use_win32 :-
 
 create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     Ext = ".jar",
-    module_name_to_file_name(Globals, MainModuleName, Ext, do_not_create_dirs,
-        JarFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+        MainModuleName, JarFileName, !IO),
     get_target_env_type(Globals, TargetEnvType),
     (
         ( TargetEnvType = env_type_posix
@@ -1061,8 +1061,8 @@ create_erlang_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
 write_erlang_shell_script(Globals, MainModuleName, Stream, !IO) :-
     globals.lookup_string_option(Globals, erlang_object_file_extension,
         BeamExt),
-    module_name_to_file_name(Globals, MainModuleName, BeamExt,
-        do_not_create_dirs, BeamFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, BeamExt,
+        MainModuleName, BeamFileName, !IO),
     BeamDirName = dir.dirname(BeamFileName),
     module_name_to_file_name_stem(MainModuleName, BeamBaseNameNoExt),
 
@@ -1124,8 +1124,8 @@ write_erlang_batch_file(Globals, MainModuleName, Stream, !IO) :-
     % the Unix version above.
     globals.lookup_string_option(Globals, erlang_object_file_extension,
         BeamExt),
-    module_name_to_file_name(Globals, MainModuleName, BeamExt,
-        do_not_create_dirs, BeamFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, BeamExt,
+        MainModuleName, BeamFileName, !IO),
     BeamDirName = dir.dirname(BeamFileName),
     module_name_to_file_name_stem(MainModuleName, BeamBaseNameNoExt),
 
@@ -1220,8 +1220,8 @@ pa_option(BreakLines, Quote, Dir0) = Option :-
 
 create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     Extension = "",
-    module_name_to_file_name(Globals, MainModuleName, Extension,
-        do_create_dirs, FileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, Extension,
+        MainModuleName, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Generating shell script `" ++
@@ -1259,8 +1259,8 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
 
 create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     Extension = ".bat",
-    module_name_to_file_name(Globals, MainModuleName, Extension,
-        do_create_dirs, FileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, Extension,
+        MainModuleName, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Generating batch file `" ++

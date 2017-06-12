@@ -434,8 +434,8 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
             true
         ),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, ModuleName, ".opt",
-            do_create_dirs, OptName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".opt",
+            ModuleName, OptName, !IO),
         update_interface(Globals, OptName, !IO),
         touch_interface_datestamp(Globals, ModuleName, ".optdate", !IO)
     ;
@@ -452,8 +452,8 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
             (
                 UseOptFiles = yes,
                 module_info_get_name(!.HLDS, ModuleName),
-                module_name_to_search_file_name(Globals, ModuleName, ".opt",
-                    OptName, !IO),
+                module_name_to_search_file_name(Globals, ".opt",
+                    ModuleName, OptName, !IO),
                 search_for_file_returning_dir(IntermodDirs, OptName, MaybeDir,
                     !IO),
                 (

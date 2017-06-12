@@ -248,8 +248,8 @@
 write_initial_opt_file(!ModuleInfo, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp", do_create_dirs,
-        TmpName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".opt.tmp",
+        ModuleName, TmpName, !IO),
     io.open_output(TmpName, Result, !IO),
     (
         Result = error(Err),
@@ -2360,8 +2360,8 @@ append_analysis_pragmas_to_opt_file(ModuleInfo, UnusedArgsInfos, !IO) :-
     else
         module_info_get_globals(ModuleInfo, Globals),
         module_info_get_name(ModuleInfo, ModuleName),
-        module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-            do_not_create_dirs, OptFileName, !IO),
+        module_name_to_file_name(Globals, do_not_create_dirs, ".opt.tmp",
+            ModuleName, OptFileName, !IO),
         io.open_append(OptFileName, OptFileRes, !IO),
         (
             OptFileRes = ok(OptFile),
@@ -3190,8 +3190,8 @@ intermod_info_set_tvarset(TVarSet, !IntermodInfo) :-
 write_trans_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".trans_opt.tmp",
-        do_create_dirs, TmpOptName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".trans_opt.tmp",
+        ModuleName, TmpOptName, !IO),
     io.open_output(TmpOptName, Result, !IO),
     (
         Result = error(Error),
@@ -3290,8 +3290,8 @@ write_trans_opt_file(ModuleInfo, !IO) :-
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(Stream, !IO),
 
-        module_name_to_file_name(Globals, ModuleName, ".trans_opt",
-            do_not_create_dirs, OptName, !IO),
+        module_name_to_file_name(Globals, do_not_create_dirs, ".trans_opt",
+            ModuleName, OptName, !IO),
         update_interface(Globals, OptName, !IO),
         touch_interface_datestamp(Globals, ModuleName, ".trans_opt_date", !IO)
     ).

@@ -129,8 +129,8 @@ search_for_module_source_and_stream(Globals, Dirs, InterfaceDirs, ModuleName,
                     find_source_error(ModuleName, Dirs, yes(IFaceFileName)),
                 MaybeFileNameAndStream = error(Error)
             else
-                module_name_to_file_name(Globals, ModuleName, ".int",
-                    do_not_create_dirs, IntFile, !IO),
+                module_name_to_file_name(Globals, do_not_create_dirs, ".int",
+                    ModuleName, IntFile, !IO),
                 search_for_file_returning_dir(InterfaceDirs, IntFile,
                     MaybeIntDir, !IO),
                 ( if
@@ -178,8 +178,8 @@ search_for_module_source_dropping_qualifiers(Globals, Dirs, ModuleName,
 
 search_for_module_source_dropping_qualifiers_loop(Globals, Dirs,
         PartialModuleName0, MaybeFileNameAndStream, !IO) :-
-    module_name_to_file_name(Globals, PartialModuleName0, ".m",
-        do_not_create_dirs, FileName0, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".m",
+        PartialModuleName0, FileName0, !IO),
     search_for_file_and_stream(Dirs, FileName0, MaybeFileNameAndStream0, !IO),
     (
         MaybeFileNameAndStream0 = ok(FileNameAndStream0),

@@ -586,10 +586,9 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 erlang_object_file_extension, ObjExtToUse)
         ),
         list.map_foldl(
-            ( pred(ObjModule::in, ObjToLink::out, !.IO::di, !:IO::uo) is det :-
-                module_name_to_file_name(NoLinkObjsGlobals, ObjModule,
-                    ObjExtToUse, do_not_create_dirs, ObjToLink, !IO)
-            ), ObjModules, ObjList, !IO),
+            module_name_to_file_name(NoLinkObjsGlobals, do_not_create_dirs,
+                ObjExtToUse),
+            ObjModules, ObjList, !IO),
 
         % LinkObjects may contain `.a' files which must come
         % after all the object files on the linker command line.
@@ -708,12 +707,9 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
         !Info, !IO) :-
     verbose_make_msg(Globals,
         io.write_string("Making Java class files\n"), !IO),
-    ToJavaFile =
-        ( pred(ModuleName::in, JavaFile::out, !.IO::di, !:IO::uo) is det :-
-            module_name_to_file_name(Globals, ModuleName, ".java",
-                do_create_dirs, JavaFile, !IO)
-        ),
-    list.map_foldl(ToJavaFile, ModuleNames, JavaFiles, !IO),
+    list.map_foldl(
+        module_name_to_file_name(Globals, do_create_dirs, ".java"),
+        ModuleNames, JavaFiles, !IO),
     % We redirect errors to a file named after the main module.
     build_with_output_redirect(Globals, MainModuleName,
         build_java_files_2(JavaFiles), Succeeded, !Info, !IO).
@@ -1363,8 +1359,8 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             % XXX Should we test
             % ModuleAndImports ^ contains_foreign_export
             %   = contains_foreign_export?
-            module_name_to_file_name(Globals, ModuleName, ".mh",
-                do_not_create_dirs, FileName, !IO),
+            module_name_to_file_name(Globals, do_not_create_dirs, ".mh",
+                ModuleName, FileName, !IO),
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded1,
                 !IO),
 
@@ -1375,8 +1371,8 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         ;
             Target = target_erlang,
-            module_name_to_file_name(Globals, ModuleName, ".hrl",
-                do_not_create_dirs, FileName, !IO),
+            module_name_to_file_name(Globals, do_not_create_dirs, ".hrl",
+                ModuleName, FileName, !IO),
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded, !IO)
         ;
             ( Target = target_java
@@ -1596,8 +1592,8 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
 install_grade_init(Globals, GradeDir, ModuleName, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
-    module_name_to_file_name(Globals, ModuleName, ".init", do_not_create_dirs,
-        InitFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".init",
+        ModuleName, InitFileName, !IO),
     install_file(Globals, InitFileName, GradeModulesDir, Succeeded, !IO).
 
     % Install the `.opt', `.analysis' and `.mih' files for the current grade.
@@ -1671,8 +1667,8 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
 
 install_subdir_file(Globals, SubdirLinkSucceeded, InstallDir, ModuleName, Ext,
         Succeeded, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, "." ++ Ext,
-        do_not_create_dirs, FileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, "." ++ Ext,
+        ModuleName, FileName, !IO),
     install_file(Globals, FileName, InstallDir, Succeeded1, !IO),
     (
         SubdirLinkSucceeded = no,
@@ -1922,8 +1918,8 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
     list.map_foldl(linked_target_file_name(NoSubdirGlobals, ModuleName),
         LinkedTargetTypes, ThisDirFileNames, !IO),
     % XXX This symlink should not be necessary anymore for `mmc --make'.
-    module_name_to_file_name(NoSubdirGlobals, ModuleName, ".init",
-        do_not_create_dirs, ThisDirInitFileName, !IO),
+    module_name_to_file_name(NoSubdirGlobals, do_not_create_dirs, ".init",
+        ModuleName, ThisDirInitFileName, !IO),
 
     list.foldl2(make_remove_file(Globals, very_verbose),
         FileNames ++ ThisDirFileNames ++ [ThisDirInitFileName],

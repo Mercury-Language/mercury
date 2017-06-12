@@ -951,8 +951,8 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         ( if halt_at_module_error(Globals, Errors) then
             true
         else
-            module_name_to_file_name(Globals, ModuleName, ".ugly",
-                do_create_dirs, OutputFileName, !IO),
+            module_name_to_file_name(Globals, do_create_dirs, ".ugly",
+                ModuleName, OutputFileName, !IO),
             convert_to_mercury_src(Globals, OutputFileName, ParseTreeSrc, !IO)
         ),
         ModulesToLink = [],
@@ -1079,8 +1079,8 @@ find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
 
 usual_find_target_files(Globals, TargetSuffix, ModuleName, TargetFiles, !IO) :-
     % XXX Should we check the generated header files?
-    module_name_to_file_name(Globals, ModuleName, TargetSuffix,
-        do_create_dirs, FileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, TargetSuffix,
+        ModuleName, FileName, !IO),
     TargetFiles = [FileName].
 
 :- pred find_timestamp_files(globals::in,
@@ -1108,8 +1108,8 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
 
 find_timestamp_files_2(Globals, TimestampSuffix, ModuleName, TimestampFiles,
         !IO) :-
-    module_name_to_file_name(Globals, ModuleName, TimestampSuffix,
-        do_create_dirs, FileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, TimestampSuffix,
+        ModuleName, FileName, !IO),
     TimestampFiles = [FileName].
 
 %---------------------%
@@ -1784,8 +1784,8 @@ maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO) :-
     (
         TransOpt = yes,
         globals.lookup_bool_option(Globals, verbose, Verbose),
-        module_name_to_file_name(Globals, ModuleName, ".d", do_not_create_dirs,
-            DependencyFileName, !IO),
+        module_name_to_file_name(Globals, do_not_create_dirs, ".d",
+            ModuleName, DependencyFileName, !IO),
         maybe_write_string(Verbose, "% Reading auto-dependency file `", !IO),
         maybe_write_string(Verbose, DependencyFileName, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -1794,8 +1794,8 @@ maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO) :-
         (
             OpenResult = ok(Stream),
             io.set_input_stream(Stream, OldStream, !IO),
-            module_name_to_file_name(Globals, ModuleName, ".trans_opt_date",
-                do_not_create_dirs, TransOptDateFileName, !IO),
+            module_name_to_file_name(Globals, do_not_create_dirs,
+                ".trans_opt_date", ModuleName, TransOptDateFileName, !IO),
             SearchPattern = TransOptDateFileName ++ " :",
             read_dependency_file_find_start(SearchPattern, FindResult, !IO),
             (
@@ -1990,8 +1990,8 @@ make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
     ModuleName = aug_compilation_unit_project_name(AugCompUnit),
-    module_name_to_file_name(Globals, ModuleName, ".hlds_dump",
-        do_create_dirs, DumpBaseFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ".hlds_dump",
+        ModuleName, DumpBaseFileName, !IO),
     parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,
         TypeEqvMap, UsedModules, QualInfo,
         FoundInvalidType, FoundInvalidInstOrMode, !:HLDS, MakeSpecs),
@@ -2025,8 +2025,8 @@ maybe_write_definitions(Verbose, Stats, HLDS, !IO) :-
         ShowDefns = yes,
         maybe_write_string(Verbose, "% Writing definitions...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name(Globals, ModuleName, ".defns",
-            do_create_dirs, FileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".defns",
+            ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -2056,8 +2056,8 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
         ShowDepGraph = yes,
         maybe_write_string(Verbose, "% Writing dependency graph...", !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, ModuleName, ".dependency_graph",
-            do_create_dirs, FileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".dependency_graph",
+            ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -2139,8 +2139,8 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
     % `.used' file is written.
 
     module_info_get_name(!.HLDS, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".used",
-        do_not_create_dirs, UsageFileName, !IO),
+    module_name_to_file_name(Globals, do_not_create_dirs, ".used",
+        ModuleName, UsageFileName, !IO),
     io.remove_file(UsageFileName, _, !IO),
 
     globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
@@ -2181,8 +2181,8 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                 ;
                     TargetCodeSucceeded = yes,
                     io.output_stream(OutputStream, !IO),
-                    module_name_to_file_name(Globals, ModuleName, ".java",
-                        do_not_create_dirs, JavaFile, !IO),
+                    module_name_to_file_name(Globals, do_not_create_dirs,
+                        ".java", ModuleName, JavaFile, !IO),
                     compile_java_files(Globals, OutputStream, [JavaFile],
                         Succeeded, !IO),
                     maybe_set_exit_status(Succeeded, !IO)
@@ -2213,13 +2213,13 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                         Succeeded = no
                     ;
                         TargetCodeSucceeded = yes,
-                        module_name_to_file_name(Globals, ModuleName, ".c",
-                            do_not_create_dirs, C_File, !IO),
+                        module_name_to_file_name(Globals, do_not_create_dirs,
+                            ".c", ModuleName, C_File, !IO),
                         get_linked_target_type(Globals, TargetType),
                         get_object_code_type(Globals, TargetType, PIC),
                         maybe_pic_object_file_extension(Globals, PIC, Obj),
-                        module_name_to_file_name(Globals, ModuleName, Obj,
-                            do_create_dirs, O_File, !IO),
+                        module_name_to_file_name(Globals, do_create_dirs,
+                            Obj, ModuleName, O_File, !IO),
                         io.output_stream(OutputStream, !IO),
                         do_compile_c_file(Globals, OutputStream, PIC,
                             C_File, O_File, Succeeded, !IO),
@@ -2287,8 +2287,8 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
             "% Outputting profiling call graph...", !IO),
         maybe_flush_output(Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, ModuleName, ".prof", do_create_dirs,
-            ProfFileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs, ".prof",
+            ModuleName, ProfFileName, !IO),
         io.open_output(ProfFileName, Res, !IO),
         (
             Res = ok(FileStream),

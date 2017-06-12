@@ -349,12 +349,12 @@ read_module_begin(Globals, Descr, Search, ModuleName, FileKind,
     Extension = file_kind_to_extension(FileKind),
     (
         Search = do_search,
-        module_name_to_search_file_name(Globals, ModuleName, Extension,
-            FileName0, !IO)
+        module_name_to_search_file_name(Globals, Extension,
+            ModuleName, FileName0, !IO)
     ;
         Search = do_not_search,
-        module_name_to_file_name(Globals, ModuleName, Extension,
-            do_not_create_dirs, FileName0, !IO)
+        module_name_to_file_name(Globals, do_not_create_dirs, Extension,
+            ModuleName, FileName0, !IO)
     ),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     Msg = "% " ++ Descr ++ " `" ++ FileName0 ++ "'... ",
