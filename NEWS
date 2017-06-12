@@ -40,6 +40,7 @@ Changes that may break compatibility:
   type names are:
 
       int
+      uint
       float
       character
       string
@@ -91,7 +92,28 @@ Changes that may break compatibility:
 * The minimum version of the Java platform required by Mercury's Java
   backend is now Java SE 6.
 
+* The representation of integer constants in the standard library's term and
+  lexer modules has been generalised.  The base, signedness and size of each
+  integer constant is now recorded.  Furthermore, these modules now use
+  arbitrary-precision integers to represent the values of integer constants.
+
+  Code that relies on the old representation of integer constants used by
+  the term or lexer modules may use the `old_term_parser' library in the
+  extras instead.
+
 Changes to the Mercury language:
+
+* We have added a new primitive type, uint, which is an unsigned integer type
+  of the same size as Mercury's int type.  Literals of this type must have the
+  suffix `u', for example:
+
+       999u
+       0b1111100111u
+       0o1747u
+       0x3e7u
+
+  Basic operations on uint values are provided by the new standard library
+  module `uint'.  (See below for details.)
 
 * We have added a new kind of scope to the language: determinism checks
   for switch arms. These scopes are introduced by any of the new keywords
@@ -145,6 +167,19 @@ Changes to the Mercury language:
   to improve readability.
 
 Changes to the Mercury standard library:
+
+* We have added a new module, uint, that exports basic operations on the new
+  uint type.
+
+  The following predicates and functions have been made to other standard
+  library modules in order to support the uint type:
+
+  - integer.to_uint/2
+  - integer.det_to_uint/1
+  - integer.from_uint/1
+  - string.uint_to_string/1
+  - io.write_uint/3, io.write_uint/4
+  - stream.string_writer.put_int/4
 
 * We have added variants of the process_options predicates to the getopt
   and getopt_io modules that represent errors using a type instead of strings.
@@ -340,13 +375,7 @@ Changes to the Mercury standard library:
 
   - all_true_in_range/3
 
-* The lexer module now returns integer literals that are too large for ints
-  as arbitrary-precision integers, and the base of that literal.
-
-* We have added parameters to the term.integer constructor
-  in the term.const type.
-
-  We have added a predicate named is_dummy_context to the term module.
+* We have added a predicate named is_dummy_context to the term module.
 
 * The following predicates and functions have been added to the list module:
 
