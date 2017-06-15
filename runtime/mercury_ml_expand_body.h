@@ -790,6 +790,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             }
 #endif  // EXPAND_FUNCTOR_FIELD
 
+            handle_zero_arity_args();
+            return;
+
         case MR_TYPECTOR_REP_CHAR:
 #ifdef  EXPAND_FUNCTOR_FIELD
             {
