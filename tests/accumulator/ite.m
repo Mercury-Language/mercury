@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 % Tests that if-then-elses are handled correctly.
 
 :- module ite.
@@ -10,21 +10,21 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 
-main -->
-    io__write_string("factorial: "),
-    { Factorial = factorial(7) },
-    io__write(Factorial),
-    io__nl,
-    io__write_string("sort_of_factorial: "),
-    { sort_of_factorial(3, Factorial2) },
-    io__write(Factorial2),
-    io__nl.
+main(!IO) :-
+    io.write_string("factorial: ", !IO),
+    Factorial = factorial(7),
+    io.write(Factorial, !IO),
+    io.nl(!IO),
+    io.write_string("sort_of_factorial: ", !IO),
+    sort_of_factorial(3, Factorial2),
+    io.write(Factorial2, !IO),
+    io.nl(!IO).
 
 :- func factorial(int) = int.
 
@@ -36,11 +36,11 @@ factorial(Num)
 sort_of_factorial(Num, Fac) :-
     % Here we bind a value in the condition and use it in the then part,
     % in an attempt to confuse the compiler.
-    (
+    ( if
         (Num \= 0, X = 2)
-    ->
+    then
         sort_of_factorial(Num - 1, Fac0),
         Fac = X * Num * Fac0
-    ;
+    else
         Fac = 1
     ).
