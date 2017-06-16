@@ -20,7 +20,7 @@
 % table that we need to eventually modecheck that mode of the unification
 % procedure.
 %
-% After we've done mode analysis for all the ordinary predicates, we then
+% After we have done mode analysis for all the ordinary predicates, we then
 % do mode analysis for the out-of-line unification procedures. Note that
 % unification procedures may call other unification procedures which have
 % not yet been encountered, causing new entries to be added to the
@@ -36,7 +36,7 @@
 % generation of complicated unification procedures until link time (like
 % Cfront does with C++ templates) or to have a smart linker which could
 % merge duplicate definitions (like Borland C++). However the amount of
-% code duplication involved is probably very small, so it's definitely not
+% code duplication involved is probably very small, so it is definitely not
 % worth worrying about right now.
 %
 % XXX What about complicated unification of an abstract type in a partially
