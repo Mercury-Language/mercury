@@ -471,28 +471,37 @@ implicitly_quantify_goal_quant_info_ite(GoalExpr0, GoalExpr, GoalInfo0,
     % So we don't keep them. Thus we replace `if_then_else(Vars, ....)'
     % with `if_then_else([], ...)'.
 
-    get_quant_vars(!.Info, QuantVars),
-    get_outside(!.Info, OutsideVars),
-    get_lambda_outside(!.Info, LambdaOutsideVars),
-    QVars = set_of_var.list_to_set(Vars0),
-    % Rename apart those variables that are quantified to the cond and then
-    % of the i-t-e that occur outside the i-t-e.
-    set_of_var.intersect(OutsideVars, QVars, RenameVars1),
-    set_of_var.intersect(LambdaOutsideVars, QVars, RenameVars2),
-    set_of_var.union(RenameVars1, RenameVars2, RenameVars),
-    ( if set_of_var.is_empty(RenameVars) then
+    get_quant_vars(!.Info, QuantVars0),
+    get_outside(!.Info, OutsideVars0),
+    get_lambda_outside(!.Info, LambdaOutsideVars0),
+    (
+        Vars0 = [],
+        QVars = set_of_var.init,
         Cond1 = Cond0,
         Then1 = Then0,
-        Vars = Vars0
-    else
-        Context = goal_info_get_context(GoalInfo0),
-        warn_overlapping_scope(RenameVars, Context, !Info),
-        rename_apart(RenameVars, RenameMap, NonLocalsToRecompute,
-            Cond0, Cond1, !Info),
-        rename_some_vars_in_goal(RenameMap, Then0, Then1),
-        rename_var_list(need_not_rename, RenameMap, Vars0, Vars)
+        QuantVars1 = QuantVars0
+    ;
+        Vars0 = [_ | _],
+        QVars = set_of_var.list_to_set(Vars0),
+        % Rename apart those variables that are quantified to the cond and then
+        % of the i-t-e that occur outside the i-t-e.
+        set_of_var.intersect(OutsideVars0, QVars, RenameVars1),
+        set_of_var.intersect(LambdaOutsideVars0, QVars, RenameVars2),
+        set_of_var.union(RenameVars1, RenameVars2, RenameVars),
+        ( if set_of_var.is_empty(RenameVars) then
+            Cond1 = Cond0,
+            Then1 = Then0,
+            Vars = Vars0
+        else
+            Context = goal_info_get_context(GoalInfo0),
+            warn_overlapping_scope(RenameVars, Context, !Info),
+            rename_apart(RenameVars, RenameMap, NonLocalsToRecompute,
+                Cond0, Cond1, !Info),
+            rename_some_vars_in_goal(RenameMap, Then0, Then1),
+            rename_var_list(need_not_rename, RenameMap, Vars0, Vars)
+        ),
+        set_of_var.insert_list(Vars, QuantVars0, QuantVars1)
     ),
-    set_of_var.insert_list(Vars, QuantVars, QuantVars1),
     (
         NonLocalsToRecompute = ordinary_nonlocals_maybe_lambda,
         goal_vars_both_maybe_lambda(NonLocalsToRecompute, Then1,
@@ -504,8 +513,8 @@ implicitly_quantify_goal_quant_info_ite(GoalExpr0, GoalExpr, GoalInfo0,
         goal_vars_both_no_lambda(NonLocalsToRecompute, Then1, VarsThen),
         LambdaVarsThen = set_of_var.init
     ),
-    set_of_var.union(OutsideVars, VarsThen, OutsideVars1),
-    set_of_var.union(LambdaOutsideVars, LambdaVarsThen,
+    set_of_var.union(OutsideVars0, VarsThen, OutsideVars1),
+    set_of_var.union(LambdaOutsideVars0, LambdaVarsThen,
         LambdaOutsideVars1),
     set_quant_vars(QuantVars1, !Info),
     set_outside(OutsideVars1, !Info),
@@ -514,14 +523,14 @@ implicitly_quantify_goal_quant_info_ite(GoalExpr0, GoalExpr, GoalInfo0,
     implicitly_quantify_goal_quant_info(Cond1, Cond, NonLocalsToRecompute,
         !Info),
     get_nonlocals(!.Info, NonLocalsCond),
-    set_of_var.union(OutsideVars, NonLocalsCond, OutsideVars2),
+    set_of_var.union(OutsideVars0, NonLocalsCond, OutsideVars2),
     set_outside(OutsideVars2, !Info),
-    set_lambda_outside(LambdaOutsideVars, !Info),
+    set_lambda_outside(LambdaOutsideVars0, !Info),
     implicitly_quantify_goal_quant_info(Then1, Then, NonLocalsToRecompute,
         !Info),
     get_nonlocals(!.Info, NonLocalsThen),
-    set_outside(OutsideVars, !Info),
-    set_quant_vars(QuantVars, !Info),
+    set_outside(OutsideVars0, !Info),
+    set_quant_vars(QuantVars0, !Info),
     implicitly_quantify_goal_quant_info(Else0, Else, NonLocalsToRecompute,
         !Info),
     GoalExpr = if_then_else([], Cond, Then, Else),
@@ -529,8 +538,8 @@ implicitly_quantify_goal_quant_info_ite(GoalExpr0, GoalExpr, GoalInfo0,
     get_nonlocals(!.Info, NonLocalsElse),
     set_of_var.union(NonLocalsCond, NonLocalsThen, NonLocalsIfThen),
     set_of_var.union(NonLocalsIfThen, NonLocalsElse, NonLocalsIfThenElse),
-    set_of_var.intersect(NonLocalsIfThenElse, OutsideVars, NonLocalsO),
-    set_of_var.intersect(NonLocalsIfThenElse, LambdaOutsideVars,
+    set_of_var.intersect(NonLocalsIfThenElse, OutsideVars0, NonLocalsO),
+    set_of_var.intersect(NonLocalsIfThenElse, LambdaOutsideVars0,
         NonLocalsL),
     set_of_var.union(NonLocalsO, NonLocalsL, NonLocals),
     set_nonlocals(NonLocals, !Info),
