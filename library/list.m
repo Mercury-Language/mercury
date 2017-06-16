@@ -782,8 +782,9 @@
 
     % find_index_of_match(Match, List, Index0, Index)
     %
-    % Find the index of an item in the list for which Match is true where the
-    % first element in the list has the index Index0.
+    % Find the index of the first item in List for which Match is true,
+    % where the first element in the list has the index Index0.
+    % (Index0 is *not* the number of items to skip at the head of List.)
     %
 :- pred find_index_of_match(pred(T), list(T), int, int).
 :- mode find_index_of_match(pred(in) is semidet, in, in, out) is semidet.
