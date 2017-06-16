@@ -1838,8 +1838,15 @@ write_goal_if_then_else(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
 
 :- pred write_some(prog_varset::in, list(prog_var)::in, io::di, io::uo) is det.
 
-write_some(_VarSet, _Vars, !IO).
-    % Quantification is all implicit by the time we get to the HLDS.
+write_some(VarSet, Vars, !IO) :-
+    (
+        Vars = []
+    ;
+        Vars = [_ | _],
+        io.write_string(" some [", !IO),
+        mercury_output_vars(VarSet, print_name_and_num, Vars, !IO),
+        io.write_string("]", !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %

@@ -909,8 +909,8 @@ output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
     term.context_file(Context, File),
     term.context_line(Context, Line),
     c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO),
-    io.write_list(Stream, ForeignNamesAndTags, "\n",
-        output_exported_enum_constname_tag, !IO),
+    io.write_list(ForeignNamesAndTags, "\n",
+        output_exported_enum_constname_tag(Stream), !IO),
     io.nl(Stream, !IO),
     c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers,
         MaybeThisFileName, !IO).
@@ -922,16 +922,16 @@ output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
     --->    ee_tag_rep_int(int)
     ;       ee_tag_rep_string(string).
 
-:- pred output_exported_enum_constname_tag(
+:- pred output_exported_enum_constname_tag(io.text_output_stream::in,
     pair(string, exported_enum_tag_rep)::in, io::di, io::uo) is det.
 
-output_exported_enum_constname_tag(ConstName - Tag, !IO) :-
+output_exported_enum_constname_tag(Stream, ConstName - Tag, !IO) :-
     (
         Tag = ee_tag_rep_int(RawIntTag),
-        io.format("#define %s %d", [s(ConstName), i(RawIntTag)], !IO)
+        io.format(Stream, "#define %s %d", [s(ConstName), i(RawIntTag)], !IO)
     ;
         Tag = ee_tag_rep_string(RawStrTag),
-        io.format("#define %s %s", [s(ConstName), s(RawStrTag)], !IO)
+        io.format(Stream, "#define %s %s", [s(ConstName), s(RawStrTag)], !IO)
     ).
 
 :- pred foreign_const_name_and_tag(type_ctor::in, map(sym_name, string)::in,

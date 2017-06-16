@@ -512,24 +512,24 @@ maybe_add_dependency_arc(DepGraph, WhatEdges, EdgeKind, Caller, PredProcId,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred write_dependency_ordering(module_info::in, int::in,
-    list(list(pred_proc_id))::in, io::di, io::uo) is det.
-:- pragma consider_used(write_dependency_ordering/5).
+:- pred write_dependency_ordering(io.text_output_stream::in, module_info::in,
+    int::in, list(list(pred_proc_id))::in, io::di, io::uo) is det.
+:- pragma consider_used(write_dependency_ordering/6).
 
-write_dependency_ordering(_ModuleInfo, _CurSCCNum, [], !IO) :-
+write_dependency_ordering(_Stream, _ModuleInfo, _CurSCCNum, [], !IO) :-
     io.write_string("\n", !IO).
-write_dependency_ordering(ModuleInfo, CurSCCNum, [SCC | SCCs], !IO) :-
-    io.write_string("% SCC ", !IO),
-    io.write_int(CurSCCNum, !IO),
-    io.write_string("\n", !IO),
-    write_scc(ModuleInfo, SCC, !IO),
-    write_dependency_ordering(ModuleInfo, CurSCCNum + 1, SCCs, !IO).
+write_dependency_ordering(Stream, ModuleInfo, CurSCCNum, [SCC | SCCs], !IO) :-
+    io.write_string(Stream, "% SCC ", !IO),
+    io.write_int(Stream, CurSCCNum, !IO),
+    io.write_string(Stream, "\n", !IO),
+    write_scc(Stream, ModuleInfo, SCC, !IO),
+    write_dependency_ordering(Stream, ModuleInfo, CurSCCNum + 1, SCCs, !IO).
 
-:- pred write_scc(module_info::in, list(pred_proc_id)::in, io::di, io::uo)
-    is det.
+:- pred write_scc(io.text_output_stream::in, module_info::in,
+    list(pred_proc_id)::in, io::di, io::uo) is det.
 
-write_scc(_ModuleInfo, [], !IO).
-write_scc(ModuleInfo, [PredProcId | PredProcIds], !IO) :-
+write_scc(_Stream, _ModuleInfo, [], !IO).
+write_scc(Stream, ModuleInfo, [PredProcId | PredProcIds], !IO) :-
     PredProcId = proc(PredId, ProcId),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     Name = pred_info_name(PredInfo),
@@ -537,11 +537,13 @@ write_scc(ModuleInfo, [PredProcId | PredProcIds], !IO) :-
     proc_info_get_argmodes(ProcInfo, Modes),
     varset.init(ModeVarSet),
 
-    io.write_string("% ", !IO),
-    mercury_output_pred_mode_subdecl(output_mercury,ModeVarSet,
+    io.write_string(Stream, "% ", !IO),
+    io.set_output_stream(Stream, OldStream, !IO),
+    mercury_output_pred_mode_subdecl(output_mercury, ModeVarSet,
         unqualified(Name), Modes, Det, !IO),
-    io.write_string("\n", !IO),
-    write_scc(ModuleInfo, PredProcIds, !IO).
+    io.set_output_stream(OldStream, _, !IO),
+    io.write_string(Stream, "\n", !IO),
+    write_scc(Stream, ModuleInfo, PredProcIds, !IO).
 
 %---------------------------------------------------------------------------%
 

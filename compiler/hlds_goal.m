@@ -2683,10 +2683,12 @@ incremental_rename_vars_in_goal(Subn0, SubnUpdates, Goal0, Goal) :-
     GoalId = goal_info_get_goal_id(GoalInfo0),
     ( if map.search(SubnUpdates, GoalId, GoalSubns) then
         trace [compiletime(flag("statevar-subn")), io(!IO)] (
+            io.stderr_stream(StdErr, !IO),
             GoalId = goal_id(GoalIdNum),
-            io.format("Goal id %d has substitutions\n", [i(GoalIdNum)], !IO),
-            io.write(GoalSubns, !IO),
-            io.nl(!IO)
+            io.format(StdErr, "Goal id %d has substitutions\n",
+                [i(GoalIdNum)], !IO),
+            io.write(StdErr, GoalSubns, !IO),
+            io.nl(StdErr, !IO)
         ),
         list.foldl(follow_subn_until_fixpoint, GoalSubns, Subn0, Subn)
     else
@@ -2703,22 +2705,24 @@ incremental_rename_vars_in_goal(Subn0, SubnUpdates, Goal0, Goal) :-
 follow_subn_until_fixpoint(FromVar - ToVar, !Subn) :-
     ( if map.search(!.Subn, ToVar, SubstitutedToVar) then
         trace [compiletime(flag("statevar-subn")), io(!IO)] (
-            io.write_string("short circuiting ", !IO),
-            io.write(FromVar, !IO),
-            io.write_string(": ", !IO),
-            io.write(ToVar, !IO),
-            io.write_string(" -> ", !IO),
-            io.write(SubstitutedToVar, !IO),
-            io.nl(!IO)
+            io.stderr_stream(StdErr, !IO),
+            io.write_string(StdErr, "short circuiting ", !IO),
+            io.write(StdErr, FromVar, !IO),
+            io.write_string(StdErr, ": ", !IO),
+            io.write(StdErr, ToVar, !IO),
+            io.write_string(StdErr, " -> ", !IO),
+            io.write(StdErr, SubstitutedToVar, !IO),
+            io.nl(StdErr, !IO)
         ),
         follow_subn_until_fixpoint(FromVar - SubstitutedToVar, !Subn)
     else
         trace [compiletime(flag("statevar-subn")), io(!IO)] (
+            io.stderr_stream(StdErr, !IO),
             io.write_string("applied substitution: ", !IO),
-            io.write(FromVar, !IO),
-            io.write_string(" to ", !IO),
-            io.write(ToVar, !IO),
-            io.nl(!IO)
+            io.write(StdErr, FromVar, !IO),
+            io.write_string(StdErr, " to ", !IO),
+            io.write(StdErr, ToVar, !IO),
+            io.nl(StdErr, !IO)
         ),
         map.det_insert(FromVar, ToVar, !Subn)
     ).
