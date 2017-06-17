@@ -2,6 +2,8 @@ Term: 'A'
 Type: A
 Term: 42
 Type: 42
+Term: 42u
+Type: 42
 Term: 12345.6789
 Type: 12345.6789
 Term: "abcdefghijklmnopqrstuvwxyz"

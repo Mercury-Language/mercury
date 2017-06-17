@@ -53,6 +53,18 @@ main(!IO) :-
     io.write_int(IntValue, !IO),
     io.nl(!IO),
 
+    % Test handling of uints.
+    %
+    UInt = 42u,
+    type_to_term(UInt, UIntTerm : term(generic)),
+    io.write_string("Term: ", !IO),
+    term_io.write_term(VarSet, UIntTerm, !IO),
+    io.nl(!IO),
+    det_term_to_type(UIntTerm, UIntValue : uint),
+    io.write_string("Type: ", !IO),
+    io.write_uint(UIntValue, !IO),
+    io.nl(!IO),
+
     % Test handling of floats.
     %
     Float = 12345.6789,
