@@ -86,7 +86,7 @@
 
     % Add a new request for a procedure (not necessarily a unification)
     % to the request queue. Return the procedure's newly allocated proc_id.
-    % (This is used by unique_modes.m.)
+    % (This is used by mode inference and unique_modes.m.)
     %
 :- pred request_proc(pred_id::in, list(mer_mode)::in, inst_varset::in,
     maybe(list(is_live))::in, maybe(determinism)::in, prog_context::in,

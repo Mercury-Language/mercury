@@ -1,0 +1,12 @@
+bug410.m:054: Syntax error at token `. ': expected `,', `)', or operator.
+bug410.m:056: Error: clause for predicate `bug410.make_titles'/3
+bug410.m:056:   without corresponding `:- pred' declaration.
+bug410.m:056: Error: no mode declaration for predicate `make_titles'/3.
+bug410.m:056: Inferred :- pred make_titles(pred(V_1, V_2, V_2), V_2, T3).
+bug410.m:056: Inferred :- mode make_titles(di(/* unique */(pred((free >>
+bug410.m:056:   ground), (ground >> ground), (free >> ground)) is det)),
+bug410.m:056:   (ground >> not_reached), out(not_reached)).
+bug410.m:056: Inferred :- mode make_titles(di(/* unique */(pred((free >>
+bug410.m:056:   ground), (ground >> ground), (free >> ground)) is det)), di,
+bug410.m:056:   out(not_reached)).
+For more information, recompile with `-E'.

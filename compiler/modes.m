@@ -626,33 +626,51 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
     ;
         CanProcess = can_process_now,
         do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-            !ModuleInfo, PredInfo0, PredInfo, ProcInfo0, !Changed, Specs),
+            !ModuleInfo, PredInfo0, ClausesInfo, ProcInfo0, ProcInfo,
+            !Changed, Specs),
 
-        module_info_get_preds(!.ModuleInfo, Preds1),
-        map.det_update(PredId, PredInfo, Preds1, Preds),
-        module_info_set_preds(Preds, !ModuleInfo)
+        % We get the pred_info from the ModuleInfo *again*, because
+        % while we are doing mode inference on one procedure of a predicate,
+        % we can add new mode declarations to that predicate. If we didn't
+        % refetch the pred_info, we would be implicitly undoing the addition
+        % of those new entries to the predicate's proc table.
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo1),
+        pred_info_get_proc_table(PredInfo1, ProcMap1),
+        map.det_update(ProcId, ProcInfo, ProcMap1, ProcMap),
+        pred_info_set_proc_table(ProcMap, PredInfo1, PredInfo2),
+
+        pred_info_set_clauses_info(ClausesInfo, PredInfo2, PredInfo),
+
+        module_info_get_preds(!.ModuleInfo, PredMap1),
+        map.det_update(PredId, PredInfo, PredMap1, PredMap),
+        module_info_set_preds(PredMap, !ModuleInfo)
     ).
 
 :- pred do_modecheck_proc(proc_id::in, pred_id::in, how_to_check_goal::in,
     may_change_called_proc::in, module_info::in, module_info::out,
-    pred_info::in, pred_info::out, proc_info::in,
+    pred_info::in, clauses_info::out, proc_info::in, proc_info::out,
     bool::in, bool::out, list(error_spec)::out) is det.
 
 do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !PredInfo, !.ProcInfo, !Changed, ErrorAndWarningSpecs) :-
-    % Extract the useful fields in the proc_info.
-    proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_argmodes(!.ProcInfo, ArgModes0),
-    proc_info_arglives(!.ProcInfo, !.ModuleInfo, ArgLives0),
-    proc_info_get_goal(!.ProcInfo, Body0),
+        !ModuleInfo, PredInfo0, ClausesInfo, !ProcInfo,
+        !Changed, ErrorAndWarningSpecs) :-
+    pred_info_get_markers(PredInfo0, Markers),
+    ( if check_marker(Markers, marker_infer_modes) then
+        InferModes = yes
+    else
+        InferModes = no
+    ),
+    ( if is_unify_pred(PredInfo0) then
+        IsUnifyPred = yes
+    else
+        IsUnifyPred = no
+    ),
+    pred_info_get_origin(PredInfo0, Origin),
 
     % We use the context of the first clause, unless there weren't any clauses
     % at all, in which case we use the context of the mode declaration.
-    % We update !PredInfo anyway (to put the updated ProcInfo into the
-    % procedure table), so we may as well flatten the clause list.
-    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+    pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_clauses(Clauses, _ItemNumbers, ClausesInfo0, ClausesInfo),
-    pred_info_set_clauses_info(ClausesInfo, !PredInfo),
     (
         Clauses = [FirstClause | _],
         Context = FirstClause ^ clause_context
@@ -660,6 +678,12 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         Clauses = [],
         proc_info_get_context(!.ProcInfo, Context)
     ),
+
+    % Extract the useful fields in the proc_info.
+    proc_info_get_headvars(!.ProcInfo, HeadVars),
+    proc_info_get_argmodes(!.ProcInfo, ArgModes0),
+    proc_info_arglives(!.ProcInfo, !.ModuleInfo, ArgLives0),
+    proc_info_get_goal(!.ProcInfo, Body0),
 
     % Modecheck the body. First set the initial instantiation of the head
     % arguments, then modecheck the body, and then check that the final
@@ -684,17 +708,6 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             !:ModeInfo),
         mode_info_set_changed_flag(!.Changed, !ModeInfo),
 
-        pred_info_get_markers(!.PredInfo, Markers),
-        ( if check_marker(Markers, marker_infer_modes) then
-            InferModes = yes
-        else
-            InferModes = no
-        ),
-        ( if is_unify_pred(!.PredInfo) then
-            IsUnifyPred = yes
-        else
-            IsUnifyPred = no
-        ),
         mode_list_get_final_insts(!.ModuleInfo, ArgModes0, ArgFinalInsts0),
 
         modecheck_proc_body(!.ModuleInfo, WhatToCheck, InferModes,
@@ -711,7 +724,6 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             ErrorAndWarningSpecs = []
         ;
             InferModes = no,
-            pred_info_get_origin(!.PredInfo, Origin),
             ( if Origin = origin_mutable(_, _, _) then
                 % The only mode error that may occur in the automatically
                 % generated auxiliary predicates for a mutable is an
@@ -765,11 +777,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         ;
             NeedToRequantify = need_to_requantify,
             requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo)
-        ),
-
-        pred_info_get_proc_table(!.PredInfo, ProcMap1),
-        map.det_update(ProcId, !.ProcInfo, ProcMap1, ProcMap),
-        pred_info_set_proc_table(ProcMap, !PredInfo)
+        )
     ).
 
 :- pred modecheck_proc_body(module_info::in, how_to_check_goal::in,

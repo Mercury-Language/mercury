@@ -85,6 +85,7 @@ SINGLEMODULE= \
 	bug257 \
 	bug278 \
 	bug363 \
+	bug410 \
 	bug415 \
 	bug436 \
 	bug83 \
