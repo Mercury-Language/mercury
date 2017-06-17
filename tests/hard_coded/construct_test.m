@@ -48,7 +48,7 @@
     ;       zop(float, float).
 
 :- type poly(A, B)
-    --->    poly_one(A) 
+    --->    poly_one(A)
     ;       poly_two(B)
     ;       poly_three(B, poly3_field2 :: A, poly(B, A))
     ;       poly_four(A, B).
@@ -317,6 +317,9 @@ test_builtins -->
     % test integers
     test_all(-65), newline,
     test_all(4), newline,
+
+    % test unsigned integers
+    test_all(42u), newline,
 
     % test univ.
     % { type_to_univ(["hi! I'm a univ!"], Univ) },
