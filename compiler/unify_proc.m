@@ -347,7 +347,8 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
 
         % Copy the clauses for the procedure from the pred_info
         % to the proc_info, and mark the procedure as one that
-        % cannot be processed yet.
+        % cannot be processed yet. (The mark will be changed to
+        % `can_process_now' by modecheck_queued_proc.)
         pred_info_get_proc_table(!.PredInfo, !:ProcMap),
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
         map.lookup(!.ProcMap, ProcId, !:ProcInfo),
@@ -362,7 +363,9 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         % unifications, and if the initial insts are incompatible, then
         % casts in the pretest would prevent mode analysis from discovering
         % this fact.
+        pred_info_get_origin(!.PredInfo, Origin),
         ( if
+            Origin = origin_special_pred(spec_pred_unify, _TypeCtor),
             all [ArgMode] (
                 list.member(ArgMode, ArgModes)
             =>
