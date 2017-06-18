@@ -44,16 +44,13 @@
 % Mode analysis.
 %:- module mode_analysis.
    :- include_module delay_info.
-   :- include_module delay_partial_inst.
    :- include_module inst_match.
    :- include_module inst_test.
    :- include_module inst_util.
-   :- include_module mode_constraint_robdd.
-   :- include_module mode_constraints.
+   :- include_module mode_comparison.
    :- include_module mode_debug.
    :- include_module mode_errors.
    :- include_module mode_info.
-   :- include_module mode_ordering.
    :- include_module mode_util.
    :- include_module modecheck_goal.
    :- include_module modecheck_conj.
@@ -64,9 +61,14 @@
    :- include_module unify_proc.
    :- include_module unique_modes.
 
-   % XXX This doesn't belong here but we don't know where it's home is at
-   % the moment.
-   %
+   % The following modules implement the first (robdd-based)
+   % prototype constraint based mode checker, which was never completed.
+   :- include_module mode_constraint_robdd.
+   :- include_module mode_constraints.
+   :- include_module mode_ordering.
+
+   % The following modules implement the second (propagation-based)
+   % prototype constraint based mode checker, which was never completed.
    :- include_module abstract_mode_constraints.
    :- include_module build_mode_constraints.
    :- include_module mcsolver.
@@ -74,6 +76,10 @@
    :- include_module prop_mode_constraints.
 
 %:- end_module mode_analysis.
+
+% A pass that can sometimes make the result of mode analysis
+% look and behave better.
+:- include_module delay_partial_inst.
 
 % Indexing and determinism analysis.
 :- include_module cse_detection.

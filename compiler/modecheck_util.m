@@ -102,6 +102,10 @@
     prog_var::in, mer_type::in, mer_inst::in,
     mode_info::in, mode_info::out) is det.
 
+%-----------------------------------------------------------------------------%
+
+:- pred get_var_inst(mode_info::in, prog_var::in, mer_inst::out) is det.
+
     % modecheck_set_var_inst(Var, Inst, MaybeUInst, !ModeInfo):
     %
     % Assign the given Inst to the given Var, after checking that it is
@@ -126,6 +130,8 @@
 :- pred mode_info_remove_goals_live_vars(list(hlds_goal)::in,
     mode_info::in, mode_info::out) is det.
 
+%-----------------------------------------------------------------------------%
+
     % modecheck_functor_test(Var, ConsId, !ModeInfo):
     %
     % Update the instmap to reflect the fact that Var was bound to ConsId.
@@ -142,6 +148,8 @@
     %
 :- pred modecheck_functors_test(prog_var::in, cons_id::in, list(cons_id)::in,
     mode_info::in, mode_info::out) is det.
+
+%-----------------------------------------------------------------------------%
 
     % compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo):
     %
@@ -560,6 +568,16 @@ modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !Acc) :-
     else
         true
     ).
+
+%-----------------------------------------------------------------------------%
+
+get_var_inst(ModeInfo, Var, Inst) :-
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    mode_info_get_instmap(ModeInfo, InstMap),
+    mode_info_get_var_types(ModeInfo, VarTypes),
+    instmap_lookup_var(InstMap, Var, Inst0),
+    lookup_var_type(VarTypes, Var, Type),
+    normalise_inst(ModuleInfo, Type, Inst0, Inst).
 
 %-----------------------------------------------------------------------------%
 

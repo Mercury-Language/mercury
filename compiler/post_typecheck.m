@@ -86,9 +86,9 @@
 :- implementation.
 
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.mode_comparison.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.modecheck_call.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.

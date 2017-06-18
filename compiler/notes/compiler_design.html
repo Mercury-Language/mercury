@@ -1021,7 +1021,6 @@ so that the compiler does the right thing for options such as
     <li>
         modecheck_conj.m is the sub-module which analyses conjunctions
         It reorders code as necessary.
-        unification goals.
     <li>
         modecheck_unify.m is the sub-module which analyses
         unification goals.
@@ -1064,6 +1063,10 @@ so that the compiler does the right thing for options such as
             This contains the code for creating new insts from
             old ones: unifying them, merging them and so on.
 
+        <dt> mode_comparison.m
+        <dd>
+            This module compares different modes of a predicate.
+
         <dt> mode_errors.m
         <dd>
             This module contains all the code to
@@ -1090,7 +1093,7 @@ so that the compiler does the right thing for options such as
     (parts of) variables can be bound, and then solving those constraints.
 
     <ul>
-    <li>
+    li>
         mode_constraints.m is the module that finds the constraints
         and adds them to the constraint store.
     <li>
