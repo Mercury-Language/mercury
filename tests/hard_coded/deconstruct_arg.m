@@ -80,11 +80,11 @@ set(List) = set_rep(List).
 % convert set to sorted list
 :- func set_to_sorted_list(set(T)) = list(T).
 
-set_to_sorted_list(Set) =
-    promise_only_solution((pred(Sorted::out) is cc_multi :-
+set_to_sorted_list(Set) = Sorted :-
+    promise_equivalent_solutions [Sorted] (
         Set = set_rep(Unsorted),
         list.sort_and_remove_dups(Unsorted, Sorted)
-    )).
+    ).
 
 :- pred set_equal(set(T)::in, set(T)::in) is semidet.
 
@@ -115,6 +115,8 @@ main -->
     test_all(0.12345678901234566), newline,
         % test integers
     test_all(4), newline,
+        % test unigned integers
+    test_all(561u), newline,
         % test univ.
     { type_to_univ(["hi! I'm a univ!"], Univ) },
     test_all(Univ), newline,

@@ -2710,7 +2710,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
         TypeCtorRep = tcr_uint,
-        Functor = "<<uint>>",
+        det_dynamic_cast(Term, UInt),
+        Functor = string.uint_to_string(UInt) ++ "u",
         Ordinal = -1,
         Arity = 0,
         Arguments = []

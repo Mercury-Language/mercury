@@ -826,7 +826,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
         TypeCtorRep = etcr_uint,
-        Functor = "<<uint>>",
+        det_dynamic_cast(Term, UInt),
+        Functor = string.uint_to_string(UInt) ++ "u",
         FunctorNumber = 0,
         Arity = 0,
         Arguments = []

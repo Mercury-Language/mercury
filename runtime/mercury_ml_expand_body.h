@@ -783,7 +783,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 char    *str;
 
                 data_word = *data_word_ptr;
-                sprintf(buf, "%" MR_INTEGER_LENGTH_MODIFIER "u",
+                sprintf(buf, "%" MR_INTEGER_LENGTH_MODIFIER "uu",
                     (MR_Unsigned) data_word);
                 MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
