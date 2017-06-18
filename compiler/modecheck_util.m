@@ -319,58 +319,6 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
 
 %-----------------------------------------------------------------------------%
 
-modecheck_functor_test(Var, ConsId, !ModeInfo) :-
-    % Figure out the arity of this constructor, _including_ any type-infos
-    % or typeclass-infos inserted for existential data types.
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
-    BoundInst = cons_id_to_bound_inst(ModuleInfo, Type, ConsId),
-
-    % Record the fact that Var was bound to ConsId.
-    Inst = bound(unique, inst_test_no_results, [BoundInst]),
-    modecheck_set_var_inst(Var, Inst, no, !ModeInfo).
-
-modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
-    % Figure out the arity of this constructor, _including_ any type-infos
-    % or typeclass-infos inserted for existential data types.
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
-    BoundInsts = list.map(cons_id_to_bound_inst(ModuleInfo, Type),
-        [MainConsId | OtherConsIds]),
-
-    % Record the fact that Var was bound to MainConsId or one of the
-    % OtherConsIds.
-    Inst = bound(unique, inst_test_no_results, BoundInsts),
-    modecheck_set_var_inst(Var, Inst, no, !ModeInfo).
-
-:- func cons_id_to_bound_inst(module_info, mer_type, cons_id) = bound_inst.
-
-cons_id_to_bound_inst(ModuleInfo, Type, ConsId) = BoundInst :-
-    ConsIdAdjustedArity = cons_id_adjusted_arity(ModuleInfo, Type, ConsId),
-    list.duplicate(ConsIdAdjustedArity, free, ArgInsts),
-    BoundInst = bound_functor(ConsId, ArgInsts).
-
-compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo) :-
-    ( if GoalExpr = conj(_, []) then
-        % When modecheck_unify.m replaces a unification with a dead variable
-        % with `true', make sure the instmap_delta of the goal is empty.
-        % The code generator and mode_util.recompute_instmap_delta can be
-        % confused by references to the dead variable in the instmap_delta,
-        % resulting in calls to error/1.
-
-        instmap_delta_init_reachable(DeltaInstMap),
-        mode_info_set_instmap(InstMap0, !ModeInfo)
-    else
-        NonLocals = goal_info_get_nonlocals(!.GoalInfo),
-        mode_info_get_instmap(!.ModeInfo, InstMap),
-        compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap)
-    ),
-    goal_info_set_instmap_delta(DeltaInstMap, !GoalInfo).
-
-%-----------------------------------------------------------------------------%
-
 compute_arg_offset(PredInfo, ArgOffset) :-
     OrigArity = pred_info_orig_arity(PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypes),
@@ -615,57 +563,6 @@ modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !Acc) :-
 
 %-----------------------------------------------------------------------------%
 
-modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, ArgOffset,
-        Vars, Goals, !ModeInfo) :-
-    ( if
-        modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
-            ArgOffset, Vars1, no_extra_goals, Goals1, !ModeInfo)
-    then
-        Vars = Vars1,
-        Goals = Goals1
-    else
-        unexpected($module, $pred, "length mismatch")
-    ).
-
-:- pred modecheck_set_var_inst_list_2(list(prog_var)::in, list(mer_inst)::in,
-    list(mer_inst)::in, int::in, list(prog_var)::out,
-    extra_goals::in, extra_goals::out, mode_info::in, mode_info::out)
-    is semidet.
-
-modecheck_set_var_inst_list_2([], [], [], _, [], !ExtraGoals, !ModeInfo).
-modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
-        [FinalInst | FinalInsts], ArgNum0, [Var | Vars],
-        !ExtraGoals, !ModeInfo) :-
-    ArgNum = ArgNum0 + 1,
-    mode_info_set_call_arg_context(ArgNum, !ModeInfo),
-    modecheck_set_var_inst_call(Var0, InitialInst, FinalInst,
-        Var, !ExtraGoals, !ModeInfo),
-    modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts, ArgNum,
-        Vars, !ExtraGoals, !ModeInfo).
-
-:- pred modecheck_set_var_inst_call(prog_var::in, mer_inst::in, mer_inst::in,
-    prog_var::out, extra_goals::in, extra_goals::out,
-    mode_info::in, mode_info::out) is det.
-
-modecheck_set_var_inst_call(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
-        !ModeInfo) :-
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    ( if instmap_is_reachable(InstMap0) then
-        % The new inst must be computed by unifying the old inst
-        % and the proc's final inst.
-        instmap_lookup_var(InstMap0, Var0, VarInst0),
-        handle_implied_mode(Var0, VarInst0, InitialInst, Var, !ExtraGoals,
-            !ModeInfo),
-        modecheck_set_var_inst(Var0, FinalInst, no, !ModeInfo),
-        ( if Var = Var0 then
-            true
-        else
-            modecheck_set_var_inst(Var, FinalInst, no, !ModeInfo)
-        )
-    else
-        Var = Var0
-    ).
-
 modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
     % Note that there are two versions of modecheck_set_var_inst,
     % one with arity 8 (suffixed with _call) and one with arity 5.
@@ -764,6 +661,59 @@ modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
         ),
         mode_info_set_parallel_vars(PVars, !ModeInfo)
     ).
+
+modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, ArgOffset,
+        Vars, Goals, !ModeInfo) :-
+    ( if
+        modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
+            ArgOffset, Vars1, no_extra_goals, Goals1, !ModeInfo)
+    then
+        Vars = Vars1,
+        Goals = Goals1
+    else
+        unexpected($module, $pred, "length mismatch")
+    ).
+
+:- pred modecheck_set_var_inst_list_2(list(prog_var)::in, list(mer_inst)::in,
+    list(mer_inst)::in, int::in, list(prog_var)::out,
+    extra_goals::in, extra_goals::out, mode_info::in, mode_info::out)
+    is semidet.
+
+modecheck_set_var_inst_list_2([], [], [], _, [], !ExtraGoals, !ModeInfo).
+modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
+        [FinalInst | FinalInsts], ArgNum0, [Var | Vars],
+        !ExtraGoals, !ModeInfo) :-
+    ArgNum = ArgNum0 + 1,
+    mode_info_set_call_arg_context(ArgNum, !ModeInfo),
+    modecheck_set_var_inst_call(Var0, InitialInst, FinalInst,
+        Var, !ExtraGoals, !ModeInfo),
+    modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts, ArgNum,
+        Vars, !ExtraGoals, !ModeInfo).
+
+:- pred modecheck_set_var_inst_call(prog_var::in, mer_inst::in, mer_inst::in,
+    prog_var::out, extra_goals::in, extra_goals::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_set_var_inst_call(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
+        !ModeInfo) :-
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
+    ( if instmap_is_reachable(InstMap0) then
+        % The new inst must be computed by unifying the old inst
+        % and the proc's final inst.
+        instmap_lookup_var(InstMap0, Var0, VarInst0),
+        handle_implied_mode(Var0, VarInst0, InitialInst, Var, !ExtraGoals,
+            !ModeInfo),
+        modecheck_set_var_inst(Var0, FinalInst, no, !ModeInfo),
+        ( if Var = Var0 then
+            true
+        else
+            modecheck_set_var_inst(Var, FinalInst, no, !ModeInfo)
+        )
+    else
+        Var = Var0
+    ).
+
+%-----------------------------------------------------------------------------%
 
     % If this was a call to an implied mode for that variable, then we need to
     % introduce a fresh variable.
@@ -869,6 +819,60 @@ mode_info_remove_goals_live_vars([Goal | Goals], !ModeInfo) :-
         mode_info_remove_live_vars(NonLocals, !ModeInfo)
     ),
     mode_info_remove_goals_live_vars(Goals, !ModeInfo).
+
+%-----------------------------------------------------------------------------%
+
+modecheck_functor_test(Var, ConsId, !ModeInfo) :-
+    % Figure out the arity of this constructor, _including_ any type-infos
+    % or typeclass-infos inserted for existential data types.
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+    mode_info_get_var_types(!.ModeInfo, VarTypes),
+    lookup_var_type(VarTypes, Var, Type),
+    BoundInst = cons_id_to_bound_inst(ModuleInfo, Type, ConsId),
+
+    % Record the fact that Var was bound to ConsId.
+    Inst = bound(unique, inst_test_no_results, [BoundInst]),
+    modecheck_set_var_inst(Var, Inst, no, !ModeInfo).
+
+modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
+    % Figure out the arity of this constructor, _including_ any type-infos
+    % or typeclass-infos inserted for existential data types.
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+    mode_info_get_var_types(!.ModeInfo, VarTypes),
+    lookup_var_type(VarTypes, Var, Type),
+    BoundInsts = list.map(cons_id_to_bound_inst(ModuleInfo, Type),
+        [MainConsId | OtherConsIds]),
+
+    % Record the fact that Var was bound to MainConsId or one of the
+    % OtherConsIds.
+    Inst = bound(unique, inst_test_no_results, BoundInsts),
+    modecheck_set_var_inst(Var, Inst, no, !ModeInfo).
+
+:- func cons_id_to_bound_inst(module_info, mer_type, cons_id) = bound_inst.
+
+cons_id_to_bound_inst(ModuleInfo, Type, ConsId) = BoundInst :-
+    ConsIdAdjustedArity = cons_id_adjusted_arity(ModuleInfo, Type, ConsId),
+    list.duplicate(ConsIdAdjustedArity, free, ArgInsts),
+    BoundInst = bound_functor(ConsId, ArgInsts).
+
+%-----------------------------------------------------------------------------%
+
+compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo) :-
+    ( if GoalExpr = conj(_, []) then
+        % When modecheck_unify.m replaces a unification with a dead variable
+        % with `true', make sure the instmap_delta of the goal is empty.
+        % The code generator and mode_util.recompute_instmap_delta can be
+        % confused by references to the dead variable in the instmap_delta,
+        % resulting in calls to error/1.
+
+        instmap_delta_init_reachable(DeltaInstMap),
+        mode_info_set_instmap(InstMap0, !ModeInfo)
+    else
+        NonLocals = goal_info_get_nonlocals(!.GoalInfo),
+        mode_info_get_instmap(!.ModeInfo, InstMap),
+        compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap)
+    ),
+    goal_info_set_instmap_delta(DeltaInstMap, !GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
