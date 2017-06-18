@@ -226,13 +226,14 @@
     --->    include_detism_on_modes
     ;       do_not_include_detism_on_modes.
 
-    % Write out the inferred `mode' declarations for a list of pred_ids.
+    % Generate the inferred `mode' declarations for a list of pred_ids.
     % The include_detism_on_modes argument indicates whether or not
     % to write out determinism annotations on the modes. (It should only
     % be set to `include_detism_on_modes' _after_ determinism analysis.)
     %
-:- func report_mode_inference_messages(module_info, include_detism_on_modes,
-    list(pred_id)) = list(error_spec).
+:- pred report_mode_inference_messages_for_preds(module_info::in,
+    include_detism_on_modes::in, list(pred_id)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- func mode_decl_to_string(proc_id, pred_info) = string.
 
@@ -345,33 +346,31 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
 
 %---------------------------------------------------------------------------%
 
-report_mode_inference_messages(_, _, []) = [].
-report_mode_inference_messages(ModuleInfo, OutputDetism, [PredId | PredIds]) =
-        Specs :-
-    TailSpecs = report_mode_inference_messages(ModuleInfo, OutputDetism,
-        PredIds),
+report_mode_inference_messages_for_preds(_, _, [], !Specs).
+report_mode_inference_messages_for_preds(ModuleInfo, OutputDetism,
+        [PredId | PredIds], !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( if check_marker(Markers, marker_infer_modes) then
         ProcIds = pred_info_all_procids(PredInfo),
         pred_info_get_proc_table(PredInfo, Procs),
-        HeadSpecs = report_mode_inference_messages_2(ModuleInfo, OutputDetism,
-            PredInfo, Procs, ProcIds),
-        Specs = HeadSpecs ++ TailSpecs
+        report_mode_inference_messages_for_procs(ModuleInfo, OutputDetism,
+            PredInfo, Procs, ProcIds, !Specs)
     else
-        Specs = TailSpecs
-    ).
+        true
+    ),
+    report_mode_inference_messages_for_preds(ModuleInfo, OutputDetism,
+        PredIds, !Specs).
 
-    % Write out the inferred `mode' declarations for a list of proc_ids.
+    % Generate the inferred `mode' declarations for a list of proc_ids.
     %
-:- func report_mode_inference_messages_2(module_info, include_detism_on_modes,
-    pred_info, proc_table, list(proc_id)) = list(error_spec).
+:- pred report_mode_inference_messages_for_procs(module_info::in,
+    include_detism_on_modes::in, pred_info::in, proc_table::in,
+    list(proc_id)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_mode_inference_messages_2(_, _, _, _, []) = [].
-report_mode_inference_messages_2(ModuleInfo, OutputDetism, PredInfo, Procs,
-        [ProcId | ProcIds]) = Specs :-
-    TailSpecs = report_mode_inference_messages_2(ModuleInfo, OutputDetism,
-        PredInfo, Procs, ProcIds),
+report_mode_inference_messages_for_procs(_, _, _, _, [], !Specs).
+report_mode_inference_messages_for_procs(ModuleInfo, OutputDetism,
+        PredInfo, Procs, [ProcId | ProcIds], !Specs) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     map.lookup(Procs, ProcId, ProcInfo),
@@ -385,12 +384,14 @@ report_mode_inference_messages_2(ModuleInfo, OutputDetism, PredInfo, Procs,
             VerboseErrors = yes
         )
     then
-        HeadSpec = report_mode_inference_message(ModuleInfo, OutputDetism,
+        Spec = report_mode_inference_message(ModuleInfo, OutputDetism,
             PredInfo, ProcInfo),
-        Specs = [HeadSpec | TailSpecs]
+        !:Specs = [Spec | !.Specs]
     else
-        Specs = TailSpecs
-    ).
+        true
+    ),
+    report_mode_inference_messages_for_procs(ModuleInfo,
+        OutputDetism, PredInfo, Procs, ProcIds, !Specs).
 
     % Return a description of the inferred mode declaration for the given
     % predicate or function.
@@ -432,10 +433,9 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
             Verb = "Inferred"
         else
             Verb = "REJECTED",
-            % Replace the final insts with dummy insts '...',
-            % since they won't be valid anyway -- they are just
-            % the results of whatever partial inference we did
-            % before detecting the error.
+            % Replace the final insts with dummy insts '...', since they
+            % won't be valid anyway -- they are just the results of whatever
+            % partial inference we did before detecting the error.
             mode_list_get_initial_insts(ModuleInfo, !.ArgModes, InitialInsts),
             DummyInst = defined_inst(user_inst(unqualified("..."), [])),
             list.duplicate(PredArity, DummyInst, FinalInsts),

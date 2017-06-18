@@ -55,12 +55,11 @@
 :- pred type_is_higher_order(mer_type::in) is semidet.
 
     % type_is_higher_order_details(Type, Purity, PredOrFunc, ArgTypes,
-    %   EvalMeth):
+    %   EvalMethod):
     %
     % Succeeds iff Type is a higher-order predicate or function type with
-    % the specified argument types (for functions, the return type is
-    % appended to the end of the argument types), purity, and
-    % evaluation method.
+    % the specified argument types (for functions, the return type is appended
+    % to the end of the argument types), purity, and evaluation method.
     %
 :- pred type_is_higher_order_details(mer_type::in, purity::out,
     pred_or_func::out, lambda_eval_method::out, list(mer_type)::out)

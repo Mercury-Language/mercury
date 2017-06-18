@@ -193,18 +193,16 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
         MayChangeCalledProc, !ModuleInfo, SafeToContinue0, !:Specs),
     (
         WhatToCheck = check_unique_modes,
-        InferenceSpecs = report_mode_inference_messages(!.ModuleInfo,
-            include_detism_on_modes, PredIds),
-        !:Specs = InferenceSpecs ++ !.Specs,
+        report_mode_inference_messages_for_preds(!.ModuleInfo,
+            include_detism_on_modes, PredIds, !Specs),
         check_eval_methods(!.ModuleInfo, !Specs),
         SafeToContinue = SafeToContinue0
     ;
         WhatToCheck = check_modes,
         (
             SafeToContinue0 = unsafe_to_continue,
-            InferenceSpecs = report_mode_inference_messages(!.ModuleInfo,
-                do_not_include_detism_on_modes, PredIds),
-            !:Specs = InferenceSpecs ++ !.Specs,
+            report_mode_inference_messages_for_preds(!.ModuleInfo,
+                do_not_include_detism_on_modes, PredIds, !Specs),
             SafeToContinue = unsafe_to_continue
         ;
             SafeToContinue0 = safe_to_continue,
@@ -228,7 +226,8 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                 % BeforeDPISpecs and AfterDPISpecs ought to be the same,
                 % but in its current form, delay_partial_inst can also
                 % INTRODUCE mode errors. This can happen in situations where
-                % a predicate (such as get_feedback_data in feedback.m in the
+                % a predicate (such as the original version of the
+                % get_feedback_data predicate in feedback.m in the
                 % mdbcomp directory) REQUIRES being passed a partially
                 % instantiated term.
                 %
@@ -236,9 +235,8 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                 % to the predicates where it does not cause problems, and
                 % undo it in the predicates where it does. Unfortunately,
                 % in the presence of mode inference, separating the two
-                % categories is not easy, so we if delay_partial_inst
-                % causes ANY new problems, from ANY predicate, we undo
-                % ALL its updates.
+                % categories is not easy, so if delay_partial_inst causes ANY
+                % new problems, from ANY predicate, we undo ALL its updates.
                 (
                     MaybeBeforeDPISeverity = no,
                     MaybeAfterDPISeverity = no,
@@ -318,9 +316,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
     % Analyze the procedures whose "CanProcess" flag was cannot_process_yet;
     % those procedures were inserted into the unify requests queue.
     modecheck_queued_procs(WhatToCheck, OldPredTable0, OldPredTable,
-        !ModuleInfo, Changed2, QueuedSpecs),
-    !:Specs = QueuedSpecs ++ !.Specs,
-    bool.or(Changed1, Changed2, Changed),
+        !ModuleInfo, Changed1, Changed, !Specs),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     ErrorsSoFar = contains_errors(Globals, !.Specs),
@@ -346,9 +342,9 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
                 globals.lookup_bool_option(Globals, debug_modes, DebugModes),
                 (
                     DebugModes = yes,
-                    InferenceSpecs =
-                        report_mode_inference_messages(!.ModuleInfo,
-                            do_not_include_detism_on_modes, PredIds),
+                    report_mode_inference_messages_for_preds(!.ModuleInfo,
+                        do_not_include_detism_on_modes, PredIds,
+                        [], InferenceSpecs),
                     trace [io(!IO)] (
                         io.write_string("Inferences by current iteration:\n",
                             !IO),
@@ -444,7 +440,7 @@ copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
         list.foldl(copy_proc_body(OldProcTable), OldProcIds,
             ProcTable0, ProcTable),
         pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-        map.set(PredId, PredInfo, PredTable0, PredTable)
+        map.det_update(PredId, PredInfo, PredTable0, PredTable)
     ).
 
     % copy_proc_body(OldProcTable, ProcId, !ProcTable):
@@ -459,7 +455,7 @@ copy_proc_body(OldProcTable, ProcId, !ProcTable) :-
     proc_info_get_goal(OldProcInfo, OldProcBody),
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_set_goal(OldProcBody, ProcInfo0, ProcInfo),
-    map.set(ProcId, ProcInfo, !ProcTable).
+    map.det_update(ProcId, ProcInfo, !ProcTable).
 
 :- func should_modecheck_pred(pred_info) = bool.
 
@@ -977,21 +973,20 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
     %
 :- pred modecheck_queued_procs(how_to_check_goal::in,
     pred_table::in, pred_table::out, module_info::in, module_info::out,
-    bool::out, list(error_spec)::out) is det.
+    bool::in, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
-        Specs) :-
+modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
+        !Changed, !Specs) :-
     module_info_get_proc_requests(!.ModuleInfo, Requests0),
     get_req_queue(Requests0, RequestQueue0),
     ( if queue.get(PredProcId, RequestQueue0, RequestQueue1) then
         set_req_queue(RequestQueue1, Requests0, Requests1),
         module_info_set_proc_requests(Requests1, !ModuleInfo),
 
-        % Check that the procedure is valid (i.e. type-correct), before
-        % we attempt to do mode analysis on it. This check is necessary
-        % to avoid internal errors caused by doing mode analysis on
-        % type-incorrect code.
-        % XXX inefficient! This is O(N*M).
+        % Check that the procedure is valid before attempt to do mode analysis
+        % on it. This check is necessary to avoid internal errors caused by
+        % (a) doing mode analysis on type-incorrect code, and (b) doing mode
+        % inference on predicates that have higher order arguments.
 
         PredProcId = proc(PredId, _ProcId),
         module_info_get_valid_pred_id_set(!.ModuleInfo, ValidPredIds),
@@ -1001,18 +996,16 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
                     HowToCheckGoal, !IO)
             ),
             modecheck_queued_proc(HowToCheckGoal, PredProcId,
-                !OldPredTable, !ModuleInfo, HeadChanged, HeadSpecs)
+                !OldPredTable, !ModuleInfo, HeadChanged, HeadSpecs),
+            bool.or(HeadChanged, !Changed),
+            !:Specs = HeadSpecs ++ !.Specs
         else
-            HeadSpecs = [],
-            HeadChanged = no
+            true
         ),
         modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
-            TailChanged, TailSpecs),
-        bool.or(HeadChanged, TailChanged, Changed),
-        Specs = HeadSpecs ++ TailSpecs
+            !Changed, !Specs)
     else
-        Changed = no,
-        Specs = []
+        true
     ).
 
 :- pred queued_proc_progress_message(module_info::in, pred_proc_id::in,
@@ -1025,10 +1018,10 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
         VeryVerbose = yes,
         (
             HowToCheckGoal = check_modes,
-            io.write_string("% Mode-analyzing ", !IO)
+            io.write_string("% Mode-analysing ", !IO)
         ;
             HowToCheckGoal = check_unique_modes,
-            io.write_string("% Analyzing modes, determinism, " ++
+            io.write_string("% Analysing modes, determinism, " ++
                 "and unique-modes for\n% ", !IO)
         ),
         write_pred_proc_id(ModuleInfo, PredProcId, !IO),
