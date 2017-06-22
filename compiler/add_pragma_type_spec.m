@@ -67,7 +67,7 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
     ),
     (
         PredIds = [],
-        undefined_pred_or_func_error(SymName, Arity, Context,
+        report_undefined_pred_or_func_error(SymName, Arity, Context,
             [pragma_decl("type_spec"), words("declaration")], !Specs)
     ;
         PredIds = [_ | _],
@@ -256,7 +256,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
     assoc_list.keys(Subst, VarsToSub),
     (
         Subst = [],
-        unexpected($module, $pred, "empty substitution")
+        unexpected($pred, "empty substitution")
     ;
         Subst = [_ | _],
         find_duplicate_list_elements(VarsToSub, MultiSubstVars0),
@@ -475,7 +475,7 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
             MaybeProcIds = yes(ProcIds)
         else
             module_info_incr_errors(!ModuleInfo),
-            undefined_mode_error(SymName, Arity, Context,
+            report_undefined_mode_error(SymName, Arity, Context,
                 [pragma_decl("type_spec"), words("declaration")], !Specs),
             MaybeProcIds = no
         )

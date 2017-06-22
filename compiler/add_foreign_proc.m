@@ -76,7 +76,7 @@ add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
         PredIds = [],
         (
             MaybeAttrs = item_origin_user,
-            undefined_pred_or_func_error(Name, Arity, Context,
+            report_undefined_pred_or_func_error(Name, Arity, Context,
                 [pragma_decl("foreign_export"), words("declaration")],
                 !Specs)
         ;
@@ -88,8 +88,7 @@ add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
                 AllowExport = do_allow_export
             ;
                 AllowExport = do_not_allow_export,
-                unexpected($module, $pred,
-                    "bad introduced foreign_export pragma")
+                unexpected($pred, "bad introduced foreign_export pragma")
             )
         )
     ;
@@ -186,7 +185,7 @@ add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
     else
         (
             MaybeAttrs = item_origin_user,
-            undefined_mode_error(Name, Arity, Context,
+            report_undefined_mode_error(Name, Arity, Context,
                 [pragma_decl("foreign_export"), words("declaration")],
                 !Specs)
         ;
@@ -198,8 +197,7 @@ add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
                 AllowExport = do_allow_export
             ;
                 AllowExport = do_not_allow_export,
-                unexpected($module, $pred,
-                    "bad introduced foreign_export pragma")
+                unexpected($pred, "bad introduced foreign_export pragma")
             )
         )
     ).
@@ -678,7 +676,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
             ClauseLang = impl_lang_foreign(OldLang),
             (
                 ApplProcIds0 = all_modes,
-                unexpected($module, $pred, "all_modes")
+                unexpected($pred, "all_modes")
             ;
                 ApplProcIds0 = selected_modes(ProcIds0)
             ),
@@ -712,7 +710,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                     expect(
                         unify(LaterOverridden,
                             not_overridden_by_old_foreign_proc),
-                        $module, $pred, "inconsistent old foreign_procs")
+                        $pred, "inconsistent old foreign_procs")
                 ;
                     PreferNewForeignLang = no,
                     % We prefer the old foreign_proc to the new one,

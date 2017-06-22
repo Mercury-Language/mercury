@@ -263,8 +263,8 @@ add_new_pred(Origin, Context, ItemNumber, MaybeItemMercuryStatus, PredStatus0,
             ( if PredStatus0 = pred_status(status_opt_imported) then
                 true
             else
-                multiple_def_error(is_not_opt_imported, PredName, OrigArity,
-                    DeclString, Context, OrigContext, [], !Specs)
+                report_multiple_def_error(PredName, OrigArity, DeclString,
+                    Context, OrigContext, [], !Specs)
             )
         ;
             PredIds = [],
@@ -700,8 +700,8 @@ preds_add_implicit_report_error(!ModuleInfo, ModuleName, PredName, Arity,
         PredOrFunc, Status, IsClassMethod, Context, Origin, DescPieces,
         PredId, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    maybe_undefined_pred_error(!.ModuleInfo, PredName, Arity, PredOrFunc,
-        Status, IsClassMethod, Context, DescPieces, !Specs),
+    maybe_report_undefined_pred_error(!.ModuleInfo, PredName, Arity,
+        PredOrFunc, Status, IsClassMethod, Context, DescPieces, !Specs),
     (
         PredOrFunc = pf_function,
         adjust_func_arity(pf_function, FuncArity, Arity),
@@ -764,7 +764,7 @@ preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
             PredId, !PredicateTable)
     ;
         PredIds = [_ | _],
-        unexpected($module, $pred, "search succeeded")
+        unexpected($pred, "search succeeded")
     ).
 
 %-----------------------------------------------------------------------------%

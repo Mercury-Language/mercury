@@ -288,7 +288,7 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
                 list.foldl(mark_pred_as_external, PredIds, !ModuleInfo)
             ;
                 PredIds = [],
-                undefined_pred_or_func_error(PredName, Arity, Context,
+                report_undefined_pred_or_func_error(PredName, Arity, Context,
                     MissingPieces, !Specs)
             )
         else
@@ -623,7 +623,8 @@ add_pragma_require_tail_recursion(Pragma, Context, !ModuleInfo, !Specs) :-
     (
         PredIds = [],
         Pieces = [pragma_decl("require_tail_recursion"), words("pragma")],
-        undefined_pred_or_func_error(Name, Arity, Context, Pieces, !Specs)
+        report_undefined_pred_or_func_error(Name, Arity, Context, Pieces,
+            !Specs)
     ;
         PredIds = [PredId],
         NameAndArity = sym_name_arity(Name, Arity),
@@ -782,7 +783,8 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
     ;
         PredIds = [],
         DescPieces = [pragma_decl(PragmaName), words("declaration")],
-        undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs)
+        report_undefined_pred_or_func_error(Name, Arity, Context, DescPieces,
+            !Specs)
     ).
 
     % For each pred_id in the list, check whether markers present in the list
@@ -849,7 +851,7 @@ get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
     % Check that the pragma is module qualified.
     (
         Name = unqualified(_),
-        unexpected($module, $pred, "unqualified name")
+        unexpected($pred, "unqualified name")
     ;
         Name = qualified(_, _),
         predicate_table_lookup_sym_arity(PredTable0, is_fully_qualified,
@@ -893,7 +895,7 @@ check_required_feature_set(FeatureSet, ItemMercuryStatus, Context,
         ItemMercuryStatus = item_defined_in_other_module(_),
         % `require_feature_set' pragmas are not included in interface files
         % (including private interfaces) and so this case should not occur.
-        unexpected($module, $pred, "imported require_feature_set pragma")
+        unexpected($pred, "imported require_feature_set pragma")
     ;
         ItemMercuryStatus = item_defined_in_this_module(_),
         module_info_get_globals(!.ModuleInfo, Globals),
@@ -1128,7 +1130,7 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
         Pred, Arity, PredIds),
     (
         PredIds = [],
-        undefined_pred_or_func_error(Pred, Arity, Context,
+        report_undefined_pred_or_func_error(Pred, Arity, Context,
             [pragma_decl("fact_table"), words("declaration")], !Specs)
     ;
         PredIds = [HeadPredId | TailPredIds],
@@ -1496,7 +1498,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
             list.sort_and_remove_dups(ArityPieces, SortedArityPieces),
             (
                 SortedArityPieces = [],
-                unexpected($module, $pred, "no arity pieces")
+                unexpected($pred, "no arity pieces")
             ;
                 SortedArityPieces = [_],
                 ExpArities = SortedArityPieces

@@ -27,25 +27,25 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred multiple_def_error(maybe_opt_imported::in, sym_name::in, int::in,
-    string::in, prog_context::in, prog_context::in, list(format_component)::in,
+:- pred report_multiple_def_error(sym_name::in, int::in, string::in,
+    prog_context::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred undefined_pred_or_func_error(sym_name::in, int::in, prog_context::in,
-    list(format_component)::in,
+:- pred report_undefined_pred_or_func_error(sym_name::in, int::in,
+    prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Similar to undeclared_mode_error, but gives less information.
+    % Similar to report_undeclared_mode_error, but gives less information.
     % XXX perhaps we should get rid of this, and change the callers to
     % instead call undeclared_mode_error.
     %
-:- pred undefined_mode_error(sym_name::in, int::in, prog_context::in,
+:- pred report_undefined_mode_error(sym_name::in, int::in, prog_context::in,
     list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred maybe_undefined_pred_error(module_info::in, sym_name::in, int::in,
-    pred_or_func::in, pred_status::in, maybe_class_method::in,
-    prog_context::in, list(format_component)::in,
+:- pred maybe_report_undefined_pred_error(module_info::in,
+    sym_name::in, int::in, pred_or_func::in, pred_status::in,
+    maybe_class_method::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Emit an error reporting that something should not have occurred in
@@ -79,37 +79,30 @@
 
 %-----------------------------------------------------------------------------%
 
-multiple_def_error(IsOptImported, Name, Arity, DefType, Context, OrigContext,
+report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         ExtraPieces, !Specs) :-
+    Pieces1 = [words("Error:"), fixed(DefType),
+        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+        words("multiply defined."), nl],
+    Pieces2 = [words("Here is the previous definition of"), fixed(DefType),
+        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+        suffix("."), nl],
+    Msg1 = simple_msg(Context, [always(Pieces1)]),
+    Msg2 = error_msg(yes(OrigContext), treat_as_first, 0,
+        [always(Pieces2)]),
     (
-        IsOptImported = is_opt_imported
-        % We don't take care not to read the same declaration from multiple
-        % sources with inter-module optimization, so ignore multiple definition
-        % errors in the items read for inter-module optimization.
+        ExtraPieces = [],
+        ExtraMsgs = []
     ;
-        IsOptImported = is_not_opt_imported,
-        Pieces1 = [words("Error:"), fixed(DefType),
-            qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
-            words("multiply defined."), nl],
-        Pieces2 = [words("Here is the previous definition of"), fixed(DefType),
-            qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
-            suffix("."), nl],
-        Msg1 = simple_msg(Context, [always(Pieces1)]),
-        Msg2 = error_msg(yes(OrigContext), treat_as_first, 0,
-            [always(Pieces2)]),
-        (
-            ExtraPieces = [],
-            ExtraMsgs = []
-        ;
-            ExtraPieces = [_ | _],
-            ExtraMsgs = [simple_msg(Context, [always(ExtraPieces)])]
-        ),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-            [Msg1, Msg2] ++ ExtraMsgs),
-        !:Specs = [Spec | !.Specs]
-    ).
+        ExtraPieces = [_ | _],
+        ExtraMsgs = [simple_msg(Context, [always(ExtraPieces)])]
+    ),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+        [Msg1, Msg2] ++ ExtraMsgs),
+    !:Specs = [Spec | !.Specs].
 
-undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs) :-
+report_undefined_pred_or_func_error(Name, Arity, Context, DescPieces,
+        !Specs) :-
     Pieces = [words("Error:") | DescPieces] ++ [words("for"),
         qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
         words("without corresponding"), decl("pred"), words("or"),
@@ -118,7 +111,7 @@ undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs) :-
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
+report_undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
     Pieces = [words("Error:") | DescPieces] ++ [words("for"),
         qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
         words("specifies non-existent mode.")],
@@ -126,14 +119,14 @@ undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-    % Similar to undefined_mode_error, but gives more information.
+    % Similar to report_undefined_mode_error, but gives more information.
     % XXX the documentation here should be somewhat less circular.
     %
-:- func undeclared_mode_error(list(mer_mode), prog_varset,
+:- func report_undeclared_mode_error(list(mer_mode), prog_varset,
     pred_id, pred_info, module_info, prog_context) = error_spec.
 
-undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo, Context)
-        = Spec :-
+report_undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
+        Context) = Spec :-
     PredIdPieces = describe_one_pred_name(ModuleInfo,
         should_not_module_qualify, PredId),
     strip_builtin_qualifiers_from_mode_list(ModeList, StrippedModeList),
@@ -174,7 +167,7 @@ mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
 
 %----------------------------------------------------------------------------%
 
-maybe_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
+maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
         IsClassMethod, Context, DescPieces, !Specs) :-
     % This is not considered an unconditional error anymore:
     % if there is no `:- pred' or `:- func' declaration,

@@ -17,7 +17,6 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -31,9 +30,9 @@
     % such as the abstract type "definition" `:- type t.', or they may be
     % definitions for other backends.
     %
-:- pred module_add_type_defn(tvarset::in, sym_name::in, list(type_param)::in,
-    type_defn::in, prog_context::in, type_status::in, need_qualifier::in,
-    module_info::in, module_info::out,
+:- pred module_add_type_defn(type_status::in, need_qualifier::in,
+    item_type_defn_info::in, module_info::in, module_info::out,
+    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Add the constructors and special preds for a type to the HLDS.
@@ -56,6 +55,8 @@
 :- import_module hlds.make_tags.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -70,11 +71,13 @@
 
 %-----------------------------------------------------------------------------%
 
-module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
-        TypeStatus0, NeedQual, !ModuleInfo, !Specs) :-
+module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
+        !ModuleInfo, !FoundInvalidType, !Specs) :-
+    ItemTypeDefnInfo = item_type_defn_info(SymName, TypeParams, TypeDefn,
+        TVarSet, Context, _SeqNum),
     module_info_get_globals(!.ModuleInfo, Globals),
-    list.length(Args, Arity),
-    TypeCtor = type_ctor(Name, Arity),
+    list.length(TypeParams, Arity),
+    TypeCtor = type_ctor(SymName, Arity),
     convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
     ( if
         (
@@ -107,7 +110,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         type_status_defined_in_this_module(TypeStatus0) = yes
     then
         DummyMainPieces = [words("Error: the type"),
-            qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("is not allowed to have user-defined equality"),
             words("or comparison."), nl],
         DummyVerbosePieces = [words("Discriminated unions whose body"),
@@ -118,7 +121,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             verbose_only(verbose_once, DummyVerbosePieces)]),
         DummySpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [DummyMsg]),
-        !:Specs = [DummySpec | !.Specs]
+        !:Specs = [DummySpec | !.Specs],
+        !:FoundInvalidType = found_invalid_type
     else
         true
     ),
@@ -134,7 +138,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             % The existing definition has an is_solver_type annotation
             % which is different to the current definition.
             SolverPieces = [words("In definition of type"),
-                qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+                qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 suffix(":"), nl,
                 words("error: all definitions of a type must have"),
                 words("consistent"), quote("solver"), words("annotations."),
@@ -143,6 +147,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             SolverSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [SolverMsg]),
             !:Specs = [SolverSpec | !.Specs],
+            !:FoundInvalidType = found_invalid_type,
             MaybeOldDefn = no
         else
             hlds_data.set_type_defn_body(OldBody, OldDefn0, OldDefn),
@@ -157,19 +162,20 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
     % We set the kinds to `star'. This will be different when we have a
     % kind system.
     map.init(KindMap),
-    hlds_data.set_type_defn(TVarSet, Args, KindMap, Body, no,
+    hlds_data.set_type_defn(TVarSet, TypeParams, KindMap, Body, no,
         TypeStatus, NeedQual, type_defn_no_prev_errors, Context, TypeDefn1),
     ( if
         MaybeOldDefn = no,
         Body = hlds_foreign_type(_)
     then
         ForeignDeclPieces = [words("Error: type "),
-            qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("defined as foreign_type without being declared."), nl],
         ForeignDeclMsg = simple_msg(Context, [always(ForeignDeclPieces)]),
         ForeignDeclSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [ForeignDeclMsg]),
-        !:Specs = [ForeignDeclSpec | !.Specs]
+        !:Specs = [ForeignDeclSpec | !.Specs],
+        !:FoundInvalidType = found_invalid_type
     else if
         MaybeOldDefn = yes(OldDefn1),
         Body = hlds_foreign_type(_),
@@ -181,22 +187,21 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
     then
         ForeignVisPieces = [words("Error: the"),
             pragma_decl("foreign_type"), words("for"),
-            unqual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+            unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("must have the same visibility"),
             words("as its type declaration."), nl],
         ForeignVisMsg = simple_msg(Context, [always(ForeignVisPieces)]),
         ForeignVisSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [ForeignVisMsg]),
         !:Specs = [ForeignVisSpec | !.Specs],
+        !:FoundInvalidType = found_invalid_type,
         % We don't want check_for_missing_type_defns to later report
         % that this type has no non-abstract definition.
         set_type_defn_prev_errors(type_defn_prev_errors,
             TypeDefn1, ErrTypeDefn),
-        replace_type_ctor_defn(TypeCtor, ErrTypeDefn,
-            TypeTable0, TypeTable),
+        replace_type_ctor_defn(TypeCtor, ErrTypeDefn, TypeTable0, TypeTable),
         module_info_set_type_table(TypeTable, !ModuleInfo)
     else if
-        % If there was an existing non-abstract definition for the type, ...
         MaybeOldDefn = yes(OldDefn2),
         hlds_data.get_type_defn_tvarset(OldDefn2, TVarSet2),
         hlds_data.get_type_defn_tparams(OldDefn2, Params2),
@@ -205,25 +210,9 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         hlds_data.get_type_defn_context(OldDefn2, OrigContext),
         hlds_data.get_type_defn_status(OldDefn2, OrigTypeStatus),
         hlds_data.get_type_defn_in_exported_eqv(OldDefn2, OrigInExportedEqv),
-        hlds_data.get_type_defn_ctors_need_qualifier(OldDefn2, OrigNeedQual),
         OldDefnBody2 \= hlds_abstract_type(_)
     then
         ( if
-            % ... then if this definition is abstract, ignore it
-            % (but update the status of the old defn if necessary).
-            Body = hlds_abstract_type(_)
-        then
-            ( if TypeStatus = OrigTypeStatus then
-                true
-            else
-                hlds_data.set_type_defn(TVarSet2, Params2, KindMap2,
-                    OldDefnBody2, OrigInExportedEqv, TypeStatus, OrigNeedQual,
-                    type_defn_no_prev_errors, OrigContext, TypeDefn3),
-                replace_type_ctor_defn(TypeCtor, TypeDefn3,
-                    TypeTable0, TypeTable),
-                module_info_set_type_table(TypeTable, !ModuleInfo)
-            )
-        else if
             merge_maybe_foreign_type_bodies(Globals, OldDefnBody2, Body,
                 NewBody)
         then
@@ -239,7 +228,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             else
                 module_info_incr_errors(!ModuleInfo),
                 DiffVisPieces = [words("In definition of type"),
-                    qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+                    qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                     suffix(":"), nl,
                     words("error: all definitions of a type"),
                     words("must have the same visibility."), nl],
@@ -247,6 +236,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
                 DiffVisSpec = error_spec(severity_error,
                     phase_parse_tree_to_hlds, [DiffVisMsg]),
                 !:Specs = [DiffVisSpec | !.Specs],
+                !:FoundInvalidType = found_invalid_type,
                 set_type_defn_prev_errors(type_defn_prev_errors,
                     TypeDefn1, ErrTypeDefn),
                 replace_type_ctor_defn(TypeCtor, ErrTypeDefn,
@@ -256,14 +246,15 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         else if
             % ..., otherwise issue an error message if the second
             % definition wasn't read while reading .opt files.
+            % XXX STATUS
             TypeStatus = type_status(status_opt_imported)
         then
             true
         else
-            % XXX STATUS
             module_info_incr_errors(!ModuleInfo),
-            multiple_def_error(is_not_opt_imported, Name, Arity,
-                "type", Context, OrigContext, [], !Specs)
+            report_multiple_def_error(SymName, Arity, "type",
+                Context, OrigContext, [], !Specs),
+            !:FoundInvalidType = found_invalid_type
         )
     else
         add_or_replace_type_ctor_defn(TypeCtor, TypeDefn1,
@@ -276,7 +267,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             % but the callee expects no type_infos.
             Body = hlds_eqv_type(EqvType),
             TypeStatus = type_status(status_abstract_exported),
-            list.member(Var, Args),
+            list.member(Var, TypeParams),
             not type_contains_var(EqvType, Var)
         then
             PolyEqvPieces = [words("Sorry, not implemented:"),
@@ -288,7 +279,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
                 verbose_only(verbose_once, abstract_monotype_workaround)]),
             PolyEqvSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [PolyEqvMsg]),
-            !:Specs = [PolyEqvSpec | !.Specs]
+            !:Specs = [PolyEqvSpec | !.Specs],
+            !:FoundInvalidType = found_invalid_type
         else
             true
         )

@@ -72,7 +72,7 @@ module_add_inst_defn(ItemInstDefnInfo, InstStatus, InvalidInst, !ModuleInfo,
 
 insts_add(_, _, _, _, abstract_inst, _, _, !UserInstTable, !Specs) :-
     % XXX handle abstract insts
-    sorry($module, $pred, "abstract insts not implemented").
+    sorry($pred, "abstract insts not implemented").
 insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         Context, InstStatus, !UserInstTable, !Specs) :-
     list.length(InstParams, InstArity),
@@ -134,8 +134,8 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
             map.lookup(!.UserInstTable, InstId, OrigInstDefn),
             OrigContext = OrigInstDefn ^ inst_context,
             Extras = [],
-            multiple_def_error(is_not_opt_imported, InstSymName, InstArity,
-                "inst", Context, OrigContext, Extras, !Specs)
+            report_multiple_def_error(InstSymName, InstArity, "inst",
+                Context, OrigContext, Extras, !Specs)
         )
     ).
 
@@ -223,8 +223,8 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), Context, ModeStatus, InvalidMode,
             map.lookup(ModeDefns, ModeId, OrigModeDefn),
             OrigModeDefn = hlds_mode_defn(_, _, _, OrigContext, _),
             Extras = [],
-            multiple_def_error(is_not_opt_imported, Name, Arity,
-                "mode", Context, OrigContext, Extras, !Specs)
+            report_multiple_def_error(Name, Arity, "mode",
+                Context, OrigContext, Extras, !Specs)
         )
     ),
     check_for_cyclic_mode(!.ModeTable, ModeId, ModeId, [],

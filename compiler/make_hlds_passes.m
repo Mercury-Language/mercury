@@ -102,8 +102,8 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
 
     % Optionally gather statistics about the items in the compilation unit.
     trace [compile_time(flag("item_stats")), io(!IO)] (
-        % We append statistics to a file, rather than simplify writing to a
-        % file, so that we can gather statistics from a sequence of
+        % We *append* statistics to a file, rather than simply *writing*
+        % them to a file, so that we can gather statistics from a sequence of
         % Mercury compiler invocations, such as those in a bootcheck.
         % The file should be created empty before the start of the sequence,
         % and should be appended to by one Mercury compiler invocation
@@ -557,17 +557,8 @@ add_type_defn(SectionItem, !ModuleInfo, !FoundInvalidType, !Specs,
         )
     ),
     item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
-    % XXX PASS STRUCTURE We could get module_add_type_defn to update
-    % !FoundInvalidType directly.
-    module_add_type_defn(TypeVarSet, SymName, TypeParams, TypeDefn, Context,
-        TypeStatus, NeedQual, !ModuleInfo, [], TypeSpecs),
-    (
-        TypeSpecs = []
-    ;
-        TypeSpecs = [_ | _],
-        !:Specs = TypeSpecs ++ !.Specs,
-        !:FoundInvalidType = found_invalid_type
-    ).
+    module_add_type_defn(TypeStatus, NeedQual, ItemTypeDefnInfo,
+        !ModuleInfo, !FoundInvalidType, !Specs).
 
 %---------------------------------------------------------------------------%
 

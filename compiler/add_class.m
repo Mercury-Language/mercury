@@ -115,16 +115,16 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
         then
             % Always report the error, even in `.opt' files.
             Extras = [words("The superclass constraints do not match."), nl],
-            multiple_def_error(is_not_opt_imported, ClassName, ClassArity,
-                "typeclass", Context, OldContext, Extras, !Specs),
+            report_multiple_def_error(ClassName, ClassArity, "typeclass",
+                Context, OldContext, Extras, !Specs),
             ErrorOrPrevDef = bool.yes
         else if
             not class_fundeps_are_identical(OldFunDeps, HLDSFunDeps)
         then
             % Always report the error, even in `.opt' files.
             Extras = [words("The functional dependencies do not match."), nl],
-            multiple_def_error(is_not_opt_imported, ClassName, ClassArity,
-                "typeclass", Context, OldContext, Extras, !Specs),
+            report_multiple_def_error(ClassName, ClassArity, "typeclass",
+                Context, OldContext, Extras, !Specs),
             ErrorOrPrevDef = bool.yes
         else if
             Interface = class_interface_concrete(_),
@@ -134,8 +134,8 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
                 true
             else
                 Extras = [],
-                multiple_def_error(is_not_opt_imported, ClassName, ClassArity,
-                    "typeclass", Context, OldContext, Extras, !Specs)
+                report_multiple_def_error(ClassName, ClassArity, "typeclass",
+                    Context, OldContext, Extras, !Specs)
             ),
             ErrorOrPrevDef = bool.yes
         else
@@ -210,7 +210,7 @@ make_hlds_fundep_2(TVars, List) = list.foldl(Func, List, set.init) :-
 :- func get_list_index(list(T), hlds_class_argpos, T) = hlds_class_argpos.
 
 get_list_index([], _, _) = _ :-
-    unexpected($module, $pred, "element not found").
+    unexpected($pred, "element not found").
 get_list_index([E | Es], N, X) =
     ( if X = E then
         N
@@ -290,7 +290,7 @@ add_class_pred_or_func_mode_method(ClassName, ClassParamVars,
         !PredProcIds, !ModuleInfo, !Specs) :-
     (
         Method = method_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _),
-        unexpected($module, $pred, "pred_or_func method item")
+        unexpected($pred, "pred_or_func method item")
     ;
         Method = method_pred_or_func_mode(PredName, MaybePredOrFunc, Modes,
             _WithInst, _MaybeDetism, _VarSet, Context)
@@ -301,7 +301,7 @@ add_class_pred_or_func_mode_method(ClassName, ClassParamVars,
         MaybePredOrFunc = no,
         % The only way this could have happened now is if a `with_inst`
         % annotation was not expanded.
-        unexpected($module, $pred, "unexpanded `with_inst` annotation")
+        unexpected($pred, "unexpanded `with_inst` annotation")
     ;
         MaybePredOrFunc = yes(PredOrFunc)
     ),
@@ -333,7 +333,7 @@ add_class_pred_or_func_mode_method(ClassName, ClassParamVars,
         ;
             TailPredIds = [_ | _],
             % This shouldn't happen.
-            unexpected($module, $pred, "multiple preds matching method mode")
+            unexpected($pred, "multiple preds matching method mode")
         )
     ).
 
@@ -373,8 +373,8 @@ module_add_class_method(ClassName, ClassParamVars,
             ExistQVars, Purity, Constraints0, Context),
         % Any WithType and WithInst annotations should have been expanded
         % and the type and/or inst put into TypesAndModes by equiv_type.m.
-        expect(unify(WithType, no), $module, $pred, "WithType != no"),
-        expect(unify(WithInst, no), $module, $pred, "WithInst != no"),
+        expect(unify(WithType, no), $pred, "WithType != no"),
+        expect(unify(WithInst, no), $pred, "WithInst != no"),
         % XXX This setting of Origin looks suspicious.
         Origin = origin_user(PredName),
         % XXX kind inference:
@@ -407,7 +407,7 @@ module_add_class_method(ClassName, ClassParamVars,
             MaybePredOrFunc = no,
             % equiv_type.m should have either set the
             % pred_or_func or removed the item from the list.
-            unexpected($module, $pred, "no pred_or_func on mode declaration")
+            unexpected($pred, "no pred_or_func on mode declaration")
         )
     ).
 
@@ -432,7 +432,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
             QualPredOrFuncName = unqualified(_),
             % The class interface should be fully module qualified
             % by the parser at the time it is read in.
-            unexpected($module, $pred, "unqualified func")
+            unexpected($pred, "unqualified func")
         ),
         list.length(TypesAndModes, PredArity),
         module_info_get_predicate_table(!.ModuleInfo, PredTable),
@@ -464,7 +464,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
             ( PredIds = []
             ; PredIds = [_, _ | _]
             ),
-            unexpected($module, $pred, "number of preds != 1")
+            unexpected($pred, "number of preds != 1")
         )
     ;
         Method = method_pred_or_func_mode(_, _, _, _, _, _, _)
@@ -718,8 +718,7 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         _Origin, CVarSet, MaybeBodyGoal, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
     % instead of aborting.
-    expect(unify(PredOrFunc, ClausePredOrFunc), $module, $pred,
-        "PredOrFunc mismatch"),
+    expect(unify(PredOrFunc, ClausePredOrFunc), $pred, "PredOrFunc mismatch"),
     ( if
         illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar,
             StateVarContext)
