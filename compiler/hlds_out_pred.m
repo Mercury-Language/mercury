@@ -1333,6 +1333,7 @@ marker_name(marker_builtin_stub, "builtin_stub").
 marker_name(marker_infer_type, "infer_type").
 marker_name(marker_infer_modes, "infer_modes").
 marker_name(marker_user_marked_inline, "inline").
+marker_name(marker_no_pred_decl, "no_pred_decl").
 marker_name(marker_user_marked_no_inline, "no_inline").
 marker_name(marker_heuristic_inline, "heuristic_inline").
 marker_name(marker_consider_used, "consider_used").

@@ -256,6 +256,13 @@
             % Requests mode inference for the predicate. These markers are
             % inserted by make_hlds for undeclared predicates.
 
+    ;       marker_no_pred_decl
+            % This predicate had no (valid) `:- pred' or `:- func' declaration.
+            % Since we have generated an error message about this, suppress
+            % the generation of any similar messages about missing mode
+            % declarations, since the missing (or invalid) declaration
+            % could have been a combined predmode declaration.
+
     ;       marker_obsolete
             % Requests warnings if this predicate is used.
             % Used for pragma(obsolete).

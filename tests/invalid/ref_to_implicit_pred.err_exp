@@ -4,8 +4,6 @@ ref_to_implicit_pred.m:008:   Declared `det', inferred `failure'.
 ref_to_implicit_pred.m:013: Error: clause for predicate
 ref_to_implicit_pred.m:013:   `ref_to_implicit_pred.p'/2
 ref_to_implicit_pred.m:013:   without corresponding `:- pred' declaration.
-ref_to_implicit_pred.m:013: Error: no mode declaration for predicate `p'/2.
 ref_to_implicit_pred.m:013: Inferred :- pred p((pred), (pred)).
 ref_to_implicit_pred.m:014: Error: reference to undeclared function or
 ref_to_implicit_pred.m:014:   predicate `p'/2.
-For more information, recompile with `-E'.

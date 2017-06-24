@@ -2039,6 +2039,7 @@ should_output_marker(marker_builtin_stub, no).
     % don't need to be done in the importing module.
 should_output_marker(marker_infer_type, no).
 should_output_marker(marker_infer_modes, no).
+should_output_marker(marker_no_pred_decl, no).
     % Purity is output as part of the pred/func decl.
 should_output_marker(marker_is_impure, no).
 should_output_marker(marker_is_semipure, no).

@@ -3,6 +3,4 @@ typeclass_mode_2.m:009:   `typeclass_mode_2.p'/1 without corresponding
 typeclass_mode_2.m:009:   predicate method declaration.
 typeclass_mode_2.m:014: Error: clause for predicate `typeclass_mode_2.p'/1
 typeclass_mode_2.m:014:   without corresponding `:- pred' declaration.
-typeclass_mode_2.m:014: Error: no mode declaration for predicate `p'/1.
 typeclass_mode_2.m:014: Inferred :- pred p(T1).
-For more information, recompile with `-E'.

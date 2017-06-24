@@ -15,12 +15,11 @@ bigtest.m:006: Error: `export_pred' is not a valid declaration type.
 bigtest.m:007: Error: `export_type' is not a valid declaration type.
 bigtest.m:009: Error: clause for predicate `bigtest.fact'/0
 bigtest.m:009:   without corresponding `:- pred' declaration.
-bigtest.m:009: Error: no mode declaration for predicate `fact'/0.
-bigtest.m:009:   (Use `--infer-modes' to enable mode inference.)
 bigtest.m:009: Inferred :- pred fact.
 bigtest.m:010: Syntax error at token ':-': operator precedence error.
 bigtest.m:012: Error: `incorrect_declaration' is not a valid declaration type.
 bigtest.m:014: Error: no mode declaration for predicate `p'/1.
+bigtest.m:014:   (Use `--infer-modes' to enable mode inference.)
 bigtest.m:020: Error: the type name `=' is reserved for the Mercury
 bigtest.m:020:   implementation.
 bigtest.m:020: Error: type parameters must be variables: (t3 = (t1 + t2)).

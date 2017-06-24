@@ -13,7 +13,6 @@ constrained_poly_insts.m:020:   I and J in predicate declaration.
 constrained_poly_insts.m:029: Error: clause for predicate
 constrained_poly_insts.m:029:   `constrained_poly_insts.q'/2
 constrained_poly_insts.m:029:   without corresponding `:- pred' declaration.
-constrained_poly_insts.m:029: Error: no mode declaration for predicate `q'/2.
 constrained_poly_insts.m:029: Inferred :- pred q(T1, T1).
 constrained_poly_insts.m:031: Error: clause for function
 constrained_poly_insts.m:031:   `constrained_poly_insts.s'/1
@@ -22,7 +21,6 @@ constrained_poly_insts.m:031: Inferred :- func s(T1) = T1.
 constrained_poly_insts.m:032: Error: clause for predicate
 constrained_poly_insts.m:032:   `constrained_poly_insts.t'/4
 constrained_poly_insts.m:032:   without corresponding `:- pred' declaration.
-constrained_poly_insts.m:032: Error: no mode declaration for predicate `t'/4.
 constrained_poly_insts.m:032: Inferred :- pred t(T1, T1, T3, T3).
 constrained_poly_insts.m:033: In clause for `u(in((I =< ground)), out((I =<
 constrained_poly_insts.m:033:   ground)))':
@@ -31,4 +29,3 @@ constrained_poly_insts.m:033:   Final instantiatedness of `HeadVar__2' was
 constrained_poly_insts.m:033:   `unique(42)',
 constrained_poly_insts.m:033:   expected final instantiatedness was
 constrained_poly_insts.m:033:   `( I =< ground )'.
-For more information, recompile with `-E'.

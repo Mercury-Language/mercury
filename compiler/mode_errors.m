@@ -287,27 +287,44 @@ mode_context_init(mode_context_uninitialized).
 
 maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
     pred_info_get_status(PredInfo, PredStatus),
-    module_info_get_globals(ModuleInfo, Globals),
     % XXX STATUS
     ( if PredStatus = pred_status(status_local) then
+        module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, infer_modes, InferModesOpt),
         (
             InferModesOpt = yes,
             Specs = []
         ;
             InferModesOpt = no,
+            pred_info_get_markers(PredInfo, Markers),
+            ( if check_marker(Markers, marker_no_pred_decl) then
+                % Generate an error_spec that prints nothing.
+                % While we don't want the user to see the error message,
+                % we need the severity_error to stop the compiler
+                % from proceeding to process this predicate further.
+                % For example, to determinism analysis, where it could
+                % generate misleading errors about the determinism declaration
+                % (added implicitly by the compiler) being wrong.
+                % There is no risk of the compilation failing without
+                % *any* error indication, since we generated an error message
+                % when we added the marker.
+                Msgs = []
+            else
+                PredDesc = describe_one_pred_name(ModuleInfo,
+                    should_not_module_qualify, PredId),
+                MainPieces = [words("Error: no mode declaration for")] ++
+                    PredDesc ++ [suffix("."), nl],
+                VerbosePieces =
+                    [words("(Use"), quote("--infer-modes"),
+                    words("to enable mode inference.)"), nl],
+                Msgs =
+                    [simple_msg(Context,
+                        [always(MainPieces),
+                        verbose_only(verbose_once, VerbosePieces)])]
+            ),
             pred_info_get_context(PredInfo, Context),
-            MainPieces = [words("Error: no mode declaration for")] ++
-                describe_one_pred_name(ModuleInfo, should_not_module_qualify,
-                    PredId) ++ [suffix("."), nl],
-            VerbosePieces =
-                [words("(Use"), quote("--infer-modes"),
-                words("to enable mode inference.)"), nl],
             Spec = error_spec(severity_error,
-                phase_mode_check(report_in_any_mode),
-                [simple_msg(Context,
-                    [always(MainPieces),
-                    verbose_only(verbose_once, VerbosePieces)])]),
+                phase_mode_check(report_in_any_mode), Msgs),
             Specs = [Spec]
         )
     else
