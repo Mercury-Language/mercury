@@ -7,15 +7,8 @@
 %-----------------------------------------------------------------------------%
 %
 % This module provides the capability to print out the list of the entities
-% defined in the given module.
-%
-% When splitting up a module, it is sometimes hard to ensure that every part
-% of the original module ends up in exactly one of the successor modules.
-% Once programmers have access to a list of the main kinds of entities
-% (types, insts, modes, functions and predicates) defined in each module,
-% they can use standard tools to check this. For example, a command such as
-% "comm -12 m1.defns m2.defns" will list the entities that are defined in
-% both m1 and m2.
+% defined in the given module, and the length (in terms of lines) of predicate
+% definitions.
 %
 %-----------------------------------------------------------------------------%
 
@@ -26,7 +19,28 @@
 
 :- import_module io.
 
+    % When splitting up a module, it is sometimes hard to ensure that
+    % every part of the original module ends up in exactly one of the
+    % successor modules.
+    %
+    % This predicate prints a list of the main kinds of entities
+    % (types, insts, modes, functions and predicates) defined the given module.
+    % Programmers can use this information using commands such as
+    % "comm -12 m1.defns m2.defns", which will list the entities
+    % that are defined in both m1 and m2.
+    %
 :- pred write_hlds_defns(io.text_output_stream::in, module_info::in,
+    io::di, io::uo) is det.
+
+    % For each predicate (or function) in the module, print the number of lines
+    % in its definition.
+    %
+    % (Since information such as the presence of a lone close parenthesis
+    % on the last line of a clause is not preserved in the HLDS, this
+    % line count will be approximate, but it is still useful for e.g.
+    % finding excessively-long predicates that should be split up.
+    %
+:- pred write_hlds_defn_line_counts(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -34,7 +48,9 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -44,12 +60,14 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module term.
 
 :- type name_arity
     --->    name_arity(string, arity).
@@ -301,6 +319,198 @@ output_prefixed_strings(Stream, Prefix, [Str | Strs], !IO) :-
     io.write_string(Stream, Str, !IO),
     io.nl(Stream, !IO),
     output_prefixed_strings(Stream, Prefix, Strs, !IO).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+write_hlds_defn_line_counts(Stream, ModuleInfo, !IO) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+
+    module_info_get_preds(ModuleInfo, Preds),
+    map.values(Preds, PredInfos),
+    list.foldl(gather_pred_line_counts(ModuleName), PredInfos,
+        [], PredLineCounts),
+
+    list.sort(PredLineCounts, SortedPredLineCounts),
+    list.foldl(write_pred_line_count(Stream), SortedPredLineCounts, !IO).
+
+:- type pred_line_count
+    --->    pred_line_count(
+                plc_name_arity      :: name_arity,
+                plc_file_name       :: string,
+                plc_line_count      :: int
+            ).
+
+:- pred gather_pred_line_counts(module_name::in, pred_info::in,
+    list(pred_line_count)::in, list(pred_line_count)::out) is det.
+
+gather_pred_line_counts(ModuleName, PredInfo, !PredLineCounts) :-
+    pred_info_get_module_name(PredInfo, PredModuleName),
+    pred_info_get_origin(PredInfo, Origin),
+    ( if
+        PredModuleName = ModuleName,
+        Origin = origin_user(_)
+    then
+        pred_info_get_clauses_info(PredInfo, ClausesInfo),
+        clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
+        get_clause_list_maybe_repeated(ClausesRep, Clauses),
+        (
+            Clauses = []
+        ;
+            Clauses = [HeadClause | TailClauses],
+            FirstClause = HeadClause,
+            ( if last(TailClauses, LastClausePrime) then
+                LastClause = LastClausePrime
+            else
+                LastClause = HeadClause
+            ),
+            find_first_context(FirstClause ^ clause_body, FirstContext),
+            find_last_context(LastClause ^ clause_body, LastContext),
+            FirstContext = context(FirstFileName, FirstLineNumber),
+            LastContext = context(LastFileName, LastLineNumber),
+            ( if FirstFileName = LastFileName then
+                pred_info_get_name(PredInfo, PredName),
+                PredArity = pred_info_orig_arity(PredInfo),
+                PredNameArity = name_arity(PredName, PredArity),
+                Extent = LastLineNumber - FirstLineNumber + 1,
+                % In some rare cases, the "last" part of the goal
+                % appears *before* the "first" part.
+                LineCount = int.abs(Extent),
+                PLC = pred_line_count(PredNameArity, FirstFileName, LineCount),
+                !:PredLineCounts = [PLC | !.PredLineCounts]
+            else
+                % We don't have the information we need to compute
+                % a line count.
+                true
+            )
+        )
+    else
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred find_first_context(hlds_goal::in, prog_context::out) is det.
+
+find_first_context(Goal, FirstContext) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    (
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        FirstContext = goal_info_get_context(GoalInfo)
+    ;
+        ( GoalExpr = conj(_Kind, SubGoals)
+        ; GoalExpr = disj(SubGoals)
+        ),
+        (
+            SubGoals = [],
+            FirstContext = goal_info_get_context(GoalInfo)
+        ;
+            SubGoals = [HeadSubGoal | _TailSubGoal],
+            find_first_context(HeadSubGoal, FirstContext)
+        )
+    ;
+        GoalExpr = switch(_, _, Cases),
+        (
+            Cases = [],
+            FirstContext = goal_info_get_context(GoalInfo)
+        ;
+            Cases = [HeadCase | _TailCases],
+            HeadCase = case(_MainConsId, _OtherConsIds, SubGoal),
+            find_first_context(SubGoal, FirstContext)
+        )
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_Reason, SubGoal)
+        ),
+        find_first_context(SubGoal, FirstContext)
+    ;
+        GoalExpr = if_then_else(_Vars, Cond, _Then, _Else),
+        find_first_context(Cond, FirstContext)
+    ;
+        GoalExpr = shorthand(Shorthand),
+        (
+            Shorthand = bi_implication(SubGoalA, _SubGoalB),
+            find_first_context(SubGoalA, FirstContext)
+        ;
+            Shorthand = atomic_goal(_Type, _Outer, _Inner, _OutputVars,
+                MainGoal, _OrElseGoals, _Inners),
+            find_first_context(MainGoal, FirstContext)
+        ;
+            Shorthand = try_goal(_MaybeIO, _ResultVar, SubGoal),
+            find_first_context(SubGoal, FirstContext)
+        )
+    ).
+
+:- pred find_last_context(hlds_goal::in, prog_context::out) is det.
+
+find_last_context(Goal, FirstContext) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    (
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        FirstContext = goal_info_get_context(GoalInfo)
+    ;
+        ( GoalExpr = conj(_Kind, SubGoals)
+        ; GoalExpr = disj(SubGoals)
+        ),
+        ( if last(SubGoals, LastSubGoal) then
+            find_first_context(LastSubGoal, FirstContext)
+        else
+            FirstContext = goal_info_get_context(GoalInfo)
+        )
+    ;
+        GoalExpr = switch(_, _, Cases),
+        ( if last(Cases, LastCase) then
+            LastCase = case(_MainConsId, _OtherConsIds, SubGoal),
+            find_first_context(SubGoal, FirstContext)
+        else
+            FirstContext = goal_info_get_context(GoalInfo)
+        )
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_Reason, SubGoal)
+        ),
+        find_first_context(SubGoal, FirstContext)
+    ;
+        GoalExpr = if_then_else(_Vars, _Cond, _Then, Else),
+        find_first_context(Else, FirstContext)
+    ;
+        GoalExpr = shorthand(Shorthand),
+        (
+            Shorthand = bi_implication(_SubGoalA, SubGoalB),
+            find_first_context(SubGoalB, FirstContext)
+        ;
+            Shorthand = atomic_goal(_Type, _Outer, _Inner, _OutputVars,
+                MainGoal, OrElseGoals, _Inners),
+            ( if last(OrElseGoals, LastOrElseGoal) then
+                find_first_context(LastOrElseGoal, FirstContext)
+            else
+                find_first_context(MainGoal, FirstContext)
+            )
+        ;
+            Shorthand = try_goal(_MaybeIO, _ResultVar, SubGoal),
+            find_first_context(SubGoal, FirstContext)
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred write_pred_line_count(io.text_output_stream::in,
+    pred_line_count::in, io::di, io::uo) is det.
+
+write_pred_line_count(Stream, PredLineCount, !IO) :-
+    PredLineCount = pred_line_count(PredNameArity, FileName, LineCount),
+    PredNameArity = name_arity(PredName, PredArity),
+    string.format("%s/%d", [s(PredName), i(PredArity)], PredNameArityStr),
+    io.format(Stream, "%-40s %-30s %6d\n",
+        [s(PredNameArityStr), s(FileName), i(LineCount)], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_defns.

@@ -7349,6 +7349,13 @@ Write out a list of the types, insts, modes, predicates, functions,
 typeclasses and instances defined in the module to @var{module}.defns.
 
 @sp 1
+@item --show-definition-line-counts
+@findex --show-definition-line-counts
+Write out a list of the predicates and functions defined in the module,
+together with the names of the files containing them
+and their approximate line counts, to @var{module}.defn_line_counts.
+
+@sp 1
 @item --show-dependency-graph
 @findex --show-dependency-graph
 Write out the dependency graph to @file{@var{module}.dependency_graph}.

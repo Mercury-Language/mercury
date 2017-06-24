@@ -321,6 +321,7 @@
     ;       frameopt_comments
     ;       max_error_line_width
     ;       show_definitions
+    ;       show_definition_line_counts
     ;       show_dependency_graph
     ;       imports_graph
     ;       dump_trace_counts
@@ -1301,6 +1302,7 @@ option_defaults_2(aux_output_option, [
     frameopt_comments                   -   bool(no),
     max_error_line_width                -   maybe_int(yes(79)),
     show_definitions                    -   bool(no),
+    show_definition_line_counts         -   bool(no),
     show_dependency_graph               -   bool(no),
     imports_graph                       -   bool(no),
     dump_trace_counts                   -   accumulating([]),
@@ -2228,6 +2230,7 @@ long_option("auto-comments",            auto_comments).
 long_option("frameopt-comments",        frameopt_comments).
 long_option("max-error-line-width",     max_error_line_width).
 long_option("show-definitions",         show_definitions).
+long_option("show-definition-line-counts",  show_definition_line_counts).
 long_option("show-dependency-graph",    show_dependency_graph).
 long_option("imports-graph",            imports_graph).
 long_option("dump-trace-counts",        dump_trace_counts).
@@ -4268,10 +4271,10 @@ options_help_aux_output -->
         "\tSet the maximum width of an error message line to <n> characters",
         "\t(unless a long single word forces the line over this limit).",
         "\tSpecifying --no-max-error-line-width removes the limit.",
-        "--show-definitions",
-        "\tWrite out a list of the types, insts, modes, predicates, functions",
-        "\ttypeclasses and instances defined in the module to",
-        "\t`<module>.defns'.",
+        "--show-definition-line-counts",
+        "\tWrite out a list of the predicates and functions defined in",
+        "\tthe module, together with the names of the files containing them",
+        "\tand their approximate line counts, to `<module>.defn_line_counts'.",
         "--show-dependency-graph",
         "\tWrite out the dependency graph to `<module>.dependency_graph'.",
         "--imports-graph",
