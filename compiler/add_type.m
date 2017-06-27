@@ -1,16 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: add_type.m.
 %
 % This submodule of make_hlds handles the declarations of new types.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_type.
 :- interface.
@@ -22,7 +22,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Add a declaration or definition of a type constructor.
     %
@@ -38,8 +38,8 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -65,7 +65,11 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% The top level: adding the three kinds of item_type_defns (abstract,
+% Mercury, foreign) to the HLDS.
+%
 
 module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
         !ModuleInfo, !FoundInvalidType, !Specs) :-
@@ -130,7 +134,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
     ),
     !:Specs = Specs ++ !.Specs.
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- pred module_add_type_defn_abstract(type_status::in,
     type_ctor::in, hlds_type_body::in, hlds_type_defn::in,
@@ -182,7 +186,7 @@ module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
     add_or_replace_type_ctor_defn(TypeCtor, TypeDefn1, TypeTable0, TypeTable),
     module_info_set_type_table(TypeTable, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- inst type_defn_mercury
     --->    parse_tree_du_type(ground)
@@ -239,7 +243,7 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
         ParseTreeTypeDefn = parse_tree_solver_type(_)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- pred module_add_type_defn_foreign(type_status::in, type_status::in,
     type_ctor::in, hlds_type_body::in, hlds_type_defn::in, prog_context::in,
@@ -319,8 +323,76 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
         !:FoundInvalidType = found_invalid_type
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Predicates that help the top level predicates do their jobs.
+%
+
+:- pred convert_type_defn_to_hlds(type_defn::in, type_ctor::in, globals::in,
+    hlds_type_body::out) is det.
+
+convert_type_defn_to_hlds(TypeDefn, TypeCtor, Globals, HLDSBody) :-
+    (
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu =
+            type_details_du(Body, MaybeUserEqComp, MaybeDirectArgCtors),
+        % Initially, when we first see the `:- type' definition,
+        % we assign the constructor tags assuming that there is no
+        % `:- pragma reserve_tag' declaration for this type.
+        % (If it turns out that there was one, then we will recompute the
+        % constructor tags by calling assign_constructor_tags again,
+        % with ReservedTagPragma = uses_reserved_tag, when processing
+        % the pragma.)
+        ReservedTagPragma = does_not_use_reserved_tag,
+        assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor,
+            ReservedTagPragma, Globals, CtorTagMap, ReservedAddr, IsEnum),
+        IsForeign = no,
+        ( if ReservedAddr = does_not_use_reserved_address then
+            compute_cheaper_tag_test(CtorTagMap, CheaperTagTest)
+        else
+            CheaperTagTest = no_cheaper_tag_test
+        ),
+        HLDSBody = hlds_du_type(Body, CtorTagMap, CheaperTagTest, IsEnum,
+            MaybeUserEqComp, MaybeDirectArgCtors,
+            ReservedTagPragma, ReservedAddr, IsForeign)
+    ;
+        TypeDefn = parse_tree_eqv_type(type_details_eqv(EqvType)),
+        HLDSBody = hlds_eqv_type(EqvType)
+    ;
+        TypeDefn = parse_tree_solver_type(DetailsSolver),
+        HLDSBody = hlds_solver_type(DetailsSolver)
+    ;
+        TypeDefn = parse_tree_abstract_type(DetailsAbstract),
+        HLDSBody = hlds_abstract_type(DetailsAbstract)
+    ;
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        DetailsForeign = type_details_foreign(ForeignType, MaybeUserEqComp,
+            Assertions),
+        (
+            ForeignType = c(CForeignType),
+            Data = foreign_type_lang_data(CForeignType, MaybeUserEqComp,
+                Assertions),
+            Body = foreign_type_body(yes(Data), no, no, no)
+        ;
+            ForeignType = java(JavaForeignType),
+            Data = foreign_type_lang_data(JavaForeignType, MaybeUserEqComp,
+                Assertions),
+            Body = foreign_type_body(no, yes(Data), no, no)
+        ;
+            ForeignType = csharp(CSharpForeignType),
+            Data = foreign_type_lang_data(CSharpForeignType, MaybeUserEqComp,
+                Assertions),
+            Body = foreign_type_body(no, no, yes(Data), no)
+        ;
+            ForeignType = erlang(ErlangForeignType),
+            Data = foreign_type_lang_data(ErlangForeignType, MaybeUserEqComp,
+                Assertions),
+            Body = foreign_type_body(no, no, no, yes(Data))
+        ),
+        HLDSBody = hlds_foreign_type(Body)
+    ).
+
+%---------------------%
 
     % Given the old HLDS definition of a type and the status of a new
     % item_type_defn we are adding to it, compute the status of the resulting
@@ -353,8 +425,92 @@ combine_old_and_new_type_status(OldDefn, NewTypeStatus, CombinedTypeStatus,
     % As it is, we are forced to use cumbersome code; see the code of
     % do_foreign_type_visibilities_match.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+    % Ignore Mercury definitions if we have a foreign type declaration
+    % suitable for this back-end, and we aren't making the optimization
+    % interface. We need to keep the Mercury definition if we are making
+    % the optimization interface so that it gets output in the .opt file.
+    %
+:- pred merge_maybe_foreign_type_bodies(globals::in,
+    hlds_type_body::in, hlds_type_body::in, hlds_type_body::out) is semidet.
+
+merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
+    (
+        BodyA = hlds_foreign_type(ForeignTypeBodyA),
+        BodyB = hlds_du_type(_, _, _, _, _, _, _, _, _),
+        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, BodyB,
+            Body)
+    ;
+        BodyA = hlds_du_type(_, _, _, _, _, _, _, _, _),
+        BodyB = hlds_foreign_type(ForeignTypeBodyB),
+        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyB, BodyA,
+            Body)
+    ;
+        BodyA = hlds_foreign_type(ForeignTypeBodyA),
+        BodyB = hlds_foreign_type(ForeignTypeBodyB),
+        merge_foreign_type_bodies(ForeignTypeBodyA, ForeignTypeBodyB,
+            ForeignTypeBody),
+        Body = hlds_foreign_type(ForeignTypeBody)
+    ).
+
+:- inst hlds_type_body_du
+    --->    hlds_du_type(ground, ground, ground, ground, ground,
+                ground, ground, ground, ground).
+
+:- pred merge_foreign_and_du_type_bodies(globals::in,
+    foreign_type_body::in, hlds_type_body::in(hlds_type_body_du),
+    hlds_type_body::out) is semidet.
+
+merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, DuTypeBodyB,
+        Body) :-
+    DuTypeBodyB = hlds_du_type(_Ctors, _TagValues, _CheaperTagTest,
+        _DuTypeKind, _UserEq, _DirectArgCtors, _ReservedTag, _ReservedAddr,
+        MaybeForeignTypeBodyB),
+    (
+        MaybeForeignTypeBodyB = yes(ForeignTypeBodyB)
+    ;
+        MaybeForeignTypeBodyB = no,
+        ForeignTypeBodyB = foreign_type_body(no, no, no, no)
+    ),
+    merge_foreign_type_bodies(ForeignTypeBodyA, ForeignTypeBodyB,
+        ForeignTypeBody),
+    globals.get_target(Globals, Target),
+    globals.get_op_mode(Globals, OpMode),
+    ( if
+        have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
+        OpMode \= opm_top_args(opma_augment(opmau_make_opt_int))
+    then
+        Body = hlds_foreign_type(ForeignTypeBody)
+    else
+        Body = DuTypeBodyB ^ du_type_is_foreign_type := yes(ForeignTypeBody)
+    ).
+
+:- pred merge_foreign_type_bodies(foreign_type_body::in,
+    foreign_type_body::in, foreign_type_body::out) is semidet.
+
+merge_foreign_type_bodies(TypeBodyA, TypeBodyB, TypeBody) :-
+    TypeBodyA = foreign_type_body(MaybeCA, MaybeJavaA, MaybeCSharpA,
+        MaybeErlangA),
+    TypeBodyB = foreign_type_body(MaybeCB, MaybeJavaB, MaybeCSharpB,
+        MaybeErlangB),
+    merge_maybe(MaybeCA, MaybeCB, MaybeC),
+    merge_maybe(MaybeJavaA, MaybeJavaB, MaybeJava),
+    merge_maybe(MaybeCSharpA, MaybeCSharpB, MaybeCSharp),
+    merge_maybe(MaybeErlangA, MaybeErlangB, MaybeErlang),
+    TypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp,
+        MaybeErlang).
+
+:- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
+
+merge_maybe(no, no, no).
+merge_maybe(yes(T), no, yes(T)).
+merge_maybe(no, yes(T), yes(T)).
+
+%---------------------------------------------------------------------------%
+%
+% Predicates that check for errors and/or report them.
+%
 
 :- pred maybe_report_multiple_def_error(type_status::in, type_ctor::in,
     prog_context::in, hlds_type_defn::in, module_info::in, module_info::out,
@@ -376,7 +532,7 @@ maybe_report_multiple_def_error(TypeStatus, TypeCtor, Context, OldDefn,
         !:FoundInvalidType = found_invalid_type
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- pred check_for_dummy_type_with_unify_compare(type_status::in,
     type_ctor::in, type_details_du::in, prog_context::in,
@@ -417,7 +573,7 @@ check_for_dummy_type_with_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- pred check_for_polymorphic_eqv_type_with_monomorphic_body(type_status::in,
     type_ctor::in, list(type_param)::in, type_details_eqv::in,
@@ -467,7 +623,7 @@ abstract_monotype_workaround = [
     words("optimize the wrapper away.)")
     ].
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- pred check_for_inconsistent_solver_nosolver_type(type_ctor::in,
     hlds_type_defn::in, hlds_type_body::in, prog_context::in,
@@ -537,7 +693,7 @@ maybe_get_body_is_solver_type(Body, IsSolverType) :-
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- type old_defn_maybe_abstract
     --->    old_defn_is_abstract
@@ -602,8 +758,50 @@ do_foreign_type_visibilities_match(OldStatus, NewStatus) :-
         type_status_is_exported_to_non_submodules(NewStatus) = no
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+    % Check_foreign_type ensures that if we are generating code for a specific
+    % backend that the foreign type has a representation on that backend.
+    %
+:- pred check_foreign_type_for_current_target(type_ctor::in,
+    foreign_type_body::in, type_defn_prev_errors::in, prog_context::in,
+    found_invalid_type::out, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
+        Context, FoundInvalidType, !ModuleInfo, !Specs) :-
+    TypeCtor = type_ctor(Name, Arity),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    ( if have_foreign_type_for_backend(Target, ForeignTypeBody, yes) then
+        FoundInvalidType = did_not_find_invalid_type
+    else if PrevErrors = type_defn_prev_errors then
+        % The error message being generated below may be misleading,
+        % since the relevant foreign language definition of this type
+        % may have been present, but in error.
+        FoundInvalidType = found_invalid_type
+    else
+        ( Target = target_c, LangStr = "C"
+        ; Target = target_csharp, LangStr = "C#"
+        ; Target = target_java, LangStr = "Java"
+        ; Target = target_erlang, LangStr = "Erlang"
+        ),
+        MainPieces = [words("Error: no"), fixed(LangStr),
+            pragma_decl("foreign_type"), words("declaration for"),
+            unqual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+            suffix("."), nl],
+        VerbosePieces = [words("There are representations for this type"),
+            words("on other back-ends, but none for this back-end."), nl],
+        Msg = simple_msg(Context,
+            [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [Msg]),
+        !:Specs = [Spec | !.Specs],
+        FoundInvalidType = found_invalid_type
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
         !Specs) :-
@@ -695,190 +893,6 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
         construct_type(TypeCtor, ArgTypes, Type),
         add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
             !ModuleInfo)
-    ).
-
-    % Check_foreign_type ensures that if we are generating code for a specific
-    % backend that the foreign type has a representation on that backend.
-    %
-:- pred check_foreign_type_for_current_target(type_ctor::in,
-    foreign_type_body::in, type_defn_prev_errors::in, prog_context::in,
-    found_invalid_type::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
-        Context, FoundInvalidType, !ModuleInfo, !Specs) :-
-    TypeCtor = type_ctor(Name, Arity),
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    ( if have_foreign_type_for_backend(Target, ForeignTypeBody, yes) then
-        FoundInvalidType = did_not_find_invalid_type
-    else if PrevErrors = type_defn_prev_errors then
-        % The error message being generated below may be misleading,
-        % since the relevant foreign language definition of this type
-        % may have been present, but in error.
-        FoundInvalidType = found_invalid_type
-    else
-        ( Target = target_c, LangStr = "C"
-        ; Target = target_csharp, LangStr = "C#"
-        ; Target = target_java, LangStr = "Java"
-        ; Target = target_erlang, LangStr = "Erlang"
-        ),
-        MainPieces = [words("Error: no"), fixed(LangStr),
-            pragma_decl("foreign_type"), words("declaration for"),
-            unqual_sym_name_and_arity(sym_name_arity(Name, Arity)),
-            suffix("."), nl],
-        VerbosePieces = [words("There are representations for this type"),
-            words("on other back-ends, but none for this back-end."), nl],
-        Msg = simple_msg(Context,
-            [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
-        !:Specs = [Spec | !.Specs],
-        FoundInvalidType = found_invalid_type
-    ).
-
-    % Ignore Mercury definitions if we have a foreign type declaration
-    % suitable for this back-end, and we aren't making the optimization
-    % interface. We need to keep the Mercury definition if we are making
-    % the optimization interface so that it gets output in the .opt file.
-    %
-:- pred merge_maybe_foreign_type_bodies(globals::in,
-    hlds_type_body::in, hlds_type_body::in, hlds_type_body::out) is semidet.
-
-merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
-    (
-        BodyA = hlds_foreign_type(ForeignTypeBodyA),
-        BodyB = hlds_du_type(_, _, _, _, _, _, _, _, _),
-        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, BodyB,
-            Body)
-    ;
-        BodyA = hlds_du_type(_, _, _, _, _, _, _, _, _),
-        BodyB = hlds_foreign_type(ForeignTypeBodyB),
-        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyB, BodyA,
-            Body)
-    ;
-        BodyA = hlds_foreign_type(ForeignTypeBodyA),
-        BodyB = hlds_foreign_type(ForeignTypeBodyB),
-        merge_foreign_type_bodies(ForeignTypeBodyA, ForeignTypeBodyB,
-            ForeignTypeBody),
-        Body = hlds_foreign_type(ForeignTypeBody)
-    ).
-
-:- inst hlds_type_body_du
-    --->    hlds_du_type(ground, ground, ground, ground, ground,
-                ground, ground, ground, ground).
-
-:- pred merge_foreign_and_du_type_bodies(globals::in,
-    foreign_type_body::in, hlds_type_body::in(hlds_type_body_du),
-    hlds_type_body::out) is semidet.
-
-merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, DuTypeBodyB,
-        Body) :-
-    DuTypeBodyB = hlds_du_type(_Ctors, _TagValues, _CheaperTagTest,
-        _DuTypeKind, _UserEq, _DirectArgCtors, _ReservedTag, _ReservedAddr,
-        MaybeForeignTypeBodyB),
-    (
-        MaybeForeignTypeBodyB = yes(ForeignTypeBodyB)
-    ;
-        MaybeForeignTypeBodyB = no,
-        ForeignTypeBodyB = foreign_type_body(no, no, no, no)
-    ),
-    merge_foreign_type_bodies(ForeignTypeBodyA, ForeignTypeBodyB,
-        ForeignTypeBody),
-    globals.get_target(Globals, Target),
-    globals.get_op_mode(Globals, OpMode),
-    ( if
-        have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
-        OpMode \= opm_top_args(opma_augment(opmau_make_opt_int))
-    then
-        Body = hlds_foreign_type(ForeignTypeBody)
-    else
-        Body = DuTypeBodyB ^ du_type_is_foreign_type := yes(ForeignTypeBody)
-    ).
-
-:- pred merge_foreign_type_bodies(foreign_type_body::in,
-    foreign_type_body::in, foreign_type_body::out) is semidet.
-
-merge_foreign_type_bodies(TypeBodyA, TypeBodyB, TypeBody) :-
-    TypeBodyA = foreign_type_body(MaybeCA, MaybeJavaA, MaybeCSharpA,
-        MaybeErlangA),
-    TypeBodyB = foreign_type_body(MaybeCB, MaybeJavaB, MaybeCSharpB,
-        MaybeErlangB),
-    merge_maybe(MaybeCA, MaybeCB, MaybeC),
-    merge_maybe(MaybeJavaA, MaybeJavaB, MaybeJava),
-    merge_maybe(MaybeCSharpA, MaybeCSharpB, MaybeCSharp),
-    merge_maybe(MaybeErlangA, MaybeErlangB, MaybeErlang),
-    TypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp,
-        MaybeErlang).
-
-:- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
-
-merge_maybe(no, no, no).
-merge_maybe(yes(T), no, yes(T)).
-merge_maybe(no, yes(T), yes(T)).
-
-:- pred convert_type_defn_to_hlds(type_defn::in, type_ctor::in, globals::in,
-    hlds_type_body::out) is det.
-
-convert_type_defn_to_hlds(TypeDefn, TypeCtor, Globals, HLDSBody) :-
-    (
-        TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu =
-            type_details_du(Body, MaybeUserEqComp, MaybeDirectArgCtors),
-        % Initially, when we first see the `:- type' definition,
-        % we assign the constructor tags assuming that there is no
-        % `:- pragma reserve_tag' declaration for this type.
-        % (If it turns out that there was one, then we will recompute the
-        % constructor tags by calling assign_constructor_tags again,
-        % with ReservedTagPragma = uses_reserved_tag, when processing
-        % the pragma.)
-        ReservedTagPragma = does_not_use_reserved_tag,
-        assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor,
-            ReservedTagPragma, Globals, CtorTagMap, ReservedAddr, IsEnum),
-        IsForeign = no,
-        ( if ReservedAddr = does_not_use_reserved_address then
-            compute_cheaper_tag_test(CtorTagMap, CheaperTagTest)
-        else
-            CheaperTagTest = no_cheaper_tag_test
-        ),
-        HLDSBody = hlds_du_type(Body, CtorTagMap, CheaperTagTest, IsEnum,
-            MaybeUserEqComp, MaybeDirectArgCtors,
-            ReservedTagPragma, ReservedAddr, IsForeign)
-    ;
-        TypeDefn = parse_tree_eqv_type(type_details_eqv(EqvType)),
-        HLDSBody = hlds_eqv_type(EqvType)
-    ;
-        TypeDefn = parse_tree_solver_type(DetailsSolver),
-        HLDSBody = hlds_solver_type(DetailsSolver)
-    ;
-        TypeDefn = parse_tree_abstract_type(DetailsAbstract),
-        HLDSBody = hlds_abstract_type(DetailsAbstract)
-    ;
-        TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        DetailsForeign = type_details_foreign(ForeignType, MaybeUserEqComp,
-            Assertions),
-        (
-            ForeignType = c(CForeignType),
-            Data = foreign_type_lang_data(CForeignType, MaybeUserEqComp,
-                Assertions),
-            Body = foreign_type_body(yes(Data), no, no, no)
-        ;
-            ForeignType = java(JavaForeignType),
-            Data = foreign_type_lang_data(JavaForeignType, MaybeUserEqComp,
-                Assertions),
-            Body = foreign_type_body(no, yes(Data), no, no)
-        ;
-            ForeignType = csharp(CSharpForeignType),
-            Data = foreign_type_lang_data(CSharpForeignType, MaybeUserEqComp,
-                Assertions),
-            Body = foreign_type_body(no, no, yes(Data), no)
-        ;
-            ForeignType = erlang(ErlangForeignType),
-            Data = foreign_type_lang_data(ErlangForeignType, MaybeUserEqComp,
-                Assertions),
-            Body = foreign_type_body(no, no, no, yes(Data))
-        ),
-        HLDSBody = hlds_foreign_type(Body)
     ).
 
 :- pred add_type_defn_ctors(list(constructor)::in, type_ctor::in,
@@ -1065,6 +1079,6 @@ do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
     multi_map.set(qualified(ModuleName, FieldName), FieldNameDefn,
         !FieldNameTable).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_type.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
