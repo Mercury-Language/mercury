@@ -138,8 +138,7 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                     NegDetism = NegDetism1,
                     NegInstMapDelta = NegInstMapDelta1
                 else
-                    unexpected($module, $pred,
-                        "cannot get negated determinism")
+                    unexpected($pred, "cannot get negated determinism")
                 ),
                 goal_info_set_determinism(NegDetism, CondInfo0, NegCondInfo0),
                 goal_info_set_instmap_delta(NegInstMapDelta,
@@ -377,7 +376,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
             )
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated unify")
+            unexpected($pred, "complicated unify")
         )
     ;
         CondExpr = disj(Disjuncts),
@@ -416,7 +415,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
             !:CondCanSwitch = cond_cannot_switch
         ;
             ShortHand = bi_implication(_, _),
-            unexpected($module, $pred, "shorthand")
+            unexpected($pred, "shorthand")
         )
     ).
 
@@ -457,21 +456,21 @@ can_switch_on_type(TypeBody) = CanSwitchOnType :-
         TypeBody = hlds_eqv_type(_),
         % The type of the variable should have had any equivalences expanded
         % out of it before simplify.
-        unexpected($module, $pred, "eqv type")
+        unexpected($pred, "eqv type")
     ;
         TypeBody = hlds_foreign_type(_),
         % If the type is foreign, how can a Mercury unification use it?
-        unexpected($module, $pred, "foreign type")
+        unexpected($pred, "foreign type")
     ;
         TypeBody = hlds_abstract_type(_),
         % If the type is abstract, how can a Mercury unification use it?
-        unexpected($module, $pred, "abstract type")
+        unexpected($pred, "abstract type")
     ;
-        TypeBody = hlds_solver_type(_, _),
+        TypeBody = hlds_solver_type(_),
         % Any unifications on constrained variables should be done on the
         % representation type, and the type of the variable in the unification
         % should be the representation type, not the solver type.
-        unexpected($module, $pred, "solver type")
+        unexpected($pred, "solver type")
     ).
 
 %---------------------------------------------------------------------------%

@@ -265,7 +265,7 @@ gather_in_item(Section, Item, !Info) :-
             % procedure.
             BodyItem = Item
         ;
-            Body = parse_tree_du_type(_, _, _),
+            Body = parse_tree_du_type(_),
             % XXX does the abstract_details matter here?
             AbstractDetails = abstract_type_general,
             AbstractBody = parse_tree_abstract_type(AbstractDetails),
@@ -279,11 +279,11 @@ gather_in_item(Section, Item, !Info) :-
             NameItem = Item,
             BodyItem = Item
         ;
-            Body = parse_tree_solver_type(_, _),
+            Body = parse_tree_solver_type(_),
             NameItem = Item,
             BodyItem = Item
         ;
-            Body = parse_tree_foreign_type(_, _, _),
+            Body = parse_tree_foreign_type(_),
             NameItem = Item,
             BodyItem = Item
         ),

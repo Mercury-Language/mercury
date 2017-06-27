@@ -649,7 +649,7 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
                     Clause, !Info)
             )
         ;
-            TypeBody = hlds_solver_type(_, _),
+            TypeBody = hlds_solver_type(_),
             generate_default_solver_type_unify_proc_body(X, Y, Context,
                 Clause, !Info)
         ;
@@ -847,7 +847,7 @@ generate_index_proc_body(Type, TypeBody, X, Index, Context, Clause, !Info) :-
             TypeBody = hlds_foreign_type(_),
             unexpected($pred, "trying to create index proc for a foreign type")
         ;
-            TypeBody = hlds_solver_type(_, _),
+            TypeBody = hlds_solver_type(_),
             unexpected($pred, "trying to create index proc for a solver type")
         ;
             TypeBody = hlds_abstract_type(_),
@@ -923,7 +923,7 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
             generate_eqv_compare_proc_body(c_pointer_type, Res, X, Y,
                 Context, Clause, !Info)
         ;
-            TypeBody = hlds_solver_type(_, _),
+            TypeBody = hlds_solver_type(_),
             generate_default_solver_type_compare_proc_body(Res, X, Y,
                 Context, Clause, !Info)
         ;

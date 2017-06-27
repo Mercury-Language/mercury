@@ -46,7 +46,7 @@ decide_du_type_layout(ModuleInfo, TypeCtor, TypeDefn, !TypeTable) :-
     ;
         ( Body0 = hlds_eqv_type(_)
         ; Body0 = hlds_foreign_type(_)
-        ; Body0 = hlds_solver_type(_, _)
+        ; Body0 = hlds_solver_type(_)
         ; Body0 = hlds_abstract_type(_)
         )
         % Leave these types alone.

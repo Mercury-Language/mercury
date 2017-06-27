@@ -252,34 +252,44 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     % type parameters.
     %
 :- type type_defn
-    --->    parse_tree_du_type(
+    --->    parse_tree_du_type(type_details_du)
+    ;       parse_tree_eqv_type(type_details_eqv)
+    ;       parse_tree_solver_type(type_details_solver)
+    ;       parse_tree_abstract_type(type_details_abstract)
+    ;       parse_tree_foreign_type(type_details_foreign).
+
+:- type type_details_du
+    --->    type_details_du(
                 du_ctors            :: list(constructor),
                 du_user_uc          :: maybe(unify_compare),
                 du_direct_arg       :: maybe(list(sym_name_and_arity))
-            )
-    ;       parse_tree_eqv_type(
-                eqv_type            :: mer_type
-            )
-    ;       parse_tree_abstract_type(
-                abstract_details    :: abstract_type_details
-            )
-    ;       parse_tree_solver_type(
-                solver_details      :: solver_type_details,
-                solver_user_uc      :: maybe(unify_compare)
-            )
-    ;       parse_tree_foreign_type(
-                foreign_lang_type   :: foreign_language_type,
-                foreign_user_uc     :: maybe(unify_compare),
-                foreign_assertions  :: foreign_type_assertions
             ).
 
-:- type abstract_type_details
+:- type type_details_eqv
+    --->    type_details_eqv(
+                eqv_type            :: mer_type
+            ).
+
+:- type type_details_abstract
     --->    abstract_type_general
     ;       abstract_enum_type(int)
             % The abstract type is known to be an enumeration type, requiring
             % the given number of bits required to represent.
     ;       abstract_solver_type.
             % An abstract solver type.
+
+:- type type_details_solver
+    --->    type_details_solver(
+                solver_details      :: solver_type_details,
+                solver_user_uc      :: maybe(unify_compare)
+            ).
+
+:- type type_details_foreign
+    --->    type_details_foreign(
+                foreign_lang_type   :: foreign_language_type,
+                foreign_user_uc     :: maybe(unify_compare),
+                foreign_assertions  :: foreign_type_assertions
+            ).
 
     % The `is_solver_type' type specifies whether a type is a "solver" type,
     % for which `any' insts are interpreted as "don't know", or a non-solver

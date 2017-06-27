@@ -429,9 +429,10 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeMaybeUC = ok1(MaybeUC)
         then
             varset.coerce(VarSet, TVarSet),
+            TypeDetailsForeign =
+                type_details_foreign(ForeignType, MaybeUC, Assertions),
             ItemTypeDefn = item_type_defn_info(MercuryTypeSymName,
-                MercuryParams,
-                parse_tree_foreign_type(ForeignType, MaybeUC, Assertions),
+                MercuryParams, parse_tree_foreign_type(TypeDetailsForeign),
                 TVarSet, Context, SeqNum),
             Item = item_type_defn(ItemTypeDefn),
             MaybeIOM = ok1(iom_item(Item))

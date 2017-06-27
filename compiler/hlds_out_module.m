@@ -270,7 +270,7 @@ write_type_table_entries(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
 
     write_indent(Indent, !IO),
     ( if
-        ( TypeBody = hlds_solver_type(_, _)
+        ( TypeBody = hlds_solver_type(_)
         ; TypeBody = hlds_abstract_type(abstract_solver_type)
         )
     then
@@ -407,7 +407,9 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         % XXX
         io.write_string(" == $foreign_type.\n", !IO)
     ;
-        TypeBody = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
+        TypeBody = hlds_solver_type(DetailsSolver),
+        DetailsSolver =
+            type_details_solver(SolverTypeDetails, MaybeUserEqComp),
         MercInfo = Info ^ hoi_mercury_to_mercury,
         mercury_output_where_attributes(MercInfo, TVarSet,
             yes(SolverTypeDetails), MaybeUserEqComp, no, !IO),

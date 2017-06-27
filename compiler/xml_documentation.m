@@ -391,7 +391,7 @@ type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
 type_xml_tag(hlds_du_type(_, _, _, _, _, _, _, _, _)) = "du_type".
 type_xml_tag(hlds_eqv_type(_)) = "eqv_type".
 type_xml_tag(hlds_foreign_type(_)) = "foreign_type".
-type_xml_tag(hlds_solver_type(_, _)) = "solver_type".
+type_xml_tag(hlds_solver_type(_)) = "solver_type".
 type_xml_tag(hlds_abstract_type(_)) = "abstract_type".
 
 :- func type_param_to_xml(tvarset, type_param) = xml.
@@ -402,14 +402,28 @@ type_param_to_xml(TVarset, TVar) = Xml :-
 
 :- func type_body_to_xml(comments, tvarset, hlds_type_body) = list(xml).
 
-type_body_to_xml(C, TVarset, hlds_du_type(Ctors, _, _, _, _, _, _, _, _)) =
-    [xml_list("constructors", constructor_to_xml(C, TVarset), Ctors)].
-type_body_to_xml(_, TVarset, hlds_eqv_type(Type)) =
-    [elem("equivalent_type", [], [mer_type_to_xml(TVarset, Type)])].
-    % XXX TODO
-type_body_to_xml(_, _, hlds_foreign_type(_)) = [nyi("hlds_foreign_type")].
-type_body_to_xml(_, _, hlds_solver_type(_, _)) = [nyi("hlds_solver_type")].
-type_body_to_xml(_, _, hlds_abstract_type(_)) = [nyi("hlds_abstract_type")].
+type_body_to_xml(C, TVarSet, TypeDefnBody) = Xmls :-
+    (
+        TypeDefnBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
+        Xmls =
+            [xml_list("constructors", constructor_to_xml(C, TVarSet), Ctors)]
+    ;
+        TypeDefnBody = hlds_eqv_type(EqvType),
+        Xmls = [elem("equivalent_type", [],
+            [mer_type_to_xml(TVarSet, EqvType)])]
+    ;
+        TypeDefnBody = hlds_foreign_type(_),
+        % XXX TODO
+        Xmls = [nyi("hlds_foreign_type")]
+    ;
+        TypeDefnBody = hlds_solver_type(_),
+        % XXX TODO
+        Xmls = [nyi("hlds_solver_type")]
+    ;
+        TypeDefnBody = hlds_abstract_type(_),
+        % XXX TODO
+        Xmls = [nyi("hlds_abstract_type")]
+    ).
 
 :- func constructor_to_xml(comments, tvarset, constructor) = xml.
 

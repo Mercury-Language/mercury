@@ -439,7 +439,7 @@ cons_table_optimize(!ConsTable) :-
     % An hlds_type_defn holds the information about a type definition.
 :- type hlds_type_defn.
 
-:- pred set_type_defn(tvarset::in, list(type_param)::in,
+:- pred create_hlds_type_defn(tvarset::in, list(type_param)::in,
     tvar_kind_map::in, hlds_type_body::in, bool::in,
     type_status::in, need_qualifier::in, type_defn_prev_errors::in,
     prog_context::in, hlds_type_defn::out) is det.
@@ -503,8 +503,8 @@ cons_table_optimize(!ConsTable) :-
             )
     ;       hlds_eqv_type(mer_type)
     ;       hlds_foreign_type(foreign_type_body)
-    ;       hlds_solver_type(solver_type_details, maybe(unify_compare))
-    ;       hlds_abstract_type(abstract_type_details).
+    ;       hlds_solver_type(type_details_solver)
+    ;       hlds_abstract_type(type_details_abstract).
 
 :- type maybe_cheaper_tag_test
     --->    no_cheaper_tag_test
@@ -859,7 +859,7 @@ get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
     ;
         ( TypeBody = hlds_eqv_type(_)
         ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_solver_type(_)
         ; TypeBody = hlds_abstract_type(_)
         ),
         CheaperTagTest = no_cheaper_tag_test
@@ -1037,7 +1037,7 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 type_defn_context           :: prog_context
             ).
 
-set_type_defn(Tvarset, Params, Kinds, TypeBody, InExportedEqv,
+create_hlds_type_defn(Tvarset, Params, Kinds, TypeBody, InExportedEqv,
         TypeStatus, NeedQual, PrevErrors, Context, Defn) :-
     Defn = hlds_type_defn(Tvarset, Params, Kinds, TypeBody, InExportedEqv,
         TypeStatus, NeedQual, PrevErrors, Context).

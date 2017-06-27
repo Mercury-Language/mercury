@@ -1232,7 +1232,7 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
             ( TypeBody0 = hlds_eqv_type(_)
-            ; TypeBody0 = hlds_solver_type(_, _)
+            ; TypeBody0 = hlds_solver_type(_)
             ; TypeBody0 = hlds_abstract_type(_)
             ),
             TypeDefn = TypeDefn0
@@ -1542,11 +1542,12 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         Body = hlds_du_type(Ctors, _, _, _, MaybeUserEqComp,
             MaybeDirectArgCtors,
             _, _, _),
-        TypeBody = parse_tree_du_type(Ctors, MaybeUserEqComp,
+        TypeBody = parse_tree_du_type(DetailsDu),
+        DetailsDu = type_details_du(Ctors, MaybeUserEqComp,
             MaybeDirectArgCtors)
     ;
         Body = hlds_eqv_type(EqvType),
-        TypeBody = parse_tree_eqv_type(EqvType)
+        TypeBody = parse_tree_eqv_type(type_details_eqv(EqvType))
     ;
         Body = hlds_abstract_type(Details),
         TypeBody = parse_tree_abstract_type(Details)
@@ -1554,8 +1555,8 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         Body = hlds_foreign_type(_),
         TypeBody = parse_tree_abstract_type(abstract_type_general)
     ;
-        Body = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
-        TypeBody = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp)
+        Body = hlds_solver_type(DetailsSolver),
+        TypeBody = parse_tree_solver_type(DetailsSolver)
     ),
     MainItemTypeDefn = item_type_defn_info(Name, Args, TypeBody, VarSet,
         Context, -1),
@@ -1573,9 +1574,10 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             MaybeC = yes(DataC),
             DataC = foreign_type_lang_data(CForeignType,
                 CMaybeUserEqComp, AssertionsC),
+            CDetailsForeign = type_details_foreign(c(CForeignType),
+                CMaybeUserEqComp, AssertionsC),
             CItemTypeDefn = item_type_defn_info(Name, Args,
-                parse_tree_foreign_type(c(CForeignType),
-                    CMaybeUserEqComp, AssertionsC),
+                parse_tree_foreign_type(CDetailsForeign),
                 VarSet, Context, -1),
             CItem = item_type_defn(CItemTypeDefn),
             mercury_output_item(MercInfo, CItem, !IO)
@@ -1586,9 +1588,10 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             MaybeJava = yes(DataJava),
             DataJava = foreign_type_lang_data(JavaForeignType,
                 JavaMaybeUserEqComp, AssertionsJava),
+            JavaDetailsForeign = type_details_foreign(java(JavaForeignType),
+                JavaMaybeUserEqComp, AssertionsJava),
             JavaItemTypeDefn = item_type_defn_info(Name, Args,
-                parse_tree_foreign_type(java(JavaForeignType),
-                    JavaMaybeUserEqComp, AssertionsJava),
+                parse_tree_foreign_type(JavaDetailsForeign),
                 VarSet, Context, -1),
             JavaItem = item_type_defn(JavaItemTypeDefn),
             mercury_output_item(MercInfo, JavaItem, !IO)
@@ -1599,9 +1602,11 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             MaybeCSharp = yes(DataCSharp),
             DataCSharp = foreign_type_lang_data(CSharpForeignType,
                 CSharpMaybeUserEqComp, AssertionsCSharp),
+            CSharpDetailsForeign = type_details_foreign(
+                csharp(CSharpForeignType),
+                CSharpMaybeUserEqComp, AssertionsCSharp),
             CSharpItemTypeDefn = item_type_defn_info(Name, Args,
-                parse_tree_foreign_type(csharp(CSharpForeignType),
-                    CSharpMaybeUserEqComp, AssertionsCSharp),
+                parse_tree_foreign_type(CSharpDetailsForeign),
                 VarSet, Context, -1),
             CSharpItem = item_type_defn(CSharpItemTypeDefn),
             mercury_output_item(MercInfo, CSharpItem, !IO)
@@ -1612,9 +1617,11 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             MaybeErlang = yes(DataErlang),
             DataErlang = foreign_type_lang_data(ErlangForeignType,
                 ErlangMaybeUserEqComp, AssertionsErlang),
+            ErlangDetailsForeign = type_details_foreign(
+                erlang(ErlangForeignType),
+                ErlangMaybeUserEqComp, AssertionsErlang),
             ErlangItemTypeDefn = item_type_defn_info(Name, Args,
-                parse_tree_foreign_type(erlang(ErlangForeignType),
-                    ErlangMaybeUserEqComp, AssertionsErlang),
+                parse_tree_foreign_type(ErlangDetailsForeign),
                 VarSet, Context, -1),
             ErlangItem = item_type_defn(ErlangItemTypeDefn),
             mercury_output_item(MercInfo, ErlangItem, !IO)

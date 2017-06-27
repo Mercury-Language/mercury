@@ -1,3 +1,4 @@
-extra_info_prompt.m:010: Error: the type `extra_info_prompt.foo'/0 is not
-extra_info_prompt.m:010:   allowed to have user-defined equality or comparison.
+extra_info_prompt.m:010: Error: the type `foo'/0 contains no information, and
+extra_info_prompt.m:010:   as such it is not allowed to have user-defined
+extra_info_prompt.m:010:   equality or comparison.
 For more information, recompile with `-E'.

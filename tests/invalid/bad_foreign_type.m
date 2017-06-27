@@ -87,3 +87,5 @@
     %
 :- pragma foreign_type("C", foo, "int",
     [can_pass_as_mercury_type, can_pass_as_mercury_type]).
+
+:- type quux.

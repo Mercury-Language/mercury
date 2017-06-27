@@ -222,20 +222,23 @@ build_eqv_maps_in_items([Item | Items], !TypeEqvMap, !InstEqvMap) :-
 build_eqv_maps_in_item(Item, !TypeEqvMap, !InstEqvMap) :-
     ( if
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(Name, Args,
-            parse_tree_eqv_type(Body), VarSet, _Context, _SeqNum)
+        ItemTypeDefn = item_type_defn_info(Name, TypeParams, TypeDefn, VarSet,
+            _Context, _SeqNum),
+        TypeDefn = parse_tree_eqv_type(type_details_eqv(EqvType))
    then
-        list.length(Args, Arity),
+        list.length(TypeParams, Arity),
         TypeCtor = type_ctor(Name, Arity),
-        map.set(TypeCtor, eqv_type_body(VarSet, Args, Body), !TypeEqvMap)
+        map.set(TypeCtor, eqv_type_body(VarSet, TypeParams, EqvType),
+            !TypeEqvMap)
     else if
         Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(Name, Args, _IFTC,
-            eqv_inst(Body), VarSet, _Context, _SeqNum)
+        ItemInstDefn = item_inst_defn_info(Name, InstParams, _IFTC,
+            eqv_inst(EqvInst), VarSet, _Context, _SeqNum)
     then
-        list.length(Args, Arity),
+        list.length(InstParams, Arity),
         InstId = inst_id(Name, Arity),
-        map.set(InstId, eqv_inst_body(VarSet, Args, Body), !InstEqvMap)
+        map.set(InstId, eqv_inst_body(VarSet, InstParams, EqvInst),
+            !InstEqvMap)
     else
         true
     ).
@@ -805,19 +808,24 @@ replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
         TypeDefn0, TypeDefn, ContainsCirc, !VarSet,
         !EquivTypeInfo, !UsedModules) :-
     (
-        TypeDefn0 = parse_tree_eqv_type(TypeBody0),
+        TypeDefn0 = parse_tree_eqv_type(DetailsEqv0),
+        DetailsEqv0 = type_details_eqv(TypeBody0),
         replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap, [TypeCtor],
             TypeBody0, TypeBody, _, ContainsCirc, !VarSet, !EquivTypeInfo,
             !UsedModules),
-        TypeDefn = parse_tree_eqv_type(TypeBody)
+        DetailsEqv = type_details_eqv(TypeBody),
+        TypeDefn = parse_tree_eqv_type(DetailsEqv)
     ;
-        TypeDefn0 = parse_tree_du_type(TypeBody0, EqPred, DirectArgFunctors),
+        TypeDefn0 = parse_tree_du_type(DetailsDu0),
+        DetailsDu0 = type_details_du(TypeBody0, EqPred, DirectArgFunctors),
         replace_in_ctors_location(MaybeRecord, TypeEqvMap, TypeBody0, TypeBody,
             !VarSet, !EquivTypeInfo, !UsedModules),
         ContainsCirc = no,
-        TypeDefn = parse_tree_du_type(TypeBody, EqPred, DirectArgFunctors)
+        DetailsDu = type_details_du(TypeBody, EqPred, DirectArgFunctors),
+        TypeDefn = parse_tree_du_type(DetailsDu)
     ;
-        TypeDefn0 = parse_tree_solver_type(SolverDetails0, MaybeUserEqComp),
+        TypeDefn0 = parse_tree_solver_type(DetailsSolver0),
+        DetailsSolver0 = type_details_solver(SolverDetails0, MaybeUserEqComp),
         SolverDetails0 = solver_type_details(RepresentationType0,
             GroundInst, AnyInst, MutableInfos0),
         replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap, [TypeCtor],
@@ -827,10 +835,11 @@ replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
             MutableInfos0, MutableInfos, !EquivTypeInfo, !UsedModules),
         SolverDetails = solver_type_details(RepresentationType,
             GroundInst, AnyInst, MutableInfos),
-        TypeDefn = parse_tree_solver_type(SolverDetails, MaybeUserEqComp)
+        DetailsSolver = type_details_solver(SolverDetails, MaybeUserEqComp),
+        TypeDefn = parse_tree_solver_type(DetailsSolver)
     ;
         ( TypeDefn0 = parse_tree_abstract_type(_)
-        ; TypeDefn0 = parse_tree_foreign_type(_, _, _)
+        ; TypeDefn0 = parse_tree_foreign_type(_)
         ),
         TypeDefn = TypeDefn0,
         ContainsCirc = no

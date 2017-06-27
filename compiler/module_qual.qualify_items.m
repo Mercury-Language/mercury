@@ -325,7 +325,8 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
 qualify_type_defn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn,
         !Info, !Specs) :-
     (
-        TypeDefn0 = parse_tree_du_type(Ctors0, MaybeUserEqComp0,
+        TypeDefn0 = parse_tree_du_type(DetailsDu0),
+        DetailsDu0 = type_details_du(Ctors0, MaybeUserEqComp0,
             MaybeDirectArgCtors0),
         qualify_constructors(InInt, TypeCtor, Ctors0, Ctors, !Info, !Specs),
         % User-defined equality pred names will be converted into predicate
@@ -334,21 +335,23 @@ qualify_type_defn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn,
         % Thus we don't module-qualify them here.
         MaybeUserEqComp = MaybeUserEqComp0,
         MaybeDirectArgCtors = MaybeDirectArgCtors0,
-        TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp,
-            MaybeDirectArgCtors)
+        DetailsDu = type_details_du(Ctors, MaybeUserEqComp,
+            MaybeDirectArgCtors),
+        TypeDefn = parse_tree_du_type(DetailsDu)
     ;
-        TypeDefn0 = parse_tree_eqv_type(Type0),
+        TypeDefn0 = parse_tree_eqv_type(type_details_eqv(Type0)),
         ErrorContext = mqec_type_defn(Context, TypeCtor),
         qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-        TypeDefn = parse_tree_eqv_type(Type)
+        TypeDefn = parse_tree_eqv_type(type_details_eqv(Type))
     ;
         TypeDefn0 = parse_tree_abstract_type(_),
         TypeDefn = TypeDefn0
     ;
-        TypeDefn0 = parse_tree_foreign_type(_, _, _),
+        TypeDefn0 = parse_tree_foreign_type(_),
         TypeDefn = TypeDefn0
     ;
-        TypeDefn0 = parse_tree_solver_type(SolverTypeDetails0,
+        TypeDefn0 = parse_tree_solver_type(DetailsSolver0),
+        DetailsSolver0 = type_details_solver(SolverTypeDetails0,
             MaybeUserEqComp),
         SolverTypeDetails0 = solver_type_details(RepnType0,
             GroundInst0, AnyInst0, MutableItems0),
@@ -363,8 +366,9 @@ qualify_type_defn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn,
             !Info, !Specs),
         SolverTypeDetails  = solver_type_details(RepnType,
             GroundInst, AnyInst, MutableItems),
-        TypeDefn = parse_tree_solver_type(SolverTypeDetails,
-            MaybeUserEqComp)
+        DetailsSolver = type_details_solver(SolverTypeDetails,
+            MaybeUserEqComp),
+        TypeDefn = parse_tree_solver_type(DetailsSolver)
     ).
 
 :- pred qualify_constraint_stores(mq_in_interface::in,

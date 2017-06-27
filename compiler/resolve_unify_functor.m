@@ -580,7 +580,7 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
     ;
         ( TermTypeBody = hlds_eqv_type(_)
         ; TermTypeBody = hlds_foreign_type(_)
-        ; TermTypeBody = hlds_solver_type(_, _)
+        ; TermTypeBody = hlds_solver_type(_)
         ; TermTypeBody = hlds_abstract_type(_)
         ),
         unexpected($module, $pred, "not du type")

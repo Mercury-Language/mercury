@@ -1773,7 +1773,6 @@
     % instead we store data in global variables.
     % The reason this is defined as a foreign type is to prevent attempts
     % to deconstruct values of the type.
-:- type io.state.
 :- pragma foreign_type("C", io.state, "MR_Word", [can_pass_as_mercury_type]).
 :- pragma foreign_type("C#", io.state, "int", [can_pass_as_mercury_type]).
 :- pragma foreign_type("Java", io.state, "java.lang.Object",

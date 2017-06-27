@@ -67,7 +67,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
                     TypeBody = hlds_abstract_type(_),
                     NonDu = "an abstract type"
                 ;
-                    TypeBody = hlds_solver_type(_, _),
+                    TypeBody = hlds_solver_type(_),
                     NonDu = "a solver type"
                 ;
                     TypeBody = hlds_foreign_type(_),
@@ -425,7 +425,7 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo,
                     TypeBody0 = hlds_abstract_type(_),
                     NonDu = "an abstract type"
                 ;
-                    TypeBody0 = hlds_solver_type(_, _),
+                    TypeBody0 = hlds_solver_type(_),
                     NonDu = "a solver type"
                 ;
                     TypeBody0 = hlds_foreign_type(_),

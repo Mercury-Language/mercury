@@ -188,7 +188,7 @@ get_du_functors_for_type_def(TypeDefn, Functors) :-
     ;
         ( TypeDefnBody = hlds_eqv_type(_)
         ; TypeDefnBody = hlds_foreign_type(_)
-        ; TypeDefnBody = hlds_solver_type(_, _)
+        ; TypeDefnBody = hlds_solver_type(_)
         ; TypeDefnBody = hlds_abstract_type(_)
         ),
         Functors = []
@@ -469,7 +469,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             ;
                 ( TypeDefnBody = hlds_eqv_type(_)
                 ; TypeDefnBody = hlds_foreign_type(_)
-                ; TypeDefnBody = hlds_solver_type(_, _)
+                ; TypeDefnBody = hlds_solver_type(_)
                 ; TypeDefnBody = hlds_abstract_type(_)
                 ),
                 !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
@@ -948,7 +948,7 @@ diagnose_mismatches_from_type(BoundInsts, TypeDefnOrBuiltin,
         ;
             ( TypeDefnBody = hlds_eqv_type(_)
             ; TypeDefnBody = hlds_foreign_type(_)
-            ; TypeDefnBody = hlds_solver_type(_, _)
+            ; TypeDefnBody = hlds_solver_type(_)
             ; TypeDefnBody = hlds_abstract_type(_)
             ),
             unexpected($module, $pred, "non-du TypeDefnBody")

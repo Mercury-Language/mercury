@@ -485,7 +485,9 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
         foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
             ForeignTypeBody, UserEqComp)
     ;
-        TypeBody = hlds_solver_type(_SolverTypeDetails, yes(UserEqComp))
+        TypeBody = hlds_solver_type(DetailsSolver),
+        DetailsSolver =
+            type_details_solver(_SolverTypeDetails, yes(UserEqComp))
     ;
         ( TypeBody = hlds_abstract_type(_)
         ; TypeBody = hlds_eqv_type(_)
@@ -569,7 +571,8 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
         not foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
             ForeignTypeBody, _)
     ;
-        TypeBody = hlds_solver_type(_, no)
+        TypeBody = hlds_solver_type(DetailsSolver),
+        DetailsSolver = type_details_solver(_, no)
     ;
         TypeBody = hlds_abstract_type(_),
         fail
@@ -597,7 +600,7 @@ type_is_or_may_contain_solver_type(ModuleInfo, Type) :-
     ;
         type_to_type_defn_body(ModuleInfo, Type, TypeBody),
         (
-            TypeBody = hlds_solver_type(_, _)
+            TypeBody = hlds_solver_type(_)
         ;
             TypeBody = hlds_abstract_type(abstract_solver_type)
         ;
@@ -614,7 +617,9 @@ type_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
 type_body_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
     require_complete_switch [Type]
     (
-        Type = hlds_solver_type(SolverTypeDetails, _MaybeUserEqComp)
+        Type = hlds_solver_type(DetailsSolver),
+        DetailsSolver =
+            type_details_solver(SolverTypeDetails, _MaybeUserEqComp)
     ;
         Type = hlds_eqv_type(EqvType),
         type_has_solver_type_details(ModuleInfo, EqvType, SolverTypeDetails)
@@ -648,7 +653,7 @@ type_is_solver_type_from_type_table(TypeTable, Type) :-
 type_body_is_solver_type(ModuleInfo, TypeBody) :-
     require_complete_switch [TypeBody]
     (
-        TypeBody = hlds_solver_type(_, _),
+        TypeBody = hlds_solver_type(_),
         IsSolverType = yes
     ;
         TypeBody = hlds_abstract_type(AbstractType),
@@ -680,7 +685,7 @@ type_body_is_solver_type(ModuleInfo, TypeBody) :-
 type_body_is_solver_type_from_type_table(TypeTable, TypeBody) :-
     require_complete_switch [TypeBody]
     (
-        TypeBody = hlds_solver_type(_, _),
+        TypeBody = hlds_solver_type(_),
         IsSolverType = yes
     ;
         TypeBody = hlds_abstract_type(AbstractType),
@@ -768,7 +773,7 @@ check_dummy_type_2(ModuleInfo, Type, CoveredTypes) = IsDummy :-
                 ;
                     ( TypeBody = hlds_eqv_type(_)
                     ; TypeBody = hlds_foreign_type(_)
-                    ; TypeBody = hlds_solver_type(_, _)
+                    ; TypeBody = hlds_solver_type(_)
                     ; TypeBody = hlds_abstract_type(_)
                     ),
                     IsDummy = is_not_dummy_type
@@ -800,7 +805,7 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
         )
     ;
         ( Body = hlds_foreign_type(_)
-        ; Body = hlds_solver_type(_, _)
+        ; Body = hlds_solver_type(_)
         ),
         HasHandDefinedRtti = no
     ;
@@ -934,7 +939,7 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
         % than this.
         ( TypeBody = hlds_eqv_type(_)
         ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_solver_type(_)
         ; TypeBody = hlds_abstract_type(abstract_type_general)
         ; TypeBody = hlds_abstract_type(abstract_enum_type(_))
         ; TypeBody = hlds_abstract_type(abstract_solver_type)

@@ -75,7 +75,8 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
         ItemTypeDefn, MaybeAbstractItemTypeDefn) :-
     TypeDefn = ItemTypeDefn ^ td_ctor_defn,
     (
-        TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp,
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu = type_details_du(Ctors, MaybeUserEqComp,
             MaybeDirectArgCtors),
         % For the `.int2' files, we need the full definitions of
         % discriminated union types. Even if the functors for a type
@@ -88,9 +89,10 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
                 MaybeAbstractItemTypeDefn = ItemTypeDefn
             ;
                 MaybeUserEqComp = yes(_UserEqComp),
-                AbstractTypeDefn = parse_tree_du_type(Ctors,
+                AbstractDetailsDu = type_details_du(Ctors,
                     yes(abstract_noncanonical_type(non_solver_type)),
                     MaybeDirectArgCtors),
+                AbstractTypeDefn = parse_tree_du_type(AbstractDetailsDu),
                 MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
                     AbstractTypeDefn
             )
@@ -109,7 +111,7 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
         MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
             := parse_tree_abstract_type(AbstractDetails)
     ;
-        TypeDefn = parse_tree_solver_type(_, _),
+        TypeDefn = parse_tree_solver_type(_),
         % rafe: XXX we need to also export the details of the
         % forwarding type for the representation and the forwarding
         % pred for initialization.
@@ -137,7 +139,8 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
                 := parse_tree_abstract_type(AbstractDetails)
         )
     ;
-        TypeDefn = parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        DetailsForeign = type_details_foreign(ForeignType, MaybeUserEqComp,
             Assertions),
         % We always need the definitions of foreign types
         % to handle inter-language interfacing correctly.
@@ -147,8 +150,9 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
             MaybeAbstractItemTypeDefn = ItemTypeDefn
         ;
             MaybeUserEqComp = yes(_UserEqComp),
-            AbstractTypeDefn = parse_tree_foreign_type(ForeignType,
+            AbsttactDetailsForeign = type_details_foreign(ForeignType,
                 yes(abstract_noncanonical_type(non_solver_type)), Assertions),
+            AbstractTypeDefn = parse_tree_foreign_type(AbsttactDetailsForeign),
             MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
                 AbstractTypeDefn
         )
@@ -211,7 +215,8 @@ item_needs_foreign_imports(Item) = Langs :-
         Item = item_type_defn(ItemTypeDefn),
         ( if
             ItemTypeDefn ^ td_ctor_defn =
-                parse_tree_foreign_type(ForeignType, _, _)
+                parse_tree_foreign_type(DetailsForeign),
+            DetailsForeign = type_details_foreign(ForeignType, _, _)
         then
             Langs = [foreign_type_language(ForeignType)]
         else

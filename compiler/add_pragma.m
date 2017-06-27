@@ -1335,7 +1335,7 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
             ;
                 ( TypeBody0 = hlds_eqv_type(_)
                 ; TypeBody0 = hlds_foreign_type(_)
-                ; TypeBody0 = hlds_solver_type(_, _)
+                ; TypeBody0 = hlds_solver_type(_)
                 ; TypeBody0 = hlds_abstract_type(_)
                 ),
                 ErrorPieces = [words("error:"),

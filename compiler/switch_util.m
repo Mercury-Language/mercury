@@ -684,7 +684,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
         ;
             ( TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_foreign_type(_)
-            ; TypeBody = hlds_solver_type(_, _)
+            ; TypeBody = hlds_solver_type(_)
             ; TypeBody = hlds_abstract_type(_)
             ),
             unexpected($module, $pred, "enum type is not d.u. type?")
@@ -1161,7 +1161,7 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
     ;
         ( TypeBody = hlds_eqv_type(_)
         ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_solver_type(_)
         ; TypeBody = hlds_abstract_type(_)
         ),
         unexpected($module, $pred, "non-du type")

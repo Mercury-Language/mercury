@@ -167,7 +167,7 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
         TypeBody = hlds_foreign_type(_)
     ;
         % This type does not introduce any functors.
-        TypeBody = hlds_solver_type(_, _)
+        TypeBody = hlds_solver_type(_)
     ).
 
 :- pred find_weights_for_cons(type_ctor::in, list(type_param)::in,

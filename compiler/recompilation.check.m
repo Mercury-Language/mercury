@@ -1216,11 +1216,12 @@ check_type_defn_ambiguity_with_functor(NeedQualifier, TypeCtor, TypeDefn,
     (
         ( TypeDefn = parse_tree_abstract_type(_)
         ; TypeDefn = parse_tree_eqv_type(_)
-        ; TypeDefn = parse_tree_foreign_type(_, _, _)
-        ; TypeDefn = parse_tree_solver_type(_, _)
+        ; TypeDefn = parse_tree_foreign_type(_)
+        ; TypeDefn = parse_tree_solver_type(_)
         )
     ;
-        TypeDefn = parse_tree_du_type(Ctors, _, _),
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu = type_details_du(Ctors, _, _),
         list.foldl(check_functor_ambiguities(NeedQualifier, TypeCtor), Ctors,
             !Info)
     ).

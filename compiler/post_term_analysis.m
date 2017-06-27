@@ -248,7 +248,8 @@ get_user_unify_compare(ModuleInfo, TypeBody, MaybeUnifyCompare) :-
     (
         TypeBody = hlds_du_type(_, _, _, _, MaybeUnifyCompare, _, _, _, _)
     ;
-        TypeBody = hlds_solver_type(_, MaybeUnifyCompare)
+        TypeBody = hlds_solver_type(DetailsSolver),
+        DetailsSolver = type_details_solver(_, MaybeUnifyCompare)
     ;
         TypeBody = hlds_foreign_type(ForeignTypeBody),
         ( if

@@ -601,37 +601,39 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
     Args = list.map((func(V) = term.variable(V, Context)), TypeParams),
     construct_qualified_term_with_context(SymName, Args, Context, TypeTerm),
     (
-        TypeDefn = parse_tree_abstract_type(Details),
+        TypeDefn = parse_tree_abstract_type(DetailsAbstract),
         (
-            ( Details = abstract_type_general
-            ; Details = abstract_enum_type(_)
+            ( DetailsAbstract = abstract_type_general
+            ; DetailsAbstract = abstract_enum_type(_)
             ),
             IsSolverType = non_solver_type
         ;
-            Details = abstract_solver_type,
+            DetailsAbstract = abstract_solver_type,
             IsSolverType = solver_type
         ),
         mercury_output_begin_type_decl(IsSolverType, !IO),
         mercury_output_term_nq(TypeVarSet, print_name_only,
             next_to_graphic_token, TypeTerm, !IO),
         (
-            Details = abstract_enum_type(NumBits),
+            DetailsAbstract = abstract_enum_type(NumBits),
             mercury_output_where_abstract_enum_type(NumBits, !IO)
         ;
-            Details = abstract_type_general
+            DetailsAbstract = abstract_type_general
         ;
-            Details = abstract_solver_type
+            DetailsAbstract = abstract_solver_type
         ),
         io.write_string(".\n", !IO)
     ;
-        TypeDefn = parse_tree_eqv_type(Body),
+        TypeDefn = parse_tree_eqv_type(DetailsEqv),
+        DetailsEqv = type_details_eqv(EqvType),
         mercury_output_begin_type_decl(non_solver_type, !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm, !IO),
         io.write_string(" == ", !IO),
-        mercury_output_type(TypeVarSet, print_name_only, Body, !IO),
+        mercury_output_type(TypeVarSet, print_name_only, EqvType, !IO),
         io.write_string(".\n", !IO)
     ;
-        TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp, MaybeDirectArgs),
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu = type_details_du(Ctors, MaybeUserEqComp, MaybeDirectArgs),
         mercury_output_begin_type_decl(non_solver_type, !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm, !IO),
         mercury_output_ctors(TypeVarSet, yes, Ctors, !IO),
@@ -639,14 +641,17 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
             MaybeDirectArgs, !IO),
         io.write_string(".\n", !IO)
     ;
-        TypeDefn = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
+        TypeDefn = parse_tree_solver_type(DetailsSolver),
+        DetailsSolver =
+            type_details_solver(SolverTypeDetails, MaybeUserEqComp),
         mercury_output_begin_type_decl(solver_type, !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm, !IO),
         mercury_output_where_attributes(Info, TypeVarSet,
             yes(SolverTypeDetails), MaybeUserEqComp, no, !IO),
         io.write_string(".\n", !IO)
     ;
-        TypeDefn = parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        DetailsForeign = type_details_foreign(ForeignType, MaybeUserEqComp,
             foreign_type_assertions(Assertions)),
         io.write_string(":- pragma foreign_type(", !IO),
         (

@@ -372,14 +372,14 @@ separate_items([Item | Items], SectionInfo,
             !:RevItemTypeDefnsAbstract =
                 [TypeDefnSectionItem | !.RevItemTypeDefnsAbstract]
         ;
-            ( TypeDefn = parse_tree_du_type(_, _, _)
+            ( TypeDefn = parse_tree_du_type(_)
             ; TypeDefn = parse_tree_eqv_type(_)
-            ; TypeDefn = parse_tree_solver_type(_, _)
+            ; TypeDefn = parse_tree_solver_type(_)
             ),
             !:RevItemTypeDefnsMercury =
                 [TypeDefnSectionItem | !.RevItemTypeDefnsMercury]
         ;
-            TypeDefn = parse_tree_foreign_type(_, _, _),
+            TypeDefn = parse_tree_foreign_type(_),
             !:RevItemTypeDefnsForeign =
                 [TypeDefnSectionItem | !.RevItemTypeDefnsForeign]
         )

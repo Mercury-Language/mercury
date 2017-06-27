@@ -1054,15 +1054,21 @@ find_items_used_by_type_and_mode(TypeAndMode, !Info) :-
 :- pred find_items_used_by_type_body(hlds_type_body::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_type_body(hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
-        !Info) :-
-    list.foldl(find_items_used_by_ctor, Ctors, !Info).
-find_items_used_by_type_body(hlds_eqv_type(Type), !Info) :-
-    find_items_used_by_type(Type, !Info).
-find_items_used_by_type_body(hlds_abstract_type(_), !Info).
-find_items_used_by_type_body(hlds_foreign_type(_), !Info).
-    % rafe: XXX Should we trace the representation type?
-find_items_used_by_type_body(hlds_solver_type(_, _), !Info).
+find_items_used_by_type_body(TypeBody, !Info) :-
+    (
+        TypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
+        list.foldl(find_items_used_by_ctor, Ctors, !Info)
+    ;
+        TypeBody = hlds_eqv_type(EqvType),
+        find_items_used_by_type(EqvType, !Info)
+    ;
+        ( TypeBody = hlds_abstract_type(_)
+        ; TypeBody = hlds_foreign_type(_)
+        )
+    ;
+        TypeBody = hlds_solver_type(_)
+        % rafe: XXX Should we trace the representation type?
+    ).
 
 :- pred find_items_used_by_ctor(constructor::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.

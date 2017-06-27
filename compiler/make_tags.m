@@ -573,7 +573,7 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
     ;
         ( Body = hlds_eqv_type(_)
         ; Body = hlds_foreign_type(_)
-        ; Body = hlds_solver_type(_, _)
+        ; Body = hlds_solver_type(_)
         ; Body = hlds_abstract_type(_)
         )
         % Leave these types alone.

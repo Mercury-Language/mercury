@@ -499,22 +499,19 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
         ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
             TypeDefn, _TVarSet, _Context, _SeqNum),
         (
-            TypeDefn = parse_tree_du_type(_Constructor,
-                _MaybeUnifyComparePredNames, _MaybeDirectArgs)
+            ( TypeDefn = parse_tree_du_type(_)
+            ; TypeDefn = parse_tree_eqv_type(_)
+            ; TypeDefn = parse_tree_abstract_type(_)
+            ; TypeDefn = parse_tree_foreign_type(_)
+            )
         ;
-            TypeDefn = parse_tree_eqv_type(_EqvType)
-        ;
-            TypeDefn = parse_tree_abstract_type(_Details)
-        ;
-            TypeDefn = parse_tree_solver_type(SolverTypeDetails,
+            TypeDefn = parse_tree_solver_type(DetailsSolver),
+            DetailsSolver = type_details_solver(SolverTypeDetails,
                 _MaybeUnifyComparePredNames),
             SolverTypeDetails = solver_type_details(_RepresentationType,
                 _GroundInst, _AnyInst, MutableItems),
             list.foldl(gather_implicit_import_needs_in_mutable, MutableItems,
                 !ImplicitImportNeeds)
-        ;
-            TypeDefn = parse_tree_foreign_type(_ForeignLangType,
-                _MaybeUnifyComparePredNames, _ForeignAssertions)
         )
     ;
         ( Item = item_inst_defn(_)

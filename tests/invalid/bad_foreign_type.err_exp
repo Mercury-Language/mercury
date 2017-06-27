@@ -41,8 +41,8 @@ bad_foreign_type.m:066:   unrecognized `where' attribute `(bar is baaz)'.
 bad_foreign_type.m:066:   Recognized `where' attributes have the form
 bad_foreign_type.m:066:   `equality is <<equality pred name>>' and
 bad_foreign_type.m:066:   `comparison is <<comparison pred name>>'.
-bad_foreign_type.m:071: Error: type `bad_foreign_type.bar'/0 defined as
-bad_foreign_type.m:071:   foreign_type without being declared.
+bad_foreign_type.m:071: Error: type `bar'/0 defined as foreign_type without
+bad_foreign_type.m:071:   being declared.
 bad_foreign_type.m:075: In second argument of `:- pragma foreign_type'
 bad_foreign_type.m:075:   declaration: error: expected a type name declared
 bad_foreign_type.m:075:   using a `:- type' declaration, got type variable `T'.
@@ -61,3 +61,5 @@ bad_foreign_type.m:084:   language `Erlang' must be an empty string.
 bad_foreign_type.m:089: In fourth argument of `:- pragma foreign_type'
 bad_foreign_type.m:089:   declaration: error: foreign type assertion
 bad_foreign_type.m:089:   `can_pass_as_mercury_type' is repeated.
+bad_foreign_type.m:091: Warning: duplicate declaration for type `quux'/0.
+bad_foreign_type.m:080:   The previous declaration was here.

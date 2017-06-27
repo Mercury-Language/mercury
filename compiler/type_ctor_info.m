@@ -226,7 +226,7 @@ builtin_type_defn = TypeDefn :-
     TypeStatus = type_status(status_local),
     NeedQual = may_be_unqualified,
     term.context_init(Context),
-    hlds_data.set_type_defn(TVarSet, Params, Kinds, TypeBody, no,
+    create_hlds_type_defn(TVarSet, Params, Kinds, TypeBody, no,
         TypeStatus, NeedQual, type_defn_no_prev_errors, Context, TypeDefn).
 
 :- pred gen_type_ctor_gen_info( module_info::in, type_ctor::in,
@@ -344,7 +344,9 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             % We treat solver_types as being equivalent to their representation
             % types for RTTI purposes. Which may cause problems with construct,
             % similar to those for abstract types.
-            TypeBody = hlds_solver_type(SolverTypeDetails, _MaybeUserEqComp),
+            TypeBody = hlds_solver_type(DetailsSolver),
+            DetailsSolver =
+                type_details_solver(SolverTypeDetails, _MaybeUserEqComp),
             RepnType = SolverTypeDetails ^ std_representation_type,
             % There can be no existentially typed args to an equivalence.
             UnivTvars = TypeArity,
@@ -419,7 +421,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         ;
             ( TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_foreign_type(_)
-            ; TypeBody = hlds_solver_type(_, _)
+            ; TypeBody = hlds_solver_type(_)
             ; TypeBody = hlds_abstract_type(_)
             )
         ),

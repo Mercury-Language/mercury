@@ -1,7 +1,9 @@
-user_eq_dummy.m:014: Error: the type `user_eq_dummy.foo'/0 is not allowed to
-user_eq_dummy.m:014:   have user-defined equality or comparison.
+user_eq_dummy.m:014: Error: the type `foo'/0 contains no information, and as
+user_eq_dummy.m:014:   such it is not allowed to have user-defined equality or
+user_eq_dummy.m:014:   comparison.
 user_eq_dummy.m:014:   Discriminated unions whose body consists of a single
 user_eq_dummy.m:014:   zero-arity constructor cannot have user-defined equality
 user_eq_dummy.m:014:   or comparison.
-user_eq_dummy.m:018: Error: the type `user_eq_dummy.bar'/0 is not allowed to
-user_eq_dummy.m:018:   have user-defined equality or comparison.
+user_eq_dummy.m:018: Error: the type `bar'/0 contains no information, and as
+user_eq_dummy.m:018:   such it is not allowed to have user-defined equality or
+user_eq_dummy.m:018:   comparison.

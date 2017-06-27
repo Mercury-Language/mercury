@@ -929,8 +929,9 @@ insert_type_defn(New, [Head | Tail], Result) :-
 make_impl_type_abstract(TypeDefnMap, !TypeDefnPairs) :-
     ( if
         !.TypeDefnPairs = [TypeDefn0 - ItemTypeDefn0],
-        TypeDefn0 = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors)
+        TypeDefn0 = parse_tree_du_type(DetailsDu)
     then
+        DetailsDu = type_details_du(Ctors, MaybeEqCmp, MaybeDirectArgCtors),
         ( if
             constructor_list_represents_dummy_argument_type(TypeDefnMap, Ctors,
                 MaybeEqCmp, MaybeDirectArgCtors)
@@ -1009,8 +1010,9 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
                 % dummy type?
                 multi_map.search(TypeDefnMap, TypeCtor, TypeDefns),
                 list.member(TypeDefn - _, TypeDefns),
-                TypeDefn = parse_tree_du_type(TypeCtors, MaybeEqCmp,
+                DetailsDu = type_details_du(TypeCtors, MaybeEqCmp,
                     MaybeDirectArgCtors),
+                TypeDefn = parse_tree_du_type(DetailsDu),
                 CoveredTypes = [Type | CoveredTypes0],
                 constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
                     TypeCtors, MaybeEqCmp, MaybeDirectArgCtors, CoveredTypes)
@@ -1087,19 +1089,23 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
     % A type may have multiple definitions because it may be defined both
     % as a foreign type and as a Mercury type. We grab any equivalence types
     % that are in there.
-    ( if
-        TypeDefn = parse_tree_eqv_type(_RhsType),
-        map.search(InterfaceTypeMap, TypeCtor, _)
-    then
-        set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
-    else if
-        TypeDefn = parse_tree_foreign_type(_, _, _),
-        map.search(InterfaceTypeMap, TypeCtor, _)
-    then
-        set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
-    else if
-        TypeDefn = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors)
-    then
+    (
+        TypeDefn = parse_tree_eqv_type(_),
+        ( if map.search(InterfaceTypeMap, TypeCtor, _) then
+            set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
+        else
+            true
+        )
+    ;
+        TypeDefn = parse_tree_foreign_type(_),
+        ( if map.search(InterfaceTypeMap, TypeCtor, _) then
+            set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
+        else
+            true
+        )
+    ;
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu = type_details_du(Ctors, MaybeEqCmp, MaybeDirectArgCtors),
         ( if
             map.search(InterfaceTypeMap, TypeCtor, _),
             du_type_is_enum(Ctors, _NumBits)
@@ -1113,8 +1119,10 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
         else
             true
         )
-    else
-        true
+    ;
+        ( TypeDefn = parse_tree_abstract_type(_)
+        ; TypeDefn = parse_tree_solver_type(_)
+        )
     ).
 
 :- pred accumulate_abs_impl_exported_type_rhs(type_defn_map::in, type_ctor::in,
@@ -1140,7 +1148,8 @@ accumulate_abs_impl_exported_type_rhs(ImplTypeMap, TypeCtor,
 accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _,
         !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules) :-
     (
-        TypeDefn = parse_tree_eqv_type(RhsType),
+        TypeDefn = parse_tree_eqv_type(DetailsEqv),
+        DetailsEqv = type_details_eqv(RhsType),
         type_to_type_ctor_set(RhsType, set.init, RhsTypeCtors),
         set.difference(RhsTypeCtors, !.AbsEqvRhsTypeCtors, NewRhsTypeCtors),
         set.fold(accumulate_modules, NewRhsTypeCtors, !Modules),
@@ -1148,7 +1157,8 @@ accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _,
         set.fold3(accumulate_abs_impl_exported_type_rhs(ImplTypeMap),
             NewRhsTypeCtors, !AbsEqvRhsTypeCtors, set.init, _, !Modules)
     ;
-        TypeDefn = parse_tree_du_type(Ctors, _, _),
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu = type_details_du(Ctors, _, _),
         % There must exist a foreign type alternative to this type. As the du
         % type will be exported, we require the types of all the fields.
         ctors_to_type_ctor_set(Ctors, set.init, RhsTypeCtors),
@@ -1156,8 +1166,8 @@ accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _,
         set.fold(accumulate_modules, RhsTypeCtors, !Modules)
     ;
         ( TypeDefn = parse_tree_abstract_type(_)
-        ; TypeDefn = parse_tree_solver_type(_, _)
-        ; TypeDefn = parse_tree_foreign_type(_, _, _)
+        ; TypeDefn = parse_tree_solver_type(_)
+        ; TypeDefn = parse_tree_foreign_type(_)
         )
     ).
 

@@ -120,7 +120,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !TypeEqvMap, !EqvExportTypes) :-
     ;
         ( Body = hlds_du_type(_, _, _, _, _, _, _, _, _)
         ; Body = hlds_foreign_type(_)
-        ; Body = hlds_solver_type(_, _)
+        ; Body = hlds_solver_type(_)
         ; Body = hlds_abstract_type(_)
         )
     ).
@@ -182,14 +182,16 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         Body = Body0,
         TVarSet = TVarSet0
     ;
-        Body0 = hlds_solver_type(SolverTypeDetails0, UserEq),
+        Body0 = hlds_solver_type(DetailsSolver0),
+        DetailsSolver0 = type_details_solver(SolverTypeDetails0, UserEq),
         SolverTypeDetails0 = solver_type_details(RepnType0,
             GroundInst, AnyInst, MutableItems),
         equiv_type.replace_in_type(TypeEqvMap, RepnType0, RepnType, _,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         SolverTypeDetails = solver_type_details(RepnType,
             GroundInst, AnyInst, MutableItems),
-        Body = hlds_solver_type(SolverTypeDetails, UserEq)
+        DetailsSolver = type_details_solver(SolverTypeDetails, UserEq),
+        Body = hlds_solver_type(DetailsSolver)
     ;
         Body0 = hlds_abstract_type(_),
         EquivTypeInfo = EquivTypeInfo0,

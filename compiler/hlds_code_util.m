@@ -178,7 +178,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         ;
             ( TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_foreign_type(_)
-            ; TypeBody = hlds_solver_type(_, _)
+            ; TypeBody = hlds_solver_type(_)
             ; TypeBody = hlds_abstract_type(_)
             ),
             unexpected($module, $pred, "type is not d.u. type")

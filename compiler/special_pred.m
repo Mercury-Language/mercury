@@ -269,7 +269,7 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody, TypeStatus) :-
     % mode analysis and we therefore require the appropriate names to
     % appear in the symbol table.
 
-    TypeBody \= hlds_solver_type(_, _),
+    TypeBody \= hlds_solver_type(_),
     TypeBody \= hlds_abstract_type(abstract_solver_type),
 
     CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),

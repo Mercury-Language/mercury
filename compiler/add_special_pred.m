@@ -232,7 +232,7 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
             ;
                 ( TypeBody = hlds_eqv_type(_)
                 ; TypeBody = hlds_foreign_type(_)
-                ; TypeBody = hlds_solver_type(_, _)
+                ; TypeBody = hlds_solver_type(_)
                 ; TypeBody = hlds_abstract_type(_)
                 )
             )
@@ -435,7 +435,7 @@ add_special_pred_unify_status(TypeBody, TypeStatus0, TypeStatus) :-
     ;
         ( TypeBody = hlds_eqv_type(_)
         ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_solver_type(_)
         ; TypeBody = hlds_abstract_type(_)
         ),
         TypeStatus = type_status(status_pseudo_imported)

@@ -528,7 +528,9 @@ add_type_defn(SectionItem, !ModuleInfo, !FoundInvalidType, !Specs,
     ItemTypeDefnInfo = item_type_defn_info(SymName, TypeParams, TypeDefn,
         TypeVarSet, Context, _SeqNum),
     (
-        TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp),
+        TypeDefn = parse_tree_solver_type(Detailssolver),
+        Detailssolver =
+            type_details_solver(SolverTypeDetails, _MaybeUserEqComp),
         % If this is a solver type, then we need to also declare and define
         % the compiler generated construction function and deconstruction
         % predicate for the special constrained data constructor.
@@ -550,10 +552,10 @@ add_type_defn(SectionItem, !ModuleInfo, !FoundInvalidType, !Specs,
         !:SectionMutableItems =
             TypeSectionMutableItems ++ !.SectionMutableItems
     ;
-        ( TypeDefn = parse_tree_du_type(_, _, _)
+        ( TypeDefn = parse_tree_du_type(_)
         ; TypeDefn = parse_tree_eqv_type(_)
         ; TypeDefn = parse_tree_abstract_type(_)
-        ; TypeDefn = parse_tree_foreign_type(_, _, _)
+        ; TypeDefn = parse_tree_foreign_type(_)
         )
     ),
     item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),

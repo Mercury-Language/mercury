@@ -212,7 +212,7 @@ ml_gen_hld_type_defn(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     (
         ( TypeBody = hlds_abstract_type(_)
         ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_solver_type(_)
         )
     ;
         TypeBody = hlds_eqv_type(_EqvType)
