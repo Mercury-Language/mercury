@@ -1,0 +1,6 @@
+abstract_type_decl.m:013: Error: This declaration for type `foo'/0 says it is
+abstract_type_decl.m:013:   private, while the previous declaration says it is
+abstract_type_decl.m:013:   exported.
+abstract_type_decl.m:009:   The previous declaration was here.
+abstract_type_decl.m:015: Warning: duplicate declaration for type `bar'/0.
+abstract_type_decl.m:014:   The previous declaration was here.

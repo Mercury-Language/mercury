@@ -73,6 +73,16 @@
 
 module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
         !ModuleInfo, !FoundInvalidType, !Specs) :-
+    % XXX We should consider setting !:FoundInvalidType *only* for type
+    % errors that can cause later compiler passes to either crash or to
+    % report nonexistent problems. If the only effect of a type error
+    % is to prevent the diagnosis of other errors, then we should leave
+    % !.FoundInvalidType as it is, to let later compiler passes run
+    % and try to find more errors.
+    %
+    % Errors that fall into this category include errors involving
+    % inconsistent statuses.
+
     ItemTypeDefnInfo = item_type_defn_info(SymName, TypeParams,
         ParseTreeTypeDefn, TVarSet, Context, _SeqNum),
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -149,33 +159,8 @@ module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
         % Since make_hlds_passes.m adds all abstract definitions first,
         % the previous definition can only be another abstract definition.
 
-        % Even if the source code includes only one declaration of a type,
-        % augmenting a raw compilation unit can yield duplicates of that
-        % declaration, included e.g. in both x.int2 and then x.int,
-        % or in both x.int and x.opt.
-        get_type_defn_context(OldDefn, OldContext),
-        ( if
-            string.suffix(term.context_file(Context), ".m"),
-            string.suffix(term.context_file(OldContext), ".m")
-        then
-            TypeCtor = type_ctor(SymName, Arity),
-            DupPieces = [words("Warning: duplicate declaration for type "),
-                unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
-                suffix("."), nl],
-            DupMsg = simple_msg(Context, [always(DupPieces)]),
-            OldPieces = [words("The previous declaration was here."), nl],
-            OldMsg = simple_msg(OldContext, [always(OldPieces)]),
-            DupSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                [DupMsg, OldMsg]),
-            !:Specs = [DupSpec | !.Specs]
-            % This is only a warning, not an error.
-            % XXX I (zs) think it should be an error, at least in situations
-            % in which the two declarations have different statuses.
-            % !:FoundInvalidType = found_invalid_type
-        else
-            true
-        ),
-
+        check_for_duplicate_type_declaration(TypeCtor, OldDefn, TypeStatus1,
+            Context, !FoundInvalidType, !Specs),
         combine_old_and_new_type_status(OldDefn, TypeStatus1, _TypeStatus,
             TypeDefn0, TypeDefn),
         check_for_inconsistent_solver_nosolver_type(TypeCtor,
@@ -185,6 +170,63 @@ module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
         add_type_ctor_defn(TypeCtor, TypeDefn0, TypeTable0, TypeTable)
     ),
     module_info_set_type_table(TypeTable, !ModuleInfo).
+
+:- pred check_for_duplicate_type_declaration(type_ctor::in, hlds_type_defn::in,
+    type_status::in, prog_context::in,
+    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus,
+        NewContext, !FoundInvalidType, !Specs) :-
+    % Even if the source code includes only one declaration of a type,
+    % augmenting a raw compilation unit can yield duplicates of that
+    % declaration, included e.g. in both x.int2 and then x.int,
+    % or in both x.int and x.opt.
+    get_type_defn_context(OldDefn, OldContext),
+    ( if
+        string.suffix(term.context_file(OldContext), ".m"),
+        string.suffix(term.context_file(NewContext), ".m")
+    then
+        get_type_defn_status(OldDefn, OldStatus),
+        OldIsExported = type_status_is_exported_to_non_submodules(OldStatus),
+        NewIsExported = type_status_is_exported_to_non_submodules(NewStatus),
+        TypeCtor = type_ctor(SymName, Arity),
+        SNA = unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        ( if OldIsExported = NewIsExported then
+            Severity = severity_warning,
+            DupPieces = [words("Warning: duplicate declaration for type "),
+                SNA, suffix("."), nl]
+        else
+            Severity = severity_error,
+            !:FoundInvalidType = found_invalid_type,
+            % XXX If there were not one but *two or more* previous
+            % declarations for the type, then OldStatus may not have come
+            % from the previous declaration at OldContext; it could have
+            % come from a *different* previous declaration.
+            % We can't avoid this possibility without keeping a *separate*
+            % record of the context and type_status of every item_type_defn
+            % for every type_ctor.
+            (
+                NewIsExported = yes,
+                DupPieces = [words("Error: This declaration for type "),
+                    SNA, words("says it is exported, while"),
+                    words("the previous declaration says it is private."), nl]
+            ;
+                NewIsExported = no,
+                DupPieces = [words("Error: This declaration for type "),
+                    SNA, words("says it is private, while"),
+                    words("the previous declaration says it is exported."), nl]
+            )
+        ),
+        DupMsg = simple_msg(NewContext, [always(DupPieces)]),
+        OldPieces = [words("The previous declaration was here."), nl],
+        OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+        DupSpec = error_spec(Severity, phase_parse_tree_to_hlds,
+            [DupMsg, OldMsg]),
+        !:Specs = [DupSpec | !.Specs]
+    else
+        true
+    ).
 
 %---------------------%
 

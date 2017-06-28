@@ -34,6 +34,7 @@ MULTIMODULE_PROGS= \
 
 SINGLEMODULE= \
 	abstract_solver_type \
+	abstract_type_decl \
 	actual_expected \
 	after_end_module \
 	ambiguous_method \
