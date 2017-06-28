@@ -659,43 +659,63 @@ abstract_monotype_workaround = [
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, Body, Context,
-        !FoundInvalidType, !Specs) :-
+check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
+        NewContext, !FoundInvalidType, !Specs) :-
     get_type_defn_body(OldDefn, OldBody),
     get_body_is_solver_type(OldBody, OldIsSolverType),
-    get_body_is_solver_type(Body, IsSolverType),
-    ( if OldIsSolverType = IsSolverType then
+    get_body_is_solver_type(NewBody, NewIsSolverType),
+    ( if OldIsSolverType = NewIsSolverType then
         true
     else
-        TypeCtor = type_ctor(SymName, Arity),
-        SNA = unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        get_type_defn_context(OldDefn, OldContext),
         (
-            IsSolverType = solver_type,
+            NewIsSolverType = solver_type,
             ThisIsOrIsnt = "is a solver type",
             OldIsOrIsnt = "is not"
         ;
-            IsSolverType = non_solver_type,
+            NewIsSolverType = non_solver_type,
             ThisIsOrIsnt = "is not a solver type",
             OldIsOrIsnt = "is"
         ),
-        ( if OldBody = hlds_abstract_type(_) then
-            OldDeclOrDefn = "declaration"
+        ( if NewBody = hlds_abstract_type(_) then
+            ThisDeclOrDefn = "this declaration",
+            ( if OldBody = hlds_abstract_type(_) then
+                % We add all declarations in their order in the source.
+                OldDeclOrDefn = "previous declaration"
+            else
+                % We add all declarations before we add any definitions.
+                unexpected($pred, "definition before declaration")
+            )
         else
-            OldDeclOrDefn = "definition"
+            ThisDeclOrDefn = "this definition",
+            ( if OldBody = hlds_abstract_type(_) then
+                OldDeclOrDefn = "declaration"
+            else
+                % We add some declarations OUT of their order in the source.
+                OldContext = term.context(OldFileName, OldLineNumber),
+                NewContext = term.context(NewFileName, NewLineNumber),
+                ( if
+                    % Did we do so in this case?
+                    OldFileName = NewFileName,
+                    OldLineNumber < NewLineNumber
+                then
+                    % No.
+                    OldDeclOrDefn = "previous definition"
+                else
+                    % Yes, or we don't know.
+                    OldDeclOrDefn = "other definition"
+                )
+            )
         ),
-        ( if Body = hlds_abstract_type(_) then
-            ThisDeclOrDefn = "declaration"
-        else
-            ThisDeclOrDefn = "definition"
-        ),
-        MainPieces = [words("Error: this"), words(ThisDeclOrDefn),
+        TypeCtor = type_ctor(SymName, Arity),
+        SNA = unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        MainPieces = [words("Error:"), words(ThisDeclOrDefn),
             words("of type"), SNA, words(ThisIsOrIsnt), suffix(","),
-            words("but its previous"), words(OldDeclOrDefn),
+            words("but its"), words(OldDeclOrDefn),
             words(OldIsOrIsnt), suffix("."), nl],
-        OldPieces = [words("The previous"), words(OldDeclOrDefn),
-            words("is here."), nl],
-        MainMsg = simple_msg(Context, [always(MainPieces)]),
-        get_type_defn_context(OldDefn, OldContext),
+        OldPieces = [words("The"), words(OldDeclOrDefn), words("is here."),
+            nl],
+        MainMsg = simple_msg(NewContext, [always(MainPieces)]),
         OldMsg = simple_msg(OldContext, [always(OldPieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [MainMsg, OldMsg]),

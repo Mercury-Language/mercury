@@ -6,5 +6,5 @@ foreign_solver_type.m:017: Error: this definition of type `foo'/0 is not a
 foreign_solver_type.m:017:   solver type, but its previous definition is.
 foreign_solver_type.m:009:   The previous definition is here.
 foreign_solver_type.m:018: Error: this definition of type `bar'/0 is not a
-foreign_solver_type.m:018:   solver type, but its previous declaration is.
-foreign_solver_type.m:015:   The previous declaration is here.
+foreign_solver_type.m:018:   solver type, but its declaration is.
+foreign_solver_type.m:015:   The declaration is here.
