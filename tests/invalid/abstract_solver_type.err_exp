@@ -1,0 +1,9 @@
+abstract_solver_type.m:015: Error: this definition of type `foo1'/0 is not a
+abstract_solver_type.m:015:   solver type, but its previous declaration is.
+abstract_solver_type.m:009:   The previous declaration is here.
+abstract_solver_type.m:017: Error: this definition of type `foo2'/0 is not a
+abstract_solver_type.m:017:   solver type, but its previous declaration is.
+abstract_solver_type.m:010:   The previous declaration is here.
+abstract_solver_type.m:021: Error: this definition of type `foo3'/0 is not a
+abstract_solver_type.m:021:   solver type, but its previous declaration is.
+abstract_solver_type.m:011:   The previous declaration is here.

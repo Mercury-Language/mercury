@@ -394,9 +394,6 @@ cons_table_optimize(!ConsTable) :-
 :- pred replace_type_ctor_defn(type_ctor::in, hlds_type_defn::in,
     type_table::in, type_table::out) is det.
 
-:- pred add_or_replace_type_ctor_defn(type_ctor::in, hlds_type_defn::in,
-    type_table::in, type_table::out) is det.
-
 :- pred search_type_ctor_defn(type_table::in, type_ctor::in,
     hlds_type_defn::out) is semidet.
 :- pred lookup_type_ctor_defn(type_table::in, type_ctor::in,
@@ -905,17 +902,6 @@ replace_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
     map.lookup(!.TypeTable, Name, TypeCtorTable0),
     map.det_update(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
     map.det_update(Name, TypeCtorTable, !TypeTable).
-
-add_or_replace_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
-    TypeCtor = type_ctor(SymName, _Arity),
-    Name = unqualify_name(SymName),
-    ( if map.search(!.TypeTable, Name, TypeCtorTable0) then
-        map.set(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
-        map.det_update(Name, TypeCtorTable, !TypeTable)
-    else
-        TypeCtorTable = map.singleton(TypeCtor, TypeDefn),
-        map.det_insert(Name, TypeCtorTable, !TypeTable)
-    ).
 
 search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) :-
     TypeCtor = type_ctor(SymName, _Arity),

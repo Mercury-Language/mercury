@@ -1,7 +1,4 @@
-any_mode.m:005: Warning: interface for module `any_mode' does not export
-any_mode.m:005:   anything.
-any_mode.m:010: In clause for `p((any >> ground))':
-any_mode.m:010:   in argument 1 of call to predicate `any_mode.q'/1:
-any_mode.m:010:   mode error: variable `X' has instantiatedness `any',
-any_mode.m:010:   expected instantiatedness was `ground'.
-For more information, recompile with `-E'.
+any_mode.m:020: In clause for `p((any >> ground))':
+any_mode.m:020:   in argument 1 of call to predicate `any_mode.q'/1:
+any_mode.m:020:   mode error: variable `X' has instantiatedness `any',
+any_mode.m:020:   expected instantiatedness was `ground'.

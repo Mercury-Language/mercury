@@ -145,7 +145,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
 module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
         !ModuleInfo, !FoundInvalidType, !Specs) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
-    ( if search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn0) then
+    ( if search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn) then
         % Since make_hlds_passes.m adds all abstract definitions first,
         % the previous definition can only be another abstract definition.
 
@@ -153,7 +153,7 @@ module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
         % augmenting a raw compilation unit can yield duplicates of that
         % declaration, included e.g. in both x.int2 and then x.int,
         % or in both x.int and x.opt.
-        get_type_defn_context(OldDefn0, OldContext),
+        get_type_defn_context(OldDefn, OldContext),
         ( if
             string.suffix(term.context_file(Context), ".m"),
             string.suffix(term.context_file(OldContext), ".m")
@@ -176,14 +176,14 @@ module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
             true
         ),
 
-        combine_old_and_new_type_status(OldDefn0, TypeStatus1, _TypeStatus,
-            TypeDefn0, TypeDefn1),
+        combine_old_and_new_type_status(OldDefn, TypeStatus1, _TypeStatus,
+            TypeDefn0, TypeDefn),
         check_for_inconsistent_solver_nosolver_type(TypeCtor,
-            OldDefn0, Body, Context, !FoundInvalidType, !Specs)
+            OldDefn, Body, Context, !FoundInvalidType, !Specs),
+        replace_type_ctor_defn(TypeCtor, TypeDefn, TypeTable0, TypeTable)
     else
-        TypeDefn1 = TypeDefn0
+        add_type_ctor_defn(TypeCtor, TypeDefn0, TypeTable0, TypeTable)
     ),
-    add_or_replace_type_ctor_defn(TypeCtor, TypeDefn1, TypeTable0, TypeTable),
     module_info_set_type_table(TypeTable, !ModuleInfo).
 
 %---------------------%
@@ -210,7 +210,7 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
         % either an abstract definition or another Mercury definition.
         % The latter is an error.
         combine_old_and_new_type_status(OldDefn, TypeStatus1, TypeStatus,
-            TypeDefn0, TypeDefn1),
+            TypeDefn0, TypeDefn),
         check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn,
             Body, Context, !FoundInvalidType, !Specs),
         ( if
@@ -220,14 +220,12 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
             maybe_report_multiple_def_error(TypeStatus, TypeCtor, Context,
                 OldDefn, !ModuleInfo, !FoundInvalidType, !Specs)
         else
-            add_or_replace_type_ctor_defn(TypeCtor, TypeDefn1,
-                TypeTable0, TypeTable),
+            replace_type_ctor_defn(TypeCtor, TypeDefn, TypeTable0, TypeTable),
             module_info_set_type_table(TypeTable, !ModuleInfo)
         )
     else
         TypeStatus = TypeStatus1,
-        add_or_replace_type_ctor_defn(TypeCtor, TypeDefn0,
-            TypeTable0, TypeTable),
+        add_type_ctor_defn(TypeCtor, TypeDefn0, TypeTable0, TypeTable),
         module_info_set_type_table(TypeTable, !ModuleInfo)
     ),
     (
@@ -265,19 +263,8 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
 
         combine_old_and_new_type_status(OldDefn, TypeStatus1, TypeStatus,
             TypeDefn0, TypeDefn1),
-
-        % We do not have syntax for adding `solver' annotations to
-        % `:- pragma foreign_type' declarations, so foreign_type bodies
-        % default to having an is_solver_type field of `non_solver_type'.
-        % If another declaration for the type has a `solver' annotation then
-        % we must update the foreign_type body to reflect this.
-        %
-        % rafe: XXX think it should be an error for foreign types to
-        % be solver types.
-        %
-        % With the current setup, a call to
-        % check_for_inconsistent_solver_nosolver_type here
-        % would be redundant, since it could never generate an error.
+        check_for_inconsistent_solver_nosolver_type(TypeCtor,
+            OldDefn, Body, Context, !FoundInvalidType, !Specs),
 
         hlds_data.get_type_defn_status(OldDefn, OldTypeStatus),
         hlds_data.get_type_defn_body(OldDefn, OldBody),
@@ -632,42 +619,52 @@ abstract_monotype_workaround = [
 
 check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, Body, Context,
         !FoundInvalidType, !Specs) :-
-    hlds_data.get_type_defn_body(OldDefn, OldBody),
-    ( if is_solver_type_is_inconsistent(OldBody, Body) then
-        TypeCtor = type_ctor(SymName, Arity),
-        % The existing definition has an is_solver_type annotation
-        % which is different to the current definition.
-        SolverPieces = [words("In definition of type"),
-            unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
-            suffix(":"), nl,
-            words("error: all definitions of a type must have"),
-            words("consistent"), quote("solver"), words("annotations."),
-            nl],
-        SolverMsg = simple_msg(Context, [always(SolverPieces)]),
-        SolverSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
-            [SolverMsg]),
-        !:Specs = [SolverSpec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
-    else
+    get_type_defn_body(OldDefn, OldBody),
+    get_body_is_solver_type(OldBody, OldIsSolverType),
+    get_body_is_solver_type(Body, IsSolverType),
+    ( if OldIsSolverType = IsSolverType then
         true
+    else
+        TypeCtor = type_ctor(SymName, Arity),
+        SNA = unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        (
+            IsSolverType = solver_type,
+            ThisIsOrIsnt = "is a solver type",
+            OldIsOrIsnt = "is not"
+        ;
+            IsSolverType = non_solver_type,
+            ThisIsOrIsnt = "is not a solver type",
+            OldIsOrIsnt = "is"
+        ),
+        ( if OldBody = hlds_abstract_type(_) then
+            OldDeclOrDefn = "declaration"
+        else
+            OldDeclOrDefn = "definition"
+        ),
+        ( if Body = hlds_abstract_type(_) then
+            ThisDeclOrDefn = "declaration"
+        else
+            ThisDeclOrDefn = "definition"
+        ),
+        MainPieces = [words("Error: this"), words(ThisDeclOrDefn),
+            words("of type"), SNA, words(ThisIsOrIsnt), suffix(","),
+            words("but its previous"), words(OldDeclOrDefn),
+            words(OldIsOrIsnt), suffix("."), nl],
+        OldPieces = [words("The previous"), words(OldDeclOrDefn),
+            words("is here."), nl],
+        MainMsg = simple_msg(Context, [always(MainPieces)]),
+        get_type_defn_context(OldDefn, OldContext),
+        OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [MainMsg, OldMsg]),
+        !:Specs = [Spec | !.Specs],
+        !:FoundInvalidType = found_invalid_type
     ).
 
-    % Succeed iff the two type bodies have inconsistent is_solver_type
-    % annotations.
-    %
-:- pred is_solver_type_is_inconsistent(hlds_type_body::in, hlds_type_body::in)
-    is semidet.
+:- pred get_body_is_solver_type(hlds_type_body::in, is_solver_type::out)
+    is det.
 
-is_solver_type_is_inconsistent(OldBody, Body) :-
-    maybe_get_body_is_solver_type(OldBody, OldIsSolverType),
-    maybe_get_body_is_solver_type(Body, IsSolverType),
-    OldIsSolverType \= IsSolverType.
-
-:- pred maybe_get_body_is_solver_type(hlds_type_body::in, is_solver_type::out)
-    is semidet.
-
-maybe_get_body_is_solver_type(Body, IsSolverType) :-
-    require_complete_switch [Body]
+get_body_is_solver_type(Body, IsSolverType) :-
     (
         Body = hlds_solver_type(_),
         IsSolverType = solver_type
@@ -688,9 +685,7 @@ maybe_get_body_is_solver_type(Body, IsSolverType) :-
         ; Body = hlds_eqv_type(_)
         ; Body = hlds_foreign_type(_)
         ),
-        % XXX This looks wrong. Why don't we succeed, returning
-        % IsSolverType = solver_type, for at least du and eqv types?
-        fail
+        IsSolverType = non_solver_type
     ).
 
 %---------------------%

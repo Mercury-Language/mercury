@@ -31,6 +31,10 @@ Changes that may break compatibility:
   exported from that module. This may require the explicit export of e.g.
   some types that previously were not exported.
 
+* We have enabled stricter checking of type declarations and definitions:
+  all declarations and definitions of a type must agree on whether the type
+  is a solver type or not.
+
 * References to everything imported via `:- use_module' declarations
   must now be fully module qualified.
 

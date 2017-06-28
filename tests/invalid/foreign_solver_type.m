@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module any_mode.
+:- module foreign_solver_type.
 
 :- interface.
 
@@ -12,26 +12,29 @@
           any            is ground,
           equality       is eq_foo.
 
-:- pred p(foo::(any >> ground)) is semidet.
-:- pred q(foo::in) is semidet.
+:- solver type bar.
+
+:- pragma foreign_type("C", foo, "MR_Integer").
+:- pragma foreign_type("C", bar, "MR_Integer").
 
 :- implementation.
 
-p(X) :- q(X).
-
-q(foo(123)).
-
 :- pred init_foo(foo::out(any)) is det.
+
 init_foo(foo(42)).
 
 :- func foo(int::in) = (foo::out(any)) is det.
-:- pragma promise_pure(foo/1).
+
 foo(N) = X :-
-    impure X = 'representation to any foo/0'(N).
+    promise_pure (
+        impure X = 'representation to any foo/0'(N)
+    ).
 
 :- pred eq_foo(foo::in(any), foo::in(any)) is semidet.
-:- pragma promise_pure(eq_foo/2).
+
 eq_foo(X, Y) :-
-    impure RX = 'representation of any foo/0'(X),
-    impure RY = 'representation of any foo/0'(Y),
-    RX = RY.
+    promise_pure (
+        impure RX = 'representation of any foo/0'(X),
+        impure RY = 'representation of any foo/0'(Y),
+        RX = RY
+    ).

@@ -33,6 +33,7 @@ MULTIMODULE_PROGS= \
 	unresolved_overloading
 
 SINGLEMODULE= \
+	abstract_solver_type \
 	actual_expected \
 	after_end_module \
 	ambiguous_method \
@@ -144,6 +145,7 @@ SINGLEMODULE= \
 	foreign_include_file_missing \
 	foreign_purity_mismatch \
 	foreign_singleton \
+	foreign_solver_type \
 	foreign_type_2 \
 	foreign_type_visibility \
 	fp_dup_bug \
