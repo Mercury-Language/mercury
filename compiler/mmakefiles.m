@@ -317,7 +317,7 @@
 
 :- func get_mmake_mode = mmake_mode.
 
-get_mmake_mode = mmake_mode_old.
+get_mmake_mode = mmake_mode_new_interleave.
 
 %---------------------%
 
