@@ -96,15 +96,9 @@
 :- pred requantify_proc_general(nonlocals_to_recompute::in,
     proc_info::in, proc_info::out) is det.
 
-    % We return a list of warnings back to make_hlds.m.
-    % Currently the only thing we warn about is variables with
-    % overlapping scopes.
-
     % free_goal_vars(Goal) = Vars:
     %
-    % Vars is the set of variables that occur free (unquantified) in Goal
-    % excluding unset fields of reconstructions if
-    % NonLocalsToRecompute is `code_gen_nonlocals_no_lambda'.
+    % Vars is the set of variables that occur free (unquantified) in Goal.
     %
 :- func free_goal_vars(hlds_goal) = set_of_progvar.
 
@@ -868,8 +862,8 @@ implicitly_quantify_goal_quant_info_bi_implication(LHS0, RHS0, GoalExpr,
     get_nonlocals(!.Info, LHS_NonLocalVars),
 
     % Prepare for quantifying the RHS: add nonlocals from the LHS to the
-    % outside vars. (We use the nonlocals rather than the more symmetric
-    % approach of calling goal_vars on the LHS goal because it is more
+    % outside vars. (We use the nonlocals, rather than the more symmetric
+    % approach of calling goal_vars on the LHS goal, because it is more
     % efficient.)
     set_of_var.union(OutsideVars1, LHS_NonLocalVars, RHS_OutsideVars),
     RHS_LambdaOutsideVars = LambdaOutsideVars1,
@@ -2564,7 +2558,6 @@ init_quant_info(OutsideVars, VarSet, VarTypes, RttiVarMaps, QuantInfo) :-
     quant_info::in, quant_info::out) is det.
 :- pred set_warnings(list(quant_warning)::in,
     quant_info::in, quant_info::out) is det.
-
 :- pragma inline(set_outside/3).
 :- pragma inline(set_lambda_outside/3).
 :- pragma inline(set_quant_vars/3).
