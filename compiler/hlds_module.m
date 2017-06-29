@@ -25,7 +25,7 @@
 
 :- import_module analysis.
 :- import_module check_hlds.
-:- import_module check_hlds.unify_proc.
+:- import_module check_hlds.proc_requests.
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_dependency_graph.
@@ -832,7 +832,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         ForeignImportModules,
         PragmaExportedProcs),
 
-    unify_proc.init_requests(ProcRequests),
+    init_requests(ProcRequests),
     assertion_table_init(AssertionTable),
     exclusive_table_init(ExclusiveTable),
     HasParallelConj = has_no_parallel_conj,

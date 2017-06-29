@@ -58,6 +58,7 @@
    :- include_module modecheck_unify.
    :- include_module modecheck_util.
    :- include_module modes.
+   :- include_module proc_requests.
    :- include_module unify_proc.
    :- include_module unique_modes.
 

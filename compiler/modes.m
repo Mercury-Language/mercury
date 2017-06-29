@@ -140,9 +140,9 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.modecheck_util.
+:- import_module check_hlds.proc_requests.
 :- import_module check_hlds.switch_detection.
 :- import_module check_hlds.type_util.
-:- import_module check_hlds.unify_proc.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.

@@ -66,7 +66,7 @@
 :- import_module check_hlds.mode_comparison.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.unify_proc.
+:- import_module check_hlds.proc_requests.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module hlds.vartypes.
@@ -226,7 +226,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 
     % Check whether the insts of the args matches their expected initial insts.
     %
-    % If we're doing mode inference for the called procedure, and the
+    % If we are doing mode inference for the called procedure, and the
     % called procedure has been inferred as an invalid mode, then don't use
     % it unless it is an exact match.
     %
@@ -320,15 +320,15 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, !ModeInfo) :-
     inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes),
     mode_info_get_instvarset(!.ModeInfo, InstVarSet),
 
-    % Call unify_proc.request_proc, which will create the new procedure,
+    % Call request_proc, which will create the new procedure,
     % set its "can-process" flag to `no', and insert it into the queue
     % of requested procedures.
-    unify_proc.request_proc(PredId, Modes, InstVarSet, yes(ArgLives),
-        MaybeDet, Context, ProcId, ModuleInfo0, ModuleInfo),
+    request_proc(PredId, Modes, InstVarSet, yes(ArgLives), MaybeDet, Context,
+        ProcId, ModuleInfo0, ModuleInfo),
 
     mode_info_set_module_info(ModuleInfo, !ModeInfo),
 
-    % Since we've created a new inferred mode for this predicate,
+    % Since we have created a new inferred mode for this predicate,
     % things have changed, so we will need to do at least one more
     % pass of the fixpoint analysis.
     mode_info_set_changed_flag(yes, !ModeInfo).

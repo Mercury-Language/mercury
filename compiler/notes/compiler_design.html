@@ -1071,6 +1071,17 @@ so that the compiler does the right thing for options such as
         <dd>
             This module contains all the code to
             generate error messages for mode errors.
+
+        <dt> proc_requests.m
+        <dd>
+            This module contains the queue of procedures that mode analysis has
+            discovered a need for, but which don't yet exist. This may be
+            a mode other than (in,in) for the automatically generated
+            unify predicate for a type,
+            a mode other than (out,in,in) for the automatically generated
+            compare predicate for a type,
+            or a new mode for a user-defined predicate or function
+            whose set of modes is being inferred.
         </dl>
     <li>
         mode_util.m contains miscellaneous useful predicates dealing

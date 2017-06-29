@@ -33,9 +33,9 @@
 :- implementation.
 
 :- import_module check_hlds.polymorphism.
+:- import_module check_hlds.proc_requests.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.type_util.
-:- import_module check_hlds.unify_proc.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
@@ -190,8 +190,7 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
     else
         type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
         determinism_components(Detism, CanFail, at_most_one),
-        unify_proc.lookup_mode_num(ModuleInfo, TypeCtor, UnifyMode, Detism,
-            ProcId),
+        lookup_mode_num(ModuleInfo, TypeCtor, UnifyMode, Detism, ProcId),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
         globals.lookup_bool_option(Globals, can_compare_compound_values,

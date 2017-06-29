@@ -54,8 +54,8 @@
 :- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.polymorphism.
+:- import_module check_hlds.proc_requests.
 :- import_module check_hlds.type_util.
-:- import_module check_hlds.unify_proc.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
@@ -1245,7 +1245,7 @@ modecheck_complicated_unify(X, Y, Type, FromToInstsOfX, FromToInstsOfY,
         mode_info_get_context(!.ModeInfo, Context),
         mode_info_get_instvarset(!.ModeInfo, InstVarSet),
         UnifyProcId = unify_proc_id(TypeCtor, UnifyMode),
-        unify_proc.request_unify(UnifyProcId, InstVarSet, Detism, Context,
+        request_unify(UnifyProcId, InstVarSet, Detism, Context,
             ModuleInfo0, ModuleInfo),
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     else
