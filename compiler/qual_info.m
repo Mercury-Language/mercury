@@ -46,10 +46,10 @@
     maybe_opt_imported::out) is det.
 :- pred qual_info_get_found_syntax_error(qual_info::in, bool::out) is det.
 
-:- pred qual_info_set_mq_info(mq_info::in, qual_info::in, qual_info::out)
-    is det.
-:- pred qual_info_set_var_types(vartypes::in, qual_info::in, qual_info::out)
-    is det.
+:- pred qual_info_set_var_types(vartypes::in,
+    qual_info::in, qual_info::out) is det.
+:- pred qual_info_set_mq_info(mq_info::in,
+    qual_info::in, qual_info::out) is det.
 :- pred qual_info_set_found_syntax_error(bool::in,
     qual_info::in, qual_info::out) is det.
 
@@ -133,7 +133,7 @@
 
                 qual_maybe_opt_imported :: maybe_opt_imported,
 
-                % Was there a syntax error in a field update?
+                % Was there a syntax error in the clause?
                 qual_found_syntax_error :: bool
             ).
 
@@ -155,33 +155,41 @@ update_qual_info(TVarNameMap, TVarSet, VarTypes, MaybeOptImported,
     !:QualInfo = qual_info(TypeEqvMap, TVarSet, Renaming, TVarNameMap,
         VarTypes, MQInfo, MaybeOptImported, no).
 
-qual_info_get_tvarset(Info, Info ^ qual_tvarset).
-qual_info_get_var_types(Info, Info ^ qual_vartypes).
-qual_info_get_mq_info(Info, Info ^ qual_mq_info).
-qual_info_get_maybe_opt_imported(Info, Info ^ qual_maybe_opt_imported).
-qual_info_get_found_syntax_error(Info, Info ^ qual_found_syntax_error).
+qual_info_get_tvarset(Info, X) :-
+    X = Info ^ qual_tvarset.
+qual_info_get_var_types(Info, X) :-
+    X = Info ^ qual_vartypes.
+qual_info_get_mq_info(Info, X) :-
+    X = Info ^ qual_mq_info.
+qual_info_get_maybe_opt_imported(Info, X) :-
+    X = Info ^ qual_maybe_opt_imported.
+qual_info_get_found_syntax_error(Info, X) :-
+    X = Info ^ qual_found_syntax_error.
 
-qual_info_set_mq_info(MQInfo, !Info) :-
-    !Info ^ qual_mq_info := MQInfo.
-qual_info_set_var_types(VarTypes, !Info) :-
-    !Info ^ qual_vartypes := VarTypes.
-qual_info_set_found_syntax_error(FoundError, !Info) :-
-    !Info ^ qual_found_syntax_error := FoundError.
+qual_info_set_var_types(X, !Info) :-
+    !Info ^ qual_vartypes := X.
+qual_info_set_mq_info(X, !Info) :-
+    !Info ^ qual_mq_info := X.
+qual_info_set_found_syntax_error(X, !Info) :-
+    !Info ^ qual_found_syntax_error := X.
+
+%-----------------------------------------------------------------------------%
 
 apply_to_recompilation_info(Pred, !QualInfo) :-
-    MQInfo0 = !.QualInfo ^ qual_mq_info,
+    qual_info_get_mq_info(!.QualInfo, MQInfo0),
     mq_info_get_recompilation_info(MQInfo0, MaybeRecompInfo0),
     (
         MaybeRecompInfo0 = yes(RecompInfo0),
         Pred(RecompInfo0, RecompInfo),
         mq_info_set_recompilation_info(yes(RecompInfo), MQInfo0, MQInfo),
-        !QualInfo ^ qual_mq_info := MQInfo
+        qual_info_set_mq_info(MQInfo, !QualInfo)
     ;
         MaybeRecompInfo0 = no
     ).
 
 set_module_recompilation_info(QualInfo, !ModuleInfo) :-
-    mq_info_get_recompilation_info(QualInfo ^ qual_mq_info, RecompInfo),
+    qual_info_get_mq_info(QualInfo, MQInfo),
+    mq_info_get_recompilation_info(MQInfo, RecompInfo),
     module_info_set_maybe_recompilation_info(RecompInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
