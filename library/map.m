@@ -334,8 +334,7 @@
     % a map containing the keys in the list and their corresponding values.
     %
 :- func select_sorted_list(map(K, V), list(K)) = map(K, V).
-:- pred select_sorted_list(map(K, V)::in, list(K)::in, map(K, V)::out)
-    is det.
+:- pred select_sorted_list(map(K, V)::in, list(K)::in, map(K, V)::out) is det.
 
     % Given a list of keys, produce a list of their corresponding
     % values in a specified map.
@@ -364,8 +363,7 @@
 :- mode foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode foldl(pred(in, in, in, out) is cc_multi, in, in, out) is cc_multi.
 :- mode foldl(pred(in, in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode foldl(pred(in, in, mdi, muo) is cc_multi, in, mdi, muo)
-    is cc_multi.
+:- mode foldl(pred(in, in, mdi, muo) is cc_multi, in, mdi, muo) is cc_multi.
 
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with two accumulators for each key-value pair.
