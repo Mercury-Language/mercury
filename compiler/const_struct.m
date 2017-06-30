@@ -324,13 +324,20 @@ const_struct_db_get_structs(Db, Structs) :-
 :- pred const_struct_db_get_instance_map(const_struct_db::in,
     const_instance_map::out) is det.
 
-const_struct_db_get_poly_enabled(Db, Db ^ csdb_poly_enabled).
-const_struct_db_get_ground_term_enabled(Db, Db ^ csdb_ground_term_enabled).
-const_struct_db_get_next_num(Db, Db ^ csdb_next_num).
-const_struct_db_get_cons_proxy_map(Db, Db ^ csdb_cons_proxy_map).
-const_struct_db_get_other_struct_map(Db, Db ^ csdb_other_struct_map).
-const_struct_db_get_num_map(Db, Db ^ csdb_num_map).
-const_struct_db_get_instance_map(Db, Db ^ csdb_instance_map).
+const_struct_db_get_poly_enabled(Db, X) :-
+    X = Db ^ csdb_poly_enabled.
+const_struct_db_get_ground_term_enabled(Db, X) :-
+    X = Db ^ csdb_ground_term_enabled.
+const_struct_db_get_next_num(Db, X) :-
+    X = Db ^ csdb_next_num.
+const_struct_db_get_cons_proxy_map(Db, X) :-
+    X = Db ^ csdb_cons_proxy_map.
+const_struct_db_get_other_struct_map(Db, X) :-
+    X = Db ^ csdb_other_struct_map.
+const_struct_db_get_num_map(Db, X) :-
+    X = Db ^ csdb_num_map.
+const_struct_db_get_instance_map(Db, X) :-
+    X = Db ^ csdb_instance_map.
 
 :- pred const_struct_db_set_next_num(int::in,
     const_struct_db::in, const_struct_db::out) is det.
