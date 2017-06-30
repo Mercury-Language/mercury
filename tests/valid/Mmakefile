@@ -56,7 +56,8 @@ TYPECLASS_PROGS = \
 	typeclass_constraint_arity \
 	typeclass_constraint_no_var \
 	typeclass_constraint_nonvar_bug \
-	typeclass_det_warning
+	typeclass_det_warning \
+	use_import_only_for_instance
 
 NO_SPECIAL_PREDS_PROGS = \
 	unify_typeinfo_bug

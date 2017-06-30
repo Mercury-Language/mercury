@@ -796,7 +796,8 @@ cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
         ( ConsId = type_ctor_info_const(ModuleName, _, _)
         ; ConsId = base_typeclass_info_const(ModuleName, _, _, _)
         ),
-        record_sym_name_module_as_used(Visibility, ModuleName, !UsedModules)
+        record_module_and_ancestors_as_used(Visibility, ModuleName,
+            !UsedModules)
     ;
         ( ConsId = tuple_cons(_)
         ; ConsId = closure_cons(_, _)

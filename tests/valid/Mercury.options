@@ -113,3 +113,4 @@ MCFLAGS-vn_float		= -O5
 MCFLAGS-zero_arity		= --infer-modes
 MGNUCFLAGS-reg_bug		= --no-ansi
 MCFLAGS-reg_bug			= --no-ansi-c
+MCFLAGS-use_import_only_for_instance	= --warn-unused-imports --halt-at-warn
