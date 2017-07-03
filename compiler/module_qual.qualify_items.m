@@ -475,11 +475,29 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
         % `character', since the corresponding library module `char'
         % will be flagged as used in the interface if the type `char' is used.
         (
-            BuiltinType = builtin_type_int,
+            BuiltinType = builtin_type_int(int_type_int),
             mq_info_set_module_used(InInt, unqualified("int"), !Info)
         ;
-            BuiltinType = builtin_type_uint,
+            BuiltinType = builtin_type_int(int_type_uint),
             mq_info_set_module_used(InInt, unqualified("uint"), !Info)
+        ;
+            BuiltinType = builtin_type_int(int_type_int8),
+            mq_info_set_module_used(InInt, unqualified("int8"), !Info)
+        ;
+            BuiltinType = builtin_type_int(int_type_uint8),
+            mq_info_set_module_used(InInt, unqualified("uint8"), !Info)
+        ;
+            BuiltinType = builtin_type_int(int_type_int16),
+            mq_info_set_module_used(InInt, unqualified("int16"), !Info)
+        ;
+            BuiltinType = builtin_type_int(int_type_uint16),
+            mq_info_set_module_used(InInt, unqualified("uint16"), !Info)
+        ;
+            BuiltinType = builtin_type_int(int_type_int32),
+            mq_info_set_module_used(InInt, unqualified("int32"), !Info)
+        ;
+            BuiltinType = builtin_type_int(int_type_uint32),
+            mq_info_set_module_used(InInt, unqualified("uint32"), !Info)
         ;
             BuiltinType = builtin_type_float,
             mq_info_set_module_used(InInt, unqualified("float"), !Info)
@@ -723,6 +741,12 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
         ; ConsId = closure_cons(_, _)
         ; ConsId = int_const(_)
         ; ConsId = uint_const(_)
+        ; ConsId = int8_const(_)
+        ; ConsId = uint8_const(_)
+        ; ConsId = int16_const(_)
+        ; ConsId = uint16_const(_)
+        ; ConsId = int32_const(_)
+        ; ConsId = uint32_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

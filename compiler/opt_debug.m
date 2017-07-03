@@ -444,6 +444,24 @@ dump_const(MaybeProcLabel, Const) = Str :-
         Const = llconst_uint(U),
         Str = uint_to_string(U)
     ;
+        Const = llconst_int8(I8),
+        Str = int_to_string(I8)
+    ;
+        Const = llconst_uint8(U8),
+        Str = int_to_string(U8)
+    ;
+        Const = llconst_int16(I16),
+        Str = int_to_string(I16)
+    ;
+        Const = llconst_uint16(U16),
+        Str = int_to_string(U16)
+    ;
+        Const = llconst_int32(I32),
+        Str = int_to_string(I32)
+    ;
+        Const = llconst_uint32(U32),
+        Str = int_to_string(U32)
+    ;
         Const = llconst_foreign(F, _),
         Str = F
     ;
@@ -835,14 +853,13 @@ dump_unop(strip_tag) = "strip_tag".
 dump_unop(mkbody) = "mkbody".
 dump_unop(unmkbody) = "unmkbody".
 dump_unop(logical_not) = "not".
-dump_unop(bitwise_complement) = "bitwise_complement".
+dump_unop(bitwise_complement(_)) = "bitwise_complement".
 dump_unop(hash_string) = "hash_string".
 dump_unop(hash_string2) = "hash_string2".
 dump_unop(hash_string3) = "hash_string3".
 dump_unop(hash_string4) = "hash_string4".
 dump_unop(hash_string5) = "hash_string5".
 dump_unop(hash_string6) = "hash_string6".
-dump_unop(uint_bitwise_complement) = "uint_bitwise_complement".
 
 dump_binop(array_index(_)) = "array_index".
 dump_binop(string_unsafe_index_code_unit) = "string_unsafe_index_code_unit".
@@ -856,22 +873,6 @@ dump_binop(str_ge) = "str>=".
 dump_binop(str_lt) = "str<".
 dump_binop(str_gt) = "str>".
 dump_binop(unsigned_le) = "unsigned<=".
-dump_binop(uint_eq) = "uint==".
-dump_binop(uint_ne) = "uint!=".
-dump_binop(uint_lt) = "uint<".
-dump_binop(uint_gt) = "uint>".
-dump_binop(uint_le) = "uint<=".
-dump_binop(uint_ge) = "uint>=".
-dump_binop(uint_add) = "uint+".
-dump_binop(uint_sub) = "uint-".
-dump_binop(uint_mul) = "uint*".
-dump_binop(uint_div) = "uint/".
-dump_binop(uint_mod) = "uint%".
-dump_binop(uint_bitwise_and) = "uint&".
-dump_binop(uint_bitwise_or) = "uint|".
-dump_binop(uint_bitwise_xor) = "uint^".
-dump_binop(uint_unchecked_left_shift) = "uint_unchecked<<".
-dump_binop(uint_unchecked_right_shift) = "uint_unchecked>>".
 dump_binop(float_plus) = "fl+".
 dump_binop(float_minus) = "fl-".
 dump_binop(float_times) = "fl*".
@@ -884,24 +885,24 @@ dump_binop(float_lt) = "fl<".
 dump_binop(float_gt) = "fl>".
 dump_binop(float_word_bits) = "float_word_bits".
 dump_binop(float_from_dword) = "float_from_dword".
-dump_binop(int_add) = "+".
-dump_binop(int_sub) = "-".
-dump_binop(int_mul) = "*".
-dump_binop(int_div) = "/".
-dump_binop(unchecked_left_shift) = "unchecked<<".
-dump_binop(unchecked_right_shift) = "unchecked>>".
-dump_binop(bitwise_and) = "&".
-dump_binop(bitwise_or) = "|".
-dump_binop(bitwise_xor) = "^".
-dump_binop(int_mod) = "%".
-dump_binop(eq) = "==".
-dump_binop(ne) = "!=".
+dump_binop(int_add(_)) = "+".
+dump_binop(int_sub(_)) = "-".
+dump_binop(int_mul(_)) = "*".
+dump_binop(int_div(_)) = "/".
+dump_binop(unchecked_left_shift(_)) = "unchecked<<".
+dump_binop(unchecked_right_shift(_)) = "unchecked>>".
+dump_binop(bitwise_and(_)) = "&".
+dump_binop(bitwise_or(_)) = "|".
+dump_binop(bitwise_xor(_)) = "^".
+dump_binop(int_mod(_)) = "%".
+dump_binop(eq(_)) = "==".
+dump_binop(ne(_)) = "!=".
 dump_binop(logical_and) = "&&".
 dump_binop(logical_or) = "||".
-dump_binop(int_lt) = "<".
-dump_binop(int_gt) = ">".
-dump_binop(int_le) = "<=".
-dump_binop(int_ge) = ">=".
+dump_binop(int_lt(_)) = "<".
+dump_binop(int_gt(_)) = ">".
+dump_binop(int_le(_)) = "<=".
+dump_binop(int_ge(_)) = ">=".
 dump_binop(str_cmp) = "strcmp".
 dump_binop(body) = "body".
 dump_binop(pointer_equal_conservative) = "pointer_equal_conservative".

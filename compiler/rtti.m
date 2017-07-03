@@ -434,6 +434,12 @@
 :- type builtin_ctor
     --->    builtin_ctor_int
     ;       builtin_ctor_uint
+    ;       builtin_ctor_int8
+    ;       builtin_ctor_uint8
+    ;       builtin_ctor_int16
+    ;       builtin_ctor_uint16
+    ;       builtin_ctor_int32
+    ;       builtin_ctor_uint32
     ;       builtin_ctor_float
     ;       builtin_ctor_char
     ;       builtin_ctor_string
@@ -1725,6 +1731,12 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
 
 builtin_ctor_rep_to_string(builtin_ctor_int, "MR_TYPECTOR_REP_INT").
 builtin_ctor_rep_to_string(builtin_ctor_uint, "MR_TYPECTOR_REP_UINT").
+builtin_ctor_rep_to_string(builtin_ctor_int8, "MR_TYPECTOR_REP_INT8").
+builtin_ctor_rep_to_string(builtin_ctor_uint8, "MR_TYPECTOR_REP_UINT8").
+builtin_ctor_rep_to_string(builtin_ctor_int16, "MR_TYPECTOR_REP_INT16").
+builtin_ctor_rep_to_string(builtin_ctor_uint16, "MR_TYPECTOR_REP_UINT16").
+builtin_ctor_rep_to_string(builtin_ctor_int32, "MR_TYPECTOR_REP_INT32").
+builtin_ctor_rep_to_string(builtin_ctor_uint32, "MR_TYPECTOR_REP_UINT32").
 builtin_ctor_rep_to_string(builtin_ctor_string, "MR_TYPECTOR_REP_STRING").
 builtin_ctor_rep_to_string(builtin_ctor_float, "MR_TYPECTOR_REP_FLOAT").
 builtin_ctor_rep_to_string(builtin_ctor_char, "MR_TYPECTOR_REP_CHAR").
@@ -2363,8 +2375,22 @@ tabling_id_has_array_type(Id) = IsArray :-
     tabling_id_base_type(Id, _, IsArray).
 
 table_trie_step_to_c(table_trie_step_dummy, "MR_TABLE_STEP_DUMMY", no).
-table_trie_step_to_c(table_trie_step_int, "MR_TABLE_STEP_INT", no).
-table_trie_step_to_c(table_trie_step_uint, "MR_TABLE_STEP_UINT", no).
+table_trie_step_to_c(table_trie_step_int(int_type_int),
+    "MR_TABLE_STEP_INT", no).
+table_trie_step_to_c(table_trie_step_int(int_type_uint),
+    "MR_TABLE_STEP_UINT", no).
+table_trie_step_to_c(table_trie_step_int(int_type_int8),
+    "MR_TABLE_STEP_INT8", no).
+table_trie_step_to_c(table_trie_step_int(int_type_uint8),
+    "MR_TABLE_STEP_UINT8", no).
+table_trie_step_to_c(table_trie_step_int(int_type_int16),
+    "MR_TABLE_STEP_INT16", no).
+table_trie_step_to_c(table_trie_step_int(int_type_uint16),
+    "MR_TABLE_STEP_UINT16", no).
+table_trie_step_to_c(table_trie_step_int(int_type_int32),
+    "MR_TABLE_STEP_INT32", no).
+table_trie_step_to_c(table_trie_step_int(int_type_uint32),
+    "MR_TABLE_STEP_UINT32", no).
 table_trie_step_to_c(table_trie_step_char, "MR_TABLE_STEP_CHAR", no).
 table_trie_step_to_c(table_trie_step_string, "MR_TABLE_STEP_STRING", no).
 table_trie_step_to_c(table_trie_step_float, "MR_TABLE_STEP_FLOAT", no).

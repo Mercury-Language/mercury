@@ -378,11 +378,29 @@ generate_builtin_unify(CtorCat, X, Y, Context, Clause, !Info) :-
     % can_generate_special_pred_clauses_for_type ensures the unexpected
     % cases can never occur.
     (
-        CtorCat = ctor_cat_builtin(cat_builtin_int),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int)),
         Name = "builtin_unify_int"
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint)),
         Name = "builtin_unify_uint"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8)),
+        Name = "builtin_unify_int8"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8)),
+        Name = "builtin_unify_uint8"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16)),
+        Name = "builtin_unify_int16"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16)),
+        Name = "builtin_unify_uint16"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32)),
+        Name = "builtin_unify_int32"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
+        Name = "builtin_unify_uint32"
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         Name = "builtin_unify_character"
@@ -697,11 +715,29 @@ generate_builtin_compare(CtorCat, Res, X, Y, Context, Clause, !Info) :-
     % can_generate_special_pred_clauses_for_type ensures the unexpected
     % cases can never occur.
     (
-        CtorCat = ctor_cat_builtin(cat_builtin_int),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int)),
         Name = "builtin_compare_int"
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint)),
         Name = "builtin_compare_uint"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8)),
+        Name = "builtin_compare_int8"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8)),
+        Name = "builtin_compare_uint8"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16)),
+        Name = "builtin_compare_int16"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16)),
+        Name = "builtin_compare_uint16"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32)),
+        Name = "builtin_compare_int32"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
+        Name = "builtin_compare_uint32"
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         Name = "builtin_compare_character"

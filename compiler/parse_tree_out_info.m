@@ -107,6 +107,13 @@
     pred add_char(char::in, U::di, U::uo) is det,
     pred add_int(int::in, U::di, U::uo) is det,
     pred add_uint(uint::in, U::di, U::uo) is det,
+    % XXX FIXED SIZE INT
+    pred add_int8(int::in, U::di, U::uo) is det,
+    pred add_uint8(int::in, U::di, U::uo) is det,
+    pred add_int16(int::in, U::di, U::uo) is det,
+    pred add_uint16(int::in, U::di, U::uo) is det,
+    pred add_int32(int::in, U::di, U::uo) is det,
+    pred add_uint32(int::in, U::di, U::uo) is det,
     pred add_float(float::in, U::di, U::uo) is det,
     pred add_purity_prefix(purity::in, U::di, U::uo) is det,
     pred add_quoted_atom(string::in, U::di, U::uo) is det,
@@ -192,6 +199,12 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_char/3) is io.write_char,
     pred(add_int/3) is io.write_int,
     pred(add_uint/3) is write_uint_literal,
+    pred(add_int8/3) is io.write_int,
+    pred(add_uint8/3) is io.write_int,
+    pred(add_int16/3) is io.write_int,
+    pred(add_uint16/3) is io.write_int,
+    pred(add_int32/3) is io.write_int,
+    pred(add_uint32/3) is io.write_int,
     pred(add_float/3) is io.write_float,
     pred(add_purity_prefix/3) is prog_out.write_purity_prefix,
     pred(add_quoted_atom/3) is term_io.quote_atom,
@@ -210,6 +223,12 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_char/3) is output_char,
     pred(add_int/3) is output_int,
     pred(add_uint/3) is output_uint,
+    pred(add_int8/3) is output_int8,
+    pred(add_uint8/3) is output_uint8,
+    pred(add_int16/3) is output_int16,
+    pred(add_uint16/3) is output_uint16,
+    pred(add_int32/3) is output_int32,
+    pred(add_uint32/3) is output_uint32,
     pred(add_float/3) is output_float,
     pred(add_purity_prefix/3) is output_purity_prefix,
     pred(add_quoted_atom/3) is output_quoted_atom,
@@ -273,6 +292,43 @@ output_int(I, Str0, Str) :-
 
 output_uint(U, Str0, Str) :-
     S = uint_to_string(U) ++ "u",
+    string.append(Str0, S, Str).
+
+% XXX FIXED SIZE INT
+:- pred output_int8(int::in, string::di, string::uo) is det.
+
+output_int8(I, Str0, Str) :-
+    string.int_to_string(I, S),
+    string.append(Str0, S, Str).
+
+:- pred output_uint8(int::in, string::di, string::uo) is det.
+
+output_uint8(I, Str0, Str) :-
+    string.int_to_string(I, S),
+    string.append(Str0, S, Str).
+
+:- pred output_int16(int::in, string::di, string::uo) is det.
+
+output_int16(I, Str0, Str) :-
+    string.int_to_string(I, S),
+    string.append(Str0, S, Str).
+
+:- pred output_uint16(int::in, string::di, string::uo) is det.
+
+output_uint16(I, Str0, Str) :-
+    string.int_to_string(I, S),
+    string.append(Str0, S, Str).
+
+:- pred output_int32(int::in, string::di, string::uo) is det.
+
+output_int32(I, Str0, Str) :-
+    string.int_to_string(I, S),
+    string.append(Str0, S, Str).
+
+:- pred output_uint32(int::in, string::di, string::uo) is det.
+
+output_uint32(I, Str0, Str) :-
+    string.int_to_string(I, S),
     string.append(Str0, S, Str).
 
 :- pred output_float(float::in, string::di, string::uo) is det.

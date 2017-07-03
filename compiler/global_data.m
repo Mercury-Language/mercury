@@ -372,7 +372,7 @@ add_scalar_static_cell(TypedArgs0, DataId, !Info) :-
     % so that the generated C structure isn't empty.
     (
         TypedArgs0 = [],
-        TypedArgs = [typed_rval(const(llconst_int(-1)), lt_integer)]
+        TypedArgs = [typed_rval(const(llconst_int(-1)), lt_int(int_type_int))]
     ;
         TypedArgs0 = [_ | _],
         TypedArgs = TypedArgs0
@@ -512,13 +512,13 @@ find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
     then
         LLDSType = LLDSType0
     else if
-        NaturalType = lt_integer,
+        NaturalType = lt_int(int_type_int),
         LLDSType0 = lt_data_ptr
     then
         LLDSType = lt_data_ptr
     else if
         NaturalType = lt_data_ptr,
-        LLDSType0 = lt_integer
+        LLDSType0 = lt_int(int_type_int)
     then
         LLDSType = lt_data_ptr
     else
@@ -1346,6 +1346,12 @@ remap_rval_const(Remap, Const0, Const) :-
         ; Const0 = llconst_false
         ; Const0 = llconst_int(_)
         ; Const0 = llconst_uint(_)
+        ; Const0 = llconst_int8(_)
+        ; Const0 = llconst_uint8(_)
+        ; Const0 = llconst_int16(_)
+        ; Const0 = llconst_uint16(_)
+        ; Const0 = llconst_int32(_)
+        ; Const0 = llconst_uint32(_)
         ; Const0 = llconst_foreign(_, _)
         ; Const0 = llconst_float(_)
         ; Const0 = llconst_string(_)

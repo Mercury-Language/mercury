@@ -807,6 +807,12 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Stmts,
 ml_gen_simple_expr(leaf(Lval)) = ml_lval(Lval).
 ml_gen_simple_expr(int_const(Int)) = ml_const(mlconst_int(Int)).
 ml_gen_simple_expr(uint_const(UInt)) = ml_const(mlconst_uint(UInt)).
+ml_gen_simple_expr(int8_const(Int8)) = ml_const(mlconst_int8(Int8)).
+ml_gen_simple_expr(uint8_const(UInt8)) = ml_const(mlconst_uint8(UInt8)).
+ml_gen_simple_expr(int16_const(Int16)) = ml_const(mlconst_int16(Int16)).
+ml_gen_simple_expr(uint16_const(UInt16)) = ml_const(mlconst_uint16(UInt16)).
+ml_gen_simple_expr(int32_const(Int32)) = ml_const(mlconst_int32(Int32)).
+ml_gen_simple_expr(uint32_const(UInt32)) = ml_const(mlconst_uint32(UInt32)).
 ml_gen_simple_expr(float_const(Float)) = ml_const(mlconst_float(Float)).
 ml_gen_simple_expr(unary(Op, Expr)) =
     ml_unop(std_unop(Op), ml_gen_simple_expr(Expr)).

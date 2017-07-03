@@ -833,24 +833,22 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
     ( if
         TypeSymName = unqualified(TypeName),
         Arity = 0,
-        (
-            TypeName = "character",
-            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_char)
-        ;
-            TypeName = "uint",
-            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_uint)
-        ;
-            TypeName = "int",
-            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_int)
-        ;
-            TypeName = "float",
-            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_float)
-        ;
-            TypeName = "string",
-            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_string)
-        ;
-            TypeName = "void",
-            TypeCategoryPrime = ctor_cat_void
+        ( if int_type_to_string(IntType, TypeName) then
+            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_int(IntType))
+        else
+            (
+                TypeName = "character",
+                TypeCategoryPrime = ctor_cat_builtin(cat_builtin_char)
+            ;
+                TypeName = "float",
+                TypeCategoryPrime = ctor_cat_builtin(cat_builtin_float)
+            ;
+                TypeName = "string",
+                TypeCategoryPrime = ctor_cat_builtin(cat_builtin_string)
+            ;
+                TypeName = "void",
+                TypeCategoryPrime = ctor_cat_void
+            )
         )
     then
         TypeCategory = TypeCategoryPrime
@@ -961,8 +959,7 @@ update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic) :-
 type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
     TypeCategory = classify_type(ModuleInfo, Type),
     (
-        ( TypeCategory = ctor_cat_builtin(cat_builtin_int)
-        ; TypeCategory = ctor_cat_builtin(cat_builtin_uint)
+        ( TypeCategory = ctor_cat_builtin(cat_builtin_int(_))
         ; TypeCategory = ctor_cat_builtin(cat_builtin_char)
         ; TypeCategory = ctor_cat_enum(_)
         ; TypeCategory = ctor_cat_builtin_dummy

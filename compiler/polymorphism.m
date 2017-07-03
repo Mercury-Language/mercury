@@ -3588,11 +3588,29 @@ get_special_proc_det(Type, SpecialPredId, ModuleInfo, PredName,
 
 get_category_name(CtorCat) = MaybeName :-
     (
-        CtorCat = ctor_cat_builtin(cat_builtin_int),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int)),
         MaybeName = yes("int")
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint)),
         MaybeName = yes("uint")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8)),
+        MaybeName = yes("int8")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8)),
+        MaybeName = yes("uint8")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16)),
+        MaybeName = yes("int16")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16)),
+        MaybeName = yes("uint16")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32)),
+        MaybeName = yes("int32")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
+        MaybeName = yes("uint32")
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         MaybeName = yes("character")

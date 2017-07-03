@@ -36,6 +36,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module ll_backend.opt_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module int.
 :- import_module map.
@@ -178,7 +179,8 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
         peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel,
             Val, OtherLabel)
     then
-        CondRval = binop(eq, SelectorRval, const(llconst_int(Val))),
+        CondRval = binop(eq(int_type_int), SelectorRval,
+            const(llconst_int(Val))),
         CommentInstr = llds_instr(comment(Comment0), ""),
         BranchInstr = llds_instr(if_val(CondRval, code_label(OneValLabel)),
             ""),

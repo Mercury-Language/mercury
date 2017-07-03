@@ -288,7 +288,8 @@ generate_test(VarA, VarB, Code, !CI, !CLD) :-
         else if Type = builtin_type(builtin_type_float) then
             Op = float_eq
         else
-            Op = eq
+            % XXX FIXED SIZE AND UINTS??
+            Op = eq(int_type_int)
         ),
         fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode, !CI, !CLD),
         Code = CodeA ++ CodeB ++ FailCode
@@ -418,16 +419,34 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         TestRval = binop(float_eq, Rval, const(llconst_float(Float)))
     ;
         ConsTag = int_tag(Int),
-        TestRval = binop(eq, Rval, const(llconst_int(Int)))
+        TestRval = binop(eq(int_type_int), Rval, const(llconst_int(Int)))
     ;
         ConsTag = uint_tag(UInt),
-        TestRval = binop(uint_eq, Rval, const(llconst_uint(UInt)))
+        TestRval = binop(eq(int_type_uint), Rval, const(llconst_uint(UInt)))
+    ;
+        ConsTag = int8_tag(Int8),
+        TestRval = binop(eq(int_type_int8), Rval, const(llconst_int8(Int8)))
+    ;
+        ConsTag = uint8_tag(UInt8),
+        TestRval = binop(eq(int_type_uint8), Rval, const(llconst_uint8(UInt8)))
+    ;
+        ConsTag = int16_tag(Int16),
+        TestRval = binop(eq(int_type_int16), Rval, const(llconst_int16(Int16)))
+    ;
+        ConsTag = uint16_tag(UInt16),
+        TestRval = binop(eq(int_type_uint16), Rval, const(llconst_uint16(UInt16)))
+    ;
+        ConsTag = int32_tag(Int32),
+        TestRval = binop(eq(int_type_int32), Rval, const(llconst_int32(Int32)))
+    ;
+        ConsTag = uint32_tag(UInt32),
+        TestRval = binop(eq(int_type_uint32), Rval, const(llconst_uint32(UInt32)))
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignVal),
         expect(unify(ForeignLang, lang_c), $module, $pred,
             "foreign tag for language other than C"),
-        TestRval = binop(eq, Rval,
-            const(llconst_foreign(ForeignVal, lt_integer)))
+        TestRval = binop(eq(int_type_int), Rval,
+            const(llconst_foreign(ForeignVal, lt_int(int_type_int))))
     ;
         ConsTag = closure_tag(_, _, _),
         % This should never happen, since the error will be detected
@@ -472,23 +491,23 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ),
         VarPtag = unop(tag, Rval),
         ConstPtag = unop(mktag, const(llconst_int(UnsharedTag))),
-        TestRval = binop(eq, VarPtag, ConstPtag)
+        TestRval = binop(eq(int_type_int), VarPtag, ConstPtag)
     ;
         ConsTag = shared_remote_tag(Bits, Num),
         VarPtag = unop(tag, Rval),
         ConstPtag = unop(mktag, const(llconst_int(Bits))),
-        PtagTestRval = binop(eq, VarPtag, ConstPtag),
+        PtagTestRval = binop(eq(int_type_int), VarPtag, ConstPtag),
         VarStag = lval(field(yes(Bits), Rval, const(llconst_int(0)))),
         ConstStag = const(llconst_int(Num)),
-        StagTestRval = binop(eq, VarStag, ConstStag),
+        StagTestRval = binop(eq(int_type_int), VarStag, ConstStag),
         TestRval = binop(logical_and, PtagTestRval, StagTestRval)
     ;
         ConsTag = shared_local_tag(Bits, Num),
         ConstStag = mkword(Bits, unop(mkbody, const(llconst_int(Num)))),
-        TestRval = binop(eq, Rval, ConstStag)
+        TestRval = binop(eq(int_type_int), Rval, ConstStag)
     ;
         ConsTag = reserved_address_tag(RA),
-        TestRval = binop(eq, Rval, generate_reserved_address(RA))
+        TestRval = binop(eq(int_type_int), Rval, generate_reserved_address(RA))
     ;
         ConsTag = shared_with_reserved_addresses_tag(ReservedAddrs, ThisTag),
         % We first check that the Rval doesn't match any of the ReservedAddrs,
@@ -558,10 +577,34 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         assign_const_to_var(LHSVar, const(llconst_uint(UInt)), !.CI, !CLD),
         Code = empty
     ;
+        ConsTag = int8_tag(Int8),
+        assign_const_to_var(LHSVar, const(llconst_int8(Int8)), !.CI, !CLD),
+        Code = empty
+    ;
+        ConsTag = uint8_tag(UInt8),
+        assign_const_to_var(LHSVar, const(llconst_uint8(UInt8)), !.CI, !CLD),
+        Code = empty
+    ;
+        ConsTag = int16_tag(Int16),
+        assign_const_to_var(LHSVar, const(llconst_int16(Int16)), !.CI, !CLD),
+        Code = empty
+    ;
+        ConsTag = uint16_tag(UInt16),
+        assign_const_to_var(LHSVar, const(llconst_uint16(UInt16)), !.CI, !CLD),
+        Code = empty
+    ;
+        ConsTag = int32_tag(Int32),
+        assign_const_to_var(LHSVar, const(llconst_int32(Int32)), !.CI, !CLD),
+        Code = empty
+    ;
+        ConsTag = uint32_tag(UInt32),
+        assign_const_to_var(LHSVar, const(llconst_uint32(UInt32)), !.CI, !CLD),
+        Code = empty
+    ;
         ConsTag = foreign_tag(Lang, Val),
         expect(unify(Lang, lang_c), $module, $pred,
             "foreign_tag for language other than C"),
-        ForeignConst = const(llconst_foreign(Val, lt_integer)),
+        ForeignConst = const(llconst_foreign(Val, lt_int(int_type_int))),
         assign_const_to_var(LHSVar, ForeignConst, !.CI, !CLD),
         Code = empty
     ;
@@ -828,7 +871,8 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
                     assign(NumOldArgs, lval(field(yes(0), OldClosure, Two))),
                     "get number of arguments"),
                 llds_instr(incr_hp(NewClosure, no, no,
-                    binop(int_add, lval(NumOldArgs), NumNewArgsPlusThree_Rval),
+                    binop(int_add(int_type_int), lval(NumOldArgs),
+                        NumNewArgsPlusThree_Rval),
                     MaybeAllocId, NewClosureMayUseAtomic, no, no_llds_reuse),
                     "allocate new closure"),
                 llds_instr(assign(field(yes(0), lval(NewClosure), Zero),
@@ -838,11 +882,12 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
                     lval(field(yes(0), OldClosure, One))),
                     "set closure code pointer"),
                 llds_instr(assign(field(yes(0), lval(NewClosure), Two),
-                    binop(int_add, lval(NumOldArgs), NumNewArgs_Rval)),
+                    binop(int_add(int_type_int), lval(NumOldArgs),
+                        NumNewArgs_Rval)),
                     "set new number of arguments"),
                 llds_instr(
                     assign(NumOldArgs,
-                        binop(int_add, lval(NumOldArgs), Three)),
+                        binop(int_add(int_type_int), lval(NumOldArgs), Three)),
                     "set up loop limit"),
                 llds_instr(assign(LoopCounter, Three),
                     "initialize loop counter"),
@@ -859,12 +904,13 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
                     "copy old hidden argument"),
                 llds_instr(
                     assign(LoopCounter,
-                        binop(int_add, lval(LoopCounter), One)),
+                        binop(int_add(int_type_int), lval(LoopCounter), One)),
                     "increment loop counter"),
                 llds_instr(label(LoopTest),
                     "do we have more old arguments to copy? nofulljump"),
                 llds_instr(
-                    if_val(binop(int_lt, lval(LoopCounter), lval(NumOldArgs)),
+                    if_val(binop(int_lt(int_type_int),
+                        lval(LoopCounter), lval(NumOldArgs)),
                         code_label(LoopStart)),
                     "repeat the loop?")
             ]),
@@ -955,7 +1001,8 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
     ),
     IncrCode = singleton(
         llds_instr(assign(LoopCounter,
-            binop(int_add, lval(LoopCounter), const(llconst_int(1)))),
+            binop(int_add(int_type_int), lval(LoopCounter),
+                const(llconst_int(1)))),
             "increment argument counter")
     ),
     generate_extra_closure_args(Vars, LoopCounter, NewClosure, VarsCode,
@@ -1304,6 +1351,12 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
         ; Tag = uint_tag(_UInt)
+        ; Tag = int8_tag(_Int8)
+        ; Tag = uint8_tag(_UInt8)
+        ; Tag = int16_tag(_Int16)
+        ; Tag = uint16_tag(_UInt16)
+        ; Tag = int32_tag(_Int32)
+        ; Tag = uint32_tag(_UInt32)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
         ; Tag = closure_tag(_, _, _)
@@ -1529,9 +1582,10 @@ generate_sub_assign(Left, Right, Code, CI, !CLD) :-
                 LeftWidth = partial_word_shifted(Shift, Mask)
             ),
             ComplementMask = const(llconst_int(\(Mask << Shift))),
-            MaskOld = binop(bitwise_and, lval(Lval), ComplementMask),
+            MaskOld = binop(bitwise_and(int_type_int), lval(Lval),
+                ComplementMask),
             ShiftNew = maybe_left_shift_rval(Source, Shift),
-            Combined = binop(bitwise_or, MaskOld, ShiftNew),
+            Combined = binop(bitwise_or(int_type_int), MaskOld, ShiftNew),
             AssignCode = singleton(llds_instr(assign(Lval, Combined),
                 "Update part of word"))
         ;
@@ -1566,7 +1620,8 @@ generate_sub_assign(Left, Right, Code, CI, !CLD) :-
                         RightWidth = partial_word_shifted(Shift, Mask),
                         Rval0 = right_shift_rval(lval(Lval), Shift)
                     ),
-                    Rval = binop(bitwise_and, Rval0, const(llconst_int(Mask))),
+                    Rval = binop(bitwise_and(int_type_int), Rval0,
+                        const(llconst_int(Mask))),
                     assign_field_lval_expr_to_var(Lvar, [Lval], Rval, Code,
                         !CLD)
                 ;
@@ -1796,7 +1851,8 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
         generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
             ConstArgs, ConsArgWidths, ArgTypedRvals),
         pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
-        StagTypedRval = typed_rval(const(llconst_int(Stag)), lt_integer),
+        StagTypedRval = typed_rval(const(llconst_int(Stag)),
+            lt_int(int_type_int)),
         AllTypedRvals = [StagTypedRval | PackArgTypedRvals],
         add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
@@ -1807,6 +1863,12 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
         ( ConsTag = string_tag(_)
         ; ConsTag = int_tag(_)
         ; ConsTag = uint_tag(_)
+        ; ConsTag = int8_tag(_)
+        ; ConsTag = uint8_tag(_)
+        ; ConsTag = int16_tag(_)
+        ; ConsTag = uint16_tag(_)
+        ; ConsTag = int32_tag(_)
+        ; ConsTag = uint32_tag(_)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = shared_local_tag(_, _)
@@ -1863,17 +1925,41 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
         ;
             ConsTag = int_tag(Int),
             Const = llconst_int(Int),
-            Type = lt_integer
+            Type = lt_int(int_type_int)
         ;
             ConsTag = uint_tag(UInt),
             Const = llconst_uint(UInt),
-            Type = lt_unsigned
+            Type = lt_int(int_type_uint)
+        ;
+            ConsTag = int8_tag(Int8),
+            Const = llconst_int8(Int8),
+            Type = lt_int(int_type_int8)
+        ;
+            ConsTag = uint8_tag(UInt8),
+            Const = llconst_uint8(UInt8),
+            Type = lt_int(int_type_uint8)
+        ;
+            ConsTag = int16_tag(Int16),
+            Const = llconst_int16(Int16),
+            Type = lt_int(int_type_int16)
+        ;
+            ConsTag = uint16_tag(UInt16),
+            Const = llconst_uint16(UInt16),
+            Type = lt_int(int_type_uint16)
+        ;
+            ConsTag = int32_tag(Int32),
+            Const = llconst_int32(Int32),
+            Type = lt_int(int_type_int32)
+        ;
+            ConsTag = uint32_tag(UInt32),
+            Const = llconst_uint32(UInt32),
+            Type = lt_int(int_type_uint32)
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $module, $pred,
                 "foreign_tag for language other than C"),
-            Const = llconst_foreign(Val, lt_integer),
-            Type = lt_integer
+            Const = llconst_foreign(Val, lt_int(int_type_int)),
+            Type = lt_int(int_type_int)
         ;
             ConsTag = float_tag(Float),
             Const = llconst_float(Float),
@@ -2044,17 +2130,41 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         ;
             ConsTag = int_tag(Int),
             Const = llconst_int(Int),
-            Type = lt_integer
+            Type = lt_int(int_type_int)
         ;
             ConsTag = uint_tag(UInt),
             Const = llconst_uint(UInt),
-            Type = lt_unsigned
+            Type = lt_int(int_type_uint)
+        ;
+            ConsTag = int8_tag(Int8),
+            Const = llconst_int8(Int8),
+            Type = lt_int(int_type_int8)
+        ;
+            ConsTag = uint8_tag(UInt8),
+            Const = llconst_uint8(UInt8),
+            Type = lt_int(int_type_uint8)
+        ;
+            ConsTag = int16_tag(Int16),
+            Const = llconst_int16(Int16),
+            Type = lt_int(int_type_int16)
+        ;
+            ConsTag = uint16_tag(UInt16),
+            Const = llconst_uint16(UInt16),
+            Type = lt_int(int_type_uint16)
+        ;
+            ConsTag = int32_tag(Int32),
+            Const = llconst_int32(Int32),
+            Type = lt_int(int_type_int32)
+        ;
+            ConsTag = uint32_tag(UInt32),
+            Const = llconst_uint32(UInt32),
+            Type = lt_int(int_type_uint32)
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $module, $pred,
                 "foreign_tag for language other than C"),
-            Const = llconst_foreign(Val, lt_integer),
-            Type = lt_integer
+            Const = llconst_foreign(Val, lt_int(int_type_int)),
+            Type = lt_int(int_type_int)
         ;
             ConsTag = float_tag(Float),
             Const = llconst_float(Float),
@@ -2131,7 +2241,8 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         generate_ground_term_args(Args, ConsArgWidths, ArgTypedRvals,
             !ActiveMap),
         pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
-        StagTypedRval = typed_rval(const(llconst_int(Stag)), lt_integer),
+        StagTypedRval = typed_rval(const(llconst_int(Stag)),
+            lt_int(int_type_int)),
         AllTypedRvals = [StagTypedRval | PackArgTypedRvals],
         add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
@@ -2259,7 +2370,7 @@ shift_combine_rval_type(ArgA, Shift, MaybeArgB, FinalArg, !Acc1, !Acc2) :-
     (
         MaybeArgB = yes(typed_rval(RvalB, TypeB)),
         ( if TypeA = TypeB then
-            FinalRval = binop(bitwise_or, ShiftRvalA, RvalB)
+            FinalRval = binop(bitwise_or(int_type_int), ShiftRvalA, RvalB)
         else
             unexpected($module, $pred, "mismatched llds_types")
         )
@@ -2275,7 +2386,8 @@ maybe_left_shift_rval(Rval, Shift) =
     ( if Shift = 0 then
         Rval
     else
-        binop(unchecked_left_shift, Rval, const(llconst_int(Shift)))
+        binop(unchecked_left_shift(int_type_int), Rval,
+            const(llconst_int(Shift)))
     ).
 
 :- func maybe_left_shift_int(int, int) = int.
@@ -2290,7 +2402,8 @@ maybe_left_shift_int(X, Shift) =
 :- func right_shift_rval(rval, int) = rval.
 
 right_shift_rval(Rval, Shift) =
-    binop(unchecked_right_shift, Rval, const(llconst_int(Shift))).
+    binop(unchecked_right_shift(int_type_int), Rval,
+        const(llconst_int(Shift))).
 
 :- func bitwise_or_cell_arg(cell_arg, cell_arg) = cell_arg.
 
@@ -2308,7 +2421,7 @@ bitwise_or_cell_arg(CellArgA, CellArgB, CellArg) :-
     (
         CellArgA = cell_arg_full_word(RvalA, CompletenessA),
         CellArgB = cell_arg_full_word(RvalB, CompletenessB),
-        Expr = binop(bitwise_or, RvalA, RvalB),
+        Expr = binop(bitwise_or(int_type_int), RvalA, RvalB),
         Completeness = combine_completeness(CompletenessA, CompletenessB),
         CellArg = cell_arg_full_word(Expr, Completeness)
     ;

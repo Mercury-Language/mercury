@@ -265,6 +265,12 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_DUMMY:
         case MR_TYPECTOR_REP_INT:
         case MR_TYPECTOR_REP_UINT:
+        case MR_TYPECTOR_REP_INT8:
+        case MR_TYPECTOR_REP_UINT8:
+        case MR_TYPECTOR_REP_INT16:
+        case MR_TYPECTOR_REP_UINT16:
+        case MR_TYPECTOR_REP_INT32:
+        case MR_TYPECTOR_REP_UINT32:
         case MR_TYPECTOR_REP_FLOAT:
         case MR_TYPECTOR_REP_CHAR:
         case MR_TYPECTOR_REP_STRING:

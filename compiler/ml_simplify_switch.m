@@ -150,8 +150,7 @@ is_integral_type(MLDSType) = IsIntegral :-
     ;
         MLDSType = mercury_type(_, CtorCat, _),
         (
-            ( CtorCat = ctor_cat_builtin(cat_builtin_int)
-            ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
+            ( CtorCat = ctor_cat_builtin(cat_builtin_int(_))
             ; CtorCat = ctor_cat_builtin(cat_builtin_char)
             ; CtorCat = ctor_cat_enum(cat_enum_mercury)
             ),
@@ -288,7 +287,8 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     ( if FirstVal = 0 then
         Index = Rval
     else
-        Index = ml_binop(int_sub, Rval, ml_const(mlconst_int(FirstVal)))
+        Index = ml_binop(int_sub(int_type_int), Rval,
+            ml_const(mlconst_int(FirstVal)))
     ),
 
     % Now generate the jump table.
@@ -500,11 +500,11 @@ ml_gen_case_match_conds([Cond1, Cond2 | Conds], SwitchRval) =
 :- func ml_gen_case_match_cond(mlds_case_match_cond, mlds_rval) = mlds_rval.
 
 ml_gen_case_match_cond(match_value(CaseRval), SwitchRval) =
-    ml_binop(eq, CaseRval, SwitchRval).
+    ml_binop(eq(int_type_int), CaseRval, SwitchRval).
 ml_gen_case_match_cond(match_range(MinRval, MaxRval), SwitchRval) =
     ml_binop(logical_and,
-        ml_binop(int_gt, SwitchRval, MinRval),
-        ml_binop(int_le, SwitchRval, MaxRval)).
+        ml_binop(int_gt(int_type_int), SwitchRval, MinRval),
+        ml_binop(int_le(int_type_int), SwitchRval, MaxRval)).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_simplify_switch.

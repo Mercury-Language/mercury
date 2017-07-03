@@ -23,6 +23,8 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -35,9 +37,8 @@
     ;       strip_tag
     ;       mkbody
     ;       unmkbody
-    ;       bitwise_complement
+    ;       bitwise_complement(int_type)
     ;       logical_not
-    ;       uint_bitwise_complement
     ;       hash_string
     ;       hash_string2
     ;       hash_string3
@@ -46,21 +47,25 @@
     ;       hash_string6.
 
 :- type binary_op
-    --->    int_add
-    ;       int_sub
-    ;       int_mul
-    ;       int_div % assumed to truncate toward zero
-    ;       int_mod % remainder (w.r.t. truncating integer division)
-                    % XXX `mod' should be renamed `rem'
-    ;       unchecked_left_shift
-    ;       unchecked_right_shift
-    ;       bitwise_and
-    ;       bitwise_or
-    ;       bitwise_xor
+    --->    int_add(int_type)
+    ;       int_sub(int_type)
+    ;       int_mul(int_type)
+    ;       int_div(int_type) % Assumed to truncate toward zero.
+    ;       int_mod(int_type) % Remainder (w.r.t. truncating integer division).
+                              % XXX `mod' should be renamed `rem'
+    ;       unchecked_left_shift(int_type)
+    ;       unchecked_right_shift(int_type)
+    ;       bitwise_and(int_type)
+    ;       bitwise_or(int_type)
+    ;       bitwise_xor(int_type)
     ;       logical_and
     ;       logical_or
-    ;       eq      % ==
-    ;       ne      % !=
+            % The following type are primarily used with integers, but also
+            % with characters and enumerations.
+            % XXX the latter two uses are not covered by int_type, for now we
+            % use the convention that they should use `int_type_int'.
+    ;       eq(int_type)      % ==
+    ;       ne(int_type)      % !=
     ;       body
     ;       array_index(array_elem_type)
     ;       string_unsafe_index_code_unit
@@ -82,10 +87,10 @@
             % or equivalent code on backends which support this, and code
             % equivalent to "strcmp(SA, SB) == 0" on backends which don't.
 
-    ;       int_lt  % signed integer comparisons
-    ;       int_gt
-    ;       int_le
-    ;       int_ge
+    ;       int_lt(int_type)  % signed integer comparisons
+    ;       int_gt(int_type)
+    ;       int_le(int_type)
+    ;       int_ge(int_type)
 
     ;       unsigned_le % unsigned integer comparison (for signed values)
             % Note that the arguments to `unsigned_le' are just ordinary
@@ -93,26 +98,6 @@
             % if they were first cast to an unsigned type, so e.g.
             % binary(unsigned_le, int_const(1), int_const(-1)) returns true,
             % since (MR_Unsigned) 1 <= (MR_Unsigned) -1.
-
-    ;       uint_eq
-    ;       uint_ne
-    ;       uint_lt
-    ;       uint_gt
-    ;       uint_le
-    ;       uint_ge
-
-    ;       uint_add
-    ;       uint_sub
-    ;       uint_mul
-    ;       uint_div
-    ;       uint_mod
-
-    ;       uint_bitwise_and
-    ;       uint_bitwise_or
-    ;       uint_bitwise_xor
-
-    ;       uint_unchecked_left_shift
-    ;       uint_unchecked_right_shift
 
     ;       float_plus      %  XXX the integer versions use different names.
     ;       float_minus     %  E.g add instead of plus etc.
@@ -186,6 +171,12 @@
     --->    leaf(T)
     ;       int_const(int)
     ;       uint_const(uint)
+    ;       int8_const(int)     % XXX FIXED SIZE INTS
+    ;       uint8_const(int)    % XXX FIXED SIZE INTS
+    ;       int16_const(int)    % XXX FIXED SIZE INTS
+    ;       uint16_const(int)   % XXX FIXED SIZE INTS
+    ;       int32_const(int)    % XXX FIXED SIZE INTS
+    ;       uint32_const(int)   % XXX FIXED SIZE INTS
     ;       float_const(float)
     ;       unary(unary_op, simple_expr(T))
     ;       binary(binary_op, simple_expr(T), simple_expr(T)).
@@ -288,8 +279,8 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             % builtin_translation.
             Code = assign(Y, leaf(X))
         ;
-            ( PredName = "builtin_int_gt", CompareOp = int_gt
-            ; PredName = "builtin_int_lt", CompareOp = int_lt
+            ( PredName = "builtin_int_gt", CompareOp = int_gt(int_type_int)
+            ; PredName = "builtin_int_lt", CompareOp = int_lt(int_type_int)
             ),
             ProcNum = 0, Args = [X, Y],
             Code = test(binary(CompareOp, leaf(X), leaf(Y)))
@@ -312,22 +303,33 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
     ;
         ModuleName = "term_size_prof_builtin",
         PredName = "term_size_plus", ProcNum = 0, Args = [X, Y, Z],
-        Code = assign(Z, binary(int_add, leaf(X), leaf(Y)))
+        Code = assign(Z, binary(int_add(int_type_int), leaf(X), leaf(Y)))
     ;
-        ModuleName = "int",
+        ( ModuleName = "int", IntType = int_type_int
+        ; ModuleName = "uint", IntType = int_type_uint
+        ; ModuleName = "int8", IntType = int_type_int8
+        ; ModuleName = "uint8", IntType = int_type_uint8
+        ; ModuleName = "int16", IntType = int_type_int16
+        ; ModuleName = "uint16", IntType = int_type_uint16
+        ; ModuleName = "int32", IntType = int_type_int32
+        ; ModuleName = "uint32", IntType = int_type_uint32
+        ),
         (
             PredName = "+",
             (
                 Args = [X, Y, Z],
                 (
                     ProcNum = 0,
-                    Code = assign(Z, binary(int_add, leaf(X), leaf(Y)))
+                    Code = assign(Z,
+                        binary(int_add(IntType), leaf(X), leaf(Y)))
                 ;
                     ProcNum = 1,
-                    Code = assign(X, binary(int_sub, leaf(Z), leaf(Y)))
+                    Code = assign(X,
+                        binary(int_sub(IntType), leaf(Z), leaf(Y)))
                 ;
                     ProcNum = 2,
-                    Code = assign(Y, binary(int_sub, leaf(Z), leaf(X)))
+                    Code = assign(Y,
+                        binary(int_sub(IntType), leaf(Z), leaf(X)))
                 )
             ;
                 Args = [X, Y],
@@ -340,124 +342,62 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
                 Args = [X, Y, Z],
                 (
                     ProcNum = 0,
-                    Code = assign(Z, binary(int_sub, leaf(X), leaf(Y)))
+                    Code = assign(Z,
+                        binary(int_sub(IntType), leaf(X), leaf(Y)))
                 ;
                     ProcNum = 1,
-                    Code = assign(X, binary(int_add, leaf(Y), leaf(Z)))
+                    Code = assign(X,
+                        binary(int_add(IntType), leaf(Y), leaf(Z)))
                 ;
                     ProcNum = 2,
-                    Code = assign(Y, binary(int_sub, leaf(X), leaf(Z)))
+                    Code = assign(Y,
+                        binary(int_sub(IntType), leaf(X), leaf(Z)))
                 )
             ;
                 Args = [X, Y],
                 ProcNum = 0,
-                Code = assign(Y, binary(int_sub, int_const(0), leaf(X)))
+                Code = assign(Y,
+                    binary(int_sub(IntType), int_const(0), leaf(X)))
             )
         ;
             PredName = "xor", Args = [X, Y, Z],
             (
                 ProcNum = 0,
-                Code = assign(Z, binary(bitwise_xor, leaf(X), leaf(Y)))
+                Code = assign(Z,
+                    binary(bitwise_xor(IntType), leaf(X), leaf(Y)))
             ;
                 ProcNum = 1,
-                Code = assign(Y, binary(bitwise_xor, leaf(X), leaf(Z)))
+                Code = assign(Y,
+                    binary(bitwise_xor(IntType), leaf(X), leaf(Z)))
             ;
                 ProcNum = 2,
-                Code = assign(X, binary(bitwise_xor, leaf(Y), leaf(Z)))
+                Code = assign(X,
+                    binary(bitwise_xor(IntType), leaf(Y), leaf(Z)))
             )
         ;
-            ( PredName = "plus", ArithOp = int_add
-            ; PredName = "minus", ArithOp = int_sub
-            ; PredName = "*", ArithOp = int_mul
-            ; PredName = "times", ArithOp = int_mul
-            ; PredName = "unchecked_quotient", ArithOp = int_div
-            ; PredName = "unchecked_rem", ArithOp = int_mod
+            ( PredName = "plus",  ArithOp = int_add(IntType)
+            ; PredName = "minus", ArithOp = int_sub(IntType)
+            ; PredName = "*", ArithOp = int_mul(IntType)
+            ; PredName = "times", ArithOp = int_mul(IntType)
+            ; PredName = "unchecked_quotient", ArithOp = int_div(IntType)
+            ; PredName = "unchecked_rem", ArithOp = int_mod(IntType)
             ; PredName = "unchecked_left_shift",
-                ArithOp = unchecked_left_shift
+                ArithOp = unchecked_left_shift(IntType)
             ; PredName = "unchecked_right_shift",
-                ArithOp = unchecked_right_shift
-            ; PredName = "/\\", ArithOp = bitwise_and
-            ; PredName = "\\/", ArithOp = bitwise_or
+                ArithOp = unchecked_right_shift(IntType)
+            ; PredName = "/\\", ArithOp = bitwise_and(IntType)
+            ; PredName = "\\/", ArithOp = bitwise_or(IntType)
             ),
             ProcNum = 0, Args = [X, Y, Z],
             Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))
         ;
             PredName = "\\", ProcNum = 0, Args = [X, Y],
-            Code = assign(Y, unary(bitwise_complement, leaf(X)))
+            Code = assign(Y, unary(bitwise_complement(IntType), leaf(X)))
         ;
-            ( PredName = ">", CompareOp = int_gt
-            ; PredName = "<", CompareOp = int_lt
-            ; PredName = ">=", CompareOp = int_ge
-            ; PredName = "=<", CompareOp = int_le
-            ),
-            ProcNum = 0, Args = [X, Y],
-            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
-        )
-    ;
-        ModuleName = "uint",
-        (
-            PredName = "\\",
-            ProcNum = 0,
-            Args = [X, Y],
-            Code = assign(Y, unary(uint_bitwise_complement, leaf(X)))
-        ;
-            PredName = "+",
-            Args = [X, Y, Z],
-            (
-                ProcNum = 0,
-                Code = assign(Z, binary(uint_add, leaf(X), leaf(Y)))
-            ;
-                ProcNum = 1,
-                Code = assign(X, binary(uint_sub, leaf(Z), leaf(Y)))
-            ;
-                ProcNum = 2,
-                Code = assign(Y, binary(uint_sub, leaf(Z), leaf(X)))
-            )
-        ;
-            PredName = "-",
-            Args = [X, Y, Z],
-            (
-                ProcNum = 0,
-                Code = assign(Z, binary(int_sub, leaf(X), leaf(Y)))
-            ;
-                ProcNum = 1,
-                Code = assign(X, binary(uint_add, leaf(Y), leaf(Z)))
-            ;
-                ProcNum = 2,
-                Code = assign(Y, binary(uint_sub, leaf(X), leaf(Z)))
-            )
-        ;
-            ( PredName = "*", ArithOp = uint_mul
-            ; PredName = "unchecked_quotient", ArithOp = uint_div
-            ; PredName = "unchecked_rem", ArithOp = uint_mod
-            ; PredName = "/\\", ArithOp = uint_bitwise_and
-            ; PredName = "\\/", ArithOp = uint_bitwise_or
-            ; PredName = "unchecked_left_shift",
-                ArithOp = uint_unchecked_left_shift
-            ; PredName = "unchecked_right_shift",
-                ArithOp = uint_unchecked_right_shift
-            ),
-            ProcNum = 0,
-            Args = [X, Y, Z],
-            Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))
-        ;
-            PredName = "xor",
-            Args = [X, Y, Z],
-            (
-                ProcNum = 0,
-                Code = assign(Z, binary(uint_bitwise_xor, leaf(X), leaf(Y)))
-            ;
-                ProcNum = 1,
-                Code = assign(Y, binary(uint_bitwise_xor, leaf(X), leaf(Z)))
-            ;
-                ProcNum = 2,
-                Code = assign(X, binary(uint_bitwise_xor, leaf(Y), leaf(Z)))
-            )
-        ;
-            ( PredName = ">", CompareOp = uint_gt
-            ; PredName = "<", CompareOp = uint_lt
-            ; PredName = ">=", CompareOp = uint_ge
-            ; PredName = "=<", CompareOp = uint_le
+            ( PredName = ">", CompareOp = int_gt(IntType)
+            ; PredName = "<", CompareOp = int_lt(IntType)
+            ; PredName = ">=", CompareOp = int_ge(IntType)
+            ; PredName = "=<", CompareOp = int_le(IntType)
             ),
             ProcNum = 0, Args = [X, Y],
             Code = test(binary(CompareOp, leaf(X), leaf(Y)))

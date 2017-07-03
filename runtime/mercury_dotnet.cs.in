@@ -338,8 +338,14 @@ public enum TypeCtorRep {
     MR_TYPECTOR_REP_BITMAP                  = 44,
     MR_TYPECTOR_REP_FOREIGN_ENUM            = 45,
     MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ     = 46,
-    MR_TYPECTOR_REP_UNKNOWN                 = 47,
-    MR_TYPECTOR_REP_MAX                     = 48
+    MR_TYPECTOR_REP_INT8                    = 47,
+    MR_TYPECTOR_REP_UINT8                   = 48,
+    MR_TYPECTOR_REP_INT16                   = 49,
+    MR_TYPECTOR_REP_UINT16                  = 50,
+    MR_TYPECTOR_REP_INT32                   = 51,
+    MR_TYPECTOR_REP_UINT43                  = 52,
+    MR_TYPECTOR_REP_UNKNOWN                 = 53,
+    MR_TYPECTOR_REP_MAX                     = 54
 }
 
 public class PseudoTypeInfo {

@@ -60,6 +60,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 
 :- import_module assoc_list.
@@ -727,8 +728,8 @@ ok_int_const(_N, lt_int_least32).
 ok_int_const(_N, lt_uint_least32).
 ok_int_const(_N, lt_bool) :-
     unexpected($module, $pred, "not integer constant").
-ok_int_const(_N, lt_integer).
-ok_int_const(_N, lt_unsigned).
+ok_int_const(_N, lt_int(int_type_int)).
+ok_int_const(_N, lt_int(int_type_uint)).
 ok_int_const(_, lt_float) :-
     unexpected($module, $pred, "not integer constant").
 ok_int_const(_, lt_word) :-

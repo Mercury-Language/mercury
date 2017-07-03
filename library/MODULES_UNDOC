@@ -1,6 +1,9 @@
 backjump.m
 erlang_builtin.m
 erlang_rtti_implementation.m
+int8.m
+int16.m
+int32.m
 mer_std.m
 mutvar.m
 par_builtin.m
@@ -17,3 +20,6 @@ string.to_string.m
 table_builtin.m
 term_size_prof_builtin.m
 test_bitset.m
+uint8.m
+uint16.m
+uint32.m

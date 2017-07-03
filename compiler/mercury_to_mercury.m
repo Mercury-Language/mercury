@@ -267,6 +267,24 @@ mercury_format_cons_id(NeedsBrackets, ConsId, !U) :-
         ConsId = uint_const(UInt),
         add_uint(UInt, !U)
     ;
+        ConsId = int8_const(Int8),
+        add_int8(Int8, !U)
+    ;
+        ConsId = uint8_const(UInt8),
+        add_uint8(UInt8, !U)
+    ;
+        ConsId = int16_const(Int16),
+        add_int16(Int16, !U)
+    ;
+        ConsId = uint16_const(UInt16),
+        add_uint16(UInt16, !U)
+    ;
+        ConsId = int32_const(Int32),
+        add_int32(Int32, !U)
+    ;
+        ConsId = uint32_const(UInt32),
+        add_uint32(UInt32, !U)
+    ;
         ConsId = float_const(Float),
         add_float(Float, !U)
     ;

@@ -66,6 +66,12 @@
     ;       tuple_cons(ground)
     ;       int_const(ground)
     ;       uint_const(ground)
+    ;       int8_const(ground)
+    ;       uint8_const(ground)
+    ;       int16_const(ground)
+    ;       uint16_const(ground)
+    ;       int32_const(ground)
+    ;       uint32_const(ground)
     ;       float_const(ground)
     ;       char_const(ground)
     ;       string_const(ground).
@@ -282,6 +288,24 @@ cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info) :-
         ConsId = uint_const(UInt),
         Term = elds_uint(UInt)
     ;
+        ConsId = int8_const(Int8),
+        Term = elds_int8(Int8)
+    ;
+        ConsId = uint8_const(UInt8),
+        Term = elds_uint8(UInt8)
+    ;
+        ConsId = int16_const(Int16),
+        Term = elds_int16(Int16)
+    ;
+        ConsId = uint16_const(UInt16),
+        Term = elds_uint16(UInt16)
+    ;
+        ConsId = int32_const(Int32),
+        Term = elds_int32(Int32)
+    ;
+        ConsId = uint32_const(UInt32),
+        Term = elds_uint32(UInt32)
+    ;
         ConsId = float_const(Float),
         Term = elds_float(Float)
     ;
@@ -298,6 +322,12 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         ; ConsId = tuple_cons(_)
         ; ConsId = int_const(_)
         ; ConsId = uint_const(_)
+        ; ConsId = int8_const(_)
+        ; ConsId = uint8_const(_)
+        ; ConsId = int16_const(_)
+        ; ConsId = uint16_const(_)
+        ; ConsId = int32_const(_)
+        ; ConsId = uint32_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

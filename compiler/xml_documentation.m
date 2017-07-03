@@ -469,8 +469,9 @@ mer_type_to_xml(TVarset, defined_type(TypeName, Args, _)) = Xml :-
     XmlName = name_to_xml(TypeName),
     XmlArgs = xml_list("type_args", mer_type_to_xml(TVarset), Args),
     Xml = elem("type", [Ref], [XmlName, XmlArgs]).
-mer_type_to_xml(_, builtin_type(builtin_type_int)) = elem("int", [], []).
-mer_type_to_xml(_, builtin_type(builtin_type_uint)) = elem("uint", [], []).
+mer_type_to_xml(_, builtin_type(builtin_type_int(IntType))) = Xml :-
+    int_type_to_string(IntType, IntTypeString),
+    Xml = elem(IntTypeString, [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_float)) = elem("float", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_string)) = elem("string", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_char)) =
@@ -702,6 +703,18 @@ cons_id_to_xml(tuple_cons(Arity)) =
 cons_id_to_xml(int_const(I)) = tagged_int("int", I).
 cons_id_to_xml(uint_const(_)) = _ :-
     unexpected($file, $pred, "NYI uint").
+cons_id_to_xml(int8_const(_)) = _ :-
+    unexpected($file, $pred, "NYI int8").
+cons_id_to_xml(uint8_const(_)) = _ :-
+    unexpected($file, $pred, "NYI uint8").
+cons_id_to_xml(int16_const(_)) = _ :-
+    unexpected($file, $pred, "NYI int16").
+cons_id_to_xml(uint16_const(_)) = _ :-
+    unexpected($file, $pred, "NYI uint16").
+cons_id_to_xml(int32_const(_)) = _ :-
+    unexpected($file, $pred, "NYI int32").
+cons_id_to_xml(uint32_const(_)) = _ :-
+    unexpected($file, $pred, "NYI uint32").
 cons_id_to_xml(float_const(F)) = tagged_float("float", F).
 cons_id_to_xml(char_const(C)) = tagged_char("char", C).
 cons_id_to_xml(string_const(S)) = tagged_string("string", S).

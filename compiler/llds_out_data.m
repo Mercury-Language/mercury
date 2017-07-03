@@ -161,6 +161,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module int.
@@ -548,13 +549,13 @@ output_double_stackvar_ptr(Info, StackType, SlotNum, !IO) :-
 :- pred llds_types_match(llds_type::in, llds_type::in) is semidet.
 
 llds_types_match(Type, Type).
-llds_types_match(lt_word, lt_unsigned).
-llds_types_match(lt_word, lt_integer).
+llds_types_match(lt_word, lt_int(int_type_int)).
+llds_types_match(lt_word, lt_int(int_type_uint)).
 llds_types_match(lt_word, lt_bool).
-llds_types_match(lt_bool, lt_integer).
-llds_types_match(lt_bool, lt_unsigned).
+llds_types_match(lt_bool, lt_int(int_type_int)).
+llds_types_match(lt_bool, lt_int(int_type_uint)).
 llds_types_match(lt_bool, lt_word).
-llds_types_match(lt_integer, lt_bool).
+llds_types_match(lt_int(int_type_int), lt_bool).
 
 output_llds_type_cast(LLDSType, !IO) :-
     io.write_string("(", !IO),
@@ -575,10 +576,22 @@ output_llds_type(lt_uint_least32, !IO) :-
     io.write_string("MR_uint_least32_t", !IO).
 output_llds_type(lt_bool, !IO) :-
     io.write_string("MR_Integer", !IO).
-output_llds_type(lt_integer, !IO) :-
+output_llds_type(lt_int(int_type_int), !IO) :-
     io.write_string("MR_Integer", !IO).
-output_llds_type(lt_unsigned, !IO) :-
+output_llds_type(lt_int(int_type_uint), !IO) :-
     io.write_string("MR_Unsigned", !IO).
+output_llds_type(lt_int(int_type_int8), !IO) :-
+    io.write_string("int8_t", !IO).
+output_llds_type(lt_int(int_type_uint8), !IO) :-
+    io.write_string("uint8_t", !IO).
+output_llds_type(lt_int(int_type_int16), !IO) :-
+    io.write_string("int16_t", !IO).
+output_llds_type(lt_int(int_type_uint16), !IO) :-
+    io.write_string("uint16_t", !IO).
+output_llds_type(lt_int(int_type_int32), !IO) :-
+    io.write_string("int32_t", !IO).
+output_llds_type(lt_int(int_type_uint32), !IO) :-
+    io.write_string("uint32_t", !IO).
 output_llds_type(lt_float, !IO) :-
     io.write_string("MR_Float", !IO).
 output_llds_type(lt_word, !IO) :-
@@ -869,14 +882,14 @@ output_rval(Info, Rval, !IO) :-
             io.write_string("(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_data_ptr, !IO),
             io.write_string(")[", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), !IO),
             io.write_string("]", !IO)
         ;
             Op = string_unsafe_index_code_unit,
             io.write_string("MR_nth_code_unit(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_data_ptr, !IO),
             io.write_string(", ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), !IO),
             io.write_string(")", !IO)
         ;
             Op = pointer_equal_conservative,
@@ -941,40 +954,40 @@ output_rval(Info, Rval, !IO) :-
         ;
             Op = unsigned_le,
             io.write_string("(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_unsigned, !IO),
+            output_rval_as_type(Info, SubRvalA, lt_int(int_type_uint), !IO),
             io.write_string(" <= ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_unsigned, !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(int_type_uint), !IO),
             io.write_string(")", !IO)
         ;
-            ( Op = int_add, OpStr = "+"
-            ; Op = int_sub, OpStr = "-"
-            ; Op = int_mul, OpStr = "*"
-            ; Op = int_div, OpStr = "/"
-            ; Op = int_mod, OpStr = "%"
-            ; Op = eq, OpStr = "=="
-            ; Op = ne, OpStr = "!="
-            ; Op = int_lt, OpStr = "<"
-            ; Op = int_gt, OpStr = ">"
-            ; Op = int_le, OpStr = "<="
-            ; Op = int_ge, OpStr = ">="
-            ; Op = unchecked_left_shift, OpStr = "<<"
-            ; Op = unchecked_right_shift, OpStr = ">>"
-            ; Op = bitwise_and, OpStr = "&"
-            ; Op = bitwise_or, OpStr = "|"
-            ; Op = bitwise_xor, OpStr = "^"
-            ; Op = logical_and, OpStr = "&&"
-            ; Op = logical_or, OpStr = "||"
+            ( Op = int_add(IntType), OpStr = "+"
+            ; Op = int_sub(IntType), OpStr = "-"
+            ; Op = int_mul(IntType), OpStr = "*"
+            ; Op = int_div(IntType), OpStr = "/"
+            ; Op = int_mod(IntType), OpStr = "%"
+            ; Op = eq(IntType), OpStr = "=="
+            ; Op = ne(IntType), OpStr = "!="
+            ; Op = int_lt(IntType), OpStr = "<"
+            ; Op = int_gt(IntType), OpStr = ">"
+            ; Op = int_le(IntType), OpStr = "<="
+            ; Op = int_ge(IntType), OpStr = ">="
+            ; Op = bitwise_and(IntType), OpStr = "&"
+            ; Op = bitwise_or(IntType), OpStr = "|"
+            ; Op = bitwise_xor(IntType), OpStr = "^"
             ),
             ( if
                 % Special-case equality ops to avoid some unnecessary casts --
                 % there is no difference between signed and unsigned equality,
                 % so if both args are unsigned, we don't need to cast them to
                 % MR_Integer.
-                ( Op = eq ; Op = ne ),
+                ( Op = eq(_) ; Op = ne(_) ),
                 llds.rval_type(SubRvalA, SubRvalAType),
-                ( SubRvalAType = lt_word ; SubRvalAType = lt_unsigned ),
+                ( SubRvalAType = lt_word
+                ; SubRvalAType = lt_int(int_type_uint)
+                ),
                 llds.rval_type(SubRvalB, SubRvalBType),
-                ( SubRvalBType = lt_word ; SubRvalBType = lt_unsigned )
+                ( SubRvalBType = lt_word
+                ; SubRvalBType = lt_int(int_type_uint)
+                )
             then
                 io.write_string("(", !IO),
                 output_rval(Info, SubRvalA, !IO),
@@ -1002,37 +1015,36 @@ output_rval(Info, Rval, !IO) :-
         %       io.write_string(")")
             else
                 io.write_string("(", !IO),
-                output_rval_as_type(Info, SubRvalA, lt_integer, !IO),
+                output_rval_as_type(Info, SubRvalA, lt_int(IntType), !IO),
                 io.write_string(" ", !IO),
                 io.write_string(OpStr, !IO),
                 io.write_string(" ", !IO),
-                output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
+                output_rval_as_type(Info, SubRvalB, lt_int(IntType), !IO),
                 io.write_string(")", !IO)
             )
         ;
-            ( Op = uint_eq, OpStr = "=="
-            ; Op = uint_ne, OpStr = "!="
-            ; Op = uint_lt, OpStr = "<"
-            ; Op = uint_gt, OpStr = ">"
-            ; Op = uint_le, OpStr = "<="
-            ; Op = uint_ge, OpStr = ">="
-            ; Op = uint_add, OpStr = "+"
-            ; Op = uint_sub, OpStr = "-"
-            ; Op = uint_mul, OpStr = "*"
-            ; Op = uint_div, OpStr = "/"
-            ; Op = uint_mod, OpStr = "%"
-            ; Op = uint_bitwise_and, OpStr = "&"
-            ; Op = uint_bitwise_or, OpStr = "|"
-            ; Op = uint_bitwise_xor, OpStr = "^"
-            ; Op = uint_unchecked_left_shift, OpStr = "<<"
-            ; Op = uint_unchecked_right_shift, OpStr = ">>"
+            ( Op = logical_and, OpStr = "&&"
+            ; Op = logical_or, OpStr = "||"
             ),
             io.write_string("(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_unsigned, !IO),
+            output_rval_as_type(Info, SubRvalA, lt_int(int_type_int), !IO),
             io.write_string(" ", !IO),
             io.write_string(OpStr, !IO),
             io.write_string(" ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_unsigned, !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), !IO),
+            io.write_string(")", !IO)
+        ;
+            % The second operand of the shift operatators always has type
+            % `int'.
+            ( Op = unchecked_left_shift(IntType), OpStr = "<<"
+            ; Op = unchecked_right_shift(IntType), OpStr = ">>"
+            ),
+            io.write_string("(", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_int(IntType), !IO),
+            io.write_string(" ", !IO),
+            io.write_string(OpStr, !IO),
+            io.write_string(" ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), !IO),
             io.write_string(")", !IO)
         ;
             Op = str_cmp,
@@ -1053,16 +1065,16 @@ output_rval(Info, Rval, !IO) :-
         ;
             Op = body,
             io.write_string("MR_body(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_integer, !IO),
+            output_rval_as_type(Info, SubRvalA, lt_int(int_type_int), !IO),
             io.write_string(", ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), !IO),
             io.write_string(")", !IO)
         ;
             Op = float_word_bits,
             io.write_string("MR_float_word_bits(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_float, !IO),
             io.write_string(", ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), !IO),
             io.write_string(")", !IO)
         ;
             Op = float_from_dword,
@@ -1150,7 +1162,7 @@ output_rval(Info, Rval, !IO) :-
             ( if SubRval = const(llconst_int(SlotNum)) then
                 io.write_int(SlotNum, !IO)
             else
-                output_rval_as_type(Info, SubRval, lt_integer, !IO)
+                output_rval_as_type(Info, SubRval, lt_int(int_type_int), !IO)
             ),
             io.write_string(")", !IO)
         ;
@@ -1160,7 +1172,8 @@ output_rval(Info, Rval, !IO) :-
             ( if SubRval = const(llconst_int(SlotNum)) then
                 io.write_int(SlotNum, !IO)
             else
-                output_rval_as_type(Info, SubRval, lt_integer, !IO)
+                output_rval_as_type(Info, SubRval, lt_int(int_type_int),
+                    !IO)
             ),
             io.write_string(")", !IO)
         ;
@@ -1180,7 +1193,8 @@ output_rval(Info, Rval, !IO) :-
             ( if FieldNumRval = const(llconst_int(FieldNum)) then
                 io.write_int(FieldNum, !IO)
             else
-                output_rval_as_type(Info, FieldNumRval, lt_integer, !IO)
+                output_rval_as_type(Info, FieldNumRval, lt_int(int_type_int),
+                    !IO)
             ),
             io.write_string(")", !IO)
         )
@@ -1202,6 +1216,24 @@ output_rval_const(Info, Const, !IO) :-
     ;
         Const = llconst_uint(N),
         c_util.output_uint_expr_cur_stream(N, !IO)
+    ;
+        Const = llconst_int8(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = llconst_uint8(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = llconst_int16(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = llconst_uint16(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = llconst_int32(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = llconst_uint32(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
     ;
         Const = llconst_foreign(Value, Type),
         io.write_char('(', !IO),
@@ -1292,19 +1324,7 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
     ( if Arity = 0 then
         ( if
             ModuleStr = "builtin",
-            ( if Name = "int" then
-                Macro = "MR_INT_CTOR_ADDR"
-            else if Name = "uint" then
-                Macro = "MR_UINT_CTOR_ADDR"
-            else if Name = "float" then
-                Macro = "MR_FLOAT_CTOR_ADDR"
-            else if Name = "string" then
-                Macro = "MR_STRING_CTOR_ADDR"
-            else if Name = "character" then
-                Macro = "MR_CHAR_CTOR_ADDR"
-            else
-                fail
-            )
+            builtin_type_to_type_ctor_addr(Name, Macro)
         then
             io.write_string(Macro, !IO)
         else if
@@ -1339,6 +1359,44 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
             [s(ModuleStr), s(Name), i(Arity)], !IO)
     ).
 
+:- pred builtin_type_to_type_ctor_addr(string::in, string::out) is semidet.
+
+builtin_type_to_type_ctor_addr(Name, Macro) :-
+    (
+        Name = "int",
+        Macro = "MR_INT_CTOR_ADDR"
+    ;
+        Name = "uint",
+        Macro = "MR_UINT_CTOR_ADDR"
+    ;
+        Name = "int8",
+        Macro = "MR_INT8_CTOR_ADDR"
+    ;
+        Name = "uint8",
+        Macro = "MR_UINT8_CTOR_ADDR"
+    ;
+        Name = "int16",
+        Macro = "MR_INT16_CTOR_ADDR"
+    ;
+        Name = "uint16",
+        Macro = "MR_UINT16_CTOR_ADDR"
+    ;
+        Name = "int32",
+        Macro = "MR_INT32_CTOR_ADDR"
+    ;
+        Name = "uint32",
+        Macro = "MR_UINT32_CTOR_ADDR"
+    ;
+        Name = "float",
+        Macro = "MR_FLOAT_CTOR_ADDR"
+    ;
+        Name = "string",
+        Macro = "MR_STRING_CTOR_ADDR"
+    ;
+        Name = "character",
+        Macro = "MR_CHAR_CTOR_ADDR"
+    ).
+
 output_rval_as_type(Info, Rval, DesiredType, !IO) :-
     llds.rval_type(Rval, ActualType),
     ( if llds_types_match(DesiredType, ActualType) then
@@ -1346,7 +1404,7 @@ output_rval_as_type(Info, Rval, DesiredType, !IO) :-
         output_rval(Info, Rval, !IO)
     else
         % We need to convert to the right type first.
-        % Convertions to/from float must be treated specially;
+        % Conversions to/from float must be treated specially;
         % for the others, we can just use a cast.
         ( if DesiredType = lt_float then
             io.write_string("MR_word_to_float(", !IO),
@@ -1568,27 +1626,27 @@ is_int_cmp(Test, Left, RightConst, OpStr, NegOpStr) :-
     Test = binop(Op, Left, Right),
     Right = const(llconst_int(RightConst)),
     (
-        Op = eq,
+        Op = eq(int_type_int),
         OpStr = "MR_INT_EQ",
         NegOpStr = "MR_INT_NE"
     ;
-        Op = ne,
+        Op = ne(int_type_int),
         OpStr = "MR_INT_NE",
         NegOpStr = "MR_INT_EQ"
     ;
-        Op = int_lt,
+        Op = int_lt(int_type_int),
         OpStr = "MR_INT_LT",
         NegOpStr = "MR_INT_GE"
     ;
-        Op = int_gt,
+        Op = int_gt(int_type_int),
         OpStr = "MR_INT_GT",
         NegOpStr = "MR_INT_LT"
     ;
-        Op = int_le,
+        Op = int_le(int_type_int),
         OpStr = "MR_INT_LE",
         NegOpStr = "MR_INT_GT"
     ;
-        Op = int_ge,
+        Op = int_ge(int_type_int),
         OpStr = "MR_INT_GE",
         NegOpStr = "MR_INT_LT"
     ).
@@ -1600,17 +1658,17 @@ is_ptag_test(Test, Rval, Ptag, Negated) :-
     Left = unop(tag, Rval),
     Right = unop(mktag, const(llconst_int(Ptag))),
     (
-        Op = eq,
+        Op = eq(_),
         Negated = no
     ;
-        Op = ne,
+        Op = ne(_),
         Negated = yes
     ).
 
 :- pred is_remote_stag_test(rval::in, rval::in, int::in, int::out) is semidet.
 
 is_remote_stag_test(Test, Rval, Ptag, Stag) :-
-    Test = binop(eq, Left, Right),
+    Test = binop(eq(int_type_int), Left, Right),
     Left = lval(field(yes(Ptag), Rval, Zero)),
     Zero = const(llconst_int(0)),
     Right = const(llconst_int(Stag)).
@@ -1622,10 +1680,10 @@ is_local_stag_test(Test, Rval, Ptag, Stag, Negated) :-
     Test = binop(Op, Rval, Right),
     Right = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
     (
-        Op = eq,
+        Op = eq(_),
         Negated = no
     ;
-        Op = ne,
+        Op = ne(_),
         Negated = yes
     ).
 
@@ -1641,8 +1699,7 @@ direct_field_int_constant(lt_int_least16) = yes.
 direct_field_int_constant(lt_uint_least16) = yes.
 direct_field_int_constant(lt_int_least32) = yes.
 direct_field_int_constant(lt_uint_least32) = yes.
-direct_field_int_constant(lt_integer) = yes.
-direct_field_int_constant(lt_unsigned) = yes.
+direct_field_int_constant(lt_int(_)) = yes.
 direct_field_int_constant(lt_float) = no.
 direct_field_int_constant(lt_string) = no.
 direct_field_int_constant(lt_data_ptr) = no.

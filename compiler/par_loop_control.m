@@ -1371,8 +1371,8 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
         % (for auto-parallelisation), but for now we just set it using
         % a runtime call so that it can be tuned.
         varset.new_named_var("NumContexts", NumContextsVar, !VarSet),
-        add_var_type(NumContextsVar, builtin_type(builtin_type_int),
-            !VarTypes),
+        add_var_type(NumContextsVar,
+            builtin_type(builtin_type_int(int_type_int)), !VarTypes),
         get_lc_default_num_contexts_proc(ModuleInfo,
             LCDefaultNumContextsPredId, LCDefaultNumContextsProcId),
         goal_info_init(set_of_var.list_to_set([NumContextsVar]),
@@ -1463,7 +1463,7 @@ loop_control_var_type = defined_type(Sym, [], kind_star) :-
 
 :- func loop_control_slot_var_type = mer_type.
 
-loop_control_slot_var_type = builtin_type(builtin_type_int).
+loop_control_slot_var_type = builtin_type(builtin_type_int(int_type_int)).
 
 %----------------------------------------------------------------------------%
 

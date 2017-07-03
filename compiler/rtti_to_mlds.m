@@ -1830,6 +1830,12 @@ add_rtti_defn_arcs_const(DefnDataName, Const, !Graph) :-
         ; Const = mlconst_false
         ; Const = mlconst_int(_)
         ; Const = mlconst_uint(_)
+        ; Const = mlconst_int8(_)
+        ; Const = mlconst_uint8(_)
+        ; Const = mlconst_int16(_)
+        ; Const = mlconst_uint16(_)
+        ; Const = mlconst_int32(_)
+        ; Const = mlconst_uint32(_)
         ; Const = mlconst_enum(_, _)
         ; Const = mlconst_char(_)
         ; Const = mlconst_foreign(_, _, _)

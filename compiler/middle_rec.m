@@ -323,18 +323,21 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         IncrAuxReg = singleton(
             llds_instr(
                 assign(AuxReg,
-                    binop(int_add, lval(AuxReg), const(llconst_int(1)))),
+                    binop(int_add(int_type_int), lval(AuxReg),
+                        const(llconst_int(1)))),
                 "increment loop counter")
         ),
         DecrAuxReg = singleton(
             llds_instr(
                 assign(AuxReg,
-                    binop(int_sub, lval(AuxReg), const(llconst_int(1)))),
+                    binop(int_sub(int_type_int), lval(AuxReg),
+                        const(llconst_int(1)))),
                 "decrement loop counter")
         ),
         TestAuxReg = singleton(
             llds_instr(
-                if_val(binop(int_gt, lval(AuxReg), const(llconst_int(0))),
+                if_val(binop(
+                    int_gt(int_type_int), lval(AuxReg), const(llconst_int(0))),
                     code_label(Loop2Label)),
                 "test on upward loop")
         )
@@ -352,7 +355,8 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         IncrAuxReg = empty,
         DecrAuxReg = empty,
         TestAuxReg = singleton(
-            llds_instr(if_val(binop(int_gt, lval(sp), lval(AuxReg)),
+            llds_instr(if_val(binop(
+                int_gt(int_type_int), lval(sp), lval(AuxReg)),
                 code_label(Loop2Label)),
                 "test on upward loop")
         )

@@ -1203,6 +1203,15 @@
     ;       llconst_false
     ;       llconst_int(int)
     ;       llconst_uint(uint)
+
+            % XXX FIXED SIZE INT
+    ;       llconst_int8(int)
+    ;       llconst_uint8(int)
+    ;       llconst_int16(int)
+    ;       llconst_uint16(int)
+    ;       llconst_int32(int)
+    ;       llconst_uint32(int)
+
     ;       llconst_foreign(string, llds_type)
             % A constant in the target language.
             % It may be a #defined constant in C which is why
@@ -1368,11 +1377,10 @@
             % An unsigned version of intleast_32, represented using the C type
             % uint_least32_t.
 
-    ;       lt_integer
+    ;       lt_int(int_type)
+
             % A Mercury `int', represented in C as a value of type `MR_Integer'
             % (which is a signed integral type of the same size as a pointer).
-
-    ;       lt_unsigned
             % Something whose C type is `MR_Unsigned' (the unsigned equivalent
             % of `MR_Integer').
 
@@ -1669,8 +1677,14 @@ rval_type(mem_addr(_), lt_data_ptr).
 
 const_type(llconst_true, lt_bool).
 const_type(llconst_false, lt_bool).
-const_type(llconst_int(_), lt_integer).
-const_type(llconst_uint(_), lt_unsigned).
+const_type(llconst_int(_), lt_int(int_type_int)).
+const_type(llconst_uint(_), lt_int(int_type_uint)).
+const_type(llconst_int8(_), lt_int(int_type_int8)).
+const_type(llconst_uint8(_), lt_int(int_type_uint8)).
+const_type(llconst_int16(_), lt_int(int_type_int16)).
+const_type(llconst_uint16(_), lt_int(int_type_uint16)).
+const_type(llconst_int32(_), lt_int(int_type_int32)).
+const_type(llconst_uint32(_), lt_int(int_type_uint32)).
 const_type(llconst_foreign(_, Type), Type).
 const_type(llconst_float(_), lt_float).
 const_type(llconst_string(_), lt_string).
@@ -1684,15 +1698,14 @@ unop_return_type(unmktag, lt_word).
 unop_return_type(strip_tag, lt_word).
 unop_return_type(mkbody, lt_word).
 unop_return_type(unmkbody, lt_word).
-unop_return_type(bitwise_complement, lt_integer).
+unop_return_type(bitwise_complement(IntType), lt_int(IntType)).
 unop_return_type(logical_not, lt_bool).
-unop_return_type(hash_string, lt_integer).
-unop_return_type(hash_string2, lt_integer).
-unop_return_type(hash_string3, lt_integer).
-unop_return_type(hash_string4, lt_integer).
-unop_return_type(hash_string5, lt_integer).
-unop_return_type(hash_string6, lt_integer).
-unop_return_type(uint_bitwise_complement, lt_unsigned).
+unop_return_type(hash_string, lt_int(int_type_int)).
+unop_return_type(hash_string2, lt_int(int_type_int)).
+unop_return_type(hash_string3, lt_int(int_type_int)).
+unop_return_type(hash_string4, lt_int(int_type_int)).
+unop_return_type(hash_string5, lt_int(int_type_int)).
+unop_return_type(hash_string6, lt_int(int_type_int)).
 
 unop_arg_type(mktag, lt_word).
 unop_arg_type(tag, lt_word).
@@ -1700,7 +1713,7 @@ unop_arg_type(unmktag, lt_word).
 unop_arg_type(strip_tag, lt_word).
 unop_arg_type(mkbody, lt_word).
 unop_arg_type(unmkbody, lt_word).
-unop_arg_type(bitwise_complement, lt_integer).
+unop_arg_type(bitwise_complement(IntType), lt_int(IntType)).
 unop_arg_type(logical_not, lt_bool).
 unop_arg_type(hash_string, lt_string).
 unop_arg_type(hash_string2, lt_string).
@@ -1708,24 +1721,23 @@ unop_arg_type(hash_string3, lt_string).
 unop_arg_type(hash_string4, lt_string).
 unop_arg_type(hash_string5, lt_string).
 unop_arg_type(hash_string6, lt_string).
-unop_arg_type(uint_bitwise_complement, lt_unsigned).
 
-binop_return_type(int_add, lt_integer).
-binop_return_type(int_sub, lt_integer).
-binop_return_type(int_mul, lt_integer).
-binop_return_type(int_div, lt_integer).
-binop_return_type(int_mod, lt_integer).
-binop_return_type(unchecked_left_shift, lt_integer).
-binop_return_type(unchecked_right_shift, lt_integer).
-binop_return_type(bitwise_and, lt_integer).
-binop_return_type(bitwise_or, lt_integer).
-binop_return_type(bitwise_xor, lt_integer).
+binop_return_type(int_add(IntType), lt_int(IntType)).
+binop_return_type(int_sub(IntType), lt_int(IntType)).
+binop_return_type(int_mul(IntType), lt_int(IntType)).
+binop_return_type(int_div(IntType), lt_int(IntType)).
+binop_return_type(int_mod(IntType), lt_int(IntType)).
+binop_return_type(unchecked_left_shift(IntType), lt_int(IntType)).
+binop_return_type(unchecked_right_shift(IntType), lt_int(IntType)).
+binop_return_type(bitwise_and(IntType), lt_int(IntType)).
+binop_return_type(bitwise_or(IntType), lt_int(IntType)).
+binop_return_type(bitwise_xor(IntType), lt_int(IntType)).
 binop_return_type(logical_and, lt_bool).
 binop_return_type(logical_or, lt_bool).
-binop_return_type(eq, lt_bool).
-binop_return_type(ne, lt_bool).
+binop_return_type(eq(_), lt_bool).
+binop_return_type(ne(_), lt_bool).
 binop_return_type(array_index(_Type), lt_word).
-binop_return_type(string_unsafe_index_code_unit, lt_integer).
+binop_return_type(string_unsafe_index_code_unit, lt_int(int_type_int)).
 binop_return_type(offset_str_eq(_), lt_bool).
 binop_return_type(str_eq, lt_bool).
 binop_return_type(str_ne, lt_bool).
@@ -1733,11 +1745,11 @@ binop_return_type(str_lt, lt_bool).
 binop_return_type(str_gt, lt_bool).
 binop_return_type(str_le, lt_bool).
 binop_return_type(str_ge, lt_bool).
-binop_return_type(str_cmp, lt_integer).
-binop_return_type(int_lt, lt_bool).
-binop_return_type(int_gt, lt_bool).
-binop_return_type(int_le, lt_bool).
-binop_return_type(int_ge, lt_bool).
+binop_return_type(str_cmp, lt_int(int_type_int)).
+binop_return_type(int_lt(_), lt_bool).
+binop_return_type(int_gt(_), lt_bool).
+binop_return_type(int_le(_), lt_bool).
+binop_return_type(int_ge(_), lt_bool).
 binop_return_type(unsigned_le, lt_bool).
 binop_return_type(float_plus, lt_float).
 binop_return_type(float_minus, lt_float).
@@ -1755,22 +1767,6 @@ binop_return_type(body, lt_word).
 binop_return_type(compound_eq, lt_bool).
 binop_return_type(compound_lt, lt_bool).
 binop_return_type(pointer_equal_conservative, lt_bool).
-binop_return_type(uint_eq, lt_bool).
-binop_return_type(uint_ne, lt_bool).
-binop_return_type(uint_lt, lt_bool).
-binop_return_type(uint_gt, lt_bool).
-binop_return_type(uint_le, lt_bool).
-binop_return_type(uint_ge, lt_bool).
-binop_return_type(uint_add, lt_unsigned).
-binop_return_type(uint_sub, lt_unsigned).
-binop_return_type(uint_mul, lt_unsigned).
-binop_return_type(uint_div, lt_unsigned).
-binop_return_type(uint_mod, lt_unsigned).
-binop_return_type(uint_bitwise_and, lt_unsigned).
-binop_return_type(uint_bitwise_or, lt_unsigned).
-binop_return_type(uint_bitwise_xor, lt_unsigned).
-binop_return_type(uint_unchecked_left_shift, lt_unsigned).
-binop_return_type(uint_unchecked_right_shift, lt_unsigned).
 
 register_type(reg_r, lt_word).
 register_type(reg_f, lt_float).

@@ -89,7 +89,7 @@ convert_pseudo_type_info(Pseudo, !StaticCellInfo, Rval, LldsType) :-
     (
         Pseudo = type_var(Int),
         Rval = const(llconst_int(Int)),
-        LldsType = lt_integer
+        LldsType = lt_int(int_type_int)
     ;
         Pseudo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
         DataId = rtti_data_id(

@@ -165,6 +165,12 @@
     ;       tcr_func
     ;       tcr_int
     ;       tcr_uint
+    ;       tcr_int8
+    ;       tcr_uint8
+    ;       tcr_int16
+    ;       tcr_uint16
+    ;       tcr_int32
+    ;       tcr_uint32
     ;       tcr_char
     ;       tcr_float
     ;       tcr_string
@@ -890,6 +896,12 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
         ( TypeCtorRep = tcr_subgoal
         ; TypeCtorRep = tcr_int
         ; TypeCtorRep = tcr_uint
+        ; TypeCtorRep = tcr_int8
+        ; TypeCtorRep = tcr_uint8
+        ; TypeCtorRep = tcr_int16
+        ; TypeCtorRep = tcr_uint16
+        ; TypeCtorRep = tcr_int32
+        ; TypeCtorRep = tcr_uint32
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string
@@ -995,6 +1007,12 @@ get_functor_impl(TypeInfo, FunctorNumber,
         ( TypeCtorRep = tcr_subgoal
         ; TypeCtorRep = tcr_int
         ; TypeCtorRep = tcr_uint
+        ; TypeCtorRep = tcr_int8
+        ; TypeCtorRep = tcr_uint8
+        ; TypeCtorRep = tcr_int16
+        ; TypeCtorRep = tcr_uint16
+        ; TypeCtorRep = tcr_int32
+        ; TypeCtorRep = tcr_uint32
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string
@@ -1225,6 +1243,12 @@ type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
         ; TypeCtorRep = tcr_pred
         ; TypeCtorRep = tcr_int
         ; TypeCtorRep = tcr_uint
+        ; TypeCtorRep = tcr_int8
+        ; TypeCtorRep = tcr_uint8
+        ; TypeCtorRep = tcr_int16
+        ; TypeCtorRep = tcr_uint16
+        ; TypeCtorRep = tcr_int32
+        ; TypeCtorRep = tcr_uint32
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_string
@@ -2716,6 +2740,42 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
+        TypeCtorRep = tcr_int8,
+        Functor = "<<int8>>",
+        Ordinal = -1,
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = tcr_uint8,
+        Functor = "<<uint8>>",
+        Ordinal = -1,
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = tcr_int16,
+        Functor = "<<int16>>",
+        Ordinal = -1,
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = tcr_uint16,
+        Functor = "<<uint16>>",
+        Ordinal = -1,
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = tcr_int32,
+        Functor = "<<int32>>",
+        Ordinal = -1,
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = tcr_uint32,
+        Functor = "<<uint32>>",
+        Ordinal = -1,
+        Arity = 0,
+        Arguments = []
+    ;
         TypeCtorRep = tcr_char,
         det_dynamic_cast(Term, Char),
         Functor = string.from_char_list(['\'', Char, '\'']),
@@ -2982,6 +3042,12 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
         ; TypeCtorRep = tcr_func
         ; TypeCtorRep = tcr_int
         ; TypeCtorRep = tcr_uint
+        ; TypeCtorRep = tcr_int8
+        ; TypeCtorRep = tcr_uint8
+        ; TypeCtorRep = tcr_int16
+        ; TypeCtorRep = tcr_uint16
+        ; TypeCtorRep = tcr_int32
+        ; TypeCtorRep = tcr_uint32
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string

@@ -111,6 +111,12 @@ const_is_constant(Const, ExprnOpts, IsConst) :-
         ; Const = llconst_false
         ; Const = llconst_int(_)
         ; Const = llconst_uint(_)
+        ; Const = llconst_int8(_)
+        ; Const = llconst_uint8(_)
+        ; Const = llconst_int16(_)
+        ; Const = llconst_uint16(_)
+        ; Const = llconst_int32(_)
+        ; Const = llconst_uint32(_)
         ; Const = llconst_foreign(_, _)
         ; Const = llconst_string(_)
         ; Const = llconst_multi_string(_)

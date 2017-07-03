@@ -2185,7 +2185,13 @@ that have meanings in Mercury.
 The list of reserved type names is
 @example
 int
+int8
+int16
+int32
 uint
+uint8
+uint16
+uint32
 float
 character
 string
@@ -7130,7 +7136,13 @@ The Mercury primitive types are mapped to the following C types:
 @multitable {Mercury_type} {MR_Unsigned}
 @headitem Mercury type @tab C type
   @item @code{int}    @tab @code{MR_Integer}
+@c  @item @code{int8}   @tab @code{int8_t}
+@c  @item @code{int16}  @tab @code{int16_t}
+@c  @item @code{int32}  @tab @code{int32_t}
   @item @code{uint}   @tab @code{MR_Unsigned}
+@c  @item @code{uint8}   @tab @code{uint8_t}
+@c  @item @code{uint16}  @tab @code{uint16_t}
+@c  @item @code{uint32}  @tab @code{uint32_t}
   @item @code{float}  @tab @code{MR_Float}
   @item @code{char}   @tab @code{MR_Char}
   @item @code{string} @tab @code{MR_String}
@@ -7221,7 +7233,13 @@ Infrastructure (CLI) and C# types:
 @multitable {Mercury_type} {System_String} {double}
   @headitem Mercury type @tab CLI type @tab C# type
   @item @code{int}    @tab @code{System.Int32}  @tab @code{int}
+@c  @item @code{int8}   @tab @code{System.Int8}   @tab @code{sbyte}
+@c  @item @code{int16}  @tab @code{System.Int16}  @tab @code{short}
+@c  @item @code{int32}  @tab @code{System.Int32}  @tab @code{int}
   @item @code{uint}   @tab @code{System.UInt32} @tab @code{uint}
+@c  @item @code{uint8}   @tab @code{System.UInt8}   @tab @code{byte}
+@c  @item @code{uint16}  @tab @code{System.UInt16}  @tab @code{ushort}
+@c  @item @code{uint32}  @tab @code{System.UInt32}  @tab @code{uint}
   @item @code{float}  @tab @code{System.Double} @tab @code{double}
   @item @code{char}   @tab @code{System.Int32}  @tab @code{int}
   @item @code{string} @tab @code{System.String} @tab @code{string}
@@ -7344,7 +7362,13 @@ The Mercury primitive types are mapped to the following Java types:
 @multitable {Mercury_type} {java_lang_String}
   @headitem Mercury type @tab Java type
   @item @code{int}    @tab @code{int}
+@c  @item @code{int8}   @tab @code{byte}
+@c  @item @code{int16}  @tab @code{short}
+@c  @item @code{int32}  @tab @code{int}
   @item @code{uint}   @tab @code{int}
+@c  @item @code{uint8}   @tab @code{byte}
+@c  @item @code{uint16}  @tab @code{short}
+@c  @item @code{uint32}  @tab @code{int}
   @item @code{float}  @tab @code{double}
   @item @code{char}   @tab @code{int}
   @item @code{string} @tab @code{java.lang.String}

@@ -281,8 +281,7 @@
     ;       ctor_cat_user(type_ctor_cat_user).
 
 :- type type_ctor_cat_builtin
-    --->    cat_builtin_int
-    ;       cat_builtin_uint
+    --->    cat_builtin_int(int_type)
     ;       cat_builtin_float
     ;       cat_builtin_char
     ;       cat_builtin_string.
@@ -788,6 +787,12 @@ get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 builtin_type_ctors_with_no_hlds_type_defn =
     [ type_ctor(qualified(mercury_public_builtin_module, "int"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "uint"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "int8"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "uint8"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "int16"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "uint16"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "int32"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "uint32"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "string"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "character"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "float"), 0),
@@ -920,6 +925,12 @@ qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
         ; ConsId0 = closure_cons(_, _)
         ; ConsId0 = int_const(_)
         ; ConsId0 = uint_const(_)
+        ; ConsId0 = int8_const(_)
+        ; ConsId0 = uint8_const(_)
+        ; ConsId0 = int16_const(_)
+        ; ConsId0 = uint16_const(_)
+        ; ConsId0 = int32_const(_)
+        ; ConsId0 = uint32_const(_)
         ; ConsId0 = float_const(_)
         ; ConsId0 = char_const(_)
         ; ConsId0 = string_const(_)

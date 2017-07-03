@@ -599,6 +599,14 @@ cons_table_optimize(!ConsTable) :-
             % the specified unsigned integer value. This is used for uint
             % constants.
 
+            % XXX FIXED SIZE INT
+    ;       int8_tag(int)
+    ;       uint8_tag(int)
+    ;       int16_tag(int)
+    ;       uint16_tag(int)
+    ;       int32_tag(int)
+    ;       uint32_tag(int)
+
     ;       foreign_tag(foreign_language, string)
             % This means the constant is represented by the string which is
             % embedded directly in the target language. This is used for
@@ -782,6 +790,12 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         % But it's safe to be conservative...
         ( Tag = int_tag(_)
         ; Tag = uint_tag(_)
+        ; Tag = int8_tag(_)
+        ; Tag = uint8_tag(_)
+        ; Tag = int16_tag(_)
+        ; Tag = uint16_tag(_)
+        ; Tag = int32_tag(_)
+        ; Tag = uint32_tag(_)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
         ; Tag = foreign_tag(_, _)
@@ -819,6 +833,12 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
     (
         ( Tag = int_tag(_)
         ; Tag = uint_tag(_)
+        ; Tag = int8_tag(_)
+        ; Tag = uint8_tag(_)
+        ; Tag = int16_tag(_)
+        ; Tag = uint16_tag(_)
+        ; Tag = int32_tag(_)
+        ; Tag = uint32_tag(_)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
         ; Tag = foreign_tag(_, _)

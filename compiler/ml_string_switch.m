@@ -269,8 +269,8 @@ ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
             FailStmts = [_, _ | _],
             FailStmt = ml_stmt_block([], FailStmts, Context)
         ),
-        IsCaseNumNegCond = ml_binop(int_lt, ml_lval(CaseNumVarLval),
-            ml_const(mlconst_int(0))),
+        IsCaseNumNegCond = ml_binop(int_lt(int_type_int),
+            ml_lval(CaseNumVarLval), ml_const(mlconst_int(0))),
         ResultStmt = ml_stmt_if_then_else(IsCaseNumNegCond, FailStmt,
             yes(LookupStmt), Context)
     ),
@@ -362,8 +362,8 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
         SuccessStmts, Context),
     (
         CanFail = can_fail,
-        IsCaseNumNonNegCond = ml_binop(int_ge, ml_lval(CaseNumVarLval),
-            ml_const(mlconst_int(0))),
+        IsCaseNumNonNegCond = ml_binop(int_ge(int_type_int),
+            ml_lval(CaseNumVarLval), ml_const(mlconst_int(0))),
         ResultStmt = ml_stmt_if_then_else(IsCaseNumNonNegCond,
             SuccessBlockStmt, no, Context)
     ;
@@ -620,7 +620,8 @@ convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
         then
             OneChoicePair = OneCodeUnit - OneSubTrieNode,
             OneCodeUnitConst = ml_const(mlconst_int(OneCodeUnit)),
-            FirstCond = ml_binop(eq, CurCodeUnitRval, OneCodeUnitConst),
+            FirstCond = ml_binop(eq(int_type_int),
+                CurCodeUnitRval, OneCodeUnitConst),
             chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval,
                 Context, NumMatched + 1, OneSubTrieNode, FirstCond, AllCond,
                 ThenStmt),
@@ -708,7 +709,8 @@ chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
         CurCodeUnitRval = ml_binop(string_unsafe_index_code_unit,
             VarRval, ml_const(mlconst_int(NumMatched))),
         OneCodeUnitConst = ml_const(mlconst_int(OneCodeUnit)),
-        CurCond = ml_binop(eq, CurCodeUnitRval, OneCodeUnitConst),
+        CurCond = ml_binop(eq(int_type_int), CurCodeUnitRval,
+            OneCodeUnitConst),
         RevCond1 = ml_binop(logical_and, RevCond0, CurCond),
         chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
             NumMatched + 1, OneSubTrieNode, RevCond1, RevCond, ThenStmt)
@@ -1445,14 +1447,15 @@ ml_gen_string_hash_switch_search(InitialComment,
         ml_stmt_atomic(comment("compute the hash value of the input string"),
             Context),
         ml_stmt_atomic(assign(SlotVarLval,
-            ml_binop(bitwise_and,
+            ml_binop(bitwise_and(int_type_int),
                 ml_unop(std_unop(HashOp), VarRval),
                 ml_const(mlconst_int(HashMask)))),
             Context)
         ],
     FoundMatchCond =
         ml_binop(logical_and,
-            ml_binop(ne, StringVarRval, ml_const(mlconst_null(StringVarType))),
+            ml_binop(ne(int_type_int), StringVarRval,
+                ml_const(mlconst_null(StringVarType))),
             ml_binop(str_eq, StringVarRval, VarRval)
         ),
     LookForMatchPrepareStmts = [
@@ -1465,7 +1468,8 @@ ml_gen_string_hash_switch_search(InitialComment,
             Context),
         ml_stmt_atomic(comment("did we find a match?"), Context)
     ],
-    SlotTest = ml_binop(int_ge, SlotVarRval, ml_const(mlconst_int(0))),
+    SlotTest = ml_binop(int_ge(int_type_int), SlotVarRval,
+        ml_const(mlconst_int(0))),
     (
         MaybeStopLoopVarLval = no,
         InitStopLoopVarStmts = [],
@@ -1495,7 +1499,7 @@ ml_gen_string_hash_switch_search(InitialComment,
             % the success continuation for each solution.
             InitSuccessStmts = []
         ),
-        StopLoopTest = ml_binop(eq,
+        StopLoopTest = ml_binop(eq(int_type_int),
             ml_lval(StopLoopVarLval), ml_const(mlconst_int(0))),
         LoopTest = ml_binop(logical_and, StopLoopTest, SlotTest)
     ),
@@ -1975,12 +1979,12 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
     InitHiVarStmt = ml_stmt_atomic(
         assign(HiVarLval, ml_const(mlconst_int(TableSize - 1))),
         Context),
-    CrossingTest = ml_binop(int_le, LoVarRval, HiVarRval),
+    CrossingTest = ml_binop(int_le(int_type_int), LoVarRval, HiVarRval),
 
     AssignMidVarStmt = ml_stmt_atomic(
         assign(MidVarLval,
-            ml_binop(int_div,
-                ml_binop(int_add, LoVarRval, HiVarRval),
+            ml_binop(int_div(int_type_int),
+                ml_binop(int_add(int_type_int), LoVarRval, HiVarRval),
                 ml_const(mlconst_int(2)))),
         Context),
     AssignResultVarStmt = ml_stmt_atomic(
@@ -1991,17 +1995,21 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
                     ml_vector_common_row_addr(VectorCommon, MidVarRval),
                 StringFieldId, MLDS_StringType, StructType)))),
         Context),
-    ResultTest = ml_binop(eq, ResultVarRval, ml_const(mlconst_int(0))),
+    ResultTest = ml_binop(eq(int_type_int), ResultVarRval,
+        ml_const(mlconst_int(0))),
     UpdateLoOrHiVarStmt =
         ml_stmt_if_then_else(
-            ml_binop(int_lt, ResultVarRval, ml_const(mlconst_int(0))),
+            ml_binop(int_lt(int_type_int), ResultVarRval,
+                ml_const(mlconst_int(0))),
             ml_stmt_atomic(
                 assign(HiVarLval,
-                    ml_binop(int_sub, MidVarRval, ml_const(mlconst_int(1)))),
+                    ml_binop(int_sub(int_type_int), MidVarRval,
+                        ml_const(mlconst_int(1)))),
                 Context),
             yes(ml_stmt_atomic(
                 assign(LoVarLval,
-                    ml_binop(int_add, MidVarRval, ml_const(mlconst_int(1)))),
+                    ml_binop(int_add(int_type_int), MidVarRval,
+                        ml_const(mlconst_int(1)))),
                 Context)),
             Context),
 
@@ -2026,7 +2034,7 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
         InitStopLoopVarStmt = ml_stmt_atomic(
             assign(StopLoopVarLval, ml_const(mlconst_int(0))),
             Context),
-        StopLoopTest = ml_binop(eq,
+        StopLoopTest = ml_binop(eq(int_type_int),
             ml_lval(StopLoopVarLval), ml_const(mlconst_int(0))),
         LoopBodyStmts = [
             AssignMidVarStmt,
@@ -2253,7 +2261,7 @@ ml_wrap_loop_break(CodeModel, LoopPresent, Context, MaybeStopLoopVarLval,
                 OnlyFailAfterStmt =
                     ml_stmt_block([], OnlyFailAfterStmts, Context)
             ),
-            SuccessTest = ml_binop(eq,
+            SuccessTest = ml_binop(eq(int_type_int),
                 ml_lval(StopLoopVarLval),
                 ml_const(mlconst_int(0))),
             AfterStmt =

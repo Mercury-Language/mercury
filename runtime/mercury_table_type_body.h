@@ -307,6 +307,36 @@
             table = table_next;
             return table;
 
+        case MR_TYPECTOR_REP_INT8:
+            MR_TABLE_INT8(STATS, DEBUG, BACK, table_next, table, data);
+            table = table_next;
+            return table;
+
+        case MR_TYPECTOR_REP_UINT8:
+            MR_TABLE_UINT8(STATS, DEBUG, BACK, table_next, table, data);
+            table = table_next;
+            return table;
+
+        case MR_TYPECTOR_REP_INT16:
+            MR_TABLE_INT16(STATS, DEBUG, BACK, table_next, table, data);
+            table = table_next;
+            return table;
+
+        case MR_TYPECTOR_REP_UINT16:
+            MR_TABLE_UINT16(STATS, DEBUG, BACK, table_next, table, data);
+            table = table_next;
+            return table;
+
+        case MR_TYPECTOR_REP_INT32:
+            MR_TABLE_INT32(STATS, DEBUG, BACK, table_next, table, data);
+            table = table_next;
+            return table;
+
+        case MR_TYPECTOR_REP_UINT32:
+            MR_TABLE_UINT32(STATS, DEBUG, BACK, table_next, table, data);
+            table = table_next;
+            return table;
+
         case MR_TYPECTOR_REP_CHAR:
             MR_TABLE_CHAR(STATS, DEBUG, BACK, table_next, table, data);
             table = table_next;

@@ -2470,8 +2470,7 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
         Type, bp_native_if_possible),
     (
         ( CtorCat = ctor_cat_enum(_)
-        ; CtorCat = ctor_cat_builtin(cat_builtin_int)
-        ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_int(_))
         ; CtorCat = ctor_cat_builtin(cat_builtin_char)
         ; CtorCat = ctor_cat_void
         ),
@@ -2559,13 +2558,9 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
                 ArgName ++ ", " ++ next_table_node_name ++ ");\n"
         ;
             (
-                CtorCat = ctor_cat_builtin(cat_builtin_int),
-                CatString = "int",
-                Step = table_trie_step_int
-            ;
-                CtorCat = ctor_cat_builtin(cat_builtin_uint),
-                CatString = "uint",
-                Step = table_trie_step_uint
+                CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
+                int_type_to_string(IntType, CatString),
+                Step = table_trie_step_int(IntType)
             ;
                 CtorCat = ctor_cat_builtin(cat_builtin_char),
                 CatString = "char",
@@ -2621,11 +2616,8 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
             CtorCat = ctor_cat_enum(_),
             unexpected($module, $pred, "tabling enums by addr")
         ;
-            CtorCat = ctor_cat_builtin(cat_builtin_int),
-            unexpected($module, $pred, "tabling ints by addr")
-        ;
-            CtorCat = ctor_cat_builtin(cat_builtin_uint),
-            unexpected($module, $pred, "tabling uints by addr")
+            CtorCat = ctor_cat_builtin(cat_builtin_int(_)),
+            unexpected($module, $pred, "tabling integer type by addr")
         ;
             CtorCat = ctor_cat_builtin(cat_builtin_char),
             unexpected($module, $pred, "tabling chars by addr")
@@ -3653,11 +3645,29 @@ type_save_category(CtorCat, Name) :-
         CtorCat = ctor_cat_enum(cat_enum_foreign),
         sorry($module, $pred, "tabling and foreign enumerations NYI.")
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int)),
         Name = "int"
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint)),
         Name = "uint"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8)),
+        Name = "int8"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8)),
+        Name = "uint8"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16)),
+        Name = "int16"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16)),
+        Name = "uint16"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32)),
+        Name = "int32"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
+        Name = "uint32"
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_float),
         Name = "float"

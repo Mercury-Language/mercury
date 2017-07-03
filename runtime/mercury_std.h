@@ -16,6 +16,12 @@
 
 #include "mercury_regs.h"
 
+#if defined(MR_HAVE_STDINT_H)
+    #include <stdint.h>
+#else
+    #error "Mercury requires a system that provides stdint.h"
+#endif
+
 #include <stdlib.h> // for size_t
 #include <assert.h> // for assert()
 #include <errno.h>  // for EINTR

@@ -215,6 +215,12 @@
     --->    elds_char(char)
     ;       elds_int(int)
     ;       elds_uint(uint)
+    ;       elds_int8(int)    % XXX FIXED SIZE INT
+    ;       elds_uint8(int)
+    ;       elds_int16(int)
+    ;       elds_uint16(int)
+    ;       elds_int32(int)
+    ;       elds_uint32(int)
     ;       elds_float(float)
 
     ;       elds_binary(string)

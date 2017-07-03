@@ -26,6 +26,18 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
     MR_TYPE_CTOR_INFO_NAME(builtin, uint, 0));
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+    MR_TYPE_CTOR_INFO_NAME(builtin, int8, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+    MR_TYPE_CTOR_INFO_NAME(builtin, uint8, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+    MR_TYPE_CTOR_INFO_NAME(builtin, int16, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+    MR_TYPE_CTOR_INFO_NAME(builtin, uint16, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+    MR_TYPE_CTOR_INFO_NAME(builtin, int32, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+    MR_TYPE_CTOR_INFO_NAME(builtin, uint32, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
     MR_TYPE_CTOR_INFO_NAME(builtin, string, 0));
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
     MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));
@@ -71,6 +83,18 @@ MR_bool MR_CALL mercury__builtin____Unify____int_0_0(MR_Integer x,
                     MR_Integer y);
 MR_bool MR_CALL mercury__builtin____Unify____uint_0_0(MR_Unsigned x,
                     MR_Unsigned y);
+MR_bool MR_CALL mercury__builtin____Unify____int8_0_0(int8_t x,
+                    int8_t y);
+MR_bool MR_CALL mercury__builtin____Unify____uint8_0_0(uint8_t x,
+                    uint8_t y);
+MR_bool MR_CALL mercury__builtin____Unify____int16_0_0(int16_t x,
+                    int16_t y);
+MR_bool MR_CALL mercury__builtin____Unify____uint16_0_0(uint16_t x,
+                    uint16_t y);
+MR_bool MR_CALL mercury__builtin____Unify____int32_0_0(int32_t x,
+                    int32_t y);
+MR_bool MR_CALL mercury__builtin____Unify____uint32_0_0(uint32_t x,
+                    uint32_t y);
 MR_bool MR_CALL mercury__builtin____Unify____string_0_0(MR_String x,
                     MR_String y);
 MR_bool MR_CALL mercury__builtin____Unify____float_0_0(MR_Float x, MR_Float y);
@@ -106,6 +130,18 @@ void MR_CALL    mercury__builtin____Compare____int_0_0(
                     MR_Comparison_Result *result, MR_Integer x, MR_Integer y);
 void MR_CALL    mercury__builtin____Compare____uint_0_0(
                     MR_Comparison_Result *result, MR_Unsigned x, MR_Unsigned y);
+void MR_CALL    mercury__builtin____Compare____int8_0_0(
+                    MR_Comparison_Result *result, int8_t x, int8_t y);
+void MR_CALL    mercury__builtin____Compare____uint8_0_0(
+                    MR_Comparison_Result *result, uint8_t x, uint8_t y);
+void MR_CALL    mercury__builtin____Compare____int16_0_0(
+                    MR_Comparison_Result *result, int16_t x, int16_t y);
+void MR_CALL    mercury__builtin____Compare____uint16_0_0(
+                    MR_Comparison_Result *result, uint16_t x, uint16_t y);
+void MR_CALL    mercury__builtin____Compare____int32_0_0(
+                    MR_Comparison_Result *result, int32_t x, int32_t y);
+void MR_CALL    mercury__builtin____Compare____uint32_0_0(
+                    MR_Comparison_Result *result, uint32_t x, uint32_t y);
 void MR_CALL    mercury__builtin____Compare____string_0_0(
                     MR_Comparison_Result *result, MR_String x, MR_String y);
 void MR_CALL    mercury__builtin____Compare____float_0_0(

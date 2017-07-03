@@ -240,29 +240,55 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstId,
                 ForTypeCtor0 = type_ctor(ForTypeCtorName, ForTypeCtorArity),
                 % We bind ForTypeCtor to a standardized form of ForTypeCtor0.
                 ( if
-                    ( ForTypeCtorName = unqualified("int")
-                    ; ForTypeCtorName = qualified(unqualified(""), "int")
-                    ; ForTypeCtorName = qualified(unqualified("int"), "int")
-                    ),
+                    sym_name_for_builtin_type(ForTypeCtorName, "int"),
                     ForTypeCtorArity = 0
                 then
                     ForTypeCtor = int_type_ctor,
-                    MaybeForTypeKind = yes(ftk_int)
+                    MaybeForTypeKind = yes(ftk_int(int_type_int))
                 else if
-                    ( ForTypeCtorName = unqualified("uint")
-                    ; ForTypeCtorName = qualified(unqualified(""), "uint")
-                    ; ForTypeCtorName = qualified(unqualified("uint"), "uint")
-                    ),
+                    sym_name_for_builtin_type(ForTypeCtorName, "uint"),
                     ForTypeCtorArity = 0
                 then
                     ForTypeCtor = uint_type_ctor,
-                    MaybeForTypeKind = yes(ftk_uint)
+                    MaybeForTypeKind = yes(ftk_int(int_type_uint))
                 else if
-                    ( ForTypeCtorName = unqualified("float")
-                    ; ForTypeCtorName = qualified(unqualified(""), "float")
-                    ; ForTypeCtorName = qualified(unqualified("float"),
-                        "float")
-                    ),
+                    sym_name_for_builtin_type(ForTypeCtorName, "int8"),
+                    ForTypeCtorArity = 0
+                then
+                    ForTypeCtor = int8_type_ctor,
+                    MaybeForTypeKind = yes(ftk_int(int_type_int8))
+                else if
+                    sym_name_for_builtin_type(ForTypeCtorName, "uint8"),
+                    ForTypeCtorArity = 0
+                then
+                    ForTypeCtor = uint8_type_ctor,
+                    MaybeForTypeKind = yes(ftk_int(int_type_uint8))
+                else if
+                    sym_name_for_builtin_type(ForTypeCtorName, "int16"),
+                    ForTypeCtorArity = 0
+                then
+                    ForTypeCtor = int16_type_ctor,
+                    MaybeForTypeKind = yes(ftk_int(int_type_int16))
+                else if
+                    sym_name_for_builtin_type(ForTypeCtorName, "uint16"),
+                    ForTypeCtorArity = 0
+                then
+                    ForTypeCtor = uint16_type_ctor,
+                    MaybeForTypeKind = yes(ftk_int(int_type_uint16))
+                else if
+                    sym_name_for_builtin_type(ForTypeCtorName, "int32"),
+                    ForTypeCtorArity = 0
+                then
+                    ForTypeCtor = int32_type_ctor,
+                    MaybeForTypeKind = yes(ftk_int(int_type_int32))
+                else if
+                    sym_name_for_builtin_type(ForTypeCtorName, "uint32"),
+                    ForTypeCtorArity = 0
+                then
+                    ForTypeCtor = uint32_type_ctor,
+                    MaybeForTypeKind = yes(ftk_int(int_type_uint32))
+                else if
+                    sym_name_for_builtin_type(ForTypeCtorName, "float"),
                     ForTypeCtorArity = 0
                 then
                     ForTypeCtor = float_type_ctor,
@@ -280,11 +306,7 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstId,
                     ForTypeCtor = char_type_ctor,
                     MaybeForTypeKind = yes(ftk_char)
                 else if
-                    ( ForTypeCtorName = unqualified("string")
-                    ; ForTypeCtorName = qualified(unqualified(""), "string")
-                    ; ForTypeCtorName = qualified(unqualified("string"),
-                        "string")
-                    ),
+                    sym_name_for_builtin_type(ForTypeCtorName, "string"),
                     ForTypeCtorArity = 0
                 then
                     ForTypeCtor = string_type_ctor,
@@ -374,6 +396,14 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstId,
         InstDefn = InstDefn0
     ).
 
+:- pred sym_name_for_builtin_type(sym_name::in, string::in) is semidet.
+
+sym_name_for_builtin_type(SymName, TypeName) :-
+    ( SymName = unqualified(TypeName)
+    ; SymName = qualified(unqualified(""), TypeName)
+    ; SymName = qualified(unqualified(TypeName), TypeName)
+    ).
+
 :- pred type_defn_or_builtin_to_type_ctor(type_defn_or_builtin::in,
     type_ctor::out) is det.
 
@@ -383,11 +413,29 @@ type_defn_or_builtin_to_type_ctor(TypeDefnOrBuiltin, TypeCtor) :-
     ;
         TypeDefnOrBuiltin = type_builtin(BuiltinType),
         (
-            BuiltinType = builtin_type_int,
+            BuiltinType = builtin_type_int(int_type_int),
             TypeCtor = type_ctor(unqualified("int"), 0)
         ;
-            BuiltinType = builtin_type_uint,
+            BuiltinType = builtin_type_int(int_type_uint),
             TypeCtor = type_ctor(unqualified("uint"), 0)
+        ;
+            BuiltinType = builtin_type_int(int_type_int8),
+            TypeCtor = type_ctor(unqualified("int8"), 0)
+        ;
+            BuiltinType = builtin_type_int(int_type_uint8),
+            TypeCtor = type_ctor(unqualified("uint8"), 0)
+        ;
+            BuiltinType = builtin_type_int(int_type_int16),
+            TypeCtor = type_ctor(unqualified("int16"), 0)
+        ;
+            BuiltinType = builtin_type_int(int_type_uint16),
+            TypeCtor = type_ctor(unqualified("uint16"), 0)
+        ;
+            BuiltinType = builtin_type_int(int_type_int32),
+            TypeCtor = type_ctor(unqualified("int32"), 0)
+        ;
+            BuiltinType = builtin_type_int(int_type_uint32),
+            TypeCtor = type_ctor(unqualified("uint32"), 0)
         ;
             BuiltinType = builtin_type_float,
             TypeCtor = type_ctor(unqualified("float"), 0)
@@ -407,8 +455,7 @@ type_defn_or_builtin_to_type_ctor(TypeDefnOrBuiltin, TypeCtor) :-
 
 :- type for_type_kind
     --->    ftk_user(type_ctor, hlds_type_defn)
-    ;       ftk_int
-    ;       ftk_uint
+    ;       ftk_int(int_type)
     ;       ftk_float
     ;       ftk_char
     ;       ftk_string.
@@ -485,8 +532,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
                 !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
             )
         ;
-            ( ForTypeKind = ftk_int
-            ; ForTypeKind = ftk_uint
+            ( ForTypeKind = ftk_int(_)
             ; ForTypeKind = ftk_float
             ; ForTypeKind = ftk_string
             ),
@@ -494,28 +540,58 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
         )
     ;
         ConsId = int_const(_),
-        (
-            ForTypeKind = ftk_int
-        ;
-            ( ForTypeKind = ftk_user(_, _)
-            ; ForTypeKind = ftk_uint
-            ; ForTypeKind = ftk_float
-            ; ForTypeKind = ftk_char
-            ; ForTypeKind = ftk_string
-            ),
+        ( if ForTypeKind = ftk_int(int_type_int) then
+            true
+        else
             !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
         )
     ;
         ConsId = uint_const(_),
-        (
-            ForTypeKind = ftk_uint
-        ;
-            ( ForTypeKind = ftk_user(_, _)
-            ; ForTypeKind = ftk_int
-            ; ForTypeKind = ftk_float
-            ; ForTypeKind = ftk_char
-            ; ForTypeKind = ftk_string
-            ),
+        ( if ForTypeKind = ftk_int(int_type_uint) then
+            true
+        else
+            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+        )
+    ;
+        ConsId = int8_const(_),
+        ( if ForTypeKind = ftk_int(int_type_int8) then
+            true
+        else
+            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+        )
+    ;
+        ConsId = uint8_const(_),
+        ( if ForTypeKind = ftk_int(int_type_uint8) then
+            true
+        else
+            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+        )
+    ;
+        ConsId = int16_const(_),
+        ( if ForTypeKind = ftk_int(int_type_int16) then
+            true
+        else
+            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+        )
+    ;
+        ConsId = uint16_const(_),
+        ( if ForTypeKind = ftk_int(int_type_uint16) then
+            true
+        else
+            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+        )
+    ;
+        ConsId = int32_const(_),
+        ( if ForTypeKind = ftk_int(int_type_int32) then
+            true
+        else
+            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+        )
+    ;
+        ConsId = uint32_const(_),
+        ( if ForTypeKind = ftk_int(int_type_uint32) then
+            true
+        else
             !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
         )
     ;
@@ -524,8 +600,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             ForTypeKind = ftk_float
         ;
             ( ForTypeKind = ftk_user(_, _)
-            ; ForTypeKind = ftk_int
-            ; ForTypeKind = ftk_uint
+            ; ForTypeKind = ftk_int(_)
             ; ForTypeKind = ftk_char
             ; ForTypeKind = ftk_string
             ),
@@ -537,8 +612,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             ForTypeKind = ftk_char
         ;
             ( ForTypeKind = ftk_user(_, _)
-            ; ForTypeKind = ftk_int
-            ; ForTypeKind = ftk_uint
+            ; ForTypeKind = ftk_int(_)
             ; ForTypeKind = ftk_float
             ; ForTypeKind = ftk_string
             ),
@@ -550,8 +624,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             ForTypeKind = ftk_string
         ;
             ( ForTypeKind = ftk_user(_, _)
-            ; ForTypeKind = ftk_int
-            ; ForTypeKind = ftk_uint
+            ; ForTypeKind = ftk_int(_)
             ; ForTypeKind = ftk_float
             ; ForTypeKind = ftk_char
             ),
@@ -650,11 +723,32 @@ get_possible_types_for_bound_inst(FunctorsToTypesMap, BoundInst, MaybeTypes) :-
         ConsId = tuple_cons(Arity),
         MaybeTypes = yes([type_tuple(Arity)])
     ;
-        ConsId = int_const(_),
-        MaybeTypes = yes([type_builtin(builtin_type_int)])
-    ;
-        ConsId = uint_const(_),
-        MaybeTypes = yes([type_builtin(builtin_type_uint)])
+        (
+            ConsId = int_const(_),
+            IntType = int_type_int
+        ;
+            ConsId = uint_const(_),
+            IntType = int_type_uint
+        ;
+            ConsId = int8_const(_),
+            IntType = int_type_int8
+        ;
+            ConsId = uint8_const(_),
+            IntType = int_type_uint8
+        ;
+            ConsId = int16_const(_),
+            IntType = int_type_int16
+        ;
+            ConsId = uint16_const(_),
+            IntType = int_type_uint16
+        ;
+            ConsId = int32_const(_),
+            IntType = int_type_int32
+        ;
+            ConsId = uint32_const(_),
+            IntType = int_type_uint32
+        ),
+        MaybeTypes = yes([type_builtin(builtin_type_int(IntType))])
     ;
         ConsId = float_const(_),
         MaybeTypes = yes([type_builtin(builtin_type_float)])
@@ -754,11 +848,29 @@ maybe_issue_type_match_error(InstId, InstDefn, ForTypeKind, MismatchConsIdStrs,
     InstDefinedInThisModule = inst_status_defined_in_this_module(InstStatus),
     (
         (
-            ForTypeKind = ftk_int,
+            ForTypeKind = ftk_int(int_type_int),
             ForTypeCtor = int_type_ctor
         ;
-            ForTypeKind = ftk_uint,
+            ForTypeKind = ftk_int(int_type_uint),
             ForTypeCtor = uint_type_ctor
+        ;
+            ForTypeKind = ftk_int(int_type_int8),
+            ForTypeCtor = int8_type_ctor
+        ;
+            ForTypeKind = ftk_int(int_type_uint8),
+            ForTypeCtor = uint8_type_ctor
+        ;
+            ForTypeKind = ftk_int(int_type_int16),
+            ForTypeCtor = int16_type_ctor
+        ;
+            ForTypeKind = ftk_int(int_type_uint16),
+            ForTypeCtor = uint16_type_ctor
+        ;
+            ForTypeKind = ftk_int(int_type_int32),
+            ForTypeCtor = int32_type_ctor
+        ;
+            ForTypeKind = ftk_int(int_type_uint32),
+            ForTypeCtor = uint32_type_ctor
         ;
             ForTypeKind = ftk_float,
             ForTypeCtor = float_type_ctor
@@ -1052,15 +1164,57 @@ find_mismatches_from_builtin(ExpectedBuiltinType, CurNum,
         [BoundInst | BoundInsts], !NumMismatches, !PiecesCord) :-
     BoundInst = bound_functor(ConsId, _SubInsts),
     (
-        ExpectedBuiltinType = builtin_type_int,
+        ExpectedBuiltinType = builtin_type_int(int_type_int),
         ( if ConsId = int_const(_) then
             true
         else
             record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
         )
     ;
-        ExpectedBuiltinType = builtin_type_uint,
+        ExpectedBuiltinType = builtin_type_int(int_type_uint),
         ( if ConsId = uint_const(_) then
+            true
+        else
+            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        )
+    ;
+        ExpectedBuiltinType = builtin_type_int(int_type_int8),
+        ( if ConsId = int8_const(_) then
+            true
+        else
+            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        )
+    ;
+        ExpectedBuiltinType = builtin_type_int(int_type_uint8),
+        ( if ConsId = uint8_const(_) then
+            true
+        else
+            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        )
+    ;
+        ExpectedBuiltinType = builtin_type_int(int_type_int16),
+        ( if ConsId = int16_const(_) then
+            true
+        else
+            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        )
+    ;
+        ExpectedBuiltinType = builtin_type_int(int_type_uint16),
+        ( if ConsId = uint16_const(_) then
+            true
+        else
+            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        )
+    ;
+        ExpectedBuiltinType = builtin_type_int(int_type_int32),
+        ( if ConsId = int32_const(_) then
+            true
+        else
+            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        )
+    ;
+        ExpectedBuiltinType = builtin_type_int(int_type_uint32),
+        ( if ConsId = uint32_const(_) then
             true
         else
             record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
@@ -1221,11 +1375,29 @@ type_defn_or_builtin_to_string(TypeDefnOrBuiltin) = Str :-
     ;
         TypeDefnOrBuiltin = type_builtin(BuiltinType),
         (
-            BuiltinType = builtin_type_int,
+            BuiltinType = builtin_type_int(int_type_int),
             Str = "int"
         ;
-            BuiltinType = builtin_type_uint,
+            BuiltinType = builtin_type_int(int_type_uint),
             Str = "uint"
+        ;
+            BuiltinType = builtin_type_int(int_type_int8),
+            Str = "int8"
+        ;
+            BuiltinType = builtin_type_int(int_type_uint8),
+            Str = "uint8"
+        ;
+            BuiltinType = builtin_type_int(int_type_int16),
+            Str = "int16"
+        ;
+            BuiltinType = builtin_type_int(int_type_uint16),
+            Str = "uint16"
+        ;
+            BuiltinType = builtin_type_int(int_type_int32),
+            Str = "int32"
+        ;
+            BuiltinType = builtin_type_int(int_type_uint32),
+            Str = "uint32"
         ;
             BuiltinType = builtin_type_float,
             Str = "float"

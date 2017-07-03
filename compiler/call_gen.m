@@ -747,6 +747,12 @@ generate_assign_builtin(Var, AssignExpr, Code, !CLD) :-
 convert_simple_expr(leaf(Var)) = var(Var).
 convert_simple_expr(int_const(Int)) = const(llconst_int(Int)).
 convert_simple_expr(uint_const(UInt)) = const(llconst_uint(UInt)).
+convert_simple_expr(int8_const(Int8)) = const(llconst_int8(Int8)).
+convert_simple_expr(uint8_const(UInt8)) = const(llconst_uint8(UInt8)).
+convert_simple_expr(int16_const(Int16)) = const(llconst_int16(Int16)).
+convert_simple_expr(uint16_const(UInt16)) = const(llconst_uint16(UInt16)).
+convert_simple_expr(int32_const(Int32)) = const(llconst_int32(Int32)).
+convert_simple_expr(uint32_const(UInt32)) = const(llconst_uint32(UInt32)).
 convert_simple_expr(float_const(Float)) = const(llconst_float(Float)).
 convert_simple_expr(unary(UnOp, Expr)) =
     unop(UnOp, convert_simple_expr(Expr)).

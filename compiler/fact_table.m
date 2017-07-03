@@ -536,10 +536,10 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
             Functor = term.integer(_, _, Signedness, _),
             (
                 Signedness = signed,
-                RequiredType = yes(builtin_type_int)
+                RequiredType = yes(builtin_type_int(int_type_int))
             ;
                 Signedness = unsigned,
-                RequiredType = yes(builtin_type_uint)
+                RequiredType = yes(builtin_type_int(int_type_uint))
             )
         ;
             Functor = term.float(_),
@@ -734,7 +734,7 @@ create_fact_table_struct([Info | Infos], I, Context, StructContents,
             Type = builtin_type(builtin_type_string),
             TypeStr = "MR_ConstString"
         ;
-            Type = builtin_type(builtin_type_int),
+            Type = builtin_type(builtin_type_int(int_type_int)),
             TypeStr = "MR_Integer"
         ;
             Type = builtin_type(builtin_type_float),
@@ -1941,7 +1941,7 @@ get_output_args_list([Info | Infos], ArgStrings0, Args) :-
 
 convert_key_string_to_arg(ArgString, Type, Arg) :-
     % XXX UINT - handle uints here too when we support them in fact tables.
-    ( if Type = builtin_type(builtin_type_int) then
+    ( if Type = builtin_type(builtin_type_int(int_type_int)) then
         ( if string.base_string_to_int(36, ArgString, I) then
             Arg = term.integer(base_10, integer(I), signed, size_word)
         else
@@ -2671,7 +2671,7 @@ generate_hash_code([pragma_var(_, Name, Mode, _) | PragmaVars], [Type | Types],
         FactTableSize, C_Code) :-
     NextArgNum = ArgNum + 1,
     ( if mode_is_fully_input(ModuleInfo, Mode) then
-        ( if Type = builtin_type(builtin_type_int) then
+        ( if Type = builtin_type(builtin_type_int(int_type_int)) then
             generate_hash_int_code(Name, LabelName, LabelNum,
                 PredName, PragmaVars, Types, ModuleInfo,
                 NextArgNum, FactTableSize, C_Code0)

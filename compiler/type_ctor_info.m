@@ -439,6 +439,12 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
 % to be done there as well.
 builtin_type_ctor("builtin", "int", 0, builtin_ctor_int).
 builtin_type_ctor("builtin", "uint", 0, builtin_ctor_uint).
+builtin_type_ctor("builtin", "int8", 0, builtin_ctor_int8).
+builtin_type_ctor("builtin", "uint8", 0, builtin_ctor_uint8).
+builtin_type_ctor("builtin", "int16", 0, builtin_ctor_int16).
+builtin_type_ctor("builtin", "uint16", 0, builtin_ctor_uint16).
+builtin_type_ctor("builtin", "int32", 0, builtin_ctor_int32).
+builtin_type_ctor("builtin", "uint32", 0, builtin_ctor_uint32).
 builtin_type_ctor("builtin", "string", 0, builtin_ctor_string).
 builtin_type_ctor("builtin", "float", 0, builtin_ctor_float).
 builtin_type_ctor("builtin", "character", 0, builtin_ctor_char).
@@ -656,6 +662,12 @@ make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
         ; ConsTag = float_tag(_)
         ; ConsTag = int_tag(_)
         ; ConsTag = uint_tag(_)
+        ; ConsTag = int8_tag(_)
+        ; ConsTag = uint8_tag(_)
+        ; ConsTag = int16_tag(_)
+        ; ConsTag = uint16_tag(_)
+        ; ConsTag = int32_tag(_)
+        ; ConsTag = uint32_tag(_)
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
@@ -838,6 +850,12 @@ get_maybe_reserved_rep(ConsTag, ConsRep) :-
         ; ConsTag = string_tag(_)
         ; ConsTag = int_tag(_)
         ; ConsTag = uint_tag(_)
+        ; ConsTag = int8_tag(_)
+        ; ConsTag = uint8_tag(_)
+        ; ConsTag = int16_tag(_)
+        ; ConsTag = uint16_tag(_)
+        ; ConsTag = int32_tag(_)
+        ; ConsTag = uint32_tag(_)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = closure_tag(_, _, _)

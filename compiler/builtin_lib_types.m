@@ -26,6 +26,12 @@
 
 :- func int_type = mer_type.
 :- func uint_type = mer_type.
+:- func int8_type = mer_type.
+:- func uint8_type = mer_type.
+:- func int16_type = mer_type.
+:- func uint16_type = mer_type.
+:- func int32_type = mer_type.
+:- func uint32_type = mer_type.
 :- func float_type = mer_type.
 :- func string_type = mer_type.
 :- func char_type = mer_type.
@@ -60,6 +66,12 @@
 
 :- func int_type_ctor = type_ctor.
 :- func uint_type_ctor = type_ctor.
+:- func int8_type_ctor = type_ctor.
+:- func uint8_type_ctor = type_ctor.
+:- func int16_type_ctor = type_ctor.
+:- func uint16_type_ctor = type_ctor.
+:- func int32_type_ctor = type_ctor.
+:- func uint32_type_ctor = type_ctor.
 :- func float_type_ctor = type_ctor.
 :- func char_type_ctor = type_ctor.
 :- func string_type_ctor = type_ctor.
@@ -112,9 +124,21 @@
 
 %-----------------------------------------------------------------------------%
 
-int_type = builtin_type(builtin_type_int).
+int_type = builtin_type(builtin_type_int(int_type_int)).
 
-uint_type = builtin_type(builtin_type_uint).
+uint_type = builtin_type(builtin_type_int(int_type_uint)).
+
+int8_type = builtin_type(builtin_type_int(int_type_int8)).
+
+uint8_type = builtin_type(builtin_type_int(int_type_uint8)).
+
+int16_type = builtin_type(builtin_type_int(int_type_int16)).
+
+uint16_type = builtin_type(builtin_type_int(int_type_uint16)).
+
+int32_type = builtin_type(builtin_type_int(int_type_int32)).
+
+uint32_type = builtin_type(builtin_type_int(int_type_uint32)).
 
 float_type = builtin_type(builtin_type_float).
 
@@ -218,6 +242,18 @@ int_type_ctor = type_ctor(Name, 0) :-
     Name = unqualified("int").
 uint_type_ctor = type_ctor(Name, 0) :-
     Name = unqualified("uint").
+int8_type_ctor = type_ctor(Name, 0) :-
+    Name = unqualified("int8").
+uint8_type_ctor = type_ctor(Name, 0) :-
+    Name = unqualified("uint8").
+int16_type_ctor = type_ctor(Name, 0) :-
+    Name = unqualified("int16").
+uint16_type_ctor = type_ctor(Name, 0) :-
+    Name = unqualified("uint16").
+int32_type_ctor = type_ctor(Name, 0) :-
+    Name = unqualified("int32").
+uint32_type_ctor = type_ctor(Name, 0) :-
+    Name = unqualified("uint32").
 float_type_ctor = type_ctor(Name, 0) :-
     Name = unqualified("float").
 char_type_ctor = type_ctor(Name, 0) :-

@@ -2028,8 +2028,7 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     %
 :- type table_trie_step
     --->    table_trie_step_dummy
-    ;       table_trie_step_int
-    ;       table_trie_step_uint
+    ;       table_trie_step_int(int_type)
     ;       table_trie_step_char
     ;       table_trie_step_string
     ;       table_trie_step_float
@@ -2879,8 +2878,7 @@ structure_reuse_info_init = structure_reuse_info(no, no).
 
 table_step_stats_kind(Step) = KindStr :-
     (
-        ( Step = table_trie_step_int
-        ; Step = table_trie_step_uint
+        ( Step = table_trie_step_int(_)
         ; Step = table_trie_step_char
         ; Step = table_trie_step_string
         ; Step = table_trie_step_float

@@ -395,7 +395,7 @@ generate_primary_try_me_else_chain_case(PtagRval, StagReg,
         MainPtag, OtherPtags, PtagCase, MaxSecondary, VarRval, MaybeFailLabel,
         Code, !CaseLabelMap, !CI) :-
     get_next_label(ElseLabel, !CI),
-    TestRval0 = binop(ne, PtagRval,
+    TestRval0 = binop(ne(int_type_int), PtagRval,
         unop(mktag, const(llconst_int(MainPtag)))),
     generate_primary_try_me_else_chain_other_ptags(OtherPtags, PtagRval,
         TestRval0, TestRval),
@@ -418,7 +418,7 @@ generate_primary_try_me_else_chain_case(PtagRval, StagReg,
 generate_primary_try_me_else_chain_other_ptags([], _, TestRval, TestRval).
 generate_primary_try_me_else_chain_other_ptags([OtherPtag | OtherPtags],
         PtagRval, TestRval0, TestRval) :-
-    ThisTestRval = binop(ne, PtagRval,
+    ThisTestRval = binop(ne(int_type_int), PtagRval,
         unop(mktag, const(llconst_int(OtherPtag)))),
     TestRval1 = binop(logical_and, TestRval0, ThisTestRval),
     generate_primary_try_me_else_chain_other_ptags(OtherPtags,
@@ -495,7 +495,7 @@ generate_primary_try_chain_case(PtagRval, StagReg, MainPtag, OtherPtags,
         PrevTestsCode0, PrevTestsCode, PrevCasesCode0, PrevCasesCode,
         !CaseLabelMap, !CI) :-
     get_next_label(ThisPtagLabel, !CI),
-    TestRval0 = binop(eq, PtagRval,
+    TestRval0 = binop(eq(int_type_int), PtagRval,
         unop(mktag, const(llconst_int(MainPtag)))),
     generate_primary_try_chain_other_ptags(OtherPtags, PtagRval,
         TestRval0, TestRval),
@@ -520,7 +520,7 @@ generate_primary_try_chain_case(PtagRval, StagReg, MainPtag, OtherPtags,
 generate_primary_try_chain_other_ptags([], _, TestRval, TestRval).
 generate_primary_try_chain_other_ptags([OtherPtag | OtherPtags],
         PtagRval, TestRval0, TestRval) :-
-    ThisTestRval = binop(eq, PtagRval,
+    ThisTestRval = binop(eq(int_type_int), PtagRval,
         unop(mktag, const(llconst_int(OtherPtag)))),
     TestRval1 = binop(logical_or, TestRval0, ThisTestRval),
     generate_primary_try_chain_other_ptags(OtherPtags,
@@ -644,7 +644,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
         LabelComment = "code for ptags " ++
             HighStartStr ++ " to " ++ HighEndStr,
         LowRangeEndConst = const(llconst_int(LowRangeEnd)),
-        TestRval = binop(int_gt, PtagRval, LowRangeEndConst),
+        TestRval = binop(int_gt(int_type_int), PtagRval, LowRangeEndConst),
         IfCode = singleton(
             llds_instr(if_val(TestRval, code_label(NewLabel)), IfComment)
         ),
@@ -843,7 +843,8 @@ generate_secondary_try_me_else_chain_case(CaseLabel, StagRval, Secondary,
     get_next_label(ElseLabel, !CI),
     TestCode = singleton(
         llds_instr(
-            if_val(binop(ne, StagRval, const(llconst_int(Secondary))),
+            if_val(binop(ne(int_type_int), StagRval,
+                    const(llconst_int(Secondary))),
                 code_label(ElseLabel)),
             "test sec tag only")
     ),
@@ -898,7 +899,8 @@ generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
     CaseInfo0 = case_label_info(Comment, _CaseCode, _CaseGenerated),
     TestCode = singleton(
         llds_instr(
-            if_val(binop(eq, StagRval, const(llconst_int(Secondary))),
+            if_val(binop(eq(int_type_int), StagRval,
+                    const(llconst_int(Secondary))),
                 code_label(CaseLabel)),
             "test sec tag only for " ++ Comment)
     ),
@@ -988,7 +990,7 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
         LabelComment = "code for stags " ++
             HighStartStr ++ " to " ++ HighEndStr,
         LowRangeEndConst = const(llconst_int(LowRangeEnd)),
-        TestRval = binop(int_gt, StagRval, LowRangeEndConst),
+        TestRval = binop(int_gt(int_type_int), StagRval, LowRangeEndConst),
         IfCode = singleton(
             llds_instr(if_val(TestRval, code_label(NewLabel)), IfComment)
         ),

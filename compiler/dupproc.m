@@ -341,31 +341,16 @@ standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap) :-
         standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap),
         StdCodeAddr = code_imported_proc(StdProcLabel)
     ;
-        CodeAddr = code_succip,
-        StdCodeAddr = CodeAddr
-    ;
-        CodeAddr = do_succeed(_),
-        StdCodeAddr = CodeAddr
-    ;
-        CodeAddr = do_redo,
-        StdCodeAddr = CodeAddr
-    ;
-        CodeAddr = do_fail,
-        StdCodeAddr = CodeAddr
-    ;
-        CodeAddr = do_trace_redo_fail_shallow,
-        StdCodeAddr = CodeAddr
-    ;
-        CodeAddr = do_trace_redo_fail_deep,
-        StdCodeAddr = CodeAddr
-    ;
-        CodeAddr = do_call_closure(_),
-        StdCodeAddr = CodeAddr
-    ;
-        CodeAddr = do_call_class_method(_),
-        StdCodeAddr = CodeAddr
-    ;
-        CodeAddr = do_not_reached,
+        ( CodeAddr = code_succip
+        ; CodeAddr = do_succeed(_)
+        ; CodeAddr = do_redo
+        ; CodeAddr = do_fail
+        ; CodeAddr = do_trace_redo_fail_shallow
+        ; CodeAddr = do_trace_redo_fail_deep
+        ; CodeAddr = do_call_closure(_)
+        ; CodeAddr = do_call_class_method(_)
+        ; CodeAddr = do_not_reached
+        ),
         StdCodeAddr = CodeAddr
     ).
 
@@ -391,17 +376,15 @@ standardize_maybe_code_addr(MaybeCodeAddr, MaybeStdCodeAddr, DupProcMap) :-
 
 standardize_rval(Rval, StdRval, DupProcMap) :-
     (
-        Rval = lval(_),
+        ( Rval = lval(_)
+        ; Rval = mkword(_, _)
+        ; Rval = mkword_hole(_)
+        ; Rval = mem_addr(_)
+        ),
         StdRval = Rval
     ;
         Rval = var(_),
         unexpected($module, $pred, "var")
-    ;
-        Rval = mkword(_, _),
-        StdRval = Rval
-    ;
-        Rval = mkword_hole(_),
-        StdRval = Rval
     ;
         Rval = const(Const),
         standardize_rval_const(Const, StdConst, DupProcMap),
@@ -415,9 +398,6 @@ standardize_rval(Rval, StdRval, DupProcMap) :-
         standardize_rval(RvalL, StdRvalL, DupProcMap),
         standardize_rval(RvalR, StdRvalR, DupProcMap),
         StdRval = binop(Binop, StdRvalL, StdRvalR)
-    ;
-        Rval = mem_addr(_),
-        StdRval = Rval
     ).
 
     % Compute the standard form of an rval constant.
@@ -427,36 +407,27 @@ standardize_rval(Rval, StdRval, DupProcMap) :-
 
 standardize_rval_const(Const, StdConst, DupProcMap) :-
     (
-        Const = llconst_true,
-        StdConst = Const
-    ;
-        Const = llconst_false,
-        StdConst = Const
-    ;
-        Const = llconst_int(_),
-        StdConst = Const
-    ;
-        Const = llconst_uint(_),
-        StdConst = Const
-    ;
-        Const = llconst_foreign(_, _),
-        StdConst = Const
-    ;
-        Const = llconst_float(_),
-        StdConst = Const
-    ;
-        Const = llconst_string(_),
-        StdConst = Const
-    ;
-        Const = llconst_multi_string(_),
+        ( Const = llconst_true
+        ; Const = llconst_false
+        ; Const = llconst_int(_)
+        ; Const = llconst_uint(_)
+        ; Const = llconst_int8(_)
+        ; Const = llconst_uint8(_)
+        ; Const = llconst_int16(_)
+        ; Const = llconst_uint16(_)
+        ; Const = llconst_int32(_)
+        ; Const = llconst_uint32(_)
+        ; Const = llconst_foreign(_, _)
+        ; Const = llconst_float(_)
+        ; Const = llconst_string(_)
+        ; Const = llconst_multi_string(_)
+        ; Const = llconst_data_addr(_, _)
+        ),
         StdConst = Const
     ;
         Const = llconst_code_addr(CodeAddr),
         standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap),
         StdConst = llconst_code_addr(StdCodeAddr)
-    ;
-        Const = llconst_data_addr(_, _),
-        StdConst = Const
     ).
 
 %-----------------------------------------------------------------------------%

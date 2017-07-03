@@ -335,7 +335,8 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
     ( if StartVal = 0 then
         IndexRval = VarRval
     else
-        IndexRval = binop(int_sub, VarRval, const(llconst_int(StartVal)))
+        IndexRval = binop(int_sub(int_type_int), VarRval,
+            const(llconst_int(StartVal)))
     ),
 
     % If the switch is not locally deterministic, we may need to check that
@@ -432,7 +433,7 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
         ( if NumOutVars = 1 then
             BaseRval = IndexRval
         else
-            BaseRval = binop(int_mul,
+            BaseRval = binop(int_mul(int_type_int),
                 IndexRval, const(llconst_int(NumOutVars)))
         ),
         BaseRegInitCode = cord.singleton(
@@ -518,7 +519,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
         unexpected($module, $pred, "bad FailCaseCount")
     ),
 
-    MainRowTypes = [lt_integer, lt_integer | OutTypes],
+    MainRowTypes = [lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
     list.length(MainRowTypes, MainNumColumns),
     add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
     MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
@@ -540,7 +541,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
         llds_instr(
             assign(BaseReg,
                 mem_addr(heap_ref(MainVectorAddrRval, yes(0),
-                    binop(int_mul,
+                    binop(int_mul(int_type_int),
                         IndexRval,
                         const(llconst_int(MainNumColumns)))))),
             "Compute base address for this case")
@@ -597,7 +598,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
         !MaybeEnd, Code, !CI) :-
     (
         Kind = kind_zero_solns,
-        TestOp = int_ge,
+        TestOp = int_ge(int_type_int),
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
             release_reg(BaseReg, !CLD),
@@ -605,7 +606,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
         )
     ;
         Kind = kind_one_soln,
-        TestOp = ne,
+        TestOp = ne(int_type_int),
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
             generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
@@ -620,7 +621,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
         KindCode = BranchEndCode ++ GotoEndCode
     ;
         Kind = kind_several_solns,
-        TestOp = int_le,
+        TestOp = int_le(int_type_int),
         get_globals(!.CI, Globals),
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
@@ -693,12 +694,12 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
                 llds_instr(assign(LaterBaseReg, lval(CurSlot)),
                     "Init later base register"),
                 llds_instr(
-                    if_val(binop(int_ge,
+                    if_val(binop(int_ge(int_type_int),
                         lval(LaterBaseReg), lval(MaxSlot)),
                     code_label(UndoLabel)),
                     "Jump to undo hijack code if there are no more solutions"),
                 llds_instr(assign(CurSlot,
-                    binop(int_add,
+                    binop(int_add(int_type_int),
                         lval(CurSlot),
                         const(llconst_int(NumOutVars)))),
                     "Update current slot in the later solution array"),
@@ -877,7 +878,7 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode,
         % This is the same as
         % WordNum = binop(int_div, IndexRval, const(llconst_int(WordBits)))
         % except that it can generate more efficient code.
-        WordNum = binop(unchecked_right_shift, IndexRval,
+        WordNum = binop(unchecked_right_shift(int_type_int), IndexRval,
             const(llconst_int(Log2WordBits))),
 
         Word = lval(field(yes(0), BitVecRval, WordNum)),
@@ -885,11 +886,12 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode,
         % This is the same as
         % BitNum = binop(int_mod, IndexRval, const(llconst_int(WordBits)))
         % except that it can generate more efficient code.
-        BitNum = binop(bitwise_and, IndexRval,
+        BitNum = binop(bitwise_and(int_type_int), IndexRval,
             const(llconst_int(WordBits - 1)))
     ),
-    HasBit = binop(bitwise_and,
-        binop(unchecked_left_shift, const(llconst_int(1)), BitNum), Word),
+    HasBit = binop(bitwise_and(int_type_int),
+        binop(unchecked_left_shift(int_type_int), const(llconst_int(1)), BitNum),
+        Word),
     fail_if_rval_is_false(HasBit, CheckCode, !CI, !CLD).
 
     % We generate the bitvector by iterating through the cases marking the bit
@@ -948,8 +950,15 @@ default_value_for_type(lt_int_least16) = const(llconst_int(0)).
 default_value_for_type(lt_uint_least16) = const(llconst_int(0)).
 default_value_for_type(lt_int_least32) = const(llconst_int(0)).
 default_value_for_type(lt_uint_least32) = const(llconst_int(0)).
-default_value_for_type(lt_integer) = const(llconst_int(0)).
-default_value_for_type(lt_unsigned) = const(llconst_int(0)).
+default_value_for_type(lt_int(int_type_int)) = const(llconst_int(0)).
+default_value_for_type(lt_int(int_type_uint)) = const(llconst_uint(0u)).
+% XXX FIXED SIZE INT.
+default_value_for_type(lt_int(int_type_int8)) = const(llconst_int8(0)).
+default_value_for_type(lt_int(int_type_uint8)) = const(llconst_uint8(0)).
+default_value_for_type(lt_int(int_type_int16)) = const(llconst_int16(0)).
+default_value_for_type(lt_int(int_type_uint16)) = const(llconst_uint16(0)).
+default_value_for_type(lt_int(int_type_int32)) = const(llconst_int32(0)).
+default_value_for_type(lt_int(int_type_uint32)) = const(llconst_uint32(0)).
 default_value_for_type(lt_float) = const(llconst_float(0.0)).
 default_value_for_type(lt_string) = const(llconst_string("")).
 default_value_for_type(lt_data_ptr) = const(llconst_int(0)).

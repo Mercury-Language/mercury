@@ -1894,6 +1894,12 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         % we used to handle character constants as user-defined cons_ids.
         ( ConsId = int_const(_)
         ; ConsId = uint_const(_)
+        ; ConsId = int8_const(_)
+        ; ConsId = uint8_const(_)
+        ; ConsId = int16_const(_)
+        ; ConsId = uint16_const(_)
+        ; ConsId = int32_const(_)
+        ; ConsId = uint32_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

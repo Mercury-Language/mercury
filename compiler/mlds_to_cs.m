@@ -1067,12 +1067,20 @@ get_type_initializer(Info, Type) = Initializer :-
     (
         Type = mercury_type(_, CtorCat, _),
         (
-            ( CtorCat = ctor_cat_builtin(cat_builtin_int)
+            ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int))
+            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8))
+            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16))
+            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32))
+            % C# byte and ushort literals don't have a suffix.
+            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8))
+            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16))
             ; CtorCat = ctor_cat_builtin(cat_builtin_float)
             ),
             Initializer = "0"
         ;
-            CtorCat = ctor_cat_builtin(cat_builtin_uint),
+            ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint))
+            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32))
+            ),
             Initializer = "0U"
         ;
             CtorCat = ctor_cat_builtin(cat_builtin_char),
@@ -1905,12 +1913,8 @@ mercury_type_to_string_for_csharp(Info, Type, CtorCat, String, ArrayDims) :-
         String = "int",
         ArrayDims = []
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int),
-        String = "int",
-        ArrayDims = []
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_uint),
-        String = "uint",
+        CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
+        String = int_type_to_csharp_type(IntType),
         ArrayDims = []
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_string),
@@ -1949,6 +1953,17 @@ mercury_type_to_string_for_csharp(Info, Type, CtorCat, String, ArrayDims) :-
         mercury_user_type_to_string_csharp(Info, Type, CtorCat, String,
             ArrayDims)
     ).
+
+:- func int_type_to_csharp_type(int_type) = string.
+
+int_type_to_csharp_type(int_type_int) = "int".
+int_type_to_csharp_type(int_type_uint) = "uint".
+int_type_to_csharp_type(int_type_int8) = "sbyte".
+int_type_to_csharp_type(int_type_uint8) = "byte".
+int_type_to_csharp_type(int_type_int16) = "short".
+int_type_to_csharp_type(int_type_uint16) = "ushort".
+int_type_to_csharp_type(int_type_int32) = "int".
+int_type_to_csharp_type(int_type_uint32) = "uint".
 
 :- pred mercury_user_type_to_string_csharp(csharp_out_info::in, mer_type::in,
     type_ctor_category::in, string::out, list(int)::out) is det.
@@ -2184,7 +2199,7 @@ output_per_instance_for_csharp(PerInstance, !IO) :-
     ).
 
 % :- pred output_virtuality_for_csharp(virtuality::in, io::di, io::uo) is det.
-% 
+%
 % output_virtuality_for_csharp(Virtual, !IO) :-
 %     (
 %         Virtual = virtual,
@@ -2217,7 +2232,7 @@ output_constness_for_csharp(Constness, !IO) :-
 
 % :- pred output_abstractness_for_csharp(abstractness::in,
 %     io::di, io::uo) is det.
-% 
+%
 % output_abstractness_for_csharp(Abstractness, !IO) :-
 %     (
 %         Abstractness = abstract,
@@ -3180,13 +3195,11 @@ csharp_builtin_type(Type, TargetType) :-
         require_complete_switch [MerType] (
             MerType = builtin_type(BuiltinType),
             require_complete_switch [BuiltinType] (
-                ( BuiltinType = builtin_type_char
-                ; BuiltinType = builtin_type_int
-                ),
+                BuiltinType = builtin_type_char,
                 TargetType = "int"
             ;
-                BuiltinType = builtin_type_uint,
-                TargetType = "uint"
+                BuiltinType = builtin_type_int(IntType),
+                TargetType = int_type_to_csharp_type(IntType)
             ;
                 BuiltinType = builtin_type_float,
                 TargetType = "double"
@@ -3262,7 +3275,10 @@ output_std_unop_for_csharp(Info, UnaryOp, Expr, !IO) :-
         ; UnaryOp = strip_tag, UnaryOpStr = "/* strip_tag */ "
         ; UnaryOp = mkbody,    UnaryOpStr = "/* mkbody */ "
         ; UnaryOp = unmkbody,   UnaryOpStr = "/* unmkbody */ "
-        ; UnaryOp = bitwise_complement, UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_int), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_uint), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_int32), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_uint32), UnaryOpStr = "~"
         ; UnaryOp = logical_not, UnaryOpStr = "!"
         ; UnaryOp = hash_string,  UnaryOpStr = "mercury.String.hash_1_f_0"
         ; UnaryOp = hash_string2, UnaryOpStr = "mercury.String.hash2_1_f_0"
@@ -3270,8 +3286,27 @@ output_std_unop_for_csharp(Info, UnaryOp, Expr, !IO) :-
         ; UnaryOp = hash_string4, UnaryOpStr = "mercury.String.hash4_1_f_0"
         ; UnaryOp = hash_string5, UnaryOpStr = "mercury.String.hash5_1_f_0"
         ; UnaryOp = hash_string6, UnaryOpStr = "mercury.String.hash6_1_f_0"
-        ; UnaryOp = uint_bitwise_complement, UnaryOpStr = "~"
         ),
+        io.write_string(UnaryOpStr, !IO),
+        io.write_string("(", !IO),
+        output_rval_for_csharp(Info, Expr, !IO),
+        io.write_string(")", !IO)
+    ;
+        (
+            UnaryOp = bitwise_complement(int_type_int8),
+            CastStr = "(sbyte)"
+        ;
+            UnaryOp = bitwise_complement(int_type_uint8),
+            CastStr = "(byte)"
+        ;
+            UnaryOp = bitwise_complement(int_type_int16),
+            CastStr = "(short)"
+        ;
+            UnaryOp = bitwise_complement(int_type_uint16),
+            CastStr = "(ushort)"
+        ),
+        UnaryOpStr = "~",
+        io.write_string(CastStr, !IO),
         io.write_string(UnaryOpStr, !IO),
         io.write_string("(", !IO),
         output_rval_for_csharp(Info, Expr, !IO),
@@ -3324,44 +3359,58 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         io.write_string(")", !IO)
     ;
         % XXX Should we abort for some of these?
-        ( Op = int_add
-        ; Op = int_sub
-        ; Op = int_mul
-        ; Op = int_div
-        ; Op = int_mod
-        ; Op = unchecked_left_shift
-        ; Op = unchecked_right_shift
-        ; Op = bitwise_and
-        ; Op = bitwise_or
-        ; Op = bitwise_xor
+        ( Op = int_add(int_type_int)
+        ; Op = int_sub(int_type_int)
+        ; Op = int_mul(int_type_int)
+        ; Op = int_div(int_type_int)
+        ; Op = int_mod(int_type_int)
+        ; Op = unchecked_left_shift(int_type_int)
+        ; Op = unchecked_right_shift(int_type_int)
+        ; Op = bitwise_and(int_type_int)
+        ; Op = bitwise_or(int_type_int)
+        ; Op = bitwise_xor(int_type_int)
         ; Op = logical_and
         ; Op = logical_or
-        ; Op = eq
-        ; Op = ne
+        ; Op = eq(_)
+        ; Op = ne(_)
         ; Op = body
         ; Op = string_unsafe_index_code_unit
         ; Op = offset_str_eq(_)
-        ; Op = int_lt
-        ; Op = int_gt
-        ; Op = int_le
-        ; Op = int_ge
+        ; Op = int_lt(_)
+        ; Op = int_gt(_)
+        ; Op = int_le(_)
+        ; Op = int_ge(_)
         ; Op = unsigned_le
-        ; Op = uint_eq
-        ; Op = uint_ne
-        ; Op = uint_lt
-        ; Op = uint_gt
-        ; Op = uint_le
-        ; Op = uint_ge
-        ; Op = uint_add
-        ; Op = uint_sub
-        ; Op = uint_mul
-        ; Op = uint_div
-        ; Op = uint_mod
-        ; Op = uint_bitwise_and
-        ; Op = uint_bitwise_or
-        ; Op = uint_bitwise_xor
-        ; Op = uint_unchecked_left_shift
-        ; Op = uint_unchecked_right_shift
+        ; Op = int_add(int_type_uint)
+        ; Op = int_sub(int_type_uint)
+        ; Op = int_mul(int_type_uint)
+        ; Op = int_div(int_type_uint)
+        ; Op = int_mod(int_type_uint)
+        ; Op = bitwise_and(int_type_uint)
+        ; Op = bitwise_or(int_type_uint)
+        ; Op = bitwise_xor(int_type_uint)
+        ; Op = unchecked_left_shift(int_type_uint)
+        ; Op = unchecked_right_shift(int_type_uint)
+        ; Op = int_add(int_type_int32)
+        ; Op = int_sub(int_type_int32)
+        ; Op = int_mul(int_type_int32)
+        ; Op = int_div(int_type_int32)
+        ; Op = int_mod(int_type_int32)
+        ; Op = bitwise_and(int_type_int32)
+        ; Op = bitwise_or(int_type_int32)
+        ; Op = bitwise_xor(int_type_int32)
+        ; Op = unchecked_left_shift(int_type_int32)
+        ; Op = unchecked_right_shift(int_type_int32)
+        ; Op = int_add(int_type_uint32)
+        ; Op = int_sub(int_type_uint32)
+        ; Op = int_mul(int_type_uint32)
+        ; Op = int_div(int_type_uint32)
+        ; Op = int_mod(int_type_uint32)
+        ; Op = bitwise_and(int_type_uint32)
+        ; Op = bitwise_or(int_type_uint32)
+        ; Op = bitwise_xor(int_type_uint32)
+        ; Op = unchecked_left_shift(int_type_uint32)
+        ; Op = unchecked_right_shift(int_type_uint32)
         ; Op = float_plus
         ; Op = float_minus
         ; Op = float_times
@@ -3384,48 +3433,106 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         io.write_string(" ", !IO),
         output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
+    ;
+        ( Op = int_add(int_type_int8)
+        ; Op = int_sub(int_type_int8)
+        ; Op = int_mul(int_type_int8)
+        ; Op = int_div(int_type_int8)
+        ; Op = int_mod(int_type_int8)
+        ; Op = bitwise_and(int_type_int8)
+        ; Op = bitwise_or(int_type_int8)
+        ; Op = bitwise_xor(int_type_int8)
+        ; Op = unchecked_left_shift(int_type_int8)
+        ; Op = unchecked_right_shift(int_type_int8)
+        ),
+        io.write_string("(sbyte)(", !IO),
+        output_rval_for_csharp(Info, X, !IO),
+        io.write_string(" ", !IO),
+        output_binary_op_for_csharp(Op, !IO),
+        io.write_string(" ", !IO),
+        output_rval_for_csharp(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        ( Op = int_add(int_type_uint8)
+        ; Op = int_sub(int_type_uint8)
+        ; Op = int_mul(int_type_uint8)
+        ; Op = int_div(int_type_uint8)
+        ; Op = int_mod(int_type_uint8)
+        ; Op = bitwise_and(int_type_uint8)
+        ; Op = bitwise_or(int_type_uint8)
+        ; Op = bitwise_xor(int_type_uint8)
+        ; Op = unchecked_left_shift(int_type_uint8)
+        ; Op = unchecked_right_shift(int_type_uint8)
+        ),
+        io.write_string("(byte)(", !IO),
+        output_rval_for_csharp(Info, X, !IO),
+        io.write_string(" ", !IO),
+        output_binary_op_for_csharp(Op, !IO),
+        io.write_string(" ", !IO),
+        output_rval_for_csharp(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        ( Op = int_add(int_type_int16)
+        ; Op = int_sub(int_type_int16)
+        ; Op = int_mul(int_type_int16)
+        ; Op = int_div(int_type_int16)
+        ; Op = int_mod(int_type_int16)
+        ; Op = bitwise_and(int_type_int16)
+        ; Op = bitwise_or(int_type_int16)
+        ; Op = bitwise_xor(int_type_int16)
+        ; Op = unchecked_left_shift(int_type_int16)
+        ; Op = unchecked_right_shift(int_type_int16)
+        ),
+        io.write_string("(short)(", !IO),
+        output_rval_for_csharp(Info, X, !IO),
+        io.write_string(" ", !IO),
+        output_binary_op_for_csharp(Op, !IO),
+        io.write_string(" ", !IO),
+        output_rval_for_csharp(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        ( Op = int_add(int_type_uint16)
+        ; Op = int_sub(int_type_uint16)
+        ; Op = int_mul(int_type_uint16)
+        ; Op = int_div(int_type_uint16)
+        ; Op = int_mod(int_type_uint16)
+        ; Op = bitwise_and(int_type_uint16)
+        ; Op = bitwise_or(int_type_uint16)
+        ; Op = bitwise_xor(int_type_uint16)
+        ; Op = unchecked_left_shift(int_type_uint16)
+        ; Op = unchecked_right_shift(int_type_uint16)
+        ),
+        io.write_string("(ushort)(", !IO),
+        output_rval_for_csharp(Info, X, !IO),
+        io.write_string(" ", !IO),
+        output_binary_op_for_csharp(Op, !IO),
+        io.write_string(" ", !IO),
+        output_rval_for_csharp(Info, Y, !IO),
+        io.write_string(")", !IO)
     ).
 
 :- pred output_binary_op_for_csharp(binary_op::in, io::di, io::uo) is det.
 
 output_binary_op_for_csharp(Op, !IO) :-
     (
-        ( Op = int_add, OpStr = "+"
-        ; Op = int_sub, OpStr = "-"
-        ; Op = int_mul, OpStr = "*"
-        ; Op = int_div, OpStr = "/"
-        ; Op = int_mod, OpStr = "%"
-        ; Op = unchecked_left_shift, OpStr = "<<"
-        ; Op = unchecked_right_shift, OpStr = ">>"
-        ; Op = bitwise_and, OpStr = "&"
-        ; Op = bitwise_or, OpStr = "|"
-        ; Op = bitwise_xor, OpStr = "^"
+        ( Op = int_add(_), OpStr = "+"
+        ; Op = int_sub(_), OpStr = "-"
+        ; Op = int_mul(_), OpStr = "*"
+        ; Op = int_div(_), OpStr = "/"
+        ; Op = int_mod(_), OpStr = "%"
+        ; Op = unchecked_left_shift(_), OpStr = "<<"
+        ; Op = unchecked_right_shift(_), OpStr = ">>"
+        ; Op = bitwise_and(_), OpStr = "&"
+        ; Op = bitwise_or(_), OpStr = "|"
+        ; Op = bitwise_xor(_), OpStr = "^"
         ; Op = logical_and, OpStr = "&&"
         ; Op = logical_or, OpStr = "||"
-        ; Op = eq, OpStr = "=="
-        ; Op = ne, OpStr = "!="
-        ; Op = int_lt, OpStr = "<"
-        ; Op = int_gt, OpStr = ">"
-        ; Op = int_le, OpStr = "<="
-        ; Op = int_ge, OpStr = ">="
-
-        ; Op = uint_eq, OpStr = "=="
-        ; Op = uint_ne, OpStr = "!="
-        ; Op = uint_lt, OpStr = "<"
-        ; Op = uint_gt, OpStr = ">"
-        ; Op = uint_le, OpStr = "<="
-        ; Op = uint_ge, OpStr = ">="
-
-        ; Op = uint_add, OpStr = "+"
-        ; Op = uint_sub, OpStr = "-"
-        ; Op = uint_mul, OpStr = "*"
-        ; Op = uint_div, OpStr = "/"
-        ; Op = uint_mod, OpStr = "%"
-        ; Op = uint_bitwise_and, OpStr = "&"
-        ; Op = uint_bitwise_or, OpStr = "|"
-        ; Op = uint_bitwise_xor, OpStr = "^"
-        ; Op = uint_unchecked_left_shift, OpStr = "<<"
-        ; Op = uint_unchecked_right_shift, OpStr = ">>"
+        ; Op = eq(_), OpStr = "=="
+        ; Op = ne(_), OpStr = "!="
+        ; Op = int_lt(_), OpStr = "<"
+        ; Op = int_gt(_), OpStr = ">"
+        ; Op = int_le(_), OpStr = "<="
+        ; Op = int_ge(_), OpStr = ">="
 
         ; Op = float_eq, OpStr = "=="
         ; Op = float_ne, OpStr = "!="
@@ -3478,6 +3585,24 @@ output_rval_const_for_csharp(Info, Const, !IO) :-
     ;
         Const = mlconst_uint(U),
         output_uint_const_for_csharp(U, !IO)
+    ;
+        Const = mlconst_int8(N),
+        output_int_const_for_csharp(N, !IO)
+    ;
+        Const = mlconst_uint8(N),
+        output_int_const_for_csharp(N, !IO)
+    ;
+        Const = mlconst_int16(N),
+        output_int_const_for_csharp(N, !IO)
+    ;
+        Const = mlconst_uint16(N),
+        output_int_const_for_csharp(N, !IO)
+    ;
+        Const = mlconst_int32(N),
+        output_int_const_for_csharp(N, !IO)
+    ;
+        Const = mlconst_uint32(N),
+        output_int_const_for_csharp(N, !IO)
     ;
         Const = mlconst_char(N),
         io.write_string("( ", !IO),

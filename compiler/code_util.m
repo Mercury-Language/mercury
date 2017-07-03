@@ -354,12 +354,12 @@ natural_neg_rval(binop(Op, X, Y), binop(NegOp, X, Y)) :-
 
 :- pred neg_op(binary_op::in, binary_op::out) is semidet.
 
-neg_op(eq, ne).
-neg_op(ne, eq).
-neg_op(int_lt, int_ge).
-neg_op(int_le, int_gt).
-neg_op(int_gt, int_le).
-neg_op(int_ge, int_lt).
+neg_op(eq(T), ne(T)).
+neg_op(ne(T), eq(T)).
+neg_op(int_lt(T), int_ge(T)).
+neg_op(int_le(T), int_gt(T)).
+neg_op(int_gt(T), int_le(T)).
+neg_op(int_ge(T), int_lt(T)).
 neg_op(str_eq, str_ne).
 neg_op(str_ne, str_eq).
 neg_op(str_lt, str_ge).

@@ -20,6 +20,18 @@
         MR_tbl_lookup_insert_int(NULL, MR_FALSE, MR_FALSE, a, b, c)
 #define MR_table_lookup_insert_uint(a, b, c)                                \
         MR_tbl_lookup_insert_uint(NULL, MR_FALSE, MR_FALSE, a, b, c)
+#define MR_table_lookup_insert_int8(a, b, c)                                \
+        MR_tbl_lookup_insert_int8(NULL, MR_FALSE, MR_FALSE, a, b, c)
+#define MR_table_lookup_insert_uint8(a, b, c)                               \
+        MR_tbl_lookup_insert_uint8(NULL, MR_FALSE, MR_FALSE, a, b, c)
+#define MR_table_lookup_insert_int16(a, b, c)                               \
+        MR_tbl_lookup_insert_int16(NULL, MR_FALSE, MR_FALSE, a, b, c)
+#define MR_table_lookup_insert_uint16(a, b, c)                              \
+        MR_tbl_lookup_insert_uint16(NULL, MR_FALSE, MR_FALSE, a, b, c)
+#define MR_table_lookup_insert_int32(a, b, c)                               \
+        MR_tbl_lookup_insert_int32(NULL, MR_FALSE, MR_FALSE, a, b, c)
+#define MR_table_lookup_insert_uint32(a, b, c)                              \
+        MR_tbl_lookup_insert_uint32(NULL, MR_FALSE, MR_FALSE, a, b, c)
 #define MR_table_lookup_insert_start_int(a, b, c, d)                        \
         MR_tbl_lookup_insert_start_int(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
 #define MR_table_lookup_insert_char(a, b, c)                                \
@@ -49,6 +61,18 @@
         MR_tbl_save_any_answer(MR_FALSE, a, b, c)
 #define MR_table_save_uint_answer(a, b, c)                                  \
         MR_tbl_save_any_answer(MR_FALSE, a, b, c)
+#define MR_table_save_int8_answer(a, b, c)                                  \
+        MR_tbl_save_any_answer(MR_FALSE, a, b, c)
+#define MR_table_save_uint8_answer(a, b, c)                                 \
+        MR_tbl_save_any_answer(MR_FALSE, a, b, c)
+#define MR_table_save_int16_answer(a, b, c)                                 \
+        MR_tbl_save_any_answer(MR_FALSE, a, b, c)
+#define MR_table_save_uint16_answer(a, b, c)                                \
+        MR_tbl_save_any_answer(MR_FALSE, a, b, c)
+#define MR_table_save_int32_answer(a, b, c)                                 \
+        MR_tbl_save_any_answer(MR_FALSE, a, b, c)
+#define MR_table_save_uint32_answer(a, b, c)                                \
+        MR_tbl_save_any_answer(MR_FALSE, a, b, c)
 #define MR_table_save_char_answer(a, b, c)                                  \
         MR_tbl_save_char_answer(MR_FALSE, a, b, c)
 #define MR_table_save_string_answer(a, b, c)                                \
@@ -63,6 +87,18 @@
 #define MR_table_restore_int_answer(a, b, c)                                \
         MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
 #define MR_table_restore_uint_answer(a, b, c)                               \
+        MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
+#define MR_table_restore_int8_answer(a, b, c)                               \
+        MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
+#define MR_table_restore_uint8_answer(a, b, c)                              \
+        MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
+#define MR_table_restore_int16_answer(a, b, c)                              \
+        MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
+#define MR_table_restore_uint16_answer(a, b, c)                             \
+        MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
+#define MR_table_restore_int32_answer(a, b, c)                              \
+        MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
+#define MR_table_restore_uint32_answer(a, b, c)                             \
         MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
 #define MR_table_restore_char_answer(a, b, c)                               \
         MR_tbl_restore_char_answer(MR_FALSE, a, b, c)
@@ -159,6 +195,36 @@
         MR_TABLE_UINT(stats, debug, back, T, T0, (MR_Unsigned) V);          \
     } while (0)
 
+#define MR_tbl_lookup_insert_int8(stats, debug, back, T0, V, T)             \
+    do {                                                                    \
+        MR_TABLE_INT8(stats, debug, back, T, T0, (MR_Integer) V);           \
+    } while (0)
+
+#define MR_tbl_lookup_insert_uint8(stats, debug, back, T0, V, T)            \
+    do {                                                                    \
+        MR_TABLE_UINT8(stats, debug, back, T, T0, (MR_Unsigned) V);         \
+    } while (0)
+
+#define MR_tbl_lookup_insert_int16(stats, debug, back, T0, V, T)            \
+    do {                                                                    \
+        MR_TABLE_INT16(stats, debug, back, T, T0, (MR_Integer) V);          \
+    } while (0)
+
+#define MR_tbl_lookup_insert_uint16(stats, debug, back, T0, V, T)           \
+    do {                                                                    \
+        MR_TABLE_UINT16(stats, debug, back, T, T0, (MR_Unsigned) V);        \
+    } while (0)
+
+#define MR_tbl_lookup_insert_int32(stats, debug, back, T0, V, T)            \
+    do {                                                                    \
+        MR_TABLE_INT32(stats, debug, back, T, T0, (MR_Integer) V);          \
+    } while (0)
+
+#define MR_tbl_lookup_insert_uint32(stats, debug, back, T0, V, T)           \
+    do {                                                                    \
+        MR_TABLE_UINT32(stats, debug, back, T, T0, (MR_Unsigned) V);        \
+    } while (0)
+
 #define MR_tbl_lookup_insert_start_int(stats, debug, back, T0, S, V, T)     \
     do {                                                                    \
         MR_TABLE_START_INT(stats, debug, back, T, T0,                       \
@@ -238,6 +304,42 @@
             &MR_TYPE_CTOR_INFO_NAME(builtin, uint, 0));                     \
     } while (0)
 
+#define MR_tbl_save_int8_answer(debug, AB, Offset, V)                       \
+    do {                                                                    \
+        MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
+            &MR_TYPE_CTOR_INFO_NAME(builtin, int8, 0));                     \
+    } while (0)
+
+#define MR_tbl_save_uint8_answer(debug, AB, Offset, V)                      \
+    do {                                                                    \
+        MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
+            &MR_TYPE_CTOR_INFO_NAME(builtin, uint8, 0));                    \
+    } while (0)
+
+#define MR_tbl_save_int16_answer(debug, AB, Offset, V)                      \
+    do {                                                                    \
+        MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
+            &MR_TYPE_CTOR_INFO_NAME(builtin, int16, 0));                    \
+    } while (0)
+
+#define MR_tbl_save_uint16_answer(debug, AB, Offset, V)                     \
+    do {                                                                    \
+        MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
+            &MR_TYPE_CTOR_INFO_NAME(builtin, uint16, 0));                   \
+    } while (0)
+
+#define MR_tbl_save_int32_answer(debug, AB, Offset, V)                      \
+    do {                                                                    \
+        MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
+            &MR_TYPE_CTOR_INFO_NAME(builtin, int32, 0));                    \
+    } while (0)
+
+#define MR_tbl_save_uint32_answer(debug, AB, Offset, V)                     \
+    do {                                                                    \
+        MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
+            &MR_TYPE_CTOR_INFO_NAME(builtin, uint32, 0));                   \
+    } while (0)
+
 #define MR_tbl_save_char_answer(debug, AB, Offset, V)                       \
     do {                                                                    \
         MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
@@ -277,6 +379,36 @@
 #define MR_tbl_restore_uint_answer(debug, AB, Offset, V)                    \
     do {                                                                    \
         V = (MR_Unsigned) MR_TABLE_GET_ANSWER(debug, AB, Offset);           \
+    } while (0)
+
+#define MR_tbl_restore_int8_answer(debug, AB, Offset, V)                    \
+    do {                                                                    \
+        V = (int8_t) MR_TABLE_GET_ANSWER(debug, AB, Offset);                \
+    } while (0)
+
+#define MR_tbl_restore_uint8_answer(debug, AB, Offset, V)                   \
+    do {                                                                    \
+        V = (uint8_t) MR_TABLE_GET_ANSWER(debug, AB, Offset);               \
+    } while (0)
+
+#define MR_tbl_restore_int16_answer(debug, AB, Offset, V)                   \
+    do {                                                                    \
+        V = (int16_t) MR_TABLE_GET_ANSWER(debug, AB, Offset);               \
+    } while (0)
+
+#define MR_tbl_restore_uint16_answer(debug, AB, Offset, V)                  \
+    do {                                                                    \
+        V = (uint16_t) MR_TABLE_GET_ANSWER(debug, AB, Offset);              \
+    } while (0)
+
+#define MR_tbl_restore_int32_answer(debug, AB, Offset, V)                   \
+    do {                                                                    \
+        V = (int32_t) MR_TABLE_GET_ANSWER(debug, AB, Offset);               \
+    } while (0)
+
+#define MR_tbl_restore_uint32_answer(debug, AB, Offset, V)                  \
+    do {                                                                    \
+        V = (uint32_t) MR_TABLE_GET_ANSWER(debug, AB, Offset);              \
     } while (0)
 
 #define MR_tbl_restore_char_answer(debug, AB, Offset, V)                    \

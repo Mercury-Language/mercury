@@ -616,6 +616,9 @@ start_label:
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_FOREIGN_ENUM:
         case MR_TYPECTOR_REP_INT:
+        case MR_TYPECTOR_REP_INT8:
+        case MR_TYPECTOR_REP_INT16:
+        case MR_TYPECTOR_REP_INT32:
         case MR_TYPECTOR_REP_CHAR:
 
 #ifdef  select_compare_code
@@ -631,6 +634,9 @@ start_label:
                 (MR_Integer) x == (MR_Integer) y);
 #endif
         case MR_TYPECTOR_REP_UINT:
+        case MR_TYPECTOR_REP_UINT8:
+        case MR_TYPECTOR_REP_UINT16:
+        case MR_TYPECTOR_REP_UINT32:
 
 #ifdef  select_compare_code
             if ((MR_Unsigned) x == (MR_Unsigned) y) {

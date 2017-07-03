@@ -782,6 +782,31 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
         io.write_uint(UInt, !IO),
         space(!IO)
     ;
+        % XXX FIXED SIZE INT
+        Term = elds_int8(Int8),
+        io.write_int(Int8, !IO),
+        space(!IO)
+    ;
+        Term = elds_uint8(UInt8),
+        io.write_int(UInt8, !IO),
+        space(!IO)
+    ;
+        Term = elds_int16(Int16),
+        io.write_int(Int16, !IO),
+        space(!IO)
+    ;
+        Term = elds_uint16(UInt16),
+        io.write_int(UInt16, !IO),
+        space(!IO)
+    ;
+        Term = elds_int32(Int32),
+        io.write_int(Int32, !IO),
+        space(!IO)
+    ;
+        Term = elds_uint32(UInt32),
+        io.write_int(UInt32, !IO),
+        space(!IO)
+    ;
         Term = elds_float(Float),
         output_float(Float, !IO),
         space(!IO)

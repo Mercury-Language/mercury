@@ -2095,7 +2095,14 @@ pred_has_arity(Preds, Arity, PredId) :-
     %
 :- pred builtin_atomic_type(cons_id::in, builtin_type::out) is semidet.
 
-builtin_atomic_type(int_const(_), builtin_type_int).
+builtin_atomic_type(int_const(_), builtin_type_int(int_type_int)).
+builtin_atomic_type(uint_const(_), builtin_type_int(int_type_uint)).
+builtin_atomic_type(int8_const(_), builtin_type_int(int_type_int8)).
+builtin_atomic_type(uint8_const(_), builtin_type_int(int_type_uint8)).
+builtin_atomic_type(int16_const(_), builtin_type_int(int_type_int16)).
+builtin_atomic_type(uint16_const(_), builtin_type_int(int_type_uint16)).
+builtin_atomic_type(int32_const(_), builtin_type_int(int_type_int32)).
+builtin_atomic_type(uint32_const(_), builtin_type_int(int_type_uint32)).
 builtin_atomic_type(float_const(_), builtin_type_float).
 builtin_atomic_type(string_const(_), builtin_type_string).
 builtin_atomic_type(cons(unqualified(String), 0, _), builtin_type_char) :-
@@ -2110,7 +2117,7 @@ builtin_atomic_type(impl_defined_const(Name), Type) :-
         Type = builtin_type_string
     ;
         Name = "line",
-        Type = builtin_type_int
+        Type = builtin_type_int(int_type_int)
     ).
 
     % Creates a new id for a type constraint, then maps each of the given type
@@ -2424,11 +2431,8 @@ type_to_string(TVarSet, Type, Name) :-
         SubtypeName = string.join_list(", ", SubtypeNames),
         Name = sym_name_to_string(SymName) ++ "(" ++ SubtypeName ++ ")"
     ;
-        Type = builtin_type(builtin_type_int),
-        Name = "int"
-    ;
-        Type = builtin_type(builtin_type_uint),
-        Name = "uint"
+        Type = builtin_type(builtin_type_int(IntType)),
+        int_type_to_string(IntType, Name)
     ;
         Type = builtin_type(builtin_type_float),
         Name = "float"

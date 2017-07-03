@@ -45,6 +45,8 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 
 :- import_module counter.
 :- import_module int.
@@ -195,8 +197,9 @@ split_computed_goto(Rval, Targets, Comment, Instrs, !C, MaxSize, NumTargets,
         counter.allocate(LabelNum, !C),
         Mid = NumTargets // 2,
         list.det_split_list(Mid, Targets, StartTargets, EndTargets),
-        Index     = binop(int_sub, Rval, const(llconst_int(Mid))),
-        Test      = binop(int_ge,  Rval, const(llconst_int(Mid))),
+        Index     = binop(int_sub(int_type_int), Rval, const(llconst_int(Mid))),
+        Test      = binop(int_ge(int_type_int),  Rval,
+            const(llconst_int(Mid))),
         ElseAddr  = code_label(internal_label(LabelNum, ProcLabel)),
         IfInstr   = llds_instr(if_val(Test, ElseAddr), "binary search"),
         ElseInstr = llds_instr(label(internal_label(LabelNum, ProcLabel)), ""),

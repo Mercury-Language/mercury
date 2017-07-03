@@ -793,6 +793,114 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_zero_arity_args();
             return;
 
+        case MR_TYPECTOR_REP_INT8:
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                char    buf[500];
+                char    *str;
+
+                data_word = *data_word_ptr;
+                sprintf(buf, "%" MR_INTEGER_LENGTH_MODIFIER "di8",
+                    (MR_Integer) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  // EXPAND_FUNCTOR_FIELD
+
+            handle_zero_arity_args();
+            return;
+
+        case MR_TYPECTOR_REP_UINT8:
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                char    buf[500];
+                char    *str;
+
+                data_word = *data_word_ptr;
+                sprintf(buf, "%" MR_INTEGER_LENGTH_MODIFIER "uu8",
+                    (MR_Unsigned) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  // EXPAND_FUNCTOR_FIELD
+
+            handle_zero_arity_args();
+            return;
+
+        case MR_TYPECTOR_REP_INT16:
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                char    buf[500];
+                char    *str;
+
+                data_word = *data_word_ptr;
+                sprintf(buf, "%" MR_INTEGER_LENGTH_MODIFIER "di16",
+                    (MR_Integer) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  // EXPAND_FUNCTOR_FIELD
+
+            handle_zero_arity_args();
+            return;
+
+        case MR_TYPECTOR_REP_UINT16:
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                char    buf[500];
+                char    *str;
+
+                data_word = *data_word_ptr;
+                sprintf(buf, "%" MR_INTEGER_LENGTH_MODIFIER "uu16",
+                    (MR_Unsigned) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  // EXPAND_FUNCTOR_FIELD
+
+            handle_zero_arity_args();
+            return;
+
+        case MR_TYPECTOR_REP_INT32:
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                char    buf[500];
+                char    *str;
+
+                data_word = *data_word_ptr;
+                sprintf(buf, "%" MR_INTEGER_LENGTH_MODIFIER "di32",
+                    (MR_Integer) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  // EXPAND_FUNCTOR_FIELD
+
+            handle_zero_arity_args();
+            return;
+
+        case MR_TYPECTOR_REP_UINT32:
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                char    buf[500];
+                char    *str;
+
+                data_word = *data_word_ptr;
+                sprintf(buf, "%" MR_INTEGER_LENGTH_MODIFIER "uu32",
+                    (MR_Unsigned) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  // EXPAND_FUNCTOR_FIELD
+
+            handle_zero_arity_args();
+            return;
+
         case MR_TYPECTOR_REP_CHAR:
 #ifdef  EXPAND_FUNCTOR_FIELD
             {

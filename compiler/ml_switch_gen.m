@@ -602,6 +602,24 @@ ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
         Tag = uint_tag(UInt),
         Rval = ml_const(mlconst_uint(UInt))
     ;
+        Tag = int8_tag(Int8),
+        Rval = ml_const(mlconst_int8(Int8))
+    ;
+        Tag = uint8_tag(UInt8),
+        Rval = ml_const(mlconst_uint8(UInt8))
+    ;
+        Tag = int16_tag(Int16),
+        Rval = ml_const(mlconst_int16(Int16))
+    ;
+        Tag = uint16_tag(UInt16),
+        Rval = ml_const(mlconst_uint16(UInt16))
+    ;
+        Tag = int32_tag(Int32),
+        Rval = ml_const(mlconst_int32(Int32))
+    ;
+        Tag = uint32_tag(UInt32),
+        Rval = ml_const(mlconst_uint32(UInt32))
+    ;
         Tag = string_tag(String),
         Rval = ml_const(mlconst_string(String))
     ;

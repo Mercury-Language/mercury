@@ -51,6 +51,24 @@
 :- pred builtin_unify_uint(uint::in, uint::in) is semidet.
 :- pred builtin_compare_uint(comparison_result::uo, uint::in, uint::in) is det.
 
+:- pred builtin_unify_int8(T::in, T::in) is semidet.
+:- pred builtin_compare_int8(comparison_result::uo, T::in, T::in) is det.
+
+:- pred builtin_unify_uint8(T::in, T::in) is semidet.
+:- pred builtin_compare_uint8(comparison_result::uo, T::in, T::in) is det.
+
+:- pred builtin_unify_int16(T::in, T::in) is semidet.
+:- pred builtin_compare_int16(comparison_result::uo, T::in, T::in) is det.
+
+:- pred builtin_unify_uint16(T::in, T::in) is semidet.
+:- pred builtin_compare_uint16(comparison_result::uo, T::in, T::in) is det.
+
+:- pred builtin_unify_int32(T::in, T::in) is semidet.
+:- pred builtin_compare_int32(comparison_result::uo, T::in, T::in) is det.
+
+:- pred builtin_unify_uint32(T::in, T::in) is semidet.
+:- pred builtin_compare_uint32(comparison_result::uo, T::in, T::in) is det.
+
 :- pred builtin_unify_character(character::in, character::in) is semidet.
 :- pred builtin_compare_character(comparison_result::uo, character::in,
     character::in) is det.
@@ -178,6 +196,90 @@ builtin_compare_uint(R, X, Y) :-
         R = (=)
     else
         R = (>)
+    ).
+
+builtin_unify_int8(_, _) :-
+    ( if semidet_succeed then
+        sorry("unify for int8")
+    else
+        semidet_succeed
+    ).
+
+builtin_compare_int8(R, _, _) :-
+    ( if semidet_succeed then
+        sorry("compare for int8")
+    else
+        R = (=)
+    ).
+
+builtin_unify_uint8(_, _) :-
+    ( if semidet_succeed then
+        sorry("unify for uint8")
+    else
+        semidet_succeed
+    ).
+
+builtin_compare_uint8(R, _, _) :-
+    ( if semidet_succeed then
+        sorry("compare for uint8")
+    else
+        R = (=)
+    ).
+
+builtin_unify_int16(_, _) :-
+    ( if semidet_succeed then
+        sorry("unify for int16")
+    else
+        semidet_succeed
+    ).
+
+builtin_compare_int16(R, _, _) :-
+    ( if semidet_succeed then
+        sorry("compare for int16")
+    else
+        R = (=)
+    ).
+
+builtin_unify_uint16(_, _) :-
+    ( if semidet_succeed then
+        sorry("unify for uint16")
+    else
+        semidet_succeed
+    ).
+
+builtin_compare_uint16(R, _, _) :-
+    ( if semidet_succeed then
+        sorry("compare for uint16")
+    else
+        R = (=)
+    ).
+
+builtin_unify_int32(_, _) :-
+    ( if semidet_succeed then
+        sorry("unify for int32")
+    else
+        semidet_succeed
+    ).
+
+builtin_compare_int32(R, _, _) :-
+    ( if semidet_succeed then
+        sorry("compare for int32")
+    else
+        R = (=)
+    ).
+
+builtin_unify_uint32(_, _) :-
+    ( if semidet_succeed then
+        sorry("unify for uint32")
+    else
+        semidet_succeed
+    ).
+
+builtin_compare_uint32(R, _, _) :-
+    ( if semidet_succeed then
+        sorry("compare for uint32")
+    else
+        R = (=)
     ).
 
 builtin_unify_character(C, C).
@@ -1761,8 +1863,14 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
     public static final int MR_TYPECTOR_REP_BITMAP                  = 44;
     public static final int MR_TYPECTOR_REP_FOREIGN_ENUM            = 45;
     public static final int MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ     = 46;
-    public static final int MR_TYPECTOR_REP_UNKNOWN                 = 47;
-    public static final int MR_TYPECTOR_REP_MAX                     = 48;
+    public static final int MR_TYPECTOR_REP_INT8                    = 47;
+    public static final int MR_TYPECTOR_REP_UINT8                   = 48;
+    public static final int MR_TYPECTOR_REP_INT16                   = 49;
+    public static final int MR_TYPECTOR_REP_UINT16                  = 50;
+    public static final int MR_TYPECTOR_REP_INT32                   = 51;
+    public static final int MR_TYPECTOR_REP_UINT32                  = 52;
+    public static final int MR_TYPECTOR_REP_UNKNOWN                 = 53;
+    public static final int MR_TYPECTOR_REP_MAX                     = 54;
 
     public static final int MR_SECTAG_NONE              = 0;
     public static final int MR_SECTAG_NONE_DIRECT_ARG   = 1;

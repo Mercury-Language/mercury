@@ -993,7 +993,8 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
         TailRecInfo = yes(TailRecLval - _),
         TailRecLvalCode = singleton(
             llds_instr(assign(TailRecLval,
-                binop(int_add, lval(TailRecLval), const(llconst_int(1)))),
+                binop(int_add(int_type_int), lval(TailRecLval),
+                    const(llconst_int(1)))),
                 "increment tail recursion counter")
         )
     ;

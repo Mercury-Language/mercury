@@ -447,6 +447,24 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
         SimpleExpr = uint_const(UInt),
         Expr = elds_term(elds_uint(UInt))
     ;
+        SimpleExpr = int8_const(Int8),
+        Expr = elds_term(elds_int8(Int8))
+    ;
+        SimpleExpr = uint8_const(UInt8),
+        Expr = elds_term(elds_uint8(UInt8))
+    ;
+        SimpleExpr = int16_const(Int16),
+        Expr = elds_term(elds_int16(Int16))
+    ;
+        SimpleExpr = uint16_const(UInt16),
+        Expr = elds_term(elds_uint16(UInt16))
+    ;
+        SimpleExpr = int32_const(Int32),
+        Expr = elds_term(elds_int32(Int32))
+    ;
+        SimpleExpr = uint32_const(UInt32),
+        Expr = elds_term(elds_uint32(UInt32))
+    ;
         SimpleExpr = float_const(Float),
         Expr = elds_term(elds_float(Float))
     ;
@@ -493,9 +511,8 @@ std_unop_to_elds(StdUnOp, EldsUnOp) :-
         ),
         fail
     ;
-        ( StdUnOp = bitwise_complement,      EldsUnOp = elds.bnot
-        ; StdUnOp = uint_bitwise_complement, EldsUnOp = elds.bnot
-        ; StdUnOp = logical_not,             EldsUnOp = elds.logical_not
+        ( StdUnOp = bitwise_complement(_), EldsUnOp = elds.bnot
+        ; StdUnOp = logical_not,           EldsUnOp = elds.logical_not
         )
     ).
 
@@ -515,20 +532,20 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ),
         fail
     ;
-        ( StdBinOp = int_add,               EldsBinOp = elds.add
-        ; StdBinOp = int_sub,               EldsBinOp = elds.sub
-        ; StdBinOp = int_mul,               EldsBinOp = elds.mul
-        ; StdBinOp = int_div,               EldsBinOp = elds.int_div
-        ; StdBinOp = int_mod,               EldsBinOp = elds.(rem)
-        ; StdBinOp = unchecked_left_shift,  EldsBinOp = elds.bsl
-        ; StdBinOp = unchecked_right_shift, EldsBinOp = elds.bsr
-        ; StdBinOp = bitwise_and,           EldsBinOp = elds.band
-        ; StdBinOp = bitwise_or,            EldsBinOp = elds.bor
-        ; StdBinOp = bitwise_xor,           EldsBinOp = elds.bxor
+        ( StdBinOp = int_add(_),            EldsBinOp = elds.add
+        ; StdBinOp = int_sub(_),            EldsBinOp = elds.sub
+        ; StdBinOp = int_mul(_),            EldsBinOp = elds.mul
+        ; StdBinOp = int_div(_),            EldsBinOp = elds.int_div
+        ; StdBinOp = int_mod(_),            EldsBinOp = elds.(rem)
+        ; StdBinOp = unchecked_left_shift(_),  EldsBinOp = elds.bsl
+        ; StdBinOp = unchecked_right_shift(_), EldsBinOp = elds.bsr
+        ; StdBinOp = bitwise_and(_),        EldsBinOp = elds.band
+        ; StdBinOp = bitwise_or(_),         EldsBinOp = elds.bor
+        ; StdBinOp = bitwise_xor(_),        EldsBinOp = elds.bxor
         ; StdBinOp = logical_and,           EldsBinOp = elds.andalso
         ; StdBinOp = logical_or,            EldsBinOp = elds.orelse
-        ; StdBinOp = eq,                    EldsBinOp = elds.(=:=)
-        ; StdBinOp = ne,                    EldsBinOp = elds.(=/=)
+        ; StdBinOp = eq(_),                 EldsBinOp = elds.(=:=)
+        ; StdBinOp = ne(_),                 EldsBinOp = elds.(=/=)
         ; StdBinOp = offset_str_eq(_),      EldsBinOp = elds.(=:=)
         ; StdBinOp = str_eq,                EldsBinOp = elds.(=:=)
         ; StdBinOp = str_ne,                EldsBinOp = elds.(=/=)
@@ -536,10 +553,10 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = str_gt,                EldsBinOp = elds.(>)
         ; StdBinOp = str_le,                EldsBinOp = elds.(=<)
         ; StdBinOp = str_ge,                EldsBinOp = elds.(>=)
-        ; StdBinOp = int_lt,                EldsBinOp = elds.(<)
-        ; StdBinOp = int_gt,                EldsBinOp = elds.(>)
-        ; StdBinOp = int_le,                EldsBinOp = elds.(=<)
-        ; StdBinOp = int_ge,                EldsBinOp = elds.(>=)
+        ; StdBinOp = int_lt(_),             EldsBinOp = elds.(<)
+        ; StdBinOp = int_gt(_),             EldsBinOp = elds.(>)
+        ; StdBinOp = int_le(_),             EldsBinOp = elds.(=<)
+        ; StdBinOp = int_ge(_),             EldsBinOp = elds.(>=)
         ; StdBinOp = float_plus,            EldsBinOp = elds.add
         ; StdBinOp = float_minus,           EldsBinOp = elds.sub
         ; StdBinOp = float_times,           EldsBinOp = elds.mul
@@ -552,22 +569,6 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = float_ge,              EldsBinOp = elds.(>=)
         ; StdBinOp = compound_eq,           EldsBinOp = elds.(=:=)
         ; StdBinOp = compound_lt,           EldsBinOp = elds.(<)
-        ; StdBinOp = uint_eq,               EldsBinOp = elds.(=:=)
-        ; StdBinOp = uint_ne,               EldsBinOp = elds.(=/=)
-        ; StdBinOp = uint_lt,               EldsBinOp = elds.(<)
-        ; StdBinOp = uint_gt,               EldsBinOp = elds.(>)
-        ; StdBinOp = uint_le,               EldsBinOp = elds.(=<)
-        ; StdBinOp = uint_ge,               EldsBinOp = elds.(>=)
-        ; StdBinOp = uint_add,              EldsBinOp = elds.add
-        ; StdBinOp = uint_sub,              EldsBinOp = elds.sub
-        ; StdBinOp = uint_mul,              EldsBinOp = elds.mul
-        ; StdBinOp = uint_div,              EldsBinOp = elds.int_div
-        ; StdBinOp = uint_mod,              EldsBinOp = elds.(rem)
-        ; StdBinOp = uint_bitwise_and,      EldsBinOp = elds.band
-        ; StdBinOp = uint_bitwise_or,       EldsBinOp = elds.bor
-        ; StdBinOp = uint_bitwise_xor,      EldsBinOp = elds.bxor
-        ; StdBinOp = uint_unchecked_left_shift, EldsBinOp = elds.bsl
-        ; StdBinOp = uint_unchecked_right_shift, EldsBinOp = elds.bsr
         )
     ).
 

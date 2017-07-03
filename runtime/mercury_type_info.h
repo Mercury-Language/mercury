@@ -603,6 +603,12 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_BITMAP),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FOREIGN_ENUM),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_INT8),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UINT8),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_INT16),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UINT16),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_INT32),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UINT32),
     // MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     // MR_TYPE_CTOR_STATS depends on this.
 
@@ -673,6 +679,12 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "BITMAP",                                                           \
     "FOREIGN_ENUM",                                                     \
     "FOREIGN_ENUM_USEREQ",                                              \
+    "INT8",                                                             \
+    "UINT8",                                                            \
+    "INT16",                                                            \
+    "UINT16",                                                           \
+    "INT32",                                                            \
+    "UINT32",                                                           \
     "UNKNOWN"
 
 extern  MR_ConstString  MR_ctor_rep_name[];
@@ -1415,6 +1427,24 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
   #define MR_UINT_CTOR_ADDR                                               \
       (MR_Word *) &mercury__builtin__builtin__type_ctor_info_uint_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint, 0)
+  #define MR_INT8_CTOR_ADDR                                               \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_int8_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int8, 0)
+  #define MR_UINT8_CTOR_ADDR                                              \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_uint8_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint8, 0)
+  #define MR_INT16_CTOR_ADDR                                              \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_int16_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int16, 0)
+  #define MR_UINT16_CTOR_ADDR                                             \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_uint16_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint16, 0)
+  #define MR_INT32_CTOR_ADDR                                              \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_int32_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int32, 0)
+  #define MR_UINT32_CTOR_ADDR                                             \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_uint32_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint32, 0)
   #define MR_FLOAT_CTOR_ADDR                                              \
       (MR_Word *) &mercury__builtin__builtin__type_ctor_info_float_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)
@@ -1445,6 +1475,24 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
   #define MR_UINT_CTOR_ADDR                                               \
       (MR_Word *) &mercury_data_builtin__type_ctor_info_uint_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint, 0)
+  #define MR_INT8_CTOR_ADDR                                               \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_int8_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int8, 0)
+  #define MR_UINT8_CTOR_ADDR                                              \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_uint8_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint8, 0)
+  #define MR_INT16_CTOR_ADDR                                              \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_int16_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int16, 0)
+  #define MR_UINT16_CTOR_ADDR                                             \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_uint16_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint16, 0)
+  #define MR_INT32_CTOR_ADDR                                              \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_int32_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int32, 0)
+  #define MR_UINT32_CTOR_ADDR                                             \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_uint32_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint32, 0)
   #define MR_FLOAT_CTOR_ADDR                                              \
       (MR_Word *) &mercury_data_builtin__type_ctor_info_float_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)

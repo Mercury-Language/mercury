@@ -639,10 +639,28 @@ is_known_type_name_args(Name, Args, KnownType) :-
         % Known types which are always simple.
         (
             Name = "int",
-            BuiltinType = builtin_type_int
+            BuiltinType = builtin_type_int(int_type_int)
         ;
             Name = "uint",
-            BuiltinType = builtin_type_uint
+            BuiltinType = builtin_type_int(int_type_uint)
+        ;
+            Name = "int8",
+            BuiltinType = builtin_type_int(int_type_int8)
+        ;
+            Name = "uint8",
+            BuiltinType = builtin_type_int(int_type_uint8)
+        ;
+            Name = "int16",
+            BuiltinType = builtin_type_int(int_type_int16)
+        ;
+            Name = "uint16",
+            BuiltinType = builtin_type_int(int_type_uint16)
+        ;
+            Name = "int32",
+            BuiltinType = builtin_type_int(int_type_int32)
+        ;
+            Name = "uint32",
+            BuiltinType = builtin_type_int(int_type_uint32)
         ;
             Name = "float",
             BuiltinType = builtin_type_float

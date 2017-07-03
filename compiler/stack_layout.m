@@ -1682,7 +1682,8 @@ construct_user_data_array(Params, VarNumMap, [MaybeAttr | MaybeAttrs],
         MaybeVarNum = yes(VarNum)
     ;
         MaybeAttr = no,
-        LocnTypedRval = typed_rval(const(llconst_int(0)), lt_unsigned),
+        LocnTypedRval = typed_rval(const(llconst_int(0)),
+            lt_int(int_type_uint)),
         MaybeVarNum = no
     ),
     construct_user_data_array(Params, VarNumMap, MaybeAttrs,
@@ -1786,12 +1787,13 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         ),
         represent_locn_as_int_rval(Locn, Rval),
         construct_type_param_locn_vector(TVarLocns, NextSlot, VectorTail),
-        Vector = [typed_rval(Rval, lt_unsigned) | VectorTail]
+        Vector = [typed_rval(Rval, lt_int(int_type_uint)) | VectorTail]
     else if TVarNum > CurSlot then
         construct_type_param_locn_vector([TVar - Locns | TVarLocns], NextSlot,
             VectorTail),
         % This slot will never be referred to.
-        Vector = [typed_rval(const(llconst_int(0)), lt_unsigned) | VectorTail]
+        Vector = [typed_rval(const(llconst_int(0)),
+            lt_int(int_type_uint)) | VectorTail]
     else
         unexpected($module, $pred, "unsorted tvars")
     ).
@@ -2042,7 +2044,7 @@ construct_tvar_rvals(TVarLocnMap, Vector) :-
     construct_type_param_locn_vector(TVarLocns, 1, TypeParamLocs),
     list.length(TypeParamLocs, TypeParamsLength),
     LengthRval = const(llconst_int(TypeParamsLength)),
-    Vector = [typed_rval(LengthRval, lt_unsigned) | TypeParamLocs].
+    Vector = [typed_rval(LengthRval, lt_int(int_type_uint)) | TypeParamLocs].
 
 %---------------------------------------------------------------------------%
 %
@@ -2078,7 +2080,8 @@ construct_closure_arg_rvals(ClosureArgs, ClosureArgTypedRvals,
     list.map_foldl(construct_closure_arg_rval, ClosureArgs, ArgTypedRvals,
         !StaticCellInfo),
     list.length(ArgTypedRvals, Length),
-    LengthTypedRval = typed_rval(const(llconst_int(Length)), lt_integer),
+    LengthTypedRval = typed_rval(const(llconst_int(Length)),
+        lt_int(int_type_int)),
     ClosureArgTypedRvals = [LengthTypedRval| ArgTypedRvals].
 
 :- pred construct_closure_arg_rval(closure_arg_info::in,
@@ -2200,7 +2203,7 @@ represent_locn_or_const_as_int_rval(Params, LvalOrConst, Rval, Type,
     (
         LvalOrConst = lval(Lval),
         represent_locn_as_int_rval(locn_direct(Lval), Rval),
-        Type = lt_unsigned
+        Type = lt_int(int_type_uint)
     ;
         LvalOrConst = const(_Const),
         UnboxedFloats = Params ^ slp_unboxed_floats,

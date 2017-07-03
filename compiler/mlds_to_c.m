@@ -2915,11 +2915,29 @@ mlds_output_mercury_type_prefix(Opts, Type, CtorCat, !IO) :-
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         io.write_string("MR_Char", !IO)
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int)),
         io.write_string("MR_Integer", !IO)
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_uint),
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint)),
         io.write_string("MR_Unsigned", !IO)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8)),
+        io.write_string("int8_t", !IO)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8)),
+        io.write_string("uint8_t", !IO)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16)),
+        io.write_string("int16_t", !IO)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16)),
+        io.write_string("uint16_t", !IO)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32)),
+        io.write_string("int32_t", !IO)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
+        io.write_string("uint32_t", !IO)
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_string),
         io.write_string("MR_String", !IO)
@@ -4544,6 +4562,12 @@ is_an_address(Rval) = IsAddr :-
             ; Const = mlconst_multi_string(_)
             ; Const = mlconst_int(_)
             ; Const = mlconst_uint(_)
+            ; Const = mlconst_int8(_)
+            ; Const = mlconst_uint8(_)
+            ; Const = mlconst_int16(_)
+            ; Const = mlconst_uint16(_)
+            ; Const = mlconst_int32(_)
+            ; Const = mlconst_uint32(_)
             ; Const = mlconst_float(_)
             ; Const = mlconst_foreign(_, _, _)
             ),
@@ -4681,52 +4705,27 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_rval(Opts, Y, !IO),
         io.write_string("))", !IO)
     ;
-        ( Op = int_add, OpStr = "+"
-        ; Op = int_sub, OpStr = "-"
-        ; Op = int_mul, OpStr = "*"
-        ; Op = int_div, OpStr = "/"
-        ; Op = int_mod, OpStr = "%"
-        ; Op = eq, OpStr = "=="
-        ; Op = ne, OpStr = "!="
-        ; Op = int_lt, OpStr = "<"
-        ; Op = int_gt, OpStr = ">"
-        ; Op = int_le, OpStr = "<="
-        ; Op = int_ge, OpStr = ">="
-        ; Op = unchecked_left_shift, OpStr = "<<"
-        ; Op = unchecked_right_shift, OpStr = ">>"
-        ; Op = bitwise_and, OpStr = "&"
-        ; Op = bitwise_or, OpStr = "|"
-        ; Op = bitwise_xor, OpStr = "^"
+        ( Op = int_add(_), OpStr = "+"
+        ; Op = int_sub(_), OpStr = "-"
+        ; Op = int_mul(_), OpStr = "*"
+        ; Op = int_div(_), OpStr = "/"
+        ; Op = int_mod(_), OpStr = "%"
+        ; Op = eq(_), OpStr = "=="
+        ; Op = ne(_), OpStr = "!="
+        ; Op = int_lt(_), OpStr = "<"
+        ; Op = int_gt(_), OpStr = ">"
+        ; Op = int_le(_), OpStr = "<="
+        ; Op = int_ge(_), OpStr = ">="
+        ; Op = unchecked_left_shift(_), OpStr = "<<"
+        ; Op = unchecked_right_shift(_), OpStr = ">>"
+        ; Op = bitwise_and(_), OpStr = "&"
+        ; Op = bitwise_or(_), OpStr = "|"
+        ; Op = bitwise_xor(_), OpStr = "^"
         ; Op = logical_and, OpStr = "&&"
         ; Op = logical_or, OpStr = "||"
         ),
         % We could treat X + (-const) specially, but we don't.
         % The reason is documented in the equivalent code in llds_out_data.m.
-        io.write_string("(", !IO),
-        mlds_output_rval_as_op_arg(Opts, X, !IO),
-        io.write_string(" ", !IO),
-        io.write_string(OpStr, !IO),
-        io.write_string(" ", !IO),
-        mlds_output_rval_as_op_arg(Opts, Y, !IO),
-        io.write_string(")", !IO)
-    ;
-        ( Op = uint_eq, OpStr = "=="
-        ; Op = uint_ne, OpStr = "!="
-        ; Op = uint_lt, OpStr = "<"
-        ; Op = uint_gt, OpStr = ">"
-        ; Op = uint_le, OpStr = "<="
-        ; Op = uint_ge, OpStr = ">="
-        ; Op = uint_add, OpStr = "+"
-        ; Op = uint_sub, OpStr = "-"
-        ; Op = uint_mul, OpStr = "*"
-        ; Op = uint_div, OpStr = "/"
-        ; Op = uint_mod, OpStr = "%"
-        ; Op = uint_bitwise_and, OpStr = "&"
-        ; Op = uint_bitwise_or, OpStr = "|"
-        ; Op = uint_bitwise_xor, OpStr = "^"
-        ; Op = uint_unchecked_left_shift, OpStr = "<<"
-        ; Op = uint_unchecked_right_shift, OpStr = ">>"
-        ),
         io.write_string("(", !IO),
         mlds_output_rval_as_op_arg(Opts, X, !IO),
         io.write_string(" ", !IO),
@@ -4798,6 +4797,24 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
     ;
         Const = mlconst_uint(U),
         c_util.output_uint_expr_cur_stream(U, !IO)
+    ;
+        Const = mlconst_int8(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = mlconst_uint8(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = mlconst_int16(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = mlconst_uint16(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = mlconst_int32(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
+    ;
+        Const = mlconst_uint32(N),
+        c_util.output_int_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_char(C),
         io.write_string("(MR_Char) ", !IO),

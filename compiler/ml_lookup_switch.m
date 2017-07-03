@@ -266,7 +266,7 @@ ml_gen_atomic_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
         IndexRval = SwitchVarRval
     else
         StartRval = ml_const(mlconst_int(StartVal)),
-        IndexRval = ml_binop(int_sub, SwitchVarRval, StartRval)
+        IndexRval = ml_binop(int_sub(int_type_int), SwitchVarRval, StartRval)
     ),
     (
         CaseIdConstMap = all_one_soln(CaseIdValueMap),
@@ -510,7 +510,8 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
     LaterLookupSucceedStmt = ml_stmt_block([],
         LaterSolnLookupStmts ++ [CallContStmt, IncrLaterSlotVarStmt], Context),
 
-    MoreSolnsLoopCond = ml_binop(int_lt, LaterSlotVarRval, LimitVarRval),
+    MoreSolnsLoopCond = ml_binop(int_lt(int_type_int),
+        LaterSlotVarRval, LimitVarRval),
     MoreSolnsLoopStmt = ml_stmt_while(may_loop_zero_times, MoreSolnsLoopCond,
         LaterLookupSucceedStmt, Context),
 
@@ -524,7 +525,7 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
         OneOrMoreSolnsBlockStmt =
             ml_stmt_block([], OneOrMoreSolnsStmts, Context),
 
-        AnySolnsCond = ml_binop(int_ge,
+        AnySolnsCond = ml_binop(int_ge(int_type_int),
             NumLaterSolnsVarRval, ml_const(mlconst_int(0))),
         ZeroOrMoreSolnsStmt = ml_stmt_if_then_else(AnySolnsCond,
             OneOrMoreSolnsBlockStmt, no, Context),
@@ -560,10 +561,11 @@ make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
     LaterSlotVarRval = ml_lval(LaterSlotVarLval),
     NumLaterSolnsVarRval = ml_lval(NumLaterSolnsVarLval),
     LimitAssign = assign(LimitVarLval,
-        ml_binop(int_add, LaterSlotVarRval, NumLaterSolnsVarRval)),
+        ml_binop(int_add(int_type_int), LaterSlotVarRval, NumLaterSolnsVarRval)),
     LimitAssignStmt = ml_stmt_atomic(LimitAssign, Context),
     IncrLaterSlotVar = assign(LaterSlotVarLval,
-        ml_binop(int_add, LaterSlotVarRval, ml_const(mlconst_int(1)))),
+        ml_binop(int_add(int_type_int), LaterSlotVarRval,
+            ml_const(mlconst_int(1)))),
     IncrLaterSlotVarStmt = ml_stmt_atomic(IncrLaterSlotVar, Context),
 
     SeveralSolnLookupVars = ml_several_soln_lookup_vars(NumLaterSolnsVarLval,
@@ -605,7 +607,7 @@ ml_generate_bitvec_test(MLDS_ModuleName, Context, IndexRval, CaseVals,
         % WordNumRval = ml_binop(int_div, IndexRval,
         %   ml_const(mlconst_int(WordBits)))
         % except that it can generate more efficient code.
-        WordNumRval = ml_binop(unchecked_right_shift, IndexRval,
+        WordNumRval = ml_binop(unchecked_right_shift(int_type_int), IndexRval,
             ml_const(mlconst_int(Log2WordBits))),
 
         ArrayElemType = array_elem_scalar(scalar_elem_int),
@@ -616,11 +618,12 @@ ml_generate_bitvec_test(MLDS_ModuleName, Context, IndexRval, CaseVals,
         % BitNumRval = ml_binop(int_mod, IndexRval,
         %   ml_const(mlconst_int(WordBits)))
         % except that it can generate more efficient code.
-        BitNumRval = ml_binop(bitwise_and, IndexRval,
+        BitNumRval = ml_binop(bitwise_and(int_type_int), IndexRval,
             ml_const(mlconst_int(WordBits - 1)))
     ),
-    CheckRval = ml_binop(bitwise_and, WordRval,
-        ml_binop(unchecked_left_shift, ml_const(mlconst_int(1)), BitNumRval)).
+    CheckRval = ml_binop(bitwise_and(int_type_int), WordRval,
+        ml_binop(unchecked_left_shift(int_type_int),
+            ml_const(mlconst_int(1)), BitNumRval)).
 
     % We generate the bitvector by iterating through the cases marking the bit
     % for each case. We represent the bitvector here as a map from the word

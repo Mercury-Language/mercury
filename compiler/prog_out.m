@@ -371,6 +371,30 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
         ConsId = uint_const(UInt),
         String = uint_to_string(UInt)
     ;
+        % XXX FIXED SIZE INT
+        ConsId = int8_const(Int8),
+        string.int_to_string(Int8, String)
+    ;
+        % XXX FIXED SIZE INT
+        ConsId = uint8_const(UInt8),
+        string.int_to_string(UInt8, String)
+    ;
+        % XXX FIXED SIZE INT
+        ConsId = int16_const(Int16),
+        string.int_to_string(Int16, String)
+    ;
+        % XXX FIXED SIZE INT
+        ConsId = uint16_const(UInt16),
+        string.int_to_string(UInt16, String)
+    ;
+        % XXX FIXED SIZE INT
+        ConsId = int32_const(Int32),
+        string.int_to_string(Int32, String)
+    ;
+        % XXX FIXED SIZE INT
+        ConsId = uint32_const(UInt32),
+        string.int_to_string(UInt32, String)
+    ;
         ConsId = float_const(Float),
         String = float_to_string(Float)
     ;

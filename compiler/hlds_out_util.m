@@ -679,6 +679,36 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
             term.integer(base_10, integer.from_uint(UInt), unsigned, size_word),
             ArgVars)
     ;
+        ConsId = int8_const(Int8),
+        Str = functor_to_string(VarSet, VarNamePrint,
+            term.integer(base_10, integer(Int8), signed, size_8_bit),
+            ArgVars)
+    ;
+        ConsId = uint8_const(UInt8),
+        Str = functor_to_string(VarSet, VarNamePrint,
+            term.integer(base_10, integer(UInt8), unsigned, size_8_bit),
+            ArgVars)
+    ;
+        ConsId = int16_const(Int16),
+        Str = functor_to_string(VarSet, VarNamePrint,
+            term.integer(base_10, integer(Int16), signed, size_16_bit),
+            ArgVars)
+    ;
+        ConsId = uint16_const(UInt16),
+        Str = functor_to_string(VarSet, VarNamePrint,
+            term.integer(base_10, integer(UInt16), unsigned, size_16_bit),
+            ArgVars)
+    ;
+        ConsId = int32_const(Int32),
+        Str = functor_to_string(VarSet, VarNamePrint,
+            term.integer(base_10, integer(Int32), signed, size_32_bit),
+            ArgVars)
+    ;
+        ConsId = uint32_const(UInt32),
+        Str = functor_to_string(VarSet, VarNamePrint,
+            term.integer(base_10, integer(UInt32), unsigned, size_32_bit),
+            ArgVars)
+    ;
         ConsId = float_const(Float),
         Str = functor_to_string(VarSet, VarNamePrint,
             term.float(Float), ArgVars)
@@ -835,6 +865,24 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
     ;
         ConsId = uint_const(UInt),
         String = uint_to_string(UInt) ++ "u"
+    ;
+        ConsId = int8_const(Int8),
+        string.int_to_string(Int8, String)
+    ;
+        ConsId = uint8_const(UInt8),
+        string.int_to_string(UInt8, String)
+    ;
+        ConsId = int16_const(Int16),
+        string.int_to_string(Int16, String)
+    ;
+        ConsId = uint16_const(UInt16),
+        string.int_to_string(UInt16, String)
+    ;
+        ConsId = int32_const(Int32),
+        string.int_to_string(Int32, String)
+    ;
+        ConsId = uint32_const(UInt32),
+        string.int_to_string(UInt32, String)
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)

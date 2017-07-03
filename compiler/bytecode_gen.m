@@ -575,11 +575,29 @@ gen_unify(Unification, ByteInfo, Code) :-
         ByteInfo = byte_info(_, _, ModuleInfo, _, _),
         TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
         (
-            TypeCategory = ctor_cat_builtin(cat_builtin_int),
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int)),
             TestId = int_test
         ;
-            TypeCategory = ctor_cat_builtin(cat_builtin_uint),
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint)),
             sorry($module, $pred, "uint")
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int8)),
+            sorry($module, $pred, "int8")
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint8)),
+            sorry($module, $pred, "uint8")
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int16)),
+            sorry($module, $pred, "int16")
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint16)),
+            sorry($module, $pred, "uint16")
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int32)),
+            sorry($module, $pred, "int32")
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
+            sorry($module, $pred, "uint32")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_char),
             TestId = char_test
@@ -769,6 +787,24 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ConsId = uint_const(_),
         unexpected($file, $pred, "uint")
     ;
+        ConsId = int8_const(_),
+        unexpected($file, $pred, "int8")
+    ;
+        ConsId = uint8_const(_),
+        unexpected($file, $pred, "uint8")
+    ;
+        ConsId = int16_const(_),
+        unexpected($file, $pred, "int16")
+    ;
+        ConsId = uint16_const(_),
+        unexpected($file, $pred, "uint16")
+    ;
+        ConsId = int32_const(_),
+        unexpected($file, $pred, "int32")
+    ;
+        ConsId = uint32_const(_),
+        unexpected($file, $pred, "uint32")
+    ;
         ConsId = float_const(FloatVal),
         ByteConsId = byte_float_const(FloatVal)
     ;
@@ -833,6 +869,18 @@ map_cons_tag(string_tag(_), _) :-
 map_cons_tag(int_tag(IntVal), byte_enum_tag(IntVal)).
 map_cons_tag(uint_tag(_), _) :-
     sorry($module, $pred, "bytecode with uints").
+map_cons_tag(int8_tag(_), _) :-
+    sorry($module, $pred, "bytecode with int8s").
+map_cons_tag(uint8_tag(_), _) :-
+    sorry($module, $pred, "bytecode with uint8s").
+map_cons_tag(int16_tag(_), _) :-
+    sorry($module, $pred, "bytecode with int16s").
+map_cons_tag(uint16_tag(_), _) :-
+    sorry($module, $pred, "bytecode with uint16s").
+map_cons_tag(int32_tag(_), _) :-
+    sorry($module, $pred, "bytecode with int32s").
+map_cons_tag(uint32_tag(_), _) :-
+    sorry($module, $pred, "bytecode with uint32s").
 map_cons_tag(foreign_tag(_, _), _) :-
     sorry($module, $pred, "bytecode with foreign tags").
 map_cons_tag(float_tag(_), _) :-

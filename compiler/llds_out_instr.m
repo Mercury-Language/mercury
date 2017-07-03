@@ -659,7 +659,7 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
     ;
         Instr = computed_goto(Rval, MaybeLabels),
         io.write_string("\tMR_COMPUTED_GOTO(", !IO),
-        output_rval_as_type(Info, Rval, lt_unsigned, !IO),
+        output_rval_as_type(Info, Rval, lt_int(int_type_uint), !IO),
         io.write_string(",\n\t\t", !IO),
         output_label_list_or_not_reached(MaybeLabels, !IO),
         io.write_string(");\n", !IO)
@@ -2089,12 +2089,7 @@ output_foreign_proc_output(Info, Output, !IO) :-
                     io.write_string("(MR_UnsignedChar) ", !IO),
                     io.write_string(VarName, !IO)
                 ;
-                    BuiltinType = builtin_type_int,
-                    output_lval_as_word(Info, Lval, !IO),
-                    io.write_string(" = ", !IO),
-                    io.write_string(VarName, !IO)
-                ;
-                    BuiltinType = builtin_type_uint,
+                    BuiltinType = builtin_type_int(_),
                     output_lval_as_word(Info, Lval, !IO),
                     io.write_string(" = ", !IO),
                     io.write_string(VarName, !IO)

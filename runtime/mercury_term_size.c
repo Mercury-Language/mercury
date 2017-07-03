@@ -262,6 +262,66 @@ try_again:
 #endif
             return 0;
 
+        case MR_TYPECTOR_REP_INT8:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf(
+                    "MR_term_size: int8 %p %" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                    (void *) term, (MR_Integer) term);
+            }
+#endif
+            return 0;
+
+        case MR_TYPECTOR_REP_UINT8:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf(
+                    "MR_term_size: uint8 %p %" MR_INTEGER_LENGTH_MODIFIER "u\n",
+                    (void *) term, (MR_Unsigned) term);
+            }
+#endif
+            return 0;
+
+        case MR_TYPECTOR_REP_INT16:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf(
+                    "MR_term_size: int16 %p %" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                    (void *) term, (MR_Integer) term);
+            }
+#endif
+            return 0;
+
+        case MR_TYPECTOR_REP_UINT16:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf(
+                    "MR_term_size: uint16 %p %" MR_INTEGER_LENGTH_MODIFIER "u\n",
+                    (void *) term, (MR_Unsigned) term);
+            }
+#endif
+            return 0;
+
+        case MR_TYPECTOR_REP_INT32:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf(
+                    "MR_term_size: int32 %p %" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                    (void *) term, (MR_Integer) term);
+            }
+#endif
+            return 0;
+
+        case MR_TYPECTOR_REP_UINT32:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf(
+                    "MR_term_size: uint32 %p %" MR_INTEGER_LENGTH_MODIFIER "u\n",
+                    (void *) term, (MR_Unsigned) term);
+            }
+#endif
+            return 0;
+
         case MR_TYPECTOR_REP_CHAR:
 #ifdef MR_DEBUG_TERM_SIZES
             if (MR_heapdebug && MR_lld_print_enabled) {

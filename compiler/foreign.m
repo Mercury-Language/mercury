@@ -294,11 +294,32 @@ exported_type_to_string(Lang, ExportedType) = Result :-
 
 exported_builtin_type_to_c_string(BuiltinType) = CTypeName :-
     (
-        BuiltinType = builtin_type_int,
-        CTypeName = "MR_Integer"
-    ;
-        BuiltinType = builtin_type_uint,
-        CTypeName = "MR_Unsigned"
+        BuiltinType = builtin_type_int(IntType),
+        (
+            IntType = int_type_int,
+            CTypeName = "MR_Integer"
+        ;
+            IntType = int_type_uint,
+            CTypeName = "MR_Unsigned"
+        ;
+            IntType = int_type_int8,
+            CTypeName = "int8_t"
+        ;
+            IntType = int_type_uint8,
+            CTypeName = "uint8_t"
+        ;
+            IntType = int_type_int16,
+            CTypeName = "int16_t"
+        ;
+            IntType = int_type_uint16,
+            CTypeName = "uint16_t"
+        ;
+            IntType = int_type_int32,
+            CTypeName = "int32_t"
+        ;
+            IntType = int_type_uint32,
+            CTypeName = "uint32_t"
+        )
     ;
         BuiltinType = builtin_type_float,
         CTypeName = "MR_Float"
@@ -312,11 +333,32 @@ exported_builtin_type_to_c_string(BuiltinType) = CTypeName :-
 
 exported_builtin_type_to_csharp_string(BuiltinType) = CsharpTypeName :-
     (
-        BuiltinType = builtin_type_int,
-        CsharpTypeName = "int"
-    ;
-        BuiltinType = builtin_type_uint,
-        CsharpTypeName = "uint"
+        BuiltinType = builtin_type_int(IntType),
+        (
+            IntType = int_type_int,
+            CsharpTypeName = "int"
+        ;
+            IntType = int_type_uint,
+            CsharpTypeName = "uint"
+        ;
+            IntType = int_type_int8,
+            CsharpTypeName = "sbyte"
+        ;
+            IntType = int_type_uint8,
+            CsharpTypeName = "byte"
+        ;
+            IntType = int_type_int16,
+            CsharpTypeName = "short"
+        ;
+            IntType = int_type_uint16,
+            CsharpTypeName = "ushort"
+        ;
+            IntType = int_type_int32,
+            CsharpTypeName = "int"
+        ;
+            IntType = int_type_uint32,
+            CsharpTypeName = "uint"
+        )
     ;
         BuiltinType = builtin_type_float,
         CsharpTypeName = "double"
@@ -330,11 +372,32 @@ exported_builtin_type_to_csharp_string(BuiltinType) = CsharpTypeName :-
 
 exported_builtin_type_to_java_string(BuiltinType) = JavaTypeName :-
     (
-        BuiltinType = builtin_type_int,
-        JavaTypeName = "int"
-    ;
-        BuiltinType = builtin_type_uint,
-        JavaTypeName = "int"
+        BuiltinType = builtin_type_int(IntType),
+        (
+            IntType = int_type_int,
+            JavaTypeName = "int"
+        ;
+            IntType = int_type_uint,
+            JavaTypeName = "int"
+        ;
+            IntType= int_type_int8,
+            JavaTypeName = "byte"
+        ;
+            IntType = int_type_uint8,
+            JavaTypeName = "byte"
+        ;
+            IntType = int_type_int16,
+            JavaTypeName = "short"
+        ;
+            IntType = int_type_uint16,
+            JavaTypeName = "short"
+        ;
+            IntType = int_type_int32,
+            JavaTypeName = "int"
+        ;
+            IntType = int_type_uint32,
+            JavaTypeName = "int"
+        )
     ;
         BuiltinType = builtin_type_float,
         JavaTypeName = "double"

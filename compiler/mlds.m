@@ -1790,6 +1790,12 @@
     ;       mlconst_false
     ;       mlconst_int(int)
     ;       mlconst_uint(uint)
+    ;       mlconst_int8(int)
+    ;       mlconst_uint8(int)
+    ;       mlconst_int16(int)
+    ;       mlconst_uint16(int)
+    ;       mlconst_int32(int)
+    ;       mlconst_uint32(int)
     ;       mlconst_enum(int, mlds_type)
     ;       mlconst_char(int)
     ;       mlconst_float(float)

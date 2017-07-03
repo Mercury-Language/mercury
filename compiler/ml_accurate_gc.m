@@ -252,8 +252,7 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
 
 ml_type_category_might_contain_pointers(CtorCat) = MayContainPointers :-
     (
-        ( CtorCat = ctor_cat_builtin(cat_builtin_int)
-        ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
+        ( CtorCat = ctor_cat_builtin(cat_builtin_int(_))
         ; CtorCat = ctor_cat_builtin(cat_builtin_char)
         ; CtorCat = ctor_cat_builtin(cat_builtin_float)
         ; CtorCat = ctor_cat_builtin_dummy

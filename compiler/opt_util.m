@@ -1060,10 +1060,12 @@ is_const_condition(unop(Op, Rval1), Taken) :-
     Op = logical_not,
     is_const_condition(Rval1, Taken1),
     bool.not(Taken1, Taken).
+% XXX FIXED SIZE INTS - we should handle the other integer types here.
 is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
-    Op = eq,
+    Op = eq(int_type_int),
     Rval1 = Rval2,
     Taken = yes.
+
 
 can_instr_branch_away(Uinstr) = CanBranchAway :-
     (
@@ -2616,6 +2618,12 @@ replace_labels_rval_const(Const0, Const, ReplMap) :-
         ; Const0 = llconst_false
         ; Const0 = llconst_int(_)
         ; Const0 = llconst_uint(_)
+        ; Const0 = llconst_int8(_)
+        ; Const0 = llconst_uint8(_)
+        ; Const0 = llconst_int16(_)
+        ; Const0 = llconst_uint16(_)
+        ; Const0 = llconst_int32(_)
+        ; Const0 = llconst_uint32(_)
         ; Const0 = llconst_foreign(_, _)
         ; Const0 = llconst_float(_)
         ; Const0 = llconst_string(_)

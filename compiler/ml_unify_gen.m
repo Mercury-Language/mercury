@@ -203,12 +203,15 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
         Unification = simple_test(VarA, VarB),
         expect(unify(CodeModel, model_semi), $pred, "simple_test not semidet"),
         ml_variable_type(!.Info, VarA, Type),
+        % XXX this should be a switch.
         ( if Type = builtin_type(builtin_type_string) then
             EqualityOp = str_eq
         else if Type = builtin_type(builtin_type_float) then
             EqualityOp = float_eq
+        else if Type = builtin_type(builtin_type_int(IntType)) then
+            EqualityOp = eq(IntType)
         else
-            EqualityOp = eq
+            EqualityOp = eq(int_type_int)
         ),
         ml_gen_var(!.Info, VarA, VarALval),
         ml_gen_var(!.Info, VarB, VarBLval),
@@ -399,6 +402,12 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         % Constants.
         ( Tag = int_tag(_)
         ; Tag = uint_tag(_)
+        ; Tag = int8_tag(_)
+        ; Tag = uint8_tag(_)
+        ; Tag = int16_tag(_)
+        ; Tag = uint16_tag(_)
+        ; Tag = int32_tag(_)
+        ; Tag = uint32_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
@@ -451,6 +460,24 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
     ;
         Tag = uint_tag(UInt),
         Rval = ml_const(mlconst_uint(UInt))
+    ;
+        Tag = int8_tag(Int8),
+        Rval = ml_const(mlconst_int8(Int8))
+    ;
+        Tag = uint8_tag(UInt8),
+        Rval = ml_const(mlconst_uint8(UInt8))
+    ;
+        Tag = int16_tag(Int16),
+        Rval = ml_const(mlconst_int16(Int16))
+    ;
+        Tag = uint16_tag(UInt16),
+        Rval = ml_const(mlconst_uint16(UInt16))
+    ;
+        Tag = int32_tag(Int32),
+        Rval = ml_const(mlconst_int32(Int32))
+    ;
+        Tag = uint32_tag(UInt32),
+        Rval = ml_const(mlconst_uint32(UInt32))
     ;
         Tag = float_tag(Float),
         Rval = ml_const(mlconst_float(Float))
@@ -1470,6 +1497,12 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
         ; Tag = uint_tag(_UInt)
+        ; Tag = int8_tag(_)
+        ; Tag = uint8_tag(_)
+        ; Tag = int16_tag(_)
+        ; Tag = uint16_tag(_)
+        ; Tag = int32_tag(_)
+        ; Tag = uint32_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
         ; Tag = shared_local_tag(_Bits1, _Num1)
@@ -1575,6 +1608,12 @@ ml_tag_offset_and_argnum(Tag, TagBits, Offset, ArgNum) :-
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
         ; Tag = uint_tag(_)
+        ; Tag = int8_tag(_)
+        ; Tag = uint8_tag(_)
+        ; Tag = int16_tag(_)
+        ; Tag = uint16_tag(_)
+        ; Tag = int32_tag(_)
+        ; Tag = uint32_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
         ; Tag = closure_tag(_, _, _)
@@ -2195,15 +2234,40 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
             ConstRval = ml_const(mlconst_enum(Int, MLDS_Type))
         ),
-        TagTestRval = ml_binop(eq, Rval, ConstRval)
+        TagTestRval = ml_binop(eq(int_type_int), Rval, ConstRval)
     ;
         Tag = uint_tag(UInt),
-        TagTestRval = ml_binop(uint_eq, Rval, ml_const(mlconst_uint(UInt)))
+        TagTestRval = ml_binop(eq(int_type_uint), Rval,
+            ml_const(mlconst_uint(UInt)))
+    ;
+        Tag = int8_tag(Int8),
+        TagTestRval = ml_binop(eq(int_type_int8), Rval,
+            ml_const(mlconst_int8(Int8)))
+    ;
+        Tag = uint8_tag(UInt8),
+        TagTestRval = ml_binop(eq(int_type_uint8), Rval,
+            ml_const(mlconst_uint8(UInt8)))
+    ;
+        Tag = int16_tag(Int16),
+        TagTestRval = ml_binop(eq(int_type_int16), Rval,
+            ml_const(mlconst_int16(Int16)))
+    ;
+        Tag = uint16_tag(UInt16),
+        TagTestRval = ml_binop(eq(int_type_uint16), Rval,
+            ml_const(mlconst_uint16(UInt16)))
+    ;
+        Tag = int32_tag(Int32),
+        TagTestRval = ml_binop(eq(int_type_int32), Rval,
+            ml_const(mlconst_int32(Int32)))
+    ;
+        Tag = uint32_tag(UInt32),
+        TagTestRval = ml_binop(eq(int_type_uint32), Rval,
+            ml_const(mlconst_uint32(UInt32)))
     ;
         Tag = foreign_tag(ForeignLang, ForeignVal),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal, MLDS_Type)),
-        TagTestRval = ml_binop(eq, Rval, Const)
+        TagTestRval = ml_binop(eq(int_type_int), Rval, Const)
     ;
         ( Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -2229,13 +2293,13 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         RvalTag = ml_unop(std_unop(tag), Rval),
         UnsharedTag = ml_unop(std_unop(mktag),
             ml_const(mlconst_int(UnsharedTagNum))),
-        TagTestRval = ml_binop(eq, RvalTag, UnsharedTag)
+        TagTestRval = ml_binop(eq(int_type_int), RvalTag, UnsharedTag)
     ;
         Tag = shared_remote_tag(PrimaryTagNum, SecondaryTagNum),
         SecondaryTagField = ml_gen_secondary_tag_rval(ModuleInfo,
             PrimaryTagNum, Type, Rval),
-        SecondaryTagTestRval = ml_binop(eq, SecondaryTagField,
-            ml_const(mlconst_int(SecondaryTagNum))),
+        SecondaryTagTestRval = ml_binop(eq(int_type_int),
+            SecondaryTagField, ml_const(mlconst_int(SecondaryTagNum))),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
         ( if NumTagBits = 0 then
@@ -2245,14 +2309,15 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
             RvalPTag = ml_unop(std_unop(tag), Rval),
             PrimaryTagRval = ml_unop(std_unop(mktag),
                 ml_const(mlconst_int(PrimaryTagNum))),
-            PrimaryTagTestRval = ml_binop(eq, RvalPTag, PrimaryTagRval),
+            PrimaryTagTestRval = ml_binop(eq(int_type_int), RvalPTag,
+                PrimaryTagRval),
             TagTestRval = ml_binop(logical_and,
                 PrimaryTagTestRval, SecondaryTagTestRval)
         )
     ;
         Tag = shared_local_tag(Bits, Num),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-        TagTestRval = ml_binop(eq, Rval,
+        TagTestRval = ml_binop(eq(int_type_int), Rval,
             ml_unop(cast(MLDS_Type),
                 ml_mkword(Bits,
                     ml_unop(std_unop(mkbody), ml_const(mlconst_int(Num))))))
@@ -2261,7 +2326,7 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         ReservedAddrRval = ml_gen_reserved_address(ModuleInfo, ReservedAddr,
             MLDS_Type),
-        TagTestRval = ml_binop(eq, Rval, ReservedAddrRval)
+        TagTestRval = ml_binop(eq(int_type_int), Rval, ReservedAddrRval)
     ;
         Tag = shared_with_reserved_addresses_tag(ReservedAddrs, ThisTag),
         % We first check that the Rval doesn't match any of the ReservedAddrs,
@@ -2500,6 +2565,24 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ;
             ConsTag = uint_tag(UInt),
             ConstRval = ml_const(mlconst_uint(UInt))
+        ;
+            ConsTag = int8_tag(Int8),
+            ConstRval = ml_const(mlconst_int8(Int8))
+        ;
+            ConsTag = uint8_tag(UInt8),
+            ConstRval = ml_const(mlconst_uint8(UInt8))
+        ;
+            ConsTag = int16_tag(Int16),
+            ConstRval = ml_const(mlconst_int16(Int16))
+        ;
+            ConsTag = uint16_tag(UInt16),
+            ConstRval = ml_const(mlconst_uint16(UInt16))
+        ;
+            ConsTag = int32_tag(Int32),
+            ConstRval = ml_const(mlconst_int32(Int32))
+        ;
+            ConsTag = uint32_tag(UInt32),
+            ConstRval = ml_const(mlconst_uint32(UInt32))
         ;
             ConsTag = float_tag(Float),
             ConstRval = ml_const(mlconst_float(Float))
@@ -2895,6 +2978,12 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         % These tags don't build heap cells.
         ( ConsTag = int_tag(_)
         ; ConsTag = uint_tag(_)
+        ; ConsTag = int8_tag(_)
+        ; ConsTag = uint8_tag(_)
+        ; ConsTag = int16_tag(_)
+        ; ConsTag = uint16_tag(_)
+        ; ConsTag = int32_tag(_)
+        ; ConsTag = uint32_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = string_tag(_)
         ; ConsTag = reserved_address_tag(_)
@@ -3075,6 +3164,24 @@ ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
         ConsTag = uint_tag(UInt),
         Rval = ml_const(mlconst_uint(UInt))
     ;
+        ConsTag = int8_tag(Int8),
+        Rval = ml_const(mlconst_int8(Int8))
+    ;
+        ConsTag = uint8_tag(UInt8),
+        Rval = ml_const(mlconst_uint8(UInt8))
+    ;
+        ConsTag = int16_tag(Int16),
+        Rval = ml_const(mlconst_int16(Int16))
+    ;
+        ConsTag = uint16_tag(UInt16),
+        Rval = ml_const(mlconst_uint16(UInt16))
+    ;
+        ConsTag = int32_tag(Int32),
+        Rval = ml_const(mlconst_int32(Int32))
+    ;
+        ConsTag = uint32_tag(UInt32),
+        Rval = ml_const(mlconst_uint32(UInt32))
+    ;
         ConsTag = float_tag(Float),
         Rval = ml_const(mlconst_float(Float))
     ;
@@ -3225,11 +3332,11 @@ ml_lshift(Rval0, Shift) = Rval :-
     else if Shift = 0 then
         Rval = Rval0
     else if Rval0 = ml_unop(box(Type), Rval1) then
-        Rval2 = ml_binop(unchecked_left_shift, Rval1,
+        Rval2 = ml_binop(unchecked_left_shift(int_type_int), Rval1,
             ml_const(mlconst_int(Shift))),
         Rval = ml_unop(box(Type), Rval2)
     else
-        Rval = ml_binop(unchecked_left_shift, Rval0,
+        Rval = ml_binop(unchecked_left_shift(int_type_int), Rval0,
             ml_const(mlconst_int(Shift)))
     ).
 
@@ -3239,7 +3346,8 @@ ml_rshift(Rval, Shift) =
     ( if Shift = 0 then
         Rval
     else
-        ml_binop(unchecked_right_shift, Rval, ml_const(mlconst_int(Shift)))
+        ml_binop(unchecked_right_shift(int_type_int), Rval,
+            ml_const(mlconst_int(Shift)))
     ).
 
 :- func ml_bitwise_or(mlds_rval, mlds_rval) = mlds_rval.
@@ -3259,7 +3367,7 @@ ml_bitwise_or(RvalA, RvalB) = Rval :-
         else
             UnboxRvalB = RvalB
         ),
-        UnboxRval = ml_binop(bitwise_or, UnboxRvalA, UnboxRvalB),
+        UnboxRval = ml_binop(bitwise_or(int_type_int), UnboxRvalA, UnboxRvalB),
         (
             !.MaybeType = yes(BoxType),
             Rval = ml_unop(box(BoxType), UnboxRval)
@@ -3272,7 +3380,7 @@ ml_bitwise_or(RvalA, RvalB) = Rval :-
 :- func ml_bitwise_and(mlds_rval, int) = mlds_rval.
 
 ml_bitwise_and(Rval, Mask) =
-    ml_binop(bitwise_and, Rval, ml_const(mlconst_int(Mask))).
+    ml_binop(bitwise_and(int_type_int), Rval, ml_const(mlconst_int(Mask))).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_unify_gen.

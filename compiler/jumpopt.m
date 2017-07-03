@@ -67,6 +67,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module map.
@@ -571,7 +572,8 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             counter.allocate(LabelNum, LabelNumCounter0, LabelNumCounter1),
             NewLabel = internal_label(LabelNum, ProcLabel),
             NewInstrs = [
-                llds_instr(if_val(binop(ne, lval(curfr), lval(maxfr)),
+                llds_instr(if_val(binop(
+                    ne(int_type_int), lval(curfr), lval(maxfr)),
                     code_label(NewLabel)),
                     "branch around if cannot tail call"),
                 llds_instr(assign(maxfr, lval(prevfr_slot(lval(curfr)))),
@@ -1016,7 +1018,7 @@ needs_workaround(Lval, Cond) :-
         Cond = unop(logical_not, lval(Lval))
     ;
         Cond = binop(Op, Left, Right),
-        ( Op = eq ; Op = ne ),
+        ( Op = eq(_) ; Op = ne(_) ),
         (
             Right = lval(Lval),
             ( Left = const(llconst_int(0))
@@ -1157,6 +1159,12 @@ short_circuit_labels_const(InstrMap, RvalConst0, RvalConst) :-
         ; RvalConst0 = llconst_false
         ; RvalConst0 = llconst_int(_I)
         ; RvalConst0 = llconst_uint(_U)
+        ; RvalConst0 = llconst_int8(_I8)
+        ; RvalConst0 = llconst_uint8(_U8)
+        ; RvalConst0 = llconst_int16(_I16)
+        ; RvalConst0 = llconst_uint16(_U16)
+        ; RvalConst0 = llconst_int32(_I32)
+        ; RvalConst0 = llconst_uint32(_U32)
         ; RvalConst0 = llconst_foreign(_V, _T)
         ; RvalConst0 = llconst_float(_F)
         ; RvalConst0 = llconst_string(_S)
@@ -1179,7 +1187,7 @@ short_circuit_labels_const(InstrMap, RvalConst0, RvalConst) :-
 %
 % :- pred short_circuit_labels_maybe_rvals(instrmap::in, list(maybe(rval))::in,
 %     list(maybe(rval))::out) is det.
-% 
+%
 % short_circuit_labels_maybe_rvals(_, [], []).
 % short_circuit_labels_maybe_rvals(InstrMap, [MaybeRval0 | MaybeRvals0],
 %         [MaybeRval | MaybeRvals]) :-

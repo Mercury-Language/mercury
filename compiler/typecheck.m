@@ -2234,11 +2234,35 @@ cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) :-
     (
         ConsId = int_const(_),
         BuiltinTypeName = "int",
-        BuiltinType = builtin_type_int
+        BuiltinType = builtin_type_int(int_type_int)
     ;
         ConsId = uint_const(_),
         BuiltinTypeName = "uint",
-        BuiltinType = builtin_type_uint
+        BuiltinType = builtin_type_int(int_type_uint)
+    ;
+        ConsId = int8_const(_),
+        BuiltinTypeName = "int8",
+        BuiltinType = builtin_type_int(int_type_int8)
+    ;
+        ConsId = uint8_const(_),
+        BuiltinTypeName = "uint8",
+        BuiltinType = builtin_type_int(int_type_uint8)
+    ;
+        ConsId = int16_const(_),
+        BuiltinTypeName = "int16",
+        BuiltinType = builtin_type_int(int_type_int16)
+    ;
+        ConsId = uint16_const(_),
+        BuiltinTypeName = "uint16",
+        BuiltinType = builtin_type_int(int_type_uint16)
+    ;
+        ConsId = int32_const(_),
+        BuiltinTypeName = "int32",
+        BuiltinType = builtin_type_int(int_type_int32)
+    ;
+        ConsId = uint32_const(_),
+        BuiltinTypeName = "uint32",
+        BuiltinType = builtin_type_int(int_type_uint32)
     ;
         ConsId = float_const(_),
         BuiltinTypeName = "float",
@@ -2774,6 +2798,12 @@ type_assign_unify_type(X, Y, TypeAssign0, TypeAssign) :-
 
 builtin_atomic_type(int_const(_), "int").
 builtin_atomic_type(uint_const(_), "uint").
+builtin_atomic_type(int8_const(_), "int8").
+builtin_atomic_type(uint8_const(_), "uint8").
+builtin_atomic_type(int16_const(_), "int16").
+builtin_atomic_type(uint16_const(_), "uint16").
+builtin_atomic_type(int32_const(_), "int32").
+builtin_atomic_type(uint32_const(_), "uint32").
 builtin_atomic_type(float_const(_), "float").
 builtin_atomic_type(char_const(_), "character").
 builtin_atomic_type(string_const(_), "string").

@@ -71,11 +71,50 @@
 #define MR_RAW_TABLE_INT_STATS(stats, table, value)                         \
     MR_int_hash_lookup_or_add_stats((stats), (table), (value));
 
-#define MR_RAW_TABLE_UINT(table, value)                                      \
+#define MR_RAW_TABLE_UINT(table, value)                                     \
     MR_word_hash_lookup_or_add((table), (value));
 
-#define MR_RAW_TABLE_UINT_STATS(stats, table, value)                         \
+#define MR_RAW_TABLE_UINT_STATS(stats, table, value)                        \
     MR_word_hash_lookup_or_add_stats((stats), (table), (value));
+
+// XXX It doesn't make much sense to *hash* -128..127 or 0..255 into a hash
+// table that has 127 or 257 slots (the first two hash table sizes).
+
+#define MR_RAW_TABLE_INT8(table, value)                                     \
+    MR_int_hash_lookup_or_add((table), (MR_Integer)(value));
+
+#define MR_RAW_TABLE_INT8_STATS(stats, table, value)                        \
+    MR_int_hash_lookup_or_add_stats((stats), (table), (MR_Integer)(value));
+
+#define MR_RAW_TABLE_UINT8(table, value)                                    \
+    MR_word_hash_lookup_or_add((table), (MR_Word)(value));
+
+#define MR_RAW_TABLE_UINT8_STATS(stats, table, value)                       \
+    MR_word_hash_lookup_or_add_stats((stats), (table), (MR_Word)(value));
+
+#define MR_RAW_TABLE_INT16(table, value)                                    \
+    MR_int_hash_lookup_or_add((table), (MR_Integer)(value));
+
+#define MR_RAW_TABLE_INT16_STATS(stats, table, value)                       \
+    MR_int_hash_lookup_or_add_stats((stats), (table), (MR_Integer)(value));
+
+#define MR_RAW_TABLE_UINT16(table, value)                                   \
+    MR_word_hash_lookup_or_add((table), (MR_Word)(value));
+
+#define MR_RAW_TABLE_UINT16_STATS(stats, table, value)                      \
+    MR_word_hash_lookup_or_add_stats((stats), (table), (MR_Word)(value));
+
+#define MR_RAW_TABLE_INT32(table, value)                                    \
+    MR_int_hash_lookup_or_add((table), (MR_Integer)(value));
+
+#define MR_RAW_TABLE_INT32_STATS(stats, table, value)                       \
+    MR_int_hash_lookup_or_add_stats((stats), (table), (MR_Integer)(value));
+
+#define MR_RAW_TABLE_UINT32(table, value)                                   \
+    MR_word_hash_lookup_or_add((table), (MR_Word)(value));
+
+#define MR_RAW_TABLE_UINT32_STATS(stats, table, value)                      \
+    MR_word_hash_lookup_or_add_stats((stats), (table), (MR_Word)(value));
 
 #define MR_RAW_TABLE_CHAR(table, value)                                     \
     MR_int_hash_lookup_or_add((table), (value));
@@ -232,6 +271,85 @@
         }                                                                   \
         if (MR_tabledebug) {                                                \
             printf("TABLE %p: uint %lu => %p\n",                            \
+                (t0), (unsigned long) (value), (t));                        \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_INT8(stats, debug, back, t, t0, value)                     \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_INT8_STATS((stats), (t0), (value));          \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_INT8((t0), (value));                         \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: int8 %ld => %p\n",                            \
+                (t0), (long) (value), (t));                                 \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_UINT8(stats, debug, back, t, t0, value)                    \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_UINT8_STATS((stats), (t0), (value));         \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_UINT8((t0), (value));                        \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: uint8 %lu => %p\n",                           \
+                (t0), (unsigned long) (value), (t));                        \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_INT16(stats, debug, back, t, t0, value)                    \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_INT16_STATS((stats), (t0), (value));         \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_INT16((t0), (value));                        \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: int16 %ld => %p\n",                           \
+                (t0), (long) (value), (t));                                 \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_UINT16(stats, debug, back, t, t0, value)                   \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_UINT16_STATS((stats), (t0), (value));        \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_UINT16((t0), (value));                       \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: uint16 %lu => %p\n",                          \
+                (t0), (unsigned long) (value), (t));                        \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_INT32(stats, debug, back, t, t0, value)                    \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_INT32_STATS((stats), (t0), (value));         \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_INT32((t0), (value));                        \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: int32 %ld => %p\n",                           \
+                (t0), (long) (value), (t));                                 \
+        }                                                                   \
+    } while (0)
+
+
+#define MR_TABLE_UINT32(stats, debug, back, t, t0, value)                   \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_UINT32_STATS((stats), (t0), (value));        \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_UINT32((t0), (value));                       \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: uint32 %lu => %p\n",                          \
                 (t0), (unsigned long) (value), (t));                        \
         }                                                                   \
     } while (0)

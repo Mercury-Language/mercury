@@ -128,7 +128,8 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     ( if FirstVal = 0 then
         IndexRval = VarRval
     else
-        IndexRval = binop(int_sub, VarRval, const(llconst_int(FirstVal)))
+        IndexRval = binop(int_sub(int_type_int), VarRval,
+            const(llconst_int(FirstVal)))
     ),
     % If the switch is not locally deterministic, we need to check that
     % the value of the variable lies within the appropriate range.

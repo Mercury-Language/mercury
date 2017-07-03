@@ -1218,11 +1218,29 @@ write_space_and_table_trie_step(TVarSet, StepDesc, !IO) :-
 
 table_trie_step_desc(TVarSet, Step) = Str :-
     (
-        Step = table_trie_step_int,
+        Step = table_trie_step_int(int_type_int),
         Str = "int"
     ;
-        Step = table_trie_step_uint,
+        Step = table_trie_step_int(int_type_uint),
         Str = "uint"
+    ;
+        Step = table_trie_step_int(int_type_int8),
+        Str = "int8"
+    ;
+        Step = table_trie_step_int(int_type_uint8),
+        Str = "uint8"
+    ;
+        Step = table_trie_step_int(int_type_int16),
+        Str = "int16"
+    ;
+        Step = table_trie_step_int(int_type_uint16),
+        Str = "uint16"
+    ;
+        Step = table_trie_step_int(int_type_int32),
+        Str = "int32"
+    ;
+        Step = table_trie_step_int(int_type_uint32),
+        Str = "uint32"
     ;
         Step = table_trie_step_char,
         Str = "char"

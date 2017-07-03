@@ -328,8 +328,10 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI, !CLD) :-
             Op = str_eq
         else if Type = builtin_type(builtin_type_float) then
             Op = float_eq
+        else if Type = builtin_type(builtin_type_int(IntType)) then
+            Op = eq(IntType)
         else
-            Op = eq
+            Op = eq(int_type_int)
         ),
         TestCode = singleton(
             llds_instr(if_val(binop(Op, ValL, ValR), CodeAddr),

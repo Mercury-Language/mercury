@@ -652,6 +652,30 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         term.context_init(Context),
         Term = uint_to_decimal_term(UInt, Context)
     ;
+        ConsId = int8_const(Int8),
+        term.context_init(Context),
+        Term = int_to_decimal_term(Int8, Context)
+    ;
+        ConsId = uint8_const(UInt8),
+        term.context_init(Context),
+        Term = int_to_decimal_term(UInt8, Context)
+    ;
+        ConsId = int16_const(Int16),
+        term.context_init(Context),
+        Term = int_to_decimal_term(Int16, Context)
+    ;
+        ConsId = uint16_const(UInt16),
+        term.context_init(Context),
+        Term = int_to_decimal_term(UInt16, Context)
+    ;
+        ConsId = int32_const(Int32),
+        term.context_init(Context),
+        Term = int_to_decimal_term(Int32, Context)
+    ;
+        ConsId = uint32_const(UInt32),
+        term.context_init(Context),
+        Term = int_to_decimal_term(UInt32, Context)
+    ;
         ConsId = float_const(Float),
         term.context_init(Context),
         Term = term.functor(term.float(Float), [], Context)

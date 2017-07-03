@@ -107,6 +107,12 @@
 
     ;       int_const(int)
     ;       uint_const(uint)
+    ;       int8_const(int)     % XXX FIXED SIZE INT
+    ;       uint8_const(int)    % XXX FIXED SIZE INT
+    ;       int16_const(int)    % XXX FIXED SIZE INT
+    ;       uint16_const(int)   % XXX FIXED SIZE INT
+    ;       int32_const(int)    % XXX FIXED SIZE INT
+    ;       uint32_const(int)   % XXX FIXED SIZE INT
     ;       float_const(float)
     ;       char_const(char)
     ;       string_const(string)
@@ -224,6 +230,12 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
         ; ConsId = closure_cons(_, _)
         ; ConsId = int_const(_)
         ; ConsId = uint_const(_)
+        ; ConsId = int8_const(_)
+        ; ConsId = uint8_const(_)
+        ; ConsId = int16_const(_)
+        ; ConsId = uint16_const(_)
+        ; ConsId = int32_const(_)
+        ; ConsId = uint32_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)
@@ -503,11 +515,20 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     %     - type_util.classify_type_ctor/2
     %
 :- type builtin_type
-    --->    builtin_type_int
-    ;       builtin_type_uint
+    --->    builtin_type_int(int_type)
     ;       builtin_type_float
     ;       builtin_type_string
     ;       builtin_type_char.
+
+:- type int_type
+    --->    int_type_int
+    ;       int_type_uint
+    ;       int_type_int8
+    ;       int_type_uint8
+    ;       int_type_int16
+    ;       int_type_uint16
+    ;       int_type_int32
+    ;       int_type_uint32.
 
 :- pred is_builtin_type_sym_name(sym_name::in) is semidet.
 
@@ -516,6 +537,10 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- pred builtin_type_to_string(builtin_type, string).
 :- mode builtin_type_to_string(in, out) is det.
 :- mode builtin_type_to_string(out, in) is semidet.
+
+:- pred int_type_to_string(int_type, string).
+:- mode int_type_to_string(in, out) is det.
+:- mode int_type_to_string(out, in) is semidet.
 
 :- type type_term == term(tvar_type).
 
@@ -569,11 +594,26 @@ is_builtin_type_sym_name(SymName) :-
 is_builtin_type_name(Name) :-
     builtin_type_to_string(_, Name).
 
-builtin_type_to_string(builtin_type_int, "int").
-builtin_type_to_string(builtin_type_uint, "uint").
+builtin_type_to_string(builtin_type_int(int_type_int), "int").
+builtin_type_to_string(builtin_type_int(int_type_uint), "uint").
+builtin_type_to_string(builtin_type_int(int_type_int8), "int8").
+builtin_type_to_string(builtin_type_int(int_type_uint8), "uint8").
+builtin_type_to_string(builtin_type_int(int_type_int16), "int16").
+builtin_type_to_string(builtin_type_int(int_type_uint16), "uint16").
+builtin_type_to_string(builtin_type_int(int_type_int32), "int32").
+builtin_type_to_string(builtin_type_int(int_type_uint32), "uint32").
 builtin_type_to_string(builtin_type_float, "float").
 builtin_type_to_string(builtin_type_string, "string").
 builtin_type_to_string(builtin_type_char, "character").
+
+int_type_to_string(int_type_int, "int").
+int_type_to_string(int_type_uint,  "uint").
+int_type_to_string(int_type_int8, "int8").
+int_type_to_string(int_type_uint8, "uint8").
+int_type_to_string(int_type_int16, "int16").
+int_type_to_string(int_type_uint16,  "uint16").
+int_type_to_string(int_type_int32, "int32").
+int_type_to_string(int_type_uint32, "uint32").
 
 tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
     varset.merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming).

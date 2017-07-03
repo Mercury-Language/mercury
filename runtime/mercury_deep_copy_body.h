@@ -408,6 +408,12 @@ try_again:
 
     case MR_TYPECTOR_REP_INT:  // fallthru
     case MR_TYPECTOR_REP_UINT: // fallthru
+    case MR_TYPECTOR_REP_INT8:  // fallthru
+    case MR_TYPECTOR_REP_UINT8: // fallthru
+    case MR_TYPECTOR_REP_INT16:  // fallthru
+    case MR_TYPECTOR_REP_UINT16: // fallthru
+    case MR_TYPECTOR_REP_INT32:  // fallthru
+    case MR_TYPECTOR_REP_UINT32: // fallthru
     case MR_TYPECTOR_REP_CHAR:
         return data;
 

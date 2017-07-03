@@ -98,6 +98,12 @@
 :- type builtin_type_rep
     --->    builtin_type_int_rep
     ;       builtin_type_uint_rep
+    ;       builtin_type_int8_rep
+    ;       builtin_type_uint8_rep
+    ;       builtin_type_int16_rep
+    ;       builtin_type_uint16_rep
+    ;       builtin_type_int32_rep
+    ;       builtin_type_uint32_rep
     ;       builtin_type_float_rep
     ;       builtin_type_string_rep
     ;       builtin_type_char_rep.
@@ -1383,6 +1389,29 @@ read_encoded_type(ByteCode, StringTable, TypeTable, TypeRep, !Pos) :-
         Selector = 13,
         read_num(ByteCode, VarNum, !Pos),
         TypeRep = type_var_rep(VarNum)
+    ;
+        % XXX in order to avoid bumping the deep profiler's binary compatibility
+        % version number when the fixed size integers were added, the newly
+        % added types were assigned unused Selector values.  The next time the
+        % format of the program representation file is changed for some
+        % unavoidable reason this should be tidied up.
+        Selector = 14,
+        TypeRep = builtin_type_rep(builtin_type_int8_rep)
+    ;
+        Selector = 15,
+        TypeRep = builtin_type_rep(builtin_type_uint8_rep)
+    ;
+        Selector = 16,
+        TypeRep = builtin_type_rep(builtin_type_int16_rep)
+    ;
+        Selector = 17,
+        TypeRep = builtin_type_rep(builtin_type_uint16_rep)
+    ;
+        Selector = 18,
+        TypeRep = builtin_type_rep(builtin_type_int32_rep)
+    ;
+        Selector = 19,
+        TypeRep = builtin_type_rep(builtin_type_uint32_rep)
     ).
 
 %---------------------%

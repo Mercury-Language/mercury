@@ -130,7 +130,7 @@ lookup_string_in_table(String, StringCode, !StringTable) :-
 is_var_name_in_special_form(String, KindCode, MaybeBaseName, N) :-
     % state_var.m constructs variable names that always contain
     % the state var name, and usually but not always a numeric suffix.
-    % The numeric suffic may be zero or positive. We could represent
+    % The numeric suffix may be zero or positive. We could represent
     % the lack of a suffix using a negative number, but mixing unsigned
     % and signed fields in a single word is tricky, especially since
     % the size of the variable name descriptor word we generate (32 bits)
@@ -327,10 +327,10 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
     ;
         Type = builtin_type(BuiltinType),
         (
-            BuiltinType = builtin_type_int,
+            BuiltinType = builtin_type_int(int_type_int),
             Selector = 5
         ;
-            BuiltinType = builtin_type_uint,
+            BuiltinType = builtin_type_int(int_type_uint),
             Selector = 6
         ;
             BuiltinType = builtin_type_float,
@@ -341,6 +341,30 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
         ;
             BuiltinType = builtin_type_char,
             Selector = 9
+        ;
+            % XXX in order to avoid bumping the deep profiler's binary
+            % compatibility version number when the fixed size integers were
+            % added, the newly added types were assigned unused Selector
+            % values.  The next time the format of the program representation
+            % file is changed for some unavoidable reason this should be tidied
+            % up.
+            BuiltinType = builtin_type_int(int_type_int8),
+            Selector = 14
+        ;
+            BuiltinType = builtin_type_int(int_type_uint8),
+            Selector = 15
+        ;
+            BuiltinType = builtin_type_int(int_type_int16),
+            Selector = 16
+        ;
+            BuiltinType = builtin_type_int(int_type_uint16),
+            Selector = 17
+        ;
+            BuiltinType = builtin_type_int(int_type_int32),
+            Selector = 18
+        ;
+            BuiltinType = builtin_type_int(int_type_uint32),
+            Selector = 19
         ),
         TypeBytesCord = cord.singleton(Selector)
     ;

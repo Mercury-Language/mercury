@@ -1535,6 +1535,12 @@ rename_class_names_rval_const(Renaming, !Const) :-
         ; !.Const = mlconst_false
         ; !.Const = mlconst_int(_)
         ; !.Const = mlconst_uint(_)
+        ; !.Const = mlconst_int8(_)
+        ; !.Const = mlconst_uint8(_)
+        ; !.Const = mlconst_int16(_)
+        ; !.Const = mlconst_uint16(_)
+        ; !.Const = mlconst_int32(_)
+        ; !.Const = mlconst_uint32(_)
         ; !.Const = mlconst_char(_)
         ; !.Const = mlconst_enum(_, _)
         ; !.Const = mlconst_float(_)
@@ -2284,8 +2290,7 @@ get_java_type_initializer(Type) = Initializer :-
     (
         Type = mercury_type(_, CtorCat, _),
         (
-            ( CtorCat = ctor_cat_builtin(cat_builtin_int)
-            ; CtorCat = ctor_cat_builtin(cat_builtin_uint)
+            ( CtorCat = ctor_cat_builtin(cat_builtin_int(_))
             ; CtorCat = ctor_cat_builtin(cat_builtin_float)
             ),
             Initializer = "0"
@@ -3054,12 +3059,24 @@ mercury_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
         String = "int",
         ArrayDims = []
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int),
+        ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int))
+        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint))
+        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32))
+        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32))
+        ),
         String = "int",
         ArrayDims = []
     ;
-        CtorCat = ctor_cat_builtin(cat_builtin_uint),
-        String = "int",     % Java has no unsigned types.
+        ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8))
+        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8))
+        ),
+        String = "byte",
+        ArrayDims = []
+    ;
+        ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16))
+        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16))
+        ),
+        String = "short",
         ArrayDims = []
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_string),
@@ -4432,12 +4449,28 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
                 % The rationale for the handling of `char' and `uint' here is
                 % the same as for the mlds_native types above.
                 ( BuiltinType = builtin_type_char
-                ; BuiltinType = builtin_type_int
-                ; BuiltinType = builtin_type_uint
+                ; BuiltinType = builtin_type_int(int_type_int)
+                ; BuiltinType = builtin_type_int(int_type_uint)
+                ; BuiltinType = builtin_type_int(int_type_int32)
+                ; BuiltinType = builtin_type_int(int_type_uint32)
                 ),
                 JavaUnboxedType = "int",
                 JavaBoxedType = "java.lang.Integer",
                 UnboxMethod = "intValue"
+            ;
+                ( BuiltinType = builtin_type_int(int_type_int8)
+                ; BuiltinType = builtin_type_int(int_type_uint8)
+                ),
+                JavaUnboxedType = "byte",
+                JavaBoxedType = "java.lang.Byte",
+                UnboxMethod = "byteValue"
+            ;
+                ( BuiltinType = builtin_type_int(int_type_int16)
+                ; BuiltinType = builtin_type_int(int_type_uint16)
+                ),
+                JavaUnboxedType = "short",
+                JavaBoxedType = "java.lang.Short",
+                UnboxMethod = "shortValue"
             ;
                 BuiltinType = builtin_type_float,
                 JavaUnboxedType = "double",
@@ -4585,7 +4618,10 @@ output_std_unop_for_java(Info, UnaryOp, Expr, !IO) :-
         ; UnaryOp = strip_tag, UnaryOpStr = "/* strip_tag */ "
         ; UnaryOp = mkbody,    UnaryOpStr = "/* mkbody */ "
         ; UnaryOp = unmkbody,   UnaryOpStr = "/* unmkbody */ "
-        ; UnaryOp = bitwise_complement, UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_int), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_uint), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_int32), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_uint32), UnaryOpStr = "~"
         ; UnaryOp = logical_not, UnaryOpStr = "!"
         ; UnaryOp = hash_string,  UnaryOpStr = "mercury.String.hash_1_f_0"
         ; UnaryOp = hash_string2, UnaryOpStr = "mercury.String.hash2_1_f_0"
@@ -4593,12 +4629,29 @@ output_std_unop_for_java(Info, UnaryOp, Expr, !IO) :-
         ; UnaryOp = hash_string4, UnaryOpStr = "mercury.String.hash4_1_f_0"
         ; UnaryOp = hash_string5, UnaryOpStr = "mercury.String.hash5_1_f_0"
         ; UnaryOp = hash_string6, UnaryOpStr = "mercury.String.hash6_1_f_0"
-        ; UnaryOp = uint_bitwise_complement, UnaryOpStr = "~"
         ),
         io.write_string(UnaryOpStr, !IO),
         io.write_string("(", !IO),
         output_rval_for_java(Info, Expr, !IO),
         io.write_string(")", !IO)
+    ;
+        ( UnaryOp = bitwise_complement(int_type_int8), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_uint8), UnaryOpStr = "~"
+        ),
+        io.write_string("(byte)(", !IO),
+        io.write_string(UnaryOpStr, !IO),
+        io.write_string("(", !IO),
+        output_rval_for_java(Info, Expr, !IO),
+        io.write_string("))", !IO)
+    ;
+        ( UnaryOp = bitwise_complement(int_type_int16), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_uint16), UnaryOpStr = "~"
+        ),
+        io.write_string("(short)(", !IO),
+        io.write_string(UnaryOpStr, !IO),
+        io.write_string("(", !IO),
+        output_rval_for_java(Info, Expr, !IO),
+        io.write_string("))", !IO)
     ).
 
 :- pred output_binop_for_java(java_out_info::in, binary_op::in, mlds_rval::in,
@@ -4647,27 +4700,57 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         io.write_string(") ", !IO)
     ;
         % XXX Should we abort for some of these?
-        ( Op = int_add
-        ; Op = int_sub
-        ; Op = int_mul
-        ; Op = int_div
-        ; Op = int_mod
-        ; Op = unchecked_left_shift
-        ; Op = unchecked_right_shift
-        ; Op = bitwise_and
-        ; Op = bitwise_or
-        ; Op = bitwise_xor
+        ( Op = int_add(int_type_int)
+        ; Op = int_sub(int_type_int)
+        ; Op = int_mul(int_type_int)
+        ; Op = int_div(int_type_int)
+        ; Op = int_mod(int_type_int)
+        ; Op = unchecked_left_shift(int_type_int)
+        ; Op = unchecked_right_shift(int_type_int)
+        ; Op = bitwise_and(int_type_int)
+        ; Op = bitwise_or(int_type_int)
+        ; Op = bitwise_xor(int_type_int)
+        ; Op = int_lt(int_type_int32)
+        ; Op = int_gt(int_type_int32)
+        ; Op = int_le(int_type_int32)
+        ; Op = int_ge(int_type_int32)
+        ; Op = int_add(int_type_int32)
+        ; Op = int_sub(int_type_int32)
+        ; Op = int_mul(int_type_int32)
+        ; Op = int_div(int_type_int32)
+        ; Op = int_mod(int_type_int32)
+        ; Op = bitwise_and(int_type_int32)
+        ; Op = bitwise_or(int_type_int32)
+        ; Op = bitwise_xor(int_type_int32)
+        ; Op = unchecked_left_shift(int_type_int32)
+        ; Op = unchecked_right_shift(int_type_int32)
+        ; Op = int_add(int_type_uint)
+        ; Op = int_sub(int_type_uint)
+        ; Op = int_mul(int_type_uint)
+        ; Op = bitwise_and(int_type_uint)
+        ; Op = bitwise_or(int_type_uint)
+        ; Op = bitwise_xor(int_type_uint)
+        ; Op = unchecked_left_shift(int_type_uint)
+        ; Op = unchecked_right_shift(int_type_uint)
+        ; Op = int_add(int_type_uint32)
+        ; Op = int_sub(int_type_uint32)
+        ; Op = int_mul(int_type_uint32)
+        ; Op = bitwise_and(int_type_uint32)
+        ; Op = bitwise_or(int_type_uint32)
+        ; Op = bitwise_xor(int_type_uint32)
+        ; Op = unchecked_left_shift(int_type_uint32)
+        ; Op = unchecked_right_shift(int_type_uint32)
         ; Op = logical_and
         ; Op = logical_or
-        ; Op = eq
-        ; Op = ne
+        ; Op = eq(_)
+        ; Op = ne(_)
         ; Op = body
         ; Op = string_unsafe_index_code_unit
         ; Op = offset_str_eq(_)
-        ; Op = int_lt
-        ; Op = int_gt
-        ; Op = int_le
-        ; Op = int_ge
+        ; Op = int_lt(int_type_int)
+        ; Op = int_gt(int_type_int)
+        ; Op = int_le(int_type_int)
+        ; Op = int_ge(int_type_int)
         ; Op = unsigned_le
         ; Op = float_plus
         ; Op = float_minus
@@ -4683,6 +4766,14 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = float_from_dword
         ; Op = compound_eq
         ; Op = compound_lt
+        ; Op = int_lt(int_type_int8)
+        ; Op = int_gt(int_type_int8)
+        ; Op = int_le(int_type_int8)
+        ; Op = int_ge(int_type_int8)
+        ; Op = int_lt(int_type_int16)
+        ; Op = int_gt(int_type_int16)
+        ; Op = int_le(int_type_int16)
+        ; Op = int_ge(int_type_int16)
         ),
         ( if rval_is_enum_object(X) then
             io.write_string("(", !IO),
@@ -4702,29 +4793,14 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
             io.write_string(")", !IO)
         )
     ;
-        ( Op = uint_eq
-        ; Op = uint_ne
-        ; Op = uint_add
-        ; Op = uint_sub
-        ; Op = uint_mul
-        ; Op = uint_bitwise_and
-        ; Op = uint_bitwise_or
-        ; Op = uint_bitwise_xor
-        ; Op = uint_unchecked_left_shift
-        ; Op = uint_unchecked_right_shift
-        ),
-        io.write_string("(", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(" ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(")", !IO)
-    ;
-        ( Op = uint_lt
-        ; Op = uint_gt
-        ; Op = uint_le
-        ; Op = uint_ge
+        ( Op = int_lt(int_type_uint)
+        ; Op = int_gt(int_type_uint)
+        ; Op = int_le(int_type_uint)
+        ; Op = int_ge(int_type_uint)
+        ; Op = int_lt(int_type_uint32)
+        ; Op = int_gt(int_type_uint32)
+        ; Op = int_le(int_type_uint32)
+        ; Op = int_ge(int_type_uint32)
         ),
         io.write_string("(((", !IO),
         output_rval_for_java(Info, X, !IO),
@@ -4734,8 +4810,10 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         output_rval_for_java(Info, Y, !IO),
         io.write_string(") & 0xffffffffL))", !IO)
     ;
-        ( Op = uint_div
-        ; Op = uint_mod
+        ( Op = int_div(int_type_uint)
+        ; Op = int_mod(int_type_uint)
+        ; Op = int_div(int_type_uint32)
+        ; Op = int_mod(int_type_uint32)
         ),
         io.write_string("((int)(((", !IO),
         output_rval_for_java(Info, X, !IO),
@@ -4744,6 +4822,108 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         io.write_string(" ((", !IO),
         output_rval_for_java(Info, Y, !IO),
         io.write_string(") & 0xffffffffL)))", !IO)
+    ;
+        ( Op = int_add(int_type_int8)
+        ; Op = int_sub(int_type_int8)
+        ; Op = int_mul(int_type_int8)
+        ; Op = int_div(int_type_int8)
+        ; Op = int_mod(int_type_int8)
+        ; Op = bitwise_and(int_type_int8)
+        ; Op = bitwise_or(int_type_int8)
+        ; Op = bitwise_xor(int_type_int8)
+        ; Op = unchecked_left_shift(int_type_int8)
+        ; Op = unchecked_right_shift(int_type_int8)
+        ; Op = int_add(int_type_uint8)
+        ; Op = int_sub(int_type_uint8)
+        ; Op = int_mul(int_type_uint8)
+        ; Op = bitwise_and(int_type_uint8)
+        ; Op = bitwise_or(int_type_uint8)
+        ; Op = bitwise_xor(int_type_uint8)
+        ; Op = unchecked_left_shift(int_type_uint8)
+        ; Op = unchecked_right_shift(int_type_uint8)
+        ),
+        io.write_string("(byte)(", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(" ", !IO),
+        output_binary_op_for_java(Op, !IO),
+        io.write_string(" ", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        ( Op = int_lt(int_type_uint8)
+        ; Op = int_gt(int_type_uint8)
+        ; Op = int_le(int_type_uint8)
+        ; Op = int_ge(int_type_uint8)
+        ),
+        io.write_string("(((", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(") & 0xff) ", !IO),
+        output_binary_op_for_java(Op, !IO),
+        io.write_string(" ((", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(") & 0xff))", !IO)
+    ;
+        ( Op = int_div(int_type_uint8)
+        ; Op = int_mod(int_type_uint8)
+        ),
+        io.write_string("((byte)(((", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(") & 0xff) ", !IO),
+        output_binary_op_for_java(Op, !IO),
+        io.write_string(" ((", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(") & 0xff)))", !IO)
+    ;
+        ( Op = int_add(int_type_int16)
+        ; Op = int_sub(int_type_int16)
+        ; Op = int_mul(int_type_int16)
+        ; Op = int_div(int_type_int16)
+        ; Op = int_mod(int_type_int16)
+        ; Op = bitwise_and(int_type_int16)
+        ; Op = bitwise_or(int_type_int16)
+        ; Op = bitwise_xor(int_type_int16)
+        ; Op = unchecked_left_shift(int_type_int16)
+        ; Op = unchecked_right_shift(int_type_int16)
+        ; Op = int_add(int_type_uint16)
+        ; Op = int_sub(int_type_uint16)
+        ; Op = int_mul(int_type_uint16)
+        ; Op = bitwise_and(int_type_uint16)
+        ; Op = bitwise_or(int_type_uint16)
+        ; Op = bitwise_xor(int_type_uint16)
+        ; Op = unchecked_left_shift(int_type_uint16)
+        ; Op = unchecked_right_shift(int_type_uint16)
+        ),
+        io.write_string("(short)(", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(" ", !IO),
+        output_binary_op_for_java(Op, !IO),
+        io.write_string(" ", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        ( Op = int_lt(int_type_uint16)
+        ; Op = int_gt(int_type_uint16)
+        ; Op = int_le(int_type_uint16)
+        ; Op = int_ge(int_type_uint16)
+        ),
+        io.write_string("(((", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(") & 0xffff) ", !IO),
+        output_binary_op_for_java(Op, !IO),
+        io.write_string(" ((", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(") & 0xffff))", !IO)
+    ;
+        ( Op = int_div(int_type_uint16)
+        ; Op = int_mod(int_type_uint16)
+        ),
+        io.write_string("((short)(((", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(") & 0xffff) ", !IO),
+        output_binary_op_for_java(Op, !IO),
+        io.write_string(" ((", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(") & 0xffff)))", !IO)
     ).
 
     % Output an Rval and if the Rval is an enumeration object append the string
@@ -4772,48 +4952,27 @@ output_rval_maybe_with_enum_for_java(Info, Rval, !IO) :-
 
 output_binary_op_for_java(Op, !IO) :-
     (
-        ( Op = int_add, OpStr = "+"
-        ; Op = int_sub, OpStr = "-"
-        ; Op = int_mul, OpStr = "*"
-        ; Op = int_div, OpStr = "/"
-        ; Op = int_mod, OpStr = "%"
-        ; Op = unchecked_left_shift, OpStr = "<<"
-        ; Op = unchecked_right_shift, OpStr = ">>"
-        ; Op = bitwise_and, OpStr = "&"
-        ; Op = bitwise_or, OpStr = "|"
-        ; Op = bitwise_xor, OpStr = "^"
-        ; Op = logical_and, OpStr = "&&"
-        ; Op = logical_or, OpStr = "||"
-        ; Op = eq, OpStr = "=="
-        ; Op = ne, OpStr = "!="
-        ; Op = int_lt, OpStr = "<"
-        ; Op = int_gt, OpStr = ">"
-        ; Op = int_le, OpStr = "<="
-        ; Op = int_ge, OpStr = ">="
-
-        ; Op = uint_eq, OpStr = "=="
-        ; Op = uint_ne, OpStr = "!="
-        % NOTE: unsigned comparisons require special handling in Java.
-        % See output_binop/6 above.
-        ; Op = uint_lt, OpStr = "<"
-        ; Op = uint_gt, OpStr = ">"
-        ; Op = uint_le, OpStr = "<="
-        ; Op = uint_ge, OpStr = ">="
-
-        ; Op = uint_add, OpStr = "+"
-        ; Op = uint_sub, OpStr = "-"
-        ; Op = uint_mul, OpStr = "*"
-
+        ( Op = int_add(_), OpStr = "+"
+        ; Op = int_sub(_), OpStr = "-"
+        ; Op = int_mul(_), OpStr = "*"
         % NOTE: unsigned div and mod require special handling in Java.
         % See output_binop/6 above.
-        ; Op = uint_div, OpStr = "/"
-        ; Op = uint_mod, OpStr = "%"
-
-        ; Op = uint_bitwise_and, OpStr = "&"
-        ; Op = uint_bitwise_or, OpStr = "|"
-        ; Op = uint_bitwise_xor, OpStr = "^"
-        ; Op = uint_unchecked_left_shift, OpStr = "<<"
-        ; Op = uint_unchecked_right_shift, OpStr = ">>>"
+        ; Op = int_div(_), OpStr = "/"
+        ; Op = int_mod(_), OpStr = "%"
+        ; Op = unchecked_left_shift(_), OpStr = "<<"
+        ; Op = bitwise_and(_), OpStr = "&"
+        ; Op = bitwise_or(_), OpStr = "|"
+        ; Op = bitwise_xor(_), OpStr = "^"
+        ; Op = logical_and, OpStr = "&&"
+        ; Op = logical_or, OpStr = "||"
+        % NOTE: unsigned comparisons require special handling in Java.
+        % See output_binop/6 above.
+        ; Op = eq(_), OpStr = "=="
+        ; Op = ne(_), OpStr = "!="
+        ; Op = int_lt(_), OpStr = "<"
+        ; Op = int_gt(_), OpStr = ">"
+        ; Op = int_le(_), OpStr = "<="
+        ; Op = int_ge(_), OpStr = ">="
 
         ; Op = float_eq, OpStr = "=="
         ; Op = float_ne, OpStr = "!="
@@ -4826,6 +4985,24 @@ output_binary_op_for_java(Op, !IO) :-
         ; Op = float_minus, OpStr = "-"
         ; Op = float_times, OpStr = "*"
         ; Op = float_divide, OpStr = "/"
+        ),
+        io.write_string(OpStr, !IO)
+    ;
+        Op = unchecked_right_shift(IntType),
+        (
+            ( IntType = int_type_int
+            ; IntType = int_type_int8
+            ; IntType = int_type_int16
+            ; IntType = int_type_int32
+            ),
+            OpStr = ">>"
+        ;
+            ( IntType = int_type_uint
+            ; IntType = int_type_uint8
+            ; IntType = int_type_uint16
+            ; IntType = int_type_uint32
+            ),
+            OpStr = ">>>"
         ),
         io.write_string(OpStr, !IO)
     ;
@@ -4868,6 +5045,24 @@ output_rval_const_for_java(Info, Const, !IO) :-
         % Java does not have unsigned integer literals.
         % XXX perhaps we should output this in hexadecimal?
         output_int_const_for_java(uint.cast_to_int(U), !IO)
+    ;
+        Const = mlconst_int8(I8),
+        output_int_const_for_java(I8, !IO)
+    ;
+        Const = mlconst_uint8(U8),
+        output_int_const_for_java(U8, !IO)
+    ;
+        Const = mlconst_int16(I16),
+        output_int_const_for_java(I16, !IO)
+    ;
+        Const = mlconst_uint16(U16),
+        output_int_const_for_java(U16, !IO)
+    ;
+        Const = mlconst_int32(I32),
+        output_int_const_for_java(I32, !IO)
+    ;
+        Const = mlconst_uint32(U32),
+        output_int_const_for_java(U32, !IO)
     ;
         Const = mlconst_char(N),
         io.write_string("(", !IO),

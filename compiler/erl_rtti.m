@@ -610,6 +610,18 @@ erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int)) =
     elds_term(make_enum_alternative("etcr_int")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_uint)) =
     elds_term(make_enum_alternative("etcr_uint")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int8)) =
+    elds_term(make_enum_alternative("etcr_int8")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_uint8)) =
+    elds_term(make_enum_alternative("etcr_uint8")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int16)) =
+    elds_term(make_enum_alternative("etcr_int16")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_uint16)) =
+    elds_term(make_enum_alternative("etcr_uint16")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int32)) =
+    elds_term(make_enum_alternative("etcr_int32")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_uint32)) =
+    elds_term(make_enum_alternative("etcr_uint32")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_float)) =
     elds_term(make_enum_alternative("etcr_float")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_char)) =
