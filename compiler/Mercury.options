@@ -73,6 +73,10 @@ MCFLAGS-libs.md4                          = --no-warn-unused-imports
 MCFLAGS-libs.process_util                 = --no-warn-unused-imports
 MCFLAGS-libs.timestamp                    = --no-warn-unused-imports
 
+# This is a workaround for a bug fixed on 2017 june 30.
+# It won't be needed once that diff is installed.
+MCFLAGS-hlds.pre_quantification           = --no-warn-unused-imports
+
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
 MGNUCFLAGS-libs.process_util              = --no-ansi

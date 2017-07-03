@@ -62,6 +62,7 @@
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.pre_quantification.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
@@ -791,6 +792,14 @@ add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
             [HeadGoal, BodyGoal], Goal0, InitialSVarState, FinalSVarState,
             !.SVarStore, StateVarWarnings, StateVarErrors),
 
+        qual_info_get_found_trace_goal(!.QualInfo, FoundTraceGoal),
+        (
+            FoundTraceGoal = no,
+            Goal1 = Goal0
+        ;
+            FoundTraceGoal = yes,
+            separate_trace_goal_only_locals(Goal0, Goal1)
+        ),
         qual_info_get_var_types(!.QualInfo, VarTypes0),
         % The RTTI varmaps here are just a dummy value, because the real ones
         % are not introduced until polymorphism.
@@ -799,7 +808,7 @@ add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
         % are not yet recognized as such inside from_ground_term scopes.
         implicitly_quantify_clause_body_general(
             ordinary_nonlocals_maybe_lambda,
-            HeadVarList, QuantWarnings, Goal0, Goal,
+            HeadVarList, QuantWarnings, Goal1, Goal,
             !VarSet, VarTypes0, VarTypes, EmptyRttiVarmaps, _),
         qual_info_set_var_types(VarTypes, !QualInfo)
     ).

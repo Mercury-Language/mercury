@@ -45,12 +45,15 @@
 :- pred qual_info_get_maybe_opt_imported(qual_info::in,
     maybe_opt_imported::out) is det.
 :- pred qual_info_get_found_syntax_error(qual_info::in, bool::out) is det.
+:- pred qual_info_get_found_trace_goal(qual_info::in, bool::out) is det.
 
 :- pred qual_info_set_var_types(vartypes::in,
     qual_info::in, qual_info::out) is det.
 :- pred qual_info_set_mq_info(mq_info::in,
     qual_info::in, qual_info::out) is det.
 :- pred qual_info_set_found_syntax_error(bool::in,
+    qual_info::in, qual_info::out) is det.
+:- pred qual_info_set_found_trace_goal(bool::in,
     qual_info::in, qual_info::out) is det.
 
 :- pred apply_to_recompilation_info(
@@ -134,7 +137,10 @@
                 qual_maybe_opt_imported :: maybe_opt_imported,
 
                 % Was there a syntax error in the clause?
-                qual_found_syntax_error :: bool
+                qual_found_syntax_error :: bool,
+
+                % Was there a trace goal in the clause?
+                qual_found_trace_goal   :: bool
             ).
 
 init_qual_info(MQInfo, TypeEqvMap, QualInfo) :-
@@ -143,17 +149,18 @@ init_qual_info(MQInfo, TypeEqvMap, QualInfo) :-
     map.init(Index),
     init_vartypes(VarTypes),
     FoundSyntaxError = no,
+    FoundTraceGoal = no,
     QualInfo = qual_info(TypeEqvMap, TVarSet, Renaming, Index, VarTypes,
-        MQInfo, is_not_opt_imported, FoundSyntaxError).
+        MQInfo, is_not_opt_imported, FoundSyntaxError, FoundTraceGoal).
 
 update_qual_info(TVarNameMap, TVarSet, VarTypes, MaybeOptImported,
         !QualInfo) :-
     !.QualInfo = qual_info(TypeEqvMap, _TVarSet0, _Renaming0, _TVarNameMap0,
-        _VarTypes0, MQInfo, _MaybeOptImported, _FoundError),
+        _VarTypes0, MQInfo, _MaybeOptImported, _FoundError, _FoundTraceGoal),
     % The renaming for one clause is useless in the others.
     map.init(Renaming),
     !:QualInfo = qual_info(TypeEqvMap, TVarSet, Renaming, TVarNameMap,
-        VarTypes, MQInfo, MaybeOptImported, no).
+        VarTypes, MQInfo, MaybeOptImported, no, no).
 
 qual_info_get_tvarset(Info, X) :-
     X = Info ^ qual_tvarset.
@@ -165,6 +172,8 @@ qual_info_get_maybe_opt_imported(Info, X) :-
     X = Info ^ qual_maybe_opt_imported.
 qual_info_get_found_syntax_error(Info, X) :-
     X = Info ^ qual_found_syntax_error.
+qual_info_get_found_trace_goal(Info, X) :-
+    X = Info ^ qual_found_trace_goal.
 
 qual_info_set_var_types(X, !Info) :-
     !Info ^ qual_vartypes := X.
@@ -172,6 +181,8 @@ qual_info_set_mq_info(X, !Info) :-
     !Info ^ qual_mq_info := X.
 qual_info_set_found_syntax_error(X, !Info) :-
     !Info ^ qual_found_syntax_error := X.
+qual_info_set_found_trace_goal(X, !Info) :-
+    !Info ^ qual_found_trace_goal := X.
 
 %-----------------------------------------------------------------------------%
 
@@ -197,7 +208,8 @@ set_module_recompilation_info(QualInfo, !ModuleInfo) :-
 process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
         !QualInfo, !Specs) :-
     !.QualInfo = qual_info(TypeEqvMap, TVarSet0, TVarRenaming0,
-        TVarNameMap0, VarTypes0, MQInfo0, MaybeOptImported, FoundError),
+        TVarNameMap0, VarTypes0, MQInfo0, MaybeOptImported,
+        FoundSyntaxError, FoundTraceGoal),
     (
         MaybeOptImported = is_opt_imported,
         % Types in `.opt' files should already be fully module qualified.
@@ -229,7 +241,8 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
         RecordExpanded, _),
     update_var_types(Var, Type, Context, VarTypes0, VarTypes, !Specs),
     !:QualInfo = qual_info(TypeEqvMap, TVarSet, TVarRenaming,
-        TVarNameMap, VarTypes, MQInfo, MaybeOptImported, FoundError).
+        TVarNameMap, VarTypes, MQInfo, MaybeOptImported,
+        FoundSyntaxError, FoundTraceGoal).
 
 :- pred update_var_types(prog_var::in, mer_type::in, prog_context::in,
     vartypes::in, vartypes::out,

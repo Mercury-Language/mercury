@@ -339,6 +339,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         svar_finish_local_state_vars(StateVars, BeforeSVarState,
             AfterInsideSVarState, AfterSVarState),
         !:SVarState = AfterSVarState,
+        qual_info_set_found_trace_goal(yes, !QualInfo),
         % The QuantVars field is a lie, but a white lie.
         Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIOHLDS,
             MutableHLDSs, []),

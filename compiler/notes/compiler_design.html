@@ -835,14 +835,21 @@ so that the compiler does the right thing for options such as
 
 <dt> implicit quantification
 <dd>
-    quantification.m (XXX which for some reason is part of the hlds.m
-    package rather than the check_hlds.m package)
+    quantification.m
     handles implicit quantification and computes
     the set of non-local variables for each sub-goal.
     It also expands away bi-implication (unlike the expansion
     of implication and universal quantification, this expansion
     cannot be done until after quantification).
-    This pass is called from the `transform' predicate in make_hlds.m.
+    This module is part of the hlds.m package
+    rather than the check_hlds.m package,
+    partly because it is rerun by several passes after semantic analysis
+    to update nonlocal sets after changes to procedure bodies.
+    The first invocation of quantification may be preceded
+    by a pre-quantification pass (in pre_quantification.m),
+    which can insert implicit existential quantifiers into trace goals
+    to implement a scope rule about such goals
+    that people tend to intuitively expect.
     <p>
 
 <dt> checking typeclass instances (check_typeclass.m)
@@ -1361,7 +1368,7 @@ Expansion of equivalence types (equiv_type_hlds.m)
 <ul>
 <li>
     This pass expands equivalences which are not meant to be visible
-    to the user of imported modules. This is necessary for the Java 
+    to the user of imported modules. This is necessary for the Java
     and C# back-ends and in some cases for `:- pragma foreign_export'
     involving foreign types on the C back-end.
 
