@@ -223,9 +223,10 @@
 ").
 
 det_from_int(I) = U :-
-    ( if from_int(I, U0)
-    then U = U0
-    else error("uint.det_from_int: cannot convert int to uint")
+    ( if from_int(I, UPrime) then
+        U = UPrime
+    else
+        error("uint.det_from_int: cannot convert int to uint")
     ).
 
 %---------------------------------------------------------------------------%
