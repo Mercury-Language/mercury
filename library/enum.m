@@ -19,9 +19,25 @@
 :- module enum.
 :- interface.
 
-    % For all instances the following must hold:
+    % A type T can be declared to be a member of the enum typeclass if
+    %
+    % - all values X of type T can be converted to an int N using
+    %   the instance's to_int member function, with each distinct X
+    %   being translated by to_int to a distinct N; and
+    %
+    % - for all values N of type int that are equal to to_int(X) for some X,
+    %   from_int(N) = X.
+    %
+    % - for all values N of type int that are not equal to to_int(X) for any X,
+    %   from_int(N) should fail.
+    %
+    % In mathematical notation, the following must hold:
+    %
     %   all [X] (X = from_int(to_int(X)))
-    %   all [Int] (some [Y] Int = to_int(Y) => from_int(Int) = Y)
+    %   all [X, Y] (to_int(X) = to_int(Y)) => X = Y)
+    %   all [N] (some [X] N = to_int(X) => from_int(N) = X)
+    %   all [N] (not (some [X] N = to_int(X))) => from_int(N) fails
+    %
 :- typeclass enum(T) where [
     func to_int(T) = int,
     func from_int(int) = T is semidet
