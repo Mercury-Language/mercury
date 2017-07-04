@@ -2990,6 +2990,8 @@ long_option("java-generics-2010-04-13",
                                     compiler_sufficiently_recent).
 long_option("strip-executable-2014-05-05",
                                     compiler_sufficiently_recent).
+long_option("trace-goal-only-locals-2017-07-05",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("ignore-par-conjunctions",
                                     ignore_par_conjunctions).
