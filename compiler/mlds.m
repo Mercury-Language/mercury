@@ -427,13 +427,7 @@
     --->    mercury_import(
                 mercury_mlds_import_type    :: mercury_mlds_import_type,
                 import_name                 :: mlds_module_name
-            )
-    ;       foreign_import(
-                foreign_import_name         :: foreign_import_name
             ).
-
-:- type foreign_import_name
-    --->    il_assembly_name(mlds_module_name).
 
     % An mlds_module_name specifies the name of an mlds package or class.
     % XXX This is wrongly named as it is also used for class names.
@@ -485,6 +479,8 @@
     %
 :- func mlds_append_class_qualifier(compilation_target, mlds_module_name,
     mlds_qual_kind, mlds_class_name, arity) = mlds_module_name.
+:- func mlds_append_class_qualifier_module_qual(mlds_module_name,
+    mlds_class_name, arity) = mlds_module_name.
 
     % Append a wrapper class qualifier to the module name and leave the
     % package name unchanged.
@@ -507,8 +503,6 @@
     % If the target language has restrictions on what names can be used
     % in identifiers, then it is the responsibility of the target language
     % generator to mangle these names accordingly.
-:- type mlds_qualified_entity_name
-    ==  mlds_fully_qualified_name(mlds_entity_name).
 :- type mlds_qualified_data_name
     ==  mlds_fully_qualified_name(mlds_data_name).
 :- type mlds_qualified_function_name
@@ -564,11 +558,6 @@
                 % A pragma foreign_export name.
                 string
             ).
-
-:- type mlds_entity_name
-    --->    entity_data(mlds_data_name)
-    ;       entity_function(mlds_function_name)
-    ;       entity_type(mlds_type_name).
 
     % This specifies information about some entity being defined
     % The entity may be any of the following:
@@ -2316,21 +2305,36 @@ is_std_lib_module(Module, Name) :-
 
 %---------------------------------------------------------------------------%
 
-mlds_append_class_qualifier(Target, mlds_module_name(Package, Module),
-        QualKind, ClassName, ClassArity) = Name :-
+mlds_append_class_qualifier(Target, ModuleName0, QualKind,
+        ClassName, ClassArity) = ModuleName :-
+    ModuleName0 = mlds_module_name(Package, Module0),
     % For the Java back-end, we flip the initial case of an type qualifiers,
     % in order to match the usual Java conventions.
     ( if
         Target = target_java,
         QualKind = type_qual
     then
-        AdjustedModule = flip_initial_case_of_final_part(Module)
+        AdjustedModule0 = flip_initial_case_of_final_part(Module0)
     else
-        AdjustedModule = Module
+        AdjustedModule0 = Module0
     ),
+    ModuleName = mlds_append_class_qualifier_base(Package, AdjustedModule0,
+        ClassName, ClassArity).
+
+mlds_append_class_qualifier_module_qual(ModuleName0, ClassName, ClassArity)
+        = ModuleName :-
+    ModuleName0 = mlds_module_name(Package, Module0),
+    ModuleName = mlds_append_class_qualifier_base(Package, Module0,
+        ClassName, ClassArity).
+
+:- func mlds_append_class_qualifier_base(module_name, module_name,
+    mlds_class_name, arity) = mlds_module_name.
+:- pragma inline(mlds_append_class_qualifier_base/4).
+
+mlds_append_class_qualifier_base(Package, Module, ClassName, ClassArity)
+        = ModuleName :-
     string.format("%s_%d", [s(ClassName), i(ClassArity)], ClassQualifier),
-    Name = mlds_module_name(Package,
-        qualified(AdjustedModule, ClassQualifier)).
+    ModuleName = mlds_module_name(Package, qualified(Module, ClassQualifier)).
 
 mlds_append_wrapper_class(Name) = mlds_append_name(Name, wrapper_class_name).
 

@@ -692,8 +692,8 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
             qual(MLDS_ModuleName, module_qual, StructTypeName),
         StructType = mlds_class_type(QualStructTypeName, 0, mlds_struct),
 
-        MLDS_ClassModuleName = mlds_append_class_qualifier(Target,
-            MLDS_ModuleName, module_qual, StructTypeName, 0),
+        MLDS_ClassModuleName = mlds_append_class_qualifier_module_qual(
+            MLDS_ModuleName, StructTypeName, 0),
         make_named_fields(MLDS_ClassModuleName, StructType, FieldNames,
             FieldIds),
 

@@ -253,18 +253,13 @@ output_imports(Imports, !IO) :-
 :- pred output_import(mlds_import::in, io::di, io::uo) is det.
 
 output_import(Import, !IO) :-
+    Import = mercury_import(ImportType, ImportName),
     (
-        Import = mercury_import(ImportType, ImportName),
-        (
-            ImportType = user_visible_interface,
-            unexpected($pred,
-                "import_type `user_visible_interface' in Java backend")
-        ;
-            ImportType = compiler_visible_interface
-        )
+        ImportType = user_visible_interface,
+        unexpected($pred,
+            "import_type `user_visible_interface' in Java backend")
     ;
-        Import = foreign_import(_),
-        unexpected($pred, "foreign import in Java backend")
+        ImportType = compiler_visible_interface
     ),
     SymName = mlds_module_name_to_sym_name(ImportName),
     mangle_sym_name_for_java(SymName, module_qual, "__", ClassFile),

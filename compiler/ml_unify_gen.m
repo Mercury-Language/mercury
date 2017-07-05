@@ -541,13 +541,11 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
         ResAddr = reserved_object(TypeCtor, QualCtorName, CtorArity),
         (
             QualCtorName = qualified(ModuleName, CtorName),
-            module_info_get_globals(ModuleInfo, Globals),
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
             TypeCtor = type_ctor(TypeName, TypeArity),
             UnqualTypeName = unqualify_name(TypeName),
-            globals.get_target(Globals, Target),
-            MLDS_TypeName = mlds_append_class_qualifier(Target,
-                MLDS_ModuleName, module_qual, UnqualTypeName, TypeArity),
+            MLDS_TypeName = mlds_append_class_qualifier_module_qual(
+                MLDS_ModuleName, UnqualTypeName, TypeArity),
             Name = mlds_comp_var(mcv_reserved_obj_name(CtorName, CtorArity)),
             Rval0 = ml_const(mlconst_data_addr(
                 data_addr(MLDS_TypeName, mlds_data_var(Name)))),
@@ -562,6 +560,8 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
             % optimize downcasts). So we only do it if the back-end
             % requires it.
 
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.get_target(Globals, Target),
             SupportsInheritance = target_supports_inheritence(Target),
             (
                 SupportsInheritance = yes,
@@ -1042,8 +1042,8 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             CtorName = ml_gen_du_ctor_name_unqual_type(Target, UnqualTypeName,
                 TypeArity, CtorSymName, CtorArity),
             QualTypeName = qual(MLDS_Module, _QualKind, TypeName),
-            ClassQualifier = mlds_append_class_qualifier(Target, MLDS_Module,
-                module_qual, TypeName, TypeArity),
+            ClassQualifier = mlds_append_class_qualifier_module_qual(
+                MLDS_Module, TypeName, TypeArity),
             ConstType = mlds_class_type(
                 qual(ClassQualifier, type_qual, CtorName),
                 CtorArity, mlds_class)
@@ -2332,8 +2332,6 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
     ml_gen_type_name(TypeCtor, QualifiedTypeName, TypeArity),
     QualifiedTypeName = qual(MLDS_Module, TypeQualKind, TypeName),
 
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
 
     % Figure out whether this type has constructors both with and without
     % secondary tags. If so, then the secondary tag field is in a class
@@ -2356,8 +2354,8 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
                 not ml_uses_secondary_tag(TypeCtor, TagValues, Ctor, _)
             )
         then
-            ClassQualifier = mlds_append_class_qualifier(Target, MLDS_Module,
-                module_qual, TypeName, TypeArity),
+            ClassQualifier = mlds_append_class_qualifier_module_qual(
+                MLDS_Module, TypeName, TypeArity),
             ClassQualKind = TypeQualKind,
             ClassName = "tag_type",
             ClassArity = 0
@@ -2380,6 +2378,8 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
     QualClassName = qual(ClassQualifier, ClassQualKind, ClassName),
     ClassPtrType = mlds_ptr_type(mlds_class_type(QualClassName, ClassArity,
         mlds_class)),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
     FieldQualifier = mlds_append_class_qualifier(Target, ClassQualifier,
         ClassQualKind, ClassName, ClassArity),
     QualifiedFieldName = qual(FieldQualifier, type_qual, FieldName),

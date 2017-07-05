@@ -342,29 +342,20 @@ mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_src_import(Opts, _Indent, Import, !IO) :-
-    (
-        Import = mercury_import(ImportType, ImportName),
-        ModuleName0 = mlds_module_name_to_sym_name(ImportName),
-        ( ImportType = user_visible_interface, HeaderExt = ".mh"
-        ; ImportType = compiler_visible_interface, HeaderExt = ".mih"
-        ),
+    Import = mercury_import(ImportType, ImportName),
+    ModuleName0 = mlds_module_name_to_sym_name(ImportName),
+    ( ImportType = user_visible_interface, HeaderExt = ".mh"
+    ; ImportType = compiler_visible_interface, HeaderExt = ".mih"
+    ),
 
-        % Strip off the "mercury" qualifier for standard library modules.
-        ( if
-            strip_outermost_qualifier(ModuleName0, "mercury", ModuleName1),
-            mercury_std_library_module_name(ModuleName1)
-        then
-            ModuleName = ModuleName1
-        else
-            ModuleName = ModuleName0
-        )
-    ;
-        Import = foreign_import(ForeignImport),
-        % This case shouldn't happen when compiling to C, but we need to handle
-        % it for MLDS dumps when compiling to IL.
-        ForeignImport = il_assembly_name(ImportName),
-        ModuleName = mlds_module_name_to_sym_name(ImportName),
-        HeaderExt = ".dll"
+    % Strip off the "mercury" qualifier for standard library modules.
+    ( if
+        strip_outermost_qualifier(ModuleName0, "mercury", ModuleName1),
+        mercury_std_library_module_name(ModuleName1)
+    then
+        ModuleName = ModuleName1
+    else
+        ModuleName = ModuleName0
     ),
 
     Globals = Opts ^ m2co_all_globals,
@@ -1568,10 +1559,9 @@ mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     %
     % We generate such forward declarations here, rather than generating
     % type declarations in a header file and #including that header file,
-    % because doing the latter would significantly complicate the
-    % dependencies (to avoid cyclic #includes, you'd need to generate
-    % the type declarations in a different header file than the function
-    % declarations).
+    % because doing the latter would significantly complicate the dependencies
+    % (to avoid cyclic #includes, you would need to declare the types
+    % in a *different* header file than the functions).
     HighLevelData = Opts ^ m2co_highlevel_data,
     (
         HighLevelData = yes,
@@ -2082,9 +2072,8 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     % constructors of discriminated union types.) Here we compute the
     % appropriate qualifier.
     TypeName = mlds_type_name(ClassName, ClassArity),
-    Target = Opts ^ m2co_target,
-    ClassModuleName = mlds_append_class_qualifier(Target, ModuleName,
-        module_qual, ClassName, ClassArity),
+    ClassModuleName = mlds_append_class_qualifier_module_qual(ModuleName,
+        ClassName, ClassArity),
 
     % Hoist out static members, since plain old C doesn't support
     % static members in structs (except for enumeration constants).
