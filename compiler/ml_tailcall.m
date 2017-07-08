@@ -513,6 +513,17 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, AtTailAfter, AtTailBefore,
             % We must be in a tail position.
             AtTailAfter = at_tail(ReturnStmtRvals),
 
+            % The call must not be do a different object.
+            % In C++, `this' is a constant, so our usual technique of
+            % assigning the arguments won't work if it is a member function.
+            % Thus we don't do this optimization if we are optimizing a
+            % member function call.
+            % XXX We don't generate managed C++ anymore. Is this a problem
+            % for the other MLDS target languages?
+            % A duplicate test is in ml_optimize.m and will also need removing
+            % if this test is removed.
+            MaybeObj = no,
+
             % The values returned in this call must match those returned
             % by the `return' statement that follows.
             call_returns_same_local_lvals_as_return_stmt(ReturnStmtRvals,
@@ -627,7 +638,7 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Markers, Context, !InBodyInfo) :-
         ;
             WarnTailCalls = warn_tail_calls,
 
-            % if warnings are enabled then we check the pragma.  We check
+            % if warnings are enabled then we check the pragma. We check
             % that it doesn't disable warnings and also determine whether
             % this should be a warning or error.
             require_complete_switch [MaybeRequireTailrecInfo]
