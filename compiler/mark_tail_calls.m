@@ -59,7 +59,7 @@
     %
     % Unlike the predicates below serving the LLDS code generator,
     % this predicate never generates any error messages, and it never
-    % restricts it attention to only *self* tail recursive calls.
+    % restricts its attention to only *self* tail recursive calls.
     %
 :- pred mark_self_and_mutual_tail_rec_calls_in_module(hlds_dependency_info::in,
     module_info::in, module_info::out) is det.
