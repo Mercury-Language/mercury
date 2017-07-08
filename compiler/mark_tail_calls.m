@@ -83,7 +83,7 @@
     % The LLDS code generator can be invoked to compile procedures either
     % by phases, or by procedures; the two do the same jobs, but in different
     % order. It calls the in_pred version when compiling procedures by phases,
-    % and it calls the in_proc version when compiling procedures by procedures.
+    % and it calls the in_proc version when compiling by procedures.
     %
 :- pred mark_tail_rec_calls_in_pred_for_llds_code_gen(
     scc_map(pred_proc_id)::in, pred_id::in, module_info::in, module_info::out,
@@ -213,11 +213,10 @@ mark_tail_rec_calls_in_scc(AddGoalFeature, WarnNonTailRecParams, SCC,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred mark_tail_rec_call_options_for_llds_code_gen(globals::in,
-    add_goal_feature::out, warn_non_tail_rec_params::out) is det.
+:- pred get_add_goal_feature_for_llds_code_gen(globals::in,
+    add_goal_feature::out) is det.
 
-mark_tail_rec_call_options_for_llds_code_gen(Globals, AddGoalFeature,
-        WarnNonTailRecParams) :-
+get_add_goal_feature_for_llds_code_gen(Globals, AddGoalFeature) :-
     globals.lookup_bool_option(Globals, exec_trace_tail_rec,
         ExecTraceTailRec),
     (
@@ -226,7 +225,12 @@ mark_tail_rec_call_options_for_llds_code_gen(Globals, AddGoalFeature,
     ;
         ExecTraceTailRec = no,
         AddGoalFeature = do_not_add_goal_feature
-    ),
+    ).
+
+:- pred get_default_warn_parms(globals::in,
+    warn_non_tail_rec_params::out) is det.
+
+get_default_warn_parms(Globals, WarnNonTailRecParams) :-
     globals.lookup_bool_option(Globals, warn_non_tail_recursion_self,
         WarnNonTailSelfRecBool),
     (
@@ -286,6 +290,7 @@ maybe_override_warn_params_for_proc(ProcInfo, WarnParams, WarnParamsForProc) :-
     ).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap, PredId, !ModuleInfo,
         !PredInfo, !Specs) :-
@@ -294,8 +299,8 @@ mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap, PredId, !ModuleInfo,
     % ModuleInfo, even though it will itself put the updated PredInfo
     % back into ModuleInfo.
     module_info_get_globals(!.ModuleInfo, Globals),
-    mark_tail_rec_call_options_for_llds_code_gen(Globals, AddGoalFeature,
-        WarnNonTailRecParams),
+    get_add_goal_feature_for_llds_code_gen(Globals, AddGoalFeature),
+    get_default_warn_parms(Globals, WarnNonTailRecParams),
     ProcIds = pred_info_non_imported_procids(!.PredInfo),
     mark_tail_rec_calls_in_procs_for_llds_code_gen(AddGoalFeature,
         WarnNonTailRecParams, !.ModuleInfo, SCCMap, PredId, ProcIds,
@@ -335,12 +340,12 @@ mark_tail_rec_calls_in_procs_for_llds_code_gen(AddGoalFeature,
 mark_tail_rec_calls_in_proc_for_llds_code_gen(ModuleInfo, PredId, ProcId,
         PredInfo, SCCMap, !ProcInfo, !Specs) :-
     module_info_get_globals(ModuleInfo, Globals),
-    mark_tail_rec_call_options_for_llds_code_gen(Globals, AddGoalFeature,
-        WarnNonTailRecParams),
+    get_add_goal_feature_for_llds_code_gen(Globals, AddGoalFeature),
+    get_default_warn_parms(Globals, WarnNonTailRecParams),
     maybe_override_warn_params_for_proc(!.ProcInfo, WarnNonTailRecParams,
         WarnNonTailRecParamsForProc),
     map.lookup(SCCMap, proc(PredId, ProcId), SCC),
-    % mark_tail_rec_call_options_for_llds_code_gen is called only when we are
+    % mark_tail_rec_calls_in_proc_for_llds_code_gen is called only when we are
     % doing proc-by-proc, as opposed to phase-by-phase, code generation.
     % For this, we don't need to put the new proc_info back into its pred_info.
     do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParamsForProc,
