@@ -19,7 +19,7 @@
 %
 % This module also contains code to detect recursive calls which are not
 % *tail* recursive, and generating warnings for them. The point of this
-% is to point out to the programmer the calls may lead to stack usage
+% is to point out to the programmer the calls that may lead to stack usage
 % that is proportional to the size of the input, and may thus lead to
 % stack exhaustion for large inputs.
 %
