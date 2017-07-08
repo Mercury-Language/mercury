@@ -323,7 +323,7 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
     %      pred callee(float::in, T1::in, float::out, T2::out, ...).
     %
     % then for a call `callee(Arg1, Arg2, Arg3, Arg4, ...)'
-    % with arguments of types `U1, float, U2, float, ...',
+    % with arguments of types `float, U1, float, U2, ...',
     % we generate the following fragments:
     %
     %   /* declarations of variables needed for boxing/unboxing */
