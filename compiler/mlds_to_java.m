@@ -2630,7 +2630,7 @@ output_return_types_for_java(Info, RetTypes, !IO) :-
     ).
 
 :- pred output_params_for_java(java_out_info::in, indent::in,
-    mlds_arguments::in, io::di, io::uo) is det.
+    list(mlds_argument)::in, io::di, io::uo) is det.
 
 output_params_for_java(Info, Indent, Parameters, !IO) :-
     io.write_char('(', !IO),

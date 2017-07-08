@@ -172,7 +172,7 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
     % which are in scope.
 :- type locals == list(local_defns).
 :- type local_defns
-    --->    local_params(mlds_arguments)
+    --->    local_params(list(mlds_argument))
     ;       local_defns(list(mlds_defn)).
 
 :- type found_recursive_call

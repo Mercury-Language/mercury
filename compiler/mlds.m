@@ -675,7 +675,6 @@
                 mlds_return_types       % types of return values (outputs)
             ).
 
-:- type mlds_arguments == list(mlds_argument).
 :- type mlds_argument
     --->    mlds_argument(
                 mlds_var_name,             % Argument name.

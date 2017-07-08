@@ -996,7 +996,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
     %
 :- pred ml_gen_arg_decls(module_info::in, list(mlds_var_name)::in,
     list(mer_type)::in, list(top_functor_mode)::in, bool::in,
-    mlds_arguments::out, mlds_return_types::out,
+    list(mlds_argument)::out, mlds_return_types::out,
     maybe(ml_gen_info)::in, maybe(ml_gen_info)::out) is det.
 
 ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,

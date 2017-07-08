@@ -1384,8 +1384,8 @@ qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
     BoxedDataName = qual(ModuleName, module_qual, mlds_data_var(BoxedVarName)).
 
 :- pred mlds_output_pragma_export_call(mlds_to_c_opts::in,
-    mlds_module_name::in, mlds_qualified_function_name::in, mlds_arguments::in,
-    io::di, io::uo) is det.
+    mlds_module_name::in, mlds_qualified_function_name::in,
+    list(mlds_argument)::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_call(Opts, ModuleName, FuncName, Parameters, !IO) :-
     mlds_output_fully_qualified_function_name(FuncName, !IO),
@@ -2438,7 +2438,7 @@ mlds_output_prefix_suffix(Opts, OutputPrefix, OutputSuffix, Value, !IO) :-
 
 :- pred mlds_output_params(mlds_to_c_opts::in, output_type::in(output_type),
     output_type::in(output_type), indent::in, mlds_module_name::in,
-    mlds_context::in, mlds_arguments::in, io::di, io::uo) is det.
+    mlds_context::in, list(mlds_argument)::in, io::di, io::uo) is det.
 
 mlds_output_params(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
         Context, Parameters, !IO) :-
@@ -2499,7 +2499,7 @@ mlds_output_func_type_suffix(Opts, Params, !IO) :-
     io.write_string(")", !IO),
     mlds_output_param_types(Opts, Parameters, !IO).
 
-:- pred mlds_output_param_types(mlds_to_c_opts::in, mlds_arguments::in,
+:- pred mlds_output_param_types(mlds_to_c_opts::in, list(mlds_argument)::in,
     io::di, io::uo) is det.
 
 mlds_output_param_types(Opts, Parameters, !IO) :-
