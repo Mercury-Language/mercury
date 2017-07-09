@@ -192,15 +192,23 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_std_library_module_name(unqualified(Name)) :-
-    mercury_std_library_module(Name).
-mercury_std_library_module_name(qualified(Module, Name)) :-
-    module_name_to_file_name_stem(qualified(Module, Name), ModuleNameStr),
-    mercury_std_library_module(ModuleNameStr).
-mercury_std_library_module_name(qualified(Module, Name)) :-
-    strip_outermost_qualifier(qualified(Module, Name), "mercury", ModuleName),
-    module_name_to_file_name_stem(ModuleName, ModuleNameStr),
-    mercury_std_library_module(ModuleNameStr).
+mercury_std_library_module_name(ModuleName) :-
+    (
+        ModuleName = unqualified(Name),
+        mercury_std_library_module(Name)
+    ;
+        ModuleName = qualified(_ParentModule, _Name),
+        (
+            module_name_to_file_name_stem(ModuleName, ModuleNameStr),
+            mercury_std_library_module(ModuleNameStr)
+        ;
+            strip_outermost_qualifier(ModuleName, "mercury",
+                StrippedModuleName),
+            module_name_to_file_name_stem(StrippedModuleName,
+                StrippedModuleNameStr),
+            mercury_std_library_module(StrippedModuleNameStr)
+        )
+    ).
 
 qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
     ( if mercury_std_library_module_name(ModuleName) then
@@ -334,7 +342,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
     else if
         % The source files, the final executables, library files (including
         % .init files) output files intended for use by the user, and phony
-        % Mmake targets names go in the current directory
+        % Mmake targets names go in the current directory.
 
         not (
             UseGradeSubdirs = yes,
