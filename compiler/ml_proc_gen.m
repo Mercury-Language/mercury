@@ -285,7 +285,7 @@ ml_gen_preds(ConstStructMap, FunctionDefns, !GlobalData, !ModuleInfo) :-
     set.sorted_list_to_set(SortedPredProcIds, CodeGenPredProcIds),
 
     DepInfo = build_proc_dependency_graph(!.ModuleInfo, CodeGenPredProcIds,
-        all_calls_and_unifies),
+        only_all_calls),
     BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
 
     ml_gen_sccs(ConstStructMap, BottomUpSCCs, [], FunctionDefns,

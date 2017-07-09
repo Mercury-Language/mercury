@@ -84,6 +84,7 @@
     %
 :- type what_dependency_edges
     --->    only_tail_calls
+    ;       only_all_calls
     ;       all_calls_and_unifies.
 
     % Build the dependency graph for the given set of predicates,
@@ -497,11 +498,17 @@ maybe_add_dependency_arc(DepGraph, WhatEdges, EdgeKind, Caller, PredProcId,
     % to it.
     ( if
         digraph.search_key(DepGraph, dependency_node(PredProcId), Callee),
+        require_complete_switch [WhatEdges]
         (
-            WhatEdges = all_calls_and_unifies
-        ;
             WhatEdges = only_tail_calls,
             EdgeKind = edge_tail_call
+        ;
+            WhatEdges = only_all_calls,
+            ( EdgeKind = edge_tail_call
+            ; EdgeKind = edge_non_tail_call
+            )
+        ;
+            WhatEdges = all_calls_and_unifies
         )
     then
         !:DepArcs = [Caller - Callee | !.DepArcs]
