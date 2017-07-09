@@ -48,25 +48,23 @@
 
     % Generate an MLDS assignment statement.
     %
-:- func ml_gen_assign(mlds_lval, mlds_rval, prog_context) = statement.
+:- func ml_gen_assign(mlds_lval, mlds_rval, prog_context) = mlds_stmt.
 
     % Append an appropriate `return' statement for the given code_model
     % and returning the given lvals, if needed.
     %
 :- pred ml_append_return_statement(ml_gen_info::in, code_model::in,
-    list(mlds_lval)::in, prog_context::in, list(statement)::in,
-    list(statement)::out) is det.
+    list(mlds_lval)::in, prog_context::in,
+    list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
-    % Generate a block statement, i.e. `{ <Decls>; <Statements>; }'.
+    % Generate a block statement, i.e. `{ <Decls>; <Stmts>; }'.
     % But if the block consists only of a single statement with no
     % declarations, then just return that statement.
     %
-:- func ml_gen_block(list(mlds_defn), list(statement), prog_context)
-    = statement.
-:- func ml_gen_block_mlds(list(mlds_defn), list(statement), mlds_context)
-    = statement.
+:- func ml_gen_block(list(mlds_defn), list(mlds_stmt), prog_context)
+    = mlds_stmt.
 
-:- type gen_pred == pred(list(mlds_defn), list(statement),
+:- type gen_pred == pred(list(mlds_defn), list(mlds_stmt),
     ml_gen_info, ml_gen_info).
 :- inst gen_pred == (pred(out, out, in, out) is det).
 
@@ -75,7 +73,7 @@
     %
 :- pred ml_combine_conj(code_model::in, prog_context::in,
     gen_pred::in(gen_pred), gen_pred::in(gen_pred),
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Given a function label and the statement which will comprise
@@ -83,14 +81,14 @@
     % which defines that function.
     %
 :- pred ml_gen_nondet_label_func(ml_gen_info::in, ml_label_func::in,
-    prog_context::in, statement::in, mlds_function_defn::out) is det.
+    prog_context::in, mlds_stmt::in, mlds_function_defn::out) is det.
 
     % Given a function label, the function parameters, and the statement
     % which will comprise the function body for that function,
     % generate an mlds_function_defn which defines that function.
     %
 :- pred ml_gen_label_func(ml_gen_info::in, ml_label_func::in,
-    mlds_func_params::in, prog_context::in, statement::in,
+    mlds_func_params::in, prog_context::in, mlds_stmt::in,
     mlds_function_defn::out) is det.
 
     % Test to see if the procedure is a model_det function whose function
@@ -284,14 +282,14 @@
     % and the code to trace it for accurate GC (if needed).
     %
 :- func ml_gen_mlds_var_decl(mlds_data_name, mlds_type,
-    mlds_gc_statement, mlds_context) = mlds_data_defn.
+    mlds_gc_statement, prog_context) = mlds_data_defn.
 
     % Generate a declaration for an MLDS variable, given its MLDS type
     % and initializer, and given the code to trace it for accurate GC
     % (if needed).
     %
 :- func ml_gen_mlds_var_decl_init(mlds_data_name, mlds_type, mlds_initializer,
-    mlds_gc_statement, mlds_context) = mlds_data_defn.
+    mlds_gc_statement, prog_context) = mlds_data_defn.
 
     % Generate declaration flags for a local variable.
     %
@@ -332,7 +330,7 @@
 
     % ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName,
     %   Context, ForClosureWrapper, ArgNum,
-    %   ArgLval, ConvDecls, ConvInputStatements, ConvOutputStatements):
+    %   ArgLval, ConvDecls, ConvInputStmts, ConvOutputStmts):
     %
     % This is like `ml_gen_box_or_unbox_rval', except that it works on lvals
     % rather than rvals. Given a source type and a destination type,
@@ -352,7 +350,7 @@
 :- pred ml_gen_box_or_unbox_lval(mer_type::in, mer_type::in, box_policy::in,
     mlds_lval::in, mlds_var_name::in, prog_context::in, bool::in, int::in,
     mlds_lval::out, list(mlds_data_defn)::out,
-    list(statement)::out, list(statement)::out,
+    list(mlds_stmt)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context,
@@ -374,19 +372,19 @@
 
     % Generate code to succeed in the given code_model.
     %
-:- pred ml_gen_success(code_model::in, prog_context::in, list(statement)::out,
+:- pred ml_gen_success(code_model::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate code to fail in the given code_model.
     %
-:- pred ml_gen_failure(code_model::in, prog_context::in, list(statement)::out,
+:- pred ml_gen_failure(code_model::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate the declaration for the built-in `succeeded' flag.
     % (`succeeded' is a boolean variable used to record
     % the success or failure of model_semi procedures.)
     %
-:- func ml_gen_succeeded_var_decl(mlds_context) = mlds_data_defn.
+:- func ml_gen_succeeded_var_decl(prog_context) = mlds_data_defn.
 
     % Return the lval for the `succeeded' flag.
     % (`succeeded' is a boolean variable used to record
@@ -403,13 +401,13 @@
     % Generate code to set the `succeeded' flag to the specified truth value.
     %
 :- pred ml_gen_set_success(ml_gen_info::in, mlds_rval::in, prog_context::in,
-    statement::out) is det.
+    mlds_stmt::out) is det.
 
     % Generate the declaration for the specified `cond' variable.
     % (`cond' variables are boolean variables used to record
     % the success or failure of model_non conditions of if-then-elses.)
     %
-:- func ml_gen_cond_var_decl(cond_seq, mlds_context) = mlds_data_defn.
+:- func ml_gen_cond_var_decl(cond_seq, prog_context) = mlds_data_defn.
 
     % Return the lval for the specified `cond' flag.
     % (`cond' variables are boolean variables used to record
@@ -428,7 +426,7 @@
     % specified truth value.
     %
 :- pred ml_gen_set_cond_var(ml_gen_info::in, cond_seq::in, mlds_rval::in,
-    prog_context::in, statement::out) is det.
+    prog_context::in, mlds_stmt::out) is det.
 
     % Return the success continuation that was passed as the current function's
     % argument(s). The success continuation consists of two parts, the `cont'
@@ -447,7 +445,7 @@
     % This is used for generating success when in a model_non context.
     %
 :- pred ml_gen_call_current_success_cont(prog_context::in,
-    statement::out, ml_gen_info::in, ml_gen_info::out) is det.
+    mlds_stmt::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -501,12 +499,12 @@
 
 :- pred ml_generate_field_assign(mlds_lval::in, mlds_type::in,
     mlds_field_id::in, mlds_vector_common::in, mlds_type::in,
-    mlds_rval::in, mlds_context::in, statement::out,
+    mlds_rval::in, prog_context::in, mlds_stmt::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_field_assigns(list(prog_var)::in, list(mlds_type)::in,
     list(mlds_field_id)::in, mlds_vector_common::in, mlds_type::in,
-    mlds_rval::in, mlds_context::in, list(statement)::out,
+    mlds_rval::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -560,32 +558,28 @@
 % Code for various utility routines.
 %
 
-ml_gen_assign(Lval, Rval, Context) = Statement :-
+ml_gen_assign(Lval, Rval, Context) = Stmt :-
     Assign = assign(Lval, Rval),
-    Stmt = ml_stmt_atomic(Assign),
-    Statement = statement(Stmt, mlds_make_context(Context)).
+    Stmt = ml_stmt_atomic(Assign, Context).
 
 ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
-        !Statements) :-
+        !Stmts) :-
     (
         CodeModel = model_semi,
         ml_gen_test_success(Info, Succeeded),
         CopiedOutputVarRvals = list.map(func(Lval) = ml_lval(Lval),
             CopiedOutputVarLvals),
-        ReturnStmt = ml_stmt_return([Succeeded | CopiedOutputVarRvals]),
-        ReturnStatement = statement(ReturnStmt,
-            mlds_make_context(Context)),
-        !:Statements = !.Statements ++ [ReturnStatement]
+        ReturnedRvals = [Succeeded | CopiedOutputVarRvals],
+        ReturnStmt = ml_stmt_return(ReturnedRvals, Context),
+        !:Stmts = !.Stmts ++ [ReturnStmt]
     ;
         CodeModel = model_det,
         (
             CopiedOutputVarLvals = [_ | _],
             CopiedOutputVarRvals = list.map(func(Lval) = ml_lval(Lval),
                 CopiedOutputVarLvals),
-            ReturnStmt = ml_stmt_return(CopiedOutputVarRvals),
-            ReturnStatement = statement(ReturnStmt,
-                mlds_make_context(Context)),
-            !:Statements = !.Statements ++ [ReturnStatement]
+            ReturnStmt = ml_stmt_return(CopiedOutputVarRvals, Context),
+            !:Stmts = !.Stmts ++ [ReturnStmt]
         ;
             CopiedOutputVarLvals = []
         )
@@ -593,29 +587,18 @@ ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
         CodeModel = model_non
     ).
 
-ml_gen_block(VarDecls, Statements, Context) = Block :-
+ml_gen_block(VarDecls, Stmts, Context) = Block :-
     ( if
         VarDecls = [],
-        Statements = [SingleStatement]
+        Stmts = [SingleStmt]
     then
-        Block = SingleStatement
+        Block = SingleStmt
     else
-        Block = statement(ml_stmt_block(VarDecls, Statements),
-            mlds_make_context(Context))
-    ).
-
-ml_gen_block_mlds(VarDecls, Statements, Context) = Block :-
-    ( if
-        VarDecls = [],
-        Statements = [SingleStatement]
-    then
-        Block = SingleStatement
-    else
-        Block = statement(ml_stmt_block(VarDecls, Statements), Context)
+        Block = ml_stmt_block(VarDecls, Stmts, Context)
     ).
 
 ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
-        Decls, Statements, !Info) :-
+        Decls, Stmts, !Info) :-
     (
         % model_det goal:
         %     <First, Rest>
@@ -624,10 +607,10 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         %     <Rest>
         %
         FirstCodeModel = model_det,
-        DoGenFirst(FirstDecls, FirstStatements, !Info),
-        DoGenRest(RestDecls, RestStatements, !Info),
+        DoGenFirst(FirstDecls, FirstStmts, !Info),
+        DoGenRest(RestDecls, RestStmts, !Info),
         Decls = FirstDecls ++ RestDecls,
-        Statements = FirstStatements ++ RestStatements
+        Stmts = FirstStmts ++ RestStmts
     ;
         % model_semi goal:
         %     <Goal, Goals>
@@ -644,14 +627,13 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         % declarations of static consts).
 
         FirstCodeModel = model_semi,
-        DoGenFirst(FirstDecls, FirstStatements, !Info),
+        DoGenFirst(FirstDecls, FirstStmts, !Info),
         ml_gen_test_success(!.Info, Succeeded),
-        DoGenRest(RestDecls, RestStatements, !Info),
-        IfBody = ml_gen_block([], RestStatements, Context),
-        IfStmt = ml_stmt_if_then_else(Succeeded, IfBody, no),
-        IfStatement = statement(IfStmt, mlds_make_context(Context)),
+        DoGenRest(RestDecls, RestStmts, !Info),
+        IfBody = ml_gen_block([], RestStmts, Context),
+        IfStmt = ml_stmt_if_then_else(Succeeded, IfBody, no, Context),
         Decls = FirstDecls ++ RestDecls,
-        Statements = FirstStatements ++ [IfStatement]
+        Stmts = FirstStmts ++ [IfStmt]
     ;
         % model_non goal:
         %     <First, Rest>
@@ -684,23 +666,23 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         ml_get_env_ptr(!.Info, EnvPtrRval),
         SuccessCont = success_cont(RestFuncLabelRval, EnvPtrRval, [], []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
-        DoGenFirst(FirstDecls, FirstStatements, !Info),
+        DoGenFirst(FirstDecls, FirstStmts, !Info),
         ml_gen_info_pop_success_cont(!Info),
 
         % generate the `succ_func'
         % push nesting level
-        DoGenRest(RestDecls, RestStatements, !Info),
-        RestStatement = ml_gen_block(RestDecls, RestStatements, Context),
+        DoGenRest(RestDecls, RestStmts, !Info),
+        RestStmt = ml_gen_block(RestDecls, RestStmts, Context),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, RestFuncLabel, Context,
-            RestStatement, RestFunc),
+            RestStmt, RestFunc),
 
         % XXX MLDS_DEFN
         Decls = FirstDecls ++ [mlds_function(RestFunc)],
-        Statements = FirstStatements
+        Stmts = FirstStmts
     ).
 
-ml_gen_nondet_label_func(Info, FuncLabel, Context, Statement, Func) :-
+ml_gen_nondet_label_func(Info, FuncLabel, Context, Stmt, Func) :-
     ml_gen_info_use_gcc_nested_functions(Info, UseNested),
     (
         UseNested = yes,
@@ -710,9 +692,9 @@ ml_gen_nondet_label_func(Info, FuncLabel, Context, Statement, Func) :-
         ml_declare_env_ptr_arg(EnvPtrArg),
         FuncParams = mlds_func_params([EnvPtrArg], [])
     ),
-    ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func).
+    ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Stmt, Func).
 
-ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
+ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Stmt, Func) :-
     % Compute the function name.
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_info_get_pred_id(Info, PredId),
@@ -720,13 +702,12 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
     FuncName = ml_gen_nondet_label(ModuleInfo, PredId, ProcId, FuncLabel),
 
     % Compute the function definition.
-    MLDSContext = mlds_make_context(Context),
     DeclFlags = ml_gen_label_func_decl_flags,
     MaybePredProcId = no,
-    Body = body_defined_here(Statement),
+    Body = body_defined_here(Stmt),
     Attributes = [],
     EnvVarNames = set.init,
-    Func = mlds_function_defn(mlds_function_name(FuncName), MLDSContext,
+    Func = mlds_function_defn(mlds_function_name(FuncName), Context,
         DeclFlags, MaybePredProcId, FuncParams, Body, Attributes,
         EnvVarNames, no).
 
@@ -934,7 +915,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
             check_dummy_type(ModuleInfo, ResultType) = is_not_dummy_type
         then
             pred_args_to_func_args(FuncArgs0, FuncArgs, RetArg),
-            RetArg = mlds_argument(_RetArgName, RetTypePtr, _GCStatement),
+            RetArg = mlds_argument(_RetArgName, RetTypePtr, _GCStmt),
             ( if RetTypePtr = mlds_ptr_type(RetType) then
                 RetTypes = [RetType]
             else
@@ -966,8 +947,8 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         ContVarName = mlds_comp_var(mcv_cont),
         % The cont variable always points to code, not to the heap,
         % so the GC never needs to trace it.
-        ContGCStatement = gc_no_stmt,
-        ContArg = mlds_argument(ContVarName, ContType, ContGCStatement),
+        ContGCStmt = gc_no_stmt,
+        ContArg = mlds_argument(ContVarName, ContType, ContGCStmt),
         ContEnvType = mlds_generic_env_ptr_type,
         ContEnvVarName = mlds_comp_var(mcv_cont_env_ptr),
         % The cont_env_ptr always points to the stack, since continuation
@@ -975,9 +956,9 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         % put_nondet_env_on_heap is true, which won't be the case when doing
         % our own GC -- this is enforced in handle_options.m).
         % So the GC doesn't need to trace it.
-        ContEnvGCStatement = gc_no_stmt,
+        ContEnvGCStmt = gc_no_stmt,
         ContEnvArg = mlds_argument(ContEnvVarName, ContEnvType,
-            ContEnvGCStatement),
+            ContEnvGCStmt),
         globals.lookup_bool_option(Globals, gcc_nested_functions,
             NestedFunctions),
         (
@@ -1064,14 +1045,14 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
         !.MaybeInfo = yes(Info0),
         % XXX We should fill in this Context properly.
         term.context_init(Context),
-        ml_gen_gc_statement(Var, Type, Context, GCStatement, Info0, Info),
+        ml_gen_gc_statement(Var, Type, Context, GCStmt, Info0, Info),
         !:MaybeInfo = yes(Info)
     ;
         !.MaybeInfo = no,
-        GCStatement = gc_no_stmt,
+        GCStmt = gc_no_stmt,
         !:MaybeInfo = no
     ),
-    FuncArg = mlds_argument(Var, MLDS_ArgType, GCStatement).
+    FuncArg = mlds_argument(Var, MLDS_ArgType, GCStmt).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1291,20 +1272,19 @@ ml_gen_var_lval(Info, VarName, VarType, QualifiedVarLval) :-
 
 ml_gen_var_decl(VarName, Type, Context, Defn, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_gc_statement(VarName, Type, Context, GCStatement, !Info),
+    ml_gen_gc_statement(VarName, Type, Context, GCStmt, !Info),
     Defn = ml_gen_mlds_var_decl(mlds_data_var(VarName),
-        mercury_type_to_mlds_type(ModuleInfo, Type),
-        GCStatement, mlds_make_context(Context)).
+        mercury_type_to_mlds_type(ModuleInfo, Type), GCStmt, Context).
 
-ml_gen_mlds_var_decl(DataName, MLDS_Type, GCStatement, Context) =
-    ml_gen_mlds_var_decl_init(DataName, MLDS_Type, no_initializer, GCStatement,
+ml_gen_mlds_var_decl(DataName, MLDS_Type, GCStmt, Context) =
+    ml_gen_mlds_var_decl_init(DataName, MLDS_Type, no_initializer, GCStmt,
         Context).
 
-ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
-        Context) = Defn :-
+ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStmt, Context)
+        = Defn :-
     DeclFlags = ml_gen_local_var_decl_flags,
     Defn = mlds_data_defn(DataName, Context, DeclFlags,
-        MLDS_Type, Initializer, GCStatement).
+        MLDS_Type, Initializer, GCStmt).
 
 ml_gen_local_var_decl_flags = DeclFlags :-
     Access = acc_local,
@@ -1523,7 +1503,7 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
 
 ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         Context, ForClosureWrapper, ArgNum, ArgLval, ConvDecls,
-        ConvInputStatements, ConvOutputStatements, !Info) :-
+        ConvInputStmts, ConvOutputStmts, !Info) :-
     % First see if we can just convert the lval as an rval;
     % if no boxing/unboxing is required, then ml_box_or_unbox_rval
     % will return its argument unchanged, and so we are done.
@@ -1533,8 +1513,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
     ( if BoxedRval = ml_lval(VarLval) then
         ArgLval = VarLval,
         ConvDecls = [],
-        ConvInputStatements = [],
-        ConvOutputStatements = []
+        ConvInputStmts = [],
+        ConvOutputStmts = []
     else
         % If that didn't work, then we need to declare a fresh variable
         % to use as the arg, and to generate statements to box/unbox
@@ -1578,9 +1558,9 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         ;
             ForClosureWrapper = no,
             ml_gen_gc_statement_poly(ArgVarName, CalleeType, CallerType,
-                Context, GC_Statements, !Info),
+                Context, GC_Stmts, !Info),
             ArgVarDecl = ml_gen_mlds_var_decl(mlds_data_var(ArgVarName),
-                MLDS_CalleeType, GC_Statements, mlds_make_context(Context))
+                MLDS_CalleeType, GC_Stmts, Context)
         ),
         ConvDecls = [ArgVarDecl],
 
@@ -1592,8 +1572,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             CallerIsDummy = is_dummy_type,
             % If it is a dummy argument type (e.g. io.state),
             % then we don't need to bother assigning it.
-            ConvInputStatements = [],
-            ConvOutputStatements = []
+            ConvInputStmts = [],
+            ConvOutputStmts = []
         ;
             CallerIsDummy = is_not_dummy_type,
             % Generate statements to box/unbox the fresh variable and assign it
@@ -1602,16 +1582,16 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             % Assign to the freshly generated arg variable.
             ml_gen_box_or_unbox_rval(ModuleInfo, CallerType, CalleeType,
                 BoxPolicy, ml_lval(VarLval), ConvertedVarRval),
-            AssignInputStatement = ml_gen_assign(ArgLval, ConvertedVarRval,
+            AssignInputStmt = ml_gen_assign(ArgLval, ConvertedVarRval,
                 Context),
-            ConvInputStatements = [AssignInputStatement],
+            ConvInputStmts = [AssignInputStmt],
 
             % Assign from the freshly generated arg variable.
             ml_gen_box_or_unbox_rval(ModuleInfo, CalleeType, CallerType,
                 BoxPolicy, ml_lval(ArgLval), ConvertedArgRval),
-            AssignOutputStatement = ml_gen_assign(VarLval, ConvertedArgRval,
+            AssignOutputStmt = ml_gen_assign(VarLval, ConvertedArgRval,
                 Context),
-            ConvOutputStatements = [AssignOutputStatement]
+            ConvOutputStmts = [AssignOutputStmt]
         )
     ).
 
@@ -1631,7 +1611,6 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
     %
     %   MR_deallocate(allocated_memory_cells);
     %
-    MLDS_Context = mlds_make_context(Context),
 
     ClosureLayoutPtrName = mlds_comp_var(mcv_closure_layout_ptr),
     % This type is really `const MR_Closure_Layout *', but there is no easy
@@ -1655,16 +1634,16 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
     TypeInfoType = mercury_type_to_mlds_type(ModuleInfo, TypeInfoMercuryType),
     ml_gen_var_lval(!.Info, TypeInfoName, TypeInfoType, TypeInfoLval),
     TypeInfoDecl = ml_gen_mlds_var_decl(mlds_data_var(TypeInfoName),
-        TypeInfoType, gc_no_stmt, MLDS_Context),
+        TypeInfoType, gc_no_stmt, Context),
 
     ml_gen_gc_statement_with_typeinfo(VarName, Type, ml_lval(TypeInfoLval),
-        Context, GCStatement0, !Info),
+        Context, GCStmt0, !Info),
 
     (
-        ( GCStatement0 = gc_trace_code(CallTraceFuncCode)
-        ; GCStatement0 = gc_initialiser(CallTraceFuncCode)
+        ( GCStmt0 = gc_trace_code(CallTraceFuncCode)
+        ; GCStmt0 = gc_initialiser(CallTraceFuncCode)
         ),
-        MakeTypeInfoCode = ml_stmt_atomic(inline_target_code(ml_target_c, [
+        MakeTypeInfoCodeC = inline_target_code(ml_target_c, [
             raw_target_code("{\n"),
             raw_target_code("MR_MemoryList allocated_mem = NULL;\n"),
             target_code_output(TypeInfoLval),
@@ -1677,76 +1656,87 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
                 "MR_closure_arg_pseudo_type_info[%d - 1],\n\t" ++
                 "NULL, NULL, &allocated_mem);\n",
                 [i(ArgNum)]))
-        ])),
-        DeallocateCode = ml_stmt_atomic(inline_target_code(ml_target_c, [
+        ]),
+        MakeTypeInfoCode = ml_stmt_atomic(MakeTypeInfoCodeC, Context),
+        DeallocateCodeC = inline_target_code(ml_target_c, [
             raw_target_code("MR_deallocate(allocated_mem);\n"),
             raw_target_code("}\n")
-        ])),
-        % XXX MLDS_DEFN
-        GCTraceCode = ml_stmt_block([mlds_data(TypeInfoDecl)], [
-            statement(MakeTypeInfoCode, MLDS_Context),
-            CallTraceFuncCode,
-            statement(DeallocateCode, MLDS_Context)
         ]),
-        GCStatement = gc_trace_code(statement(GCTraceCode, MLDS_Context))
+        DeallocateCode = ml_stmt_atomic(DeallocateCodeC, Context),
+        % XXX MLDS_DEFN
+        GCTraceCode = ml_stmt_block([mlds_data(TypeInfoDecl)],
+            [MakeTypeInfoCode, CallTraceFuncCode, DeallocateCode], Context),
+        GCStmt = gc_trace_code(GCTraceCode)
     ;
-        GCStatement0 = gc_no_stmt,
-        GCStatement = GCStatement0
+        GCStmt0 = gc_no_stmt,
+        GCStmt = GCStmt0
     ),
     LocalVarDefn = ml_gen_mlds_var_decl(mlds_data_var(VarName),
-        mercury_type_to_mlds_type(ModuleInfo, Type),
-        GCStatement, MLDS_Context).
+        mercury_type_to_mlds_type(ModuleInfo, Type), GCStmt, Context).
 
 %-----------------------------------------------------------------------------%
 %
 % Code for handling success and failure.
 %
 
-ml_gen_success(model_det, _, Statements, !Info) :-
-    %
-    % det succeed:
-    %   <do true>
-    % ===>
-    %   /* just fall through */
-    %
-    Statements = [].
-ml_gen_success(model_semi, Context, [SetSuccessTrue], !Info) :-
-    %
-    % semidet succeed:
-    %   <do true>
-    % ===>
-    %   succeeded = MR_TRUE;
-    %
-    ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
-        SetSuccessTrue).
-ml_gen_success(model_non, Context, [CallCont], !Info) :-
-    %
-    % nondet succeed:
-    %   <true && SUCCEED()>
-    % ===>
-    %   SUCCEED()
-    %
-    ml_gen_call_current_success_cont(Context, CallCont, !Info).
+ml_gen_success(CodeModel, Context, Stmts, !Info) :-
+    (
+        CodeModel = model_det,
+        %
+        % det succeed:
+        %   <do true>
+        % ===>
+        %   /* just fall through */
+        %
+        Stmts = []
+    ;
+        CodeModel = model_semi,
+        %
+        % semidet succeed:
+        %   <do true>
+        % ===>
+        %   succeeded = MR_TRUE;
+        %
+        ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
+            SetSuccessTrue),
+        Stmts = [SetSuccessTrue]
+    ;
+        CodeModel = model_non,
+        %
+        % nondet succeed:
+        %   <true && SUCCEED()>
+        % ===>
+        %   SUCCEED()
+        %
+        ml_gen_call_current_success_cont(Context, CallCont, !Info),
+        Stmts = [CallCont]
+    ).
 
-ml_gen_failure(model_det, _, _, !Info) :-
-    unexpected($module, $pred, "`fail' has determinism `det'").
-ml_gen_failure(model_semi, Context, [SetSuccessFalse], !Info) :-
-    %
-    % semidet fail:
-    %   <do fail>
-    % ===>
-    %   succeeded = MR_FALSE;
-    %
-    ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
-        SetSuccessFalse).
-ml_gen_failure(model_non, _, Statements, !Info) :-
-    %
-    % nondet fail:
-    %   <fail && SUCCEED()>
-    % ===>
-    %   /* just fall through */
-    %
-    Statements = [].
+ml_gen_failure(CodeModel, Context, Stmts, !Info) :-
+    (
+        CodeModel = model_det,
+        unexpected($module, $pred, "`fail' has determinism `det'")
+    ;
+        CodeModel = model_semi,
+        %
+        % semidet fail:
+        %   <do fail>
+        % ===>
+        %   succeeded = MR_FALSE;
+        %
+        ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
+            SetSuccessFalse),
+        Stmts = [SetSuccessFalse]
+    ;
+        CodeModel = model_non,
+        %
+        % nondet fail:
+        %   <fail && SUCCEED()>
+        % ===>
+        %   /* just fall through */
+        %
+        Stmts = []
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1762,9 +1752,9 @@ ml_gen_test_success(Info, SucceededRval) :-
     ml_success_lval(Info, SucceededLval),
     SucceededRval = ml_lval(SucceededLval).
 
-ml_gen_set_success(Info, Value, Context, Statement) :-
+ml_gen_set_success(Info, Value, Context, Stmt) :-
     ml_success_lval(Info, Succeeded),
-    Statement = ml_gen_assign(Succeeded, Value, Context).
+    Stmt = ml_gen_assign(Succeeded, Value, Context).
 
 %-----------------------------------------------------------------------------%
 
@@ -1788,9 +1778,9 @@ ml_gen_test_cond_var(Info, CondVar, CondVarRval) :-
     ml_cond_var_lval(Info, CondVar, CondVarLval),
     CondVarRval = ml_lval(CondVarLval).
 
-ml_gen_set_cond_var(Info, CondVar, Value, Context, Statement) :-
+ml_gen_set_cond_var(Info, CondVar, Value, Context, Stmt) :-
     ml_cond_var_lval(Info, CondVar, CondVarLval),
-    Statement = ml_gen_assign(CondVarLval, Value, Context).
+    Stmt = ml_gen_assign(CondVarLval, Value, Context).
 
 %-----------------------------------------------------------------------------%
 
@@ -1832,7 +1822,7 @@ ml_skip_dummy_argument_types([_ | _], [], _, _, _) :-
 ml_skip_dummy_argument_types([], [_ | _], _, _, _) :-
     unexpected($module, $pred, "length mismatch").
 
-ml_gen_call_current_success_cont(Context, Statement, !Info) :-
+ml_gen_call_current_success_cont(Context, Stmt, !Info) :-
     ml_gen_info_current_success_cont(!.Info, SuccCont),
     SuccCont = success_cont(FuncRval, EnvPtrRval, ArgTypes0, ArgLvals0),
     ArgRvals0 = list.map(func(Lval) = ml_lval(Lval), ArgLvals0),
@@ -1853,8 +1843,7 @@ ml_gen_call_current_success_cont(Context, Statement, !Info) :-
     CallKind = ordinary_call,
     set.init(Markers),
     Stmt = ml_stmt_call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
-        CallKind, Markers),
-    Statement = statement(Stmt, mlds_make_context(Context)).
+        CallKind, Markers, Context).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1928,7 +1917,7 @@ ml_generate_constants_for_arms(Vars, [Goal | Goals], [Soln | Solns], !Info) :-
 
 ml_generate_constants_for_arm(Vars, Goal, Soln, !Info) :-
     ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
-    ml_gen_goal(model_det, Goal, _Decls, _Statements, !Info),
+    ml_gen_goal(model_det, Goal, _Decls, _Stmts, !Info),
     ml_gen_info_get_const_var_map(!.Info, FinalConstVarMap),
     list.map(lookup_ground_rval(FinalConstVarMap), Vars, Soln),
     ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
@@ -1951,21 +1940,20 @@ lookup_ground_rval(FinalConstVarMap, Var, Rval) :-
     GroundTerm = ml_ground_term(Rval, _, _).
 
 ml_generate_field_assign(OutVarLval, FieldType, FieldId, VectorCommon,
-        StructType, IndexRval, Context, Statement, !Info) :-
+        StructType, IndexRval, Context, Stmt, !Info) :-
     BaseRval = ml_vector_common_row(VectorCommon, IndexRval),
     FieldLval = ml_field(yes(0), BaseRval, FieldId, FieldType, StructType),
     AtomicStmt = assign(OutVarLval, ml_lval(FieldLval)),
-    Stmt = ml_stmt_atomic(AtomicStmt),
-    Statement = statement(Stmt, Context).
+    Stmt = ml_stmt_atomic(AtomicStmt, Context).
 
 ml_generate_field_assigns(OutVars, FieldTypes, FieldIds, VectorCommon,
-        StructType, IndexRval, Context, Statements, !Info) :-
+        StructType, IndexRval, Context, Stmts, !Info) :-
     ( if
         OutVars = [],
         FieldTypes = [],
         FieldIds = []
     then
-        Statements = []
+        Stmts = []
     else if
         OutVars = [HeadOutVar | TailOutVars],
         FieldTypes = [HeadFieldType | TailFieldTypes],
@@ -1973,12 +1961,12 @@ ml_generate_field_assigns(OutVars, FieldTypes, FieldIds, VectorCommon,
     then
         ml_gen_var(!.Info, HeadOutVar, HeadOutVarLval),
         ml_generate_field_assign(HeadOutVarLval, HeadFieldType, HeadFieldId,
-            VectorCommon, StructType, IndexRval, Context, HeadStatement,
+            VectorCommon, StructType, IndexRval, Context, HeadStmt,
             !Info),
         ml_generate_field_assigns(TailOutVars, TailFieldTypes, TailFieldIds,
-            VectorCommon, StructType, IndexRval, Context, TailStatements,
+            VectorCommon, StructType, IndexRval, Context, TailStmts,
             !Info),
-        Statements = [HeadStatement | TailStatements]
+        Stmts = [HeadStmt | TailStmts]
     else
         unexpected($module, $pred, "mismatched lists")
     ).

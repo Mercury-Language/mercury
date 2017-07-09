@@ -122,7 +122,6 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
     % XXX The rtti_data ought to include a prog_context (the context of the
     % corresponding type or instance definition).
     term.context_init(Context),
-    MLDS_Context = mlds_make_context(Context),
 
     % Generate the declaration flags.
     Exported = rtti_id_is_exported(RttiId),
@@ -134,8 +133,8 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
 
     % Generate the declaration body, i.e. the type and the initializer.
     MLDS_Type = mlds_rtti_type(item_type(RttiId)),
-    DataDefn = mlds_data_defn(Name, MLDS_Context, Flags,
-        MLDS_Type, Initializer, GCStatement),
+    DataDefn = mlds_data_defn(Name, Context, Flags, MLDS_Type,
+        Initializer, GCStatement),
 
     ml_global_data_add_flat_rtti_defn(DataDefn, !GlobalData).
 

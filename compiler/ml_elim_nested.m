@@ -463,6 +463,8 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module cord.
@@ -653,8 +655,8 @@ ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
                     FuncBody2 = FuncBody1
                 ;
                     Action = chain_gc_stack_frames,
-                    add_unchain_stack_to_statement(Action,
-                        FuncBody1, FuncBody2, ElimInfo, _ElimInfo)
+                    add_unchain_stack_to_stmt(Action, FuncBody1, FuncBody2,
+                        ElimInfo, _ElimInfo)
                 ),
                 % Add a final unlink statement at the end of the function,
                 % if needed. This is only needed if the function has no
@@ -674,7 +676,7 @@ ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
                 % body, and append the final unlink statement (if any)
                 % at the end.
                 % XXX MLDS_DEFN
-                FuncBody = make_block_stmt(list.map(wrap_data_defn, EnvDecls),
+                FuncBody = ml_gen_block(list.map(wrap_data_defn, EnvDecls),
                     InitEnv ++ CodeToCopyArgs ++ [FuncBody2] ++ UnchainFrame,
                     Context),
                 % Insert the environment struct type at the start of the list
@@ -708,24 +710,24 @@ ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
 :- func strip_gc_statement(mlds_argument) = mlds_argument.
 
 strip_gc_statement(Argument0) = Argument :-
-    Argument0 = mlds_argument(Name, Type, _GCStatement),
+    Argument0 = mlds_argument(Name, Type, _GCStmt),
     Argument = mlds_argument(Name, Type, gc_no_stmt).
 
     % Add any arguments which are used in nested functions
     % to the local_data field in the elim_info.
     %
-:- pred ml_maybe_add_args(action, list(mlds_argument), statement,
-    mlds_module_name, mlds_context, elim_info, elim_info).
+:- pred ml_maybe_add_args(action, list(mlds_argument), mlds_stmt,
+    mlds_module_name, prog_context, elim_info, elim_info).
 :- mode ml_maybe_add_args(in(hoist), in, in, in, in, in, out) is det.
 :- mode ml_maybe_add_args(in(chain), in, in, in, in, in, out) is det.
 
 ml_maybe_add_args(_, [], _, _, _, !Info).
 ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
         !Info) :-
-    Arg = mlds_argument(VarName, _Type, GCStatement),
+    Arg = mlds_argument(VarName, _Type, GCStmt),
     ( if
         ml_should_add_local_data(Action, !.Info, mlds_data_var(VarName),
-            GCStatement, [], [FuncBody])
+            GCStmt, [], [FuncBody])
     then
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
         elim_info_add_local_data(ArgToCopy, !Info)
@@ -737,8 +739,8 @@ ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
     % Generate code to copy any arguments which are used in nested functions
     % to the environment struct.
     %
-:- pred ml_maybe_copy_args(action, elim_info, list(mlds_argument), statement,
-    mlds_type, mlds_type, mlds_context, list(mlds_data_defn), list(statement)).
+:- pred ml_maybe_copy_args(action, elim_info, list(mlds_argument), mlds_stmt,
+    mlds_type, mlds_type, prog_context, list(mlds_data_defn), list(mlds_stmt)).
 :- mode ml_maybe_copy_args(in(hoist), in, in, in, in, in, in, out, out) is det.
 :- mode ml_maybe_copy_args(in(chain), in, in, in, in, in, in, out, out) is det.
 
@@ -748,10 +750,10 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassType,
     ml_maybe_copy_args(Action, Info, Args, FuncBody, ClassType,
         EnvPtrTypeName, Context, ArgsToCopyTail, CodeToCopyArgsTail),
     ModuleName = elim_info_get_module_name(Info),
-    Arg = mlds_argument(VarName, FieldType, GCStatement),
+    Arg = mlds_argument(VarName, FieldType, GCStmt),
     ( if
         ml_should_add_local_data(Action, Info, mlds_data_var(VarName),
-            GCStatement, [], [FuncBody])
+            GCStmt, [], [FuncBody])
     then
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
 
@@ -773,7 +775,7 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassType,
             EnvPtrTypeName),
         ArgRval = ml_lval(ml_var(QualVarName, FieldType)),
         AssignToEnv = assign(EnvArgLval, ArgRval),
-        CodeToCopyArg = statement(ml_stmt_atomic(AssignToEnv), Context),
+        CodeToCopyArg = ml_stmt_atomic(AssignToEnv, Context),
 
         ArgsToCopy = [ArgToCopy | ArgsToCopyTail],
         CodeToCopyArgs = [CodeToCopyArg | CodeToCopyArgsTail]
@@ -827,9 +829,9 @@ ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
     %   stack_chain = env_ptr;
     %
 :- pred ml_create_env(action::in, mlds_class_name::in, mlds_type::in,
-    list(mlds_data_defn)::in, mlds_context::in, mlds_module_name::in,
+    list(mlds_data_defn)::in, prog_context::in, mlds_module_name::in,
     mlds_function_name::in, globals::in, mlds_class_defn::out,
-    list(mlds_data_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(mlds_stmt)::out,
     list(mlds_function_defn)::out) is det.
 
 ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
@@ -867,25 +869,25 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
 
     % Extract the GC tracing code from the fields.
     list.map3(extract_gc_statements, Fields0, Fields1,
-        GC_InitStatementLists, GC_TraceStatementLists),
-    GC_StatementLists = GC_InitStatementLists ++ GC_TraceStatementLists,
-    GC_Statements = list.condense(GC_StatementLists),
+        GC_InitStmtLists, GC_TraceStmtLists),
+    GC_StmtLists = GC_InitStmtLists ++ GC_TraceStmtLists,
+    GC_Stmts = list.condense(GC_StmtLists),
 
     (
         Action = chain_gc_stack_frames,
         ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
-            GC_Statements, EnvTypeName, Fields1, Fields, EnvInitializer,
+            GC_Stmts, EnvTypeName, Fields1, Fields, EnvInitializer,
             LinkStackChain, GCTraceFuncDefns),
-        GCStatementEnv = gc_no_stmt
+        GCStmtEnv = gc_no_stmt
     ;
         Action = hoist_nested_funcs,
         (
-            GC_Statements = [],
-            GCStatementEnv = gc_no_stmt
+            GC_Stmts = [],
+            GCStmtEnv = gc_no_stmt
         ;
-            GC_Statements = [_ | _],
-            GC_Block = make_block_stmt([], GC_Statements, Context),
-            GCStatementEnv = gc_trace_code(GC_Block)
+            GC_Stmts = [_ | _],
+            GC_Block = ml_gen_block([], GC_Stmts, Context),
+            GCStmtEnv = gc_trace_code(GC_Block)
         ),
         Fields = Fields1,
         EnvInitializer = no_initializer,
@@ -910,7 +912,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     EnvVarDataName = mlds_data_var(EnvVarName),
     EnvVarFlags = ml_gen_local_var_decl_flags,
     EnvVarDecl = mlds_data_defn(EnvVarDataName, Context,
-        EnvVarFlags, EnvTypeName, EnvInitializer, GCStatementEnv),
+        EnvVarFlags, EnvTypeName, EnvInitializer, GCStmtEnv),
 
     % Declare the `env_ptr' var, and initialize the `env_ptr' with the
     % address of `env'.
@@ -926,11 +928,12 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         % the value of MayUseAtomic is immaterial.
         MayUseAtomic = may_not_use_atomic_alloc,
         MaybeAllocId = no,
-        NewObj = [statement(
-            ml_stmt_atomic(new_object(ml_var(EnvVar, EnvTypeName),
-                no, no, EnvTypeName, no, no, [], [], MayUseAtomic,
-                MaybeAllocId)),
-            Context)]
+        NewObj = [
+            ml_stmt_atomic(
+                new_object(ml_var(EnvVar, EnvTypeName), no, no, EnvTypeName,
+                    no, no, [], [], MayUseAtomic, MaybeAllocId),
+                Context)
+        ]
     ;
         OnHeap = no,
         EnvVarAddr = ml_mem_addr(ml_var(EnvVar, EnvTypeName)),
@@ -942,13 +945,13 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     InitEnv = NewObj ++ [InitEnv0] ++ LinkStackChain.
 
 :- pred ml_chain_stack_frames(globals::in, mlds_module_name::in,
-    mlds_function_name::in, mlds_context::in, list(statement)::in,
+    mlds_function_name::in, prog_context::in, list(mlds_stmt)::in,
     mlds_type::in, list(mlds_data_defn)::in, list(mlds_data_defn)::out,
-    mlds_initializer::out, list(statement)::out,
+    mlds_initializer::out, list(mlds_stmt)::out,
     list(mlds_function_defn)::out) is det.
 
 ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
-        GCTraceStatements, EnvTypeName, Fields0, Fields, EnvInitializer,
+        GCTraceStmts, EnvTypeName, Fields0, Fields, EnvInitializer,
         LinkStackChain, GCTraceFuncDefns) :-
     % Generate code to declare and initialize the environment pointer
     % for the GC trace function from that function's `this_frame' parameter:
@@ -970,11 +973,11 @@ ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
     %   void foo_trace(void *this_frame) {
     %       struct foo_frame *frame_ptr;
     %       frame_ptr = (struct foo_frame *) this_frame;
-    %       <GCTraceStatements>
+    %       <GCTraceStmts>
     %   }
     %
     gen_gc_trace_func(ModuleName, FuncName, FramePtrDecl,
-        [InitFramePtr | GCTraceStatements], Context, GCTraceFuncAddr,
+        [InitFramePtr | GCTraceStmts], Context, GCTraceFuncAddr,
         GCTraceFuncParams, GCTraceFuncDefn),
     GCTraceFuncDefns = [GCTraceFuncDefn],
 
@@ -1029,14 +1032,14 @@ ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
             qual(ModuleName, module_qual, mlds_comp_var(mcv_frame_ptr)),
             EnvPtrTypeName)),
     AssignToStackChain = assign(StackChain, EnvPtr),
-    LinkStackChain = [statement(ml_stmt_atomic(AssignToStackChain), Context)].
+    LinkStackChain = [ml_stmt_atomic(AssignToStackChain, Context)].
 
 :- pred gen_gc_trace_func(mlds_module_name::in, mlds_function_name::in,
-    mlds_data_defn::in, list(statement)::in, mlds_context::in,
+    mlds_data_defn::in, list(mlds_stmt)::in, prog_context::in,
     mlds_code_addr::out, mlds_func_params::out, mlds_function_defn::out)
     is det.
 
-gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStatements,
+gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStmts,
         Context, GCTraceFuncAddr, FuncParams, GCTraceFuncDefn) :-
     % Compute the signature of the GC tracing function
     ArgVarName = mlds_comp_var(mcv_this_frame),
@@ -1083,8 +1086,7 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStatements,
 
     % Construct the function definition.
     % XXX MLDS_DEFN
-    Statement = statement(
-        ml_stmt_block([mlds_data(FramePointerDecl)], GCTraceStatements),
+    Stmt = ml_stmt_block([mlds_data(FramePointerDecl)], GCTraceStmts,
         Context),
     DeclFlags = ml_gen_gc_trace_func_decl_flags,
     MaybePredProcId = no,
@@ -1092,7 +1094,7 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStatements,
     EnvVarNames = set.init,
     GCTraceFuncDefn = mlds_function_defn(GCTraceFuncName,
         Context, DeclFlags, MaybePredProcId, FuncParams,
-        body_defined_here(Statement), Attributes, EnvVarNames, no).
+        body_defined_here(Stmt), Attributes, EnvVarNames, no).
 
     % Return the declaration flags appropriate for a procedure definition.
     %
@@ -1104,7 +1106,7 @@ ml_gen_gc_trace_func_decl_flags = DeclFlags :-
     DeclFlags = init_function_decl_flags(Access, PerInstance).
 
 :- pred extract_gc_statements(mlds_data_defn::in, mlds_data_defn::out,
-    list(statement)::out, list(statement)::out) is det.
+    list(mlds_stmt)::out, list(mlds_stmt)::out) is det.
 
 extract_gc_statements(DataDefn0, DataDefn, GCInitStmts, GCTraceStmts) :-
     DataDefn0 = mlds_data_defn(Name, Context, Flags, Type, Init, GCStmt),
@@ -1200,8 +1202,8 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals,
         ml_init_env(Action, TypeName, CastEnvPtrVal, Context,
             ModuleName, Globals, EnvPtrDecl, InitEnvPtr),
         % XXX MLDS_DEFN
-        FuncBody = statement(ml_stmt_block([mlds_data(EnvPtrDecl)],
-            [InitEnvPtr, FuncBody0]), Context),
+        FuncBody = ml_stmt_block([mlds_data(EnvPtrDecl)],
+            [InitEnvPtr, FuncBody0], Context),
         FunctionDefn = mlds_function_defn(Name, Context, Flags,
             PredProcId, Params, body_defined_here(FuncBody), Attributes,
             EnvVarNames, MaybeRequiretailrecInfo),
@@ -1221,8 +1223,8 @@ ml_make_env_ptr_type(_Globals, EnvType) = EnvPtrType :-
     %   env_ptr = <EnvPtrVal>;
     %
 :- pred ml_init_env(action::in, mlds_type::in, mlds_rval::in,
-    mlds_context::in, mlds_module_name::in, globals::in,
-    mlds_data_defn::out, statement::out) is det.
+    prog_context::in, mlds_module_name::in, globals::in,
+    mlds_data_defn::out, mlds_stmt::out) is det.
 
 ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
         EnvPtrVarDecl, InitEnvPtr) :-
@@ -1236,9 +1238,9 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     EnvPtrVarType = ml_make_env_ptr_type(Globals, EnvTypeName),
     % The env_ptr never needs to be traced by the GC, since the environment
     % that it points to will always be on the stack, not into the heap.
-    GCStatement = gc_no_stmt,
+    GCStmt = gc_no_stmt,
     EnvPtrVarDecl = mlds_data_defn(EnvPtrVarDataName, Context,
-        EnvPtrVarFlags, EnvPtrVarType, no_initializer, GCStatement),
+        EnvPtrVarFlags, EnvPtrVarType, no_initializer, GCStmt),
 
     % Generate the following statement:
     %
@@ -1249,21 +1251,21 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     %
     EnvPtrVar = qual(ModuleName, module_qual, EnvPtrVarName),
     AssignEnvPtr = assign(ml_var(EnvPtrVar, EnvPtrVarType), EnvPtrVal),
-    InitEnvPtr = statement(ml_stmt_atomic(AssignEnvPtr), Context).
+    InitEnvPtr = ml_stmt_atomic(AssignEnvPtr, Context).
 
     % Given the declaration for a function parameter, produce a declaration
     % for a corresponding local variable or environment struct field.
     % We need to do this so as to include function parameter in the
     % environment struct.
     %
-:- pred ml_conv_arg_to_var(mlds_context::in, mlds_argument::in,
+:- pred ml_conv_arg_to_var(prog_context::in, mlds_argument::in,
     mlds_data_defn::out) is det.
 
 ml_conv_arg_to_var(Context, Arg, LocalVar) :-
-    Arg = mlds_argument(VarName, Type, GCStatement),
+    Arg = mlds_argument(VarName, Type, GCStmt),
     Flags = ml_gen_local_var_decl_flags,
     LocalVar = mlds_data_defn(mlds_data_var(VarName), Context,
-        Flags, Type, no_initializer, GCStatement).
+        Flags, Type, no_initializer, GCStmt).
 
     % Return the declaration flags appropriate for an environment struct
     % type declaration.
@@ -1275,23 +1277,6 @@ env_type_decl_flags = DeclFlags :-
     Overridability = overridable,
     Constness = modifiable,
     DeclFlags = init_class_decl_flags(Access, Overridability, Constness).
-
-    % Generate a block statement, i.e. `{ <Decls>; <Statements>; }'.
-    % But if the block consists only of a single statement with no
-    % declarations, then just return that statement.
-    %
-:- func make_block_stmt(list(mlds_defn), list(statement), mlds_context)
-    = statement.
-
-make_block_stmt(VarDecls, Statements, Context) =
-    ( if
-        VarDecls = [],
-        Statements = [SingleStatement]
-    then
-        SingleStatement
-    else
-        statement(ml_stmt_block(VarDecls, Statements), Context)
-    ).
 
 :- func ml_stack_chain_var = mlds_lval.
 
@@ -1417,19 +1402,24 @@ ml_module_name_string(ModuleName) = sym_name_to_string_sep(ModuleName, "__").
 :- mode flatten_function_body(in(hoist), in, out, in, out) is det.
 :- mode flatten_function_body(in(chain), in, out, in, out) is det.
 
-flatten_function_body(_, body_external, body_external, !Info).
-flatten_function_body(Action, body_defined_here(Statement0),
-        body_defined_here(Statement), !Info) :-
-    flatten_statement(Action, Statement0, Statement, !Info).
+flatten_function_body(Action, Body0, Body, !Info) :-
+    (
+        Body0 = body_external,
+        Body = Body0
+    ;
+        Body0 = body_defined_here(Stmt0),
+        flatten_statement(Action, Stmt0, Stmt, !Info),
+        Body = body_defined_here(Stmt)
+    ).
 
-:- pred flatten_maybe_statement(action, maybe(statement), maybe(statement),
+:- pred flatten_maybe_statement(action, maybe(mlds_stmt), maybe(mlds_stmt),
     elim_info, elim_info).
 :- mode flatten_maybe_statement(in(hoist), in, out, in, out) is det.
 :- mode flatten_maybe_statement(in(chain), in, out, in, out) is det.
 
 flatten_maybe_statement(_, no, no, !Info).
-flatten_maybe_statement(Action, yes(Statement0), yes(Statement), !Info) :-
-    flatten_statement(Action, Statement0, Statement, !Info).
+flatten_maybe_statement(Action, yes(Stmt0), yes(Stmt), !Info) :-
+    flatten_statement(Action, Stmt0, Stmt, !Info).
 
 :- pred flatten_gc_statement(action, mlds_gc_statement, mlds_gc_statement,
     elim_info, elim_info).
@@ -1441,88 +1431,87 @@ flatten_gc_statement(Action, GCStmt0, GCStmt, !Info) :-
         GCStmt0 = gc_no_stmt,
         GCStmt = gc_no_stmt
     ;
-        GCStmt0 = gc_trace_code(Statement0),
-        flatten_statement(Action, Statement0, Statement, !Info),
-        GCStmt = gc_trace_code(Statement)
+        GCStmt0 = gc_trace_code(Stmt0),
+        flatten_statement(Action, Stmt0, Stmt, !Info),
+        GCStmt = gc_trace_code(Stmt)
     ;
-        GCStmt0 = gc_initialiser(Statement0),
-        flatten_statement(Action, Statement0, Statement, !Info),
-        GCStmt = gc_initialiser(Statement)
+        GCStmt0 = gc_initialiser(Stmt0),
+        flatten_statement(Action, Stmt0, Stmt, !Info),
+        GCStmt = gc_initialiser(Stmt)
     ).
 
-:- pred flatten_statements(action, list(statement), list(statement),
+:- pred flatten_statements(action, list(mlds_stmt), list(mlds_stmt),
     elim_info, elim_info).
 :- mode flatten_statements(in(hoist), in, out, in, out) is det.
 :- mode flatten_statements(in(chain), in, out, in, out) is det.
 
 flatten_statements(_, [], [], !Info).
-flatten_statements(Action, [Statement0 | Statements0],
-        [Statement | Statements], !Info) :-
-    flatten_statement(Action, Statement0, Statement, !Info),
-    flatten_statements(Action, Statements0, Statements, !Info).
+flatten_statements(Action, [Stmt0 | Stmts0], [Stmt | Stmts], !Info) :-
+    flatten_statement(Action, Stmt0, Stmt, !Info),
+    flatten_statements(Action, Stmts0, Stmts, !Info).
 
-:- pred flatten_statement(action, statement, statement, elim_info, elim_info).
+:- pred flatten_statement(action, mlds_stmt, mlds_stmt, elim_info, elim_info).
 :- mode flatten_statement(in(hoist), in, out, in, out) is det.
 :- mode flatten_statement(in(chain), in, out, in, out) is det.
 
-flatten_statement(Action, Statement0, Statement, !Info) :-
-    Statement0 = statement(Stmt0, Context),
+flatten_statement(Action, Stmt0, Stmt, !Info) :-
     (
-        Stmt0 = ml_stmt_block(Defns0, SubStatements0),
-        flatten_nested_defns(Action, Defns0, SubStatements0, Defns,
-            InitStatements, !Info),
+        Stmt0 = ml_stmt_block(Defns0, SubStmts0, Context),
+        flatten_nested_defns(Action, Defns0, SubStmts0, Defns,
+            InitStmts, !Info),
         flatten_statements(Action,
-            InitStatements ++ SubStatements0, SubStatements, !Info),
-        Stmt = ml_stmt_block(Defns, SubStatements)
+            InitStmts ++ SubStmts0, SubStmts, !Info),
+        Stmt = ml_stmt_block(Defns, SubStmts, Context)
     ;
-        Stmt0 = ml_stmt_while(Kind, Rval0, SubStatement0),
+        Stmt0 = ml_stmt_while(Kind, Rval0, SubStmt0, Context),
         fixup_rval(Action, !.Info, Rval0, Rval),
-        flatten_statement(Action, SubStatement0, SubStatement, !Info),
-        Stmt = ml_stmt_while(Kind, Rval, SubStatement)
+        flatten_statement(Action, SubStmt0, SubStmt, !Info),
+        Stmt = ml_stmt_while(Kind, Rval, SubStmt, Context)
     ;
-        Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0),
+        Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0, Context),
         fixup_rval(Action, !.Info, Cond0, Cond),
         flatten_statement(Action, Then0, Then, !Info),
         flatten_maybe_statement(Action, MaybeElse0, MaybeElse, !Info),
-        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
+        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse, Context)
     ;
-        Stmt0 = ml_stmt_switch(Type, Val0, Range, Cases0, Default0),
+        Stmt0 = ml_stmt_switch(Type, Val0, Range, Cases0, Default0, Context),
         fixup_rval(Action, !.Info, Val0, Val),
         flatten_cases(Action, Cases0, Cases, !Info),
         flatten_default(Action, Default0, Default, !Info),
-        Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
+        Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default, Context)
     ;
-        Stmt0 = ml_stmt_label(_),
+        Stmt0 = ml_stmt_label(_, _Context),
         Stmt = Stmt0
     ;
-        Stmt0 = ml_stmt_goto(_),
+        Stmt0 = ml_stmt_goto(_, _Context),
         Stmt = Stmt0
     ;
-        Stmt0 = ml_stmt_computed_goto(Rval0, Labels),
+        Stmt0 = ml_stmt_computed_goto(Rval0, Labels, Context),
         fixup_rval(Action, !.Info, Rval0, Rval),
-        Stmt = ml_stmt_computed_goto(Rval, Labels)
+        Stmt = ml_stmt_computed_goto(Rval, Labels, Context)
     ;
         Stmt0 = ml_stmt_call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall,
-            Markers),
+            Markers, Context),
         fixup_rval(Action, !.Info, Func0, Func),
         fixup_maybe_rval(Action, !.Info, Obj0, Obj),
         fixup_rvals(Action, !.Info, Args0, Args),
         fixup_lvals(Action, !.Info, RetLvals0, RetLvals),
-        Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall, Markers)
+        Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall,
+            Markers, Context)
     ;
-        Stmt0 = ml_stmt_return(Rvals0),
+        Stmt0 = ml_stmt_return(Rvals0, Context),
         fixup_rvals(Action, !.Info, Rvals0, Rvals),
-        Stmt = ml_stmt_return(Rvals)
+        Stmt = ml_stmt_return(Rvals, Context)
     ;
-        Stmt0 = ml_stmt_do_commit(Ref0),
+        Stmt0 = ml_stmt_do_commit(Ref0, Context),
         fixup_rval(Action, !.Info, Ref0, Ref),
-        Stmt = ml_stmt_do_commit(Ref)
+        Stmt = ml_stmt_do_commit(Ref, Context)
     ;
-        Stmt0 = ml_stmt_try_commit(Ref0, SubStatement0, Handler0),
+        Stmt0 = ml_stmt_try_commit(Ref0, BodyStmt0, HandlerStmt0, Context),
         fixup_lval(Action, !.Info, Ref0, Ref),
-        flatten_statement(Action, SubStatement0, SubStatement, !Info),
-        flatten_statement(Action, Handler0, Handler1, !Info),
-        Stmt1 = ml_stmt_try_commit(Ref, SubStatement, Handler1),
+        flatten_statement(Action, BodyStmt0, BodyStmt, !Info),
+        flatten_statement(Action, HandlerStmt0, HandlerStmt1, !Info),
+        Stmt1 = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt1, Context),
         (
             Action = chain_gc_stack_frames,
             save_and_restore_stack_chain(Stmt1, Stmt, !Info)
@@ -1531,11 +1520,10 @@ flatten_statement(Action, Statement0, Statement, !Info) :-
             Stmt = Stmt1
         )
     ;
-        Stmt0 = ml_stmt_atomic(AtomicStmt0),
+        Stmt0 = ml_stmt_atomic(AtomicStmt0, Context),
         fixup_atomic_stmt(Action, !.Info, AtomicStmt0, AtomicStmt),
-        Stmt = ml_stmt_atomic(AtomicStmt)
-    ),
-    Statement = statement(Stmt, Context).
+        Stmt = ml_stmt_atomic(AtomicStmt, Context)
+    ).
 
 :- pred flatten_cases(action, list(mlds_switch_case), list(mlds_switch_case),
     elim_info, elim_info).
@@ -1553,11 +1541,11 @@ flatten_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
 :- mode flatten_case(in(chain), in, out, in, out) is det.
 
 flatten_case(Action, Case0, Case, !Info) :-
-    Case0 = mlds_switch_case(FirstCond0, LaterConds0, Statement0),
+    Case0 = mlds_switch_case(FirstCond0, LaterConds0, Stmt0),
     fixup_case_cond(Action, !.Info, FirstCond0, FirstCond),
     fixup_case_conds(Action, !.Info, LaterConds0, LaterConds),
-    flatten_statement(Action, Statement0, Statement, !Info),
-    Case = mlds_switch_case(FirstCond, LaterConds, Statement).
+    flatten_statement(Action, Stmt0, Stmt, !Info),
+    Case = mlds_switch_case(FirstCond, LaterConds, Stmt).
 
 :- pred flatten_default(action, mlds_switch_default, mlds_switch_default,
     elim_info, elim_info).
@@ -1572,9 +1560,9 @@ flatten_default(Action, Default0, Default, !Info) :-
         Default0 = default_do_nothing,
         Default = default_do_nothing
     ;
-        Default0 = default_case(Statement0),
-        flatten_statement(Action, Statement0, Statement, !Info),
-        Default = default_case(Statement)
+        Default0 = default_case(Stmt0),
+        flatten_statement(Action, Stmt0, Stmt, !Info),
+        Default = default_case(Stmt)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1582,7 +1570,7 @@ flatten_default(Action, Default0, Default, !Info) :-
     % Add code to save/restore the stack chain pointer. This means converting
     %
     %   try {
-    %       Statement
+    %       Stmt
     %   } commit {
     %       Handler
     %   }
@@ -1593,7 +1581,7 @@ flatten_default(Action, Default0, Default, !Info) :-
     %       void *saved_stack_chain;
     %       try {
     %           saved_stack_chain = stack_chain;
-    %           Statement
+    %           Stmt
     %       } commit {
     %           stack_chain = saved_stack_chain;
     %           Handler
@@ -1601,7 +1589,7 @@ flatten_default(Action, Default0, Default, !Info) :-
     %   }
     %
 :- inst try_commit
-    --->    ml_stmt_try_commit(ground, ground, ground).
+    --->    ml_stmt_try_commit(ground, ground, ground, ground).
 
 :- pred save_and_restore_stack_chain(mlds_stmt::in(try_commit),
     mlds_stmt::out, elim_info::in, elim_info::out) is det.
@@ -1610,23 +1598,19 @@ save_and_restore_stack_chain(Stmt0, Stmt, !ElimInfo) :-
     ModuleName = elim_info_get_module_name(!.ElimInfo),
     elim_info_allocate_saved_stack_chain_id(Id, !ElimInfo),
 
-    Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
-    Statement0 = statement(_, StatementContext),
-    Handler0 = statement(_, HandlerContext),
-    SavedVarDecl = gen_saved_stack_chain_var(Id, StatementContext),
-    SaveStatement = gen_save_stack_chain_var(ModuleName, Id, StatementContext),
-    RestoreStatement = gen_restore_stack_chain_var(ModuleName, Id,
-        HandlerContext),
-    Statement = statement(ml_stmt_block([], [SaveStatement, Statement0]),
-        HandlerContext),
-    Handler = statement(ml_stmt_block([], [RestoreStatement, Handler0]),
-        HandlerContext),
-    TryCommit = ml_stmt_try_commit(Ref, Statement, Handler),
+    Stmt0 = ml_stmt_try_commit(Ref, BodyStmt0, HandlerStmt0, Context),
+    BodyContext = get_mlds_stmt_context(BodyStmt0),
+    HandlerContext = get_mlds_stmt_context(HandlerStmt0),
+    SavedVarDecl = gen_saved_stack_chain_var(Id, BodyContext),
+    SaveStmt = gen_save_stack_chain_var(ModuleName, Id, BodyContext),
+    RestoreStmt = gen_restore_stack_chain_var(ModuleName, Id, HandlerContext),
+    BodyStmt =
+        ml_stmt_block([], [SaveStmt, BodyStmt0], BodyContext),
+    HandlerStmt =
+        ml_stmt_block([], [RestoreStmt, HandlerStmt0], HandlerContext),
+    TryCommit = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt, Context),
     % XXX MLDS_DEFN
-    Stmt = ml_stmt_block(
-        [mlds_data(SavedVarDecl)],
-        [statement(TryCommit, StatementContext)]
-    ).
+    Stmt = ml_stmt_block([mlds_data(SavedVarDecl)], [TryCommit], Context).
 
 %-----------------------------------------------------------------------------%
 
@@ -1640,29 +1624,29 @@ save_and_restore_stack_chain(Stmt0, Stmt, !ElimInfo) :-
 % statements. Return the remaining (non-hoisted) definitions, the list of
 % assignment statements, and the updated elim_info.
 
-:- pred flatten_nested_defns(action, list(mlds_defn), list(statement),
-    list(mlds_defn), list(statement), elim_info, elim_info).
+:- pred flatten_nested_defns(action, list(mlds_defn), list(mlds_stmt),
+    list(mlds_defn), list(mlds_stmt), elim_info, elim_info).
 :- mode flatten_nested_defns(in(hoist), in, in, out, out, in, out) is det.
 :- mode flatten_nested_defns(in(chain), in, in, out, out, in, out) is det.
 
 flatten_nested_defns(_, [], _, [], [], !Info).
-flatten_nested_defns(Action, [Defn0 | Defns0], FollowingStatements, Defns,
-        InitStatements, !Info) :-
-    flatten_nested_defn(Action, Defn0, Defns0, FollowingStatements,
-        Defns1, InitStatements1, !Info),
-    flatten_nested_defns(Action, Defns0, FollowingStatements,
-        Defns2, InitStatements2, !Info),
+flatten_nested_defns(Action, [Defn0 | Defns0], FollowingStmts, Defns,
+        InitStmts, !Info) :-
+    flatten_nested_defn(Action, Defn0, Defns0, FollowingStmts,
+        Defns1, InitStmts1, !Info),
+    flatten_nested_defns(Action, Defns0, FollowingStmts,
+        Defns2, InitStmts2, !Info),
     Defns = Defns1 ++ Defns2,
-    InitStatements = InitStatements1 ++ InitStatements2.
+    InitStmts = InitStmts1 ++ InitStmts2.
 
 :- pred flatten_nested_defn(action, mlds_defn, list(mlds_defn),
-    list(statement), list(mlds_defn), list(statement),
+    list(mlds_stmt), list(mlds_defn), list(mlds_stmt),
     elim_info, elim_info).
 :- mode flatten_nested_defn(in(hoist), in, in, in, out, out, in, out) is det.
 :- mode flatten_nested_defn(in(chain), in, in, in, out, out, in, out) is det.
 
-flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
-        Defns, InitStatements, !Info) :-
+flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
+        Defns, InitStmts, !Info) :-
     (
         Defn0 = mlds_function(FunctionDefn0),
         FunctionDefn0 = mlds_function_defn(Name, Context, Flags0,
@@ -1706,18 +1690,18 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
             Action = chain_gc_stack_frames,
             Defns = [Defn]
         ),
-        InitStatements = []
+        InitStmts = []
     ;
         Defn0 = mlds_data(DataDefn0),
         DataDefn0 = mlds_data_defn(DataName, Context, Flags0,
-            Type, Init0, GCStatement0),
+            Type, Init0, GCStmt0),
         % For local variable definitions, if they are referenced by any nested
         % functions, then strip them out and store them in the elim_info.
         ( if
             % Hoist ordinary local variables.
             DataName = mlds_data_var(VarName),
-            ml_should_add_local_data(Action, !.Info, DataName, GCStatement0,
-                FollowingDefns, FollowingStatements)
+            ml_should_add_local_data(Action, !.Info, DataName, GCStmt0,
+                FollowingDefns, FollowingStmts)
         then
             % We need to strip out the initializer (if any) and convert it
             % into an assignment statement, since this local variable
@@ -1728,23 +1712,23 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
                 % FollowingDefns reference this variable.
                 Init1 = no_initializer,
                 DataDefn1 = mlds_data_defn(DataName, Context, Flags0,
-                    Type, Init1, GCStatement0),
+                    Type, Init1, GCStmt0),
                 ModuleName = elim_info_get_module_name(!.Info),
                 VarLval = ml_var(qual(ModuleName, module_qual, VarName), Type),
-                InitStmt = ml_stmt_atomic(assign(VarLval, Rval)),
-                InitStatements = [statement(InitStmt, Context)]
+                InitStmt = ml_stmt_atomic(assign(VarLval, Rval), Context),
+                InitStmts = [InitStmt]
             else
                 DataDefn1 = DataDefn0,
-                InitStatements = []
+                InitStmts = []
             ),
             elim_info_add_local_data(DataDefn1, !Info),
             Defns = []
         else
             fixup_initializer(Action, !.Info, Init0, Init),
             Defn = mlds_data(mlds_data_defn(DataName, Context, Flags0,
-                Type, Init, GCStatement0)),
+                Type, Init, GCStmt0)),
             Defns = [Defn],
-            InitStatements = []
+            InitStmts = []
         )
     ;
         Defn0 = mlds_class(_),
@@ -1754,7 +1738,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
         % ml_code_gen.m doesn't generate any of these, so it doesn't matter
         % what we do.
         Defns = [Defn0],
-        InitStatements = []
+        InitStmts = []
     ).
 
     % Succeed iff we should add the definition of this variable to the
@@ -1763,41 +1747,41 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
     % top level (if it is a static const).
     %
 :- pred ml_should_add_local_data(action, elim_info, mlds_data_name,
-    mlds_gc_statement, list(mlds_defn), list(statement)).
+    mlds_gc_statement, list(mlds_defn), list(mlds_stmt)).
 :- mode ml_should_add_local_data(in(hoist), in, in, in, in, in) is semidet.
 :- mode ml_should_add_local_data(in(chain), in, in, in, in, in) is semidet.
 
-ml_should_add_local_data(Action, Info, DataName, GCStatement,
-        FollowingDefns, FollowingStatements) :-
+ml_should_add_local_data(Action, Info, DataName, GCStmt,
+        FollowingDefns, FollowingStmts) :-
     (
         Action = chain_gc_stack_frames,
-        ( GCStatement = gc_trace_code(_)
-        ; GCStatement = gc_initialiser(_)
+        ( GCStmt = gc_trace_code(_)
+        ; GCStmt = gc_initialiser(_)
         )
     ;
         Action = hoist_nested_funcs,
         ModuleName = elim_info_get_module_name(Info),
         ml_need_to_hoist(ModuleName, DataName,
-            FollowingDefns, FollowingStatements)
+            FollowingDefns, FollowingStmts)
     ).
 
     % This checks for a nested function definition.
     %
-    % XXX Do we need to check for references from the GCStatement fields here?
+    % XXX Do we need to check for references from the GCStmt fields here?
     %
     % XXX This algorithm is quadratic. For a block with N defs, each of which
     % is referenced in a later definition, we do N^2 tests.
     %
 :- pred ml_need_to_hoist(mlds_module_name::in, mlds_data_name::in,
-    list(mlds_defn)::in, list(statement)::in) is semidet.
+    list(mlds_defn)::in, list(mlds_stmt)::in) is semidet.
 
-ml_need_to_hoist(ModuleName, DataName, FollowingDefns, FollowingStatements) :-
+ml_need_to_hoist(ModuleName, DataName, FollowingDefns, FollowingStmts) :-
     QualDataName = qual(ModuleName, module_qual, DataName),
     Filter = ml_need_to_hoist_defn(QualDataName),
     (
         list.find_first_match(Filter, FollowingDefns, _)
     ;
-        statements_contains_matching_defn(Filter, FollowingStatements)
+        statements_contains_matching_defn(Filter, FollowingStmts)
     ).
 
 :- pred ml_need_to_hoist_defn(mlds_fully_qualified_name(mlds_data_name)::in,
@@ -2119,9 +2103,9 @@ fixup_gc_statements(Action, !Info) :-
 
 fixup_gc_statements_defns(_, [], !Info).
 fixup_gc_statements_defns(Action, [Defn0 | Defns], !Info) :-
-    Defn0 = mlds_data_defn(Name, Context, Flags, Type, Init, GCStatement0),
-    flatten_gc_statement(Action, GCStatement0, GCStatement, !Info),
-    Defn = mlds_data_defn(Name, Context, Flags, Type, Init, GCStatement),
+    Defn0 = mlds_data_defn(Name, Context, Flags, Type, Init, GCStmt0),
+    flatten_gc_statement(Action, GCStmt0, GCStmt, !Info),
+    Defn = mlds_data_defn(Name, Context, Flags, Type, Init, GCStmt),
 
     elim_info_remove_local_data(Defn0, !Info),
     elim_info_add_local_data(Defn, !Info),
@@ -2266,31 +2250,30 @@ ml_env_module_name(Target, ClassType) = EnvModuleName :-
 %
 
 :- pred statements_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), list(statement)::in) is semidet.
+    pred(mlds_defn)::in(pred(in) is semidet), list(mlds_stmt)::in) is semidet.
 
-statements_contains_matching_defn(Filter, [Statement | Statements]) :-
+statements_contains_matching_defn(Filter, [Stmt | Stmts]) :-
     (
-        statement_contains_matching_defn(Filter, Statement)
+        statement_contains_matching_defn(Filter, Stmt)
     ;
-        statements_contains_matching_defn(Filter, Statements)
+        statements_contains_matching_defn(Filter, Stmts)
     ).
 
 :- pred statement_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), statement::in) is semidet.
+    pred(mlds_defn)::in(pred(in) is semidet), mlds_stmt::in) is semidet.
 
-statement_contains_matching_defn(Filter, Statement) :-
-    Statement = statement(Stmt, _Context),
+statement_contains_matching_defn(Filter, Stmt) :-
     require_complete_switch [Stmt]
     (
-        Stmt = ml_stmt_block(SubDefns, SubStatements),
+        Stmt = ml_stmt_block(SubDefns, SubStmts, _Context),
         ( defns_contains_matching_defn(Filter, SubDefns)
-        ; statements_contains_matching_defn(Filter, SubStatements)
+        ; statements_contains_matching_defn(Filter, SubStmts)
         )
     ;
-        Stmt = ml_stmt_while(_Kind, _Rval, SubStatement),
-        statement_contains_matching_defn(Filter, SubStatement)
+        Stmt = ml_stmt_while(_Kind, _Rval, SubStmt, _Context),
+        statement_contains_matching_defn(Filter, SubStmt)
     ;
-        Stmt = ml_stmt_if_then_else(_Cond, SubThen, MaybeSubElse),
+        Stmt = ml_stmt_if_then_else(_Cond, SubThen, MaybeSubElse, _Context),
         (
             statement_contains_matching_defn(Filter, SubThen)
         ;
@@ -2298,24 +2281,25 @@ statement_contains_matching_defn(Filter, Statement) :-
             statement_contains_matching_defn(Filter, SubElse)
         )
     ;
-        Stmt = ml_stmt_switch(_Type, _Val, _Range, SubCases, SubDefault),
+        Stmt = ml_stmt_switch(_Type, _Val, _Range, SubCases, SubDefault,
+            _Context),
         ( cases_contains_matching_defn(Filter, SubCases)
         ; default_contains_matching_defn(Filter, SubDefault)
         )
     ;
-        Stmt = ml_stmt_try_commit(_Ref, SubStatement, SubHandler),
-        ( statement_contains_matching_defn(Filter, SubStatement)
+        Stmt = ml_stmt_try_commit(_Ref, SubStmt, SubHandler, _Context),
+        ( statement_contains_matching_defn(Filter, SubStmt)
         ; statement_contains_matching_defn(Filter, SubHandler)
         )
     ;
-        ( Stmt = ml_stmt_label(_Label)
-        ; Stmt = ml_stmt_goto(_)
-        ; Stmt = ml_stmt_computed_goto(_Rval, _Labels)
+        ( Stmt = ml_stmt_label(_Label, _Context)
+        ; Stmt = ml_stmt_goto(_Target, _Context)
+        ; Stmt = ml_stmt_computed_goto(_Rval, _Labels, _Context)
         ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall,
-            _Markers)
-        ; Stmt = ml_stmt_return(_Rvals)
-        ; Stmt = ml_stmt_do_commit(_Ref)
-        ; Stmt = ml_stmt_atomic(_AtomicStmt)
+            _Markers, _Context)
+        ; Stmt = ml_stmt_return(_Rvals, _Context)
+        ; Stmt = ml_stmt_do_commit(_Ref, _Context)
+        ; Stmt = ml_stmt_atomic(_AtomicStmt, _Context)
         ),
         fail
     ).
@@ -2335,8 +2319,8 @@ cases_contains_matching_defn(Filter, [Case | Cases]) :-
     pred(mlds_defn)::in(pred(in) is semidet), mlds_switch_case::in) is semidet.
 
 case_contains_matching_defn(Filter, Case) :-
-    Case = mlds_switch_case(_FirstMatchCond, _LaterMatchConds, Statement),
-    statement_contains_matching_defn(Filter, Statement).
+    Case = mlds_switch_case(_FirstMatchCond, _LaterMatchConds, Stmt),
+    statement_contains_matching_defn(Filter, Stmt).
 
 :- pred default_contains_matching_defn(
     pred(mlds_defn)::in(pred(in) is semidet), mlds_switch_default::in)
@@ -2344,8 +2328,8 @@ case_contains_matching_defn(Filter, Case) :-
 
 % default_contains_matching_defn(_, default_do_nothing) :- fail.
 % default_contains_matching_defn(_, default_is_unreachable) :- fail.
-default_contains_matching_defn(Filter, default_case(Statement)) :-
-    statement_contains_matching_defn(Filter, Statement).
+default_contains_matching_defn(Filter, default_case(Stmt)) :-
+    statement_contains_matching_defn(Filter, Stmt).
 
 :- pred defns_contains_matching_defn(
     pred(mlds_defn)::in(pred(in) is semidet), list(mlds_defn)::in) is semidet.
@@ -2370,8 +2354,8 @@ defn_contains_matching_defn(Filter, Defn) :-
             FunctionDefn = mlds_function_defn(_Name, _Ctxt, _Flags,
                 _PredProcId, _Params, FunctionBody, _Attrs, _EnvVarNames,
                 _MaybeRequiretailrecInfo),
-            FunctionBody = body_defined_here(Statement),
-            statement_contains_matching_defn(Filter, Statement)
+            FunctionBody = body_defined_here(Stmt),
+            statement_contains_matching_defn(Filter, Stmt)
         ;
             Defn = mlds_class(ClassDefn),
             ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags, _Kind,
@@ -2395,89 +2379,76 @@ defn_contains_matching_defn(Filter, Defn) :-
     % tail calls.
     %
 :- pred add_unchain_stack_to_maybe_statement(action,
-    maybe(statement), maybe(statement), elim_info, elim_info).
+    maybe(mlds_stmt), maybe(mlds_stmt), elim_info, elim_info).
 % :- mode add_unchain_stack_to_maybe_statement(in(hoist), in, out, in, out)
 %     is det.
 :- mode add_unchain_stack_to_maybe_statement(in(chain), in, out, in, out)
     is det.
 
 add_unchain_stack_to_maybe_statement(_, no, no, !Info).
-add_unchain_stack_to_maybe_statement(Action, yes(Statement0), yes(Statement),
-        !Info) :-
-    add_unchain_stack_to_statement(Action, Statement0, Statement, !Info).
+add_unchain_stack_to_maybe_statement(Action, yes(Stmt0), yes(Stmt), !Info) :-
+    add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info).
 
-:- pred add_unchain_stack_to_statements(action,
-    list(statement), list(statement), elim_info, elim_info).
-% :- mode add_unchain_stack_to_statements(in(hoist), in, out, in, out) is det.
-:- mode add_unchain_stack_to_statements(in(chain), in, out, in, out) is det.
+:- pred add_unchain_stack_to_stmts(action,
+    list(mlds_stmt), list(mlds_stmt), elim_info, elim_info).
+% :- mode add_unchain_stack_to_stmts(in(hoist), in, out, in, out) is det.
+:- mode add_unchain_stack_to_stmts(in(chain), in, out, in, out) is det.
 
-add_unchain_stack_to_statements(_, [], [], !Info).
-add_unchain_stack_to_statements(Action, [Statement0 | Statements0],
-        [Statement | Statements], !Info) :-
-    add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
-    add_unchain_stack_to_statements(Action, Statements0, Statements, !Info).
+add_unchain_stack_to_stmts(_, [], [], !Info).
+add_unchain_stack_to_stmts(Action, [Stmt0 | Stmts0], [Stmt | Stmts], !Info) :-
+    add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info),
+    add_unchain_stack_to_stmts(Action, Stmts0, Stmts, !Info).
 
-:- pred add_unchain_stack_to_statement(action, statement, statement,
-    elim_info, elim_info).
-% :- mode add_unchain_stack_to_statement(in(hoist), in, out, in, out) is det.
-:- mode add_unchain_stack_to_statement(in(chain), in, out, in, out) is det.
-
-add_unchain_stack_to_statement(Action, Statement0, Statement, !Info) :-
-    Statement0 = statement(Stmt0, Context),
-    add_unchain_stack_to_stmt(Action, Context, Stmt0, Stmt, !Info),
-    Statement = statement(Stmt, Context).
-
-:- pred add_unchain_stack_to_stmt(action, mlds_context,
+:- pred add_unchain_stack_to_stmt(action,
     mlds_stmt, mlds_stmt, elim_info, elim_info).
-% :- mode add_unchain_stack_to_stmt(in(hoist), in, in, out, in, out) is det.
-:- mode add_unchain_stack_to_stmt(in(chain), in, in, out, in, out) is det.
+% :- mode add_unchain_stack_to_stmt(in(hoist), in, out, in, out) is det.
+:- mode add_unchain_stack_to_stmt(in(chain), in, out, in, out) is det.
 
-add_unchain_stack_to_stmt(Action, Context, Stmt0, Stmt, !Info) :-
+add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info) :-
     (
-        Stmt0 = ml_stmt_block(Defns, Statements0),
-        add_unchain_stack_to_statements(Action, Statements0, Statements,
-            !Info),
-        Stmt = ml_stmt_block(Defns, Statements)
+        Stmt0 = ml_stmt_block(Defns, SubStmts0, Context),
+        add_unchain_stack_to_stmts(Action, SubStmts0, SubStmts, !Info),
+        Stmt = ml_stmt_block(Defns, SubStmts, Context)
     ;
-        Stmt0 = ml_stmt_while(Kind, Rval, Statement0),
-        add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
-        Stmt = ml_stmt_while(Kind, Rval, Statement)
+        Stmt0 = ml_stmt_while(Kind, Rval, SubStmt0, Context),
+        add_unchain_stack_to_stmt(Action, SubStmt0, SubStmt, !Info),
+        Stmt = ml_stmt_while(Kind, Rval, SubStmt, Context)
     ;
-        Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
-        add_unchain_stack_to_statement(Action, Then0, Then, !Info),
+        Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0, Context),
+        add_unchain_stack_to_stmt(Action, Then0, Then, !Info),
         add_unchain_stack_to_maybe_statement(Action, MaybeElse0, MaybeElse,
             !Info),
-        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
+        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse, Context)
     ;
-        Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0),
+        Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0, Context),
         add_unchain_stack_to_cases(Action, Cases0, Cases, !Info),
         add_unchain_stack_to_default(Action, Default0, Default, !Info),
-        Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
+        Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default, Context)
     ;
         Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, RetLvals, CallKind,
-            _Markers),
+            _Markers, Context),
         add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context,
             Stmt, !Info)
     ;
-        Stmt0 = ml_stmt_return(_Rvals),
+        Stmt0 = ml_stmt_return(_Rvals, Context),
         Stmt = prepend_unchain_frame(Stmt0, Context, !.Info)
     ;
-        Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
-        add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
-        add_unchain_stack_to_statement(Action, Handler0, Handler, !Info),
-        Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
+        Stmt0 = ml_stmt_try_commit(Ref, BodyStmt0, HandlerStmt0, Context),
+        add_unchain_stack_to_stmt(Action, BodyStmt0, BodyStmt, !Info),
+        add_unchain_stack_to_stmt(Action, HandlerStmt0, HandlerStmt, !Info),
+        Stmt = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt, Context)
     ;
-        ( Stmt0 = ml_stmt_label(_)
-        ; Stmt0 = ml_stmt_goto(_)
-        ; Stmt0 = ml_stmt_computed_goto(_Rval, _Labels)
-        ; Stmt0 = ml_stmt_do_commit(_Ref)
-        ; Stmt0 = ml_stmt_atomic(_AtomicStmt0)
+        ( Stmt0 = ml_stmt_label(_Label, _Context)
+        ; Stmt0 = ml_stmt_goto(_Target, _Context)
+        ; Stmt0 = ml_stmt_computed_goto(_Rval, _Labels, _Context)
+        ; Stmt0 = ml_stmt_do_commit(_Ref, _Context)
+        ; Stmt0 = ml_stmt_atomic(_AtomicStmt0, _Context)
         ),
         Stmt = Stmt0
     ).
 
 :- pred add_unchain_stack_to_call(mlds_stmt::in, list(mlds_lval)::in,
-    ml_call_kind::in, mlds_context::in, mlds_stmt::out,
+    ml_call_kind::in, prog_context::in, mlds_stmt::out,
     elim_info::in, elim_info::out) is det.
 
 add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
@@ -2494,11 +2465,9 @@ add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
         % fall through (past the tail call) and then try to unchain
         % the already-unchained stack frame.
         UnchainFrame = ml_gen_unchain_frame(Context, !.Info),
-        Statement0 = statement(Stmt0, Context),
         RetRvals = list.map(func(Rval) = ml_lval(Rval), RetLvals),
-        RetStmt = ml_stmt_return(RetRvals),
-        RetStatement = statement(RetStmt, Context),
-        Stmt = ml_stmt_block([], [UnchainFrame, Statement0, RetStatement])
+        RetStmt = ml_stmt_return(RetRvals, Context),
+        Stmt = ml_stmt_block([], [UnchainFrame, Stmt0, RetStmt], Context)
     ;
         CallKind = ordinary_call,
         Stmt = Stmt0
@@ -2520,11 +2489,11 @@ add_unchain_stack_to_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
 :- mode add_unchain_stack_to_case(in(chain), in, out, in, out) is det.
 
 add_unchain_stack_to_case(Action, Case0, Case, !Info) :-
-    Case0 = mlds_switch_case(FirstCond0, LaterConds0, Statement0),
+    Case0 = mlds_switch_case(FirstCond0, LaterConds0, Stmt0),
     fixup_case_cond(Action, !.Info, FirstCond0, FirstCond),
     fixup_case_conds(Action, !.Info, LaterConds0, LaterConds),
-    add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
-    Case = mlds_switch_case(FirstCond, LaterConds, Statement).
+    add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info),
+    Case = mlds_switch_case(FirstCond, LaterConds, Stmt).
 
 :- pred add_unchain_stack_to_default(action,
     mlds_switch_default, mlds_switch_default, elim_info, elim_info).
@@ -2539,20 +2508,18 @@ add_unchain_stack_to_default(Action, Default0, Default, !Info) :-
         Default0 = default_do_nothing,
         Default = default_do_nothing
     ;
-        Default0 = default_case(Statement0),
-        add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
-        Default = default_case(Statement)
+        Default0 = default_case(Stmt0),
+        add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info),
+        Default = default_case(Stmt)
     ).
 
-:- func prepend_unchain_frame(mlds_stmt, mlds_context, elim_info) =
-    mlds_stmt.
+:- func prepend_unchain_frame(mlds_stmt, prog_context, elim_info) = mlds_stmt.
 
 prepend_unchain_frame(Stmt0, Context, ElimInfo) = Stmt :-
     UnchainFrame = ml_gen_unchain_frame(Context, ElimInfo),
-    Statement0 = statement(Stmt0, Context),
-    Stmt = ml_stmt_block([], [UnchainFrame, Statement0]).
+    Stmt = ml_stmt_block([], [UnchainFrame, Stmt0], Context).
 
-:- func ml_gen_unchain_frame(mlds_context, elim_info) = statement.
+:- func ml_gen_unchain_frame(prog_context, elim_info) = mlds_stmt.
 
 ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
     EnvPtrTypeName = elim_info_get_env_ptr_type_name(ElimInfo),
@@ -2579,14 +2546,14 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
     PrevFieldRval = ml_lval(ml_field(Tag, ml_lval(StackChain), PrevFieldId,
         PrevFieldType, EnvPtrTypeName)),
     Assignment = assign(StackChain, PrevFieldRval),
-    UnchainFrame = statement(ml_stmt_atomic(Assignment), Context).
+    UnchainFrame = ml_stmt_atomic(Assignment, Context).
 
     % Generate a local variable declaration to hold the saved stack chain
     % pointer:
     %
     %   void *saved_stack_chain;
     %
-:- func gen_saved_stack_chain_var(int, mlds_context) = mlds_data_defn.
+:- func gen_saved_stack_chain_var(int, prog_context) = mlds_data_defn.
 
 gen_saved_stack_chain_var(Id, Context) = Defn :-
     Name = mlds_data_var(mlds_comp_var(mcv_saved_stack_chain(Id))),
@@ -2595,40 +2562,39 @@ gen_saved_stack_chain_var(Id, Context) = Defn :-
     Initializer = no_initializer,
     % The saved stack chain never needs to be traced by the GC,
     % since it will always point to the stack, not into the heap.
-    GCStatement = gc_no_stmt,
-    Defn = mlds_data_defn(Name, Context, Flags,
-        Type, Initializer, GCStatement).
+    GCStmt = gc_no_stmt,
+    Defn = mlds_data_defn(Name, Context, Flags, Type, Initializer, GCStmt).
 
     % Generate a statement to save the stack chain pointer:
     %
     %   saved_stack_chain = stack_chain;
     % XXX merge with next
     %
-:- func gen_save_stack_chain_var(mlds_module_name, int, mlds_context) =
-    statement.
+:- func gen_save_stack_chain_var(mlds_module_name, int, prog_context) =
+    mlds_stmt.
 
-gen_save_stack_chain_var(MLDS_Module, Id, Context) = SaveStatement :-
+gen_save_stack_chain_var(MLDS_Module, Id, Context) = SaveStmt :-
     SavedStackChain = ml_var(
         qual(MLDS_Module, module_qual,
             mlds_comp_var(mcv_saved_stack_chain(Id))),
         ml_stack_chain_type),
     Assignment = assign(SavedStackChain, ml_lval(ml_stack_chain_var)),
-    SaveStatement = statement(ml_stmt_atomic(Assignment), Context).
+    SaveStmt = ml_stmt_atomic(Assignment, Context).
 
     % Generate a statement to restore the stack chain pointer:
     %
     %   stack_chain = saved_stack_chain;
     %
-:- func gen_restore_stack_chain_var(mlds_module_name, int, mlds_context) =
-    statement.
+:- func gen_restore_stack_chain_var(mlds_module_name, int, prog_context) =
+    mlds_stmt.
 
-gen_restore_stack_chain_var(MLDS_Module, Id, Context) = RestoreStatement :-
+gen_restore_stack_chain_var(MLDS_Module, Id, Context) = RestoreStmt :-
     SavedStackChain = ml_var(
         qual(MLDS_Module, module_qual,
             mlds_comp_var(mcv_saved_stack_chain(Id))),
         ml_stack_chain_type),
     Assignment = assign(ml_stack_chain_var, ml_lval(SavedStackChain)),
-    RestoreStatement = statement(ml_stmt_atomic(Assignment), Context).
+    RestoreStmt = ml_stmt_atomic(Assignment, Context).
 
 %-----------------------------------------------------------------------------%
 

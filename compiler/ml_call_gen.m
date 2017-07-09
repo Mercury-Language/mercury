@@ -36,11 +36,11 @@
     %
 :- pred ml_gen_generic_call(generic_call::in, list(prog_var)::in,
     list(mer_mode)::in, determinism::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ArgTypes,
-    %   CodeModel, Context, ForClosureWrapper, Defns, Statements):
+    %   CodeModel, Context, ForClosureWrapper, Defns, Stmts):
     %
     % Generate MLDS code for an HLDS procedure call, making sure to
     % box/unbox the arguments if necessary.
@@ -53,14 +53,14 @@
     %
 :- pred ml_gen_call(pred_id::in, proc_id::in, list(mlds_var_name)::in,
     list(mlds_lval)::in, list(mer_type)::in, code_model::in,
-    prog_context::in, bool::in, list(mlds_defn)::out, list(statement)::out,
+    prog_context::in, bool::in, list(mlds_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate MLDS code for a call to a builtin procedure.
     %
 :- pred ml_gen_builtin(pred_id::in, proc_id::in, list(prog_var)::in,
     code_model::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -94,25 +94,25 @@
 %
 
 ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
-        Decls, Statements, !Info) :-
+        Decls, Stmts, !Info) :-
     % XXX For typeclass method calls, we do some unnecessary
     % boxing/unboxing of the arguments.
     (
         GenericCall = higher_order(_, _, _, _),
         ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism,
-            Context, Decls, Statements, !Info)
+            Context, Decls, Stmts, !Info)
     ;
         GenericCall = class_method(_, _, _, _),
         ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism,
-            Context, Decls, Statements, !Info)
+            Context, Decls, Stmts, !Info)
     ;
         GenericCall = event_call(_),
         % XXX For now, we can't generate events from the MLDS backend.
         Decls = [],
-        Statements = []
+        Stmts = []
     ;
         GenericCall = cast(_),
-        ml_gen_cast(Context, ArgVars, Decls, Statements, !Info)
+        ml_gen_cast(Context, ArgVars, Decls, Stmts, !Info)
     ).
 
 :- inst main_generic_call
@@ -121,11 +121,11 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 
 :- pred ml_gen_main_generic_call(generic_call::in(main_generic_call),
     list(prog_var)::in, list(mer_mode)::in, determinism::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
-        Decls, Statements, !Info) :-
+        Decls, Stmts, !Info) :-
     % Allocate some fresh type variables to use as the Mercury types
     % of the boxed arguments.
     NumArgs = list.length(ArgVars),
@@ -142,15 +142,15 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 
     % Insert the `closure_arg' parameter.
     %
-    % The GCStatement for `closure_arg' here is wrong, but it doesn't matter,
+    % The GCStmt for `closure_arg' here is wrong, but it doesn't matter,
     % since `closure_arg' is only part of a type (a function parameter in the
     % function type). We won't use the GC tracing code generated here, since
     % we don't generate any actual local variable or parameter for
     % `closure_arg'.
-    GCStatement = gc_no_stmt,
+    GCStmt = gc_no_stmt,
     ClosureArgType = mlds_generic_type,
     ClosureArg = mlds_argument(mlds_comp_var(mcv_closure_arg), ClosureArgType,
-        GCStatement),
+        GCStmt),
     Params0 = mlds_func_params(ArgParams0, RetParam),
     Params = mlds_func_params([ClosureArg | ArgParams0], RetParam),
     Signature = mlds_get_func_signature(Params),
@@ -202,9 +202,9 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     FuncVarName = mlds_comp_var(mcv_conv_var(ConvVarNum)),
     % The function address is always a pointer to code,
     % not to the heap, so the GC doesn't need to trace it.
-    GCStatement = gc_no_stmt,
+    GCStmt = gc_no_stmt,
     FuncVarDecl = ml_gen_mlds_var_decl(mlds_data_var(FuncVarName),
-        FuncType, GCStatement, mlds_make_context(Context)),
+        FuncType, GCStmt, Context),
     ml_gen_var_lval(!.Info, FuncVarName, FuncType, FuncVarLval),
     AssignFuncVar = ml_gen_assign(FuncVarLval, FuncRval, Context),
     FuncVarRval = ml_lval(FuncVarLval),
@@ -217,19 +217,19 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, BoxedArgTypes,
         ArgModes, PredOrFunc, CodeModel, Context, no, 1,
         InputRvals, OutputLvals, OutputTypes,
-        ConvArgDecls, ConvOutputStatements, !Info),
+        ConvArgDecls, ConvOutputStmts, !Info),
     ClosureRval = ml_unop(unbox(ClosureArgType), ml_lval(ClosureLval)),
     ObjectRval = no,
 
     ( if
         ConvArgDecls = [],
-        ConvOutputStatements = []
+        ConvOutputStmts = []
     then
         % Generate the call directly (as opposed to via DoGenCall)
         % in the common case.
         ml_gen_mlds_call(Signature, ObjectRval, FuncVarRval,
             [ClosureRval | InputRvals], OutputLvals, OutputTypes,
-            Determinism, Context, Decls0, Statements0, !Info)
+            Determinism, Context, Decls0, Stmts0, !Info)
     else
         % Prepare to generate the call, passing the closure as the first
         % argument. We can't actually generate the call yet, since it might be
@@ -242,12 +242,12 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 
         % Construct a closure to generate code to convert the output arguments
         % and then succeed.
-        DoGenConvOutputAndSucceed = (
-            pred(COAS_Decls::out, COAS_Statements::out,
+        DoGenConvOutputAndSucceed =
+            ( pred(COAS_Decls::out, COAS_Stmts::out,
                     Info0::in, Info::out) is det :-
                 COAS_Decls = [],
                 ml_gen_success(CodeModel, Context, SucceedStmts, Info0, Info),
-                COAS_Statements = ConvOutputStatements ++ SucceedStmts
+                COAS_Stmts = ConvOutputStmts ++ SucceedStmts
         ),
 
         % Conjoin the code generated by the two closures that we computed
@@ -256,24 +256,24 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 
         ml_combine_conj(CodeModel, Context, DoGenCall,
             DoGenConvOutputAndSucceed, CallAndConvOutputDecls,
-            CallAndConvOutputStatements, !Info),
+            CallAndConvOutputStmts, !Info),
         % XXX MLDS_DEFN
         Decls0 = list.map(wrap_data_defn, ConvArgDecls) ++
             CallAndConvOutputDecls,
-        Statements0 = CallAndConvOutputStatements
+        Stmts0 = CallAndConvOutputStmts
     ),
     % XXX MLDS_DEFN
     Decls = [mlds_data(FuncVarDecl) | Decls0],
-    Statements = [AssignFuncVar | Statements0].
+    Stmts = [AssignFuncVar | Stmts0].
 
     % Generate MLDS code for a cast. The list of argument variables
     % must have only two elements, the input and the output.
     %
 :- pred ml_gen_cast(prog_context::in, list(prog_var)::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
+ml_gen_cast(Context, ArgVars, Decls, Stmts, !Info) :-
     ml_gen_var_list(!.Info, ArgVars, ArgLvals),
     ml_variable_types(!.Info, ArgVars, ArgTypes),
     ( if
@@ -285,13 +285,13 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
         IsDummy = check_dummy_type(ModuleInfo, DestType),
         (
             IsDummy = is_dummy_type,
-            Statements = []
+            Stmts = []
         ;
             IsDummy = is_not_dummy_type,
             ml_gen_box_or_unbox_rval(ModuleInfo, SrcType, DestType,
                 bp_native_if_possible, ml_lval(SrcLval), CastRval),
             Assign = ml_gen_assign(DestLval, CastRval, Context),
-            Statements = [Assign]
+            Stmts = [Assign]
         ),
         Decls = [],
         ( if ml_gen_info_search_const_var(!.Info, SrcVar, GroundTerm) then
@@ -302,7 +302,7 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
             true
         )
     else
-        unexpected($module, $pred, "wrong number of args for cast")
+        unexpected($pred, "wrong number of args for cast")
     ).
 
 %---------------------------------------------------------------------------%
@@ -311,7 +311,7 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
 %
 
 ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
-        Context, ForClosureWrapper, Decls, Statements, !Info) :-
+        Context, ForClosureWrapper, Decls, Stmts, !Info) :-
     % Generate code for the various parts that are needed for a procedure call:
     % declarations of variables needed for boxing/unboxing output arguments,
     % a closure to generate code to call the function with the input arguments
@@ -364,20 +364,20 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
     ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, PredArgTypes,
         ArgModes, PredOrFunc, CodeModel, Context, ForClosureWrapper, 1,
         InputRvals, OutputLvals, OutputTypes,
-        ConvArgDecls, ConvOutputStatements, !Info),
+        ConvArgDecls, ConvOutputStmts, !Info),
 
     ObjectRval = no,
     proc_info_interface_determinism(ProcInfo, Detism),
 
     ( if
         ConvArgDecls = [],
-        ConvOutputStatements = []
+        ConvOutputStmts = []
     then
         % Generate the call directly (as opposed to via DoGenCall)
         % in the common case.
         ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
             InputRvals, OutputLvals, OutputTypes, Detism, Context,
-            Decls, Statements, !Info)
+            Decls, Stmts, !Info)
     else
         % Construct a closure to generate the call. We can't actually generate
         % the call yet, since it might be nondet, and we don't yet know
@@ -390,11 +390,11 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
         % Construct a closure to generate code to convert the output arguments
         % and then succeed.
         DoGenConvOutputAndSucceed =
-            ( pred(COAS_Decls::out, COAS_Statements::out,
+            ( pred(COAS_Decls::out, COAS_Stmts::out,
                     Info0::in, Info::out) is det :-
                 COAS_Decls = [],
                 ml_gen_success(CodeModel, Context, SucceedStmts, Info0, Info),
-                COAS_Statements = ConvOutputStatements ++ SucceedStmts
+                COAS_Stmts = ConvOutputStmts ++ SucceedStmts
             ),
 
         % Conjoin the code generated by the two closures that we computed
@@ -402,11 +402,11 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
         % is necessary for this code model.
         ml_combine_conj(CodeModel, Context, DoGenCall,
             DoGenConvOutputAndSucceed, CallAndConvOutputDecls,
-            CallAndConvOutputStatements, !Info),
+            CallAndConvOutputStmts, !Info),
         % XXX MLDS_DEFN
         Decls = list.map(wrap_data_defn, ConvArgDecls) ++
             CallAndConvOutputDecls,
-        Statements = CallAndConvOutputStatements
+        Stmts = CallAndConvOutputStmts
     ).
 
     % Generate an rval containing the address of the specified procedure.
@@ -433,11 +433,11 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
 :- pred ml_gen_mlds_call(mlds_func_signature::in, maybe(mlds_rval)::in,
     mlds_rval::in, list(mlds_rval)::in, list(mlds_lval)::in,
     list(mlds_type)::in, determinism::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    list(mlds_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
-        RetTypes0, Detism, Context, Decls, Statements, !Info) :-
+        RetTypes0, Detism, Context, Decls, Stmts, !Info) :-
     % Append the extra arguments or return val for this code_model.
     determinism_to_code_model(Detism, CodeModel),
     (
@@ -499,9 +499,8 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
         set.init(Markers)
     ),
     Stmt = ml_stmt_call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
-        CallKind, Markers),
-    Statement = statement(Stmt, mlds_make_context(Context)),
-    Statements = [Statement].
+        CallKind, Markers, Context),
+    Stmts = [Stmt].
 
 :- pred ml_gen_success_cont(list(mlds_type)::in, list(mlds_lval)::in,
     prog_context::in, success_cont::out, list(mlds_function_defn)::out,
@@ -537,13 +536,12 @@ ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
             ContFuncLabel, ContFuncLabelRval, !Info),
         % push nesting level
         ml_gen_copy_args_to_locals(!.Info, OutputArgLvals,
-            OutputArgTypes, Context, CopyDecls, CopyStatements),
+            OutputArgTypes, Context, CopyDecls, CopyStmts),
         ml_gen_call_current_success_cont(Context, CallCont, !Info),
-        CopyStatement = ml_gen_block(CopyDecls,
-            CopyStatements ++ [CallCont], Context),
+        CopyStmt = ml_gen_block(CopyDecls, CopyStmts ++ [CallCont], Context),
         % pop nesting level
         ml_gen_label_func(!.Info, ContFuncLabel, Params, Context,
-            CopyStatement, ContFuncDefn),
+            CopyStmt, ContFuncDefn),
         ContDecls = [ContFuncDefn],
 
         ml_get_env_ptr(!.Info, EnvPtrRval),
@@ -587,36 +585,36 @@ ml_gen_cont_params_loop([Type | Types], ArgNum, [Argument | Arguments]) :-
     % requires knowing the HLDS types, but here we only have the MLDS types.
     % So here we just leave it blank. The caller of ml_gen_cont_param has the
     % responsibility of filling this in properly if needed.
-    GCStatement = gc_no_stmt,
-    Argument = mlds_argument(ArgName, Type, GCStatement),
+    GCStmt = gc_no_stmt,
+    Argument = mlds_argument(ArgName, Type, GCStmt),
     ml_gen_cont_params_loop(Types, ArgNum + 1, Arguments).
 
 :- pred ml_gen_copy_args_to_locals(ml_gen_info::in, list(mlds_lval)::in,
     list(mlds_type)::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out) is det.
+    list(mlds_defn)::out, list(mlds_stmt)::out) is det.
 
 ml_gen_copy_args_to_locals(Info, ArgLvals, ArgTypes, Context,
-        CopyDecls, CopyStatements) :-
+        CopyDecls, CopyStmts) :-
     CopyDecls = [],
     ml_gen_copy_args_to_locals_loop(Info, ArgLvals, ArgTypes, 1, Context,
-        CopyStatements).
+        CopyStmts).
 
 :- pred ml_gen_copy_args_to_locals_loop(ml_gen_info::in, list(mlds_lval)::in,
     list(mlds_type)::in, int::in, prog_context::in,
-    list(statement)::out) is det.
+    list(mlds_stmt)::out) is det.
 
 ml_gen_copy_args_to_locals_loop(_Info, [], [], _, _, []).
 ml_gen_copy_args_to_locals_loop(Info, [LocalLval | LocalLvals], [Type | Types],
-        ArgNum, Context, [Statement | Statements]) :-
+        ArgNum, Context, [Stmt | Stmts]) :-
     ArgName = mlds_comp_var(mcv_arg(ArgNum)),
     ml_gen_var_lval(Info, ArgName, Type, ArgLval),
-    Statement = ml_gen_assign(LocalLval, ml_lval(ArgLval), Context),
+    Stmt = ml_gen_assign(LocalLval, ml_lval(ArgLval), Context),
     ml_gen_copy_args_to_locals_loop(Info, LocalLvals, Types, ArgNum + 1,
-        Context, Statements).
+        Context, Stmts).
 ml_gen_copy_args_to_locals_loop(_Info, [], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 ml_gen_copy_args_to_locals_loop(_Info, [_ | _], [], _, _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 
     % Generate rvals and lvals for the arguments of a procedure call
     %
@@ -624,13 +622,13 @@ ml_gen_copy_args_to_locals_loop(_Info, [_ | _], [], _, _, _) :-
     list(mer_type)::in, list(mer_type)::in, list(mer_mode)::in,
     pred_or_func::in, code_model::in, prog_context::in, bool::in, int::in,
     list(mlds_rval)::out, list(mlds_lval)::out, list(mlds_type)::out,
-    list(mlds_data_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         PredOrFunc, CodeModel, Context, ForClosureWrapper, ArgNum,
         !:InputRvals, !:OutputLvals, !:OutputTypes, !:ConvDecls,
-        !:ConvOutputStatements, !Info) :-
+        !:ConvOutputStmts, !Info) :-
     ( if
         VarNames = [],
         VarLvals = [],
@@ -642,7 +640,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         !:OutputLvals = [],
         !:OutputTypes = [],
         !:ConvDecls = [],
-        !:ConvOutputStatements = []
+        !:ConvOutputStmts = []
     else if
         VarNames = [VarName | VarNamesTail],
         VarLvals = [VarLval | VarLvalsTail],
@@ -653,7 +651,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         ml_gen_arg_list(VarNamesTail, VarLvalsTail, CallerTypesTail,
             CalleeTypesTail, ModesTail, PredOrFunc, CodeModel, Context,
             ForClosureWrapper, ArgNum + 1, !:InputRvals, !:OutputLvals,
-            !:OutputTypes, !:ConvDecls, !:ConvOutputStatements, !Info),
+            !:OutputTypes, !:ConvDecls, !:ConvOutputStmts, !Info),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         mode_to_top_functor_mode(ModuleInfo, Mode, CalleeType,
             ArgTopFunctorMode),
@@ -692,8 +690,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
                     ForClosureWrapper, ArgNum, ArgLval, ThisArgConvDecls,
                     _ThisArgConvInput, ThisArgConvOutput, !Info),
                 !:ConvDecls = ThisArgConvDecls ++ !.ConvDecls,
-                !:ConvOutputStatements = ThisArgConvOutput ++
-                    !.ConvOutputStatements,
+                !:ConvOutputStmts = ThisArgConvOutput ++ !.ConvOutputStmts,
 
                 ml_gen_info_get_globals(!.Info, Globals),
                 CopyOut = get_copy_out_option(Globals, CodeModel),
@@ -723,7 +720,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
             )
         )
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
     % ml_gen_mem_addr(Lval) returns a value equal to &Lval.
@@ -740,7 +737,7 @@ ml_gen_mem_addr(Lval) =
 % Code for builtins.
 %
 
-ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
+ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Stmts,
         !Info) :-
     ml_gen_var_list(!.Info, ArgVars, ArgLvals),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -759,52 +756,49 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
                 VarType = mercury_type(ProgDataType, _, _),
                 check_dummy_type(ModuleInfo, ProgDataType) = is_dummy_type
             then
-                Statements = []
+                Stmts = []
             else
                 Rval = ml_gen_simple_expr(SimpleExpr),
-                Statement = ml_gen_assign(Lval, Rval, Context),
-                Statements = [Statement]
+                Stmt = ml_gen_assign(Lval, Rval, Context),
+                Stmts = [Stmt]
             )
         ;
             SimpleCode = ref_assign(AddrLval, ValueLval),
             ( if ValueLval = ml_var(_ValueVarName, ValueType) then
-                Statement = ml_gen_assign(
+                Stmt = ml_gen_assign(
                     ml_mem_ref(ml_lval(AddrLval), ValueType),
                     ml_lval(ValueLval), Context),
-                Statements = [Statement]
+                Stmts = [Stmt]
             else
-                unexpected($module, $pred, "malformed ref_assign")
+                unexpected($pred, "malformed ref_assign")
             )
         ;
             SimpleCode = test(_),
-            unexpected($module, $pred, "malformed model_det builtin predicate")
+            unexpected($pred, "malformed model_det builtin predicate")
         ;
             SimpleCode = noop(_),
-            Statements = []
+            Stmts = []
         )
     ;
         CodeModel = model_semi,
         (
             SimpleCode = test(SimpleTest),
             TestRval = ml_gen_simple_expr(SimpleTest),
-            ml_gen_set_success(!.Info, TestRval, Context, Statement),
-            Statements = [Statement]
+            ml_gen_set_success(!.Info, TestRval, Context, Stmt),
+            Stmts = [Stmt]
         ;
             SimpleCode = ref_assign(_, _),
-            unexpected($module, $pred,
-                "malformed model_semi builtin predicate")
+            unexpected($pred, "malformed model_semi builtin predicate")
         ;
             SimpleCode = assign(_, _),
-            unexpected($module, $pred,
-                "malformed model_semi builtin predicate")
+            unexpected($pred, "malformed model_semi builtin predicate")
         ;
             SimpleCode = noop(_),
-            unexpected($module, $pred,
-                "malformed model_semi builtin predicate")
+            unexpected($pred, "malformed model_semi builtin predicate")
         )
     ;
         CodeModel = model_non,
-        unexpected($module, $pred, "model_non builtin predicate")
+        unexpected($pred, "model_non builtin predicate")
     ),
     Decls = [].
 

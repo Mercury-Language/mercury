@@ -443,13 +443,13 @@ output_java_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
         LiteralOrInclude = floi_include_file(IncludeFile),
         SourceFileName = Info ^ joi_source_filename,
         make_include_file_path(SourceFileName, IncludeFile, IncludePath),
-        output_context(Info ^ joi_foreign_line_numbers, marker_begin_block,
-            context(IncludePath, 1), !IO),
+        output_context_for_java(Info ^ joi_foreign_line_numbers,
+            marker_begin_block, context(IncludePath, 1), !IO),
         write_include_file_contents_cur_stream(IncludePath, !IO),
         io.nl(!IO),
         % We don't have the true end context readily available.
-        output_context(Info ^ joi_foreign_line_numbers, marker_end_block,
-            Context, !IO)
+        output_context_for_java(Info ^ joi_foreign_line_numbers,
+            marker_end_block, Context, !IO)
     ).
 
     % Get the foreign code for Java.
@@ -534,7 +534,7 @@ output_export_for_java(Info0, Indent, Export, !IO) :-
 
 output_export_no_ref_out(Info, Indent, Export, !IO) :-
     Export = ml_pragma_export(_Lang, _ExportName, QualFuncName, MLDS_Signature,
-        _UnivQTVars, _MLDS_Context),
+        _UnivQTVars, _Context),
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
     output_params_for_java(Info, Indent + 1, Parameters, !IO),
     io.nl(!IO),
@@ -563,7 +563,7 @@ output_export_no_ref_out(Info, Indent, Export, !IO) :-
 
 output_export_ref_out(Info, Indent, Export, !IO) :-
     Export = ml_pragma_export(_Lang, _ExportName, QualFuncName, MLDS_Signature,
-        _UnivQTVars, _MLDS_Context),
+        _UnivQTVars, _Context),
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
     list.filter(has_ptr_type, Parameters, RefParams, NonRefParams),
 
@@ -768,7 +768,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         CtorDefns = []
     ;
         CodeAddrs = [_, _ | _],
-        Context = mlds_make_context(term.context_init),
+        Context = term.context_init,
 
         % Create the member variable.
         CtorArgName = mlds_comp_var(mcv_ptr_num),
@@ -793,8 +793,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         CtorArgLval = ml_var(qual(MLDS_ModuleName, type_qual, CtorArgName),
             mlds_native_int_type),
         CtorArgRval = ml_lval(CtorArgLval),
-        CtorStatement = statement(
-            ml_stmt_atomic(assign(FieldLval, CtorArgRval)), Context),
+        CtorStmt = ml_stmt_atomic(assign(FieldLval, CtorArgRval), Context),
 
         CtorFunctionName = mlds_function_export("<constructor>"),
         CtorFlags = init_function_decl_flags(acc_public, per_instance),
@@ -802,7 +801,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         Attributes = [],
         EnvVarNames = set.init,
         CtorDefn = mlds_function_defn(CtorFunctionName, Context, CtorFlags,
-            no, Params, body_defined_here(CtorStatement), Attributes,
+            no, Params, body_defined_here(CtorStmt), Attributes,
             EnvVarNames, no),
         CtorDefns = [CtorDefn]
     ),
@@ -831,7 +830,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     ClassMembers = list.map(wrap_data_defn, DataDefns) ++
         [mlds_function(MethodDefn)],
     ClassTypeName = mlds_type_name(ClassName, 0),
-    ClassContext = mlds_make_context(term.context_init),
+    ClassContext = term.context_init,
     ClassFlags = addr_wrapper_decl_flags,
     % XXX MLDS_DEFN
     ClassDefn = mlds_class_defn(ClassTypeName, ClassContext, ClassFlags,
@@ -867,35 +866,33 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
 
     % Create a statement to call each of the original methods.
     list.map(generate_call_statement_for_addr(InputArgs), CodeAddrs,
-        CodeAddrStatements),
+        CodeAddrStmts),
 
-    Context = mlds_make_context(term.context_init),
+    Context = term.context_init,
 
     % If there is more than one original method, then we need to switch on the
     % ptr_num member variable.
     (
-        CodeAddrStatements = [],
+        CodeAddrStmts = [],
         unexpected($pred, "no statements")
     ;
-        CodeAddrStatements = [Statement]
+        CodeAddrStmts = [Stmt]
     ;
-        CodeAddrStatements = [_, _ | _],
+        CodeAddrStmts = [_, _ | _],
         MaxCase = list.length(CodeAddrs) - 1,
         MakeCase =
-            ( func(I, CaseStatement) = Case :-
+            ( func(I, CaseStmt) = Case :-
                 MatchCond = match_value(ml_const(mlconst_int(I))),
-                Case = mlds_switch_case(MatchCond, [], CaseStatement)
+                Case = mlds_switch_case(MatchCond, [], CaseStmt)
             ),
-        Cases = list.map_corresponding(MakeCase, 0 .. MaxCase,
-            CodeAddrStatements),
+        Cases = list.map_corresponding(MakeCase, 0 .. MaxCase, CodeAddrStmts),
 
         SwitchVarName = mlds_comp_var(mcv_ptr_num),
         SwitchVar = qual(MLDS_ModuleName, module_qual, SwitchVarName),
         SwitchVarRval = ml_lval(ml_var(SwitchVar, mlds_native_int_type)),
         SwitchRange = mlds_switch_range(0, MaxCase),
-        Switch = ml_stmt_switch(mlds_native_int_type, SwitchVarRval,
-            SwitchRange, Cases, default_is_unreachable),
-        Statement = statement(Switch, Context)
+        Stmt = ml_stmt_switch(mlds_native_int_type, SwitchVarRval,
+            SwitchRange, Cases, default_is_unreachable, Context)
     ),
 
     % Create new method name.
@@ -916,7 +913,7 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
     MethodAttribs = [],
     MethodEnvVarNames = set.init,
     MethodDefn = mlds_function_defn(MethodName, Context, MethodFlags,
-        MethodMaybeID, MethodParams, body_defined_here(Statement),
+        MethodMaybeID, MethodParams, body_defined_here(Stmt),
         MethodAttribs, MethodEnvVarNames, no).
 
 :- pred create_generic_arg(int::in, mlds_var_name::out, mlds_argument::out)
@@ -927,9 +924,9 @@ create_generic_arg(I, ArgName, Arg) :-
     Arg = mlds_argument(ArgName, mlds_generic_type, gc_no_stmt).
 
 :- pred generate_call_statement_for_addr(call_method_inputs::in,
-    mlds_code_addr::in, statement::out) is det.
+    mlds_code_addr::in, mlds_stmt::out) is det.
 
-generate_call_statement_for_addr(InputArgs, CodeAddr, Statement) :-
+generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
     ( CodeAddr = code_addr_proc(ProcLabel, OrigFuncSignature)
     ; CodeAddr = code_addr_internal(ProcLabel, _SeqNum, OrigFuncSignature)
     ),
@@ -967,11 +964,11 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Statement) :-
     ReturnLval = ml_var(ReturnVar, ReturnVarType),
     ReturnDataName = mlds_data_var(ReturnVarName),
 
-    Context = mlds_make_context(term.context_init),
+    Context = term.context_init,
     ReturnDecFlags = ml_gen_local_var_decl_flags,
-    GCStatement = gc_no_stmt,  % The Java back-end does its own GC.
+    GCStmt = gc_no_stmt,  % The Java back-end does its own GC.
     ReturnVarDefn = mlds_data_defn(ReturnDataName, Context, ReturnDecFlags,
-        ReturnVarType, no_initializer, GCStatement),
+        ReturnVarType, no_initializer, GCStmt),
 
     % Create the call to the original method.
     CallRval = ml_const(mlconst_code_addr(CodeAddr)),
@@ -987,20 +984,17 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Statement) :-
         OrigRetTypes = [_ | _],
         CallRetLvals = [ReturnLval]
     ),
-    Call = ml_stmt_call(OrigFuncSignature, CallRval, no, CallArgs,
-        CallRetLvals, ordinary_call, set.init),
-    CallStatement = statement(Call, Context),
+    CallStmt = ml_stmt_call(OrigFuncSignature, CallRval, no, CallArgs,
+        CallRetLvals, ordinary_call, set.init, Context),
 
     % Create a return statement that returns the result of the call to the
     % original method, boxed as a java.lang.Object.
     ReturnRval = ml_unop(box(ReturnVarType), ml_lval(ReturnLval)),
-    Return = ml_stmt_return([ReturnRval]),
-    ReturnStatement = statement(Return, Context),
+    ReturnStmt = ml_stmt_return([ReturnRval], Context),
 
     % XXX MLDS_DEFN
-    Block = ml_stmt_block([mlds_data(ReturnVarDefn)],
-        [CallStatement, ReturnStatement]),
-    Statement = statement(Block, Context).
+    Stmt = ml_stmt_block([mlds_data(ReturnVarDefn)], [CallStmt, ReturnStmt],
+        Context).
 
 :- pred generate_call_method_nth_arg(mlds_module_name::in, mlds_type::in,
     mlds_var_name::in, mlds_rval::out) is det.
@@ -1159,11 +1153,11 @@ rename_class_names_defn(Renaming, Defn0, Defn) :-
     (
         Defn0 = mlds_data(DataDefn0),
         DataDefn0 = mlds_data_defn(Name, Context, Flags,
-            Type0, Initializer0, GCStatement),
+            Type0, Initializer0, GCStmt),
         rename_class_names_type(Renaming, Type0, Type),
         rename_class_names_initializer(Renaming, Initializer0, Initializer),
         DataDefn = mlds_data_defn(Name, Context, Flags,
-            Type, Initializer, GCStatement),
+            Type, Initializer, GCStmt),
         Defn = mlds_data(DataDefn)
     ;
         Defn0 = mlds_function(FunctionDefn0),
@@ -1172,9 +1166,9 @@ rename_class_names_defn(Renaming, Defn0, Defn) :-
             MaybeRequireTailrecInfo),
         rename_class_names_func_params(Renaming, FuncParams0, FuncParams),
         (
-            FuncBody0 = body_defined_here(Statement0),
-            rename_class_names_statement(Renaming, Statement0, Statement),
-            FuncBody = body_defined_here(Statement)
+            FuncBody0 = body_defined_here(Stmt0),
+            rename_class_names_stmt(Renaming, Stmt0, Stmt),
+            FuncBody = body_defined_here(Stmt)
         ;
             FuncBody0 = body_external,
             FuncBody = body_external
@@ -1289,64 +1283,57 @@ rename_class_names_func_params(Renaming, !FuncParams) :-
     mlds_argument::in, mlds_argument::out) is det.
 
 rename_class_names_argument(Renaming, !Argument) :-
-    !.Argument = mlds_argument(Name, Type0, GCStatement),
+    !.Argument = mlds_argument(Name, Type0, GCStmt),
     rename_class_names_type(Renaming, Type0, Type),
-    !:Argument = mlds_argument(Name, Type, GCStatement).
-
-:- pred rename_class_names_statement(class_name_renaming::in,
-    statement::in, statement::out) is det.
-
-rename_class_names_statement(Renaming, !Statement) :-
-    !.Statement = statement(Stmt0, Context),
-    rename_class_names_stmt(Renaming, Stmt0, Stmt),
-    !:Statement = statement(Stmt, Context).
+    !:Argument = mlds_argument(Name, Type, GCStmt).
 
 :- pred rename_class_names_stmt(class_name_renaming::in,
     mlds_stmt::in, mlds_stmt::out) is det.
 
 rename_class_names_stmt(Renaming, !Stmt) :-
     (
-        !.Stmt = ml_stmt_block(Defns0, Statements0),
+        !.Stmt = ml_stmt_block(Defns0, SubStmts0, Context),
         list.map(rename_class_names_defn(Renaming), Defns0, Defns),
-        list.map(rename_class_names_statement(Renaming),
-            Statements0, Statements),
-        !:Stmt = ml_stmt_block(Defns, Statements)
+        list.map(rename_class_names_stmt(Renaming), SubStmts0, SubStmts),
+        !:Stmt = ml_stmt_block(Defns, SubStmts, Context)
     ;
-        !.Stmt = ml_stmt_while(Kind, Rval0, Statement0),
+        !.Stmt = ml_stmt_while(Kind, Rval0, SubStmt0, Context),
         rename_class_names_rval(Renaming, Rval0, Rval),
-        rename_class_names_statement(Renaming, Statement0, Statement),
-        !:Stmt = ml_stmt_while(Kind, Rval, Statement)
+        rename_class_names_stmt(Renaming, SubStmt0, SubStmt),
+        !:Stmt = ml_stmt_while(Kind, Rval, SubStmt, Context)
     ;
-        !.Stmt = ml_stmt_if_then_else(Rval0, Statement0, MaybeElse0),
+        !.Stmt = ml_stmt_if_then_else(Rval0, Then0, MaybeElse0, Context),
         rename_class_names_rval(Renaming, Rval0, Rval),
-        rename_class_names_statement(Renaming, Statement0, Statement),
+        rename_class_names_stmt(Renaming, Then0, Then),
         (
             MaybeElse0 = yes(Else0),
-            rename_class_names_statement(Renaming, Else0, Else),
+            rename_class_names_stmt(Renaming, Else0, Else),
             MaybeElse = yes(Else)
         ;
             MaybeElse0 = no,
             MaybeElse = no
         ),
-        !:Stmt = ml_stmt_if_then_else(Rval, Statement, MaybeElse)
+        !:Stmt = ml_stmt_if_then_else(Rval, Then, MaybeElse, Context)
     ;
-        !.Stmt = ml_stmt_switch(Type0, Rval0, SwitchRange, Cases0, Default0),
+        !.Stmt = ml_stmt_switch(Type0, Rval0, SwitchRange, Cases0, Default0,
+            Context),
         rename_class_names_type(Renaming, Type0, Type),
         rename_class_names_rval(Renaming, Rval0, Rval),
         list.map(rename_class_names_switch_case(Renaming), Cases0, Cases),
         rename_class_names_switch_default(Renaming, Default0, Default),
-        !:Stmt = ml_stmt_switch(Type, Rval, SwitchRange, Cases, Default)
+        !:Stmt = ml_stmt_switch(Type, Rval, SwitchRange, Cases, Default,
+            Context)
     ;
-        !.Stmt = ml_stmt_label(_)
+        !.Stmt = ml_stmt_label(_, _)
     ;
-        !.Stmt = ml_stmt_goto(_)
+        !.Stmt = ml_stmt_goto(_, _)
     ;
-        !.Stmt = ml_stmt_computed_goto(Rval0, Labels),
+        !.Stmt = ml_stmt_computed_goto(Rval0, Labels, Context),
         rename_class_names_rval(Renaming, Rval0, Rval),
-        !:Stmt = ml_stmt_computed_goto(Rval, Labels)
+        !:Stmt = ml_stmt_computed_goto(Rval, Labels, Context)
     ;
         !.Stmt = ml_stmt_call(Signature0, Rval0, MaybeThis, Rvals0, RetLvals0,
-            CallKind, Markers),
+            CallKind, Markers, Context),
         Signature0 = mlds_func_signature(ArgTypes0, RetTypes0),
         list.map(rename_class_names_type(Renaming), ArgTypes0, ArgTypes),
         list.map(rename_class_names_type(Renaming), RetTypes0, RetTypes),
@@ -1355,35 +1342,35 @@ rename_class_names_stmt(Renaming, !Stmt) :-
         list.map(rename_class_names_rval(Renaming), Rvals0, Rvals),
         list.map(rename_class_names_lval(Renaming), RetLvals0, RetLvals),
         !:Stmt = ml_stmt_call(Signature, Rval, MaybeThis, Rvals, RetLvals,
-            CallKind, Markers)
+            CallKind, Markers, Context)
     ;
-        !.Stmt = ml_stmt_return(Rvals0),
+        !.Stmt = ml_stmt_return(Rvals0, Context),
         list.map(rename_class_names_rval(Renaming), Rvals0, Rvals),
-        !:Stmt = ml_stmt_return(Rvals)
+        !:Stmt = ml_stmt_return(Rvals, Context)
     ;
-        !.Stmt = ml_stmt_try_commit(Lval0, StatementA0, StatementB0),
+        !.Stmt = ml_stmt_try_commit(Lval0, BodyStmt0, HandlerStmt0, Context),
         rename_class_names_lval(Renaming, Lval0, Lval),
-        rename_class_names_statement(Renaming, StatementA0, StatementA),
-        rename_class_names_statement(Renaming, StatementB0, StatementB),
-        !:Stmt = ml_stmt_try_commit(Lval, StatementA, StatementB)
+        rename_class_names_stmt(Renaming, BodyStmt0, BodyStmt),
+        rename_class_names_stmt(Renaming, HandlerStmt0, HandlerStmt),
+        !:Stmt = ml_stmt_try_commit(Lval, BodyStmt, HandlerStmt, Context)
     ;
-        !.Stmt = ml_stmt_do_commit(Rval0),
+        !.Stmt = ml_stmt_do_commit(Rval0, Context),
         rename_class_names_rval(Renaming, Rval0, Rval),
-        !:Stmt = ml_stmt_do_commit(Rval)
+        !:Stmt = ml_stmt_do_commit(Rval, Context)
     ;
-        !.Stmt = ml_stmt_atomic(AtomicStatement0),
-        rename_class_names_atomic(Renaming, AtomicStatement0, AtomicStatement),
-        !:Stmt = ml_stmt_atomic(AtomicStatement)
+        !.Stmt = ml_stmt_atomic(AtomicStmt0, Context),
+        rename_class_names_atomic(Renaming, AtomicStmt0, AtomicStmt),
+        !:Stmt = ml_stmt_atomic(AtomicStmt, Context)
     ).
 
 :- pred rename_class_names_switch_case(class_name_renaming::in,
     mlds_switch_case::in, mlds_switch_case::out) is det.
 
 rename_class_names_switch_case(Renaming, !Case) :-
-    !.Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, Statement0),
+    !.Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, Stmt0),
     % The rvals in the match conditions shouldn't need renaming.
-    rename_class_names_statement(Renaming, Statement0, Statement),
-    !:Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, Statement).
+    rename_class_names_stmt(Renaming, Stmt0, Stmt),
+    !:Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, Stmt).
 
 :- pred rename_class_names_switch_default(class_name_renaming::in,
     mlds_switch_default::in, mlds_switch_default::out) is det.
@@ -1394,45 +1381,45 @@ rename_class_names_switch_default(Renaming, !Default) :-
     ;
         !.Default = default_do_nothing
     ;
-        !.Default = default_case(Statement0),
-        rename_class_names_statement(Renaming, Statement0, Statement),
-        !:Default = default_case(Statement)
+        !.Default = default_case(Stmt0),
+        rename_class_names_stmt(Renaming, Stmt0, Stmt),
+        !:Default = default_case(Stmt)
     ).
 
 :- pred rename_class_names_atomic(class_name_renaming::in,
     mlds_atomic_statement::in, mlds_atomic_statement::out) is det.
 
-rename_class_names_atomic(Renaming, !Statement) :-
+rename_class_names_atomic(Renaming, !Stmt) :-
     (
-        !.Statement = assign(Lval0, Rval0),
+        !.Stmt = assign(Lval0, Rval0),
         rename_class_names_lval(Renaming, Lval0, Lval),
         rename_class_names_rval(Renaming, Rval0, Rval),
-        !:Statement = assign(Lval, Rval)
+        !:Stmt = assign(Lval, Rval)
     ;
-        !.Statement = assign_if_in_heap(Lval0, Rval0),
+        !.Stmt = assign_if_in_heap(Lval0, Rval0),
         rename_class_names_lval(Renaming, Lval0, Lval),
         rename_class_names_rval(Renaming, Rval0, Rval),
-        !:Statement = assign_if_in_heap(Lval, Rval)
+        !:Stmt = assign_if_in_heap(Lval, Rval)
     ;
-        !.Statement = delete_object(Rval0),
+        !.Stmt = delete_object(Rval0),
         rename_class_names_rval(Renaming, Rval0, Rval),
-        !:Statement = delete_object(Rval)
+        !:Stmt = delete_object(Rval)
     ;
-        !.Statement = new_object(TargetLval0, MaybeTag, ExplicitSecTag, Type0,
+        !.Stmt = new_object(TargetLval0, MaybeTag, ExplicitSecTag, Type0,
             MaybeSize, MaybeCtorName, Args0, ArgTypes0, MayUseAtomic, AllocId),
         rename_class_names_lval(Renaming, TargetLval0, TargetLval),
         rename_class_names_type(Renaming, Type0, Type),
         list.map(rename_class_names_rval(Renaming), Args0, Args),
         list.map(rename_class_names_type(Renaming), ArgTypes0, ArgTypes),
-        !:Statement = new_object(TargetLval, MaybeTag, ExplicitSecTag, Type,
+        !:Stmt = new_object(TargetLval, MaybeTag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic, AllocId)
     ;
-        !.Statement = inline_target_code(Lang, Components0),
+        !.Stmt = inline_target_code(Lang, Components0),
         (
             Lang = ml_target_java,
             list.map(rename_class_names_target_code_component(Renaming),
                 Components0, Components),
-            !:Statement = inline_target_code(Lang, Components)
+            !:Stmt = inline_target_code(Lang, Components)
         ;
             ( Lang = ml_target_c
             ; Lang = ml_target_gnu_c
@@ -1440,12 +1427,12 @@ rename_class_names_atomic(Renaming, !Statement) :-
             )
         )
     ;
-        ( !.Statement = comment(_)
-        ; !.Statement = gc_check
-        ; !.Statement = mark_hp(_)
-        ; !.Statement = restore_hp(_)
-        ; !.Statement = trail_op(_)
-        ; !.Statement = outline_foreign_proc(_, _, _, _)
+        ( !.Stmt = comment(_)
+        ; !.Stmt = gc_check
+        ; !.Stmt = mark_hp(_)
+        ; !.Stmt = restore_hp(_)
+        ; !.Stmt = trail_op(_)
+        ; !.Stmt = outline_foreign_proc(_, _, _, _)
         )
     ).
 
@@ -1830,7 +1817,7 @@ output_defn_for_java(Info, Indent, OutputAux, Defn, !IO) :-
 
 output_data_defn_for_java(Info, Indent, OutputAux, DataDefn, !IO) :-
     DataDefn = mlds_data_defn(Name, Context, Flags, Type, Initializer, _),
-    indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+    indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_data_decl_flags_for_java(Info, Flags, !IO),
     % XXX MLDS_DEFN
@@ -1845,7 +1832,7 @@ output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
     FunctionDefn = mlds_function_defn(Name, Context, Flags,
         MaybePredProcId, Params, MaybeBody, _Attributes,
         _EnvVarNames, _MaybeRequireTailrecInfo),
-    indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+    indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     (
         MaybeBody = body_external,
@@ -1885,7 +1872,7 @@ output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
 output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
         _Imports, BaseClasses, Implements, TypeParams, Ctors, AllMembers),
-    indent_line_mlds_context(!.Info ^ joi_line_numbers, marker_comment,
+    indent_line_after_context(!.Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_class_decl_flags_for_java(!.Info, Flags, !IO),
 
@@ -2055,7 +2042,7 @@ output_enum_constants_for_java(Info, Indent, EnumName, EnumConsts, !IO) :-
 
 output_enum_constant_for_java(_Info, Indent, EnumName, DataDefn, !IO) :-
     DataDefn = mlds_data_defn(Name, _Context, _Flags,
-        _Type, Initializer, _GCStatement),
+        _Type, Initializer, _GCStmt),
     % Make a static instance of the constant. The MLDS doesn't retain enum
     % constructor names (that shouldn't be hard to change now) so it is
     % easier to derive the name of the constant later by naming them after
@@ -2095,7 +2082,7 @@ output_enum_constant_for_java(_Info, Indent, EnumName, DataDefn, !IO) :-
 output_data_decls_for_java(_, _, [], !IO).
 output_data_decls_for_java(Info, Indent, [DataDefn | DataDefns], !IO) :-
     DataDefn = mlds_data_defn(Name, _Context, Flags,
-        Type, _Initializer, _GCStatement),
+        Type, _Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
     output_data_decl_flags_for_java(Info, Flags, !IO),
     output_data_decl_for_java(Info, Name, Type, !IO),
@@ -2145,7 +2132,7 @@ output_init_data_statements_for_java(_, _, [], !IO).
 output_init_data_statements_for_java(Info, Indent, [DataDefn | DataDefns],
         !IO) :-
     DataDefn = mlds_data_defn(Name, _Context, _Flags,
-        Type, Initializer, _GCStatement),
+        Type, Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
     output_data_name_for_java(Name, !IO),
     output_initializer_for_java(Info, oa_none, Type, Initializer, !IO),
@@ -2572,7 +2559,7 @@ output_rtti_array_assignments_for_java(Info, Indent, Name, ElementInit,
 %
 
 :- pred output_func_for_java(java_out_info::in, indent::in,
-    mlds_function_name::in, output_aux::in, mlds_context::in,
+    mlds_function_name::in, output_aux::in, prog_context::in,
     mlds_func_params::in, mlds_function_body::in, io::di, io::uo) is det.
 
 output_func_for_java(Info, Indent, FuncName, OutputAux, Context, Signature,
@@ -2582,13 +2569,13 @@ output_func_for_java(Info, Indent, FuncName, OutputAux, Context, Signature,
         output_func_decl_for_java(Info, Indent, FuncName, OutputAux,
             Signature, !IO),
         io.write_string("\n", !IO),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("{\n", !IO),
         FuncInfo = func_info_csj(Signature),
         output_statement_for_java(Info, Indent + 1, FuncInfo, Body,
             _ExitMethods, !IO),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("}\n", !IO)    % end the function
     ;
@@ -2647,7 +2634,7 @@ output_params_for_java(Info, Indent, Parameters, !IO) :-
     io::di, io::uo) is det.
 
 output_param(Info, Indent, Arg, !IO) :-
-    Arg = mlds_argument(VarName, Type, _GCStatement),
+    Arg = mlds_argument(VarName, Type, _GCStmt),
     output_n_indents(Indent, !IO),
     output_type_for_java(Info, Type, !IO),
     io.write_char(' ', !IO),
@@ -3365,7 +3352,8 @@ output_overridability_constness_for_java(Overridability, Constness, !IO) :-
         true
     ).
 
-% :- pred output_abstractness_for_java(abstractness::in, io::di, io::uo) is det.
+% :- pred output_abstractness_for_java(abstractness::in,
+%     io::di, io::uo) is det.
 % 
 % output_abstractness_for_java(Abstractness, !IO) :-
 %     (
@@ -3394,23 +3382,22 @@ maybe_output_comment_for_java(Info, Comment, !IO) :-
 % Code to output statements.
 %
 
-% ZZZ
 :- func mod_name(mlds_fully_qualified_name(T)) = mlds_module_name.
 
 mod_name(qual(ModuleName, _, _)) = ModuleName.
 
 :- pred output_statements_for_java(java_out_info::in, indent::in,
-    func_info_csj::in, list(statement)::in, exit_methods::out,
+    func_info_csj::in, list(mlds_stmt)::in, exit_methods::out,
     io::di, io::uo) is det.
 
 output_statements_for_java(_, _, _, [], ExitMethods, !IO) :-
     ExitMethods = set.make_singleton_set(can_fall_through).
-output_statements_for_java(Info, Indent, FuncInfo, [Statement | Statements],
+output_statements_for_java(Info, Indent, FuncInfo, [Stmt | Stmts],
         ExitMethods, !IO) :-
-    output_statement_for_java(Info, Indent, FuncInfo, Statement,
+    output_statement_for_java(Info, Indent, FuncInfo, Stmt,
         StmtExitMethods, !IO),
     ( if set.member(can_fall_through, StmtExitMethods) then
-        output_statements_for_java(Info, Indent, FuncInfo, Statements,
+        output_statements_for_java(Info, Indent, FuncInfo, Stmts,
             StmtsExitMethods, !IO),
         ExitMethods0 = StmtExitMethods `set.union` StmtsExitMethods,
         ( if set.member(can_fall_through, StmtsExitMethods) then
@@ -3427,23 +3414,21 @@ output_statements_for_java(Info, Indent, FuncInfo, [Statement | Statements],
     ).
 
 :- pred output_statement_for_java(java_out_info::in, indent::in,
-    func_info_csj::in, statement::in, exit_methods::out,
+    func_info_csj::in, mlds_stmt::in, exit_methods::out,
     io::di, io::uo) is det.
 
-output_statement_for_java(Info, Indent, FuncInfo,
-        statement(Statement, Context), ExitMethods, !IO) :-
-    ProgContext = mlds_get_prog_context(Context),
-    output_context(Info ^ joi_line_numbers, marker_comment, ProgContext, !IO),
-    output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
-        ExitMethods, !IO).
+output_statement_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
+    Context = get_mlds_stmt_context(Stmt),
+    output_context_for_java(Info ^ joi_line_numbers, marker_comment,
+        Context, !IO),
+    output_stmt_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO).
 
 :- pred output_stmt_for_java(java_out_info::in, indent::in, func_info_csj::in,
-    mlds_stmt::in, mlds_context::in, exit_methods::out, io::di, io::uo) is det.
+    mlds_stmt::in, exit_methods::out, io::di, io::uo) is det.
 
-output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
-        ExitMethods, !IO) :-
+output_stmt_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     (
-        Statement = ml_stmt_block(Defns, Statements),
+        Stmt = ml_stmt_block(Defns, SubStmts, Context),
         output_n_indents(Indent, !IO),
         io.write_string("{\n", !IO),
         (
@@ -3453,13 +3438,13 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
         ;
             Defns = []
         ),
-        output_statements_for_java(Info, Indent + 1, FuncInfo, Statements,
+        output_statements_for_java(Info, Indent + 1, FuncInfo, SubStmts,
             ExitMethods, !IO),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
-        Statement = ml_stmt_while(Kind, Cond, BodyStatement),
+        Stmt = ml_stmt_while(Kind, Cond, BodyStmt, _Context),
         Kind = may_loop_zero_times,
         output_n_indents(Indent, !IO),
         io.write_string("while (", !IO),
@@ -3474,24 +3459,24 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
             ExitMethods = set.make_singleton_set(can_fall_through)
         else
             output_statement_for_java(Info, Indent + 1, FuncInfo,
-                BodyStatement, StmtExitMethods, !IO),
+                BodyStmt, StmtExitMethods, !IO),
             ExitMethods = while_exit_methods_for_java(Cond, StmtExitMethods)
         )
     ;
-        Statement = ml_stmt_while(Kind, Cond, BodyStatement),
+        Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
         Kind = loop_at_least_once,
         output_n_indents(Indent, !IO),
         io.write_string("do\n", !IO),
-        output_statement_for_java(Info, Indent + 1, FuncInfo, BodyStatement,
+        output_statement_for_java(Info, Indent + 1, FuncInfo, BodyStmt,
             StmtExitMethods, !IO),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("while (", !IO),
         output_rval_for_java(Info, Cond, !IO),
         io.write_string(");\n", !IO),
         ExitMethods = while_exit_methods_for_java(Cond, StmtExitMethods)
     ;
-        Statement = ml_stmt_if_then_else(Cond, Then0, MaybeElse),
+        Stmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse, Context),
         % We need to take care to avoid problems caused by the dangling else
         % ambiguity.
         ( if
@@ -3508,9 +3493,9 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
             % with the inner `if' rather than the outer `if'.
 
             MaybeElse = yes(_),
-            Then0 = statement(ml_stmt_if_then_else(_, _, no), ThenContext)
+            Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
         then
-            Then = statement(ml_stmt_block([], [Then0]), ThenContext)
+            Then = ml_stmt_block([], [Then0], ThenContext)
         else
             Then = Then0
         ),
@@ -3523,7 +3508,7 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
             ThenExitMethods, !IO),
         (
             MaybeElse = yes(Else),
-            indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+            indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
                 Context, Indent, !IO),
             io.write_string("else\n", !IO),
             output_statement_for_java(Info, Indent + 1, FuncInfo, Else,
@@ -3539,43 +3524,44 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
                 set.make_singleton_set(can_fall_through)
         )
     ;
-        Statement = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default,
+            Context),
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("switch (", !IO),
         output_rval_maybe_with_enum_for_java(Info, Val, !IO),
         io.write_string(") {\n", !IO),
         output_switch_cases_for_java(Info, Indent + 1, FuncInfo, Context,
             Cases, Default, ExitMethods, !IO),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
-        Statement = ml_stmt_label(_),
+        Stmt = ml_stmt_label(_, _),
         unexpected($pred, "labels not supported in Java.")
     ;
-        Statement = ml_stmt_goto(goto_label(_)),
+        Stmt = ml_stmt_goto(goto_label(_), _),
         unexpected($pred, "gotos not supported in Java.")
     ;
-        Statement = ml_stmt_goto(goto_break),
+        Stmt = ml_stmt_goto(goto_break, _),
         output_n_indents(Indent, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = set.make_singleton_set(can_break)
     ;
-        Statement = ml_stmt_goto(goto_continue),
+        Stmt = ml_stmt_goto(goto_continue, _),
         output_n_indents(Indent, !IO),
         io.write_string("continue;\n", !IO),
         ExitMethods = set.make_singleton_set(can_continue)
     ;
-        Statement = ml_stmt_computed_goto(_, _),
+        Stmt = ml_stmt_computed_goto(_, _, _),
         unexpected($pred, "computed gotos not supported in Java.")
     ;
-        Statement = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
-            Results, _IsTailCall, _Markers),
+        Stmt = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
+            Results, _IsTailCall, _Markers, Context),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         output_n_indents(Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent + 1, !IO),
         (
             Results = []
@@ -3686,7 +3672,7 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
         % couple of files in the benchmarks directory. -mjwybrow
         %
         % ( if IsTailCall = tail_call, Results = [] then
-        %   indent_line_mlds_context(Context, Indent + 1, !IO),
+        %   indent_line_after_context(Context, Indent + 1, !IO),
         %   io.write_string("return;\n", !IO)
         % else
         %   true
@@ -3696,7 +3682,7 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
         io.write_string("}\n", !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
-        Statement = ml_stmt_return(Results),
+        Stmt = ml_stmt_return(Results, _Context),
         (
             Results = [],
             output_n_indents(Indent, !IO),
@@ -3726,7 +3712,7 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
         ),
         ExitMethods = set.make_singleton_set(can_return)
     ;
-        Statement = ml_stmt_do_commit(Ref),
+        Stmt = ml_stmt_do_commit(Ref, _Context),
         output_n_indents(Indent, !IO),
         output_rval_for_java(Info, Ref, !IO),
         io.write_string(" = new jmercury.runtime.Commit();\n", !IO),
@@ -3736,12 +3722,12 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
         io.write_string(";\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
     ;
-        Statement = ml_stmt_try_commit(_Ref, Stmt, Handler),
+        Stmt = ml_stmt_try_commit(_Ref, BodyStmt, HandlerStmt, _Context),
         output_n_indents(Indent, !IO),
         io.write_string("try\n", !IO),
         output_n_indents(Indent, !IO),
         io.write_string("{\n", !IO),
-        output_statement_for_java(Info, Indent + 1, FuncInfo, Stmt,
+        output_statement_for_java(Info, Indent + 1, FuncInfo, BodyStmt,
             TryExitMethods0, !IO),
         output_n_indents(Indent, !IO),
         io.write_string("}\n", !IO),
@@ -3751,16 +3737,15 @@ output_stmt_for_java(Info, Indent, FuncInfo, Statement, Context,
         output_n_indents(Indent, !IO),
         io.write_string("{\n", !IO),
         output_n_indents(Indent + 1, !IO),
-        output_statement_for_java(Info, Indent + 1, FuncInfo, Handler,
+        output_statement_for_java(Info, Indent + 1, FuncInfo, HandlerStmt,
             CatchExitMethods, !IO),
         output_n_indents(Indent, !IO),
         io.write_string("}\n", !IO),
         ExitMethods = (TryExitMethods0 `set.delete` can_throw)
             `set.union`  CatchExitMethods
     ;
-        Statement = ml_stmt_atomic(AtomicStatement),
-        output_atomic_stmt_for_java(Info, Indent, AtomicStatement,
-            Context, !IO),
+        Stmt = ml_stmt_atomic(AtomicStmt, Context),
+        output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
     ).
 
@@ -3840,13 +3825,13 @@ output_boxed_args(Info, [CallArg | CallArgs], [CallArgType | CallArgTypes],
     % This procedure generates the assignments to the outputs.
     %
 :- pred output_assign_results(java_out_info::in, list(mlds_lval)::in,
-    list(mlds_type)::in, int::in, indent::in, mlds_context::in,
+    list(mlds_type)::in, int::in, indent::in, prog_context::in,
     io::di, io::uo) is det.
 
 output_assign_results(_, [], [], _, _, _, !IO).
 output_assign_results(Info, [Lval | Lvals], [Type | Types], ResultIndex,
         Indent, Context, !IO) :-
-    indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+    indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_lval_for_java(Info, Lval, !IO),
     io.write_string(" = ", !IO),
@@ -3881,7 +3866,7 @@ output_unboxed_result(Info, Type, ResultIndex, !IO) :-
 %
 
 :- pred output_switch_cases_for_java(java_out_info::in, indent::in,
-    func_info_csj::in, mlds_context::in, list(mlds_switch_case)::in,
+    func_info_csj::in, prog_context::in, list(mlds_switch_case)::in,
     mlds_switch_default::in, exit_methods::out, io::di, io::uo) is det.
 
 output_switch_cases_for_java(Info, Indent, FuncInfo, Context,
@@ -3903,19 +3888,19 @@ output_switch_cases_for_java(Info, Indent, FuncInfo, Context,
     ExitMethods = CaseExitMethods `set.union` CasesExitMethods.
 
 :- pred output_switch_case_for_java(java_out_info::in, indent::in,
-    func_info_csj::in, mlds_context::in, mlds_switch_case::in,
+    func_info_csj::in, prog_context::in, mlds_switch_case::in,
     exit_methods::out, io::di, io::uo) is det.
 
 output_switch_case_for_java(Info, Indent, FuncInfo, Context, Case,
         ExitMethods, !IO) :-
-    Case = mlds_switch_case(FirstCond, LaterConds, Statement),
+    Case = mlds_switch_case(FirstCond, LaterConds, Stmt),
     output_case_cond_for_java(Info, Indent, Context, FirstCond, !IO),
     list.foldl(output_case_cond_for_java(Info, Indent, Context), LaterConds,
         !IO),
-    output_statement_for_java(Info, Indent + 1, FuncInfo, Statement,
+    output_statement_for_java(Info, Indent + 1, FuncInfo, Stmt,
         StmtExitMethods, !IO),
     ( if set.member(can_fall_through, StmtExitMethods) then
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent + 1, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = (StmtExitMethods `set.insert` can_break)
@@ -3926,12 +3911,12 @@ output_switch_case_for_java(Info, Indent, FuncInfo, Context, Case,
     ).
 
 :- pred output_case_cond_for_java(java_out_info::in, indent::in,
-    mlds_context::in, mlds_case_match_cond::in, io::di, io::uo) is det.
+    prog_context::in, mlds_case_match_cond::in, io::di, io::uo) is det.
 
 output_case_cond_for_java(Info, Indent, Context, Match, !IO) :-
     (
         Match = match_value(Val),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("case ", !IO),
         ( if Val = ml_const(mlconst_enum(N, _)) then
@@ -3946,7 +3931,7 @@ output_case_cond_for_java(Info, Indent, Context, Match, !IO) :-
     ).
 
 :- pred output_switch_default_for_java(java_out_info::in, indent::in,
-    func_info_csj::in, mlds_context::in, mlds_switch_default::in,
+    func_info_csj::in, prog_context::in, mlds_switch_default::in,
     exit_methods::out, io::di, io::uo) is det.
 
 output_switch_default_for_java(Info, Indent, FuncInfo, Context, Default,
@@ -3955,18 +3940,18 @@ output_switch_default_for_java(Info, Indent, FuncInfo, Context, Default,
         Default = default_do_nothing,
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
-        Default = default_case(Statement),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        Default = default_case(Stmt),
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("default:\n", !IO),
-        output_statement_for_java(Info, Indent + 1, FuncInfo, Statement,
+        output_statement_for_java(Info, Indent + 1, FuncInfo, Stmt,
             ExitMethods, !IO)
     ;
         Default = default_is_unreachable,
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("default: /*NOTREACHED*/\n", !IO),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent + 1, !IO),
         io.write_string("throw new jmercury.runtime.UnreachableDefault();\n",
             !IO),
@@ -3979,7 +3964,7 @@ output_switch_default_for_java(Info, Indent, FuncInfo, Context, Default,
 %
 
 :- pred output_atomic_stmt_for_java(java_out_info::in, indent::in,
-    mlds_atomic_statement::in, mlds_context::in, io::di, io::uo) is det.
+    mlds_atomic_statement::in, prog_context::in, io::di, io::uo) is det.
 
 output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO) :-
     (
@@ -4016,7 +4001,7 @@ output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO) :-
 
         output_n_indents(Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line_mlds_context(Info ^ joi_line_numbers, marker_comment,
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent + 1, !IO),
         output_lval_for_java(Info, Target, !IO),
         io.write_string(" = new ", !IO),
@@ -5040,10 +5025,10 @@ mlds_output_data_addr_for_java(data_addr(ModuleQualifier, DataName), !IO) :-
             % This marks mercury generated code for which Java's line numbers
             % should be used, it's just a comment for the Mercury developers.
 
-:- pred output_context(bool::in, context_marker::in,
+:- pred output_context_for_java(bool::in, context_marker::in,
     prog_context::in, io::di, io::uo) is det.
 
-output_context(OutputLineNumbers, Marker, ProgContext, !IO) :-
+output_context_for_java(OutputLineNumbers, Marker, ProgContext, !IO) :-
     (
         OutputLineNumbers = yes,
         get_last_context(LastContext, !IO),
@@ -5087,25 +5072,18 @@ marker_string(marker_begin_block) = "MER_FOREIGN_BEGIN".
 marker_string(marker_end_block) = "MER_FOREIGN_END".
 marker_string(marker_comment) = "".
 
-:- pred indent_line_mlds_context(bool::in, context_marker::in,
-    mlds_context::in, indent::in, io::di, io::uo) is det.
-
-indent_line_mlds_context(OutputLineNumbers, Marker, Context, N, !IO) :-
-    ProgContext = mlds_get_prog_context(Context),
-    indent_line_prog_context(OutputLineNumbers, Marker, ProgContext, N, !IO).
-
-:- pred indent_line_prog_context(bool::in, context_marker::in,
+:- pred indent_line_after_context(bool::in, context_marker::in,
     prog_context::in, indent::in, io::di, io::uo) is det.
 
-indent_line_prog_context(OutputLineNumbers, Marker, Context, N, !IO) :-
-    output_context(OutputLineNumbers, Marker, Context, !IO),
+indent_line_after_context(OutputLineNumbers, Marker, Context, N, !IO) :-
+    output_context_for_java(OutputLineNumbers, Marker, Context, !IO),
     output_n_indents(N, !IO).
 
 :- pred write_string_with_context_block(java_out_info::in, indent::in,
     string::in, prog_context::in, io::di, io::uo) is det.
 
 write_string_with_context_block(Info, Indent, Code, Context, !IO) :-
-    indent_line_prog_context(Info ^ joi_foreign_line_numbers,
+    indent_line_after_context(Info ^ joi_foreign_line_numbers,
         marker_begin_block, Context, Indent, !IO),
     io.write_string(Code, !IO),
     io.nl(!IO),
@@ -5115,7 +5093,7 @@ write_string_with_context_block(Info, Indent, Code, Context, !IO) :-
     % they are expanded out in Code.
     Context = context(File, Lines0),
     ContextEnd = context(File, Lines0 + num_lines(Code)),
-    indent_line_prog_context(Info ^ joi_foreign_line_numbers,
+    indent_line_after_context(Info ^ joi_foreign_line_numbers,
         marker_end_block, ContextEnd, Indent, !IO).
 
 :- func num_lines(string) = int.

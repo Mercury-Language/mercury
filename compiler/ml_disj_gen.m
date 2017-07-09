@@ -114,7 +114,7 @@
 :- import_module list.
 
 :- pred ml_gen_disj(list(hlds_goal)::in, hlds_goal_info::in, code_model::in,
-    prog_context::in, list(statement)::out,
+    prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -140,19 +140,19 @@
 :- import_module maybe.
 :- import_module require.
 
-ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
+ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Stmts, !Info) :-
     % Note that we place each arm of the disjunction into a block. This is so
     % that we can avoid having to figure out how to merge their declarations
     % with the declarations of the other disjuncts.
     (
         Disjuncts = [],
         % Handle empty disjunctions (a.ka. `fail').
-        ml_gen_failure(CodeModel, Context, Statements, !Info)
+        ml_gen_failure(CodeModel, Context, Stmts, !Info)
     ;
         Disjuncts = [FirstDisjunct | LaterDisjuncts],
         (
             LaterDisjuncts = [],
-            unexpected($module, $pred, "single disjunct")
+            unexpected($pred, "single disjunct")
         ;
             LaterDisjuncts = [_ | _],
             (
@@ -179,18 +179,17 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
                     OutVars = set_of_var.to_sorted_list(NonLocals),
                     list.map_foldl(ml_generate_constants_for_arm(OutVars),
                         Disjuncts, Solns, !Info),
-                    ml_gen_lookup_disj(OutVars, Solns, Context,
-                        Statements, !Info)
+                    ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info)
                 else
                     ml_gen_ordinary_model_non_disj(FirstDisjunct,
-                        LaterDisjuncts, Context, Statements, !Info)
+                        LaterDisjuncts, Context, Stmts, !Info)
                 )
             ;
                 ( CodeModel = model_det
                 ; CodeModel = model_semi
                 ),
                 ml_gen_ordinary_model_det_semi_disj(FirstDisjunct,
-                    LaterDisjuncts, CodeModel, Context, Statements, !Info)
+                    LaterDisjuncts, CodeModel, Context, Stmts, !Info)
             )
         )
     ).
@@ -209,16 +208,15 @@ allow_lookup_disj(target_erlang) = no.
 %-----------------------------------------------------------------------------%
 
 :- pred ml_gen_ordinary_model_det_semi_disj(hlds_goal::in, list(hlds_goal)::in,
-    code_model::in, prog_context::in, list(statement)::out,
+    code_model::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
-        Context, Statements, !Info) :-
+        Context, Stmts, !Info) :-
     (
         LaterDisjuncts = [],
-        ml_gen_goal_as_branch_block(CodeModel, FirstDisjunct, Statement,
-            !Info),
-        Statements = [Statement]
+        ml_gen_goal_as_branch_block(CodeModel, FirstDisjunct, Stmt, !Info),
+        Stmts = [Stmt]
     ;
         LaterDisjuncts = [FirstLaterDisjunct | LaterLaterDisjuncts],
         % model_det/model_semi disj:
@@ -245,27 +243,24 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
         FirstCodeModel = goal_info_get_code_model(FirstGoalInfo),
         (
             FirstCodeModel = model_det,
-            ml_gen_goal_as_branch_block(model_det, FirstDisjunct, Statement,
-                !Info),
-            Statements = [Statement]
+            ml_gen_goal_as_branch_block(model_det, FirstDisjunct, Stmt, !Info),
+            Stmts = [Stmt]
         ;
             FirstCodeModel = model_semi,
-            ml_gen_goal_as_branch_block(model_semi, FirstDisjunct,
-                FirstStatement, !Info),
+            ml_gen_goal_as_branch_block(model_semi, FirstDisjunct, FirstStmt,
+                !Info),
             ml_gen_test_success(!.Info, Succeeded),
             ml_gen_ordinary_model_det_semi_disj(FirstLaterDisjunct,
-                LaterLaterDisjuncts, CodeModel, Context, LaterStatements,
-                !Info),
-            LaterStatement = ml_gen_block([], LaterStatements, Context),
+                LaterLaterDisjuncts, CodeModel, Context, LaterStmts, !Info),
+            LaterStmt = ml_gen_block([], LaterStmts, Context),
             IfStmt = ml_stmt_if_then_else(
                 ml_unop(std_unop(logical_not), Succeeded),
-                LaterStatement, no),
-            IfStatement = statement(IfStmt, mlds_make_context(Context)),
-            Statements = [FirstStatement, IfStatement]
+                LaterStmt, no, Context),
+            Stmts = [FirstStmt, IfStmt]
         ;
             FirstCodeModel = model_non,
             % simplify.m should get wrap commits around these.
-            unexpected($module, $pred,
+            unexpected($pred,
                 "model_non disjunct in model_det or model_semi disjunction")
         )
     ).
@@ -273,16 +268,15 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
 %-----------------------------------------------------------------------------%
 
 :- pred ml_gen_ordinary_model_non_disj(hlds_goal::in, list(hlds_goal)::in,
-    prog_context::in, list(statement)::out,
+    prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts, Context,
-        Statements, !Info) :-
+        Stmts, !Info) :-
     (
         LaterDisjuncts = [],
-        ml_gen_goal_as_branch_block(model_non, FirstDisjunct, Statement,
-            !Info),
-        Statements = [Statement]
+        ml_gen_goal_as_branch_block(model_non, FirstDisjunct, Stmt, !Info),
+        Stmts = [Stmt]
     ;
         LaterDisjuncts = [FirstLaterDisjunct | LaterLaterDisjuncts],
         % model_non disj:
@@ -292,24 +286,23 @@ ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts, Context,
         %       <Goal && SUCCEED()>
         %       <Goals && SUCCEED()>
 
-        ml_gen_goal_as_branch_block(model_non, FirstDisjunct, FirstStatement,
+        ml_gen_goal_as_branch_block(model_non, FirstDisjunct, FirstStmt,
             !Info),
         ml_gen_ordinary_model_non_disj(FirstLaterDisjunct, LaterLaterDisjuncts,
-            Context, LaterStatements, !Info),
-        Statements = [FirstStatement | LaterStatements]
+            Context, LaterStmts, !Info),
+        Stmts = [FirstStmt | LaterStmts]
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- pred ml_gen_lookup_disj(list(prog_var)::in, list(list(mlds_rval))::in,
-    prog_context::in, list(statement)::out,
+    prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_lookup_disj(OutVars, Solns, Context, Statements, !Info) :-
+ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    MLDS_Context = mlds_make_context(Context),
     ml_gen_info_get_target(!.Info, Target),
 
     ml_gen_info_get_var_types(!.Info, VarTypes),
@@ -318,7 +311,7 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Statements, !Info) :-
         list.map(mercury_type_to_mlds_type(ModuleInfo), FieldTypes),
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
-    ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
+    ml_gen_static_vector_type(MLDS_ModuleName, Context, Target,
         MLDS_FieldTypes, StructTypeNum, StructType, FieldIds,
         GlobalData0, GlobalData1),
 
@@ -333,41 +326,39 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Statements, !Info) :-
     ml_gen_info_new_aux_var_name(mcav_slot, SlotVar, !Info),
     SlotVarType = mlds_native_int_type,
     % We never need to trace ints.
-    SlotVarGCStatement = gc_no_stmt,
+    SlotVarGCStmt = gc_no_stmt,
     SlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(SlotVar),
-        SlotVarType, SlotVarGCStatement, MLDS_Context),
+        SlotVarType, SlotVarGCStmt, Context),
     ml_gen_var_lval(!.Info, SlotVar, SlotVarType, SlotVarLval),
     SlotVarRval = ml_lval(SlotVarLval),
 
     ml_generate_field_assigns(OutVars, MLDS_FieldTypes, FieldIds,
-        VectorCommon, StructType, SlotVarRval, MLDS_Context, LookupStatements,
-        !Info),
-    ml_gen_call_current_success_cont(Context, CallContStatement, !Info),
+        VectorCommon, StructType, SlotVarRval, Context, LookupStmts, !Info),
+    ml_gen_call_current_success_cont(Context, CallContStmt, !Info),
 
-    InitSlotVarStmt = ml_stmt_atomic(assign(SlotVarLval,
-        ml_const(mlconst_int(0)))),
-    InitSlotVarStatement = statement(InitSlotVarStmt, MLDS_Context),
+    InitSlotVarStmt = ml_stmt_atomic(
+        assign(SlotVarLval, ml_const(mlconst_int(0))),
+        Context),
 
-    IncrSlotVarStmt = ml_stmt_atomic(assign(SlotVarLval,
-        ml_binop(int_add, SlotVarRval, ml_const(mlconst_int(1))))),
-    IncrSlotVarStatement = statement(IncrSlotVarStmt, MLDS_Context),
+    IncrSlotVarStmt = ml_stmt_atomic(
+        assign(SlotVarLval,
+            ml_binop(int_add, SlotVarRval, ml_const(mlconst_int(1)))),
+        Context),
 
     LoopBodyStmt = ml_stmt_block([],
-        LookupStatements ++ [CallContStatement, IncrSlotVarStatement]),
-    LoopBodyStatement = statement(LoopBodyStmt, MLDS_Context),
+        LookupStmts ++ [CallContStmt, IncrSlotVarStmt], Context),
 
     LoopCond = ml_binop(int_lt, SlotVarRval, ml_const(mlconst_int(NumRows))),
-    LoopStmt = ml_stmt_while(loop_at_least_once, LoopCond, LoopBodyStatement),
-    LoopStatement = statement(LoopStmt, MLDS_Context),
+    LoopStmt = ml_stmt_while(loop_at_least_once, LoopCond, LoopBodyStmt,
+        Context),
 
     % XXX MLDS_DEFN
     Stmt = ml_stmt_block([mlds_data(SlotVarDefn)],
-        [InitSlotVarStatement, LoopStatement]),
-    Statement = statement(Stmt, MLDS_Context),
-    Statements = [Statement].
+        [InitSlotVarStmt, LoopStmt], Context),
+    Stmts = [Stmt].
 
 :- pred ml_construct_disjunction_vector(module_info::in, mlds_type::in,
-        list(list(mlds_rval))::in, list(mlds_initializer)::out) is det.
+    list(list(mlds_rval))::in, list(mlds_initializer)::out) is det.
 
 ml_construct_disjunction_vector(_ModuleInfo, _StructType, [], []).
 ml_construct_disjunction_vector(ModuleInfo, StructType,

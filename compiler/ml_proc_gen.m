@@ -172,7 +172,7 @@ foreign_type_required_imports(Target, _TypeCtor - _TypeDefn) = Imports :-
         Imports = []
     ;
         Target = target_erlang,
-        unexpected($module, $pred, "target erlang")
+        unexpected($pred, "target erlang")
     ).
 
 :- pred ml_gen_defns(module_info::in, module_info::out,
@@ -223,15 +223,14 @@ ml_gen_init_common_data(ModuleInfo, GlobalData) :-
 
 ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
     PragmaExportedProc = pragma_exported_proc(Lang, PredId, ProcId,
-        ExportName, ProgContext),
+        ExportName, Context),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, ModuleName, PlainName),
     MLDS_Name = qual(ModuleName, module_qual, mlds_function_name(PlainName)),
     ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_univ_quant_tvars(PredInfo, UnivQTVars),
-    MLDS_Context = mlds_make_context(ProgContext),
     Defn = ml_pragma_export(Lang, ExportName, MLDS_Name, FuncParams,
-        UnivQTVars, MLDS_Context).
+        UnivQTVars, Context).
 
 :- pred ml_gen_export_proc_params(module_info::in, pred_id::in, proc_id::in,
     mlds_func_params::out) is det.
@@ -473,8 +472,7 @@ ml_gen_proc(ConstStructMap, PredProcId,
                 ml_gen_local_var_decls(VarSet, UpdatedVarTypes,
                     Context, CopiedOutputVars, OutputVarLocals, !Info)
             ),
-            MLDS_Context = mlds_make_context(Context),
-            MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
+            MLDS_LocalVars = [ml_gen_succeeded_var_decl(Context) |
                 OutputVarLocals],
             modes_to_top_functor_modes(!.ModuleInfo, Modes, ArgTypes,
                 TopFunctorModes),
@@ -497,7 +495,6 @@ ml_gen_proc(ConstStructMap, PredProcId,
     proc_info_get_context(ProcInfo0, ProcContext),
     ml_gen_proc_label(!.ModuleInfo, PredId, ProcId,
         _ModuleName, PlainFuncName),
-    MLDS_ProcContext = mlds_make_context(ProcContext),
     DeclFlags = ml_gen_proc_decl_flags(!.ModuleInfo, PredId, ProcId),
     MaybePredProcId = yes(PredProcId),
     proc_info_get_maybe_require_tailrec_info(ProcInfo0,
@@ -507,7 +504,7 @@ ml_gen_proc(ConstStructMap, PredProcId,
     MLDS_Attributes =
         attributes_to_mlds_attributes(!.ModuleInfo, AttributeList),
     FunctionDefn = mlds_function_defn(mlds_function_name(PlainFuncName),
-        MLDS_ProcContext, DeclFlags, MaybePredProcId, MLDS_Params,
+        ProcContext, DeclFlags, MaybePredProcId, MLDS_Params,
         FunctionBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfo),
     !:FunctionDefns = ExtraDefns ++ [FunctionDefn | !.FunctionDefns].
 
@@ -598,7 +595,7 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
     %
 :- pred ml_gen_proc_body(code_model::in, list(prog_var)::in,
     list(mer_type)::in, list(top_functor_mode)::in, list(prog_var)::in,
-    hlds_goal::in, list(mlds_defn)::out, list(statement)::out,
+    hlds_goal::in, list(mlds_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
@@ -659,7 +656,7 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
     %
 :- pred ml_gen_convert_headvars(list(prog_var)::in, list(mer_type)::in,
     list(top_functor_mode)::in, list(prog_var)::in, prog_context::in,
-    list(mlds_data_defn)::out, list(statement)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(mlds_stmt)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_convert_headvars(Vars, HeadTypes, TopFunctorModes, CopiedOutputVars,
@@ -732,7 +729,7 @@ ml_gen_convert_headvars(Vars, HeadTypes, TopFunctorModes, CopiedOutputVars,
             Decls = ConvDecls ++ DeclsTail
         )
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -759,7 +756,7 @@ ml_gen_table_structs(ModuleInfo, DataDefns) :-
         % GC support (stack frame registration, and calls to MR_GC_check()) to
         % MR_make_long_lived() and MR_deep_copy() so that we do garbage
         % collection of the "global heap" which is used to store the tables.
-        expect(isnt(unify(gc_accurate), GC_Method), $module, $pred,
+        expect(isnt(unify(gc_accurate), GC_Method), $pred,
             "tabling and `--gc accurate'"),
 
         list.foldl(ml_gen_add_table_var(ModuleInfo), TableStructs,
@@ -783,7 +780,6 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, PredLabel,
         _PredModule),
     MLDS_ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    MLDS_Context = mlds_make_context(Context),
     TableTypeStr = eval_method_to_table_type(EvalMethod),
     (
         InputSteps = [],
@@ -799,14 +795,14 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
             list.map(init_step_desc(tabling_steps_desc(call_table)),
             InputSteps)),
         InputStepsDefn = tabling_name_and_init_to_defn(MLDS_ProcLabel,
-            MLDS_Context, const, tabling_steps_desc(call_table),
+            Context, const, tabling_steps_desc(call_table),
             InputStepsInit),
         InputStepsDefns = [InputStepsDefn]
     ),
-    init_stats(MLDS_ModuleName, MLDS_ProcLabel, MLDS_Context,
+    init_stats(MLDS_ModuleName, MLDS_ProcLabel, Context,
         call_table, curr_table, InputSteps,
         CallStatsInit, CallStatsDefns),
-    init_stats(MLDS_ModuleName, MLDS_ProcLabel, MLDS_Context,
+    init_stats(MLDS_ModuleName, MLDS_ProcLabel, Context,
         call_table, prev_table, InputSteps,
         PrevCallStatsInit, PrevCallStatsDefns),
     CallDefns = InputStepsDefns ++ CallStatsDefns ++ PrevCallStatsDefns,
@@ -825,14 +821,14 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
             list.map(init_step_desc(tabling_steps_desc(answer_table)),
             OutputSteps)),
         OutputStepsDefn = tabling_name_and_init_to_defn(MLDS_ProcLabel,
-            MLDS_Context, const, tabling_steps_desc(answer_table),
+            Context, const, tabling_steps_desc(answer_table),
             OutputStepsInit),
         OutputStepsDefns = [OutputStepsDefn]
     ),
-    init_stats(MLDS_ModuleName, MLDS_ProcLabel, MLDS_Context,
+    init_stats(MLDS_ModuleName, MLDS_ProcLabel, Context,
         answer_table, curr_table, InputSteps,
         AnswerStatsInit, AnswerStatsDefns),
-    init_stats(MLDS_ModuleName, MLDS_ProcLabel, MLDS_Context,
+    init_stats(MLDS_ModuleName, MLDS_ProcLabel, Context,
         answer_table, prev_table, InputSteps,
         PrevAnswerStatsInit, PrevAnswerStatsDefns),
     AnswerDefns = OutputStepsDefns ++ AnswerStatsDefns ++ PrevAnswerStatsDefns,
@@ -863,7 +859,7 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
         gen_init_int(0)
     ]),
     ProcTableInfoDefn = tabling_name_and_init_to_defn(MLDS_ProcLabel,
-        MLDS_Context, modifiable, tabling_info, ProcTableInfoInit),
+        Context, modifiable, tabling_info, ProcTableInfoInit),
 
     !:DataDefns = CallDefns ++ AnswerDefns ++
         [ProcTableInfoDefn | !.DataDefns].
@@ -886,12 +882,12 @@ init_step_desc(StructId, StepDesc) = init_struct(StructType, FieldInits) :-
     StructType = mlds_tabling_type(StructId),
     FieldInits = [VarNameInit, StepInit, MaybeEnumRangeInit].
 
-:- pred init_stats(mlds_module_name::in, mlds_proc_label::in, mlds_context::in,
+:- pred init_stats(mlds_module_name::in, mlds_proc_label::in, prog_context::in,
     call_or_answer_table::in, curr_or_prev_table::in,
     list(table_step_desc)::in, mlds_initializer::out,
     list(mlds_data_defn)::out) is det.
 
-init_stats(MLDS_ModuleName, MLDS_ProcLabel, MLDS_Context,
+init_stats(MLDS_ModuleName, MLDS_ProcLabel, Context,
         CallOrAnswer, CurrOrPrev, StepDescs, StatsInit, StatsStepDefns) :-
     StatsId = tabling_stats(CallOrAnswer, CurrOrPrev),
     StatsStepsId = tabling_stat_steps(CallOrAnswer, CurrOrPrev),
@@ -906,7 +902,7 @@ init_stats(MLDS_ModuleName, MLDS_ProcLabel, MLDS_Context,
         list.map(init_stats_step(StatsStepsId), StepDescs, StatsStepsInits),
         StatsStepsArrayInit = init_array(StatsStepsInits),
         StatsStepDefn = tabling_name_and_init_to_defn(MLDS_ProcLabel,
-            MLDS_Context, modifiable, StatsStepsId, StatsStepsArrayInit),
+            Context, modifiable, StatsStepsId, StatsStepsArrayInit),
         StatsStepDefns = [StatsStepDefn],
         StatsStepsArrayRefInit = gen_init_tabling_name(MLDS_ModuleName,
             MLDS_ProcLabel, tabling_stat_steps(CallOrAnswer, CurrOrPrev))
@@ -966,16 +962,16 @@ gen_init_tabling_name(ModuleName, ProcLabel, TablingId) = Rval :-
     DataAddr = data_addr(ModuleName, mlds_tabling_ref(ProcLabel, TablingId)),
     Rval = init_obj(ml_const(mlconst_data_addr(DataAddr))).
 
-:- func tabling_name_and_init_to_defn(mlds_proc_label, mlds_context, constness,
+:- func tabling_name_and_init_to_defn(mlds_proc_label, prog_context, constness,
     proc_tabling_struct_id, mlds_initializer) = mlds_data_defn.
 
-tabling_name_and_init_to_defn(ProcLabel, MLDS_Context, Constness, Id,
-        Initializer) = DataDefn :-
+tabling_name_and_init_to_defn(ProcLabel, Context, Constness, Id, Initializer)
+        = DataDefn :-
     GCStatement = gc_no_stmt,
     MLDS_Type = mlds_tabling_type(Id),
     Flags = tabling_data_decl_flags(Constness),
     Name = mlds_tabling_ref(ProcLabel, Id),
-    DataDefn = mlds_data_defn(Name, MLDS_Context, Flags,
+    DataDefn = mlds_data_defn(Name, Context, Flags,
         MLDS_Type, Initializer, GCStatement).
 
     % Return the declaration flags appropriate for a tabling data structure.

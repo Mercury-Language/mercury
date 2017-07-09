@@ -30,7 +30,7 @@
 %-----------------------------------------------------------------------------%
 
     % ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes,
-    %   HowToConstruct, Context, Decls, Statements):
+    %   HowToConstruct, Context, Decls, Stmts):
     %
     % Generate code to construct a closure for the procedure specified
     % by PredId and ProcId, with the partially applied arguments specified
@@ -39,7 +39,7 @@
     %
 :- pred ml_gen_closure(pred_id::in, proc_id::in, prog_var::in, prog_vars::in,
     list(unify_mode)::in, how_to_construct::in, prog_context::in,
-    list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
     %   Context, WrapperFuncRval, WrapperFuncType):
@@ -115,7 +115,7 @@
 %-----------------------------------------------------------------------------%
 
 ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
-        Statements, !Info) :-
+        Stmts, !Info) :-
     % This constructs a closure.
     % The representation of closures for the LLDS backend is defined in
     % runtime/mercury_ho_call.h.
@@ -163,7 +163,7 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     % Generate a `new_object' statement (or static constant) for the closure.
     ml_gen_new_object(MaybeConsId, MaybeConsName, PTag, MaybeSTag,
         Var, ExtraArgRvals, ExtraArgTypes, ArgVars, ArgModes, [],
-        HowToConstruct, Context, Statements, !Info).
+        HowToConstruct, Context, Stmts, !Info).
 
     % Generate a value for the closure layout struct.
     % See MR_Closure_Layout in ../runtime/mercury_ho_call.h.
@@ -476,7 +476,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
         ( if set.remove_least(LeastLocn, Locns, _) then
             Locn = LeastLocn
         else
-            unexpected($module, $pred, "tvar has empty set of locations")
+            unexpected($pred, "tvar has empty set of locations")
         ),
         stack_layout.represent_locn_as_int(Locn, LocnAsInt),
         Rval = ml_const(mlconst_int(LocnAsInt)),
@@ -489,7 +489,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
             [TVar - Locns | TVarLocns], NextSlot, VectorTail),
         Vector = [init_obj(ml_const(mlconst_int(0))) | VectorTail]
     else
-        unexpected($module, $pred, "unsorted tvars")
+        unexpected($pred, "unsorted tvars")
     ).
 
 ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
@@ -702,7 +702,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         WrapperArgTypes = WrapperArgTypes0,
         WrapperBoxedArgTypes = WrapperBoxedArgTypes0
     else
-        unexpected($module, $pred, "list.drop failed")
+        unexpected($pred, "list.drop failed")
     ),
     WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1,
         list.length(WrapperHeadVars)),
@@ -733,9 +733,9 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         ClosureArgDeclType = ml_make_boxed_type,
         gen_closure_gc_statement(ClosureArgName, ClosureArgDeclType,
             ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
-            Context, ClosureArgGCStatement, !Info),
+            Context, ClosureArgGCStmt, !Info),
         ClosureArg = mlds_argument(ClosureArgName, ClosureArgType,
-            ClosureArgGCStatement),
+            ClosureArgGCStmt),
         MaybeClosureA = yes({ClosureArgType, ClosureArgName}),
         WrapperArgs = [ClosureArg | WrapperArgs1]
     ),
@@ -759,7 +759,6 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % #endif
     %   closure = closure_arg;
     %
-    MLDS_Context = mlds_make_context(Context),
     (
         MaybeClosureA = yes({ClosureArgType1, ClosureArgName1}),
         ClosureName = mlds_comp_var(mcv_closure),
@@ -769,14 +768,14 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         %   ClosureDeclType = list.det_head(ml_make_boxed_types(1)),
         %   gen_closure_gc_statement(ClosureName, ClosureDeclType,
         %       ClosureKind, WrapperArgTypes, Purity,
-        %       PredOrFunc, Context, ClosureGCStatement),
+        %       PredOrFunc, Context, ClosureGCStmt),
         % But we don't need any GC tracing code for the closure pointer,
         % because it won't be live across an allocation, and because
         % (unlike the closure_arg parameter) it isn't referenced from
         % the GC tracing for other variables.
-        ClosureGCStatement = gc_no_stmt,
+        ClosureGCStmt = gc_no_stmt,
         ClosureDecl = ml_gen_mlds_var_decl(mlds_data_var(ClosureName),
-            ClosureType, ClosureGCStatement, MLDS_Context),
+            ClosureType, ClosureGCStmt, Context),
         ml_gen_var_lval(!.Info, ClosureName, ClosureType, ClosureLval),
         ml_gen_var_lval(!.Info, ClosureArgName1, ClosureArgType1,
             ClosureArgLval),
@@ -844,7 +843,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
             Offset = ml_typeclass_info_arg_offset
         ;
             ClosureKind = special_pred_closure,
-            unexpected($module, $pred, "special_pred_closure")
+            unexpected($pred, "special_pred_closure")
         ),
         ml_gen_closure_field_lvals(ClosureLval1, Offset, 1,
             NumClosureArgs, ClosureArgLvals, !Info)
@@ -854,17 +853,17 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
     CallLvals = list.append(ClosureArgLvals, WrapperHeadVarLvals),
     ml_gen_call(PredId, ProcId, ProcHeadVarNames, CallLvals, ProcBoxedArgTypes,
-        CodeModel, Context, yes, Decls0, Statements0, !Info),
+        CodeModel, Context, yes, Decls0, Stmts0, !Info),
 
     % Insert the stuff to declare and initialize the closure.
     (
         MaybeClosureB = yes({ClosureDecl1, InitClosure1}),
         Decls1 = [mlds_data(ClosureDecl1) | Decls0],
-        Statements1 = [InitClosure1 | Statements0]
+        Stmts1 = [InitClosure1 | Stmts0]
     ;
         MaybeClosureB = no,
         Decls1 = Decls0,
-        Statements1 = Statements0
+        Stmts1 = Stmts0
     ),
 
     % For semidet code, add the declaration `MR_bool succeeded;'.
@@ -875,13 +874,13 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         Decls2 = Decls1
     ;
         CodeModel = model_semi,
-        SucceededVarDecl = ml_gen_succeeded_var_decl(MLDS_Context),
+        SucceededVarDecl = ml_gen_succeeded_var_decl(Context),
         Decls2 = [mlds_data(SucceededVarDecl) | Decls1]
     ),
 
     % Add an appropriate `return' statement.
     ml_append_return_statement(!.Info, CodeModel, WrapperCopyOutLvals,
-        Context, Statements1, Statements),
+        Context, Stmts1, Stmts),
 
     % Generate code to declare and initialize the local variables
     % needed for accurate GC.
@@ -914,7 +913,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
 
     % Put it all together.
-    WrapperFuncBody = ml_gen_block(Decls, Statements, Context),
+    WrapperFuncBody = ml_gen_block(Decls, Stmts, Context),
     ml_gen_new_func_label(yes(WrapperParams), WrapperFuncName,
         WrapperFuncRval, !Info),
     ml_gen_wrapper_func(WrapperFuncName, WrapperParams, Context,
@@ -925,7 +924,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 :- func arg_delete_gc_statement(mlds_argument) = mlds_argument.
 
 arg_delete_gc_statement(Argument0) = Argument :-
-    Argument0 = mlds_argument(Name, Type, _GCStatement),
+    Argument0 = mlds_argument(Name, Type, _GCStmt),
     Argument = mlds_argument(Name, Type, gc_no_stmt).
 
     % Generate the GC trace code for `closure_arg' or `closure'
@@ -938,7 +937,7 @@ arg_delete_gc_statement(Argument0) = Argument :-
 
 gen_closure_gc_statement(ClosureName, ClosureDeclType,
         ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
-        Context, ClosureGCStatement, !Info) :-
+        Context, ClosureGCStmt, !Info) :-
     % We can't use WrapperArgTypes here, because we don't have type_infos
     % for the type variables in WrapperArgTypes; those type variables come from
     % the callee. But when copying closures, we don't care what the types of
@@ -955,19 +954,19 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
         ClosureActualType = sample_typeclass_info_type
     ;
         ClosureKind = special_pred_closure,
-        unexpected($module, $pred, "special_pred_closure")
+        unexpected($pred, "special_pred_closure")
     ),
     ml_gen_gc_statement_poly(ClosureName, ClosureDeclType, ClosureActualType,
-        Context, ClosureGCStatement, !Info).
+        Context, ClosureGCStmt, !Info).
 
 :- pred ml_gen_wrapper_func(ml_label_func::in, mlds_func_params::in,
-    prog_context::in, statement::in, mlds_function_defn::out,
+    prog_context::in, mlds_stmt::in, mlds_function_defn::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Statement, FunctionDefn,
+ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Stmt, FunctionDefn,
         !Info) :-
     % XXX MLDS_DEFN: pass the needed flags to ml_gen_label_func
-    ml_gen_label_func(!.Info, FuncLabel, FuncParams, Context, Statement,
+    ml_gen_label_func(!.Info, FuncLabel, FuncParams, Context, Stmt,
         FunctionDefn0),
     FunctionDefn0 = mlds_function_defn(Name, Ctxt, DeclFlags0,
         MaybePredProcId, DefnFuncParams, Body, Attributes,
@@ -1073,7 +1072,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
         ),
         Lvals = [Lval | LvalsTail]
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
     % This is used for accurate GC with the MLDS->C back-end.
@@ -1098,8 +1097,6 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
 
 ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         PredId, ProcId, Context, GC_Decls, !Info) :-
-    MLDS_Context = mlds_make_context(Context),
-
     ml_gen_var_lval(!.Info, ClosureArgName, ClosureArgType, ClosureArgLval),
 
     ClosureLayoutPtrName = mlds_comp_var(mcv_closure_layout_ptr),
@@ -1122,9 +1119,11 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
             target_code_input(ml_lval(ClosureArgLval)),
             raw_target_code(")->MR_closure_layout;\n")
         ],
-        ClosureLayoutPtrGCInit = statement(ml_stmt_atomic(
-            inline_target_code(ml_target_c,
-            ClosureLayoutPtrGCInitFragments)), MLDS_Context),
+        ClosureLayoutPtrGCInit =
+            ml_stmt_atomic(
+                inline_target_code(ml_target_c,
+                    ClosureLayoutPtrGCInitFragments),
+                Context),
         TypeParamsGCInitFragments = [
             target_code_output(TypeParamsLval),
             raw_target_code(" = (MR_Box) " ++
@@ -1136,11 +1135,11 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         ClosureKind = typeclass_info_closure,
         ml_gen_closure_layout(PredId, ProcId, Context,
             ClosureLayoutRval, ClosureLayoutType, !Info),
-        ClosureLayoutPtrGCInit = statement(
+        ClosureLayoutPtrGCInit =
             ml_stmt_atomic(
                 assign(ClosureLayoutPtrLval,
-                    ml_unop(box(ClosureLayoutType), ClosureLayoutRval))),
-            MLDS_Context),
+                    ml_unop(box(ClosureLayoutType), ClosureLayoutRval)),
+                Context),
         TypeParamsGCInitFragments = [
             target_code_output(TypeParamsLval),
             raw_target_code(" = (MR_Box) " ++
@@ -1153,22 +1152,22 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         ]
     ;
         ClosureKind = special_pred_closure,
-        unexpected($module, $pred, "special_pred_closure")
+        unexpected($pred, "special_pred_closure")
 
     ),
-    TypeParamsGCInit = statement(ml_stmt_atomic(inline_target_code(
-        ml_target_c, TypeParamsGCInitFragments)), MLDS_Context),
+    TypeParamsGCInit = ml_stmt_atomic(
+        inline_target_code(ml_target_c, TypeParamsGCInitFragments), Context),
     % We use 'gc_initialiser' for the garbage collection code as it is code to
     % initialise local variables used during garbage collection and must
     % run before variables are traced.
     ClosureLayoutPtrDecl = ml_gen_mlds_var_decl(
         mlds_data_var(ClosureLayoutPtrName), ClosureLayoutPtrType,
-        gc_initialiser(ClosureLayoutPtrGCInit), MLDS_Context),
+        gc_initialiser(ClosureLayoutPtrGCInit), Context),
     % We use 'gc_initialiser' for the garbage collection code as it is code to
     % initialise local variables used during garbage collection and must
     % run before variables are traced.
     TypeParamsDecl = ml_gen_mlds_var_decl(mlds_data_var(TypeParamsName),
-        TypeParamsType, gc_initialiser(TypeParamsGCInit), MLDS_Context),
+        TypeParamsType, gc_initialiser(TypeParamsGCInit), Context),
     GC_Decls = [ClosureLayoutPtrDecl, TypeParamsDecl].
 
 :- pred ml_gen_closure_field_lvals(mlds_lval::in, int::in, int::in, int::in,

@@ -590,7 +590,7 @@
 :- type mlds_data_defn
     --->    mlds_data_defn(
                 mdd_data_name           :: mlds_data_name,
-                mdd_context             :: mlds_context,
+                mdd_context             :: prog_context,
                 mdd_decl_flags          :: mlds_data_decl_flags,
 
                 mdd_type                :: mlds_type,
@@ -605,7 +605,7 @@
 :- type mlds_function_defn
     --->    mlds_function_defn(
                 mfd_function_name       :: mlds_function_name,
-                mfd_context             :: mlds_context,
+                mfd_context             :: prog_context,
                 mfd_decl_flags          :: mlds_function_decl_flags,
 
                 % Identifies the original Mercury procedure, if any.
@@ -638,8 +638,8 @@
     % variables for the predicate (used when generating closures).
     %
 :- type mlds_gc_statement
-    --->    gc_trace_code(statement)
-    ;       gc_initialiser(statement)
+    --->    gc_trace_code(mlds_stmt)
+    ;       gc_initialiser(mlds_stmt)
     ;       gc_no_stmt.
 
     % It is possible for the function to be defined externally,
@@ -648,7 +648,7 @@
     % alternative here).
     %
 :- type mlds_function_body
-    --->    body_defined_here(statement)
+    --->    body_defined_here(mlds_stmt)
     ;       body_external.
 
     % Note that `one_copy' variables *must* have an initializer
@@ -729,7 +729,7 @@
 :- type mlds_class_defn
     --->    mlds_class_defn(
                 mcd_type_name       :: mlds_type_name,
-                mcd_context         :: mlds_context,
+                mcd_context         :: prog_context,
                 mcd_decl_flags      :: mlds_class_decl_flags,
 
                 mcd_kind            :: mlds_class_kind,
@@ -925,7 +925,7 @@
             % accessible to anything defined in the same package.
             % We don't generate default members.
 
-    % The following is used for entities defined in a block/2 statement,
+    % The following is used for entities defined in a block/2 mlds_stmt,
     % i.e. local variables and nested functions.
 
     ;       acc_local.
@@ -1050,7 +1050,7 @@
                 mlds_func_params,              % MLDS function parameters
                 list(tvar),                    % Universally quantified type
                                                % variables.
-                mlds_context
+                prog_context
             ).
 
 %---------------------------------------------------------------------------%
@@ -1065,27 +1065,8 @@
 
 %---------------------------------------------------------------------------%
 %
-% Contexts (i.e. source code locations).
-%
-
-    % mlds.context is probably == prog_context,
-    % but might also contain goal_path or other information.
-:- type mlds_context.
-
-:- func mlds_make_context(prog_context) = mlds_context.
-
-:- func mlds_get_prog_context(mlds_context) = prog_context.
-
-%---------------------------------------------------------------------------%
-%
 % Statements.
 %
-
-:- type statement
-    --->    statement(
-                mlds_stmt,
-                mlds_context
-            ).
 
 :- type while_loop_kind
     --->    may_loop_zero_times
@@ -1094,18 +1075,42 @@
 :- type mlds_stmt
     % Sequence.
 
-    --->    ml_stmt_block(list(mlds_defn), list(statement))
+    --->    ml_stmt_block(
+                list(mlds_defn),
+                list(mlds_stmt),
+                prog_context
+            )
 
     % Iteration.
 
-    ;       ml_stmt_while(while_loop_kind, mlds_rval, statement)
-            % The `bool' is true iff the loop is guaranteed to iterate at
-            % least once -- in that case, the compiler can generate a
-            % `do...while' loop rather than a `while...' loop.
+    ;       ml_stmt_while(
+                % Is this a "while (Cond) {...}" loop
+                % or a "do {...} while (Cond)" loop?
+                while_loop_kind,
+
+                % The condition.
+                mlds_rval,
+
+                % The body.
+                mlds_stmt,
+
+                prog_context
+            )
 
     % Selection (see also computed_goto).
 
-    ;       ml_stmt_if_then_else(mlds_rval, statement, maybe(statement))
+    ;       ml_stmt_if_then_else(
+                % The condition.
+                mlds_rval,
+
+                % The then part.
+                mlds_stmt,
+
+                % The else part (if any).
+                maybe(mlds_stmt),
+
+                prog_context
+            )
 
     ;       ml_stmt_switch(
                 % This representation for switches is very general:
@@ -1134,22 +1139,29 @@
                 list(mlds_switch_case),
 
                 % What to do if none of the cases match.
-                mlds_switch_default
+                mlds_switch_default,
+
+                prog_context
             )
 
     % Transfer of control.
 
-    ;       ml_stmt_label(mlds_label)
+    ;       ml_stmt_label(mlds_label, prog_context)
             % Defines a label that can be used as the target of calls,
             % gotos, etc.
 
-    ;       ml_stmt_goto(mlds_goto_target)
+    ;       ml_stmt_goto(mlds_goto_target, prog_context)
             % goto(Target): Branch to the specified address.
 
-    ;       ml_stmt_computed_goto(mlds_rval, list(mlds_label))
-            % Evaluate rval, which should be an integer, and jump to the
-            % (rval+1)th label in the list. e.g. computed_goto(2, [A, B, C, D])
-            % will branch to label C.
+    ;       ml_stmt_computed_goto(
+                % Evaluate rval, which should be an integer, and jump to the
+                % (rval+1)th label in the list.
+                % For example, computed_goto(2, [A, B, C, D])
+                % will branch to label C.
+                mlds_rval,
+                list(mlds_label),
+                prog_context
+            )
 
     % Function call/return.
 
@@ -1175,21 +1187,26 @@
 
                 % The set of special treatments that apply to this call.
                 % Almost always the empty set.
-                set(ml_call_marker)
+                set(ml_call_marker),
+
+                prog_context
             )
 
-    ;       ml_stmt_return(list(mlds_rval))  % Some targets will not support
-                                             % returning more than one value.
+    ;       ml_stmt_return(
+                % Some targets will not support returning more than one value.
+                list(mlds_rval),
+                prog_context
+            )
 
     % Commits (a specialized form of exception handling).
 
-    ;       ml_stmt_try_commit(mlds_lval, statement, statement)
-    ;       ml_stmt_do_commit(mlds_rval)
-            % try_commit(Ref, GoalToTry, CommitHandlerGoal):
+    ;       ml_stmt_try_commit(mlds_lval, mlds_stmt, mlds_stmt, prog_context)
+    ;       ml_stmt_do_commit(mlds_rval, prog_context)
+            % try_commit(Ref, GoalToTry, CommitHandlerGoal, _Context):
             %   Execute GoalToTry. If GoalToTry exits via a `commit(Ref)'
             %   instruction, then execute CommitHandlerGoal.
             %
-            % do_commit(Ref):
+            % do_commit(Ref, _Context):
             %   Unwind the stack to the corresponding `try_commit'
             %   statement for Ref, and branch to the CommitHandlerGoal
             %   that was specified in that try_commit instruction.
@@ -1221,16 +1238,17 @@
     % It might not be a good choice for different target languages.
     % XXX Full exception handling support is not yet implemented.
 
-%   ;       ml_stmt_throw(mlds_type, mlds_rval)
+%   ;       ml_stmt_throw(mlds_type, mlds_rval, prog_context)
 %           % Throw the specified exception.
 
-%   ;       ml_stmt_rethrow
+%   ;       ml_stmt_rethrow(prog_context)
 %           % Rethrow the current exception
 %           % (only valid inside an exception handler).
 
 %   ;       ml_stmt_try_catch(
-%               statement,
-%               list(mlds_exception_handler)
+%               mlds_stmt,
+%               list(mlds_exception_handler),
+%               prog_context
 %           )
 %           % Execute the specified statement, and if it throws an exception,
 %           % and the exception matches any of the exception handlers,
@@ -1238,11 +1256,11 @@
 
     % Atomic statements.
 
-    ;       ml_stmt_atomic(mlds_atomic_statement).
+    ;       ml_stmt_atomic(mlds_atomic_statement, prog_context).
 
 :- inst ml_stmt_is_call
     --->    ml_stmt_call(ground, ground, ground, ground, ground,
-                ground, ground).
+                ground, ground, ground).
 
 %---------------------------------------------------------------------------%
 %
@@ -1267,7 +1285,7 @@
                 mlds_case_match_cond,
                 list(mlds_case_match_cond),
 
-                statement
+                mlds_stmt
             ).
 
     % A case_match_cond specifies when a switch case will be selected
@@ -1293,7 +1311,7 @@
             % The default action is to just fall through to the statement
             % after the switch.
 
-    ;       default_case(statement).
+    ;       default_case(mlds_stmt).
             % The default is to execute the specified statement.
 
 %---------------------------------------------------------------------------%
@@ -1323,21 +1341,17 @@
 %
 
     % The `ml_call_kind' type indicates whether a call is a tail call
-    % and whether the call is know to never return.
+    % and whether the call is known to never return.
     %
-    % Marking a call as a tail_call is intended as a hint to
-    % the target language that this call can be implemented
-    % by removing the caller's stack frame and jumping to the
-    % destination, rather than a normal call.
-    % However, the target code generator need not obey this hint;
-    % it is permitted for the target code generator to ignore the
-    % hint and generate code which does not remove the caller's
-    % stack frame and/or which falls through to the following
-    % statement.
+    % Marking a call as a tail_call is intended as a hint to the target
+    % language compiler that this call can be implemented by removing
+    % the caller's stack frame and jumping to the destination.
+    % However, the target code generator need not obey this hint; it may
+    % generate the same kind of code it would generate for a non-tail call.
     %
 :- type ml_call_kind
     --->    no_return_call  % A call that never returns
-                            % (this is a special case of a tail call)
+                            % (this is a special case of a tail call).
     ;       tail_call       % A tail call.
     ;       ordinary_call.  % Just an ordinary call.
 
@@ -2577,16 +2591,6 @@ set_class_overridability(Overridability, !Flags) :-
     !Flags ^ mcdf_overridability := Overridability.
 set_class_constness(Constness, !Flags) :-
     !Flags ^ mcdf_constness := Constness.
-
-%---------------------------------------------------------------------------%
-
-    % Currently mlds_contexts just contain a prog_context.
-:- type mlds_context
-    --->    mlds_context(prog_context).
-
-mlds_make_context(Context) = mlds_context(Context).
-
-mlds_get_prog_context(mlds_context(Context)) = Context.
 
 %---------------------------------------------------------------------------%
 

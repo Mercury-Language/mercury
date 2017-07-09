@@ -22,6 +22,8 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -55,16 +57,17 @@
 
     % Nondeterministically generates sub-statements from statements.
     %
-:- pred statement_contains_statement(statement::in, statement::out) is multi.
+:- pred statement_is_or_contains_statement(mlds_stmt::in, mlds_stmt::out)
+    is multi.
 
-:- pred stmt_contains_statement(mlds_stmt::in, statement::out) is nondet.
+:- pred stmt_contains_statement(mlds_stmt::in, mlds_stmt::out) is nondet.
 
     % Succeeds iff this statement contains a reference to the
     % specified variable.
     %
-:- func statement_contains_var(statement, mlds_data) = bool.
+:- func statement_contains_var(mlds_stmt, mlds_data) = bool.
 
-:- pred has_foreign_languages(statement::in, list(foreign_language)::out)
+:- pred has_foreign_languages(mlds_stmt::in, list(foreign_language)::out)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -236,6 +239,10 @@
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- func get_mlds_stmt_context(mlds_stmt) = prog_context.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -295,75 +302,75 @@ code_address_is_for_this_function(CodeAddr, ModuleName, FuncName) :-
 %
 % Nondeterministically generate sub-statements from statements.
 
-:- pred statements_contains_statement(list(statement)::in,
-    statement::out) is nondet.
+:- pred statements_contains_statement(list(mlds_stmt)::in,
+    mlds_stmt::out) is nondet.
 
-statements_contains_statement(Statements, SubStatement) :-
-    list.member(Statement, Statements),
-    statement_contains_statement(Statement, SubStatement).
+statements_contains_statement(Stmts, SubStmt) :-
+    list.member(Stmt, Stmts),
+    statement_is_or_contains_statement(Stmt, SubStmt).
 
-:- pred maybe_statement_contains_statement(maybe(statement)::in,
-    statement::out) is nondet.
+:- pred maybe_statement_contains_statement(maybe(mlds_stmt)::in,
+    mlds_stmt::out) is nondet.
 
-maybe_statement_contains_statement(no, _Statement) :- fail.
-maybe_statement_contains_statement(yes(Statement), SubStatement) :-
-    statement_contains_statement(Statement, SubStatement).
+maybe_statement_contains_statement(no, _Stmt) :- fail.
+maybe_statement_contains_statement(yes(Stmt), SubStmt) :-
+    statement_is_or_contains_statement(Stmt, SubStmt).
 
-statement_contains_statement(Statement, Statement).
-statement_contains_statement(Statement, SubStatement) :-
-    Statement = statement(Stmt, _Context),
-    stmt_contains_statement(Stmt, SubStatement).
+statement_is_or_contains_statement(Stmt, Stmt).
+statement_is_or_contains_statement(Stmt, SubStmt) :-
+    stmt_contains_statement(Stmt, SubStmt).
 
-stmt_contains_statement(Stmt, SubStatement) :-
+stmt_contains_statement(Stmt, SubStmt) :-
+    require_complete_switch [Stmt]
     (
-        Stmt = ml_stmt_block(_Defns, Statements),
-        statements_contains_statement(Statements, SubStatement)
+        Stmt = ml_stmt_block(_Defns, Stmts, _Context),
+        statements_contains_statement(Stmts, SubStmt)
     ;
-        Stmt = ml_stmt_while(_Kind, _Rval, Statement),
-        statement_contains_statement(Statement, SubStatement)
+        Stmt = ml_stmt_while(_Kind, _Rval, BodyStmt, _Context),
+        statement_is_or_contains_statement(BodyStmt, SubStmt)
     ;
-        Stmt = ml_stmt_if_then_else(_Cond, Then, MaybeElse),
-        ( statement_contains_statement(Then, SubStatement)
-        ; maybe_statement_contains_statement(MaybeElse, SubStatement)
+        Stmt = ml_stmt_if_then_else(_Cond, ThenStmt, MaybeElseStmt, _Context),
+        ( statement_is_or_contains_statement(ThenStmt, SubStmt)
+        ; maybe_statement_contains_statement(MaybeElseStmt, SubStmt)
         )
     ;
-        Stmt = ml_stmt_switch(_Type, _Val, _Range, Cases, Default),
-        ( cases_contains_statement(Cases, SubStatement)
-        ; default_contains_statement(Default, SubStatement)
+        Stmt = ml_stmt_switch(_Type, _Val, _Range, Cases, Default, _Context),
+        ( cases_contains_statement(Cases, SubStmt)
+        ; default_contains_statement(Default, SubStmt)
         )
     ;
-        Stmt = ml_stmt_try_commit(_Ref, Statement, Handler),
-        ( statement_contains_statement(Statement, SubStatement)
-        ; statement_contains_statement(Handler, SubStatement)
+        Stmt = ml_stmt_try_commit(_Ref, BodyStmt, HandlerStmt, _Context),
+        ( statement_is_or_contains_statement(BodyStmt, SubStmt)
+        ; statement_is_or_contains_statement(HandlerStmt, SubStmt)
         )
     ;
-        ( Stmt = ml_stmt_label(_Label)
-        ; Stmt = ml_stmt_goto(_)
-        ; Stmt = ml_stmt_computed_goto(_Rval, _Labels)
+        ( Stmt = ml_stmt_label(_Label, _Context)
+        ; Stmt = ml_stmt_goto(_, _Context)
+        ; Stmt = ml_stmt_computed_goto(_Rval, _Labels, _Context)
         ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall,
-            _Markers)
-        ; Stmt = ml_stmt_return(_Rvals)
-        ; Stmt = ml_stmt_do_commit(_Ref)
-        ; Stmt = ml_stmt_atomic(_AtomicStmt)
+            _Markers, _Context)
+        ; Stmt = ml_stmt_return(_Rvals, _Context)
+        ; Stmt = ml_stmt_do_commit(_Ref, _Context)
+        ; Stmt = ml_stmt_atomic(_AtomicStmt, _Context)
         ),
         fail
     ).
 
 :- pred cases_contains_statement(list(mlds_switch_case)::in,
-    statement::out) is nondet.
+    mlds_stmt::out) is nondet.
 
-cases_contains_statement(Cases, SubStatement) :-
+cases_contains_statement(Cases, SubStmt) :-
     list.member(Case, Cases),
-    Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
-    statement_contains_statement(Statement, SubStatement).
+    Case = mlds_switch_case(_FirstCond, _LaterConds, Stmt),
+    statement_is_or_contains_statement(Stmt, SubStmt).
 
 :- pred default_contains_statement(mlds_switch_default::in,
-    statement::out) is nondet.
+    mlds_stmt::out) is nondet.
 
 default_contains_statement(default_do_nothing, _) :- fail.
 default_contains_statement(default_is_unreachable, _) :- fail.
-default_contains_statement(default_case(Statement), SubStatement) :-
-    statement_contains_statement(Statement, SubStatement).
+default_contains_statement(default_case(Stmt), SubStmt) :-
+    statement_is_or_contains_statement(Stmt, SubStmt).
 
 %-----------------------------------------------------------------------------%
 %
@@ -376,71 +383,66 @@ default_contains_statement(default_case(Statement), SubStatement) :-
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-:- func statements_contains_var(list(statement), mlds_data) = bool.
+:- func statements_contains_var(list(mlds_stmt), mlds_data) = bool.
 
 statements_contains_var([], _DataName) = no.
-statements_contains_var([Statement | Statements], DataName) = ContainsVar :-
-    StatementContainsVar = statement_contains_var(Statement, DataName),
+statements_contains_var([Stmt | Stmts], DataName) = ContainsVar :-
+    StmtContainsVar = statement_contains_var(Stmt, DataName),
     (
-        StatementContainsVar = yes,
+        StmtContainsVar = yes,
         ContainsVar = yes
     ;
-        StatementContainsVar = no,
-        ContainsVar = statements_contains_var(Statements, DataName)
+        StmtContainsVar = no,
+        ContainsVar = statements_contains_var(Stmts, DataName)
     ).
 
-:- func maybe_statement_contains_var(maybe(statement), mlds_data) = bool.
+:- func maybe_statement_contains_var(maybe(mlds_stmt), mlds_data) = bool.
 
 maybe_statement_contains_var(no, _) = no.
-maybe_statement_contains_var(yes(Statement), DataName) = ContainsVar :-
-    ContainsVar = statement_contains_var(Statement, DataName).
+maybe_statement_contains_var(yes(Stmt), DataName) = ContainsVar :-
+    ContainsVar = statement_contains_var(Stmt, DataName).
 
-statement_contains_var(Statement, DataName) = ContainsVar :-
-    Statement = statement(Stmt, _Context),
-    ContainsVar = stmt_contains_var(Stmt, DataName).
-
-:- func stmt_contains_var(mlds_stmt, mlds_data) = bool.
-
-stmt_contains_var(Stmt, DataName) = ContainsVar :-
+statement_contains_var(Stmt, DataName) = ContainsVar :-
     (
-        Stmt = ml_stmt_block(Defns, Statements),
+        Stmt = ml_stmt_block(Defns, SubStmts, _Context),
         DefnsContainVar = defns_contains_var(Defns, DataName),
         (
             DefnsContainVar = yes,
             ContainsVar = yes
         ;
             DefnsContainVar = no,
-            ContainsVar = statements_contains_var(Statements, DataName)
+            ContainsVar = statements_contains_var(SubStmts, DataName)
         )
     ;
-        Stmt = ml_stmt_while(_Kind, Rval, Statement),
+        Stmt = ml_stmt_while(_Kind, Rval, BodyStmt, _Context),
         RvalContainsVar = rval_contains_var(Rval, DataName),
         (
             RvalContainsVar = yes,
             ContainsVar = yes
         ;
             RvalContainsVar = no,
-            ContainsVar = statement_contains_var(Statement, DataName)
+            ContainsVar = statement_contains_var(BodyStmt, DataName)
         )
     ;
-        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse),
+        Stmt = ml_stmt_if_then_else(Cond, ThenStmt, MaybeElseStmt, _Context),
         CondContainsVar = rval_contains_var(Cond, DataName),
         (
             CondContainsVar = yes,
             ContainsVar = yes
         ;
             CondContainsVar = no,
-            ThenContainsVar = statement_contains_var(Then, DataName),
+            ThenContainsVar = statement_contains_var(ThenStmt, DataName),
             (
                 ThenContainsVar = yes,
                 ContainsVar = yes
             ;
                 ThenContainsVar = no,
-                ContainsVar = maybe_statement_contains_var(MaybeElse, DataName)
+                ContainsVar =
+                    maybe_statement_contains_var(MaybeElseStmt, DataName)
             )
         )
     ;
-        Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
+        Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, _Context),
         ValContainsVar = rval_contains_var(Val, DataName),
         (
             ValContainsVar = yes,
@@ -457,16 +459,16 @@ stmt_contains_var(Stmt, DataName) = ContainsVar :-
             )
         )
     ;
-        ( Stmt = ml_stmt_label(_Label)
-        ; Stmt = ml_stmt_goto(_)
+        ( Stmt = ml_stmt_label(_Label, _Context)
+        ; Stmt = ml_stmt_goto(_, _Context)
         ),
         ContainsVar = no
     ;
-        Stmt = ml_stmt_computed_goto(Rval, _Labels),
+        Stmt = ml_stmt_computed_goto(Rval, _Labels, _Context),
         ContainsVar = rval_contains_var(Rval, DataName)
     ;
         Stmt = ml_stmt_call(_Sig, Func, Obj, Args, RetLvals, _TailCall,
-            _Markers),
+            _Markers, _Context),
         FuncContainsVar = rval_contains_var(Func, DataName),
         (
             FuncContainsVar = yes,
@@ -490,30 +492,30 @@ stmt_contains_var(Stmt, DataName) = ContainsVar :-
             )
         )
     ;
-        Stmt = ml_stmt_return(Rvals),
+        Stmt = ml_stmt_return(Rvals, _Context),
         ContainsVar = rvals_contains_var(Rvals, DataName)
     ;
-        Stmt = ml_stmt_do_commit(Ref),
+        Stmt = ml_stmt_do_commit(Ref, _Context),
         ContainsVar = rval_contains_var(Ref, DataName)
     ;
-        Stmt = ml_stmt_try_commit(Ref, Statement, Handler),
+        Stmt = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt, _Context),
         RefContainsVar = lval_contains_var(Ref, DataName),
         (
             RefContainsVar = yes,
             ContainsVar = yes
         ;
             RefContainsVar = no,
-            StatementContainsVar = statement_contains_var(Statement, DataName),
+            StmtContainsVar = statement_contains_var(BodyStmt, DataName),
             (
-                StatementContainsVar = yes,
+                StmtContainsVar = yes,
                 ContainsVar = yes
             ;
-                StatementContainsVar = no,
-                ContainsVar = statement_contains_var(Handler, DataName)
+                StmtContainsVar = no,
+                ContainsVar = statement_contains_var(HandlerStmt, DataName)
             )
         )
     ;
-        Stmt = ml_stmt_atomic(AtomicStmt),
+        Stmt = ml_stmt_atomic(AtomicStmt, _Context),
         ContainsVar = atomic_stmt_contains_var(AtomicStmt, DataName)
     ).
 
@@ -521,13 +523,13 @@ stmt_contains_var(Stmt, DataName) = ContainsVar :-
 
 cases_contains_var([], _DataName) = no.
 cases_contains_var([Case | Cases], DataName) = ContainsVar :-
-    Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
-    StatementContainsVar = statement_contains_var(Statement, DataName),
+    Case = mlds_switch_case(_FirstCond, _LaterConds, Stmt),
+    StmtContainsVar = statement_contains_var(Stmt, DataName),
     (
-        StatementContainsVar = yes,
+        StmtContainsVar = yes,
         ContainsVar = yes
     ;
-        StatementContainsVar = no,
+        StmtContainsVar = no,
         ContainsVar = cases_contains_var(Cases, DataName)
     ).
 
@@ -540,8 +542,8 @@ default_contains_var(Default, DataName) = ContainsVar :-
         ),
         ContainsVar = no
     ;
-        Default = default_case(Statement),
-        ContainsVar = statement_contains_var(Statement, DataName)
+        Default = default_case(Stmt),
+        ContainsVar = statement_contains_var(Stmt, DataName)
     ).
 
 :- func atomic_stmt_contains_var(mlds_atomic_statement, mlds_data) = bool.
@@ -695,11 +697,11 @@ outline_arg_contains_var(OutlineArg, DataName) = ContainsVar :-
 
 %-----------------------------------------------------------------------------%
 
-has_foreign_languages(Statement, Langs) :-
-    GetTargetCode = (pred(Lang::out) is nondet :-
-        statement_contains_statement(Statement, SubStatement),
-        SubStatement = statement(ml_stmt_atomic(
-            outline_foreign_proc(Lang, _, _, _)), _)
+has_foreign_languages(Stmt, Langs) :-
+    GetTargetCode =
+        ( pred(Lang::out) is nondet :-
+            statement_is_or_contains_statement(Stmt, SubStmt),
+            SubStmt = ml_stmt_atomic(outline_foreign_proc(Lang, _, _, _), _)
         ),
     solutions.solutions(GetTargetCode, Langs).
 
@@ -712,22 +714,20 @@ defn_contains_foreign_code(NativeTargetLang, Defn) :-
     % XXX MLDS_DEFN
     Defn = mlds_function(FunctionDefn),
     FunctionDefn ^ mfd_body = body_defined_here(FunctionBody),
-    statement_contains_statement(FunctionBody, Statement),
-    Statement = statement(Stmt, _),
+    statement_is_or_contains_statement(FunctionBody, Stmt),
     (
-        Stmt = ml_stmt_atomic(inline_target_code(TargetLang, _)),
+        Stmt = ml_stmt_atomic(inline_target_code(TargetLang, _), _Context),
         TargetLang \= NativeTargetLang
     ;
-        Stmt = ml_stmt_atomic(outline_foreign_proc(_, _, _, _))
+        Stmt = ml_stmt_atomic(outline_foreign_proc(_, _, _, _), _Context)
     ).
 
 defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
     % XXX MLDS_DEFN
     Defn = mlds_function(FunctionDefn),
     FunctionDefn ^ mfd_body = body_defined_here(FunctionBody),
-    statement_contains_statement(FunctionBody, Statement),
-    Statement = statement(Stmt, _),
-    Stmt = ml_stmt_atomic(outline_foreign_proc(ForeignLang, _, _, _)).
+    statement_is_or_contains_statement(FunctionBody, Stmt),
+    Stmt = ml_stmt_atomic(outline_foreign_proc(ForeignLang, _, _, _), _).
 
 %-----------------------------------------------------------------------------%
 
@@ -802,8 +802,8 @@ defn_contains_var(Defn, DataName) = ContainsVar :-
     (
         Defn = mlds_data(DataDefn),
         DataDefn = mlds_data_defn(_Name, _Ctxt, _Flags,
-            _Type, Initializer, _GCStatement),
-        % XXX Should we include variables in the GCStatement field here?
+            _Type, Initializer, _GCStmt),
+        % XXX Should we include variables in the GCStmt field here?
         ContainsVar = initializer_contains_var(Initializer, DataName)
     ;
         Defn = mlds_function(FunctionDefn),
@@ -836,8 +836,8 @@ function_body_contains_var(Body, DataName) = ContainsVar :-
         Body = body_external,
         ContainsVar = no
     ;
-        Body = body_defined_here(Statement),
-        ContainsVar = statement_contains_var(Statement, DataName)
+        Body = body_defined_here(Stmt),
+        ContainsVar = statement_contains_var(Stmt, DataName)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1048,15 +1048,15 @@ method_ptrs_in_defns([Defn | Defns], !CodeAddrsInConsts) :-
 method_ptrs_in_defn(Defn, !CodeAddrsInConsts) :-
     (
         Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(_, _, _, _Type, Initializer, _GCStatement),
+        DataDefn = mlds_data_defn(_, _, _, _Type, Initializer, _GCStmt),
         method_ptrs_in_initializer(Initializer, !CodeAddrsInConsts)
     ;
         Defn = mlds_function(FunctionDefn),
         FunctionDefn = mlds_function_defn(_, _, _, _MaybeID, _Params, Body,
             _Attributes, _EnvVars, _MaybeRequireTailrecInfo),
         (
-            Body = body_defined_here(Statement),
-            method_ptrs_in_statement(Statement, !CodeAddrsInConsts)
+            Body = body_defined_here(Stmt),
+            method_ptrs_in_statement(Stmt, !CodeAddrsInConsts)
         ;
             Body = body_external
         )
@@ -1067,48 +1067,48 @@ method_ptrs_in_defn(Defn, !CodeAddrsInConsts) :-
         method_ptrs_in_defns(Members, !CodeAddrsInConsts)
     ).
 
-:- pred method_ptrs_in_statements(list(statement)::in,
+:- pred method_ptrs_in_statements(list(mlds_stmt)::in,
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
 
 method_ptrs_in_statements([], !CodeAddrsInConsts).
-method_ptrs_in_statements([Statement | Statements], !CodeAddrsInConsts) :-
-    method_ptrs_in_statement(Statement, !CodeAddrsInConsts),
-    method_ptrs_in_statements(Statements, !CodeAddrsInConsts).
+method_ptrs_in_statements([Stmt | Stmts], !CodeAddrsInConsts) :-
+    method_ptrs_in_statement(Stmt, !CodeAddrsInConsts),
+    method_ptrs_in_statements(Stmts, !CodeAddrsInConsts).
 
-:- pred method_ptrs_in_statement(statement::in,
+:- pred method_ptrs_in_statement(mlds_stmt::in,
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
 
-method_ptrs_in_statement(Statement, !CodeAddrsInConsts) :-
-    Statement = statement(Stmt, _Context),
+method_ptrs_in_statement(Stmt, !CodeAddrsInConsts) :-
     (
-        Stmt = ml_stmt_block(Defns, SubStatements),
+        Stmt = ml_stmt_block(Defns, SubStmts, _Context),
         method_ptrs_in_defns(Defns, !CodeAddrsInConsts),
-        method_ptrs_in_statements(SubStatements, !CodeAddrsInConsts)
+        method_ptrs_in_statements(SubStmts, !CodeAddrsInConsts)
     ;
-        Stmt = ml_stmt_while(_Kind, Rval, SubStatement),
+        Stmt = ml_stmt_while(_Kind, Rval, SubStmt, _Context),
         method_ptrs_in_rval(Rval, !CodeAddrsInConsts),
-        method_ptrs_in_statement(SubStatement, !CodeAddrsInConsts)
+        method_ptrs_in_statement(SubStmt, !CodeAddrsInConsts)
     ;
-        Stmt = ml_stmt_if_then_else(SubRval,
-            StatementThen, MaybeStatementElse),
+        Stmt = ml_stmt_if_then_else(SubRval, ThenStmt, MaybeElseStmt,
+            _Context),
         method_ptrs_in_rval(SubRval, !CodeAddrsInConsts),
-        method_ptrs_in_statement(StatementThen, !CodeAddrsInConsts),
+        method_ptrs_in_statement(ThenStmt, !CodeAddrsInConsts),
         (
-            MaybeStatementElse = yes(StatementElse),
-            method_ptrs_in_statement(StatementElse, !CodeAddrsInConsts)
+            MaybeElseStmt = yes(ElseStmt),
+            method_ptrs_in_statement(ElseStmt, !CodeAddrsInConsts)
         ;
-            MaybeStatementElse = no
+            MaybeElseStmt = no
         )
     ;
-        Stmt = ml_stmt_switch(_Type, SubRval, _Range, Cases, Default),
+        Stmt = ml_stmt_switch(_Type, SubRval, _Range, Cases, Default,
+            _Context),
         method_ptrs_in_rval(SubRval, !CodeAddrsInConsts),
         method_ptrs_in_switch_cases(Cases, !CodeAddrsInConsts),
         method_ptrs_in_switch_default(Default, !CodeAddrsInConsts)
     ;
-        Stmt = ml_stmt_label(_),
+        Stmt = ml_stmt_label(_, _Context),
         unexpected($pred, "labels are not supported in C# or Java.")
     ;
-        Stmt = ml_stmt_goto(Target),
+        Stmt = ml_stmt_goto(Target, _Context),
         (
             ( Target = goto_break
             ; Target = goto_continue
@@ -1118,31 +1118,31 @@ method_ptrs_in_statement(Statement, !CodeAddrsInConsts) :-
             unexpected($pred, "goto label is not supported in C# or Java.")
         )
     ;
-        Stmt = ml_stmt_computed_goto(_, _),
+        Stmt = ml_stmt_computed_goto(_, _, _Context),
         unexpected($pred, "computed gotos are not supported in C# or Java.")
     ;
-        Stmt = ml_stmt_try_commit(_Lval, StatementGoal, StatementHandler),
+        Stmt = ml_stmt_try_commit(_Lval, BodyStmt, HandlerStmt, _Context),
         % We don't check "_Lval" here as we expect it to be a local variable
         % of type mlds_commit_type.
-        method_ptrs_in_statement(StatementGoal, !CodeAddrsInConsts),
-        method_ptrs_in_statement(StatementHandler, !CodeAddrsInConsts)
+        method_ptrs_in_statement(BodyStmt, !CodeAddrsInConsts),
+        method_ptrs_in_statement(HandlerStmt, !CodeAddrsInConsts)
     ;
-        Stmt = ml_stmt_do_commit(_Rval)
+        Stmt = ml_stmt_do_commit(_Rval, _Context)
         % We don't check "_Rval" here as we expect it to be a local variable
         % of type mlds_commit_type.
     ;
-        Stmt = ml_stmt_return(Rvals),
+        Stmt = ml_stmt_return(Rvals, _Context),
         method_ptrs_in_rvals(Rvals, !CodeAddrsInConsts)
     ;
         Stmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
-            _IsTailCall, _Markers),
+            _IsTailCall, _Markers, _Context),
         % We don't check "_Rval" - it may be a code address but is a
         % standard call rather than a function pointer use.
         method_ptrs_in_rvals(Rvals, !CodeAddrsInConsts)
     ;
-        Stmt = ml_stmt_atomic(AtomicStatement),
+        Stmt = ml_stmt_atomic(AtomicStmt, _Context),
         ( if
-            AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
+            AtomicStmt = new_object(Lval, _MaybeTag, _Bool,
                 _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic,
                 _AllocId)
         then
@@ -1151,7 +1151,7 @@ method_ptrs_in_statement(Statement, !CodeAddrsInConsts) :-
             method_ptrs_in_lval(Lval, !CodeAddrsInConsts),
             method_ptrs_in_rvals(Rvals, !CodeAddrsInConsts)
         else if
-            AtomicStatement = assign(Lval, Rval)
+            AtomicStmt = assign(Lval, Rval)
         then
             method_ptrs_in_lval(Lval, !CodeAddrsInConsts),
             method_ptrs_in_rval(Rval, !CodeAddrsInConsts)
@@ -1169,8 +1169,8 @@ method_ptrs_in_switch_default(Default, !CodeAddrsInConsts) :-
         ; Default = default_do_nothing
         )
     ;
-        Default = default_case(Statement),
-        method_ptrs_in_statement(Statement, !CodeAddrsInConsts)
+        Default = default_case(Stmt),
+        method_ptrs_in_statement(Stmt, !CodeAddrsInConsts)
     ).
 
 :- pred method_ptrs_in_switch_cases(list(mlds_switch_case)::in,
@@ -1178,8 +1178,8 @@ method_ptrs_in_switch_default(Default, !CodeAddrsInConsts) :-
 
 method_ptrs_in_switch_cases([], !CodeAddrsInConsts).
 method_ptrs_in_switch_cases([Case | Cases], !CodeAddrsInConsts) :-
-    Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
-    method_ptrs_in_statement(Statement, !CodeAddrsInConsts),
+    Case = mlds_switch_case(_FirstCond, _LaterConds, Stmt),
+    method_ptrs_in_statement(Stmt, !CodeAddrsInConsts),
     method_ptrs_in_switch_cases(Cases, !CodeAddrsInConsts).
 
 method_ptrs_in_scalars(Cord, !CodeAddrsInConsts) :-
@@ -1289,6 +1289,23 @@ method_ptrs_in_lval(Lval, !CodeAddrsInConsts) :-
         ( Lval = ml_var(_Variable, _Type)
         ; Lval = ml_global_var_ref(_)
         )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_mlds_stmt_context(Stmt) = Context :-
+    ( Stmt = ml_stmt_block(_, _, Context)
+    ; Stmt = ml_stmt_while(_, _, _, Context)
+    ; Stmt = ml_stmt_if_then_else(_, _, _, Context)
+    ; Stmt = ml_stmt_switch(_, _, _, _, _, Context)
+    ; Stmt = ml_stmt_label(_, Context)
+    ; Stmt = ml_stmt_goto(_, Context)
+    ; Stmt = ml_stmt_computed_goto(_, _, Context)
+    ; Stmt = ml_stmt_try_commit(_, _, _, Context)
+    ; Stmt = ml_stmt_do_commit(_, Context)
+    ; Stmt = ml_stmt_return(_, Context)
+    ; Stmt = ml_stmt_call(_, _, _, _, _, _, _, Context)
+    ; Stmt = ml_stmt_atomic(_, Context)
     ).
 
 %-----------------------------------------------------------------------------%

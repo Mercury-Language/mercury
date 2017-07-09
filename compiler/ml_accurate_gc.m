@@ -116,29 +116,29 @@
 % Code to handle accurate GC.
 %
 
-ml_gen_gc_statement(VarName, Type, Context, GCStatement, !Info) :-
-    ml_gen_gc_statement_poly(VarName, Type, Type, Context, GCStatement, !Info).
+ml_gen_gc_statement(VarName, Type, Context, GCStmt, !Info) :-
+    ml_gen_gc_statement_poly(VarName, Type, Type, Context, GCStmt, !Info).
 
-ml_gen_gc_statement_poly(VarName, DeclType, ActualType, Context,
-        GCStatement, !Info) :-
+ml_gen_gc_statement_poly(VarName, DeclType, ActualType, Context, GCStmt,
+        !Info) :-
     ml_gen_info_get_gc(!.Info, GC),
     ( if GC = gc_accurate then
         HowToGetTypeInfo = construct_from_type(ActualType),
         ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
-            GCStatement, !Info)
+            GCStmt, !Info)
     else
-        GCStatement = gc_no_stmt
+        GCStmt = gc_no_stmt
     ).
 
 ml_gen_gc_statement_with_typeinfo(VarName, DeclType, TypeInfoRval, Context,
-        GCStatement, !Info) :-
+        GCStmt, !Info) :-
     ml_gen_info_get_gc(!.Info, GC),
     ( if GC = gc_accurate then
         HowToGetTypeInfo = already_provided(TypeInfoRval),
         ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
-            GCStatement, !Info)
+            GCStmt, !Info)
     else
-        GCStatement = gc_no_stmt
+        GCStmt = gc_no_stmt
     ).
 
 :- type how_to_get_type_info
@@ -149,8 +149,8 @@ ml_gen_gc_statement_with_typeinfo(VarName, DeclType, TypeInfoRval, Context,
     how_to_get_type_info::in, prog_context::in,
     mlds_gc_statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
-        GCStatement, !Info) :-
+ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context, GCStmt,
+        !Info) :-
     ( if
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         MLDS_DeclType = mercury_type_to_mlds_type(ModuleInfo, DeclType),
@@ -176,9 +176,9 @@ ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
             ml_gen_trace_var(!.Info, VarName, DeclType, TypeInfoRval,
                 Context, GC_TraceCode)
         ),
-        GCStatement = gc_trace_code(GC_TraceCode)
+        GCStmt = gc_trace_code(GC_TraceCode)
     else
-        GCStatement = gc_no_stmt
+        GCStmt = gc_no_stmt
     ).
 
     % Return `yes' if the type needs to be traced by the accurate garbage
@@ -302,7 +302,7 @@ trace_type_info_type(Type, RealType) :-
     % to trace the specified variable.
     %
 :- pred ml_gen_gc_trace_code(mlds_var_name::in, mer_type::in, mer_type::in,
-    prog_context::in, statement::out,
+    prog_context::in, mlds_stmt::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
@@ -320,7 +320,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     conj_list_to_goal(HLDS_TypeInfoGoals, GoalInfo, Conj),
 
     % Convert this HLDS code to MLDS.
-    ml_gen_goal_as_block(model_det, Conj, MLDS_TypeInfoStatement0, !Info),
+    ml_gen_goal_as_block(model_det, Conj, MLDS_TypeInfoStmt0, !Info),
 
     % Replace all heap allocation (new_object instructions) with stack
     % allocation (local variable declarations) in the code to construct
@@ -328,14 +328,13 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     % in the immediately following call to gc_trace/1.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
-    fixup_newobj(MLDS_TypeInfoStatement0,
-        mercury_module_name_to_mlds(ModuleName),
-        MLDS_TypeInfoStatement, MLDS_NewobjLocals),
+    fixup_newobj(mercury_module_name_to_mlds(ModuleName),
+        MLDS_TypeInfoStmt0, MLDS_TypeInfoStmt, MLDS_NewobjLocals),
 
     % Build MLDS code to trace the variable.
     ml_gen_var(!.Info, TypeInfoVar, TypeInfoLval),
     ml_gen_trace_var(!.Info, VarName, DeclType, ml_lval(TypeInfoLval), Context,
-        MLDS_TraceStatement),
+        MLDS_TraceStmt),
 
     % Generate declarations for any type_info variables used.
     %
@@ -347,14 +346,13 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     % XXX This is not a very robust way of doing things...
     ml_gen_info_get_varset(!.Info, VarSet),
     ml_gen_info_get_var_types(!.Info, VarTypes),
-    MLDS_Context = mlds_make_context(Context),
     GenLocalVarDecl =
-        (func(Var) = VarDefn :-
+        ( func(Var) = VarDefn :-
             LocalVarName = ml_gen_var_name(VarSet, Var),
             lookup_var_type(VarTypes, Var, LocalVarType),
             VarDefn = ml_gen_mlds_var_decl(mlds_data_var(LocalVarName),
                 mercury_type_to_mlds_type(ModuleInfo, LocalVarType),
-                gc_no_stmt, MLDS_Context)
+                gc_no_stmt, Context)
         ),
     set_of_var.to_sorted_list(NonLocals, NonLocalVarList),
     MLDS_NonLocalVarDecls = list.map(GenLocalVarDecl, NonLocalVarList),
@@ -363,7 +361,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     % XXX MLDS_DEFN
     GC_TraceCode = ml_gen_block(
         list.map(wrap_data_defn, MLDS_NewobjLocals ++ MLDS_NonLocalVarDecls),
-        [MLDS_TypeInfoStatement, MLDS_TraceStatement], Context).
+        [MLDS_TypeInfoStmt, MLDS_TraceStmt], Context).
 
     % ml_gen_trace_var(VarName, DeclType, TypeInfo, Context, Code):
     % Generate a call to `private_builtin.gc_trace' for the specified variable,
@@ -371,9 +369,9 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     % for that type.
     %
 :- pred ml_gen_trace_var(ml_gen_info::in, mlds_var_name::in, mer_type::in,
-    mlds_rval::in, prog_context::in, statement::out) is det.
+    mlds_rval::in, prog_context::in, mlds_stmt::out) is det.
 
-ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
+ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
     % Generate the lval for Var.
     ml_gen_info_get_module_info(Info, ModuleInfo),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
@@ -400,8 +398,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
     CastVarAddr = ml_unop(cast(CPointerType), ml_mem_addr(VarLval)),
     TraceStmt = ml_stmt_call(Signature, FuncAddr, no,
-        [TypeInfoRval, CastVarAddr], [], ordinary_call, set.init),
-    TraceStatement = statement(TraceStmt, mlds_make_context(Context)).
+        [TypeInfoRval, CastVarAddr], [], ordinary_call, set.init, Context).
 
     % Generate HLDS code to construct the type_info for this type.
     %
@@ -441,9 +438,6 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
                 % The current module.
                 fnoi_module_name    :: mlds_module_name,
 
-                % The current context.
-                fnoi_context        :: mlds_context,
-
                 % The local variable declarations accumulated so far.
                 fnoi_locals         :: cord(mlds_data_defn),
 
@@ -456,110 +450,95 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     % returning the local variable declarations needed for the stack
     % allocation.
     %
-:- pred fixup_newobj(statement::in, mlds_module_name::in,
-     statement::out, list(mlds_data_defn)::out) is det.
+:- pred fixup_newobj(mlds_module_name::in, mlds_stmt::in, mlds_stmt::out,
+    list(mlds_data_defn)::out) is det.
 
-fixup_newobj(Statement0, ModuleName, Statement, Defns) :-
-    Statement0 = statement(Stmt0, Context),
-    Info0 = fixup_newobj_info(ModuleName, Context, cord.init, counter.init(0)),
+fixup_newobj(ModuleName, Stmt0, Stmt, Defns) :-
+    Info0 = fixup_newobj_info(ModuleName, cord.init, counter.init(0)),
     fixup_newobj_in_stmt(Stmt0, Stmt, Info0, Info),
-    Statement = statement(Stmt, Context),
     Defns = cord.to_list(Info ^ fnoi_locals).
-
-:- pred fixup_newobj_in_statement(statement::in, statement::out,
-    fixup_newobj_info::in, fixup_newobj_info::out) is det.
-
-fixup_newobj_in_statement(Statement0, Statement, !Info) :-
-    Statement0 = statement(Stmt0, Context),
-    !Info ^ fnoi_context := Context,
-    fixup_newobj_in_stmt(Stmt0, Stmt, !Info),
-    Statement = statement(Stmt, Context).
 
 :- pred fixup_newobj_in_stmt(mlds_stmt::in, mlds_stmt::out,
     fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
 fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
     (
-        Stmt0 = ml_stmt_block(Defns, Statements0),
-        list.map_foldl(fixup_newobj_in_statement,
-            Statements0, Statements, !Fixup),
-        Stmt = ml_stmt_block(Defns, Statements)
+        Stmt0 = ml_stmt_block(Defns, SubStmts0, Context),
+        list.map_foldl(fixup_newobj_in_stmt, SubStmts0, SubStmts, !Fixup),
+        Stmt = ml_stmt_block(Defns, SubStmts, Context)
     ;
-        Stmt0 = ml_stmt_while(Kind, Rval, Statement0),
-        fixup_newobj_in_statement(Statement0, Statement, !Fixup),
-        Stmt = ml_stmt_while(Kind, Rval, Statement)
+        Stmt0 = ml_stmt_while(Kind, Rval, BodyStmt0, Context),
+        fixup_newobj_in_stmt(BodyStmt0, BodyStmt, !Fixup),
+        Stmt = ml_stmt_while(Kind, Rval, BodyStmt, Context)
     ;
-        Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
-        fixup_newobj_in_statement(Then0, Then, !Fixup),
+        Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0, Context),
+        fixup_newobj_in_stmt(Then0, Then, !Fixup),
         fixup_newobj_in_maybe_statement(MaybeElse0, MaybeElse, !Fixup),
-        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
+        Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse, Context)
     ;
-        Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0),
+        Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0, Context),
         list.map_foldl(fixup_newobj_in_case, Cases0, Cases, !Fixup),
         fixup_newobj_in_default(Default0, Default, !Fixup),
-        Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
+        Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default, Context)
     ;
-        Stmt0 = ml_stmt_label(_),
+        ( Stmt0 = ml_stmt_label(_Label, _Context)
+        ; Stmt0 = ml_stmt_goto(_Target, _Context)
+        ; Stmt0 = ml_stmt_computed_goto(_Rval, _Labels, _Context)
+        ; Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals,
+            _TailCall, _Markers, _Context)
+        ; Stmt0 = ml_stmt_return(_Rvals, _Context)
+        ; Stmt0 = ml_stmt_do_commit(_Ref, _Context)
+        ),
         Stmt = Stmt0
     ;
-        Stmt0 = ml_stmt_goto(_),
-        Stmt = Stmt0
+        Stmt0 = ml_stmt_try_commit(Ref, BodyStmt0, HandlerStmt0, Context),
+        fixup_newobj_in_stmt(BodyStmt0, BodyStmt, !Fixup),
+        fixup_newobj_in_stmt(HandlerStmt0, HandlerStmt, !Fixup),
+        Stmt = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt, Context)
     ;
-        Stmt0 = ml_stmt_computed_goto(Rval, Labels),
-        Stmt = ml_stmt_computed_goto(Rval, Labels)
-    ;
-        Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals,
-            _TailCall, _Markers),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_return(_Rvals),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_do_commit(_Ref),
-        Stmt = Stmt0
-    ;
-        Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
-        fixup_newobj_in_statement(Statement0, Statement, !Fixup),
-        fixup_newobj_in_statement(Handler0, Handler, !Fixup),
-        Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
-    ;
-        Stmt0 = ml_stmt_atomic(AtomicStmt0),
-        fixup_newobj_in_atomic_statement(AtomicStmt0, Stmt, !Fixup)
+        Stmt0 = ml_stmt_atomic(AtomicStmt0, Context),
+        fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup)
     ).
 
 :- pred fixup_newobj_in_case(mlds_switch_case::in, mlds_switch_case::out,
     fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
 fixup_newobj_in_case(Case0, Case, !Fixup) :-
-    Case0 = mlds_switch_case(FirstCond, LaterConds, Statement0),
-    fixup_newobj_in_statement(Statement0, Statement, !Fixup),
-    Case  = mlds_switch_case(FirstCond, LaterConds, Statement).
+    Case0 = mlds_switch_case(FirstCond, LaterConds, Stmt0),
+    fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup),
+    Case  = mlds_switch_case(FirstCond, LaterConds, Stmt).
 
-:- pred fixup_newobj_in_maybe_statement(maybe(statement)::in,
-    maybe(statement)::out,
+:- pred fixup_newobj_in_maybe_statement(
+    maybe(mlds_stmt)::in, maybe(mlds_stmt)::out,
     fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
 fixup_newobj_in_maybe_statement(no, no, !Fixup).
-fixup_newobj_in_maybe_statement(yes(Statement0), yes(Statement), !Fixup) :-
-    fixup_newobj_in_statement(Statement0, Statement, !Fixup).
+fixup_newobj_in_maybe_statement(yes(Stmt0), yes(Stmt), !Fixup) :-
+    fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup).
 
 :- pred fixup_newobj_in_default(mlds_switch_default::in,
     mlds_switch_default::out,
     fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
-fixup_newobj_in_default(default_is_unreachable, default_is_unreachable,
-        !Fixup).
-fixup_newobj_in_default(default_do_nothing, default_do_nothing, !Fixup).
-fixup_newobj_in_default(default_case(Statement0), default_case(Statement),
-        !Fixup) :-
-    fixup_newobj_in_statement(Statement0, Statement, !Fixup).
+fixup_newobj_in_default(Default0, Default, !Fixup) :-
+    (
+        ( Default0 = default_is_unreachable
+        ; Default0 = default_do_nothing
+        ),
+        Default = Default0
+    ;
+        Default0 = default_case(Stmt0),
+        fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup),
+        Default = default_case(Stmt)
+    ).
 
 :- pred fixup_newobj_in_atomic_statement(mlds_atomic_statement::in,
-    mlds_stmt::out, fixup_newobj_info::in, fixup_newobj_info::out) is det.
+    prog_context::in, mlds_stmt::out,
+    fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
-fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
+fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
     ( if
-        AtomicStatement0 = new_object(Lval, MaybeTag, _ExplicitSecTag,
+        AtomicStmt0 = new_object(Lval, MaybeTag, _ExplicitSecTag,
             PointerType, _MaybeSizeInWordsRval, _MaybeCtorName,
             ArgRvals, _ArgTypes, _MayUseAtomic, _AllocId)
     then
@@ -579,10 +558,9 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         Initializer = init_array(NullPointers),
         % This is used for the type_infos allocated during tracing,
         % and we don't need to trace them.
-        GCStatement = gc_no_stmt,
-        Context = !.Fixup ^ fnoi_context,
+        GCStmt = gc_no_stmt,
         VarDecl = ml_gen_mlds_var_decl_init(mlds_data_var(VarName), VarType,
-            Initializer, GCStatement, Context),
+            Initializer, GCStmt, Context),
         !Fixup ^ fnoi_next_id := NextId,
 
         % XXX We should keep a more structured representation of the local
@@ -604,30 +582,28 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
             VarType),
         PtrRval = ml_unop(cast(PointerType), ml_mem_addr(VarLval)),
         list.map_foldl(init_field_n(PointerType, PtrRval, Context),
-            ArgRvals, ArgInitStatements, 0, _NumFields),
+            ArgRvals, ArgInitStmts, 0, _NumFields),
 
         % Generate code to assign the address of the new local variable
         % to the Lval.
         TaggedPtrRval = maybe_tag_rval(MaybeTag, PointerType, PtrRval),
-        AssignStmt = ml_stmt_atomic(assign(Lval, TaggedPtrRval)),
-        AssignStatement = statement(AssignStmt, Context),
-        Stmt = ml_stmt_block([], ArgInitStatements ++ [AssignStatement])
+        AssignStmt = ml_stmt_atomic(assign(Lval, TaggedPtrRval), Context),
+        Stmt = ml_stmt_block([], ArgInitStmts ++ [AssignStmt], Context)
     else
-        Stmt = ml_stmt_atomic(AtomicStatement0)
+        Stmt = ml_stmt_atomic(AtomicStmt0, Context)
     ).
 
-:- pred init_field_n(mlds_type::in, mlds_rval::in, mlds_context::in,
-    mlds_rval::in, statement::out, int::in, int::out) is det.
+:- pred init_field_n(mlds_type::in, mlds_rval::in, prog_context::in,
+    mlds_rval::in, mlds_stmt::out, int::in, int::out) is det.
 
-init_field_n(PointerType, PointerRval, Context, ArgRval, Statement,
+init_field_n(PointerType, PointerRval, Context, ArgRval, Stmt,
         FieldNum, FieldNum + 1) :-
     FieldId = ml_field_offset(ml_const(mlconst_int(FieldNum))),
     % XXX FieldType is wrong for --high-level-data
     FieldType = mlds_generic_type,
     MaybeTag = yes(0),
     Field = ml_field(MaybeTag, PointerRval, FieldId, FieldType, PointerType),
-    AssignStmt = ml_stmt_atomic(assign(Field, ArgRval)),
-    Statement = statement(AssignStmt, Context).
+    Stmt = ml_stmt_atomic(assign(Field, ArgRval), Context).
 
 :- func maybe_tag_rval(maybe(mlds_tag), mlds_type, mlds_rval) = mlds_rval.
 

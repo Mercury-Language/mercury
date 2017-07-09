@@ -26,13 +26,13 @@
 :- import_module list.
 
 :- pred ml_gen_trace_runtime_cond(trace_expr(trace_runtime)::in,
-    prog_context::in, list(statement)::out,
+    prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_gen_ordinary_pragma_foreign_proc(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_data_defn)::out, list(statement)::out,
+    prog_context::in, list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -64,13 +64,11 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-ml_gen_trace_runtime_cond(TraceRuntimeCond, Context, Statements, !Info) :-
-    MLDSContext = mlds_make_context(Context),
+ml_gen_trace_runtime_cond(TraceRuntimeCond, Context, Stmts, !Info) :-
     ml_success_lval(!.Info, SuccessLval),
     ml_generate_runtime_cond_code(TraceRuntimeCond, CondRval, !Info),
-    Statement = statement(ml_stmt_atomic(assign(SuccessLval, CondRval)),
-        MLDSContext),
-    Statements = [Statement].
+    Stmt = ml_stmt_atomic(assign(SuccessLval, CondRval), Context),
+    Stmts = [Stmt].
 
 :- pred ml_generate_runtime_cond_code(trace_expr(trace_runtime)::in,
     mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
@@ -101,7 +99,7 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
     ).
 
 ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
-        Args, ExtraArgs, Foreign_Code, Context, Decls, Statements, !Info) :-
+        Args, ExtraArgs, ForeignCode, Context, Decls, Stmts, !Info) :-
     Lang = get_foreign_language(Attributes),
     (
         CodeModel = model_det,
@@ -128,7 +126,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         OrdinaryDespiteDetism = get_ordinary_despite_detism(Attributes),
         (
             OrdinaryDespiteDetism = no,
-            unexpected($module, $pred, "unexpected code model")
+            unexpected($pred, "unexpected code model")
         ;
             OrdinaryDespiteDetism = yes,
             OrdinaryKind = kind_semi
@@ -138,7 +136,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         Lang = lang_c,
         ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes,
             PredId, ProcId, Args, ExtraArgs,
-            Foreign_Code, Context, Decls, Statements, !Info)
+            ForeignCode, Context, Decls, Stmts, !Info)
     ;
         Lang = lang_csharp,
         ml_gen_info_get_target(!.Info, Target),
@@ -146,23 +144,23 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             Target = target_csharp,
             ml_gen_ordinary_pragma_csharp_java_proc(ml_target_csharp,
                 OrdinaryKind, Attributes, PredId, ProcId, Args, ExtraArgs,
-                Foreign_Code, Context, Decls, Statements, !Info)
+                ForeignCode, Context, Decls, Stmts, !Info)
         ;
             ( Target = target_c
             ; Target = target_java
             ; Target = target_erlang
             ),
-            unexpected($module, $pred,
+            unexpected($pred,
                 "C# foreign code not supported for compilation target")
         )
     ;
         Lang = lang_java,
         ml_gen_ordinary_pragma_csharp_java_proc(ml_target_java, OrdinaryKind,
             Attributes, PredId, ProcId, Args, ExtraArgs,
-            Foreign_Code, Context, Decls, Statements, !Info)
+            ForeignCode, Context, Decls, Stmts, !Info)
     ;
         Lang = lang_erlang,
-        unexpected($module, $pred, "unexpected language Erlang")
+        unexpected($pred, "unexpected language Erlang")
     ).
 
 :- inst java_or_csharp
@@ -173,11 +171,11 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
     mlds_target_lang::in(java_or_csharp), ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_data_defn)::out, list(statement)::out,
+    prog_context::in, list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
-        PredId, _ProcId, Args, ExtraArgs, JavaCode, Context, Decls, Statements,
+        PredId, _ProcId, Args, ExtraArgs, JavaCode, Context, Decls, Stmts,
         !Info) :-
     Lang = get_foreign_language(Attributes),
 
@@ -193,14 +191,14 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
     % Generate <declaration of one local variable for each arg>
     ml_gen_pragma_csharp_java_decls(!.Info, MutableSpecial, Args,
         ArgDeclsList),
-    expect(unify(ExtraArgs, []), $module, $pred, "extra args"),
+    expect(unify(ExtraArgs, []), $pred, "extra args"),
 
     % Generate code to set the values of the input variables.
     ml_gen_pragma_ccsj_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
     % Generate MLDS statements to assign the values of the output variables.
     ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, Args, Context,
-        AssignOutputsList, ConvDecls, ConvStatements, !Info),
+        AssignOutputsList, ConvDecls, ConvStmts, !Info),
 
     % Put it all together.
 
@@ -236,31 +234,23 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
         ]
     ),
 
-    Starting_Code = list.condense([
+    StartingFragments = list.condense([
         [raw_target_code("{\n")],
         ArgDeclsList,
         SucceededDecl,
         AssignInputsList,
         [user_target_code(JavaCode, yes(Context))]
     ]),
-    Starting_Code_Stmt = inline_target_code(TargetLang, Starting_Code),
-    Starting_Code_Statement = statement(ml_stmt_atomic(Starting_Code_Stmt),
-        mlds_make_context(Context)),
+    StartingCode = inline_target_code(TargetLang, StartingFragments),
+    StartingCodeStmt = ml_stmt_atomic(StartingCode, Context),
 
-    Ending_Code = list.condense([
-        AssignSucceeded,
-        [raw_target_code("\t}\n")]
-    ]),
-    Ending_Code_Stmt = inline_target_code(TargetLang, Ending_Code),
-    Ending_Code_Statement = statement(ml_stmt_atomic(Ending_Code_Stmt),
-        mlds_make_context(Context)),
+    EndingFragments = AssignSucceeded ++ [raw_target_code("\t}\n")],
+    EndingCode = inline_target_code(TargetLang, EndingFragments),
+    EndingCodeStmt = ml_stmt_atomic(EndingCode, Context),
 
-    Statements = list.condense([
-        [Starting_Code_Statement],
-        AssignOutputsList,
-        ConvStatements,
-        [Ending_Code_Statement]
-    ]),
+    Stmts = [StartingCodeStmt] ++
+        AssignOutputsList ++ ConvStmts ++
+        [EndingCodeStmt],
     Decls = ConvDecls.
 
 :- type ordinary_pragma_kind
@@ -281,20 +271,19 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
 :- pred ml_gen_ordinary_pragma_managed_proc(ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_data_defn)::out, list(statement)::out,
+    prog_context::in, list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pragma consider_used(ml_gen_ordinary_pragma_managed_proc/12).
 
 ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
-        Args, ExtraArgs, ForeignCode, Context, Decls, Statements, !Info) :-
+        Args, ExtraArgs, ForeignCode, Context, Decls, Stmts, !Info) :-
     ml_gen_outline_args(Args, OutlineArgs, !Info),
-    expect(unify(ExtraArgs, []), $module, $pred, "extra args"),
+    expect(unify(ExtraArgs, []), $pred, "extra args"),
 
     ForeignLang = get_foreign_language(Attributes),
-    MLDSContext = mlds_make_context(Context),
     ml_gen_info_get_value_output_vars(!.Info, OutputVars),
     ml_gen_var_list(!.Info, OutputVars, OutputVarLvals),
-    OutlineStmt = outline_foreign_proc(ForeignLang, OutlineArgs,
+    OutlineAtomicStmt = outline_foreign_proc(ForeignLang, OutlineArgs,
         OutputVarLvals, ForeignCode),
 
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -305,7 +294,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
     (
         OrdinaryKind = kind_det,
         SuccessVarLocals = [],
-        SuccessIndicatorStatements = []
+        SuccessIndicatorStmts = []
     ;
         OrdinaryKind = kind_semi,
         % If the code is semidet, we should copy SUCCESS_INDICATOR
@@ -314,20 +303,20 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
         SuccessIndicatorDecl = ml_gen_mlds_var_decl(
             mlds_data_var(SuccessIndicatorVarName),
             mlds_native_bool_type,
-            gc_no_stmt, MLDSContext),
+            gc_no_stmt, Context),
         SuccessIndicatorLval = ml_var(qual(MLDSModuleName, module_qual,
             SuccessIndicatorVarName), mlds_native_bool_type),
-        SuccessIndicatorStatement = ml_gen_assign(SucceededLval,
+        SuccessIndicatorStmt = ml_gen_assign(SucceededLval,
             ml_lval(SuccessIndicatorLval), Context),
         SuccessVarLocals = [SuccessIndicatorDecl],
-        SuccessIndicatorStatements = [SuccessIndicatorStatement]
+        SuccessIndicatorStmts = [SuccessIndicatorStmt]
     ;
         OrdinaryKind = kind_failure,
-        unexpected($module, $pred, "kind_failure not yet implemented")
+        unexpected($pred, "kind_failure not yet implemented")
     ),
 
-    OutlineStatement = statement(ml_stmt_atomic(OutlineStmt), MLDSContext),
-    Statements = [OutlineStatement | SuccessIndicatorStatements],
+    OutlineStmt = ml_stmt_atomic(OutlineAtomicStmt, Context),
+    Stmts = [OutlineStmt | SuccessIndicatorStmts],
     Decls = SuccessVarLocals.
 
 :- pred ml_gen_outline_args(list(foreign_arg)::in, list(outline_arg)::out,
@@ -427,11 +416,11 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
 :- pred ml_gen_ordinary_pragma_c_proc(ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_data_defn)::out, list(statement)::out,
+    prog_context::in, list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
-        OrigArgs, ExtraArgs, C_Code, Context, Decls, Statements, !Info) :-
+        OrigArgs, ExtraArgs, C_Code, Context, Decls, Stmts, !Info) :-
     Lang = get_foreign_language(Attributes),
 
     % Generate <declaration of one local variable for each arg>
@@ -443,7 +432,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
 
     % Generate code to assign the values of the output variables.
     ml_gen_pragma_c_output_arg_list(Args, Context,
-        AssignOutputsList, ConvDecls, ConvStatements, !Info),
+        AssignOutputsList, ConvDecls, ConvStmts, !Info),
 
     % Generate code fragments to obtain and release the global lock.
     ThreadSafe = get_thread_safe(Attributes),
@@ -460,7 +449,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     % Put it all together.
     (
         OrdinaryKind = kind_det,
-        Starting_C_Code = list.condense([
+        StartingFragments = list.condense([
             [raw_target_code("{\n")],
             HashDefineAllocId,
             HashDefineProcLabel,
@@ -476,7 +465,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
             raw_target_code(ReleaseLock)],
             AssignOutputsList
         ]),
-        Ending_C_Code = [raw_target_code("}\n")]
+        EndingFragments = [raw_target_code("}\n")]
     ;
         OrdinaryKind = kind_failure,
         % We need to treat this case separately, because for these
@@ -484,7 +473,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         % SUCCESS_INDICATOR; the code we generate for CanSucceed = yes
         % would test an undefined value.
         ml_success_lval(!.Info, SucceededLval),
-        Starting_C_Code = list.condense([
+        StartingFragments = list.condense([
             [raw_target_code("{\n")],
             HashDefineAllocId,
             HashDefineProcLabel,
@@ -499,7 +488,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
             [raw_target_code("#undef MR_PROC_LABEL\n"),
             raw_target_code(ReleaseLock)]
         ]),
-        Ending_C_Code = [
+        EndingFragments = [
             target_code_output(SucceededLval),
             raw_target_code(" = MR_FALSE;\n"),
             raw_target_code("}\n")
@@ -507,7 +496,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     ;
         OrdinaryKind = kind_semi,
         ml_success_lval(!.Info, SucceededLval),
-        Starting_C_Code = list.condense([
+        StartingFragments = list.condense([
             [raw_target_code("{\n")],
             HashDefineAllocId,
             HashDefineProcLabel,
@@ -525,21 +514,18 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
             raw_target_code("\tif (SUCCESS_INDICATOR) {\n")],
             AssignOutputsList
         ]),
-        Ending_C_Code = [
+        EndingFragments = [
             raw_target_code("\t}\n"),
             target_code_output(SucceededLval),
             raw_target_code(" = SUCCESS_INDICATOR;\n"),
             raw_target_code("}\n")
         ]
     ),
-    Starting_C_Code_Stmt = inline_target_code(ml_target_c, Starting_C_Code),
-    Ending_C_Code_Stmt = inline_target_code(ml_target_c, Ending_C_Code),
-    Starting_C_Code_Statement = statement(
-        ml_stmt_atomic(Starting_C_Code_Stmt), mlds_make_context(Context)),
-    Ending_C_Code_Statement = statement(ml_stmt_atomic(Ending_C_Code_Stmt),
-        mlds_make_context(Context)),
-    Statements = [Starting_C_Code_Statement | ConvStatements] ++
-        [Ending_C_Code_Statement],
+    StartingCCode = inline_target_code(ml_target_c, StartingFragments),
+    StartingCCodeStmt = ml_stmt_atomic(StartingCCode, Context),
+    EndingCCode = inline_target_code(ml_target_c, EndingFragments),
+    EndingCCodeStmt = ml_stmt_atomic(EndingCCode, Context),
+    Stmts = [StartingCCodeStmt | ConvStmts] ++ [EndingCCodeStmt],
     Decls = ConvDecls.
 
     % Generate code fragments to obtain and release the global lock
@@ -879,36 +865,36 @@ input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
         Cast = ""
     ;
         Lang = lang_erlang,
-        unexpected($module, $pred, "unexpected language")
+        unexpected($pred, "unexpected language")
     ).
 
 :- pred ml_gen_pragma_csharp_java_output_arg_list(mutable_special_case::in,
-    list(foreign_arg)::in, prog_context::in, list(statement)::out,
-    list(mlds_data_defn)::out, list(statement)::out,
+    list(foreign_arg)::in, prog_context::in, list(mlds_stmt)::out,
+    list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_csharp_java_output_arg_list(_, [], _, [], [], [], !Info).
 ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, [JavaArg | JavaArgs],
-        Context, Statements, ConvDecls, ConvStatements, !Info) :-
+        Context, Stmts, ConvDecls, ConvStmts, !Info) :-
     ml_gen_pragma_csharp_java_output_arg(MutableSpecial, JavaArg, Context,
-        Statements1, ConvDecls1, ConvStatements1, !Info),
+        Stmts1, ConvDecls1, ConvStmts1, !Info),
     ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, JavaArgs,
-        Context, Statements2, ConvDecls2, ConvStatements2, !Info),
-    Statements = Statements1 ++ Statements2,
+        Context, Stmts2, ConvDecls2, ConvStmts2, !Info),
+    Stmts = Stmts1 ++ Stmts2,
     ConvDecls = ConvDecls1 ++ ConvDecls2,
-    ConvStatements = ConvStatements1 ++ ConvStatements2.
+    ConvStmts = ConvStmts1 ++ ConvStmts2.
 
     % ml_gen_pragma_csharp_java_output_arg generates MLDS statements
     % to assign the value of an output arg for a `pragma foreign_proc'
     % declaration.
     %
 :- pred ml_gen_pragma_csharp_java_output_arg(mutable_special_case::in,
-    foreign_arg::in, prog_context::in, list(statement)::out,
-    list(mlds_data_defn)::out, list(statement)::out,
+    foreign_arg::in, prog_context::in, list(mlds_stmt)::out,
+    list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
-        AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
+        AssignOutput, ConvDecls, ConvOutputStmts, !Info) :-
     ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ( if
@@ -924,8 +910,7 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
         NonMangledArgVarName = mlds_prog_var_foreign(ArgName),
         ml_gen_box_or_unbox_lval(VarType, OrigType, BoxPolicy,
             VarLval, NonMangledArgVarName, Context, no, 0,
-            ArgLval, ConvDecls, _ConvInputStatements,
-            ConvOutputStatements, !Info),
+            ArgLval, ConvDecls, _ConvInputStmts, ConvOutputStmts, !Info),
         MLDSType = mercury_type_to_mlds_type(ModuleInfo, OrigType),
         module_info_get_name(ModuleInfo, ModuleName),
         MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
@@ -950,35 +935,35 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
         % it can't be used, so we just ignore it.
         AssignOutput = [],
         ConvDecls = [],
-        ConvOutputStatements = []
+        ConvOutputStmts = []
     ).
 
 :- pred ml_gen_pragma_c_output_arg_list(list(foreign_arg)::in,
     prog_context::in, list(target_code_component)::out,
-    list(mlds_data_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_output_arg_list([], _, [], [], [], !Info).
 ml_gen_pragma_c_output_arg_list([ForeignArg | ForeignArgs], Context,
-        Components, ConvDecls, ConvStatements, !Info) :-
+        Components, ConvDecls, ConvStmts, !Info) :-
     ml_gen_pragma_c_output_arg(ForeignArg, Context, Components1,
-        ConvDecls1, ConvStatements1, !Info),
+        ConvDecls1, ConvStmts1, !Info),
     ml_gen_pragma_c_output_arg_list(ForeignArgs, Context,
-        Components2, ConvDecls2, ConvStatements2, !Info),
+        Components2, ConvDecls2, ConvStmts2, !Info),
     Components = Components1 ++ Components2,
     ConvDecls = ConvDecls1 ++ ConvDecls2,
-    ConvStatements = ConvStatements1 ++ ConvStatements2.
+    ConvStmts = ConvStmts1 ++ ConvStmts2.
 
     % ml_gen_pragma_c_output_arg generates C code to assign the value of
     % an output arg for a `pragma foreign_proc' declaration.
     %
 :- pred ml_gen_pragma_c_output_arg(foreign_arg::in,
     prog_context::in, list(target_code_component)::out,
-    list(mlds_data_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
-        ConvOutputStatements, !Info) :-
+        ConvOutputStmts, !Info) :-
     Arg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ( if
@@ -988,29 +973,29 @@ ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_out)
     then
         ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
-            Context, AssignOutput, ConvDecls, ConvOutputStatements, !Info)
+            Context, AssignOutput, ConvDecls, ConvOutputStmts, !Info)
     else
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
         AssignOutput = [],
         ConvDecls = [],
-        ConvOutputStatements = []
+        ConvOutputStmts = []
     ).
 
 :- pred ml_gen_pragma_c_gen_output_arg(prog_var::in,
     string::in, mer_type::in, box_policy::in, prog_context::in,
     list(target_code_component)::out,
-    list(mlds_data_defn)::out, list(statement)::out,
+    list(mlds_data_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
-        Context, AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
+        Context, AssignOutput, ConvDecls, ConvOutputStmts, !Info) :-
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
     NonMangledArgVarName = mlds_prog_var_foreign(ArgName),
     ml_gen_box_or_unbox_lval(VarType, OrigType, BoxPolicy, VarLval,
         NonMangledArgVarName, Context, no, 0, ArgLval,
-        ConvDecls, _ConvInputStatements, ConvOutputStatements, !Info),
+        ConvDecls, _ConvInputStmts, ConvOutputStmts, !Info),
     % At this point we have an lval with the right type for *internal* use
     % in the code generated by the Mercury compiler's MLDS back-end. We need
     % to convert this to the appropriate type to use for the C interface.

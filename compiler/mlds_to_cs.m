@@ -275,7 +275,7 @@ output_csharp_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
         Context, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
-        indent_line_prog_context(Info ^ csoi_foreign_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_foreign_line_numbers, Context,
             Indent, !IO),
         io.write_string(Code, !IO)
     ;
@@ -1352,7 +1352,7 @@ output_rtti_array_assignments_for_csharp(Info, Indent, Name, ElementInit,
 %
 
 :- pred output_func_for_csharp(csharp_out_info::in, indent::in,
-    mlds_function_name::in, output_aux::in, mlds_context::in,
+    mlds_function_name::in, output_aux::in, prog_context::in,
     mlds_func_params::in, mlds_function_body::in, io::di, io::uo) is det.
 
 output_func_for_csharp(Info, Indent, FuncName, OutputAux, Context, Signature,
@@ -1362,13 +1362,13 @@ output_func_for_csharp(Info, Indent, FuncName, OutputAux, Context, Signature,
         output_func_decl_for_csharp(Info, Indent, FuncName, OutputAux,
             Signature, !IO),
         io.write_string("\n", !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("{\n", !IO),
         FuncInfo = func_info_csj(Signature),
-        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Body,
+        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Body,
             _ExitMethods, !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("}\n", !IO),    % end the function
         cs_output_default_context(Info ^ csoi_line_numbers, !IO)
@@ -1438,7 +1438,7 @@ output_params_for_csharp(Info, Indent, Parameters, !IO) :-
     mlds_argument::in, io::di, io::uo) is det.
 
 output_param_for_csharp(Info, Indent, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GCStatement),
+    Arg = mlds_argument(Name, Type, _GCStmt),
     output_n_indents(Indent, !IO),
     ( if Type = mlds_ptr_type(_) then
         io.write_string("out ", !IO)
@@ -2268,18 +2268,18 @@ maybe_output_comment_for_csharp(Info, Comment, !IO) :-
 % Code to output statements.
 %
 
-:- pred output_statements_for_csharp(csharp_out_info::in, indent::in,
-    func_info_csj::in, list(statement)::in, exit_methods::out,
+:- pred output_stmts_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, list(mlds_stmt)::in, exit_methods::out,
     io::di, io::uo) is det.
 
-output_statements_for_csharp(_, _, _, [], ExitMethods, !IO) :-
+output_stmts_for_csharp(_, _, _, [], ExitMethods, !IO) :-
     ExitMethods = set.make_singleton_set(can_fall_through).
-output_statements_for_csharp(Info, Indent, FuncInfo, [Statement | Statements],
+output_stmts_for_csharp(Info, Indent, FuncInfo, [Stmt | Stmts],
         ExitMethods, !IO) :-
-    output_statement_for_csharp(Info, Indent, FuncInfo, Statement,
+    output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt,
         StmtExitMethods, !IO),
     ( if set.member(can_fall_through, StmtExitMethods) then
-        output_statements_for_csharp(Info, Indent, FuncInfo, Statements,
+        output_stmts_for_csharp(Info, Indent, FuncInfo, Stmts,
             StmtsExitMethods, !IO),
         ExitMethods0 = StmtExitMethods `set.union` StmtsExitMethods,
         ( if set.member(can_fall_through, StmtsExitMethods) then
@@ -2295,25 +2295,14 @@ output_statements_for_csharp(Info, Indent, FuncInfo, [Statement | Statements],
         ExitMethods = StmtExitMethods
     ).
 
-:- pred output_statement_for_csharp(csharp_out_info::in, indent::in,
-    func_info_csj::in, statement::in, exit_methods::out,
-    io::di, io::uo) is det.
-
-output_statement_for_csharp(Info, Indent, FuncInfo,
-        statement(Statement, Context), ExitMethods, !IO) :-
-    % ZZZ inline
-    output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
-        ExitMethods, !IO).
-
 :- pred output_stmt_for_csharp(csharp_out_info::in, indent::in,
-    func_info_csj::in, mlds_stmt::in, mlds_context::in, exit_methods::out,
+    func_info_csj::in, mlds_stmt::in, exit_methods::out,
     io::di, io::uo) is det.
 
-output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
-        ExitMethods, !IO) :-
+output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     (
-        Statement = ml_stmt_block(Defns, Statements),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        Stmt = ml_stmt_block(Defns, Stmts, Context),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("{\n", !IO),
         (
@@ -2324,48 +2313,50 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
         ;
             Defns = []
         ),
-        output_statements_for_csharp(Info, Indent + 1, FuncInfo, Statements,
+        output_stmts_for_csharp(Info, Indent + 1, FuncInfo, Stmts,
             ExitMethods, !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("}\n", !IO)
     ;
-        Statement = ml_stmt_while(Kind, Cond, BodyStatement),
-        Kind = may_loop_zero_times,
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("while (", !IO),
-        output_rval_for_csharp(Info, Cond, !IO),
-        io.write_string(")\n", !IO),
-        % The contained statement is reachable iff the while statement is
-        % reachable and the condition expression is not a constant expression
-        % whose value is false.
-        ( if Cond = ml_const(mlconst_false) then
-            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
+        (
+            Kind = may_loop_zero_times,
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
                 Indent, !IO),
-            io.write_string("{  /* Unreachable code */  }\n", !IO),
-            ExitMethods = set.make_singleton_set(can_fall_through)
-        else
-            output_statement_for_csharp(Info, Indent + 1, FuncInfo,
-                BodyStatement, StmtExitMethods, !IO),
+            io.write_string("while (", !IO),
+            output_rval_for_csharp(Info, Cond, !IO),
+            io.write_string(")\n", !IO),
+            % The contained statement is reachable iff the while statement is
+            % reachable and the condition expression is not a constant
+            % expression whose value is false.
+            ( if Cond = ml_const(mlconst_false) then
+                indent_line_after_context(Info ^ csoi_line_numbers, Context,
+                    Indent, !IO),
+                io.write_string("{  /* Unreachable code */  }\n", !IO),
+                ExitMethods = set.make_singleton_set(can_fall_through)
+            else
+                output_stmt_for_csharp(Info, Indent + 1, FuncInfo,
+                    BodyStmt, StmtExitMethods, !IO),
+                ExitMethods =
+                    while_exit_methods_for_csharp(Cond, StmtExitMethods)
+            )
+        ;
+            Kind = loop_at_least_once,
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
+                Indent, !IO),
+            io.write_string("do\n", !IO),
+            output_stmt_for_csharp(Info, Indent + 1, FuncInfo, BodyStmt,
+                StmtExitMethods, !IO),
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
+                Indent, !IO),
+            io.write_string("while (", !IO),
+            output_rval_for_csharp(Info, Cond, !IO),
+            io.write_string(");\n", !IO),
             ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
         )
     ;
-        Statement = ml_stmt_while(Kind, Cond, BodyStatement),
-        Kind = loop_at_least_once,
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("do\n", !IO),
-        output_statement_for_csharp(Info, Indent + 1, FuncInfo, BodyStatement,
-            StmtExitMethods, !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("while (", !IO),
-        output_rval_for_csharp(Info, Cond, !IO),
-        io.write_string(");\n", !IO),
-        ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
-    ;
-        Statement = ml_stmt_if_then_else(Cond, Then0, MaybeElse),
+        Stmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse, Context),
         % We need to take care to avoid problems caused by the dangling else
         % ambiguity.
         ( if
@@ -2381,26 +2372,26 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
             % parse they way we want them to.
 
             MaybeElse = yes(_),
-            Then0 = statement(ml_stmt_if_then_else(_, _, no), ThenContext)
+            Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
         then
-            Then = statement(ml_stmt_block([], [Then0]), ThenContext)
+            Then = ml_stmt_block([], [Then0], ThenContext)
         else
             Then = Then0
         ),
 
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("if (", !IO),
         output_rval_for_csharp(Info, Cond, !IO),
         io.write_string(")\n", !IO),
-        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Then,
+        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Then,
             ThenExitMethods, !IO),
         (
             MaybeElse = yes(Else),
-            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
                 Indent, !IO),
             io.write_string("else\n", !IO),
-            output_statement_for_csharp(Info, Indent + 1, FuncInfo, Else,
+            output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Else,
                 ElseExitMethods, !IO),
             % An if-then-else statement can complete normally iff the
             % then-statement can complete normally or the else-statement
@@ -2413,49 +2404,46 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
                 set.make_singleton_set(can_fall_through)
         )
     ;
-        Statement = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, Context),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("switch (", !IO),
         output_rval_for_csharp(Info, Val, !IO),
         io.write_string(") {\n", !IO),
         output_switch_cases_for_csharp(Info, Indent + 1, FuncInfo, Context,
             Cases, Default, ExitMethods, !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("}\n", !IO)
     ;
-        Statement = ml_stmt_label(_),
-        % XXX C# is not Java
-        unexpected($pred, "labels not supported in Java.")
+        Stmt = ml_stmt_label(_, _),
+        unexpected($pred, "labels not supported in C#.")
     ;
-        Statement = ml_stmt_goto(goto_label(_)),
-        % XXX C# is not Java
-        unexpected($pred, "gotos not supported in Java.")
+        Stmt = ml_stmt_goto(goto_label(_), _),
+        unexpected($pred, "gotos not supported in C#.")
     ;
-        Statement = ml_stmt_goto(goto_break),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        Stmt = ml_stmt_goto(goto_break, Context),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = set.make_singleton_set(can_break)
     ;
-        Statement = ml_stmt_goto(goto_continue),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        Stmt = ml_stmt_goto(goto_continue, Context),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("continue;\n", !IO),
         ExitMethods = set.make_singleton_set(can_continue)
     ;
-        Statement = ml_stmt_computed_goto(_, _),
-        % XXX C# is not Java
-        unexpected($pred, "computed gotos not supported in Java.")
+        Stmt = ml_stmt_computed_goto(_, _, _),
+        unexpected($pred, "computed gotos not supported in C#.")
     ;
-        Statement = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
-            Results, IsTailCall, _Markers),
+        Stmt = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
+            Results, IsTailCall, _Markers, Context),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent + 1, !IO),
         (
             Results = [],
@@ -2497,20 +2485,20 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
             IsTailCall = tail_call
         ;
             IsTailCall = no_return_call,
-            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
                 Indent  + 1, !IO),
             io.write_string("throw new runtime.UnreachableDefault();\n", !IO)
         ),
 
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("}\n", !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
-        Statement = ml_stmt_return(Results),
+        Stmt = ml_stmt_return(Results, Context),
         (
             Results = [],
-            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
                 Indent, !IO),
             io.write_string("return;\n", !IO)
         ;
@@ -2519,7 +2507,7 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
             % Subsequent return values are assigned to out parameters.
             list.foldl2(output_assign_out_params(Info, Indent),
                 Rvals, 2, _, !IO),
-            indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
                 Indent, !IO),
             io.write_string("return ", !IO),
             output_rval_for_csharp(Info, Rval, !IO),
@@ -2527,48 +2515,48 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Statement, Context,
         ),
         ExitMethods = set.make_singleton_set(can_return)
     ;
-        Statement = ml_stmt_do_commit(Ref),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        Stmt = ml_stmt_do_commit(Ref, Context),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         output_rval_for_csharp(Info, Ref, !IO),
         io.write_string(" = new runtime.Commit();\n", !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("throw ", !IO),
         output_rval_for_csharp(Info, Ref, !IO),
         io.write_string(";\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
     ;
-        Statement = ml_stmt_try_commit(_Ref, Stmt, Handler),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        Stmt = ml_stmt_try_commit(_Ref, BodyStmt, HandlerStmt, Context),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("try\n", !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("{\n", !IO),
-        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Stmt,
+        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, BodyStmt,
             TryExitMethods0, !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("}\n", !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("catch (runtime.Commit commit_variable)\n",
             !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent + 1, !IO),
-        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Handler,
+        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, HandlerStmt,
             CatchExitMethods, !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("}\n", !IO),
         ExitMethods = (TryExitMethods0 `set.delete` can_throw)
             `set.union`  CatchExitMethods
     ;
-        Statement = ml_stmt_atomic(AtomicStatement),
+        Stmt = ml_stmt_atomic(AtomicStatement, Context),
         output_atomic_stmt_for_csharp(Info, Indent, AtomicStatement,
             Context, !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
@@ -2590,6 +2578,7 @@ while_exit_methods_for_csharp(Cond, BlockExitMethods) = ExitMethods :-
         % XXX This is not a sufficient way of testing for a Java
         % "constant expression", though determining these accurately
         % is a little difficult to do here.
+        % XXX C# is not Java
         Cond = ml_const(mlconst_true),
         not set.member(can_break, BlockExitMethods)
     then
@@ -2621,7 +2610,7 @@ output_assign_out_params(Info, Indent, Rval, Num, Num + 1, !IO) :-
 %
 
 :- pred output_switch_cases_for_csharp(csharp_out_info::in, indent::in,
-    func_info_csj::in, mlds_context::in, list(mlds_switch_case)::in,
+    func_info_csj::in, prog_context::in, list(mlds_switch_case)::in,
     mlds_switch_default::in, exit_methods::out, io::di, io::uo) is det.
 
 output_switch_cases_for_csharp(Info, Indent, FuncInfo, Context,
@@ -2643,7 +2632,7 @@ output_switch_cases_for_csharp(Info, Indent, FuncInfo, Context,
     ExitMethods = CaseExitMethods `set.union` CasesExitMethods.
 
 :- pred output_switch_case_for_csharp(csharp_out_info::in, indent::in,
-    func_info_csj::in, mlds_context::in, mlds_switch_case::in,
+    func_info_csj::in, prog_context::in, mlds_switch_case::in,
     exit_methods::out, io::di, io::uo) is det.
 
 output_switch_case_for_csharp(Info, Indent, FuncInfo, Context, Case,
@@ -2652,10 +2641,10 @@ output_switch_case_for_csharp(Info, Indent, FuncInfo, Context, Case,
     output_case_cond_for_csharp(Info, Indent, Context, FirstCond, !IO),
     list.foldl(output_case_cond_for_csharp(Info, Indent, Context), LaterConds,
         !IO),
-    output_statement_for_csharp(Info, Indent + 1, FuncInfo, Statement,
+    output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( if set.member(can_fall_through, StmtExitMethods) then
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent + 1, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = (StmtExitMethods `set.insert` can_break)
@@ -2666,12 +2655,12 @@ output_switch_case_for_csharp(Info, Indent, FuncInfo, Context, Case,
     ).
 
 :- pred output_case_cond_for_csharp(csharp_out_info::in, indent::in,
-    mlds_context::in, mlds_case_match_cond::in, io::di, io::uo) is det.
+    prog_context::in, mlds_case_match_cond::in, io::di, io::uo) is det.
 
 output_case_cond_for_csharp(Info, Indent, Context, Match, !IO) :-
     (
         Match = match_value(Val),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("case ", !IO),
         output_rval_for_csharp(Info, Val, !IO),
@@ -2682,7 +2671,7 @@ output_case_cond_for_csharp(Info, Indent, Context, Match, !IO) :-
     ).
 
 :- pred output_switch_default_for_csharp(csharp_out_info::in, indent::in,
-    func_info_csj::in, mlds_context::in, mlds_switch_default::in,
+    func_info_csj::in, prog_context::in, mlds_switch_default::in,
     exit_methods::out, io::di, io::uo) is det.
 
 output_switch_default_for_csharp(Info, Indent, FuncInfo, Context, Default,
@@ -2692,20 +2681,20 @@ output_switch_default_for_csharp(Info, Indent, FuncInfo, Context, Default,
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
         Default = default_case(Statement),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("default:\n", !IO),
-        output_statement_for_csharp(Info, Indent + 1, FuncInfo, Statement,
+        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Statement,
             ExitMethods, !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("break;\n", !IO)
     ;
         Default = default_is_unreachable,
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("default: /*NOTREACHED*/\n", !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context, Indent + 1,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent + 1,
             !IO),
         io.write_string("throw new runtime.UnreachableDefault();\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
@@ -2717,7 +2706,7 @@ output_switch_default_for_csharp(Info, Indent, FuncInfo, Context, Default,
 %
 
 :- pred output_atomic_stmt_for_csharp(csharp_out_info::in, indent::in,
-    mlds_atomic_statement::in, mlds_context::in, io::di, io::uo) is det.
+    mlds_atomic_statement::in, prog_context::in, io::di, io::uo) is det.
 
 output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
     (
@@ -2730,7 +2719,7 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
         io.write_string(" */\n", !IO)
     ;
         AtomicStmt = assign(Lval, Rval),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         output_lval_for_csharp(Info, Lval, !IO),
         io.write_string(" = ", !IO),
@@ -2753,10 +2742,10 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
             ExplicitSecTag = no
         ),
 
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent + 1, !IO),
         output_lval_for_csharp(Info, Target, !IO),
         io.write_string(" = new ", !IO),
@@ -2791,7 +2780,7 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
             output_init_args_for_csharp(Info, Args, ArgTypes, !IO),
             io.write_string(");\n", !IO)
         ),
-        indent_line_mlds_context(Info ^ csoi_line_numbers, Context,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("}\n", !IO)
     ;
@@ -3673,17 +3662,10 @@ cs_output_context(OutputLineNumbers, Context, !IO) :-
         OutputLineNumbers = no
     ).
 
-:- pred indent_line_mlds_context(bool::in, mlds_context::in, indent::in,
-    io::di, io::uo) is det.
-
-indent_line_mlds_context(OutputLineNumbers, Context, N, !IO) :-
-    ProgContext = mlds_get_prog_context(Context),
-    indent_line_prog_context(OutputLineNumbers, ProgContext, N, !IO).
-
-:- pred indent_line_prog_context(bool::in, prog_context::in,
+:- pred indent_line_after_context(bool::in, prog_context::in,
     indent::in, io::di, io::uo) is det.
 
-indent_line_prog_context(OutputLineNumbers, Context, N, !IO) :-
+indent_line_after_context(OutputLineNumbers, Context, N, !IO) :-
     cs_output_context(OutputLineNumbers, Context, !IO),
     output_n_indents(N, !IO).
 
