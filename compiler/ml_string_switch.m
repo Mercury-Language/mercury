@@ -51,14 +51,12 @@
 
 :- pred ml_generate_string_trie_jump_switch(mlds_rval::in,
     list(tagged_case)::in, code_model::in, can_fail::in, prog_context::in,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_trie_lookup_switch(mlds_rval::in,
     list(tagged_case)::in, ml_lookup_switch_info::in,
     code_model::in, can_fail::in, prog_context::in,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_hash_jump_switch(mlds_rval::in,
     list(tagged_case)::in, code_model::in, can_fail::in, prog_context::in,
@@ -122,7 +120,7 @@
 %
 
 ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
-        Context, Defns, Stmts, !Info) :-
+        Context, Stmts, !Info) :-
     gen_tagged_case_codes_for_string_switch(CodeModel, TaggedCases,
         map.init, CodeMap, !Info),
     create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
@@ -166,8 +164,7 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
     % XXX MLDS_DEFN
     Stmt = ml_stmt_block([mlds_data(CaseNumVarDefn)],
         [InitCaseNumVarStmt, GetCaseNumSwitchStmt, CaseSwitchStmt], Context),
-    Stmts = [Stmt],
-    Defns = [].
+    Stmts = [Stmt].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -176,7 +173,7 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
 %
 
 ml_generate_string_trie_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
-        CodeModel, CanFail, Context, Defns, Stmts, !Info) :-
+        CodeModel, CanFail, Context, Stmts, !Info) :-
     create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt, !Info),
@@ -188,7 +185,7 @@ ml_generate_string_trie_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
             CaseNumVarLval, CaseNumVarDefn,
             InitCaseNumVarStmt, GetCaseNumSwitchStmt,
             CaseIdValues, OutVars, OutTypes, CodeModel, CanFail, Context,
-            Defns, Stmts, !Info)
+            Stmts, !Info)
     ;
         CaseIdConsts = some_several_solns(CaseIdSolnMap, _Unit),
         expect(unify(CodeModel, model_non), $pred, "CodeModel != model_non"),
@@ -197,7 +194,7 @@ ml_generate_string_trie_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
             CaseNumVarLval, CaseNumVarDefn,
             InitCaseNumVarStmt, GetCaseNumSwitchStmt,
             CaseIdSolns, OutVars, OutTypes, CanFail, Context,
-            Defns, Stmts, !Info)
+            Stmts, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -207,14 +204,13 @@ ml_generate_string_trie_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
     assoc_list(case_id, list(mlds_rval))::in,
     list(prog_var)::in, list(mlds_type)::in,
     code_model::in, can_fail::in, prog_context::in,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt,
         CaseIdValues, OutVars, OutTypes, CodeModel, CanFail, Context,
-        Defns, Stmts, !Info) :-
+        Stmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
@@ -281,8 +277,7 @@ ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
 
     Stmt = ml_stmt_block([mlds_data(CaseNumVarDefn)],
         [InitCaseNumVarStmt, GetCaseNumSwitchStmt, ResultStmt], Context),
-    Stmts = [Stmt],
-    Defns = [].
+    Stmts = [Stmt].
 
 :- pred ml_gen_string_trie_simple_lookup_slots(mlds_type::in,
     assoc_list(case_id, list(mlds_rval))::in, int::in, int::out,
@@ -308,14 +303,12 @@ ml_gen_string_trie_simple_lookup_slots(StructType,
     mlds_lval::in, mlds_data_defn::in, mlds_stmt::in, mlds_stmt::in,
     assoc_list(case_id, soln_consts(mlds_rval))::in,
     list(prog_var)::in, list(mlds_type)::in, can_fail::in, prog_context::in,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt,
-        CaseIdSolns, OutVars, OutTypes, CanFail, Context,
-        Defns, Stmts, !Info) :-
+        CaseIdSolns, OutVars, OutTypes, CanFail, Context, Stmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
@@ -379,8 +372,7 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
     ),
     Stmt = ml_stmt_block([mlds_data(CaseNumVarDefn)],
         [InitCaseNumVarStmt, GetCaseNumSwitchStmt, ResultStmt], Context),
-    Stmts = [Stmt],
-    Defns = [].
+    Stmts = [Stmt].
 
 :- pred ml_gen_string_trie_several_soln_lookup_slots(
     mlds_type::in, mlds_type::in,

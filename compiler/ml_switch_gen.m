@@ -337,13 +337,14 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
                 MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
                 ml_generate_string_trie_lookup_switch(SwitchVarRval,
                     FilteredTaggedCases, LookupSwitchInfo, CodeModel,
-                    FilteredCanFail, Context, Decls, Stmts, !Info)
+                    FilteredCanFail, Context, Stmts, !Info)
             ;
                 MaybeLookupSwitchInfo = no,
                 ml_generate_string_trie_jump_switch(SwitchVarRval,
                     FilteredTaggedCases, CodeModel, FilteredCanFail, Context,
-                    Decls, Stmts, !Info)
-            )
+                    Stmts, !Info)
+            ),
+            Decls = []
         else if
             globals.lookup_int_option(Globals, string_hash_switch_size,
                 StringHashSwitchSize),
