@@ -80,7 +80,7 @@
     #define MR_COND_SIGNAL(cnd, from)    pthread_cond_signal((cnd))
     #define MR_COND_BROADCAST(cnd, from) pthread_cond_broadcast((cnd))
     #define MR_COND_WAIT(cnd, mtx, from) pthread_cond_wait((cnd), (mtx))
-    #define MR_COND_TIMED_WAIT(cond, mtx, abstime, from)                     \
+    #define MR_COND_TIMED_WAIT(cond, mtx, abstime, from)                \
         pthread_cond_timedwait((cond), (mtx), (abstime))
 
     #if defined(MR_USE_LIBDISPATCH)
@@ -185,6 +185,16 @@
     #endif // !MR_USE_LIBDISPATCH
 
   #endif // MR_DEBUG_THREADS
+
+  // MR_SEM_IS_EINTR is used to test if MR_SEM_WAIT or MR_SEM_TIMED_WAIT was
+  // interrupted by a signal. We do not test errno when using libdispatch as
+  // the manual page for dispatch_semaphore_wait does not mention errno nor
+  // EINTR.
+  #if defined(MR_USE_LIBDISPATCH)
+      #define MR_SEM_IS_EINTR(errno)    MR_FALSE
+  #else
+      #define MR_SEM_IS_EINTR(errno)    (errno == EINTR)
+  #endif
 
   // The following two macros are used to protect pragma foreign_proc
   // predicates which are not thread-safe.

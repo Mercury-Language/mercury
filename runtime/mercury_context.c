@@ -1996,7 +1996,11 @@ MR_shutdown_ws_engines(void)
     }
 
     for (i = 0; i < (MR_num_ws_engines - 1); i++) {
-        MR_SEM_WAIT(&shutdown_ws_semaphore, "MR_shutdown_ws_engines");
+        int err;
+
+        do {
+            err = MR_SEM_WAIT(&shutdown_ws_semaphore, "MR_shutdown_ws_engines");
+        } while (err == -1 && MR_SEM_IS_EINTR(errno));
     }
 }
 

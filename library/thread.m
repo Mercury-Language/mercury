@@ -536,7 +536,7 @@ INIT mercury_sys_init_thread_modules
     ML_ThreadWrapperArgs    args;
     pthread_t               thread;
     pthread_attr_t          attrs;
-    int err;
+    int                     thread_err;
 
     ML_incr_thread_barrier_count();
 
@@ -549,11 +549,20 @@ INIT mercury_sys_init_thread_modules
 
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    err = pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper, &args);
+    thread_err = pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper, &args);
     pthread_attr_destroy(&attrs);
 
-    if (err == 0) {
-        MR_SEM_WAIT(&args.sem, ""ML_create_exclusive_thread"");
+    if (thread_err == 0) {
+        int sem_err;
+
+        do {
+            sem_err = MR_SEM_WAIT(&args.sem, ""ML_create_exclusive_thread"");
+        } while (sem_err == -1 && MR_SEM_IS_EINTR(errno));
+
+        if (sem_err != 0) {
+            MR_fatal_error(
+                ""ML_create_exclusive_thread: MR_SEM_WAIT error %d"", errno);
+        }
     }
 
     MR_sem_destroy(&args.sem);
