@@ -186,7 +186,8 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
             SwitchCategory = atomic_switch,
             ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
                 TaggedCases, MaybeIntSwitchInfo, CodeModel, Context, GoalInfo,
-                Decls, Stmts, !Info)
+                Stmts, !Info),
+            Decls = []
         ;
             SwitchCategory = string_switch,
             ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases,
@@ -218,12 +219,11 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
 :- pred ml_gen_smart_atomic_switch(prog_var::in, mer_type::in,
     can_fail::in, list(tagged_case)::in, maybe_int_switch_info::in,
     code_model::in, prog_context::in, hlds_goal_info::in,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
         TaggedCases, MaybeIntSwitchInfo, CodeModel, Context, GoalInfo,
-        Decls, Stmts, !Info) :-
+        Stmts, !Info) :-
     num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
@@ -259,8 +259,7 @@ ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
     else
         ml_switch_generate_if_then_else_chain(TaggedCases,
             SwitchVar, CodeModel, CanFail, Context, Stmts, !Info)
-    ),
-    Decls = [].
+    ).
 
 :- pred ml_gen_smart_string_switch(prog_var::in, can_fail::in,
     list(tagged_case)::in, code_model::in, prog_context::in,
