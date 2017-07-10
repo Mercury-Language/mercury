@@ -1626,6 +1626,245 @@
 
 :- type mlds_field_name == string.
 
+    % An lval represents a data location or variable that can be used
+    % as the target of an assignment.
+    %
+:- type mlds_lval
+
+    % Values on the heap or fields of a structure.
+
+    --->    ml_field(
+                % field(Tag, Address, FieldId, FieldType, PtrType):
+                % Selects a field of a compound term.
+
+                % Address is a tagged pointer to a cell on the heap.
+                % The position in the cell, FieldId, is represented either
+                % as a field name or a number of words offset. If Tag is yes,
+                % the arg gives the value of the tag; if it is no, the tag bits
+                % will have to be masked off. The value of the tag should be
+                % given if it is known, since this will lead to faster code.
+                % The FieldType is the type of the field. The PtrType is the
+                % type of the pointer from which we are fetching the field.
+                %
+                % For boxed fields, the type here should be mlds_generic_type,
+                % not the actual type of the field. If the actual type is
+                % different, then it is the HLDS->MLDS code generator's
+                % responsibility to insert the necessary code to handle
+                % boxing/unboxing.
+
+                field_tag       :: maybe(mlds_tag),
+                field_addr      :: mlds_rval,
+                field_field_id  :: mlds_field_id,
+                field_type      :: mlds_type,
+                field_ptr_type  :: mlds_type
+            )
+
+    % Values somewhere in memory.
+    % This is the dereference operator (e.g. unary `*' in C).
+
+    ;       ml_mem_ref(
+                % The rval should have originally come from a mem_addr rval.
+                % The type is the type of the value being dereferenced.
+
+                mlds_rval,
+                mlds_type
+            )
+
+    ;       ml_global_var_ref(
+                % A reference to the value of the global variable in the target
+                % language with the given name. At least for now, the global
+                % variable's type must be mlds_generic_type.
+                %
+                % XXX This functionality is currently only supported for
+                % the C backend.
+
+                global_var_ref
+            )
+
+    % Variables.
+    % These may be local or they may come from some enclosing scope.
+    % The variable name should be fully qualified.
+    % XXX See the comment on mlds_var above about module qualifying the names
+    % of *local* variables.
+
+    ;       ml_var(
+                mlds_var,
+                mlds_type
+            ).
+
+:- type global_var_ref
+    --->    env_var_ref(string).
+
+%---------------------------------------------------------------------------%
+%
+% Expressions.
+%
+
+:- type ml_scalar_common_type_num
+    --->    ml_scalar_common_type_num(int).
+:- type ml_vector_common_type_num
+    --->    ml_vector_common_type_num(int).
+
+:- type mlds_scalar_common
+    --->    ml_scalar_common(mlds_module_name, mlds_type,
+                ml_scalar_common_type_num, int).
+            % module name, type, type number, row number
+
+:- type mlds_vector_common
+    --->    ml_vector_common(mlds_module_name, mlds_type,
+                ml_vector_common_type_num, int, int).
+            % module name, type, type number,
+            % starting row number, number of rows
+
+    % An rval is an expression that represents a value.
+    %
+:- type mlds_rval
+    --->    ml_lval(mlds_lval)
+            % The value of an `lval' rval is just the value stored in
+            % the specified lval.
+
+    ;       ml_mkword(mlds_tag, mlds_rval)
+            % Given a pointer and a tag, mkword returns a tagged pointer.
+            %
+            % (XXX It might be more consistent to make this a binary_op,
+            % with the tag argument just being an rval, rather than
+            % having `mkword' be a separate kind of rval.)
+
+    ;       ml_const(mlds_rval_const)
+
+    ;       ml_unop(mlds_unary_op, mlds_rval)
+
+    ;       ml_binop(binary_op, mlds_rval, mlds_rval)
+
+    ;       ml_mem_addr(mlds_lval)
+            % The address of a variable, etc.
+
+    ;       ml_scalar_common(mlds_scalar_common)
+            % A reference to the given common structure. The reference is NOT
+            % the address; that can be represented using a mlds_data_addr
+            % const. This rval is intended to be used as the name of an
+            % array to be indexed into. This is possible because the elements
+            % of a scalar common cell are all boxed and thus of the same size.
+
+    ;       ml_vector_common_row(mlds_vector_common, mlds_rval)
+            % ml_vector_common_row(VectorCommon, Index),
+            % A reference to a selected row (selected by the second argument)
+            % of the given common structure. If VectorCommon is equal e.g.
+            % to ml_vector_common(ModuleName, Type, TypeNum, StartRow, NumRows)
+            % then Index must be between 0 and NumRows-1 (both inclusive),
+            % and the reference will be row StartRow + Index in the 2D table
+            % represented by the 2D table holding all the vector static data of
+            % this type.
+            %
+            % The selected row should be a struct holding unboxed values,
+            % which can be retrieved using field names (not field offsets).
+
+    ;       ml_self(mlds_type).
+            % The equivalent of the `this' pointer in C++ with the type of the
+            % object. Note that this rval is valid iff we are targeting an
+            % object oriented backend and we are in an instance method
+            % (procedures which have the per_instance flag set).
+
+:- type mlds_unary_op
+    --->    box(mlds_type)
+            % box(MLDSType); convert from MLDSType to mlds_generic_type,
+            % by boxing if necessary, or just casting if not.
+
+    ;       unbox(mlds_type)
+            % unbox(MLDSType): convert from mlds_generic_type to MLDSType,
+            % applying the inverse transformation to box/1, i.e. unboxing
+            % if boxing was necessary, and just casting otherwise.
+
+    ;       cast(mlds_type)
+            % cast(MLDSType): Coerce the type of the rval to be MLDSType.
+            % XXX It might be worthwhile adding the type that we cast from.
+
+    ;       std_unop(builtin_ops.unary_op).
+
+:- type mlds_rval_const
+    --->    mlconst_true
+    ;       mlconst_false
+    ;       mlconst_int(int)
+    ;       mlconst_uint(uint)
+    ;       mlconst_enum(int, mlds_type)
+    ;       mlconst_char(int)
+    ;       mlconst_float(float)
+    ;       mlconst_string(string)
+    ;       mlconst_multi_string(list(string))
+            % A multi_string_const is a string containing embedded NULs
+            % between each substring in the list.
+
+    ;       mlconst_foreign(foreign_language, string, mlds_type)
+
+    ;       mlconst_named_const(string)
+            % A constant with the given name, such as a value of an enum type
+            % in C.
+            % It is the responsibility of the code that creates named constants
+            % to ensure that the constant's name is meaningful for the target
+            % language. This includes making sure that the name is acceptable
+            % as an identifier, does not need quoting, and the constant it
+            % refers to is accessible.
+
+    ;       mlconst_code_addr(mlds_code_addr)
+    ;       mlconst_data_addr(mlds_data_addr)
+
+    ;       mlconst_null(mlds_type).
+            % A null value, of the given type. Usually the type will be a
+            % pointer (mlds_ptr_type) but it could also be string or a
+            % func_type. (Null is not a valid value of type string or
+            % func_type, but null values of those types may be useful as
+            % placeholders in cases where the value will never be used.)
+
+:- type mlds_code_addr
+    --->    code_addr_proc(
+                mlds_qualified_proc_label,
+                mlds_func_signature
+            )
+    ;       code_addr_internal(
+                mlds_qualified_proc_label,
+                mlds_func_sequence_num,
+                mlds_func_signature
+            ).
+
+:- type mlds_data_addr
+    --->    data_addr(
+                mlds_module_name,   % The name of the module module.
+                mlds_data_name      % The id of the variable inside the module.
+            ).
+
+:- type mlds_data == mlds_fully_qualified_name(mlds_data_name).
+
+:- type mlds_data_name
+    --->    mlds_data_var(mlds_var_name)
+            % Ordinary variables.
+
+    ;       mlds_scalar_common_ref(mlds_scalar_common)
+            % The address of the given scalar common cell.
+
+    % Stuff for handling polymorphism/RTTI and type classes.
+
+    ;       mlds_rtti(rtti_id)
+
+    % Stuff for handling debugging and accurate garbage collection.
+    % (Those features are not yet implemented for the MLDS back-end,
+    % so these data_names are not yet used.)
+
+    ;       mlds_module_layout
+            % Layout information for the current module.
+
+    ;       mlds_proc_layout(mlds_proc_label)
+            % Layout structure for the given procedure.
+
+    ;       mlds_internal_layout(mlds_proc_label, mlds_func_sequence_num)
+            % Layout structure for the given internal MLDS func.
+
+    % Stuff for tabling.
+
+    ;       mlds_tabling_ref(mlds_proc_label, proc_tabling_struct_id).
+            % A variable that contains a pointer that points to the table
+            % used to implement memoization, loopcheck or minimal model
+            % semantics for the given procedure.
+
     % An mlds_var represents a variable or constant.
     %
     % XXX While this may have been the original intention, we currently
@@ -1934,245 +2173,6 @@
     ;       mccv_bit_vector.
 
 :- func ml_var_name_to_string(mlds_var_name) = string.
-
-    % An lval represents a data location or variable that can be used
-    % as the target of an assignment.
-    %
-:- type mlds_lval
-
-    % Values on the heap or fields of a structure.
-
-    --->    ml_field(
-                % field(Tag, Address, FieldId, FieldType, PtrType):
-                % Selects a field of a compound term.
-
-                % Address is a tagged pointer to a cell on the heap.
-                % The position in the cell, FieldId, is represented either
-                % as a field name or a number of words offset. If Tag is yes,
-                % the arg gives the value of the tag; if it is no, the tag bits
-                % will have to be masked off. The value of the tag should be
-                % given if it is known, since this will lead to faster code.
-                % The FieldType is the type of the field. The PtrType is the
-                % type of the pointer from which we are fetching the field.
-                %
-                % For boxed fields, the type here should be mlds_generic_type,
-                % not the actual type of the field. If the actual type is
-                % different, then it is the HLDS->MLDS code generator's
-                % responsibility to insert the necessary code to handle
-                % boxing/unboxing.
-
-                field_tag       :: maybe(mlds_tag),
-                field_addr      :: mlds_rval,
-                field_field_id  :: mlds_field_id,
-                field_type      :: mlds_type,
-                field_ptr_type  :: mlds_type
-            )
-
-    % Values somewhere in memory.
-    % This is the dereference operator (e.g. unary `*' in C).
-
-    ;       ml_mem_ref(
-                % The rval should have originally come from a mem_addr rval.
-                % The type is the type of the value being dereferenced.
-
-                mlds_rval,
-                mlds_type
-            )
-
-    ;       ml_global_var_ref(
-                % A reference to the value of the global variable in the target
-                % language with the given name. At least for now, the global
-                % variable's type must be mlds_generic_type.
-                %
-                % XXX This functionality is currently only supported for
-                % the C backend.
-
-                global_var_ref
-            )
-
-    % Variables.
-    % These may be local or they may come from some enclosing scope.
-    % The variable name should be fully qualified.
-    % XXX See the comment on mlds_var above about module qualifying the names
-    % of *local* variables.
-
-    ;       ml_var(
-                mlds_var,
-                mlds_type
-            ).
-
-:- type global_var_ref
-    --->    env_var_ref(string).
-
-%---------------------------------------------------------------------------%
-%
-% Expressions.
-%
-
-:- type ml_scalar_common_type_num
-    --->    ml_scalar_common_type_num(int).
-:- type ml_vector_common_type_num
-    --->    ml_vector_common_type_num(int).
-
-:- type mlds_scalar_common
-    --->    ml_scalar_common(mlds_module_name, mlds_type,
-                ml_scalar_common_type_num, int).
-            % module name, type, type number, row number
-
-:- type mlds_vector_common
-    --->    ml_vector_common(mlds_module_name, mlds_type,
-                ml_vector_common_type_num, int, int).
-            % module name, type, type number,
-            % starting row number, number of rows
-
-    % An rval is an expression that represents a value.
-    %
-:- type mlds_rval
-    --->    ml_lval(mlds_lval)
-            % The value of an `lval' rval is just the value stored in
-            % the specified lval.
-
-    ;       ml_mkword(mlds_tag, mlds_rval)
-            % Given a pointer and a tag, mkword returns a tagged pointer.
-            %
-            % (XXX It might be more consistent to make this a binary_op,
-            % with the tag argument just being an rval, rather than
-            % having `mkword' be a separate kind of rval.)
-
-    ;       ml_const(mlds_rval_const)
-
-    ;       ml_unop(mlds_unary_op, mlds_rval)
-
-    ;       ml_binop(binary_op, mlds_rval, mlds_rval)
-
-    ;       ml_mem_addr(mlds_lval)
-            % The address of a variable, etc.
-
-    ;       ml_scalar_common(mlds_scalar_common)
-            % A reference to the given common structure. The reference is NOT
-            % the address; that can be represented using a mlds_data_addr
-            % const. This rval is intended to be used as the name of an
-            % array to be indexed into. This is possible because the elements
-            % of a scalar common cell are all boxed and thus of the same size.
-
-    ;       ml_vector_common_row(mlds_vector_common, mlds_rval)
-            % ml_vector_common_row(VectorCommon, Index),
-            % A reference to a selected row (selected by the second argument)
-            % of the given common structure. If VectorCommon is equal e.g.
-            % to ml_vector_common(ModuleName, Type, TypeNum, StartRow, NumRows)
-            % then Index must be between 0 and NumRows-1 (both inclusive),
-            % and the reference will be row StartRow + Index in the 2D table
-            % represented by the 2D table holding all the vector static data of
-            % this type.
-            %
-            % The selected row should be a struct holding unboxed values,
-            % which can be retrieved using field names (not field offsets).
-
-    ;       ml_self(mlds_type).
-            % The equivalent of the `this' pointer in C++ with the type of the
-            % object. Note that this rval is valid iff we are targeting an
-            % object oriented backend and we are in an instance method
-            % (procedures which have the per_instance flag set).
-
-:- type mlds_unary_op
-    --->    box(mlds_type)
-            % box(MLDSType); convert from MLDSType to mlds_generic_type,
-            % by boxing if necessary, or just casting if not.
-
-    ;       unbox(mlds_type)
-            % unbox(MLDSType): convert from mlds_generic_type to MLDSType,
-            % applying the inverse transformation to box/1, i.e. unboxing
-            % if boxing was necessary, and just casting otherwise.
-
-    ;       cast(mlds_type)
-            % cast(MLDSType): Coerce the type of the rval to be MLDSType.
-            % XXX It might be worthwhile adding the type that we cast from.
-
-    ;       std_unop(builtin_ops.unary_op).
-
-:- type mlds_rval_const
-    --->    mlconst_true
-    ;       mlconst_false
-    ;       mlconst_int(int)
-    ;       mlconst_uint(uint)
-    ;       mlconst_enum(int, mlds_type)
-    ;       mlconst_char(int)
-    ;       mlconst_float(float)
-    ;       mlconst_string(string)
-    ;       mlconst_multi_string(list(string))
-            % A multi_string_const is a string containing embedded NULs
-            % between each substring in the list.
-
-    ;       mlconst_foreign(foreign_language, string, mlds_type)
-
-    ;       mlconst_named_const(string)
-            % A constant with the given name, such as a value of an enum type
-            % in C.
-            % It is the responsibility of the code that creates named constants
-            % to ensure that the constant's name is meaningful for the target
-            % language. This includes making sure that the name is acceptable
-            % as an identifier, does not need quoting, and the constant it
-            % refers to is accessible.
-
-    ;       mlconst_code_addr(mlds_code_addr)
-    ;       mlconst_data_addr(mlds_data_addr)
-
-    ;       mlconst_null(mlds_type).
-            % A null value, of the given type. Usually the type will be a
-            % pointer (mlds_ptr_type) but it could also be string or a
-            % func_type. (Null is not a valid value of type string or
-            % func_type, but null values of those types may be useful as
-            % placeholders in cases where the value will never be used.)
-
-:- type mlds_code_addr
-    --->    code_addr_proc(
-                mlds_qualified_proc_label,
-                mlds_func_signature
-            )
-    ;       code_addr_internal(
-                mlds_qualified_proc_label,
-                mlds_func_sequence_num,
-                mlds_func_signature
-            ).
-
-:- type mlds_data_addr
-    --->    data_addr(
-                mlds_module_name,   % The name of the module module.
-                mlds_data_name      % The id of the variable inside the module.
-            ).
-
-:- type mlds_data == mlds_fully_qualified_name(mlds_data_name).
-
-:- type mlds_data_name
-    --->    mlds_data_var(mlds_var_name)
-            % Ordinary variables.
-
-    ;       mlds_scalar_common_ref(mlds_scalar_common)
-            % The address of the given scalar common cell.
-
-    % Stuff for handling polymorphism/RTTI and type classes.
-
-    ;       mlds_rtti(rtti_id)
-
-    % Stuff for handling debugging and accurate garbage collection.
-    % (Those features are not yet implemented for the MLDS back-end,
-    % so these data_names are not yet used.)
-
-    ;       mlds_module_layout
-            % Layout information for the current module.
-
-    ;       mlds_proc_layout(mlds_proc_label)
-            % Layout structure for the given procedure.
-
-    ;       mlds_internal_layout(mlds_proc_label, mlds_func_sequence_num)
-            % Layout structure for the given internal MLDS func.
-
-    % Stuff for tabling.
-
-    ;       mlds_tabling_ref(mlds_proc_label, proc_tabling_struct_id).
-            % A variable that contains a pointer that points to the table
-            % used to implement memoization, loopcheck or minimal model
-            % semantics for the given procedure.
 
 %---------------------------------------------------------------------------%
 
