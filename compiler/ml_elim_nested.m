@@ -926,6 +926,8 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         EnvVarAddr = ml_lval(ml_var(EnvVar, EnvTypeName)),
         % OnHeap should be "yes" only on for the IL backend, for which
         % the value of MayUseAtomic is immaterial.
+        % XXX The comment on the option lookup setting the value of OnHeap
+        % says OnHeap may be "yes" on current backends as well.
         MayUseAtomic = may_not_use_atomic_alloc,
         MaybeAllocId = no,
         NewObj = [
@@ -1186,8 +1188,9 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals,
         Params, Body, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
     ( if
         Body = body_defined_here(FuncBody0),
-        statement_contains_var(FuncBody0, qual(ModuleName, module_qual,
-            mlds_data_var(mlds_comp_var(mcv_env_ptr)))) = yes
+        EnvPtrVar = mlds_data_var(mlds_comp_var(mcv_env_ptr)),
+        QualEnvPtrVar = qual(ModuleName, module_qual, EnvPtrVar),
+        statement_contains_var(FuncBody0, QualEnvPtrVar) = yes
     then
         EnvPtrVal = ml_lval(
             ml_var(
