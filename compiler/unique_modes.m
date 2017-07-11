@@ -917,21 +917,6 @@ unique_modes_check_conj_2(ConjType, Goal0, Goals0, [Goal | Goals],
 
 %-----------------------------------------------------------------------------%
 
-    % Make_par_conj_nonlocal_multiset builds a multiset (bag) of all
-    % the nonlocals of the conjuncts.
-    %
-:- pred make_par_conj_nonlocal_multiset(list(hlds_goal)::in,
-    bag(prog_var)::out) is det.
-
-make_par_conj_nonlocal_multiset([], Empty) :-
-    bag.init(Empty).
-make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) :-
-    make_par_conj_nonlocal_multiset(Goals, NonLocalsMultiSet0),
-    NonLocals = goal_get_nonlocals(Goal),
-    set_of_var.to_sorted_list(NonLocals, NonLocalsList),
-    bag.from_list(NonLocalsList, NonLocalsMultiSet1),
-    bag.union(NonLocalsMultiSet0, NonLocalsMultiSet1, NonLocalsMultiSet).
-
     % To unique-modecheck a parallel conjunction, we find the variables
     % that are nonlocal to more than one conjunct and make them shared,
     % then we unique-modecheck the conjuncts.
@@ -944,6 +929,7 @@ make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) :-
 :- pred unique_modes_check_par_conj(list(hlds_goal)::in, bag(prog_var)::in,
     list(hlds_goal)::out, list(pair(instmap, set_of_progvar))::out,
     mode_info::in, mode_info::out) is det.
+:- pragma consider_used(unique_modes_check_par_conj/6).
 
 unique_modes_check_par_conj(Goals0, NonLocalVarsBag, Goals, Instmaps,
         !ModeInfo) :-

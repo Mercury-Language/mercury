@@ -1344,12 +1344,6 @@ gen_functor_number_map(RttiTypeCtor, FunctorNumberMap, !GlobalData) :-
 gen_init_rtti_names_array(ModuleName, RttiTypeCtor, RttiNames) =
     gen_init_array(gen_init_rtti_name(ModuleName, RttiTypeCtor), RttiNames).
 
-:- func gen_init_rtti_datas_array(module_name, list(rtti_data)) =
-    mlds_initializer.
-
-gen_init_rtti_datas_array(ModuleName, RttiDatas) =
-    gen_init_array(gen_init_rtti_data(ModuleName), RttiDatas).
-
 :- func gen_init_cast_rtti_datas_array(mlds_type, module_name,
     list(rtti_data)) = mlds_initializer.
 
@@ -1394,15 +1388,6 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
 :- func gen_cast(mlds_type, mlds_type) = mlds_unary_op.
 
 gen_cast(_SrcType, DestType) = cast(DestType).
-
-    % Generate the MLDS initializer comprising the rtti_name
-    % for a given rtti_data.
-    %
-:- func gen_init_rtti_data(module_name, rtti_data) = mlds_initializer.
-
-gen_init_rtti_data(ModuleName, RttiData) = Initializer :-
-    rtti_data_to_id(RttiData, RttiId),
-    Initializer = gen_init_rtti_id(ModuleName, RttiId).
 
     % Generate an MLDS initializer comprising just the rval
     % for a given rtti_id.
@@ -1574,19 +1559,6 @@ gen_pseudo_type_info_array(ModuleInfo, PTIRttiDatas, Initializer,
     Initializer = gen_init_cast_rtti_datas_array(mlds_pseudo_type_info_type,
         ModuleName, PTIRttiDatas).
 
-:- pred gen_pseudo_type_info_list(module_info::in, list(rtti_data)::in,
-    list(mlds_initializer)::out,
-    ml_global_data::in, ml_global_data::out) is det.
-
-gen_pseudo_type_info_list(ModuleInfo, PTIRttiDatas, Initializers,
-        !GlobalData) :-
-    RealRttiDatas = list.filter(real_rtti_data, PTIRttiDatas),
-    list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas, !GlobalData),
-    module_info_get_name(ModuleInfo, ModuleName),
-    Initializers = list.map(
-        gen_init_cast_rtti_data(mlds_pseudo_type_info_type, ModuleName),
-        PTIRttiDatas).
-
 %-----------------------------------------------------------------------------%
 
 :- pred gen_init_method(module_info::in, int::in, rtti_proc_label::in,
@@ -1695,6 +1667,7 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Initializer :-
 
 :- func gen_init_proc_id_from_univ(module_info, univ) =
     mlds_initializer.
+:- pragma consider_used(gen_init_proc_id_from_univ/2).
 
 gen_init_proc_id_from_univ(ModuleInfo, ProcLabelUniv) = Initializer :-
     det_univ_to_type(ProcLabelUniv, ProcLabel),

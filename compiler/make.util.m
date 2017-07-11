@@ -1165,13 +1165,6 @@ make_write_error_char(FullOutputStream, PartialOutputStream, Char,
         true
     ).
 
-:- pred write_error_opening_output(string::in, io.error::in,
-    io::di, io::uo) is det.
-
-write_error_opening_output(FileName, Error, !IO) :-
-    io.format("** Error opening `%s' for output: %s\n",
-        [s(FileName), s(io.error_message(Error))], !IO).
-
 :- pred write_error_opening_file(string::in, io.error::in, io::di, io::uo)
     is det.
 

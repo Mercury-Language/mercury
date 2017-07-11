@@ -762,11 +762,13 @@ discover_included_submodules([Include | Includes], SectionAncestors,
 
 %---------------------------------------------------------------------------%
 
-    % XXX ITEM_LIST Unused predicate.
 :- pred report_error_implementation_in_interface(module_name::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pragma consider_used(report_error_implementation_in_interface/4).
 
 report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
+    % XXX Delete this predicate once its job has been confirmed to be done
+    % somewhere else.
     (
         ModuleName = qualified(ParentModule0, ChildModule0),
         ParentModule = ParentModule0,

@@ -146,48 +146,51 @@ term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
             SCC, EntryProcs),
         SCC, varset.init, SizeVarset, [], AbstractSCC),
     module_info_get_preds(!.ModuleInfo, PredTable0),
-    RecordInfo = (pred(Info::in, !.Errors::in, !:Errors::out,
-            !.PredTable::in, !:PredTable::out) is det :-
-        Info = term_scc_info(proc(PredId, ProcId), AR0, VarMap, Status,
-            ProcErrors, HeadSizeVars),
+    RecordInfo =
+        ( pred(Info::in, !.Errors::in, !:Errors::out,
+                !.PredTable::in, !:PredTable::out) is det :-
+            Info = term_scc_info(proc(PredId, ProcId), AR0, VarMap, Status,
+                ProcErrors, HeadSizeVars),
 
-        % Record the proper size_varset. Each procedure has a copy.
-        % XXX It would be nicer to store one copy per SCC.
-        %
-        % NOTE: although each procedure in the a SCC shares the same
-        % size_varset, they should all have separate size_var_maps.
+            % Record the proper size_varset. Each procedure has a copy.
+            % XXX It would be nicer to store one copy per SCC.
+            %
+            % NOTE: although each procedure in the a SCC shares the same
+            % size_varset, they should all have separate size_var_maps.
 
-        AR = AR0 ^ ap_size_varset := SizeVarset,
-        map.lookup(!.PredTable, PredId, PredInfo0),
-        pred_info_get_proc_table(PredInfo0, ProcTable0),
-        map.lookup(ProcTable0, ProcId, ProcInfo0),
-        some [!Term2Info] (
-            proc_info_get_termination2_info(ProcInfo0, !:Term2Info),
-            term2_info_set_intermod_status(yes(Status), !Term2Info),
-            term2_info_set_abstract_rep(yes(AR), !Term2Info),
-            term2_info_set_size_var_map(VarMap, !Term2Info),
-            term2_info_set_head_vars(HeadSizeVars, !Term2Info),
+            AR = AR0 ^ ap_size_varset := SizeVarset,
+            map.lookup(!.PredTable, PredId, PredInfo0),
+            pred_info_get_proc_table(PredInfo0, ProcTable0),
+            map.lookup(ProcTable0, ProcId, ProcInfo0),
+            some [!Term2Info] (
+                proc_info_get_termination2_info(ProcInfo0, !:Term2Info),
+                term2_info_set_intermod_status(yes(Status), !Term2Info),
+                term2_info_set_abstract_rep(yes(AR), !Term2Info),
+                term2_info_set_size_var_map(VarMap, !Term2Info),
+                term2_info_set_head_vars(HeadSizeVars, !Term2Info),
 
-            % If the remainder of the analysis is going to depend upon
-            % higher order constructs, then set up the information accordingly.
-            ( if analysis_depends_on_ho(AR) then
-                term2_info_set_success_constrs(yes(polyhedron.universe),
-                    !Term2Info),
-                HorderErrors = list.map(
-                    ( func(ho_call(Context)) =
-                        term2_error(Context, horder_call)
-                    ), AR ^ ap_ho_calls),
-                list.append(HorderErrors, !Errors)
-            else
-                true
+                % If the remainder of the analysis is going to depend upon
+                % higher order constructs, then set up the information
+                % accordingly.
+                ( if analysis_depends_on_ho(AR) then
+                    term2_info_set_success_constrs(yes(polyhedron.universe),
+                        !Term2Info),
+                    HorderErrors = list.map(
+                        ( func(ho_call(Context)) =
+                            term2_error(Context, horder_call)
+                        ), AR ^ ap_ho_calls),
+                    list.append(HorderErrors, !Errors)
+                else
+                    true
+                ),
+                proc_info_set_termination2_info(!.Term2Info,
+                    ProcInfo0, ProcInfo)
             ),
-            proc_info_set_termination2_info(!.Term2Info, ProcInfo0, ProcInfo)
+            map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+            map.det_update(PredId, PredInfo, !PredTable),
+            list.append(ProcErrors, !Errors)
         ),
-        map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, !PredTable),
-        list.append(ProcErrors, !Errors)
-    ),
     list.foldl2(RecordInfo, AbstractSCC, [], Errors, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
@@ -371,12 +374,6 @@ info_update_recursion(RecType, !Info) :-
 
 info_update_ho_info(Context, !Info) :-
     !Info ^ tti_ho_info := [ho_call(Context) | !.Info ^ tti_ho_info].
-
-:- pred set_intermod_status(intermod_status::in,
-    tti_traversal_info::in, tti_traversal_info::out) is det.
-
-set_intermod_status(Status, !TraversalInfo) :-
-    !TraversalInfo ^ tti_intermod_status := Status.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1035,19 +1032,6 @@ build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-    % Because quantification returns a conservative estimate of nonlocal
-    % vars, this returns a list of local vars that may omit some of the
-    % real local vars. This shouldn't be a problem as everything but
-    % the head_vars will be projected out at the end of each iteration anyway.
-    %
-:- func local_vars(hlds_goal) = prog_vars.
-
-local_vars(hlds_goal(GoalExpr, GoalInfo)) = Locals :-
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    QuantVars = free_goal_vars(hlds_goal(GoalExpr, GoalInfo)),
-    LocalsSet = set_of_var.difference(QuantVars, NonLocals),
-    Locals = set_of_var.to_sorted_list(LocalsSet).
 
     % Partition the variables of a goal into a set of local variables
     % and a set of non-local variables.

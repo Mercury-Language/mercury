@@ -590,7 +590,8 @@ common_goal_vars_from_list(GoalList, GoalVar) :-
     GoalVar = GoalVar0 ^ vars_input := InputVars.
 
 :- pred copy_input_vars_in_goallist(stm_goal_vars::in,
-        list(stm_goal_vars)::in, list(stm_goal_vars)::out) is det.
+    list(stm_goal_vars)::in, list(stm_goal_vars)::out) is det.
+:- pragma consider_used(copy_input_vars_in_goallist/3).
 
 copy_input_vars_in_goallist(GoalVar, !GoalList) :-
     CopyInputVarLambda =
@@ -748,7 +749,7 @@ strip_goal_calls(Goal0, Goal, StmOutDI, StmOutUO, StmInDI, StmInUO) :-
 % and wrapper predicates.
 %
 
-    % Creates a nested atomic goal
+    % Creates a nested atomic goal.
     %
 :- pred create_nested_goal(instmap::in, instmap::in,
     prog_var::in, prog_var::in, prog_var::in, prog_var::in,
@@ -821,7 +822,7 @@ create_nested_goal(InitInstmap, FinalInstmap, OuterDI, OuterUO,
         create_plain_conj([CopyDIVars, OrElseCall, CopyUOVars], Goal)
     ).
 
-    % Creates the top level predicate and returns a call to that predicate
+    % Creates the top level predicate and returns a call to that predicate.
     %
 :- pred create_top_level_goal(instmap::in, instmap::in,
     prog_var::in, prog_var::in, prog_var::in, prog_var::in,
@@ -2406,14 +2407,6 @@ make_type_info(Type, Var, Goals, NewPredInfo0, NewPredInfo) :-
         "got errors while making type_info_var"),
     NewPredInfo = stm_new_pred_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo, Context, VarCnt).
-
-    % Returns the list of goals from a case
-    %
-:- pred goals_from_case_list(list(case)::in, hlds_goals::out) is det.
-
-goals_from_case_list(CaseList, GoalList) :-
-    StripCase = (pred(Case::in, Goal::out) is det :- Case = case(_, _, Goal)),
-    list.map(StripCase, CaseList, GoalList).
 
 %-----------------------------------------------------------------------------%
 %

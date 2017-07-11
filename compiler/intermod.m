@@ -351,10 +351,6 @@ gather_opt_export_preds_in_list([PredId | PredIds], ProcessLocalPreds,
         clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers0),
         (
             DoWrite0 = yes,
-            clauses_info_get_vartypes(ClausesInfo0, VarTypes),
-            pred_info_get_typevarset(PredInfo0, TVarSet),
-            intermod_info_set_var_types(VarTypes, !IntermodInfo),
-            intermod_info_set_tvarset(TVarSet, !IntermodInfo),
             get_clause_list_for_replacement(ClausesRep0, Clauses0),
             gather_entities_to_opt_export_in_clauses(Clauses0, Clauses,
                 DoWrite, !IntermodInfo),
@@ -1433,7 +1429,7 @@ some_type_needs_to_be_written([_ - TypeDefn | TypeCtorDefns], NeedWrite) :-
 
 write_intermod_info_body(IntermodInfo, !IO) :-
     IntermodInfo = intermod_info(_, WritePredPredIdSet, WriteDeclPredIdSet,
-        Instances, Types, ModuleInfo, WriteHeader, _, _),
+        Instances, Types, ModuleInfo, WriteHeader),
     set.to_sorted_list(WritePredPredIdSet, WritePredPredIds),
     set.to_sorted_list(WriteDeclPredIdSet, WriteDeclPredIds),
 
@@ -3097,11 +3093,7 @@ old_status_to_write(status_external(Status)) =
 
                 % Do the pragma foreign_decls for the module need writing,
                 % yes if there are pragma foreign_procs being exported.
-                im_write_foreign_header :: bool,
-
-                % Vartypes and tvarset for the current pred.
-                im_var_types            :: vartypes,
-                im_tvarset              :: tvarset
+                im_write_foreign_header :: bool
             ).
 
 :- pred init_intermod_info(module_info::in, intermod_info::out) is det.
@@ -3110,12 +3102,10 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
     set.init(Modules),
     set.init(Procs),
     set.init(ProcDecls),
-    init_vartypes(VarTypes),
-    varset.init(TVarSet),
     Instances = [],
     Types = [],
     IntermodInfo = intermod_info(Modules, Procs, ProcDecls, Instances, Types,
-        ModuleInfo, no, VarTypes, TVarSet).
+        ModuleInfo, no).
 
 :- pred intermod_info_get_modules(intermod_info::in, set(module_name)::out)
     is det.
@@ -3128,10 +3118,6 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
     assoc_list(type_ctor, hlds_type_defn)::out) is det.
 :- pred intermod_info_get_module_info(intermod_info::in, module_info::out)
     is det.
-:- pred intermod_info_get_write_foreign_header(intermod_info::in, bool::out)
-    is det.
-:- pred intermod_info_get_var_types(intermod_info::in, vartypes::out) is det.
-:- pred intermod_info_get_tvarset(intermod_info::in, tvarset::out) is det.
 
 :- pred intermod_info_set_modules(set(module_name)::in,
     intermod_info::in, intermod_info::out) is det.
@@ -3150,10 +3136,6 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
     intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_write_header(intermod_info::in,
     intermod_info::out) is det.
-:- pred intermod_info_set_var_types(vartypes::in, intermod_info::in,
-    intermod_info::out) is det.
-:- pred intermod_info_set_tvarset(tvarset::in,
-    intermod_info::in, intermod_info::out) is det.
 
 intermod_info_get_modules(IntermodInfo, X) :-
     X = IntermodInfo ^ im_modules.
@@ -3167,12 +3149,6 @@ intermod_info_get_types(IntermodInfo, X) :-
     X = IntermodInfo ^ im_types.
 intermod_info_get_module_info(IntermodInfo, X) :-
     X = IntermodInfo ^ im_module_info.
-intermod_info_get_write_foreign_header(IntermodInfo, X) :-
-    X = IntermodInfo ^ im_write_foreign_header.
-intermod_info_get_var_types(IntermodInfo, X) :-
-    X = IntermodInfo ^ im_var_types.
-intermod_info_get_tvarset(IntermodInfo, X) :-
-    X = IntermodInfo ^ im_tvarset.
 
 intermod_info_set_modules(Modules, !IntermodInfo) :-
     !IntermodInfo ^ im_modules := Modules.
@@ -3188,10 +3164,6 @@ intermod_info_set_module_info(ModuleInfo, !IntermodInfo) :-
     !IntermodInfo ^ im_module_info := ModuleInfo.
 intermod_info_set_write_header(!IntermodInfo) :-
     !IntermodInfo ^ im_write_foreign_header := yes.
-intermod_info_set_var_types(VarTypes, !IntermodInfo) :-
-    !IntermodInfo ^ im_var_types := VarTypes.
-intermod_info_set_tvarset(TVarSet, !IntermodInfo) :-
-    !IntermodInfo ^ im_tvarset := TVarSet.
 
 %---------------------------------------------------------------------------%
 

@@ -1396,22 +1396,6 @@ int_imp_items_to_item_blocks(Context, IntSection, ImpSection,
         ItemBlocks = [IntBlock | ItemBlocks0]
     ).
 
-:- pred item_blocks_to_src(list(item_block(module_section))::in,
-    list(item_block(src_module_section))::out) is det.
-
-item_blocks_to_src([], []).
-item_blocks_to_src([ItemBlock | ItemBlocks], [SrcItemBlock | SrcItemBlocks]) :-
-    ItemBlock = item_block(Section, Context, Incls, Avails, Items),
-    (
-        Section = ms_interface,
-        SrcSection = sms_interface
-    ;
-        Section = ms_implementation,
-        SrcSection = sms_implementation
-    ),
-    SrcItemBlock = item_block(SrcSection, Context, Incls, Avails, Items),
-    item_blocks_to_src(ItemBlocks, SrcItemBlocks).
-
 %-----------------------------------------------------------------------------%
 
 get_item_context(Item) = Context :-

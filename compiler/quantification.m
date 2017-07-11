@@ -1604,36 +1604,6 @@ free_goal_vars(Goal) =
 free_goal_vars_nl_maybe_lambda(NonLocalsToRecompute, Goal) = BothSet :-
     goal_vars_bitset_maybe_lambda(NonLocalsToRecompute, Goal, BothSet).
 
-:- func free_goal_vars_nl_no_lambda(nonlocals_to_recompute, hlds_goal)
-    = set_of_progvar.
-:- mode free_goal_vars_nl_no_lambda(in(ordinary_nonlocals_no_lambda),
-    in) = out is det.
-:- mode free_goal_vars_nl_no_lambda(in(code_gen_nonlocals_no_lambda),
-    in) = out is det.
-
-free_goal_vars_nl_no_lambda(NonLocalsToRecompute, Goal) = BothSet :-
-    goal_vars_bitset_no_lambda(NonLocalsToRecompute, Goal, BothSet).
-
-:- pred goal_vars_bitset(nonlocals_to_recompute,
-    hlds_goal, set_of_progvar).
-:- mode goal_vars_bitset(in(ordinary_nonlocals_maybe_lambda),
-    in, out) is det.
-:- mode goal_vars_bitset(in(ordinary_nonlocals_no_lambda),
-    in, out) is det.
-:- mode goal_vars_bitset(in(code_gen_nonlocals_no_lambda),
-    in, out) is det.
-
-goal_vars_bitset(NonLocalsToRecompute, Goal, BothSet) :-
-    (
-        NonLocalsToRecompute = ordinary_nonlocals_maybe_lambda,
-        goal_vars_bitset_maybe_lambda(NonLocalsToRecompute, Goal, BothSet)
-    ;
-        ( NonLocalsToRecompute = ordinary_nonlocals_no_lambda
-        ; NonLocalsToRecompute = code_gen_nonlocals_no_lambda
-        ),
-        goal_vars_bitset_no_lambda(NonLocalsToRecompute, Goal, BothSet)
-    ).
-
 :- pred goal_vars_bitset_maybe_lambda(nonlocals_to_recompute,
     hlds_goal, set_of_progvar).
 :- mode goal_vars_bitset_maybe_lambda(in(ordinary_nonlocals_maybe_lambda),
@@ -1652,18 +1622,6 @@ goal_vars_bitset_maybe_lambda_and_bi_impl(Goal, BothSet) :-
     Goal = hlds_goal(GoalExpr, _),
     goal_expr_vars_both_maybe_lambda_and_bi_impl(GoalExpr, Set, LambdaSet),
     BothSet = union(Set, LambdaSet).
-
-:- pred goal_vars_bitset_no_lambda(nonlocals_to_recompute,
-    hlds_goal, set_of_progvar).
-:- mode goal_vars_bitset_no_lambda(in(ordinary_nonlocals_no_lambda),
-    in, out) is det.
-:- mode goal_vars_bitset_no_lambda(in(code_gen_nonlocals_no_lambda),
-    in, out) is det.
-
-goal_vars_bitset_no_lambda(NonLocalsToRecompute, Goal, BothSet) :-
-    Goal = hlds_goal(GoalExpr, _),
-    goal_expr_vars_both_no_lambda(NonLocalsToRecompute, GoalExpr, Set),
-    BothSet = Set.
 
 :- pred goal_expr_vars_bitset(nonlocals_to_recompute,
     hlds_goal_expr, set_of_progvar).
@@ -2341,13 +2299,6 @@ unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
         RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
         unexpected($module, $pred, "found lambda")
     ).
-
-:- pred insert_set_fields(list(needs_update)::in, list(prog_var)::in,
-    set_of_progvar::in, set_of_progvar::out) is det.
-
-insert_set_fields(SetArgs, Args, !Set) :-
-    get_updated_fields(SetArgs, Args,  ArgsToSet),
-    set_of_var.insert_list(ArgsToSet, !Set).
 
 :- pred get_updated_fields(list(needs_update)::in,
     list(prog_var)::in, list(prog_var)::out) is det.

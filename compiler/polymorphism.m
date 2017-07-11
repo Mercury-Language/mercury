@@ -2267,6 +2267,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
     pred_id::in, proc_id::in, list(prog_var)::in, builtin_state::in,
     maybe(call_unify_context)::in, sym_name::in, hlds_goal_info::in,
     hlds_goal::out, poly_info::in, poly_info::out) is det.
+:- pragma consider_used(polymorphism_process_new_call/12).
 
 polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
         CallArgs0, BuiltinState, MaybeCallUnifyContext, SymName,

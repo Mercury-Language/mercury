@@ -72,8 +72,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
 :- import_module libs.
 :- import_module libs.globals.
@@ -532,27 +530,6 @@ var_is_unmentioned(NameList1, MaybeArg, Name) :-
     MaybeArg = yes(foreign_arg_name_mode(Name, _Mode)),
     not string.prefix(Name, "_"),
     not list.member(Name, NameList1).
-
-:- pred input_var_is_unmentioned(module_info::in,
-    list(string)::in, maybe(foreign_arg_name_mode)::in,
-    string::out) is semidet.
-
-input_var_is_unmentioned(ModuleInfo, NameList1, MaybeArg, Name) :-
-    MaybeArg = yes(foreign_arg_name_mode(Name, Mode)),
-    mode_is_input(ModuleInfo, Mode),
-    not string.prefix(Name, "_"),
-    not list.member(Name, NameList1).
-
-:- pred output_var_is_unmentioned(module_info::in,
-    list(string)::in, list(string)::in, maybe(foreign_arg_name_mode)::in,
-    string::out) is semidet.
-
-output_var_is_unmentioned(ModuleInfo, NameList1, NameList2, MaybeArg, Name) :-
-    MaybeArg = yes(foreign_arg_name_mode(Name, Mode)),
-    mode_is_output(ModuleInfo, Mode),
-    not string.prefix(Name, "_"),
-    not list.member(Name, NameList1),
-    not list.member(Name, NameList2).
 
 :- func variable_warning_start(list(string)) = list(format_component).
 

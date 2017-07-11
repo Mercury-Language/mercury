@@ -600,14 +600,6 @@ lco_in_goal(Goal0, Goal, !Info, ConstInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    lco_info::in, lco_info::out, lco_const_info::in) is det.
-
-lco_in_disj([], [], !Info, _ConstInfo).
-lco_in_disj([Goal0 | Goals0], [Goal | Goals], !Info, ConstInfo) :-
-    lco_in_goal(Goal0, Goal, !Info, ConstInfo),
-    lco_in_disj(Goals0, Goals, !Info, ConstInfo).
-
 :- pred lco_in_cases(list(case)::in, list(case)::out,
     lco_info::in, lco_info::out, lco_const_info::in) is det.
 

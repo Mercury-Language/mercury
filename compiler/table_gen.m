@@ -4050,6 +4050,11 @@ mm_status_type = Type :-
 :- func generator_pred_name = string.
 :- func returning_generator_locn = string.
 
+:- pragma consider_used(table_tip_node_name/0).
+:- pragma consider_used(num_input_args_name/0).
+:- pragma consider_used(pred_name_var_name/0).
+:- pragma consider_used(answer_table_name/0).
+
 proc_table_info_name = "proc_table_info".
 cur_table_node_name = "cur_node".
 next_table_node_name = "next_node".

@@ -124,6 +124,7 @@ report_undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
     %
 :- func report_undeclared_mode_error(list(mer_mode), prog_varset,
     pred_id, pred_info, module_info, prog_context) = error_spec.
+:- pragma consider_used(report_undeclared_mode_error/6).
 
 report_undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
         Context) = Spec :-

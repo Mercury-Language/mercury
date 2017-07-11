@@ -282,6 +282,7 @@ match_init(DS) = match(DS, [], 0.0, 0).
     % match.
     %
 :- pred match_has_no_construction_candidates(match::in) is semidet.
+:- pragma consider_used(match_has_no_construction_candidates/1).
 
 match_has_no_construction_candidates(match(_, [], _, _)).
 
@@ -1405,6 +1406,7 @@ dump_full_table(MatchTable, !IO) :-
 
 :- pred maybe_dump_full_table(bool::in, match_table::in,
     io::di, io::uo) is det.
+:- pragma consider_used(maybe_dump_full_table/4).
 
 maybe_dump_full_table(no, _M, !IO).
 maybe_dump_full_table(yes, M, !IO) :-

@@ -1132,6 +1132,7 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
     % Give a string description of the state of the fixpoint table.
     %
 :- func sr_fixpoint_table_description(sr_fixpoint_table) = string.
+:- pragma consider_used(sr_fixpoint_table_description/1).
 
     % Enter the newly computed structure reuse description for a given
     % procedure.  If the description is different from the one that was

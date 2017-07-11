@@ -58,11 +58,11 @@
     module_name::in, varset::in, term::in,
     maybe2(sym_name, list(type_param))::out) is det.
 
-    % A cut-down version of parse_type_decl_where_part_if_present
-    % that looks for and processes only the attributes that can occur
-    % on foreign_type pragmas. This includes only the specification
-    % of equality and/or comparison predicates, or the assertion that
-    % they exist (but that they are visible only in another module).
+    % Parses the attributes in a "where" clause. It looks for and processes
+    % only the attributes that can occur on foreign_type pragmas. This includes
+    % only the specification of equality and/or comparison predicates,
+    % or the assertion that they exist (but that they are visible only
+    % in another module).
     %
     % Exported to parse_pragma.m for use when parsing foreign type pragmas.
     %
@@ -841,48 +841,6 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
 % and solver type details for solver types.
 %
 
-    % parse_type_decl_where_part_if_present(TypeSymName, Arity,
-    %   IsSolverType, Inst, ModuleName, Term0, Term, Result):
-    %
-    % Checks if Term0 is a term of the form `<body> where <attributes>'.
-    % If so, returns the `<body>' in Term and the parsed `<attributes>'
-    % in Result. If not, returns Term = Term0 and Result = no.
-    %
-:- pred parse_type_decl_where_part_if_present(is_solver_type::in,
-    module_name::in, varset::in, term::in, term::out,
-    maybe3(maybe(solver_type_details), maybe(unify_compare),
-        maybe(list(sym_name_and_arity)))::out) is det.
-
-parse_type_decl_where_part_if_present(IsSolverType, ModuleName, VarSet,
-        Term, BeforeWhereTerm, MaybeWhereDetails) :-
-    % The optional `where ...' part of the type definition syntax
-    % is a comma separated list of special type `attributes'.
-    %
-    % The possible attributes (in this order) are either
-    % - `type_is_abstract_noncanonical' on its own appears only in .int2
-    %   files and indicates that the type has user-defined equality and/or
-    %   comparison, but that what these predicates are is not known at
-    %   this point
-    % or
-    % - `representation is <<type name>>' (required for solver types)
-    % - `initialisation is <<pred name>>' (required for solver types)
-    % - `ground is <<inst>>' (required for solver types)
-    % - `any is <<inst>>' (required for solver types)
-    % - `equality is <<pred name>>' (optional)
-    % - `comparison is <<pred name>>' (optional).
-    %
-    ( if
-        Term = term.functor(term.atom("where"),
-            [BeforeWhereTermPrime, WhereTerm], _)
-    then
-        BeforeWhereTerm = BeforeWhereTermPrime,
-        parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, WhereTerm,
-            MaybeWhereDetails)
-    else
-        BeforeWhereTerm = Term,
-        MaybeWhereDetails = ok3(no, no, no)
-    ).
-
 :- pred parse_type_decl_where_term(is_solver_type::in, module_name::in,
     varset::in, term::in,
     maybe3(maybe(solver_type_details), maybe(unify_compare),
@@ -950,10 +908,12 @@ parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeUnifyCompare) :-
         !:MaybeTerm = yes(Term0),
         parse_where_attribute(parse_where_type_is_abstract_noncanonical,
             MaybeTypeIsAbstractNoncanonical, !MaybeTerm),
-        parse_where_attribute(parse_where_is("equality",
+        parse_where_attribute(
+            parse_where_is("equality",
                 parse_where_pred_is(ModuleName, VarSet)),
             MaybeEqualityIs, !MaybeTerm),
-        parse_where_attribute(parse_where_is("comparison",
+        parse_where_attribute(
+            parse_where_is("comparison",
                 parse_where_pred_is(ModuleName, VarSet)),
             MaybeComparisonIs, !MaybeTerm),
         (
@@ -965,7 +925,8 @@ parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeUnifyCompare) :-
             Pieces = [
                 words("In"), pragma_decl("foreign_type"),
                 words("declaration: error: unrecognized"),
-                quote("where"), words("attribute"), quote(EndTermStr), suffix(".")
+                quote("where"), words("attribute"), quote(EndTermStr),
+                    suffix(".")
             ],
             VerbosePieces = [
                 words("Recognized"), quote("where"),
