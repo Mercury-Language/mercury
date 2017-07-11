@@ -2834,15 +2834,6 @@ output_data_name_for_java(DataName, !IO) :-
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         io.write_string(RttiAddrName, !IO)
     ;
-        DataName = mlds_module_layout,
-        unexpected($pred, "NYI: mlds_module_layout")
-    ;
-        DataName = mlds_proc_layout(_ProcLabel),
-        unexpected($pred, "NYI: mlds_proc_layout")
-    ;
-        DataName = mlds_internal_layout(_ProcLabel, _FuncSeqNum),
-        unexpected($pred, "NYI: mlds_internal_layout")
-    ;
         DataName = mlds_tabling_ref(ProcLabel, Id),
         Prefix = tabling_info_id_str(Id) ++ "_",
         io.write_string(Prefix, !IO),

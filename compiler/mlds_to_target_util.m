@@ -352,9 +352,6 @@ add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph) :-
         ;
             ( DataName = mlds_data_var(_)
             ; DataName = mlds_rtti(_)
-            ; DataName = mlds_module_layout
-            ; DataName = mlds_proc_layout(_)
-            ; DataName = mlds_internal_layout(_, _)
             ; DataName = mlds_tabling_ref(_, _)
             )
         )

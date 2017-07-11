@@ -1845,19 +1845,6 @@
 
     ;       mlds_rtti(rtti_id)
 
-    % Stuff for handling debugging and accurate garbage collection.
-    % (Those features are not yet implemented for the MLDS back-end,
-    % so these data_names are not yet used.)
-
-    ;       mlds_module_layout
-            % Layout information for the current module.
-
-    ;       mlds_proc_layout(mlds_proc_label)
-            % Layout structure for the given procedure.
-
-    ;       mlds_internal_layout(mlds_proc_label, mlds_func_sequence_num)
-            % Layout structure for the given internal MLDS func.
-
     % Stuff for tabling.
 
     ;       mlds_tabling_ref(mlds_proc_label, proc_tabling_struct_id).

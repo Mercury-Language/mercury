@@ -1835,9 +1835,6 @@ add_rtti_defn_arcs_const(DefnDataName, Const, !Graph) :-
         ;
             ( DataName = mlds_data_var(_)
             ; DataName = mlds_scalar_common_ref(_)
-            ; DataName = mlds_module_layout
-            ; DataName = mlds_proc_layout(_)
-            ; DataName = mlds_internal_layout(_, _)
             ; DataName = mlds_tabling_ref(_, _)
             )
         )

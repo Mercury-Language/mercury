@@ -2748,15 +2748,6 @@ mlds_output_data_name(DataName, !IO) :-
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         io.write_string(RttiAddrName, !IO)
     ;
-        DataName = mlds_module_layout,
-        sorry($pred, "NYI: module_layout")
-    ;
-        DataName = mlds_proc_layout(_ProcLabel),
-        sorry($pred, "NYI: proc_layout")
-    ;
-        DataName = mlds_internal_layout(_ProcLabel, _FuncSeqNum),
-        sorry($pred, "NYI: internal_layout")
-    ;
         DataName = mlds_tabling_ref(ProcLabel, Id),
         io.write_string(mlds_tabling_data_name(ProcLabel, Id), !IO)
     ).

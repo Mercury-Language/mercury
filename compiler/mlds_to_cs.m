@@ -1701,15 +1701,6 @@ data_name_to_string_for_csharp(DataName, String) :-
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         String = RttiAddrName
     ;
-        DataName = mlds_module_layout,
-        unexpected($pred, "NYI: mlds_module_layout")
-    ;
-        DataName = mlds_proc_layout(_ProcLabel),
-        unexpected($pred, "NYI: mlds_proc_layout")
-    ;
-        DataName = mlds_internal_layout(_ProcLabel, _FuncSeqNum),
-        unexpected($pred, "NYI: mlds_internal_layout")
-    ;
         DataName = mlds_tabling_ref(_ProcLabel, _Id),
         unexpected($pred, "NYI: mlds_tabling_ref")
     ).
