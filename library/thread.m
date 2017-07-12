@@ -520,12 +520,20 @@ INIT mercury_sys_init_thread_modules
 
   typedef struct ML_ThreadWrapperArgs ML_ThreadWrapperArgs;
   struct ML_ThreadWrapperArgs {
-        MercurySem          sem;
+        MercuryLock         mutex;
+        MercuryCond         cond;
         MR_Word             goal;
         MR_ThreadLocalMuts  *thread_local_mutables;
-        MR_bool             thread_started;
+        MR_Integer          thread_state;
         MR_String           thread_id;
   };
+
+  enum {
+        ML_THREAD_NOT_READY,
+        ML_THREAD_READY,
+        ML_THREAD_START_ERROR
+  };
+
 #endif /* MR_THREAD_SAFE */
 ").
 
@@ -540,11 +548,18 @@ INIT mercury_sys_init_thread_modules
 
     ML_incr_thread_barrier_count();
 
-    MR_sem_init(&args.sem, 0);
+    /*
+    ** The obvious synchronisation object to use here is a semaphore but
+    ** glibc < 2.21 had a bug which could result in sem_post reading from a
+    ** semaphore after (in another thread) sem_wait returns and destroys the
+    ** semaphore. <https://sourceware.org/bugzilla/show_bug.cgi?id=12674>
+    */
+    pthread_mutex_init(&args.mutex, MR_MUTEX_ATTR);
+    pthread_cond_init(&args.cond, MR_COND_ATTR);
     args.goal = goal;
     args.thread_local_mutables =
         MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
-    args.thread_started = MR_FALSE;
+    args.thread_state = ML_THREAD_NOT_READY;
     args.thread_id = NULL;
 
     pthread_attr_init(&attrs);
@@ -553,21 +568,26 @@ INIT mercury_sys_init_thread_modules
     pthread_attr_destroy(&attrs);
 
     if (thread_err == 0) {
-        int sem_err;
+        MR_LOCK(&args.mutex, ""ML_create_exclusive_thread"");
+        while (args.thread_state == ML_THREAD_NOT_READY) {
+            int cond_err;
 
-        do {
-            sem_err = MR_SEM_WAIT(&args.sem, ""ML_create_exclusive_thread"");
-        } while (sem_err == -1 && MR_SEM_IS_EINTR(errno));
-
-        if (sem_err != 0) {
-            MR_fatal_error(
-                ""ML_create_exclusive_thread: MR_SEM_WAIT error %d"", errno);
+            cond_err = MR_COND_WAIT(&args.cond, &args.mutex,
+                ""ML_create_exclusive_thread"");
+            /* EINTR should not be possible but it has happened before. */
+            if (cond_err != 0 && errno != EINTR) {
+                MR_fatal_error(
+                    ""ML_create_exclusive_thread: MR_COND_WAIT error %d"",
+                    errno);
+            }
         }
+        MR_UNLOCK(&args.mutex, ""ML_create_exclusive_thread"");
     }
 
-    MR_sem_destroy(&args.sem);
+    pthread_cond_destroy(&args.cond);
+    pthread_mutex_destroy(&args.mutex);
 
-    if (args.thread_started) {
+    if (args.thread_state == ML_THREAD_READY) {
         *thread_id = args.thread_id;
         return MR_TRUE;
     }
@@ -583,8 +603,10 @@ INIT mercury_sys_init_thread_modules
     MR_String               thread_id;
 
     if (MR_init_thread(MR_use_now) == MR_FALSE) {
-        args->thread_started = MR_FALSE;
-        MR_SEM_POST(&args->sem, ""ML_exclusive_thread_wrapper"");
+        MR_LOCK(&args->mutex, ""ML_exclusive_thread_wrapper"");
+        args->thread_state = ML_THREAD_START_ERROR;
+        MR_COND_SIGNAL(&args->cond, ""ML_exclusive_thread_wrapper"");
+        MR_UNLOCK(&args->mutex, ""ML_exclusive_thread_wrapper"");
         return NULL;
     }
 
@@ -605,9 +627,12 @@ INIT mercury_sys_init_thread_modules
     ** Take a copy of the goal before telling the parent we are ready.
     */
     goal = args->goal;
-    args->thread_started = MR_TRUE;
+
+    MR_LOCK(&args->mutex, ""ML_exclusive_thread_wrapper"");
+    args->thread_state = ML_THREAD_READY;
     args->thread_id = thread_id;
-    MR_SEM_POST(&args->sem, ""ML_exclusive_thread_wrapper"");
+    MR_COND_SIGNAL(&args->cond, ""ML_exclusive_thread_wrapper"");
+    MR_UNLOCK(&args->mutex, ""ML_exclusive_thread_wrapper"");
 
     ML_call_back_to_mercury_cc_multi(goal, thread_id);
 
