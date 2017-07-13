@@ -1507,9 +1507,11 @@ rename_class_names_rval(Renaming, !Rval) :-
     ;
         !.Rval = ml_scalar_common(_)
     ;
-        !.Rval = ml_vector_common_row(VectorCommon, RowRval0),
+        !.Rval = ml_scalar_common_addr(_)
+    ;
+        !.Rval = ml_vector_common_row_addr(VectorCommon, RowRval0),
         rename_class_names_rval(Renaming, RowRval0, RowRval),
-        !:Rval = ml_vector_common_row(VectorCommon, RowRval)
+        !:Rval = ml_vector_common_row_addr(VectorCommon, RowRval)
     ;
         !.Rval = ml_self(Type0),
         rename_class_names_type(Renaming, Type0, Type),
@@ -1540,7 +1542,9 @@ rename_class_names_rval_const(Renaming, !Const) :-
         ; !.Const = mlconst_multi_string(_)
         ; !.Const = mlconst_named_const(_)
         ; !.Const = mlconst_code_addr(_)
-        ; !.Const = mlconst_data_addr(_)
+        ; !.Const = mlconst_data_addr_var(_, _)
+        ; !.Const = mlconst_data_addr_rtti(_, _)
+        ; !.Const = mlconst_data_addr_tabling(_, _, _)
         )
     ).
 
@@ -2825,11 +2829,6 @@ output_data_name_for_java(DataName, !IO) :-
         DataName = mlds_data_var(VarName),
         output_mlds_var_name_for_java(VarName, !IO)
     ;
-        DataName = mlds_scalar_common_ref(Common),
-        Common = ml_scalar_common(_ModuleName, _Type,
-            ml_scalar_common_type_num(TypeNum), RowNum),
-        io.format("MR_scalar_common_%d[%d]", [i(TypeNum), i(RowNum)], !IO)
-    ;
         DataName = mlds_rtti(RttiId),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         io.write_string(RttiAddrName, !IO)
@@ -2837,10 +2836,9 @@ output_data_name_for_java(DataName, !IO) :-
         DataName = mlds_tabling_ref(ProcLabel, Id),
         Prefix = tabling_info_id_str(Id) ++ "_",
         io.write_string(Prefix, !IO),
-        mlds_output_proc_label_for_java(
-            mlds_std_tabling_proc_label(ProcLabel), !IO)
+        mlds_output_proc_label_for_java(mlds_std_tabling_proc_label(ProcLabel),
+            !IO)
     ).
-
 
 :- pred output_mlds_var_name_for_java(mlds_var_name::in, io::di, io::uo)
     is det.
@@ -4262,9 +4260,24 @@ output_rval_for_java(Info, Rval, !IO) :-
         % This reference is not the same as a mlds_data_addr const.
         unexpected($pred, "ml_scalar_common")
     ;
-        Rval = ml_vector_common_row(VectorCommon, RowRval),
-        output_vector_common_row_rval_for_java(Info, VectorCommon,
-            RowRval, !IO)
+        Rval = ml_scalar_common_addr(ScalarCommon),
+        ScalarCommon = ml_scalar_common(ModuleName, _Type,
+            ml_scalar_common_type_num(TypeNum), RowNum),
+        ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
+        mangle_sym_name_for_java(ModuleSymName, module_qual, "__",
+            MangledModuleName),
+        io.format("%s.MR_scalar_common_%d[%d]",
+            [s(MangledModuleName),i(TypeNum), i(RowNum)], !IO)
+    ;
+        Rval = ml_vector_common_row_addr(VectorCommon, RowRval),
+        VectorCommon = ml_vector_common(_ModuleName, _Type,
+            ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
+        % XXX Why do we print a "MangledModuleName." prefix for scalar common
+        % addresses but not for vector common addresses?
+        io.format("MR_vector_common_%d[%d + ",
+            [i(TypeNum), i(StartRowNum)], !IO),
+        output_rval_for_java(Info, RowRval, !IO),
+        io.write_string("]", !IO)
     ;
         Rval = ml_self(_),
         io.write_string("this", !IO)
@@ -4893,8 +4906,30 @@ output_rval_const_for_java(Info, Const, !IO) :-
         IsCall = no,
         mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO)
     ;
-        Const = mlconst_data_addr(DataAddr),
-        mlds_output_data_addr_for_java(DataAddr, !IO)
+        Const = mlconst_data_addr_var(ModuleName, VarName),
+        SymName = mlds_module_name_to_sym_name(ModuleName),
+        mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
+        io.write_string(ModuleNameStr, !IO),
+        io.write_string(".", !IO),
+        output_mlds_var_name_for_java(VarName, !IO)
+    ;
+        Const = mlconst_data_addr_rtti(ModuleName, RttiId),
+        SymName = mlds_module_name_to_sym_name(ModuleName),
+        mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
+        io.write_string(ModuleNameStr, !IO),
+        io.write_string(".", !IO),
+        rtti.id_to_c_identifier(RttiId, RttiAddrName),
+        io.write_string(RttiAddrName, !IO)
+    ;
+        Const = mlconst_data_addr_tabling(ModuleName, ProcLabel, TablingId),
+        SymName = mlds_module_name_to_sym_name(ModuleName),
+        mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
+        io.write_string(ModuleNameStr, !IO),
+        io.write_string(".", !IO),
+        TablingPrefix = tabling_info_id_str(TablingId) ++ "_",
+        io.write_string(TablingPrefix, !IO),
+        mlds_output_proc_label_for_java(mlds_std_tabling_proc_label(ProcLabel),
+            !IO)
     ;
         Const = mlconst_null(Type),
         Initializer = get_java_type_initializer(Type),
@@ -4922,16 +4957,6 @@ output_int_const_for_java(N, !IO) :-
     else
         io.write_int(N, !IO)
     ).
-
-:- pred output_vector_common_row_rval_for_java(java_out_info::in,
-    mlds_vector_common::in, mlds_rval::in, io::di, io::uo) is det.
-
-output_vector_common_row_rval_for_java(Info, VectorCommon, RowRval, !IO) :-
-    VectorCommon = ml_vector_common(_ModuleName, _Type,
-        ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
-    io.format("MR_vector_common_%d[%d + ", [i(TypeNum), i(StartRowNum)], !IO),
-    output_rval_for_java(Info, RowRval, !IO),
-    io.write_string("]", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -4984,16 +5009,6 @@ mlds_output_proc_label_for_java(mlds_proc_label(PredLabel, ProcId), !IO) :-
     output_pred_label_for_java(PredLabel, !IO),
     proc_id_to_int(ProcId, ModeNum),
     io.format("_%d", [i(ModeNum)], !IO).
-
-:- pred mlds_output_data_addr_for_java(mlds_data_addr::in, io::di, io::uo)
-    is det.
-
-mlds_output_data_addr_for_java(data_addr(ModuleQualifier, DataName), !IO) :-
-    SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-    mangle_sym_name_for_java(SymName, module_qual, "__", ModuleName),
-    io.write_string(ModuleName, !IO),
-    io.write_string(".", !IO),
-    output_data_name_for_java(DataName, !IO).
 
 %---------------------------------------------------------------------------%
 %

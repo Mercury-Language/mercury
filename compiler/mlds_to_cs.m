@@ -1507,15 +1507,7 @@ qualifier_to_string_for_csharp(MLDS_ModuleName, QualKind, String) :-
 
     % The part of the qualifier that corresponds to a top-level class.
     % Remove the outermost mercury qualifier.
-    ( if
-        strip_outermost_qualifier(OuterName, "mercury", StrippedOuterName)
-    then
-        mangle_sym_name_for_csharp(StrippedOuterName, module_qual, "__",
-            MangledOuterName)
-    else
-        mangle_sym_name_for_csharp(OuterName, module_qual, "__",
-            MangledOuterName)
-    ),
+    MangledOuterName = strip_mercury_and_mangle_sym_name_for_csharp(OuterName),
 
     % The later parts of the qualifier correspond to nested classes.
     ( if OuterName = InnerName then
@@ -1690,12 +1682,6 @@ data_name_to_string_for_csharp(DataName, String) :-
     (
         DataName = mlds_data_var(VarName),
         var_name_to_string_for_csharp(VarName, String)
-    ;
-        DataName = mlds_scalar_common_ref(Common),
-        Common = ml_scalar_common(_ModuleName, _Type,
-            ml_scalar_common_type_num(TypeNum), RowNum),
-        string.format("MR_scalar_common_%d[%d]", [i(TypeNum), i(RowNum)],
-            String)
     ;
         DataName = mlds_rtti(RttiId),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
@@ -3039,12 +3025,26 @@ output_rval_for_csharp(Info, Rval, !IO) :-
         output_lval_for_csharp(Info, Lval, !IO)
     ;
         Rval = ml_scalar_common(_),
-        % This reference is not the same as a mlds_data_addr const.
         unexpected($pred, "ml_scalar_common")
     ;
-        Rval = ml_vector_common_row(VectorCommon, RowRval),
-        output_vector_common_row_rval_for_csharp(Info, VectorCommon, RowRval,
-            !IO)
+        Rval = ml_scalar_common_addr(ScalarCommon),
+        ScalarCommon = ml_scalar_common(ModuleName, _Type,
+            ml_scalar_common_type_num(TypeNum), RowNum),
+        ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
+        MangledModuleName =
+            strip_mercury_and_mangle_sym_name_for_csharp(ModuleSymName),
+        io.format("%s.MR_scalar_common_%d[%d]",
+            [s(MangledModuleName), i(TypeNum), i(RowNum)], !IO)
+    ;
+        Rval = ml_vector_common_row_addr(VectorCommon, RowRval),
+        VectorCommon = ml_vector_common(_ModuleName, _Type,
+            ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
+        % XXX Why do we print a "MangledModuleName." prefix for scalar common
+        % addresses but not for vector common addresses?
+        io.format("MR_vector_common_%d[%d + ",
+            [i(TypeNum), i(StartRowNum)], !IO),
+        output_rval_for_csharp(Info, RowRval, !IO),
+        io.write_string("]", !IO)
     ;
         Rval = ml_self(_),
         io.write_string("this", !IO)
@@ -3519,12 +3519,40 @@ output_rval_const_for_csharp(Info, Const, !IO) :-
         map.lookup(Info ^ csoi_code_addrs, CodeAddr, Name),
         io.write_string(Name, !IO)
     ;
-        Const = mlconst_data_addr(DataAddr),
-        mlds_output_data_addr(DataAddr, !IO)
+        Const = mlconst_data_addr_var(ModuleName, VarName),
+        MangledModuleName = strip_mercury_and_mangle_sym_name_for_csharp(
+            mlds_module_name_to_sym_name(ModuleName)),
+        io.write_string(MangledModuleName, !IO),
+        io.write_string(".", !IO),
+        var_name_to_string_for_csharp(VarName, VarNameStr),
+        write_identifier_string_for_csharp(VarNameStr, !IO)
+    ;
+        Const = mlconst_data_addr_rtti(ModuleName, RttiId),
+        MangledModuleName = strip_mercury_and_mangle_sym_name_for_csharp(
+            mlds_module_name_to_sym_name(ModuleName)),
+        io.write_string(MangledModuleName, !IO),
+        io.write_string(".", !IO),
+        rtti.id_to_c_identifier(RttiId, RttiAddrName),
+        write_identifier_string_for_csharp(RttiAddrName, !IO)
+    ;
+        Const = mlconst_data_addr_tabling(_ModuleName, _ProcLabel, _TablingId),
+        unexpected($pred, "NYI: mlconst_data_addr_tabling")
     ;
         Const = mlconst_null(Type),
         Initializer = get_type_initializer(Info, Type),
         io.write_string(Initializer, !IO)
+    ).
+
+:- func strip_mercury_and_mangle_sym_name_for_csharp(sym_name) = string.
+
+strip_mercury_and_mangle_sym_name_for_csharp(SymName) = MangledSymName :-
+    % XXX could use global::mercury. instead of stripping it
+    ( if strip_outermost_qualifier(SymName, "mercury", StrippedSymName) then
+        mangle_sym_name_for_csharp(StrippedSymName, module_qual, "__",
+            MangledSymName)
+    else
+        mangle_sym_name_for_csharp(SymName, module_qual, "__",
+            MangledSymName)
     ).
 
 :- pred output_int_const_for_csharp(int::in, io::di, io::uo) is det.
@@ -3551,16 +3579,6 @@ output_int_const_for_csharp(N, !IO) :-
 output_uint_const_for_csharp(U, !IO) :-
     io.write_uint(U, !IO),
     io.write_string("U", !IO).
-
-:- pred output_vector_common_row_rval_for_csharp(csharp_out_info::in,
-    mlds_vector_common::in, mlds_rval::in, io::di, io::uo) is det.
-
-output_vector_common_row_rval_for_csharp(Info, VectorCommon, RowRval, !IO) :-
-    VectorCommon = ml_vector_common(_ModuleName, _Type,
-        ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
-    io.format("MR_vector_common_%d[%d + ", [i(TypeNum), i(StartRowNum)], !IO),
-    output_rval_for_csharp(Info, RowRval, !IO),
-    io.write_string("]", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -3611,22 +3629,6 @@ mlds_output_proc_label(Suffix, mlds_proc_label(PredLabel, ProcId), !IO) :-
     proc_id_to_int(ProcId, ModeNum),
     string.format("%s_%d%s", [s(PredLabelStr), i(ModeNum), s(Suffix)], String),
     write_identifier_string_for_csharp(String, !IO).
-
-:- pred mlds_output_data_addr(mlds_data_addr::in, io::di, io::uo) is det.
-
-mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
-    SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-    % XXX could use global::mercury. instead of stripping it
-    ( if strip_outermost_qualifier(SymName, "mercury", StrippedSymName) then
-        mangle_sym_name_for_csharp(StrippedSymName, module_qual, "__",
-            ModuleName)
-    else
-        mangle_sym_name_for_csharp(SymName, module_qual, "__", ModuleName)
-    ),
-    io.write_string(ModuleName, !IO),
-    io.write_string(".", !IO),
-    data_name_to_string_for_csharp(DataName, DataNameStr),
-    write_identifier_string_for_csharp(DataNameStr, !IO).
 
 %---------------------------------------------------------------------------%
 %

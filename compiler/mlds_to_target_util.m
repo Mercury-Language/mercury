@@ -318,7 +318,7 @@ add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
     (
         ( Rval = ml_mkword(_, SubRvalA)
         ; Rval = ml_unop(_, SubRvalA)
-        ; Rval = ml_vector_common_row(_, SubRvalA)
+        ; Rval = ml_vector_common_row_addr(_, SubRvalA)
         ),
         add_scalar_deps_rval(FromScalar, SubRvalA, !Graph)
     ;
@@ -326,11 +326,12 @@ add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
         add_scalar_deps_rval(FromScalar, SubRvalA, !Graph),
         add_scalar_deps_rval(FromScalar, SubRvalB, !Graph)
     ;
-        Rval = ml_const(RvalConst),
-        add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph)
-    ;
-        Rval = ml_scalar_common(ToScalar),
+        ( Rval = ml_scalar_common(ToScalar)
+        ; Rval = ml_scalar_common_addr(ToScalar)
+        ),
         digraph.add_vertices_and_edge(FromScalar, ToScalar, !Graph)
+    ;
+        Rval = ml_const(_)
     ;
         Rval = ml_self(_)
     ;
@@ -338,38 +339,6 @@ add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
         ; Rval = ml_mem_addr(_Lval)
         ),
         unexpected($module, $pred, "lval or mem_addr")
-    ).
-
-:- pred add_scalar_deps_rval_const(mlds_scalar_common::in, mlds_rval_const::in,
-    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
-
-add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph) :-
-    (
-        RvalConst = mlconst_data_addr(data_addr(_, DataName)),
-        (
-            DataName = mlds_scalar_common_ref(ToScalar),
-            digraph.add_vertices_and_edge(FromScalar, ToScalar, !Graph)
-        ;
-            ( DataName = mlds_data_var(_)
-            ; DataName = mlds_rtti(_)
-            ; DataName = mlds_tabling_ref(_, _)
-            )
-        )
-    ;
-        ( RvalConst = mlconst_true
-        ; RvalConst = mlconst_false
-        ; RvalConst = mlconst_int(_)
-        ; RvalConst = mlconst_uint(_)
-        ; RvalConst = mlconst_enum(_, _)
-        ; RvalConst = mlconst_char(_)
-        ; RvalConst = mlconst_float(_)
-        ; RvalConst = mlconst_string(_)
-        ; RvalConst = mlconst_multi_string(_)
-        ; RvalConst = mlconst_foreign(_, _, _)
-        ; RvalConst = mlconst_named_const(_)
-        ; RvalConst = mlconst_code_addr(_)
-        ; RvalConst = mlconst_null(_)
-        )
     ).
 
 %---------------------------------------------------------------------------%

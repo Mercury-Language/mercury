@@ -1741,14 +1741,18 @@
 
     ;       ml_scalar_common(mlds_scalar_common)
             % A reference to the given common structure. The reference is NOT
-            % the address; that can be represented using a mlds_data_addr
-            % const. This rval is intended to be used as the name of an
-            % array to be indexed into. This is possible because the elements
+            % the address; that is ml_scalar_common_addr.
+            %
+            % This rval is intended to be used as the name of an array
+            % to be indexed into. This is possible because the elements
             % of a scalar common cell are all boxed and thus of the same size.
 
-    ;       ml_vector_common_row(mlds_vector_common, mlds_rval)
-            % ml_vector_common_row(VectorCommon, Index),
-            % A reference to a selected row (selected by the second argument)
+    ;       ml_scalar_common_addr(mlds_scalar_common)
+            % The address of the ml_scalar_common(...) for the same common.
+
+    ;       ml_vector_common_row_addr(mlds_vector_common, mlds_rval)
+            % ml_vector_common_row_addr(VectorCommon, Index),
+            % The address of the given row (selected by the second argument)
             % of the given common structure. If VectorCommon is equal e.g.
             % to ml_vector_common(ModuleName, Type, TypeNum, StartRow, NumRows)
             % then Index must be between 0 and NumRows-1 (both inclusive),
@@ -1806,7 +1810,17 @@
             % refers to is accessible.
 
     ;       mlconst_code_addr(mlds_code_addr)
-    ;       mlconst_data_addr(mlds_data_addr)
+
+    ;       mlconst_data_addr_var(mlds_module_name, mlds_var_name)
+            % The address of a local variable.
+
+    ;       mlconst_data_addr_rtti(mlds_module_name, rtti_id)
+            % The address of an RTTI data structure.
+
+    ;       mlconst_data_addr_tabling(mlds_module_name, mlds_proc_label,
+                proc_tabling_struct_id)
+            % The address of the given tabling data structure
+            % for the given procedure.
 
     ;       mlconst_null(mlds_type).
             % A null value, of the given type. Usually the type will be a
@@ -1838,14 +1852,7 @@
     --->    mlds_data_var(mlds_var_name)
             % Ordinary variables.
 
-    ;       mlds_scalar_common_ref(mlds_scalar_common)
-            % The address of the given scalar common cell.
-
-    % Stuff for handling polymorphism/RTTI and type classes.
-
     ;       mlds_rtti(rtti_id)
-
-    % Stuff for tabling.
 
     ;       mlds_tabling_ref(mlds_proc_label, proc_tabling_struct_id).
             % A variable that contains a pointer that points to the table

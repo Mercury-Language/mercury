@@ -726,7 +726,7 @@ ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
         !Info) :-
     Arg = mlds_argument(VarName, _Type, GCStmt),
     ( if
-        ml_should_add_local_data(Action, !.Info, mlds_data_var(VarName),
+        ml_should_add_local_data(Action, !.Info, VarName,
             GCStmt, [], [FuncBody])
     then
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
@@ -752,7 +752,7 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassType,
     ModuleName = elim_info_get_module_name(Info),
     Arg = mlds_argument(VarName, FieldType, GCStmt),
     ( if
-        ml_should_add_local_data(Action, Info, mlds_data_var(VarName),
+        ml_should_add_local_data(Action, Info, VarName,
             GCStmt, [], [FuncBody])
     then
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
@@ -1188,7 +1188,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals,
         Params, Body, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
     ( if
         Body = body_defined_here(FuncBody0),
-        EnvPtrVar = mlds_data_var(mlds_comp_var(mcv_env_ptr)),
+        EnvPtrVar = mlds_comp_var(mcv_env_ptr),
         QualEnvPtrVar = qual(ModuleName, module_qual, EnvPtrVar),
         statement_contains_var(FuncBody0, QualEnvPtrVar) = yes
     then
@@ -1703,7 +1703,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
         ( if
             % Hoist ordinary local variables.
             DataName = mlds_data_var(VarName),
-            ml_should_add_local_data(Action, !.Info, DataName, GCStmt0,
+            ml_should_add_local_data(Action, !.Info, VarName, GCStmt0,
                 FollowingDefns, FollowingStmts)
         then
             % We need to strip out the initializer (if any) and convert it
@@ -1749,12 +1749,12 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
     % to the environment struct (if it is a variable) or hoisted out to the
     % top level (if it is a static const).
     %
-:- pred ml_should_add_local_data(action, elim_info, mlds_data_name,
+:- pred ml_should_add_local_data(action, elim_info, mlds_var_name,
     mlds_gc_statement, list(mlds_defn), list(mlds_stmt)).
 :- mode ml_should_add_local_data(in(hoist), in, in, in, in, in) is semidet.
 :- mode ml_should_add_local_data(in(chain), in, in, in, in, in) is semidet.
 
-ml_should_add_local_data(Action, Info, DataName, GCStmt,
+ml_should_add_local_data(Action, Info, VarName, GCStmt,
         FollowingDefns, FollowingStmts) :-
     (
         Action = chain_gc_stack_frames,
@@ -1764,8 +1764,7 @@ ml_should_add_local_data(Action, Info, DataName, GCStmt,
     ;
         Action = hoist_nested_funcs,
         ModuleName = elim_info_get_module_name(Info),
-        ml_need_to_hoist(ModuleName, DataName,
-            FollowingDefns, FollowingStmts)
+        ml_need_to_hoist(ModuleName, VarName, FollowingDefns, FollowingStmts)
     ).
 
     % This checks for a nested function definition.
@@ -1775,24 +1774,23 @@ ml_should_add_local_data(Action, Info, DataName, GCStmt,
     % XXX This algorithm is quadratic. For a block with N defs, each of which
     % is referenced in a later definition, we do N^2 tests.
     %
-:- pred ml_need_to_hoist(mlds_module_name::in, mlds_data_name::in,
+:- pred ml_need_to_hoist(mlds_module_name::in, mlds_var_name::in,
     list(mlds_defn)::in, list(mlds_stmt)::in) is semidet.
 
-ml_need_to_hoist(ModuleName, DataName, FollowingDefns, FollowingStmts) :-
-    QualDataName = qual(ModuleName, module_qual, DataName),
-    Filter = ml_need_to_hoist_defn(QualDataName),
+ml_need_to_hoist(ModuleName, VarName, FollowingDefns, FollowingStmts) :-
+    QualVarName = qual(ModuleName, module_qual, VarName),
+    Filter = ml_need_to_hoist_defn(QualVarName),
     (
         list.find_first_match(Filter, FollowingDefns, _)
     ;
         statements_contains_matching_defn(Filter, FollowingStmts)
     ).
 
-:- pred ml_need_to_hoist_defn(mlds_fully_qualified_name(mlds_data_name)::in,
-    mlds_defn::in) is semidet.
+:- pred ml_need_to_hoist_defn(mlds_var::in, mlds_defn::in) is semidet.
 
-ml_need_to_hoist_defn(QualDataName, FollowingDefn) :-
+ml_need_to_hoist_defn(QualVarName, FollowingDefn) :-
     FollowingDefn = mlds_function(FollowingFunctionDefn),
-    function_defn_contains_var(FollowingFunctionDefn, QualDataName) = yes.
+    function_defn_contains_var(FollowingFunctionDefn, QualVarName) = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -2038,12 +2036,13 @@ fixup_rval(Action, Info, Rval0, Rval) :-
         fixup_rval(Action, Info, YRval0, YRval),
         Rval = ml_binop(BinOp, XRval, YRval)
     ;
-        Rval0 = ml_vector_common_row(VectorCommon, RowRval0),
+        Rval0 = ml_vector_common_row_addr(VectorCommon, RowRval0),
         fixup_rval(Action, Info, RowRval0, RowRval),
-        Rval = ml_vector_common_row(VectorCommon, RowRval)
+        Rval = ml_vector_common_row_addr(VectorCommon, RowRval)
     ;
         ( Rval0 = ml_const(_)
         ; Rval0 = ml_scalar_common(_)
+        ; Rval0 = ml_scalar_common_addr(_)
         ; Rval0 = ml_self(_)
         ),
         Rval = Rval0

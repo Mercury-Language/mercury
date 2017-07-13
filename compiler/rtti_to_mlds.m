@@ -437,8 +437,7 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
                 !GlobalData),
 
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
-            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
             Type = mlds_rtti_type(item_type(RttiId)),
             RvalType = ml_rval_and_type(Rval, Type),
 
@@ -490,8 +489,7 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
                 !GlobalData),
 
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
-            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
             Type = mlds_rtti_type(item_type(RttiId)),
             RvalType = ml_rval_and_type(Rval, Type),
 
@@ -531,8 +529,7 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
                 !GlobalData),
 
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
-            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
             Type = mlds_rtti_type(item_type(RttiId)),
             RvalType = ml_rval_and_type(Rval, Type),
 
@@ -579,8 +576,7 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
                 !GlobalData),
 
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
-            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
             Type = mlds_rtti_type(item_type(RttiId)),
             RvalType = ml_rval_and_type(Rval, Type),
 
@@ -1372,11 +1368,9 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
             type_class_base_typeclass_info(InstanceModuleName,
                 InstanceString)))),
         MLDS_ModuleName = mercury_module_name_to_mlds(InstanceModuleName),
-        MLDS_DataName = mlds_rtti(tc_rtti_id(TCName,
-            type_class_base_typeclass_info(
-                InstanceModuleName, InstanceString))),
-        DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
-        Rval = ml_const(mlconst_data_addr(DataAddr)),
+        RttiId = tc_rtti_id(TCName, type_class_base_typeclass_info(
+            InstanceModuleName, InstanceString)),
+        Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
         Initializer = init_obj(ml_unop(gen_cast(SrcType, DestType), Rval))
     else
         rtti_data_to_id(RttiData, RttiId),
@@ -1477,9 +1471,8 @@ gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
         )
     ),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    MLDS_DataName = mlds_rtti(ctor_rtti_id(RttiTypeCtor, RttiName)),
-    DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
-    Rval = ml_const(mlconst_data_addr(DataAddr)).
+    RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
+    Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)).
 
 :- func gen_tc_rtti_name(module_name, tc_name, tc_rtti_name) = mlds_rval.
 
@@ -1521,9 +1514,8 @@ gen_tc_rtti_name(_ThisModuleName, TCName, TCRttiName) = Rval :-
         TCRttiName = type_class_instance_methods(_Types),
         MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
     ),
-    MLDS_DataName = mlds_rtti(tc_rtti_id(TCName, TCRttiName)),
-    DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
-    Rval = ml_const(mlconst_data_addr(DataAddr)).
+    RttiId = tc_rtti_id(TCName, TCRttiName),
+    Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)).
 
 :- func mlds_module_name_from_tc_name(tc_name) = mlds_module_name.
 
@@ -1801,7 +1793,9 @@ add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph) :-
     ;
         Rval = ml_scalar_common(_)
     ;
-        Rval = ml_vector_common_row(_, RowRval),
+        Rval = ml_scalar_common_addr(_)
+    ;
+        Rval = ml_vector_common_row_addr(_, RowRval),
         add_rtti_defn_arcs_rval(DefnDataName, RowRval, !Graph)
     ;
         Rval = ml_self(_)
@@ -1828,16 +1822,9 @@ add_rtti_defn_arcs_lval(DefnDataName, Lval, !Graph) :-
 
 add_rtti_defn_arcs_const(DefnDataName, Const, !Graph) :-
     (
-        Const = mlconst_data_addr(data_addr(_, DataName)),
-        (
-            DataName = mlds_rtti(_),
-            digraph.add_vertices_and_edge(DefnDataName, DataName, !Graph)
-        ;
-            ( DataName = mlds_data_var(_)
-            ; DataName = mlds_scalar_common_ref(_)
-            ; DataName = mlds_tabling_ref(_, _)
-            )
-        )
+        Const = mlconst_data_addr_rtti(_, RttiId),
+        DataName = mlds_rtti(RttiId),
+        digraph.add_vertices_and_edge(DefnDataName, DataName, !Graph)
     ;
         ( Const = mlconst_true
         ; Const = mlconst_false
@@ -1851,6 +1838,8 @@ add_rtti_defn_arcs_const(DefnDataName, Const, !Graph) :-
         ; Const = mlconst_multi_string(_)
         ; Const = mlconst_named_const(_)
         ; Const = mlconst_code_addr(_)
+        ; Const = mlconst_data_addr_var(_, _)
+        ; Const = mlconst_data_addr_tabling(_, _, _)
         ; Const = mlconst_null(_)
         )
     ).

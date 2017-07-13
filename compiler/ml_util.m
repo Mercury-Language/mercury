@@ -65,7 +65,7 @@
     % Succeeds iff this statement contains a reference to the
     % specified variable.
     %
-:- func statement_contains_var(mlds_stmt, mlds_data) = bool.
+:- func statement_contains_var(mlds_stmt, mlds_var) = bool.
 
 :- pred has_foreign_languages(mlds_stmt::in, list(foreign_language)::out)
     is det.
@@ -139,13 +139,13 @@
     % Says whether these definitions contains a reference to
     % the specified variable.
     %
-:- func defns_contains_var(list(mlds_defn), mlds_data) = bool.
+:- func defns_contains_var(list(mlds_defn), mlds_var) = bool.
 
     % Says whether this definition contains a reference to
     % the specified variable.
     %
-:- func defn_contains_var(mlds_defn, mlds_data) = bool.
-:- func function_defn_contains_var(mlds_function_defn, mlds_data) = bool.
+:- func defn_contains_var(mlds_defn, mlds_var) = bool.
+:- func function_defn_contains_var(mlds_function_defn, mlds_var) = bool.
 
 %-----------------------------------------------------------------------------%
 %
@@ -162,17 +162,17 @@
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-:- func initializer_contains_var(mlds_initializer, mlds_data) = bool.
+:- func initializer_contains_var(mlds_initializer, mlds_var) = bool.
 
-:- func rvals_contains_var(list(mlds_rval), mlds_data) = bool.
+:- func rvals_contains_var(list(mlds_rval), mlds_var) = bool.
 
-:- func maybe_rval_contains_var(maybe(mlds_rval), mlds_data) = bool.
+:- func maybe_rval_contains_var(maybe(mlds_rval), mlds_var) = bool.
 
-:- func rval_contains_var(mlds_rval, mlds_data) = bool.
+:- func rval_contains_var(mlds_rval, mlds_var) = bool.
 
-:- func lvals_contains_var(list(mlds_lval), mlds_data) = bool.
+:- func lvals_contains_var(list(mlds_lval), mlds_var) = bool.
 
-:- func lval_contains_var(mlds_lval, mlds_data) = bool.
+:- func lval_contains_var(mlds_lval, mlds_var) = bool.
 
 %-----------------------------------------------------------------------------%
 %
@@ -383,7 +383,7 @@ default_contains_statement(default_case(Stmt), SubStmt) :-
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-:- func statements_contains_var(list(mlds_stmt), mlds_data) = bool.
+:- func statements_contains_var(list(mlds_stmt), mlds_var) = bool.
 
 statements_contains_var([], _DataName) = no.
 statements_contains_var([Stmt | Stmts], DataName) = ContainsVar :-
@@ -396,66 +396,66 @@ statements_contains_var([Stmt | Stmts], DataName) = ContainsVar :-
         ContainsVar = statements_contains_var(Stmts, DataName)
     ).
 
-:- func maybe_statement_contains_var(maybe(mlds_stmt), mlds_data) = bool.
+:- func maybe_statement_contains_var(maybe(mlds_stmt), mlds_var) = bool.
 
 maybe_statement_contains_var(no, _) = no.
 maybe_statement_contains_var(yes(Stmt), DataName) = ContainsVar :-
     ContainsVar = statement_contains_var(Stmt, DataName).
 
-statement_contains_var(Stmt, DataName) = ContainsVar :-
+statement_contains_var(Stmt, SearchVarName) = ContainsVar :-
     (
         Stmt = ml_stmt_block(Defns, SubStmts, _Context),
-        DefnsContainVar = defns_contains_var(Defns, DataName),
+        DefnsContainVar = defns_contains_var(Defns, SearchVarName),
         (
             DefnsContainVar = yes,
             ContainsVar = yes
         ;
             DefnsContainVar = no,
-            ContainsVar = statements_contains_var(SubStmts, DataName)
+            ContainsVar = statements_contains_var(SubStmts, SearchVarName)
         )
     ;
         Stmt = ml_stmt_while(_Kind, Rval, BodyStmt, _Context),
-        RvalContainsVar = rval_contains_var(Rval, DataName),
+        RvalContainsVar = rval_contains_var(Rval, SearchVarName),
         (
             RvalContainsVar = yes,
             ContainsVar = yes
         ;
             RvalContainsVar = no,
-            ContainsVar = statement_contains_var(BodyStmt, DataName)
+            ContainsVar = statement_contains_var(BodyStmt, SearchVarName)
         )
     ;
         Stmt = ml_stmt_if_then_else(Cond, ThenStmt, MaybeElseStmt, _Context),
-        CondContainsVar = rval_contains_var(Cond, DataName),
+        CondContainsVar = rval_contains_var(Cond, SearchVarName),
         (
             CondContainsVar = yes,
             ContainsVar = yes
         ;
             CondContainsVar = no,
-            ThenContainsVar = statement_contains_var(ThenStmt, DataName),
+            ThenContainsVar = statement_contains_var(ThenStmt, SearchVarName),
             (
                 ThenContainsVar = yes,
                 ContainsVar = yes
             ;
                 ThenContainsVar = no,
                 ContainsVar =
-                    maybe_statement_contains_var(MaybeElseStmt, DataName)
+                    maybe_statement_contains_var(MaybeElseStmt, SearchVarName)
             )
         )
     ;
         Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, _Context),
-        ValContainsVar = rval_contains_var(Val, DataName),
+        ValContainsVar = rval_contains_var(Val, SearchVarName),
         (
             ValContainsVar = yes,
             ContainsVar = yes
         ;
             ValContainsVar = no,
-            CasesContainsVar = cases_contains_var(Cases, DataName),
+            CasesContainsVar = cases_contains_var(Cases, SearchVarName),
             (
                 CasesContainsVar = yes,
                 ContainsVar = yes
             ;
                 CasesContainsVar = no,
-                ContainsVar = default_contains_var(Default, DataName)
+                ContainsVar = default_contains_var(Default, SearchVarName)
             )
         )
     ;
@@ -465,77 +465,78 @@ statement_contains_var(Stmt, DataName) = ContainsVar :-
         ContainsVar = no
     ;
         Stmt = ml_stmt_computed_goto(Rval, _Labels, _Context),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         Stmt = ml_stmt_call(_Sig, Func, Obj, Args, RetLvals, _TailCall,
             _Markers, _Context),
-        FuncContainsVar = rval_contains_var(Func, DataName),
+        FuncContainsVar = rval_contains_var(Func, SearchVarName),
         (
             FuncContainsVar = yes,
             ContainsVar = yes
         ;
             FuncContainsVar = no,
-            ObjContainsVar = maybe_rval_contains_var(Obj, DataName),
+            ObjContainsVar = maybe_rval_contains_var(Obj, SearchVarName),
             (
                 ObjContainsVar = yes,
                 ContainsVar = yes
             ;
                 ObjContainsVar = no,
-                ArgsContainVar = rvals_contains_var(Args, DataName),
+                ArgsContainVar = rvals_contains_var(Args, SearchVarName),
                 (
                     ArgsContainVar = yes,
                     ContainsVar = yes
                 ;
                     ArgsContainVar = no,
-                    ContainsVar = lvals_contains_var(RetLvals, DataName)
+                    ContainsVar = lvals_contains_var(RetLvals, SearchVarName)
                 )
             )
         )
     ;
         Stmt = ml_stmt_return(Rvals, _Context),
-        ContainsVar = rvals_contains_var(Rvals, DataName)
+        ContainsVar = rvals_contains_var(Rvals, SearchVarName)
     ;
         Stmt = ml_stmt_do_commit(Ref, _Context),
-        ContainsVar = rval_contains_var(Ref, DataName)
+        ContainsVar = rval_contains_var(Ref, SearchVarName)
     ;
         Stmt = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt, _Context),
-        RefContainsVar = lval_contains_var(Ref, DataName),
+        RefContainsVar = lval_contains_var(Ref, SearchVarName),
         (
             RefContainsVar = yes,
             ContainsVar = yes
         ;
             RefContainsVar = no,
-            StmtContainsVar = statement_contains_var(BodyStmt, DataName),
+            StmtContainsVar = statement_contains_var(BodyStmt, SearchVarName),
             (
                 StmtContainsVar = yes,
                 ContainsVar = yes
             ;
                 StmtContainsVar = no,
-                ContainsVar = statement_contains_var(HandlerStmt, DataName)
+                ContainsVar =
+                    statement_contains_var(HandlerStmt, SearchVarName)
             )
         )
     ;
         Stmt = ml_stmt_atomic(AtomicStmt, _Context),
-        ContainsVar = atomic_stmt_contains_var(AtomicStmt, DataName)
+        ContainsVar = atomic_stmt_contains_var(AtomicStmt, SearchVarName)
     ).
 
-:- func cases_contains_var(list(mlds_switch_case), mlds_data) = bool.
+:- func cases_contains_var(list(mlds_switch_case), mlds_var) = bool.
 
-cases_contains_var([], _DataName) = no.
-cases_contains_var([Case | Cases], DataName) = ContainsVar :-
+cases_contains_var([], _SearchVarName) = no.
+cases_contains_var([Case | Cases], SearchVarName) = ContainsVar :-
     Case = mlds_switch_case(_FirstCond, _LaterConds, Stmt),
-    StmtContainsVar = statement_contains_var(Stmt, DataName),
+    StmtContainsVar = statement_contains_var(Stmt, SearchVarName),
     (
         StmtContainsVar = yes,
         ContainsVar = yes
     ;
         StmtContainsVar = no,
-        ContainsVar = cases_contains_var(Cases, DataName)
+        ContainsVar = cases_contains_var(Cases, SearchVarName)
     ).
 
-:- func default_contains_var(mlds_switch_default, mlds_data) = bool.
+:- func default_contains_var(mlds_switch_default, mlds_var) = bool.
 
-default_contains_var(Default, DataName) = ContainsVar :-
+default_contains_var(Default, SearchVarName) = ContainsVar :-
     (
         ( Default = default_do_nothing
         ; Default = default_is_unreachable
@@ -543,12 +544,12 @@ default_contains_var(Default, DataName) = ContainsVar :-
         ContainsVar = no
     ;
         Default = default_case(Stmt),
-        ContainsVar = statement_contains_var(Stmt, DataName)
+        ContainsVar = statement_contains_var(Stmt, SearchVarName)
     ).
 
-:- func atomic_stmt_contains_var(mlds_atomic_statement, mlds_data) = bool.
+:- func atomic_stmt_contains_var(mlds_atomic_statement, mlds_var) = bool.
 
-atomic_stmt_contains_var(AtomicStmt, DataName) = ContainsVar :-
+atomic_stmt_contains_var(AtomicStmt, SearchVarName) = ContainsVar :-
     (
         AtomicStmt = comment(_),
         ContainsVar = no
@@ -556,67 +557,68 @@ atomic_stmt_contains_var(AtomicStmt, DataName) = ContainsVar :-
         ( AtomicStmt = assign(Lval, Rval)
         ; AtomicStmt = assign_if_in_heap(Lval, Rval)
         ),
-        LvalContainsVar = lval_contains_var(Lval, DataName),
+        LvalContainsVar = lval_contains_var(Lval, SearchVarName),
         (
             LvalContainsVar = yes,
             ContainsVar = yes
         ;
             LvalContainsVar = no,
-            ContainsVar = rval_contains_var(Rval, DataName)
+            ContainsVar = rval_contains_var(Rval, SearchVarName)
         )
     ;
         AtomicStmt = delete_object(Rval),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         AtomicStmt = new_object(Target, _MaybeTag, _ExplicitSecTag, _Type,
             _MaybeSize, _MaybeCtorName, Args, _ArgTypes, _MayUseAtomic,
             _AllocId),
-        TargetContainsVar = lval_contains_var(Target, DataName),
+        TargetContainsVar = lval_contains_var(Target, SearchVarName),
         (
             TargetContainsVar = yes,
             ContainsVar = yes
         ;
             TargetContainsVar = no,
-            ContainsVar = rvals_contains_var(Args, DataName)
+            ContainsVar = rvals_contains_var(Args, SearchVarName)
         )
     ;
         AtomicStmt = gc_check,
         ContainsVar = no
     ;
         AtomicStmt = mark_hp(Lval),
-        ContainsVar = lval_contains_var(Lval, DataName)
+        ContainsVar = lval_contains_var(Lval, SearchVarName)
     ;
         AtomicStmt = restore_hp(Rval),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         AtomicStmt = trail_op(TrailOp),
-        ContainsVar = trail_op_contains_var(TrailOp, DataName)
+        ContainsVar = trail_op_contains_var(TrailOp, SearchVarName)
     ;
         AtomicStmt = inline_target_code(_Lang, Components),
-        ContainsVar = target_code_components_contains_var(Components, DataName)
+        ContainsVar =
+            target_code_components_contains_var(Components, SearchVarName)
     ;
         AtomicStmt = outline_foreign_proc(_Lang, OutlineArgs, ReturnLvals,
             _Code),
         OutlineArgsContainVar =
-            outline_args_contains_var(OutlineArgs, DataName),
+            outline_args_contains_var(OutlineArgs, SearchVarName),
         (
             OutlineArgsContainVar = yes,
             ContainsVar = yes
         ;
             OutlineArgsContainVar = no,
-            ContainsVar = lvals_contains_var(ReturnLvals, DataName)
+            ContainsVar = lvals_contains_var(ReturnLvals, SearchVarName)
         )
     ).
 
-:- func trail_op_contains_var(trail_op, mlds_data) = bool.
+:- func trail_op_contains_var(trail_op, mlds_var) = bool.
 
-trail_op_contains_var(TrailOp, DataName) = ContainsVar :-
+trail_op_contains_var(TrailOp, SearchVarName) = ContainsVar :-
     (
         TrailOp = store_ticket(Lval),
-        ContainsVar = lval_contains_var(Lval, DataName)
+        ContainsVar = lval_contains_var(Lval, SearchVarName)
     ;
         TrailOp = reset_ticket(Rval, _Reason),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         ( TrailOp = discard_ticket
         ; TrailOp = prune_ticket
@@ -624,33 +626,33 @@ trail_op_contains_var(TrailOp, DataName) = ContainsVar :-
         ContainsVar = no
     ;
         TrailOp = mark_ticket_stack(Lval),
-        ContainsVar = lval_contains_var(Lval, DataName)
+        ContainsVar = lval_contains_var(Lval, SearchVarName)
     ;
         TrailOp = prune_tickets_to(Rval),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ).
 
 :- func target_code_components_contains_var(list(target_code_component),
-    mlds_data) = bool.
+    mlds_var) = bool.
 
-target_code_components_contains_var([], _DataName) = no.
-target_code_components_contains_var([TargetCode | TargetCodes], DataName)
+target_code_components_contains_var([], _SearchVarName) = no.
+target_code_components_contains_var([TargetCode | TargetCodes], SearchVarName)
         = ContainsVar :-
     TargetCodeContainsVar =
-        target_code_component_contains_var(TargetCode, DataName),
+        target_code_component_contains_var(TargetCode, SearchVarName),
     (
         TargetCodeContainsVar = yes,
         ContainsVar = yes
     ;
         TargetCodeContainsVar = no,
         ContainsVar =
-            target_code_components_contains_var(TargetCodes, DataName)
+            target_code_components_contains_var(TargetCodes, SearchVarName)
     ).
 
-:- func target_code_component_contains_var(target_code_component, mlds_data)
+:- func target_code_component_contains_var(target_code_component, mlds_var)
     = bool.
 
-target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
+target_code_component_contains_var(TargetCode, SearchVarName) = ContainsVar :-
     (
         ( TargetCode = user_target_code(_, _)
         ; TargetCode = raw_target_code(_)
@@ -661,35 +663,36 @@ target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
         ContainsVar = no
     ;
         TargetCode = target_code_input(Rval),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         TargetCode = target_code_output(Lval),
-        ContainsVar = lval_contains_var(Lval, DataName)
+        ContainsVar = lval_contains_var(Lval, SearchVarName)
     ).
 
-:- func outline_args_contains_var(list(outline_arg), mlds_data) = bool.
+:- func outline_args_contains_var(list(outline_arg), mlds_var) = bool.
 
-outline_args_contains_var([], _DataName) = no.
-outline_args_contains_var([OutlineArg | OutlineArgs], DataName) =
+outline_args_contains_var([], _SearchVarName) = no.
+outline_args_contains_var([OutlineArg | OutlineArgs], SearchVarName) =
         ContainsVar :-
-    OutlineArgContainsVar = outline_arg_contains_var(OutlineArg, DataName),
+    OutlineArgContainsVar =
+        outline_arg_contains_var(OutlineArg, SearchVarName),
     (
         OutlineArgContainsVar = yes,
         ContainsVar = yes
     ;
         OutlineArgContainsVar = no,
-        ContainsVar = outline_args_contains_var(OutlineArgs, DataName)
+        ContainsVar = outline_args_contains_var(OutlineArgs, SearchVarName)
     ).
 
-:- func outline_arg_contains_var(outline_arg, mlds_data) = bool.
+:- func outline_arg_contains_var(outline_arg, mlds_var) = bool.
 
-outline_arg_contains_var(OutlineArg, DataName) = ContainsVar :-
+outline_arg_contains_var(OutlineArg, SearchVarName) = ContainsVar :-
     (
         OutlineArg = ola_in(_Type, _Str, Rval),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         OutlineArg = ola_out(_Type, _Str, Lval),
-        ContainsVar = lval_contains_var(Lval, DataName)
+        ContainsVar = lval_contains_var(Lval, SearchVarName)
     ;
         OutlineArg = ola_unused,
         ContainsVar = no
@@ -787,57 +790,57 @@ defn_is_rtti_data(Defn, DataDefn) :-
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-defns_contains_var([], _DataName) = no.
-defns_contains_var([Defn | Defns], DataName) = ContainsVar :-
-    DefnContainsVar = defn_contains_var(Defn, DataName),
+defns_contains_var([], _SearchVarName) = no.
+defns_contains_var([Defn | Defns], SearchVarName) = ContainsVar :-
+    DefnContainsVar = defn_contains_var(Defn, SearchVarName),
     (
         DefnContainsVar = yes,
         ContainsVar = yes
     ;
         DefnContainsVar = no,
-        ContainsVar = defns_contains_var(Defns, DataName)
+        ContainsVar = defns_contains_var(Defns, SearchVarName)
     ).
 
-defn_contains_var(Defn, DataName) = ContainsVar :-
+defn_contains_var(Defn, SearchVarName) = ContainsVar :-
     (
         Defn = mlds_data(DataDefn),
         DataDefn = mlds_data_defn(_Name, _Ctxt, _Flags,
             _Type, Initializer, _GCStmt),
         % XXX Should we include variables in the GCStmt field here?
-        ContainsVar = initializer_contains_var(Initializer, DataName)
+        ContainsVar = initializer_contains_var(Initializer, SearchVarName)
     ;
         Defn = mlds_function(FunctionDefn),
-        ContainsVar = function_defn_contains_var(FunctionDefn, DataName)
+        ContainsVar = function_defn_contains_var(FunctionDefn, SearchVarName)
     ;
         Defn = mlds_class(ClassDefn),
         ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags,
             _Kind, _Imports, _Inherits, _Implements,
             _TypeParams, CtorDefns, FieldDefns),
-        FieldDefnsContainVar = defns_contains_var(FieldDefns, DataName),
+        FieldDefnsContainVar = defns_contains_var(FieldDefns, SearchVarName),
         (
             FieldDefnsContainVar = yes,
             ContainsVar = yes
         ;
             FieldDefnsContainVar = no,
-            ContainsVar = defns_contains_var(CtorDefns, DataName)
+            ContainsVar = defns_contains_var(CtorDefns, SearchVarName)
         )
     ).
 
-function_defn_contains_var(FunctionDefn, DataName) = ContainsVar :-
+function_defn_contains_var(FunctionDefn, SearchVarName) = ContainsVar :-
     FunctionDefn = mlds_function_defn(_Name, _Ctxt, _Flags,
         _PredProcId, _Params, FunctionBody, _Attrs,
         _EnvVarNames, _MaybeRequireTailrecInfo),
-    ContainsVar = function_body_contains_var(FunctionBody, DataName).
+    ContainsVar = function_body_contains_var(FunctionBody, SearchVarName).
 
-:- func function_body_contains_var(mlds_function_body, mlds_data) = bool.
+:- func function_body_contains_var(mlds_function_body, mlds_var) = bool.
 
-function_body_contains_var(Body, DataName) = ContainsVar :-
+function_body_contains_var(Body, SearchVarName) = ContainsVar :-
     (
         Body = body_external,
         ContainsVar = no
     ;
         Body = body_defined_here(Stmt),
-        ContainsVar = statement_contains_var(Stmt, DataName)
+        ContainsVar = statement_contains_var(Stmt, SearchVarName)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -856,63 +859,65 @@ function_body_contains_var(Body, DataName) = ContainsVar :-
 % Say whether the specified construct contains a reference to
 % the specified variable.
 
-initializer_contains_var(Initializer, DataName) = ContainsVar :-
+initializer_contains_var(Initializer, SearchVarName) = ContainsVar :-
     (
         Initializer = no_initializer,
         ContainsVar = no
     ;
         Initializer = init_obj(Rval),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         Initializer = init_struct(_Type, FieldInitializers),
-        ContainsVar = initializers_contains_var(FieldInitializers, DataName)
+        ContainsVar =
+            initializers_contains_var(FieldInitializers, SearchVarName)
     ;
         Initializer = init_array(ElementInitializers),
-        ContainsVar = initializers_contains_var(ElementInitializers, DataName)
+        ContainsVar =
+            initializers_contains_var(ElementInitializers, SearchVarName)
     ).
 
-:- func initializers_contains_var(list(mlds_initializer), mlds_data) = bool.
+:- func initializers_contains_var(list(mlds_initializer), mlds_var) = bool.
 
-initializers_contains_var([], _DataName) = no.
-initializers_contains_var([Initializer | Initializers], DataName) =
+initializers_contains_var([], _SearchVarName) = no.
+initializers_contains_var([Initializer | Initializers], SearchVarName) =
         ContainsVar :-
-    InitializerContainsVar = initializer_contains_var(Initializer, DataName),
+    InitializerContainsVar =
+        initializer_contains_var(Initializer, SearchVarName),
     (
         InitializerContainsVar = yes,
         ContainsVar = yes
     ;
         InitializerContainsVar = no,
-        ContainsVar = initializers_contains_var(Initializers, DataName)
+        ContainsVar = initializers_contains_var(Initializers, SearchVarName)
     ).
 
-rvals_contains_var([], _DataName) = no.
-rvals_contains_var([Rval | Rvals], DataName) = ContainsVar :-
-    RvalContainsVar = rval_contains_var(Rval, DataName),
+rvals_contains_var([], _SearchVarName) = no.
+rvals_contains_var([Rval | Rvals], SearchVarName) = ContainsVar :-
+    RvalContainsVar = rval_contains_var(Rval, SearchVarName),
     (
         RvalContainsVar = yes,
         ContainsVar = yes
     ;
         RvalContainsVar = no,
-        ContainsVar = rvals_contains_var(Rvals, DataName)
+        ContainsVar = rvals_contains_var(Rvals, SearchVarName)
     ).
 
-maybe_rval_contains_var(no, _DataName) = no.
-maybe_rval_contains_var(yes(Rval), DataName) =
-    rval_contains_var(Rval, DataName).
+maybe_rval_contains_var(no, _SearchVarName) = no.
+maybe_rval_contains_var(yes(Rval), SearchVarName) =
+    rval_contains_var(Rval, SearchVarName).
 
-rval_contains_var(Rval, DataName) = ContainsVar :-
+rval_contains_var(Rval, SearchVarName) = ContainsVar :-
     (
         Rval = ml_lval(Lval),
-        ContainsVar = lval_contains_var(Lval, DataName)
+        ContainsVar = lval_contains_var(Lval, SearchVarName)
     ;
         Rval = ml_mkword(_Tag, SubRval),
-        ContainsVar = rval_contains_var(SubRval, DataName)
+        ContainsVar = rval_contains_var(SubRval, SearchVarName)
     ;
         Rval = ml_const(Const),
         (
-            Const = mlconst_data_addr(DataAddr),
-            DataAddr = data_addr(ModuleName, RawDataName),
-            ( if DataName = qual(ModuleName, _QualKind, RawDataName) then
+            Const = mlconst_data_addr_var(ModuleName, RawVarName),
+            ( if SearchVarName = qual(ModuleName, _QualKind, RawVarName) then
                 % This is a place where we can succeed.
                 ContainsVar = yes
             else
@@ -931,62 +936,64 @@ rval_contains_var(Rval, DataName) = ContainsVar :-
             ; Const = mlconst_foreign(_, _, _)
             ; Const = mlconst_named_const(_)
             ; Const = mlconst_code_addr(_)
+            ; Const = mlconst_data_addr_rtti(_, _)
+            ; Const = mlconst_data_addr_tabling(_, _, _)
             ; Const = mlconst_null(_)
             ),
             ContainsVar = no
         )
     ;
         Rval = ml_unop(_Op, RvalA),
-        ContainsVar = rval_contains_var(RvalA, DataName)
+        ContainsVar = rval_contains_var(RvalA, SearchVarName)
     ;
         Rval = ml_binop(_Op, RvalA, RvalB),
-        RvalAContainsVar = rval_contains_var(RvalA, DataName),
+        RvalAContainsVar = rval_contains_var(RvalA, SearchVarName),
         (
             RvalAContainsVar = yes,
             ContainsVar = yes
         ;
             RvalAContainsVar = no,
-            ContainsVar = rval_contains_var(RvalB, DataName)
+            ContainsVar = rval_contains_var(RvalB, SearchVarName)
         )
     ;
         Rval = ml_mem_addr(Lval),
-        ContainsVar = lval_contains_var(Lval, DataName)
+        ContainsVar = lval_contains_var(Lval, SearchVarName)
     ;
-        Rval = ml_scalar_common(_ScalarCommon),
-        ContainsVar = no
+        Rval = ml_vector_common_row_addr(_VectorCommon, IndexRval),
+        ContainsVar = rval_contains_var(IndexRval, SearchVarName)
     ;
-        Rval = ml_vector_common_row(_VectorCommon, IndexRval),
-        ContainsVar = rval_contains_var(IndexRval, DataName)
-    ;
-        Rval = ml_self(_),
+        ( Rval = ml_scalar_common(_ScalarCommon)
+        ; Rval = ml_scalar_common_addr(_ScalarCommon)
+        ; Rval = ml_self(_)
+        ),
         ContainsVar = no
     ).
 
-lvals_contains_var([], _DataName) = no.
-lvals_contains_var([Lval | Lvals], DataName) = ContainsVar :-
-    LvalContainsVar = lval_contains_var(Lval, DataName),
+lvals_contains_var([], _SearchVarName) = no.
+lvals_contains_var([Lval | Lvals], SearchVarName) = ContainsVar :-
+    LvalContainsVar = lval_contains_var(Lval, SearchVarName),
     (
         LvalContainsVar = yes,
         ContainsVar = yes
     ;
         LvalContainsVar = no,
-        ContainsVar = lvals_contains_var(Lvals, DataName)
+        ContainsVar = lvals_contains_var(Lvals, SearchVarName)
     ).
 
-lval_contains_var(Lval, DataName) = ContainsVar :-
+lval_contains_var(Lval, SearchVarName) = ContainsVar :-
     (
         Lval = ml_field(_MaybeTag, Rval, _FieldId, _, _),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         Lval = ml_mem_ref(Rval, _Type),
-        ContainsVar = rval_contains_var(Rval, DataName)
+        ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         Lval = ml_global_var_ref(_),
         ContainsVar = no
     ;
-        Lval = ml_var(qual(ModuleName, QualKind, Name), _Type),
+        Lval = ml_var(VarName, _Type),
         % This is another place where we can succeed.
-        ( if DataName = qual(ModuleName, QualKind, mlds_data_var(Name)) then
+        ( if VarName = SearchVarName then
             ContainsVar = yes
         else
             ContainsVar =no
@@ -1253,7 +1260,9 @@ method_ptrs_in_rval(Rval, !CodeAddrsInConsts) :-
             ; RvalConst = mlconst_string(_)
             ; RvalConst = mlconst_multi_string(_)
             ; RvalConst = mlconst_named_const(_)
-            ; RvalConst = mlconst_data_addr(_)
+            ; RvalConst = mlconst_data_addr_var(_, _)
+            ; RvalConst = mlconst_data_addr_rtti(_, _)
+            ; RvalConst = mlconst_data_addr_tabling(_, _, _)
             ; RvalConst = mlconst_null(_)
             )
         )
@@ -1265,10 +1274,11 @@ method_ptrs_in_rval(Rval, !CodeAddrsInConsts) :-
         method_ptrs_in_rval(SubRvalA, !CodeAddrsInConsts),
         method_ptrs_in_rval(SubRvalB, !CodeAddrsInConsts)
     ;
-        Rval = ml_vector_common_row(_, RowRval),
+        Rval = ml_vector_common_row_addr(_, RowRval),
         method_ptrs_in_rval(RowRval, !CodeAddrsInConsts)
     ;
         ( Rval = ml_scalar_common(_)
+        ; Rval = ml_scalar_common_addr(_)
         ; Rval = ml_mem_addr(_Address)
         ; Rval = ml_self(_Type)
         )

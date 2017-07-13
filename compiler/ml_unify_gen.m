@@ -469,27 +469,24 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         ModuleName = fixup_builtin_module(ModuleName0),
         MLDS_Module = mercury_module_name_to_mlds(ModuleName),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
-        DataAddr = data_addr(MLDS_Module,
-            mlds_rtti(ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info))),
-        Rval = ml_unop(cast(MLDS_VarType),
-            ml_const(mlconst_data_addr(DataAddr)))
+        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+        Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
+        Rval = ml_unop(cast(MLDS_VarType), ml_const(Const))
     ;
         Tag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
         MLDS_Module = mercury_module_name_to_mlds(ModuleName),
         TCName = generate_class_name(ClassId),
-        DataAddr = data_addr(MLDS_Module, mlds_rtti(tc_rtti_id(TCName,
-            type_class_base_typeclass_info(ModuleName, Instance)))),
-        Rval = ml_unop(cast(MLDS_VarType),
-            ml_const(mlconst_data_addr(DataAddr)))
+        RttiId = tc_rtti_id(TCName,
+            type_class_base_typeclass_info(ModuleName, Instance)),
+        Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
+        Rval = ml_unop(cast(MLDS_VarType), ml_const(Const))
     ;
         Tag = tabling_info_tag(PredId, ProcId),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
-        DataAddr = data_addr(PredModule,
-            mlds_tabling_ref(mlds_proc_label(PredLabel, ProcId),
-                tabling_info)),
-        Rval = ml_unop(cast(MLDS_VarType),
-            ml_const(mlconst_data_addr(DataAddr)))
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
+        Const = mlconst_data_addr_tabling(PredModule, ProcLabel, tabling_info),
+        Rval = ml_unop(cast(MLDS_VarType), ml_const(Const))
     ;
         Tag = deep_profiling_proc_layout_tag(_, _),
         unexpected($pred, "deep_profiling_proc_layout_tag NYI")
@@ -541,8 +538,7 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
             MLDS_TypeName = mlds_append_class_qualifier_module_qual(
                 MLDS_ModuleName, UnqualTypeName, TypeArity),
             Name = mlds_comp_var(mcv_reserved_obj_name(CtorName, CtorArity)),
-            Rval0 = ml_const(mlconst_data_addr(
-                data_addr(MLDS_TypeName, mlds_data_var(Name)))),
+            Rval0 = ml_const(mlconst_data_addr_var(MLDS_TypeName, Name)),
 
             % The MLDS type of the reserved object may be a class derived from
             % the base class for this Mercury type. So for some back-ends,
@@ -3099,16 +3095,17 @@ ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
         ModuleName = fixup_builtin_module(ModuleName0),
         MLDS_Module = mercury_module_name_to_mlds(ModuleName),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
-        DataAddr = data_addr(MLDS_Module,
-            mlds_rtti(ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info))),
-        Rval = ml_unop(cast(MLDS_Type), ml_const(mlconst_data_addr(DataAddr)))
+        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+        Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
+        Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
     ;
         ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
         MLDS_Module = mercury_module_name_to_mlds(ModuleName),
         TCName = generate_class_name(ClassId),
-        DataAddr = data_addr(MLDS_Module, mlds_rtti(tc_rtti_id(TCName,
-            type_class_base_typeclass_info(ModuleName, Instance)))),
-        Rval = ml_unop(cast(MLDS_Type), ml_const(mlconst_data_addr(DataAddr)))
+        RttiId = tc_rtti_id(TCName,
+            type_class_base_typeclass_info(ModuleName, Instance)),
+        Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
+        Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
     ;
         ConsTag = shared_with_reserved_addresses_tag(_, ThisTag),
         % Whether or not some other constructors in the type are represented

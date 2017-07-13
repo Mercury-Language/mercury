@@ -824,11 +824,12 @@ may_rval_yield_dangling_stack_ref(Rval, Locals) = MayYieldDanglingStackRef :-
         MayYieldDanglingStackRef =
             may_lval_yield_dangling_stack_ref(Lval, Locals)
     ;
-        Rval = ml_vector_common_row(_VectorCommon, RowRval),
+        Rval = ml_vector_common_row_addr(_VectorCommon, RowRval),
         MayYieldDanglingStackRef =
             may_rval_yield_dangling_stack_ref(RowRval, Locals)
     ;
         ( Rval = ml_scalar_common(_)
+        ; Rval = ml_scalar_common_addr(_)
         ; Rval = ml_self(_)
         ),
         MayYieldDanglingStackRef = may_yield_dangling_stack_ref
@@ -881,16 +882,9 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
     ;
-        Const = mlconst_data_addr(DataAddr),
-        DataAddr = data_addr(ModuleName, DataName),
-        ( if DataName = mlds_data_var(VarName) then
-            ( if
-                var_is_local(qual(ModuleName, module_qual, VarName), Locals)
-            then
-                MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-            else
-                MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
-            )
+        Const = mlconst_data_addr_var(ModuleName, VarName),
+        ( if var_is_local(qual(ModuleName, module_qual, VarName), Locals) then
+            MayYieldDanglingStackRef = may_yield_dangling_stack_ref
         else
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
@@ -906,6 +900,8 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
         ; Const = mlconst_string(_)
         ; Const = mlconst_multi_string(_)
         ; Const = mlconst_named_const(_)
+        ; Const = mlconst_data_addr_rtti(_, _)
+        ; Const = mlconst_data_addr_tabling(_, _, _)
         ; Const = mlconst_null(_)
         ),
         MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref

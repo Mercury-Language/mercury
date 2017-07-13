@@ -2732,18 +2732,6 @@ mlds_output_data_name(DataName, !IO) :-
         DataName = mlds_data_var(Name),
         mlds_output_mangled_name(ml_var_name_to_string(Name), !IO)
     ;
-        DataName = mlds_scalar_common_ref(Common),
-        Common = ml_scalar_common(ModuleName, _Type,
-            ml_scalar_common_type_num(TypeNum), RowNum),
-        ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
-        MangledModuleName = sym_name_mangle(ModuleSymName),
-        io.write_string(MangledModuleName, !IO),
-        io.write_string("_scalar_common_", !IO),
-        io.write_int(TypeNum, !IO),
-        io.write_string("[", !IO),
-        io.write_int(RowNum, !IO),
-        io.write_string("]", !IO)
-    ;
         DataName = mlds_rtti(RttiId),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         io.write_string(RttiAddrName, !IO)
@@ -3177,10 +3165,6 @@ mlds_output_access_comment(acc_public, !IO) :-
     io.write_string("/* public: */ ", !IO).
 mlds_output_access_comment(acc_private, !IO) :-
     io.write_string("/* private: */ ", !IO).
-% mlds_output_access_comment(acc_protected, !IO) :-
-%     io.write_string("/* protected: */ ", !IO).
-% mlds_output_access_comment(acc_default, !IO) :-
-%     io.write_string("/* default access */ ", !IO).
 mlds_output_access_comment(acc_local, !IO) :-
     io.write_string("/* local: */ ", !IO).
 
@@ -4389,30 +4373,26 @@ mlds_output_rval(Opts, Rval, !IO) :-
         io.write_string("&", !IO),
         mlds_output_lval(Opts, Lval, !IO)
     ;
-        Rval = ml_scalar_common(ScalarCommon),
+        (
+            Rval = ml_scalar_common(ScalarCommon)
+        ;
+            Rval = ml_scalar_common_addr(ScalarCommon),
+            io.write_string("&", !IO)
+        ),
         ScalarCommon = ml_scalar_common(ModuleName, _Type,
             ml_scalar_common_type_num(TypeNum), RowNum),
         ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
         MangledModuleName = sym_name_mangle(ModuleSymName),
-        io.write_string(MangledModuleName, !IO),
-        io.write_string("_scalar_common_", !IO),
-        io.write_int(TypeNum, !IO),
-        io.write_string("[", !IO),
-        io.write_int(RowNum, !IO),
-        io.write_string("]", !IO)
+        io.format("%s_scalar_common_%d[%d]",
+            [s(MangledModuleName), i(TypeNum), i(RowNum)], !IO)
     ;
-        Rval = ml_vector_common_row(VectorCommon, RowRval),
+        Rval = ml_vector_common_row_addr(VectorCommon, RowRval),
         VectorCommon = ml_vector_common(ModuleName, _Type,
             ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
         ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
         MangledModuleName = sym_name_mangle(ModuleSymName),
-        io.write_string("&", !IO),
-        io.write_string(MangledModuleName, !IO),
-        io.write_string("_vector_common_", !IO),
-        io.write_int(TypeNum, !IO),
-        io.write_string("[", !IO),
-        io.write_int(StartRowNum, !IO),
-        io.write_string(" + ", !IO),
+        io.format("&%s_vector_common_%d[%d + ",
+            [s(MangledModuleName), i(TypeNum), i(StartRowNum)], !IO),
         mlds_output_rval(Opts, RowRval, !IO),
         io.write_string("]", !IO)
     ;
@@ -4474,7 +4454,7 @@ mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
     else if
         Expr = ml_unop(cast(OtherType), InnerExpr),
         ( Type = OtherType
-        ; is_an_address(InnerExpr)
+        ; is_an_address(InnerExpr) = yes
         )
     then
         % Avoid unnecessary double-casting -- strip away the inner cast.
@@ -4515,19 +4495,61 @@ mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
         io.write_string("))", !IO)
     ).
 
-    % Succeed if the specified rval is an address (possibly tagged and/or
+    % Return `yes' if the specified rval is an address (possibly tagged and/or
     % cast to a different type).
     %
-:- pred is_an_address(mlds_rval::in) is semidet.
+:- func is_an_address(mlds_rval) = bool.
 
-is_an_address(ml_mkword(_Tag, Expr)) :-
-    is_an_address(Expr).
-is_an_address(ml_unop(cast(_), Expr)) :-
-    is_an_address(Expr).
-is_an_address(ml_mem_addr(_)).
-is_an_address(ml_const(mlconst_null(_))).
-is_an_address(ml_const(mlconst_code_addr(_))).
-is_an_address(ml_const(mlconst_data_addr(_))).
+is_an_address(Rval) = IsAddr :-
+    (
+        Rval = ml_mkword(_Tag, SubRval),
+        IsAddr = is_an_address(SubRval)
+    ;
+        Rval = ml_unop(UnOp, SubRval),
+        ( if UnOp = cast(_) then
+            IsAddr = is_an_address(SubRval)
+        else
+            IsAddr = no
+        )
+    ;
+        ( Rval = ml_mem_addr(_)
+        ; Rval = ml_scalar_common_addr(_)
+        ; Rval = ml_vector_common_row_addr(_, _)
+        ),
+        IsAddr = yes
+    ;
+        ( Rval = ml_lval(_)
+        ; Rval = ml_binop(_, _, _)
+        ; Rval = ml_self(_)
+        ; Rval = ml_scalar_common(_)
+        ),
+        IsAddr = no
+    ;
+        Rval = ml_const(Const),
+        (
+            ( Const = mlconst_null(_)
+            ; Const = mlconst_code_addr(_)
+            ; Const = mlconst_data_addr_var(_, _)
+            ; Const = mlconst_data_addr_rtti(_, _)
+            ; Const = mlconst_data_addr_tabling(_, _, _)
+            ),
+            IsAddr = yes
+        ;
+            ( Const = mlconst_false
+            ; Const = mlconst_true
+            ; Const = mlconst_named_const(_)
+            ; Const = mlconst_enum(_, _)
+            ; Const = mlconst_char(_)
+            ; Const = mlconst_string(_)
+            ; Const = mlconst_multi_string(_)
+            ; Const = mlconst_int(_)
+            ; Const = mlconst_uint(_)
+            ; Const = mlconst_float(_)
+            ; Const = mlconst_foreign(_, _, _)
+            ),
+            IsAddr = no
+        )
+    ).
 
 :- pred mlds_output_unboxed_rval(mlds_to_c_opts::in,
     mlds_type::in, mlds_rval::in, io::di, io::uo) is det.
@@ -4813,8 +4835,43 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         Const = mlconst_code_addr(CodeAddr),
         mlds_output_code_addr(CodeAddr, !IO)
     ;
-        Const = mlconst_data_addr(DataAddr),
-        mlds_output_data_addr(DataAddr, !IO)
+        Const = mlconst_data_addr_var(ModuleName, VarName),
+        io.write_string("&", !IO),
+        mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName), !IO),
+        io.write_string("__", !IO),
+        mlds_output_mangled_name(ml_var_name_to_string(VarName), !IO)
+    ;
+        Const = mlconst_data_addr_rtti(ModuleName, RttiId),
+        % If it is an array type, then we just use the name;
+        % otherwise, we must prefix the name with `&'.
+        ( if rtti_id_has_array_type(RttiId) = is_array then
+            true
+        else
+            io.write_string("&", !IO)
+        ),
+        ModuleQual = module_qualify_name_of_rtti_id(RttiId),
+        (
+            ModuleQual = no
+        ;
+            ModuleQual = yes,
+            mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName),
+                !IO),
+            io.write_string("__", !IO)
+        ),
+        rtti.id_to_c_identifier(RttiId, RttiAddrName), 
+        io.write_string(RttiAddrName, !IO)
+    ;
+        Const = mlconst_data_addr_tabling(ModuleName, ProcLabel, TablingId),
+        % If it is an array type, then we just use the name;
+        % otherwise, we must prefix the name with `&'.
+        ( if tabling_id_has_array_type(TablingId) = is_array then
+            true
+        else
+            io.write_string("&", !IO)
+        ),
+        mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName), !IO),
+        io.write_string("__", !IO),
+        io.write_string(mlds_tabling_data_name(ProcLabel, TablingId), !IO)
     ;
         Const = mlconst_null(_),
         io.write_string("NULL", !IO)
@@ -4895,45 +4952,6 @@ mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
 mlds_proc_label_to_string(mlds_proc_label(PredLabel, ProcId)) =
     mlds_pred_label_to_string(PredLabel) ++ "_"
         ++ string.int_to_string(proc_id_to_int(ProcId)).
-
-:- pred mlds_output_data_addr(mlds_data_addr::in, io::di, io::uo) is det.
-
-mlds_output_data_addr(data_addr(ModuleName, DataName), !IO) :-
-    % If it is an array type, then we just use the name, otherwise we must
-    % prefix the name with `&'.
-    ( if
-        (
-            DataName = mlds_rtti(RttiId),
-            rtti_id_has_array_type(RttiId) = is_array
-        ;
-            DataName = mlds_tabling_ref(_, TablingId),
-            tabling_id_has_array_type(TablingId) = is_array
-        )
-    then
-        mlds_output_data_var_name(ModuleName, DataName, !IO)
-    else
-        io.write_string("&", !IO),
-        mlds_output_data_var_name(ModuleName, DataName, !IO)
-    ).
-
-:- pred mlds_output_data_var_name(mlds_module_name::in, mlds_data_name::in,
-    io::di, io::uo) is det.
-
-mlds_output_data_var_name(ModuleName, DataName, !IO) :-
-    ( if
-        DataName = mlds_rtti(RttiId),
-        module_qualify_name_of_rtti_id(RttiId) = no
-    then
-        true
-    else if
-        DataName = mlds_scalar_common_ref(_)
-    then
-        true
-    else
-        mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName), !IO),
-        io.write_string("__", !IO)
-    ),
-    mlds_output_data_name(DataName, !IO).
 
 %---------------------------------------------------------------------------%
 %

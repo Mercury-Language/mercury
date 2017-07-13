@@ -659,7 +659,8 @@ find_rval_component_lvals(Rval, !Components) :-
     ;
         ( Rval = ml_const(_)
         ; Rval = ml_scalar_common(_)
-        ; Rval = ml_vector_common_row(_, _)
+        ; Rval = ml_scalar_common_addr(_)
+        ; Rval = ml_vector_common_row_addr(_, _)
         ; Rval = ml_self(_)
         )
     ).
@@ -904,11 +905,10 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
         AssignStmt = ml_stmt_atomic(assign(LHS, RHS), _),
         LHS = ml_var(ThisVar, _ThisType),
         ThisVar = qual(Qualifier, QualKind, VarName),
-        ThisData = qual(Qualifier, QualKind, mlds_data_var(VarName)),
 
         % We must check that the value being assigned doesn't refer to the
         % variable itself.
-        rval_contains_var(RHS, ThisData) = no,
+        rval_contains_var(RHS, ThisVar) = no,
 
         % We must check that the value being assigned doesn't refer to any
         % of the variables which are declared after this one. We must also
@@ -919,13 +919,14 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
             [_VarDefn | FollowingDefns]),
         Filter =
             ( pred(OtherDefn::in) is semidet :-
-                OtherDefn = mlds_data(mlds_data_defn(OtherVarName, _, _, 
+                OtherDefn = mlds_data(mlds_data_defn(OtherDataName, _, _, 
                     _Type, OtherInitializer, _GC)),
                 (
+                    OtherDataName = mlds_data_var(OtherVarName),
                     QualOtherVar = qual(Qualifier, QualKind, OtherVarName),
                     rval_contains_var(RHS, QualOtherVar) = yes
                 ;
-                    initializer_contains_var(OtherInitializer, ThisData) = yes
+                    initializer_contains_var(OtherInitializer, ThisVar) = yes
                 )
             ),
         not list.find_first_match(Filter, FollowingDefns, _)
@@ -1114,7 +1115,8 @@ rval_is_cheap_enough_to_duplicate(Rval) :-
         ; Rval = ml_mem_addr(_)
         ; Rval = ml_self(_)
         ; Rval = ml_scalar_common(_)
-        ; Rval = ml_vector_common_row(_, _)
+        ; Rval = ml_scalar_common_addr(_)
+        ; Rval = ml_vector_common_row_addr(_, _)
         )
     ;
         Rval = ml_lval(Lval),
@@ -1145,7 +1147,8 @@ rval_will_not_change(Rval) :-
     (
         ( Rval = ml_const(_)
         ; Rval = ml_scalar_common(_)
-        ; Rval = ml_vector_common_row(_, _)
+        ; Rval = ml_scalar_common_addr(_)
+        ; Rval = ml_vector_common_row_addr(_, _)
         )
     ;
         Rval = ml_mem_addr(Lval),
@@ -1188,12 +1191,14 @@ rval_cannot_throw(Rval) :-
     (
         ( Rval = ml_const(_)
         ; Rval = ml_scalar_common(_)
-        ; Rval = ml_vector_common_row(_, _)
+        ; Rval = ml_scalar_common_addr(_)
         ; Rval = ml_self(_)
         ; Rval = ml_mem_addr(_)
         )
     ;
-        Rval = ml_mkword(_Tag, SubRval),
+        ( Rval = ml_vector_common_row_addr(_, SubRval)
+        ; Rval = ml_mkword(_Tag, SubRval)
+        ),
         rval_cannot_throw(SubRval)
     ;
         ( Rval = ml_lval(_)
@@ -1226,9 +1231,7 @@ find_initial_val_in_stmts(VarName, Rval, [Stmt0 | Stmts0], Stmts) :-
         % could branch into the middle of Stmt0. Only if we are sure
         % that Stmt0 can't modify the variable's value is it safe to go on
         % and look for the initial value in Stmts0.
-        VarName = qual(Mod, QualKind, UnqualVarName),
-        DataName = qual(Mod, QualKind, mlds_data_var(UnqualVarName)),
-        statement_contains_var(Stmt0, DataName) = no,
+        statement_contains_var(Stmt0, VarName) = no,
         not (
             statement_is_or_contains_statement(Stmt0, Label),
             Label = ml_stmt_label(_, _)
@@ -1250,9 +1253,7 @@ find_initial_val_in_stmt(Var, Rval, Stmt0, Stmt) :-
     else if
         Stmt0 = ml_stmt_block(Defns0, SubStmts0, Context)
     then
-        Var = qual(Mod, QualKind, UnqualVarName),
-        Data = qual(Mod, QualKind, mlds_data_var(UnqualVarName)),
-        defns_contains_var(Defns0, Data) = no,
+        defns_contains_var(Defns0, Var) = no,
         find_initial_val_in_stmts(Var, Rval, SubStmts0, SubStmts),
         Stmt = ml_stmt_block(Defns0, SubStmts, Context)
     else
@@ -1415,12 +1416,13 @@ eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
         eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
         Rval = ml_mem_addr(Lval)
     ;
-        Rval0 = ml_vector_common_row(VectorCommon, RowRval0),
+        Rval0 = ml_vector_common_row_addr(VectorCommon, RowRval0),
         eliminate_var_in_rval(RowRval0, RowRval, !VarElimInfo),
-        Rval = ml_vector_common_row(VectorCommon, RowRval)
+        Rval = ml_vector_common_row_addr(VectorCommon, RowRval)
     ;
         ( Rval0 = ml_const(_)
         ; Rval0 = ml_scalar_common(_)
+        ; Rval0 = ml_scalar_common_addr(_)
         ; Rval0 = ml_self(_)
         ),
         Rval = Rval0

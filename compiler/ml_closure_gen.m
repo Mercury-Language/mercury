@@ -329,8 +329,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !GlobalData) :-
             RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
 
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
-            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
             Type = mlds_rtti_type(item_type(RttiId))
         ;
             ( PseudoTypeInfo = plain_pseudo_type_info(_, _)
@@ -348,8 +347,8 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !GlobalData) :-
             else
                 module_info_get_name(ModuleInfo, ModuleName),
                 MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-                DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
-                Rval = ml_const(mlconst_data_addr(DataAddr)),
+                Rval =
+                    ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
                 Type = mlds_rtti_type(item_type(RttiId)),
 
                 add_rtti_data_to_mlds(ModuleInfo, RttiData, !GlobalData),
@@ -378,8 +377,7 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !GlobalData) :-
         RttiId = ctor_rtti_id(RttiTypeCtor0, RttiName),
 
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
-        Rval = ml_const(mlconst_data_addr(DataAddr)),
+        Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
         Type = mlds_rtti_type(item_type(RttiId))
     ;
         ( TypeInfo = plain_type_info(_, _)
@@ -396,8 +394,7 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !GlobalData) :-
         else
             module_info_get_name(ModuleInfo, ModuleName),
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
-            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
             Type = mlds_rtti_type(item_type(RttiId)),
 
             add_rtti_data_to_mlds(ModuleInfo, RttiData, !GlobalData),

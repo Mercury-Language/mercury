@@ -1941,7 +1941,7 @@ lookup_ground_rval(FinalConstVarMap, Var, Rval) :-
 
 ml_generate_field_assign(OutVarLval, FieldType, FieldId, VectorCommon,
         StructType, IndexRval, Context, Stmt, !Info) :-
-    BaseRval = ml_vector_common_row(VectorCommon, IndexRval),
+    BaseRval = ml_vector_common_row_addr(VectorCommon, IndexRval),
     FieldLval = ml_field(yes(0), BaseRval, FieldId, FieldType, StructType),
     AtomicStmt = assign(OutVarLval, ml_lval(FieldLval)),
     Stmt = ml_stmt_atomic(AtomicStmt, Context).

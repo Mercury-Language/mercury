@@ -394,16 +394,13 @@ ml_gen_static_scalar_const_addr(MLDS_ModuleName, ConstVarKind, ConstType0,
         UseCommonCells = use_common_cells,
         ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer,
             Common, !GlobalData),
-        CommonDataName = mlds_scalar_common_ref(Common),
-        DataAddr = data_addr(MLDS_ModuleName, CommonDataName),
-        DataAddrRval = ml_const(mlconst_data_addr(DataAddr))
+        DataAddrRval = ml_scalar_common_addr(Common)
     ;
         UseCommonCells = do_not_use_common_cells,
         ml_gen_plain_static_defn(ConstVarKind, ConstType, Initializer,
             Context, VarName, !GlobalData),
-        DataName = mlds_data_var(VarName),
-        DataAddr = data_addr(MLDS_ModuleName, DataName),
-        DataAddrRval = ml_const(mlconst_data_addr(DataAddr))
+        DataAddrRval =
+            ml_const(mlconst_data_addr_var(MLDS_ModuleName, VarName))
     ).
 
 :- pred ml_gen_scalar_static_defn(mlds_module_name::in, mlds_type::in,

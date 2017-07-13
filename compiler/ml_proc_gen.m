@@ -795,8 +795,8 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
             list.map(init_step_desc(tabling_steps_desc(call_table)),
             InputSteps)),
         InputStepsDefn = tabling_name_and_init_to_defn(MLDS_ProcLabel,
-            Context, const, tabling_steps_desc(call_table),
-            InputStepsInit),
+            tabling_steps_desc(call_table),
+            Context, const, InputStepsInit),
         InputStepsDefns = [InputStepsDefn]
     ),
     init_stats(MLDS_ModuleName, MLDS_ProcLabel, Context,
@@ -821,8 +821,8 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
             list.map(init_step_desc(tabling_steps_desc(answer_table)),
             OutputSteps)),
         OutputStepsDefn = tabling_name_and_init_to_defn(MLDS_ProcLabel,
-            Context, const, tabling_steps_desc(answer_table),
-            OutputStepsInit),
+            tabling_steps_desc(answer_table),
+            Context, const, OutputStepsInit),
         OutputStepsDefns = [OutputStepsDefn]
     ),
     init_stats(MLDS_ModuleName, MLDS_ProcLabel, Context,
@@ -859,7 +859,7 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
         gen_init_int(0)
     ]),
     ProcTableInfoDefn = tabling_name_and_init_to_defn(MLDS_ProcLabel,
-        Context, modifiable, tabling_info, ProcTableInfoInit),
+        tabling_info, Context, modifiable, ProcTableInfoInit),
 
     !:DataDefns = CallDefns ++ AnswerDefns ++
         [ProcTableInfoDefn | !.DataDefns].
@@ -902,7 +902,7 @@ init_stats(MLDS_ModuleName, MLDS_ProcLabel, Context,
         list.map(init_stats_step(StatsStepsId), StepDescs, StatsStepsInits),
         StatsStepsArrayInit = init_array(StatsStepsInits),
         StatsStepDefn = tabling_name_and_init_to_defn(MLDS_ProcLabel,
-            Context, modifiable, StatsStepsId, StatsStepsArrayInit),
+            StatsStepsId, Context, modifiable, StatsStepsArrayInit),
         StatsStepDefns = [StatsStepDefn],
         StatsStepsArrayRefInit = gen_init_tabling_name(MLDS_ModuleName,
             MLDS_ProcLabel, tabling_stat_steps(CallOrAnswer, CurrOrPrev))
@@ -959,13 +959,13 @@ encode_enum_init(EnumConstName) =
     proc_tabling_struct_id) = mlds_initializer.
 
 gen_init_tabling_name(ModuleName, ProcLabel, TablingId) = Rval :-
-    DataAddr = data_addr(ModuleName, mlds_tabling_ref(ProcLabel, TablingId)),
-    Rval = init_obj(ml_const(mlconst_data_addr(DataAddr))).
+    Const = mlconst_data_addr_tabling(ModuleName, ProcLabel, TablingId),
+    Rval = init_obj(ml_const(Const)).
 
-:- func tabling_name_and_init_to_defn(mlds_proc_label, prog_context, constness,
-    proc_tabling_struct_id, mlds_initializer) = mlds_data_defn.
+:- func tabling_name_and_init_to_defn(mlds_proc_label, proc_tabling_struct_id,
+    prog_context, constness, mlds_initializer) = mlds_data_defn.
 
-tabling_name_and_init_to_defn(ProcLabel, Context, Constness, Id, Initializer)
+tabling_name_and_init_to_defn(ProcLabel, Id, Context, Constness, Initializer)
         = DataDefn :-
     GCStatement = gc_no_stmt,
     MLDS_Type = mlds_tabling_type(Id),
