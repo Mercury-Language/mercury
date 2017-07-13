@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2001, 2003-2004, 2006-2008, 2010-2011 The University
 % of Melbourne.
-% Copyright (C) 2014 The Mercury Team.
+% Copyright (C) 2014-2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -511,12 +511,12 @@ INIT mercury_sys_init_thread_modules
 % High-level C and low-level C exclusive threads.
 %
 
-:- pragma foreign_decl("C", "
+:- pragma foreign_decl("C", local, "
 #if defined(MR_THREAD_SAFE)
   #include  <pthread.h>
 
-  MR_bool ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id);
-  void *ML_exclusive_thread_wrapper(void *arg);
+  static MR_bool ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id);
+  static void *ML_exclusive_thread_wrapper(void *arg);
 
   typedef struct ML_ThreadWrapperArgs ML_ThreadWrapperArgs;
   struct ML_ThreadWrapperArgs {
@@ -539,7 +539,7 @@ INIT mercury_sys_init_thread_modules
 
 :- pragma foreign_code("C", "
 #if defined(MR_THREAD_SAFE)
-  MR_bool ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id)
+  static MR_bool ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id)
   {
     ML_ThreadWrapperArgs    args;
     pthread_t               thread;
@@ -596,7 +596,7 @@ INIT mercury_sys_init_thread_modules
     return MR_FALSE;
   }
 
-  void *ML_exclusive_thread_wrapper(void *arg)
+  static void *ML_exclusive_thread_wrapper(void *arg)
   {
     ML_ThreadWrapperArgs    *args = arg;
     MR_Word                 goal;
