@@ -847,8 +847,8 @@ construct_string_hash_cases(StrsDatas, Upgrade, TableSize,
         map.init, HashValsMap6A,
         0, NumCollisions4A, 0, NumCollisions5A, 0, NumCollisions6A),
     trace [compiletime(flag("hashcollisions")), io(!IO)] (
-        io.stderr_stream(StdErrA, !IO),
-        io.format(StdErrA, "string hash collisions A: %d %d %d\n",
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr, "string hash collisions A: %d %d %d\n",
             [i(NumCollisions4A), i(NumCollisions5A), i(NumCollisions6A)], !IO)
     ),
     ( if
@@ -889,8 +889,8 @@ construct_string_hash_cases(StrsDatas, Upgrade, TableSize,
             map.init, HashValsMap6B,
             0, NumCollisions4B, 0, NumCollisions5B, 0, NumCollisions6B),
         trace [compiletime(flag("hashcollisions")), io(!IO)] (
-            io.stderr_stream(StdErrB, !IO),
-            io.format(StdErrB, "string hash collisions B: %d %d %d\n",
+            io.stderr_stream(StdErr, !IO),
+            io.format(StdErr, "string hash collisions B: %d %d %d\n",
                 [i(NumCollisions4B), i(NumCollisions5B), i(NumCollisions6B)],
                 !IO)
         ),
@@ -916,11 +916,11 @@ construct_string_hash_cases(StrsDatas, Upgrade, TableSize,
             NumCollisions = NumCollisionsA
         ),
         trace [compiletime(flag("hashcollisions")), io(!IO)] (
-            io.stderr_stream(StdErrC, !IO),
+            io.stderr_stream(StdErr, !IO),
             ( if NumCollisions = 0, NumCollisionsA > 0 then
-                io.write_string(StdErrC, "string hash IMPROVEMENT\n", !IO)
+                io.write_string(StdErr, "string hash IMPROVEMENT\n", !IO)
             else
-                io.write_string(StdErrC, "string hash NO IMPROVEMENT\n", !IO)
+                io.write_string(StdErr, "string hash NO IMPROVEMENT\n", !IO)
             )
         )
     ),
@@ -1003,14 +1003,14 @@ string_hash_case(StrCaseRep, HashMask,
 
 calc_string_hash_slots(TableSize, HashValList, HashMap, SlotMap) :-
     trace [compile_time(flag("hash_slots")), io(!IO)] (
-        io.stderr_stream(StdErrA, !IO),
-        io.write_string(StdErrA, "CALCULATING HASH SLOTS START\n", !IO)
+        io.stderr_stream(StdErr, !IO),
+        io.write_string(StdErr, "CALCULATING HASH SLOTS START\n", !IO)
     ),
     calc_string_hash_slots_loop_over_hashes(HashValList, TableSize, HashMap,
         map.init, SlotMap, 0, _),
     trace [compile_time(flag("hash_slots")), io(!IO)] (
-        io.stderr_stream(StdErrB, !IO),
-        io.write_string(StdErrB, "CALCULATING HASH SLOTS END\n", !IO)
+        io.stderr_stream(StdErr, !IO),
+        io.write_string(StdErr, "CALCULATING HASH SLOTS END\n", !IO)
     ).
 
 :- pred calc_string_hash_slots_loop_over_hashes(
