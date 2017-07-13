@@ -1,0 +1,43 @@
+#!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
+#
+# This script is documented in the companion script make_java_csharp_base.
+
+if test "${TEST_MMC}" = ""
+then
+    echo "make_java_csharp_diff: you need to set TEST_MMC in the environment"
+    exit 1
+fi
+
+root=`/bin/pwd`
+
+/bin/rm -fr arena.java arena.csharp > /dev/null 2>&1
+cp -rp arena.base arena.java
+cp -rp arena.base arena.csharp
+
+cd ${root}/arena.java
+for f in *.m
+do
+    echo === JAVA ${f} ===
+    ${TEST_MMC} --grade java --target-code-only ${f}
+done
+
+cd ${root}/arena.csharp
+for f in *.m
+do
+    echo === CSHARP ${f} ===
+    ${TEST_MMC} --grade csharp --target-code-only ${f}
+done
+
+cd ${root}
+diff -ur arena.base.java arena.java > DIFF.ARENA.JAVA 2>&1
+diff -ur arena.base.csharp arena.csharp > DIFF.ARENA.CSHARP 2>&1
+
+echo JAVA DIFF START
+cat DIFF.ARENA.JAVA
+echo JAVA DIFF END
+echo CSHARP DIFF START
+cat DIFF.ARENA.CSHARP
+echo CSHARP DIFF END
+
+exit 0
