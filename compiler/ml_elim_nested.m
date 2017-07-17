@@ -2090,29 +2090,29 @@ fixup_lval(Action, Info, Lval0, Lval) :-
 :- mode fixup_gc_statements(in(chain), in, out) is det.
 
 fixup_gc_statements(Action, !Info) :-
-    LocalsCord = elim_info_get_local_data(!.Info),
     % We must preserve the order for the Java backend, otherwise the generated
     % code may contain closure_layout vectors that reference typevar vectors
     % which are defined later.
-    % XXX MLDS_DEFN why not call cord.map?
-    Locals = cord.to_list(LocalsCord),
-    fixup_gc_statements_defns(Action, Locals, !Info).
+    LocalsCord0 = elim_info_get_local_data(!.Info),
+    cord.map_foldl(fixup_gc_statements_defn(Action),
+        LocalsCord0, LocalsCord, !Info),
+    elim_info_set_local_data(LocalsCord, !Info).
 
-:- pred fixup_gc_statements_defns(action, list(mlds_data_defn),
+:- pred fixup_gc_statements_defn(action, mlds_data_defn, mlds_data_defn,
     elim_info, elim_info).
-:- mode fixup_gc_statements_defns(in(hoist), in, in, out) is det.
-:- mode fixup_gc_statements_defns(in(chain), in, in, out) is det.
+% We need this predicate to have a single mode for cord.map_foldl.
+:- mode fixup_gc_statements_defn(in, in, out, in, out) is det.
 
-fixup_gc_statements_defns(_, [], !Info).
-fixup_gc_statements_defns(Action, [Defn0 | Defns], !Info) :-
+fixup_gc_statements_defn(Action, Defn0, Defn, !Info) :-
     Defn0 = mlds_data_defn(Name, Context, Flags, Type, Init, GCStmt0),
-    flatten_gc_statement(Action, GCStmt0, GCStmt, !Info),
-    Defn = mlds_data_defn(Name, Context, Flags, Type, Init, GCStmt),
-
-    elim_info_remove_local_data(Defn0, !Info),
-    elim_info_add_local_data(Defn, !Info),
-
-    fixup_gc_statements_defns(Action, Defns, !Info).
+    (
+        Action = hoist_nested_funcs,
+        flatten_gc_statement(Action, GCStmt0, GCStmt, !Info)
+    ;
+        Action = chain_gc_stack_frames,
+        flatten_gc_statement(Action, GCStmt0, GCStmt, !Info)
+    ),
+    Defn = mlds_data_defn(Name, Context, Flags, Type, Init, GCStmt).
 
 %-----------------------------------------------------------------------------%
 
@@ -2658,12 +2658,24 @@ elim_info_init(ModuleName, _OuterVars, EnvTypeName, EnvPtrTypeName, Globals) =
 :- func elim_info_get_env_ptr_type_name(elim_info) = mlds_type.
 :- func elim_info_get_globals(elim_info) = globals.
 
-elim_info_get_module_name(ElimInfo) = ElimInfo ^ ei_module_name.
-% elim_info_get_outer_vars(ElimInfo) = ElimInfo ^ ei_outer_vars.
-elim_info_get_local_data(ElimInfo) = ElimInfo ^ ei_local_data.
-elim_info_get_env_type_name(ElimInfo) = ElimInfo ^ ei_env_type_name.
-elim_info_get_env_ptr_type_name(ElimInfo) = ElimInfo ^ ei_env_ptr_type_name.
-elim_info_get_globals(ElimInfo) = ElimInfo ^ ei_globals.
+:- pred elim_info_set_local_data(cord(mlds_data_defn)::in,
+    elim_info::in, elim_info::out) is det.
+
+elim_info_get_module_name(ElimInfo) = X :-
+    X = ElimInfo ^ ei_module_name.
+% elim_info_get_outer_vars(ElimInfo) = X :-
+%   X = ElimInfo ^ ei_outer_vars.
+elim_info_get_local_data(ElimInfo) = X :-
+    X = ElimInfo ^ ei_local_data.
+elim_info_get_env_type_name(ElimInfo) = X :-
+    X = ElimInfo ^ ei_env_type_name.
+elim_info_get_env_ptr_type_name(ElimInfo) = X :-
+    X = ElimInfo ^ ei_env_ptr_type_name.
+elim_info_get_globals(ElimInfo) = X :-
+    X = ElimInfo ^ ei_globals.
+
+elim_info_set_local_data(X, !ElimInfo) :-
+    !ElimInfo ^ ei_local_data := X.
 
 :- pred elim_info_add_nested_func(mlds_function_defn::in,
     elim_info::in, elim_info::out) is det.
@@ -2680,17 +2692,6 @@ elim_info_add_local_data(LocalVar, !ElimInfo) :-
     LocalVars0 = !.ElimInfo ^ ei_local_data,
     LocalVars = cord.snoc(LocalVars0, LocalVar),
     !ElimInfo ^ ei_local_data := LocalVars.
-
-:- pred elim_info_remove_local_data(mlds_data_defn::in,
-    elim_info::in, elim_info::out) is det.
-
-elim_info_remove_local_data(LocalVar, !ElimInfo) :-
-    LocalVars0 = cord.to_list(!.ElimInfo ^ ei_local_data),
-    ( if list.delete_first(LocalVars0, LocalVar, LocalVars) then
-        !ElimInfo ^ ei_local_data := cord.from_list(LocalVars)
-    else
-        unexpected($pred, "not found")
-    ).
 
 :- pred elim_info_allocate_saved_stack_chain_id(int::out,
     elim_info::in, elim_info::out) is det.
