@@ -95,6 +95,13 @@
 
 %---------------------------------------------------------------------------%
 
+    % Test whether one of the members of an mlds_enum class
+    % is an enumeration constant.
+    %
+:- pred defn_is_enum_const(mlds_defn::in, mlds_field_var_defn::out) is semidet.
+
+%---------------------------------------------------------------------------%
+
 :- pred remove_sym_name_prefix(sym_name::in, sym_name::in,
     sym_name::out) is det.
 
@@ -165,6 +172,13 @@
 
 convert_qual_kind(module_qual) = module_qual.
 convert_qual_kind(type_qual) = type_qual.
+
+%---------------------------------------------------------------------------%
+
+defn_is_enum_const(Defn, FieldVarDefn) :-
+    Defn = mlds_field_var(FieldVarDefn),
+    Flags = FieldVarDefn ^ mfvd_decl_flags,
+    get_data_constness(Flags) = const.
 
 %---------------------------------------------------------------------------%
 
@@ -352,13 +366,15 @@ collect_env_var_names(Defns, EnvVarNames) :-
 
 accumulate_env_var_names(Defn, !EnvVarNames) :-
     (
-        Defn = mlds_data(_)
+        ( Defn = mlds_global_var(_)
+        ; Defn = mlds_local_var(_)
+        ; Defn = mlds_field_var(_)
+        ; Defn = mlds_class(_)
+        )
     ;
         Defn = mlds_function(FunctionDefn),
         FunctionDefn = mlds_function_defn(_, _, _, _, _, _, _, EnvVarNames, _),
         set.union(EnvVarNames, !EnvVarNames)
-    ;
-        Defn = mlds_class(_)
     ).
 
 %---------------------------------------------------------------------------%

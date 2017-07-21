@@ -51,7 +51,7 @@
     % should obtain the type_info from the corresponding entry in the
     % `type_params' local.
     %
-:- pred ml_gen_call(pred_id::in, proc_id::in, list(mlds_var_name)::in,
+:- pred ml_gen_call(pred_id::in, proc_id::in, list(mlds_local_var_name)::in,
     list(mlds_lval)::in, list(mer_type)::in, code_model::in,
     prog_context::in, bool::in, list(mlds_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -134,7 +134,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % Create the boxed parameter types for the called function.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_varset(!.Info, VarSet),
-    ArgNames = ml_gen_var_names(VarSet, ArgVars),
+    ArgNames = ml_gen_local_var_names(VarSet, ArgVars),
     PredOrFunc = generic_call_pred_or_func(GenericCall),
     determinism_to_code_model(Determinism, CodeModel),
     Params0 = ml_gen_params(ModuleInfo, ArgNames,
@@ -149,7 +149,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % `closure_arg'.
     GCStmt = gc_no_stmt,
     ClosureArgType = mlds_generic_type,
-    ClosureArg = mlds_argument(mlds_comp_var(mcv_closure_arg), ClosureArgType,
+    ClosureArg = mlds_argument(lvn_comp_var(lvnc_closure_arg), ClosureArgType,
         GCStmt),
     Params0 = mlds_func_params(ArgParams0, RetParam),
     Params = mlds_func_params([ClosureArg | ArgParams0], RetParam),
@@ -199,13 +199,12 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     %
     ml_gen_info_new_conv_var(ConvVarSeq, !Info),
     ConvVarSeq = conv_seq(ConvVarNum),
-    FuncVarName = mlds_comp_var(mcv_conv_var(ConvVarNum)),
+    FuncVarName = lvn_comp_var(lvnc_conv_var(ConvVarNum)),
     % The function address is always a pointer to code,
     % not to the heap, so the GC doesn't need to trace it.
     GCStmt = gc_no_stmt,
-    FuncVarDecl = ml_gen_mlds_var_decl(mlds_data_var(FuncVarName),
-        FuncType, GCStmt, Context),
-    ml_gen_var_lval(!.Info, FuncVarName, FuncType, FuncVarLval),
+    FuncVarDecl = ml_gen_mlds_var_decl(FuncVarName, FuncType, GCStmt, Context),
+    ml_gen_local_var_lval(!.Info, FuncVarName, FuncType, FuncVarLval),
     AssignFuncVar = ml_gen_assign(FuncVarLval, FuncRval, Context),
     FuncVarRval = ml_lval(FuncVarLval),
 
@@ -258,12 +257,11 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
             DoGenConvOutputAndSucceed, CallAndConvOutputDecls,
             CallAndConvOutputStmts, !Info),
         % XXX MLDS_DEFN
-        Decls0 = list.map(wrap_data_defn, ConvArgDecls) ++
+        Decls0 = list.map(wrap_local_var_defn, ConvArgDecls) ++
             CallAndConvOutputDecls,
         Stmts0 = CallAndConvOutputStmts
     ),
-    % XXX MLDS_DEFN
-    Decls = [mlds_data(FuncVarDecl) | Decls0],
+    Decls = [mlds_local_var(FuncVarDecl) | Decls0],
     Stmts = [AssignFuncVar | Stmts0].
 
     % Generate MLDS code for a cast. The list of argument variables
@@ -404,7 +402,7 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
             DoGenConvOutputAndSucceed, CallAndConvOutputDecls,
             CallAndConvOutputStmts, !Info),
         % XXX MLDS_DEFN
-        Decls = list.map(wrap_data_defn, ConvArgDecls) ++
+        Decls = list.map(wrap_local_var_defn, ConvArgDecls) ++
             CallAndConvOutputDecls,
         Stmts = CallAndConvOutputStmts
     ).
@@ -580,7 +578,7 @@ ml_gen_cont_params(OutputArgTypes, Params, !Info) :-
 
 ml_gen_cont_params_loop([], _, []).
 ml_gen_cont_params_loop([Type | Types], ArgNum, [Argument | Arguments]) :-
-    ArgName = mlds_comp_var(mcv_arg(ArgNum)),
+    ArgName = lvn_comp_var(lvnc_arg(ArgNum)),
     % Figuring out the correct GC code here is difficult, since doing that
     % requires knowing the HLDS types, but here we only have the MLDS types.
     % So here we just leave it blank. The caller of ml_gen_cont_param has the
@@ -606,8 +604,8 @@ ml_gen_copy_args_to_locals(Info, ArgLvals, ArgTypes, Context,
 ml_gen_copy_args_to_locals_loop(_Info, [], [], _, _, []).
 ml_gen_copy_args_to_locals_loop(Info, [LocalLval | LocalLvals], [Type | Types],
         ArgNum, Context, [Stmt | Stmts]) :-
-    ArgName = mlds_comp_var(mcv_arg(ArgNum)),
-    ml_gen_var_lval(Info, ArgName, Type, ArgLval),
+    ArgName = lvn_comp_var(lvnc_arg(ArgNum)),
+    ml_gen_local_var_lval(Info, ArgName, Type, ArgLval),
     Stmt = ml_gen_assign(LocalLval, ml_lval(ArgLval), Context),
     ml_gen_copy_args_to_locals_loop(Info, LocalLvals, Types, ArgNum + 1,
         Context, Stmts).
@@ -618,11 +616,11 @@ ml_gen_copy_args_to_locals_loop(_Info, [_ | _], [], _, _, _) :-
 
     % Generate rvals and lvals for the arguments of a procedure call
     %
-:- pred ml_gen_arg_list(list(mlds_var_name)::in, list(mlds_lval)::in,
+:- pred ml_gen_arg_list(list(mlds_local_var_name)::in, list(mlds_lval)::in,
     list(mer_type)::in, list(mer_type)::in, list(mer_mode)::in,
     pred_or_func::in, code_model::in, prog_context::in, bool::in, int::in,
     list(mlds_rval)::out, list(mlds_lval)::out, list(mlds_type)::out,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
@@ -752,7 +750,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Stmts,
             ( if
                 % We need to avoid generating assignments to dummy variables
                 % introduced for types such as io.state.
-                Lval = ml_var(_VarName, VarType),
+                Lval = ml_local_var(_VarName, VarType),
                 VarType = mercury_type(ProgDataType, _, _),
                 check_dummy_type(ModuleInfo, ProgDataType) = is_dummy_type
             then
@@ -764,7 +762,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Stmts,
             )
         ;
             SimpleCode = ref_assign(AddrLval, ValueLval),
-            ( if ValueLval = ml_var(_ValueVarName, ValueType) then
+            ( if ValueLval = ml_local_var(_ValueVarName, ValueType) then
                 Stmt = ml_gen_assign(
                     ml_mem_ref(ml_lval(AddrLval), ValueType),
                     ml_lval(ValueLval), Context),

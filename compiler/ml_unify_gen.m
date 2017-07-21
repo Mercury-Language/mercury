@@ -564,8 +564,10 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
             UnqualTypeName = unqualify_name(TypeName),
             MLDS_TypeName = mlds_append_class_qualifier_module_qual(
                 MLDS_ModuleName, UnqualTypeName, TypeArity),
-            Name = mlds_comp_var(mcv_reserved_obj_name(CtorName, CtorArity)),
-            Rval0 = ml_const(mlconst_data_addr_var(MLDS_TypeName, Name)),
+            FieldVarName = fvn_reserved_obj_name(CtorName, CtorArity),
+            LocalVarName = lvn_field_var_as_local(FieldVarName),
+            Rval0 = ml_const(
+                mlconst_data_addr_local_var(MLDS_TypeName, LocalVarName)),
 
             % The MLDS type of the reserved object may be a class derived from
             % the base class for this Mercury type. So for some back-ends,
@@ -848,7 +850,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
         ),
         module_info_get_name(ModuleInfo, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        ml_gen_static_scalar_const_addr(MLDS_ModuleName, mccv_const_var,
+        ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var,
             ConstType, Initializer, Context, ConstAddrRval, !GlobalData),
         ml_gen_info_set_global_data(!.GlobalData, !Info)
     ),
@@ -2775,7 +2777,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     ),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mccv_const_var, ConstType,
+    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var, ConstType,
         Initializer, Context, ConstDataAddrRval, !GlobalData),
 
     % Assign the (possibly tagged) address of the local static constant
@@ -3097,7 +3099,7 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
     ),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mccv_const_var, ConstType,
+    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var, ConstType,
         Initializer, term.context_init, ConstDataAddrRval, !GlobalData),
 
     % Assign the (possibly tagged) address of the local static constant

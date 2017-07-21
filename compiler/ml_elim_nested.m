@@ -480,72 +480,58 @@
 
 ml_elim_nested(Action, Globals, MLDS0, MLDS) :-
     MLDS0 = mlds(ModuleName, ForeignCode, Imports, GlobalData0,
-        TypeDefns, TableStructDefns, PredDefns0,
+        TypeDefns0, TableStructDefns, ProcDefns0,
         InitPreds, FinalPreds, ExportedEnums),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    OuterVars = [],
-    ml_elim_nested_defns_list(Action, MLDS_ModuleName, Globals, OuterVars,
-        PredDefns0, cord.init, PredDefnsCord),
-    PredDefns = cord.to_list(PredDefnsCord),
-    % Flat global data structures do not need to be processed here; that is
-    % what makes them "flat".
-    ml_global_data_get_maybe_nonflat_defns(GlobalData0,
-        NonFlatDefnsCord0),
-    NonFlatDefns0 = cord.to_list(NonFlatDefnsCord0),
-    ml_elim_nested_defns_list(Action, MLDS_ModuleName, Globals, OuterVars,
-        NonFlatDefns0, cord.init, NonFlatDefnsCord),
-    ml_global_data_set_maybe_nonflat_defns(NonFlatDefnsCord,
+    ml_global_data_get_closure_wrapper_func_defns(GlobalData0,
+        WrapperFuncsCord),
+    ProcDefns1 = ProcDefns0 ++ cord.to_list(WrapperFuncsCord),
+    ml_elim_nested_defns_in_funcs(Action, MLDS_ModuleName, Globals, ProcDefns1,
+        cord.init, ProcDefnsCord, cord.init, EnvTypeDefnsCord),
+    ProcDefns = cord.to_list(ProcDefnsCord),
+    % The (flattened forms of) the closure wrapper functions are in ProcDefns;
+    % don't include them in the MLDS twice.
+    ml_global_data_set_closure_wrapper_func_defns(cord.init,
         GlobalData0, GlobalData),
+    EnvTypeDefns = cord.to_list(EnvTypeDefnsCord),
+    TypeDefns = TypeDefns0 ++ EnvTypeDefns,
     MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData,
-        TypeDefns, TableStructDefns, PredDefns,
+        TypeDefns, TableStructDefns, ProcDefns,
         InitPreds, FinalPreds, ExportedEnums).
 
-:- pred ml_elim_nested_defns_list(action, mlds_module_name, globals, outervars,
-    list(mlds_defn), cord(mlds_defn), cord(mlds_defn)).
-:- mode ml_elim_nested_defns_list(in(hoist), in, in, in, in, in, out) is det.
-:- mode ml_elim_nested_defns_list(in(chain), in, in, in, in, in, out) is det.
+:- pred ml_elim_nested_defns_in_funcs(action, mlds_module_name, globals,
+    list(mlds_function_defn),
+    cord(mlds_function_defn), cord(mlds_function_defn),
+    cord(mlds_class_defn), cord(mlds_class_defn)).
+:- mode ml_elim_nested_defns_in_funcs(in(hoist), in, in, in,
+    in, out, in, out) is det.
+:- mode ml_elim_nested_defns_in_funcs(in(chain), in, in, in,
+    in, out, in, out) is det.
 
-ml_elim_nested_defns_list(_, _, _, _, [], !DefnsCord).
-ml_elim_nested_defns_list(Action, ModuleName, Globals, OuterVars,
-        [Defn0 | Defns0], !DefnsCord) :-
-    ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0,
-        !DefnsCord),
-    ml_elim_nested_defns_list(Action, ModuleName, Globals, OuterVars, Defns0,
-        !DefnsCord).
-
-:- pred ml_elim_nested_defns(action, mlds_module_name, globals, outervars,
-    mlds_defn, cord(mlds_defn), cord(mlds_defn)).
-:- mode ml_elim_nested_defns(in(hoist), in, in, in, in, in, out) is det.
-:- mode ml_elim_nested_defns(in(chain), in, in, in, in, in, out) is det.
-
-ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0,
-        !DefnsCord) :-
-    (
-        Defn0 = mlds_function(FunctionDefn0),
-        FunctionDefn0 = mlds_function_defn(Name, _Context, _Flags,
-            _PredProcId, _Params0, _Body0, _Attributes,
-            _EnvVarNames, _MaybeRequiretailrecInfo),
-        % Don't add GC tracing code to the gc_trace/1 primitive!
-        % (Doing so would just slow things down unnecessarily.)
-        ( if
-            Name = mlds_function_name(PlainFuncName),
-            PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
-            PredLabel = mlds_user_pred_label(_, _, "gc_trace", 1, _, _),
-            PrivateBuiltin = mercury_private_builtin_module,
-            ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
-        then
-            !:DefnsCord = cord.snoc(!.DefnsCord, Defn0)
-        else
-            ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
-                FunctionDefn0, !DefnsCord)
-        )
-    ;
-        % Leave definitions of things other than functions unchanged.
-        ( Defn0 = mlds_data(_)
-        ; Defn0 = mlds_class(_)
-        ),
-        !:DefnsCord = cord.snoc(!.DefnsCord, Defn0)
-    ).
+ml_elim_nested_defns_in_funcs(_, _, _, [], !FuncDefnsCord, !ClassDefnsCord).
+ml_elim_nested_defns_in_funcs(Action, ModuleName, Globals,
+        [FuncDefn | FuncDefns], !FuncDefnsCord, !ClassDefnsCord) :-
+    FuncDefn = mlds_function_defn(Name, _Context, _Flags,
+        _PredProcId, _Params0, _Body0, _Attributes,
+        _EnvVarNames, _MaybeRequiretailrecInfo),
+    % Don't add GC tracing code to the gc_trace/1 primitive!
+    % (Doing so would just slow things down unnecessarily.)
+    % And since it is implemented as a foreign proc, it has no
+    % nested definitions to flatten out either.
+    ( if
+        Name = mlds_function_name(PlainFuncName),
+        PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
+        PredLabel = mlds_user_pred_label(_, _, "gc_trace", 1, _, _),
+        PrivateBuiltin = mercury_private_builtin_module,
+        ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
+    then
+        !:FuncDefnsCord = cord.snoc(!.FuncDefnsCord, FuncDefn)
+    else
+        ml_elim_nested_defns_in_func(Action, ModuleName, Globals,
+            FuncDefn, !FuncDefnsCord, !ClassDefnsCord)
+    ),
+    ml_elim_nested_defns_in_funcs(Action, ModuleName, Globals,
+        FuncDefns, !FuncDefnsCord, !ClassDefnsCord).
 
     % Either eliminate nested functions:
     % Hoist out any nested function occurring in a single mlds_defn.
@@ -557,18 +543,22 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0,
     % Extract out the code to trace these variables, putting it in a function
     % whose address is stored in the shadow stack frame.
     %
-:- pred ml_elim_nested_defns_func(action, mlds_module_name, globals, outervars,
-    mlds_function_defn, cord(mlds_defn), cord(mlds_defn)).
-:- mode ml_elim_nested_defns_func(in(hoist), in, in, in, in, in, out) is det.
-:- mode ml_elim_nested_defns_func(in(chain), in, in, in, in, in, out) is det.
+:- pred ml_elim_nested_defns_in_func(action, mlds_module_name, globals,
+    mlds_function_defn,
+    cord(mlds_function_defn), cord(mlds_function_defn),
+    cord(mlds_class_defn), cord(mlds_class_defn)).
+:- mode ml_elim_nested_defns_in_func(in(hoist), in, in, in,
+    in, out, in, out) is det.
+:- mode ml_elim_nested_defns_in_func(in(chain), in, in, in,
+    in, out, in, out) is det.
 
-ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
-        FunctionDefn0, !DefnsCord) :-
-    FunctionDefn0 = mlds_function_defn(Name, Context, Flags, PredProcId,
+ml_elim_nested_defns_in_func(Action, ModuleName, Globals, FuncDefn0,
+        !FuncDefnsCord, !ClassDefnsCord) :-
+    FuncDefn0 = mlds_function_defn(Name, Context, Flags, PredProcId,
         Params0, Body0, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
     (
         Body0 = body_external,
-        !:DefnsCord = cord.snoc(!.DefnsCord, mlds_function(FunctionDefn0))
+        !:FuncDefnsCord = cord.snoc(!.FuncDefnsCord, FuncDefn0)
     ;
         Body0 = body_defined_here(FuncBody0),
         EnvName = ml_env_name(Name, Action),
@@ -584,6 +574,9 @@ ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
         % Also, for accurate GC, add code to save and restore the stack chain
         % pointer at any `try_commit' statements.
 
+        % If you want to know what OuterVars is for, see the commented out code
+        % below fixup_var.
+        OuterVars = [],
         ElimInfo0 = elim_info_init(ModuleName, OuterVars,
             EnvTypeName, EnvPtrTypeName, Globals),
         Params0 = mlds_func_params(Arguments0, RetValues),
@@ -600,8 +593,7 @@ ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
             % Likewise, when doing accurate GC, if there were no local
             % variables (or arguments) that contained pointers, then we don't
             % need to chain a stack frame for this function.
-            FuncBody = FuncBody1,
-            HoistedDefns = []
+            FuncBody = FuncBody1
         ;
             NestedFuncs0 = [_ | _],
             % Create a struct to hold the local variables, and initialize
@@ -617,7 +609,9 @@ ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
                     have_not_inserted_env, InsertedEnv),
 
             % Hoist out the nested functions.
-            HoistedFuncDefns = GCTraceFuncDefns ++ NestedFuncs,
+            !:FuncDefnsCord = !.FuncDefnsCord ++
+                cord.from_list(GCTraceFuncDefns) ++
+                cord.from_list(NestedFuncs),
 
             % When hoisting nested functions, it is possible that none of the
             % nested functions reference the arguments or locals of the parent
@@ -633,9 +627,10 @@ ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
                 Action = hoist_nested_funcs,
                 InsertedEnv = have_not_inserted_env
             then
-                FuncBody = FuncBody1,
-                HoistedDefns = list.map(wrap_function_defn, HoistedFuncDefns)
+                FuncBody = FuncBody1
             else
+                !:ClassDefnsCord = cord.snoc(!.ClassDefnsCord, EnvTypeDefn),
+
                 % If the function's arguments are referenced by nested
                 % functions, or (for accurate GC) may contain pointers,
                 % then we need to copy them to local variables in the
@@ -676,14 +671,10 @@ ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
                 % body, and append the final unlink statement (if any)
                 % at the end.
                 % XXX MLDS_DEFN
-                FuncBody = ml_gen_block(list.map(wrap_data_defn, EnvDecls),
+                FuncBody = ml_gen_block(
+                    list.map(wrap_local_var_defn, EnvDecls),
                     InitEnv ++ CodeToCopyArgs ++ [FuncBody2] ++ UnchainFrame,
-                    Context),
-                % Insert the environment struct type at the start of the list
-                % of hoisted definitions (preceding the previously nested
-                % functions in HoistedDefns0).
-                HoistedDefns = [mlds_class(EnvTypeDefn) |
-                    list.map(wrap_function_defn, HoistedFuncDefns)]
+                    Context)
             )
         ),
         (
@@ -699,12 +690,10 @@ ml_elim_nested_defns_func(Action, ModuleName, Globals, OuterVars,
             Arguments = Arguments0
         ),
         Params = mlds_func_params(Arguments, RetValues),
-        Defn = mlds_function(mlds_function_defn(Name, Context, Flags,
+        FuncDefn = mlds_function_defn(Name, Context, Flags,
             PredProcId, Params, body_defined_here(FuncBody),
-            Attributes, EnvVarNames, MaybeRequiretailrecInfo)),
-
-        !:DefnsCord = !.DefnsCord ++ cord.from_list(HoistedDefns),
-        !:DefnsCord = cord.snoc(!.DefnsCord, Defn)
+            Attributes, EnvVarNames, MaybeRequiretailrecInfo),
+        !:FuncDefnsCord = cord.snoc(!.FuncDefnsCord, FuncDefn)
     ).
 
 :- func strip_gc_statement(mlds_argument) = mlds_argument.
@@ -714,7 +703,7 @@ strip_gc_statement(Argument0) = Argument :-
     Argument = mlds_argument(Name, Type, gc_no_stmt).
 
     % Add any arguments which are used in nested functions
-    % to the local_data field in the elim_info.
+    % to the ei_local_vars field in the elim_info.
     %
 :- pred ml_maybe_add_args(action, list(mlds_argument), mlds_stmt,
     mlds_module_name, prog_context, elim_info, elim_info).
@@ -726,11 +715,11 @@ ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
         !Info) :-
     Arg = mlds_argument(VarName, _Type, GCStmt),
     ( if
-        ml_should_add_local_data(Action, !.Info, VarName,
+        ml_should_add_local_var(Action, !.Info, VarName,
             GCStmt, [], [FuncBody])
     then
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
-        elim_info_add_local_data(ArgToCopy, !Info)
+        elim_info_add_local_var(ArgToCopy, !Info)
     else
         true
     ),
@@ -740,7 +729,8 @@ ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
     % to the environment struct.
     %
 :- pred ml_maybe_copy_args(action, elim_info, list(mlds_argument), mlds_stmt,
-    mlds_type, mlds_type, prog_context, list(mlds_data_defn), list(mlds_stmt)).
+    mlds_type, mlds_type, prog_context,
+    list(mlds_local_var_defn), list(mlds_stmt)).
 :- mode ml_maybe_copy_args(in(hoist), in, in, in, in, in, in, out, out) is det.
 :- mode ml_maybe_copy_args(in(chain), in, in, in, in, in, in, out, out) is det.
 
@@ -752,8 +742,7 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassType,
     ModuleName = elim_info_get_module_name(Info),
     Arg = mlds_argument(VarName, FieldType, GCStmt),
     ( if
-        ml_should_add_local_data(Action, Info, VarName,
-            GCStmt, [], [FuncBody])
+        ml_should_add_local_var(Action, Info, VarName, GCStmt, [], [FuncBody])
     then
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
 
@@ -764,16 +753,16 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassType,
         Globals = elim_info_get_globals(Info),
         globals.get_target(Globals, Target),
         EnvModuleName = ml_env_module_name(Target, ClassType),
-        FieldNameString = ml_var_name_to_string(VarName),
-        FieldName = ml_field_named(qual(EnvModuleName, type_qual,
-            FieldNameString), EnvPtrTypeName),
+        FieldNameString = ml_local_var_name_to_string(VarName),
+        FieldName = ml_field_named(
+            qual(EnvModuleName, type_qual, FieldNameString), EnvPtrTypeName),
         Tag = yes(0),
         EnvPtrVarName = env_ptr_var(Action),
-        EnvPtr = ml_lval(ml_var(qual(ModuleName, module_qual, EnvPtrVarName),
-            EnvPtrTypeName)),
+        QualEnvPtrVarName = qual(ModuleName, module_qual, EnvPtrVarName),
+        EnvPtr = ml_lval(ml_local_var(QualEnvPtrVarName, EnvPtrTypeName)),
         EnvArgLval = ml_field(Tag, EnvPtr, FieldName, FieldType,
             EnvPtrTypeName),
-        ArgRval = ml_lval(ml_var(QualVarName, FieldType)),
+        ArgRval = ml_lval(ml_local_var(QualVarName, FieldType)),
         AssignToEnv = assign(EnvArgLval, ArgRval),
         CodeToCopyArg = ml_stmt_atomic(AssignToEnv, Context),
 
@@ -829,9 +818,9 @@ ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
     %   stack_chain = env_ptr;
     %
 :- pred ml_create_env(action::in, mlds_class_name::in, mlds_type::in,
-    list(mlds_data_defn)::in, prog_context::in, mlds_module_name::in,
+    list(mlds_local_var_defn)::in, prog_context::in, mlds_module_name::in,
     mlds_function_name::in, globals::in, mlds_class_defn::out,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     list(mlds_function_defn)::out) is det.
 
 ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
@@ -902,16 +891,15 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     % XXX MLDS_DEFN
     EnvTypeDefn = mlds_class_defn(EnvTypeClassName, Context,
         EnvTypeFlags, EnvTypeKind, Imports, BaseClasses, Interfaces,
-        TypeParams, Ctors, list.map(wrap_data_defn, Fields)),
+        TypeParams, Ctors, list.map(wrap_field_var_defn, Fields)),
 
     % Generate the following variable declaration:
     %
     %   struct <EnvClassName> env; // = { ... }
     %
     EnvVarName = env_var(Action),
-    EnvVarDataName = mlds_data_var(EnvVarName),
     EnvVarFlags = ml_gen_local_var_decl_flags,
-    EnvVarDecl = mlds_data_defn(EnvVarDataName, Context,
+    EnvVarDecl = mlds_local_var_defn(EnvVarName, Context,
         EnvVarFlags, EnvTypeName, EnvInitializer, GCStmtEnv),
 
     % Declare the `env_ptr' var, and initialize the `env_ptr' with the
@@ -923,7 +911,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     % the struct we put on the stack.
     (
         OnHeap = yes,
-        EnvVarAddr = ml_lval(ml_var(EnvVar, EnvTypeName)),
+        EnvVarAddr = ml_lval(ml_local_var(EnvVar, EnvTypeName)),
         % OnHeap should be "yes" only on for the IL backend, for which
         % the value of MayUseAtomic is immaterial.
         % XXX The comment on the option lookup setting the value of OnHeap
@@ -932,13 +920,13 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         MaybeAllocId = no,
         NewObj = [
             ml_stmt_atomic(
-                new_object(ml_var(EnvVar, EnvTypeName), no, no, EnvTypeName,
-                    no, no, [], [], MayUseAtomic, MaybeAllocId),
+                new_object(ml_local_var(EnvVar, EnvTypeName), no, no,
+                    EnvTypeName, no, no, [], [], MayUseAtomic, MaybeAllocId),
                 Context)
         ]
     ;
         OnHeap = no,
-        EnvVarAddr = ml_mem_addr(ml_var(EnvVar, EnvTypeName)),
+        EnvVarAddr = ml_mem_addr(ml_local_var(EnvVar, EnvTypeName)),
         NewObj = []
     ),
     ml_init_env(Action, EnvTypeName, EnvVarAddr, Context, ModuleName,
@@ -948,7 +936,8 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
 
 :- pred ml_chain_stack_frames(globals::in, mlds_module_name::in,
     mlds_function_name::in, prog_context::in, list(mlds_stmt)::in,
-    mlds_type::in, list(mlds_data_defn)::in, list(mlds_data_defn)::out,
+    mlds_type::in,
+    list(mlds_field_var_defn)::in, list(mlds_field_var_defn)::out,
     mlds_initializer::out, list(mlds_stmt)::out,
     list(mlds_function_defn)::out) is det.
 
@@ -962,8 +951,8 @@ ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
     %   frame_ptr = (struct foo_frame *) this_frame;
     %
     ThisFrameName =
-        qual(ModuleName, module_qual, mlds_comp_var(mcv_this_frame)),
-    ThisFrameRval = ml_lval(ml_var(ThisFrameName, mlds_generic_type)),
+        qual(ModuleName, module_qual, lvn_comp_var(lvnc_this_frame)),
+    ThisFrameRval = ml_lval(ml_local_var(ThisFrameName, mlds_generic_type)),
     CastThisFrameRval = ml_unop(cast(mlds_ptr_type(EnvTypeName)),
         ThisFrameRval),
     ml_init_env(chain_gc_stack_frames, EnvTypeName, CastThisFrameRval,
@@ -988,16 +977,16 @@ ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
     %   void *prev;
     %   void (*trace)(...);
     %
-    PrevFieldName = mlds_data_var(mlds_comp_var(mcv_prev)),
+    PrevFieldName = fvn_prev,
     PrevFieldFlags = ml_gen_public_field_decl_flags,
     PrevFieldType = ml_stack_chain_type,
-    PrevFieldDecl = mlds_data_defn(PrevFieldName, Context,
+    PrevFieldDecl = mlds_field_var_defn(PrevFieldName, Context,
         PrevFieldFlags, PrevFieldType, no_initializer, gc_no_stmt),
 
-    TraceFieldName = mlds_data_var(mlds_comp_var(mcv_trace)),
+    TraceFieldName = fvn_trace,
     TraceFieldFlags = ml_gen_public_field_decl_flags,
     TraceFieldType = mlds_func_type(GCTraceFuncParams),
-    TraceFieldDecl = mlds_data_defn(TraceFieldName, Context,
+    TraceFieldDecl = mlds_field_var_defn(TraceFieldName, Context,
         TraceFieldFlags, TraceFieldType, no_initializer, gc_no_stmt),
 
     Fields = [PrevFieldDecl, TraceFieldDecl | Fields0],
@@ -1030,21 +1019,21 @@ ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
     %
     EnvPtrTypeName = ml_make_env_ptr_type(Globals, EnvTypeName),
     EnvPtr = ml_lval(
-        ml_var(
-            qual(ModuleName, module_qual, mlds_comp_var(mcv_frame_ptr)),
+        ml_local_var(
+            qual(ModuleName, module_qual, lvn_comp_var(lvnc_frame_ptr)),
             EnvPtrTypeName)),
     AssignToStackChain = assign(StackChain, EnvPtr),
     LinkStackChain = [ml_stmt_atomic(AssignToStackChain, Context)].
 
 :- pred gen_gc_trace_func(mlds_module_name::in, mlds_function_name::in,
-    mlds_data_defn::in, list(mlds_stmt)::in, prog_context::in,
+    mlds_local_var_defn::in, list(mlds_stmt)::in, prog_context::in,
     mlds_code_addr::out, mlds_func_params::out, mlds_function_defn::out)
     is det.
 
 gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStmts,
         Context, GCTraceFuncAddr, FuncParams, GCTraceFuncDefn) :-
     % Compute the signature of the GC tracing function
-    ArgVarName = mlds_comp_var(mcv_this_frame),
+    ArgVarName = lvn_comp_var(lvnc_this_frame),
     ArgType = mlds_generic_type,
     Argument = mlds_argument(ArgVarName, ArgType, gc_no_stmt),
     FuncParams = mlds_func_params([Argument], []),
@@ -1088,7 +1077,7 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStmts,
 
     % Construct the function definition.
     % XXX MLDS_DEFN
-    Stmt = ml_stmt_block([mlds_data(FramePointerDecl)], GCTraceStmts,
+    Stmt = ml_stmt_block([mlds_local_var(FramePointerDecl)], GCTraceStmts,
         Context),
     DeclFlags = ml_gen_gc_trace_func_decl_flags,
     MaybePredProcId = no,
@@ -1107,26 +1096,29 @@ ml_gen_gc_trace_func_decl_flags = DeclFlags :-
     PerInstance = one_copy,
     DeclFlags = init_function_decl_flags(Access, PerInstance).
 
-:- pred extract_gc_statements(mlds_data_defn::in, mlds_data_defn::out,
+:- pred extract_gc_statements(
+    mlds_field_var_defn::in, mlds_field_var_defn::out,
     list(mlds_stmt)::out, list(mlds_stmt)::out) is det.
 
-extract_gc_statements(DataDefn0, DataDefn, GCInitStmts, GCTraceStmts) :-
-    DataDefn0 = mlds_data_defn(Name, Context, Flags, Type, Init, GCStmt),
+extract_gc_statements(FieldVarDefn0, FieldVarDefn,
+        GCInitStmts, GCTraceStmts) :-
+    FieldVarDefn0 = mlds_field_var_defn(Name, Context, Flags, Type,
+        Init, GCStmt),
     (
         GCStmt = gc_trace_code(GCTraceStmt),
-        DataDefn = mlds_data_defn(Name, Context, Flags,
-            Type, Init, gc_no_stmt),
+        FieldVarDefn = mlds_field_var_defn(Name, Context, Flags, Type,
+            Init, gc_no_stmt),
         GCInitStmts = [],
         GCTraceStmts = [GCTraceStmt]
     ;
         GCStmt = gc_initialiser(GCInitStmt),
-        DataDefn = mlds_data_defn(Name, Context, Flags,
-            Type, Init, gc_no_stmt),
+        FieldVarDefn = mlds_field_var_defn(Name, Context, Flags, Type,
+            Init, gc_no_stmt),
         GCInitStmts = [GCInitStmt],
         GCTraceStmts = []
     ;
         GCStmt = gc_no_stmt,
-        DataDefn = DataDefn0,
+        FieldVarDefn = FieldVarDefn0,
         GCInitStmts = [],
         GCTraceStmts = []
     ).
@@ -1138,17 +1130,20 @@ extract_gc_statements(DataDefn0, DataDefn, GCInitStmts, GCTraceStmts) :-
     % (Perhaps changing it to `default' might be better?)
     % XXX MLDS_DEFN
     %
-:- func convert_local_to_field(mlds_data_defn) = mlds_data_defn.
+:- func convert_local_to_field(mlds_local_var_defn) = mlds_field_var_defn.
 
-convert_local_to_field(Defn0) = Defn :-
-    Flags0 = Defn0 ^ mdd_decl_flags,
+convert_local_to_field(LocalVarDefn) = FieldVarDefn :-
+    LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Flags0, Type,
+        Init, GcStmt),
     Access0 = get_data_access(Flags0),
     ( if Access0 = acc_local then
-        set_data_access(acc_public, Flags0, Flags),
-        Defn = Defn0 ^ mdd_decl_flags := Flags
+        set_data_access(acc_public, Flags0, Flags)
     else
-        Defn = Defn0
-    ).
+        Flags = Flags0
+    ),
+    FieldVarName = fvn_env_field_from_local_var(LocalVarName),
+    FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags, Type,
+        Init, GcStmt).
 
 :- type inserted_env
     --->    have_not_inserted_env
@@ -1188,13 +1183,13 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals,
         Params, Body, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
     ( if
         Body = body_defined_here(FuncBody0),
-        EnvPtrVar = mlds_comp_var(mcv_env_ptr),
+        EnvPtrVar = lvn_comp_var(lvnc_env_ptr),
         QualEnvPtrVar = qual(ModuleName, module_qual, EnvPtrVar),
         statement_contains_var(FuncBody0, QualEnvPtrVar) = yes
     then
         EnvPtrVal = ml_lval(
-            ml_var(
-                qual(ModuleName, module_qual, mlds_comp_var(mcv_env_ptr_arg)),
+            ml_local_var(
+                qual(ModuleName, module_qual, lvn_comp_var(lvnc_env_ptr_arg)),
                 mlds_generic_env_ptr_type)),
         EnvPtrVarType = ml_make_env_ptr_type(Globals, TypeName),
 
@@ -1205,7 +1200,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals,
         ml_init_env(Action, TypeName, CastEnvPtrVal, Context,
             ModuleName, Globals, EnvPtrDecl, InitEnvPtr),
         % XXX MLDS_DEFN
-        FuncBody = ml_stmt_block([mlds_data(EnvPtrDecl)],
+        FuncBody = ml_stmt_block([mlds_local_var(EnvPtrDecl)],
             [InitEnvPtr, FuncBody0], Context),
         FunctionDefn = mlds_function_defn(Name, Context, Flags,
             PredProcId, Params, body_defined_here(FuncBody), Attributes,
@@ -1227,7 +1222,7 @@ ml_make_env_ptr_type(_Globals, EnvType) = EnvPtrType :-
     %
 :- pred ml_init_env(action::in, mlds_type::in, mlds_rval::in,
     prog_context::in, mlds_module_name::in, globals::in,
-    mlds_data_defn::out, mlds_stmt::out) is det.
+    mlds_local_var_defn::out, mlds_stmt::out) is det.
 
 ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
         EnvPtrVarDecl, InitEnvPtr) :-
@@ -1236,13 +1231,12 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     %   <EnvTypeName> *env_ptr;
     %
     EnvPtrVarName = env_ptr_var(Action),
-    EnvPtrVarDataName = mlds_data_var(EnvPtrVarName),
     EnvPtrVarFlags = ml_gen_local_var_decl_flags,
     EnvPtrVarType = ml_make_env_ptr_type(Globals, EnvTypeName),
     % The env_ptr never needs to be traced by the GC, since the environment
     % that it points to will always be on the stack, not into the heap.
     GCStmt = gc_no_stmt,
-    EnvPtrVarDecl = mlds_data_defn(EnvPtrVarDataName, Context,
+    EnvPtrVarDecl = mlds_local_var_defn(EnvPtrVarName, Context,
         EnvPtrVarFlags, EnvPtrVarType, no_initializer, GCStmt),
 
     % Generate the following statement:
@@ -1253,7 +1247,7 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     % for inserting a cast in <EnvPtrVal> if needed).
     %
     EnvPtrVar = qual(ModuleName, module_qual, EnvPtrVarName),
-    AssignEnvPtr = assign(ml_var(EnvPtrVar, EnvPtrVarType), EnvPtrVal),
+    AssignEnvPtr = assign(ml_local_var(EnvPtrVar, EnvPtrVarType), EnvPtrVal),
     InitEnvPtr = ml_stmt_atomic(AssignEnvPtr, Context).
 
     % Given the declaration for a function parameter, produce a declaration
@@ -1262,13 +1256,13 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     % environment struct.
     %
 :- pred ml_conv_arg_to_var(prog_context::in, mlds_argument::in,
-    mlds_data_defn::out) is det.
+    mlds_local_var_defn::out) is det.
 
-ml_conv_arg_to_var(Context, Arg, LocalVar) :-
+ml_conv_arg_to_var(Context, Arg, LocalVarDefn) :-
     Arg = mlds_argument(VarName, Type, GCStmt),
     Flags = ml_gen_local_var_decl_flags,
-    LocalVar = mlds_data_defn(mlds_data_var(VarName), Context,
-        Flags, Type, no_initializer, GCStmt).
+    LocalVarDefn = mlds_local_var_defn(VarName, Context, Flags, Type,
+        no_initializer, GCStmt).
 
     % Return the declaration flags appropriate for an environment struct
     % type declaration.
@@ -1286,8 +1280,8 @@ env_type_decl_flags = DeclFlags :-
 ml_stack_chain_var = StackChain :-
     PrivateBuiltin = mercury_private_builtin_module,
     MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
-    StackChain = ml_var(
-        qual(MLDS_Module, module_qual, mlds_comp_var(mcv_stack_chain)),
+    StackChain = ml_local_var(
+        qual(MLDS_Module, module_qual, lvn_comp_var(lvnc_stack_chain)),
         ml_stack_chain_type).
 
     % The type of the `stack_chain' pointer, i.e. `void *'.
@@ -1339,15 +1333,15 @@ ml_env_name(FunctionName, Action) = ClassName :-
 env_name_base(chain_gc_stack_frames) = "frame".
 env_name_base(hoist_nested_funcs) = "env".
 
-:- func env_var(action) = mlds_var_name.
+:- func env_var(action) = mlds_local_var_name.
 
-env_var(chain_gc_stack_frames) = mlds_comp_var(mcv_frame).
-env_var(hoist_nested_funcs) = mlds_comp_var(mcv_env).
+env_var(chain_gc_stack_frames) = lvn_comp_var(lvnc_frame).
+env_var(hoist_nested_funcs) = lvn_comp_var(lvnc_env).
 
-:- func env_ptr_var(action) = mlds_var_name.
+:- func env_ptr_var(action) = mlds_local_var_name.
 
-env_ptr_var(chain_gc_stack_frames) = mlds_comp_var(mcv_frame_ptr).
-env_ptr_var(hoist_nested_funcs) = mlds_comp_var(mcv_env_ptr).
+env_ptr_var(chain_gc_stack_frames) = lvn_comp_var(lvnc_frame_ptr).
+env_ptr_var(hoist_nested_funcs) = lvn_comp_var(lvnc_env_ptr).
 
 :- func ml_pred_label_name(mlds_pred_label) = string.
 
@@ -1613,7 +1607,7 @@ save_and_restore_stack_chain(Stmt0, Stmt, !ElimInfo) :-
         ml_stmt_block([], [RestoreStmt, HandlerStmt0], HandlerContext),
     TryCommit = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt, Context),
     % XXX MLDS_DEFN
-    Stmt = ml_stmt_block([mlds_data(SavedVarDecl)], [TryCommit], Context).
+    Stmt = ml_stmt_block([mlds_local_var(SavedVarDecl)], [TryCommit], Context).
 
 %-----------------------------------------------------------------------------%
 
@@ -1678,7 +1672,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
             % Note that we assume that we can safely hoist stuff inside nested
             % functions into the containing function. If that wasn't the case,
             % we would need code something like this:
-            % LocalVars = elim_info_get_local_data(ElimInfo),
+            % LocalVars = elim_info_get_local_vars(ElimInfo),
             % OuterVars0 = elim_info_get_outer_vars(ElimInfo),
             % OuterVars = [LocalVars | OuterVars0],
             % FlattenedDefns = ml_elim_nested_defns(ModuleName,
@@ -1695,42 +1689,50 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
         ),
         InitStmts = []
     ;
-        Defn0 = mlds_data(DataDefn0),
-        DataDefn0 = mlds_data_defn(DataName, Context, Flags0,
-            Type, Init0, GCStmt0),
+        Defn0 = mlds_local_var(LocalVarDefn0),
+        LocalVarDefn0 = mlds_local_var_defn(LocalVarName, Context,
+            Flags, Type, Init0, GCStmt),
         % For local variable definitions, if they are referenced by any nested
         % functions, then strip them out and store them in the elim_info.
         ( if
             % Hoist ordinary local variables.
-            DataName = mlds_data_var(VarName),
-            ml_should_add_local_data(Action, !.Info, VarName, GCStmt0,
+            ml_should_add_local_var(Action, !.Info, LocalVarName, GCStmt,
                 FollowingDefns, FollowingStmts)
         then
             % We need to strip out the initializer (if any) and convert it
             % into an assignment statement, since this local variable
             % is going to become a field, and fields can't have initializers.
-            ( if Init0 = init_obj(Rval) then
+            (
+                Init0 = init_obj(Rval),
+                Init = no_initializer,
+                LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
+                    Flags, Type, Init, GCStmt),
                 % XXX BUG! Converting the initializer to an assignment doesn't
                 % work, because it doesn't handle the case when initializers in
                 % FollowingDefns reference this variable.
-                Init1 = no_initializer,
-                DataDefn1 = mlds_data_defn(DataName, Context, Flags0,
-                    Type, Init1, GCStmt0),
                 ModuleName = elim_info_get_module_name(!.Info),
-                VarLval = ml_var(qual(ModuleName, module_qual, VarName), Type),
+                QualLocalVarName = qual(ModuleName, module_qual, LocalVarName),
+                VarLval = ml_local_var(QualLocalVarName, Type),
                 InitStmt = ml_stmt_atomic(assign(VarLval, Rval), Context),
                 InitStmts = [InitStmt]
-            else
-                DataDefn1 = DataDefn0,
+            ;
+                Init0 = init_struct(_, _),
+                unexpected($pred, "init_struct")
+            ;
+                Init0 = init_array(_),
+                unexpected($pred, "init_array")
+            ;
+                Init0 = no_initializer,
+                LocalVarDefn = LocalVarDefn0,
                 InitStmts = []
             ),
-            elim_info_add_local_data(DataDefn1, !Info),
+            elim_info_add_local_var(LocalVarDefn, !Info),
             Defns = []
         else
             fixup_initializer(Action, !.Info, Init0, Init),
-            Defn = mlds_data(mlds_data_defn(DataName, Context, Flags0,
-                Type, Init, GCStmt0)),
-            Defns = [Defn],
+            LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
+                Flags, Type, Init, GCStmt),
+            Defns = [mlds_local_var(LocalVarDefn)],
             InitStmts = []
         )
     ;
@@ -1742,19 +1744,25 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
         % what we do.
         Defns = [Defn0],
         InitStmts = []
+    ;
+        Defn0 = mlds_field_var(_),
+        unexpected($pred, "mlds_field_var")
+    ;
+        Defn0 = mlds_global_var(_),
+        unexpected($pred, "mlds_global_var")
     ).
 
     % Succeed iff we should add the definition of this variable to the
-    % local_data field of the elim_info, meaning that it should be added
+    % ei_local_vars field of the elim_info, meaning that it should be added
     % to the environment struct (if it is a variable) or hoisted out to the
     % top level (if it is a static const).
     %
-:- pred ml_should_add_local_data(action, elim_info, mlds_var_name,
+:- pred ml_should_add_local_var(action, elim_info, mlds_local_var_name,
     mlds_gc_statement, list(mlds_defn), list(mlds_stmt)).
-:- mode ml_should_add_local_data(in(hoist), in, in, in, in, in) is semidet.
-:- mode ml_should_add_local_data(in(chain), in, in, in, in, in) is semidet.
+:- mode ml_should_add_local_var(in(hoist), in, in, in, in, in) is semidet.
+:- mode ml_should_add_local_var(in(chain), in, in, in, in, in) is semidet.
 
-ml_should_add_local_data(Action, Info, VarName, GCStmt,
+ml_should_add_local_var(Action, Info, VarName, GCStmt,
         FollowingDefns, FollowingStmts) :-
     (
         Action = chain_gc_stack_frames,
@@ -1774,7 +1782,7 @@ ml_should_add_local_data(Action, Info, VarName, GCStmt,
     % XXX This algorithm is quadratic. For a block with N defs, each of which
     % is referenced in a later definition, we do N^2 tests.
     %
-:- pred ml_need_to_hoist(mlds_module_name::in, mlds_var_name::in,
+:- pred ml_need_to_hoist(mlds_module_name::in, mlds_local_var_name::in,
     list(mlds_defn)::in, list(mlds_stmt)::in) is semidet.
 
 ml_need_to_hoist(ModuleName, VarName, FollowingDefns, FollowingStmts) :-
@@ -1786,7 +1794,7 @@ ml_need_to_hoist(ModuleName, VarName, FollowingDefns, FollowingStmts) :-
         statements_contains_matching_defn(Filter, FollowingStmts)
     ).
 
-:- pred ml_need_to_hoist_defn(mlds_var::in, mlds_defn::in) is semidet.
+:- pred ml_need_to_hoist_defn(mlds_local_var::in, mlds_defn::in) is semidet.
 
 ml_need_to_hoist_defn(QualVarName, FollowingDefn) :-
     FollowingDefn = mlds_function(FollowingFunctionDefn),
@@ -2071,10 +2079,12 @@ fixup_lval(Action, Info, Lval0, Lval) :-
         fixup_rval(Action, Info, Rval0, Rval),
         Lval = ml_mem_ref(Rval, Type)
     ;
-        Lval0 = ml_global_var_ref(_Ref),
+        ( Lval0 = ml_global_var(_, _)
+        ; Lval0 = ml_target_global_var_ref(_)
+        ),
         Lval = Lval0
     ;
-        Lval0 = ml_var(Var0, VarType),
+        Lval0 = ml_local_var(Var0, VarType),
         fixup_var(Action, Info, Var0, VarType, Lval)
     ).
 
@@ -2093,18 +2103,18 @@ fixup_gc_statements(Action, !Info) :-
     % We must preserve the order for the Java backend, otherwise the generated
     % code may contain closure_layout vectors that reference typevar vectors
     % which are defined later.
-    LocalsCord0 = elim_info_get_local_data(!.Info),
+    LocalsCord0 = elim_info_get_local_vars(!.Info),
     cord.map_foldl(fixup_gc_statements_defn(Action),
         LocalsCord0, LocalsCord, !Info),
-    elim_info_set_local_data(LocalsCord, !Info).
+    elim_info_set_local_vars(LocalsCord, !Info).
 
-:- pred fixup_gc_statements_defn(action, mlds_data_defn, mlds_data_defn,
-    elim_info, elim_info).
+:- pred fixup_gc_statements_defn(action,
+    mlds_local_var_defn, mlds_local_var_defn, elim_info, elim_info).
 % We need this predicate to have a single mode for cord.map_foldl.
 :- mode fixup_gc_statements_defn(in, in, out, in, out) is det.
 
 fixup_gc_statements_defn(Action, Defn0, Defn, !Info) :-
-    Defn0 = mlds_data_defn(Name, Context, Flags, Type, Init, GCStmt0),
+    Defn0 = mlds_local_var_defn(Name, Context, Flags, Type, Init, GCStmt0),
     (
         Action = hoist_nested_funcs,
         flatten_gc_statement(Action, GCStmt0, GCStmt, !Info)
@@ -2112,21 +2122,21 @@ fixup_gc_statements_defn(Action, Defn0, Defn, !Info) :-
         Action = chain_gc_stack_frames,
         flatten_gc_statement(Action, GCStmt0, GCStmt, !Info)
     ),
-    Defn = mlds_data_defn(Name, Context, Flags, Type, Init, GCStmt).
+    Defn = mlds_local_var_defn(Name, Context, Flags, Type, Init, GCStmt).
 
 %-----------------------------------------------------------------------------%
 
     % Change up any references to local vars in the containing function
     % to go via the environment pointer.
     %
-:- pred fixup_var(action, elim_info, mlds_var, mlds_type, mlds_lval).
+:- pred fixup_var(action, elim_info, mlds_local_var, mlds_type, mlds_lval).
 :- mode fixup_var(in(hoist), in, in, in, out) is det.
 :- mode fixup_var(in(chain), in, in, in, out) is det.
 
 fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
     ThisVar = qual(ThisVarModuleName, QualKind, ThisVarName),
     ModuleName = elim_info_get_module_name(Info),
-    Locals = elim_info_get_local_data(Info),
+    Locals = elim_info_get_local_vars(Info),
     ClassType = elim_info_get_env_type_name(Info),
     EnvPtrVarType = elim_info_get_env_ptr_type_name(Info),
     Globals = elim_info_get_globals(Info),
@@ -2136,16 +2146,16 @@ fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
         ThisVarModuleName = ModuleName,
         DefnIsThisVar =
             ( pred(Defn::in) is semidet :-
-                Defn ^ mdd_data_name = mlds_data_var(ThisVarName)
+                Defn ^ mlvd_name = ThisVarName
             ),
         cord.find_first_match(DefnIsThisVar, Locals, ThisVarDefn)
     then
-        FieldType = ThisVarDefn ^ mdd_type,
-        EnvPtr = ml_lval(ml_var(
+        FieldType = ThisVarDefn ^ mlvd_type,
+        EnvPtr = ml_lval(ml_local_var(
             qual(ModuleName, QualKind, env_ptr_var(Action)), EnvPtrVarType)),
         globals.get_target(Globals, Target),
         EnvModuleName = ml_env_module_name(Target, ClassType),
-        ThisVarFieldName = ml_var_name_to_string(ThisVarName),
+        ThisVarFieldName = ml_local_var_name_to_string(ThisVarName),
         FieldName = ml_field_named(
             qual(EnvModuleName, type_qual, ThisVarFieldName),
             EnvPtrVarType),
@@ -2156,13 +2166,13 @@ fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
         % For those, the code generator will have left the type as
         % mlds_unknown_type, and we need to fill it in here.
         Action = hoist_nested_funcs,
-        ThisVarName = mlds_comp_var(mcv_env_ptr),
+        ThisVarName = lvn_comp_var(lvnc_env_ptr),
         ThisVarType = mlds_unknown_type
     then
-        Lval = ml_var(ThisVar, EnvPtrVarType)
+        Lval = ml_local_var(ThisVar, EnvPtrVarType)
     else
         % Leave everything else unchanged.
-        Lval = ml_var(ThisVar, ThisVarType)
+        Lval = ml_local_var(ThisVar, ThisVarType)
     ).
 
 % The following code is what we would have to use if we couldn't
@@ -2369,7 +2379,10 @@ defn_contains_matching_defn(Filter, Defn) :-
                 defns_contains_matching_defn(Filter, CtorDefns)
             )
         ;
-            Defn = mlds_data(_),
+            ( Defn = mlds_global_var(_)
+            ; Defn = mlds_local_var(_)
+            ; Defn = mlds_field_var(_)
+            ),
             % Data entities contain no definitions.
             fail
         )
@@ -2555,17 +2568,18 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
     %
     %   void *saved_stack_chain;
     %
-:- func gen_saved_stack_chain_var(int, prog_context) = mlds_data_defn.
+:- func gen_saved_stack_chain_var(int, prog_context) = mlds_local_var_defn.
 
 gen_saved_stack_chain_var(Id, Context) = Defn :-
-    Name = mlds_data_var(mlds_comp_var(mcv_saved_stack_chain(Id))),
+    Name = lvn_comp_var(mcv_saved_stack_chain(Id)),
     Flags = ml_gen_local_var_decl_flags,
     Type = ml_stack_chain_type,
     Initializer = no_initializer,
     % The saved stack chain never needs to be traced by the GC,
     % since it will always point to the stack, not into the heap.
     GCStmt = gc_no_stmt,
-    Defn = mlds_data_defn(Name, Context, Flags, Type, Initializer, GCStmt).
+    Defn = mlds_local_var_defn(Name, Context, Flags, Type,
+        Initializer, GCStmt).
 
     % Generate a statement to save the stack chain pointer:
     %
@@ -2576,9 +2590,9 @@ gen_saved_stack_chain_var(Id, Context) = Defn :-
     mlds_stmt.
 
 gen_save_stack_chain_var(MLDS_Module, Id, Context) = SaveStmt :-
-    SavedStackChain = ml_var(
+    SavedStackChain = ml_local_var(
         qual(MLDS_Module, module_qual,
-            mlds_comp_var(mcv_saved_stack_chain(Id))),
+            lvn_comp_var(mcv_saved_stack_chain(Id))),
         ml_stack_chain_type),
     Assignment = assign(SavedStackChain, ml_lval(ml_stack_chain_var)),
     SaveStmt = ml_stmt_atomic(Assignment, Context).
@@ -2591,9 +2605,9 @@ gen_save_stack_chain_var(MLDS_Module, Id, Context) = SaveStmt :-
     mlds_stmt.
 
 gen_restore_stack_chain_var(MLDS_Module, Id, Context) = RestoreStmt :-
-    SavedStackChain = ml_var(
+    SavedStackChain = ml_local_var(
         qual(MLDS_Module, module_qual,
-            mlds_comp_var(mcv_saved_stack_chain(Id))),
+            lvn_comp_var(mcv_saved_stack_chain(Id))),
         ml_stack_chain_type),
     Assignment = assign(ml_stack_chain_var, ml_lval(SavedStackChain)),
     RestoreStmt = ml_stmt_atomic(Assignment, Context).
@@ -2627,7 +2641,7 @@ gen_restore_stack_chain_var(MLDS_Module, Id, Context) = RestoreStmt :-
 
                 % The local variables that we must put in the
                 % environment structure.
-                ei_local_data                   :: cord(mlds_data_defn),
+                ei_local_vars                   :: cord(mlds_local_var_defn),
 
                 % Type of the introduced environment struct.
                 ei_env_type_name                :: mlds_type,
@@ -2653,20 +2667,20 @@ elim_info_init(ModuleName, _OuterVars, EnvTypeName, EnvPtrTypeName, Globals) =
 
 :- func elim_info_get_module_name(elim_info) = mlds_module_name.
 % :- func elim_info_get_outer_vars(elim_info) = outervars.
-:- func elim_info_get_local_data(elim_info) = cord(mlds_data_defn).
+:- func elim_info_get_local_vars(elim_info) = cord(mlds_local_var_defn).
 :- func elim_info_get_env_type_name(elim_info) = mlds_type.
 :- func elim_info_get_env_ptr_type_name(elim_info) = mlds_type.
 :- func elim_info_get_globals(elim_info) = globals.
 
-:- pred elim_info_set_local_data(cord(mlds_data_defn)::in,
+:- pred elim_info_set_local_vars(cord(mlds_local_var_defn)::in,
     elim_info::in, elim_info::out) is det.
 
 elim_info_get_module_name(ElimInfo) = X :-
     X = ElimInfo ^ ei_module_name.
 % elim_info_get_outer_vars(ElimInfo) = X :-
 %   X = ElimInfo ^ ei_outer_vars.
-elim_info_get_local_data(ElimInfo) = X :-
-    X = ElimInfo ^ ei_local_data.
+elim_info_get_local_vars(ElimInfo) = X :-
+    X = ElimInfo ^ ei_local_vars.
 elim_info_get_env_type_name(ElimInfo) = X :-
     X = ElimInfo ^ ei_env_type_name.
 elim_info_get_env_ptr_type_name(ElimInfo) = X :-
@@ -2674,8 +2688,8 @@ elim_info_get_env_ptr_type_name(ElimInfo) = X :-
 elim_info_get_globals(ElimInfo) = X :-
     X = ElimInfo ^ ei_globals.
 
-elim_info_set_local_data(X, !ElimInfo) :-
-    !ElimInfo ^ ei_local_data := X.
+elim_info_set_local_vars(X, !ElimInfo) :-
+    !ElimInfo ^ ei_local_vars := X.
 
 :- pred elim_info_add_nested_func(mlds_function_defn::in,
     elim_info::in, elim_info::out) is det.
@@ -2685,13 +2699,13 @@ elim_info_add_nested_func(NestedFunc, !ElimInfo) :-
     NestedFuncs = cord.snoc(NestedFuncs0, NestedFunc),
     !ElimInfo ^ ei_nested_funcs := NestedFuncs.
 
-:- pred elim_info_add_local_data(mlds_data_defn::in,
+:- pred elim_info_add_local_var(mlds_local_var_defn::in,
     elim_info::in, elim_info::out) is det.
 
-elim_info_add_local_data(LocalVar, !ElimInfo) :-
-    LocalVars0 = !.ElimInfo ^ ei_local_data,
+elim_info_add_local_var(LocalVar, !ElimInfo) :-
+    LocalVars0 = !.ElimInfo ^ ei_local_vars,
     LocalVars = cord.snoc(LocalVars0, LocalVar),
-    !ElimInfo ^ ei_local_data := LocalVars.
+    !ElimInfo ^ ei_local_vars := LocalVars.
 
 :- pred elim_info_allocate_saved_stack_chain_id(int::out,
     elim_info::in, elim_info::out) is det.
@@ -2702,11 +2716,11 @@ elim_info_allocate_saved_stack_chain_id(Id, !ElimInfo) :-
     !ElimInfo ^ ei_saved_stack_chain_counter := Counter.
 
 :- pred elim_info_finish(elim_info::in,
-    list(mlds_function_defn)::out, list(mlds_data_defn)::out) is det.
+    list(mlds_function_defn)::out, list(mlds_local_var_defn)::out) is det.
 
 elim_info_finish(ElimInfo, NestedFuncs, LocalVars) :-
     NestedFuncs = cord.to_list(ElimInfo ^ ei_nested_funcs),
-    LocalVars = cord.to_list(ElimInfo ^ ei_local_data).
+    LocalVars = cord.to_list(ElimInfo ^ ei_local_vars).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_elim_nested.

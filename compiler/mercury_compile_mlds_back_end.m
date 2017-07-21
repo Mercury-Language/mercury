@@ -87,8 +87,8 @@
 
 mlds_has_main(MLDS) =
     ( if
-        Defns = MLDS ^ mlds_proc_defns,
-        defns_contain_main(Defns)
+        FuncDefns = MLDS ^ mlds_proc_defns,
+        func_defns_contain_main(FuncDefns)
     then
         has_main
     else

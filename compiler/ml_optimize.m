@@ -59,7 +59,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -72,50 +71,61 @@
             ).
 
 mlds_optimize(Globals, !MLDS) :-
-    Defns0 = !.MLDS ^ mlds_proc_defns,
     ModuleName = mercury_module_name_to_mlds(!.MLDS ^ mlds_name),
-    optimize_in_defns(Globals, ModuleName, Defns0, Defns),
-    !MLDS ^ mlds_proc_defns := Defns.
-
-:- pred optimize_in_defns(globals::in, mlds_module_name::in,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
-
-optimize_in_defns(Globals, ModuleName, !Defns) :-
-    list.map(optimize_in_defn(ModuleName, Globals), !Defns).
+    % XXX We should optimize functions stored inside classes as well.
+    FuncDefns0 = !.MLDS ^ mlds_proc_defns,
+    list.map(optimize_in_function_defn(ModuleName, Globals),
+        FuncDefns0, FuncDefns),
+    !MLDS ^ mlds_proc_defns := FuncDefns.
 
 :- pred optimize_in_defn(mlds_module_name::in, globals::in,
     mlds_defn::in, mlds_defn::out) is det.
 
 optimize_in_defn(ModuleName, Globals, Defn0, Defn) :-
     (
-        Defn0 = mlds_data(_),
+        ( Defn0 = mlds_local_var(_)
+        ; Defn0 = mlds_field_var(_)
+        ; Defn0 = mlds_global_var(_)
+        ),
         Defn = Defn0
     ;
-        Defn0 = mlds_function(FunctionDefn0),
-        FunctionDefn0 = mlds_function_defn(Name, Context, Flags,
-            PredProcId, Params, FuncBody0, Attributes, EnvVarNames,
-            MaybeRequireTailrecInfo),
-        OptInfo = opt_info(Globals, ModuleName, Name, Params),
-
-        optimize_func(OptInfo, Context, FuncBody0, FuncBody1),
-        optimize_in_function_body(OptInfo, FuncBody1, FuncBody),
-
-        FunctionDefn = mlds_function_defn(Name, Context, Flags,
-            PredProcId, Params, FuncBody, Attributes, EnvVarNames,
-            MaybeRequireTailrecInfo),
-        Defn = mlds_function(FunctionDefn)
+        Defn0 = mlds_function(FuncDefn0),
+        optimize_in_function_defn(ModuleName, Globals, FuncDefn0, Functefn),
+        Defn = mlds_function(Functefn)
     ;
         Defn0 = mlds_class(ClassDefn0),
-        ClassDefn0 = mlds_class_defn(Name, Context, Flags, Kind,
-            Imports, BaseClasses, Implements,
-            TypeParams, CtorDefns0, MemberDefns0),
-        optimize_in_defns(Globals, ModuleName, MemberDefns0, MemberDefns),
-        optimize_in_defns(Globals, ModuleName, CtorDefns0, CtorDefns),
-        ClassDefn = mlds_class_defn(Name, Context, Flags, Kind,
-            Imports, BaseClasses, Implements,
-            TypeParams, CtorDefns, MemberDefns),
+        optimize_in_class_defn(ModuleName, Globals, ClassDefn0, ClassDefn),
         Defn = mlds_class(ClassDefn)
     ).
+
+:- pred optimize_in_function_defn(mlds_module_name::in, globals::in,
+    mlds_function_defn::in, mlds_function_defn::out) is det.
+
+optimize_in_function_defn(ModuleName, Globals, FuncDefn0, FuncDefn) :-
+    FuncDefn0 = mlds_function_defn(Name, Context, Flags,
+        PredProcId, Params, FuncBody0, Attributes, EnvVarNames,
+        MaybeRequireTailrecInfo),
+    OptInfo = opt_info(Globals, ModuleName, Name, Params),
+
+    optimize_func(OptInfo, Context, FuncBody0, FuncBody1),
+    optimize_in_function_body(OptInfo, FuncBody1, FuncBody),
+
+    FuncDefn = mlds_function_defn(Name, Context, Flags,
+        PredProcId, Params, FuncBody, Attributes, EnvVarNames,
+        MaybeRequireTailrecInfo).
+
+:- pred optimize_in_class_defn(mlds_module_name::in, globals::in,
+    mlds_class_defn::in, mlds_class_defn::out) is det.
+
+optimize_in_class_defn(ModuleName, Globals, ClassDefn0, ClassDefn) :-
+    ClassDefn0 = mlds_class_defn(Name, Context, Flags, Kind,
+        Imports, BaseClasses, Implements,
+        TypeParams, CtorDefns0, MemberDefns0),
+    list.map(optimize_in_defn(ModuleName, Globals), MemberDefns0, MemberDefns),
+    list.map(optimize_in_defn(ModuleName, Globals), CtorDefns0, CtorDefns),
+    ClassDefn = mlds_class_defn(Name, Context, Flags, Kind,
+        Imports, BaseClasses, Implements,
+        TypeParams, CtorDefns, MemberDefns).
 
 :- pred optimize_in_function_body(opt_info::in,
     mlds_function_body::in, mlds_function_body::out) is det.
@@ -250,7 +260,8 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
         generate_assign_args(OptInfo, Context, FuncArgs, CallArgs,
             AssignStmts, AssignDefns),
         % XXX MLDS_DEFN
-        AssignVarsStmt = ml_stmt_block(list.map(wrap_data_defn, AssignDefns),
+        AssignVarsStmt = ml_stmt_block(
+            list.map(wrap_local_var_defn, AssignDefns),
             AssignStmts, Context),
 
         CallReplaceStmts = [CommentStmt, AssignVarsStmt, GotoStmt],
@@ -322,7 +333,7 @@ tailcall_loop_label_name = "loop_top".
     %
 :- pred generate_assign_args(opt_info::in, prog_context::in,
     list(mlds_argument)::in, list(mlds_rval)::in,
-    list(mlds_stmt)::out, list(mlds_data_defn)::out) is det.
+    list(mlds_stmt)::out, list(mlds_local_var_defn)::out) is det.
 
 generate_assign_args(_, _, [], [], [], []).
 generate_assign_args(_, _, [_|_], [], [], []) :-
@@ -336,7 +347,7 @@ generate_assign_args(OptInfo, Context, [Arg | Args], [ArgRval | ArgRvals],
     QualVarName = qual(ModuleName, module_qual, VarName),
     ( if
         % Don't bother assigning a variable to itself.
-        ArgRval = ml_lval(ml_var(QualVarName, _VarType))
+        ArgRval = ml_lval(ml_local_var(QualVarName, _VarType))
     then
         generate_assign_args(OptInfo, Context, Args, ArgRvals,
             Stmts, TempDefns)
@@ -361,31 +372,31 @@ generate_assign_args(OptInfo, Context, [Arg | Args], [ArgRval | ArgRvals],
         % containing initializers.
         % XXX We should teach it to handle them.
 
-        ( if VarName = mlds_prog_var(VarNameStr, VarNum) then
-            NextValueName = mlds_prog_var_next_value(VarNameStr, VarNum)
+        ( if VarName = lvn_prog_var(VarNameStr, VarNum) then
+            NextValueName = lvn_prog_var_next_value(VarNameStr, VarNum)
         else
             % This should not happen; the head variables of a procedure
-            % should all be mlds_prog_vars, even the ones representing
+            % should all be lvn_prog_vars, even the ones representing
             % the typeinfos and typeclassinfos added by the compiler.
             % However, better safe than sorry.
-            VarNameStr = ml_var_name_to_string(VarName),
+            VarNameStr = ml_local_var_name_to_string(VarName),
             NextValueName =
-                mlds_comp_var(mcv_non_prog_var_next_value(VarNameStr))
+                lvn_comp_var(lvnc_non_prog_var_next_value(VarNameStr))
         ),
         QualNextValueName = qual(ModuleName, module_qual, NextValueName),
         Initializer = no_initializer,
         % We don't need to trace the temporary variables for GC, since they
         % are not live across a call or a heap allocation.
         GCStmt = gc_no_stmt,
-        TempDefn = ml_gen_mlds_var_decl_init(mlds_data_var(NextValueName),
-            Type, Initializer, GCStmt, Context),
+        TempDefn = ml_gen_mlds_var_decl_init(NextValueName, Type,
+            Initializer, GCStmt, Context),
         NextValueInitStmt = ml_stmt_atomic(
-            assign(ml_var(QualNextValueName, Type), ArgRval),
+            assign(ml_local_var(QualNextValueName, Type), ArgRval),
             Context),
         AssignStmt = ml_stmt_atomic(
             assign(
-                ml_var(QualVarName, Type),
-                ml_lval(ml_var(QualNextValueName, Type))),
+                ml_local_var(QualVarName, Type),
+                ml_lval(ml_local_var(QualNextValueName, Type))),
             Context),
         generate_assign_args(OptInfo, Context, Args, ArgRvals,
             Stmts0, TempDefns0),
@@ -676,9 +687,10 @@ find_lval_component_lvals(Lval, !Components) :-
         Lval = ml_mem_ref(Rval, _),
         find_rval_component_lvals(Rval, !Components)
     ;
-        Lval = ml_global_var_ref(_)
-    ;
-        Lval = ml_var(_, _)
+        ( Lval = ml_target_global_var_ref(_)
+        ; Lval = ml_global_var(_, _)
+        ; Lval = ml_local_var(_, _)
+        )
     ).
 
 :- pred statement_affects_lvals(set(mlds_lval)::in,
@@ -903,7 +915,7 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
         % of the variables declared in the block.
         !.Stmts = [AssignStmt | !:Stmts],
         AssignStmt = ml_stmt_atomic(assign(LHS, RHS), _),
-        LHS = ml_var(ThisVar, _ThisType),
+        LHS = ml_local_var(ThisVar, _ThisType),
         ThisVar = qual(Qualifier, QualKind, VarName),
 
         % We must check that the value being assigned doesn't refer to the
@@ -915,25 +927,27 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
         % check that the initializers (if any) of the variables that follow
         % this one don't refer to this variable.
         Qualifier = OptInfo ^ oi_module_name,
-        list.drop_while(isnt(var_defn(VarName)), !.Defns,
-            [_VarDefn | FollowingDefns]),
+        find_this_var_defn(VarName, !.Defns, [], RevPrevDefns, ThisVarDefn0,
+            LaterDefns),
         Filter =
             ( pred(OtherDefn::in) is semidet :-
-                OtherDefn = mlds_data(mlds_data_defn(OtherDataName, _, _, 
-                    _Type, OtherInitializer, _GC)),
+                OtherDefn = mlds_local_var(LocalVarDefn),
+                LocalVarDefn = mlds_local_var_defn(OtherVarName, _, _, 
+                    _Type, OtherInitializer, _GC),
                 (
-                    OtherDataName = mlds_data_var(OtherVarName),
                     QualOtherVar = qual(Qualifier, QualKind, OtherVarName),
                     rval_contains_var(RHS, QualOtherVar) = yes
                 ;
                     initializer_contains_var(OtherInitializer, ThisVar) = yes
                 )
             ),
-        not list.find_first_match(Filter, FollowingDefns, _)
+        not list.find_first_match(Filter, LaterDefns, _)
     then
         % Replace the assignment statement with an initializer
         % on the variable declaration.
-        set_initializer(VarName, RHS, !Defns),
+        ThisVarDefn = ThisVarDefn0 ^ mlvd_init := init_obj(RHS),
+        !:Defns = list.reverse(RevPrevDefns) ++
+            [mlds_local_var(ThisVarDefn) | LaterDefns],
 
         % Now try to apply the same optimization again.
         convert_assignments_into_initializers(OptInfo, !Defns, !Stmts)
@@ -942,37 +956,22 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
         true
     ).
 
-:- pred var_defn(mlds_var_name::in, mlds_defn::in) is semidet.
+:- pred find_this_var_defn(mlds_local_var_name::in, list(mlds_defn)::in,
+    list(mlds_defn)::in, list(mlds_defn)::out, mlds_local_var_defn::out,
+    list(mlds_defn)::out) is semidet.
 
-var_defn(VarName, Defn) :-
-    Defn = mlds_data(DataDefn),
-    DataDefn = mlds_data_defn(DataName, _, _, _, _, _),
-    DataName = mlds_data_var(VarName).
-
-    % set_initializer(VarName, Rval, Defns0, Defns):
-    %
-    % Finds the first definition of the specified variable in Defns0,
-    % and replaces the initializer of that definition with init_obj(Rval).
-    %
-:- pred set_initializer(mlds_var_name::in, mlds_rval::in,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
-
-set_initializer(_, _, [], _) :-
-    unexpected($pred, "var not found").
-set_initializer(VarName, Rval, [Defn0 | Defns0], [Defn | Defns]) :-
+find_this_var_defn(VarName, [Defn | Defns], !RevPrevDefns,
+        ThisVarDefn, LaterDefns) :-
     ( if
-        Defn0 = mlds_data(DataDefn0),
-        DataDefn0 = mlds_data_defn(Name, Context, Flags, Type,
-            _OldInitializer, GCStmt),
-        Name = mlds_data_var(VarName)
+        Defn = mlds_local_var(DataDefn),
+        DataDefn = mlds_local_var_defn(VarName, _, _, _, _, _)
     then
-        DataDefn = mlds_data_defn(Name, Context, Flags, Type,
-            init_obj(Rval), GCStmt),
-        Defn = mlds_data(DataDefn),
-        Defns = Defns0
+        ThisVarDefn = DataDefn,
+        LaterDefns = Defns
     else
-        Defn = Defn0,
-        set_initializer(VarName, Rval, Defns0, Defns)
+        !:RevPrevDefns = [Defn | !.RevPrevDefns],
+        find_this_var_defn(VarName, Defns, !RevPrevDefns,
+            ThisVarDefn, LaterDefns)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1021,7 +1020,7 @@ eliminate_locals(OptInfo, [Defn0 | Defns0], Defns, !Stmts) :-
                 % These fields remain constant.
 
                 % The name of the variable to eliminate.
-                var_name        :: mlds_var,
+                var_name        :: mlds_local_var,
 
                 % The value to replace the eliminated variable with.
                 var_value       :: mlds_rval,
@@ -1048,12 +1047,13 @@ eliminate_locals(OptInfo, [Defn0 | Defns0], Defns, !Stmts) :-
     list(mlds_stmt)::in, list(mlds_stmt)::out) is semidet.
 
 try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Stmts) :-
-    Defn0 = mlds_data(DataDefn0),
-    DataDefn0 = mlds_data_defn(Name, _Context, Flags,
+    Defn0 = mlds_local_var(DataDefn0),
+    DataDefn0 = mlds_local_var_defn(VarName, _Context, Flags,
         _Type, Initializer, _GCStmt),
 
     % Check if this definition is a local variable definition...
-    Name = mlds_data_var(VarName),
+    % XXX MLDS_DEFN
+    % This test should now be redundant.
     Flags = ml_gen_local_var_decl_flags,
 
     % ... with a known initial value.
@@ -1122,11 +1122,13 @@ rval_is_cheap_enough_to_duplicate(Rval) :-
         Rval = ml_lval(Lval),
         require_complete_switch [Lval]
         (
-            Lval = ml_var(_, _)
+            ( Lval = ml_local_var(_, _)
+            ; Lval = ml_global_var(_, _)
+            )
         ;
             ( Lval = ml_mem_ref(_, _)
             ; Lval = ml_field(_, _, _, _, _)
-            ; Lval = ml_global_var_ref(_)
+            ; Lval = ml_target_global_var_ref(_)
             ),
             fail
         )
@@ -1154,14 +1156,18 @@ rval_will_not_change(Rval) :-
         Rval = ml_mem_addr(Lval),
         require_complete_switch [Lval]
         (
-            Lval = ml_var(_, _)
+            ( Lval = ml_local_var(_, _)
+            ; Lval = ml_global_var(_, _)
+            )
         ;
             ( Lval = ml_mem_ref(Address, _Type)
             ; Lval = ml_field(_, Address, _, _, _)
             ),
             rval_will_not_change(Address)
         ;
-            Lval = ml_global_var_ref(_),
+            Lval = ml_target_global_var_ref(_),
+            % XXX How can the address of a target language global variable
+            % change?
             fail
         )
     ;
@@ -1214,7 +1220,7 @@ rval_cannot_throw(Rval) :-
     % of statements with the initial assignment deleted. Fail if the first
     % value can't be determined.
     %
-:- pred find_initial_val_in_stmts(mlds_var::in, mlds_rval::out,
+:- pred find_initial_val_in_stmts(mlds_local_var::in, mlds_rval::out,
     list(mlds_stmt)::in, list(mlds_stmt)::out) is semidet.
 
 find_initial_val_in_stmts(VarName, Rval, [Stmt0 | Stmts0], Stmts) :-
@@ -1240,12 +1246,13 @@ find_initial_val_in_stmts(VarName, Rval, [Stmt0 | Stmts0], Stmts) :-
         Stmts = [Stmt0 | Stmts1]
     ).
 
-:- pred find_initial_val_in_stmt(mlds_var::in, mlds_rval::out,
+:- pred find_initial_val_in_stmt(mlds_local_var::in, mlds_rval::out,
     mlds_stmt::in, mlds_stmt::out) is semidet.
 
 find_initial_val_in_stmt(Var, Rval, Stmt0, Stmt) :-
     ( if
-        Stmt0 = ml_stmt_atomic(assign(ml_var(Var, _Type), Rval0), Context)
+        Stmt0 = ml_stmt_atomic(AtomicStmt, Context),
+        AtomicStmt = assign(ml_local_var(Var, _Type), Rval0)
     then
         Rval = Rval0,
         % Delete the assignment, by replacing it with an empty block.
@@ -1267,7 +1274,7 @@ find_initial_val_in_stmt(Var, Rval, Stmt0, Stmt) :-
     % the address of the variable, or assign to it; in that case, the
     % transformation should not be performed.
     %
-:- pred eliminate_var(mlds_var::in, mlds_rval::in,
+:- pred eliminate_var(mlds_local_var::in, mlds_rval::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
     int::out, bool::out) is det.
@@ -1306,13 +1313,29 @@ eliminate_var_in_defns(!Defns, !VarElimInfo) :-
 
 eliminate_var_in_defn(Defn0, Defn, !VarElimInfo) :-
     (
-        Defn0 = mlds_data(DataDefn0),
-        DataDefn0 = mlds_data_defn(Name, Context, Flags,
+        Defn0 = mlds_local_var(LocalVarDefn0),
+        LocalVarDefn0 = mlds_local_var_defn(Name, Context, Flags,
             Type, Initializer0, GCStmt),
         eliminate_var_in_initializer(Initializer0, Initializer, !VarElimInfo),
-        DataDefn = mlds_data_defn(Name, Context, Flags,
+        LocalVarDefn = mlds_local_var_defn(Name, Context, Flags,
             Type, Initializer, GCStmt),
-        Defn = mlds_data(DataDefn)
+        Defn = mlds_local_var(LocalVarDefn)
+    ;
+        Defn0 = mlds_field_var(FieldVarDefn0),
+        FieldVarDefn0 = mlds_field_var_defn(Name, Context, Flags,
+            Type, Initializer0, GCStmt),
+        eliminate_var_in_initializer(Initializer0, Initializer, !VarElimInfo),
+        FieldVarDefn = mlds_field_var_defn(Name, Context, Flags,
+            Type, Initializer, GCStmt),
+        Defn = mlds_field_var(FieldVarDefn)
+    ;
+        Defn0 = mlds_global_var(GlobalVarDefn0),
+        GlobalVarDefn0 = mlds_global_var_defn(Name, Context, Flags,
+            Type, Initializer0, GCStmt),
+        eliminate_var_in_initializer(Initializer0, Initializer, !VarElimInfo),
+        GlobalVarDefn = mlds_global_var_defn(Name, Context, Flags,
+            Type, Initializer, GCStmt),
+        Defn = mlds_global_var(GlobalVarDefn)
     ;
         Defn0 = mlds_class(_),
         % We assume that nested classes don't refer to local variables
@@ -1387,7 +1410,7 @@ eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
     (
         Rval0 = ml_lval(Lval0),
         VarName = !.VarElimInfo ^ var_name,
-        ( if Lval0 = ml_var(VarName, _) then
+        ( if Lval0 = ml_local_var(VarName, _) then
             % We found an rvalue occurrence of the variable -- replace it
             % with the rval for the variable's value, and increment the counter
             % for the number of occurrences that we have replaced.
@@ -1447,10 +1470,12 @@ eliminate_var_in_lval(Lval0, Lval, !VarElimInfo) :-
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         Lval = ml_mem_ref(Rval, Type)
     ;
-        Lval0 = ml_global_var_ref(_Ref),
+        ( Lval0 = ml_target_global_var_ref(_Ref)
+        ; Lval0 = ml_global_var(_, _)
+        ),
         Lval = Lval0
     ;
-        Lval0 = ml_var(VarName, _Type),
+        Lval0 = ml_local_var(VarName, _Type),
         ( if VarName = !.VarElimInfo ^ var_name then
             % We found an lvalue occurrence of the variable.
             % If the variable that we are trying to eliminate has its

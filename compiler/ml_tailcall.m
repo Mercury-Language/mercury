@@ -104,7 +104,6 @@
 %-----------------------------------------------------------------------------%
 
 ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
-    Defns0 = !.MLDS ^ mlds_proc_defns,
     ModuleName = mercury_module_name_to_mlds(!.MLDS ^ mlds_name),
     globals.lookup_bool_option(Globals, warn_non_tail_recursion_self,
         WarnTailCallsBool),
@@ -115,9 +114,11 @@ ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
         WarnTailCallsBool = no,
         WarnTailCalls = do_not_warn_tail_calls
     ),
-    mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
-        Defns0, Defns, [], Specs),
-    !MLDS ^ mlds_proc_defns := Defns.
+    FuncDefns0 = !.MLDS ^ mlds_proc_defns,
+    list.map_foldl(
+        mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls),
+        FuncDefns0, FuncDefns, [], Specs),
+    !MLDS ^ mlds_proc_defns := FuncDefns.
 
 %-----------------------------------------------------------------------------%
 
@@ -240,53 +241,74 @@ mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
 mark_tailcalls_in_defn(ModuleInfo, ModuleName, WarnTailCalls,
         Defn0, Defn, !Specs) :-
     (
-        Defn0 = mlds_data(_),
+        ( Defn0 = mlds_local_var(_)
+        ; Defn0 = mlds_field_var(_)
+        ; Defn0 = mlds_global_var(_)
+        ),
         Defn = Defn0
     ;
-        Defn0 = mlds_function(FunctionDefn0),
-        FunctionDefn0 = mlds_function_defn(Name, Context, Flags,
-            MaybePredProcId, Params, FuncBody0, Attributes,
-            EnvVarNames, MaybeRequireTailrecInfo),
-        % Compute the initial values of the `Locals' and `AtTail' arguments.
-        Params = mlds_func_params(Args, RetTypes),
-        Locals = [local_params(Args)],
-        (
-            RetTypes = [],
-            AtTail = at_tail([])
-        ;
-            RetTypes = [_ | _],
-            AtTail = not_at_tail_have_not_seen_reccall
-        ),
-        (
-            MaybePredProcId = yes(proc(PredId, _)),
-            module_info_pred_info(ModuleInfo, PredId, PredInfo),
-            MaybePredInfo = yes(PredInfo)
-        ;
-            MaybePredProcId = no,
-            MaybePredInfo = no
-        ),
-        TCallInfo = tailcall_info(ModuleInfo, ModuleName, Name,
-            MaybePredInfo, Locals, WarnTailCalls, MaybeRequireTailrecInfo),
-        mark_tailcalls_in_function_body(TCallInfo, AtTail,
-            FuncBody0, FuncBody, !Specs),
-        FunctionDefn = mlds_function_defn(Name, Context, Flags,
-            MaybePredProcId, Params, FuncBody, Attributes,
-            EnvVarNames, MaybeRequireTailrecInfo),
-        Defn = mlds_function(FunctionDefn)
+        Defn0 = mlds_function(FuncDefn0),
+        mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls,
+            FuncDefn0, FuncDefn, !Specs),
+        Defn = mlds_function(FuncDefn)
     ;
         Defn0 = mlds_class(ClassDefn0),
-        ClassDefn0 = mlds_class_defn(Name, Context, Flags, Kind,
-            Imports, BaseClasses, Implements,
-            TypeParams, CtorDefns0, MemberDefns0),
-        mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
-            CtorDefns0, CtorDefns, !Specs),
-        mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
-            MemberDefns0, MemberDefns, !Specs),
-        ClassDefn = mlds_class_defn(Name, Context, Flags, Kind,
-            Imports, BaseClasses, Implements,
-            TypeParams, CtorDefns, MemberDefns),
+        mark_tailcalls_in_class_defn(ModuleInfo, ModuleName, WarnTailCalls,
+            ClassDefn0, ClassDefn, !Specs),
         Defn = mlds_class(ClassDefn)
     ).
+
+:- pred mark_tailcalls_in_function_defn(module_info::in, mlds_module_name::in,
+    warn_tail_calls::in, mlds_function_defn::in, mlds_function_defn::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls,
+        FuncDefn0, FuncDefn, !Specs) :-
+    FuncDefn0 = mlds_function_defn(Name, Context, Flags,
+        MaybePredProcId, Params, FuncBody0, Attributes,
+        EnvVarNames, MaybeRequireTailrecInfo),
+    % Compute the initial values of the `Locals' and `AtTail' arguments.
+    Params = mlds_func_params(Args, RetTypes),
+    Locals = [local_params(Args)],
+    (
+        RetTypes = [],
+        AtTail = at_tail([])
+    ;
+        RetTypes = [_ | _],
+        AtTail = not_at_tail_have_not_seen_reccall
+    ),
+    (
+        MaybePredProcId = yes(proc(PredId, _)),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        MaybePredInfo = yes(PredInfo)
+    ;
+        MaybePredProcId = no,
+        MaybePredInfo = no
+    ),
+    TCallInfo = tailcall_info(ModuleInfo, ModuleName, Name,
+        MaybePredInfo, Locals, WarnTailCalls, MaybeRequireTailrecInfo),
+    mark_tailcalls_in_function_body(TCallInfo, AtTail,
+        FuncBody0, FuncBody, !Specs),
+    FuncDefn = mlds_function_defn(Name, Context, Flags,
+        MaybePredProcId, Params, FuncBody, Attributes,
+        EnvVarNames, MaybeRequireTailrecInfo).
+
+:- pred mark_tailcalls_in_class_defn(module_info::in, mlds_module_name::in,
+    warn_tail_calls::in, mlds_class_defn::in, mlds_class_defn::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+mark_tailcalls_in_class_defn(ModuleInfo, ModuleName, WarnTailCalls,
+        ClassDefn0, ClassDefn, !Specs) :-
+    ClassDefn0 = mlds_class_defn(Name, Context, Flags, Kind,
+        Imports, BaseClasses, Implements,
+        TypeParams, CtorDefns0, MemberDefns0),
+    mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
+        CtorDefns0, CtorDefns, !Specs),
+    mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
+        MemberDefns0, MemberDefns, !Specs),
+    ClassDefn = mlds_class_defn(Name, Context, Flags, Kind,
+        Imports, BaseClasses, Implements,
+        TypeParams, CtorDefns, MemberDefns).
 
 :- pred mark_tailcalls_in_function_body(tailcall_info::in, at_tail::in,
     mlds_function_body::in, mlds_function_body::out,
@@ -725,9 +747,7 @@ call_returns_same_local_lval_as_return_stmt(ReturnStmtRval, CallReturnLval) :-
 
 lval_is_local(Lval) = IsLocal :-
     (
-        Lval = ml_var(_, _),
-        % We just assume it is local. (This assumption is true for the code
-        % generated by ml_code_gen.m.)
+        Lval = ml_local_var(_, _),
         IsLocal = is_local
     ;
         Lval = ml_field(_Tag, Rval, _Field, _, _),
@@ -739,7 +759,8 @@ lval_is_local(Lval) = IsLocal :-
         )
     ;
         ( Lval = ml_mem_ref(_Rval, _Type)
-        ; Lval = ml_global_var_ref(_)
+        ; Lval = ml_global_var(_, _)
+        ; Lval = ml_target_global_var_ref(_)
         ),
         IsLocal = is_not_local
     ).
@@ -843,8 +864,8 @@ may_rval_yield_dangling_stack_ref(Rval, Locals) = MayYieldDanglingStackRef :-
 
 may_lval_yield_dangling_stack_ref(Lval, Locals) = MayYieldDanglingStackRef :-
     (
-        Lval = ml_var(Var0, _),
-        ( if var_is_local(Var0, Locals) then
+        Lval = ml_local_var(Var0, _),
+        ( if var_is_in_locals(Var0, Locals) then
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
         else
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
@@ -855,7 +876,8 @@ may_lval_yield_dangling_stack_ref(Lval, Locals) = MayYieldDanglingStackRef :-
             may_rval_yield_dangling_stack_ref(Rval, Locals)
     ;
         ( Lval = ml_mem_ref(_, _)
-        ; Lval = ml_global_var_ref(_)
+        ; Lval = ml_global_var(_, _)
+        ; Lval = ml_target_global_var_ref(_)
         ),
         % We assume that the addresses of local variables are only ever
         % passed down to other functions, or assigned to, so a mem_ref lval
@@ -882,8 +904,9 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
     ;
-        Const = mlconst_data_addr_var(ModuleName, VarName),
-        ( if var_is_local(qual(ModuleName, module_qual, VarName), Locals) then
+        Const = mlconst_data_addr_local_var(ModuleName, VarName),
+        QualVarName = qual(ModuleName, module_qual, VarName),
+        ( if var_is_in_locals(QualVarName, Locals) then
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
         else
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
@@ -905,9 +928,10 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
         ; Const = mlconst_float(_)
         ; Const = mlconst_string(_)
         ; Const = mlconst_multi_string(_)
-        ; Const = mlconst_named_const(_)
+        ; Const = mlconst_named_const(_, _)
         ; Const = mlconst_data_addr_rtti(_, _)
         ; Const = mlconst_data_addr_tabling(_, _, _)
+        ; Const = mlconst_data_addr_global_var(_, _)
         ; Const = mlconst_null(_)
         ),
         MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
@@ -919,22 +943,35 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
     % It would be safe to fail for variables declared static (i.e. `one_copy'),
     % but currently we just take a conservative approach.
     %
-:- pred var_is_local(mlds_var::in, locals::in) is semidet.
+:- pred var_is_in_locals(mlds_local_var::in, list(local_defns)::in) is semidet.
 
-var_is_local(Var, Locals) :-
+var_is_in_locals(Var, LocalsList) :-
     % XXX we ignore the ModuleName -- that is safe, but overly conservative.
     Var = qual(_ModuleName, _QualKind, VarName),
-    some [Local] (
-        locals_member_data(LocalDataName, Locals),
-        LocalDataName = mlds_data_var(VarName)
+    some [Locals] (
+        list.member(Locals, LocalsList),
+        (
+            Locals = local_defns(Defns),
+            some [Defn] (
+                list.member(Defn, Defns),
+                Defn = mlds_local_var(LocalVarDefn),
+                VarName = LocalVarDefn ^ mlvd_name
+            )
+        ;
+            Locals = local_params(Params),
+            some [Param] (
+                list.member(Param, Params),
+                Param = mlds_argument(VarName, _, _)
+            )
+        )
     ).
 
     % Check whether the specified function is defined locally (i.e. as a
     % nested function).
     %
-:- pred function_is_local(mlds_code_addr::in, locals::in) is semidet.
+:- pred function_is_local(mlds_code_addr::in, list(local_defns)::in) is semidet.
 
-function_is_local(CodeAddr, Locals) :-
+function_is_local(CodeAddr, LocalsList) :-
     (
         CodeAddr = code_addr_proc(QualifiedProcLabel, _Sig),
         MaybeSeqNum = no
@@ -946,47 +983,17 @@ function_is_local(CodeAddr, Locals) :-
     % overly conservative.
     QualifiedProcLabel = qual(_ModuleName, _QualKind, ProcLabel),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    some [Local] (
-        locals_member_func(LocalFuncName, Locals),
-        LocalFuncName = mlds_function_name(PlainFuncName),
-        PlainFuncName =
-            mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _PredId)
-    ).
-
-    % locals_member_data(Name, Locals):
-    %
-    % Nondeterministically enumerates the names of all the
-    % data entities in Locals.
-    %
-:- pred locals_member_data(mlds_data_name::out, locals::in) is nondet.
-
-locals_member_data(DataName, LocalsList) :-
-    list.member(Locals, LocalsList),
-    (
+    some [Locals] (
+        list.member(Locals, LocalsList),
         Locals = local_defns(Defns),
-        list.member(Defn, Defns),
-        Defn = mlds_data(DataDefn),
-        DataName = DataDefn ^ mdd_data_name
-    ;
-        Locals = local_params(Params),
-        list.member(Param, Params),
-        Param = mlds_argument(VarName, _, _),
-        DataName = mlds_data_var(VarName)
+        some [Defn] (
+            list.member(Defn, Defns),
+            Defn = mlds_function(FuncDefn),
+            FuncDefn ^ mfd_function_name = mlds_function_name(PlainFuncName),
+            PlainFuncName =
+                mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _PredId)
+        )
     ).
-
-    % locals_member_func(FuncName, Locals):
-    %
-    % Nondeterministically enumerates the names of all the
-    % function entities in Locals.
-    %
-:- pred locals_member_func(mlds_function_name::out, locals::in) is nondet.
-
-locals_member_func(FuncName, LocalsList) :-
-    list.member(Locals, LocalsList),
-    Locals = local_defns(Defns),
-    list.member(Defn, Defns),
-    Defn = mlds_function(FuncDefn),
-    FuncName = FuncDefn ^ mfd_function_name.
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_tailcall.

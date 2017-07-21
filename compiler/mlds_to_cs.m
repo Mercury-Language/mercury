@@ -59,7 +59,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
-:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_global_data.
@@ -128,14 +127,14 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
-        FlatRttiDefns, MaybeNonFlatDefns, FlatCellDefns),
+        FlatRttiDefns, ClosureWrapperFuncDefns, FlatCellDefns),
     % XXX MLDS_DEFN
-    Defns = list.map(wrap_data_defn, FlatRttiDefns) ++
-        MaybeNonFlatDefns ++
-        list.map(wrap_data_defn, FlatCellDefns) ++
+    Defns = list.map(wrap_global_var_defn, FlatRttiDefns) ++
+        list.map(wrap_function_defn, ClosureWrapperFuncDefns) ++
+        list.map(wrap_global_var_defn, FlatCellDefns) ++
         list.map(wrap_class_defn, TypeDefns) ++
-        list.map(wrap_data_defn, TableStructDefns) ++
-        ProcDefns,
+        list.map(wrap_global_var_defn, TableStructDefns) ++
+        list.map(wrap_function_defn, ProcDefns),
 
     % Find all methods which would have their addresses taken to be used as a
     % function pointer.
@@ -162,7 +161,7 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     module_source_filename(Globals, ModuleName, SourceFileName, !IO),
     Info = init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs),
     output_src_start_for_csharp(Info, Indent, ModuleName, Imports,
-        ForeignDeclCodes, Defns, !IO),
+        ForeignDeclCodes, ProcDefns, !IO),
     io.write_list(ForeignBodyCodes, "\n",
         output_csharp_body_code(Info, Indent), !IO),
 
@@ -171,14 +170,15 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     list.filter_map(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
 
     io.write_string("\n// RttiDefns\n", !IO),
-    list.foldl(output_data_defn_for_csharp(Info, Indent + 1, oa_alloc_only),
+    list.foldl(
+        output_global_var_defn_for_csharp(Info, Indent + 1, oa_alloc_only),
         RttiDefns, !IO),
     output_rtti_assignments_for_csharp(Info, Indent + 1, RttiDefns, !IO),
 
-    list.filter_map(defn_is_data, NonRttiDefns, DataDefns, NonDataDefns),
+    list.filter_map(defn_is_global_var, NonRttiDefns, DataDefns, NonDataDefns),
     io.write_string("\n// DataDefns\n", !IO),
-    output_data_decls_for_csharp(Info, Indent + 1, DataDefns, !IO),
-    output_init_data_method_for_csharp(Info, Indent + 1, DataDefns, !IO),
+    output_global_var_decls_for_csharp(Info, Indent + 1, DataDefns, !IO),
+    output_init_global_var_method_for_csharp(Info, Indent + 1, DataDefns, !IO),
 
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.
@@ -194,7 +194,9 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_method_ptr_constants(Info, Indent + 1, CodeAddrs, !IO),
 
     io.write_string("\n// NonDataDefns\n", !IO),
-    output_defns_for_csharp(Info, Indent + 1, oa_none, NonDataDefns, !IO),
+    list.sort(NonDataDefns, SortedNonDataDefns),
+    output_defns_for_csharp(Info, Indent + 1, oa_none, SortedNonDataDefns,
+        !IO),
 
     io.write_string("\n// ExportDefns\n", !IO),
     output_exports_for_csharp(Info, Indent + 1, ExportDefns, !IO),
@@ -360,7 +362,7 @@ output_export_for_csharp(Info, Indent, Export, !IO) :-
         ;
             OutArgs = [FirstOutArg | RestOutArgs],
             FirstOutArg = mlds_argument(FirstOutArgName, _, _),
-            output_var_name_for_csharp(FirstOutArgName, !IO),
+            output_local_var_name_for_csharp(FirstOutArgName, !IO),
             io.write_string(" = ", !IO)
         )
     ;
@@ -401,7 +403,7 @@ write_argument_name_for_csharp(Arg, !IO) :-
     else
         true
     ),
-    output_var_name_for_csharp(Name, !IO).
+    output_local_var_name_for_csharp(Name, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -516,7 +518,7 @@ output_env_var_definition_for_csharp(Indent, EnvVarName, !IO) :-
 
 :- pred output_src_start_for_csharp(csharp_out_info::in, indent::in,
     mercury_module_name::in, mlds_imports::in, list(foreign_decl_code)::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
+    list(mlds_function_defn)::in, io::di, io::uo) is det.
 
 output_src_start_for_csharp(Info, Indent, MercuryModuleName, _Imports,
         ForeignDecls, Defns, !IO) :-
@@ -538,7 +540,7 @@ output_src_start_for_csharp(Info, Indent, MercuryModuleName, _Imports,
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting source file that calls the `main'
     % predicate.
-    ( if defns_contain_main(Defns) then
+    ( if func_defns_contain_main(Defns) then
         write_main_driver_for_csharp(Indent + 1, ClassName, !IO)
     else
         true
@@ -632,8 +634,17 @@ output_defns_for_csharp(Info, Indent, OutputAux, Defns, !IO) :-
 output_defn_for_csharp(Info, Indent, OutputAux, Defn, !IO) :-
     % XXX MLDS_DEFN
     (
-        Defn = mlds_data(DataDefn),
-        output_data_defn_for_csharp(Info, Indent, OutputAux, DataDefn, !IO)
+        Defn = mlds_global_var(GlobalVarDefn),
+        output_global_var_defn_for_csharp(Info, Indent, OutputAux,
+            GlobalVarDefn, !IO)
+    ;
+        Defn = mlds_local_var(LocalVarDefn),
+        output_local_var_defn_for_csharp(Info, Indent, OutputAux,
+            LocalVarDefn, !IO)
+    ;
+        Defn = mlds_field_var(FieldVarDefn),
+        output_field_var_defn_for_csharp(Info, Indent, OutputAux,
+            FieldVarDefn, !IO)
     ;
         Defn = mlds_function(FunctionDefn),
         output_function_defn_for_csharp(Info, Indent, OutputAux,
@@ -643,14 +654,42 @@ output_defn_for_csharp(Info, Indent, OutputAux, Defn, !IO) :-
         output_class_defn_for_csharp(Info, Indent, OutputAux, ClassDefn, !IO)
     ).
 
-:- pred output_data_defn_for_csharp(csharp_out_info::in, indent::in,
-    output_aux::in, mlds_data_defn::in, io::di, io::uo) is det.
+:- pred output_global_var_defn_for_csharp(csharp_out_info::in, indent::in,
+    output_aux::in, mlds_global_var_defn::in, io::di, io::uo) is det.
 
-output_data_defn_for_csharp(Info, Indent, OutputAux, DataDefn, !IO) :-
+output_global_var_defn_for_csharp(Info, Indent, OutputAux, GlobalVarDefn,
+        !IO) :-
     output_n_indents(Indent, !IO),
-    DataDefn = mlds_data_defn(Name, _Context, Flags, Type, Initializer, _),
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, Flags,
+        Type, Initializer, _),
     output_data_decl_flags_for_csharp(Info, Flags, !IO),
-    output_data_decl_for_csharp(Info, Name, Type, !IO),
+    output_global_var_decl_for_csharp(Info, GlobalVarName, Type, !IO),
+    output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
+    io.write_string(";\n", !IO).
+
+:- pred output_local_var_defn_for_csharp(csharp_out_info::in, indent::in,
+    output_aux::in, mlds_local_var_defn::in, io::di, io::uo) is det.
+
+output_local_var_defn_for_csharp(Info, Indent, OutputAux, LocalVarDefn,
+        !IO) :-
+    output_n_indents(Indent, !IO),
+    LocalVarDefn = mlds_local_var_defn(LocalVarName, _Context, Flags,
+        Type, Initializer, _),
+    output_data_decl_flags_for_csharp(Info, Flags, !IO),
+    output_local_var_decl_for_csharp(Info, LocalVarName, Type, !IO),
+    output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
+    io.write_string(";\n", !IO).
+
+:- pred output_field_var_defn_for_csharp(csharp_out_info::in, indent::in,
+    output_aux::in, mlds_field_var_defn::in, io::di, io::uo) is det.
+
+output_field_var_defn_for_csharp(Info, Indent, OutputAux, FieldVarDefn,
+        !IO) :-
+    output_n_indents(Indent, !IO),
+    FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, Flags,
+        Type, Initializer, _),
+    output_data_decl_flags_for_csharp(Info, Flags, !IO),
+    output_field_var_decl_for_csharp(Info, FieldVarName, Type, !IO),
     output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).
 
@@ -845,7 +884,7 @@ output_class_body_for_csharp(Info, Indent, Kind, TypeName, AllMembers, !IO) :-
 %
 
 :- pred output_enum_constants_for_csharp(csharp_out_info::in, indent::in,
-    mlds_type_name::in, list(mlds_data_defn)::in, io::di, io::uo) is det.
+    mlds_type_name::in, list(mlds_field_var_defn)::in, io::di, io::uo) is det.
 
 output_enum_constants_for_csharp(Info, Indent, EnumName, EnumConsts, !IO) :-
     io.write_list(EnumConsts, "\n",
@@ -853,16 +892,16 @@ output_enum_constants_for_csharp(Info, Indent, EnumName, EnumConsts, !IO) :-
     io.nl(!IO).
 
 :- pred output_enum_constant_for_csharp(csharp_out_info::in, indent::in,
-    mlds_type_name::in, mlds_data_defn::in, io::di, io::uo) is det.
+    mlds_type_name::in, mlds_field_var_defn::in, io::di, io::uo) is det.
 
-output_enum_constant_for_csharp(Info, Indent, _EnumName, DataDefn, !IO) :-
-    DataDefn = mlds_data_defn(Name, _Context, _Flags,
+output_enum_constant_for_csharp(Info, Indent, _EnumName, FieldVarDefn, !IO) :-
+    FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, _Flags,
         _Type, Initializer, _GCStmt),
     (
         Initializer = init_obj(Rval),
         % The name might require mangling.
         output_n_indents(Indent, !IO),
-        output_data_name_for_csharp(Name, !IO),
+        output_field_var_name_for_csharp(FieldVarName, !IO),
         io.write_string(" = ", !IO),
         ( if
             Rval = ml_const(mlconst_enum(N, _))
@@ -892,53 +931,72 @@ output_enum_constant_for_csharp(Info, Indent, _EnumName, DataDefn, !IO) :-
 % Code to output data declarations/definitions.
 %
 
-:- pred output_data_decls_for_csharp(csharp_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+:- pred output_global_var_decls_for_csharp(csharp_out_info::in, indent::in,
+    list(mlds_global_var_defn)::in, io::di, io::uo) is det.
 
-output_data_decls_for_csharp(_, _, [], !IO).
-output_data_decls_for_csharp(Info, Indent, [DataDefn | DataDefns], !IO) :-
-    DataDefn = mlds_data_defn(Name, _Context, Flags,
+output_global_var_decls_for_csharp(_, _, [], !IO).
+output_global_var_decls_for_csharp(Info, Indent,
+        [GlobalVarDefn | GlobalVarDefns], !IO) :-
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, Flags,
         Type, _Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
     % We can't honour `readonly' here as the variable is assigned
     % separately.
     set_data_constness(modifiable, Flags, NonReadonlyFlags),
     output_data_decl_flags_for_csharp(Info, NonReadonlyFlags, !IO),
-    output_data_decl_for_csharp(Info, Name, Type, !IO),
+    output_global_var_decl_for_csharp(Info, GlobalVarName, Type, !IO),
     io.write_string(";\n", !IO),
-    output_data_decls_for_csharp(Info, Indent, DataDefns, !IO).
+    output_global_var_decls_for_csharp(Info, Indent, GlobalVarDefns, !IO).
 
-:- pred output_data_decl_for_csharp(csharp_out_info::in, mlds_data_name::in,
-    mlds_type::in, io::di, io::uo) is det.
+:- pred output_global_var_decl_for_csharp(csharp_out_info::in,
+    mlds_global_var_name::in, mlds_type::in, io::di, io::uo) is det.
 
-output_data_decl_for_csharp(Info, Name, Type, !IO) :-
+output_global_var_decl_for_csharp(Info, GlobalVarName, Type, !IO) :-
     output_type_for_csharp(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_data_name_for_csharp(Name, !IO).
+    output_global_var_name_for_csharp(GlobalVarName, !IO).
 
-:- pred output_init_data_method_for_csharp(csharp_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+:- pred output_local_var_decl_for_csharp(csharp_out_info::in,
+    mlds_local_var_name::in, mlds_type::in, io::di, io::uo) is det.
 
-output_init_data_method_for_csharp(Info, Indent, DataDefns, !IO) :-
+output_local_var_decl_for_csharp(Info, LocalVarName, Type, !IO) :-
+    output_type_for_csharp(Info, Type, !IO),
+    io.write_char(' ', !IO),
+    output_local_var_name_for_csharp(LocalVarName, !IO).
+
+:- pred output_field_var_decl_for_csharp(csharp_out_info::in,
+    mlds_field_var_name::in, mlds_type::in, io::di, io::uo) is det.
+
+output_field_var_decl_for_csharp(Info, FieldVarName, Type, !IO) :-
+    output_type_for_csharp(Info, Type, !IO),
+    io.write_char(' ', !IO),
+    output_field_var_name_for_csharp(FieldVarName, !IO).
+
+:- pred output_init_global_var_method_for_csharp(csharp_out_info::in,
+    indent::in, list(mlds_global_var_defn)::in, io::di, io::uo) is det.
+
+output_init_global_var_method_for_csharp(Info, Indent, GlobalVarDefns, !IO) :-
     output_n_indents(Indent, !IO),
     io.write_string("private static void MR_init_data() {\n", !IO),
-    output_init_data_statements_for_csharp(Info, Indent + 1, DataDefns, !IO),
+    output_init_global_var_statements_for_csharp(Info, Indent + 1,
+        GlobalVarDefns, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred output_init_data_statements_for_csharp(csharp_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+:- pred output_init_global_var_statements_for_csharp(csharp_out_info::in,
+    indent::in, list(mlds_global_var_defn)::in, io::di, io::uo) is det.
 
-output_init_data_statements_for_csharp(_, _, [], !IO).
-output_init_data_statements_for_csharp(Info, Indent, [DataDefn | DataDefns],
-        !IO) :-
-    DataDefn = mlds_data_defn(Name, _Context, _Flags,
+output_init_global_var_statements_for_csharp(_, _, [], !IO).
+output_init_global_var_statements_for_csharp(Info, Indent,
+        [GlobalVarDefn | GlobalVarDefns], !IO) :-
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, _Flags,
         Type, Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
-    output_data_name_for_csharp(Name, !IO),
+    output_global_var_name_for_csharp(GlobalVarName, !IO),
     output_initializer_for_csharp(Info, oa_none, Type, Initializer, !IO),
     io.write_string(";\n", !IO),
-    output_init_data_statements_for_csharp(Info, Indent, DataDefns, !IO).
+    output_init_global_var_statements_for_csharp(Info, Indent,
+        GlobalVarDefns, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1286,7 +1344,7 @@ output_initializer_body_list_for_csharp(Info, Inits, !IO) :-
 %
 
 :- pred output_rtti_assignments_for_csharp(csharp_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+    list(mlds_global_var_defn)::in, io::di, io::uo) is det.
 
 output_rtti_assignments_for_csharp(Info, Indent, Defns, !IO) :-
     output_n_indents(Indent, !IO),
@@ -1298,7 +1356,7 @@ output_rtti_assignments_for_csharp(Info, Indent, Defns, !IO) :-
     io.write_string("}\n", !IO).
 
 :- pred output_rtti_defns_assignments_for_csharp(csharp_out_info::in,
-    indent::in, list(mlds_data_defn)::in, io::di, io::uo) is det.
+    indent::in, list(mlds_global_var_defn)::in, io::di, io::uo) is det.
 
 output_rtti_defns_assignments_for_csharp(Info, Indent, Defns, !IO) :-
     % Separate cliques.
@@ -1308,10 +1366,11 @@ output_rtti_defns_assignments_for_csharp(Info, Indent, Defns, !IO) :-
         Defns, !IO).
 
 :- pred output_rtti_defn_assignments_for_csharp(csharp_out_info::in,
-    indent::in, mlds_data_defn::in, io::di, io::uo) is det.
+    indent::in, mlds_global_var_defn::in, io::di, io::uo) is det.
 
-output_rtti_defn_assignments_for_csharp(Info, Indent, DataDefn, !IO) :-
-    DataDefn = mlds_data_defn(Name, _Context, _Flags, _Type, Initializer, _),
+output_rtti_defn_assignments_for_csharp(Info, Indent, GlobalVarDefn, !IO) :-
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, _Flags,
+        _Type, Initializer, _),
     (
         Initializer = no_initializer
     ;
@@ -1324,7 +1383,7 @@ output_rtti_defn_assignments_for_csharp(Info, Indent, DataDefn, !IO) :-
         (
             IsArray = not_array,
             output_n_indents(Indent, !IO),
-            output_data_name_for_csharp(Name, !IO),
+            output_global_var_name_for_csharp(GlobalVarName, !IO),
             io.write_string(".init(", !IO),
             output_initializer_body_list_for_csharp(Info, FieldInits, !IO),
             io.write_string(");\n", !IO)
@@ -1336,18 +1395,19 @@ output_rtti_defn_assignments_for_csharp(Info, Indent, DataDefn, !IO) :-
     ;
         Initializer = init_array(ElementInits),
         list.foldl2(
-            output_rtti_array_assignments_for_csharp(Info, Indent, Name),
+            output_rtti_array_assignments_for_csharp(Info, Indent,
+                GlobalVarName),
             ElementInits, 0, _Index, !IO)
     ).
 
 :- pred output_rtti_array_assignments_for_csharp(csharp_out_info::in,
-    indent::in, mlds_data_name::in, mlds_initializer::in, int::in, int::out,
-    io::di, io::uo) is det.
+    indent::in, mlds_global_var_name::in, mlds_initializer::in,
+    int::in, int::out, io::di, io::uo) is det.
 
-output_rtti_array_assignments_for_csharp(Info, Indent, Name, ElementInit,
-        Index, Index + 1, !IO) :-
+output_rtti_array_assignments_for_csharp(Info, Indent, GlobalVarName,
+        ElementInit, Index, Index + 1, !IO) :-
     output_n_indents(Indent, !IO),
-    output_data_name_for_csharp(Name, !IO),
+    output_global_var_name_for_csharp(GlobalVarName, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
     io.write_string("] = ", !IO),
@@ -1409,7 +1469,7 @@ output_func_decl_for_csharp(Info, Indent, FuncName, OutputAux, Signature,
     is det.
 
 make_out_param(Type, Argument, Num, Num + 1) :-
-    VarName = mlds_comp_var(mcv_out_param(Num)),
+    VarName = lvn_comp_var(lvnc_out_param(Num)),
     Argument = mlds_argument(VarName, mlds_ptr_type(Type), gc_no_stmt).
 
 :- pred output_return_types_for_csharp(csharp_out_info::in,
@@ -1455,7 +1515,7 @@ output_param_for_csharp(Info, Indent, Arg, !IO) :-
     ),
     output_type_for_csharp(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_var_name_for_csharp(Name, !IO).
+    output_local_var_name_for_csharp(Name, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1465,29 +1525,48 @@ output_param_for_csharp(Info, Indent, Arg, !IO) :-
 % names properly.
 %
 
-:- pred output_maybe_qualified_data_name_for_csharp(csharp_out_info::in,
-    mlds_qualified_data_name::in, io::di, io::uo) is det.
+:- pred output_maybe_qualified_global_var_name_for_csharp(csharp_out_info::in,
+    mlds_global_var::in, io::di, io::uo) is det.
 
-output_maybe_qualified_data_name_for_csharp(Info, QualDataName, !IO) :-
+output_maybe_qualified_global_var_name_for_csharp(Info, QualLocalVarName,
+        !IO) :-
     % Don't module qualify names which are defined in the current module.
-    % This avoids unnecessary verbosity, and is also necessary in the case
-    % of local variables and function parameters, which must not be qualified.
-    QualDataName = qual(ModuleName, _QualKind, DataName),
+    % This avoids unnecessary verbosity.
+    QualLocalVarName = qual(ModuleName, _QualKind, LocalVarName),
     CurrentModuleName = Info ^ csoi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_cs(QualDataName, _, !IO)
+        output_qual_name_prefix_cs(QualLocalVarName, _, !IO)
     ),
-    output_data_name_for_csharp(DataName, !IO).
+    output_global_var_name_for_csharp(LocalVarName, !IO).
+
+:- pred output_maybe_qualified_local_var_name_for_csharp(csharp_out_info::in,
+    mlds_local_var::in, io::di, io::uo) is det.
+
+output_maybe_qualified_local_var_name_for_csharp(Info, QualLocalVarName,
+        !IO) :-
+    % Don't module qualify names which are defined in the current module.
+    % This avoids unnecessary verbosity, and is also necessary in the case
+    % of local variables and function parameters, which must not be qualified.
+    % XXX MLDS_DEFN
+    % The ModuleName = CurrentModuleName test should *always* succeed
+    % for local vars.
+    QualLocalVarName = qual(ModuleName, _QualKind, LocalVarName),
+    CurrentModuleName = Info ^ csoi_module_name,
+    ( if ModuleName = CurrentModuleName then
+        true
+    else
+        output_qual_name_prefix_cs(QualLocalVarName, _, !IO)
+    ),
+    output_local_var_name_for_csharp(LocalVarName, !IO).
 
 :- pred output_maybe_qualified_function_name_for_csharp(csharp_out_info::in,
     mlds_qualified_function_name::in, io::di, io::uo) is det.
 
 output_maybe_qualified_function_name_for_csharp(Info, QualFuncName, !IO) :-
     % Don't module qualify names which are defined in the current module.
-    % This avoids unnecessary verbosity, and is also necessary in the case
-    % of local variables and function parameters, which must not be qualified.
+    % This avoids unnecessary verbosity.
     QualFuncName = qual(ModuleName, _QualKind, FuncName),
     CurrentModuleName = Info ^ csoi_module_name,
     ( if ModuleName = CurrentModuleName then
@@ -1562,13 +1641,6 @@ qual_class_name_to_string_for_csharp(QualName, Arity, String) :-
         String = QualString ++ "." ++ UnqualString
     ).
 
-:- pred output_data_name_for_csharp(mlds_data_name::in, io::di, io::uo)
-    is det.
-
-output_data_name_for_csharp(DataName, !IO) :-
-    data_name_to_string_for_csharp(DataName, DataNameStr),
-    write_identifier_string_for_csharp(DataNameStr, !IO).
-
 :- pred output_function_name_for_csharp(mlds_function_name::in, io::di, io::uo)
     is det.
 
@@ -1582,12 +1654,6 @@ output_function_name_for_csharp(FunctionName, !IO) :-
 output_type_name_for_csharp(TypeName, !IO) :-
     type_name_to_string_for_csharp(TypeName, TypeNameStr),
     write_identifier_string_for_csharp(TypeNameStr, !IO).
-
-:- pred output_var_name_for_csharp(mlds_var_name::in, io::di, io::uo) is det.
-
-output_var_name_for_csharp(VarName, !IO) :-
-    var_name_to_string_for_csharp(VarName, VarNameStr),
-    write_identifier_string_for_csharp(VarNameStr, !IO).
 
 :- pred write_identifier_string_for_csharp(string::in, io::di, io::uo) is det.
 
@@ -1684,25 +1750,56 @@ pred_label_to_string_for_csharp(PredLabel, String) :-
         )
     ).
 
-:- pred data_name_to_string_for_csharp(mlds_data_name::in, string::out) is det.
+:- pred output_global_var_name_for_csharp(mlds_global_var_name::in,
+    io::di, io::uo) is det.
 
-data_name_to_string_for_csharp(DataName, String) :-
+output_global_var_name_for_csharp(DataName, !IO) :-
+    global_var_name_to_string_for_csharp(DataName, DataNameStr),
+    write_identifier_string_for_csharp(DataNameStr, !IO).
+
+:- pred global_var_name_to_string_for_csharp(mlds_global_var_name::in,
+    string::out) is det.
+
+global_var_name_to_string_for_csharp(GlobalVarName, String) :-
     (
-        DataName = mlds_data_var(VarName),
-        var_name_to_string_for_csharp(VarName, String)
+        GlobalVarName = gvn_const_var(ConstVar, Num),
+        String = ml_global_const_var_name_to_string(ConstVar, Num)
     ;
-        DataName = mlds_rtti(RttiId),
+        GlobalVarName = gvn_rtti_var(RttiId),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         String = RttiAddrName
     ;
-        DataName = mlds_tabling_ref(_ProcLabel, _Id),
-        unexpected($pred, "NYI: mlds_tabling_ref")
+        GlobalVarName = gvn_tabling_var(_ProcLabel, _Id),
+        unexpected($pred, "NYI: gvn_tabling_ref")
     ).
 
-:- pred var_name_to_string_for_csharp(mlds_var_name::in, string::out) is det.
+:- pred output_local_var_name_for_csharp(mlds_local_var_name::in,
+    io::di, io::uo) is det.
 
-var_name_to_string_for_csharp(VarName, String) :-
-    RawString = ml_var_name_to_string(VarName),
+output_local_var_name_for_csharp(VarName, !IO) :-
+    local_var_name_to_string_for_csharp(VarName, VarNameStr),
+    write_identifier_string_for_csharp(VarNameStr, !IO).
+
+:- pred local_var_name_to_string_for_csharp(mlds_local_var_name::in,
+    string::out) is det.
+
+local_var_name_to_string_for_csharp(LocalVarName, String) :-
+    RawString = ml_local_var_name_to_string(LocalVarName),
+    MangledString = name_mangle(RawString),
+    String = make_valid_csharp_symbol_name(MangledString).
+
+:- pred output_field_var_name_for_csharp(mlds_field_var_name::in,
+    io::di, io::uo) is det.
+
+output_field_var_name_for_csharp(VarName, !IO) :-
+    field_var_name_to_string_for_csharp(VarName, VarNameStr),
+    write_identifier_string_for_csharp(VarNameStr, !IO).
+
+:- pred field_var_name_to_string_for_csharp(mlds_field_var_name::in,
+    string::out) is det.
+
+field_var_name_to_string_for_csharp(LocalVarName, String) :-
+    RawString = ml_field_var_name_to_string(LocalVarName),
     MangledString = name_mangle(RawString),
     String = make_valid_csharp_symbol_name(MangledString).
 
@@ -2937,43 +3034,18 @@ output_lval_for_csharp(Info, Lval, !IO) :-
         Lval = ml_mem_ref(Rval, _Type),
         output_bracketed_rval_for_csharp(Info, Rval, !IO)
     ;
-        Lval = ml_global_var_ref(GlobalVarRef),
+        Lval = ml_target_global_var_ref(GlobalVarRef),
         GlobalVarRef = env_var_ref(EnvVarName),
         io.write_string("mercury_envvar_", !IO),
         io.write_string(EnvVarName, !IO)
     ;
-        Lval = ml_var(qual(ModName, QualKind, Name), _),
-        % Rewrite references to constants in private_builtin.m to the
-        % mercury_dotnet.cs file.
-        ( if
-            SymName = mlds_module_name_to_sym_name(ModName),
-            strip_outermost_qualifier(SymName, "mercury",
-                mercury_private_builtin_module)
-        then
-            NameStr = ml_var_name_to_string(Name),
-            ( if string.prefix(NameStr, "MR_TYPECTOR_REP_") then
-                io.write_string("runtime.TypeCtorRep.", !IO),
-                io.write_string(NameStr, !IO)
-            else if string.prefix(NameStr, "MR_SECTAG_") then
-                io.write_string("runtime.Sectag_Locn.", !IO),
-                io.write_string(NameStr, !IO)
-            else if string.prefix(NameStr, "MR_FUNCTOR_SUBTYPE_") then
-                io.write_string("runtime.FunctorSubtypeInfo.", !IO),
-                io.write_string(NameStr, !IO)
-            else if NameStr = "MR_PREDICATE" then
-                io.write_string("runtime.Constants.MR_PREDICATE", !IO)
-            else if NameStr = "MR_FUNCTION" then
-                io.write_string("runtime.Constants.MR_FUNCTION", !IO)
-            else
-                QualDataName = qual(ModName, QualKind, mlds_data_var(Name)),
-                output_maybe_qualified_data_name_for_csharp(Info,
-                    QualDataName, !IO)
-            )
-        else
-            QualDataName = qual(ModName, QualKind, mlds_data_var(Name)),
-            output_maybe_qualified_data_name_for_csharp(Info,
-                QualDataName, !IO)
-        )
+        Lval = ml_local_var(QualLocalVarName, _),
+        output_maybe_qualified_local_var_name_for_csharp(Info,
+            QualLocalVarName, !IO)
+    ;
+        Lval = ml_global_var(QualGlobalVarName, _),
+        output_maybe_qualified_global_var_name_for_csharp(Info,
+            QualGlobalVarName, !IO)
     ).
 
 :- pred output_valid_mangled_name_for_csharp(string::in, io::di, io::uo)
@@ -3004,7 +3076,8 @@ output_call_rval_for_csharp(Info, Rval, !IO) :-
 output_bracketed_rval_for_csharp(Info, Rval, !IO) :-
     ( if
         % If it is just a variable name, then we don't need parentheses.
-        ( Rval = ml_lval(ml_var(_,_))
+        ( Rval = ml_lval(ml_local_var(_,_))
+        ; Rval = ml_lval(ml_global_var(_,_))
         ; Rval = ml_const(mlconst_code_addr(_))
         )
     then
@@ -3637,19 +3710,28 @@ output_rval_const_for_csharp(Info, Const, !IO) :-
             String, !IO),
         io.write_string("""", !IO)
     ;
-        Const = mlconst_named_const(NamedConst),
+        Const = mlconst_named_const(TargetPrefixes, NamedConst),
+        io.write_string(TargetPrefixes ^ csharp_prefix, !IO),
         io.write_string(NamedConst, !IO)
     ;
         Const = mlconst_code_addr(CodeAddr),
         map.lookup(Info ^ csoi_code_addrs, CodeAddr, Name),
         io.write_string(Name, !IO)
     ;
-        Const = mlconst_data_addr_var(ModuleName, VarName),
+        Const = mlconst_data_addr_local_var(ModuleName, VarName),
         MangledModuleName = strip_mercury_and_mangle_sym_name_for_csharp(
             mlds_module_name_to_sym_name(ModuleName)),
         io.write_string(MangledModuleName, !IO),
         io.write_string(".", !IO),
-        var_name_to_string_for_csharp(VarName, VarNameStr),
+        local_var_name_to_string_for_csharp(VarName, VarNameStr),
+        write_identifier_string_for_csharp(VarNameStr, !IO)
+    ;
+        Const = mlconst_data_addr_global_var(ModuleName, VarName),
+        MangledModuleName = strip_mercury_and_mangle_sym_name_for_csharp(
+            mlds_module_name_to_sym_name(ModuleName)),
+        io.write_string(MangledModuleName, !IO),
+        io.write_string(".", !IO),
+        global_var_name_to_string_for_csharp(VarName, VarNameStr),
         write_identifier_string_for_csharp(VarNameStr, !IO)
     ;
         Const = mlconst_data_addr_rtti(ModuleName, RttiId),

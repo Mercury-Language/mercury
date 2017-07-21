@@ -91,7 +91,7 @@
     mlds_type::in, mlds_type::in, mlds_field_id::in, mlds_field_id::in,
     list(mlds_field_id)::in, list(mlds_field_id)::in,
     mlds_vector_common::in, mlds_vector_common::in, need_bit_vec_check::in,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- type ml_several_soln_lookup_vars
@@ -101,7 +101,7 @@
                 msslv_limit_var                 :: mlds_lval,
                 msslv_limit_assign_statement    :: mlds_stmt,
                 msslv_incr_later_slot_statement :: mlds_stmt,
-                msslv_denfs                     :: list(mlds_data_defn)
+                msslv_denfs                     :: list(mlds_local_var_defn)
             ).
 
 :- pred make_several_soln_lookup_vars(prog_context::in,
@@ -456,7 +456,7 @@ ml_gen_several_soln_atomic_lookup_switch(IndexRval, OutVars, OutTypes,
         FirstSolnVectorCommon, LaterSolnVectorCommon, NeedBitVecCheck,
         MatchDefns, InRangeStmts, !Info),
     % XXX MLDS_DEFN
-    InRangeStmt = ml_stmt_block(list.map(wrap_data_defn, MatchDefns),
+    InRangeStmt = ml_stmt_block(list.map(wrap_local_var_defn, MatchDefns),
         InRangeStmts, Context),
 
     (
@@ -537,24 +537,24 @@ make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
     ml_gen_info_new_aux_var_name(mcav_num_later_solns, NumLaterSolnsVar,
         !Info),
     % We never need to trace ints.
-    NumLaterSolnsVarDefn = ml_gen_mlds_var_decl(
-        mlds_data_var(NumLaterSolnsVar), mlds_native_int_type, gc_no_stmt,
-        Context),
-    ml_gen_var_lval(!.Info, NumLaterSolnsVar, mlds_native_int_type,
+    NumLaterSolnsVarDefn = ml_gen_mlds_var_decl(NumLaterSolnsVar,
+        mlds_native_int_type, gc_no_stmt, Context),
+    ml_gen_local_var_lval(!.Info, NumLaterSolnsVar, mlds_native_int_type,
         NumLaterSolnsVarLval),
 
     ml_gen_info_new_aux_var_name(mcav_later_slot, LaterSlotVar, !Info),
     % We never need to trace ints.
-    LaterSlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LaterSlotVar),
+    LaterSlotVarDefn = ml_gen_mlds_var_decl(LaterSlotVar,
         mlds_native_int_type, gc_no_stmt, Context),
-    ml_gen_var_lval(!.Info, LaterSlotVar, mlds_native_int_type,
+    ml_gen_local_var_lval(!.Info, LaterSlotVar, mlds_native_int_type,
         LaterSlotVarLval),
 
     ml_gen_info_new_aux_var_name(mcav_limit, LimitVar, !Info),
     % We never need to trace ints.
-    LimitVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LimitVar),
+    LimitVarDefn = ml_gen_mlds_var_decl(LimitVar,
         mlds_native_int_type, gc_no_stmt, Context),
-    ml_gen_var_lval(!.Info, LimitVar, mlds_native_int_type, LimitVarLval),
+    ml_gen_local_var_lval(!.Info, LimitVar, mlds_native_int_type,
+        LimitVarLval),
 
     Defns = [NumLaterSolnsVarDefn, LaterSlotVarDefn, LimitVarDefn],
 
@@ -643,7 +643,7 @@ ml_generate_bit_vec(MLDS_ModuleName, Context, CaseVals, Start, WordBits,
     Initializer = init_array(WordInitializers),
 
     ConstType = mlds_array_type(mlds_native_int_type),
-    ml_gen_static_scalar_const_value(MLDS_ModuleName, mccv_bit_vector,
+    ml_gen_static_scalar_const_value(MLDS_ModuleName, mgcv_bit_vector,
         ConstType, Initializer, Context, BitVecRval, !GlobalData).
 
 :- pred ml_generate_bit_vec_2(assoc_list(int, T)::in, int::in, int::in,

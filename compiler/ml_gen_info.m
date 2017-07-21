@@ -150,7 +150,7 @@
     % and holding table indexes in switches.
     %
 :- pred ml_gen_info_new_aux_var_name(mlds_compiler_aux_var::in,
-    mlds_var_name::out, ml_gen_info::in, ml_gen_info::out) is det.
+    mlds_local_var_name::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate a new `cond' variable number.
     %
@@ -593,7 +593,7 @@ ml_gen_info_new_aux_var_name(AuxVar, VarName, !Info) :-
     ml_gen_info_get_aux_var_counter(!.Info, AuxVarCounter0),
     counter.allocate(AuxVarNum, AuxVarCounter0, AuxVarCounter),
     ml_gen_info_set_aux_var_counter(AuxVarCounter, !Info),
-    VarName = mlds_comp_var(mcv_aux_var(AuxVar, AuxVarNum)).
+    VarName = lvn_comp_var(lvnc_aux_var(AuxVar, AuxVarNum)).
 
 ml_gen_info_new_cond_var(cond_seq(CondNum), !Info) :-
     ml_gen_info_get_cond_var_counter(!.Info, CondCounter0),

@@ -16,11 +16,12 @@
 :- module ml_backend.ml_util.
 :- interface.
 
-:- import_module libs.
-:- import_module libs.globals.          % for foreign_language
+:- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.globals.          % for foreign_language
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -36,9 +37,9 @@
 %-----------------------------------------------------------------------------%
 
     % Succeeds iff the definitions contain the entry point to
-    % the a main predicate.
+    % the main predicate.
     %
-:- pred defns_contain_main(list(mlds_defn)::in) is semidet.
+:- pred func_defns_contain_main(list(mlds_function_defn)::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,7 +66,7 @@
     % Succeeds iff this statement contains a reference to the
     % specified variable.
     %
-:- func statement_contains_var(mlds_stmt, mlds_var) = bool.
+:- func statement_contains_var(mlds_stmt, mlds_local_var) = bool.
 
 :- pred has_foreign_languages(mlds_stmt::in, list(foreign_language)::out)
     is det.
@@ -100,7 +101,8 @@
 
     % Succeeds iff this definition is a data definition.
     %
-:- pred defn_is_data(mlds_defn::in, mlds_data_defn::out) is semidet.
+:- pred defn_is_global_var(mlds_defn::in, mlds_global_var_defn::out)
+    is semidet.
 
     % Succeeds iff this definition is a type definition.
     %
@@ -113,7 +115,8 @@
     % Succeeds iff this definition is a data definition which
     % defines a type_ctor_info constant.
     %
-:- pred defn_is_type_ctor_info(mlds_defn::in, mlds_data_defn::out) is semidet.
+:- pred defn_is_type_ctor_info(mlds_defn::in, mlds_global_var_defn::out)
+    is semidet.
 
     % Succeeds iff this definition is a data definition which
     % defines a variable whose type is mlds_commit_type.
@@ -125,27 +128,23 @@
     %
 :- pred defn_is_public(mlds_defn::in) is semidet.
 
-    % Test whether one of the members of an mlds_enum class
-    % is an enumeration constant.
-    %
-:- pred defn_is_enum_const(mlds_defn::in, mlds_data_defn::out) is semidet.
-
     % Succeeds iff this definition is a data definition which defines RTTI.
     %
-:- pred defn_is_rtti_data(mlds_defn::in, mlds_data_defn::out) is semidet.
+:- pred defn_is_rtti_data(mlds_defn::in, mlds_global_var_defn::out)
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 
     % Says whether these definitions contains a reference to
     % the specified variable.
     %
-:- func defns_contains_var(list(mlds_defn), mlds_var) = bool.
+:- func defns_contains_var(list(mlds_defn), mlds_local_var) = bool.
 
     % Says whether this definition contains a reference to
     % the specified variable.
     %
-:- func defn_contains_var(mlds_defn, mlds_var) = bool.
-:- func function_defn_contains_var(mlds_function_defn, mlds_var) = bool.
+:- func defn_contains_var(mlds_defn, mlds_local_var) = bool.
+:- func function_defn_contains_var(mlds_function_defn, mlds_local_var) = bool.
 
 %-----------------------------------------------------------------------------%
 %
@@ -162,17 +161,17 @@
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-:- func initializer_contains_var(mlds_initializer, mlds_var) = bool.
+:- func initializer_contains_var(mlds_initializer, mlds_local_var) = bool.
 
-:- func rvals_contains_var(list(mlds_rval), mlds_var) = bool.
+:- func rvals_contains_var(list(mlds_rval), mlds_local_var) = bool.
 
-:- func maybe_rval_contains_var(maybe(mlds_rval), mlds_var) = bool.
+:- func maybe_rval_contains_var(maybe(mlds_rval), mlds_local_var) = bool.
 
-:- func rval_contains_var(mlds_rval, mlds_var) = bool.
+:- func rval_contains_var(mlds_rval, mlds_local_var) = bool.
 
-:- func lvals_contains_var(list(mlds_lval), mlds_var) = bool.
+:- func lvals_contains_var(list(mlds_lval), mlds_local_var) = bool.
 
-:- func lval_contains_var(mlds_lval, mlds_var) = bool.
+:- func lval_contains_var(mlds_lval, mlds_local_var) = bool.
 
 %-----------------------------------------------------------------------------%
 %
@@ -188,7 +187,7 @@
 
 :- func gen_init_string(string) = mlds_initializer.
 
-:- func gen_init_builtin_const(string) = mlds_initializer.
+:- func gen_init_builtin_const(target_prefixes, string) = mlds_initializer.
 
 :- func gen_init_foreign(foreign_language, string) = mlds_initializer.
 
@@ -248,9 +247,7 @@
 :- implementation.
 
 :- import_module backend_libs.
-:- import_module backend_libs.rtti.
 :- import_module mdbcomp.
-:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_unify_gen.
 
@@ -260,9 +257,8 @@
 
 %-----------------------------------------------------------------------------%
 
-defns_contain_main([Defn | Defns]) :-
+func_defns_contain_main([FuncDefn | FuncDefns]) :-
     ( if
-        Defn = mlds_function(FuncDefn),
         FuncDefn = mlds_function_defn(FuncName, _, _, _, _, _, _, _, _),
         FuncName = mlds_function_name(PlainFuncName),
         PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
@@ -270,7 +266,7 @@ defns_contain_main([Defn | Defns]) :-
     then
         true
     else
-        defns_contain_main(Defns)
+        func_defns_contain_main(FuncDefns)
     ).
 
 code_address_is_for_this_function(CodeAddr, ModuleName, FuncName) :-
@@ -383,7 +379,7 @@ default_contains_statement(default_case(Stmt), SubStmt) :-
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-:- func statements_contains_var(list(mlds_stmt), mlds_var) = bool.
+:- func statements_contains_var(list(mlds_stmt), mlds_local_var) = bool.
 
 statements_contains_var([], _DataName) = no.
 statements_contains_var([Stmt | Stmts], DataName) = ContainsVar :-
@@ -396,7 +392,7 @@ statements_contains_var([Stmt | Stmts], DataName) = ContainsVar :-
         ContainsVar = statements_contains_var(Stmts, DataName)
     ).
 
-:- func maybe_statement_contains_var(maybe(mlds_stmt), mlds_var) = bool.
+:- func maybe_statement_contains_var(maybe(mlds_stmt), mlds_local_var) = bool.
 
 maybe_statement_contains_var(no, _) = no.
 maybe_statement_contains_var(yes(Stmt), DataName) = ContainsVar :-
@@ -520,7 +516,7 @@ statement_contains_var(Stmt, SearchVarName) = ContainsVar :-
         ContainsVar = atomic_stmt_contains_var(AtomicStmt, SearchVarName)
     ).
 
-:- func cases_contains_var(list(mlds_switch_case), mlds_var) = bool.
+:- func cases_contains_var(list(mlds_switch_case), mlds_local_var) = bool.
 
 cases_contains_var([], _SearchVarName) = no.
 cases_contains_var([Case | Cases], SearchVarName) = ContainsVar :-
@@ -534,7 +530,7 @@ cases_contains_var([Case | Cases], SearchVarName) = ContainsVar :-
         ContainsVar = cases_contains_var(Cases, SearchVarName)
     ).
 
-:- func default_contains_var(mlds_switch_default, mlds_var) = bool.
+:- func default_contains_var(mlds_switch_default, mlds_local_var) = bool.
 
 default_contains_var(Default, SearchVarName) = ContainsVar :-
     (
@@ -547,7 +543,7 @@ default_contains_var(Default, SearchVarName) = ContainsVar :-
         ContainsVar = statement_contains_var(Stmt, SearchVarName)
     ).
 
-:- func atomic_stmt_contains_var(mlds_atomic_statement, mlds_var) = bool.
+:- func atomic_stmt_contains_var(mlds_atomic_statement, mlds_local_var) = bool.
 
 atomic_stmt_contains_var(AtomicStmt, SearchVarName) = ContainsVar :-
     (
@@ -610,7 +606,7 @@ atomic_stmt_contains_var(AtomicStmt, SearchVarName) = ContainsVar :-
         )
     ).
 
-:- func trail_op_contains_var(trail_op, mlds_var) = bool.
+:- func trail_op_contains_var(trail_op, mlds_local_var) = bool.
 
 trail_op_contains_var(TrailOp, SearchVarName) = ContainsVar :-
     (
@@ -633,7 +629,7 @@ trail_op_contains_var(TrailOp, SearchVarName) = ContainsVar :-
     ).
 
 :- func target_code_components_contains_var(list(target_code_component),
-    mlds_var) = bool.
+    mlds_local_var) = bool.
 
 target_code_components_contains_var([], _SearchVarName) = no.
 target_code_components_contains_var([TargetCode | TargetCodes], SearchVarName)
@@ -649,8 +645,8 @@ target_code_components_contains_var([TargetCode | TargetCodes], SearchVarName)
             target_code_components_contains_var(TargetCodes, SearchVarName)
     ).
 
-:- func target_code_component_contains_var(target_code_component, mlds_var)
-    = bool.
+:- func target_code_component_contains_var(target_code_component,
+    mlds_local_var) = bool.
 
 target_code_component_contains_var(TargetCode, SearchVarName) = ContainsVar :-
     (
@@ -669,7 +665,7 @@ target_code_component_contains_var(TargetCode, SearchVarName) = ContainsVar :-
         ContainsVar = lval_contains_var(Lval, SearchVarName)
     ).
 
-:- func outline_args_contains_var(list(outline_arg), mlds_var) = bool.
+:- func outline_args_contains_var(list(outline_arg), mlds_local_var) = bool.
 
 outline_args_contains_var([], _SearchVarName) = no.
 outline_args_contains_var([OutlineArg | OutlineArgs], SearchVarName) =
@@ -684,7 +680,7 @@ outline_args_contains_var([OutlineArg | OutlineArgs], SearchVarName) =
         ContainsVar = outline_args_contains_var(OutlineArgs, SearchVarName)
     ).
 
-:- func outline_arg_contains_var(outline_arg, mlds_var) = bool.
+:- func outline_arg_contains_var(outline_arg, mlds_local_var) = bool.
 
 outline_arg_contains_var(OutlineArg, SearchVarName) = ContainsVar :-
     (
@@ -734,8 +730,8 @@ defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
 
 %-----------------------------------------------------------------------------%
 
-defn_is_data(Defn, DataDefn) :-
-    Defn = mlds_data(DataDefn).
+defn_is_global_var(Defn, GlobalVarDefn) :-
+    Defn = mlds_global_var(GlobalVarDefn).
 
 defn_is_type(Defn, ClassDefn) :-
     Defn = mlds_class(ClassDefn).
@@ -743,24 +739,28 @@ defn_is_type(Defn, ClassDefn) :-
 defn_is_function(Defn, FuncDefn) :-
     Defn = mlds_function(FuncDefn).
 
-defn_is_type_ctor_info(Defn, DataDefn) :-
+defn_is_type_ctor_info(Defn, GlobalVarDefn) :-
     % XXX MLDS_DEFN
-    Defn = mlds_data(DataDefn),
-    DataDefn = mlds_data_defn(_Name, _Context, _Flags, Type, _, _),
+    Defn = mlds_global_var(GlobalVarDefn),
+    GlobalVarDefn = mlds_global_var_defn(_Name, _Context, _Flags, Type, _, _),
     Type = mlds_rtti_type(item_type(RttiId)),
     RttiId = ctor_rtti_id(_, RttiName),
     RttiName = type_ctor_type_ctor_info.
 
 defn_is_commit_type_var(Defn) :-
     % XXX MLDS_DEFN
-    Defn = mlds_data(DataDefn),
-    DataDefn ^ mdd_type = mlds_commit_type.
+    Defn = mlds_local_var(LocalVarDefn),
+    LocalVarDefn ^ mlvd_type = mlds_commit_type.
 
 defn_is_public(Defn) :-
     (
-        Defn = mlds_data(DataDefn),
-        DataFlags = DataDefn ^ mdd_decl_flags,
-        get_data_access(DataFlags) = acc_public
+        Defn = mlds_global_var(GlobalVarDefn),
+        GlobalVarFlags = GlobalVarDefn ^ mgvd_decl_flags,
+        get_data_access(GlobalVarFlags) = acc_public
+    ;
+        Defn = mlds_field_var(FieldVarDefn),
+        FieldVarFlags = FieldVarDefn ^ mfvd_decl_flags,
+        get_data_access(FieldVarFlags) = acc_public
     ;
         Defn = mlds_function(FuncDefn),
         FuncFlags = FuncDefn ^ mfd_decl_flags,
@@ -771,14 +771,9 @@ defn_is_public(Defn) :-
         get_class_access(ClassFlags) = class_public
     ).
 
-defn_is_enum_const(Defn, DataDefn) :-
-    Defn = mlds_data(DataDefn),
-    Flags = DataDefn ^ mdd_decl_flags,
-    get_data_constness(Flags) = const.
-
-defn_is_rtti_data(Defn, DataDefn) :-
-    Defn = mlds_data(DataDefn),
-    DataDefn ^ mdd_type = mlds_rtti_type(_).
+defn_is_rtti_data(Defn, GlobalVarDefn) :-
+    Defn = mlds_global_var(GlobalVarDefn),
+    GlobalVarDefn ^ mgvd_type = mlds_rtti_type(_).
 
 %-----------------------------------------------------------------------------%
 %
@@ -803,9 +798,19 @@ defns_contains_var([Defn | Defns], SearchVarName) = ContainsVar :-
 
 defn_contains_var(Defn, SearchVarName) = ContainsVar :-
     (
-        Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(_Name, _Ctxt, _Flags,
-            _Type, Initializer, _GCStmt),
+        (
+            Defn = mlds_local_var(LocalVarDefn),
+            LocalVarDefn = mlds_local_var_defn(_Name, _Ctxt, _Flags,
+                _Type, Initializer, _GCStmt)
+        ;
+            Defn = mlds_global_var(GlobalVarDefn),
+            GlobalVarDefn = mlds_global_var_defn(_Name, _Ctxt, _Flags,
+                _Type, Initializer, _GCStmt)
+        ;
+            Defn = mlds_field_var(FieldVarDefn),
+            FieldVarDefn = mlds_field_var_defn(_Name, _Ctxt, _Flags,
+                _Type, Initializer, _GCStmt)
+        ),
         % XXX Should we include variables in the GCStmt field here?
         ContainsVar = initializer_contains_var(Initializer, SearchVarName)
     ;
@@ -832,7 +837,7 @@ function_defn_contains_var(FunctionDefn, SearchVarName) = ContainsVar :-
         _EnvVarNames, _MaybeRequireTailrecInfo),
     ContainsVar = function_body_contains_var(FunctionBody, SearchVarName).
 
-:- func function_body_contains_var(mlds_function_body, mlds_var) = bool.
+:- func function_body_contains_var(mlds_function_body, mlds_local_var) = bool.
 
 function_body_contains_var(Body, SearchVarName) = ContainsVar :-
     (
@@ -876,7 +881,8 @@ initializer_contains_var(Initializer, SearchVarName) = ContainsVar :-
             initializers_contains_var(ElementInitializers, SearchVarName)
     ).
 
-:- func initializers_contains_var(list(mlds_initializer), mlds_var) = bool.
+:- func initializers_contains_var(list(mlds_initializer), mlds_local_var)
+    = bool.
 
 initializers_contains_var([], _SearchVarName) = no.
 initializers_contains_var([Initializer | Initializers], SearchVarName) =
@@ -916,7 +922,7 @@ rval_contains_var(Rval, SearchVarName) = ContainsVar :-
     ;
         Rval = ml_const(Const),
         (
-            Const = mlconst_data_addr_var(ModuleName, RawVarName),
+            Const = mlconst_data_addr_local_var(ModuleName, RawVarName),
             ( if SearchVarName = qual(ModuleName, _QualKind, RawVarName) then
                 % This is a place where we can succeed.
                 ContainsVar = yes
@@ -940,10 +946,11 @@ rval_contains_var(Rval, SearchVarName) = ContainsVar :-
             ; Const = mlconst_string(_)
             ; Const = mlconst_multi_string(_)
             ; Const = mlconst_foreign(_, _, _)
-            ; Const = mlconst_named_const(_)
+            ; Const = mlconst_named_const(_, _)
             ; Const = mlconst_code_addr(_)
             ; Const = mlconst_data_addr_rtti(_, _)
             ; Const = mlconst_data_addr_tabling(_, _, _)
+            ; Const = mlconst_data_addr_global_var(_, _)
             ; Const = mlconst_null(_)
             ),
             ContainsVar = no
@@ -994,10 +1001,12 @@ lval_contains_var(Lval, SearchVarName) = ContainsVar :-
         Lval = ml_mem_ref(Rval, _Type),
         ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
-        Lval = ml_global_var_ref(_),
+        ( Lval = ml_global_var(_, _)
+        ; Lval = ml_target_global_var_ref(_)
+        ),
         ContainsVar = no
     ;
-        Lval = ml_var(VarName, _Type),
+        Lval = ml_local_var(VarName, _Type),
         % This is another place where we can succeed.
         ( if VarName = SearchVarName then
             ContainsVar = yes
@@ -1018,15 +1027,8 @@ gen_init_boxed_int(Int) =
 
 gen_init_string(String) = init_obj(ml_const(mlconst_string(String))).
 
-gen_init_builtin_const(Name) = init_obj(Rval) :-
-    PrivateBuiltin = mercury_private_builtin_module,
-    MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
-    VarName = mlds_comp_var(mcv_enum_const(Name)),
-    % XXX These are actually enumeration constants.
-    % Perhaps we should be using an enumeration type here,
-    % rather than `mlds_native_int_type'.
-    Type = mlds_native_int_type,
-    Rval = ml_lval(ml_var(qual(MLDS_Module, module_qual, VarName), Type)).
+gen_init_builtin_const(TargetPrefixes, Name) = init_obj(Rval) :-
+    Rval = ml_const(mlconst_named_const(TargetPrefixes, Name)).
 
 gen_init_foreign(Lang, String) =
     init_obj(ml_const(mlconst_foreign(Lang, String, mlds_native_int_type))).
@@ -1060,8 +1062,19 @@ method_ptrs_in_defns([Defn | Defns], !CodeAddrsInConsts) :-
 
 method_ptrs_in_defn(Defn, !CodeAddrsInConsts) :-
     (
-        Defn = mlds_data(DataDefn),
-        DataDefn = mlds_data_defn(_, _, _, _Type, Initializer, _GCStmt),
+        (
+            Defn = mlds_local_var(LocalVarDefn),
+            LocalVarDefn = mlds_local_var_defn(_, _, _, _Type,
+                Initializer, _GCStmt)
+        ;
+            Defn = mlds_global_var(GlobalVarDefn),
+            GlobalVarDefn = mlds_global_var_defn(_, _, _, _Type,
+                Initializer, _GCStmt)
+        ;
+            Defn = mlds_field_var(FieldVarDefn),
+            FieldVarDefn = mlds_field_var_defn(_, _, _, _Type,
+                Initializer, _GCStmt)
+        ),
         method_ptrs_in_initializer(Initializer, !CodeAddrsInConsts)
     ;
         Defn = mlds_function(FunctionDefn),
@@ -1271,8 +1284,9 @@ method_ptrs_in_rval(Rval, !CodeAddrsInConsts) :-
             ; RvalConst = mlconst_float(_)
             ; RvalConst = mlconst_string(_)
             ; RvalConst = mlconst_multi_string(_)
-            ; RvalConst = mlconst_named_const(_)
-            ; RvalConst = mlconst_data_addr_var(_, _)
+            ; RvalConst = mlconst_named_const(_, _)
+            ; RvalConst = mlconst_data_addr_local_var(_, _)
+            ; RvalConst = mlconst_data_addr_global_var(_, _)
             ; RvalConst = mlconst_data_addr_rtti(_, _)
             ; RvalConst = mlconst_data_addr_tabling(_, _, _)
             ; RvalConst = mlconst_null(_)
@@ -1308,8 +1322,9 @@ method_ptrs_in_lval(Lval, !CodeAddrsInConsts) :-
         % Here, "_Rval" is a pointer to a cell on the heap, and doesn't need
         % to be considered.
     ;
-        ( Lval = ml_var(_Variable, _Type)
-        ; Lval = ml_global_var_ref(_)
+        ( Lval = ml_local_var(_Variable, _Type)
+        ; Lval = ml_global_var(_Variable, _Type)
+        ; Lval = ml_target_global_var_ref(_)
         )
     ).
 

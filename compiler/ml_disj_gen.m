@@ -327,9 +327,9 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
     SlotVarType = mlds_native_int_type,
     % We never need to trace ints.
     SlotVarGCStmt = gc_no_stmt,
-    SlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(SlotVar),
-        SlotVarType, SlotVarGCStmt, Context),
-    ml_gen_var_lval(!.Info, SlotVar, SlotVarType, SlotVarLval),
+    SlotVarDefn = ml_gen_mlds_var_decl(SlotVar, SlotVarType,
+        SlotVarGCStmt, Context),
+    ml_gen_local_var_lval(!.Info, SlotVar, SlotVarType, SlotVarLval),
     SlotVarRval = ml_lval(SlotVarLval),
 
     ml_generate_field_assigns(OutVars, MLDS_FieldTypes, FieldIds,
@@ -355,7 +355,7 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
         Context),
 
     % XXX MLDS_DEFN
-    Stmt = ml_stmt_block([mlds_data(SlotVarDefn)],
+    Stmt = ml_stmt_block([mlds_local_var(SlotVarDefn)],
         [InitSlotVarStmt, LoopStmt], Context),
     Stmts = [Stmt].
 

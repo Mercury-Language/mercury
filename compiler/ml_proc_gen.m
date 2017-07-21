@@ -87,7 +87,7 @@ ml_code_gen(!ModuleInfo, MLDS) :-
     module_info_user_init_pred_c_names(!.ModuleInfo, InitPreds),
     module_info_user_final_pred_c_names(!.ModuleInfo, FinalPreds),
     MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData, TypeDefns,
-        TableStructDefns, list.map(wrap_function_defn, PredDefns),
+        TableStructDefns, PredDefns,
         InitPreds, FinalPreds, ExportedEnums).
 
 :- pred ml_gen_foreign_code(module_info::in,
@@ -176,7 +176,7 @@ foreign_type_required_imports(Target, _TypeCtor - _TypeDefn) = Imports :-
     ).
 
 :- pred ml_gen_defns(module_info::in, module_info::out,
-    list(mlds_class_defn)::out, list(mlds_data_defn)::out,
+    list(mlds_class_defn)::out, list(mlds_global_var_defn)::out,
     list(mlds_function_defn)::out, ml_global_data::out) is det.
 
 ml_gen_defns(!ModuleInfo, TypeDefns, TableStructDefns, PredDefns,
@@ -481,7 +481,7 @@ ml_gen_proc(ConstStructMap, PredProcId,
             ml_gen_proc_params(PredId, ProcId, MLDS_Params, !Info),
             ml_gen_info_get_closure_wrapper_defns(!.Info, ExtraDefns),
             ml_gen_info_get_global_data(!.Info, !:GlobalData),
-            Defns = list.map(wrap_data_defn, MLDS_LocalVars) ++ Defns0,
+            Defns = list.map(wrap_local_var_defn, MLDS_LocalVars) ++ Defns0,
             Statement = ml_gen_block(Defns, Statements, Context),
             FunctionBody = body_defined_here(Statement)
 
@@ -641,7 +641,7 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
         ml_combine_conj(CodeModel, Context, DoGenGoal, DoConvOutputs,
             Decls0, Statements0, !Info),
         Statements1 = ConvInputStatements ++ Statements0,
-        Decls = list.map(wrap_data_defn, ConvDecls) ++ Decls0
+        Decls = list.map(wrap_local_var_defn, ConvDecls) ++ Decls0
     ),
 
     % Finally append an appropriate `return' statement, if needed.
@@ -656,7 +656,8 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
     %
 :- pred ml_gen_convert_headvars(list(prog_var)::in, list(mer_type)::in,
     list(top_functor_mode)::in, list(prog_var)::in, prog_context::in,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out, list(mlds_stmt)::out,
+    list(mlds_local_var_defn)::out,
+    list(mlds_stmt)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_convert_headvars(Vars, HeadTypes, TopFunctorModes, CopiedOutputVars,
@@ -699,7 +700,7 @@ ml_gen_convert_headvars(Vars, HeadTypes, TopFunctorModes, CopiedOutputVars,
             % Generate code to box or unbox that head variable,
             % to convert its type from HeadType to BodyType.
             ml_gen_info_get_varset(!.Info, VarSet),
-            VarName = ml_gen_var_name(VarSet, Var),
+            VarName = ml_gen_local_var_name(VarSet, Var),
             ml_gen_box_or_unbox_lval(HeadType, BodyType, bp_native_if_possible,
                 HeadVarLval, VarName, Context, no, 0, BodyLval, ConvDecls,
                 ConvInputStatements, ConvOutputStatements, !Info),
@@ -737,7 +738,7 @@ ml_gen_convert_headvars(Vars, HeadTypes, TopFunctorModes, CopiedOutputVars,
 % Code for handling tabling structures.
 %
 
-:- pred ml_gen_table_structs(module_info::in, list(mlds_data_defn)::out)
+:- pred ml_gen_table_structs(module_info::in, list(mlds_global_var_defn)::out)
     is det.
 
 ml_gen_table_structs(ModuleInfo, DataDefns) :-
@@ -765,7 +766,7 @@ ml_gen_table_structs(ModuleInfo, DataDefns) :-
 
 :- pred ml_gen_add_table_var(module_info::in,
     pair(pred_proc_id, table_struct_info)::in,
-    list(mlds_data_defn)::in, list(mlds_data_defn)::out) is det.
+    list(mlds_global_var_defn)::in, list(mlds_global_var_defn)::out) is det.
 
 ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
     module_info_get_name(ModuleInfo, ModuleName),
@@ -781,6 +782,9 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
         _PredModule),
     MLDS_ProcLabel = mlds_proc_label(PredLabel, ProcId),
     TableTypeStr = eval_method_to_table_type(EvalMethod),
+    % We will probably need to add actual prefixes when tabling is implemented
+    % for Java and C#.
+    TableTypeTargetPrefixes = target_prefixes("", ""),
     (
         InputSteps = [],
         % We don't want to generate arrays with zero elements.
@@ -841,7 +845,7 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
     TipsRefInit = gen_init_null_pointer(mlds_tabling_type(tabling_tips)),
 
     ProcTableInfoInit = init_struct(mlds_tabling_type(tabling_info), [
-        gen_init_builtin_const(TableTypeStr),
+        gen_init_builtin_const(TableTypeTargetPrefixes, TableTypeStr),
         gen_init_int(NumInputs),
         gen_init_int(NumOutputs),
         gen_init_int(HasAnswerTable),
@@ -885,7 +889,7 @@ init_step_desc(StructId, StepDesc) = init_struct(StructType, FieldInits) :-
 :- pred init_stats(mlds_module_name::in, mlds_proc_label::in, prog_context::in,
     call_or_answer_table::in, curr_or_prev_table::in,
     list(table_step_desc)::in, mlds_initializer::out,
-    list(mlds_data_defn)::out) is det.
+    list(mlds_global_var_defn)::out) is det.
 
 init_stats(MLDS_ModuleName, MLDS_ProcLabel, Context,
         CallOrAnswer, CurrOrPrev, StepDescs, StatsInit, StatsStepDefns) :-
@@ -952,8 +956,12 @@ init_stats_step(StepId, StepDesc, Init) :-
 
 :- func encode_enum_init(string) = mlds_initializer.
 
-encode_enum_init(EnumConstName) =
-    init_obj(ml_const(mlconst_named_const(EnumConstName))).
+encode_enum_init(EnumConstName) = Initializer :-
+    % We will probably need to add actual prefixes when tabling is implemented
+    % for Java and C#.
+    TargetPrefixes = target_prefixes("", ""),
+    Const = mlconst_named_const(TargetPrefixes, EnumConstName),
+    Initializer = init_obj(ml_const(Const)).
 
 :- func gen_init_tabling_name(mlds_module_name, mlds_proc_label,
     proc_tabling_struct_id) = mlds_initializer.
@@ -963,15 +971,15 @@ gen_init_tabling_name(ModuleName, ProcLabel, TablingId) = Rval :-
     Rval = init_obj(ml_const(Const)).
 
 :- func tabling_name_and_init_to_defn(mlds_proc_label, proc_tabling_struct_id,
-    prog_context, constness, mlds_initializer) = mlds_data_defn.
+    prog_context, constness, mlds_initializer) = mlds_global_var_defn.
 
 tabling_name_and_init_to_defn(ProcLabel, Id, Context, Constness, Initializer)
-        = DataDefn :-
+        = GlobalVarDefn :-
     GCStatement = gc_no_stmt,
     MLDS_Type = mlds_tabling_type(Id),
     Flags = tabling_data_decl_flags(Constness),
-    Name = mlds_tabling_ref(ProcLabel, Id),
-    DataDefn = mlds_data_defn(Name, Context, Flags,
+    Name = gvn_tabling_var(ProcLabel, Id),
+    GlobalVarDefn = mlds_global_var_defn(Name, Context, Flags,
         MLDS_Type, Initializer, GCStatement).
 
     % Return the declaration flags appropriate for a tabling data structure.

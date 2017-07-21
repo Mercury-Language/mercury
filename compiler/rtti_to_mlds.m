@@ -45,8 +45,8 @@
     % This function returns a list of cliques so that problems with ordering
     % within cliques, if any, may be easier to discover.
     %
-:- func order_mlds_rtti_defns(list(mlds_data_defn)) =
-    list(list(mlds_data_defn)).
+:- func order_mlds_rtti_defns(list(mlds_global_var_defn)) =
+    list(list(mlds_global_var_defn)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -110,11 +110,12 @@ rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer, !GlobalData) :-
     ml_global_data::in, ml_global_data::out) is det.
 
 rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData) :-
-    Name = mlds_rtti(RttiId),
+    Name = gvn_rtti_var(RttiId),
     rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData).
 
-:- pred rtti_entity_name_and_init_to_defn(mlds_data_name::in, rtti_id::in,
-    mlds_initializer::in, ml_global_data::in, ml_global_data::out) is det.
+:- pred rtti_entity_name_and_init_to_defn(mlds_global_var_name::in,
+    rtti_id::in, mlds_initializer::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
 rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
     % Generate the context.
@@ -133,7 +134,7 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
 
     % Generate the declaration body, i.e. the type and the initializer.
     MLDS_Type = mlds_rtti_type(item_type(RttiId)),
-    DataDefn = mlds_data_defn(Name, Context, Flags, MLDS_Type,
+    DataDefn = mlds_global_var_defn(Name, Context, Flags, MLDS_Type,
         Initializer, GCStatement),
 
     ml_global_data_add_flat_rtti_defn(DataDefn, !GlobalData).
@@ -164,7 +165,7 @@ rtti_data_decl_flags(Exported) = DeclFlags :-
 
 gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
     rtti_data_to_id(RttiData, RttiId),
-    Name = mlds_rtti(RttiId),
+    Name = gvn_rtti_var(RttiId),
     (
         RttiData = rtti_data_base_typeclass_info(_InstanceModule, _ClassId,
             _InstanceStr, BaseTypeClassInfo),
@@ -256,7 +257,7 @@ gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
 %-----------------------------------------------------------------------------%
 
 :- pred gen_type_class_decl_defn(module_info::in, tc_decl::in,
-    mlds_data_name::in, rtti_id::in,
+    mlds_global_var_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_type_class_decl_defn(ModuleInfo, TCDecl, Name, RttiId, !GlobalData) :-
@@ -359,7 +360,7 @@ gen_tc_id_method_id(TCName, MethodId) = Initializer :-
 %-----------------------------------------------------------------------------%
 
 :- pred gen_type_class_instance_defn(module_info::in, tc_instance::in,
-    mlds_data_name::in, rtti_id::in,
+    mlds_global_var_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_type_class_instance_defn(ModuleInfo, Instance, Name, RttiId,
@@ -408,7 +409,7 @@ make_instance_constr_id(TCName, Types, TCNum, Arity, RttiId) :-
 %-----------------------------------------------------------------------------%
 
 :- pred gen_type_info_defn(module_info::in, rtti_type_info::in,
-    mlds_data_name::in, rtti_id::in,
+    mlds_global_var_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
@@ -498,7 +499,7 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
     ).
 
 :- pred gen_pseudo_type_info_defn(module_info::in, rtti_pseudo_type_info::in,
-    mlds_data_name::in, rtti_id::in,
+    mlds_global_var_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
@@ -1141,12 +1142,14 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap, !GlobalData) :-
             FirstPtag = 0
         else if  FirstPtag = 1 then
             % Output a dummy ptag definition for the reserved tag first.
+            sectag_locn_to_string(sectag_none, SecTagTargetPrefixes, _),
             RttiElemName = type_ctor_du_ptag_layout(0),
             RttiElemId = ctor_rtti_id(RttiTypeCtor, RttiElemName),
             PtagInitPrefix = [
                 init_struct(mlds_rtti_type(item_type(RttiElemId)),
                 [gen_init_int(0),
-                gen_init_builtin_const("MR_SECTAG_VARIABLE"),
+                gen_init_builtin_const(SecTagTargetPrefixes,
+                    "MR_SECTAG_VARIABLE"),
                 gen_init_null_pointer(
                     mlds_rtti_type(item_type(
                         ctor_rtti_id(RttiTypeCtor,
@@ -1627,8 +1630,7 @@ gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
             WrapperFuncRval, WrapperFuncType, !Info),
         ml_gen_info_get_closure_wrapper_defns(!.Info, ClosureWrapperDefns),
         ml_gen_info_get_global_data(!.Info, !:GlobalData),
-        ml_global_data_add_maybe_nonflat_defns(
-            list.map(wrap_function_defn, ClosureWrapperDefns),
+        ml_global_data_add_closure_wrapper_func_defns(ClosureWrapperDefns,
             !GlobalData),
 
         % The initializer for the wrapper is just the wrapper function's
@@ -1693,24 +1695,28 @@ real_rtti_data(RttiData) :-
 
 :- func gen_init_pred_or_func(pred_or_func) = mlds_initializer.
 
-gen_init_pred_or_func(PredOrFunc) = gen_init_builtin_const(Name) :-
-    rtti.pred_or_func_to_string(PredOrFunc, Name).
+gen_init_pred_or_func(PredOrFunc) = Initializer :-
+    rtti.pred_or_func_to_string(PredOrFunc, TargetPrefixes, Name),
+    Initializer = gen_init_builtin_const(TargetPrefixes, Name).
 
 :- func gen_init_sectag_locn(sectag_locn) = mlds_initializer.
 
-gen_init_sectag_locn(Locn) = gen_init_builtin_const(Name) :-
-    rtti.sectag_locn_to_string(Locn, Name).
+gen_init_sectag_locn(Locn) = Initializer :-
+    rtti.sectag_locn_to_string(Locn, TargetPrefixes, Name),
+    Initializer = gen_init_builtin_const(TargetPrefixes, Name).
 
 :- func gen_init_functor_subtype_info(functor_subtype_info) = mlds_initializer.
 
 gen_init_functor_subtype_info(FunctorSubtypeInfo) = Initializer :-
-    rtti.functor_subtype_info_to_string(FunctorSubtypeInfo, Name),
-    Initializer = gen_init_builtin_const(Name).
+    rtti.functor_subtype_info_to_string(FunctorSubtypeInfo, TargetPrefixes,
+        Name),
+    Initializer = gen_init_builtin_const(TargetPrefixes, Name).
 
 :- func gen_init_type_ctor_rep(type_ctor_data) = mlds_initializer.
 
-gen_init_type_ctor_rep(TypeCtorData) = gen_init_builtin_const(Name) :-
-    rtti.type_ctor_rep_to_string(TypeCtorData, Name).
+gen_init_type_ctor_rep(TypeCtorData) = Initializer :-
+    rtti.type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, Name),
+    Initializer = gen_init_builtin_const(TargetPrefixes, Name).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1728,103 +1734,113 @@ order_mlds_rtti_defns(Defns) = OrdDefns :-
     list.map(set.to_sorted_list, OrdSets, OrdLists),
     list.map(list.filter_map(map.search(NameMap)), OrdLists, OrdDefns).
 
-:- pred add_rtti_defn_nodes(mlds_data_defn::in,
-    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out,
-    map(mlds_data_name, mlds_data_defn)::in,
-    map(mlds_data_name, mlds_data_defn)::out) is det.
+:- pred add_rtti_defn_nodes(mlds_global_var_defn::in,
+    digraph(mlds_global_var_name)::in, digraph(mlds_global_var_name)::out,
+    map(mlds_global_var_name, mlds_global_var_defn)::in,
+    map(mlds_global_var_name, mlds_global_var_defn)::out) is det.
 
-add_rtti_defn_nodes(DataDefn, !Graph, !NameMap) :-
-    DataName = DataDefn ^ mdd_data_name,
-    digraph.add_vertex(DataName, _, !Graph),
-    map.det_insert(DataName, DataDefn, !NameMap).
+add_rtti_defn_nodes(GlobalVarDefn, !Graph, !NameMap) :-
+    GlobalVarName = GlobalVarDefn ^ mgvd_name,
+    digraph.add_vertex(GlobalVarName, _, !Graph),
+    map.det_insert(GlobalVarName, GlobalVarDefn, !NameMap).
 
-:- pred add_rtti_defn_arcs(mlds_data_defn::in,
-    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+:- pred add_rtti_defn_arcs(mlds_global_var_defn::in,
+    digraph(mlds_global_var_name)::in, digraph(mlds_global_var_name)::out)
+    is det.
 
-add_rtti_defn_arcs(DataDefn, !Graph) :-
-    DataDefn = mlds_data_defn(DataName, _, _, Type, Initializer, _GCStmt),
+add_rtti_defn_arcs(GlobalVarDefn, !Graph) :-
+    GlobalVarDefn =
+        mlds_global_var_defn(GlobalVarName, _, _, Type, Initializer, _GCStmt),
     ( if Type = mlds_rtti_type(_) then
-        add_rtti_defn_arcs_initializer(DataName, Initializer, !Graph)
+        add_rtti_defn_arcs_initializer(GlobalVarName, Initializer, !Graph)
     else
         unexpected($module, $pred, "expected rtti entity_data")
     ).
 
-:- pred add_rtti_defn_arcs_initializer(mlds_data_name::in,
+:- pred add_rtti_defn_arcs_initializer(mlds_global_var_name::in,
     mlds_initializer::in,
-    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+    digraph(mlds_global_var_name)::in, digraph(mlds_global_var_name)::out)
+    is det.
 
-add_rtti_defn_arcs_initializer(DefnDataName, Initializer, !Graph) :-
+add_rtti_defn_arcs_initializer(DefnGlobalVarName, Initializer, !Graph) :-
     (
         Initializer = init_obj(Rval),
-        add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph)
+        add_rtti_defn_arcs_rval(DefnGlobalVarName, Rval, !Graph)
     ;
         ( Initializer = init_struct(_, Initializers)
         ; Initializer = init_array(Initializers)
         ),
-        list.foldl(add_rtti_defn_arcs_initializer(DefnDataName), Initializers,
-            !Graph)
+        list.foldl(add_rtti_defn_arcs_initializer(DefnGlobalVarName),
+            Initializers, !Graph)
     ;
         Initializer = no_initializer
     ).
 
-:- pred add_rtti_defn_arcs_rval(mlds_data_name::in, mlds_rval::in,
-    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+:- pred add_rtti_defn_arcs_rval(mlds_global_var_name::in, mlds_rval::in,
+    digraph(mlds_global_var_name)::in, digraph(mlds_global_var_name)::out)
+    is det.
 
-add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph) :-
+add_rtti_defn_arcs_rval(DefnGlobalVarName, Rval, !Graph) :-
     (
         Rval = ml_lval(Lval),
-        add_rtti_defn_arcs_lval(DefnDataName, Lval, !Graph)
+        add_rtti_defn_arcs_lval(DefnGlobalVarName, Lval, !Graph)
     ;
-        Rval = ml_mkword(_Tag, RvalA),
-        add_rtti_defn_arcs_rval(DefnDataName, RvalA, !Graph)
+        Rval = ml_mkword(_Tag, SubRvalA),
+        add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRvalA, !Graph)
     ;
         Rval = ml_const(Const),
-        add_rtti_defn_arcs_const(DefnDataName, Const, !Graph)
+        add_rtti_defn_arcs_const(DefnGlobalVarName, Const, !Graph)
     ;
-        Rval = ml_unop(_, RvalA),
-        add_rtti_defn_arcs_rval(DefnDataName, RvalA, !Graph)
+        Rval = ml_unop(_, SubRvalA),
+        add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRvalA, !Graph)
     ;
-        Rval = ml_binop(_, RvalA, RvalB),
-        add_rtti_defn_arcs_rval(DefnDataName, RvalA, !Graph),
-        add_rtti_defn_arcs_rval(DefnDataName, RvalB, !Graph)
+        Rval = ml_binop(_, SubRvalA, SubRvalB),
+        add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRvalA, !Graph),
+        add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRvalB, !Graph)
     ;
-        Rval = ml_mem_addr(Lval),
-        add_rtti_defn_arcs_lval(DefnDataName, Lval, !Graph)
+        Rval = ml_mem_addr(SubLval),
+        add_rtti_defn_arcs_lval(DefnGlobalVarName, SubLval, !Graph)
     ;
         Rval = ml_scalar_common(_)
     ;
         Rval = ml_scalar_common_addr(_)
     ;
         Rval = ml_vector_common_row_addr(_, RowRval),
-        add_rtti_defn_arcs_rval(DefnDataName, RowRval, !Graph)
+        add_rtti_defn_arcs_rval(DefnGlobalVarName, RowRval, !Graph)
     ;
         Rval = ml_self(_)
     ).
 
-:- pred add_rtti_defn_arcs_lval(mlds_data_name::in, mlds_lval::in,
-    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+:- pred add_rtti_defn_arcs_lval(mlds_global_var_name::in, mlds_lval::in,
+    digraph(mlds_global_var_name)::in, digraph(mlds_global_var_name)::out)
+    is det.
 
-add_rtti_defn_arcs_lval(DefnDataName, Lval, !Graph) :-
+add_rtti_defn_arcs_lval(DefnGlobalVarName, Lval, !Graph) :-
     (
-        Lval = ml_field(_, Rval, _, _, _),
-        add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph)
+        Lval = ml_field(_, SubRval, _, _, _),
+        add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRval, !Graph)
     ;
-        Lval = ml_mem_ref(Rval, _Type),
-        add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph)
+        Lval = ml_mem_ref(SubRval, _Type),
+        add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRval, !Graph)
     ;
-        Lval = ml_global_var_ref(env_var_ref(_))
+        Lval = ml_target_global_var_ref(env_var_ref(_))
     ;
-        Lval = ml_var(_, _)
+        Lval = ml_local_var(_, _)
+    ;
+        Lval = ml_global_var(_, _)
+        % ZZZ
     ).
 
-:- pred add_rtti_defn_arcs_const(mlds_data_name::in, mlds_rval_const::in,
-    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+:- pred add_rtti_defn_arcs_const(mlds_global_var_name::in,
+    mlds_rval_const::in,
+    digraph(mlds_global_var_name)::in, digraph(mlds_global_var_name)::out)
+    is det.
 
-add_rtti_defn_arcs_const(DefnDataName, Const, !Graph) :-
+add_rtti_defn_arcs_const(DefnGlobalVarName, Const, !Graph) :-
     (
         Const = mlconst_data_addr_rtti(_, RttiId),
-        DataName = mlds_rtti(RttiId),
-        digraph.add_vertices_and_edge(DefnDataName, DataName, !Graph)
+        GlobalVarName = gvn_rtti_var(RttiId),
+        digraph.add_vertices_and_edge(DefnGlobalVarName, GlobalVarName, !Graph)
     ;
         ( Const = mlconst_true
         ; Const = mlconst_false
@@ -1842,9 +1858,10 @@ add_rtti_defn_arcs_const(DefnDataName, Const, !Graph) :-
         ; Const = mlconst_float(_)
         ; Const = mlconst_string(_)
         ; Const = mlconst_multi_string(_)
-        ; Const = mlconst_named_const(_)
+        ; Const = mlconst_named_const(_, _)
         ; Const = mlconst_code_addr(_)
-        ; Const = mlconst_data_addr_var(_, _)
+        ; Const = mlconst_data_addr_local_var(_, _)
+        ; Const = mlconst_data_addr_global_var(_, _)
         ; Const = mlconst_data_addr_tabling(_, _, _)
         ; Const = mlconst_null(_)
         )

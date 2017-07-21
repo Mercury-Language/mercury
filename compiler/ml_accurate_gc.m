@@ -30,10 +30,10 @@
     % ml_gen_gc_statement(Var, Type, Context, Code):
     %
     % If accurate GC is enabled, and the specified variable might contain
-    % pointers, generate code to call `private_builtin.gc_trace' to trace
+    % pointers, generate code to call "private_builtin.gc_trace" to trace
     % the variable.
     %
-:- pred ml_gen_gc_statement(mlds_var_name::in, mer_type::in,
+:- pred ml_gen_gc_statement(mlds_local_var_name::in, mer_type::in,
     prog_context::in, mlds_gc_statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -48,14 +48,14 @@
     % may be a type variable from the callee's type declaration, but ActualType
     % will be the type from the caller.
     %
-    % We can't just use DeclType to generate the GC trace code, because there's
-    % no way to compute the type_info for type variables that come from the
-    % callee rather than the current procedure. And we can't just use
-    % ActualType, since DeclType may contain pointers even when ActualType
-    % doesn't (e.g. because DeclType may be a boxed float). So we need to pass
-    % both.
+    % We can't just use DeclType to generate the GC trace code, because
+    % there is no way to compute the type_info for type variables that
+    % come from the callee rather than the current procedure. And we can't
+    % just use ActualType, since DeclType may contain pointers even when
+    % ActualType doesn't (e.g. because DeclType may be a boxed float).
+    % So we need to pass both.
     %
-:- pred ml_gen_gc_statement_poly(mlds_var_name::in,
+:- pred ml_gen_gc_statement_poly(mlds_local_var_name::in,
     mer_type::in, mer_type::in, prog_context::in,
     mlds_gc_statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -69,7 +69,7 @@
     % This is used by ml_closure_gen.m to generate GC tracing code
     % for the local variables in closure wrapper functions.
     %
-:- pred ml_gen_gc_statement_with_typeinfo(mlds_var_name::in,
+:- pred ml_gen_gc_statement_with_typeinfo(mlds_local_var_name::in,
     mer_type::in, mlds_rval::in, prog_context::in,
     mlds_gc_statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -145,7 +145,7 @@ ml_gen_gc_statement_with_typeinfo(VarName, DeclType, TypeInfoRval, Context,
     --->    construct_from_type(mer_type)
     ;       already_provided(mlds_rval).
 
-:- pred ml_do_gen_gc_statement(mlds_var_name::in, mer_type::in,
+:- pred ml_do_gen_gc_statement(mlds_local_var_name::in, mer_type::in,
     how_to_get_type_info::in, prog_context::in,
     mlds_gc_statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -300,8 +300,8 @@ trace_type_info_type(Type, RealType) :-
     % Generate code to call to `private_builtin.gc_trace'
     % to trace the specified variable.
     %
-:- pred ml_gen_gc_trace_code(mlds_var_name::in, mer_type::in, mer_type::in,
-    prog_context::in, mlds_stmt::out,
+:- pred ml_gen_gc_trace_code(mlds_local_var_name::in, mer_type::in,
+    mer_type::in, prog_context::in, mlds_stmt::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
@@ -347,9 +347,9 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     ml_gen_info_get_var_types(!.Info, VarTypes),
     GenLocalVarDecl =
         ( func(Var) = VarDefn :-
-            LocalVarName = ml_gen_var_name(VarSet, Var),
+            LocalVarName = ml_gen_local_var_name(VarSet, Var),
             lookup_var_type(VarTypes, Var, LocalVarType),
-            VarDefn = ml_gen_mlds_var_decl(mlds_data_var(LocalVarName),
+            VarDefn = ml_gen_mlds_var_decl(LocalVarName,
                 mercury_type_to_mlds_type(ModuleInfo, LocalVarType),
                 gc_no_stmt, Context)
         ),
@@ -359,7 +359,8 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     % Combine the MLDS code fragments together.
     % XXX MLDS_DEFN
     GC_TraceCode = ml_gen_block(
-        list.map(wrap_data_defn, MLDS_NewobjLocals ++ MLDS_NonLocalVarDecls),
+        list.map(wrap_local_var_defn,
+            MLDS_NewobjLocals ++ MLDS_NonLocalVarDecls),
         [MLDS_TypeInfoStmt, MLDS_TraceStmt], Context).
 
     % ml_gen_trace_var(VarName, DeclType, TypeInfo, Context, Code):
@@ -367,14 +368,14 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     % given the variable's name, type, and the already-constructed type_info
     % for that type.
     %
-:- pred ml_gen_trace_var(ml_gen_info::in, mlds_var_name::in, mer_type::in,
-    mlds_rval::in, prog_context::in, mlds_stmt::out) is det.
+:- pred ml_gen_trace_var(ml_gen_info::in, mlds_local_var_name::in,
+    mer_type::in, mlds_rval::in, prog_context::in, mlds_stmt::out) is det.
 
 ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
     % Generate the lval for Var.
     ml_gen_info_get_module_info(Info, ModuleInfo),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-    ml_gen_var_lval(Info, VarName, MLDS_Type, VarLval),
+    ml_gen_local_var_lval(Info, VarName, MLDS_Type, VarLval),
 
     % Generate the address of `private_builtin.gc_trace/1#0'.
     PredName = "gc_trace",
@@ -438,7 +439,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
                 fnoi_module_name    :: mlds_module_name,
 
                 % The local variable declarations accumulated so far.
-                fnoi_locals         :: cord(mlds_data_defn),
+                fnoi_locals         :: cord(mlds_local_var_defn),
 
                 % A counter used to allocate variable names.
                 fnoi_next_id        :: counter
@@ -450,7 +451,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     % allocation.
     %
 :- pred fixup_newobj(mlds_module_name::in, mlds_stmt::in, mlds_stmt::out,
-    list(mlds_data_defn)::out) is det.
+    list(mlds_local_var_defn)::out) is det.
 
 fixup_newobj(ModuleName, Stmt0, Stmt, Defns) :-
     Info0 = fixup_newobj_info(ModuleName, cord.init, counter.init(0)),
@@ -550,7 +551,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         % later generate assignment statements to fill in the values properly
         % (see below).
         counter.allocate(Id, !.Fixup ^ fnoi_next_id, NextId),
-        VarName = mlds_comp_var(mcv_new_obj(Id)),
+        VarName = lvn_comp_var(lvnc_new_obj(Id)),
         VarType = mlds_array_type(mlds_generic_type),
         NullPointers = list.duplicate(list.length(ArgRvals),
             init_obj(ml_const(mlconst_null(mlds_generic_type)))),
@@ -558,7 +559,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         % This is used for the type_infos allocated during tracing,
         % and we don't need to trace them.
         GCStmt = gc_no_stmt,
-        VarDecl = ml_gen_mlds_var_decl_init(mlds_data_var(VarName), VarType,
+        VarDecl = ml_gen_mlds_var_decl_init(VarName, VarType,
             Initializer, GCStmt, Context),
         !Fixup ^ fnoi_next_id := NextId,
 
@@ -576,7 +577,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         % atomic_statement occurs, rather than at the local variable
         % declaration.
 
-        VarLval = ml_var(
+        VarLval = ml_local_var(
             qual(!.Fixup ^ fnoi_module_name, module_qual, VarName),
             VarType),
         PtrRval = ml_unop(cast(PointerType), ml_mem_addr(VarLval)),

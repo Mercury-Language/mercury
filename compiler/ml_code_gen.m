@@ -507,7 +507,7 @@
     % Generate declarations for a list of local variables.
     %
 :- pred ml_gen_local_var_decls(prog_varset::in, vartypes::in,
-    prog_context::in, prog_vars::in, list(mlds_data_defn)::out,
+    prog_context::in, list(prog_var)::in, list(mlds_local_var_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -581,7 +581,7 @@ ml_gen_goal(CodeModel, Goal, Decls, Stmts, !Info) :-
         GoalStmts0, GoalStmts, !Info),
 
     % XXX MLDS_DEFN
-    Decls = list.map(wrap_data_defn, VarDecls) ++ GoalDecls,
+    Decls = list.map(wrap_local_var_defn, VarDecls) ++ GoalDecls,
     Stmts = GoalStmts.
 
 %-----------------------------------------------------------------------------%
@@ -604,7 +604,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
             BuiltinState = not_builtin,
             ml_gen_var_list(!.Info, ArgVars, ArgLvals),
             ml_gen_info_get_varset(!.Info, VarSet),
-            ArgNames = ml_gen_var_names(VarSet, ArgVars),
+            ArgNames = ml_gen_local_var_names(VarSet, ArgVars),
             ml_variable_types(!.Info, ArgVars, ActualArgTypes),
             ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
                 CodeModel, Context, no, Decls, Stmts, !Info)
@@ -636,7 +636,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
                 PredId, ProcId, Args, ExtraArgs, ForeignCode,
                 ContextToUse, DataDecls, Stmts, !Info),
             % XXX MLDS_DEFN
-            Decls = list.map(wrap_data_defn, DataDecls)
+            Decls = list.map(wrap_local_var_defn, DataDecls)
         ;
             MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
             ml_gen_trace_runtime_cond(TraceRuntimeCond, ContextToUse,
@@ -657,7 +657,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
         ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context, GoalInfo,
             DataDecls, Stmts, !Info),
         % XXX MLDS_DEFN
-        Decls = list.map(wrap_data_defn, DataDecls)
+        Decls = list.map(wrap_local_var_defn, DataDecls)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
         ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info)
@@ -992,7 +992,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info) :-
 
         % Package it all up in the right order.
         % XXX MLDS_DEFN
-        Decls = [mlds_data(CondVarDecl) | CondDecls] ++
+        Decls = [mlds_local_var(CondVarDecl) | CondDecls] ++
             [mlds_function(ThenFunc)],
         Stmts = [SetCondFalse | CondStmts] ++ [IfStmt]
     ).
@@ -1188,8 +1188,8 @@ ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
         ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns, !Info)
     ;
         IsDummy = is_not_dummy_type,
-        VarName = ml_gen_var_name(VarSet, Var),
-        ml_gen_var_decl(VarName, Type, Context, Defn, !Info),
+        VarName = ml_gen_local_var_name(VarSet, Var),
+        ml_gen_local_var_decl(VarName, Type, Context, Defn, !Info),
         ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns0, !Info),
         Defns = [Defn | Defns0]
     ).

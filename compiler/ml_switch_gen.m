@@ -121,7 +121,7 @@
     %
 :- pred ml_gen_switch(prog_var::in, can_fail::in, list(case)::in,
     code_model::in, prog_context::in, hlds_goal_info::in,
-    list(mlds_data_defn)::out, list(mlds_stmt)::out,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate an appropriate default for a switch.
@@ -263,7 +263,7 @@ ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
 
 :- pred ml_gen_smart_string_switch(prog_var::in, can_fail::in,
     list(tagged_case)::in, code_model::in, prog_context::in,
-    hlds_goal_info::in, list(mlds_data_defn)::out, list(mlds_stmt)::out,
+    hlds_goal_info::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,

@@ -763,28 +763,40 @@
     %
 :- pred id_to_c_identifier(rtti_id::in, string::out) is det.
 
+:- type target_prefixes
+    --->    target_prefixes(
+                % The prefixes that mlds_to_{java,cs}.m respectively
+                % need to put in front of the attached string.
+                java_prefix     :: string,
+                csharp_prefix   :: string
+            ).
+
     % Return the C representation of a pred_or_func indication.
     %
-:- pred pred_or_func_to_string(pred_or_func::in, string::out) is det.
+:- pred pred_or_func_to_string(pred_or_func::in,
+    target_prefixes::out, string::out) is det.
 
     % Return the C representation of a secondary tag location.
     %
-:- pred sectag_locn_to_string(sectag_locn::in, string::out) is det.
+:- pred sectag_locn_to_string(sectag_locn::in,
+    target_prefixes::out, string::out) is det.
 
     % Return the C representation of a secondary tag location.
     %
-:- pred sectag_and_locn_to_locn_string(sectag_and_locn::in, string::out)
+:- pred sectag_and_locn_to_locn_string(sectag_and_locn::in,
+    target_prefixes::out, string::out)
     is det.
 
     % Return the C representation of a functor's subtype info.
     %
-:- pred functor_subtype_info_to_string(functor_subtype_info::in, string::out)
-    is det.
+:- pred functor_subtype_info_to_string(functor_subtype_info::in,
+    target_prefixes::out, string::out) is det.
 
     % Return the C representation of the type_ctor_rep value of the given
     % type_ctor.
     %
-:- pred type_ctor_rep_to_string(type_ctor_data::in, string::out) is det.
+:- pred type_ctor_rep_to_string(type_ctor_data::in,
+    target_prefixes::out, string::out) is det.
 
     % Return a name which identifies the rtti_type_info
     %
@@ -1577,10 +1589,19 @@ type_info_list_to_string(TypeInfoList) =
 
 %-----------------------------------------------------------------------------%
 
-pred_or_func_to_string(pf_predicate, "MR_PREDICATE").
-pred_or_func_to_string(pf_function,  "MR_FUNCTION").
+pred_or_func_to_string(PredOrFunc, TargetPrefixes, String) :-
+    TargetPrefixes = target_prefixes("private_builtin.", "runtime.Constants."),
+    (
+        PredOrFunc = pf_predicate,
+        String = "MR_PREDICATE"
+    ;
+        PredOrFunc = pf_function,
+        String = "MR_FUNCTION"
+    ).
 
-sectag_locn_to_string(SecTag, String) :-
+sectag_locn_to_string(SecTag, TargetPrefixes, String) :-
+    TargetPrefixes =
+        target_prefixes("private_builtin.", "runtime.Sectag_Locn."),
     (
         SecTag = sectag_none,
         String = "MR_SECTAG_NONE"
@@ -1595,7 +1616,9 @@ sectag_locn_to_string(SecTag, String) :-
         String = "MR_SECTAG_REMOTE"
     ).
 
-sectag_and_locn_to_locn_string(SecTag, String) :-
+sectag_and_locn_to_locn_string(SecTag, TargetPrefixes, String) :-
+    TargetPrefixes =
+        target_prefixes("private_builtin.", "runtime.Sectag_Locn."),
     (
         SecTag = sectag_locn_none,
         String = "MR_SECTAG_NONE"
@@ -1610,7 +1633,9 @@ sectag_and_locn_to_locn_string(SecTag, String) :-
         String = "MR_SECTAG_REMOTE"
     ).
 
-functor_subtype_info_to_string(FunctorSubtypeInfo, String) :-
+functor_subtype_info_to_string(FunctorSubtypeInfo, TargetPrefixes, String) :-
+    TargetPrefixes =
+        target_prefixes("private_builtin.", "runtime.FunctorSubtypeInfo."),
     (
         FunctorSubtypeInfo = functor_subtype_none,
         String = "MR_FUNCTOR_SUBTYPE_NONE"
@@ -1619,7 +1644,9 @@ functor_subtype_info_to_string(FunctorSubtypeInfo, String) :-
         String = "MR_FUNCTOR_SUBTYPE_EXISTS"
     ).
 
-type_ctor_rep_to_string(TypeCtorData, RepStr) :-
+type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
+    TargetPrefixes =
+        target_prefixes("private_builtin.", "runtime.TypeCtorRep."),
     TypeCtorDetails = TypeCtorData ^ tcr_rep_details,
     (
         TypeCtorDetails = tcd_enum(TypeCtorUserEq, _, _, _, IsDummy, _),

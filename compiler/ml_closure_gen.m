@@ -191,7 +191,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
             ClosureArgInitsAndTypes, !GlobalData),
         assoc_list.keys(ClosureArgInitsAndTypes, ClosureArgInits),
 
-        ml_stack_layout_construct_tvar_vector(ModuleInfo, mccv_typevar_vector,
+        ml_stack_layout_construct_tvar_vector(ModuleInfo, mgcv_typevar_vector,
             Context, TVarLocnMap, TVarVectorRval, TVarVectorType, !GlobalData),
         InitTVarVector =
             init_obj(ml_unop(box(TVarVectorType), TVarVectorRval)),
@@ -204,7 +204,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
         module_info_get_name(ModuleInfo, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
         ClosureLayoutType = mlds_array_type(mlds_generic_type),
-        ml_gen_static_scalar_const_addr(MLDS_ModuleName, mccv_closure_layout,
+        ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_closure_layout,
             ClosureLayoutType, init_array(Inits), Context,
             ClosureLayoutAddrRval, !GlobalData),
         ml_gen_info_set_global_data(!.GlobalData, !Info)
@@ -424,7 +424,7 @@ arg_type_infos(plain_type_info(_TypeCtor, ArgTIs)) = ArgTIs.
 arg_type_infos(var_arity_type_info(_VarArityId, ArgTIs)) = ArgTIs.
 
 :- pred ml_stack_layout_construct_tvar_vector(module_info::in,
-    mlds_compiler_const_var::in, prog_context::in,
+    mlds_global_const_var::in, prog_context::in,
     map(tvar, set(layout_locn))::in, mlds_rval::out, mlds_type::out,
     ml_global_data::in, ml_global_data::out) is det.
 
@@ -676,7 +676,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_varset(ProcInfo, ProcVarSet),
     ProcArity = list.length(ProcHeadVars),
-    ProcHeadVarNames = ml_gen_var_names(ProcVarSet, ProcHeadVars),
+    ProcHeadVarNames = ml_gen_local_var_names(ProcVarSet, ProcHeadVars),
 
     % allocate some fresh type variables to use as the Mercury types
     % of the boxed arguments.
@@ -726,7 +726,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         ; ClosureKind = typeclass_info_closure
         ),
         ClosureArgType = mlds_generic_type,
-        ClosureArgName = mlds_comp_var(mcv_closure_arg),
+        ClosureArgName = lvn_comp_var(lvnc_closure_arg),
         ClosureArgDeclType = ml_make_boxed_type,
         gen_closure_gc_statement(ClosureArgName, ClosureArgDeclType,
             ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
@@ -758,7 +758,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     %
     (
         MaybeClosureA = yes({ClosureArgType1, ClosureArgName1}),
-        ClosureName = mlds_comp_var(mcv_closure),
+        ClosureName = lvn_comp_var(lvnc_closure),
         ClosureType = mlds_generic_type,
         % If we were to generate GC tracing code for the closure
         % pointer, it would look like this:
@@ -771,10 +771,10 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         % (unlike the closure_arg parameter) it isn't referenced from
         % the GC tracing for other variables.
         ClosureGCStmt = gc_no_stmt,
-        ClosureDecl = ml_gen_mlds_var_decl(mlds_data_var(ClosureName),
-            ClosureType, ClosureGCStmt, Context),
-        ml_gen_var_lval(!.Info, ClosureName, ClosureType, ClosureLval),
-        ml_gen_var_lval(!.Info, ClosureArgName1, ClosureArgType1,
+        ClosureDecl = ml_gen_mlds_var_decl(ClosureName, ClosureType,
+            ClosureGCStmt, Context),
+        ml_gen_local_var_lval(!.Info, ClosureName, ClosureType, ClosureLval),
+        ml_gen_local_var_lval(!.Info, ClosureArgName1, ClosureArgType1,
             ClosureArgLval),
         InitClosure = ml_gen_assign(ClosureLval, ml_lval(ClosureArgLval),
             Context),
@@ -855,7 +855,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % Insert the stuff to declare and initialize the closure.
     (
         MaybeClosureB = yes({ClosureDecl1, InitClosure1}),
-        Decls1 = [mlds_data(ClosureDecl1) | Decls0],
+        Decls1 = [mlds_local_var(ClosureDecl1) | Decls0],
         Stmts1 = [InitClosure1 | Stmts0]
     ;
         MaybeClosureB = no,
@@ -872,7 +872,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ;
         CodeModel = model_semi,
         SucceededVarDecl = ml_gen_succeeded_var_decl(Context),
-        Decls2 = [mlds_data(SucceededVarDecl) | Decls1]
+        Decls2 = [mlds_local_var(SucceededVarDecl) | Decls1]
     ),
 
     % Add an appropriate `return' statement.
@@ -895,8 +895,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % Insert the local declarations of the wrapper's output arguments,
     % if any (this is needed for functions and for `--(non)det-copy-out'),
     % and the `type_params' variable used by the GC code.
-    Decls = list.map(wrap_data_defn, GC_Decls) ++
-        list.map(wrap_data_defn, WrapperHeadVarDecls) ++ Decls2,
+    Decls = list.map(wrap_local_var_defn, GC_Decls ++ WrapperHeadVarDecls)
+        ++ Decls2,
 
     % If the wrapper function was model_non, then pop the success continuation
     % that we pushed.
@@ -927,7 +927,7 @@ arg_delete_gc_statement(Argument0) = Argument :-
     % Generate the GC trace code for `closure_arg' or `closure'
     % (see ml_gen_closure_wrapper above).
     %
-:- pred gen_closure_gc_statement(mlds_var_name::in, mer_type::in,
+:- pred gen_closure_gc_statement(mlds_local_var_name::in, mer_type::in,
     closure_kind::in, list(mer_type)::in, purity::in, pred_or_func::in,
     prog_context::in, mlds_gc_statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -974,13 +974,13 @@ ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Stmt, FunctionDefn,
         MaybePredProcId, DefnFuncParams, Body, Attributes,
         EnvVarNames, TailRec).
 
-:- func ml_gen_wrapper_head_var_names(int, int) = list(mlds_var_name).
+:- func ml_gen_wrapper_head_var_names(int, int) = list(mlds_local_var_name).
 
 ml_gen_wrapper_head_var_names(Num, Max) = VarNames :-
     ( if Num > Max then
         VarNames = []
     else
-        HeadVarName = mlds_comp_var(mcv_wrapper_arg(Num)),
+        HeadVarName = lvn_comp_var(lvnc_wrapper_arg(Num)),
         TailVarNames = ml_gen_wrapper_head_var_names(Num + 1, Max),
         VarNames = [HeadVarName | TailVarNames]
     ).
@@ -992,10 +992,11 @@ ml_gen_wrapper_head_var_names(Num, Max) = VarNames :-
     % modes. Also generate local definitions for output variables, if those
     % output variables will be copied out, rather than passed by reference.
     %
-:- pred ml_gen_wrapper_arg_lvals(list(mlds_var_name)::in, list(mer_type)::in,
-    list(mer_mode)::in, pred_or_func::in, code_model::in, prog_context::in,
-    int::in, list(mlds_data_defn)::out, list(mlds_lval)::out,
-    list(mlds_lval)::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_wrapper_arg_lvals(list(mlds_local_var_name)::in,
+    list(mer_type)::in, list(mer_mode)::in, pred_or_func::in, code_model::in,
+    prog_context::in, int::in, list(mlds_local_var_defn)::out,
+    list(mlds_lval)::out, list(mlds_lval)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
         ArgNum, Defns, Lvals, CopyOutLvals, !Info) :-
@@ -1016,7 +1017,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
             CodeModel, Context, ArgNum + 1, DefnsTail, LvalsTail,
             CopyOutLvalsTail, !Info),
         ml_gen_type(!.Info, Type, MLDS_Type),
-        ml_gen_var_lval(!.Info, Name, MLDS_Type, VarLval),
+        ml_gen_local_var_lval(!.Info, Name, MLDS_Type, VarLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         mode_to_top_functor_mode(ModuleInfo, Mode, Type, ArgTopFunctorMode),
         (
@@ -1088,26 +1089,29 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
     %   type_params = MR_materialize_typeclass_info_typeinfos(
     %       closure_arg, closure_layout);
     %
-:- pred ml_gen_closure_wrapper_gc_decls(closure_kind::in, mlds_var_name::in,
-    mlds_type::in, pred_id::in, proc_id::in, prog_context::in,
-    list(mlds_data_defn)::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_closure_wrapper_gc_decls(closure_kind::in,
+    mlds_local_var_name::in, mlds_type::in, pred_id::in, proc_id::in,
+    prog_context::in, list(mlds_local_var_defn)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         PredId, ProcId, Context, GC_Decls, !Info) :-
-    ml_gen_var_lval(!.Info, ClosureArgName, ClosureArgType, ClosureArgLval),
+    ml_gen_local_var_lval(!.Info, ClosureArgName, ClosureArgType,
+        ClosureArgLval),
 
-    ClosureLayoutPtrName = mlds_comp_var(mcv_closure_layout_ptr),
+    ClosureLayoutPtrName = lvn_comp_var(lvnc_closure_layout_ptr),
     % This type is really `const MR_Closure_Layout *', but there is no easy
     % way to represent that in the MLDS; using MR_Box instead works fine.
     ClosureLayoutPtrType = mlds_generic_type,
-    ml_gen_var_lval(!.Info, ClosureLayoutPtrName, ClosureLayoutPtrType,
+    ml_gen_local_var_lval(!.Info, ClosureLayoutPtrName, ClosureLayoutPtrType,
         ClosureLayoutPtrLval),
 
-    TypeParamsName = mlds_comp_var(mcv_type_params),
+    TypeParamsName = lvn_comp_var(lvnc_type_params),
     % This type is really MR_TypeInfoParams, but there is no easy way to
     % represent that in the MLDS; using MR_Box instead works fine.
     TypeParamsType = mlds_generic_type,
-    ml_gen_var_lval(!.Info, TypeParamsName, TypeParamsType, TypeParamsLval),
+    ml_gen_local_var_lval(!.Info, TypeParamsName, TypeParamsType,
+        TypeParamsLval),
     (
         ClosureKind = higher_order_proc_closure,
         ClosureLayoutPtrGCInitFragments = [
@@ -1157,14 +1161,13 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
     % We use 'gc_initialiser' for the garbage collection code as it is code to
     % initialise local variables used during garbage collection and must
     % run before variables are traced.
-    ClosureLayoutPtrDecl = ml_gen_mlds_var_decl(
-        mlds_data_var(ClosureLayoutPtrName), ClosureLayoutPtrType,
-        gc_initialiser(ClosureLayoutPtrGCInit), Context),
+    ClosureLayoutPtrDecl = ml_gen_mlds_var_decl(ClosureLayoutPtrName,
+        ClosureLayoutPtrType, gc_initialiser(ClosureLayoutPtrGCInit), Context),
     % We use 'gc_initialiser' for the garbage collection code as it is code to
     % initialise local variables used during garbage collection and must
     % run before variables are traced.
-    TypeParamsDecl = ml_gen_mlds_var_decl(mlds_data_var(TypeParamsName),
-        TypeParamsType, gc_initialiser(TypeParamsGCInit), Context),
+    TypeParamsDecl = ml_gen_mlds_var_decl(TypeParamsName, TypeParamsType,
+        gc_initialiser(TypeParamsGCInit), Context),
     GC_Decls = [ClosureLayoutPtrDecl, TypeParamsDecl].
 
 :- pred ml_gen_closure_field_lvals(mlds_lval::in, int::in, int::in, int::in,

@@ -167,12 +167,13 @@ type_is_enum(Type) :-
 rval_is_enum_object(Rval) :-
     Rval = ml_lval(Lval),
     (
-        Lval = ml_var(_, VarType),
-        type_is_enum(VarType)
+        Lval = ml_local_var(_, Type)
     ;
-        Lval = ml_field(_, _, _, FieldType, _),
-        type_is_enum(FieldType)
-    ).
+        Lval = ml_global_var(_, Type)
+    ;
+        Lval = ml_field(_, _, _, Type, _)
+    ),
+    type_is_enum(Type).
 
     % Succeeds iff a given string matches the unqualified interface name
     % of a interface in Mercury's Java runtime system.
@@ -283,14 +284,14 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
-        FlatRttiDefns, MaybeNonFlatDefns, FlatCellDefns),
+        FlatRttiDefns, ClosureWrapperFuncDefns, FlatCellDefns),
     % XXX MLDS_DEFN
     Defns0 = list.map(wrap_class_defn, TypeDefns) ++
-        list.map(wrap_data_defn, TableStructDefns) ++
-        ProcDefns,
-    GlobalDefns = list.map(wrap_data_defn, FlatRttiDefns) ++
-        MaybeNonFlatDefns ++
-        list.map(wrap_data_defn, FlatCellDefns),
+        list.map(wrap_global_var_defn, TableStructDefns) ++
+        list.map(wrap_function_defn, ProcDefns),
+    GlobalDefns = list.map(wrap_global_var_defn, FlatRttiDefns) ++
+        list.map(wrap_function_defn, ClosureWrapperFuncDefns) ++
+        list.map(wrap_global_var_defn, FlatCellDefns),
 
     % Do NOT enforce the outermost "mercury" qualifier here. This module name
     % is compared with other module names in the MLDS, to avoid unnecessary
@@ -343,21 +344,22 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     module_source_filename(Globals, ModuleName, SourceFileName, !IO),
     Info = init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap),
     output_src_start_for_java(Info, Indent, ModuleName, Imports,
-        ForeignDeclCodes, Defns, !IO),
+        ForeignDeclCodes, ProcDefns, !IO),
     io.write_list(ForeignBodyCodes, "\n", output_java_body_code(Info, Indent),
         !IO),
 
     list.filter_map(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
 
     io.write_string("\n// RttiDefns\n", !IO),
-    list.foldl(output_data_defn_for_java(Info, Indent + 1, oa_alloc_only),
+    list.foldl(
+        output_global_var_defn_for_java(Info, Indent + 1, oa_alloc_only),
         RttiDefns, !IO),
     output_rtti_assignments_for_java(Info, Indent + 1, RttiDefns, !IO),
 
-    list.filter_map(defn_is_data, NonRttiDefns, DataDefns, NonDataDefns),
+    list.filter_map(defn_is_global_var, NonRttiDefns, DataDefns, NonDataDefns),
     io.write_string("\n// DataDefns\n", !IO),
-    output_data_decls_for_java(Info, Indent + 1, DataDefns, !IO),
-    output_data_assignments_for_java(Info, Indent + 1, DataDefns, !IO),
+    output_global_var_decls_for_java(Info, Indent + 1, DataDefns, !IO),
+    output_global_var_assignments_for_java(Info, Indent + 1, DataDefns, !IO),
 
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.
@@ -370,7 +372,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         VectorCellGroupMap, !IO),
 
     io.write_string("\n// NonDataDefns\n", !IO),
-    output_defns_for_java(Info, Indent + 1, oa_none, NonDataDefns, !IO),
+    list.sort(NonDataDefns, SortedNonDataDefns),
+    output_defns_for_java(Info, Indent + 1, oa_none, SortedNonDataDefns, !IO),
 
     io.write_string("\n// ExportDefns\n", !IO),
     output_exports_for_java(Info, Indent + 1, ExportDefns, !IO),
@@ -624,7 +627,7 @@ output_export_param_ref_out(Info, Indent, Argument, !IO) :-
         output_type_for_java(Info, Type, !IO),
         io.write_string(" ", !IO)
     ),
-    output_mlds_var_name_for_java(VarName, !IO).
+    output_local_var_name_for_java(VarName, !IO).
 
 :- pred write_export_call_for_java(mlds_qualified_function_name::in,
     list(mlds_argument)::in, io::di, io::uo) is det.
@@ -640,7 +643,7 @@ write_export_call_for_java(QualFuncName, Parameters, !IO) :-
 
 write_argument_name_for_java(Arg, !IO) :-
     Arg = mlds_argument(VarName, _, _),
-    output_mlds_var_name_for_java(VarName, !IO).
+    output_local_var_name_for_java(VarName, !IO).
 
 :- pred assign_ref_output(java_out_info::in, indent::in, mlds_argument::in,
     int::in, int::out, io::di, io::uo) is det.
@@ -648,7 +651,7 @@ write_argument_name_for_java(Arg, !IO) :-
 assign_ref_output(Info, Indent, Arg, N, N + 1, !IO) :-
     Arg = mlds_argument(VarName, Type, _),
     output_n_indents(Indent, !IO),
-    output_mlds_var_name_for_java(VarName, !IO),
+    output_local_var_name_for_java(VarName, !IO),
     ( if Type = mlds_ptr_type(InnerType) then
         boxed_type_to_string_for_java(Info, InnerType, TypeString)
     else
@@ -728,8 +731,8 @@ output_exported_enum_constant_for_java(Info, Indent, MLDS_Type,
 % classes are based purely on the method name.
 
 :- type call_method_inputs
-    --->    cmi_separate(list(mlds_var_name))
-    ;       cmi_array(mlds_var_name).
+    --->    cmi_separate(list(mlds_local_var_name))
+    ;       cmi_array(mlds_local_var_name).
 
 :- pred make_code_addr_map_for_java(list(mlds_code_addr)::in,
     multi_map(arity, mlds_code_addr)::in,
@@ -764,18 +767,19 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         unexpected($pred, "no addresses")
     ;
         CodeAddrs = [_],
-        DataDefns = [],
+        FieldVarDefns = [],
         CtorDefns = []
     ;
         CodeAddrs = [_, _ | _],
         Context = term.context_init,
 
         % Create the member variable.
-        CtorArgName = mlds_comp_var(mcv_ptr_num),
-        DataDefn = mlds_data_defn(mlds_data_var(CtorArgName), Context,
+        CtorArgName = lvn_comp_var(lvnc_ptr_num),
+        FieldVarDefn = mlds_field_var_defn(
+            fvn_env_field_from_local_var(CtorArgName), Context,
             ml_gen_const_member_data_decl_flags, mlds_native_int_type,
             no_initializer, gc_no_stmt),
-        DataDefns = [DataDefn],
+        FieldVarDefns = [FieldVarDefn],
 
         % Create the constructor function.
         QualClassName = qual(MLDS_ModuleName, module_qual, ClassName),
@@ -790,8 +794,8 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
             gc_no_stmt)],
         CtorReturnValues = [],
 
-        CtorArgLval = ml_var(qual(MLDS_ModuleName, type_qual, CtorArgName),
-            mlds_native_int_type),
+        QualCtorArgName = qual(MLDS_ModuleName, type_qual, CtorArgName),
+        CtorArgLval = ml_local_var(QualCtorArgName, mlds_native_int_type),
         CtorArgRval = ml_lval(CtorArgLval),
         CtorStmt = ml_stmt_atomic(assign(FieldLval, CtorArgRval), Context),
 
@@ -827,7 +831,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
 
     % Put it all together.
     % XXX MLDS_DEFN
-    ClassMembers = list.map(wrap_data_defn, DataDefns) ++
+    ClassMembers = list.map(wrap_field_var_defn, FieldVarDefns) ++
         [mlds_function(MethodDefn)],
     ClassTypeName = mlds_type_name(ClassName, 0),
     ClassContext = term.context_init,
@@ -857,7 +861,7 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
         list.map2(create_generic_arg, 1 .. Arity, ArgNames, MethodArgs),
         InputArgs = cmi_separate(ArgNames)
     else
-        ArgName = mlds_comp_var(mcv_args),
+        ArgName = lvn_comp_var(lvnc_args),
         ArgType = mlds_array_type(mlds_generic_type),
         Arg = mlds_argument(ArgName, ArgType, gc_no_stmt),
         MethodArgs = [Arg],
@@ -887,9 +891,9 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
             ),
         Cases = list.map_corresponding(MakeCase, 0 .. MaxCase, CodeAddrStmts),
 
-        SwitchVarName = mlds_comp_var(mcv_ptr_num),
+        SwitchVarName = lvn_comp_var(lvnc_ptr_num),
         SwitchVar = qual(MLDS_ModuleName, module_qual, SwitchVarName),
-        SwitchVarRval = ml_lval(ml_var(SwitchVar, mlds_native_int_type)),
+        SwitchVarRval = ml_lval(ml_local_var(SwitchVar, mlds_native_int_type)),
         SwitchRange = mlds_switch_range(0, MaxCase),
         Stmt = ml_stmt_switch(mlds_native_int_type, SwitchVarRval,
             SwitchRange, Cases, default_is_unreachable, Context)
@@ -916,11 +920,11 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
         MethodMaybeID, MethodParams, body_defined_here(Stmt),
         MethodAttribs, MethodEnvVarNames, no).
 
-:- pred create_generic_arg(int::in, mlds_var_name::out, mlds_argument::out)
-    is det.
+:- pred create_generic_arg(int::in, mlds_local_var_name::out,
+    mlds_argument::out) is det.
 
 create_generic_arg(I, ArgName, Arg) :-
-    ArgName = mlds_comp_var(mcv_arg(I)),
+    ArgName = lvn_comp_var(lvnc_arg(I)),
     Arg = mlds_argument(ArgName, mlds_generic_type, gc_no_stmt).
 
 :- pred generate_call_statement_for_addr(call_method_inputs::in,
@@ -947,7 +951,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
 
     % Create a temporary variable to store the result of the call to the
     % original method.
-    ReturnVarName = mlds_comp_var(mcv_return_value),
+    ReturnVarName = lvn_comp_var(lvnc_return_value),
     ReturnVar = qual(ModuleName, module_qual, ReturnVarName),
 
     % Create a declaration for this variable.
@@ -961,13 +965,12 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
         OrigRetTypes = [_, _ | _],
         ReturnVarType = mlds_array_type(mlds_generic_type)
     ),
-    ReturnLval = ml_var(ReturnVar, ReturnVarType),
-    ReturnDataName = mlds_data_var(ReturnVarName),
+    ReturnLval = ml_local_var(ReturnVar, ReturnVarType),
 
     Context = term.context_init,
     ReturnDecFlags = ml_gen_local_var_decl_flags,
     GCStmt = gc_no_stmt,  % The Java back-end does its own GC.
-    ReturnVarDefn = mlds_data_defn(ReturnDataName, Context, ReturnDecFlags,
+    ReturnVarDefn = mlds_local_var_defn(ReturnVarName, Context, ReturnDecFlags,
         ReturnVarType, no_initializer, GCStmt),
 
     % Create the call to the original method.
@@ -993,24 +996,25 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
     ReturnStmt = ml_stmt_return([ReturnRval], Context),
 
     % XXX MLDS_DEFN
-    Stmt = ml_stmt_block([mlds_data(ReturnVarDefn)], [CallStmt, ReturnStmt],
-        Context).
+    Stmt = ml_stmt_block([mlds_local_var(ReturnVarDefn)],
+        [CallStmt, ReturnStmt], Context).
 
 :- pred generate_call_method_nth_arg(mlds_module_name::in, mlds_type::in,
-    mlds_var_name::in, mlds_rval::out) is det.
+    mlds_local_var_name::in, mlds_rval::out) is det.
 
 generate_call_method_nth_arg(ModuleName, Type, MethodArgVariable, CallArg) :-
     CallArgLabel = qual(ModuleName, module_qual, MethodArgVariable),
-    Rval = ml_lval(ml_var(CallArgLabel, mlds_generic_type)),
+    Rval = ml_lval(ml_local_var(CallArgLabel, mlds_generic_type)),
     CallArg = ml_unop(unbox(Type), Rval).
 
 :- pred generate_call_method_args_from_array(list(mlds_type)::in,
-    mlds_var::in, int::in, list(mlds_rval)::in, list(mlds_rval)::out) is det.
+    mlds_local_var::in, int::in, list(mlds_rval)::in, list(mlds_rval)::out)
+    is det.
 
 generate_call_method_args_from_array([], _, _, Args, Args).
 generate_call_method_args_from_array([Type | Types], ArrayVar, Counter,
         Args0, Args) :-
-    ArrayRval = ml_lval(ml_var(ArrayVar, mlds_native_int_type)),
+    ArrayRval = ml_lval(ml_local_var(ArrayVar, mlds_native_int_type)),
     IndexRval = ml_const(mlconst_int(Counter)),
     ElemType = array_elem_scalar(scalar_elem_generic),
     Rval = ml_binop(array_index(ElemType), ArrayRval, IndexRval),
@@ -1090,7 +1094,9 @@ shorten_long_class_names(ModuleName, Defns0, Defns) :-
 
 maybe_shorten_long_class_name(!Defn, !Renaming) :-
     (
-        ( !.Defn = mlds_data(_)
+        ( !.Defn = mlds_global_var(_)
+        ; !.Defn = mlds_local_var(_)
+        ; !.Defn = mlds_field_var(_)
         ; !.Defn = mlds_function(_)
         )
     ;
@@ -1151,14 +1157,32 @@ replace_non_alphanum_underscore(Char) =
 
 rename_class_names_defn(Renaming, Defn0, Defn) :-
     (
-        Defn0 = mlds_data(DataDefn0),
-        DataDefn0 = mlds_data_defn(Name, Context, Flags,
+        Defn0 = mlds_global_var(GlobalVarDefn0),
+        GlobalVarDefn0 = mlds_global_var_defn(GlobalVarName, Context, Flags,
             Type0, Initializer0, GCStmt),
         rename_class_names_type(Renaming, Type0, Type),
         rename_class_names_initializer(Renaming, Initializer0, Initializer),
-        DataDefn = mlds_data_defn(Name, Context, Flags,
+        GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
             Type, Initializer, GCStmt),
-        Defn = mlds_data(DataDefn)
+        Defn = mlds_global_var(GlobalVarDefn)
+    ;
+        Defn0 = mlds_local_var(LocalVarDefn0),
+        LocalVarDefn0 = mlds_local_var_defn(LocalVarName, Context, Flags,
+            Type0, Initializer0, GCStmt),
+        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_initializer(Renaming, Initializer0, Initializer),
+        LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Flags,
+            Type, Initializer, GCStmt),
+        Defn = mlds_local_var(LocalVarDefn)
+    ;
+        Defn0 = mlds_field_var(FieldVarDefn0),
+        FieldVarDefn0 = mlds_field_var_defn(FieldVarName, Context, Flags,
+            Type0, Initializer0, GCStmt),
+        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_initializer(Renaming, Initializer0, Initializer),
+        FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags,
+            Type, Initializer, GCStmt),
+        Defn = mlds_field_var(FieldVarDefn)
     ;
         Defn0 = mlds_function(FunctionDefn0),
         FunctionDefn0 = mlds_function_defn(Name, Context, Flags,
@@ -1453,11 +1477,15 @@ rename_class_names_lval(Renaming, !Lval) :-
         rename_class_names_type(Renaming, Type0, Type),
         !:Lval = ml_mem_ref(Rval, Type)
     ;
-        !.Lval = ml_global_var_ref(_)
+        !.Lval = ml_target_global_var_ref(_)
     ;
-        !.Lval = ml_var(Var, Type0),
+        !.Lval = ml_global_var(GlobalVar, Type0),
         rename_class_names_type(Renaming, Type0, Type),
-        !:Lval = ml_var(Var, Type)
+        !:Lval = ml_global_var(GlobalVar, Type)
+    ;
+        !.Lval = ml_local_var(LocalVar, Type0),
+        rename_class_names_type(Renaming, Type0, Type),
+        !:Lval = ml_local_var(LocalVar, Type)
     ).
 
 :- pred rename_class_names_field_id(class_name_renaming::in,
@@ -1546,9 +1574,10 @@ rename_class_names_rval_const(Renaming, !Const) :-
         ; !.Const = mlconst_float(_)
         ; !.Const = mlconst_string(_)
         ; !.Const = mlconst_multi_string(_)
-        ; !.Const = mlconst_named_const(_)
+        ; !.Const = mlconst_named_const(_, _)
         ; !.Const = mlconst_code_addr(_)
-        ; !.Const = mlconst_data_addr_var(_, _)
+        ; !.Const = mlconst_data_addr_local_var(_, _)
+        ; !.Const = mlconst_data_addr_global_var(_, _)
         ; !.Const = mlconst_data_addr_rtti(_, _)
         ; !.Const = mlconst_data_addr_tabling(_, _, _)
         )
@@ -1707,10 +1736,10 @@ output_env_var_definition_for_java(Indent, EnvVarName, !IO) :-
 
 :- pred output_src_start_for_java(java_out_info::in, indent::in,
     mercury_module_name::in, mlds_imports::in, list(foreign_decl_code)::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
+    list(mlds_function_defn)::in, io::di, io::uo) is det.
 
 output_src_start_for_java(Info, Indent, MercuryModuleName, Imports,
-        ForeignDecls, Defns, !IO) :-
+        ForeignDecls, FuncDefns, !IO) :-
     output_auto_gen_comment(Info ^ joi_source_filename, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("/* :- module ", !IO),
@@ -1731,7 +1760,7 @@ output_src_start_for_java(Info, Indent, MercuryModuleName, Imports,
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting Java class that calls the `main'
     % predicate.
-    ( if defns_contain_main(Defns) then
+    ( if func_defns_contain_main(FuncDefns) then
         write_main_driver_for_java(Indent + 1, ClassName, !IO)
     else
         true
@@ -1811,8 +1840,17 @@ output_defns_for_java(Info, Indent, OutputAux, Defns, !IO) :-
 
 output_defn_for_java(Info, Indent, OutputAux, Defn, !IO) :-
     (
-        Defn = mlds_data(DataDefn),
-        output_data_defn_for_java(Info, Indent, OutputAux, DataDefn, !IO)
+        Defn = mlds_global_var(GlobalVarDefn),
+        output_global_var_defn_for_java(Info, Indent, OutputAux,
+            GlobalVarDefn, !IO)
+    ;
+        Defn = mlds_local_var(LocalVarDefn),
+        output_local_var_defn_for_java(Info, Indent, OutputAux,
+            LocalVarDefn, !IO)
+    ;
+        Defn = mlds_field_var(FieldVarDefn),
+        output_field_var_defn_for_java(Info, Indent, OutputAux,
+            FieldVarDefn, !IO)
     ;
         Defn = mlds_function(FunctionDefn),
         output_function_defn_for_java(Info, Indent, OutputAux,
@@ -1822,16 +1860,45 @@ output_defn_for_java(Info, Indent, OutputAux, Defn, !IO) :-
         output_class_defn_for_java(Info, Indent, ClassDefn, !IO)
     ).
 
-:- pred output_data_defn_for_java(java_out_info::in, indent::in,
-    output_aux::in, mlds_data_defn::in, io::di, io::uo) is det.
+:- pred output_global_var_defn_for_java(java_out_info::in, indent::in,
+    output_aux::in, mlds_global_var_defn::in, io::di, io::uo) is det.
 
-output_data_defn_for_java(Info, Indent, OutputAux, DataDefn, !IO) :-
-    DataDefn = mlds_data_defn(Name, Context, Flags, Type, Initializer, _),
+output_global_var_defn_for_java(Info, Indent, OutputAux, GlobalVarDefn, !IO) :-
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags, Type,
+        Initializer, _),
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_data_decl_flags_for_java(Info, Flags, !IO),
     % XXX MLDS_DEFN
-    output_data_decl_for_java(Info, Name, Type, !IO),
+    output_global_var_decl_for_java(Info, GlobalVarName, Type, !IO),
+    output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
+    io.write_string(";\n", !IO).
+
+:- pred output_local_var_defn_for_java(java_out_info::in, indent::in,
+    output_aux::in, mlds_local_var_defn::in, io::di, io::uo) is det.
+
+output_local_var_defn_for_java(Info, Indent, OutputAux, LocalVarDefn, !IO) :-
+    LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Flags, Type,
+        Initializer, _),
+    indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
+        Context, Indent, !IO),
+    output_data_decl_flags_for_java(Info, Flags, !IO),
+    % XXX MLDS_DEFN
+    output_local_var_decl_for_java(Info, LocalVarName, Type, !IO),
+    output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
+    io.write_string(";\n", !IO).
+
+:- pred output_field_var_defn_for_java(java_out_info::in, indent::in,
+    output_aux::in, mlds_field_var_defn::in, io::di, io::uo) is det.
+
+output_field_var_defn_for_java(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
+    FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags, Type,
+        Initializer, _),
+    indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
+        Context, Indent, !IO),
+    output_data_decl_flags_for_java(Info, Flags, !IO),
+    % XXX MLDS_DEFN
+    output_field_var_decl_for_java(Info, FieldVarName, Type, !IO),
     output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).
 
@@ -2040,7 +2107,7 @@ output_enum_ctor_for_java(Indent, TypeName, !IO) :-
     io.write_string("}\n", !IO).
 
 :- pred output_enum_constants_for_java(java_out_info::in, indent::in,
-    mlds_type_name::in, list(mlds_data_defn)::in, io::di, io::uo) is det.
+    mlds_type_name::in, list(mlds_field_var_defn)::in, io::di, io::uo) is det.
 
 output_enum_constants_for_java(Info, Indent, EnumName, EnumConsts, !IO) :-
     io.write_list(EnumConsts, "\n",
@@ -2048,10 +2115,10 @@ output_enum_constants_for_java(Info, Indent, EnumName, EnumConsts, !IO) :-
     io.nl(!IO).
 
 :- pred output_enum_constant_for_java(java_out_info::in, indent::in,
-    mlds_type_name::in, mlds_data_defn::in, io::di, io::uo) is det.
+    mlds_type_name::in, mlds_field_var_defn::in, io::di, io::uo) is det.
 
-output_enum_constant_for_java(_Info, Indent, EnumName, DataDefn, !IO) :-
-    DataDefn = mlds_data_defn(Name, _Context, _Flags,
+output_enum_constant_for_java(_Info, Indent, EnumName, FieldVarDefn, !IO) :-
+    FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, _Flags,
         _Type, Initializer, _GCStmt),
     % Make a static instance of the constant. The MLDS doesn't retain enum
     % constructor names (that shouldn't be hard to change now) so it is
@@ -2068,7 +2135,7 @@ output_enum_constant_for_java(_Info, Indent, EnumName, DataDefn, !IO) :-
             io.format("(%d); ", [i(N)], !IO),
 
             io.write_string(" /* ", !IO),
-            output_data_name_for_java(Name, !IO),
+            output_field_var_name_for_java(FieldVarName, !IO),
             io.write_string(" */", !IO)
         else
             unexpected($pred, "not mlconst_enum")
@@ -2086,73 +2153,92 @@ output_enum_constant_for_java(_Info, Indent, EnumName, DataDefn, !IO) :-
 % Code to output data declarations/definitions.
 %
 
-:- pred output_data_decls_for_java(java_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+:- pred output_global_var_decls_for_java(java_out_info::in, indent::in,
+    list(mlds_global_var_defn)::in, io::di, io::uo) is det.
 
-output_data_decls_for_java(_, _, [], !IO).
-output_data_decls_for_java(Info, Indent, [DataDefn | DataDefns], !IO) :-
-    DataDefn = mlds_data_defn(Name, _Context, Flags,
+output_global_var_decls_for_java(_, _, [], !IO).
+output_global_var_decls_for_java(Info, Indent,
+        [GlobalVarDefn | GlobalVarDefns], !IO) :-
+    GlobalVarDefn = mlds_global_var_defn(Name, _Context, Flags,
         Type, _Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
     output_data_decl_flags_for_java(Info, Flags, !IO),
-    output_data_decl_for_java(Info, Name, Type, !IO),
+    output_global_var_decl_for_java(Info, Name, Type, !IO),
     io.write_string(";\n", !IO),
-    output_data_decls_for_java(Info, Indent, DataDefns, !IO).
+    output_global_var_decls_for_java(Info, Indent, GlobalVarDefns, !IO).
 
-:- pred output_data_decl_for_java(java_out_info::in, mlds_data_name::in,
-    mlds_type::in, io::di, io::uo) is det.
+:- pred output_global_var_decl_for_java(java_out_info::in,
+    mlds_global_var_name::in, mlds_type::in, io::di, io::uo) is det.
 
-output_data_decl_for_java(Info, Name, Type, !IO) :-
+output_global_var_decl_for_java(Info, GlobalVarName, Type, !IO) :-
     output_type_for_java(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_data_name_for_java(Name, !IO).
+    output_global_var_name_for_java(GlobalVarName, !IO).
 
-:- pred output_data_assignments_for_java(java_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+:- pred output_local_var_decl_for_java(java_out_info::in,
+    mlds_local_var_name::in, mlds_type::in, io::di, io::uo) is det.
 
-output_data_assignments_for_java(Info, Indent, DataDefns, !IO) :-
+output_local_var_decl_for_java(Info, LocalVarName, Type, !IO) :-
+    output_type_for_java(Info, Type, !IO),
+    io.write_char(' ', !IO),
+    output_local_var_name_for_java(LocalVarName, !IO).
+
+:- pred output_field_var_decl_for_java(java_out_info::in,
+    mlds_field_var_name::in, mlds_type::in, io::di, io::uo) is det.
+
+output_field_var_decl_for_java(Info, FieldVarName, Type, !IO) :-
+    output_type_for_java(Info, Type, !IO),
+    io.write_char(' ', !IO),
+    output_field_var_name_for_java(FieldVarName, !IO).
+
+:- pred output_global_var_assignments_for_java(java_out_info::in, indent::in,
+    list(mlds_global_var_defn)::in, io::di, io::uo) is det.
+
+output_global_var_assignments_for_java(Info, Indent, GlobalVarDefns, !IO) :-
     % Divide into small methods to avoid running into the maximum method size
     % limit.
-    list.chunk(DataDefns, 1000, DefnChunks),
-    list.foldl2(output_init_data_method_for_java(Info, Indent),
+    list.chunk(GlobalVarDefns, 1000, DefnChunks),
+    list.foldl2(output_init_global_var_method_for_java(Info, Indent),
         DefnChunks, 0, NumChunks, !IO),
 
     % Call the individual methods.
     output_n_indents(Indent, !IO),
     io.write_string("static {\n", !IO),
-    int.fold_up(output_call_init_data_method_for_java(Indent + 1),
+    int.fold_up(output_call_init_global_var_method_for_java(Indent + 1),
         0, NumChunks - 1, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred output_init_data_method_for_java(java_out_info::in, indent::in,
-    list(mlds_data_defn)::in, int::in, int::out, io::di, io::uo) is det.
+:- pred output_init_global_var_method_for_java(java_out_info::in, indent::in,
+    list(mlds_global_var_defn)::in, int::in, int::out, io::di, io::uo) is det.
 
-output_init_data_method_for_java(Info, Indent, Defns, Chunk, Chunk + 1, !IO) :-
+output_init_global_var_method_for_java(Info, Indent, Defns,
+        Chunk, Chunk + 1, !IO) :-
     output_n_indents(Indent, !IO),
     io.format("private static void MR_init_data_%d() {\n", [i(Chunk)], !IO),
-    output_init_data_statements_for_java(Info, Indent + 1, Defns, !IO),
+    output_init_global_var_statements_for_java(Info, Indent + 1, Defns, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred output_init_data_statements_for_java(java_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+:- pred output_init_global_var_statements_for_java(java_out_info::in,
+    indent::in, list(mlds_global_var_defn)::in, io::di, io::uo) is det.
 
-output_init_data_statements_for_java(_, _, [], !IO).
-output_init_data_statements_for_java(Info, Indent, [DataDefn | DataDefns],
-        !IO) :-
-    DataDefn = mlds_data_defn(Name, _Context, _Flags,
+output_init_global_var_statements_for_java(_, _, [], !IO).
+output_init_global_var_statements_for_java(Info, Indent,
+        [GlobalVarDefn | GlobalVarDefns], !IO) :-
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, _Flags,
         Type, Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
-    output_data_name_for_java(Name, !IO),
+    output_global_var_name_for_java(GlobalVarName, !IO),
     output_initializer_for_java(Info, oa_none, Type, Initializer, !IO),
     io.write_string(";\n", !IO),
-    output_init_data_statements_for_java(Info, Indent, DataDefns, !IO).
+    output_init_global_var_statements_for_java(Info, Indent,
+        GlobalVarDefns, !IO).
 
-:- pred output_call_init_data_method_for_java(indent::in, int::in,
+:- pred output_call_init_global_var_method_for_java(indent::in, int::in,
     io::di, io::uo) is det.
 
-output_call_init_data_method_for_java(Indent, I, !IO) :-
+output_call_init_global_var_method_for_java(Indent, I, !IO) :-
     output_n_indents(Indent, !IO),
     io.format("MR_init_data_%d();\n", [i(I)], !IO).
 
@@ -2490,14 +2576,14 @@ output_initializer_body_list_for_java(Info, Inits, !IO) :-
 %
 
 :- pred output_rtti_assignments_for_java(java_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+    list(mlds_global_var_defn)::in, io::di, io::uo) is det.
 
-output_rtti_assignments_for_java(Info, Indent, DataDefns, !IO) :-
+output_rtti_assignments_for_java(Info, Indent, GlobalVarDefns, !IO) :-
     (
-        DataDefns = []
+        GlobalVarDefns = []
     ;
-        DataDefns = [_ | _],
-        OrderedDefns = order_mlds_rtti_defns(DataDefns),
+        GlobalVarDefns = [_ | _],
+        OrderedDefns = order_mlds_rtti_defns(GlobalVarDefns),
         output_n_indents(Indent, !IO),
         io.write_string("static {\n", !IO),
         list.foldl(output_rtti_defns_assignments_for_java(Info, Indent + 1),
@@ -2507,20 +2593,21 @@ output_rtti_assignments_for_java(Info, Indent, DataDefns, !IO) :-
     ).
 
 :- pred output_rtti_defns_assignments_for_java(java_out_info::in, indent::in,
-    list(mlds_data_defn)::in, io::di, io::uo) is det.
+    list(mlds_global_var_defn)::in, io::di, io::uo) is det.
 
-output_rtti_defns_assignments_for_java(Info, Indent, DataDefns, !IO) :-
+output_rtti_defns_assignments_for_java(Info, Indent, GlobalVarDefns, !IO) :-
     % Separate cliques.
     output_n_indents(Indent, !IO),
     io.write_string("//\n", !IO),
     list.foldl(output_rtti_defn_assignments_for_java(Info, Indent),
-        DataDefns, !IO).
+        GlobalVarDefns, !IO).
 
 :- pred output_rtti_defn_assignments_for_java(java_out_info::in, indent::in,
-    mlds_data_defn::in, io::di, io::uo) is det.
+    mlds_global_var_defn::in, io::di, io::uo) is det.
 
-output_rtti_defn_assignments_for_java(Info, Indent, DataDefn, !IO) :-
-    DataDefn = mlds_data_defn(Name, _Context, _Flags, _Type, Initializer, _),
+output_rtti_defn_assignments_for_java(Info, Indent, GlobalVarDefn, !IO) :-
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, _Flags,
+        _Type, Initializer, _),
     (
         Initializer = no_initializer
     ;
@@ -2533,7 +2620,7 @@ output_rtti_defn_assignments_for_java(Info, Indent, DataDefn, !IO) :-
         (
             IsArray = not_array,
             output_n_indents(Indent, !IO),
-            output_data_name_for_java(Name, !IO),
+            output_global_var_name_for_java(GlobalVarName, !IO),
             io.write_string(".init(", !IO),
             output_initializer_body_list_for_java(Info, FieldInits, !IO),
             io.write_string(");\n", !IO)
@@ -2544,18 +2631,20 @@ output_rtti_defn_assignments_for_java(Info, Indent, DataDefn, !IO) :-
         )
     ;
         Initializer = init_array(ElementInits),
-        list.foldl2(output_rtti_array_assignments_for_java(Info, Indent, Name),
+        list.foldl2(
+            output_rtti_array_assignments_for_java(Info, Indent,
+                GlobalVarName),
             ElementInits, 0, _Index, !IO)
     ).
 
 :- pred output_rtti_array_assignments_for_java(java_out_info::in, indent::in,
-    mlds_data_name::in, mlds_initializer::in, int::in, int::out,
+    mlds_global_var_name::in, mlds_initializer::in, int::in, int::out,
     io::di, io::uo) is det.
 
-output_rtti_array_assignments_for_java(Info, Indent, Name, ElementInit,
-        Index, Index + 1, !IO) :-
+output_rtti_array_assignments_for_java(Info, Indent, GlobalVarName,
+        ElementInit, Index, Index + 1, !IO) :-
     output_n_indents(Indent, !IO),
-    output_data_name_for_java(Name, !IO),
+    output_global_var_name_for_java(GlobalVarName, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
     io.write_string("] = ", !IO),
@@ -2647,7 +2736,7 @@ output_param(Info, Indent, Arg, !IO) :-
     output_n_indents(Indent, !IO),
     output_type_for_java(Info, Type, !IO),
     io.write_char(' ', !IO),
-    output_mlds_var_name_for_java(VarName, !IO).
+    output_local_var_name_for_java(VarName, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -2657,29 +2746,46 @@ output_param(Info, Indent, Arg, !IO) :-
 % names properly.
 %
 
-:- pred output_maybe_qualified_data_name_for_java(java_out_info::in,
-    mlds_qualified_data_name::in, io::di, io::uo) is det.
+:- pred output_maybe_qualified_global_var_name_for_java(java_out_info::in,
+    mlds_global_var::in, io::di, io::uo) is det.
 
-output_maybe_qualified_data_name_for_java(Info, QualDataName, !IO) :-
+output_maybe_qualified_global_var_name_for_java(Info, QualLocalVarName, !IO) :-
     % Don't module qualify names which are defined in the current module.
-    % This avoids unnecessary verbosity, and is also necessary in the case
-    % of local variables and function parameters, which must not be qualified.
-    QualDataName = qual(ModuleName, _QualKind, DataName),
+    % This avoids unnecessary verbosity.
+    QualLocalVarName = qual(ModuleName, _QualKind, LocalVarName),
     CurrentModuleName = Info ^ joi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_java(QualDataName, _, !IO)
+        output_qual_name_prefix_java(QualLocalVarName, _, !IO)
     ),
-    output_data_name_for_java(DataName, !IO).
+    output_global_var_name_for_java(LocalVarName, !IO).
+
+:- pred output_maybe_qualified_local_var_name_for_java(java_out_info::in,
+    mlds_local_var::in, io::di, io::uo) is det.
+
+output_maybe_qualified_local_var_name_for_java(Info, QualLocalVarName, !IO) :-
+    % Don't module qualify names which are defined in the current module.
+    % This avoids unnecessary verbosity, and is also necessary in the case
+    % of local variables and function parameters, which must not be qualified.
+    % XXX MLDS_DEFN
+    % The ModuleName = CurrentModuleName test should *always* succeed
+    % for local vars.
+    QualLocalVarName = qual(ModuleName, _QualKind, LocalVarName),
+    CurrentModuleName = Info ^ joi_module_name,
+    ( if ModuleName = CurrentModuleName then
+        true
+    else
+        output_qual_name_prefix_java(QualLocalVarName, _, !IO)
+    ),
+    output_local_var_name_for_java(LocalVarName, !IO).
 
 :- pred output_maybe_qualified_function_name_for_java(java_out_info::in,
     mlds_qualified_function_name::in, io::di, io::uo) is det.
 
 output_maybe_qualified_function_name_for_java(Info, QualFuncName, !IO) :-
     % Don't module qualify names which are defined in the current module.
-    % This avoids unnecessary verbosity, and is also necessary in the case
-    % of local variables and function parameters, which must not be qualified.
+    % This avoids unnecessary verbosity.
     QualFuncName = qual(ModuleName, _QualKind, FuncName),
     CurrentModuleName = Info ^ joi_module_name,
     ( if ModuleName = CurrentModuleName then
@@ -2827,29 +2933,38 @@ output_pred_label_for_java(PredLabel, !IO) :-
         io.format("%s_%d", [s(MangledTypeName), i(TypeArity)], !IO)
     ).
 
-:- pred output_data_name_for_java(mlds_data_name::in, io::di, io::uo) is det.
+:- pred output_global_var_name_for_java(mlds_global_var_name::in,
+    io::di, io::uo) is det.
 
-output_data_name_for_java(DataName, !IO) :-
+output_global_var_name_for_java(GlobalVarName, !IO) :-
     (
-        DataName = mlds_data_var(VarName),
-        output_mlds_var_name_for_java(VarName, !IO)
+        GlobalVarName = gvn_const_var(ConstVar, Num),
+        NameStr = ml_global_const_var_name_to_string(ConstVar, Num),
+        output_valid_mangled_name_for_java(NameStr, !IO)
     ;
-        DataName = mlds_rtti(RttiId),
+        GlobalVarName = gvn_rtti_var(RttiId),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         io.write_string(RttiAddrName, !IO)
     ;
-        DataName = mlds_tabling_ref(ProcLabel, Id),
+        GlobalVarName = gvn_tabling_var(ProcLabel, Id),
         Prefix = tabling_info_id_str(Id) ++ "_",
         io.write_string(Prefix, !IO),
         mlds_output_proc_label_for_java(mlds_std_tabling_proc_label(ProcLabel),
             !IO)
     ).
 
-:- pred output_mlds_var_name_for_java(mlds_var_name::in, io::di, io::uo)
-    is det.
+:- pred output_local_var_name_for_java(mlds_local_var_name::in,
+    io::di, io::uo) is det.
 
-output_mlds_var_name_for_java(VarName, !IO) :-
-    NameStr = ml_var_name_to_string(VarName),
+output_local_var_name_for_java(LocalVarName, !IO) :-
+    NameStr = ml_local_var_name_to_string(LocalVarName),
+    output_valid_mangled_name_for_java(NameStr, !IO).
+
+:- pred output_field_var_name_for_java(mlds_field_var_name::in,
+    io::di, io::uo) is det.
+
+output_field_var_name_for_java(FieldVarName, !IO) :-
+    NameStr = ml_field_var_name_to_string(FieldVarName),
     output_valid_mangled_name_for_java(NameStr, !IO).
 
 %---------------------------------------------------------------------------%
@@ -4202,14 +4317,18 @@ output_lval_for_java(Info, Lval, !IO) :-
         Lval = ml_mem_ref(Rval, _Type),
         output_bracketed_rval_for_java(Info, Rval, !IO)
     ;
-        Lval = ml_global_var_ref(GlobalVarRef),
+        Lval = ml_target_global_var_ref(GlobalVarRef),
         GlobalVarRef = env_var_ref(EnvVarName),
         io.write_string("mercury_envvar_", !IO),
         io.write_string(EnvVarName, !IO)
     ;
-        Lval = ml_var(qual(ModName, QualKind, Name), _),
-        QualDataName = qual(ModName, QualKind, mlds_data_var(Name)),
-        output_maybe_qualified_data_name_for_java(Info, QualDataName, !IO)
+        Lval = ml_global_var(QualGlobalVarName, _),
+        output_maybe_qualified_global_var_name_for_java(Info,
+            QualGlobalVarName, !IO)
+    ;
+        Lval = ml_local_var(QualLocalVarName, _),
+        output_maybe_qualified_local_var_name_for_java(Info,
+            QualLocalVarName, !IO)
     ).
 
 :- pred output_valid_mangled_name_for_java(string::in, io::di, io::uo) is det.
@@ -4239,7 +4358,8 @@ output_call_rval_for_java(Info, Rval, !IO) :-
 output_bracketed_rval_for_java(Info, Rval, !IO) :-
     ( if
         % If it is just a variable name, then we don't need parentheses.
-        ( Rval = ml_lval(ml_var(_,_))
+        ( Rval = ml_lval(ml_local_var(_,_))
+        ; Rval = ml_lval(ml_global_var(_,_))
         ; Rval = ml_const(mlconst_code_addr(_))
         )
     then
@@ -5094,19 +5214,27 @@ output_rval_const_for_java(Info, Const, !IO) :-
             String, !IO),
         io.write_string("""", !IO)
     ;
-        Const = mlconst_named_const(NamedConst),
+        Const = mlconst_named_const(TargetPrefixes, NamedConst),
+        io.write_string(TargetPrefixes ^ java_prefix, !IO),
         io.write_string(NamedConst, !IO)
     ;
         Const = mlconst_code_addr(CodeAddr),
         IsCall = no,
         mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO)
     ;
-        Const = mlconst_data_addr_var(ModuleName, VarName),
+        Const = mlconst_data_addr_local_var(ModuleName, LocalVarName),
         SymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
         io.write_string(ModuleNameStr, !IO),
         io.write_string(".", !IO),
-        output_mlds_var_name_for_java(VarName, !IO)
+        output_local_var_name_for_java(LocalVarName, !IO)
+    ;
+        Const = mlconst_data_addr_global_var(ModuleName, GlobalVarName),
+        SymName = mlds_module_name_to_sym_name(ModuleName),
+        mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
+        io.write_string(ModuleNameStr, !IO),
+        io.write_string(".", !IO),
+        output_global_var_name_for_java(GlobalVarName, !IO)
     ;
         Const = mlconst_data_addr_rtti(ModuleName, RttiId),
         SymName = mlds_module_name_to_sym_name(ModuleName),
