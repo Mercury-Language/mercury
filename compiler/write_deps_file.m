@@ -159,8 +159,8 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             report_error(Message, !IO)
         ;
             Result = ok(DepStream),
-            start_mmakefile(DepStream, MmakeFile0, !IO),
-            generate_d_file(DepStream, Globals, ModuleAndImports,
+            start_mmakefile(MmakeFile0),
+            generate_d_file(Globals, ModuleAndImports,
                 AllDeps, MaybeTransOptDeps, MmakeFile0, MmakeFile, !IO),
             end_mmakefile(DepStream, MmakeFile, !IO),
             io.close_output(DepStream, !IO),
@@ -218,9 +218,9 @@ generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
     io.open_output(DvFileName, DvResult, !IO),
     (
         DvResult = ok(DvStream),
-        start_mmakefile(DvStream, MmakeFile0, !IO),
+        start_mmakefile(MmakeFile0),
         generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
-            DvStream, MmakeFile0, MmakeFile, !IO),
+            MmakeFile0, MmakeFile, !IO),
         end_mmakefile(DvStream, MmakeFile, !IO),
         io.close_output(DvStream, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
@@ -247,9 +247,9 @@ generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
     io.open_output(DepFileName, DepResult, !IO),
     (
         DepResult = ok(DepStream),
-        start_mmakefile(DepStream, MmakeFile0, !IO),
+        start_mmakefile(MmakeFile0),
         generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
-            DepStream, MmakeFile0, MmakeFile, !IO),
+            MmakeFile0, MmakeFile, !IO),
         end_mmakefile(DepStream, MmakeFile, !IO),
         io.close_output(DepStream, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
@@ -266,16 +266,12 @@ generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred generate_d_file(io.text_output_stream::in,
-    globals::in, module_and_imports::in,
+:- pred generate_d_file(globals::in, module_and_imports::in,
     set(module_name)::in, maybe(list(module_name))::in,
     mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
-generate_d_file(DepStream, Globals, ModuleAndImports,
-        AllDeps, MaybeTransOptDeps, !MmakeFile, !IO) :-
-    io.write_string(DepStream,
-        "# vim: ts=8 sw=8 noexpandtab ft=make\n\n", !IO),
-
+generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
+        !MmakeFile, !IO) :-
     ModuleAndImports = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, _ModuleNameContext, ParentDeps, IntDeps, ImpDeps,
         IndirectDeps, _Children, InclDeps, NestedDeps, FactDeps0,
@@ -290,7 +286,7 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
 
     MmakeStartComment = mmake_start_comment("module dependencies",
         ModuleNameString, SourceFileName, Version, FullArch),
-    gather_mmake_entry(DepStream, MmakeStartComment, !MmakeFile, !IO),
+    add_mmake_entry(MmakeStartComment, !MmakeFile),
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
@@ -310,11 +306,6 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
 
         % Note that maybe_read_dependency_file searches for
         % this exact pattern.
-        io.write_strings(DepStream, [TransOptDateFileName, " :"], !IO),
-        write_dependencies_set(Globals, DepStream, ".trans_opt",
-            TransOptDateDeps, !IO),
-        io.write_string(DepStream, "\n\n", !IO),
-
         make_module_file_names_with_suffix(Globals, ".trans_opt",
             set.to_sorted_list(TransOptDateDeps), TransOptDateDepsFileNames,
             !IO),
@@ -323,32 +314,17 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
             TransOptDateFileName,
             TransOptDateDepsFileNames,
             []),
-        gather_mmake_entry(DepStream, MmakeRuleTransOpt, !MmakeFile, !IO)
+        add_mmake_entry(MmakeRuleTransOpt, !MmakeFile)
     ;
         MaybeTransOptDeps = no
     ),
 
     (
         FactDeps = [_ | _],
-        io.write_strings(DepStream,
-            ["\n\n", ModuleMakeVarName, ".fact_tables ="], !IO),
-        write_file_dependencies_list(DepStream, "", FactDeps, !IO),
-        io.nl(DepStream, !IO),
-
         MmakeVarFactTables = mmake_var_defn_list(
             ModuleMakeVarName ++ ".fact_tables",
             FactDeps),
-        gather_mmake_entry(DepStream, MmakeVarFactTables, !MmakeFile, !IO),
-
-        io.write_strings(DepStream, [
-            "\n\n", ModuleMakeVarName,
-            ".fact_tables.os = $(", ModuleMakeVarName,
-            ".fact_tables:%=$(os_subdir)%.$O)\n\n",
-            ModuleMakeVarName,
-            ".fact_tables.cs = $(", ModuleMakeVarName,
-            ".fact_tables:%=$(cs_subdir)%.c)\n\n"
-        ], !IO),
-
+        add_mmake_entry(MmakeVarFactTables, !MmakeFile),
         MmakeVarFactTablesOs = mmake_var_defn(
             ModuleMakeVarName ++ ".fact_tables.os",
             "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
@@ -356,8 +332,7 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
             ModuleMakeVarName ++ ".fact_tables.cs",
             "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
         MmakeVarsFactTables = [MmakeVarFactTablesOs, MmakeVarFactTablesCs],
-        gather_mmake_entries(DepStream, MmakeVarsFactTables,
-            !MmakeFile, !IO)
+        add_mmake_entries(MmakeVarsFactTables, !MmakeFile)
     ;
         FactDeps = []
     ),
@@ -384,93 +359,62 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         ModuleName, Int0FileName, !IO),
 
     some [TargetGroup, TargetGroups, !SourceGroups] (
-    io.write_strings(DepStream, ["\n\n",
-        OptDateFileName, " ",
-        TransOptDateFileName, " ",
-        ErrFileName, " ",
-        CDateFileName, " ",
-        JavaDateFileName
-    ], !IO),
-    io.write_string(DepStream, " : ", !IO),
-    TargetGroup = mmake_file_name_group("",
-        one_or_more(OptDateFileName,
-            [TransOptDateFileName, ErrFileName,
-            CDateFileName, JavaDateFileName])),
-    TargetGroups = one_or_more(TargetGroup, []),
+        TargetGroup = mmake_file_name_group("",
+            one_or_more(OptDateFileName,
+                [TransOptDateFileName, ErrFileName,
+                CDateFileName, JavaDateFileName])),
+        TargetGroups = one_or_more(TargetGroup, []),
 
-    io.write_string(DepStream, SourceFileName, !IO),
-    !:SourceGroups = [make_singleton_file_name_group(SourceFileName)],
-    % If the module contains nested submodules then the `.int0' file
-    % must first be built.
-    ( if set.is_empty(InclDeps) then
-        true
-    else
-        io.write_strings(DepStream, [" ", Int0FileName], !IO),
+        !:SourceGroups = [make_singleton_file_name_group(SourceFileName)],
+        % If the module contains nested submodules then the `.int0' file
+        % must first be built.
+        ( if set.is_empty(InclDeps) then
+            true
+        else
+            !:SourceGroups = !.SourceGroups ++
+                [make_singleton_file_name_group(Int0FileName)]
+        ),
+        make_module_file_name_group_with_suffix(Globals,
+            "parent deps", ".int0",
+            ParentDeps, ParentDepsSourceGroups, !IO),
+        make_module_file_name_group_with_suffix(Globals,
+            "long deps", ".int",
+            LongDeps, LongDepsSourceGroups, !IO),
+        make_module_file_name_group_with_suffix(Globals,
+            "short deps", ".int2",
+            ShortDeps, ShortDepsSourceGroups, !IO),
+        !:SourceGroups = !.SourceGroups ++ ParentDepsSourceGroups ++
+            LongDepsSourceGroups ++ ShortDepsSourceGroups,
+
+        ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
+        % This is conservative: a target file for foreign language A
+        % does not truly depend on a file included for foreign language B.
+        ForeignImportFileNames =
+            list.map(foreign_include_file_path_name(SourceFileName),
+                ForeignIncludeFiles),
         !:SourceGroups = !.SourceGroups ++
-            [make_singleton_file_name_group(Int0FileName)]
-    ),
-    write_dependencies_set(Globals, DepStream,
-        ".int0", ParentDeps, !IO),
-    write_dependencies_set(Globals, DepStream,
-        ".int", LongDeps, !IO),
-    write_dependencies_set(Globals, DepStream,
-        ".int2", ShortDeps, !IO),
-    make_module_file_name_group_with_suffix(Globals, "parent deps", ".int0",
-        ParentDeps, ParentDepsSourceGroups, !IO),
-    make_module_file_name_group_with_suffix(Globals, "long deps", ".int",
-        LongDeps, LongDepsSourceGroups, !IO),
-    make_module_file_name_group_with_suffix(Globals, "short deps", ".int2",
-        ShortDeps, ShortDepsSourceGroups, !IO),
-    !:SourceGroups = !.SourceGroups ++
-        ParentDepsSourceGroups ++
-        LongDepsSourceGroups ++
-        ShortDepsSourceGroups,
+            make_file_name_group("foreign imports", ForeignImportFileNames),
 
-    ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
-    % This is conservative: a target file for foreign language A
-    % does not truly depend on a file included for foreign language B.
-    write_foreign_include_file_dependencies_list(DepStream,
-        SourceFileName, ForeignIncludeFiles, !IO),
-    ForeignImportFileNames =
-        list.map(foreign_include_file_path_name(SourceFileName),
-            ForeignIncludeFiles),
-    !:SourceGroups = !.SourceGroups ++
-        make_file_name_group("foreign imports", ForeignImportFileNames),
+        (
+            FactDeps = [_ | _],
+            FactTableSourceGroup = mmake_file_name_group("fact tables",
+                one_or_more("$(" ++ ModuleMakeVarName ++ ".fact_tables)", [])),
+            !:SourceGroups = !.SourceGroups ++ [FactTableSourceGroup]
+        ;
+            FactDeps = []
+        ),
 
-    (
-        FactDeps = [_ | _],
-        io.write_strings(DepStream, [
-            " \\\n\t$(", ModuleMakeVarName, ".fact_tables)"
-        ], !IO),
-        FactTableSourceGroup = mmake_file_name_group("fact tables",
-            one_or_more("$(" ++ ModuleMakeVarName ++ ".fact_tables)", [])),
-        !:SourceGroups = !.SourceGroups ++ [FactTableSourceGroup]
-    ;
-        FactDeps = []
-    ),
-    io.write_string(DepStream, "\n\n", !IO),
-
-    MmakeRuleDateFileDeps = mmake_general_rule("date_file_deps",
-        mmake_rule_is_not_phony,
-        TargetGroups,
-        !.SourceGroups,
-        []),
-    gather_mmake_entry(DepStream, MmakeRuleDateFileDeps, !MmakeFile, !IO)
-
+        MmakeRuleDateFileDeps = mmake_general_rule("date_file_deps",
+            mmake_rule_is_not_phony,
+            TargetGroups,
+            !.SourceGroups,
+            []),
+        add_mmake_entry(MmakeRuleDateFileDeps, !MmakeFile)
     ),
 
     (
         FactDeps = [_ | _],
         % XXX These rules seem wrong to me. -zs
-
-        io.write_strings(DepStream, [
-            "$(", ModuleMakeVarName, ".fact_tables.os) : $(",
-            ModuleMakeVarName, ".fact_tables) ",
-            SourceFileName, "\n\n",
-            "$(", ModuleMakeVarName, ".fact_tables.cs) : ",
-            ObjFileName, "\n"
-        ], !IO),
-
         MmakeRuleFactOs = mmake_simple_rule("fact_table_os",
             mmake_rule_is_not_phony,
             "$(" ++ ModuleMakeVarName ++ ".fact_tables.os)",
@@ -482,7 +426,7 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
             [ObjFileName],
             []),
         MmakeRulesFactOsCs = [MmakeRuleFactOs, MmakeRuleFactCs],
-        gather_mmake_entries(DepStream, MmakeRulesFactOsCs, !MmakeFile, !IO)
+        add_mmake_entries(MmakeRulesFactOsCs, !MmakeFile)
     ;
         FactDeps = []
     ),
@@ -500,10 +444,10 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         true
     else
         list.map_foldl(
-            write_nested_deps(DepStream, Globals, ModuleName,
+            gather_nested_deps(Globals, ModuleName,
                 set.to_sorted_list(NestedDeps)),
             NestedExts, MmakeRulesNestedDeps, !IO),
-        gather_mmake_entries(DepStream, MmakeRulesNestedDeps, !MmakeFile, !IO)
+        add_mmake_entries(MmakeRulesNestedDeps, !MmakeFile)
     ),
 
     globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
@@ -517,11 +461,6 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
     % directly or indirectly.
     (
         Intermod = yes,
-        io.write_strings(DepStream, ["\n\n", ObjFileName, " : "], !IO),
-        write_dependencies_list(Globals, DepStream, ".mh",
-            set.to_sorted_list(AllDeps), !IO),
-        io.write_string(DepStream, "\n\n", !IO),
-
         make_module_file_names_with_suffix(Globals, ".mh",
             set.to_sorted_list(AllDeps), AllDepsFileNames, !IO),
         MmakeRuleMhDeps = mmake_simple_rule("machine_dependent_header_deps",
@@ -529,7 +468,7 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
             ObjFileName,
             AllDepsFileNames,
             []),
-        gather_mmake_entry(DepStream, MmakeRuleMhDeps, !MmakeFile, !IO)
+        add_mmake_entry(MmakeRuleMhDeps, !MmakeFile)
     ;
         Intermod = no
     ),
@@ -539,105 +478,71 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         )
     then
         some [Targets, Sources] (
+            Targets = one_or_more(TransOptDateFileName,
+                [ErrFileName, CDateFileName, JavaDateFileName]),
 
-        io.write_strings(DepStream, [
-            "\n\n",
-            TransOptDateFileName, " ",
-            ErrFileName, " ",
-            CDateFileName, " ",
-            JavaDateFileName, " : "
-        ], !IO),
-        Targets = one_or_more(TransOptDateFileName,
-            [ErrFileName, CDateFileName, JavaDateFileName]),
+            % The target (e.g. C) file only depends on the .opt files from the
+            % current directory, so that inter-module optimization works when
+            % the .opt files for the library are unavailable. This is only
+            % necessary because make doesn't allow conditional dependencies.
+            % The dependency on the current module's .opt file is to make sure
+            % the module gets type-checked without having the definitions
+            % of abstract types from other modules.
+            %
+            % XXX The code here doesn't correctly handle dependencies
+            % on `.int' and `.int2' files needed by the `.opt' files.
+            globals.lookup_bool_option(Globals, transitive_optimization,
+                TransOpt),
+            globals.lookup_bool_option(Globals, use_trans_opt_files,
+                UseTransOpt),
 
-        % The target (e.g. C) file only depends on the .opt files from the
-        % current directory, so that inter-module optimization works when
-        % the .opt files for the library are unavailable. This is only
-        % necessary because make doesn't allow conditional dependencies.
-        % The dependency on the current module's .opt file is to make sure
-        % the module gets type-checked without having the definitions
-        % of abstract types from other modules.
-        %
-        % XXX The code here doesn't correctly handle dependencies
-        % on `.int' and `.int2' files needed by the `.opt' files.
-        globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
-        globals.lookup_bool_option(Globals, use_trans_opt_files, UseTransOpt),
+            bool.not(UseTransOpt, BuildOptFiles),
+            ( if
+                ( TransOpt = yes
+                ; UseTransOpt = yes
+                )
+            then
+                get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs,
+                    [ModuleName | set.to_sorted_list(LongDeps)],
+                    OptDeps, TransOptDeps1, !IO),
+                MaybeTransOptDeps1 = yes(TransOptDeps1)
+            else
+                get_opt_deps(Globals, BuildOptFiles, IntermodDirs, ".opt",
+                    [ModuleName | set.to_sorted_list(LongDeps)],
+                    OptDeps, !IO),
+                MaybeTransOptDeps1 = no
+            ),
 
-        bool.not(UseTransOpt, BuildOptFiles),
-        ( if
-            ( TransOpt = yes
-            ; UseTransOpt = yes
-            )
-        then
-            get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs,
-                [ModuleName | set.to_sorted_list(LongDeps)],
-                OptDeps, TransOptDeps1, !IO),
-            MaybeTransOptDeps1 = yes(TransOptDeps1)
-        else
-            get_opt_deps(Globals, BuildOptFiles, IntermodDirs, ".opt",
-                [ModuleName | set.to_sorted_list(LongDeps)],
-                OptDeps, !IO),
-            MaybeTransOptDeps1 = no
-        ),
+            OptInt0Deps = set.union_list(
+                list.map(get_ancestors_set, OptDeps)),
+            make_module_file_names_with_suffix(Globals, ".opt",
+                OptDeps, OptDepsFileNames, !IO),
+            make_module_file_names_with_suffix(Globals, ".int0",
+                set.to_sorted_list(OptInt0Deps), OptInt0DepsFileNames, !IO),
 
-        OptInt0Deps = set.union_list(
-            list.map(get_ancestors_set, OptDeps)),
-        % The calls to write_dependencies_{list,set} convert
-        % OptDeps and OptInt0Deps to filenames, and write them out.
-        write_dependencies_list(Globals, DepStream, ".opt",
-            OptDeps, !IO),
-        write_dependencies_set(Globals, DepStream, ".int0",
-            OptInt0Deps, !IO),
-        io.write_string(DepStream, "\n\n", !IO),
-
-        % The calls to make_module_file_names_with_suffix convert
-        % OptDeps and OptInt0Deps to filenames. They will be written out
-        % as part of MmakeRuleDateOptInt0Deps.
-        %
-        % This pattern is repeated below.
-        make_module_file_names_with_suffix(Globals, ".opt",
-            OptDeps, OptDepsFileNames, !IO),
-        make_module_file_names_with_suffix(Globals, ".int0",
-            set.to_sorted_list(OptInt0Deps), OptInt0DepsFileNames, !IO),
-
-        MmakeRuleDateOptInt0Deps = mmake_flat_rule("dates_on_opts_and_int0s",
-            mmake_rule_is_not_phony,
-            Targets,
-            OptDepsFileNames ++ OptInt0DepsFileNames,
-            []),
-        gather_mmake_entry(DepStream, MmakeRuleDateOptInt0Deps,
-            !MmakeFile, !IO)
-
+            MmakeRuleDateOptInt0Deps = mmake_flat_rule(
+                "dates_on_opts_and_int0s",
+                mmake_rule_is_not_phony,
+                Targets,
+                OptDepsFileNames ++ OptInt0DepsFileNames,
+                []),
+            add_mmake_entry(MmakeRuleDateOptInt0Deps, !MmakeFile)
         ),
 
         (
             MaybeTransOptDeps1 = yes(TransOptDeps2),
             some [Targets] (
-
-            io.write_strings(DepStream, [
-                "\n\n",
-                ErrFileName, " ",
-                CDateFileName, " ",
-                JavaDateFileName, " : "
-            ], !IO),
-            Targets = one_or_more(ErrFileName,
-                [CDateFileName, JavaDateFileName]),
-
-            write_dependencies_list(Globals, DepStream, ".trans_opt",
-                TransOptDeps2, !IO),
-            io.write_string(DepStream, "\n\n", !IO),
-            make_module_file_names_with_suffix(Globals, ".trans_opt",
-                TransOptDeps2, TransOptDepsOptFileNames, !IO),
-
-            MmakeRuleTransOptOpts = mmake_flat_rule(
-                "dates_on_trans_opts'_opts",
-                mmake_rule_is_not_phony,
-                Targets,
-                TransOptDepsOptFileNames,
-                []),
-            gather_mmake_entry(DepStream, MmakeRuleTransOptOpts,
-                !MmakeFile, !IO)
-
+                Targets = one_or_more(ErrFileName,
+                    [CDateFileName, JavaDateFileName]),
+                make_module_file_names_with_suffix(Globals, ".trans_opt",
+                    TransOptDeps2, TransOptDepsOptFileNames, !IO),
+                MmakeRuleTransOptOpts = mmake_flat_rule(
+                    "dates_on_trans_opts'_opts",
+                    mmake_rule_is_not_phony,
+                    Targets,
+                    TransOptDepsOptFileNames,
+                    []),
+                add_mmake_entry(MmakeRuleTransOptOpts, !MmakeFile)
             )
         ;
             MaybeTransOptDeps1 = no
@@ -657,24 +562,15 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         % the C files, since the generated C files #include those header files.
 
         some [Targets, AllDepsFileNames] (
-        io.write_strings(DepStream, [
-            "\n\n",
-            PicObjFileName, " ",
-            ObjFileName, " :"
-        ], !IO),
-        Targets = one_or_more(PicObjFileName, [ObjFileName]),
-        write_dependencies_set(Globals, DepStream, ".mih", AllDeps, !IO),
-        io.write_string(DepStream, "\n\n", !IO),
-
-        make_module_file_names_with_suffix(Globals, ".mih",
-            set.to_sorted_list(AllDeps), AllDepsFileNames, !IO),
-
-        MmakeRuleObjOnMihs = mmake_flat_rule("objs_on_mihs",
-            mmake_rule_is_not_phony,
-            Targets,
-            AllDepsFileNames,
-            []),
-        gather_mmake_entry(DepStream, MmakeRuleObjOnMihs, !MmakeFile, !IO)
+            Targets = one_or_more(PicObjFileName, [ObjFileName]),
+            make_module_file_names_with_suffix(Globals, ".mih",
+                set.to_sorted_list(AllDeps), AllDepsFileNames, !IO),
+            MmakeRuleObjOnMihs = mmake_flat_rule("objs_on_mihs",
+                mmake_rule_is_not_phony,
+                Targets,
+                AllDepsFileNames,
+                []),
+            add_mmake_entry(MmakeRuleObjOnMihs, !MmakeFile)
         )
     else
         true
@@ -694,17 +590,12 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         ModuleName, MhHeaderFileName, !IO),
     module_name_to_file_name(Globals, do_not_create_dirs, ".mih",
         ModuleName, MihHeaderFileName, !IO),
-    io.write_strings(DepStream, [
-        "\n\n",
-        MhHeaderFileName, " ", MihHeaderFileName, " : ", CFileName, "\n\n"
-    ], !IO),
-
     MmakeRuleMhMihOnC = mmake_flat_rule("mh_and_mih_on_c",
         mmake_rule_is_not_phony,
         one_or_more(MhHeaderFileName, [MihHeaderFileName]),
         [CFileName],
         []),
-    gather_mmake_entry(DepStream, MmakeRuleMhMihOnC, !MmakeFile, !IO),
+    add_mmake_entry(MmakeRuleMhMihOnC, !MmakeFile),
 
     % The `.module_dep' file is made as a side effect of
     % creating the `.c', `.s', or `.java'.
@@ -713,15 +604,6 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         ModuleName, JavaFileName, !IO),
     module_name_to_file_name(Globals, do_not_create_dirs,
         make_module_dep_file_extension, ModuleName, ModuleDepFileName, !IO),
-    io.write_strings(DepStream, [
-        "\n\n",
-        "ifeq ($(findstring java,$(GRADE)),java)\n",
-        ModuleDepFileName, " : ", JavaFileName, "\n",
-        "else\n",
-        ModuleDepFileName, " : ", CFileName, "\n",
-        "endif\n\n"
-    ], !IO),
-
     MmakeFragmentModuleDep = mmf_conditional_entry(
         mmake_cond_grade_has_component("java"),
         mmake_simple_rule("module_dep_on_java",
@@ -735,7 +617,7 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
             [CFileName],
             [])
     ),
-    gather_mmake_fragment(DepStream, MmakeFragmentModuleDep, !MmakeFile, !IO),
+    add_mmake_fragment(MmakeFragmentModuleDep, !MmakeFile),
 
     % The .date and .date0 files depend on the .int0 files for the parent
     % modules, and the .int3 files for the directly and indirectly imported
@@ -753,16 +635,6 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         ModuleName, DateFileName, !IO),
     module_name_to_file_name(Globals, do_not_create_dirs, ".date0",
         ModuleName, Date0FileName, !IO),
-
-    io.write_strings(DepStream, ["\n\n", DateFileName, " ", Date0FileName],
-        !IO),
-    write_dependencies_set(Globals, DepStream, ".date", ParentDeps, !IO),
-    io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-    write_dependencies_set(Globals, DepStream, ".int0", ParentDeps, !IO),
-    write_dependencies_set(Globals, DepStream, ".int3", LongDeps, !IO),
-    write_dependencies_set(Globals, DepStream, ".int3", ShortDeps, !IO),
-    io.write_string(DepStream, "\n\n", !IO),
-
     make_module_file_names_with_suffix(Globals, ".date",
         set.to_sorted_list(ParentDeps), ParentDepDateFileNames, !IO),
     make_module_file_names_with_suffix(Globals, ".int0",
@@ -783,14 +655,7 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
             make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
             make_file_name_group("short dep int3s", ShortDepInt3FileNames),
         []),
-    gather_mmake_entry(DepStream, MmakeRuleParentDates, !MmakeFile, !IO),
-
-    io.write_strings(DepStream, ["\n\n", Date0FileName], !IO),
-    write_dependencies_set(Globals, DepStream, ".date0", ParentDeps, !IO),
-    io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-    write_dependencies_set(Globals, DepStream, ".int3", LongDeps, !IO),
-    write_dependencies_set(Globals, DepStream, ".int3", ShortDeps, !IO),
-    io.write_string(DepStream, "\n\n", !IO),
+    add_mmake_entry(MmakeRuleParentDates, !MmakeFile),
 
     make_module_file_names_with_suffix(Globals, ".date0",
         set.to_sorted_list(ParentDeps), ParentDepDate0FileNames, !IO),
@@ -804,7 +669,7 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
             make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
             make_file_name_group("short dep int3s", ShortDepInt3FileNames),
         []),
-    gather_mmake_entry(DepStream, MmakeRuleParentDate0s, !MmakeFile, !IO),
+    add_mmake_entry(MmakeRuleParentDate0s, !MmakeFile),
 
     % If we can pass the module name rather than the file name, then do so.
     % `--smart-recompilation' doesn't work if the file name is passed
@@ -925,11 +790,10 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         % ForeignImportTargets, generate one rule with all those targets
         % before the colon.
         list.map_foldl(
-            write_foreign_import_deps(DepStream, Globals, ForeignImportExt,
+            gather_foreign_import_deps(Globals, ForeignImportExt,
                 set.to_sorted_list(ForeignImportedModuleNames)),
             ForeignImportTargets, MmakeRulesForeignImports, !IO),
-        gather_mmake_entries(DepStream, MmakeRulesForeignImports,
-            !MmakeFile, !IO)
+        add_mmake_entries(MmakeRulesForeignImports, !MmakeFile)
     ),
 
     module_name_to_file_name(Globals, do_not_create_dirs, ".int",
@@ -947,34 +811,12 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
 
     % We add some extra dependencies to the generated `.d' files, so that
     % local `.int', `.opt', etc. files shadow the installed versions properly
-    % (e.g. for when you're trying to build a new version of an installed
+    % (e.g. for when you are trying to build a new version of an installed
     % library). This saves the user from having to add these explicitly
     % if they have multiple libraries installed in the same installation
     % hierarchy which aren't independent (e.g. one uses another). These extra
     % dependencies are necessary due to the way the combination of search paths
     % and pattern rules works in Make.
-    %
-    % Be very careful about changing the following rules. The `@:' is a
-    % silent do-nothing command. It is used to force GNU Make to recheck
-    % the timestamp on the target file. (It is a pity that GNU Make
-    % doesn't have a way of handling these sorts of rules in a nicer manner.)
-
-    io.write_strings(DepStream, [
-        "\n",
-        Int0FileName, " : ", Date0FileName, "\n",
-        "\t@:\n",
-        IntFileName, " : ", DateFileName, "\n",
-        "\t@:\n",
-        Int2FileName, " : ", DateFileName, "\n",
-        "\t@:\n",
-        Int3FileName, " : ", Date3FileName, "\n",
-        "\t@:\n",
-        OptFileName, " : ", OptDateFileName, "\n",
-        "\t@:\n",
-        TransOptFileName, " : ", TransOptDateFileName, "\n",
-        "\t@:\n",
-        "\n"
-    ], !IO),
 
     MmakeRulesInstallShadows = [
         mmake_simple_rule("", mmake_rule_is_not_phony,
@@ -990,19 +832,17 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         mmake_simple_rule("", mmake_rule_is_not_phony,
             TransOptFileName, [TransOptDateFileName], [silent_noop_action])
     ],
-    gather_mmake_entries(DepStream, MmakeRulesInstallShadows, !MmakeFile, !IO),
+    add_mmake_entries(MmakeRulesInstallShadows, !MmakeFile),
 
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     (
         UseSubdirs = yes,
-        io.nl(DepStream, !IO),
         SubDirShorthandExts =
             [".c", ".$O", ".pic_o", ".java", ".class", ".dll"],
         list.map_foldl(
-            write_subdirs_shorthand_rule(Globals, DepStream, ModuleName),
+            construct_subdirs_shorthand_rule(Globals, ModuleName),
             SubDirShorthandExts, MmakeRulesSubDirShorthand, !IO),
-        gather_mmake_entries(DepStream, MmakeRulesSubDirShorthand,
-            !MmakeFile, !IO)
+        add_mmake_entries(MmakeRulesSubDirShorthand, !MmakeFile)
     ;
         UseSubdirs = no
     ),
@@ -1022,31 +862,6 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
         %
         % Any changes here will require corresponding changes to
         % scripts/Mmake.rules. See that file for documentation on these rules.
-
-        io.write_strings(DepStream, [
-            "\n",
-            Date0FileName, " : ", SourceFileName, "\n",
-            "\t$(MCPI) $(ALL_GRADEFLAGS) ",
-                "$(ALL_MCPIFLAGS) ", ModuleArg, "\n",
-            DateFileName, " : ", SourceFileName, "\n",
-            "\t$(MCI) $(ALL_GRADEFLAGS) $(ALL_MCIFLAGS) ",
-                ModuleArg, "\n",
-            Date3FileName, " : ", SourceFileName, "\n",
-            "\t$(MCSI) $(ALL_GRADEFLAGS) $(ALL_MCSIFLAGS) ",
-                ModuleArg, "\n",
-            OptDateFileName, " : ", SourceFileName, "\n",
-            "\t$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) ",
-                ModuleArg, "\n",
-            TransOptDateFileName, " : ", SourceFileName, "\n",
-            "\t$(MCTOI) $(ALL_GRADEFLAGS) ",
-                "$(ALL_MCTOIFLAGS) ", ModuleArg, "\n",
-            CDateFileName, " : ", SourceFileName, "\n",
-            "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                ModuleArg, " $(ERR_REDIRECT)\n",
-            JavaDateFileName, " : ", SourceFileName, "\n",
-            "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                "--java-only ", ModuleArg, " $(ERR_REDIRECT)\n\n"
-        ], !IO),
 
         MmakeRulesPattern = [
             mmake_simple_rule("", mmake_rule_is_not_phony,
@@ -1074,21 +889,15 @@ generate_d_file(DepStream, Globals, ModuleAndImports,
                 ["$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --java-only " ++
                     ModuleArg ++ " $(ERR_REDIRECT)"])
         ],
-        gather_mmake_entries(DepStream, MmakeRulesPattern, !MmakeFile, !IO)
+        add_mmake_entries(MmakeRulesPattern, !MmakeFile)
     ).
 
-:- pred write_nested_deps(io.text_output_stream::in, globals::in,
-    module_name::in, list(module_name)::in, string::in, mmake_entry::out,
-    io::di, io::uo) is det.
+:- pred gather_nested_deps(globals::in, module_name::in, list(module_name)::in,
+    string::in, mmake_entry::out, io::di, io::uo) is det.
 
-write_nested_deps(DepStream, Globals, ModuleName, NestedDeps, Ext, MmakeRule,
-        !IO) :-
+gather_nested_deps(Globals, ModuleName, NestedDeps, Ext, MmakeRule, !IO) :-
     module_name_to_file_name(Globals, do_not_create_dirs, Ext,
         ModuleName, ExtName, !IO),
-    io.write_strings(DepStream, ["\n", ExtName, " : "], !IO),
-    write_dependencies_list(Globals, DepStream, Ext, NestedDeps, !IO),
-    io.write_string(DepStream, "\n\n", !IO),
-
     make_module_file_names_with_suffix(Globals, Ext,
         NestedDeps, NestedDepsFileNames, !IO),
     MmakeRule = mmake_simple_rule("nested_deps_for_" ++ Ext,
@@ -1097,19 +906,12 @@ write_nested_deps(DepStream, Globals, ModuleName, NestedDeps, Ext, MmakeRule,
         NestedDepsFileNames,
         []).
 
-:- pred write_foreign_import_deps(io.text_output_stream::in, globals::in,
-    string::in, list(module_name)::in, string::in, mmake_entry::out,
+:- pred gather_foreign_import_deps(globals::in, string::in,
+    list(module_name)::in, string::in, mmake_entry::out,
     io::di, io::uo) is det.
 
-write_foreign_import_deps(DepStream, Globals, ForeignImportExt,
+gather_foreign_import_deps(Globals, ForeignImportExt,
         ForeignImportedModuleNames, ForeignImportTarget, MmakeRule, !IO) :-
-    io.write_string(DepStream, "\n\n", !IO),
-    io.write_string(DepStream, ForeignImportTarget, !IO),
-    io.write_string(DepStream, " : ", !IO),
-    write_dependencies_list(Globals, DepStream, ForeignImportExt,
-        ForeignImportedModuleNames, !IO),
-    io.write_string(DepStream, "\n\n", !IO),
-
     make_module_file_names_with_suffix(Globals, ForeignImportExt,
         ForeignImportedModuleNames, ForeignImportedFileNames, !IO),
     MmakeRule = mmake_simple_rule("foreign_deps_for_" ++ ForeignImportExt,
@@ -1119,36 +921,6 @@ write_foreign_import_deps(DepStream, Globals, ForeignImportExt,
         []).
 
 %---------------------------------------------------------------------------%
-%
-% These predicates take a list of module names and a suffix,
-% find the filename that contains each module with that suffix,
-% and write out the result directly.
-%
-% When constructing mmakefiles, we want to do the same job
-% *without* the final output. The predicates that do that are
-% make_module_file_names_with_suffix and
-% make_module_file_name_group_with_suffix.
-%
-
-:- pred write_dependencies_set(globals::in, io.output_stream::in,
-    string::in, set(module_name)::in, io::di, io::uo) is det.
-
-write_dependencies_set(Globals, DepStream, Suffix, Modules, !IO) :-
-    write_dependencies_list(Globals, DepStream, Suffix,
-        set.to_sorted_list(Modules), !IO).
-
-:- pred write_dependencies_list(globals::in, io.output_stream::in,
-    string::in, list(module_name)::in, io::di, io::uo) is det.
-
-write_dependencies_list(_, _, _, [], !IO).
-write_dependencies_list(Globals, DepStream, Suffix, [Module | Modules], !IO) :-
-    module_name_to_file_name(Globals, do_not_create_dirs, Suffix,
-        Module, FileName, !IO),
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, FileName, !IO),
-    write_dependencies_list(Globals, DepStream, Suffix, Modules, !IO).
-
-%---------------------%
 
 :- pred make_module_file_names_with_suffix(globals::in,
     string::in, list(module_name)::in, list(mmake_file_name)::out,
@@ -1173,64 +945,6 @@ make_module_file_name_group_with_suffix(Globals, GroupName, Suffix,
 
 %---------------------------------------------------------------------------%
 
-:- pred write_compact_dependencies_list(io.output_stream::in,
-    string::in, string::in, pair(string)::in, io::di, io::uo) is det.
-
-write_compact_dependencies_list(DepStream, Prefix, Suffix, Basis, !IO) :-
-    Basis = VarName - OldSuffix,
-    io.write_string(DepStream, "$(", !IO),
-    io.write_string(DepStream, VarName, !IO),
-    io.write_string(DepStream, ":%", !IO),
-    io.write_string(DepStream, OldSuffix, !IO),
-    io.write_string(DepStream, "=", !IO),
-    io.write_string(DepStream, Prefix, !IO),
-    io.write_string(DepStream, "%", !IO),
-    io.write_string(DepStream, Suffix, !IO),
-    io.write_string(DepStream, ")", !IO).
-
-% Not currently needed.
-%
-% :- pred write_dll_dependencies_list(globals::in, io.output_stream::in,
-%     string::in, list(module_name)::in, io::di, io::uo) is det.
-%
-% write_dll_dependencies_list(_Globals, _DepStream, _Prefix, [], !IO).
-% write_dll_dependencies_list(Globals, DepStream, Prefix, [Module | Modules],
-%         !IO) :-
-%     write_dll_dependency(Globals, DepStream, Prefix, Module, !IO),
-%     write_dll_dependencies_list(Globals, DepStream, Prefix, Modules, !IO).
-%
-% :- pred write_dll_dependency(globals::in, io.output_stream::in, string::in,
-%     module_name::in, io::di, io::uo) is det.
-%
-% write_dll_dependency(Globals, DepStream, Prefix, Module, !IO) :-
-%     module_name_to_file_name(Globals, Module, ".dll", do_not_create_dirs,
-%         FileName, !IO),
-%     io.write_string(DepStream, " \\\n\t", !IO),
-%     io.write_string(DepStream, Prefix, !IO),
-%     io.write_string(DepStream, FileName, !IO).
-
-:- pred write_foreign_include_file_dependencies_list(io.output_stream::in,
-    file_name::in, list(foreign_include_file_info)::in, io::di, io::uo) is det.
-
-write_foreign_include_file_dependencies_list(DepStream, SourceFileName,
-        IncludeFiles, !IO) :-
-    list.foldl(
-        write_foreign_include_file_dependency(DepStream, SourceFileName),
-        IncludeFiles, !IO).
-
-    % The version of this predicate that does not do the final output
-    % is foreign_include_file_path_name.
-    %
-:- pred write_foreign_include_file_dependency(io.output_stream::in,
-    file_name::in, foreign_include_file_info::in, io::di, io::uo) is det.
-
-write_foreign_include_file_dependency(DepStream, SourceFileName,
-        IncludeFile, !IO) :-
-    IncludeFile = foreign_include_file_info(_Lang, IncludeFileName),
-    make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, IncludePath, !IO).
-
 :- func foreign_include_file_path_name(file_name, foreign_include_file_info)
     = string.
 
@@ -1238,63 +952,29 @@ foreign_include_file_path_name(SourceFileName, IncludeFile) = IncludePath :-
     IncludeFile = foreign_include_file_info(_Lang, IncludeFileName),
     make_include_file_path(SourceFileName, IncludeFileName, IncludePath).
 
-:- pred write_fact_table_dependencies_list(globals::in, io.output_stream::in,
-    string::in, module_name::in, list(file_name)::in, io::di, io::uo) is det.
-
-write_fact_table_dependencies_list(_, _, _, _, [], !IO).
-write_fact_table_dependencies_list(Globals, DepStream, Suffix, Module,
-        [FactTable | FactTables], !IO) :-
-    fact_table_file_name(Globals, Module, FactTable, Suffix,
-        do_not_create_dirs, FileName, !IO),
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, FileName, !IO),
-    write_fact_table_dependencies_list(Globals, DepStream, Suffix, Module,
-        FactTables, !IO).
-
-:- pred write_extra_link_dependencies_list(globals::in, io.output_stream::in,
-    string::in, assoc_list(file_name, module_name)::in, list(string)::out,
+:- pred get_extra_link_dependencies(globals::in, string::in,
+    assoc_list(file_name, module_name)::in, list(string)::out,
     io::di, io::uo) is det.
 
-write_extra_link_dependencies_list(_, _, _, [], [], !IO).
-write_extra_link_dependencies_list(Globals, DepStream, Suffix,
+get_extra_link_dependencies(_, _, [], [], !IO).
+get_extra_link_dependencies(Globals, Suffix,
         [ExtraLink - Module | ExtraLinks], [FileName | FileNames], !IO) :-
     extra_link_obj_file_name(Globals, Module, ExtraLink, Suffix,
         do_not_create_dirs, FileName, !IO),
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, FileName, !IO),
-    write_extra_link_dependencies_list(Globals, DepStream, Suffix,
+    get_extra_link_dependencies(Globals, Suffix,
         ExtraLinks, FileNames, !IO).
-
-:- pred write_file_dependencies_list(io.output_stream::in, string::in,
-    list(string)::in, io::di, io::uo) is det.
-
-write_file_dependencies_list(_, _, [], !IO).
-write_file_dependencies_list(DepStream, Suffix, [FileName | FileNames], !IO) :-
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, FileName, !IO),
-    io.write_string(DepStream, Suffix, !IO),
-    write_file_dependencies_list(DepStream, Suffix, FileNames, !IO).
 
     % With `--use-subdirs', allow users to type `mmake module.c'
     % rather than `mmake Mercury/cs/module.c'.
     %
-:- pred write_subdirs_shorthand_rule(globals::in, io.output_stream::in,
-    module_name::in, string::in, mmake_entry::out, io::di, io::uo) is det.
+:- pred construct_subdirs_shorthand_rule(globals::in, module_name::in,
+    string::in, mmake_entry::out, io::di, io::uo) is det.
 
-write_subdirs_shorthand_rule(Globals, DepStream, ModuleName, Ext, MmakeRule,
-        !IO) :-
+construct_subdirs_shorthand_rule(Globals, ModuleName, Ext, MmakeRule, !IO) :-
     module_name_to_file_name_stem(ModuleName, ModuleStr),
+    ShorthandTarget = ModuleStr ++ Ext,
     module_name_to_file_name(Globals, do_not_create_dirs, Ext,
         ModuleName, Target, !IO),
-    ShorthandTarget = ModuleStr ++ Ext,
-    io.write_string(DepStream, ".PHONY: ", !IO),
-    io.write_string(DepStream, ShorthandTarget, !IO),
-    io.nl(DepStream, !IO),
-    io.write_string(DepStream, ShorthandTarget, !IO),
-    io.write_string(DepStream, ": ", !IO),
-    io.write_string(DepStream, Target, !IO),
-    io.nl(DepStream, !IO),
-
     MmakeRule = mmake_simple_rule("subdir_shorthand_for_" ++ Ext,
         mmake_rule_is_phony, ShorthandTarget, [Target], []).
 
@@ -1383,9 +1063,10 @@ generate_dependencies_write_d_file(Globals, Dep,
         % the possibility of cycles, each module is only allowed to depend
         % on modules that occur later than it in the TransOptOrder.
 
-        FindModule = (pred(OtherModule::in) is semidet :-
-            ModuleName \= OtherModule
-        ),
+        FindModule =
+            ( pred(OtherModule::in) is semidet :-
+                ModuleName \= OtherModule
+            ),
         list.drop_while(FindModule, TransOptOrder, TransOptDeps0),
         ( if TransOptDeps0 = [_ | TransOptDeps1] then
             % The module was found in the list.
@@ -1423,34 +1104,15 @@ get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_dv_file(globals::in, file_name::in, module_name::in,
-    deps_map::in, io.output_stream::in,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
+    deps_map::in, mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
-generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
+generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         !MmakeFile, !IO) :-
-    io.write_string(DepStream,
-        "# vim: ts=8 sw=8 noexpandtab ft=make\n\n", !IO),
     ModuleNameString = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),
-
-    io.write_string(DepStream,
-        "# Automatically generated dependency variables for module `", !IO),
-    io.write_string(DepStream, ModuleNameString, !IO),
-    io.write_string(DepStream, "'\n", !IO),
-    io.write_string(DepStream, "# generated from source file `", !IO),
-    io.write_string(DepStream, SourceFileName, !IO),
-    io.write_string(DepStream, "'\n", !IO),
-
-    io.write_string(DepStream,
-        "# Generated by the Mercury compiler, version ", !IO),
-    io.write_string(DepStream, Version, !IO),
-    io.write_string(DepStream, ",\n# configured for ", !IO),
-    io.write_string(DepStream, FullArch, !IO),
-    io.write_string(DepStream, ".\n\n", !IO),
-
     MmakeStartComment = mmake_start_comment("dependency variables",
         ModuleNameString, SourceFileName, Version, FullArch),
-    gather_mmake_entry(DepStream, MmakeStartComment, !MmakeFile, !IO),
+    add_mmake_entry(MmakeStartComment, !MmakeFile),
 
     map.keys(DepsMap, Modules0),
     select_ok_modules(Modules0, DepsMap, Modules1),
@@ -1460,34 +1122,19 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     list.map(get_source_file(DepsMap), Modules, SourceFiles0),
     list.sort_and_remove_dups(SourceFiles0, SourceFiles),
 
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".ms =", !IO),
-    write_file_dependencies_list(DepStream, ".m", SourceFiles, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
     MmakeVarModuleMs = mmake_var_defn_list(ModuleMakeVarName ++ ".ms",
         list.map(add_suffix(".m"), SourceFiles)),
-    gather_mmake_entry(DepStream, MmakeVarModuleMs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".errs =", !IO),
-    write_file_dependencies_list(DepStream, ".err", SourceFiles, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarModuleMs, !MmakeFile),
 
     MmakeVarModuleErrs = mmake_var_defn_list(ModuleMakeVarName ++ ".errs",
         list.map(add_suffix(".err"), SourceFiles)),
-    gather_mmake_entry(DepStream, MmakeVarModuleErrs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".mods =", !IO),
-    write_dependencies_list(Globals, DepStream, "", Modules, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarModuleErrs, !MmakeFile),
 
     make_module_file_names_with_suffix(Globals, "", Modules,
         ModulesSourceFileNames, !IO),
     MmakeVarModuleMods = mmake_var_defn_list(ModuleMakeVarName ++ ".mods",
         ModulesSourceFileNames),
-    gather_mmake_entry(DepStream, MmakeVarModuleMods, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarModuleMods, !MmakeFile),
 
     % The modules for which we need to generate .int0 files.
     ModulesWithSubModules = list.filter(
@@ -1496,18 +1143,12 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
             set.non_empty(ModuleImports ^ mai_children)
         ), Modules),
 
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".parent_mods =", !IO),
-    write_dependencies_list(Globals, DepStream, "", ModulesWithSubModules,
-        !IO),
-    io.write_string(DepStream, "\n", !IO),
-
     make_module_file_names_with_suffix(Globals, "", ModulesWithSubModules,
         ModulesWithSubModulesSourceFileNames, !IO),
     MmakeVarModuleParentMods = mmake_var_defn_list(
         ModuleMakeVarName ++ ".parent_mods",
         ModulesWithSubModulesSourceFileNames),
-    gather_mmake_entry(DepStream, MmakeVarModuleParentMods, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarModuleParentMods, !MmakeFile),
 
     globals.get_target(Globals, Target),
     (
@@ -1520,17 +1161,12 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     ),
     ForeignModules = assoc_list.keys(ForeignModulesAndExts),
 
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".foreign =", !IO),
-    write_dependencies_list(Globals, DepStream, "", ForeignModules, !IO),
-    io.write_string(DepStream, "\n\n", !IO),
-
     make_module_file_names_with_suffix(Globals, "", ForeignModules,
         ForeignModulesFileNames, !IO),
     MmakeVarForeignModules =
         mmake_var_defn_list(ModuleMakeVarName ++ ".foreign",
             ForeignModulesFileNames),
-    gather_mmake_entry(DepStream, MmakeVarForeignModules, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarForeignModules, !MmakeFile),
 
     MakeFileName =
         ( pred(M - E::in, F::out, IO0::di, IO::uo) is det :-
@@ -1547,289 +1183,140 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     % using a make variable whose name ends in "_cs"?
     % Of course, since ForeignModulesAndExts is always zero with our current
     % set of target languages, this does not matter.
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".foreign_cs = ", !IO),
-    write_file_dependencies_list(DepStream, "", ForeignFileNames, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    MmakeVarForeignFileNames = mmake_var_defn_list(
-        ModuleMakeVarName ++ ".foreign_cs",
-        ForeignFileNames),
-    gather_mmake_entry(DepStream, MmakeVarForeignFileNames, !MmakeFile, !IO),
-
-    ForeignVarName = ModuleMakeVarName ++ ".foreign",
-    ForeignBasis = ForeignVarName - "",
+    MmakeVarForeignFileNames =
+        mmake_var_defn_list(ModuleMakeVarName ++ ".foreign_cs",
+            ForeignFileNames),
+    add_mmake_entry(MmakeVarForeignFileNames, !MmakeFile),
 
     % The dlls that contain the foreign_code.
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".foreign_dlls = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(dlls_subdir)", ".dll", ForeignBasis, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
     MmakeVarForeignDlls = mmake_var_defn(ModuleMakeVarName ++ ".foreign_dlls",
         string.format("$(%s.foreign:%%=$(dlls_subdir)%%.dll)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarForeignDlls, !MmakeFile, !IO),
-
-    ModsVarName = ModuleMakeVarName ++ ".mods",
-    Basis = ModsVarName - "",
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".init_cs = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(cs_subdir)", ".c", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarForeignDlls, !MmakeFile),
 
     MmakeVarInitCs = mmake_var_defn(ModuleMakeVarName ++ ".init_cs",
         string.format("$(%s.mods:%%=$(cs_subdir)%%.c)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarInitCs, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarInitCs, !MmakeFile),
 
     get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs),
 
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".cs = $(", !IO),
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".init_cs) ", !IO),
-    write_extra_link_dependencies_list(Globals, DepStream,
-        ".c", ExtraLinkObjs, ExtraLinkObjFileNamesC, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
+    get_extra_link_dependencies(Globals, ".c",
+        ExtraLinkObjs, ExtraLinkObjFileNamesC, !IO),
     MmakeVarCs = mmake_var_defn_list(ModuleMakeVarName ++ ".cs",
         ["$(" ++ ModuleMakeVarName ++ ".init_cs)" | ExtraLinkObjFileNamesC]),
-    gather_mmake_entry(DepStream, MmakeVarCs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".dlls = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(dlls_subdir)", ".dll", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarCs, !MmakeFile),
 
     MmakeVarDlls = mmake_var_defn(ModuleMakeVarName ++ ".dlls",
         string.format("$(%s.mods:%%=$(dlls_subdir)%%.dll)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarDlls, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarDlls, !MmakeFile),
 
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".all_os = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(os_subdir)", ".$O", Basis, !IO),
-    write_extra_link_dependencies_list(Globals, DepStream,
-        ".$O", ExtraLinkObjs, ExtraLinkObjFileNamesOs, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
+    get_extra_link_dependencies(Globals, ".$O",
+        ExtraLinkObjs, ExtraLinkObjFileNamesOs, !IO),
     MmakeVarAllOs = mmake_var_defn_list(ModuleMakeVarName ++ ".all_os",
         [string.format("$(%s.mods:%%=$(os_subdir)%%.$O)",
             [s(ModuleMakeVarName)]) |
         ExtraLinkObjFileNamesOs]),
-    gather_mmake_entry(DepStream, MmakeVarAllOs, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarAllOs, !MmakeFile),
 
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".all_pic_os = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(os_subdir)", ".$(EXT_FOR_PIC_OBJECTS)", Basis, !IO),
-    write_extra_link_dependencies_list(Globals, DepStream,
-        ".$(EXT_FOR_PIC_OBJECTS)", ExtraLinkObjs, ExtraLinkObjFileNamesPicOs,
-        !IO),
-    io.write_string(DepStream, "\n", !IO),
-
+    get_extra_link_dependencies(Globals, ".$(EXT_FOR_PIC_OBJECTS)",
+        ExtraLinkObjs, ExtraLinkObjFileNamesPicOs, !IO),
     MmakeVarAllPicOs = mmake_var_defn_list(ModuleMakeVarName ++ ".all_pic_os",
         [string.format("$(%s.mods:%%=$(os_subdir)%%.$(EXT_FOR_PIC_OBJECTS))",
             [s(ModuleMakeVarName)]) |
         ExtraLinkObjFileNamesPicOs]),
-    gather_mmake_entry(DepStream, MmakeVarAllPicOs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".os = $(", !IO),
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".all_os)\n", !IO),
+    add_mmake_entry(MmakeVarAllPicOs, !MmakeFile),
 
     MmakeVarOs = mmake_var_defn(ModuleMakeVarName ++ ".os",
         string.format("$(%s.all_os)", [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarOs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".pic_os = $(", !IO),
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".all_pic_os)\n", !IO),
+    add_mmake_entry(MmakeVarOs, !MmakeFile),
 
     MmakeVarPicOs = mmake_var_defn(ModuleMakeVarName ++ ".pic_os",
         string.format("$(%s.all_pic_os)", [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarPicOs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".useds = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(useds_subdir)", ".used", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarPicOs, !MmakeFile),
 
     MmakeVarUseds = mmake_var_defn(ModuleMakeVarName ++ ".useds",
         string.format("$(%s.mods:%%=$(used_subdir)%%.used)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarUseds, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".javas = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(javas_subdir)", ".java", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarUseds, !MmakeFile),
 
     MmakeVarJavas = mmake_var_defn(ModuleMakeVarName ++ ".javas",
         string.format("$(%s.mods:%%=$(javas_subdir)%%.java)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarJavas, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarJavas, !MmakeFile),
 
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".classes = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(classes_subdir)", ".class", Basis, !IO),
-    io.write_string(DepStream, " ", !IO),
     % The Java compiler creates a .class file for each class within the
     % original .java file. The filenames of all these can be matched with
     % `module\$*.class', hence the "\\$$*.class" below.
     % If no such files exist, Make will use the pattern verbatim,
     % so we enclose the pattern in a `wildcard' function to prevent this.
-    io.write_string(DepStream, "$(wildcard ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(classes_subdir)", "\\$$*.class", Basis, !IO),
-    io.write_string(DepStream, ")\n", !IO),
-
     MmakeVarClasses = mmake_var_defn_list(ModuleMakeVarName ++ ".classes",
         [string.format("$(%s.mods:%%=$(classes_subdir)%%.class)",
             [s(ModuleMakeVarName)]),
         string.format(
             "$(wildcard $(%s.mods:%%=$(classes_subdir)%%\\$$*.class))",
             [s(ModuleMakeVarName)])]),
-    gather_mmake_entry(DepStream, MmakeVarClasses, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".dirs = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(dirs_subdir)", ".dir", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarClasses, !MmakeFile),
 
     MmakeVarDirs = mmake_var_defn(ModuleMakeVarName ++ ".dirs",
         string.format("$(%s.mods:%%=$(dirs_subdir)%%.dir)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarDirs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".dir_os = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(dirs_subdir)", ".dir/*.$O", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarDirs, !MmakeFile),
 
     MmakeVarDirOs = mmake_var_defn(ModuleMakeVarName ++ ".dir_os",
         string.format("$(%s.mods:%%=$(dirs_subdir)%%.dir/*.$O)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarDirOs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".dates = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(dates_subdir)", ".date", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarDirOs, !MmakeFile),
 
     MmakeVarDates = mmake_var_defn(ModuleMakeVarName ++ ".dates",
         string.format("$(%s.mods:%%=$(dates_subdir)%%.date)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarDates, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".date0s = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(date0s_subdir)", ".date0", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarDates, !MmakeFile),
 
     MmakeVarDate0s = mmake_var_defn(ModuleMakeVarName ++ ".date0s",
         string.format("$(%s.mods:%%=$(date0s_subdir)%%.date0)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarDate0s, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".date3s = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(date3s_subdir)", ".date3", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarDate0s, !MmakeFile),
 
     MmakeVarDate3s = mmake_var_defn(ModuleMakeVarName ++ ".date3s",
         string.format("$(%s.mods:%%=$(date3s_subdir)%%.date3)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarDate3s, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".optdates = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(optdates_subdir)", ".optdate", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarDate3s, !MmakeFile),
 
     MmakeVarOptDates = mmake_var_defn(ModuleMakeVarName ++ ".optdates",
         string.format("$(%s.mods:%%=$(optdates_subdir)%%.optdate)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarOptDates, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".trans_opt_dates = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(trans_opt_dates_subdir)", ".trans_opt_date", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarOptDates, !MmakeFile),
 
     MmakeVarTransOptDates =
         mmake_var_defn(ModuleMakeVarName ++ ".trans_opt_dates",
             string.format(
                 "$(%s.mods:%%=$(trans_opt_dates_subdir)%%.trans_opt_date)",
                 [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarTransOptDates, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".c_dates = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(c_dates_subdir)", ".c_date", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarTransOptDates, !MmakeFile),
 
     MmakeVarCDates = mmake_var_defn(ModuleMakeVarName ++ ".c_dates",
         string.format("$(%s.mods:%%=$(c_dates_subdir)%%.c_date)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarCDates, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".java_dates = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(java_dates_subdir)", ".java_date", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarCDates, !MmakeFile),
 
     MmakeVarJavaDates = mmake_var_defn(ModuleMakeVarName ++ ".java_dates",
         string.format("$(%s.mods:%%=$(java_dates_subdir)%%.java_date)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarJavaDates, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".ds = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(ds_subdir)", ".d", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarJavaDates, !MmakeFile),
 
     MmakeVarDs = mmake_var_defn(ModuleMakeVarName ++ ".ds",
         string.format("$(%s.mods:%%=$(ds_subdir)%%.d)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarDs, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarDs, !MmakeFile),
 
     % XXX Why is make_module_dep_file_extension a function?
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".module_deps = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(module_deps_subdir)", make_module_dep_file_extension,
-        Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
     MmakeVarModuleDeps = mmake_var_defn(ModuleMakeVarName ++ ".module_deps",
         string.format("$(%s.mods:%%=$(module_deps_subdir)%%%s)",
             [s(ModuleMakeVarName), s(make_module_dep_file_extension)])),
-    gather_mmake_entry(DepStream, MmakeVarModuleDeps, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarModuleDeps, !MmakeFile),
 
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".mihs = ", !IO),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     (
         HighLevelCode = yes,
@@ -1837,8 +1324,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
             Target = target_c,
             % For the `--target c' MLDS back-end, we generate `.mih' files
             % for every module.
-            write_compact_dependencies_list(DepStream,
-                "$(mihs_subdir)", ".mih", Basis, !IO),
             MihSources = [string.format("$(%s.mods:%%=$(mihs_subdir)%%.mih)",
                 [s(ModuleMakeVarName)])]
         ;
@@ -1857,17 +1342,13 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         HighLevelCode = no,
         MihSources = []
     ),
-    io.write_string(DepStream, "\n", !IO),
 
     MmakeVarMihs =
         mmake_var_defn_list(ModuleMakeVarName ++ ".mihs", MihSources),
-    gather_mmake_entry(DepStream, MmakeVarMihs, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarMihs, !MmakeFile),
 
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".mhs = ", !IO),
     (
         Target = target_c,
-        write_compact_dependencies_list(DepStream, "", ".mh", Basis, !IO),
         MhSources =
             [string.format("$(%s.mods:%%=%%.mh)", [s(ModuleMakeVarName)])]
     ;
@@ -1877,10 +1358,9 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         ),
         MhSources = []
     ),
-    io.write_string(DepStream, "\n", !IO),
 
     MmakeVarMhs = mmake_var_defn_list(ModuleMakeVarName ++ ".mhs", MhSources),
-    gather_mmake_entry(DepStream, MmakeVarMhs, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarMhs, !MmakeFile),
 
     % The `<module>.all_mihs' variable is like `<module>.mihs' except
     % that it contains header files for all the modules, regardless
@@ -1888,65 +1368,34 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     % `mmake realclean', which should remove anything that could have
     % been automatically generated, even if the grade or --target option
     % has changed.
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".all_mihs = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(mihs_subdir)", ".mih", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
     MmakeVarAllMihs = mmake_var_defn(ModuleMakeVarName ++ ".all_mihs",
         string.format("$(%s.mods:%%=$(mihs_subdir)%%.mih)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarAllMihs, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarAllMihs, !MmakeFile),
 
     % The `<module>.all_mhs' variable is like `<module>.mhs' except
     % that it contains header files for all the modules, as for
     % `<module>.all_mihs' above.
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".all_mhs = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "", ".mh", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
     MmakeVarAllMhs = mmake_var_defn(ModuleMakeVarName ++ ".all_mhs",
         string.format("$(%s.mods:%%=%%.mh)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarAllMhs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".ints = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(ints_subdir)", ".int", Basis, !IO),
-    io.write_string(DepStream, " ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(int2s_subdir)", ".int2", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarAllMhs, !MmakeFile),
 
     MmakeVarInts = mmake_var_defn_list(ModuleMakeVarName ++ ".ints",
         [string.format("$(%s.mods:%%=$(ints_subdir)%%.int)",
             [s(ModuleMakeVarName)]),
         string.format("$(%s.mods:%%=$(int2s_subdir)%%.int2)",
             [s(ModuleMakeVarName)])]),
-    gather_mmake_entry(DepStream, MmakeVarInts, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarInts, !MmakeFile),
 
     % `.int0' files are only generated for modules with submodules.
     % XXX ... or at least they should be. Currently we end up generating
     % .int0 files for nested submodules that don't have any children.
     % (We do the correct thing for separate submodules.)
-
-    ParentModsVarName = ModuleMakeVarName ++ ".parent_mods",
-    ParentBasis = ParentModsVarName - "",
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".int0s = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(int0s_subdir)", ".int0", ParentBasis, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
     MmakeVarInt0s = mmake_var_defn(ModuleMakeVarName ++ ".int0s",
         string.format("$(%s.parent_mods:%%=$(int0s_subdir)%%.int0)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarInt0s, !MmakeFile, !IO),
+    add_mmake_entry(MmakeVarInt0s, !MmakeFile),
 
     % XXX The `<module>.all_int0s' variables is like `<module>.int0s' except
     % that it contains .int0 files for all modules, regardless of whether
@@ -1954,94 +1403,45 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     % `mmake realclean' to ensure that we clean up all the .int0 files,
     % including the ones that were accidently created by the bug described
     % above.
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".all_int0s = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(int0s_subdir)", ".int0", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
     MmakeVarAllInt0s = mmake_var_defn(ModuleMakeVarName ++ ".all_int0s",
         string.format("$(%s.mods:%%=$(int0s_subdir)%%.int0)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarAllInt0s, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".int3s = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(int3s_subdir)", ".int3", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarAllInt0s, !MmakeFile),
 
     MmakeVarInt3s = mmake_var_defn(ModuleMakeVarName ++ ".int3s",
         string.format("$(%s.mods:%%=$(int3s_subdir)%%.int3)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarInt3s, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".opts = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(opts_subdir)", ".opt", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarInt3s, !MmakeFile),
 
     MmakeVarOpts = mmake_var_defn(ModuleMakeVarName ++ ".opts",
         string.format("$(%s.mods:%%=$(opts_subdir)%%.opt)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarOpts, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".trans_opts = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(trans_opts_subdir)", ".trans_opt", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarOpts, !MmakeFile),
 
     MmakeVarTransOpts = mmake_var_defn(ModuleMakeVarName ++ ".trans_opts",
         string.format("$(%s.mods:%%=$(trans_opts_subdir)%%.trans_opt)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarTransOpts, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".analysiss = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(analysiss_subdir)", ".analysis", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarTransOpts, !MmakeFile),
 
     MmakeVarAnalysiss = mmake_var_defn(ModuleMakeVarName ++ ".analysiss",
         string.format("$(%s.mods:%%=$(analysiss_subdir)%%.analysis)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarAnalysiss, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".requests = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(requests_subdir)", ".request", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarAnalysiss, !MmakeFile),
 
     MmakeVarRequests = mmake_var_defn(ModuleMakeVarName ++ ".requests",
         string.format("$(%s.mods:%%=$(requests_subdir)%%.request)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarRequests, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".imdgs = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "$(imdgs_subdir)", ".imdg", Basis, !IO),
-    io.write_string(DepStream, "\n", !IO),
+    add_mmake_entry(MmakeVarRequests, !MmakeFile),
 
     MmakeVarImdgs = mmake_var_defn(ModuleMakeVarName ++ ".imdgs",
         string.format("$(%s.mods:%%=$(imdgs_subdir)%%.imdg)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarImdgs, !MmakeFile, !IO),
-
-    io.write_string(DepStream, ModuleMakeVarName, !IO),
-    io.write_string(DepStream, ".profs = ", !IO),
-    write_compact_dependencies_list(DepStream,
-        "", ".prof", Basis, !IO),
-    io.write_string(DepStream, "\n\n", !IO),
+    add_mmake_entry(MmakeVarImdgs, !MmakeFile),
 
     MmakeVarProfs = mmake_var_defn(ModuleMakeVarName ++ ".profs",
         string.format("$(%s.mods:%%=%%.prof)",
             [s(ModuleMakeVarName)])),
-    gather_mmake_entry(DepStream, MmakeVarProfs, !MmakeFile, !IO).
+    add_mmake_entry(MmakeVarProfs, !MmakeFile).
 
 %---------------------------------------------------------------------------%
 
@@ -2103,36 +1503,16 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 :- type maybe_mmake_var == pair(list(string), string).
 
 :- pred generate_dep_file(globals::in, file_name::in, module_name::in,
-    deps_map::in, io.output_stream::in,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
+    deps_map::in, mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
-generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
+generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
         !MmakeFile, !IO) :-
-    io.write_string(DepStream,
-        "# vim: ts=8 sw=8 noexpandtab ft=make\n\n", !IO),
-
     ModuleNameString = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),
 
-    io.write_string(DepStream,
-        "# Automatically generated dependencies for module `", !IO),
-    io.write_string(DepStream, ModuleNameString, !IO),
-    io.write_string(DepStream, "'\n", !IO),
-    io.write_string(DepStream,
-        "# generated from source file `", !IO),
-    io.write_string(DepStream, SourceFileName, !IO),
-    io.write_string(DepStream, "'\n", !IO),
-
-    io.write_string(DepStream,
-        "# Generated by the Mercury compiler, version ", !IO),
-    io.write_string(DepStream, Version, !IO),
-    io.write_string(DepStream, "\n# configured for ", !IO),
-    io.write_string(DepStream, FullArch, !IO),
-    io.write_string(DepStream, ".\n\n", !IO),
-
     MmakeStartComment = mmake_start_comment("program dependencies",
         ModuleNameString, SourceFileName, Version, FullArch),
-    gather_mmake_entry(DepStream, MmakeStartComment, !MmakeFile, !IO),
+    add_mmake_entry(MmakeStartComment, !MmakeFile),
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
@@ -2183,47 +1563,37 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     MaybeOptsVarPair = MaybeOptsVar - MaybeOptsVarSpace,
     MaybeTransOptsVarPair = MaybeTransOptsVar - MaybeTransOptsVarSpace,
 
-    generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
+    generate_dep_file_exec_library_targets(Globals, ModuleName,
         ModuleMakeVarName, InitFileName, InitObjFileName,
-        MaybeOptsVarPair, MaybeTransOptsVarPair,
+        MaybeOptsVar, MaybeTransOptsVar,
         ExeFileName, JarFileName, LibFileName, SharedLibFileName,
         !MmakeFile, !IO),
-    generate_dep_file_init_targets(Globals, DepStream, ModuleName,
-        ModuleMakeVarName, InitCFileName, InitFileName,
-        DepFileName, DvFileName, !MmakeFile, !IO),
-    generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
+    generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
+        InitCFileName, InitFileName, DepFileName, DvFileName, !MmakeFile, !IO),
+    generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
         ModuleMakeVarName, MmcMakeDeps, Intermod, TransOpt,
         MaybeModuleDepsVarPair, MaybeOptsVarPair, MaybeTransOptsVarPair,
         !MmakeFile, !IO),
-    generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
+    generate_dep_file_collective_targets(Globals, ModuleName,
         ModuleMakeVarName, !MmakeFile, !IO),
-    generate_dep_file_clean_targets(Globals, DepStream, ModuleName,
-        ModuleMakeVarName, ExeFileName, InitCFileName,
-        InitObjFileName, InitPicObjFileName, InitFileName,
-        LibFileName, SharedLibFileName, JarFileName, DepFileName, DvFileName,
-        !MmakeFile, !IO).
+    generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
+        ExeFileName, InitCFileName, InitObjFileName, InitPicObjFileName,
+        InitFileName, LibFileName, SharedLibFileName, JarFileName,
+        DepFileName, DvFileName, !MmakeFile, !IO).
 
 :- pred generate_dep_file_exec_library_targets(globals::in,
-    io.output_stream::in, module_name::in, string::in, string::in, string::in,
-    maybe_mmake_var::in, maybe_mmake_var::in,
+    module_name::in, string::in, string::in, string::in,
+    list(string)::in, list(string)::in,
     string::out, string::out, string::out, string::out,
     mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
-generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
+generate_dep_file_exec_library_targets(Globals, ModuleName,
         ModuleMakeVarName, InitFileName, InitObjFileName,
-        MaybeOptsVarPair, MaybeTransOptsVarPair,
+        MaybeOptsVar, MaybeTransOptsVar,
         ExeFileName, JarFileName, LibFileName, SharedLibFileName,
         !MmakeFile, !IO) :-
     module_name_to_file_name(Globals, do_not_create_dirs, "",
         ModuleName, ExeFileName, !IO),
-
-    io.write_strings(DepStream, [
-        "ifneq ($(EXT_FOR_EXE),)\n",
-        ".PHONY : ", ExeFileName, "\n",
-        ExeFileName, " : ", ExeFileName, "$(EXT_FOR_EXE)\n",
-        "endif\n"
-    ], !IO),
-
     MmakeRuleExtForExe = mmake_simple_rule("ext_for_exe",
         mmake_rule_is_phony,
         ExeFileName,
@@ -2232,25 +1602,20 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     MmakeFragmentExtForExe = mmf_conditional_fragments(
         mmake_cond_strings_not_equal("$(EXT_FOR_EXE)", ""),
         [mmf_entry(MmakeRuleExtForExe)], []),
-    gather_mmake_fragment(DepStream, MmakeFragmentExtForExe, !MmakeFile, !IO),
+    add_mmake_fragment(MmakeFragmentExtForExe, !MmakeFile),
 
     % Note we have to do some ``interesting'' hacks to get
     % `$(ALL_MLLIBS_DEP)' to work in the dependency list,
     % without getting complaints about undefined variables.
-    string.append_list([
-        "$(foreach @,", ModuleMakeVarName, ",$(ALL_MLLIBS_DEP))"],
-        All_MLLibsDep),
-    string.append_list(
-        ["$(foreach @,", ModuleMakeVarName, ",$(ALL_MLOBJS))"],
-        All_MLObjs),
-    string.append_list([
-        "$(patsubst %.o,%.$(EXT_FOR_PIC_OBJECTS),",
-        "$(foreach @,", ModuleMakeVarName, ",$(ALL_MLOBJS)))"],
-        All_MLPicObjs),
+    All_MLLibsDep =
+        "$(foreach @," ++ ModuleMakeVarName ++ ",$(ALL_MLLIBS_DEP))",
+    All_MLObjs =
+        "$(foreach @," ++ ModuleMakeVarName ++ ",$(ALL_MLOBJS))",
+    All_MLPicObjs =
+        "$(patsubst %.o,%.$(EXT_FOR_PIC_OBJECTS)," ++
+        "$(foreach @," ++ ModuleMakeVarName ++ ",$(ALL_MLOBJS)))",
 
-    NL_All_MLLibsDep = "\\\n\t\t" ++ All_MLLibsDep,
     NL_All_MLObjs = "\\\n\t\t" ++ All_MLObjs,
-    NL_All_MLPicObjs = "\\\n\t\t" ++ All_MLPicObjs,
 
     % When compiling to C, we want to include $(foo.cs) first in
     % the dependency list, before $(foo.os).
@@ -2260,14 +1625,9 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     % rather than first spending time compiling C files to .$O,
     % which could be a waste of time if the program contains errors.
 
-    IfJava = ["ifeq ($(findstring java,$(GRADE)),java)\n"],
-    Else = ["else\n"],
-    EndIf = ["endif\n"],
+    ModuleMakeVarNameClasses = "$(" ++ ModuleMakeVarName ++ ".classes)",
 
-    ModuleMakeVarNameClasses = "$(" ++ ModuleMakeVarName ++ ".classes)", 
-    JavaMainRule = [ExeFileName, " : ", ModuleMakeVarNameClasses, "\n"],
-
-    ModuleMakeVarNameOs = "$(" ++ ModuleMakeVarName ++ ".os)", 
+    ModuleMakeVarNameOs = "$(" ++ ModuleMakeVarName ++ ".os)",
     NonJavaMainRuleAction1Line1 =
         "$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) " ++
             "$(EXEFILE_OPT)" ++ ExeFileName ++ "$(EXT_FOR_EXE) " ++
@@ -2275,15 +1635,6 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     NonJavaMainRuleAction1Line2 =
         "\t" ++ ModuleMakeVarNameOs ++ " " ++ NL_All_MLObjs ++
             " $(ALL_MLLIBS)",
-    NonJavaMainRule =
-        [ExeFileName, "$(EXT_FOR_EXE) : ",
-            ModuleMakeVarNameOs, " ", InitObjFileName, " ",
-            NL_All_MLObjs, " ", NL_All_MLLibsDep, "\n",
-        "\t" ++ NonJavaMainRuleAction1Line1 ++ "\n",
-        "\t" ++ NonJavaMainRuleAction1Line2 ++ "\n"],
-
-    Rules = IfJava ++ JavaMainRule ++ Else ++ NonJavaMainRule ++ EndIf,
-    io.write_strings(DepStream, Rules, !IO),
 
     MmakeRuleExecutableJava = mmake_simple_rule("executable_java",
         mmake_rule_is_not_phony,
@@ -2298,7 +1649,7 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     MmakeFragmentExecutable = mmf_conditional_entry(
         mmake_cond_grade_has_component("java"),
         MmakeRuleExecutableJava, MmakeRuleExecutableNonJava),
-    gather_mmake_fragment(DepStream, MmakeFragmentExecutable, !MmakeFile, !IO),
+    add_mmake_fragment(MmakeFragmentExecutable, !MmakeFile),
 
     module_name_to_lib_file_name(Globals, "lib", ModuleName, "",
         do_not_create_dirs, LibTargetName, !IO),
@@ -2324,30 +1675,10 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
         InstallNameOpt = ""
     ),
 
-    MaybeOptsVarPair = MaybeOptsVar - MaybeOptsVarSpace,
-    MaybeTransOptsVarPair = MaybeTransOptsVar - MaybeTransOptsVarSpace,
-
     ModuleMakeVarNameInts = "$(" ++ ModuleMakeVarName ++ ".ints)",
     ModuleMakeVarNameInt3s = "$(" ++ ModuleMakeVarName ++ ".int3s)",
-    AllInts = [ModuleMakeVarNameInts, " ", ModuleMakeVarNameInt3s, " ",
-        MaybeOptsVarSpace, MaybeTransOptsVarSpace, InitFileName, "\n\n"],
     AllIntSources = [ModuleMakeVarNameInts, ModuleMakeVarNameInt3s] ++
         MaybeOptsVar ++ MaybeTransOptsVar ++ [InitFileName],
-
-    JavaLibRule = [
-        LibTargetName, " : ", JarFileName, " \\\n\t\t"
-        | AllInts
-    ],
-    NonJavaLibRule = [
-        LibTargetName, " : ", LibFileName, " ",
-        MaybeSharedLibFileName, " \\\n\t\t"
-        | AllInts
-    ],
-    LibRules = IfJava ++ JavaLibRule ++ Else ++ NonJavaLibRule ++ EndIf,
-    io.write_strings(DepStream, [
-        ".PHONY : ", LibTargetName, "\n" |
-        LibRules
-    ], !IO),
 
     MmakeRuleLibTargetJava = mmake_simple_rule("lib_target_java",
         mmake_rule_is_phony,
@@ -2362,7 +1693,7 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     MmakeFragmentLibTarget = mmf_conditional_entry(
         mmake_cond_grade_has_component("java"),
         MmakeRuleLibTargetJava, MmakeRuleLibTargetNonJava),
-    gather_mmake_fragment(DepStream, MmakeFragmentLibTarget, !MmakeFile, !IO),
+    add_mmake_fragment(MmakeFragmentLibTarget, !MmakeFile),
 
     ModuleMakeVarNamePicOs = "$(" ++ ModuleMakeVarName ++ ".pic_os)",
     SharedLibAction1Line1 =
@@ -2371,16 +1702,6 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
         "-o " ++ SharedLibFileName ++ " \\",
     SharedLibAction1Line2 = "\t" ++ ModuleMakeVarNamePicOs ++ " \\",
     SharedLibAction1Line3 = "\t" ++ All_MLPicObjs ++ " $(ALL_MLLIBS)",
-    io.write_strings(DepStream, [
-        "ifneq ($(EXT_FOR_SHARED_LIB),$A)\n",
-        SharedLibFileName, " : ",
-            ModuleMakeVarNamePicOs, " ", NL_All_MLPicObjs, " ",
-            NL_All_MLLibsDep, "\n",
-        "\t", SharedLibAction1Line1, "\n",
-        "\t", SharedLibAction1Line2, "\n",
-        "\t", SharedLibAction1Line3, "\n",
-        "endif\n\n"
-    ], !IO),
 
     MmakeRuleSharedLib = mmake_simple_rule("shared_lib",
         mmake_rule_is_not_phony,
@@ -2390,7 +1711,7 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     MmakeFragmentSharedLib = mmf_conditional_fragments(
         mmake_cond_strings_not_equal("$(EXT_FOR_SHARED_LIB)", "$(A)"),
         [mmf_entry(MmakeRuleSharedLib)], []),
-    gather_mmake_fragment(DepStream, MmakeFragmentSharedLib, !MmakeFile, !IO),
+    add_mmake_fragment(MmakeFragmentSharedLib, !MmakeFile),
 
     LibAction1 = "rm -f " ++ LibFileName,
     LibAction2Line1 =
@@ -2398,45 +1719,34 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
             " " ++ ModuleMakeVarNameOs ++ " \\",
     LibAction2Line2 = "\t" ++ All_MLObjs,
     LibAction3 = "$(RANLIB) $(ALL_RANLIBFLAGS) " ++ LibFileName,
-    io.write_strings(DepStream, [
-        LibFileName, " : ", ModuleMakeVarNameOs, " ", NL_All_MLObjs, "\n",
-        "\t", LibAction1, "\n",
-        "\t", LibAction2Line1, "\n",
-        "\t", LibAction2Line2, "\n",
-        "\t", LibAction3, "\n\n"
-    ], !IO),
 
     MmakeRuleLib = mmake_simple_rule("lib",
         mmake_rule_is_not_phony,
         LibFileName,
         [ModuleMakeVarNameOs, All_MLObjs],
         [LibAction1, LibAction2Line1, LibAction2Line2, LibAction3]),
-    gather_mmake_entry(DepStream, MmakeRuleLib, !MmakeFile, !IO),
+    add_mmake_entry(MmakeRuleLib, !MmakeFile),
 
     list_class_files_for_jar_mmake(Globals, ModuleMakeVarNameClasses,
         ListClassFiles),
     JarAction1 = "$(JAR) $(JAR_CREATE_FLAGS) " ++ JarFileName ++ " " ++
         ListClassFiles,
-    io.write_strings(DepStream, [
-        JarFileName, " : ", ModuleMakeVarNameClasses, "\n",
-        "\t", JarAction1, "\n\n"
-    ], !IO),
 
     MmakeRuleJar = mmake_simple_rule("jar",
         mmake_rule_is_not_phony,
         JarFileName,
         [ModuleMakeVarNameClasses],
         [JarAction1]),
-    gather_mmake_entry(DepStream, MmakeRuleJar, !MmakeFile, !IO).
+    add_mmake_entry(MmakeRuleJar, !MmakeFile).
 
-:- pred generate_dep_file_init_targets(globals::in, io.output_stream::in,
+:- pred generate_dep_file_init_targets(globals::in,
     module_name::in, string::in, string::in, string::in,
     string::out, string::out,
     mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
-generate_dep_file_init_targets(Globals, DepStream,
-        ModuleName, ModuleMakeVarName, InitCFileName, InitFileName,
-        DepFileName, DvFileName, !MmakeFile, !IO) :-
+generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
+        InitCFileName, InitFileName, DepFileName, DvFileName,
+        !MmakeFile, !IO) :-
     module_name_to_file_name(Globals, do_not_create_dirs, ".dep",
         ModuleName, DepFileName, !IO),
     module_name_to_file_name(Globals, do_not_create_dirs, ".dv",
@@ -2450,35 +1760,24 @@ generate_dep_file_init_targets(Globals, DepStream,
     % generate extra entries in the `.init' file for a library.
     % It may expand to the empty string.
     InitAction3 = "$(EXTRA_INIT_COMMAND) >> " ++ InitFileName,
-    io.write_strings(DepStream, [
-        InitFileName, " : ", DepFileName, " ", ModuleMakeVarNameCs, "\n",
-        "\t", InitAction1, "\n",
-        "\t", InitAction2, "\n",
-        "\t", InitAction3, "\n\n"
-    ], !IO),
-
     MmakeRuleInitFile = mmake_simple_rule("init_file",
         mmake_rule_is_not_phony,
         InitFileName,
         [DepFileName, ModuleMakeVarNameCs],
         [InitAction1, InitAction2, InitAction3]),
-    gather_mmake_entry(DepStream, MmakeRuleInitFile, !MmakeFile, !IO),
+    add_mmake_entry(MmakeRuleInitFile, !MmakeFile),
 
     % The `force-module_init' dependency forces the commands for
     % the `module_init.c' rule to be run every time the rule
     % is considered.
     ModuleFileName = sym_name_to_string(ModuleName),
     ForceC2InitTarget = "force-" ++ ModuleFileName ++ "_init",
-    io.write_strings(DepStream, [
-        ForceC2InitTarget, " :\n\n"
-    ], !IO),
-
     MmakeRuleForceInitCFile = mmake_simple_rule("force_init_c_file",
         mmake_rule_is_not_phony,
         ForceC2InitTarget,
         [],
         []),
-    gather_mmake_entry(DepStream, MmakeRuleForceInitCFile, !MmakeFile, !IO),
+    add_mmake_entry(MmakeRuleForceInitCFile, !MmakeFile),
 
     TmpInitCFileName = InitCFileName ++ ".tmp",
     ModuleMakeVarNameInitCs = "$(" ++ ModuleMakeVarName ++ ".init_cs)",
@@ -2487,26 +1786,19 @@ generate_dep_file_init_targets(Globals, DepStream,
             "--init-c-file " ++ TmpInitCFileName ++ " " ++
             ModuleMakeVarNameInitCs ++ " $(ALL_C2INITARGS)",
     InitCAction2 = "@mercury_update_interface " ++ InitCFileName,
-    io.write_strings(DepStream, [
-        InitCFileName, " : ", ForceC2InitTarget, " ",
-            ModuleMakeVarNameCs, "\n",
-        "\t", InitCAction1, "\n",
-        "\t", InitCAction2, "\n\n"
-    ], !IO),
-
     MmakeRuleInitCFile = mmake_simple_rule("init_c_file",
         mmake_rule_is_not_phony,
         InitCFileName,
         [ForceC2InitTarget, ModuleMakeVarNameCs],
         [InitCAction1, InitCAction2]),
-    gather_mmake_entry(DepStream, MmakeRuleInitCFile, !MmakeFile, !IO).
+    add_mmake_entry(MmakeRuleInitCFile, !MmakeFile).
 
-:- pred generate_dep_file_install_targets(globals::in, io.output_stream::in,
-    module_name::in, deps_map::in, string::in, bool::in, bool::in, bool::in,
+:- pred generate_dep_file_install_targets(globals::in, module_name::in,
+    deps_map::in, string::in, bool::in, bool::in, bool::in,
     maybe_mmake_var::in, maybe_mmake_var::in, maybe_mmake_var::in,
     mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
-generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
+generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
         ModuleMakeVarName, MmcMakeDeps, Intermod, TransOpt,
         MaybeModuleDepsVarPair, MaybeOptsVarPair, MaybeTransOptsVarPair,
         !MmakeFile, !IO) :-
@@ -2580,46 +1872,12 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
         MaybeModuleVarNameInt0sSpace ++ MaybeOptsVarSpace ++
         MaybeTransOptsVarSpace ++ MaybeModuleDepsVarSpace ++ """",
 
-    io.write_strings(DepStream, [
-        ".PHONY : ", LibInstallIntsTargetName, "\n",
-        LibInstallIntsTargetName, " : ",
-            ModuleMakeVarNameInts, " ", ModuleMakeVarNameInt3s, " ",
-            MaybeModuleVarNameInt0sSpace, MaybeOptsVarSpace,
-            MaybeTransOptsVarSpace, MaybeModuleDepsVarSpace,
-            " install_lib_dirs\n",
-        "\tfiles=", LibInstallIntsFiles, "; \\\n",
-        "\tfor file in $$files; do \\\n",
-        "\t\ttarget=""$(INSTALL_INT_DIR)/`basename $$file`""; \\\n",
-        "\t\tif cmp -s ""$$file"" ""$$target""; then \\\n",
-        "\t\t\techo \"$$target unchanged\"; \\\n",
-        "\t\telse \\\n",
-        "\t\t\techo \"installing $$target\"; \\\n",
-        "\t\t\t$(INSTALL) ""$$file"" ""$$target""; \\\n",
-        "\t\tfi; \\\n",
-        "\tdone\n",
-        "\t# The following is needed to support the `--use-subdirs' option\n",
-        "\t# We try using `$(LN_S)', but if that fails, then we just use\n",
-        "\t# `$(INSTALL)'.\n",
-        "\tfor ext in int int2 int3",
-            SpaceInt0Str, MaybeSpaceOptStr, MaybeSpaceTransOptStr,
-            MaybeSpaceDepStr, "; do \\\n",
-        "\t\tdir=""$(INSTALL_INT_DIR)/Mercury/$${ext}s""; \\\n",
-        "\t\trm -rf ""$$dir""; \\\n",
-        "\t\t$(LN_S) .. ""$$dir"" || { \\\n",
-        "\t\t\t{ [ -d ""$$dir"" ] || \\\n",
-        "\t\t\t$(INSTALL_MKDIR) ""$$dir""; } && \\\n",
-        "\t\t\t$(INSTALL) ""$(INSTALL_INT_DIR)""/*.$$ext ""$$dir""; \\\n",
-        "\t\t} || exit 1; \\\n",
-        "\tdone\n\n"
-    ], !IO),
-
     MmakeRuleLibInstallInts = mmake_simple_rule("lib_install_ints",
         mmake_rule_is_phony,
         LibInstallIntsTargetName,
         [ModuleMakeVarNameInts, ModuleMakeVarNameInt3s] ++
-            MaybeModuleVarNameInt0s ++ MaybeOptsVar ++
-            MaybeTransOptsVar ++ MaybeModuleDepsVar ++
-            ["install_lib_dirs"],
+            MaybeModuleVarNameInt0s ++ MaybeOptsVar ++ MaybeTransOptsVar ++
+            MaybeModuleDepsVar ++ ["install_lib_dirs"],
         ["files=" ++ LibInstallIntsFiles ++ "; \\",
         "for file in $$files; do \\",
         "\ttarget=""$(INSTALL_INT_DIR)/`basename $$file`""; \\",
@@ -2644,51 +1902,15 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
         "\t\t$(INSTALL) ""$(INSTALL_INT_DIR)""/*.$$ext ""$$dir""; \\",
         "\t} || exit 1; \\",
         "done"]),
-    gather_mmake_entry(DepStream, MmakeRuleLibInstallInts,
-        !MmakeFile, !IO),
+    add_mmake_entry(MmakeRuleLibInstallInts, !MmakeFile),
 
-    io.write_strings(DepStream,
-        [".PHONY : ", LibInstallOptsTargetName, "\n",
-        LibInstallOptsTargetName, " : "], !IO),
     ( if
         Intermod = no,
         TransOpt = no
     then
-        io.write_string(DepStream, "\n\t@:\n\n", !IO),
         LibInstallOptsSources = [],
         LibInstallOptsActions = [silent_noop_action]
     else
-        io.write_strings(DepStream, [
-            MaybeOptsVarSpace, MaybeTransOptsVarSpace, "install_grade_dirs\n",
-            "\tfiles=""", MaybeOptsVarSpace, MaybeTransOptsVarSpace,
-                """; \\\n",
-            "\tfor file in $$files; do \\\n",
-            "\t\ttarget=""$(INSTALL_GRADE_INT_DIR)/`basename $$file`"";\\\n",
-            "\t\tif cmp -s ""$$file"" ""$$target""; then \\\n",
-            "\t\t\techo \"$$target unchanged\"; \\\n",
-            "\t\telse \\\n",
-            "\t\t\techo \"installing $$target\"; \\\n",
-            "\t\t\t$(INSTALL) ""$$file"" ""$$target""; \\\n",
-            "\t\tfi; \\\n",
-            "\tdone\n",
-            "\t# The following is needed to support the",
-                " `--use-subdirs' option\n",
-            "\t# We try using `$(LN_S)', but if that fails,",
-                " then we just use\n",
-            "\t# `$(INSTALL)'.\n",
-            "\tfor ext in ", MaybeSpaceOptStr, MaybeSpaceTransOptStr,
-                "; do \\\n",
-            "\t\tdir=""$(INSTALL_GRADE_INT_DIR)/Mercury/$${ext}s""; \\\n",
-            "\t\trm -rf ""$$dir""; \\\n",
-            "\t\t$(LN_S) .. ""$$dir"" || { \\\n",
-            "\t\t\t{ [ -d ""$$dir"" ] || \\\n",
-            "\t\t\t\t$(INSTALL_MKDIR) ""$$dir""; } && \\\n",
-            "\t\t\t$(INSTALL) ""$(INSTALL_GRADE_INT_DIR)""/*.$$ext \\\n",
-            "\t\t\t\t""$$dir""; \\\n",
-            "\t\t} || exit 1; \\\n",
-            "\tdone\n\n"
-        ], !IO),
-
         LibInstallOptsSources = MaybeOptsVar ++ MaybeTransOptsVar ++
             ["install_grade_dirs"],
         LibInstallOptsFiles =
@@ -2724,32 +1946,17 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
         LibInstallOptsTargetName,
         LibInstallOptsSources,
         LibInstallOptsActions),
-    gather_mmake_entry(DepStream, MmakeRuleLibInstallOpts,
-        !MmakeFile, !IO),
+    add_mmake_entry(MmakeRuleLibInstallOpts, !MmakeFile),
 
-    % XXX  Note that we install the header files in two places:
+    % XXX Note that we install the header files in two places:
     % in the `lib/inc' or `lib/$(GRADE)/$(FULLARCH)/inc' directory,
     % so that the C compiler will find them, and also in the `ints' directory,
-    % so that Mmake will find them. That's not ideal, but it works.
+    % so that Mmake will find them. That is not ideal, but it works.
     %
     % (A better fix would be to change the VPATH setting in
     % scripts/Mmake.vars.in so that Mmake also searches the
     % `lib/$(GRADE)/$(FULLARCH)/inc' directory, but doing that properly
     % is non-trivial.)
-
-    io.write_strings(DepStream, [
-        ".PHONY : ", LibInstallHdrsTargetName, "\n",
-        LibInstallHdrsTargetName, " : ",
-            "$(", ModuleMakeVarName, ".mhs) ",
-            "install_lib_dirs\n",
-        "ifeq ($(", ModuleMakeVarName, ".mhs),)\n",
-        "\t@:\n",
-        "else\n",
-        "\tfor hdr in $(", ModuleMakeVarName, ".mhs); do \\\n",
-        "\t\t$(INSTALL) $$hdr $(INSTALL_INT_DIR); \\\n",
-        "\t\t$(INSTALL) $$hdr $(INSTALL_INC_DIR); \\\n",
-        "\tdone\n",
-        "endif\n\n"], !IO),
 
     ModuleMakeVarNameMhs = string.format("$(%s.mhs)", [s(ModuleMakeVarName)]),
     MmakeRuleLibInstallHdrsNoMhs = mmake_simple_rule("install_lib_hdrs_nomhs",
@@ -2769,42 +1976,7 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
         mmake_cond_strings_equal(ModuleMakeVarNameMhs, ""),
         MmakeRuleLibInstallHdrsNoMhs,
         MmakeRuleLibInstallHdrsMhs),
-    gather_mmake_fragment(DepStream, MmakeFragmentLibInstallHdrs,
-        !MmakeFile, !IO),
-
-    io.write_strings(DepStream, [
-        ".PHONY : ", LibInstallGradeHdrsTargetName, "\n",
-        LibInstallGradeHdrsTargetName, " : ",
-            "$(", ModuleMakeVarName, ".mihs) ",
-            "install_grade_dirs\n",
-    "ifeq ($(", ModuleMakeVarName, ".mihs),)\n",
-    "\t@:\n",
-    "else\n",
-    "\tfor hdr in $(", ModuleMakeVarName, ".mihs); do \\\n",
-    "\t\t$(INSTALL) $$hdr $(INSTALL_INT_DIR); \\\n",
-    "\t\t$(INSTALL) $$hdr $(INSTALL_GRADE_INC_DIR); \\\n",
-    "\tdone\n",
-    "\t# The following is needed to support the `--use-subdirs' option\n",
-    "\t# We try using `$(LN_S)', but if that fails, then we just use\n",
-    "\t# `$(INSTALL)'.\n",
-    "\trm -rf $(INSTALL_GRADE_INC_SUBDIR)\n",
-    "\t$(LN_S) .. $(INSTALL_GRADE_INC_SUBDIR) || { \\\n",
-    "\t\t{ [ -d $(INSTALL_GRADE_INC_SUBDIR) ] || \\\n",
-    "\t\t\t$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_SUBDIR); \\\n",
-    "\t\t} && \\\n",
-    "\t\t$(INSTALL) $(INSTALL_GRADE_INC_DIR)/*.mih \\\n",
-    "\t\t\t$(INSTALL_GRADE_INC_SUBDIR); \\\n",
-    "\t} || exit 1\n",
-    "\trm -rf $(INSTALL_INT_DIR)/Mercury/mihs\n",
-    "\t$(LN_S) .. $(INSTALL_INT_DIR)/Mercury/mihs || { \\\n",
-    "\t\t{ [ -d $(INSTALL_INT_DIR)/Mercury/mihs ] || \\\n",
-    "\t\t\t$(INSTALL_MKDIR) \\\n",
-    "\t\t\t$(INSTALL_INT_DIR)/Mercury/mihs; \\\n",
-    "\t\t} && \\\n",
-    "\t\t$(INSTALL) $(INSTALL_GRADE_INC_DIR)/*.mih \\\n",
-    "\t\t\t$(INSTALL_INT_DIR); \\\n",
-    "\t} || exit 1\n",
-    "endif\n\n"], !IO),
+    add_mmake_fragment(MmakeFragmentLibInstallHdrs, !MmakeFile),
 
     ModuleMakeVarNameMihs =
         string.format("$(%s.mihs)", [s(ModuleMakeVarName)]),
@@ -2847,17 +2019,16 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
         mmake_cond_strings_equal(ModuleMakeVarNameMihs, ""),
         MmakeRuleLibInstallGradeHdrsNoMihs,
         MmakeRuleLibInstallGradeHdrsMihs),
-    gather_mmake_fragment(DepStream, MmakeFragmentLibInstallGradeHdrs,
-        !MmakeFile, !IO).
+    add_mmake_fragment(MmakeFragmentLibInstallGradeHdrs, !MmakeFile).
 
-:- pred generate_dep_file_collective_targets(globals::in, io.output_stream::in,
+:- pred generate_dep_file_collective_targets(globals::in,
     module_name::in, string::in,
     mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
-generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
+generate_dep_file_collective_targets(Globals, ModuleName,
         ModuleMakeVarName, !MmakeFile, !IO) :-
     list.foldl2(
-        generate_dep_file_collective_target(Globals, DepStream, ModuleName,
+        generate_dep_file_collective_target(Globals, ModuleName,
             ModuleMakeVarName),
         [
             ".check" - ".errs",
@@ -2873,36 +2044,30 @@ generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
             ".all_trans_opts" - ".trans_opt_dates"
         ], !MmakeFile, !IO).
 
-:- pred generate_dep_file_collective_target(globals::in, io.output_stream::in,
+:- pred generate_dep_file_collective_target(globals::in,
     module_name::in, string::in, pair(string, string)::in,
     mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
-generate_dep_file_collective_target(Globals, DepStream, ModuleName,
-        ModuleMakeVarName, Extension - VarExtension, !MmakeFile, !IO) :-
+generate_dep_file_collective_target(Globals, ModuleName, ModuleMakeVarName,
+        Extension - VarExtension, !MmakeFile, !IO) :-
     module_name_to_file_name(Globals, do_not_create_dirs, Extension,
         ModuleName, TargetName, !IO),
-    io.write_strings(DepStream, [
-        ".PHONY : ", TargetName, "\n",
-        TargetName, " : $(", ModuleMakeVarName, VarExtension, ")\n\n"
-    ], !IO),
-
     Source = string.format("$(%s%s)", [s(ModuleMakeVarName), s(VarExtension)]),
     MmakeRule = mmake_simple_rule(
         "collective_target_" ++ Extension ++ VarExtension, mmake_rule_is_phony,
         TargetName, [Source], []),
-    gather_mmake_entry(DepStream, MmakeRule, !MmakeFile, !IO).
+    add_mmake_entry(MmakeRule, !MmakeFile).
 
-:- pred generate_dep_file_clean_targets(globals::in, io.output_stream::in,
+:- pred generate_dep_file_clean_targets(globals::in,
     module_name::in, string::in, string::in, string::in,
     string::in, string::in, string::in, string::in, string::in, string::in,
     string::in, string::in,
     mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
-generate_dep_file_clean_targets(Globals, DepStream,
-        ModuleName, ModuleMakeVarName, ExeFileName, InitCFileName,
-        InitObjFileName, InitPicObjFileName, InitFileName, LibFileName,
-        SharedLibFileName, JarFileName, DepFileName, DvFileName,
-        !MmakeFile, !IO) :-
+generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
+        ExeFileName, InitCFileName, InitObjFileName, InitPicObjFileName,
+        InitFileName, LibFileName, SharedLibFileName, JarFileName,
+        DepFileName, DvFileName, !MmakeFile, !IO) :-
     % If you change the clean targets below, please also update the
     % documentation in doc/user_guide.texi.
 
@@ -2910,30 +2075,6 @@ generate_dep_file_clean_targets(Globals, DepStream,
         ModuleName, CleanTargetName, !IO),
     module_name_to_file_name(Globals, do_not_create_dirs, ".realclean",
         ModuleName, RealCleanTargetName, !IO),
-
-    io.write_strings(DepStream, [
-        "clean_local : ", CleanTargetName, "\n"
-    ], !IO),
-    io.write_strings(DepStream, [
-        ".PHONY : ", CleanTargetName, "\n",
-        CleanTargetName, " :\n",
-        "\t-echo $(", ModuleMakeVarName, ".dirs) | xargs rm -rf \n",
-        "\t-echo $(", ModuleMakeVarName, ".cs) ", InitCFileName,
-            " | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".mihs) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".all_os) ", InitObjFileName,
-            " | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".all_pic_os) ", InitPicObjFileName,
-            " | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".c_dates) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".java_dates) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".useds) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".javas) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".profs) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".errs) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".foreign_cs) | xargs rm -f\n",
-        "\n"
-    ], !IO),
 
     % XXX Put these into a logical order.
     CleanSuffixes = [".dirs", ".cs", ".mihs", ".all_os", ".all_pic_os",
@@ -2950,50 +2091,12 @@ generate_dep_file_clean_targets(Globals, DepStream,
             list.map(remove_suffix_files_cmd(ModuleMakeVarName),
                 CleanSuffixes) ++
             [remove_files_cmd(CleanFiles)])],
-    gather_mmake_entries(DepStream, MmakeRulesClean, !MmakeFile, !IO),
+    add_mmake_entries(MmakeRulesClean, !MmakeFile),
 
     % XXX We delete $(ModuleMakeVarName).all_int0s instead of
     % $(ModuleMakeVarName).int0s to make sure that we delete
     % any spurious .int0 files created for nested submodules.
     % For further details, see the XXX comments above.
-    io.write_strings(DepStream, [
-        "realclean_local : ", RealCleanTargetName, "\n"
-    ], !IO),
-    io.write_strings(DepStream, [
-        ".PHONY : ", RealCleanTargetName, "\n",
-        RealCleanTargetName, " : ", CleanTargetName, "\n",
-        "\t-echo $(", ModuleMakeVarName, ".dates) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".date0s) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".date3s) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".optdates) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".trans_opt_dates) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".ints) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".all_int0s) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".int3s) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".opts) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".trans_opts) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".analysiss) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".requests) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".imdgs) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".ds) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".module_deps) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".all_mhs) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".all_mihs) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".dlls) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".foreign_dlls) | xargs rm -f\n",
-        "\t-echo $(", ModuleMakeVarName, ".classes) | xargs rm -f\n"
-    ], !IO),
-    io.write_strings(DepStream, [
-        "\t-rm -f ",
-            ExeFileName, "$(EXT_FOR_EXE) ",
-            InitFileName, " ",
-            LibFileName, " ",
-            SharedLibFileName, " ",
-            JarFileName, " ",
-            DepFileName, " ",
-            DvFileName, "\n\n"
-    ], !IO),
-
     RealCleanSuffixes = [".dates", ".date0s", ".date3s",
         ".optdates", ".trans_opt_dates", ".ints", ".all_int0s", ".int3s",
         ".opts", ".trans_opts", ".analysiss", ".requests", ".imdgs",
@@ -3011,7 +2114,7 @@ generate_dep_file_clean_targets(Globals, DepStream,
             list.map(remove_suffix_files_cmd(ModuleMakeVarName),
                 RealCleanSuffixes) ++
             [remove_files_cmd(RealCleanFiles)])],
-    gather_mmake_entries(DepStream, MmakeRulesRealClean, !MmakeFile, !IO).
+    add_mmake_entries(MmakeRulesRealClean, !MmakeFile).
 
     % remove_suffix_files_cmd(ModuleMakeVarName, Extension):
     %

@@ -24,64 +24,20 @@
 :- import_module cord.
 
 %---------------------------------------------------------------------------%
-%
-% During the transition period from writing out Mmakefiles directly
-% to constructing an mmakefile structure and writing *that* out,
-% the protocol for writing out Mmakefiles is the following.
-%
-% - Call start_mmakefile to create the initial mmakefile structure.
-%
-% - After writing out each piece of Mmakefile directly, call one of the
-%   gather_mmake_* predicates below to construct the corresponding piece
-%   of the mmakefile structure.
 
-% - Call end_mmakefile to finalize the mmakefile structure.
-%
-% This is a single interface, but it has four separate implementations
-% behind it. The one actually used is selected by the value returned
-% by get_mmake_mode.
-%
-% The four implementations are as follows.
-%
-% - With mmake_mode_old_only, no mmakefile is ever constructed;
-%   the gather_mmake_* predicates do nothing.
-%
-% - With mmake_mode_old, no mmakefile is ever constructed;
-%   the gather_mmake_* print out the mmakefile pieces given to them
-%   in an inactive form, as the then-part of an if-then-else whose
-%   condition is false, implemented via the always-failing test
-%   "ifeq (x,y)".
-%
-% - With mmake_mode_new_interleave, no mmakefile is ever constructed;
-%   the gather_mmake_* print out the mmakefile pieces given to them
-%   in an active (i.e. enabled) form. This mode arranges for the
-%   mmakefile pieces written *directly* to the given stream to be
-%   inactive instead, using the same test as above.
-%
-% - With mmake_mode_new_at end, the intended mode of operation
-%   once transition is finished, the gather_mmake_* predicates
-%   *do* construct an mmakefile, which is then printed by end_mmakefile.
-%   Again, all the mmakefile pieces written directly to the stream
-%   are made inactive using the same test as above.
-%
+:- pred start_mmakefile(mmakefile::out) is det.
 
-:- pred start_mmakefile(io.text_output_stream::in,
-    mmakefile::out, io::di, io::uo) is det.
+:- pred add_mmake_fragment(mmake_fragment::in,
+    mmakefile::in, mmakefile::out) is det.
+:- pred add_mmake_fragments(list(mmake_fragment)::in,
+    mmakefile::in, mmakefile::out) is det.
+:- pred add_mmake_entry(mmake_entry::in,
+    mmakefile::in, mmakefile::out) is det.
+:- pred add_mmake_entries(list(mmake_entry)::in,
+    mmakefile::in, mmakefile::out) is det.
+
 :- pred end_mmakefile(io.text_output_stream::in,
     mmakefile::in, io::di, io::uo) is det.
-
-:- pred gather_mmake_fragment(io.text_output_stream::in,
-    mmake_fragment::in,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
-:- pred gather_mmake_fragments(io.text_output_stream::in,
-    list(mmake_fragment)::in,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
-:- pred gather_mmake_entry(io.text_output_stream::in,
-    mmake_entry::in,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
-:- pred gather_mmake_entries(io.text_output_stream::in,
-    list(mmake_entry)::in,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -303,6 +259,9 @@
 
     % Return an action that prints nothing and does nothing,
     % but *is* nevertheless an action as far as make is concerned.
+    % We use it to force GNU Make to recheck the timestamp on the target file.
+    % (It is a pity that GNU Make doesn't have a way of handling
+    % these sorts of rules in a nicer manner.)
     %
 :- func silent_noop_action = string.
 
@@ -316,149 +275,19 @@
 
 %---------------------------------------------------------------------------%
 
-:- type mmake_mode
-    --->    mmake_mode_old_only
-    ;       mmake_mode_old
-    ;       mmake_mode_new_interleave
-    ;       mmake_mode_new_at_end.
-
-:- func get_mmake_mode = mmake_mode.
-
-get_mmake_mode = mmake_mode_new_interleave.
-
-%---------------------%
-
-start_mmakefile(OutStream, !:MmakeFile, !IO) :-
-    Mode = get_mmake_mode,
-    !:MmakeFile = cord.init,
-    (
-        ( Mode = mmake_mode_old_only
-        ; Mode = mmake_mode_old
-        )
-    ;
-        ( Mode = mmake_mode_new_interleave
-        ; Mode = mmake_mode_new_at_end
-        ),
-        io.write_string(OutStream, "ifeq (x,y)\n\n", !IO)
-    ).
-
-end_mmakefile(OutStream, !.MmakeFile, !IO) :-
-    Mode = get_mmake_mode,
-    (
-        ( Mode = mmake_mode_old_only
-        ; Mode = mmake_mode_old
-        )
-    ;
-        Mode = mmake_mode_new_interleave,
-        io.write_string(OutStream, "\nendif # ifeq(x,y)\n\n", !IO)
-    ;
-        Mode = mmake_mode_new_at_end,
-        io.write_string(OutStream, "\nendif # ifeq(x,y)\n\n", !IO),
-        cord.foldl_pred(
-            write_mmake_fragment(OutStream, make_active, write_mmake_comments),
-            !.MmakeFile, !IO)
-    ).
-
-%---------------------%
-
-gather_mmake_fragment(OutStream, Fragment, !MmakeFile, !IO) :-
-    Mode = get_mmake_mode,
-    (
-        Mode = mmake_mode_old_only
-    ;
-        Mode = mmake_mode_old,
-        write_mmake_fragment(OutStream, comment_out, write_mmake_comments,
-            Fragment, !IO)
-    ;
-        Mode = mmake_mode_new_interleave,
-        io.write_string(OutStream, "\nendif # ifeq(x,y)\n\n", !IO),
-        write_mmake_fragment(OutStream, make_active, write_mmake_comments,
-            Fragment, !IO),
-        io.write_string(OutStream, "ifeq (x,y)\n\n", !IO)
-    ;
-        Mode = mmake_mode_new_at_end,
-        add_mmake_fragment(Fragment, !MmakeFile)
-    ).
-
-gather_mmake_fragments(OutStream, Fragments, !MmakeFile, !IO) :-
-    Mode = get_mmake_mode,
-    (
-        Mode = mmake_mode_old_only
-    ;
-        Mode = mmake_mode_old,
-        write_mmake_fragments(OutStream, comment_out, write_mmake_comments,
-            Fragments, !IO)
-    ;
-        Mode = mmake_mode_new_interleave,
-        io.write_string(OutStream, "\nendif # ifeq(x,y)\n\n", !IO),
-        write_mmake_fragments(OutStream, make_active, write_mmake_comments,
-            Fragments, !IO),
-        io.write_string(OutStream, "ifeq (x,y)\n\n", !IO)
-    ;
-        Mode = mmake_mode_new_at_end,
-        add_mmake_fragments(Fragments, !MmakeFile)
-    ).
-
-gather_mmake_entry(OutStream, Entry, !MmakeFile, !IO) :-
-    Mode = get_mmake_mode,
-    (
-        Mode = mmake_mode_old_only
-    ;
-        Mode = mmake_mode_old,
-        write_mmake_entry(OutStream, comment_out, write_mmake_comments,
-            Entry, !IO)
-    ;
-        Mode = mmake_mode_new_interleave,
-        io.write_string(OutStream, "\nendif # ifeq(x,y)\n\n", !IO),
-        write_mmake_entry(OutStream, make_active, write_mmake_comments,
-            Entry, !IO),
-        io.write_string(OutStream, "ifeq (x,y)\n\n", !IO)
-    ;
-        Mode = mmake_mode_new_at_end,
-        add_mmake_entry(Entry, !MmakeFile)
-    ).
-
-gather_mmake_entries(OutStream, Entries, !MmakeFile, !IO) :-
-    Mode = get_mmake_mode,
-    (
-        Mode = mmake_mode_old_only
-    ;
-        Mode = mmake_mode_old,
-        write_mmake_entries(OutStream, comment_out, write_mmake_comments,
-            Entries, !IO)
-    ;
-        Mode = mmake_mode_new_interleave,
-        io.write_string(OutStream, "\nendif # ifeq(x,y)\n\n", !IO),
-        write_mmake_entries(OutStream, make_active, write_mmake_comments,
-            Entries, !IO),
-        io.write_string(OutStream, "ifeq (x,y)\n\n", !IO)
-    ;
-        Mode = mmake_mode_new_at_end,
-        add_mmake_entries(Entries, !MmakeFile)
-    ).
+start_mmakefile(!:MmakeFile) :-
+    !:MmakeFile = cord.init.
 
 %---------------------------------------------------------------------------%
-
-:- pred add_mmake_fragment(mmake_fragment::in,
-    mmakefile::in, mmakefile::out) is det.
 
 add_mmake_fragment(Fragment, !MmakeFile) :-
     !:MmakeFile = cord.snoc(!.MmakeFile, Fragment).
 
-:- pred add_mmake_fragments(list(mmake_fragment)::in,
-    mmakefile::in, mmakefile::out) is det.
-
 add_mmake_fragments(Fragments, !MmakeFile) :-
     !:MmakeFile = !.MmakeFile ++ cord.from_list(Fragments).
 
-:- pred add_mmake_entry(mmake_entry::in,
-    mmakefile::in, mmakefile::out) is det.
-
 add_mmake_entry(Entry, !MmakeFile) :-
     !:MmakeFile = cord.snoc(!.MmakeFile, mmake_entry_to_fragment(Entry)).
-
-:- pred add_mmake_entries(list(mmake_entry)::in,
-    mmakefile::in, mmakefile::out) is det.
 
 add_mmake_entries(Entries, !MmakeFile) :-
     !:MmakeFile = !.MmakeFile ++
@@ -474,58 +303,51 @@ mmake_entry_to_fragment(Entry) = mmf_entry(Entry).
     --->    do_not_write_mmake_comments
     ;       write_mmake_comments.
 
-:- type maybe_comment_out
-    --->    comment_out
-    ;       make_active.
+end_mmakefile(OutStream, !.MmakeFile, !IO) :-
+    cord.foldl_pred(
+        write_mmake_fragment(OutStream, write_mmake_comments),
+        !.MmakeFile, !IO).
 
 :- pred write_mmake_fragments(io.text_output_stream::in,
-    maybe_comment_out::in, maybe_write_mmake_comments::in,
+    maybe_write_mmake_comments::in,
     list(mmake_fragment)::in, io::di, io::uo) is det.
 
-write_mmake_fragments(_OutStream, _MaybeCommentOut, _WriteComments, [], !IO).
-write_mmake_fragments(OutStream, MaybeCommentOut, WriteComments,
+write_mmake_fragments(_OutStream, _WriteComments, [], !IO).
+write_mmake_fragments(OutStream, WriteComments,
         [MmakeFragment | MmakeFragments], !IO) :-
-    write_mmake_fragment(OutStream, MaybeCommentOut, WriteComments,
-        MmakeFragment, !IO),
-    write_mmake_fragments(OutStream, MaybeCommentOut, WriteComments,
-        MmakeFragments, !IO).
+    write_mmake_fragment(OutStream, WriteComments, MmakeFragment, !IO),
+    write_mmake_fragments(OutStream, WriteComments, MmakeFragments, !IO).
 
 :- pred write_mmake_fragment(io.text_output_stream::in,
-    maybe_comment_out::in, maybe_write_mmake_comments::in,
-    mmake_fragment::in, io::di, io::uo) is det.
+    maybe_write_mmake_comments::in, mmake_fragment::in, io::di, io::uo) is det.
 
-write_mmake_fragment(OutStream, MaybeCommentOut, WriteComments,
-        MmakeFragment, !IO) :-
+write_mmake_fragment(OutStream, WriteComments, MmakeFragment, !IO) :-
     (
         MmakeFragment = mmf_entry(Entry),
-        write_mmake_entry(OutStream, MaybeCommentOut, WriteComments,
+        write_mmake_entry(OutStream, WriteComments,
             Entry, !IO)
     ;
         MmakeFragment = mmf_conditional_entry(Cond, ThenEntry, ElseEntry),
         write_mmake_condition(OutStream, Cond, !IO),
         io.write_string(OutStream, "\n", !IO),
-        write_mmake_entry(OutStream, MaybeCommentOut, WriteComments,
-            ThenEntry, !IO),
+        write_mmake_entry(OutStream, WriteComments, ThenEntry, !IO),
         io.write_string(OutStream, "else\n", !IO),
         io.write_string(OutStream, "\n", !IO),
-        write_mmake_entry(OutStream, MaybeCommentOut, WriteComments,
-            ElseEntry, !IO),
+        write_mmake_entry(OutStream, WriteComments, ElseEntry, !IO),
         io.write_string(OutStream, "endif # conditional fragment\n\n", !IO)
     ;
         MmakeFragment = mmf_conditional_fragments(Cond,
             ThenFragments, ElseFragments),
         write_mmake_condition(OutStream, Cond, !IO),
         io.write_string(OutStream, "\n", !IO),
-        write_mmake_fragments(OutStream, MaybeCommentOut, WriteComments,
-            ThenFragments, !IO),
+        write_mmake_fragments(OutStream, WriteComments, ThenFragments, !IO),
         (
             ElseFragments = []
         ;
             ElseFragments = [_ | _],
             io.write_string(OutStream, "else\n", !IO),
             io.write_string(OutStream, "\n", !IO),
-            write_mmake_fragments(OutStream, MaybeCommentOut, WriteComments,
-                ElseFragments, !IO)
+            write_mmake_fragments(OutStream, WriteComments, ElseFragments, !IO)
         ),
         io.write_string(OutStream, "endif # conditional fragment\n\n", !IO)
     ).
@@ -552,30 +374,10 @@ write_mmake_condition(OutStream, Cond, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred write_mmake_entries(io.text_output_stream::in,
-    maybe_comment_out::in, maybe_write_mmake_comments::in,
-    list(mmake_entry)::in, io::di, io::uo) is det.
-
-write_mmake_entries(_OutStream, _MaybeCommentOut, _WriteComments, [], !IO).
-write_mmake_entries(OutStream, MaybeCommentOut, WriteComments,
-        [MmakeEntry | MmakeEntries], !IO) :-
-    write_mmake_entry(OutStream, MaybeCommentOut, WriteComments,
-        MmakeEntry, !IO),
-    write_mmake_entries(OutStream, MaybeCommentOut, WriteComments,
-        MmakeEntries, !IO).
-
 :- pred write_mmake_entry(io.text_output_stream::in,
-    maybe_comment_out::in, maybe_write_mmake_comments::in,
-    mmake_entry::in, io::di, io::uo) is det.
+    maybe_write_mmake_comments::in, mmake_entry::in, io::di, io::uo) is det.
 
-write_mmake_entry(OutStream, MaybeCommentOut, _WriteComments,
-        MmakeEntry, !IO) :-
-    (
-        MaybeCommentOut = make_active
-    ;
-        MaybeCommentOut = comment_out,
-        io.write_string(OutStream, "ifeq (x,y)\n", !IO)
-    ),
+write_mmake_entry(OutStream, _WriteComments, MmakeEntry, !IO) :-
     (
         MmakeEntry = mmake_start_comment(Contents, ModuleName, SourceFile,
             Version, FullArch),
@@ -697,12 +499,6 @@ write_mmake_entry(OutStream, MaybeCommentOut, _WriteComments,
         io.nl(OutStream, !IO),
 
         write_mmake_actions(OutStream, Actions, !IO)
-    ),
-    (
-        MaybeCommentOut = make_active
-    ;
-        MaybeCommentOut = comment_out,
-        io.write_string(OutStream, "endif\n", !IO)
     ),
     % Provide visual separation from the next entry.
     io.nl(OutStream, !IO).
