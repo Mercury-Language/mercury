@@ -339,21 +339,27 @@ ml_gen_hld_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
     Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, Arity, _Ctxt),
     map.lookup(ConsTagValues, cons(Name, Arity, TypeCtor), TagVal),
     (
-        TagVal = int_tag(Int),
-        ConstValue = ml_const(mlconst_enum(Int, MLDS_Type))
+        TagVal = int_tag(IntTag),
+        (
+            IntTag = int_tag_int(Int),
+            ConstValue = ml_const(mlconst_enum(Int, MLDS_Type))
+        ;
+            ( IntTag = int_tag_uint(_)
+            ; IntTag = int_tag_int8(_)
+            ; IntTag = int_tag_uint8(_)
+            ; IntTag = int_tag_int16(_)
+            ; IntTag = int_tag_uint16(_)
+            ; IntTag = int_tag_int32(_)
+            ; IntTag = int_tag_uint32(_)
+            ),
+            unexpected($pred, "enum constant needs int tag")
+        )
     ;
         TagVal = foreign_tag(ForeignLang, ForeignTagValue),
         ConstValue = ml_const(
             mlconst_foreign(ForeignLang, ForeignTagValue, MLDS_Type))
     ;
-        ( TagVal = uint_tag(_)
-        ; TagVal = int8_tag(_)
-        ; TagVal = uint8_tag(_)
-        ; TagVal = int16_tag(_)
-        ; TagVal = uint16_tag(_)
-        ; TagVal = int32_tag(_)
-        ; TagVal = uint32_tag(_)
-        ; TagVal = string_tag(_)
+        ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)
         ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)
@@ -1187,13 +1193,6 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         ( Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
-        ; Tag = uint_tag(_)
-        ; Tag = int8_tag(_)
-        ; Tag = uint8_tag(_)
-        ; Tag = int16_tag(_)
-        ; Tag = uint16_tag(_)
-        ; Tag = int32_tag(_)
-        ; Tag = uint32_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -1252,21 +1251,28 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
     Ctor = ctor(_, _, QualName, _Args, Arity, _),
     map.lookup(TagValues, cons(QualName, Arity, TypeCtor), TagVal),
     (
-        TagVal = int_tag(Int),
-        ConstValue = ml_const(mlconst_enum(Int, MLDS_Type))
+        TagVal = int_tag(IntTag),
+        (
+            IntTag = int_tag_int(Int),
+            ConstValue = ml_const(mlconst_enum(Int, MLDS_Type))
+        ;
+            ( IntTag = int_tag_uint(_)
+            ; IntTag = int_tag_int8(_)
+            ; IntTag = int_tag_uint8(_)
+            ; IntTag = int_tag_int16(_)
+            ; IntTag = int_tag_uint16(_)
+            ; IntTag = int_tag_int32(_)
+            ; IntTag = int_tag_uint32(_)
+            ),
+            unexpected($pred,
+                "enum constant requires an int or foreign tag")
+        )
     ;
         TagVal = foreign_tag(Lang, String),
         ConstValue = ml_const(mlconst_foreign(Lang, String, MLDS_Type))
     ;
         ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)
-        ; TagVal = uint_tag(_)
-        ; TagVal = int8_tag(_)
-        ; TagVal = uint8_tag(_)
-        ; TagVal = int16_tag(_)
-        ; TagVal = uint16_tag(_)
-        ; TagVal = int32_tag(_)
-        ; TagVal = uint32_tag(_)
         ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)
         ; TagVal = base_typeclass_info_tag(_, _, _)

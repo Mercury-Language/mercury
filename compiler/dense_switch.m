@@ -228,7 +228,7 @@ generate_dense_case(BranchStart, VarName, CodeModel, SwitchGoalInfo, EndLabel,
     map(int, label)::in, map(int, label)::out) is det.
 
 record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
-    ( if ConsTag = int_tag(Index) then
+    ( if ConsTag = int_tag(int_tag_int(Index)) then
         map.det_insert(Index, Label, !IndexMap)
     else
         unexpected($module, $pred, "not int_tag")

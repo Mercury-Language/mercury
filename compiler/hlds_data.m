@@ -589,23 +589,9 @@ cons_table_optimize(!ConsTable) :-
             % MR_word_to_float(), and MR_float_const() macros. The default
             % implementation of these is to use boxed double-precision floats.
 
-    ;       int_tag(int)
-            % This means the constant is represented just as a word containing
-            % the specified integer value. This is used for enumerations and
-            % character constants as well as for int constants.
+    ;       int_tag(int_tag)
 
-    ;       uint_tag(uint)
-            % This means the constant is represented just as a word containing
-            % the specified unsigned integer value. This is used for uint
-            % constants.
 
-            % XXX FIXED SIZE INT
-    ;       int8_tag(int)
-    ;       uint8_tag(int)
-    ;       int16_tag(int)
-    ;       uint16_tag(int)
-    ;       int32_tag(int)
-    ;       uint32_tag(int)
 
     ;       foreign_tag(foreign_language, string)
             % This means the constant is represented by the string which is
@@ -708,6 +694,25 @@ cons_table_optimize(!ConsTable) :-
             % the value isn't any of the reserved addresses before testing
             % for the constructor's own cons_tag.
 
+:- type int_tag
+    --->    int_tag_int(int)
+            % This means the constant is represented just as a word containing
+            % the specified integer value. This is used for enumerations and
+            % character constants as well as for int constants.
+
+    ;       int_tag_uint(uint)
+            % This means the constant is represented just as a word containing
+            % the specified unsigned integer value. This is used for uint
+            % constants.
+
+            % XXX FIXED SIZE INT
+    ;       int_tag_int8(int)
+    ;       int_tag_uint8(int)
+    ;       int_tag_int16(int)
+    ;       int_tag_uint16(int)
+    ;       int_tag_int32(int)
+    ;       int_tag_uint32(int).
+
 :- type reserved_address
     --->    null_pointer
             % This is for constants which are represented as a null pointer.
@@ -789,13 +794,6 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         % it would probably be OK to return `yes(0)'.
         % But it's safe to be conservative...
         ( Tag = int_tag(_)
-        ; Tag = uint_tag(_)
-        ; Tag = int8_tag(_)
-        ; Tag = uint8_tag(_)
-        ; Tag = int16_tag(_)
-        ; Tag = uint16_tag(_)
-        ; Tag = int32_tag(_)
-        ; Tag = uint32_tag(_)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
         ; Tag = foreign_tag(_, _)
@@ -832,13 +830,6 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
 get_secondary_tag(Tag) = MaybeSecondaryTag :-
     (
         ( Tag = int_tag(_)
-        ; Tag = uint_tag(_)
-        ; Tag = int8_tag(_)
-        ; Tag = uint8_tag(_)
-        ; Tag = int16_tag(_)
-        ; Tag = uint16_tag(_)
-        ; Tag = int32_tag(_)
-        ; Tag = uint32_tag(_)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
         ; Tag = foreign_tag(_, _)

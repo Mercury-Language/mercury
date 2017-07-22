@@ -535,8 +535,8 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail, Context, Stmts,
     ml_gen_var(!.Info, Var, Lval),
     Rval = ml_lval(Lval),
     ml_switch_gen_range(!.Info, MLDS_Type, Range),
-    ml_switch_generate_mlds_cases(MLDS_Type, Cases, CodeModel, MLDS_Cases,
-        !Info),
+    ml_switch_generate_mlds_cases(Type, MLDS_Type, Cases, CodeModel,
+        MLDS_Cases, !Info),
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
     SwitchStmt0 = ml_stmt_switch(MLDS_Type, Rval, Range, MLDS_Cases, Default,
         Context),
@@ -559,66 +559,40 @@ ml_switch_gen_range(Info, MLDS_Type, Range) :-
         Range = mlds_switch_range_unknown
     ).
 
-:- pred ml_switch_generate_mlds_cases(mlds_type::in, list(tagged_case)::in,
-    code_model::in, list(mlds_switch_case)::out,
+:- pred ml_switch_generate_mlds_cases(mer_type::in, mlds_type::in,
+    list(tagged_case)::in, code_model::in, list(mlds_switch_case)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_mlds_cases(_, [], _, [], !Info).
-ml_switch_generate_mlds_cases(MLDS_Type, [TaggedCase | TaggedCases], CodeModel,
-        [MLDS_Case | MLDS_Cases], !Info) :-
-    ml_switch_generate_mlds_case(MLDS_Type, TaggedCase, CodeModel,
+ml_switch_generate_mlds_cases(_, _, [], _, [], !Info).
+ml_switch_generate_mlds_cases(MerType, MLDS_Type, [TaggedCase | TaggedCases],
+        CodeModel, [MLDS_Case | MLDS_Cases], !Info) :-
+    ml_switch_generate_mlds_case(MerType, MLDS_Type, TaggedCase, CodeModel,
         MLDS_Case, !Info),
-    ml_switch_generate_mlds_cases(MLDS_Type, TaggedCases, CodeModel,
+    ml_switch_generate_mlds_cases(MerType, MLDS_Type, TaggedCases, CodeModel,
         MLDS_Cases, !Info).
 
-:- pred ml_switch_generate_mlds_case(mlds_type::in, tagged_case::in,
-    code_model::in, mlds_switch_case::out,
+:- pred ml_switch_generate_mlds_case(mer_type::in, mlds_type::in,
+    tagged_case::in, code_model::in, mlds_switch_case::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_mlds_case(MLDS_Type, TaggedCase, CodeModel, MLDS_Case,
-        !Info) :-
+ml_switch_generate_mlds_case(MerType, MLDS_Type, TaggedCase, CodeModel,
+        MLDS_Case, !Info) :-
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
-    ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedMainConsId, MainCond),
-    list.map(ml_tagged_cons_id_to_match_cond(MLDS_Type), TaggedOtherConsIds,
-        OtherConds),
+    ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type, TaggedMainConsId,
+        MainCond),
+    list.map(ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type),
+        TaggedOtherConsIds, OtherConds),
     ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info),
     MLDS_Case = mlds_switch_case(MainCond, OtherConds, Stmt).
 
-:- pred ml_tagged_cons_id_to_match_cond(mlds_type::in, tagged_cons_id::in,
-    mlds_case_match_cond::out) is det.
+:- pred ml_tagged_cons_id_to_match_cond(mer_type::in, mlds_type::in,
+    tagged_cons_id::in, mlds_case_match_cond::out) is det.
 
-ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
-    TaggedConsId = tagged_cons_id(ConsId, Tag),
+ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type, TaggedConsId, MatchCond) :-
+    TaggedConsId = tagged_cons_id(_ConsId, Tag),
     (
-        Tag = int_tag(Int),
-        ( if ConsId = int_const(_) then
-            Rval = ml_const(mlconst_int(Int))
-        else if ConsId = char_const(_) then
-            Rval = ml_const(mlconst_char(Int))
-        else
-            Rval = ml_const(mlconst_enum(Int, MLDS_Type))
-        )
-    ;
-        Tag = uint_tag(UInt),
-        Rval = ml_const(mlconst_uint(UInt))
-    ;
-        Tag = int8_tag(Int8),
-        Rval = ml_const(mlconst_int8(Int8))
-    ;
-        Tag = uint8_tag(UInt8),
-        Rval = ml_const(mlconst_uint8(UInt8))
-    ;
-        Tag = int16_tag(Int16),
-        Rval = ml_const(mlconst_int16(Int16))
-    ;
-        Tag = uint16_tag(UInt16),
-        Rval = ml_const(mlconst_uint16(UInt16))
-    ;
-        Tag = int32_tag(Int32),
-        Rval = ml_const(mlconst_int32(Int32))
-    ;
-        Tag = uint32_tag(UInt32),
-        Rval = ml_const(mlconst_uint32(UInt32))
+        Tag = int_tag(IntTag),
+        Rval = ml_int_tag_to_rval_const(IntTag, MerType, MLDS_Type)
     ;
         Tag = string_tag(String),
         Rval = ml_const(mlconst_string(String))

@@ -396,7 +396,7 @@ tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
     Case = case(MainConsId, OtherConsIds, Goal),
     MainConsTag = cons_id_to_tag(ModuleInfo, MainConsId),
     TaggedMainConsId = tagged_cons_id(MainConsId, MainConsTag),
-    ( if MainConsTag = int_tag(IntTag) then
+    ( if MainConsTag = int_tag(int_tag_int(IntTag)) then
         list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo),
             OtherConsIds, TaggedOtherConsIds,
             IntTag, LowerLimit1, IntTag, UpperLimit1,
@@ -473,7 +473,7 @@ tag_cons_id_in_int_switch(ModuleInfo, ConsId, TaggedConsId,
         !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch) :-
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     TaggedConsId = tagged_cons_id(ConsId, ConsTag),
-    ( if ConsTag = int_tag(IntTag) then
+    ( if ConsTag = int_tag(int_tag_int(IntTag)) then
         int.min(IntTag, !LowerLimit),
         int.max(IntTag, !UpperLimit),
         !:NumValues = !.NumValues + 1
@@ -537,13 +537,6 @@ type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
 estimate_switch_tag_test_cost(Tag) = Cost :-
     (
         ( Tag = int_tag(_)
-        ; Tag = uint_tag(_)
-        ; Tag = int8_tag(_)
-        ; Tag = uint8_tag(_)
-        ; Tag = int16_tag(_)
-        ; Tag = uint16_tag(_)
-        ; Tag = int32_tag(_)
-        ; Tag = uint32_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = reserved_address_tag(_)
         ; Tag = shared_local_tag(_, _)
@@ -1242,13 +1235,6 @@ get_ptag_counts_loop([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
-        ; Tag = uint_tag(_)
-        ; Tag = int8_tag(_)
-        ; Tag = uint8_tag(_)
-        ; Tag = int16_tag(_)
-        ; Tag = uint16_tag(_)
-        ; Tag = int32_tag(_)
-        ; Tag = uint32_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -1353,13 +1339,6 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
-        ; Tag = uint_tag(_)
-        ; Tag = int8_tag(_)
-        ; Tag = uint8_tag(_)
-        ; Tag = int16_tag(_)
-        ; Tag = uint16_tag(_)
-        ; Tag = int32_tag(_)
-        ; Tag = uint32_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -1491,7 +1470,7 @@ order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
 %-----------------------------------------------------------------------------%
 
 get_int_tag(ConsTag, Int) :-
-    ( if ConsTag = int_tag(IntPrime) then
+    ( if ConsTag = int_tag(int_tag_int(IntPrime)) then
         Int = IntPrime
     else
         unexpected($module, $pred, "not int_tag")

@@ -226,7 +226,7 @@ assign_enum_constants(_, [], _, !CtorTags).
 assign_enum_constants(TypeCtor, [Ctor | Ctors], Val, !CtorTags) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
     ConsId = cons(Name, Arity, TypeCtor),
-    Tag = int_tag(Val),
+    Tag = int_tag(int_tag_int(Val)),
     % We call set instead of det_insert because we don't want types
     % that erroneously contain more than one copy of a cons_id to crash
     % the compiler.

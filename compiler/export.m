@@ -949,20 +949,26 @@ foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
     ConsId = cons(QualifiedCtorName, Arity, TypeCtor),
     map.lookup(TagValues, ConsId, TagVal),
     (
-        TagVal = int_tag(IntTag),
-        Tag = ee_tag_rep_int(IntTag)
+        TagVal = int_tag(IntTagType),
+        (
+            IntTagType = int_tag_int(IntTag),
+            Tag = ee_tag_rep_int(IntTag)
+        ;
+            ( IntTagType = int_tag_uint(_)
+            ; IntTagType = int_tag_int8(_)
+            ; IntTagType = int_tag_uint8(_)
+            ; IntTagType = int_tag_int16(_)
+            ; IntTagType = int_tag_uint16(_)
+            ; IntTagType = int_tag_int32(_)
+            ; IntTagType = int_tag_uint32(_)
+            ),
+            unexpected($module, $pred, "enum constant requires an int tag")
+        )
     ;
         TagVal = foreign_tag(_ForeignLang, ForeignTag),
         Tag = ee_tag_rep_string(ForeignTag)
     ;
         ( TagVal = string_tag(_)
-        ; TagVal = uint_tag(_)
-        ; TagVal = int8_tag(_)
-        ; TagVal = uint8_tag(_)
-        ; TagVal = int16_tag(_)
-        ; TagVal = uint16_tag(_)
-        ; TagVal = int32_tag(_)
-        ; TagVal = uint32_tag(_)
         ; TagVal = float_tag(_)
         ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)

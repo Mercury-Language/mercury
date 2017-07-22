@@ -866,21 +866,21 @@ map_cons_tag(shared_local_tag(Primary, Secondary),
 map_cons_tag(string_tag(_), _) :-
     unexpected($module, $pred, "string_tag cons tag " ++
         "for non-string_constant cons id").
-map_cons_tag(int_tag(IntVal), byte_enum_tag(IntVal)).
-map_cons_tag(uint_tag(_), _) :-
-    sorry($module, $pred, "bytecode with uints").
-map_cons_tag(int8_tag(_), _) :-
-    sorry($module, $pred, "bytecode with int8s").
-map_cons_tag(uint8_tag(_), _) :-
-    sorry($module, $pred, "bytecode with uint8s").
-map_cons_tag(int16_tag(_), _) :-
-    sorry($module, $pred, "bytecode with int16s").
-map_cons_tag(uint16_tag(_), _) :-
-    sorry($module, $pred, "bytecode with uint16s").
-map_cons_tag(int32_tag(_), _) :-
-    sorry($module, $pred, "bytecode with int32s").
-map_cons_tag(uint32_tag(_), _) :-
-    sorry($module, $pred, "bytecode with uint32s").
+map_cons_tag(int_tag(IntTagType), ByteConsTag) :-
+    (
+        IntTagType = int_tag_int(IntVal),
+        ByteConsTag = byte_enum_tag(IntVal)
+    ;
+        ( IntTagType = int_tag_uint(_)
+        ; IntTagType = int_tag_int8(_)
+        ; IntTagType = int_tag_uint8(_)
+        ; IntTagType = int_tag_int16(_)
+        ; IntTagType = int_tag_uint16(_)
+        ; IntTagType = int_tag_int32(_)
+        ; IntTagType = int_tag_uint32(_)
+        ),
+        sorry($module, $pred, "bytecode with uint or fixed size int")
+    ).
 map_cons_tag(foreign_tag(_, _), _) :-
     sorry($module, $pred, "bytecode with foreign tags").
 map_cons_tag(float_tag(_), _) :-

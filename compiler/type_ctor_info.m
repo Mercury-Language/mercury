@@ -585,7 +585,7 @@ make_enum_functors(TypeCtor, [Functor | Functors], NextOrdinal, ConsTagMap,
         "functor in enum has nonzero arity"),
     ConsId = cons(SymName, list.length(FunctorArgs), TypeCtor),
     map.lookup(ConsTagMap, ConsId, ConsTag),
-    expect(unify(ConsTag, int_tag(NextOrdinal)), $module, $pred,
+    expect(unify(ConsTag, int_tag(int_tag_int(NextOrdinal))), $module, $pred,
         "mismatch on constant assigned to functor in enum"),
     FunctorName = unqualify_name(SymName),
     EnumFunctor = enum_functor(FunctorName, NextOrdinal),
@@ -661,13 +661,6 @@ make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
         ( ConsTag = string_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = int_tag(_)
-        ; ConsTag = uint_tag(_)
-        ; ConsTag = int8_tag(_)
-        ; ConsTag = uint8_tag(_)
-        ; ConsTag = int16_tag(_)
-        ; ConsTag = uint16_tag(_)
-        ; ConsTag = int32_tag(_)
-        ; ConsTag = uint32_tag(_)
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
@@ -849,13 +842,6 @@ get_maybe_reserved_rep(ConsTag, ConsRep) :-
         ( ConsTag = no_tag
         ; ConsTag = string_tag(_)
         ; ConsTag = int_tag(_)
-        ; ConsTag = uint_tag(_)
-        ; ConsTag = int8_tag(_)
-        ; ConsTag = uint8_tag(_)
-        ; ConsTag = int16_tag(_)
-        ; ConsTag = uint16_tag(_)
-        ; ConsTag = int32_tag(_)
-        ; ConsTag = uint32_tag(_)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = closure_tag(_, _, _)

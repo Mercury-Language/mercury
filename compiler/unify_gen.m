@@ -418,29 +418,9 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ConsTag = float_tag(Float),
         TestRval = binop(float_eq, Rval, const(llconst_float(Float)))
     ;
-        ConsTag = int_tag(Int),
-        TestRval = binop(eq(int_type_int), Rval, const(llconst_int(Int)))
-    ;
-        ConsTag = uint_tag(UInt),
-        TestRval = binop(eq(int_type_uint), Rval, const(llconst_uint(UInt)))
-    ;
-        ConsTag = int8_tag(Int8),
-        TestRval = binop(eq(int_type_int8), Rval, const(llconst_int8(Int8)))
-    ;
-        ConsTag = uint8_tag(UInt8),
-        TestRval = binop(eq(int_type_uint8), Rval, const(llconst_uint8(UInt8)))
-    ;
-        ConsTag = int16_tag(Int16),
-        TestRval = binop(eq(int_type_int16), Rval, const(llconst_int16(Int16)))
-    ;
-        ConsTag = uint16_tag(UInt16),
-        TestRval = binop(eq(int_type_uint16), Rval, const(llconst_uint16(UInt16)))
-    ;
-        ConsTag = int32_tag(Int32),
-        TestRval = binop(eq(int_type_int32), Rval, const(llconst_int32(Int32)))
-    ;
-        ConsTag = uint32_tag(UInt32),
-        TestRval = binop(eq(int_type_uint32), Rval, const(llconst_uint32(UInt32)))
+        ConsTag = int_tag(IntTag),
+        int_tag_to_const_and_int_type(IntTag, Const, IntType),
+        TestRval = binop(eq(IntType), Rval, const(Const))
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignVal),
         expect(unify(ForeignLang, lang_c), $module, $pred,
@@ -569,36 +549,9 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         assign_const_to_var(LHSVar, const(llconst_string(String)), !.CI, !CLD),
         Code = empty
     ;
-        ConsTag = int_tag(Int),
-        assign_const_to_var(LHSVar, const(llconst_int(Int)), !.CI, !CLD),
-        Code = empty
-    ;
-        ConsTag = uint_tag(UInt),
-        assign_const_to_var(LHSVar, const(llconst_uint(UInt)), !.CI, !CLD),
-        Code = empty
-    ;
-        ConsTag = int8_tag(Int8),
-        assign_const_to_var(LHSVar, const(llconst_int8(Int8)), !.CI, !CLD),
-        Code = empty
-    ;
-        ConsTag = uint8_tag(UInt8),
-        assign_const_to_var(LHSVar, const(llconst_uint8(UInt8)), !.CI, !CLD),
-        Code = empty
-    ;
-        ConsTag = int16_tag(Int16),
-        assign_const_to_var(LHSVar, const(llconst_int16(Int16)), !.CI, !CLD),
-        Code = empty
-    ;
-        ConsTag = uint16_tag(UInt16),
-        assign_const_to_var(LHSVar, const(llconst_uint16(UInt16)), !.CI, !CLD),
-        Code = empty
-    ;
-        ConsTag = int32_tag(Int32),
-        assign_const_to_var(LHSVar, const(llconst_int32(Int32)), !.CI, !CLD),
-        Code = empty
-    ;
-        ConsTag = uint32_tag(UInt32),
-        assign_const_to_var(LHSVar, const(llconst_uint32(UInt32)), !.CI, !CLD),
+        ConsTag = int_tag(IntTag),
+        int_tag_to_const_and_int_type(IntTag, Const, _),
+        assign_const_to_var(LHSVar, const(Const), !.CI, !CLD),
         Code = empty
     ;
         ConsTag = foreign_tag(Lang, Val),
@@ -1349,14 +1302,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
     % the value of the constant, so Code = empty.
     (
         ( Tag = string_tag(_String)
-        ; Tag = int_tag(_Int)
-        ; Tag = uint_tag(_UInt)
-        ; Tag = int8_tag(_Int8)
-        ; Tag = uint8_tag(_UInt8)
-        ; Tag = int16_tag(_Int16)
-        ; Tag = uint16_tag(_UInt16)
-        ; Tag = int32_tag(_Int32)
-        ; Tag = uint32_tag(_UInt32)
+        ; Tag = int_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
         ; Tag = closure_tag(_, _, _)
@@ -1862,13 +1808,6 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
     ;
         ( ConsTag = string_tag(_)
         ; ConsTag = int_tag(_)
-        ; ConsTag = uint_tag(_)
-        ; ConsTag = int8_tag(_)
-        ; ConsTag = uint8_tag(_)
-        ; ConsTag = int16_tag(_)
-        ; ConsTag = uint16_tag(_)
-        ; ConsTag = int32_tag(_)
-        ; ConsTag = uint32_tag(_)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = shared_local_tag(_, _)
@@ -1923,37 +1862,9 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
             Const = llconst_string(String),
             Type = lt_string
         ;
-            ConsTag = int_tag(Int),
-            Const = llconst_int(Int),
-            Type = lt_int(int_type_int)
-        ;
-            ConsTag = uint_tag(UInt),
-            Const = llconst_uint(UInt),
-            Type = lt_int(int_type_uint)
-        ;
-            ConsTag = int8_tag(Int8),
-            Const = llconst_int8(Int8),
-            Type = lt_int(int_type_int8)
-        ;
-            ConsTag = uint8_tag(UInt8),
-            Const = llconst_uint8(UInt8),
-            Type = lt_int(int_type_uint8)
-        ;
-            ConsTag = int16_tag(Int16),
-            Const = llconst_int16(Int16),
-            Type = lt_int(int_type_int16)
-        ;
-            ConsTag = uint16_tag(UInt16),
-            Const = llconst_uint16(UInt16),
-            Type = lt_int(int_type_uint16)
-        ;
-            ConsTag = int32_tag(Int32),
-            Const = llconst_int32(Int32),
-            Type = lt_int(int_type_int32)
-        ;
-            ConsTag = uint32_tag(UInt32),
-            Const = llconst_uint32(UInt32),
-            Type = lt_int(int_type_uint32)
+            ConsTag = int_tag(IntTag),
+            int_tag_to_const_and_int_type(IntTag, Const, IntType),
+            Type = lt_int(IntType)
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $module, $pred,
@@ -2128,37 +2039,9 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
             Const = llconst_string(String),
             Type = lt_string
         ;
-            ConsTag = int_tag(Int),
-            Const = llconst_int(Int),
-            Type = lt_int(int_type_int)
-        ;
-            ConsTag = uint_tag(UInt),
-            Const = llconst_uint(UInt),
-            Type = lt_int(int_type_uint)
-        ;
-            ConsTag = int8_tag(Int8),
-            Const = llconst_int8(Int8),
-            Type = lt_int(int_type_int8)
-        ;
-            ConsTag = uint8_tag(UInt8),
-            Const = llconst_uint8(UInt8),
-            Type = lt_int(int_type_uint8)
-        ;
-            ConsTag = int16_tag(Int16),
-            Const = llconst_int16(Int16),
-            Type = lt_int(int_type_int16)
-        ;
-            ConsTag = uint16_tag(UInt16),
-            Const = llconst_uint16(UInt16),
-            Type = lt_int(int_type_uint16)
-        ;
-            ConsTag = int32_tag(Int32),
-            Const = llconst_int32(Int32),
-            Type = lt_int(int_type_int32)
-        ;
-            ConsTag = uint32_tag(UInt32),
-            Const = llconst_uint32(UInt32),
-            Type = lt_int(int_type_uint32)
+            ConsTag = int_tag(IntTag),
+            int_tag_to_const_and_int_type(IntTag, Const, IntType),
+            Type = lt_int(IntType)
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $module, $pred,
@@ -2262,6 +2145,44 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
         unexpected($module, $pred, "unexpected tag")
+    ).
+
+:- pred int_tag_to_const_and_int_type(int_tag::in, rval_const::out,
+    int_type::out) is det.
+
+int_tag_to_const_and_int_type(IntTag, Const, Type) :-
+    (
+        IntTag = int_tag_int(Int),
+        Const = llconst_int(Int),
+        Type = int_type_int
+    ;
+        IntTag = int_tag_uint(UInt),
+        Const = llconst_uint(UInt),
+        Type = int_type_uint
+    ;
+        IntTag = int_tag_int8(Int8),
+        Const = llconst_int8(Int8),
+        Type = int_type_int8
+    ;
+        IntTag = int_tag_uint8(UInt8),
+        Const = llconst_uint8(UInt8),
+        Type = int_type_uint8
+    ;
+        IntTag = int_tag_int16(Int16),
+        Const = llconst_int16(Int16),
+        Type = int_type_int16
+    ;
+        IntTag = int_tag_uint16(UInt16),
+        Const = llconst_uint16(UInt16),
+        Type = int_type_uint16
+    ;
+        IntTag = int_tag_int32(Int32),
+        Const = llconst_int32(Int32),
+        Type = int_type_int32
+    ;
+        IntTag = int_tag_uint32(UInt32),
+        Const = llconst_uint32(UInt32),
+        Type = int_type_uint32
     ).
 
 :- pred generate_ground_term_args(list(prog_var)::in, list(arg_width)::in,

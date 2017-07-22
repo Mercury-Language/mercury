@@ -21,6 +21,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -112,6 +113,8 @@
 
     % negation: ml_gen_not(X) = unop(std_unop(not), X),
 :- func ml_gen_not(mlds_rval) = mlds_rval.
+
+:- func ml_int_tag_to_rval_const(int_tag, mer_type, mlds_type) = mlds_rval.
 
 %-----------------------------------------------------------------------------%
 %
@@ -752,6 +755,39 @@ ml_gen_and(X, Y) =
     ).
 
 ml_gen_not(X) = ml_unop(std_unop(logical_not), X).
+
+ml_int_tag_to_rval_const(IntTag, MerType, MLDS_Type) = Rval :-
+    (
+        IntTag = int_tag_int(Int),
+        ( if MerType = int_type then
+            Rval = ml_const(mlconst_int(Int))
+        else if MerType = char_type then
+            Rval = ml_const(mlconst_char(Int))
+        else
+            Rval = ml_const(mlconst_enum(Int, MLDS_Type))
+        )
+    ;
+        IntTag = int_tag_uint(UInt),
+        Rval = ml_const(mlconst_uint(UInt))
+    ;
+        IntTag = int_tag_int8(Int8),
+        Rval = ml_const(mlconst_int8(Int8))
+    ;
+        IntTag = int_tag_uint8(UInt8),
+        Rval = ml_const(mlconst_uint8(UInt8))
+    ;
+        IntTag = int_tag_int16(Int16),
+        Rval = ml_const(mlconst_int16(Int16))
+    ;
+        IntTag = int_tag_uint16(UInt16),
+        Rval = ml_const(mlconst_uint16(UInt16))
+    ;
+        IntTag = int_tag_int32(Int32),
+        Rval = ml_const(mlconst_int32(Int32))
+    ;
+        IntTag = int_tag_uint32(UInt32),
+        Rval = ml_const(mlconst_uint32(UInt32))
+    ).
 
 %-----------------------------------------------------------------------------%
 %

@@ -197,7 +197,7 @@ cons_tags_bits(ConsTagValues) = NumBits :-
 :- pred max_int_tag(cons_tag::in, int::in, int::out) is det.
 
 max_int_tag(ConsTag, !Max) :-
-    ( if ConsTag = int_tag(Int) then
+    ( if ConsTag = int_tag(int_tag_int(Int)) then
         int.max(Int, !Max)
     else
         unexpected($module, $pred, "non-integer value for enumeration")

@@ -88,35 +88,35 @@
 cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
     (
         ConsId = int_const(Int),
-        Tag = int_tag(Int)
+        Tag = int_tag(int_tag_int(Int))
     ;
         ConsId = uint_const(UInt),
-        Tag = uint_tag(UInt)
+        Tag = int_tag(int_tag_uint(UInt))
     ;
         ConsId = int8_const(Int8),
-        Tag = int8_tag(Int8)
+        Tag = int_tag(int_tag_int8(Int8))
     ;
         ConsId = uint8_const(UInt8),
-        Tag = uint8_tag(UInt8)
+        Tag = int_tag(int_tag_uint8(UInt8))
     ;
         ConsId = int16_const(Int16),
-        Tag = int16_tag(Int16)
+        Tag = int_tag(int_tag_int16(Int16))
     ;
         ConsId = uint16_const(UInt16),
-        Tag = uint16_tag(UInt16)
+        Tag = int_tag(int_tag_uint16(UInt16))
     ;
         ConsId = int32_const(Int32),
-        Tag = int32_tag(Int32)
+        Tag = int_tag(int_tag_int32(Int32))
     ;
         ConsId = uint32_const(UInt32),
-        Tag = uint32_tag(UInt32)
+        Tag = int_tag(int_tag_uint32(UInt32))
     ;
         ConsId = float_const(Float),
         Tag = float_tag(Float)
     ;
         ConsId = char_const(Char),
         char.to_int(Char, CharCode),
-        Tag = int_tag(CharCode)
+        Tag = int_tag(int_tag_int(CharCode))
     ;
         ConsId = string_const(String),
         Tag = string_tag(String)
@@ -173,7 +173,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
             ; TargetLang = target_erlang
             ),
             ( if Arity = 0 then
-                Tag = int_tag(0)
+                Tag = int_tag(int_tag_int(0))
             else
                 Tag = single_functor_tag
             )
