@@ -629,12 +629,13 @@ output_export_param_ref_out(Info, Indent, Argument, !IO) :-
     ),
     output_local_var_name_for_java(VarName, !IO).
 
-:- pred write_export_call_for_java(mlds_qualified_function_name::in,
+:- pred write_export_call_for_java(qual_function_name::in,
     list(mlds_argument)::in, io::di, io::uo) is det.
 
 write_export_call_for_java(QualFuncName, Parameters, !IO) :-
-    output_qual_name_prefix_java(QualFuncName, Name, !IO),
-    output_function_name_for_java(Name, !IO),
+    QualFuncName = qual_function_name(ModuleName, FuncName),
+    output_qual_name_prefix_java(ModuleName, module_qual, !IO),
+    output_function_name_for_java(FuncName, !IO),
     io.write_char('(', !IO),
     io.write_list(Parameters, ", ", write_argument_name_for_java, !IO),
     io.write_string(");\n", !IO).
@@ -774,7 +775,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         Context = term.context_init,
 
         % Create the member variable.
-        CtorArgName = lvn_comp_var(lvnc_ptr_num),
+        CtorArgName = lvn_field_var_as_local(fvn_ptr_num),
         FieldVarDefn = mlds_field_var_defn(
             fvn_env_field_from_local_var(CtorArgName), Context,
             ml_gen_const_member_data_decl_flags, mlds_native_int_type,
@@ -782,10 +783,12 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         FieldVarDefns = [FieldVarDefn],
 
         % Create the constructor function.
-        QualClassName = qual(MLDS_ModuleName, module_qual, ClassName),
+        QualClassName =
+            qual_class_name(MLDS_ModuleName, module_qual, ClassName),
         ClassType = mlds_class_type(QualClassName, 0, mlds_class),
 
-        FieldName = qual(MLDS_ModuleName, type_qual, "ptr_num"),
+        FieldName =
+            qual_field_var_name(MLDS_ModuleName, type_qual, fvn_ptr_num),
         FieldId = ml_field_named(FieldName, ClassType),
         FieldLval = ml_field(no, ml_self(ClassType), FieldId,
             mlds_native_int_type, ClassType),
@@ -794,7 +797,8 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
             gc_no_stmt)],
         CtorReturnValues = [],
 
-        QualCtorArgName = qual(MLDS_ModuleName, type_qual, CtorArgName),
+        QualCtorArgName =
+            qual_local_var_name(MLDS_ModuleName, type_qual, CtorArgName),
         CtorArgLval = ml_local_var(QualCtorArgName, mlds_native_int_type),
         CtorArgRval = ml_lval(CtorArgLval),
         CtorStmt = ml_stmt_atomic(assign(FieldLval, CtorArgRval), Context),
@@ -820,7 +824,8 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     ),
     InterfaceModuleName = mercury_module_name_to_mlds(
         java_mercury_runtime_package_name),
-    Interface = qual(InterfaceModuleName, module_qual, InterfaceName),
+    Interface =
+        qual_class_name(InterfaceModuleName, module_qual, InterfaceName),
 
     % Create class components.
     ClassImports = [],
@@ -891,8 +896,9 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
             ),
         Cases = list.map_corresponding(MakeCase, 0 .. MaxCase, CodeAddrStmts),
 
-        SwitchVarName = lvn_comp_var(lvnc_ptr_num),
-        SwitchVar = qual(MLDS_ModuleName, module_qual, SwitchVarName),
+        SwitchVarName = lvn_field_var_as_local(fvn_ptr_num),
+        SwitchVar =
+            qual_local_var_name(MLDS_ModuleName, module_qual, SwitchVarName),
         SwitchVarRval = ml_lval(ml_local_var(SwitchVar, mlds_native_int_type)),
         SwitchRange = mlds_switch_range(0, MaxCase),
         Stmt = ml_stmt_switch(mlds_native_int_type, SwitchVarRval,
@@ -931,11 +937,11 @@ create_generic_arg(I, ArgName, Arg) :-
     mlds_code_addr::in, mlds_stmt::out) is det.
 
 generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
-    ( CodeAddr = code_addr_proc(ProcLabel, OrigFuncSignature)
-    ; CodeAddr = code_addr_internal(ProcLabel, _SeqNum, OrigFuncSignature)
+    ( CodeAddr = code_addr_proc(QualProcLabel, OrigFuncSignature)
+    ; CodeAddr = code_addr_internal(QualProcLabel, _SeqNum, OrigFuncSignature)
     ),
+    QualProcLabel = qual_proc_label(ModuleName, _ProcLabel),
     OrigFuncSignature = mlds_func_signature(OrigArgTypes, OrigRetTypes),
-    ModuleName = ProcLabel ^ mod_name,
 
     % Create the arguments to pass to the original method.
     (
@@ -944,7 +950,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
             OrigArgTypes, ArgNames, CallArgs)
     ;
         InputArgs = cmi_array(ArrayVarName),
-        ArrayVar = qual(ModuleName, module_qual, ArrayVarName),
+        ArrayVar = qual_local_var_name(ModuleName, module_qual, ArrayVarName),
         generate_call_method_args_from_array(OrigArgTypes, ArrayVar, 0,
             [], CallArgs)
     ),
@@ -952,7 +958,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
     % Create a temporary variable to store the result of the call to the
     % original method.
     ReturnVarName = lvn_comp_var(lvnc_return_value),
-    ReturnVar = qual(ModuleName, module_qual, ReturnVarName),
+    ReturnVar = qual_local_var_name(ModuleName, module_qual, ReturnVarName),
 
     % Create a declaration for this variable.
     (
@@ -1003,13 +1009,14 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
     mlds_local_var_name::in, mlds_rval::out) is det.
 
 generate_call_method_nth_arg(ModuleName, Type, MethodArgVariable, CallArg) :-
-    CallArgLabel = qual(ModuleName, module_qual, MethodArgVariable),
+    CallArgLabel =
+        qual_local_var_name(ModuleName, module_qual, MethodArgVariable),
     Rval = ml_lval(ml_local_var(CallArgLabel, mlds_generic_type)),
     CallArg = ml_unop(unbox(Type), Rval).
 
 :- pred generate_call_method_args_from_array(list(mlds_type)::in,
-    mlds_local_var::in, int::in, list(mlds_rval)::in, list(mlds_rval)::out)
-    is det.
+    qual_local_var_name::in, int::in,
+    list(mlds_rval)::in, list(mlds_rval)::out) is det.
 
 generate_call_method_args_from_array([], _, _, Args, Args).
 generate_call_method_args_from_array([Type | Types], ArrayVar, Counter,
@@ -1225,14 +1232,14 @@ rename_class_names_type(Renaming, !Type) :-
         list.map(rename_class_names_type(Renaming), RetTypes0, RetTypes),
         !:Type = mlds_cont_type(RetTypes)
     ;
-        !.Type = mlds_class_type(Name0, Arity, ClassKind),
-        Name0 = qual(ModuleName, QualKind, UnqualName0),
+        !.Type = mlds_class_type(QualClassName0, Arity, ClassKind),
+        QualClassName0 = qual_class_name(ModuleName, QualKind, ClassName0),
         ( if
             Renaming = class_name_renaming(ModuleName, RenamingMap),
-            map.search(RenamingMap, UnqualName0, UnqualName)
+            map.search(RenamingMap, ClassName0, ClassName)
         then
-            Name = qual(ModuleName, QualKind, UnqualName),
-            !:Type = mlds_class_type(Name, Arity, ClassKind)
+            QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
+            !:Type = mlds_class_type(QualClassName, Arity, ClassKind)
         else
             true
         )
@@ -2036,17 +2043,17 @@ output_implements_list(Indent, InterfaceList, !IO)  :-
 
 output_interface(Interface, !IO) :-
     ( if
-        Interface = mlds_class_type(qual(ModuleQualifier, QualKind, Name),
-            Arity, _)
+        Interface = mlds_class_type(QualClassName, Arity, _)
     then
+        QualClassName = qual_class_name(ModuleQualifier, QualKind, ClassName),
         SymName = mlds_module_name_to_sym_name(ModuleQualifier),
         mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind),
-            ".", ModuleName),
-        io.format("%s.%s", [s(ModuleName), s(Name)], !IO),
+            ".", ModuleNameStr),
+        io.format("%s.%s", [s(ModuleNameStr), s(ClassName)], !IO),
 
         % Check if the interface is one of the ones in the runtime system.
         % If it is, we don't need to output the arity.
-        ( if interface_is_special_for_java(Name) then
+        ( if interface_is_special_for_java(ClassName) then
             true
         else
             io.format("%d", [i(Arity)], !IO)
@@ -2747,22 +2754,22 @@ output_param(Info, Indent, Arg, !IO) :-
 %
 
 :- pred output_maybe_qualified_global_var_name_for_java(java_out_info::in,
-    mlds_global_var::in, io::di, io::uo) is det.
+    qual_global_var_name::in, io::di, io::uo) is det.
 
-output_maybe_qualified_global_var_name_for_java(Info, QualLocalVarName, !IO) :-
+output_maybe_qualified_global_var_name_for_java(Info, QualGlobalVarName, !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
-    QualLocalVarName = qual(ModuleName, _QualKind, LocalVarName),
+    QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
     CurrentModuleName = Info ^ joi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_java(QualLocalVarName, _, !IO)
+        output_qual_name_prefix_java(ModuleName, module_qual, !IO)
     ),
-    output_global_var_name_for_java(LocalVarName, !IO).
+    output_global_var_name_for_java(GlobalVarName, !IO).
 
 :- pred output_maybe_qualified_local_var_name_for_java(java_out_info::in,
-    mlds_local_var::in, io::di, io::uo) is det.
+    qual_local_var_name::in, io::di, io::uo) is det.
 
 output_maybe_qualified_local_var_name_for_java(Info, QualLocalVarName, !IO) :-
     % Don't module qualify names which are defined in the current module.
@@ -2771,36 +2778,36 @@ output_maybe_qualified_local_var_name_for_java(Info, QualLocalVarName, !IO) :-
     % XXX MLDS_DEFN
     % The ModuleName = CurrentModuleName test should *always* succeed
     % for local vars.
-    QualLocalVarName = qual(ModuleName, _QualKind, LocalVarName),
+    QualLocalVarName =
+        qual_local_var_name(ModuleName, QualKind, LocalVarName),
     CurrentModuleName = Info ^ joi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_java(QualLocalVarName, _, !IO)
+        output_qual_name_prefix_java(ModuleName, QualKind, !IO)
     ),
     output_local_var_name_for_java(LocalVarName, !IO).
 
 :- pred output_maybe_qualified_function_name_for_java(java_out_info::in,
-    mlds_qualified_function_name::in, io::di, io::uo) is det.
+    qual_function_name::in, io::di, io::uo) is det.
 
 output_maybe_qualified_function_name_for_java(Info, QualFuncName, !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
-    QualFuncName = qual(ModuleName, _QualKind, FuncName),
+    QualFuncName = qual_function_name(ModuleName, FuncName),
     CurrentModuleName = Info ^ joi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_java(QualFuncName, _, !IO)
+        output_qual_name_prefix_java(ModuleName, module_qual, !IO)
     ),
     output_function_name_for_java(FuncName, !IO).
 
-:- pred output_qual_name_prefix_java(mlds_fully_qualified_name(T)::in, T::out,
+:- pred output_qual_name_prefix_java(mlds_module_name::in, mlds_qual_kind::in,
     io::di, io::uo) is det.
 
-output_qual_name_prefix_java(QualName, Name, !IO) :-
-    QualName = qual(MLDS_ModuleName, QualKind, Name),
-    qualifier_to_string_for_java(MLDS_ModuleName, QualKind, QualifierString),
+output_qual_name_prefix_java(ModuleName, QualKind, !IO) :-
+    qualifier_to_string_for_java(ModuleName, QualKind, QualifierString),
     io.write_string(QualifierString, !IO),
     io.write_string(".", !IO).
 
@@ -2847,11 +2854,11 @@ unqual_class_name_to_string_for_java(Name, Arity, String) :-
     UppercaseMangledName = flip_initial_case(MangledName),
     String = UppercaseMangledName ++ "_" ++ string.from_int(Arity).
 
-:- pred qual_class_name_to_string_for_java(mlds_class::in, arity::in,
+:- pred qual_class_name_to_string_for_java(qual_class_name::in, arity::in,
     string::out) is det.
 
-qual_class_name_to_string_for_java(QualName, Arity, String) :-
-    QualName = qual(MLDS_ModuleName, QualKind, ClassName),
+qual_class_name_to_string_for_java(QualClassName, Arity, String) :-
+    QualClassName = qual_class_name(MLDS_ModuleName, QualKind, ClassName),
     ( if
         SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
         SymName = java_mercury_runtime_package_name
@@ -2966,6 +2973,13 @@ output_local_var_name_for_java(LocalVarName, !IO) :-
 output_field_var_name_for_java(FieldVarName, !IO) :-
     NameStr = ml_field_var_name_to_string(FieldVarName),
     output_valid_mangled_name_for_java(NameStr, !IO).
+
+:- pred output_valid_mangled_name_for_java(string::in, io::di, io::uo) is det.
+
+output_valid_mangled_name_for_java(Name, !IO) :-
+    MangledName = name_mangle(Name),
+    JavaSafeName = make_valid_java_symbol_name(MangledName),
+    io.write_string(JavaSafeName, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -3502,10 +3516,6 @@ maybe_output_comment_for_java(Info, Comment, !IO) :-
 %
 % Code to output statements.
 %
-
-:- func mod_name(mlds_fully_qualified_name(T)) = mlds_module_name.
-
-mod_name(qual(ModuleName, _, _)) = ModuleName.
 
 :- pred output_statements_for_java(java_out_info::in, indent::in,
     func_info_csj::in, list(mlds_stmt)::in, exit_methods::out,
@@ -4136,7 +4146,7 @@ output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO) :-
         then
             output_type_for_java(Info, Type, !IO),
             io.write_char('.', !IO),
-            QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
+            QualifiedCtorId = qual_ctor_id(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
             output_unqual_class_name_for_java(CtorName, CtorArity, !IO)
         else
@@ -4282,18 +4292,14 @@ output_lval_for_java(Info, Lval, !IO) :-
             output_rval_for_java(Info, OffsetRval, !IO),
             io.write_string("]", !IO)
         ;
-            FieldId = ml_field_named(FieldName, CtorType),
-            ( if
-                FieldName = qual(_, _, UnqualFieldName),
-                UnqualFieldName = "data_tag"
-            then
+            FieldId = ml_field_named(QualFieldVarName, CtorType),
+            QualFieldVarName = qual_field_var_name(_, _, FieldVarName),
+            ( if FieldVarName = fvn_data_tag then
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.
                 output_bracketed_rval_for_java(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
-            else if
-                PtrRval = ml_self(_)
-            then
+            else if PtrRval = ml_self(_) then
                 % Suppress type cast on `this' keyword. This makes a difference
                 % when assigning to `final' member variables in constructor
                 % functions.
@@ -4310,8 +4316,7 @@ output_lval_for_java(Info, Lval, !IO) :-
                 output_bracketed_rval_for_java(Info, PtrRval, !IO),
                 io.write_string(").", !IO)
             ),
-            FieldName = qual(_, _, UnqualFieldName),
-            output_valid_mangled_name_for_java(UnqualFieldName, !IO)
+            output_field_var_name_for_java(FieldVarName, !IO)
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
@@ -4330,13 +4335,6 @@ output_lval_for_java(Info, Lval, !IO) :-
         output_maybe_qualified_local_var_name_for_java(Info,
             QualLocalVarName, !IO)
     ).
-
-:- pred output_valid_mangled_name_for_java(string::in, io::di, io::uo) is det.
-
-output_valid_mangled_name_for_java(Name, !IO) :-
-    MangledName = name_mangle(Name),
-    JavaSafeName = make_valid_java_symbol_name(MangledName),
-    io.write_string(JavaSafeName, !IO).
 
 :- pred output_call_rval_for_java(java_out_info::in, mlds_rval::in,
     io::di, io::uo) is det.
@@ -5313,13 +5311,15 @@ mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO) :-
     ;
         IsCall = yes,
         (
-            CodeAddr = code_addr_proc(QualLabel, _Sig),
-            output_qual_name_prefix_java(QualLabel, Label, !IO),
-            mlds_output_proc_label_for_java(Label, !IO)
+            CodeAddr = code_addr_proc(QualProcLabel, _Sig),
+            QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
+            output_qual_name_prefix_java(ModuleName, module_qual, !IO),
+            mlds_output_proc_label_for_java(ProcLabel, !IO)
         ;
-            CodeAddr = code_addr_internal(QualLabel, SeqNum, _Sig),
-            output_qual_name_prefix_java(QualLabel, Label, !IO),
-            mlds_output_proc_label_for_java(Label, !IO),
+            CodeAddr = code_addr_internal(QualProcLabel, SeqNum, _Sig),
+            QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
+            output_qual_name_prefix_java(ModuleName, module_qual, !IO),
+            mlds_output_proc_label_for_java(ProcLabel, !IO),
             io.write_string("_", !IO),
             io.write_int(SeqNum, !IO)
         )

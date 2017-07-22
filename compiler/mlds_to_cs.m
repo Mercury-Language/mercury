@@ -383,12 +383,13 @@ output_export_for_csharp(Info, Indent, Export, !IO) :-
 is_out_argument(mlds_argument(_, Type, _)) :-
     Type = mlds_ptr_type(_).
 
-:- pred write_export_call_for_csharp(mlds_qualified_function_name::in,
+:- pred write_export_call_for_csharp(qual_function_name::in,
     list(mlds_argument)::in, io::di, io::uo) is det.
 
-write_export_call_for_csharp(QualName, Parameters, !IO) :-
-    output_qual_name_prefix_cs(QualName, Name, !IO),
-    output_function_name_for_csharp(Name, !IO),
+write_export_call_for_csharp(QualFuncName, Parameters, !IO) :-
+    QualFuncName = qual_function_name(ModuleName, FuncName),
+    output_qual_name_prefix_cs(ModuleName, module_qual, !IO),
+    output_function_name_for_csharp(FuncName, !IO),
     io.write_char('(', !IO),
     io.write_list(Parameters, ", ", write_argument_name_for_csharp, !IO),
     io.write_string(");\n", !IO).
@@ -839,19 +840,19 @@ output_supers_list(Info, Indent, BaseClasses, Interfaces, !IO) :-
 
 interface_to_string(Interface, String) :-
     ( if
-        Interface = mlds_class_type(qual(ModuleQualifier, _QualKind, Name),
-            Arity, _)
+        Interface = mlds_class_type(QualClassName, Arity, _)
     then
+        QualClassName = qual_class_name(ModuleQualifier, _QualKind, ClassName),
         SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-        mangle_sym_name_for_csharp(SymName, module_qual, ".", ModuleName),
+        mangle_sym_name_for_csharp(SymName, module_qual, ".", ModuleNameStr),
 
         % Check if the interface is one of the ones in the runtime system.
         % If it is, we don't need to output the arity.
-        ( if interface_is_special_for_csharp(Name) then
-            String = string.format("%s.%s", [s(ModuleName), s(Name)])
+        ( if interface_is_special_for_csharp(ClassName) then
+            String = string.format("%s.%s", [s(ModuleNameStr), s(ClassName)])
         else
-            String = string.format("%s.%s%d", [s(ModuleName), s(Name),
-                i(Arity)])
+            String = string.format("%s.%s%d",
+                [s(ModuleNameStr), s(ClassName), i(Arity)])
         )
     else
         unexpected($pred, "interface was not a class")
@@ -1526,23 +1527,23 @@ output_param_for_csharp(Info, Indent, Arg, !IO) :-
 %
 
 :- pred output_maybe_qualified_global_var_name_for_csharp(csharp_out_info::in,
-    mlds_global_var::in, io::di, io::uo) is det.
+    qual_global_var_name::in, io::di, io::uo) is det.
 
-output_maybe_qualified_global_var_name_for_csharp(Info, QualLocalVarName,
+output_maybe_qualified_global_var_name_for_csharp(Info, QualGlobalVarName,
         !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
-    QualLocalVarName = qual(ModuleName, _QualKind, LocalVarName),
+    QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
     CurrentModuleName = Info ^ csoi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_cs(QualLocalVarName, _, !IO)
+        output_qual_name_prefix_cs(ModuleName, module_qual, !IO)
     ),
-    output_global_var_name_for_csharp(LocalVarName, !IO).
+    output_global_var_name_for_csharp(GlobalVarName, !IO).
 
 :- pred output_maybe_qualified_local_var_name_for_csharp(csharp_out_info::in,
-    mlds_local_var::in, io::di, io::uo) is det.
+    qual_local_var_name::in, io::di, io::uo) is det.
 
 output_maybe_qualified_local_var_name_for_csharp(Info, QualLocalVarName,
         !IO) :-
@@ -1552,36 +1553,35 @@ output_maybe_qualified_local_var_name_for_csharp(Info, QualLocalVarName,
     % XXX MLDS_DEFN
     % The ModuleName = CurrentModuleName test should *always* succeed
     % for local vars.
-    QualLocalVarName = qual(ModuleName, _QualKind, LocalVarName),
+    QualLocalVarName = qual_local_var_name(ModuleName, QualKind, LocalVarName),
     CurrentModuleName = Info ^ csoi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_cs(QualLocalVarName, _, !IO)
+        output_qual_name_prefix_cs(ModuleName, QualKind, !IO)
     ),
     output_local_var_name_for_csharp(LocalVarName, !IO).
 
 :- pred output_maybe_qualified_function_name_for_csharp(csharp_out_info::in,
-    mlds_qualified_function_name::in, io::di, io::uo) is det.
+    qual_function_name::in, io::di, io::uo) is det.
 
 output_maybe_qualified_function_name_for_csharp(Info, QualFuncName, !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
-    QualFuncName = qual(ModuleName, _QualKind, FuncName),
+    QualFuncName = qual_function_name(ModuleName, FuncName),
     CurrentModuleName = Info ^ csoi_module_name,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_cs(QualFuncName, _, !IO)
+        output_qual_name_prefix_cs(ModuleName, module_qual, !IO)
     ),
     output_function_name_for_csharp(FuncName, !IO).
 
-:- pred output_qual_name_prefix_cs(mlds_fully_qualified_name(T)::in, T::out,
+:- pred output_qual_name_prefix_cs(mlds_module_name::in, mlds_qual_kind::in,
     io::di, io::uo) is det.
 
-output_qual_name_prefix_cs(QualName, Name, !IO) :-
-    QualName = qual(MLDS_ModuleName, QualKind, Name),
-    qualifier_to_string_for_csharp(MLDS_ModuleName, QualKind, QualifierString),
+output_qual_name_prefix_cs(ModuleName, QualKind, !IO) :-
+    qualifier_to_string_for_csharp(ModuleName, QualKind, QualifierString),
     io.write_string(QualifierString, !IO),
     io.write_string(".", !IO).
 
@@ -1624,11 +1624,11 @@ unqual_class_name_to_string_for_csharp(Name, Arity, String) :-
     UppercaseMangledName = flip_initial_case(MangledName),
     String = UppercaseMangledName ++ "_" ++ string.from_int(Arity).
 
-:- pred qual_class_name_to_string_for_csharp(mlds_class::in, arity::in,
+:- pred qual_class_name_to_string_for_csharp(qual_class_name::in, arity::in,
     string::out) is det.
 
 qual_class_name_to_string_for_csharp(QualName, Arity, String) :-
-    QualName = qual(MLDS_ModuleName, QualKind, ClassName),
+    QualName = qual_class_name(MLDS_ModuleName, QualKind, ClassName),
     ( if
         SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
         SymName = csharp_mercury_runtime_package_name
@@ -1636,6 +1636,7 @@ qual_class_name_to_string_for_csharp(QualName, Arity, String) :-
         % Don't mangle runtime class names.
         String = "runtime." ++ ClassName
     else
+        % XXX maybe duplicated code
         qualifier_to_string_for_csharp(MLDS_ModuleName, QualKind, QualString),
         unqual_class_name_to_string_for_csharp(ClassName, Arity, UnqualString),
         String = QualString ++ "." ++ UnqualString
@@ -2848,7 +2849,7 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
         then
             output_type_for_csharp(Info, Type, !IO),
             io.write_char('.', !IO),
-            QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
+            QualifiedCtorId = qual_ctor_id(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
             output_unqual_class_name_for_csharp(CtorName, CtorArity, !IO)
         else
@@ -2999,18 +3000,14 @@ output_lval_for_csharp(Info, Lval, !IO) :-
             output_rval_for_csharp(Info, OffsetRval, !IO),
             io.write_string("]", !IO)
         ;
-            FieldId = ml_field_named(FieldName, CtorType),
-            ( if
-                FieldName = qual(_, _, UnqualFieldName),
-                UnqualFieldName = "data_tag"
-            then
+            FieldId = ml_field_named(QualFieldVarName, CtorType),
+            QualFieldVarName = qual_field_var_name(_, _, FieldVarName),
+            ( if FieldVarName = fvn_data_tag then
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.
                 output_bracketed_rval_for_csharp(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
-            else if
-                PtrRval = ml_self(_)
-            then
+            else if PtrRval = ml_self(_) then
                 % Suppress type cast on `this' keyword.  This makes a
                 % difference when assigning to `final' member variables in
                 % constructor functions.
@@ -3027,8 +3024,7 @@ output_lval_for_csharp(Info, Lval, !IO) :-
                 output_bracketed_rval_for_csharp(Info, PtrRval, !IO),
                 io.write_string(").", !IO)
             ),
-            FieldName = qual(_, _, UnqualFieldName),
-            output_valid_mangled_name_for_csharp(UnqualFieldName, !IO)
+            output_field_var_name_for_csharp(FieldVarName, !IO)
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
@@ -3047,14 +3043,6 @@ output_lval_for_csharp(Info, Lval, !IO) :-
         output_maybe_qualified_global_var_name_for_csharp(Info,
             QualGlobalVarName, !IO)
     ).
-
-:- pred output_valid_mangled_name_for_csharp(string::in, io::di, io::uo)
-    is det.
-
-output_valid_mangled_name_for_csharp(Name, !IO) :-
-    MangledName = name_mangle(Name),
-    ValidName = make_valid_csharp_symbol_name(MangledName),
-    write_identifier_string_for_csharp(ValidName, !IO).
 
 :- pred output_call_rval_for_csharp(csharp_out_info::in, mlds_rval::in,
     io::di, io::uo) is det.
@@ -3807,14 +3795,15 @@ mlds_output_code_addr_for_csharp(Info, CodeAddr, IsCall, !IO) :-
         IsCall = yes
     ),
     (
-        CodeAddr = code_addr_proc(QualLabel, _Sig),
+        CodeAddr = code_addr_proc(QualProcLabel, _Sig),
         Suffix = ""
     ;
-        CodeAddr = code_addr_internal(QualLabel, SeqNum, _Sig),
+        CodeAddr = code_addr_internal(QualProcLabel, SeqNum, _Sig),
         string.format("_%d", [i(SeqNum)], Suffix)
     ),
-    output_qual_name_prefix_cs(QualLabel, Label, !IO),
-    mlds_output_proc_label(Suffix, Label, !IO).
+    QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
+    output_qual_name_prefix_cs(ModuleName, module_qual, !IO),
+    mlds_output_proc_label(Suffix, ProcLabel, !IO).
 
 :- func method_ptr_type_to_string(csharp_out_info, mlds_arg_types,
     mlds_return_types) = string.

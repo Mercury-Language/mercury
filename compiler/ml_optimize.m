@@ -275,7 +275,7 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
         % because it cheaper in compilation time.
 
         FuncRval = ml_const(mlconst_code_addr(
-            code_addr_proc(qual(ModName, module_qual, ProcLabel),
+            code_addr_proc(qual_proc_label(ModName, ProcLabel),
                 _FuncSignature))),
         ProcLabel = mlds_proc_label(PredLabel, _ProcId),
         PredLabel = mlds_user_pred_label(pf_predicate, _DefnModName, PredName,
@@ -344,7 +344,7 @@ generate_assign_args(OptInfo, Context, [Arg | Args], [ArgRval | ArgRvals],
         Stmts, TempDefns) :-
     Arg = mlds_argument(VarName, Type, _ArgGCStmt),
     ModuleName = OptInfo ^ oi_module_name,
-    QualVarName = qual(ModuleName, module_qual, VarName),
+    QualVarName = qual_local_var_name(ModuleName, module_qual, VarName),
     ( if
         % Don't bother assigning a variable to itself.
         ArgRval = ml_lval(ml_local_var(QualVarName, _VarType))
@@ -383,7 +383,8 @@ generate_assign_args(OptInfo, Context, [Arg | Args], [ArgRval | ArgRvals],
             NextValueName =
                 lvn_comp_var(lvnc_non_prog_var_next_value(VarNameStr))
         ),
-        QualNextValueName = qual(ModuleName, module_qual, NextValueName),
+        QualNextValueName =
+            qual_local_var_name(ModuleName, module_qual, NextValueName),
         Initializer = no_initializer,
         % We don't need to trace the temporary variables for GC, since they
         % are not live across a call or a heap allocation.
@@ -916,7 +917,7 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
         !.Stmts = [AssignStmt | !:Stmts],
         AssignStmt = ml_stmt_atomic(assign(LHS, RHS), _),
         LHS = ml_local_var(ThisVar, _ThisType),
-        ThisVar = qual(Qualifier, QualKind, VarName),
+        ThisVar = qual_local_var_name(Qualifier, QualKind, VarName),
 
         % We must check that the value being assigned doesn't refer to the
         % variable itself.
@@ -935,7 +936,8 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
                 LocalVarDefn = mlds_local_var_defn(OtherVarName, _, _, 
                     _Type, OtherInitializer, _GC),
                 (
-                    QualOtherVar = qual(Qualifier, QualKind, OtherVarName),
+                    QualOtherVar = qual_local_var_name(Qualifier, QualKind,
+                        OtherVarName),
                     rval_contains_var(RHS, QualOtherVar) = yes
                 ;
                     initializer_contains_var(OtherInitializer, ThisVar) = yes
@@ -1020,7 +1022,7 @@ eliminate_locals(OptInfo, [Defn0 | Defns0], Defns, !Stmts) :-
                 % These fields remain constant.
 
                 % The name of the variable to eliminate.
-                var_name        :: mlds_local_var,
+                var_name        :: qual_local_var_name,
 
                 % The value to replace the eliminated variable with.
                 var_value       :: mlds_rval,
@@ -1057,7 +1059,8 @@ try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Stmts) :-
     Flags = ml_gen_local_var_decl_flags,
 
     % ... with a known initial value.
-    QualVarName = qual(OptInfo ^ oi_module_name, module_qual, VarName),
+    QualVarName =
+        qual_local_var_name(OptInfo ^ oi_module_name, module_qual, VarName),
     (
         Initializer = init_obj(Rval)
     ;
@@ -1220,7 +1223,7 @@ rval_cannot_throw(Rval) :-
     % of statements with the initial assignment deleted. Fail if the first
     % value can't be determined.
     %
-:- pred find_initial_val_in_stmts(mlds_local_var::in, mlds_rval::out,
+:- pred find_initial_val_in_stmts(qual_local_var_name::in, mlds_rval::out,
     list(mlds_stmt)::in, list(mlds_stmt)::out) is semidet.
 
 find_initial_val_in_stmts(VarName, Rval, [Stmt0 | Stmts0], Stmts) :-
@@ -1246,7 +1249,7 @@ find_initial_val_in_stmts(VarName, Rval, [Stmt0 | Stmts0], Stmts) :-
         Stmts = [Stmt0 | Stmts1]
     ).
 
-:- pred find_initial_val_in_stmt(mlds_local_var::in, mlds_rval::out,
+:- pred find_initial_val_in_stmt(qual_local_var_name::in, mlds_rval::out,
     mlds_stmt::in, mlds_stmt::out) is semidet.
 
 find_initial_val_in_stmt(Var, Rval, Stmt0, Stmt) :-
@@ -1274,7 +1277,7 @@ find_initial_val_in_stmt(Var, Rval, Stmt0, Stmt) :-
     % the address of the variable, or assign to it; in that case, the
     % transformation should not be performed.
     %
-:- pred eliminate_var(mlds_local_var::in, mlds_rval::in,
+:- pred eliminate_var(qual_local_var_name::in, mlds_rval::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
     int::out, bool::out) is det.

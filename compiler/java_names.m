@@ -130,12 +130,12 @@ java_safe_name_component(QualKind, Name) = JavaSafeName :-
     MangledName = name_mangle_no_leading_digit(Name),
     (
         QualKind = module_qual,
-        FlippedName = MangledName
+        MaybeFlippedName = MangledName
     ;
         QualKind = type_qual,
-        FlippedName = flip_initial_case(MangledName)
+        MaybeFlippedName = flip_initial_case(MangledName)
     ),
-    JavaSafeName = make_valid_java_symbol_name(FlippedName).
+    JavaSafeName = make_valid_java_symbol_name(MaybeFlippedName).
 
 make_valid_java_symbol_name(SymName) = ValidSymName :-
     Prefix = "mr_",

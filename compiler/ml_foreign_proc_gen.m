@@ -303,7 +303,8 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
         SuccessIndicatorDecl = ml_gen_mlds_var_decl(SuccessIndicatorVarName,
             mlds_native_bool_type, gc_no_stmt, Context),
         SuccessIndicatorLval = ml_local_var(
-            qual(MLDSModuleName, module_qual, SuccessIndicatorVarName),
+            qual_local_var_name(MLDSModuleName, module_qual,
+                SuccessIndicatorVarName),
             mlds_native_bool_type),
         SuccessIndicatorStmt = ml_gen_assign(SucceededLval,
             ml_lval(SuccessIndicatorLval), Context),
@@ -598,8 +599,8 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
     ml_gen_info_get_proc_id(Info, ProcId),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, Module, PlainFuncName),
     HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
-        target_code_function_name(qual(Module, module_qual,
-            mlds_function_name(PlainFuncName))),
+        target_code_function_name(
+            qual_function_name(Module, mlds_function_name(PlainFuncName))),
         raw_target_code("\n")].
 
 %---------------------------------------------------------------------------%
@@ -913,8 +914,8 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
         MLDSType = mercury_type_to_mlds_type(ModuleInfo, OrigType),
         module_info_get_name(ModuleInfo, ModuleName),
         MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
-        QualLocalVarName = qual(MLDSModuleName, module_qual,
-            NonMangledArgVarName),
+        QualLocalVarName = qual_local_var_name(MLDSModuleName,
+            module_qual, NonMangledArgVarName),
         LocalVarLval = ml_local_var(QualLocalVarName, MLDSType),
         (
             MutableSpecial = not_mutable_special_case,

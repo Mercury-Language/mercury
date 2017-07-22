@@ -386,7 +386,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
     PredModule = mercury_private_builtin_module,
     MLDS_Module = mercury_module_name_to_mlds(PredModule),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    QualProcLabel = qual(MLDS_Module, module_qual, ProcLabel),
+    QualProcLabel = qual_proc_label(MLDS_Module, ProcLabel),
     CPointerType = mercury_type(c_pointer_type,
         ctor_cat_user(cat_user_general), non_foreign_type(c_pointer_type)),
     ArgTypes = [mlds_pseudo_type_info_type, CPointerType],
@@ -577,9 +577,9 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         % atomic_statement occurs, rather than at the local variable
         % declaration.
 
-        VarLval = ml_local_var(
-            qual(!.Fixup ^ fnoi_module_name, module_qual, VarName),
-            VarType),
+        QualVarName = qual_local_var_name(!.Fixup ^ fnoi_module_name,
+            module_qual, VarName),
+        VarLval = ml_local_var(QualVarName, VarType),
         PtrRval = ml_unop(cast(PointerType), ml_mem_addr(VarLval)),
         list.map_foldl(init_field_n(PointerType, PtrRval, Context),
             ArgRvals, ArgInitStmts, 0, _NumFields),

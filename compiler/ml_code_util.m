@@ -312,7 +312,8 @@
     % type that represents the function symbol's cell when we are generating
     % code with --high-level-data.
     %
-:- func ml_gen_hld_field_name(maybe(ctor_field_name), int) = mlds_field_name.
+:- func ml_gen_hld_field_name(maybe(ctor_field_name), int) =
+    mlds_field_var_name.
 
     % Succeeds iff the specified type must be boxed when used as a field.
     %
@@ -805,13 +806,15 @@ ml_make_boxed_types(Arity) = BoxedTypes :-
 ml_java_mercury_type_interface = TypeInterfaceDefn :-
     InterfaceModuleName = mercury_module_name_to_mlds(
         java_mercury_runtime_package_name),
-    TypeInterface = qual(InterfaceModuleName, module_qual, "MercuryType"),
+    TypeInterface =
+        qual_class_name(InterfaceModuleName, module_qual, "MercuryType"),
     TypeInterfaceDefn = mlds_class_type(TypeInterface, 0, mlds_interface).
 
 ml_java_mercury_enum_class = EnumClassDefn :-
     InterfaceModuleName = mercury_module_name_to_mlds(
         java_mercury_runtime_package_name),
-    EnumClass = qual(InterfaceModuleName, module_qual, "MercuryEnum"),
+    EnumClass =
+        qual_class_name(InterfaceModuleName, module_qual, "MercuryEnum"),
     EnumClassDefn = mlds_class_type(EnumClass, 0, mlds_class).
 
 %-----------------------------------------------------------------------------%
@@ -1106,7 +1109,7 @@ ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval, !Info) :-
         Signature = mlds_func_signature(ArgTypes, [])
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    QualProcLabel = qual(PredModule, module_qual, ProcLabel),
+    QualProcLabel = qual_proc_label(PredModule, ProcLabel),
     FuncLabelRval = ml_const(
         mlconst_code_addr(code_addr_internal(QualProcLabel,
             FuncLabel, Signature))).
@@ -1230,7 +1233,8 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
         MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
         ml_gen_type(Info, Type, MLDS_Type),
         Lval = ml_local_var(
-            qual(MLDS_Module, module_qual, lvn_comp_var(lvnc_dummy_var)),
+            qual_local_var_name(MLDS_Module, module_qual,
+                lvn_comp_var(lvnc_dummy_var)),
             MLDS_Type)
     ;
         IsDummy = is_not_dummy_type,
@@ -1271,7 +1275,7 @@ ml_gen_local_var_name(VarSet, Var) = MLDSVarName :-
 ml_gen_local_var_lval(Info, VarName, VarType, QualifiedVarLval) :-
     ml_gen_info_get_module_name(Info, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    MLDS_Var = qual(MLDS_ModuleName, module_qual, VarName),
+    MLDS_Var = qual_local_var_name(MLDS_ModuleName, module_qual, VarName),
     QualifiedVarLval = ml_local_var(MLDS_Var, VarType).
 
 ml_gen_local_var_decl(VarName, Type, Context, Defn, !Info) :-
@@ -1307,7 +1311,7 @@ ml_gen_public_field_decl_flags = DeclFlags :-
 % Code for dealing with fields.
 %
 
-ml_gen_hld_field_name(MaybeFieldName, ArgNum) = FieldName :-
+ml_gen_hld_field_name(MaybeFieldName, ArgNum) = FieldVarName :-
     % If the programmer specified a field name, we use that,
     % otherwise we just use `F' followed by the field number.
     (
@@ -1317,7 +1321,8 @@ ml_gen_hld_field_name(MaybeFieldName, ArgNum) = FieldName :-
     ;
         MaybeFieldName = no,
         FieldName = "F" ++ string.int_to_string(ArgNum)
-    ).
+    ),
+    FieldVarName = fvn_du_ctor_field_hld(FieldName).
 
     % Succeed iff the specified type must be boxed when used as a field.
     % XXX Currently we box such types even for the other MLDS based back-ends

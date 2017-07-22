@@ -588,7 +588,8 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
             ;
                 SupportsInheritance = no,
                 CastMLDS_Type = mlds_ptr_type(mlds_class_type(
-                    qual(MLDS_ModuleName, module_qual, UnqualTypeName),
+                    qual_class_name(MLDS_ModuleName, module_qual,
+                        UnqualTypeName),
                     TypeArity, mlds_class)),
                 Rval = ml_unop(cast(CastMLDS_Type), Rval0)
             )
@@ -1049,14 +1050,14 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % If so, append the name of the derived class to the name of the
             % base class for this type (since the derived class will also be
             % nested inside the base class).
-            QualTypeName = qual(_, _, UnqualTypeName),
+            QualTypeName = qual_class_name(_, _, UnqualTypeName),
             CtorName = ml_gen_du_ctor_name_unqual_type(Target, UnqualTypeName,
                 TypeArity, CtorSymName, CtorArity),
-            QualTypeName = qual(MLDS_Module, _QualKind, TypeName),
+            QualTypeName = qual_class_name(MLDS_Module, _QualKind, TypeName),
             ClassQualifier = mlds_append_class_qualifier_module_qual(
                 MLDS_Module, TypeName, TypeArity),
             ConstType = mlds_class_type(
-                qual(ClassQualifier, type_qual, CtorName),
+                qual_class_name(ClassQualifier, type_qual, CtorName),
                 CtorArity, mlds_class)
         else if
             % Convert mercury_types for user-defined types to the corresponding
@@ -1323,7 +1324,7 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
         ConsId = ctor_id(ConsName, 0),
         ModuleName = mercury_module_name_to_mlds(unqualified(""))
     ),
-    QualifiedConsId = qual(ModuleName, module_qual, ConsId).
+    QualifiedConsId = qual_ctor_id(ModuleName, module_qual, ConsId).
 
 :- type take_addr_info
     --->    take_addr_info(
@@ -2371,12 +2372,10 @@ ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTagVal, VarType, Rval) =
 :- func ml_gen_hl_tag_field_id(module_info, mer_type) = mlds_field_id.
 
 ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
-    FieldName = "data_tag",
     % Figure out the type name and arity.
     type_to_ctor_det(Type, TypeCtor),
     ml_gen_type_name(TypeCtor, QualifiedTypeName, TypeArity),
-    QualifiedTypeName = qual(MLDS_Module, TypeQualKind, TypeName),
-
+    QualifiedTypeName = qual_class_name(MLDS_Module, TypeQualKind, TypeName),
 
     % Figure out whether this type has constructors both with and without
     % secondary tags. If so, then the secondary tag field is in a class
@@ -2420,23 +2419,24 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
     ),
 
     % Put it all together.
-    QualClassName = qual(ClassQualifier, ClassQualKind, ClassName),
+    QualClassName = qual_class_name(ClassQualifier, ClassQualKind, ClassName),
     ClassPtrType = mlds_ptr_type(mlds_class_type(QualClassName, ClassArity,
         mlds_class)),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     FieldQualifier = mlds_append_class_qualifier(Target, ClassQualifier,
         ClassQualKind, ClassName, ClassArity),
-    QualifiedFieldName = qual(FieldQualifier, type_qual, FieldName),
+    QualifiedFieldName =
+        qual_field_var_name(FieldQualifier, type_qual, fvn_data_tag),
     FieldId = ml_field_named(QualifiedFieldName, ClassPtrType).
 
 :- func ml_gen_field_id(compilation_target, mer_type, cons_tag,
-    mlds_class_name, arity, mlds_field_name) = mlds_field_id.
+    mlds_class_name, arity, mlds_field_var_name) = mlds_field_id.
 
 ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
     type_to_ctor_det(Type, TypeCtor),
     ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
-    QualTypeName = qual(MLDS_Module, QualKind, TypeName),
+    QualTypeName = qual_class_name(MLDS_Module, QualKind, TypeName),
     TypeQualifier = mlds_append_class_qualifier(Target, MLDS_Module, QualKind,
         TypeName, TypeArity),
 
@@ -2448,16 +2448,18 @@ ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
         % by the type name.
         ClassPtrType = mlds_ptr_type(mlds_class_type(QualTypeName,
             TypeArity, mlds_class)),
-        QualifiedFieldName = qual(TypeQualifier, type_qual, FieldName)
+        QualifiedFieldName =
+            qual_field_var_name(TypeQualifier, type_qual, FieldName)
     ;
         UsesBaseClass = tag_does_not_use_base_class,
         % In this case, the class name is determined by the constructor.
-        QualConsName = qual(TypeQualifier, type_qual, ConsName),
+        QualConsName = qual_class_name(TypeQualifier, type_qual, ConsName),
         ClassPtrType = mlds_ptr_type(mlds_class_type(QualConsName,
             ConsArity, mlds_class)),
         FieldQualifier = mlds_append_class_qualifier(Target, TypeQualifier,
             type_qual, ConsName, ConsArity),
-        QualifiedFieldName = qual(FieldQualifier, type_qual, FieldName)
+        QualifiedFieldName =
+            qual_field_var_name(FieldQualifier, type_qual, FieldName)
     ),
     FieldId = ml_field_named(QualifiedFieldName, ClassPtrType).
 

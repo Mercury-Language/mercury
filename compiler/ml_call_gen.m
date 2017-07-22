@@ -418,7 +418,7 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
     ml_gen_proc_params(PredId, ProcId, Params, !Info),
     Signature = mlds_get_func_signature(Params),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    QualifiedProcLabel = qual(PredModule, module_qual, ProcLabel),
+    QualifiedProcLabel = qual_proc_label(PredModule, ProcLabel),
     CodeAddrRval = ml_const(mlconst_code_addr(
         code_addr_proc(QualifiedProcLabel, Signature))).
 

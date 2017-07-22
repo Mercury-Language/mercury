@@ -66,7 +66,8 @@
     % Given an HLDS type_ctor, generate the MLDS class name and arity
     % for the corresponding MLDS type.
     %
-:- pred ml_gen_type_name(type_ctor::in, mlds_class::out, arity::out) is det.
+:- pred ml_gen_type_name(type_ctor::in, qual_class_name::out, arity::out)
+    is det.
 
     % Generate a data constructor name given the type constructor.
     %
@@ -282,7 +283,7 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
 
     % Generate the class name.
     ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
-    QualifiedClassName = qual(_, _, MLDS_ClassName),
+    QualifiedClassName = qual_class_name(_, _, MLDS_ClassName),
 
     % Generate the class members.
     ValueMember = ml_gen_hld_enum_value_member(Context),
@@ -482,7 +483,8 @@ ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
     ml_gen_type_name(TypeCtor, QualBaseClassName, BaseClassArity),
     BaseClassId = mlds_class_type(QualBaseClassName, BaseClassArity,
         mlds_class),
-    QualBaseClassName = qual(BaseClassModuleName, QualKind, BaseClassName),
+    QualBaseClassName =
+        qual_class_name(BaseClassModuleName, QualKind, BaseClassName),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     BaseClassQualifier = mlds_append_class_qualifier(Target,
@@ -644,7 +646,8 @@ ml_gen_hld_secondary_tag_class(Context, BaseClassQualifier, BaseClassId,
     % Note: the secondary tag class is nested inside the
     % base class for this type.
     UnqualClassName = "tag_type",
-    ClassName = qual(BaseClassQualifier, type_qual, UnqualClassName),
+    ClassName =
+        qual_class_name(BaseClassQualifier, type_qual, UnqualClassName),
     ClassArity = 0,
     SecondaryTagClassId = mlds_class_type(ClassName, ClassArity, mlds_class),
 
@@ -796,7 +799,8 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             ;
                 UsesBaseClass = tag_does_not_use_base_class,
                 CtorClassType = mlds_class_type(
-                    qual(BaseClassQualifier, type_qual, UnqualCtorName),
+                    qual_class_name(BaseClassQualifier, type_qual,
+                        UnqualCtorName),
                     CtorArity, mlds_class),
                 CtorClassQualifier = mlds_append_class_qualifier(Target,
                     BaseClassQualifier, type_qual, UnqualCtorName, CtorArity)
@@ -948,24 +952,27 @@ make_arg(FieldInfo) = Arg :-
 gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, FieldInfo)
         = Stmt :-
     FieldInfo = mlds_field_info(FieldVarName, Type, _GcStmt, Context),
-    NameStr = ml_field_var_name_to_string(FieldVarName),
     RequiresQualifiedParams = target_requires_module_qualified_params(Target),
     (
         RequiresQualifiedParams = yes,
-        ( if BaseClassId = mlds_class_type(qual(ModuleName, _, _), _, _) then
-            QualLocalVarName = qual(ModuleName, module_qual,
+        ( if
+            BaseClassId = mlds_class_type(QualClassName, _, _),
+            QualClassName = qual_class_name(ModuleName, _, _)
+        then
+            QualLocalVarName = qual_local_var_name(ModuleName, module_qual,
                 lvn_field_var_as_local(FieldVarName))
         else
             unexpected($pred, "invalid BaseClassId")
         )
     ;
         RequiresQualifiedParams = no,
-        QualLocalVarName = qual(ClassQualifier, type_qual,
+        QualLocalVarName = qual_local_var_name(ClassQualifier, type_qual,
             lvn_field_var_as_local(FieldVarName))
     ),
     Param = ml_lval(ml_local_var(QualLocalVarName, Type)),
     Field = ml_field(yes(0), ml_self(ClassType),
-        ml_field_named(qual(ClassQualifier, type_qual, NameStr),
+        ml_field_named(
+            qual_field_var_name(ClassQualifier, type_qual, FieldVarName),
             mlds_ptr_type(ClassType)),
             % XXX we should use ClassType rather than BaseClassId here.
             % But doing so breaks the IL back-end, because then the hack in
@@ -997,17 +1004,17 @@ target_requires_module_qualified_params(target_erlang) =
 
 gen_init_tag(Target, ClassType, SecondaryTagClassId, TagVal, Context) = Stmt :-
     ( if SecondaryTagClassId = mlds_class_type(TagClass, TagArity, _) then
-        TagClass = qual(BaseClassQualifier, QualKind, TagClassName),
+        TagClass = qual_class_name(BaseClassQualifier, QualKind, TagClassName),
         TagClassQualifier = mlds_append_class_qualifier(Target,
             BaseClassQualifier, QualKind, TagClassName, TagArity)
     else
         unexpected($pred, "class_id should be a class")
     ),
-    Name = "data_tag",
     Type = mlds_native_int_type,
     Val = ml_const(mlconst_int(TagVal)),
     Field = ml_field(yes(0), ml_self(ClassType),
-        ml_field_named(qual(TagClassQualifier, type_qual, Name),
+        ml_field_named(
+            qual_field_var_name(TagClassQualifier, type_qual, fvn_data_tag),
             mlds_ptr_type(SecondaryTagClassId)),
         Type, ClassType),
     Stmt = ml_stmt_atomic(assign(Field, Val), Context).
@@ -1051,8 +1058,7 @@ ml_gen_hld_du_ctor_field(ModuleInfo, Context, Arg, Defn, FieldInfo, !ArgNum) :-
 
 ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, MaybeFieldName, Type, Width,
         FieldVarDefn, FieldInfo, !ArgNum) :-
-    FieldName = ml_gen_hld_field_name(MaybeFieldName, !.ArgNum),
-    FieldVarName = fvn_du_ctor_field_hld(FieldName),
+    FieldVarName = ml_gen_hld_field_name(MaybeFieldName, !.ArgNum),
     DeclFlags = ml_gen_public_field_decl_flags,
     ( if ml_must_box_field_type(ModuleInfo, Type, Width) then
         MLDS_Type = mlds_generic_type
@@ -1083,7 +1089,7 @@ ml_gen_type_name(type_ctor(Name, Arity), QualifiedTypeName, Arity) :-
         ModuleName = mercury_public_builtin_module
     ),
     MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-    QualifiedTypeName = qual(MLDS_Module, module_qual, TypeName).
+    QualifiedTypeName = qual_class_name(MLDS_Module, module_qual, TypeName).
 
 ml_gen_du_ctor_name(CompilationTarget, TypeCtor, Name, Arity) = CtorName :-
     TypeCtor = type_ctor(TypeName, TypeArity),

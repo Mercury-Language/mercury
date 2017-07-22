@@ -502,22 +502,6 @@
     %
 :- func wrapper_class_name = string.
 
-    % An mlds name may contain arbitrary characters.
-    % If the target language has restrictions on what names can be used
-    % in identifiers, then it is the responsibility of the target language
-    % generator to mangle these names accordingly.
-:- type mlds_qualified_global_var_name
-    ==  mlds_fully_qualified_name(mlds_global_var_name).
-:- type mlds_qualified_field_var_name
-    ==  mlds_fully_qualified_name(mlds_field_var_name).
-:- type mlds_qualified_function_name
-    ==  mlds_fully_qualified_name(mlds_function_name).
-:- type mlds_qualified_type_name
-    ==  mlds_fully_qualified_name(mlds_type_name).
-
-:- type mlds_fully_qualified_name(T)
-    --->    qual(mlds_module_name, mlds_qual_kind, T).
-
     % For the Java back-end, we need to distinguish between module qualifiers
     % and type qualifiers, because type names get the case of their initial
     % letter inverted (i.e. lowercase => uppercase).
@@ -525,6 +509,14 @@
 :- type mlds_qual_kind
     --->    module_qual
     ;       type_qual.
+
+:- type qual_type_name
+    --->    qual_type_name(mlds_module_name, mlds_qual_kind, mlds_type_name).
+            % XXX Given the definition of mlds_type_name, it may be better
+            % to have qual_type_name be defined as a pair of a qual_class_name
+            % and an arity, since that doesn't require taking off the
+            % qualification and putting it back in a different place
+            % when adding an arity to a class name.
 
 :- type mlds_type_name
     --->    mlds_type_name(
@@ -554,6 +546,10 @@
             ).
 
 :- type mlds_func_sequence_num == int.
+
+:- type qual_function_name
+    --->    qual_function_name(mlds_module_name, mlds_function_name).
+            % Function names can only ever be module qualified.
 
 :- type mlds_function_name
     --->    mlds_function_name(
@@ -773,8 +769,9 @@
     ;       mlds_enum.     % A class with one integer member and a bunch
                            % of static consts (cannot inherit anything).
 
+:- type qual_class_name
+    --->    qual_class_name(mlds_module_name, mlds_qual_kind, mlds_class_name).
 :- type mlds_class_name == string.
-:- type mlds_class == mlds_fully_qualified_name(mlds_class_name).
 
     % Note that standard C doesn't support empty structs, so when targeting C,
     % it is the MLDS code generator's responsibility to ensure that each
@@ -880,7 +877,7 @@
     ;       mlds_class_type(
                 % MLDS types defined using mlds_class_defn.
 
-                mlds_class,        % name
+                qual_class_name,
                 arity,
                 mlds_class_kind
             )
@@ -1100,11 +1097,11 @@
 :- type mlds_pragma_export
     --->    ml_pragma_export(
                 foreign_language,
-                string,                        % Exported name
-                mlds_qualified_function_name,  % MLDS name for exported entity
-                mlds_func_params,              % MLDS function parameters
-                list(tvar),                    % Universally quantified type
-                                               % variables.
+                string,                         % Exported name
+                qual_function_name,             % MLDS name for exported entity
+                mlds_func_params,               % MLDS function parameters
+                list(tvar),                     % Universally quantified type
+                                                % variables.
                 prog_context
             ).
 
@@ -1631,7 +1628,7 @@
     ;       target_code_input(mlds_rval)
     ;       target_code_output(mlds_lval)
     ;       target_code_type(mlds_type)
-    ;       target_code_function_name(mlds_qualified_function_name)
+    ;       target_code_function_name(qual_function_name)
     ;       target_code_alloc_id(mlds_alloc_id).
 
 :- type mlds_alloc_id
@@ -1639,9 +1636,15 @@
 
     % Constructor id.
     %
-:- type ctor_name == mlds_qualified_ctor_id.
-:- type mlds_ctor_id ---> ctor_id(mlds_class_name, arity).
-:- type mlds_qualified_ctor_id == mlds_fully_qualified_name(mlds_ctor_id).
+    % XXX An mlds_ctor_id is structurally identical to an mlds_type_name,
+    % and a qual_ctor_id is structurally identical to a qual_type_name.
+    % Why the duplication?
+:- type mlds_ctor_id
+    --->    ctor_id(mlds_class_name, arity).
+:- type qual_ctor_id
+    --->    qual_ctor_id(mlds_module_name, mlds_qual_kind, mlds_ctor_id).
+    % XXX Why do we need/want this synonym?
+:- type ctor_name == qual_ctor_id.
 
     % Trail management.
     % For documentation, see the corresponding LLDS instructions in llds.m.
@@ -1675,11 +1678,9 @@
                 % inserting a downcast from PtrType to CtorType before
                 % accessing the field.
 
-                mlds_fully_qualified_name(mlds_field_name),
+                qual_field_var_name,
                 mlds_type
             ).
-
-:- type mlds_field_name == string.
 
     % An lval represents a data location or variable that can be used
     % as the target of an assignment.
@@ -1743,12 +1744,12 @@
     % of *local* variables.
 
     ;       ml_local_var(
-                mlds_local_var,
+                qual_local_var_name,
                 mlds_type
             )
 
     ;       ml_global_var(
-                mlds_global_var,
+                qual_global_var_name,
                 mlds_type
             ).
 
@@ -1908,11 +1909,11 @@
 
 :- type mlds_code_addr
     --->    code_addr_proc(
-                mlds_qualified_proc_label,
+                qual_proc_label,
                 mlds_func_signature
             )
     ;       code_addr_internal(
-                mlds_qualified_proc_label,
+                qual_proc_label,
                 mlds_func_sequence_num,
                 mlds_func_signature
             ).
@@ -1929,7 +1930,10 @@
     % the generated code considerably less cluttered and therefore
     % easier to read.
     %
-:- type mlds_global_var == mlds_fully_qualified_name(mlds_global_var_name).
+:- type qual_global_var_name
+    --->    qual_global_var_name(mlds_module_name, mlds_global_var_name).
+            % Global variables can only ever be module qualified.
+
 :- type mlds_global_var_name
     --->    gvn_rtti_var(rtti_id)
 
@@ -1962,7 +1966,17 @@
     % the generated code considerably less cluttered and therefore
     % easier to read.
     %
-:- type mlds_local_var == mlds_fully_qualified_name(mlds_local_var_name).
+:- type qual_local_var_name
+    --->    qual_local_var_name(mlds_module_name, mlds_qual_kind,
+                mlds_local_var_name).
+            % Over 99+% of local variables can only ever be module qualified,
+            % but the local variables representing the parameters of
+            % the constructor methods of compiler-generated classes
+            % are currently type qualified, and the difference in qualification
+            % affects the names we generate for them in Java and C#.
+            % XXX MLDS_DEFN Look into whether this difference is *necessary*,
+            % or just an accident of history.
+
 :- type mlds_local_var_name
     --->    lvn_prog_var(string, int)
             % This MLDS variable represents a variable in the HLDS procedure
@@ -2160,10 +2174,9 @@
             % This MLDS variable represents a locally-saved copy of the
             % global variable represented by lvnc_stack_chain.
 
-    ;       lvnc_ptr_num
     ;       lvnc_args
-            % These two MLDS variables are used by the Java backend.
-            % I (zs) don't know what their semantics is.
+            % This variable is used by the Java backend.
+            % I (zs) don't know what its semantics is.
 
     ;       lvnc_aux_var(mlds_compiler_aux_var, int).
             % These MLDS variables contain values (most, but not all of which
@@ -2185,7 +2198,12 @@
     % such field variables would make the generated code less cluttered
     % and therefore easier to read.
     %
-:- type mlds_field_var == mlds_fully_qualified_name(mlds_field_var_name).
+:- type qual_field_var_name
+    --->    qual_field_var_name(mlds_module_name, mlds_qual_kind,
+                mlds_field_var_name).
+            % Some field variables are module qualified, while others
+            % are type qualified.
+
 :- type mlds_field_var_name
     --->    fvn_global_data_field(int, int)
             % When implementing lookup switches (and some related HLDS
@@ -2216,7 +2234,7 @@
             % in the target language for each data constructor in a
             % discriminated union type. This is the name of one of the fields
             % of this type.
-            % NOTE: See the XXX on the code that turns these MLDS variables
+            % NOTE: See the XXX on the code that turns these variables
             % into strings.
 
     ;       fvn_mr_value
@@ -2234,6 +2252,10 @@
             % This variable name is used in the implementation of base classes
             % in the C backend, but I (zs) don't know exactly what it is
             % used for.
+
+    ;       fvn_ptr_num
+            % This variable is used by the Java backend.
+            % I (zs) don't know what its semantics is.
 
     ;       fvn_env_field_from_local_var(mlds_local_var_name)
             % This is a field of an environment structure that represents
@@ -2290,14 +2312,12 @@
 
 %---------------------------------------------------------------------------%
 
-:- type mlds_qualified_proc_label
-    ==  mlds_fully_qualified_name(mlds_proc_label).
+:- type qual_proc_label
+    --->    qual_proc_label(mlds_module_name, mlds_proc_label).
+            % Procedure labels can only ever be module qualified.
 
 :- type mlds_proc_label
     --->    mlds_proc_label(mlds_pred_label, proc_id).
-
-:- type mlds_qualified_pred_label
-    ==  mlds_fully_qualified_name(mlds_pred_label).
 
     % An mlds_pred_label is a structure containing information that
     % uniquely identifies a HLDS predicate within a given module.
@@ -2854,9 +2874,6 @@ ml_local_var_name_to_string(LocalVar) = Str :-
             CompVar = mcv_saved_stack_chain(Id),
             Str = string.format("saved_stack_chain_%d", [i(Id)])
         ;
-            CompVar = lvnc_ptr_num,
-            Str = "ptr_num"
-        ;
             CompVar = lvnc_args,
             Str = "args"
         ;
@@ -2937,6 +2954,9 @@ ml_field_var_name_to_string(FieldVar) = Str :-
         % from clashing with the strings we generate for other kinds of
         % mlds_var_names.
         Str = ConstName
+    ;
+        FieldVar = fvn_ptr_num,
+        Str = "ptr_num"
     ;
         FieldVar = fvn_env_field_from_local_var(LocalVar),
         Str = ml_local_var_name_to_string(LocalVar)

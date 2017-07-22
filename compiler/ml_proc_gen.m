@@ -225,7 +225,7 @@ ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
     PragmaExportedProc = pragma_exported_proc(Lang, PredId, ProcId,
         ExportName, Context),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, ModuleName, PlainName),
-    MLDS_Name = qual(ModuleName, module_qual, mlds_function_name(PlainName)),
+    MLDS_Name = qual_function_name(ModuleName, mlds_function_name(PlainName)),
     ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_univ_quant_tvars(PredInfo, UnivQTVars),

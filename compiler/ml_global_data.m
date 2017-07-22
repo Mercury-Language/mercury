@@ -383,7 +383,7 @@ ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstVarKind, ConstType0,
         UseCommonCells = do_not_use_common_cells,
         ml_gen_plain_static_defn(ConstVarKind, ConstType, Initializer,
             Context, VarName, !GlobalData),
-        QualVarName = qual(MLDS_ModuleName, module_qual, VarName),
+        QualVarName = qual_global_var_name(MLDS_ModuleName, VarName),
         DataVar = ml_global_var(QualVarName, ConstType),
         DataRval = ml_lval(DataVar)
     ).
@@ -671,7 +671,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         StructTypeDefn = mlds_class(ClassDefn),
 
         QualStructTypeName =
-            qual(MLDS_ModuleName, module_qual, StructTypeName),
+            qual_class_name(MLDS_ModuleName, module_qual, StructTypeName),
         StructType = mlds_class_type(QualStructTypeName, 0, mlds_struct),
 
         MLDS_ClassModuleName = mlds_append_class_qualifier_module_qual(
@@ -709,8 +709,7 @@ ml_gen_vector_cell_field_types(Context, Flags, TypeRawNum, FieldNum,
 make_named_fields(_, _, [], []).
 make_named_fields(MLDS_ModuleName, StructType, [FieldName | FieldNames],
         [FieldId | FieldIds]) :-
-    FieldNameStr = ml_field_var_name_to_string(FieldName),
-    QualName = qual(MLDS_ModuleName, module_qual, FieldNameStr),
+    QualName = qual_field_var_name(MLDS_ModuleName, module_qual, FieldName),
     FieldId = ml_field_named(QualName, StructType),
     make_named_fields(MLDS_ModuleName, StructType, FieldNames, FieldIds).
 

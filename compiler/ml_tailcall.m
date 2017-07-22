@@ -685,7 +685,7 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Markers, Context, !InBodyInfo) :-
             CodeAddr = code_addr_internal(QualProcLabel,
                 _SeqNum, _Sig)
         ),
-        QualProcLabel = qual(_, _, ProcLabel),
+        QualProcLabel = qual_proc_label(_, ProcLabel),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
         (
             PredLabel = mlds_special_pred_label(_, _, _, _)
@@ -905,7 +905,7 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
         )
     ;
         Const = mlconst_data_addr_local_var(ModuleName, VarName),
-        QualVarName = qual(ModuleName, module_qual, VarName),
+        QualVarName = qual_local_var_name(ModuleName, module_qual, VarName),
         ( if var_is_in_locals(QualVarName, Locals) then
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
         else
@@ -943,11 +943,13 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
     % It would be safe to fail for variables declared static (i.e. `one_copy'),
     % but currently we just take a conservative approach.
     %
-:- pred var_is_in_locals(mlds_local_var::in, list(local_defns)::in) is semidet.
+:- pred var_is_in_locals(qual_local_var_name::in, list(local_defns)::in)
+    is semidet.
 
 var_is_in_locals(Var, LocalsList) :-
     % XXX we ignore the ModuleName -- that is safe, but overly conservative.
-    Var = qual(_ModuleName, _QualKind, VarName),
+    % XXX We also ignore QualKind.
+    Var = qual_local_var_name(_ModuleName, _QualKind, VarName),
     some [Locals] (
         list.member(Locals, LocalsList),
         (
@@ -981,7 +983,7 @@ function_is_local(CodeAddr, LocalsList) :-
     ),
     % XXX we ignore the ModuleName -- that is safe, but might be
     % overly conservative.
-    QualifiedProcLabel = qual(_ModuleName, _QualKind, ProcLabel),
+    QualifiedProcLabel = qual_proc_label(_ModuleName, ProcLabel),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     some [Locals] (
         list.member(Locals, LocalsList),
