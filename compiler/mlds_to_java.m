@@ -974,9 +974,8 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
     ReturnLval = ml_local_var(ReturnVar, ReturnVarType),
 
     Context = term.context_init,
-    ReturnDecFlags = ml_gen_local_var_decl_flags,
     GCStmt = gc_no_stmt,  % The Java back-end does its own GC.
-    ReturnVarDefn = mlds_local_var_defn(ReturnVarName, Context, ReturnDecFlags,
+    ReturnVarDefn = mlds_local_var_defn(ReturnVarName, Context,
         ReturnVarType, no_initializer, GCStmt),
 
     % Create the call to the original method.
@@ -1174,11 +1173,11 @@ rename_class_names_defn(Renaming, Defn0, Defn) :-
         Defn = mlds_global_var(GlobalVarDefn)
     ;
         Defn0 = mlds_local_var(LocalVarDefn0),
-        LocalVarDefn0 = mlds_local_var_defn(LocalVarName, Context, Flags,
+        LocalVarDefn0 = mlds_local_var_defn(LocalVarName, Context,
             Type0, Initializer0, GCStmt),
         rename_class_names_type(Renaming, Type0, Type),
         rename_class_names_initializer(Renaming, Initializer0, Initializer),
-        LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Flags,
+        LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
             Type, Initializer, GCStmt),
         Defn = mlds_local_var(LocalVarDefn)
     ;
@@ -1885,11 +1884,10 @@ output_global_var_defn_for_java(Info, Indent, OutputAux, GlobalVarDefn, !IO) :-
     output_aux::in, mlds_local_var_defn::in, io::di, io::uo) is det.
 
 output_local_var_defn_for_java(Info, Indent, OutputAux, LocalVarDefn, !IO) :-
-    LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Flags, Type,
+    LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Type,
         Initializer, _),
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
-    output_data_decl_flags_for_java(Info, Flags, !IO),
     % XXX MLDS_DEFN
     output_local_var_decl_for_java(Info, LocalVarName, Type, !IO),
     output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),

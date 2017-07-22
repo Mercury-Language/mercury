@@ -1993,7 +1993,7 @@ mlds_output_global_var_defn(Opts, Indent, Separate, ModuleName, GlobalVarDefn,
 
 mlds_output_local_var_defn(Opts, Indent, Separate, ModuleName, LocalVarDefn,
         !IO) :-
-    LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Flags,
+    LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
         Type, Initializer, GCStmt),
     (
         Separate = yes,
@@ -2003,7 +2003,6 @@ mlds_output_local_var_defn(Opts, Indent, Separate, ModuleName, LocalVarDefn,
     ),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_data_decl_flags(Opts, Flags, definition, !IO),
     QualLocalVarName =
         qual_local_var_name(ModuleName, module_qual, LocalVarName),
     mlds_output_local_var_decl(Opts, QualLocalVarName, Type,

@@ -900,9 +900,8 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     %   struct <EnvClassName> env; // = { ... }
     %
     EnvVarName = env_var(Action),
-    EnvVarFlags = ml_gen_local_var_decl_flags,
     EnvVarDecl = mlds_local_var_defn(EnvVarName, Context,
-        EnvVarFlags, EnvTypeName, EnvInitializer, GCStmtEnv),
+        EnvTypeName, EnvInitializer, GCStmtEnv),
 
     % Declare the `env_ptr' var, and initialize the `env_ptr' with the
     % address of `env'.
@@ -1132,19 +1131,18 @@ extract_gc_statements(FieldVarDefn0, FieldVarDefn,
     % or block, not for fields. Currently we change it to `public'.
     % (Perhaps changing it to `default' might be better?)
     % XXX MLDS_DEFN
+    % Since we no longer distinguish between local variables and field
+    % variables using the *flags* of the old, replaced-by-now mlds_data_defn
+    % structure, we should set fields to public only if actually *want*
+    % them to be public.
     %
 :- func convert_local_to_field(mlds_local_var_defn) = mlds_field_var_defn.
 
 convert_local_to_field(LocalVarDefn) = FieldVarDefn :-
-    LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Flags0, Type,
+    LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Type,
         Init, GcStmt),
-    Access0 = get_data_access(Flags0),
-    ( if Access0 = acc_local then
-        set_data_access(acc_public, Flags0, Flags)
-    else
-        Flags = Flags0
-    ),
     FieldVarName = fvn_env_field_from_local_var(LocalVarName),
+    Flags = init_data_decl_flags(acc_public, per_instance, modifiable),
     FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags, Type,
         Init, GcStmt).
 
@@ -1236,13 +1234,12 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     %   <EnvTypeName> *env_ptr;
     %
     EnvPtrVarName = env_ptr_var(Action),
-    EnvPtrVarFlags = ml_gen_local_var_decl_flags,
     EnvPtrVarType = ml_make_env_ptr_type(Globals, EnvTypeName),
     % The env_ptr never needs to be traced by the GC, since the environment
     % that it points to will always be on the stack, not into the heap.
     GCStmt = gc_no_stmt,
     EnvPtrVarDecl = mlds_local_var_defn(EnvPtrVarName, Context,
-        EnvPtrVarFlags, EnvPtrVarType, no_initializer, GCStmt),
+        EnvPtrVarType, no_initializer, GCStmt),
 
     % Generate the following statement:
     %
@@ -1265,8 +1262,7 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 
 ml_conv_arg_to_var(Context, Arg, LocalVarDefn) :-
     Arg = mlds_argument(VarName, Type, GCStmt),
-    Flags = ml_gen_local_var_decl_flags,
-    LocalVarDefn = mlds_local_var_defn(VarName, Context, Flags, Type,
+    LocalVarDefn = mlds_local_var_defn(VarName, Context, Type,
         no_initializer, GCStmt).
 
     % Return the declaration flags appropriate for an environment struct
@@ -1697,7 +1693,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
     ;
         Defn0 = mlds_local_var(LocalVarDefn0),
         LocalVarDefn0 = mlds_local_var_defn(LocalVarName, Context,
-            Flags, Type, Init0, GCStmt),
+            Type, Init0, GCStmt),
         % For local variable definitions, if they are referenced by any nested
         % functions, then strip them out and store them in the elim_info.
         ( if
@@ -1712,7 +1708,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
                 Init0 = init_obj(Rval),
                 Init = no_initializer,
                 LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
-                    Flags, Type, Init, GCStmt),
+                    Type, Init, GCStmt),
                 % XXX BUG! Converting the initializer to an assignment doesn't
                 % work, because it doesn't handle the case when initializers in
                 % FollowingDefns reference this variable.
@@ -1738,7 +1734,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
         else
             fixup_initializer(Action, !.Info, Init0, Init),
             LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
-                Flags, Type, Init, GCStmt),
+                Type, Init, GCStmt),
             Defns = [mlds_local_var(LocalVarDefn)],
             InitStmts = []
         )
@@ -2122,7 +2118,7 @@ fixup_gc_statements(Action, !Info) :-
 :- mode fixup_gc_statements_defn(in, in, out, in, out) is det.
 
 fixup_gc_statements_defn(Action, Defn0, Defn, !Info) :-
-    Defn0 = mlds_local_var_defn(Name, Context, Flags, Type, Init, GCStmt0),
+    Defn0 = mlds_local_var_defn(Name, Context, Type, Init, GCStmt0),
     (
         Action = hoist_nested_funcs,
         flatten_gc_statement(Action, GCStmt0, GCStmt, !Info)
@@ -2130,7 +2126,7 @@ fixup_gc_statements_defn(Action, Defn0, Defn, !Info) :-
         Action = chain_gc_stack_frames,
         flatten_gc_statement(Action, GCStmt0, GCStmt, !Info)
     ),
-    Defn = mlds_local_var_defn(Name, Context, Flags, Type, Init, GCStmt).
+    Defn = mlds_local_var_defn(Name, Context, Type, Init, GCStmt).
 
 %-----------------------------------------------------------------------------%
 
@@ -2582,14 +2578,12 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 
 gen_saved_stack_chain_var(Id, Context) = Defn :-
     Name = lvn_comp_var(mcv_saved_stack_chain(Id)),
-    Flags = ml_gen_local_var_decl_flags,
     Type = ml_stack_chain_type,
     Initializer = no_initializer,
     % The saved stack chain never needs to be traced by the GC,
     % since it will always point to the stack, not into the heap.
     GCStmt = gc_no_stmt,
-    Defn = mlds_local_var_defn(Name, Context, Flags, Type,
-        Initializer, GCStmt).
+    Defn = mlds_local_var_defn(Name, Context, Type, Initializer, GCStmt).
 
     % Generate a statement to save the stack chain pointer:
     %

@@ -674,9 +674,8 @@ output_global_var_defn_for_csharp(Info, Indent, OutputAux, GlobalVarDefn,
 output_local_var_defn_for_csharp(Info, Indent, OutputAux, LocalVarDefn,
         !IO) :-
     output_n_indents(Indent, !IO),
-    LocalVarDefn = mlds_local_var_defn(LocalVarName, _Context, Flags,
+    LocalVarDefn = mlds_local_var_defn(LocalVarName, _Context,
         Type, Initializer, _),
-    output_data_decl_flags_for_csharp(Info, Flags, !IO),
     output_local_var_decl_for_csharp(Info, LocalVarName, Type, !IO),
     output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).

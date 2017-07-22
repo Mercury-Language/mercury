@@ -804,7 +804,7 @@ defn_contains_var(Defn, SearchVarName) = ContainsVar :-
     (
         (
             Defn = mlds_local_var(LocalVarDefn),
-            LocalVarDefn = mlds_local_var_defn(_Name, _Ctxt, _Flags,
+            LocalVarDefn = mlds_local_var_defn(_Name, _Ctxt,
                 _Type, Initializer, _GCStmt)
         ;
             Defn = mlds_global_var(GlobalVarDefn),
@@ -1072,7 +1072,7 @@ method_ptrs_in_defn(Defn, !CodeAddrsInConsts) :-
     (
         (
             Defn = mlds_local_var(LocalVarDefn),
-            LocalVarDefn = mlds_local_var_defn(_, _, _, _Type,
+            LocalVarDefn = mlds_local_var_defn(_, _, _Type,
                 Initializer, _GCStmt)
         ;
             Defn = mlds_global_var(GlobalVarDefn),

@@ -933,7 +933,7 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
         Filter =
             ( pred(OtherDefn::in) is semidet :-
                 OtherDefn = mlds_local_var(LocalVarDefn),
-                LocalVarDefn = mlds_local_var_defn(OtherVarName, _, _, 
+                LocalVarDefn = mlds_local_var_defn(OtherVarName, _,
                     _Type, OtherInitializer, _GC),
                 (
                     QualOtherVar = qual_local_var_name(Qualifier, QualKind,
@@ -966,7 +966,7 @@ find_this_var_defn(VarName, [Defn | Defns], !RevPrevDefns,
         ThisVarDefn, LaterDefns) :-
     ( if
         Defn = mlds_local_var(DataDefn),
-        DataDefn = mlds_local_var_defn(VarName, _, _, _, _, _)
+        DataDefn = mlds_local_var_defn(VarName, _, _, _, _)
     then
         ThisVarDefn = DataDefn,
         LaterDefns = Defns
@@ -1050,15 +1050,10 @@ eliminate_locals(OptInfo, [Defn0 | Defns0], Defns, !Stmts) :-
 
 try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Stmts) :-
     Defn0 = mlds_local_var(DataDefn0),
-    DataDefn0 = mlds_local_var_defn(VarName, _Context, Flags,
+    DataDefn0 = mlds_local_var_defn(VarName, _Context,
         _Type, Initializer, _GCStmt),
 
-    % Check if this definition is a local variable definition...
-    % XXX MLDS_DEFN
-    % This test should now be redundant.
-    Flags = ml_gen_local_var_decl_flags,
-
-    % ... with a known initial value.
+    % Check if this definition has a known initial value.
     QualVarName =
         qual_local_var_name(OptInfo ^ oi_module_name, module_qual, VarName),
     (
@@ -1317,10 +1312,10 @@ eliminate_var_in_defns(!Defns, !VarElimInfo) :-
 eliminate_var_in_defn(Defn0, Defn, !VarElimInfo) :-
     (
         Defn0 = mlds_local_var(LocalVarDefn0),
-        LocalVarDefn0 = mlds_local_var_defn(Name, Context, Flags,
+        LocalVarDefn0 = mlds_local_var_defn(Name, Context,
             Type, Initializer0, GCStmt),
         eliminate_var_in_initializer(Initializer0, Initializer, !VarElimInfo),
-        LocalVarDefn = mlds_local_var_defn(Name, Context, Flags,
+        LocalVarDefn = mlds_local_var_defn(Name, Context,
             Type, Initializer, GCStmt),
         Defn = mlds_local_var(LocalVarDefn)
     ;

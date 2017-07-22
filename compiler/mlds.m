@@ -623,9 +623,9 @@
     --->    mlds_local_var_defn(
                 mlvd_name               :: mlds_local_var_name,
                 mlvd_context            :: prog_context,
-                % XXX MLDS_DEFN
-                % Local variables shouldn't need *all* the data decl flags.
-                mlvd_decl_flags         :: mlds_data_decl_flags,
+
+                % Local variables don't need flags. They are always local
+                % and modifiable.
 
                 mlvd_type               :: mlds_type,
                 mlvd_init               :: mlds_initializer,
