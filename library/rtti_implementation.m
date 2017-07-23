@@ -165,12 +165,6 @@
     ;       tcr_func
     ;       tcr_int
     ;       tcr_uint
-    ;       tcr_int8
-    ;       tcr_uint8
-    ;       tcr_int16
-    ;       tcr_uint16
-    ;       tcr_int32
-    ;       tcr_uint32
     ;       tcr_char
     ;       tcr_float
     ;       tcr_string
@@ -208,6 +202,12 @@
     ;       tcr_bitmap
     ;       tcr_foreign_enum
     ;       tcr_foreign_enum_usereq
+    ;       tcr_int8
+    ;       tcr_uint8
+    ;       tcr_int16
+    ;       tcr_uint16
+    ;       tcr_int32
+    ;       tcr_uint32
     ;       tcr_unknown.
 
     % We keep all the other types abstract.
