@@ -1901,7 +1901,7 @@ output_field_var_defn_for_java(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
         Initializer, _),
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
-    output_data_decl_flags_for_java(Info, Flags, !IO),
+    output_field_var_decl_flags_for_java(Flags, !IO),
     % XXX MLDS_DEFN
     output_field_var_decl_for_java(Info, FieldVarName, Type, !IO),
     output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
@@ -3401,14 +3401,14 @@ output_global_var_decl_flags_for_java(Flags, !IO) :-
     output_per_instance_for_java(one_copy, !IO),
     output_overridability_constness_for_java(overridable, Constness, !IO).
 
-:- pred output_data_decl_flags_for_java(java_out_info::in,
-    mlds_data_decl_flags::in, io::di, io::uo) is det.
+:- pred output_field_var_decl_flags_for_java(mlds_field_var_decl_flags::in,
+    io::di, io::uo) is det.
 
-output_data_decl_flags_for_java(Info, Flags, !IO) :-
-    output_access_for_java(Info, get_data_access(Flags), !IO),
-    output_per_instance_for_java(get_data_per_instance(Flags), !IO),
+output_field_var_decl_flags_for_java(Flags, !IO) :-
+    io.write_string("public ", !IO),
+    output_per_instance_for_java(Flags ^ mfvdf_per_instance, !IO),
     output_overridability_constness_for_java(overridable,
-        get_data_constness(Flags), !IO).
+        Flags ^ mfvdf_constness, !IO).
 
 :- pred output_function_decl_flags_for_java(java_out_info::in,
     mlds_function_decl_flags::in, io::di, io::uo) is det.

@@ -299,7 +299,7 @@
     % Return the declaration flags appropriate for a public field
     % in the derived constructor class of a discriminated union.
     %
-:- func ml_gen_public_field_decl_flags = mlds_data_decl_flags.
+:- func ml_gen_public_field_decl_flags = mlds_field_var_decl_flags.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1320,16 +1320,11 @@ ml_gen_mlds_var_decl(DataName, MLDS_Type, GCStmt, Context) =
     ml_gen_mlds_var_decl_init(DataName, MLDS_Type, no_initializer, GCStmt,
         Context).
 
-ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStmt, Context)
-        = Defn :-
-    Defn = mlds_local_var_defn(DataName, Context,
-        MLDS_Type, Initializer, GCStmt).
+ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStmt, Context) =
+    mlds_local_var_defn(DataName, Context, MLDS_Type, Initializer, GCStmt).
 
-ml_gen_public_field_decl_flags = DeclFlags :-
-    Access = acc_public,
-    PerInstance = per_instance,
-    Constness = modifiable,
-    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
+ml_gen_public_field_decl_flags =
+    mlds_field_var_decl_flags(per_instance, modifiable).
 
 %-----------------------------------------------------------------------------%
 %

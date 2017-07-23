@@ -2026,7 +2026,7 @@ mlds_output_field_var_defn(Opts, Indent, Separate, ModuleName, FieldVarDefn,
     ),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_data_decl_flags(Opts, Flags, definition, !IO),
+    mlds_output_field_var_decl_flags(Opts, Flags, definition, !IO),
     QualFieldVarName =
         qual_field_var_name(ModuleName, module_qual, FieldVarName),
     mlds_output_field_var_decl(Opts, QualFieldVarName, Type,
@@ -2218,8 +2218,7 @@ is_static_member(Defn) :-
         unexpected($pred, "mlds_local_var")
     ;
         Defn = mlds_field_var(FieldVarDefn),
-        Flags = FieldVarDefn ^ mfvd_decl_flags,
-        get_data_per_instance(Flags) = one_copy
+        FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_per_instance = one_copy
     ;
         Defn = mlds_function(FuncDefn),
         Flags = FuncDefn ^ mfd_decl_flags,
@@ -3250,24 +3249,26 @@ mlds_output_global_var_decl_flags(Flags, DeclOrDefn, !IO) :-
     mlds_output_global_var_extern_or_static(Access, DeclOrDefn, !IO),
     mlds_output_constness(Constness, !IO).
 
-:- pred mlds_output_data_decl_flags(mlds_to_c_opts::in,
-    mlds_data_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
+:- pred mlds_output_field_var_decl_flags(mlds_to_c_opts::in,
+    mlds_field_var_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
 
-mlds_output_data_decl_flags(Opts, Flags, DeclOrDefn, !IO) :-
-    Access = get_data_access(Flags),
-    PerInstance = get_data_per_instance(Flags),
-    Constness = get_data_constness(Flags),
+mlds_output_field_var_decl_flags(Opts, Flags, DeclOrDefn, !IO) :-
+    Constness = Flags ^ mfvdf_constness,
 
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
-        mlds_output_access_comment(Access, !IO),
+        % XXX We used to call mlds_output_extern_or_static
+        % on mlds_data_decl_flags. This predicate pays attention to PerInstance
+        % *only* when the access flag is acc_local, while field var's
+        % access flags were always acc_public (which is why we don't need
+        % to explicitly store that flag).
+        PerInstance = Flags ^ mfvdf_per_instance,
         mlds_output_per_instance_comment(PerInstance, !IO)
     ;
         Comments = no
     ),
-    mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, dk_data,
-        !IO),
+    mlds_output_field_var_extern(DeclOrDefn, !IO),
     mlds_output_constness(Constness, !IO).
 
 :- pred mlds_output_function_decl_flags(mlds_to_c_opts::in,
@@ -3339,8 +3340,7 @@ mlds_output_per_instance_comment(one_copy, !IO) :-
     io.write_string("/* one_copy */ ", !IO).
 
 :- type defn_kind
-    --->    dk_data
-    ;       dk_func_not_external
+    --->    dk_func_not_external
     ;       dk_func_external
     ;       dk_type.
 
@@ -3363,6 +3363,20 @@ mlds_output_global_var_extern_or_static(Access, DeclOrDefn, !IO) :-
             DeclOrDefn = definition
             % Print no storage class.
         )
+    ).
+
+    % mlds_output_field_var_extern does for field variables
+    % what mlds_output_extern_or_static does for other entities.
+    %
+:- pred mlds_output_field_var_extern(decl_or_defn::in, io::di, io::uo) is det.
+
+mlds_output_field_var_extern(DeclOrDefn, !IO) :-
+    (
+        DeclOrDefn = forward_decl,
+        io.write_string("extern ", !IO)
+    ;
+        DeclOrDefn = definition
+            % Print no storage class.
     ).
 
     % mlds_output_extern_or_static handles both the `access' and the
@@ -3390,18 +3404,12 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
         % Don't output "static" for functions that don't have a body,
         % which can happen for Mercury procedures that have a
         % `:- pragma external_{pred/func}'
-        % These are the only two kinds of definitions we *can* put
+        % Non-external functions (and global variables, which don't use
+        % this predicate) are the only two kinds of definitions we *can* put
         % a "static" in front of.
-        ( DefnKind = dk_data
-        ; DefnKind = dk_func_not_external
-        )
+        DefnKind = dk_func_not_external
     then
         io.write_string("static ", !IO)
-    else if
-        DeclOrDefn = forward_decl,
-        DefnKind = dk_data
-    then
-        io.write_string("extern ", !IO)
     else if
         % Forward declarations for GNU C nested functions need to be prefixed
         % with "auto".

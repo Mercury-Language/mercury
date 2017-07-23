@@ -603,8 +603,6 @@
     --->    mlds_global_var_defn(
                 mgvd_name               :: mlds_global_var_name,
                 mgvd_context            :: prog_context,
-                % XXX MLDS_DEFN
-                % Global variables shouldn't need *all* the data decl flags.
                 mgvd_decl_flags         :: mlds_global_var_decl_flags,
 
                 mgvd_type               :: mlds_type,
@@ -623,7 +621,6 @@
     --->    mlds_local_var_defn(
                 mlvd_name               :: mlds_local_var_name,
                 mlvd_context            :: prog_context,
-
                 % Local variables don't need flags. They are always local
                 % and modifiable.
 
@@ -640,9 +637,7 @@
     --->    mlds_field_var_defn(
                 mfvd_name               :: mlds_field_var_name,
                 mfvd_context            :: prog_context,
-                % XXX MLDS_DEFN
-                % Field variables shouldn't need *all* the data decl flags.
-                mfvd_decl_flags         :: mlds_data_decl_flags,
+                mfvd_decl_flags         :: mlds_field_var_decl_flags,
 
                 mfvd_type               :: mlds_type,
                 mfvd_init               :: mlds_initializer,
@@ -662,7 +657,7 @@
                 % Identifies the original Mercury procedure, if any.
                 mfd_orig_proc           :: maybe(pred_proc_id),
 
-                % The arguments & return types.
+                % The argument types and return types.
                 mfd_param               :: mlds_func_params,
 
                 mfd_body                :: mlds_function_body,
@@ -1026,27 +1021,19 @@
 
 :- type mlds_global_var_decl_flags
     --->    mlds_global_var_decl_flags(
-                mgvdf_access          :: global_var_access,
-                mgvdf_constness       :: constness
+                mgvdf_access            :: global_var_access,
+                mgvdf_constness         :: constness
             ).
 
 %---------------------%
 
-:- type mlds_data_decl_flags.
-
-:- func init_data_decl_flags(access, per_instance, constness)
-    = mlds_data_decl_flags.
-
-:- func get_data_access(mlds_data_decl_flags) = access.
-:- func get_data_per_instance(mlds_data_decl_flags) = per_instance.
-:- func get_data_constness(mlds_data_decl_flags) = constness.
-
-:- pred set_data_access(access::in,
-    mlds_data_decl_flags::in, mlds_data_decl_flags::out) is det.
-:- pred set_data_per_instance(per_instance::in,
-    mlds_data_decl_flags::in, mlds_data_decl_flags::out) is det.
-:- pred set_data_constness(constness::in,
-    mlds_data_decl_flags::in, mlds_data_decl_flags::out) is det.
+:- type mlds_field_var_decl_flags
+    --->    mlds_field_var_decl_flags(
+                % Field variables are implicitly always "public" within
+                % the class that defines them.
+                mfvdf_per_instance      :: per_instance,
+                mfvdf_constness         :: constness
+            ).
 
 %---------------------%
 
@@ -2631,32 +2618,6 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
 % Note that the compiler can pack all the enumeration arguments together,
 % though a cell will still be allocated.
 %
-
-%---------------------------------------------------------------------------%
-
-:- type mlds_data_decl_flags
-    --->    mlds_data_decl_flags(
-                mddf_access          :: access,
-                mddf_per_instance    :: per_instance,
-                mddf_constness       :: constness
-            ).
-
-init_data_decl_flags(Access, PerInstance, Constness) =
-    mlds_data_decl_flags(Access, PerInstance, Constness).
-
-get_data_access(Flags) = X :-
-    X = Flags ^ mddf_access.
-get_data_per_instance(Flags) = X :-
-    X = Flags ^ mddf_per_instance.
-get_data_constness(Flags) = X :-
-    X = Flags ^ mddf_constness.
-
-set_data_access(Access, !Flags) :-
-    !Flags ^ mddf_access := Access.
-set_data_per_instance(PerInstance, !Flags) :-
-    !Flags ^ mddf_per_instance := PerInstance.
-set_data_constness(Constness, !Flags) :-
-    !Flags ^ mddf_constness := Constness.
 
 %---------------------------------------------------------------------------%
 

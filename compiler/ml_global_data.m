@@ -632,7 +632,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         map.det_insert(ArgTypes, TypeNum, TypeNumMap0, TypeNumMap),
         !GlobalData ^ mgd_vector_type_num_map := TypeNumMap,
 
-        FieldFlags = init_data_decl_flags(acc_public, per_instance, const),
+        FieldFlags = mlds_field_var_decl_flags(per_instance, const),
         ml_gen_vector_cell_field_types(Context, FieldFlags,
             TypeRawNum, 0, ArgTypes, FieldNames, FieldDefns, FieldInfos),
 
@@ -687,7 +687,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
     ).
 
 :- pred ml_gen_vector_cell_field_types(prog_context::in,
-    mlds_data_decl_flags::in, int::in, int::in, list(mlds_type)::in,
+    mlds_field_var_decl_flags::in, int::in, int::in, list(mlds_type)::in,
     list(mlds_field_var_name)::out, list(mlds_field_var_defn)::out,
     list(mlds_field_info)::out) is det.
 

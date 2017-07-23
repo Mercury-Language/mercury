@@ -688,7 +688,7 @@ output_field_var_defn_for_csharp(Info, Indent, OutputAux, FieldVarDefn,
     output_n_indents(Indent, !IO),
     FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, Flags,
         Type, Initializer, _),
-    output_data_decl_flags_for_csharp(Info, Flags, !IO),
+    output_field_var_decl_flags_for_csharp(Flags, !IO),
     output_field_var_decl_for_csharp(Info, FieldVarName, Type, !IO),
     output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).
@@ -2211,13 +2211,13 @@ output_global_var_decl_flags_for_csharp(Info, Flags, !IO) :-
     output_per_instance_for_csharp(one_copy, !IO),
     output_constness_for_csharp(Constness, !IO).
 
-:- pred output_data_decl_flags_for_csharp(csharp_out_info::in,
-    mlds_data_decl_flags::in, io::di, io::uo) is det.
+:- pred output_field_var_decl_flags_for_csharp(mlds_field_var_decl_flags::in,
+    io::di, io::uo) is det.
 
-output_data_decl_flags_for_csharp(Info, Flags, !IO) :-
-    output_access_for_csharp(Info, get_data_access(Flags), !IO),
-    output_per_instance_for_csharp(get_data_per_instance(Flags), !IO),
-    output_constness_for_csharp(get_data_constness(Flags), !IO).
+output_field_var_decl_flags_for_csharp(Flags, !IO) :-
+    io.write_string("public ", !IO),
+    output_per_instance_for_csharp(Flags ^ mfvdf_per_instance, !IO),
+    output_constness_for_csharp(Flags ^ mfvdf_constness, !IO).
 
 :- pred output_function_decl_flags_for_csharp(csharp_out_info::in,
     mlds_function_decl_flags::in, io::di, io::uo) is det.

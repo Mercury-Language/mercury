@@ -759,13 +759,10 @@ defn_is_commit_type_var(Defn) :-
 defn_is_public(Defn) :-
     (
         Defn = mlds_global_var(GlobalVarDefn),
-        GlobalVarDefn ^ mgvd_decl_flags =
-            mlds_global_var_decl_flags(GlobalVarAccess, _),
-        GlobalVarAccess = gvar_acc_whole_program
+        GlobalVarDefn ^ mgvd_decl_flags ^ mgvdf_access = gvar_acc_whole_program
     ;
-        Defn = mlds_field_var(FieldVarDefn),
-        FieldVarFlags = FieldVarDefn ^ mfvd_decl_flags,
-        get_data_access(FieldVarFlags) = acc_public
+        Defn = mlds_field_var(_FieldVarDefn)
+        % Field vars are implicitly "public" within their class.
     ;
         Defn = mlds_function(FuncDefn),
         FuncFlags = FuncDefn ^ mfd_decl_flags,

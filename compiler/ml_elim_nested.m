@@ -1142,7 +1142,7 @@ convert_local_to_field(LocalVarDefn) = FieldVarDefn :-
     LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Type,
         Init, GcStmt),
     FieldVarName = fvn_env_field_from_local_var(LocalVarName),
-    Flags = init_data_decl_flags(acc_public, per_instance, modifiable),
+    Flags = mlds_field_var_decl_flags(per_instance, modifiable),
     FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags, Type,
         Init, GcStmt).
 

@@ -177,8 +177,7 @@ convert_qual_kind(type_qual) = type_qual.
 
 defn_is_enum_const(Defn, FieldVarDefn) :-
     Defn = mlds_field_var(FieldVarDefn),
-    Flags = FieldVarDefn ^ mfvd_decl_flags,
-    get_data_constness(Flags) = const.
+    FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_constness = const.
 
 %---------------------------------------------------------------------------%
 

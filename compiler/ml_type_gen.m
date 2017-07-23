@@ -88,16 +88,16 @@
     % Return the declaration flags appropriate for a member variable.
     %
 :- func ml_gen_member_decl_flags = mlds_function_decl_flags.
-:- func ml_gen_member_data_decl_flags = mlds_data_decl_flags.
+:- func ml_gen_member_data_decl_flags = mlds_field_var_decl_flags.
 
     % Return the declaration flags appropriate for a member variable
     % which is read-only after initialisation.
     %
-:- func ml_gen_const_member_data_decl_flags = mlds_data_decl_flags.
+:- func ml_gen_const_member_data_decl_flags = mlds_field_var_decl_flags.
 
     % Return the declaration flags appropriate for an enumeration constant.
     %
-:- func ml_gen_enum_constant_data_decl_flags = mlds_data_decl_flags.
+:- func ml_gen_enum_constant_data_decl_flags = mlds_field_var_decl_flags.
 
 %-----------------------------------------------------------------------------%
 
@@ -731,7 +731,7 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             % never point into the heap; they can point only to other static
             % constants.
             GCStmt = gc_no_stmt,
-            DeclFlags = init_data_decl_flags(acc_public, one_copy, const),
+            DeclFlags = mlds_field_var_decl_flags(one_copy, const),
             % XXX MLDS_DEFN
             ReservedObjDefn = mlds_field_var_defn(ReservedObjName, Context,
                 DeclFlags, SecondaryTagClassId, no_initializer, GCStmt),
@@ -1148,23 +1148,14 @@ ml_gen_member_decl_flags = DeclFlags :-
     PerInstance = per_instance,
     DeclFlags = init_function_decl_flags(Access, PerInstance).
 
-ml_gen_member_data_decl_flags = DeclFlags :-
-    Access = acc_public,
-    PerInstance = per_instance,
-    Constness = modifiable,
-    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
+ml_gen_member_data_decl_flags =
+    mlds_field_var_decl_flags(per_instance, modifiable).
 
-ml_gen_const_member_data_decl_flags = DeclFlags :-
-    Access = acc_public,
-    PerInstance = per_instance,
-    Constness = const,
-    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
+ml_gen_const_member_data_decl_flags =
+    mlds_field_var_decl_flags(per_instance, const).
 
-ml_gen_enum_constant_data_decl_flags = DeclFlags :-
-    Access = acc_public,
-    PerInstance = one_copy,
-    Constness = const,
-    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
+ml_gen_enum_constant_data_decl_flags =
+    mlds_field_var_decl_flags(one_copy, const).
 
 %----------------------------------------------------------------------------%
 
