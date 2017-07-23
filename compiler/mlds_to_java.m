@@ -1874,7 +1874,7 @@ output_global_var_defn_for_java(Info, Indent, OutputAux, GlobalVarDefn, !IO) :-
         Initializer, _),
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
-    output_data_decl_flags_for_java(Info, Flags, !IO),
+    output_global_var_decl_flags_for_java(Flags, !IO),
     % XXX MLDS_DEFN
     output_global_var_decl_for_java(Info, GlobalVarName, Type, !IO),
     output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
@@ -2167,7 +2167,7 @@ output_global_var_decls_for_java(Info, Indent,
     GlobalVarDefn = mlds_global_var_defn(Name, _Context, Flags,
         Type, _Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
-    output_data_decl_flags_for_java(Info, Flags, !IO),
+    output_global_var_decl_flags_for_java(Flags, !IO),
     output_global_var_decl_for_java(Info, Name, Type, !IO),
     io.write_string(";\n", !IO),
     output_global_var_decls_for_java(Info, Indent, GlobalVarDefns, !IO).
@@ -3392,6 +3392,15 @@ boxed_type_to_string_for_java(Info, Type, String) :-
 % Code to output declaration specifiers.
 %
 
+:- pred output_global_var_decl_flags_for_java(mlds_global_var_decl_flags::in,
+    io::di, io::uo) is det.
+
+output_global_var_decl_flags_for_java(Flags, !IO) :-
+    Flags = mlds_global_var_decl_flags(Access, Constness),
+    output_global_var_access_for_java(Access, !IO),
+    output_per_instance_for_java(one_copy, !IO),
+    output_overridability_constness_for_java(overridable, Constness, !IO).
+
 :- pred output_data_decl_flags_for_java(java_out_info::in,
     mlds_data_decl_flags::in, io::di, io::uo) is det.
 
@@ -3418,6 +3427,18 @@ output_class_decl_flags_for_java(_Info, Flags, !IO) :-
     output_per_instance_for_java(one_copy, !IO),
     output_overridability_constness_for_java(
         get_class_overridability(Flags), get_class_constness(Flags), !IO).
+
+:- pred output_global_var_access_for_java(global_var_access::in,
+    io::di, io::uo) is det.
+
+output_global_var_access_for_java(Access, !IO) :-
+    (
+        Access = gvar_acc_whole_program,
+        io.write_string("public ", !IO)
+    ;
+        Access = gvar_acc_module_only,
+        io.write_string("private ", !IO)
+    ).
 
 :- pred output_access_for_java(java_out_info::in, access::in,
     io::di, io::uo) is det.

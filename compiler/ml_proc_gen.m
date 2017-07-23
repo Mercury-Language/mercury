@@ -977,19 +977,10 @@ tabling_name_and_init_to_defn(ProcLabel, Id, Context, Constness, Initializer)
         = GlobalVarDefn :-
     GCStatement = gc_no_stmt,
     MLDS_Type = mlds_tabling_type(Id),
-    Flags = tabling_data_decl_flags(Constness),
+    Flags = mlds_global_var_decl_flags(gvar_acc_module_only, Constness),
     Name = gvn_tabling_var(ProcLabel, Id),
     GlobalVarDefn = mlds_global_var_defn(Name, Context, Flags,
         MLDS_Type, Initializer, GCStatement).
-
-    % Return the declaration flags appropriate for a tabling data structure.
-    %
-:- func tabling_data_decl_flags(constness) = mlds_data_decl_flags.
-
-tabling_data_decl_flags(Constness) = DeclFlags :-
-    Access = acc_private,
-    PerInstance = one_copy,
-    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
 
 %-----------------------------------------------------------------------------%
 %

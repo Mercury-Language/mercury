@@ -725,8 +725,7 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             % never point into the heap; they can point only to other static
             % constants.
             GCStmt = gc_no_stmt,
-            DeclFlags0 = ml_static_const_decl_flags,
-            set_data_access(acc_public, DeclFlags0, DeclFlags),
+            DeclFlags = init_data_decl_flags(acc_public, one_copy, const),
             % XXX MLDS_DEFN
             ReservedObjDefn = mlds_field_var_defn(ReservedObjName, Context,
                 DeclFlags, SecondaryTagClassId, no_initializer, GCStmt),

@@ -663,7 +663,7 @@ output_global_var_defn_for_csharp(Info, Indent, OutputAux, GlobalVarDefn,
     output_n_indents(Indent, !IO),
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, Flags,
         Type, Initializer, _),
-    output_data_decl_flags_for_csharp(Info, Flags, !IO),
+    output_global_var_decl_flags_for_csharp(Info, Flags, !IO),
     output_global_var_decl_for_csharp(Info, GlobalVarName, Type, !IO),
     output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).
@@ -940,10 +940,10 @@ output_global_var_decls_for_csharp(Info, Indent,
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, Flags,
         Type, _Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
-    % We can't honour `readonly' here as the variable is assigned
-    % separately.
-    set_data_constness(modifiable, Flags, NonReadonlyFlags),
-    output_data_decl_flags_for_csharp(Info, NonReadonlyFlags, !IO),
+    % We can't honour _Constness here as the variable is assigned separately.
+    Flags = mlds_global_var_decl_flags(Access, _Constness),
+    NonConstFlags = mlds_global_var_decl_flags(Access, modifiable),
+    output_global_var_decl_flags_for_csharp(Info, NonConstFlags, !IO),
     output_global_var_decl_for_csharp(Info, GlobalVarName, Type, !IO),
     io.write_string(";\n", !IO),
     output_global_var_decls_for_csharp(Info, Indent, GlobalVarDefns, !IO).
@@ -2202,6 +2202,15 @@ boxed_type_to_string_for_csharp(Info, Type, String) :-
 % Code to output declaration specifiers.
 %
 
+:- pred output_global_var_decl_flags_for_csharp(csharp_out_info::in,
+    mlds_global_var_decl_flags::in, io::di, io::uo) is det.
+
+output_global_var_decl_flags_for_csharp(Info, Flags, !IO) :-
+    Flags = mlds_global_var_decl_flags(Access, Constness),
+    output_global_var_access_for_csharp(Info, Access, !IO),
+    output_per_instance_for_csharp(one_copy, !IO),
+    output_constness_for_csharp(Constness, !IO).
+
 :- pred output_data_decl_flags_for_csharp(csharp_out_info::in,
     mlds_data_decl_flags::in, io::di, io::uo) is det.
 
@@ -2251,6 +2260,18 @@ output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
     output_per_instance_for_csharp(PerInstance, !IO),
     output_overridability_for_csharp(Overridable, !IO),
     output_constness_for_csharp(Constness, !IO).
+
+:- pred output_global_var_access_for_csharp(csharp_out_info::in,
+    global_var_access::in, io::di, io::uo) is det.
+
+output_global_var_access_for_csharp(_Info, Access, !IO) :-
+    (
+        Access = gvar_acc_whole_program,
+        io.write_string("public ", !IO)
+    ;
+        Access = gvar_acc_module_only,
+        io.write_string("private ", !IO)
+    ).
 
 :- pred output_access_for_csharp(csharp_out_info::in, access::in,
     io::di, io::uo) is det.

@@ -126,7 +126,14 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
 
     % Generate the declaration flags.
     Exported = rtti_id_is_exported(RttiId),
-    Flags = rtti_data_decl_flags(Exported),
+    (
+        Exported = no,
+        Access = gvar_acc_module_only
+    ;
+        Exported = yes,
+        Access = gvar_acc_whole_program
+    ),
+    Flags = rtti_data_decl_flags(Access),
 
     % The GC never needs to trace these definitions, because they are static
     % constants, and can point only to other static constants, not to the heap.
@@ -141,19 +148,9 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
 
     % Return the declaration flags appropriate for an rtti_data.
     %
-:- func rtti_data_decl_flags(bool) = mlds_data_decl_flags.
+:- func rtti_data_decl_flags(global_var_access) = mlds_global_var_decl_flags.
 
-rtti_data_decl_flags(Exported) = DeclFlags :-
-    (
-        Exported = yes,
-        Access = acc_public
-    ;
-        Exported = no,
-        Access = acc_private
-    ),
-    PerInstance = one_copy,
-    Constness = const,
-    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
+rtti_data_decl_flags(Access) = mlds_global_var_decl_flags(Access, const).
 
 %-----------------------------------------------------------------------------%
 

@@ -605,7 +605,7 @@
                 mgvd_context            :: prog_context,
                 % XXX MLDS_DEFN
                 % Global variables shouldn't need *all* the data decl flags.
-                mgvd_decl_flags         :: mlds_data_decl_flags,
+                mgvd_decl_flags         :: mlds_global_var_decl_flags,
 
                 mgvd_type               :: mlds_type,
                 mgvd_init               :: mlds_initializer,
@@ -984,6 +984,10 @@
             % Only accessible within the block in which the entity
             % (variable or nested function) is defined.
 
+:- type global_var_access
+    --->    gvar_acc_module_only
+    ;       gvar_acc_whole_program.
+
     % The accessibility of classes themselves.
 :- type class_access
     --->    class_public
@@ -1020,6 +1024,14 @@
 
 %---------------------%
 
+:- type mlds_global_var_decl_flags
+    --->    mlds_global_var_decl_flags(
+                mgvdf_access          :: global_var_access,
+                mgvdf_constness       :: constness
+            ).
+
+%---------------------%
+
 :- type mlds_data_decl_flags.
 
 :- func init_data_decl_flags(access, per_instance, constness)
@@ -1035,11 +1047,6 @@
     mlds_data_decl_flags::in, mlds_data_decl_flags::out) is det.
 :- pred set_data_constness(constness::in,
     mlds_data_decl_flags::in, mlds_data_decl_flags::out) is det.
-
-    % Return the declaration flags appropriate for an initialized
-    % local static constant.
-    %
-:- func ml_static_const_decl_flags = mlds_data_decl_flags.
 
 %---------------------%
 
@@ -2650,14 +2657,6 @@ set_data_per_instance(PerInstance, !Flags) :-
     !Flags ^ mddf_per_instance := PerInstance.
 set_data_constness(Constness, !Flags) :-
     !Flags ^ mddf_constness := Constness.
-
-ml_static_const_decl_flags = DeclFlags :-
-    % Note that rtti_data_decl_flags, in rtti_to_mlds.m,
-    % must be the same as this apart from the access.
-    Access = acc_local,
-    PerInstance = one_copy,
-    Constness = const,
-    DeclFlags = init_data_decl_flags(Access, PerInstance, Constness).
 
 %---------------------------------------------------------------------------%
 

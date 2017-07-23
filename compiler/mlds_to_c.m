@@ -1544,7 +1544,7 @@ mlds_output_global_var_decl_opts(Opts, Indent, ModuleName, GlobalVarDefn,
         Type, Initializer, _GCStmt),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_data_decl_flags(Opts, Flags, forward_decl, !IO),
+    mlds_output_global_var_decl_flags(Flags, forward_decl, !IO),
     QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
     mlds_output_global_var_decl(Opts, QualGlobalVarName, Type,
         get_initializer_array_size(Initializer), !IO),
@@ -1980,7 +1980,7 @@ mlds_output_global_var_defn(Opts, Indent, Separate, ModuleName, GlobalVarDefn,
     ),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_data_decl_flags(Opts, Flags, definition, !IO),
+    mlds_output_global_var_decl_flags(Flags, definition, !IO),
     QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
     mlds_output_global_var_decl(Opts, QualGlobalVarName, Type,
         get_initializer_array_size(Initializer), !IO),
@@ -3240,6 +3240,16 @@ mlds_output_array_type_suffix(array_size(Size0), !IO) :-
     --->    forward_decl
     ;       definition.
 
+:- pred mlds_output_global_var_decl_flags(mlds_global_var_decl_flags::in,
+    decl_or_defn::in, io::di, io::uo) is det.
+
+mlds_output_global_var_decl_flags(Flags, DeclOrDefn, !IO) :-
+    Flags = mlds_global_var_decl_flags(Access, Constness),
+    % Everything that one may want to know about Flags is available
+    % in the output of the next two calls, so printing comments is not useful.
+    mlds_output_global_var_extern_or_static(Access, DeclOrDefn, !IO),
+    mlds_output_constness(Constness, !IO).
+
 :- pred mlds_output_data_decl_flags(mlds_to_c_opts::in,
     mlds_data_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
 
@@ -3333,6 +3343,27 @@ mlds_output_per_instance_comment(one_copy, !IO) :-
     ;       dk_func_not_external
     ;       dk_func_external
     ;       dk_type.
+
+    % mlds_output_global_var_extern_or_static does for global variables
+    % what mlds_output_extern_or_static does for other entities.
+    %
+:- pred mlds_output_global_var_extern_or_static(global_var_access::in,
+    decl_or_defn::in, io::di, io::uo) is det.
+
+mlds_output_global_var_extern_or_static(Access, DeclOrDefn, !IO) :-
+    (
+        Access = gvar_acc_module_only,
+        io.write_string("static ", !IO)
+    ;
+        Access = gvar_acc_whole_program,
+        (
+            DeclOrDefn = forward_decl,
+            io.write_string("extern ", !IO)
+        ;
+            DeclOrDefn = definition
+            % Print no storage class.
+        )
+    ).
 
     % mlds_output_extern_or_static handles both the `access' and the
     % `per_instance' fields of the mlds_decl_flags. We have to handle them

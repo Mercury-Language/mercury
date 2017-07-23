@@ -478,8 +478,7 @@ ml_gen_plain_static_defn(ConstVarKind, ConstType,
     % The GC never needs to trace static constants, because they can never
     % point into the heap; they can point only to other static constants.
     GCStatement = gc_no_stmt,
-    DeclFlags0 = ml_static_const_decl_flags,
-    set_data_access(acc_private, DeclFlags0, DeclFlags),
+    DeclFlags = mlds_global_var_decl_flags(gvar_acc_module_only, const),
     DataDefn = mlds_global_var_defn(VarName, Context, DeclFlags, ConstType,
         Initializer, GCStatement),
 
