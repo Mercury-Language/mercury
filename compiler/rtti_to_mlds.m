@@ -144,7 +144,7 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
     DataDefn = mlds_global_var_defn(Name, Context, Flags, MLDS_Type,
         Initializer, GCStatement),
 
-    ml_global_data_add_flat_rtti_defn(DataDefn, !GlobalData).
+    ml_global_data_add_rtti_defn(DataDefn, !GlobalData).
 
     % Return the declaration flags appropriate for an rtti_data.
     %

@@ -127,14 +127,14 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
-        FlatRttiDefns, ClosureWrapperFuncDefns, FlatCellDefns),
+        RttiDefns, CellDefns, ClosureWrapperFuncDefns),
 
     % Find all methods which would have their addresses taken to be used as a
     % function pointer.
     some [!CodeAddrsInConsts] (
         !:CodeAddrsInConsts = init_code_addrs_in_consts,
-        method_ptrs_in_global_var_defns(FlatRttiDefns, !CodeAddrsInConsts),
-        method_ptrs_in_global_var_defns(FlatCellDefns, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(RttiDefns, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(CellDefns, !CodeAddrsInConsts),
         method_ptrs_in_global_var_defns(TableStructDefns, !CodeAddrsInConsts),
         method_ptrs_in_function_defns(ClosureWrapperFuncDefns,
             !CodeAddrsInConsts),
@@ -168,14 +168,14 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io.write_string("\n// RttiDefns\n", !IO),
     list.foldl(
         output_global_var_defn_for_csharp(Info, Indent + 1, oa_alloc_only),
-        FlatRttiDefns, !IO),
-    output_rtti_assignments_for_csharp(Info, Indent + 1, FlatRttiDefns, !IO),
+        RttiDefns, !IO),
+    output_rtti_assignments_for_csharp(Info, Indent + 1, RttiDefns, !IO),
 
     io.write_string("\n// Cell and tabling definitions\n", !IO),
-    output_global_var_decls_for_csharp(Info, Indent + 1, FlatCellDefns, !IO),
+    output_global_var_decls_for_csharp(Info, Indent + 1, CellDefns, !IO),
     output_global_var_decls_for_csharp(Info, Indent + 1, TableStructDefns, !IO),
     output_init_global_var_method_for_csharp(Info, Indent + 1,
-        FlatCellDefns ++ TableStructDefns, !IO),
+        CellDefns ++ TableStructDefns, !IO),
 
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.

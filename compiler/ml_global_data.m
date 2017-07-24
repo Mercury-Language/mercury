@@ -94,17 +94,15 @@
 
     % ml_global_data_get_all_global_defns(GlobalData,
     %     ScalarCellGroupMap, VectorCellGroupMap, AllocIds,
-    %     FlatRttiDefns, ClosureWrapperFuncDefns, FlatCellDefns):
+    %     RttiDefns, CellDefns, ClosureWrapperFuncDefns):
     %
-    % Get all the global definitions implicit in the argument, grouped together
-    % as much as possible, in an order which is likely to be reasonably good.
-    % Note that this order may still require forward declarations.
+    % Get all the global definitions implicit in the argument.
     %
 :- pred ml_global_data_get_all_global_defns(ml_global_data::in,
     ml_scalar_cell_map::out, ml_vector_cell_map::out,
     assoc_list(mlds_alloc_id, ml_alloc_site_data)::out,
-    list(mlds_global_var_defn)::out, list(mlds_function_defn)::out,
-    list(mlds_global_var_defn)::out) is det.
+    list(mlds_global_var_defn)::out, list(mlds_global_var_defn)::out,
+    list(mlds_function_defn)::out) is det.
 
     % This type maps the names of rtti data structures that have already been
     % generated to the rval that refers to that data structure, and its type.
@@ -160,9 +158,7 @@
     % definitions (definitions for which ml_elim_nested is an identity
     % operation), while some have no such guarantee.
     %
-:- pred ml_global_data_add_flat_rtti_defn(mlds_global_var_defn::in,
-    ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_add_flat_rtti_defns(list(mlds_global_var_defn)::in,
+:- pred ml_global_data_add_rtti_defn(mlds_global_var_defn::in,
     ml_global_data::in, ml_global_data::out) is det.
 :- pred ml_global_data_add_closure_wrapper_func_defns(
     list(mlds_function_defn)::in,
@@ -245,8 +241,8 @@
                 mgd_have_unboxed_floats         :: have_unboxed_floats,
                 mgd_const_counter               :: counter,
 
-                mgd_flat_cell_defns             :: cord(mlds_global_var_defn),
-                mgd_flat_rtti_defns             :: cord(mlds_global_var_defn),
+                mgd_cell_defns                  :: cord(mlds_global_var_defn),
+                mgd_rtti_defns                  :: cord(mlds_global_var_defn),
                 mgd_closure_wrapper_funcs       :: cord(mlds_function_defn),
 
                 mgd_cell_type_counter           :: counter,
@@ -274,31 +270,18 @@ ml_global_data_have_unboxed_floats(GlobalData) =
 
 ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, AllocIds,
-        FlatRttiDefns, ClosureWrapperFuncDefns, FlatCellDefns) :-
+        RttiDefns, CellDefns, ClosureWrapperFuncDefns) :-
     GlobalData = ml_global_data(_PDupRvalTypeMap, _UseCommonCells,
         _HaveUnboxedFloats, _ConstCounter,
-        FlatCellDefnsCord, FlatRttiDefnsCord, ClosureWrapperFuncDefnsCord,
+        CellDefnsCord, RttiDefnsCord, ClosureWrapperFuncDefnsCord,
         _TypeNumCounter,
         _ScalarTypeNumMap, ScalarCellGroupMap,
         _VectorTypeNumMap, VectorCellGroupMap,
         _AllocIdNumCounter, AllocIdMap),
     bimap.to_assoc_list(AllocIdMap, AllocIds),
-    % FlatRttiDefns are type_ctor_infos and the like, while
-    % NonFlatDefns are type_infos and pseudo_type_infos.
-    % They refer to each other, so neither order is obviously better.
-    %
-    % FlatCellDefns can refer to either of the previous two groups,
-    % which cannot refer back, so FlatCellDefns should definitely be listed
-    % last.
-    %
-    % Defns = cord.to_list(FlatRttiDefns ++ MaybeNonFlatDefns ++ FlatCellDefns)
-    %
-    % XXX The MaybeNonFlatDefns contain wrapper functions, NOT type_infos
-    % and pseudo_type_infos.
-
-    FlatRttiDefns = cord.to_list(FlatRttiDefnsCord),
-    ClosureWrapperFuncDefns = cord.to_list(ClosureWrapperFuncDefnsCord),
-    FlatCellDefns = cord.to_list(FlatCellDefnsCord).
+    RttiDefns = cord.to_list(RttiDefnsCord),
+    CellDefns = cord.to_list(CellDefnsCord),
+    ClosureWrapperFuncDefns = cord.to_list(ClosureWrapperFuncDefnsCord).
 
 %-----------------------------------------------------------------------------%
 %
@@ -307,28 +290,28 @@ ml_global_data_get_all_global_defns(GlobalData,
 
 :- pred ml_global_data_get_const_counter(ml_global_data::in,
     counter::out) is det.
-:- pred ml_global_data_get_flat_cell_defns(ml_global_data::in,
+:- pred ml_global_data_get_cell_defns(ml_global_data::in,
     cord(mlds_global_var_defn)::out) is det.
-:- pred ml_global_data_get_flat_rtti_defns(ml_global_data::in,
+:- pred ml_global_data_get_rtti_defns(ml_global_data::in,
     cord(mlds_global_var_defn)::out) is det.
 
 :- pred ml_global_data_set_pdup_rval_type_map(ml_rtti_rval_type_map::in,
     ml_global_data::in, ml_global_data::out) is det.
 :- pred ml_global_data_set_const_counter(counter::in,
     ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_set_flat_cell_defns(cord(mlds_global_var_defn)::in,
+:- pred ml_global_data_set_cell_defns(cord(mlds_global_var_defn)::in,
     ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_set_flat_rtti_defns(cord(mlds_global_var_defn)::in,
+:- pred ml_global_data_set_rtti_defns(cord(mlds_global_var_defn)::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 ml_global_data_get_pdup_rval_type_map(GlobalData, X) :-
     X = GlobalData ^ mgd_pdup_rval_type_map.
 ml_global_data_get_const_counter(GlobalData, X) :-
     X = GlobalData ^ mgd_const_counter.
-ml_global_data_get_flat_cell_defns(GlobalData, X) :-
-    X = GlobalData ^ mgd_flat_cell_defns.
-ml_global_data_get_flat_rtti_defns(GlobalData, X) :-
-    X = GlobalData ^ mgd_flat_rtti_defns.
+ml_global_data_get_cell_defns(GlobalData, X) :-
+    X = GlobalData ^ mgd_cell_defns.
+ml_global_data_get_rtti_defns(GlobalData, X) :-
+    X = GlobalData ^ mgd_rtti_defns.
 ml_global_data_get_closure_wrapper_func_defns(GlobalData, X) :-
     X = GlobalData ^ mgd_closure_wrapper_funcs.
 
@@ -336,10 +319,10 @@ ml_global_data_set_pdup_rval_type_map(X, !GlobalData) :-
     !GlobalData ^ mgd_pdup_rval_type_map := X.
 ml_global_data_set_const_counter(X, !GlobalData) :-
     !GlobalData ^ mgd_const_counter := X.
-ml_global_data_set_flat_cell_defns(X, !GlobalData) :-
-    !GlobalData ^ mgd_flat_cell_defns := X.
-ml_global_data_set_flat_rtti_defns(X, !GlobalData) :-
-    !GlobalData ^ mgd_flat_rtti_defns := X.
+ml_global_data_set_cell_defns(X, !GlobalData) :-
+    !GlobalData ^ mgd_cell_defns := X.
+ml_global_data_set_rtti_defns(X, !GlobalData) :-
+    !GlobalData ^ mgd_rtti_defns := X.
 ml_global_data_set_closure_wrapper_func_defns(X, !GlobalData) :-
     !GlobalData ^ mgd_closure_wrapper_funcs := X.
 
@@ -350,15 +333,10 @@ ml_global_data_add_pdup_rtti_id(RttiId, RvalType, !GlobalData) :-
     map.det_insert(RttiId, RvalType, PDupRvalTypeMap0, PDupRvalTypeMap),
     ml_global_data_set_pdup_rval_type_map(PDupRvalTypeMap, !GlobalData).
 
-ml_global_data_add_flat_rtti_defn(Defn, !GlobalData) :-
-    ml_global_data_get_flat_rtti_defns(!.GlobalData, FlatRttiDefns0),
-    FlatRttiDefns = cord.snoc(FlatRttiDefns0, Defn),
-    ml_global_data_set_flat_rtti_defns(FlatRttiDefns, !GlobalData).
-
-ml_global_data_add_flat_rtti_defns(Defns, !GlobalData) :-
-    ml_global_data_get_flat_rtti_defns(!.GlobalData, FlatRttiDefns0),
-    FlatRttiDefns = FlatRttiDefns0 ++ cord.from_list(Defns),
-    ml_global_data_set_flat_rtti_defns(FlatRttiDefns, !GlobalData).
+ml_global_data_add_rtti_defn(Defn, !GlobalData) :-
+    ml_global_data_get_rtti_defns(!.GlobalData, RttiDefns0),
+    RttiDefns = cord.snoc(RttiDefns0, Defn),
+    ml_global_data_set_rtti_defns(RttiDefns, !GlobalData).
 
 ml_global_data_add_closure_wrapper_func_defns(FuncDefns, !GlobalData) :-
     ml_global_data_get_closure_wrapper_func_defns(!.GlobalData,
@@ -482,9 +460,9 @@ ml_gen_plain_static_defn(ConstVarKind, ConstType,
     DataDefn = mlds_global_var_defn(VarName, Context, DeclFlags, ConstType,
         Initializer, GCStatement),
 
-    ml_global_data_get_flat_cell_defns(!.GlobalData, FlatCellDefns0),
-    FlatCellDefns = cord.snoc(FlatCellDefns0, DataDefn),
-    ml_global_data_set_flat_cell_defns(FlatCellDefns, !GlobalData).
+    ml_global_data_get_cell_defns(!.GlobalData, CellDefns0),
+    CellDefns = cord.snoc(CellDefns0, DataDefn),
+    ml_global_data_set_cell_defns(CellDefns, !GlobalData).
 
 :- pred ml_maybe_specialize_generic_array_type(mlds_type::in, mlds_type::out,
     mlds_initializer::in, mlds_initializer::out) is det.

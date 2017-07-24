@@ -284,7 +284,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
-        FlatRttiDefns0, ClosureWrapperFuncDefns0, FlatCellDefns0),
+        RttiDefns0, CellDefns0, ClosureWrapperFuncDefns0),
 
     % Do NOT enforce the outermost "mercury" qualifier here. This module name
     % is compared with other module names in the MLDS, to avoid unnecessary
@@ -296,8 +296,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     some [!CodeAddrsInConsts] (
         !:CodeAddrsInConsts = init_code_addrs_in_consts,
         method_ptrs_in_class_defns(TypeDefns0, !CodeAddrsInConsts),
-        method_ptrs_in_global_var_defns(FlatRttiDefns0, !CodeAddrsInConsts),
-        method_ptrs_in_global_var_defns(FlatCellDefns0, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(RttiDefns0, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(CellDefns0, !CodeAddrsInConsts),
         method_ptrs_in_global_var_defns(TableStructDefns0, !CodeAddrsInConsts),
         method_ptrs_in_function_defns(ClosureWrapperFuncDefns0,
             !CodeAddrsInConsts),
@@ -327,8 +327,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     ( if map.is_empty(RenamingMap) then
         TypeDefns = TypeDefns0,
         WrapperClassDefns = WrapperClassDefns0,
-        FlatRttiDefns = FlatRttiDefns0,
-        FlatCellDefns = FlatCellDefns0,
+        RttiDefns = RttiDefns0,
+        CellDefns = CellDefns0,
         TableStructDefns = TableStructDefns0,
         ClosureWrapperFuncDefns = ClosureWrapperFuncDefns0,
         ProcDefns = ProcDefns0
@@ -339,9 +339,9 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         list.map(rename_class_names_in_class_defn(Renaming),
             WrapperClassDefns1, WrapperClassDefns),
         list.map(rename_class_names_in_global_var_defn(Renaming),
-            FlatRttiDefns0, FlatRttiDefns),
+            RttiDefns0, RttiDefns),
         list.map(rename_class_names_in_global_var_defn(Renaming),
-            FlatCellDefns0, FlatCellDefns),
+            CellDefns0, CellDefns),
         list.map(rename_class_names_in_global_var_defn(Renaming),
             TableStructDefns0, TableStructDefns),
         list.map(rename_class_names_in_function_defn(Renaming),
@@ -374,14 +374,14 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io.write_string("\n// RttiDefns\n", !IO),
     list.foldl(
         output_global_var_defn_for_java(Info, Indent + 1, oa_alloc_only),
-        FlatRttiDefns, !IO),
-    output_rtti_assignments_for_java(Info, Indent + 1, FlatRttiDefns, !IO),
+        RttiDefns, !IO),
+    output_rtti_assignments_for_java(Info, Indent + 1, RttiDefns, !IO),
 
     io.write_string("\n// Cell and tabling definitions\n", !IO),
-    output_global_var_decls_for_java(Info, Indent + 1, FlatCellDefns, !IO),
+    output_global_var_decls_for_java(Info, Indent + 1, CellDefns, !IO),
     output_global_var_decls_for_java(Info, Indent + 1, TableStructDefns, !IO),
     output_global_var_assignments_for_java(Info, Indent + 1,
-        FlatCellDefns ++ TableStructDefns, !IO),
+        CellDefns ++ TableStructDefns, !IO),
 
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.
