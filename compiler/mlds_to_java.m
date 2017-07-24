@@ -280,18 +280,11 @@ output_import(Import, !IO) :-
 output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData,
-        TypeDefns, TableStructDefns, ProcDefns,
+        TypeDefns0, TableStructDefns0, ProcDefns0,
         InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
-        FlatRttiDefns, ClosureWrapperFuncDefns, FlatCellDefns),
-    % XXX MLDS_DEFN
-    Defns0 = list.map(wrap_class_defn, TypeDefns) ++
-        list.map(wrap_global_var_defn, TableStructDefns) ++
-        list.map(wrap_function_defn, ProcDefns),
-    GlobalDefns = list.map(wrap_global_var_defn, FlatRttiDefns) ++
-        list.map(wrap_function_defn, ClosureWrapperFuncDefns) ++
-        list.map(wrap_global_var_defn, FlatCellDefns),
+        FlatRttiDefns0, ClosureWrapperFuncDefns0, FlatCellDefns0),
 
     % Do NOT enforce the outermost "mercury" qualifier here. This module name
     % is compared with other module names in the MLDS, to avoid unnecessary
@@ -302,8 +295,13 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % taken to be used as a function pointer.
     some [!CodeAddrsInConsts] (
         !:CodeAddrsInConsts = init_code_addrs_in_consts,
-        method_ptrs_in_defns(GlobalDefns, !CodeAddrsInConsts),
-        method_ptrs_in_defns(Defns0, !CodeAddrsInConsts),
+        method_ptrs_in_class_defns(TypeDefns0, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(FlatRttiDefns0, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(FlatCellDefns0, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(TableStructDefns0, !CodeAddrsInConsts),
+        method_ptrs_in_function_defns(ClosureWrapperFuncDefns0,
+            !CodeAddrsInConsts),
+        method_ptrs_in_function_defns(ProcDefns0, !CodeAddrsInConsts),
 
         map.values(ScalarCellGroupMap, ScalarCellGroups),
         ScalarCellRows = list.map(func(G) = G ^ mscg_rows, ScalarCellGroups),
@@ -318,14 +316,39 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     % Create wrappers in MLDS for all pointer addressed methods.
     list.map_foldl(generate_addr_wrapper_class(MLDS_ModuleName),
-        CodeAddrsAssocList, WrapperClassDefns, map.init, AddrOfMap),
-    Defns1 = GlobalDefns ++
-        list.map(wrap_class_defn, WrapperClassDefns) ++
-        Defns0,
+        CodeAddrsAssocList, WrapperClassDefns0, map.init, AddrOfMap),
 
     % Rename classes with excessively long names.
     % XXX MLDS_DEFN We know most defns in Defns1 are *not* classes.
-    shorten_long_class_names(MLDS_ModuleName, Defns1, Defns),
+    list.map_foldl(maybe_shorten_long_class_name,
+        TypeDefns0, TypeDefns1, map.init, RenamingMap1),
+    list.map_foldl(maybe_shorten_long_class_name,
+        WrapperClassDefns0, WrapperClassDefns1, RenamingMap1, RenamingMap),
+    ( if map.is_empty(RenamingMap) then
+        TypeDefns = TypeDefns0,
+        WrapperClassDefns = WrapperClassDefns0,
+        FlatRttiDefns = FlatRttiDefns0,
+        FlatCellDefns = FlatCellDefns0,
+        TableStructDefns = TableStructDefns0,
+        ClosureWrapperFuncDefns = ClosureWrapperFuncDefns0,
+        ProcDefns = ProcDefns0
+    else
+        Renaming = class_name_renaming(MLDS_ModuleName, RenamingMap),
+        list.map(rename_class_names_in_class_defn(Renaming),
+            TypeDefns1, TypeDefns),
+        list.map(rename_class_names_in_class_defn(Renaming),
+            WrapperClassDefns1, WrapperClassDefns),
+        list.map(rename_class_names_in_global_var_defn(Renaming),
+            FlatRttiDefns0, FlatRttiDefns),
+        list.map(rename_class_names_in_global_var_defn(Renaming),
+            FlatCellDefns0, FlatCellDefns),
+        list.map(rename_class_names_in_global_var_defn(Renaming),
+            TableStructDefns0, TableStructDefns),
+        list.map(rename_class_names_in_function_defn(Renaming),
+            ClosureWrapperFuncDefns0, ClosureWrapperFuncDefns),
+        list.map(rename_class_names_in_function_defn(Renaming),
+            ProcDefns0, ProcDefns)
+    ),
 
     % Get the foreign code for Java
     % XXX We should not ignore _RevImports.
@@ -348,18 +371,17 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io.write_list(ForeignBodyCodes, "\n", output_java_body_code(Info, Indent),
         !IO),
 
-    list.filter_map(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
-
     io.write_string("\n// RttiDefns\n", !IO),
     list.foldl(
         output_global_var_defn_for_java(Info, Indent + 1, oa_alloc_only),
-        RttiDefns, !IO),
-    output_rtti_assignments_for_java(Info, Indent + 1, RttiDefns, !IO),
+        FlatRttiDefns, !IO),
+    output_rtti_assignments_for_java(Info, Indent + 1, FlatRttiDefns, !IO),
 
-    list.filter_map(defn_is_global_var, NonRttiDefns, DataDefns, NonDataDefns),
-    io.write_string("\n// DataDefns\n", !IO),
-    output_global_var_decls_for_java(Info, Indent + 1, DataDefns, !IO),
-    output_global_var_assignments_for_java(Info, Indent + 1, DataDefns, !IO),
+    io.write_string("\n// Cell and tabling definitions\n", !IO),
+    output_global_var_decls_for_java(Info, Indent + 1, FlatCellDefns, !IO),
+    output_global_var_decls_for_java(Info, Indent + 1, TableStructDefns, !IO),
+    output_global_var_assignments_for_java(Info, Indent + 1,
+        FlatCellDefns ++ TableStructDefns, !IO),
 
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.
@@ -371,9 +393,15 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_vector_common_data_for_java(Info, Indent + 1,
         VectorCellGroupMap, !IO),
 
-    io.write_string("\n// NonDataDefns\n", !IO),
-    list.sort(NonDataDefns, SortedNonDataDefns),
-    output_defns_for_java(Info, Indent + 1, oa_none, SortedNonDataDefns, !IO),
+    io.write_string("\n// Function definitions\n", !IO),
+    list.sort(ClosureWrapperFuncDefns ++ ProcDefns, SortedFuncDefns),
+    list.foldl(output_function_defn_for_java(Info, Indent + 1, oa_none),
+        SortedFuncDefns, !IO),
+
+    io.write_string("\n// Class definitions\n", !IO),
+    list.sort(WrapperClassDefns ++ TypeDefns, SortedClassDefns),
+    list.foldl(output_class_defn_for_java(Info, Indent + 1),
+        SortedClassDefns, !IO),
 
     io.write_string("\n// ExportDefns\n", !IO),
     output_exports_for_java(Info, Indent + 1, ExportDefns, !IO),
@@ -388,7 +416,13 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_finals_for_java(Indent + 1, FinalPreds, !IO),
 
     io.write_string("\n// EnvVarNames\n", !IO),
-    output_env_vars_for_java(Indent + 1, NonRttiDefns, !IO),
+    set.init(EnvVarNamesSet0),
+    list.foldl(accumulate_env_var_names, ProcDefns,
+        EnvVarNamesSet0, EnvVarNamesSet1),
+    list.foldl(accumulate_env_var_names, ClosureWrapperFuncDefns,
+        EnvVarNamesSet1, EnvVarNamesSet),
+    set.foldl(output_env_var_definition_for_java(Indent + 1),
+        EnvVarNamesSet, !IO),
 
     output_src_end_for_java(Indent, ModuleName, !IO).
     % XXX Need to handle non-Java foreign code at this point.
@@ -1081,52 +1115,30 @@ add_to_address_map_2(FlippedClassName, [CodeAddr | CodeAddrs], I,
     % `.class' file, so a long class name may exceed filesystem limits.
     % The long names tend to be automatically generated by the compiler.
     %
-:- pred shorten_long_class_names(mlds_module_name::in,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
-
-shorten_long_class_names(ModuleName, Defns0, Defns) :-
-    list.map_foldl(maybe_shorten_long_class_name, Defns0, Defns1,
-        map.init, RenamingMap),
-    ( if map.is_empty(RenamingMap) then
-        Defns = Defns1
-    else
-        Renaming = class_name_renaming(ModuleName, RenamingMap),
-        list.map(rename_class_names_defn(Renaming), Defns1, Defns)
-    ).
-
-:- pred maybe_shorten_long_class_name(mlds_defn::in, mlds_defn::out,
+:- pred maybe_shorten_long_class_name(
+    mlds_class_defn::in, mlds_class_defn::out,
     map(mlds_class_name, mlds_class_name)::in,
     map(mlds_class_name, mlds_class_name)::out) is det.
 
-maybe_shorten_long_class_name(!Defn, !Renaming) :-
+maybe_shorten_long_class_name(!ClassDefn, !Renaming) :-
+    !.ClassDefn = mlds_class_defn(TypeName0, _Context, Flags, _ClassKind,
+        _Imports, _Inherits, _Implements, _TypeParams, _Ctors0, _Members0),
+    Access = get_class_access(Flags),
     (
-        ( !.Defn = mlds_global_var(_)
-        ; !.Defn = mlds_local_var(_)
-        ; !.Defn = mlds_field_var(_)
-        ; !.Defn = mlds_function(_)
+        % We only rename private classes for now.
+        Access = class_private,
+        TypeName0 = mlds_type_name(ClassName0, Arity),
+        ClassName = shorten_class_name(ClassName0),
+        ( if ClassName = ClassName0 then
+            true
+        else
+            TypeName = mlds_type_name(ClassName, Arity),
+            !ClassDefn ^ mcd_type_name := TypeName,
+
+            map.det_insert(ClassName0, ClassName, !Renaming)
         )
     ;
-        !.Defn = mlds_class(ClassDefn0),
-        ClassDefn0 = mlds_class_defn(TypeName0, _Context, Flags, _ClassKind,
-            _Imports, _Inherits, _Implements, _TypeParams, _Ctors0, _Members0),
-        Access = get_class_access(Flags),
-        (
-            % We only rename private classes for now.
-            Access = class_private,
-            TypeName0 = mlds_type_name(ClassName0, Arity),
-            ClassName = shorten_class_name(ClassName0),
-            ( if ClassName = ClassName0 then
-                true
-            else
-                TypeName = mlds_type_name(ClassName, Arity),
-                ClassDefn = ClassDefn0 ^ mcd_type_name := TypeName,
-                !:Defn = mlds_class(ClassDefn),
-
-                map.det_insert(ClassName0, ClassName, !Renaming)
-            )
-        ;
-            Access = class_public
-        )
+        Access = class_public
     ).
 
 :- func shorten_class_name(string) = string.
@@ -1158,77 +1170,111 @@ replace_non_alphanum_underscore(Char) =
         '_'
     ).
 
-:- pred rename_class_names_defn(class_name_renaming::in,
+:- pred rename_class_names_in_mlds_defn(class_name_renaming::in,
     mlds_defn::in, mlds_defn::out) is det.
 
-rename_class_names_defn(Renaming, Defn0, Defn) :-
+rename_class_names_in_mlds_defn(Renaming, Defn0, Defn) :-
     (
         Defn0 = mlds_global_var(GlobalVarDefn0),
-        GlobalVarDefn0 = mlds_global_var_defn(GlobalVarName, Context, Flags,
-            Type0, Initializer0, GCStmt),
-        rename_class_names_type(Renaming, Type0, Type),
-        rename_class_names_initializer(Renaming, Initializer0, Initializer),
-        GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
-            Type, Initializer, GCStmt),
+        rename_class_names_in_global_var_defn(Renaming,
+            GlobalVarDefn0, GlobalVarDefn),
         Defn = mlds_global_var(GlobalVarDefn)
     ;
         Defn0 = mlds_local_var(LocalVarDefn0),
-        LocalVarDefn0 = mlds_local_var_defn(LocalVarName, Context,
-            Type0, Initializer0, GCStmt),
-        rename_class_names_type(Renaming, Type0, Type),
-        rename_class_names_initializer(Renaming, Initializer0, Initializer),
-        LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
-            Type, Initializer, GCStmt),
+        rename_class_names_in_local_var_defn(Renaming,
+            LocalVarDefn0, LocalVarDefn),
         Defn = mlds_local_var(LocalVarDefn)
     ;
         Defn0 = mlds_field_var(FieldVarDefn0),
-        FieldVarDefn0 = mlds_field_var_defn(FieldVarName, Context, Flags,
-            Type0, Initializer0, GCStmt),
-        rename_class_names_type(Renaming, Type0, Type),
-        rename_class_names_initializer(Renaming, Initializer0, Initializer),
-        FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags,
-            Type, Initializer, GCStmt),
+        rename_class_names_in_field_var_defn(Renaming,
+            FieldVarDefn0, FieldVarDefn),
         Defn = mlds_field_var(FieldVarDefn)
     ;
-        Defn0 = mlds_function(FunctionDefn0),
-        FunctionDefn0 = mlds_function_defn(Name, Context, Flags,
-            MaybePPId, FuncParams0, FuncBody0, Attributes, EnvVarNames,
-            MaybeRequireTailrecInfo),
-        rename_class_names_func_params(Renaming, FuncParams0, FuncParams),
-        (
-            FuncBody0 = body_defined_here(Stmt0),
-            rename_class_names_stmt(Renaming, Stmt0, Stmt),
-            FuncBody = body_defined_here(Stmt)
-        ;
-            FuncBody0 = body_external,
-            FuncBody = body_external
-        ),
-        FunctionDefn = mlds_function_defn(Name, Context, Flags,
-            MaybePPId, FuncParams, FuncBody, Attributes, EnvVarNames,
-            MaybeRequireTailrecInfo),
-        Defn = mlds_function(FunctionDefn)
+        Defn0 = mlds_function(FuncDefn0),
+        rename_class_names_in_function_defn(Renaming, FuncDefn0, FuncDefn),
+        Defn = mlds_function(FuncDefn)
     ;
         Defn0 = mlds_class(ClassDefn0),
-        ClassDefn0 = mlds_class_defn(Name, Context, Flags, ClassKind,
-            Imports, Inherits, Implements, TypeParams, Ctors0, Members0),
-        list.map(rename_class_names_defn(Renaming), Ctors0, Ctors),
-        list.map(rename_class_names_defn(Renaming), Members0, Members),
-        ClassDefn = mlds_class_defn(Name, Context, Flags, ClassKind,
-            Imports, Inherits, Implements, TypeParams, Ctors, Members),
+        rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn),
         Defn = mlds_class(ClassDefn)
     ).
 
-:- pred rename_class_names_type(class_name_renaming::in,
+:- pred rename_class_names_in_global_var_defn(class_name_renaming::in,
+    mlds_global_var_defn::in, mlds_global_var_defn::out) is det.
+
+rename_class_names_in_global_var_defn(Renaming,
+        GlobalVarDefn0, GlobalVarDefn) :-
+    GlobalVarDefn0 = mlds_global_var_defn(GlobalVarName, Context, Flags,
+        Type0, Initializer0, GCStmt),
+    rename_class_names_in_type(Renaming, Type0, Type),
+    rename_class_names_in_initializer(Renaming, Initializer0, Initializer),
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
+        Type, Initializer, GCStmt).
+
+:- pred rename_class_names_in_local_var_defn(class_name_renaming::in,
+    mlds_local_var_defn::in, mlds_local_var_defn::out) is det.
+
+rename_class_names_in_local_var_defn(Renaming, LocalVarDefn0, LocalVarDefn) :-
+    LocalVarDefn0 = mlds_local_var_defn(LocalVarName, Context,
+        Type0, Initializer0, GCStmt),
+    rename_class_names_in_type(Renaming, Type0, Type),
+    rename_class_names_in_initializer(Renaming, Initializer0, Initializer),
+    LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
+        Type, Initializer, GCStmt).
+
+:- pred rename_class_names_in_field_var_defn(class_name_renaming::in,
+    mlds_field_var_defn::in, mlds_field_var_defn::out) is det.
+
+rename_class_names_in_field_var_defn(Renaming, FieldVarDefn0, FieldVarDefn) :-
+    FieldVarDefn0 = mlds_field_var_defn(FieldVarName, Context, Flags,
+        Type0, Initializer0, GCStmt),
+    rename_class_names_in_type(Renaming, Type0, Type),
+    rename_class_names_in_initializer(Renaming, Initializer0, Initializer),
+    FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags,
+        Type, Initializer, GCStmt).
+
+:- pred rename_class_names_in_function_defn(class_name_renaming::in,
+    mlds_function_defn::in, mlds_function_defn::out) is det.
+
+rename_class_names_in_function_defn(Renaming, FuncDefn0, FuncDefn) :-
+    FuncDefn0 = mlds_function_defn(Name, Context, Flags,
+        MaybePPId, FuncParams0, FuncBody0, Attributes, EnvVarNames,
+        MaybeRequireTailrecInfo),
+    rename_class_names_in_func_params(Renaming, FuncParams0, FuncParams),
+    (
+        FuncBody0 = body_defined_here(Stmt0),
+        rename_class_names_in_stmt(Renaming, Stmt0, Stmt),
+        FuncBody = body_defined_here(Stmt)
+    ;
+        FuncBody0 = body_external,
+        FuncBody = body_external
+    ),
+    FuncDefn = mlds_function_defn(Name, Context, Flags,
+        MaybePPId, FuncParams, FuncBody, Attributes, EnvVarNames,
+        MaybeRequireTailrecInfo).
+
+:- pred rename_class_names_in_class_defn(class_name_renaming::in,
+    mlds_class_defn::in, mlds_class_defn::out) is det.
+
+rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn) :-
+    ClassDefn0 = mlds_class_defn(Name, Context, Flags, ClassKind,
+        Imports, Inherits, Implements, TypeParams, Ctors0, Members0),
+    list.map(rename_class_names_in_mlds_defn(Renaming), Ctors0, Ctors),
+    list.map(rename_class_names_in_mlds_defn(Renaming), Members0, Members),
+    ClassDefn = mlds_class_defn(Name, Context, Flags, ClassKind,
+        Imports, Inherits, Implements, TypeParams, Ctors, Members).
+
+:- pred rename_class_names_in_type(class_name_renaming::in,
     mlds_type::in, mlds_type::out) is det.
 
-rename_class_names_type(Renaming, !Type) :-
+rename_class_names_in_type(Renaming, !Type) :-
     (
         !.Type = mlds_mercury_array_type(Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Type = mlds_mercury_array_type(Type)
     ;
         !.Type = mlds_cont_type(RetTypes0),
-        list.map(rename_class_names_type(Renaming), RetTypes0, RetTypes),
+        list.map(rename_class_names_in_type(Renaming), RetTypes0, RetTypes),
         !:Type = mlds_cont_type(RetTypes)
     ;
         !.Type = mlds_class_type(QualClassName0, Arity, ClassKind),
@@ -1244,19 +1290,19 @@ rename_class_names_type(Renaming, !Type) :-
         )
     ;
         !.Type = mlds_array_type(Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Type = mlds_array_type(Type)
     ;
         !.Type = mlds_mostly_generic_array_type(Types0),
-        list.map(rename_class_names_type(Renaming), Types0, Types),
+        list.map(rename_class_names_in_type(Renaming), Types0, Types),
         !:Type = mlds_mostly_generic_array_type(Types)
     ;
         !.Type = mlds_ptr_type(Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Type = mlds_ptr_type(Type)
     ;
         !.Type = mlds_func_type(FuncParams0),
-        rename_class_names_func_params(Renaming, FuncParams0, FuncParams),
+        rename_class_names_in_func_params(Renaming, FuncParams0, FuncParams),
         !:Type = mlds_func_type(FuncParams)
     ;
         ( !.Type = mercury_type(_, _, _)
@@ -1277,67 +1323,67 @@ rename_class_names_type(Renaming, !Type) :-
         )
     ).
 
-:- pred rename_class_names_initializer(class_name_renaming::in,
+:- pred rename_class_names_in_initializer(class_name_renaming::in,
     mlds_initializer::in, mlds_initializer::out) is det.
 
-rename_class_names_initializer(Renaming, !Initializer) :-
+rename_class_names_in_initializer(Renaming, !Initializer) :-
     (
         !.Initializer = init_obj(Rval0),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Initializer = init_obj(Rval)
     ;
         !.Initializer = init_struct(Type0, Initializers0),
-        rename_class_names_type(Renaming, Type0, Type),
-        list.map(rename_class_names_initializer(Renaming), Initializers0,
+        rename_class_names_in_type(Renaming, Type0, Type),
+        list.map(rename_class_names_in_initializer(Renaming), Initializers0,
             Initializers),
         !:Initializer = init_struct(Type, Initializers)
     ;
         !.Initializer = init_array(Initializers0),
-        list.map(rename_class_names_initializer(Renaming), Initializers0,
+        list.map(rename_class_names_in_initializer(Renaming), Initializers0,
             Initializers),
         !:Initializer = init_array(Initializers)
     ;
         !.Initializer = no_initializer
     ).
 
-:- pred rename_class_names_func_params(class_name_renaming::in,
+:- pred rename_class_names_in_func_params(class_name_renaming::in,
     mlds_func_params::in, mlds_func_params::out) is det.
 
-rename_class_names_func_params(Renaming, !FuncParams) :-
+rename_class_names_in_func_params(Renaming, !FuncParams) :-
     !.FuncParams = mlds_func_params(Arguments0, RetTypes0),
-    list.map(rename_class_names_argument(Renaming), Arguments0, Arguments),
-    list.map(rename_class_names_type(Renaming), RetTypes0, RetTypes),
+    list.map(rename_class_names_in_argument(Renaming), Arguments0, Arguments),
+    list.map(rename_class_names_in_type(Renaming), RetTypes0, RetTypes),
     !:FuncParams = mlds_func_params(Arguments, RetTypes).
 
-:- pred rename_class_names_argument(class_name_renaming::in,
+:- pred rename_class_names_in_argument(class_name_renaming::in,
     mlds_argument::in, mlds_argument::out) is det.
 
-rename_class_names_argument(Renaming, !Argument) :-
+rename_class_names_in_argument(Renaming, !Argument) :-
     !.Argument = mlds_argument(Name, Type0, GCStmt),
-    rename_class_names_type(Renaming, Type0, Type),
+    rename_class_names_in_type(Renaming, Type0, Type),
     !:Argument = mlds_argument(Name, Type, GCStmt).
 
-:- pred rename_class_names_stmt(class_name_renaming::in,
+:- pred rename_class_names_in_stmt(class_name_renaming::in,
     mlds_stmt::in, mlds_stmt::out) is det.
 
-rename_class_names_stmt(Renaming, !Stmt) :-
+rename_class_names_in_stmt(Renaming, !Stmt) :-
     (
         !.Stmt = ml_stmt_block(Defns0, SubStmts0, Context),
-        list.map(rename_class_names_defn(Renaming), Defns0, Defns),
-        list.map(rename_class_names_stmt(Renaming), SubStmts0, SubStmts),
+        list.map(rename_class_names_in_mlds_defn(Renaming), Defns0, Defns),
+        list.map(rename_class_names_in_stmt(Renaming), SubStmts0, SubStmts),
         !:Stmt = ml_stmt_block(Defns, SubStmts, Context)
     ;
         !.Stmt = ml_stmt_while(Kind, Rval0, SubStmt0, Context),
-        rename_class_names_rval(Renaming, Rval0, Rval),
-        rename_class_names_stmt(Renaming, SubStmt0, SubStmt),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_stmt(Renaming, SubStmt0, SubStmt),
         !:Stmt = ml_stmt_while(Kind, Rval, SubStmt, Context)
     ;
         !.Stmt = ml_stmt_if_then_else(Rval0, Then0, MaybeElse0, Context),
-        rename_class_names_rval(Renaming, Rval0, Rval),
-        rename_class_names_stmt(Renaming, Then0, Then),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_stmt(Renaming, Then0, Then),
         (
             MaybeElse0 = yes(Else0),
-            rename_class_names_stmt(Renaming, Else0, Else),
+            rename_class_names_in_stmt(Renaming, Else0, Else),
             MaybeElse = yes(Else)
         ;
             MaybeElse0 = no,
@@ -1347,10 +1393,10 @@ rename_class_names_stmt(Renaming, !Stmt) :-
     ;
         !.Stmt = ml_stmt_switch(Type0, Rval0, SwitchRange, Cases0, Default0,
             Context),
-        rename_class_names_type(Renaming, Type0, Type),
-        rename_class_names_rval(Renaming, Rval0, Rval),
-        list.map(rename_class_names_switch_case(Renaming), Cases0, Cases),
-        rename_class_names_switch_default(Renaming, Default0, Default),
+        rename_class_names_in_type(Renaming, Type0, Type),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
+        list.map(rename_class_names_in_switch_case(Renaming), Cases0, Cases),
+        rename_class_names_in_switch_default(Renaming, Default0, Default),
         !:Stmt = ml_stmt_switch(Type, Rval, SwitchRange, Cases, Default,
             Context)
     ;
@@ -1359,95 +1405,95 @@ rename_class_names_stmt(Renaming, !Stmt) :-
         !.Stmt = ml_stmt_goto(_, _)
     ;
         !.Stmt = ml_stmt_computed_goto(Rval0, Labels, Context),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Stmt = ml_stmt_computed_goto(Rval, Labels, Context)
     ;
         !.Stmt = ml_stmt_call(Signature0, Rval0, MaybeThis, Rvals0, RetLvals0,
             CallKind, Markers, Context),
         Signature0 = mlds_func_signature(ArgTypes0, RetTypes0),
-        list.map(rename_class_names_type(Renaming), ArgTypes0, ArgTypes),
-        list.map(rename_class_names_type(Renaming), RetTypes0, RetTypes),
+        list.map(rename_class_names_in_type(Renaming), ArgTypes0, ArgTypes),
+        list.map(rename_class_names_in_type(Renaming), RetTypes0, RetTypes),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
-        rename_class_names_rval(Renaming, Rval0, Rval),
-        list.map(rename_class_names_rval(Renaming), Rvals0, Rvals),
-        list.map(rename_class_names_lval(Renaming), RetLvals0, RetLvals),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
+        list.map(rename_class_names_in_rval(Renaming), Rvals0, Rvals),
+        list.map(rename_class_names_in_lval(Renaming), RetLvals0, RetLvals),
         !:Stmt = ml_stmt_call(Signature, Rval, MaybeThis, Rvals, RetLvals,
             CallKind, Markers, Context)
     ;
         !.Stmt = ml_stmt_return(Rvals0, Context),
-        list.map(rename_class_names_rval(Renaming), Rvals0, Rvals),
+        list.map(rename_class_names_in_rval(Renaming), Rvals0, Rvals),
         !:Stmt = ml_stmt_return(Rvals, Context)
     ;
         !.Stmt = ml_stmt_try_commit(Lval0, BodyStmt0, HandlerStmt0, Context),
-        rename_class_names_lval(Renaming, Lval0, Lval),
-        rename_class_names_stmt(Renaming, BodyStmt0, BodyStmt),
-        rename_class_names_stmt(Renaming, HandlerStmt0, HandlerStmt),
+        rename_class_names_in_lval(Renaming, Lval0, Lval),
+        rename_class_names_in_stmt(Renaming, BodyStmt0, BodyStmt),
+        rename_class_names_in_stmt(Renaming, HandlerStmt0, HandlerStmt),
         !:Stmt = ml_stmt_try_commit(Lval, BodyStmt, HandlerStmt, Context)
     ;
         !.Stmt = ml_stmt_do_commit(Rval0, Context),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Stmt = ml_stmt_do_commit(Rval, Context)
     ;
         !.Stmt = ml_stmt_atomic(AtomicStmt0, Context),
-        rename_class_names_atomic(Renaming, AtomicStmt0, AtomicStmt),
+        rename_class_names_in_atomic(Renaming, AtomicStmt0, AtomicStmt),
         !:Stmt = ml_stmt_atomic(AtomicStmt, Context)
     ).
 
-:- pred rename_class_names_switch_case(class_name_renaming::in,
+:- pred rename_class_names_in_switch_case(class_name_renaming::in,
     mlds_switch_case::in, mlds_switch_case::out) is det.
 
-rename_class_names_switch_case(Renaming, !Case) :-
+rename_class_names_in_switch_case(Renaming, !Case) :-
     !.Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, Stmt0),
     % The rvals in the match conditions shouldn't need renaming.
-    rename_class_names_stmt(Renaming, Stmt0, Stmt),
+    rename_class_names_in_stmt(Renaming, Stmt0, Stmt),
     !:Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, Stmt).
 
-:- pred rename_class_names_switch_default(class_name_renaming::in,
+:- pred rename_class_names_in_switch_default(class_name_renaming::in,
     mlds_switch_default::in, mlds_switch_default::out) is det.
 
-rename_class_names_switch_default(Renaming, !Default) :-
+rename_class_names_in_switch_default(Renaming, !Default) :-
     (
         !.Default = default_is_unreachable
     ;
         !.Default = default_do_nothing
     ;
         !.Default = default_case(Stmt0),
-        rename_class_names_stmt(Renaming, Stmt0, Stmt),
+        rename_class_names_in_stmt(Renaming, Stmt0, Stmt),
         !:Default = default_case(Stmt)
     ).
 
-:- pred rename_class_names_atomic(class_name_renaming::in,
+:- pred rename_class_names_in_atomic(class_name_renaming::in,
     mlds_atomic_statement::in, mlds_atomic_statement::out) is det.
 
-rename_class_names_atomic(Renaming, !Stmt) :-
+rename_class_names_in_atomic(Renaming, !Stmt) :-
     (
         !.Stmt = assign(Lval0, Rval0),
-        rename_class_names_lval(Renaming, Lval0, Lval),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_lval(Renaming, Lval0, Lval),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Stmt = assign(Lval, Rval)
     ;
         !.Stmt = assign_if_in_heap(Lval0, Rval0),
-        rename_class_names_lval(Renaming, Lval0, Lval),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_lval(Renaming, Lval0, Lval),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Stmt = assign_if_in_heap(Lval, Rval)
     ;
         !.Stmt = delete_object(Rval0),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Stmt = delete_object(Rval)
     ;
         !.Stmt = new_object(TargetLval0, MaybeTag, ExplicitSecTag, Type0,
             MaybeSize, MaybeCtorName, Args0, ArgTypes0, MayUseAtomic, AllocId),
-        rename_class_names_lval(Renaming, TargetLval0, TargetLval),
-        rename_class_names_type(Renaming, Type0, Type),
-        list.map(rename_class_names_rval(Renaming), Args0, Args),
-        list.map(rename_class_names_type(Renaming), ArgTypes0, ArgTypes),
+        rename_class_names_in_lval(Renaming, TargetLval0, TargetLval),
+        rename_class_names_in_type(Renaming, Type0, Type),
+        list.map(rename_class_names_in_rval(Renaming), Args0, Args),
+        list.map(rename_class_names_in_type(Renaming), ArgTypes0, ArgTypes),
         !:Stmt = new_object(TargetLval, MaybeTag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic, AllocId)
     ;
         !.Stmt = inline_target_code(Lang, Components0),
         (
             Lang = ml_target_java,
-            list.map(rename_class_names_target_code_component(Renaming),
+            list.map(rename_class_names_in_target_code_component(Renaming),
                 Components0, Components),
             !:Stmt = inline_target_code(Lang, Components)
         ;
@@ -1466,77 +1512,77 @@ rename_class_names_atomic(Renaming, !Stmt) :-
         )
     ).
 
-:- pred rename_class_names_lval(class_name_renaming::in,
+:- pred rename_class_names_in_lval(class_name_renaming::in,
     mlds_lval::in, mlds_lval::out) is det.
 
-rename_class_names_lval(Renaming, !Lval) :-
+rename_class_names_in_lval(Renaming, !Lval) :-
     (
         !.Lval = ml_field(Tag, Address0, FieldId0, FieldType0, PtrType0),
-        rename_class_names_rval(Renaming, Address0, Address),
-        rename_class_names_field_id(Renaming, FieldId0, FieldId),
-        rename_class_names_type(Renaming, FieldType0, FieldType),
-        rename_class_names_type(Renaming, PtrType0, PtrType),
+        rename_class_names_in_rval(Renaming, Address0, Address),
+        rename_class_names_in_field_id(Renaming, FieldId0, FieldId),
+        rename_class_names_in_type(Renaming, FieldType0, FieldType),
+        rename_class_names_in_type(Renaming, PtrType0, PtrType),
         !:Lval = ml_field(Tag, Address, FieldId, FieldType, PtrType)
     ;
         !.Lval = ml_mem_ref(Rval0, Type0),
-        rename_class_names_rval(Renaming, Rval0, Rval),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Lval = ml_mem_ref(Rval, Type)
     ;
         !.Lval = ml_target_global_var_ref(_)
     ;
         !.Lval = ml_global_var(GlobalVar, Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Lval = ml_global_var(GlobalVar, Type)
     ;
         !.Lval = ml_local_var(LocalVar, Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Lval = ml_local_var(LocalVar, Type)
     ).
 
-:- pred rename_class_names_field_id(class_name_renaming::in,
+:- pred rename_class_names_in_field_id(class_name_renaming::in,
     mlds_field_id::in, mlds_field_id::out) is det.
 
-rename_class_names_field_id(Renaming, !FieldId) :-
+rename_class_names_in_field_id(Renaming, !FieldId) :-
     (
         !.FieldId = ml_field_offset(Rval0),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:FieldId = ml_field_offset(Rval)
     ;
         !.FieldId = ml_field_named(Name, Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:FieldId = ml_field_named(Name, Type)
     ).
 
-:- pred rename_class_names_rval(class_name_renaming::in,
+:- pred rename_class_names_in_rval(class_name_renaming::in,
     mlds_rval::in, mlds_rval::out) is det.
 
-rename_class_names_rval(Renaming, !Rval) :-
+rename_class_names_in_rval(Renaming, !Rval) :-
     (
         !.Rval = ml_lval(Lval0),
-        rename_class_names_lval(Renaming, Lval0, Lval),
+        rename_class_names_in_lval(Renaming, Lval0, Lval),
         !:Rval = ml_lval(Lval)
     ;
         !.Rval = ml_mkword(Tag, Rval0),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Rval = ml_mkword(Tag, Rval)
     ;
         !.Rval = ml_const(RvalConst0),
-        rename_class_names_rval_const(Renaming, RvalConst0, RvalConst),
+        rename_class_names_in_rval_const(Renaming, RvalConst0, RvalConst),
         !:Rval = ml_const(RvalConst)
     ;
         !.Rval = ml_unop(Op0, Rval0),
-        rename_class_names_unary_op(Renaming, Op0, Op),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_unary_op(Renaming, Op0, Op),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Rval = ml_unop(Op, Rval)
     ;
         !.Rval = ml_binop(Op, RvalA0, RvalB0),
-        rename_class_names_rval(Renaming, RvalA0, RvalA),
-        rename_class_names_rval(Renaming, RvalB0, RvalB),
+        rename_class_names_in_rval(Renaming, RvalA0, RvalA),
+        rename_class_names_in_rval(Renaming, RvalB0, RvalB),
         !:Rval = ml_binop(Op, RvalA, RvalB)
     ;
         !.Rval = ml_mem_addr(Lval0),
-        rename_class_names_lval(Renaming, Lval0, Lval),
+        rename_class_names_in_lval(Renaming, Lval0, Lval),
         !:Rval = ml_mem_addr(Lval)
     ;
         !.Rval = ml_scalar_common(_)
@@ -1544,25 +1590,25 @@ rename_class_names_rval(Renaming, !Rval) :-
         !.Rval = ml_scalar_common_addr(_)
     ;
         !.Rval = ml_vector_common_row_addr(VectorCommon, RowRval0),
-        rename_class_names_rval(Renaming, RowRval0, RowRval),
+        rename_class_names_in_rval(Renaming, RowRval0, RowRval),
         !:Rval = ml_vector_common_row_addr(VectorCommon, RowRval)
     ;
         !.Rval = ml_self(Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Rval = ml_self(Type)
     ).
 
-:- pred rename_class_names_rval_const(class_name_renaming::in,
+:- pred rename_class_names_in_rval_const(class_name_renaming::in,
     mlds_rval_const::in, mlds_rval_const::out) is det.
 
-rename_class_names_rval_const(Renaming, !Const) :-
+rename_class_names_in_rval_const(Renaming, !Const) :-
     (
         !.Const = mlconst_foreign(Lang, String, Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Const = mlconst_foreign(Lang, String, Type)
     ;
         !.Const = mlconst_null(Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Const = mlconst_null(Type)
     ;
         ( !.Const = mlconst_true
@@ -1589,30 +1635,30 @@ rename_class_names_rval_const(Renaming, !Const) :-
         )
     ).
 
-:- pred rename_class_names_unary_op(class_name_renaming::in,
+:- pred rename_class_names_in_unary_op(class_name_renaming::in,
     mlds_unary_op::in, mlds_unary_op::out) is det.
 
-rename_class_names_unary_op(Renaming, !Op) :-
+rename_class_names_in_unary_op(Renaming, !Op) :-
     (
         !.Op = box(Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Op = box(Type)
     ;
         !.Op = unbox(Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Op = unbox(Type)
     ;
         !.Op = cast(Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Op = cast(Type)
     ;
         !.Op = std_unop(_)
     ).
 
-:- pred rename_class_names_target_code_component(class_name_renaming::in,
+:- pred rename_class_names_in_target_code_component(class_name_renaming::in,
     target_code_component::in, target_code_component::out) is det.
 
-rename_class_names_target_code_component(Renaming, !Component) :-
+rename_class_names_in_target_code_component(Renaming, !Component) :-
     (
         ( !.Component = user_target_code(_, _)
         ; !.Component = raw_target_code(_)
@@ -1621,15 +1667,15 @@ rename_class_names_target_code_component(Renaming, !Component) :-
         )
     ;
         !.Component = target_code_input(Rval0),
-        rename_class_names_rval(Renaming, Rval0, Rval),
+        rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Component = target_code_input(Rval)
     ;
         !.Component = target_code_output(Lval0),
-        rename_class_names_lval(Renaming, Lval0, Lval),
+        rename_class_names_in_lval(Renaming, Lval0, Lval),
         !:Component = target_code_output(Lval)
     ;
         !.Component = target_code_type(Type0),
-        rename_class_names_type(Renaming, Type0, Type),
+        rename_class_names_in_type(Renaming, Type0, Type),
         !:Component = target_code_type(Type)
     ).
 
@@ -1706,19 +1752,6 @@ output_final_pred_call(Indent, FinalPred, !IO) :-
 %
 % Code to output globals for environment variables.
 %
-
-:- pred output_env_vars_for_java(indent::in, list(mlds_defn)::in,
-    io::di, io::uo) is det.
-
-output_env_vars_for_java(Indent, NonRttiDefns, !IO) :-
-    collect_env_var_names(NonRttiDefns, EnvVarNames),
-    (
-        EnvVarNames = []
-    ;
-        EnvVarNames = [_ | _],
-        list.foldl(output_env_var_definition_for_java(Indent),
-            EnvVarNames, !IO)
-    ).
 
 :- pred output_env_var_definition_for_java(indent::in, string::in,
     io::di, io::uo) is det.

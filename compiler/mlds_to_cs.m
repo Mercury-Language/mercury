@@ -128,19 +128,17 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
         FlatRttiDefns, ClosureWrapperFuncDefns, FlatCellDefns),
-    % XXX MLDS_DEFN
-    Defns = list.map(wrap_global_var_defn, FlatRttiDefns) ++
-        list.map(wrap_function_defn, ClosureWrapperFuncDefns) ++
-        list.map(wrap_global_var_defn, FlatCellDefns) ++
-        list.map(wrap_class_defn, TypeDefns) ++
-        list.map(wrap_global_var_defn, TableStructDefns) ++
-        list.map(wrap_function_defn, ProcDefns),
 
     % Find all methods which would have their addresses taken to be used as a
     % function pointer.
     some [!CodeAddrsInConsts] (
         !:CodeAddrsInConsts = init_code_addrs_in_consts,
-        method_ptrs_in_defns(Defns, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(FlatRttiDefns, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(FlatCellDefns, !CodeAddrsInConsts),
+        method_ptrs_in_global_var_defns(TableStructDefns, !CodeAddrsInConsts),
+        method_ptrs_in_function_defns(ClosureWrapperFuncDefns,
+            !CodeAddrsInConsts),
+        method_ptrs_in_function_defns(ProcDefns, !CodeAddrsInConsts),
 
         map.values(ScalarCellGroupMap, ScalarCellGroups),
         ScalarCellRows = list.map(func(G) = G ^ mscg_rows, ScalarCellGroups),
@@ -167,18 +165,17 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     output_pragma_warning_disable(!IO),
 
-    list.filter_map(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
-
     io.write_string("\n// RttiDefns\n", !IO),
     list.foldl(
         output_global_var_defn_for_csharp(Info, Indent + 1, oa_alloc_only),
-        RttiDefns, !IO),
-    output_rtti_assignments_for_csharp(Info, Indent + 1, RttiDefns, !IO),
+        FlatRttiDefns, !IO),
+    output_rtti_assignments_for_csharp(Info, Indent + 1, FlatRttiDefns, !IO),
 
-    list.filter_map(defn_is_global_var, NonRttiDefns, DataDefns, NonDataDefns),
-    io.write_string("\n// DataDefns\n", !IO),
-    output_global_var_decls_for_csharp(Info, Indent + 1, DataDefns, !IO),
-    output_init_global_var_method_for_csharp(Info, Indent + 1, DataDefns, !IO),
+    io.write_string("\n// Cell and tabling definitions\n", !IO),
+    output_global_var_decls_for_csharp(Info, Indent + 1, FlatCellDefns, !IO),
+    output_global_var_decls_for_csharp(Info, Indent + 1, TableStructDefns, !IO),
+    output_init_global_var_method_for_csharp(Info, Indent + 1,
+        FlatCellDefns ++ TableStructDefns, !IO),
 
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.
@@ -193,10 +190,15 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io.write_string("\n// Method pointers\n", !IO),
     output_method_ptr_constants(Info, Indent + 1, CodeAddrs, !IO),
 
-    io.write_string("\n// NonDataDefns\n", !IO),
-    list.sort(NonDataDefns, SortedNonDataDefns),
-    output_defns_for_csharp(Info, Indent + 1, oa_none, SortedNonDataDefns,
-        !IO),
+    io.write_string("\n// Function definitions\n", !IO),
+    list.sort(ClosureWrapperFuncDefns ++ ProcDefns, SortedFuncDefns),
+    list.foldl(output_function_defn_for_csharp(Info, Indent + 1, oa_none),
+        SortedFuncDefns, !IO),
+
+    io.write_string("\n// Class definitions\n", !IO),
+    list.sort(TypeDefns, SortedClassDefns),
+    list.foldl(output_class_defn_for_csharp(Info, Indent + 1),
+        SortedClassDefns, !IO),
 
     io.write_string("\n// ExportDefns\n", !IO),
     output_exports_for_csharp(Info, Indent + 1, ExportDefns, !IO),
@@ -205,7 +207,13 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_exported_enums_for_csharp(Info, Indent + 1, ExportedEnums, !IO),
 
     io.write_string("\n// EnvVarNames\n", !IO),
-    output_env_vars_for_csharp(Indent + 1, NonRttiDefns, !IO),
+    set.init(EnvVarNamesSet0),
+    list.foldl(accumulate_env_var_names, ProcDefns,
+        EnvVarNamesSet0, EnvVarNamesSet1),
+    list.foldl(accumulate_env_var_names, ClosureWrapperFuncDefns,
+        EnvVarNamesSet1, EnvVarNamesSet),
+    set.foldl(output_env_var_definition_for_csharp(Indent + 1),
+        EnvVarNamesSet, !IO),
 
     StaticCtorCalls = [
         "MR_init_rtti",
@@ -484,19 +492,6 @@ output_method_ptr_constant(Info, Indent, CodeAddr, Name, !IO) :-
 % Code to output globals for environment variables.
 %
 
-:- pred output_env_vars_for_csharp(indent::in, list(mlds_defn)::in,
-    io::di, io::uo) is det.
-
-output_env_vars_for_csharp(Indent, NonRttiDefns, !IO) :-
-    collect_env_var_names(NonRttiDefns, EnvVarNames),
-    (
-        EnvVarNames = []
-    ;
-        EnvVarNames = [_ | _],
-        list.foldl(output_env_var_definition_for_csharp(Indent),
-            EnvVarNames, !IO)
-    ).
-
 :- pred output_env_var_definition_for_csharp(indent::in, string::in,
     io::di, io::uo) is det.
 
@@ -652,7 +647,7 @@ output_defn_for_csharp(Info, Indent, OutputAux, Defn, !IO) :-
             FunctionDefn, !IO)
     ;
         Defn = mlds_class(ClassDefn),
-        output_class_defn_for_csharp(Info, Indent, OutputAux, ClassDefn, !IO)
+        output_class_defn_for_csharp(Info, Indent, ClassDefn, !IO)
     ).
 
 :- pred output_global_var_defn_for_csharp(csharp_out_info::in, indent::in,
@@ -734,9 +729,9 @@ output_function_defn_for_csharp(Info, Indent, OutputAux, FunctionDefn, !IO) :-
 %
 
 :- pred output_class_defn_for_csharp(csharp_out_info::in, indent::in,
-    output_aux::in, mlds_class_defn::in, io::di, io::uo) is det.
+    mlds_class_defn::in, io::di, io::uo) is det.
 
-output_class_defn_for_csharp(!.Info, Indent, _OutputAux, ClassDefn, !IO) :-
+output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     output_n_indents(Indent, !IO),
     ClassDefn = mlds_class_defn(TypeName, _Context, Flags, Kind,
         _Imports, BaseClasses, Implements, TypeParams, Ctors, AllMembers),
