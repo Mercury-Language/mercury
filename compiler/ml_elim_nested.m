@@ -2359,6 +2359,17 @@ defns_contains_matching_defn(Filter, [Defn | Defns]) :-
         defns_contains_matching_defn(Filter, Defns)
     ).
 
+:- pred function_defns_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), list(mlds_function_defn)::in)
+    is semidet.
+
+function_defns_contains_matching_defn(Filter, [FuncDefn | FuncDefns]) :-
+    (
+        function_defn_contains_matching_defn(Filter, FuncDefn)
+    ;
+        function_defns_contains_matching_defn(Filter, FuncDefns)
+    ).
+
 :- pred defn_contains_matching_defn(
     pred(mlds_defn)::in(pred(in) is semidet), mlds_defn::in) is semidet.
 
@@ -2368,22 +2379,11 @@ defn_contains_matching_defn(Filter, Defn) :-
     ;
         require_complete_switch [Defn]
         (
-            Defn = mlds_function(FunctionDefn),
-            FunctionDefn = mlds_function_defn(_Name, _Ctxt, _Flags,
-                _PredProcId, _Params, FunctionBody, _Attrs, _EnvVarNames,
-                _MaybeRequiretailrecInfo),
-            FunctionBody = body_defined_here(Stmt),
-            statement_contains_matching_defn(Filter, Stmt)
+            Defn = mlds_function(FuncDefn),
+            function_defn_contains_matching_defn(Filter, FuncDefn)
         ;
             Defn = mlds_class(ClassDefn),
-            ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags, _Kind,
-                _Imports, _Inherits, _Implements,
-                _TypeParams, CtorDefns, FieldDefns),
-            (
-                defns_contains_matching_defn(Filter, FieldDefns)
-            ;
-                defns_contains_matching_defn(Filter, CtorDefns)
-            )
+            class_defn_contains_matching_defn(Filter, ClassDefn)
         ;
             ( Defn = mlds_global_var(_)
             ; Defn = mlds_local_var(_)
@@ -2392,6 +2392,29 @@ defn_contains_matching_defn(Filter, Defn) :-
             % Data entities contain no definitions.
             fail
         )
+    ).
+
+:- pred function_defn_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), mlds_function_defn::in)
+    is semidet.
+
+function_defn_contains_matching_defn(Filter, FuncDefn) :-
+    FuncDefn = mlds_function_defn(_Name, _Ctxt, _Flags, _PredProcId, _Params,
+        FunctionBody, _Attrs, _EnvVarNames, _MaybeRequiretailrecInfo),
+    FunctionBody = body_defined_here(Stmt),
+    statement_contains_matching_defn(Filter, Stmt).
+
+:- pred class_defn_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), mlds_class_defn::in)
+    is semidet.
+
+class_defn_contains_matching_defn(Filter, ClassDefn) :-
+    ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags, _Kind,
+        _Imports, _Inherits, _Implements, _TypeParams, CtorDefns, FieldDefns),
+    (
+        defns_contains_matching_defn(Filter, FieldDefns)
+    ;
+        function_defns_contains_matching_defn(Filter, CtorDefns)
     ).
 
 %-----------------------------------------------------------------------------%

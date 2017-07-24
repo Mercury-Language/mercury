@@ -794,7 +794,7 @@
                 mcd_tparams         :: list(type_param),
 
                 % Has these constructors.
-                mcd_ctors           :: list(mlds_defn),
+                mcd_ctors           :: list(mlds_function_defn),
 
                 % Contains these members.
                 mcd_members         :: list(mlds_defn)

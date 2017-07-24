@@ -59,7 +59,7 @@
     %
 :- func ml_gen_constructor_function(compilation_target, mlds_class_id,
     mlds_type, mlds_module_name, mlds_class_id, maybe(int),
-    list(mlds_field_info), prog_context) = mlds_defn.
+    list(mlds_field_info), prog_context) = mlds_function_defn.
 
 %-----------------------------------------------------------------------------%
 
@@ -697,7 +697,7 @@ ml_gen_hld_secondary_tag_class(Context, BaseClassQualifier, BaseClassId,
     mlds_module_name::in, mlds_class_id::in, type_ctor::in, hlds_type_defn::in,
     cons_tag_values::in, constructor::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
+    list(mlds_function_defn)::in, list(mlds_function_defn)::out) is det.
 
 ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
         SecondaryTagClassId, TypeCtor, TypeDefn, ConsTagValues, Ctor,
@@ -936,9 +936,9 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
     Attributes = [],
     EnvVarNames = set.init,
     % XXX MLDS_DEFN
-    CtorDefn = mlds_function(mlds_function_defn(FunctionName, Context,
+    CtorDefn = mlds_function_defn(FunctionName, Context,
         CtorFlags, no, Params, body_defined_here(Stmt), Attributes,
-        EnvVarNames, no)).
+        EnvVarNames, no).
 
     % Get the name and type from the field description, for use as a
     % constructor argument name and type.

@@ -122,7 +122,8 @@ optimize_in_class_defn(ModuleName, Globals, ClassDefn0, ClassDefn) :-
         Imports, BaseClasses, Implements,
         TypeParams, CtorDefns0, MemberDefns0),
     list.map(optimize_in_defn(ModuleName, Globals), MemberDefns0, MemberDefns),
-    list.map(optimize_in_defn(ModuleName, Globals), CtorDefns0, CtorDefns),
+    list.map(optimize_in_function_defn(ModuleName, Globals),
+        CtorDefns0, CtorDefns),
     ClassDefn = mlds_class_defn(Name, Context, Flags, Kind,
         Imports, BaseClasses, Implements,
         TypeParams, CtorDefns, MemberDefns).

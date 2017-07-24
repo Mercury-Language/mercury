@@ -734,7 +734,7 @@ output_function_defn_for_csharp(Info, Indent, OutputAux, FunctionDefn, !IO) :-
 output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     output_n_indents(Indent, !IO),
     ClassDefn = mlds_class_defn(TypeName, _Context, Flags, Kind,
-        _Imports, BaseClasses, Implements, TypeParams, Ctors, AllMembers),
+        _Imports, BaseClasses, Implements, TypeParams, Ctors, Members),
     (
         (
             % `static' keyword not allowed on enumerations.
@@ -771,9 +771,10 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
     output_class_body_for_csharp(!.Info, Indent + 1, Kind, TypeName,
-        AllMembers, !IO),
+        Members, !IO),
     io.nl(!IO),
-    output_defns_for_csharp(!.Info, Indent + 1, oa_cname(TypeName),
+    list.foldl(
+        output_function_defn_for_csharp(!.Info, Indent + 1, oa_cname(TypeName)),
         Ctors, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("}\n\n", !IO).
@@ -856,19 +857,19 @@ interface_to_string(Interface, String) :-
     mlds_class_kind::in, mlds_type_name::in, list(mlds_defn)::in,
     io::di, io::uo) is det.
 
-output_class_body_for_csharp(Info, Indent, Kind, TypeName, AllMembers, !IO) :-
+output_class_body_for_csharp(Info, Indent, Kind, TypeName, Members, !IO) :-
     (
         ( Kind = mlds_class
         ; Kind = mlds_interface
         ; Kind = mlds_struct
         ),
-        output_defns_for_csharp(Info, Indent, oa_none, AllMembers, !IO)
+        output_defns_for_csharp(Info, Indent, oa_none, Members, !IO)
     ;
         Kind = mlds_package,
         unexpected($pred, "cannot use package as a type")
     ;
         Kind = mlds_enum,
-        list.filter_map(defn_is_enum_const, AllMembers, EnumConsts),
+        list.filter_map(defn_is_enum_const, Members, EnumConsts),
         output_enum_constants_for_csharp(Info, Indent + 1, TypeName,
             EnumConsts, !IO)
     ).

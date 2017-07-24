@@ -550,7 +550,7 @@ method_ptrs_in_class_defns([ClassDefn | ClassDefns], !CodeAddrsInConsts) :-
 
 method_ptrs_in_class_defn(ClassDefn, !CodeAddrsInConsts) :-
     ClassDefn = mlds_class_defn(_, _, _, _, _, _, _, _, Ctors, Members),
-    method_ptrs_in_defns(Ctors, !CodeAddrsInConsts),
+    method_ptrs_in_function_defns(Ctors, !CodeAddrsInConsts),
     method_ptrs_in_defns(Members, !CodeAddrsInConsts).
 
 %---------------------%

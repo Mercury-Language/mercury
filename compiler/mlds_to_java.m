@@ -878,7 +878,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     % XXX MLDS_DEFN
     ClassDefn = mlds_class_defn(ClassTypeName, ClassContext, ClassFlags,
         mlds_class, ClassImports, ClassExtends, ClassImplements,
-        TypeParams, list.map(wrap_function_defn, CtorDefns), ClassMembers),
+        TypeParams, CtorDefns, ClassMembers),
 
     add_to_address_map(ClassName, CodeAddrs, !AddrOfMap).
 
@@ -1259,7 +1259,7 @@ rename_class_names_in_function_defn(Renaming, FuncDefn0, FuncDefn) :-
 rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn) :-
     ClassDefn0 = mlds_class_defn(Name, Context, Flags, ClassKind,
         Imports, Inherits, Implements, TypeParams, Ctors0, Members0),
-    list.map(rename_class_names_in_mlds_defn(Renaming), Ctors0, Ctors),
+    list.map(rename_class_names_in_function_defn(Renaming), Ctors0, Ctors),
     list.map(rename_class_names_in_mlds_defn(Renaming), Members0, Members),
     ClassDefn = mlds_class_defn(Name, Context, Flags, ClassKind,
         Imports, Inherits, Implements, TypeParams, Ctors, Members).
@@ -1986,7 +1986,7 @@ output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
 
 output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
-        _Imports, BaseClasses, Implements, TypeParams, Ctors, AllMembers),
+        _Imports, BaseClasses, Implements, TypeParams, Ctors, Members),
     indent_line_after_context(!.Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_class_decl_flags_for_java(!.Info, Flags, !IO),
@@ -2017,10 +2017,11 @@ output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
     output_class_body_for_java(!.Info, Indent + 1, Kind, TypeName,
-        AllMembers, !IO),
+        Members, !IO),
     io.nl(!IO),
-    % XXX MLDS_DEFN
-    output_defns_for_java(!.Info, Indent + 1, oa_cname(TypeName), Ctors, !IO),
+    list.foldl(
+        output_function_defn_for_java(!.Info, Indent + 1, oa_cname(TypeName)),
+        Ctors, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("}\n\n", !IO).
 
@@ -2097,22 +2098,22 @@ output_interface(Interface, !IO) :-
     mlds_class_kind::in, mlds_type_name::in, list(mlds_defn)::in,
     io::di, io::uo) is det.
 
-output_class_body_for_java(Info, Indent, Kind, TypeName, AllMembers, !IO) :-
+output_class_body_for_java(Info, Indent, Kind, TypeName, Members, !IO) :-
     (
         Kind = mlds_class,
-        output_defns_for_java(Info, Indent, oa_none, AllMembers, !IO)
+        output_defns_for_java(Info, Indent, oa_none, Members, !IO)
     ;
         Kind = mlds_package,
         unexpected($pred, "cannot use package as a type")
     ;
         Kind = mlds_interface,
-        output_defns_for_java(Info, Indent, oa_none, AllMembers, !IO)
+        output_defns_for_java(Info, Indent, oa_none, Members, !IO)
     ;
         Kind = mlds_struct,
         unexpected($pred, "structs not supported in Java")
     ;
         Kind = mlds_enum,
-        list.filter_map(defn_is_enum_const, AllMembers, EnumConsts),
+        list.filter_map(defn_is_enum_const, Members, EnumConsts),
         output_enum_constants_for_java(Info, Indent + 1, TypeName,
             EnumConsts, !IO),
         io.nl(!IO),

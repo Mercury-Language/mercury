@@ -661,7 +661,8 @@ defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
 % defns_contains_var:
 % defn_contains_var:
 % defn_body_contains_var:
-% function_body_contains_var:
+% function_defns_contains_var:
+% function_defn_contains_var:
 %
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
@@ -675,6 +676,21 @@ defns_contains_var([Defn | Defns], SearchVarName) = ContainsVar :-
     ;
         DefnContainsVar = no,
         ContainsVar = defns_contains_var(Defns, SearchVarName)
+    ).
+
+:- func function_defns_contains_var(list(mlds_function_defn),
+    qual_local_var_name) = bool.
+
+function_defns_contains_var([], _SearchVarName) = no.
+function_defns_contains_var([FuncDefn | FuncDefns], SearchVarName)
+        = ContainsVar :-
+    FuncDefnContainsVar = function_defn_contains_var(FuncDefn, SearchVarName),
+    (
+        FuncDefnContainsVar = yes,
+        ContainsVar = yes
+    ;
+        FuncDefnContainsVar = no,
+        ContainsVar = function_defns_contains_var(FuncDefns, SearchVarName)
     ).
 
 defn_contains_var(Defn, SearchVarName) = ContainsVar :-
@@ -708,20 +724,14 @@ defn_contains_var(Defn, SearchVarName) = ContainsVar :-
             ContainsVar = yes
         ;
             FieldDefnsContainVar = no,
-            ContainsVar = defns_contains_var(CtorDefns, SearchVarName)
+            ContainsVar = function_defns_contains_var(CtorDefns, SearchVarName)
         )
     ).
 
 function_defn_contains_var(FunctionDefn, SearchVarName) = ContainsVar :-
     FunctionDefn = mlds_function_defn(_Name, _Ctxt, _Flags,
-        _PredProcId, _Params, FunctionBody, _Attrs,
+        _PredProcId, _Params, Body, _Attrs,
         _EnvVarNames, _MaybeRequireTailrecInfo),
-    ContainsVar = function_body_contains_var(FunctionBody, SearchVarName).
-
-:- func function_body_contains_var(mlds_function_body, qual_local_var_name)
-    = bool.
-
-function_body_contains_var(Body, SearchVarName) = ContainsVar :-
     (
         Body = body_external,
         ContainsVar = no

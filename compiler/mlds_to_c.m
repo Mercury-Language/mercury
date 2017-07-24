@@ -2147,20 +2147,23 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     % XXX This should be conditional: only when compiling to C,
     % not when compiling to C++.
 
-    AllMembers = Ctors ++ Members,
-
     (
         Kind = mlds_enum,
+        StaticCtors = [],
+        StructCtors = Ctors,
         StaticMembers = [],
-        StructMembers = AllMembers
+        StructMembers = Members
     ;
         ( Kind = mlds_class
         ; Kind = mlds_package
         ; Kind = mlds_interface
         ; Kind = mlds_struct
         ),
-        list.filter(is_static_member, AllMembers,
+        list.filter(function_defn_is_static_member, Ctors,
+            StaticCtors, NonStaticCtors),
+        list.filter(defn_is_static_member, Members,
             StaticMembers, NonStaticMembers),
+        StructCtors = NonStaticCtors,
         StructMembers = NonStaticMembers
     ),
 
@@ -2170,9 +2173,9 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     % XXX this should be conditional: only when compiling to C,
     % not when compiling to C++
 
-    list.map_foldl(mlds_make_base_class(Context), BaseClasses, BaseDefns,
+    list.map_foldl(mlds_make_base_class(Context),
+        BaseClasses, BaseFieldVarDefns,
         1, _),
-    BasesAndMembers = BaseDefns ++ StructMembers,
 
     % Output the class declaration and the class members.
     % We treat enumerations specially.
@@ -2192,7 +2195,8 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     (
         Kind = mlds_enum,
         mlds_output_enum_constants(Opts, Indent + 1, ClassModuleName,
-            BasesAndMembers, !IO)
+            list.map(wrap_field_var_defn, BaseFieldVarDefns) ++ StructMembers,
+            !IO)
     ;
         ( Kind = mlds_class
         ; Kind = mlds_package
@@ -2200,16 +2204,19 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
         ; Kind = mlds_struct
         ),
         mlds_output_defns(Opts, Indent + 1, no, ClassModuleName,
-            BasesAndMembers, !IO)
+            list.map(wrap_field_var_defn, BaseFieldVarDefns) ++
+                list.map(wrap_function_defn, StructCtors) ++ StructMembers,
+            !IO)
     ),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("};\n", !IO),
-    mlds_output_defns(Opts, Indent, yes, ClassModuleName, StaticMembers, !IO).
+    mlds_output_defns(Opts, Indent, yes, ClassModuleName,
+        list.map(wrap_function_defn, StaticCtors) ++ StaticMembers, !IO).
 
-:- pred is_static_member(mlds_defn::in) is semidet.
+:- pred defn_is_static_member(mlds_defn::in) is semidet.
 
-is_static_member(Defn) :-
+defn_is_static_member(Defn) :-
     % XXX MLDS_DEFN
     (
         Defn = mlds_global_var(_),
@@ -2222,19 +2229,24 @@ is_static_member(Defn) :-
         FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_per_instance = one_copy
     ;
         Defn = mlds_function(FuncDefn),
-        Flags = FuncDefn ^ mfd_decl_flags,
-        get_function_per_instance(Flags) = one_copy
+        function_defn_is_static_member(FuncDefn)
     ;
         Defn = mlds_class(_ClassDefn)
     ).
+
+:- pred function_defn_is_static_member(mlds_function_defn::in) is semidet.
+
+function_defn_is_static_member(FuncDefn) :-
+    Flags = FuncDefn ^ mfd_decl_flags,
+    get_function_per_instance(Flags) = one_copy.
 
     % Convert a base class class_id into a member variable
     % that holds the value of the base class.
     %
 :- pred mlds_make_base_class(prog_context::in, mlds_class_id::in,
-    mlds_defn::out, int::in, int::out) is det.
+    mlds_field_var_defn::out, int::in, int::out) is det.
 
-mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
+mlds_make_base_class(Context, ClassId, FieldVarDefn, BaseNum0, BaseNum) :-
     BaseVarName = fvn_base_class(BaseNum0),
     Type = ClassId,
     % We only need GC tracing code for top-level variables,
@@ -2242,7 +2254,6 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
     GCStmt = gc_no_stmt,
     FieldVarDefn = mlds_field_var_defn(BaseVarName, Context,
         ml_gen_public_field_decl_flags, Type, no_initializer, GCStmt),
-    MLDS_Defn = mlds_field_var(FieldVarDefn),
     BaseNum = BaseNum0 + 1.
 
     % Output the definitions of the enumeration constants
